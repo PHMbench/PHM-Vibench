@@ -1,0 +1,45 @@
+# Vbench 基础配置文件
+# 基于 PyTorch Lightning 的新架构
+
+# 数据集配置
+dataset:
+  name: "SignalDataset"  # 数据集类名称
+  args:
+    data_path: null  # 设为 null，会生成合成数据
+    train_ratio: 0.7
+    val_ratio: 0.15
+    test_ratio: 0.15
+    batch_size: 32
+    shuffle: true
+    random_seed: 42
+
+# 模型配置
+model:
+  name: "CNNModel"  # 模型类名称
+  args:
+    input_channels: 1
+    hidden_channels: [32, 64, 128]
+    output_dim: 1
+    dropout_rate: 0.2
+
+# 任务配置
+task:
+  name: "ClassificationTask"  # 任务类名称
+  args:
+    loss_fn: "cross_entropy"
+    metrics: ["accuracy", "f1_score", "precision", "recall"]
+
+# 训练器配置
+trainer:
+  name: "DefaultTrainer"  # 训练器名称会被忽略，使用默认流水线
+  args:
+    epochs: 50
+    lr: 0.001
+    weight_decay: 0.0001
+    early_stopping: true
+    es_patience: 10
+    scheduler: true
+    scheduler_type: "plateau"
+    factor: 0.5
+    patience: 5
+    project: "vbench"
