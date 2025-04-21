@@ -1,3 +1,91 @@
+# 贡献者指引
+
+*欢迎为Vbench提供Feature PR、Bug反馈、文档补充或其他类型的贡献！*
+
+## 目录
+
+- [代码规约](#-代码规约)
+- [贡献流程](#-贡献流程)
+- [环境配置](#-环境配置)
+
+## 📖 代码规约
+
+请查看我们的[代码规约文档](./CODE_OF_CONDUCT.md)。
+
+## 🔁 贡献流程
+
+### 我们需要什么
+- 新模型与数据集：Vbench需要支持更多的故障诊断模型和工业设备数据集，如果您有相关资源或实现，可以提交PR给我们。
+- 新功能模块：我们欢迎对训练流程、数据处理或评估方法的改进，特别是能提高模型性能或易用性的功能。
+- 文档与教程：如果您擅长技术写作，欢迎帮助我们完善文档或提供示例教程，帮助用户更好地使用Vbench。
+- Bug修复：如果您发现了问题或有改进建议，请提交Issue或直接提供修复代码。
+
+### 开发规范
+
+#### 代码风格
+- 变量命名采用下划线分隔的命名方式（如`model_name`），类名采用首字母大写的驼峰命名法（如`BaseModel`）
+- Python代码缩进统一使用4个空格
+- 每个函数和类都应有清晰的文档字符串，说明其功能、参数和返回值
+- 复杂逻辑需要添加注释，使代码易于理解
+
+#### 模块组织
+- 新的模型应放在`model_factory`目录下，并在`__init__.py`中注册
+- 新的数据集应放在`data_factory`目录下，并在`__init__.py`中注册
+- 新的任务类型应放在`task_factory`目录下，并在`__init__.py`中注册
+- 工具函数应放在`utils`目录下合适的模块中
+
+### 提交PR（Pull Requests）
+
+1. **Fork**：将Vbench代码库fork到您的个人账户
+2. **Clone**：将您fork的代码库clone到本地并创建新的分支进行开发
+3. **开发**：按照开发规范进行代码编写，并添加必要的测试用例
+4. **测试**：使用`test/test.ipynb`或`main_dummy.py`对您的代码进行测试
+5. **提交PR**：开发测试完成后，提交Pull Request到主分支
+6. **描述**：在PR中详细描述您的修改内容、解决的问题及测试结果
+7. **Review**：等待维护者审核您的代码并根据反馈进行修改
+
+### 测试流程
+
+在提交PR前，请确保您的代码通过了以下测试：
+
+```shell
+# 使用main_dummy.py测试特定模块
+python main_dummy.py --module <您修改的模块名称>
+
+# 或使用全面测试
+python main_dummy.py --all_modules
+
+# 使用Jupyter Notebook进行交互式测试
+jupyter notebook test/test.ipynb
+```
+
+## 🔧 环境配置
+
+### 依赖安装
+
+```shell
+pip install -r requirements.txt
+```
+
+### 目录结构
+确保您了解Vbench的目录结构：
+- `configs/`: 配置文件目录
+- `src/`: 源代码目录
+  - `data_factory/`: 数据集实现
+  - `model_factory/`: 模型实现
+  - `task_factory/`: 任务定义
+  - `trainer_factory/`: 训练器实现
+  - `utils/`: 工具函数
+- `test/`: 测试代码
+- `results/`: 实验结果存储
+- `data/`: 数据存储
+
+### 开发建议
+- 尽量保持代码模块化和可扩展性
+- 添加新功能前，先查看现有实现，避免重复造轮子
+- 确保您的代码具有良好的可读性和注释
+- 为新功能添加示例配置文件和使用说明
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge

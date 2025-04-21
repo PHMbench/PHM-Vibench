@@ -97,13 +97,28 @@ def main(config_path='configs/demo/basic.yaml',
             task_config['args']['model'] = model
             task = build_task(task_config)
             
-            # 构建训练器
+            # 构建训练器（传递所有必要的参数和数据加载器）
             print(f"[INFO] 构建训练器: {configs['trainer']['name']}")
-            trainer = build_trainer(configs['trainer'])
+            trainer_config = configs['trainer'].copy()
+            trainer = build_trainer(trainer_config)
             
-            # 执行训练和评估
+            # 执行训练和评估，直接传递所有必要的组件
             print(f"[INFO] 开始训练 (迭代 {it+1})")
-            result = trainer(configs, path, it)
+            result = trainer(
+                dataset=dataset,
+                model=model,
+                task=task,
+                train_loader=train_loader,
+                val_loader=val_loader,
+                test_loader=test_loader,
+                configs=configs,
+                args_t=args_t,
+                args_m=args_m,
+                args_d=args_d,
+                args_task=args_task,
+                save_path=path,
+                iteration=it
+            )
             all_results.append(result)
             
             # 保存结果
