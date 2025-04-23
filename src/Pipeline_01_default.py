@@ -11,7 +11,7 @@ from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 
-def main(config_path='configs/demo/basic.yaml', 
+def pipeline(config_path='configs/demo/basic.yaml', 
          iterations=1, 
          use_wandb=False, 
          notes='', 
@@ -42,20 +42,15 @@ def main(config_path='configs/demo/basic.yaml',
             return
     
     # 准备命名空间参数
-    args_t = transfer_namespace(configs['trainer'].get('args', {}))
-    args_m = transfer_namespace(configs['model'].get('args', {}))
-    args_d = transfer_namespace(configs['dataset'].get('args', {}))
+    args_trainer = transfer_namespace(configs['trainer'].get('args', {}))
+    args_model = transfer_namespace(configs['model'].get('args', {}))
+    args_dataset = transfer_namespace(configs['dataset'].get('args', {}))
     args_task = transfer_namespace(configs['task'].get('args', {}))
     
     # -----------------------
     # 2. 多次迭代训练与测试
     # -----------------------
     all_results = []
-    
-    # 将 WandB 选项和实验备注添加到训练器配置中
-    configs['trainer']['args'] = configs['trainer'].get('args', {})
-    configs['trainer']['args']['wandb'] = use_wandb
-    configs['trainer']['args']['notes'] = notes
     
     for it in range(iterations):
         print(f"\n{'='*50}\n[INFO] 开始实验迭代 {it+1}/{iterations}\n{'='*50}")
@@ -64,13 +59,13 @@ def main(config_path='configs/demo/basic.yaml',
         path, name = path_name(configs, it)
         
         # 设置随机种子
-        curr_seed = seed + it
-        seed_everything(curr_seed)
-        print(f"[INFO] 设置随机种子: {curr_seed}")
+        current_seed = seed + it
+        seed_everything(current_seed)
+        print(f"[INFO] 设置随机种子: {current_seed}")
         
         # 初始化 WandB
         if use_wandb:
-            project_name = getattr(args_t, 'project', 'vbench')
+            project_name = getattr(args_trainer, 'project', 'vbench')
             wandb.init(project=project_name, name=name, notes=notes)
         else:
             wandb.init(mode='disabled')  # 避免 wandb 报错
@@ -80,43 +75,51 @@ def main(config_path='configs/demo/basic.yaml',
             print(f"[INFO] 构建数据集: {configs['dataset']['name']}")
             dataset = build_dataset(configs['dataset'])
             
-            # 获取数据加载器
-            train_loader = dataset.get_train_loader()
-            val_loader = dataset.get_val_loader()
-            test_loader = dataset.get_test_loader()
-            
             # 构建模型
             print(f"[INFO] 构建模型: {configs['model']['name']}")
             model = build_model(configs['model'])
             
-            # 构建任务
+            # 构建任务（将模型和数据集都传递给任务，实现任务特定的数据包装）
             print(f"[INFO] 构建任务: {configs['task']['name']}")
-            # 将模型实例传递给任务
             task_config = configs['task'].copy()
             task_config['args'] = task_config.get('args', {})
             task_config['args']['model'] = model
+            task_config['args']['dataset'] = dataset  # 将原始数据集传递给任务
+            
             task = build_task(task_config)
             
-            # 构建训练器（传递所有必要的参数和数据加载器）
+            # 从任务中获取适配特定任务的数据加载器
+            print(f"[INFO] 从任务中获取数据加载器")
+            train_loader = task.get_train_loader()
+            val_loader = task.get_val_loader()
+            test_loader = task.get_test_loader()
+            
+            # 从任务中获取损失函数和其他评估指标
+            loss_fn = task.get_loss_function()
+            metrics = task.get_metrics()
+            
+            # 构建训练器
             print(f"[INFO] 构建训练器: {configs['trainer']['name']}")
             trainer_config = configs['trainer'].copy()
             trainer = build_trainer(trainer_config)
             
-            # 执行训练和评估，直接传递所有必要的组件
+            # 执行训练和评估
             print(f"[INFO] 开始训练 (迭代 {it+1})")
             result = trainer(
-                dataset=dataset,
-                model=model,
                 task=task,
                 train_loader=train_loader,
                 val_loader=val_loader,
                 test_loader=test_loader,
-                configs=configs,
-                args_t=args_t,
-                args_m=args_m,
-                args_d=args_d,
-                args_task=args_task,
+                loss_function=loss_fn,
+                metrics=metrics,
+                use_wandb=use_wandb,  # 直接使用函数参数
+                notes=notes,  # 直接使用函数参数
                 save_path=path,
+                configs=configs,
+                args_trainer=args_trainer,
+                args_model=args_model,
+                args_dataset=args_dataset,
+                args_task=args_task,
                 iteration=it
             )
             all_results.append(result)
@@ -161,7 +164,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # 执行流水线
-    main(
+    pipeline(
         config_path=args.config_path,
         iterations=args.iterations,
         use_wandb=args.use_wandb,

@@ -11,9 +11,9 @@ from dotenv import dotenv_values
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Union
 
-from src.Pipeline_01_default import main as pipeline_main
+from src.Pipeline_01_default import pipeline as pipeline_main
 
-def setup_env():
+def setup_env(): 
     """
     设置环境变量
     创建必要的目录结构
@@ -24,19 +24,27 @@ def setup_env():
         print("[INFO] 未找到 .env 文件，使用默认环境配置")
         # 设置一些默认配置
         os.environ["WANDB_MODE"] = "disabled"  # 默认禁用 wandb
-        os.environ["VBENCH_HOME"] = os.path.abspath(".")
+        os.environ["VBENCH_HOME"] = os.path.abspath(os.path.dirname(__file__))
     else:
         # 将环境变量写入系统环境
         for key, value in env_config.items():
             os.environ[key] = value
+    # 将项目目录设置为VBENCH_HOME
+    if "VBENCH_HOME" not in os.environ:
+        os.environ["VBENCH_HOME"] = os.path.abspath(os.path.dirname(__file__))
+
+    
+    # 获取项目根目录
+    vbench_home = os.environ.get("VBENCH_HOME", os.path.abspath(os.path.dirname(__file__)))
     
     # 创建必要的目录
     dirs_to_create = ["results", "data/processed", "data/raw", "save", "test/results"]
     for dir_path in dirs_to_create:
-        os.makedirs(dir_path, exist_ok=True)
+        full_path = os.path.join(vbench_home, dir_path)
+        os.makedirs(full_path, exist_ok=True)
     
     # 打印环境信息
-    print(f"[INFO] VBENCH_HOME: {os.environ.get('VBENCH_HOME', os.path.abspath('.'))}")
+    print(f"[INFO] VBENCH_HOME: {vbench_home}")
     print(f"[INFO] WANDB_MODE: {os.environ.get('WANDB_MODE', 'disabled')}")
 
 
@@ -71,7 +79,7 @@ def test_framework(config_path, iterations=1):
     return results
 
 
-def test_module(module_name: str, test_function: Optional[str] = None, **kwargs) -> Dict:
+def test_module(module_name: str, test_function: Optional[str] = None, **kwargs) -> Dict[str, Any]:
     """
     测试特定模块的功能
     
@@ -177,7 +185,11 @@ def main():
     parser.add_argument('--all_modules',
                        action='store_true',
                        help='测试所有可用的模块')
-    
+    parser.add_argument('--home',
+                       type=str,
+                       default='.',
+                       help='Vbench项目根目录')
+    os.chdir(os.path.abspath(os.path.dirname(__file__)))
     args = parser.parse_args()
     
     # 设置环境
@@ -222,8 +234,11 @@ def main():
             
             # 打印部分结果
             print("\n测试指标:")
-            for key, value in test_results[0].items():
-                print(f"  {key}: {value}")
+            if isinstance(test_results, list) and len(test_results) > 0:
+                for key, value in test_results[0].items():
+                    print(f"  {key}: {value}")
+            else:
+                print("  无详细指标数据")
         else:
             print("\n[ERROR] 框架测试未返回预期结果")
     else:

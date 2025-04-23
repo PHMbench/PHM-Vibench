@@ -35,8 +35,7 @@ task:
 
 # 训练器配置
 trainer:
-  name: "DefaultTrainer"
-  args:
+
     epochs: 10
     lr: 0.001
     weight_decay: 0.0001

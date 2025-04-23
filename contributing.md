@@ -32,6 +32,8 @@
 - 新的模型应放在`model_factory`目录下，并在`__init__.py`中注册
 - 新的数据集应放在`data_factory`目录下，并在`__init__.py`中注册
 - 新的任务类型应放在`task_factory`目录下，并在`__init__.py`中注册
+- 新的训练器应放在`trainer_factory`目录下，并在`__init__.py`中注册
+- 新的pipeline应放到src目录下，并按照功能划分子目录
 - 工具函数应放在`utils`目录下合适的模块中
 
 ### 提交PR（Pull Requests）

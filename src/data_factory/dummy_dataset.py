@@ -28,7 +28,7 @@ class DummyDataset(BaseDataset):
         
         Args:
             task_type: 任务类型，'classification' 或 'regression'
-            num_samples: 样本总数
+            num_samples: 样本总数3
             feature_dim: 特征维度
             num_classes: 类别数量（仅在分类任务中使用）
             train_ratio: 训练集比例
