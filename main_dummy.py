@@ -11,7 +11,7 @@ from dotenv import dotenv_values
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Union
 
-from src.Pipeline_01_default import pipeline as pipeline_main
+from src.Pipeline_01_default import main as pipeline_main
 
 def setup_env(): 
     """
@@ -24,18 +24,14 @@ def setup_env():
         print("[INFO] 未找到 .env 文件，使用默认环境配置")
         # 设置一些默认配置
         os.environ["WANDB_MODE"] = "disabled"  # 默认禁用 wandb
-        os.environ["VBENCH_HOME"] = os.path.abspath(os.path.dirname(__file__))
+        os.environ["VBENCH_HOME"] = os.path.abspath(".")
     else:
         # 将环境变量写入系统环境
         for key, value in env_config.items():
             os.environ[key] = value
-    # 将项目目录设置为VBENCH_HOME
-    if "VBENCH_HOME" not in os.environ:
-        os.environ["VBENCH_HOME"] = os.path.abspath(os.path.dirname(__file__))
-
     
     # 获取项目根目录
-    vbench_home = os.environ.get("VBENCH_HOME", os.path.abspath(os.path.dirname(__file__)))
+    vbench_home = os.environ.get("VBENCH_HOME", os.path.abspath("."))
     
     # 创建必要的目录
     dirs_to_create = ["results", "data/processed", "data/raw", "save", "test/results"]
@@ -185,11 +181,7 @@ def main():
     parser.add_argument('--all_modules',
                        action='store_true',
                        help='测试所有可用的模块')
-    parser.add_argument('--home',
-                       type=str,
-                       default='.',
-                       help='Vbench项目根目录')
-    os.chdir(os.path.abspath(os.path.dirname(__file__)))
+    
     args = parser.parse_args()
     
     # 设置环境

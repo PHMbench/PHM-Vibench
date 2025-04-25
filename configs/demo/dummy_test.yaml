@@ -1,51 +1,70 @@
 # Vbench 框架测试配置文件
 # 用于测试各模块的集成功能
+# 环境变量设置
 
-# 数据集配置
-dataset:
-  name: "DummyDataset"
-  args:
-    task_type: "classification"
-    num_samples: 1000
-    feature_dim: 10
-    num_classes: 2
-    train_ratio: 0.7
-    val_ratio: 0.15
-    test_ratio: 0.15
-    batch_size: 32
-    seed: 42
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  DATA_DIR: "/home/lq/LQcode/2_project/PHMBench/Vbench/data"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+# 基础配置 优先级弱于命令行
+  project: "dummy_test"
+  seed: 42
+  output_dir: "results/dummy_test"
+  notes: "This is a dummy test configuration."
+  iterations: 2
+
+# 数据配置
+data:
+  metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
+  batch_size: 32
+  num_workers: 4
+  train_val_rate: 0.8
+  normalization: true
 
 # 模型配置
 model:
-  name: "DummyCNNModel"
+  name: "Transformer"
   args:
-    input_channels: 1
-    hidden_channels: [16, 32, 64]
-    output_dim: 2
-    kernel_size: 3
-    dropout_rate: 0.2
+    input_dim: 10
+    num_classes: 2
+    num_heads: 4
+    num_layers: 2
+    d_model: 64
+    d_ff: 128
+    dropout_rate: 0.1
+    feature_dim: 10
 
 # 任务配置
 task:
-  name: "DummyClassificationTask"
+  name: "Classification"
   args:
-    num_classes: 2
-    learning_rate: 0.001
-    class_weights: null
+    loss_fn: "cross_entropy"
+    metrics: ["accuracy"]
+    target_data: 'Dummy_Dataset'
+    # metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
 
 # 训练器配置
 trainer:
-
+  name: "Trainer"
+  args:
+    optimizer: "adam"
+    max_epochs: 10
+    batch_size: 32
+    num_workers: 4
+    pin_memory: true
+    shuffle: true
+    log_interval: 10
     epochs: 10
     lr: 0.001
     weight_decay: 0.0001
-    loss_fn: "cross_entropy"
     early_stopping: true
     es_patience: 5
     scheduler: true
     scheduler_type: "step"
     step_size: 3
     gamma: 0.5
-    metrics: ["accuracy"]
-    project: "vbench"
-    name: "dummy_test"
+
+
+

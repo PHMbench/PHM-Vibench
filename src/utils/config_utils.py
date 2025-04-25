@@ -40,17 +40,17 @@ def path_name(configs, iteration=0):
         路径和实验名称
     """
     # 获取各组件名称
-    dataset_name = configs['dataset']['name']
+    dataset_name = configs['data']['metadata_file']
     model_name = configs['model']['name']
     task_name = configs['task']['name']
     trainer_name = configs['trainer']['name']
     
     # 组建实验名称
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_name = f"{model_name}_{dataset_name}_{task_name}_{timestamp}"
+    exp_name = f"{dataset_name}_{model_name}_{task_name}_{trainer_name}_{timestamp}"
     
     # 创建结果保存路径
-    result_dir = f"results/{exp_name}/iter_{iteration}"
+    result_dir = f"save/{exp_name}/iter_{iteration}"
     makedir(result_dir)
     
     return result_dir, exp_name
