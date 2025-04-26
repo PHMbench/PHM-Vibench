@@ -5,7 +5,7 @@
 environment:
   WANDB_MODE: "disabled"
   VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
-  DATA_DIR: "/home/lq/LQcode/2_project/PHMBench/Vbench/data"
+
   PYTHONPATH: "/home/lq/.conda/envs/lq"
   PHMBench: "/home/lq/LQcode/2_project/PHMBench"
 # 基础配置 优先级弱于命令行
@@ -17,6 +17,7 @@ environment:
 
 # 数据配置
 data:
+  data_dir: "/home/lq/LQcode/2_project/PHMBench/Vbench/data/"  # 数据目录
   metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
   batch_size: 32
   num_workers: 4
