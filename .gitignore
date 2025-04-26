@@ -154,3 +154,4 @@ results/
 # Logs
 logs/
 *.log
+data/metadata_dummy.h5
