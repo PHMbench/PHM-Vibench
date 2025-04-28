@@ -6,7 +6,11 @@ from abc import ABC, abstractmethod
 from torch.utils.data import DataLoader, Dataset, random_split
 from typing import Dict, Any, Union, Optional, List, Tuple
 
+
+
+
 class BaseTask(ABC):
+
     """任务基类，定义通用接口
     
     所有自定义任务类必须继承该类，并实现必要的方法
@@ -190,3 +194,6 @@ class BaseTask(ABC):
             评估结果字典
         """
         pass
+
+def task_reader(config: Dict[str, Any]) -> 'BaseTask':
+    

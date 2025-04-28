@@ -23,6 +23,13 @@ def build_data(args) -> Any:
     metadata, data_dict = data_reader(args)
     return metadata, data_dict
 
+def build_dataset(args) -> Any:
+
+
+def build_dataloader(args) -> Any:
+    """根据配置构建数据加载器实例
+    ...
+    """
 
 # 导出公共API
 __all__ = ["register_dataset", "build_dataset", "_dataset_registry"]

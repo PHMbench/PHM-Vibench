@@ -7,7 +7,7 @@ import os
 from typing import Dict, Any, Optional
 
 from src.task_factory import register_task
-from src.task_factory.base_task import BaseTask
+from Vbench.src.task_factory.task_reader import BaseTask
 
 @register_task('DummyClassificationTask')  # 修改注册名称
 class DummyClassificationTask(BaseTask):  # 修改类名
@@ -127,7 +127,7 @@ class DummyClassificationTask(BaseTask):  # 修改类名
 if __name__ == '__main__':
     """测试入口点"""
     # 导入必要的模块
-    from src.model_factory.cnnmodel import DummyCNNModel  # 更新导入
+    from Vbench.src.model_factory.CNN.cnnmodel import DummyCNNModel  # 更新导入
     
     # 创建示例模型
     model = DummyCNNModel(input_channels=1, output_dim=10)  # 更新类名

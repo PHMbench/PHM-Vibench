@@ -39,3 +39,26 @@ def read(args_data, file_path):
     
     # 加入更多的异常处理
     # 例如：处理文件格式错误、数据解析错误等
+
+def get_dataset(args_data, file_path):
+    """
+    Reads data from a CSV file specified by file_path.
+
+    Args:
+        args_data: Data configuration arguments (currently unused).
+        file_path (str): Path to the CSV data file (e.g., Vbench/data/Dummy_Dataset/dummy1.csv).
+
+    Returns:
+        numpyarray: dimention as lenth \times channel
+    """
+    # 读取数据
+    data = read(args_data, file_path)
+    
+    # 处理数据
+    if data is not None:
+        # 这里可以添加数据预处理的代码
+        print(f"Data shape: {data.shape}")
+        return data
+    else:
+        print("No data to process.")
+        return None
