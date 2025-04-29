@@ -196,4 +196,4 @@ class BaseTask(ABC):
         pass
 
 def task_reader(config: Dict[str, Any]) -> 'BaseTask':
-    
+    pass

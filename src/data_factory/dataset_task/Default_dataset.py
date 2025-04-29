@@ -14,16 +14,16 @@ class Default_dataset(Dataset): # THU_006or018_basic
             args_task: 任务参数
             mode: 数据模式，可选 "train", "valid", "test"
         """
-        self.key = data.keys()[0]
+        self.key = list(data.keys())[0]
         self.data = data[self.key]  # 取出第一个键的数据
         self.metadata = metadata
         self.args_data = args_data
         self.mode = mode
         
         # 数据处理参数
-        self.window_size = args_data.get("window_size", 1024)
-        self.stride = args_data.get("stride", 512)
-        self.train_ratio = args_data.get("train_ratio", 0.7)
+        self.window_size = args_data.window_size
+        self.stride = args_data.stride
+        self.train_ratio = args_data.train_ratio
         
         # 数据预处理
         self.processed_data = []  # 存储处理后的样本
@@ -43,7 +43,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
             self._split_data_for_mode()
             
         self.total_samples = len(self.processed_data)
-        self.label = self.metadata[self.key]["label"]
+        self.label = self.metadata[self.key]["Label"]
     
     def _process_single_data(self, sample_data):
         """
@@ -72,11 +72,9 @@ class Default_dataset(Dataset): # THU_006or018_basic
         if self.mode == "train":
             # 训练模式只保留训练数据
             self.processed_data = self.processed_data[:train_size]
-            self.processed_labels = self.processed_labels[:train_size]
         elif self.mode == "valid":
             # 验证模式只保留验证数据
             self.processed_data = self.processed_data[train_size:]
-            self.processed_labels = self.processed_labels[train_size:]
         self.total_samples = len(self.processed_data)
     
     def __len__(self):

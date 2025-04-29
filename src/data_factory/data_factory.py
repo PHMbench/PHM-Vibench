@@ -76,7 +76,7 @@ class data_factory:
                 if not missing_ids:
                     print(f"所有数据都在缓存中，直接使用缓存文件: {cache_file}")
                     # 直接返回 H5DataDict 对象
-                    return H5DataDict(h5f)
+                    return H5DataDict(cache_file)
                 else:
                     print(f"缓存中缺少ID: {missing_ids}，将更新缓存")
             except Exception as e:
@@ -102,11 +102,14 @@ class data_factory:
                         print(f"Error loading data for ID {id}: {e}")
             h5f.flush()
 
-            return H5DataDict(h5f)
+        return H5DataDict(cache_file)
     
     def get_metadata(self):
         """获取元数据"""
         return self.metadata
+    def get_data(self):
+        """获取数据"""
+        return self.data
     
     def get_data_info(self):
         """获取数据集信息"""
@@ -116,21 +119,30 @@ class data_factory:
         # TODO
 
     def _init_dataset(self):
-        task = self.args_task.task
-        task_type = self.args_task.task_type
+        task = self.args_task.name
+        task_type = self.args_task.type
         mod = importlib.import_module(f"src.data_factory.dataset_task.{task_type}.{task}_dataset")
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
-        for id, meta in self.metadata.items():
+        train_val_ids, test_ids = self.search_id()
+        for id in train_val_ids:
+
             train_dataset[id] = mod.set_dataset({id: self.data[id]},
                                                  self.metadata, self.args_data, self.args_task, 'train')
             val_dataset[id] = mod.set_dataset({id: self.data[id]},
                                                self.metadata, self.args_data, self.args_task, 'val')
+        for id in test_ids:
             test_dataset[id] = mod.set_dataset({id: self.data[id]},
                                                 self.metadata, self.args_data, self.args_task, 'test')
         return train_dataset, val_dataset, test_dataset
        
+    def search_id(self):
+        """
+        should be implemented in the child class
+        """
+        train_val_ids, test_ids = self.metadata.keys(), self.metadata.keys()
+        return train_val_ids, test_ids
 
     def _init_dataloader(self):
 
@@ -157,18 +169,12 @@ class data_factory:
                                                         pin_memory=True,     
                                                         persistent_workers=True)
 
-        train_dataloader = Balanced_DataLoader_Dict_Iterator(train_dataloader,
-                                                              self.metadata,
-                                                                self.args_data)
-        val_dataloader = Balanced_DataLoader_Dict_Iterator(val_dataloader,
-                                                            self.metadata,
-                                                              self.args_data)
-        test_dataloader = Balanced_DataLoader_Dict_Iterator(test_dataloader,
-                                                             self.metadata,
-                                                               self.args_data)
+        train_loader = Balanced_DataLoader_Dict_Iterator(train_dataloader,'train',)
+        val_loader = Balanced_DataLoader_Dict_Iterator(val_dataloader,'val',)
+        test_loader = Balanced_DataLoader_Dict_Iterator(test_dataloader,'test')
 
 
-        return train_dataloader, val_dataloader, test_dataloader
+        return train_loader, val_loader, test_loader
 
     def get_dataset(self, mode = "train"):
         """获取指定ID的数据集

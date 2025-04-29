@@ -5,7 +5,7 @@ import importlib
 import os
 import glob
 from typing import Dict, Any
-from task_reader import task_reader
+from .task_reader import task_reader
 
 
 

@@ -6,10 +6,10 @@ import os
 import glob
 from functools import partial
 from typing import Dict, Any, Optional
-from .data_factory import data_reader
+from .data_factory import data_factory
 
 
-def build_data(args) -> Any:
+def build_data(args_data,args_task) -> Any:
     """根据配置构建数据集实例
     
     Args:
@@ -20,7 +20,7 @@ def build_data(args) -> Any:
 
         
     """
-    return data_factory(args)
+    return data_factory(args_data, args_task)
 
 
 

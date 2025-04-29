@@ -1,3 +1,3 @@
-Id,Name,File,Visiable,Label,Label_Description,Domain,Working_Condition_description,Sample_Rate,Length,Channels,Description,Fault_Diagnosis,Anomaly_Detection,Remaining_Life,Digital_Twin_Prediction,Reference,Benchmark_Table
-1,Dummy_Data,dummy1.csv,True,0,Normal,0,Steady,1000,2048,4,This is a dummy dataset for testing purposes,True,False,False,False,None,Dummy_Table
-2,Dummy_Data,dummy2.csv,True,1,Fault,1,Variable,2000,4096,6,Another dummy dataset with different settings,True,True,True,False,PHM2012,Dummy_Table
+Id,Dataset_id,Name,Type,File,Visiable,Label,Label_Description,Domain_id,Working_Condition_description,Sample_Rate,Length,Channels,Description,Fault_Diagnosis,Anomaly_Detection,Remaining_Life,Digital_Twin_Prediction,Reference,Benchmark_Table
+1,0,Dummy_Data,bearing,dummy1.csv,True,0,Normal,0,Steady,1000,2048,4,This is a dummy dataset for testing purposes,True,False,False,False,None,Dummy_Table
+2,0,Dummy_Data,bearing,dummy2.csv,True,1,Fault,1,Variable,2000,4096,6,Another dummy dataset with different settings,True,True,True,False,PHM2012,Dummy_Table
