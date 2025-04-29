@@ -135,8 +135,8 @@ cython_debug/
 .vscode/
 
 # Data files
-data/raw/
-data/processed/
+# data/raw/
+# data/processed/
 *.npy
 *.hdf5
 *.sqlite
