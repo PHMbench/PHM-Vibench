@@ -14,7 +14,7 @@ import torch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.data_factory.data_factory import DataFactory
-from src.data_factory.data_reader import DataReader
+from Vbench.src.data_factory.data_factory import DataReader
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

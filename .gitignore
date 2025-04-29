@@ -140,7 +140,7 @@ data/processed/
 *.npy
 *.hdf5
 *.sqlite
-*.csv
+# *.csv
 *.json
 
 # Model files / Checkpoints / Results
@@ -155,3 +155,4 @@ results/
 logs/
 *.log
 data/metadata_dummy.h5
+*.h5

@@ -6,7 +6,7 @@ import os
 import glob
 from functools import partial
 from typing import Dict, Any, Optional
-from .data_reader import data_reader
+from .data_factory import data_reader
 
 
 def build_data(args) -> Any:
@@ -20,16 +20,9 @@ def build_data(args) -> Any:
 
         
     """
-    metadata, data_dict = data_reader(args)
-    return metadata, data_dict
-
-def build_dataset(args) -> Any:
+    return data_factory(args)
 
 
-def build_dataloader(args) -> Any:
-    """根据配置构建数据加载器实例
-    ...
-    """
 
 # 导出公共API
 __all__ = ["register_dataset", "build_dataset", "_dataset_registry"]
