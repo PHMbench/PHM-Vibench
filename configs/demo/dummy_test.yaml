@@ -29,6 +29,10 @@ data:
   train_dataset: [0]
   test_dataset: [1]
 
+  window_size: 10
+  stride: 5
+
+
 
 # 模型配置
 model:
