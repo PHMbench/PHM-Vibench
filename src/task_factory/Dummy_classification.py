@@ -7,7 +7,7 @@ import os
 from typing import Dict, Any, Optional
 
 from src.task_factory import register_task
-from Vbench.src.task_factory.task_reader import BaseTask
+from Vbench.src.task_factory.task_factory import BaseTask
 
 @register_task('DummyClassificationTask')  # 修改注册名称
 class DummyClassificationTask(BaseTask):  # 修改类名

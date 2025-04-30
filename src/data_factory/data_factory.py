@@ -96,7 +96,7 @@ class data_factory:
                         file = meta['File']
                         mod = importlib.import_module(f"src.data_factory.reader.{name}")
                         file_path = os.path.join(args_data.data_dir, f'raw/{name}/{file}')
-                        data = mod.read(args_data, file_path)
+                        data = mod.read(file_path,args_data)
                         h5f.create_dataset(str(id), data=data)
                     except Exception as e:
                         print(f"Error loading data for ID {id}: {e}")
@@ -176,7 +176,7 @@ class data_factory:
 
         return train_loader, val_loader, test_loader
 
-    def get_dataset(self, mode = "train"):
+    def get_dataset(self, mode = "test"):
         """获取指定ID的数据集
         
         Args:
@@ -186,7 +186,7 @@ class data_factory:
             数据集
         """
         return self.train_dataset if mode == "train" else self.val_dataset if mode == "val" else self.test_dataset
-    def get_dataloader(self, mode = "train"):
+    def get_dataloader(self, mode = "test"):
         """获取指定ID的数据加载器
         
         Args:

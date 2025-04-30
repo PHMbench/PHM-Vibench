@@ -5,7 +5,7 @@ import importlib
 import os
 import glob
 from typing import Dict, Any
-from .task_reader import task_reader
+from .task_factory import task_factory
 
 
 
@@ -18,7 +18,7 @@ def build_task(config: Dict[str, Any]) -> Any:
     Returns:
         任务实例
     """
-    return task_reader(config)
+    return task_factory(config)
 
 
 

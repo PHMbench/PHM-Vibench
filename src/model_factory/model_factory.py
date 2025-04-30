@@ -6,7 +6,7 @@ import os
 import importlib
 import torch
 
-def model_reader(args_model):
+def model_factory(args_model):
     """
     简化版模型读取器，直接加载单个模型
     
@@ -21,10 +21,10 @@ def model_reader(args_model):
     """
     # 获取模型名称
     model_name = args_model.name
-    
+    model_type = args_model.type
     # 直接导入模型模块
     try:
-        model_module = importlib.import_module(f"src.model_factory.{model_name}")
+        model_module = importlib.import_module(f"src.model_factory.{model_type}.{model_name}")
         print(f"成功导入模型模块: {model_name}")
     except ImportError:
         raise ValueError(f"未找到名为 {model_name} 的模型模块")
