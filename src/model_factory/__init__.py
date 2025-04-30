@@ -5,7 +5,7 @@ import importlib
 import os
 import glob
 from typing import Dict, Any
-from .model_reader import model_reader
+from .model_factory import model_factory
 
 def build_model(args: Dict[str, Any]) -> Any:
     """根据配置构建模型实例
@@ -17,7 +17,7 @@ def build_model(args: Dict[str, Any]) -> Any:
         模型实例
     """
 
-    return model_reader(args)
+    return model_factory(args)
 
 
 

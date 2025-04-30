@@ -36,8 +36,9 @@ data:
 
 # 模型配置
 model:
-  name: "Transformer"
+  name: "Transformer_Dummy"
   args:
+    type: "Transformer"
     input_dim: 10
     num_classes: 2
     num_heads: 4
@@ -52,9 +53,8 @@ model:
 
 # 任务配置
 task:
-  name: "Classification"
+  name: "Classification_DG"
   args:
-    type: "DG"
     loss_fn: "cross_entropy"
     metrics: ["accuracy"]
     target_data: 'Dummy_Dataset'

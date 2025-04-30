@@ -12,6 +12,12 @@
 
 请查看我们的[代码规约文档](./CODE_OF_CONDUCT.md)。
 
+## 四大工厂的contributing
+- [数据集工厂](./src/data_factory/contributing.md)
+- [模型工厂](./src/model_factory/contributing.md)
+- [任务工厂](./src/task_factory/contributing.md)
+- [训练器工厂](./src/trainer_factory/contributing.md)
+
 ## 🔁 贡献流程
 
 ### 我们需要什么
