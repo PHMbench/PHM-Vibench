@@ -60,8 +60,8 @@ class Model(nn.Module):
             single_sample = True
         else:
             single_sample = False
-            x = x.permute(1, 0, 2)  # [B, L, C] -> [L, B, C]
-            
+            # x = x.permute(1, 0, 2)  # [B, L, C] -> [L, B, C]
+        x = x.float()  # Ensure input is float
         # Project input to hidden dimension
         x = self.input_projection(x)
         
@@ -70,7 +70,7 @@ class Model(nn.Module):
         
         # Apply transformer encoder
         x = self.transformer_encoder(x)
-        
+        x = x.mean(dim=1)  # Global average pooling
         # Apply classification head
         output = self.classifier(x)
         
@@ -102,3 +102,19 @@ class PositionalEncoding(nn.Module):
         x = x + self.pos_encoding[:x.size(0), :]
         return self.dropout(x)
 
+if __name__ == "__main__":
+    # Example usage
+    class Args:
+        input_dim = 2
+        hidden_dim = 256
+        num_heads = 8
+        num_layers = 6
+        num_classes = 10
+        dropout = 0.1
+
+    args = Args()
+    model = Model(args)
+    print(model)
+    x = torch.randn(10, 512, 2)  # Example input
+    output = model(x)  # Forward pass with example input
+    print(output.shape)  # Print the output

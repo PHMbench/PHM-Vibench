@@ -22,4 +22,10 @@ def build_model(args: Dict[str, Any]) -> Any:
 
 
 # 导出公共API
-__all__ = ["build_model"]
+__all__ = ["build_model",
+           'Transformer',
+           'CNN',
+           'MLP',
+           'RNN',
+           'ISFM',
+           'Other']
