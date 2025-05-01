@@ -24,7 +24,7 @@ def read(file_path,*args):
         df = df.iloc[:, 1:3]
         print(f"Selected columns 2-5 from the dataset.")
 
-        return df.values
+        return df.values[:truncate_lenth]
     
     
     except FileNotFoundError:

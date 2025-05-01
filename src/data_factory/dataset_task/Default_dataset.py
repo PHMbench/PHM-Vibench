@@ -42,7 +42,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
         if self.mode in ["train", "valid"]:
             self._split_data_for_mode()
             
-        self.total_samples = len(self.processed_data)
+        self.total_samples = len(self.processed_data) # L'
         self.label = self.metadata[self.key]["Label"]
     
     def _process_single_data(self, sample_data):

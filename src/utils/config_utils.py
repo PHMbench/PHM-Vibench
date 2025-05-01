@@ -47,7 +47,7 @@ def path_name(configs, iteration=0):
     
     # 组建实验名称
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_name = f"{dataset_name}_{model_name}_{task_name}_{trainer_name}_{timestamp}"
+    exp_name = f"Meta_{dataset_name}/Model_{model_name}/Task_{task_name}Trainer_{trainer_name}_{timestamp}"
     
     # 创建结果保存路径
     result_dir = f"save/{exp_name}/iter_{iteration}"

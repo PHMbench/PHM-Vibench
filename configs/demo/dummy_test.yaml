@@ -31,7 +31,7 @@ data:
 
   window_size: 10
   stride: 5
-
+  truncate_lenth: 100
 
 
 # 模型配置
@@ -39,7 +39,7 @@ model:
   name: "Transformer_Dummy"
   args:
     type: "Transformer"
-    input_dim: 10
+    input_dim: 2
     num_classes: 2
     num_heads: 4
     num_layers: 2
@@ -53,19 +53,15 @@ model:
 
 # 任务配置
 task:
-  name: "Classification_DG"
+  name: "Classification"
   args:
-    loss_fn: "cross_entropy"
-    metrics: ["accuracy"]
+    type: 'DG'
+    loss: "CE" # cross_entropy
+    metrics: ["acc"]
     target_data: 'Dummy_Dataset'
     # metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
-
-# 训练器配置
-trainer:
-  name: "Trainer"
-  args:
     optimizer: "adam"
-    max_epochs: 10
+    # max_epochs: 10
     batch_size: 32
     num_workers: 4
     pin_memory: true
@@ -80,6 +76,19 @@ trainer:
     scheduler_type: "step"
     step_size: 3
     gamma: 0.5
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  args:
+    wandb: true
+    pruning: False
+    n_epochs: 10
+    gpus: 1
+    early_stopping: true
+    patience: 5
+    device: 'cpu'
+
 
 
 
