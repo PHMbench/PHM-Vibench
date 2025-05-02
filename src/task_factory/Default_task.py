@@ -76,7 +76,8 @@ class Default_task(pl.LightningModule):
 
     def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """计算任务损失"""
-        # 确保 y 是 long 类型用于分类损失        return self.loss_fn(y_hat, y.long() if y.dtype != torch.long else y)
+        # 确保 y 是 long 类型用于分类损失        
+        return self.loss_fn(y_hat, y.long() if y.dtype != torch.long else y)
 
     def _compute_metrics(self, y_hat: torch.Tensor, y: torch.Tensor, data_name: str, stage: str) -> Dict[str, torch.Tensor]:
         """计算并更新评估指标"""
@@ -103,7 +104,7 @@ class Default_task(pl.LightningModule):
     def _compute_regularization(self) -> Dict[str, torch.Tensor]:
         """计算正则化损失"""
         return calculate_regularization(
-            getattr(self.args_t, 'regularization', {}),
+            getattr(self.args_task, 'regularization', {}),
             self.parameters() # 只对当前 LightningModule 的参数计算正则化
         )
 
@@ -123,11 +124,12 @@ class Default_task(pl.LightningModule):
 
         # 2. 计算任务损失
         loss = self._compute_loss(y_hat, y)
+        y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
         # 3. 计算和记录指标
         step_metrics = {f"{stage}_loss": loss}
         step_metrics[f"{stage}_{data_name}_loss"] = loss # 记录特定数据集的损失
-        metric_values = self._compute_metrics(y_hat, y, data_name, stage)
+        metric_values = self._compute_metrics(y_argmax, y, data_name, stage)
         step_metrics.update(metric_values)
 
         # 4. 计算正则化损失
@@ -192,14 +194,14 @@ class Default_task(pl.LightningModule):
             sync_dist=True,
         )
         # 单独记录需要在进度条显示的指标 (只在 epoch 结束时显示聚合值)
-        self.log_dict(
-            prog_bar_metrics,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=False, # 避免重复记录
-            sync_dist=True,
-        )
+        # self.log_dict(
+        #     prog_bar_metrics,
+        #     on_step=False,
+        #     on_epoch=True,
+        #     prog_bar=True,
+        #     logger=False, # 避免重复记录
+        #     sync_dist=True,
+        # )
 
     def configure_optimizers(self):
         """配置优化器和学习率调度器 (保持不变或根据需要调整)"""
