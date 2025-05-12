@@ -1,167 +1,167 @@
 Id,Dataset_id,Name,Description,TYPE,File,Visiable,Label,Label_Description,RUL_label,RUL_label_description,Domain_id,Domain_description,Sample_rate,Sample_lenth,Channel,Fault_Diagnosis,Anomaly_Detection,Remaining_Life,Digital_Twin_Prediction,Fault_level,sample_rate,sample_length,channel
-1,1,RM_001_CWRU,,,97.mat,1,0.0,,0.0,,0.0,,,,,,,,,0.0,12000.0,243938.0,2.0
-2,1,RM_001_CWRU,,,98.mat,1,0.0,,0.0,,1.0,,,,,,,,,0.0,12000.0,483903.0,2.0
-3,1,RM_001_CWRU,,,99.mat,1,0.0,,0.0,,2.0,,,,,,,,,0.0,12000.0,485063.0,2.0
-4,1,RM_001_CWRU,,,100.mat,1,0.0,,0.0,,3.0,,,,,,,,,0.0,12000.0,485643.0,2.0
-5,1,RM_001_CWRU,,,105.mat,1,1.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,121265.0,2.0
-6,1,RM_001_CWRU,,,106.mat,1,1.0,,0.0,,1.0,,,,,,,,,1.0,12000.0,121991.0,2.0
-7,1,RM_001_CWRU,,,107.mat,1,1.0,,0.0,,2.0,,,,,,,,,1.0,12000.0,122136.0,2.0
-8,1,RM_001_CWRU,,,108.mat,1,1.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,122917.0,2.0
-9,1,RM_001_CWRU,,,109.mat,1,1.0,,0.0,,0.0,,,,,,,,,1.0,48000.0,243938.0,2.0
-10,1,RM_001_CWRU,,,110.mat,1,1.0,,0.0,,1.0,,,,,,,,,1.0,48000.0,486224.0,2.0
-11,1,RM_001_CWRU,,,111.mat,1,1.0,,0.0,,2.0,,,,,,,,,1.0,48000.0,485643.0,2.0
-12,1,RM_001_CWRU,,,112.mat,1,1.0,,0.0,,3.0,,,,,,,,,1.0,48000.0,485643.0,2.0
-13,1,RM_001_CWRU,,,118.mat,1,2.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,122571.0,2.0
-14,1,RM_001_CWRU,,,119.mat,1,2.0,,0.0,,1.0,,,,,,,,,1.0,12000.0,121410.0,2.0
-15,1,RM_001_CWRU,,,120.mat,1,2.0,,0.0,,2.0,,,,,,,,,1.0,12000.0,121556.0,2.0
-16,1,RM_001_CWRU,,,121.mat,1,2.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,121556.0,2.0
-17,1,RM_001_CWRU,,,122.mat,1,2.0,,0.0,,0.0,,,,,,,,,1.0,48000.0,244739.0,2.0
-18,1,RM_001_CWRU,,,123.mat,1,2.0,,0.0,,1.0,,,,,,,,,1.0,48000.0,487384.0,2.0
-19,1,RM_001_CWRU,,,124.mat,1,2.0,,0.0,,2.0,,,,,,,,,1.0,48000.0,486804.0,2.0
-20,1,RM_001_CWRU,,,125.mat,1,2.0,,0.0,,3.0,,,,,,,,,1.0,48000.0,488545.0,2.0
-21,1,RM_001_CWRU,,,130.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,121991.0,2.0
-22,1,RM_001_CWRU,,,131.mat,1,3.0,,0.0,,1.0,,,,,,,,,1.0,12000.0,122426.0,2.0
-23,1,RM_001_CWRU,,,132.mat,1,3.0,,0.0,,2.0,,,,,,,,,1.0,12000.0,121410.0,2.0
-24,1,RM_001_CWRU,,,133.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,122571.0,2.0
-25,1,RM_001_CWRU,,,135.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,48000.0,243538.0,2.0
-26,1,RM_001_CWRU,,,136.mat,1,3.0,,0.0,,1.0,,,,,,,,,1.0,48000.0,486804.0,2.0
-27,1,RM_001_CWRU,,,137.mat,1,3.0,,0.0,,2.0,,,,,,,,,1.0,48000.0,486804.0,2.0
-28,1,RM_001_CWRU,,,138.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,48000.0,487964.0,2.0
-29,1,RM_001_CWRU,,,144.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,122281.0,2.0
-30,1,RM_001_CWRU,,,145.mat,1,3.0,,0.0,,1.0,,,,,,,,,1.0,12000.0,121846.0,2.0
-31,1,RM_001_CWRU,,,146.mat,1,3.0,,0.0,,2.0,,,,,,,,,1.0,12000.0,121556.0,2.0
-32,1,RM_001_CWRU,,,147.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,122281.0,2.0
-33,1,RM_001_CWRU,,,148.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,48000.0,124602.0,2.0
-34,1,RM_001_CWRU,,,149.mat,1,3.0,,0.0,,1.0,,,,,,,,,1.0,48000.0,485063.0,2.0
-35,1,RM_001_CWRU,,,150.mat,1,3.0,,0.0,,2.0,,,,,,,,,1.0,48000.0,485643.0,2.0
-36,1,RM_001_CWRU,,,151.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,48000.0,486224.0,2.0
-37,1,RM_001_CWRU,,,156.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,122281.0,2.0
-38,1,RM_001_CWRU,,,158.mat,1,3.0,,0.0,,1.0,,,,,,,,,1.0,12000.0,121991.0,2.0
-39,1,RM_001_CWRU,,,159.mat,1,3.0,,0.0,,2.0,,,,,,,,,1.0,12000.0,122281.0,2.0
-40,1,RM_001_CWRU,,,160.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,122136.0,2.0
-41,1,RM_001_CWRU,,,161.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,48000.0,129969.0,2.0
-42,1,RM_001_CWRU,,,162.mat,1,3.0,,0.0,,1.0,,,,,,,,,1.0,48000.0,482742.0,2.0
-43,1,RM_001_CWRU,,,163.mat,1,3.0,,0.0,,2.0,,,,,,,,,1.0,48000.0,483323.0,2.0
-44,1,RM_001_CWRU,,,164.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,48000.0,484483.0,2.0
-45,1,RM_001_CWRU,,,169.mat,1,1.0,,0.0,,0.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-46,1,RM_001_CWRU,,,170.mat,1,1.0,,0.0,,1.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-47,1,RM_001_CWRU,,,171.mat,1,1.0,,0.0,,2.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-48,1,RM_001_CWRU,,,172.mat,1,1.0,,0.0,,3.0,,,,,,,,,2.0,12000.0,121701.0,2.0
-49,1,RM_001_CWRU,,,174.mat,1,1.0,,0.0,,1.0,,,,,,,,,2.0,48000.0,63788.0,2.0
-50,1,RM_001_CWRU,,,175.mat,1,1.0,,0.0,,2.0,,,,,,,,,2.0,48000.0,381890.0,2.0
-51,1,RM_001_CWRU,,,176.mat,1,1.0,,0.0,,3.0,,,,,,,,,2.0,48000.0,487964.0,2.0
-52,1,RM_001_CWRU,,,177.mat,1,1.0,,0.0,,3.0,,,,,,,,,2.0,48000.0,485063.0,2.0
-53,1,RM_001_CWRU,,,185.mat,1,2.0,,0.0,,0.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-54,1,RM_001_CWRU,,,186.mat,1,2.0,,0.0,,1.0,,,,,,,,,2.0,12000.0,122136.0,2.0
-55,1,RM_001_CWRU,,,187.mat,1,2.0,,0.0,,2.0,,,,,,,,,2.0,12000.0,121991.0,2.0
-56,1,RM_001_CWRU,,,188.mat,1,2.0,,0.0,,3.0,,,,,,,,,2.0,12000.0,122136.0,2.0
-57,1,RM_001_CWRU,,,189.mat,1,2.0,,0.0,,0.0,,,,,,,,,2.0,48000.0,249146.0,2.0
-58,1,RM_001_CWRU,,,190.mat,1,2.0,,0.0,,1.0,,,,,,,,,2.0,48000.0,486224.0,2.0
-59,1,RM_001_CWRU,,,191.mat,1,2.0,,0.0,,2.0,,,,,,,,,2.0,48000.0,487384.0,2.0
-60,1,RM_001_CWRU,,,192.mat,1,2.0,,0.0,,3.0,,,,,,,,,2.0,48000.0,486804.0,2.0
-61,1,RM_001_CWRU,,,197.mat,1,3.0,,0.0,,0.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-62,1,RM_001_CWRU,,,198.mat,1,3.0,,0.0,,1.0,,,,,,,,,2.0,12000.0,122136.0,2.0
-63,1,RM_001_CWRU,,,199.mat,1,3.0,,0.0,,2.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-64,1,RM_001_CWRU,,,200.mat,1,3.0,,0.0,,3.0,,,,,,,,,2.0,12000.0,121991.0,2.0
-65,1,RM_001_CWRU,,,201.mat,1,3.0,,0.0,,0.0,,,,,,,,,2.0,48000.0,245140.0,2.0
-66,1,RM_001_CWRU,,,202.mat,1,3.0,,0.0,,1.0,,,,,,,,,2.0,48000.0,484483.0,2.0
-67,1,RM_001_CWRU,,,203.mat,1,3.0,,0.0,,2.0,,,,,,,,,2.0,48000.0,486804.0,2.0
-68,1,RM_001_CWRU,,,204.mat,1,3.0,,0.0,,3.0,,,,,,,,,2.0,48000.0,488545.0,2.0
-69,1,RM_001_CWRU,,,209.mat,1,1.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,122136.0,2.0
-70,1,RM_001_CWRU,,,210.mat,1,1.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121556.0,2.0
-71,1,RM_001_CWRU,,,211.mat,1,1.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,121846.0,2.0
-72,1,RM_001_CWRU,,,212.mat,1,1.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121991.0,2.0
-73,1,RM_001_CWRU,,,213.mat,1,1.0,,0.0,,0.0,,,,,,,,,3.0,48000.0,244339.0,2.0
-74,1,RM_001_CWRU,,,214.mat,1,1.0,,0.0,,1.0,,,,,,,,,3.0,48000.0,485063.0,2.0
-75,1,RM_001_CWRU,,,215.mat,1,1.0,,0.0,,2.0,,,,,,,,,3.0,48000.0,491446.0,2.0
-76,1,RM_001_CWRU,,,217.mat,1,1.0,,0.0,,3.0,,,,,,,,,3.0,48000.0,489125.0,2.0
-77,1,RM_001_CWRU,,,222.mat,1,2.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,121991.0,2.0
-78,1,RM_001_CWRU,,,223.mat,1,2.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121701.0,2.0
-79,1,RM_001_CWRU,,,224.mat,1,2.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,122136.0,2.0
-80,1,RM_001_CWRU,,,225.mat,1,2.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,122136.0,2.0
-81,1,RM_001_CWRU,,,226.mat,1,2.0,,0.0,,0.0,,,,,,,,,3.0,48000.0,243938.0,2.0
-82,1,RM_001_CWRU,,,227.mat,1,2.0,,0.0,,1.0,,,,,,,,,3.0,48000.0,486804.0,2.0
-83,1,RM_001_CWRU,,,228.mat,1,2.0,,0.0,,2.0,,,,,,,,,3.0,48000.0,487384.0,2.0
-84,1,RM_001_CWRU,,,229.mat,1,2.0,,0.0,,3.0,,,,,,,,,3.0,48000.0,486804.0,2.0
-85,1,RM_001_CWRU,,,234.mat,1,3.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,122426.0,2.0
-86,1,RM_001_CWRU,,,235.mat,1,3.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121991.0,2.0
-87,1,RM_001_CWRU,,,236.mat,1,3.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,122281.0,2.0
-88,1,RM_001_CWRU,,,237.mat,1,3.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121991.0,2.0
-89,1,RM_001_CWRU,,,238.mat,1,3.0,,0.0,,0.0,,,,,,,,,3.0,48000.0,246342.0,2.0
-90,1,RM_001_CWRU,,,239.mat,1,3.0,,0.0,,1.0,,,,,,,,,3.0,48000.0,489125.0,2.0
-91,1,RM_001_CWRU,,,240.mat,1,3.0,,0.0,,2.0,,,,,,,,,3.0,48000.0,487964.0,2.0
-92,1,RM_001_CWRU,,,241.mat,1,3.0,,0.0,,3.0,,,,,,,,,3.0,48000.0,489125.0,2.0
-93,1,RM_001_CWRU,,,246.mat,1,3.0,,0.0,,0.0,,,,,,,,,2.0,12000.0,121701.0,2.0
-94,1,RM_001_CWRU,,,247.mat,1,3.0,,0.0,,1.0,,,,,,,,,2.0,12000.0,121991.0,2.0
-95,1,RM_001_CWRU,,,248.mat,1,3.0,,0.0,,2.0,,,,,,,,,2.0,12000.0,122281.0,2.0
-96,1,RM_001_CWRU,,,249.mat,1,3.0,,0.0,,3.0,,,,,,,,,2.0,12000.0,122136.0,2.0
-97,1,RM_001_CWRU,,,250.mat,1,3.0,,0.0,,0.0,,,,,,,,,3.0,48000.0,128663.0,2.0
-98,1,RM_001_CWRU,,,251.mat,1,3.0,,0.0,,1.0,,,,,,,,,3.0,48000.0,489705.0,2.0
-99,1,RM_001_CWRU,,,252.mat,1,3.0,,0.0,,2.0,,,,,,,,,3.0,48000.0,487384.0,2.0
-100,1,RM_001_CWRU,,,253.mat,1,3.0,,0.0,,3.0,,,,,,,,,3.0,48000.0,484483.0,2.0
-101,1,RM_001_CWRU,,,258.mat,1,2.0,,0.0,,0.0,,,,,,,,,2.0,12000.0,121846.0,2.0
-102,1,RM_001_CWRU,,,259.mat,1,2.0,,0.0,,1.0,,,,,,,,,2.0,12000.0,122426.0,2.0
-103,1,RM_001_CWRU,,,260.mat,1,2.0,,0.0,,2.0,,,,,,,,,2.0,12000.0,122716.0,2.0
-104,1,RM_001_CWRU,,,261.mat,1,2.0,,0.0,,3.0,,,,,,,,,2.0,12000.0,121701.0,2.0
-105,1,RM_001_CWRU,,,262.mat,1,3.0,,0.0,,0.0,,,,,,,,,3.0,48000.0,130549.0,2.0
-106,1,RM_001_CWRU,,,263.mat,1,3.0,,0.0,,1.0,,,,,,,,,3.0,48000.0,486224.0,2.0
-107,1,RM_001_CWRU,,,264.mat,1,3.0,,0.0,,2.0,,,,,,,,,3.0,48000.0,486804.0,2.0
-108,1,RM_001_CWRU,,,265.mat,1,3.0,,0.0,,3.0,,,,,,,,,3.0,48000.0,486224.0,2.0
-109,1,RM_001_CWRU,,,270.mat,1,1.0,,0.0,,0.0,,,,,,,,,4.0,12000.0,121168.0,2.0
-110,1,RM_001_CWRU,,,271.mat,1,1.0,,0.0,,1.0,,,,,,,,,4.0,12000.0,121168.0,2.0
-111,1,RM_001_CWRU,,,272.mat,1,1.0,,0.0,,2.0,,,,,,,,,4.0,12000.0,120984.0,2.0
-112,1,RM_001_CWRU,,,273.mat,1,1.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121168.0,2.0
-113,1,RM_001_CWRU,,,274.mat,1,1.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,121351.0,2.0
-114,1,RM_001_CWRU,,,275.mat,1,1.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121351.0,2.0
-115,1,RM_001_CWRU,,,276.mat,1,1.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,121351.0,2.0
-116,1,RM_001_CWRU,,,277.mat,1,1.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121168.0,2.0
-117,1,RM_001_CWRU,,,278.mat,1,1.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,121535.0,2.0
-118,1,RM_001_CWRU,,,279.mat,1,1.0,,0.0,,1.0,,,,,,,,,1.0,12000.0,121351.0,2.0
-119,1,RM_001_CWRU,,,280.mat,1,1.0,,0.0,,2.0,,,,,,,,,1.0,12000.0,121351.0,2.0
-120,1,RM_001_CWRU,,,281.mat,1,1.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,121535.0,2.0
-121,1,RM_001_CWRU,,,282.mat,1,2.0,,0.0,,0.0,,,,,,,,,4.0,12000.0,121168.0,2.0
-122,1,RM_001_CWRU,,,283.mat,1,2.0,,0.0,,1.0,,,,,,,,,4.0,12000.0,120801.0,2.0
-123,1,RM_001_CWRU,,,284.mat,1,2.0,,0.0,,2.0,,,,,,,,,4.0,12000.0,121719.0,2.0
-124,1,RM_001_CWRU,,,285.mat,1,2.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,121168.0,2.0
-125,1,RM_001_CWRU,,,286.mat,1,2.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,122086.0,2.0
-126,1,RM_001_CWRU,,,287.mat,1,2.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121719.0,2.0
-127,1,RM_001_CWRU,,,288.mat,1,2.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,122269.0,2.0
-128,1,RM_001_CWRU,,,289.mat,1,2.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121168.0,2.0
-129,1,RM_001_CWRU,,,290.mat,1,2.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,121351.0,2.0
-130,1,RM_001_CWRU,,,291.mat,1,2.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121351.0,2.0
-131,1,RM_001_CWRU,,,292.mat,1,2.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,121535.0,2.0
-132,1,RM_001_CWRU,,,293.mat,1,2.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,120801.0,2.0
-133,1,RM_001_CWRU,,,294.mat,1,3.0,,0.0,,0.0,,,,,,,,,4.0,12000.0,121168.0,2.0
-134,1,RM_001_CWRU,,,295.mat,1,3.0,,0.0,,1.0,,,,,,,,,4.0,12000.0,121535.0,2.0
-135,1,RM_001_CWRU,,,296.mat,1,3.0,,0.0,,2.0,,,,,,,,,4.0,12000.0,121168.0,2.0
-136,1,RM_001_CWRU,,,297.mat,1,3.0,,0.0,,3.0,,,,,,,,,1.0,12000.0,121902.0,2.0
-137,1,RM_001_CWRU,,,298.mat,1,3.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,120984.0,2.0
-138,1,RM_001_CWRU,,,299.mat,1,3.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121168.0,2.0
-139,1,RM_001_CWRU,,,300.mat,1,3.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,121902.0,2.0
-140,1,RM_001_CWRU,,,301.mat,1,3.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121719.0,2.0
-141,1,RM_001_CWRU,,,302.mat,1,3.0,,0.0,,0.0,,,,,,,,,1.0,12000.0,121168.0,2.0
+1,1,RM_001_CWRU,,,97.mat,1,0,,0,,0,,,,,,,,,0,12000,243938,2
+2,1,RM_001_CWRU,,,98.mat,1,0,,0,,1,,,,,,,,,0,12000,483903,2
+3,1,RM_001_CWRU,,,99.mat,1,0,,0,,2,,,,,,,,,0,12000,485063,2
+4,1,RM_001_CWRU,,,100.mat,1,0,,0,,3,,,,,,,,,0,12000,485643,2
+5,1,RM_001_CWRU,,,105.mat,1,1,,0,,0,,,,,,,,,1,12000,121265,2
+6,1,RM_001_CWRU,,,106.mat,1,1,,0,,1,,,,,,,,,1,12000,121991,2
+7,1,RM_001_CWRU,,,107.mat,1,1,,0,,2,,,,,,,,,1,12000,122136,2
+8,1,RM_001_CWRU,,,108.mat,1,1,,0,,3,,,,,,,,,1,12000,122917,2
+9,1,RM_001_CWRU,,,109.mat,1,1,,0,,0,,,,,,,,,1,48000,243938,2
+10,1,RM_001_CWRU,,,110.mat,1,1,,0,,1,,,,,,,,,1,48000,486224,2
+11,1,RM_001_CWRU,,,111.mat,1,1,,0,,2,,,,,,,,,1,48000,485643,2
+12,1,RM_001_CWRU,,,112.mat,1,1,,0,,3,,,,,,,,,1,48000,485643,2
+13,1,RM_001_CWRU,,,118.mat,1,2,,0,,0,,,,,,,,,1,12000,122571,2
+14,1,RM_001_CWRU,,,119.mat,1,2,,0,,1,,,,,,,,,1,12000,121410,2
+15,1,RM_001_CWRU,,,120.mat,1,2,,0,,2,,,,,,,,,1,12000,121556,2
+16,1,RM_001_CWRU,,,121.mat,1,2,,0,,3,,,,,,,,,1,12000,121556,2
+17,1,RM_001_CWRU,,,122.mat,1,2,,0,,0,,,,,,,,,1,48000,244739,2
+18,1,RM_001_CWRU,,,123.mat,1,2,,0,,1,,,,,,,,,1,48000,487384,2
+19,1,RM_001_CWRU,,,124.mat,1,2,,0,,2,,,,,,,,,1,48000,486804,2
+20,1,RM_001_CWRU,,,125.mat,1,2,,0,,3,,,,,,,,,1,48000,488545,2
+21,1,RM_001_CWRU,,,130.mat,1,3,,0,,0,,,,,,,,,1,12000,121991,2
+22,1,RM_001_CWRU,,,131.mat,1,3,,0,,1,,,,,,,,,1,12000,122426,2
+23,1,RM_001_CWRU,,,132.mat,1,3,,0,,2,,,,,,,,,1,12000,121410,2
+24,1,RM_001_CWRU,,,133.mat,1,3,,0,,3,,,,,,,,,1,12000,122571,2
+25,1,RM_001_CWRU,,,135.mat,1,3,,0,,0,,,,,,,,,1,48000,243538,2
+26,1,RM_001_CWRU,,,136.mat,1,3,,0,,1,,,,,,,,,1,48000,486804,2
+27,1,RM_001_CWRU,,,137.mat,1,3,,0,,2,,,,,,,,,1,48000,486804,2
+28,1,RM_001_CWRU,,,138.mat,1,3,,0,,3,,,,,,,,,1,48000,487964,2
+29,1,RM_001_CWRU,,,144.mat,1,3,,0,,0,,,,,,,,,1,12000,122281,2
+30,1,RM_001_CWRU,,,145.mat,1,3,,0,,1,,,,,,,,,1,12000,121846,2
+31,1,RM_001_CWRU,,,146.mat,1,3,,0,,2,,,,,,,,,1,12000,121556,2
+32,1,RM_001_CWRU,,,147.mat,1,3,,0,,3,,,,,,,,,1,12000,122281,2
+33,1,RM_001_CWRU,,,148.mat,1,3,,0,,0,,,,,,,,,1,48000,124602,2
+34,1,RM_001_CWRU,,,149.mat,1,3,,0,,1,,,,,,,,,1,48000,485063,2
+35,1,RM_001_CWRU,,,150.mat,1,3,,0,,2,,,,,,,,,1,48000,485643,2
+36,1,RM_001_CWRU,,,151.mat,1,3,,0,,3,,,,,,,,,1,48000,486224,2
+37,1,RM_001_CWRU,,,156.mat,1,3,,0,,0,,,,,,,,,1,12000,122281,2
+38,1,RM_001_CWRU,,,158.mat,1,3,,0,,1,,,,,,,,,1,12000,121991,2
+39,1,RM_001_CWRU,,,159.mat,1,3,,0,,2,,,,,,,,,1,12000,122281,2
+40,1,RM_001_CWRU,,,160.mat,1,3,,0,,3,,,,,,,,,1,12000,122136,2
+41,1,RM_001_CWRU,,,161.mat,1,3,,0,,0,,,,,,,,,1,48000,129969,2
+42,1,RM_001_CWRU,,,162.mat,1,3,,0,,1,,,,,,,,,1,48000,482742,2
+43,1,RM_001_CWRU,,,163.mat,1,3,,0,,2,,,,,,,,,1,48000,483323,2
+44,1,RM_001_CWRU,,,164.mat,1,3,,0,,3,,,,,,,,,1,48000,484483,2
+45,1,RM_001_CWRU,,,169.mat,1,1,,0,,0,,,,,,,,,2,12000,121846,2
+46,1,RM_001_CWRU,,,170.mat,1,1,,0,,1,,,,,,,,,2,12000,121846,2
+47,1,RM_001_CWRU,,,171.mat,1,1,,0,,2,,,,,,,,,2,12000,121846,2
+48,1,RM_001_CWRU,,,172.mat,1,1,,0,,3,,,,,,,,,2,12000,121701,2
+49,1,RM_001_CWRU,,,174.mat,1,1,,0,,1,,,,,,,,,2,48000,63788,2
+50,1,RM_001_CWRU,,,175.mat,1,1,,0,,2,,,,,,,,,2,48000,381890,2
+51,1,RM_001_CWRU,,,176.mat,1,1,,0,,3,,,,,,,,,2,48000,487964,2
+52,1,RM_001_CWRU,,,177.mat,1,1,,0,,3,,,,,,,,,2,48000,485063,2
+53,1,RM_001_CWRU,,,185.mat,1,2,,0,,0,,,,,,,,,2,12000,121846,2
+54,1,RM_001_CWRU,,,186.mat,1,2,,0,,1,,,,,,,,,2,12000,122136,2
+55,1,RM_001_CWRU,,,187.mat,1,2,,0,,2,,,,,,,,,2,12000,121991,2
+56,1,RM_001_CWRU,,,188.mat,1,2,,0,,3,,,,,,,,,2,12000,122136,2
+57,1,RM_001_CWRU,,,189.mat,1,2,,0,,0,,,,,,,,,2,48000,249146,2
+58,1,RM_001_CWRU,,,190.mat,1,2,,0,,1,,,,,,,,,2,48000,486224,2
+59,1,RM_001_CWRU,,,191.mat,1,2,,0,,2,,,,,,,,,2,48000,487384,2
+60,1,RM_001_CWRU,,,192.mat,1,2,,0,,3,,,,,,,,,2,48000,486804,2
+61,1,RM_001_CWRU,,,197.mat,1,3,,0,,0,,,,,,,,,2,12000,121846,2
+62,1,RM_001_CWRU,,,198.mat,1,3,,0,,1,,,,,,,,,2,12000,122136,2
+63,1,RM_001_CWRU,,,199.mat,1,3,,0,,2,,,,,,,,,2,12000,121846,2
+64,1,RM_001_CWRU,,,200.mat,1,3,,0,,3,,,,,,,,,2,12000,121991,2
+65,1,RM_001_CWRU,,,201.mat,1,3,,0,,0,,,,,,,,,2,48000,245140,2
+66,1,RM_001_CWRU,,,202.mat,1,3,,0,,1,,,,,,,,,2,48000,484483,2
+67,1,RM_001_CWRU,,,203.mat,1,3,,0,,2,,,,,,,,,2,48000,486804,2
+68,1,RM_001_CWRU,,,204.mat,1,3,,0,,3,,,,,,,,,2,48000,488545,2
+69,1,RM_001_CWRU,,,209.mat,1,1,,0,,0,,,,,,,,,3,12000,122136,2
+70,1,RM_001_CWRU,,,210.mat,1,1,,0,,1,,,,,,,,,3,12000,121556,2
+71,1,RM_001_CWRU,,,211.mat,1,1,,0,,2,,,,,,,,,3,12000,121846,2
+72,1,RM_001_CWRU,,,212.mat,1,1,,0,,3,,,,,,,,,3,12000,121991,2
+73,1,RM_001_CWRU,,,213.mat,1,1,,0,,0,,,,,,,,,3,48000,244339,2
+74,1,RM_001_CWRU,,,214.mat,1,1,,0,,1,,,,,,,,,3,48000,485063,2
+75,1,RM_001_CWRU,,,215.mat,1,1,,0,,2,,,,,,,,,3,48000,491446,2
+76,1,RM_001_CWRU,,,217.mat,1,1,,0,,3,,,,,,,,,3,48000,489125,2
+77,1,RM_001_CWRU,,,222.mat,1,2,,0,,0,,,,,,,,,3,12000,121991,2
+78,1,RM_001_CWRU,,,223.mat,1,2,,0,,1,,,,,,,,,3,12000,121701,2
+79,1,RM_001_CWRU,,,224.mat,1,2,,0,,2,,,,,,,,,3,12000,122136,2
+80,1,RM_001_CWRU,,,225.mat,1,2,,0,,3,,,,,,,,,3,12000,122136,2
+81,1,RM_001_CWRU,,,226.mat,1,2,,0,,0,,,,,,,,,3,48000,243938,2
+82,1,RM_001_CWRU,,,227.mat,1,2,,0,,1,,,,,,,,,3,48000,486804,2
+83,1,RM_001_CWRU,,,228.mat,1,2,,0,,2,,,,,,,,,3,48000,487384,2
+84,1,RM_001_CWRU,,,229.mat,1,2,,0,,3,,,,,,,,,3,48000,486804,2
+85,1,RM_001_CWRU,,,234.mat,1,3,,0,,0,,,,,,,,,3,12000,122426,2
+86,1,RM_001_CWRU,,,235.mat,1,3,,0,,1,,,,,,,,,3,12000,121991,2
+87,1,RM_001_CWRU,,,236.mat,1,3,,0,,2,,,,,,,,,3,12000,122281,2
+88,1,RM_001_CWRU,,,237.mat,1,3,,0,,3,,,,,,,,,3,12000,121991,2
+89,1,RM_001_CWRU,,,238.mat,1,3,,0,,0,,,,,,,,,3,48000,246342,2
+90,1,RM_001_CWRU,,,239.mat,1,3,,0,,1,,,,,,,,,3,48000,489125,2
+91,1,RM_001_CWRU,,,240.mat,1,3,,0,,2,,,,,,,,,3,48000,487964,2
+92,1,RM_001_CWRU,,,241.mat,1,3,,0,,3,,,,,,,,,3,48000,489125,2
+93,1,RM_001_CWRU,,,246.mat,1,3,,0,,0,,,,,,,,,2,12000,121701,2
+94,1,RM_001_CWRU,,,247.mat,1,3,,0,,1,,,,,,,,,2,12000,121991,2
+95,1,RM_001_CWRU,,,248.mat,1,3,,0,,2,,,,,,,,,2,12000,122281,2
+96,1,RM_001_CWRU,,,249.mat,1,3,,0,,3,,,,,,,,,2,12000,122136,2
+97,1,RM_001_CWRU,,,250.mat,1,3,,0,,0,,,,,,,,,3,48000,128663,2
+98,1,RM_001_CWRU,,,251.mat,1,3,,0,,1,,,,,,,,,3,48000,489705,2
+99,1,RM_001_CWRU,,,252.mat,1,3,,0,,2,,,,,,,,,3,48000,487384,2
+100,1,RM_001_CWRU,,,253.mat,1,3,,0,,3,,,,,,,,,3,48000,484483,2
+101,1,RM_001_CWRU,,,258.mat,1,2,,0,,0,,,,,,,,,2,12000,121846,2
+102,1,RM_001_CWRU,,,259.mat,1,2,,0,,1,,,,,,,,,2,12000,122426,2
+103,1,RM_001_CWRU,,,260.mat,1,2,,0,,2,,,,,,,,,2,12000,122716,2
+104,1,RM_001_CWRU,,,261.mat,1,2,,0,,3,,,,,,,,,2,12000,121701,2
+105,1,RM_001_CWRU,,,262.mat,1,3,,0,,0,,,,,,,,,3,48000,130549,2
+106,1,RM_001_CWRU,,,263.mat,1,3,,0,,1,,,,,,,,,3,48000,486224,2
+107,1,RM_001_CWRU,,,264.mat,1,3,,0,,2,,,,,,,,,3,48000,486804,2
+108,1,RM_001_CWRU,,,265.mat,1,3,,0,,3,,,,,,,,,3,48000,486224,2
+109,1,RM_001_CWRU,,,270.mat,1,1,,0,,0,,,,,,,,,4,12000,121168,2
+110,1,RM_001_CWRU,,,271.mat,1,1,,0,,1,,,,,,,,,4,12000,121168,2
+111,1,RM_001_CWRU,,,272.mat,1,1,,0,,2,,,,,,,,,4,12000,120984,2
+112,1,RM_001_CWRU,,,273.mat,1,1,,0,,3,,,,,,,,,3,12000,121168,2
+113,1,RM_001_CWRU,,,274.mat,1,1,,0,,0,,,,,,,,,3,12000,121351,2
+114,1,RM_001_CWRU,,,275.mat,1,1,,0,,1,,,,,,,,,3,12000,121351,2
+115,1,RM_001_CWRU,,,276.mat,1,1,,0,,2,,,,,,,,,3,12000,121351,2
+116,1,RM_001_CWRU,,,277.mat,1,1,,0,,3,,,,,,,,,3,12000,121168,2
+117,1,RM_001_CWRU,,,278.mat,1,1,,0,,0,,,,,,,,,1,12000,121535,2
+118,1,RM_001_CWRU,,,279.mat,1,1,,0,,1,,,,,,,,,1,12000,121351,2
+119,1,RM_001_CWRU,,,280.mat,1,1,,0,,2,,,,,,,,,1,12000,121351,2
+120,1,RM_001_CWRU,,,281.mat,1,1,,0,,3,,,,,,,,,1,12000,121535,2
+121,1,RM_001_CWRU,,,282.mat,1,2,,0,,0,,,,,,,,,4,12000,121168,2
+122,1,RM_001_CWRU,,,283.mat,1,2,,0,,1,,,,,,,,,4,12000,120801,2
+123,1,RM_001_CWRU,,,284.mat,1,2,,0,,2,,,,,,,,,4,12000,121719,2
+124,1,RM_001_CWRU,,,285.mat,1,2,,0,,3,,,,,,,,,1,12000,121168,2
+125,1,RM_001_CWRU,,,286.mat,1,2,,0,,0,,,,,,,,,3,12000,122086,2
+126,1,RM_001_CWRU,,,287.mat,1,2,,0,,1,,,,,,,,,3,12000,121719,2
+127,1,RM_001_CWRU,,,288.mat,1,2,,0,,2,,,,,,,,,3,12000,122269,2
+128,1,RM_001_CWRU,,,289.mat,1,2,,0,,3,,,,,,,,,3,12000,121168,2
+129,1,RM_001_CWRU,,,290.mat,1,2,,0,,0,,,,,,,,,3,12000,121351,2
+130,1,RM_001_CWRU,,,291.mat,1,2,,0,,1,,,,,,,,,3,12000,121351,2
+131,1,RM_001_CWRU,,,292.mat,1,2,,0,,2,,,,,,,,,3,12000,121535,2
+132,1,RM_001_CWRU,,,293.mat,1,2,,0,,3,,,,,,,,,3,12000,120801,2
+133,1,RM_001_CWRU,,,294.mat,1,3,,0,,0,,,,,,,,,4,12000,121168,2
+134,1,RM_001_CWRU,,,295.mat,1,3,,0,,1,,,,,,,,,4,12000,121535,2
+135,1,RM_001_CWRU,,,296.mat,1,3,,0,,2,,,,,,,,,4,12000,121168,2
+136,1,RM_001_CWRU,,,297.mat,1,3,,0,,3,,,,,,,,,1,12000,121902,2
+137,1,RM_001_CWRU,,,298.mat,1,3,,0,,0,,,,,,,,,3,12000,120984,2
+138,1,RM_001_CWRU,,,299.mat,1,3,,0,,1,,,,,,,,,3,12000,121168,2
+139,1,RM_001_CWRU,,,300.mat,1,3,,0,,2,,,,,,,,,3,12000,121902,2
+140,1,RM_001_CWRU,,,301.mat,1,3,,0,,3,,,,,,,,,3,12000,121719,2
+141,1,RM_001_CWRU,,,302.mat,1,3,,0,,0,,,,,,,,,1,12000,121168,2
 142,1,RM_001_CWRU,,,305.mat,1,,,,,,,,,,,,,,,,,
 143,1,RM_001_CWRU,,,306.mat,1,,,,,,,,,,,,,,,,,
 144,1,RM_001_CWRU,,,307.mat,1,,,,,,,,,,,,,,,,,
 145,1,RM_001_CWRU,,,308.mat,1,,,,,,,,,,,,,,,,,
-146,1,RM_001_CWRU,,,309.mat,1,3.0,,0.0,,0.0,,,,,,,,,4.0,12000.0,121168.0,2.0
-147,1,RM_001_CWRU,,,310.mat,1,3.0,,0.0,,1.0,,,,,,,,,4.0,12000.0,121535.0,2.0
-148,1,RM_001_CWRU,,,311.mat,1,3.0,,0.0,,2.0,,,,,,,,,4.0,12000.0,120984.0,2.0
-149,1,RM_001_CWRU,,,312.mat,1,3.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,120984.0,2.0
-150,1,RM_001_CWRU,,,313.mat,1,3.0,,0.0,,2.0,,,,,,,,,0.0,12000.0,120984.0,2.0
+146,1,RM_001_CWRU,,,309.mat,1,3,,0,,0,,,,,,,,,4,12000,121168,2
+147,1,RM_001_CWRU,,,310.mat,1,3,,0,,1,,,,,,,,,4,12000,121535,2
+148,1,RM_001_CWRU,,,311.mat,1,3,,0,,2,,,,,,,,,4,12000,120984,2
+149,1,RM_001_CWRU,,,312.mat,1,3,,0,,2,,,,,,,,,3,12000,120984,2
+150,1,RM_001_CWRU,,,313.mat,1,3,,0,,2,,,,,,,,,0,12000,120984,2
 151,1,RM_001_CWRU,,,314.mat,1,,,,,,,,,,,,,,,,,
-152,1,RM_001_CWRU,,,315.mat,1,3.0,,0.0,,0.0,,,,,,,,,4.0,12000.0,120617.0,2.0
-153,1,RM_001_CWRU,,,316.mat,1,3.0,,0.0,,1.0,,,,,,,,,4.0,12000.0,120617.0,2.0
-154,1,RM_001_CWRU,,,317.mat,1,3.0,,0.0,,2.0,,,,,,,,,4.0,12000.0,120617.0,2.0
-155,1,RM_001_CWRU,,,318.mat,1,3.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121351.0,2.0
-156,1,RM_001_CWRU,,,3001.mat,1,1.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,120801.0,1.0
-157,1,RM_001_CWRU,,,3002.mat,1,1.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121351.0,1.0
-158,1,RM_001_CWRU,,,3003.mat,1,1.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,121351.0,1.0
-159,1,RM_001_CWRU,,,3004.mat,1,1.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,121535.0,1.0
-160,1,RM_001_CWRU,,,3005.mat,1,2.0,,0.0,,0.0,,,,,,,,,3.0,12000.0,120801.0,1.0
-161,1,RM_001_CWRU,,,3006.mat,1,2.0,,0.0,,1.0,,,,,,,,,3.0,12000.0,121351.0,1.0
-162,1,RM_001_CWRU,,,3007.mat,1,2.0,,0.0,,2.0,,,,,,,,,3.0,12000.0,120984.0,1.0
-163,1,RM_001_CWRU,,,3008.mat,1,2.0,,0.0,,3.0,,,,,,,,,3.0,12000.0,120984.0,1.0
+152,1,RM_001_CWRU,,,315.mat,1,3,,0,,0,,,,,,,,,4,12000,120617,2
+153,1,RM_001_CWRU,,,316.mat,1,3,,0,,1,,,,,,,,,4,12000,120617,2
+154,1,RM_001_CWRU,,,317.mat,1,3,,0,,2,,,,,,,,,4,12000,120617,2
+155,1,RM_001_CWRU,,,318.mat,1,3,,0,,3,,,,,,,,,3,12000,121351,2
+156,1,RM_001_CWRU,,,3001.mat,1,1,,0,,0,,,,,,,,,3,12000,120801,1
+157,1,RM_001_CWRU,,,3002.mat,1,1,,0,,1,,,,,,,,,3,12000,121351,1
+158,1,RM_001_CWRU,,,3003.mat,1,1,,0,,2,,,,,,,,,3,12000,121351,1
+159,1,RM_001_CWRU,,,3004.mat,1,1,,0,,3,,,,,,,,,3,12000,121535,1
+160,1,RM_001_CWRU,,,3005.mat,1,2,,0,,0,,,,,,,,,3,12000,120801,1
+161,1,RM_001_CWRU,,,3006.mat,1,2,,0,,1,,,,,,,,,3,12000,121351,1
+162,1,RM_001_CWRU,,,3007.mat,1,2,,0,,2,,,,,,,,,3,12000,120984,1
+163,1,RM_001_CWRU,,,3008.mat,1,2,,0,,3,,,,,,,,,3,12000,120984,1
 164,2,RM_002_XJTU,,,35Hz12kN/Bearing1_1/1.csv,1,,,,,,,,,,,,,,,,,
 165,2,RM_002_XJTU,,,35Hz12kN/Bearing1_1/2.csv,1,,,,,,,,,,,,,,,,,
 166,2,RM_002_XJTU,,,35Hz12kN/Bearing1_1/3.csv,1,,,,,,,,,,,,,,,,,
@@ -46109,126 +46109,126 @@ Id,Dataset_id,Name,Description,TYPE,File,Visiable,Label,Label_Description,RUL_la
 46108,5,RM_005_Ottawa23,,,University of Ottawa Ball-bearing Vibration and Acoustic Fault Data under Constant Load and Speed Conditions (UODS-VAFDC)/5_Cage_Faults/C_19_2.mat,1,,,,,,,,,,,,,,,,,
 46109,5,RM_005_Ottawa23,,,University of Ottawa Ball-bearing Vibration and Acoustic Fault Data under Constant Load and Speed Conditions (UODS-VAFDC)/5_Cage_Faults/C_20_1.mat,1,,,,,,,,,,,,,,,,,
 46110,5,RM_005_Ottawa23,,,University of Ottawa Ball-bearing Vibration and Acoustic Fault Data under Constant Load and Speed Conditions (UODS-VAFDC)/5_Cage_Faults/C_20_2.mat,1,,,,,,,,,,,,,,,,,
-46111,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_1_0.xlsx,1,,,,,,,,,,,,,,,,,
-46112,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_2_0.xlsx,1,,,,,,,,,,,,,,,,,
-46113,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_3_0.xlsx,1,,,,,,,,,,,,,,,,,
-46114,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_4_0.xlsx,1,,,,,,,,,,,,,,,,,
-46115,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_5_0.xlsx,1,,,,,,,,,,,,,,,,,
-46116,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_6_0.xlsx,1,,,,,,,,,,,,,,,,,
-46117,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_7_0.xlsx,1,,,,,,,,,,,,,,,,,
-46118,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_8_0.xlsx,1,,,,,,,,,,,,,,,,,
-46119,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_9_0.xlsx,1,,,,,,,,,,,,,,,,,
-46120,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_10_0.xlsx,1,,,,,,,,,,,,,,,,,
-46121,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_11_0.xlsx,1,,,,,,,,,,,,,,,,,
-46122,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_12_0.xlsx,1,,,,,,,,,,,,,,,,,
-46123,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_13_0.xlsx,1,,,,,,,,,,,,,,,,,
-46124,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_14_0.xlsx,1,,,,,,,,,,,,,,,,,
-46125,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_15_0.xlsx,1,,,,,,,,,,,,,,,,,
-46126,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_16_0.xlsx,1,,,,,,,,,,,,,,,,,
-46127,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_17_0.xlsx,1,,,,,,,,,,,,,,,,,
-46128,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_18_0.xlsx,1,,,,,,,,,,,,,,,,,
-46129,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_19_0.xlsx,1,,,,,,,,,,,,,,,,,
-46130,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_20_0.xlsx,1,,,,,,,,,,,,,,,,,
-46131,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_1_1.xlsx,1,,,,,,,,,,,,,,,,,
-46132,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_1_2.xlsx,1,,,,,,,,,,,,,,,,,
-46133,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_2_1.xlsx,1,,,,,,,,,,,,,,,,,
-46134,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_2_2.xlsx,1,,,,,,,,,,,,,,,,,
-46135,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_3_1.xlsx,1,,,,,,,,,,,,,,,,,
-46136,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_3_2.xlsx,1,,,,,,,,,,,,,,,,,
-46137,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_4_1.xlsx,1,,,,,,,,,,,,,,,,,
-46138,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_4_2.xlsx,1,,,,,,,,,,,,,,,,,
-46139,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_5_1.xlsx,1,,,,,,,,,,,,,,,,,
-46140,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_5_2.xlsx,1,,,,,,,,,,,,,,,,,
-46141,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_6_1.xlsx,1,,,,,,,,,,,,,,,,,
-46142,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_6_2.xlsx,1,,,,,,,,,,,,,,,,,
-46143,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_7_1.xlsx,1,,,,,,,,,,,,,,,,,
-46144,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_7_2.xlsx,1,,,,,,,,,,,,,,,,,
-46145,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_8_1.xlsx,1,,,,,,,,,,,,,,,,,
-46146,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_8_2.xlsx,1,,,,,,,,,,,,,,,,,
-46147,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_9_1.xlsx,1,,,,,,,,,,,,,,,,,
-46148,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_9_2.xlsx,1,,,,,,,,,,,,,,,,,
-46149,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_10_1.xlsx,1,,,,,,,,,,,,,,,,,
-46150,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_10_2.xlsx,1,,,,,,,,,,,,,,,,,
-46151,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_11_1.xlsx,1,,,,,,,,,,,,,,,,,
-46152,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_11_2.xlsx,1,,,,,,,,,,,,,,,,,
-46153,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_12_1.xlsx,1,,,,,,,,,,,,,,,,,
-46154,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_12_2.xlsx,1,,,,,,,,,,,,,,,,,
-46155,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_13_1.xlsx,1,,,,,,,,,,,,,,,,,
-46156,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_13_2.xlsx,1,,,,,,,,,,,,,,,,,
-46157,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_14_1.xlsx,1,,,,,,,,,,,,,,,,,
-46158,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_14_2.xlsx,1,,,,,,,,,,,,,,,,,
-46159,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_15_1.xlsx,1,,,,,,,,,,,,,,,,,
-46160,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_15_2.xlsx,1,,,,,,,,,,,,,,,,,
-46161,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_16_1.xlsx,1,,,,,,,,,,,,,,,,,
-46162,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_16_2.xlsx,1,,,,,,,,,,,,,,,,,
-46163,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_17_1.xlsx,1,,,,,,,,,,,,,,,,,
-46164,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_17_2.xlsx,1,,,,,,,,,,,,,,,,,
-46165,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_18_1.xlsx,1,,,,,,,,,,,,,,,,,
-46166,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_18_2.xlsx,1,,,,,,,,,,,,,,,,,
-46167,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_19_1.xlsx,1,,,,,,,,,,,,,,,,,
-46168,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_19_2.xlsx,1,,,,,,,,,,,,,,,,,
-46169,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_20_1.xlsx,1,,,,,,,,,,,,,,,,,
-46170,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_20_2.xlsx,1,,,,,,,,,,,,,,,,,
-46171,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_1_0.mat,1,,,,,,,,,,,,,,,,,
-46172,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_2_0.mat,1,,,,,,,,,,,,,,,,,
-46173,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_3_0.mat,1,,,,,,,,,,,,,,,,,
-46174,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_4_0.mat,1,,,,,,,,,,,,,,,,,
-46175,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_5_0.mat,1,,,,,,,,,,,,,,,,,
-46176,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_6_0.mat,1,,,,,,,,,,,,,,,,,
-46177,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_7_0.mat,1,,,,,,,,,,,,,,,,,
-46178,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_8_0.mat,1,,,,,,,,,,,,,,,,,
-46179,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_9_0.mat,1,,,,,,,,,,,,,,,,,
-46180,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_10_0.mat,1,,,,,,,,,,,,,,,,,
-46181,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_11_0.mat,1,,,,,,,,,,,,,,,,,
-46182,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_12_0.mat,1,,,,,,,,,,,,,,,,,
-46183,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_13_0.mat,1,,,,,,,,,,,,,,,,,
-46184,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_14_0.mat,1,,,,,,,,,,,,,,,,,
-46185,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_15_0.mat,1,,,,,,,,,,,,,,,,,
-46186,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_16_0.mat,1,,,,,,,,,,,,,,,,,
-46187,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_17_0.mat,1,,,,,,,,,,,,,,,,,
-46188,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_18_0.mat,1,,,,,,,,,,,,,,,,,
-46189,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_19_0.mat,1,,,,,,,,,,,,,,,,,
-46190,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_20_0.mat,1,,,,,,,,,,,,,,,,,
-46191,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_1_1.mat,1,,,,,,,,,,,,,,,,,
-46192,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_1_2.mat,1,,,,,,,,,,,,,,,,,
-46193,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_2_1.mat,1,,,,,,,,,,,,,,,,,
-46194,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_2_2.mat,1,,,,,,,,,,,,,,,,,
-46195,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_3_1.mat,1,,,,,,,,,,,,,,,,,
-46196,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_3_2.mat,1,,,,,,,,,,,,,,,,,
-46197,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_4_1.mat,1,,,,,,,,,,,,,,,,,
-46198,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_4_2.mat,1,,,,,,,,,,,,,,,,,
-46199,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_5_1.mat,1,,,,,,,,,,,,,,,,,
-46200,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_5_2.mat,1,,,,,,,,,,,,,,,,,
-46201,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_6_1.mat,1,,,,,,,,,,,,,,,,,
-46202,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_6_2.mat,1,,,,,,,,,,,,,,,,,
-46203,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_7_1.mat,1,,,,,,,,,,,,,,,,,
-46204,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_7_2.mat,1,,,,,,,,,,,,,,,,,
-46205,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_8_1.mat,1,,,,,,,,,,,,,,,,,
-46206,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_8_2.mat,1,,,,,,,,,,,,,,,,,
-46207,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_9_1.mat,1,,,,,,,,,,,,,,,,,
-46208,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_9_2.mat,1,,,,,,,,,,,,,,,,,
-46209,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_10_1.mat,1,,,,,,,,,,,,,,,,,
-46210,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_10_2.mat,1,,,,,,,,,,,,,,,,,
-46211,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_11_1.mat,1,,,,,,,,,,,,,,,,,
-46212,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_11_2.mat,1,,,,,,,,,,,,,,,,,
-46213,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_12_1.mat,1,,,,,,,,,,,,,,,,,
-46214,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_12_2.mat,1,,,,,,,,,,,,,,,,,
-46215,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_13_1.mat,1,,,,,,,,,,,,,,,,,
-46216,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_13_2.mat,1,,,,,,,,,,,,,,,,,
-46217,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_14_1.mat,1,,,,,,,,,,,,,,,,,
-46218,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_14_2.mat,1,,,,,,,,,,,,,,,,,
-46219,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_15_1.mat,1,,,,,,,,,,,,,,,,,
-46220,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_15_2.mat,1,,,,,,,,,,,,,,,,,
-46221,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_16_1.mat,1,,,,,,,,,,,,,,,,,
-46222,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_16_2.mat,1,,,,,,,,,,,,,,,,,
-46223,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_17_1.mat,1,,,,,,,,,,,,,,,,,
-46224,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_17_2.mat,1,,,,,,,,,,,,,,,,,
-46225,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_18_1.mat,1,,,,,,,,,,,,,,,,,
-46226,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_18_2.mat,1,,,,,,,,,,,,,,,,,
-46227,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_19_1.mat,1,,,,,,,,,,,,,,,,,
-46228,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_19_2.mat,1,,,,,,,,,,,,,,,,,
-46229,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_20_1.mat,1,,,,,,,,,,,,,,,,,
-46230,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Äì Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_20_2.mat,1,,,,,,,,,,,,,,,,,
+46111,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_1_0.xlsx,1,,,,,,,,,,,,,,,,,
+46112,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_2_0.xlsx,1,,,,,,,,,,,,,,,,,
+46113,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_3_0.xlsx,1,,,,,,,,,,,,,,,,,
+46114,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_4_0.xlsx,1,,,,,,,,,,,,,,,,,
+46115,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_5_0.xlsx,1,,,,,,,,,,,,,,,,,
+46116,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_6_0.xlsx,1,,,,,,,,,,,,,,,,,
+46117,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_7_0.xlsx,1,,,,,,,,,,,,,,,,,
+46118,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_8_0.xlsx,1,,,,,,,,,,,,,,,,,
+46119,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_9_0.xlsx,1,,,,,,,,,,,,,,,,,
+46120,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_10_0.xlsx,1,,,,,,,,,,,,,,,,,
+46121,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_11_0.xlsx,1,,,,,,,,,,,,,,,,,
+46122,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_12_0.xlsx,1,,,,,,,,,,,,,,,,,
+46123,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_13_0.xlsx,1,,,,,,,,,,,,,,,,,
+46124,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_14_0.xlsx,1,,,,,,,,,,,,,,,,,
+46125,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_15_0.xlsx,1,,,,,,,,,,,,,,,,,
+46126,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_16_0.xlsx,1,,,,,,,,,,,,,,,,,
+46127,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_17_0.xlsx,1,,,,,,,,,,,,,,,,,
+46128,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_18_0.xlsx,1,,,,,,,,,,,,,,,,,
+46129,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_19_0.xlsx,1,,,,,,,,,,,,,,,,,
+46130,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/1_Healthy/H_20_0.xlsx,1,,,,,,,,,,,,,,,,,
+46131,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_1_1.xlsx,1,,,,,,,,,,,,,,,,,
+46132,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_1_2.xlsx,1,,,,,,,,,,,,,,,,,
+46133,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_2_1.xlsx,1,,,,,,,,,,,,,,,,,
+46134,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_2_2.xlsx,1,,,,,,,,,,,,,,,,,
+46135,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_3_1.xlsx,1,,,,,,,,,,,,,,,,,
+46136,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_3_2.xlsx,1,,,,,,,,,,,,,,,,,
+46137,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_4_1.xlsx,1,,,,,,,,,,,,,,,,,
+46138,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_4_2.xlsx,1,,,,,,,,,,,,,,,,,
+46139,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_5_1.xlsx,1,,,,,,,,,,,,,,,,,
+46140,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/2_Inner_Race_Faults/I_5_2.xlsx,1,,,,,,,,,,,,,,,,,
+46141,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_6_1.xlsx,1,,,,,,,,,,,,,,,,,
+46142,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_6_2.xlsx,1,,,,,,,,,,,,,,,,,
+46143,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_7_1.xlsx,1,,,,,,,,,,,,,,,,,
+46144,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_7_2.xlsx,1,,,,,,,,,,,,,,,,,
+46145,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_8_1.xlsx,1,,,,,,,,,,,,,,,,,
+46146,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_8_2.xlsx,1,,,,,,,,,,,,,,,,,
+46147,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_9_1.xlsx,1,,,,,,,,,,,,,,,,,
+46148,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_9_2.xlsx,1,,,,,,,,,,,,,,,,,
+46149,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_10_1.xlsx,1,,,,,,,,,,,,,,,,,
+46150,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/3_Outer_Race_Faults/O_10_2.xlsx,1,,,,,,,,,,,,,,,,,
+46151,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_11_1.xlsx,1,,,,,,,,,,,,,,,,,
+46152,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_11_2.xlsx,1,,,,,,,,,,,,,,,,,
+46153,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_12_1.xlsx,1,,,,,,,,,,,,,,,,,
+46154,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_12_2.xlsx,1,,,,,,,,,,,,,,,,,
+46155,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_13_1.xlsx,1,,,,,,,,,,,,,,,,,
+46156,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_13_2.xlsx,1,,,,,,,,,,,,,,,,,
+46157,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_14_1.xlsx,1,,,,,,,,,,,,,,,,,
+46158,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_14_2.xlsx,1,,,,,,,,,,,,,,,,,
+46159,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_15_1.xlsx,1,,,,,,,,,,,,,,,,,
+46160,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/4_Ball_Faults/B_15_2.xlsx,1,,,,,,,,,,,,,,,,,
+46161,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_16_1.xlsx,1,,,,,,,,,,,,,,,,,
+46162,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_16_2.xlsx,1,,,,,,,,,,,,,,,,,
+46163,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_17_1.xlsx,1,,,,,,,,,,,,,,,,,
+46164,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_17_2.xlsx,1,,,,,,,,,,,,,,,,,
+46165,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_18_1.xlsx,1,,,,,,,,,,,,,,,,,
+46166,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_18_2.xlsx,1,,,,,,,,,,,,,,,,,
+46167,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_19_1.xlsx,1,,,,,,,,,,,,,,,,,
+46168,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_19_2.xlsx,1,,,,,,,,,,,,,,,,,
+46169,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_20_1.xlsx,1,,,,,,,,,,,,,,,,,
+46170,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/2_Excel_Raw_Data_Files (.xlsx)/5_Cage_Faults/C_20_2.xlsx,1,,,,,,,,,,,,,,,,,
+46171,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_1_0.mat,1,,,,,,,,,,,,,,,,,
+46172,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_2_0.mat,1,,,,,,,,,,,,,,,,,
+46173,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_3_0.mat,1,,,,,,,,,,,,,,,,,
+46174,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_4_0.mat,1,,,,,,,,,,,,,,,,,
+46175,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_5_0.mat,1,,,,,,,,,,,,,,,,,
+46176,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_6_0.mat,1,,,,,,,,,,,,,,,,,
+46177,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_7_0.mat,1,,,,,,,,,,,,,,,,,
+46178,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_8_0.mat,1,,,,,,,,,,,,,,,,,
+46179,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_9_0.mat,1,,,,,,,,,,,,,,,,,
+46180,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_10_0.mat,1,,,,,,,,,,,,,,,,,
+46181,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_11_0.mat,1,,,,,,,,,,,,,,,,,
+46182,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_12_0.mat,1,,,,,,,,,,,,,,,,,
+46183,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_13_0.mat,1,,,,,,,,,,,,,,,,,
+46184,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_14_0.mat,1,,,,,,,,,,,,,,,,,
+46185,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_15_0.mat,1,,,,,,,,,,,,,,,,,
+46186,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_16_0.mat,1,,,,,,,,,,,,,,,,,
+46187,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_17_0.mat,1,,,,,,,,,,,,,,,,,
+46188,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_18_0.mat,1,,,,,,,,,,,,,,,,,
+46189,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_19_0.mat,1,,,,,,,,,,,,,,,,,
+46190,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/1_Healthy/H_20_0.mat,1,,,,,,,,,,,,,,,,,
+46191,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_1_1.mat,1,,,,,,,,,,,,,,,,,
+46192,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_1_2.mat,1,,,,,,,,,,,,,,,,,
+46193,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_2_1.mat,1,,,,,,,,,,,,,,,,,
+46194,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_2_2.mat,1,,,,,,,,,,,,,,,,,
+46195,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_3_1.mat,1,,,,,,,,,,,,,,,,,
+46196,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_3_2.mat,1,,,,,,,,,,,,,,,,,
+46197,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_4_1.mat,1,,,,,,,,,,,,,,,,,
+46198,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_4_2.mat,1,,,,,,,,,,,,,,,,,
+46199,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_5_1.mat,1,,,,,,,,,,,,,,,,,
+46200,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/2_Inner_Race_Faults/I_5_2.mat,1,,,,,,,,,,,,,,,,,
+46201,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_6_1.mat,1,,,,,,,,,,,,,,,,,
+46202,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_6_2.mat,1,,,,,,,,,,,,,,,,,
+46203,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_7_1.mat,1,,,,,,,,,,,,,,,,,
+46204,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_7_2.mat,1,,,,,,,,,,,,,,,,,
+46205,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_8_1.mat,1,,,,,,,,,,,,,,,,,
+46206,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_8_2.mat,1,,,,,,,,,,,,,,,,,
+46207,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_9_1.mat,1,,,,,,,,,,,,,,,,,
+46208,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_9_2.mat,1,,,,,,,,,,,,,,,,,
+46209,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_10_1.mat,1,,,,,,,,,,,,,,,,,
+46210,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/3_Outer_Race_Faults/O_10_2.mat,1,,,,,,,,,,,,,,,,,
+46211,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_11_1.mat,1,,,,,,,,,,,,,,,,,
+46212,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_11_2.mat,1,,,,,,,,,,,,,,,,,
+46213,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_12_1.mat,1,,,,,,,,,,,,,,,,,
+46214,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_12_2.mat,1,,,,,,,,,,,,,,,,,
+46215,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_13_1.mat,1,,,,,,,,,,,,,,,,,
+46216,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_13_2.mat,1,,,,,,,,,,,,,,,,,
+46217,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_14_1.mat,1,,,,,,,,,,,,,,,,,
+46218,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_14_2.mat,1,,,,,,,,,,,,,,,,,
+46219,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_15_1.mat,1,,,,,,,,,,,,,,,,,
+46220,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/4_Ball_Faults/B_15_2.mat,1,,,,,,,,,,,,,,,,,
+46221,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_16_1.mat,1,,,,,,,,,,,,,,,,,
+46222,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_16_2.mat,1,,,,,,,,,,,,,,,,,
+46223,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_17_1.mat,1,,,,,,,,,,,,,,,,,
+46224,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_17_2.mat,1,,,,,,,,,,,,,,,,,
+46225,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_18_1.mat,1,,,,,,,,,,,,,,,,,
+46226,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_18_2.mat,1,,,,,,,,,,,,,,,,,
+46227,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_19_1.mat,1,,,,,,,,,,,,,,,,,
+46228,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_19_2.mat,1,,,,,,,,,,,,,,,,,
+46229,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_20_1.mat,1,,,,,,,,,,,,,,,,,
+46230,5,RM_005_Ottawa23,,,University of Ottawa Rolling-element Dataset ‚Ä?Vibration and Acoustic Faults under Constant Load and Speed conditions (UORED-VAFCLS)/3_MatLab_Raw_Data_Files (.mat)/5_Cage_Faults/C_20_2.mat,1,,,,,,,,,,,,,,,,,
 46231,6,RM_006_THU,,,vibration/health_bearing/1hz_1.mat,1,,,,,,,,,,,,,,,,,
 46232,6,RM_006_THU,,,vibration/health_bearing/10hz_1.mat,1,,,,,,,,,,,,,,,,,
 46233,6,RM_006_THU,,,vibration/health_bearing/15hz_1.mat,1,,,,,,,,,,,,,,,,,
@@ -46244,7 +46244,7 @@ Id,Dataset_id,Name,Description,TYPE,File,Visiable,Label,Label_Description,RUL_la
 46243,6,RM_006_THU,,,vibration/roller_fault/1hz_1.mat,1,,,,,,,,,,,,,,,,,
 46244,6,RM_006_THU,,,vibration/roller_fault/10hz_1.mat,1,,,,,,,,,,,,,,,,,
 46245,6,RM_006_THU,,,vibration/roller_fault/15hz_1.mat,1,,,,,,,,,,,,,,,,,
-46246,6,RM_006_THU,,,vibration/roller_fault/ÊªöÂä®‰ΩìÊï∞ÊçÆËØ¥Êòé.txt,1,,,,,,,,,,,,,,,,,
+46246,6,RM_006_THU,,,vibration/roller_fault/ÊªöÂä®‰ΩìÊï∞ÊçÆËØ¥Êò?txt,1,,,,,,,,,,,,,,,,,
 46247,6,RM_006_THU,,,voltage/health_bearing/1hz_1.txt,1,,,,,,,,,,,,,,,,,
 46248,6,RM_006_THU,,,voltage/health_bearing/10hz_1.txt,1,,,,,,,,,,,,,,,,,
 46249,6,RM_006_THU,,,voltage/health_bearing/15hz_1.txt,1,,,,,,,,,,,,,,,,,
@@ -46260,7 +46260,7 @@ Id,Dataset_id,Name,Description,TYPE,File,Visiable,Label,Label_Description,RUL_la
 46259,6,RM_006_THU,,,voltage/roller_fault/1hz_1.txt,1,,,,,,,,,,,,,,,,,
 46260,6,RM_006_THU,,,voltage/roller_fault/10hz_1.txt,1,,,,,,,,,,,,,,,,,
 46261,6,RM_006_THU,,,voltage/roller_fault/15hz_1.txt,1,,,,,,,,,,,,,,,,,
-46262,6,RM_006_THU,,,voltage/roller_fault/ÊªöÂä®‰ΩìËæìÂá∫ÁîµÂéãÊï∞ÊçÆËØ¥Êòé.txt,1,,,,,,,,,,,,,,,,,
+46262,6,RM_006_THU,,,voltage/roller_fault/ÊªöÂä®‰ΩìËæìÂá∫ÁîµÂéãÊï∞ÊçÆËØ¥Êò?txt,1,,,,,,,,,,,,,,,,,
 46263,6,RM_006_THU,,,voltage/ÂÆö‰Ωç/ÂÆö‰ΩçÊï∞ÊçÆËØ¥Êòé.txt,1,,,,,,,,,,,,,,,,,
 46264,6,RM_006_THU,,,voltage/ÂÆö‰Ωç/240/1_1.txt,1,,,,,,,,,,,,,,,,,
 46265,6,RM_006_THU,,,voltage/ÂÆö‰Ωç/240/2_1.txt,1,,,,,,,,,,,,,,,,,
