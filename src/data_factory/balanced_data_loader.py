@@ -75,7 +75,7 @@ class Balanced_DataLoader_Dict_Iterator:
                  'val'/'test' - 顺序遍历所有数据集
         """
         self.dataloaders_dict = dataloaders_dict
-        self.data_names = list(dataloaders_dict.keys())
+        self.data_names = list(dataloaders_dict.keys())  # 这个name 实际上是metadata的id 和这个BDDI 的id不同，CWRU从1开始，这里从0开始
         self.num_dataloaders = len(dataloaders_dict)
         self.mode = mode
         

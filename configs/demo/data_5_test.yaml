@@ -4,9 +4,9 @@
 
 environment:
   WANDB_MODE: "disabled"
-  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
-  PYTHONPATH: "/home/lq/.conda/envs/lq"
-  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench" # 
+  PYTHONPATH: "/home/lq/.conda/envs/lq" #
+  PHMBench: "/home/user/data/PHMbenchdata"
 
   project: "dummy_test"
   seed: 42
@@ -17,14 +17,14 @@ environment:
 # 数据配置
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
-  # data_dir: "/home/lq/LQcode/2_project/PHMBench/Vbench/data"  # for dummy test
   data_dir: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data"  # for dummy test
-  metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
+  metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
   batch_size: 32
   num_workers: 4
   train_ratio: 0.8
   normalization: true
 
+  target_dataset_id: 0
   train_domain: [0]
   test_domain: [1]
   train_dataset: [0]

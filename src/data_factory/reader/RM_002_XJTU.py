@@ -1,6 +1,6 @@
 import pandas as pd
 
-def read(file_path):
+def read(file_path,*args):
     raw_data = pd.read_csv(file_path)
     return raw_data.values
 

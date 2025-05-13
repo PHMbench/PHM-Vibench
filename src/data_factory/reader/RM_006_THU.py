@@ -3,7 +3,7 @@ import os
 import numpy as np
 import scipy.io
 
-def read(file_path):
+def read(file_path,*args):
 
     if file_path.endswith('.mat'):
         data = scipy.io.loadmat(file_path)['hz_1'][:,0]

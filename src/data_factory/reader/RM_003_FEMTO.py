@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-def read(file_path):
+def read(file_path,*args):
     """
     Reads data from a .mat file specified by file_path.
     

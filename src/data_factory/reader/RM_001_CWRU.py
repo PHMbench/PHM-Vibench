@@ -1,9 +1,9 @@
-from utils import load_data
+from .utils import load_data
 import os
 import numpy as np
 
 
-def read(file_path):
+def read(file_path,*args):
     """
     读取CWRU数据集，提取DE_time和FE_time数据并在C维度拼接
     """
