@@ -18,7 +18,7 @@ environment:
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
   data_dir: "/home/lq/LQcode/2_project/PHMBench/Vbench/data"  # for dummy test
-  metadata_file: "RM_001_CWRU.csv"  # 指定元数据文件路径
+  metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
   batch_size: 32
   num_workers: 4
   train_ratio: 0.8
