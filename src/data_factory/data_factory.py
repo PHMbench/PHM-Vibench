@@ -9,11 +9,14 @@ import pandas as pd
 import numpy as np
 import h5py
 from .H5DataDict import H5DataDict
-from .balanced_data_loader import Balanced_DataLoader_Dict_Iterator
+from .balanced_data_loader import IdIncludedDataset,Balanced_DataLoader_Dict_Iterator # TODO del balanced_data_loader
 from torch.utils.data import DataLoader
 import copy
 import concurrent.futures
 from tqdm import tqdm  # 用于显示进度条
+from torch.utils.data import Dataset
+from .sampler import GroupedIdBatchSampler
+
 
 def smart_read_csv(file_path, auto_detect=True):
     """智能读取CSV文件，自动尝试不同的分隔符和编码"""
@@ -159,6 +162,10 @@ class MetadataAccessor:
             查询结果DataFrame
         """
         return self.df.query(query_str)
+
+
+
+
 class data_factory:
     """数据集工厂类，负责读取和处理数据集
     原始数据 -> 根据task构建数据 -> 为trainer 提供迭代器
@@ -275,7 +282,7 @@ class data_factory:
     
     def get_metadata(self):
         """获取元数据"""
-        return self.metadata
+        return self.target_metadata if hasattr(self, 'target_metadata') else self.metadata
     def get_data(self):
         """获取数据"""
         return self.data
@@ -304,6 +311,9 @@ class data_factory:
         for id in test_ids:
             test_dataset[id] = mod.set_dataset({id: self.data[id]},
                                                 self.metadata, self.args_data, self.args_task, 'test')
+        train_dataset = IdIncludedDataset(train_dataset)
+        val_dataset = IdIncludedDataset(val_dataset)
+        test_dataset = IdIncludedDataset(test_dataset)
         return train_dataset, val_dataset, test_dataset
        
     def search_id(self):
@@ -331,6 +341,8 @@ class data_factory:
     
     
     def search_dataset_id(self):
+        
+        
         if self.args_task.target_dataset_id is None:
             print("未指定目标数据集ID，返回全部元数据")
             return self.metadata
@@ -357,39 +369,78 @@ class data_factory:
 
 
     def _init_dataloader(self):
-
-        train_dataloader = {}
-        val_dataloader = {}
-        test_dataloader = {}
+        train_batch_sampler = GroupedIdBatchSampler(
+            data_source=self.train_dataset,
+            batch_size=self.args_data.batch_size,
+            shuffle=True,
+            drop_last=True # 或 True，取决于您的需求
+        )
+        val_batch_sampler = GroupedIdBatchSampler(
+            data_source=self.val_dataset,
+            batch_size=self.args_data.batch_size,
+            shuffle=False,
+            drop_last=False # 或 True，取决于您的需求
+        )
+        test_batch_sampler = GroupedIdBatchSampler(
+            data_source=self.test_dataset,
+            batch_size=self.args_data.batch_size,
+            shuffle=False,
+            drop_last=False # 或 True，取决于您的需求
+        )
+        self.train_loader = DataLoader(self.train_dataset,
+                                #   batch_size=self.args_data.batch_size,
+                                         batch_sampler = train_batch_sampler,
+                                        #  shuffle=True,
+                                         num_workers=self.args_data.num_workers,
+                                         pin_memory=True,     
+                                         persistent_workers=True)
+        self.val_loader = DataLoader(self.val_dataset,
+                                #  batch_size=self.args_data.batch_size,
+                                        batch_sampler = val_batch_sampler,
+                                        # shuffle=False,
+                                        num_workers=self.args_data.num_workers,
+                                        pin_memory=True,     
+                                        persistent_workers=True)
+        self.test_loader = DataLoader(self.test_dataset,
+                                #  batch_size=self.args_data.batch_size,
+                                        batch_sampler = test_batch_sampler,
+                                        # shuffle=False,
+                                        num_workers=self.args_data.num_workers,
+                                        pin_memory=True,     
+                                        persistent_workers=True)
+#################################################################### DEL ##################################################################
+        # train_dataloader = {}
+        # val_dataloader = {}
+        # test_dataloader = {}
         
-        for id in self.train_val_ids:
+        # for id in self.train_val_ids:
 
-            train_dataloader[id] = DataLoader(self.train_dataset[id],
-                                               batch_size=self.args_data.batch_size,
-                                                      shuffle=True,
-                                                        num_workers=self.args_data.num_workers,
-                                                        pin_memory=True,     
-                                                        persistent_workers=True) 
-            val_dataloader[id] = DataLoader(self.val_dataset[id],
-                                             batch_size=self.args_data.batch_size,
-                                                    shuffle=False,
-                                                      num_workers=self.args_data.num_workers,
-                                                        pin_memory=True,     
-                                                        persistent_workers=True)
-        for id in self.test_ids:
-            test_dataloader[id] = DataLoader(self.test_dataset[id],
-                                              batch_size=self.args_data.batch_size,
-                                                     shuffle=False,
-                                                       num_workers=self.args_data.num_workers,
-                                                        pin_memory=True,     
-                                                        persistent_workers=True)
+        #     train_dataloader[id] = DataLoader(self.train_dataset[id],
+        #                                        batch_size=self.args_data.batch_size,
+        #                                               shuffle=True,
+        #                                                 num_workers=self.args_data.num_workers,
+        #                                                 pin_memory=False,     
+        #                                                 persistent_workers=False) 
+        #     val_dataloader[id] = DataLoader(self.val_dataset[id],
+        #                                      batch_size=self.args_data.batch_size,
+        #                                             shuffle=False,
+        #                                               num_workers=self.args_data.num_workers,
+        #                                                 pin_memory=False,     
+        #                                                 persistent_workers=False)
+        # for id in self.test_ids:
+        #     test_dataloader[id] = DataLoader(self.test_dataset[id],
+        #                                       batch_size=self.args_data.batch_size,
+        #                                              shuffle=False,
+        #                                                num_workers=self.args_data.num_workers,
+        #                                                 pin_memory=False,     
+        #                                                 persistent_workers=False)
 
-        train_loader = Balanced_DataLoader_Dict_Iterator(train_dataloader,'train',)
-        val_loader = Balanced_DataLoader_Dict_Iterator(val_dataloader,'val',)
-        test_loader = Balanced_DataLoader_Dict_Iterator(test_dataloader,'test')
+        # train_loader = Balanced_DataLoader_Dict_Iterator(train_dataloader,'train',)
+        # val_loader = Balanced_DataLoader_Dict_Iterator(val_dataloader,'val',)
+        # test_loader = Balanced_DataLoader_Dict_Iterator(test_dataloader,'test')
 
 
-        return train_loader, val_loader, test_loader
+        return self.train_loader, self.val_loader, self.test_loader
 
     def get_dataset(self, mode = "test"):
         """获取指定ID的数据集

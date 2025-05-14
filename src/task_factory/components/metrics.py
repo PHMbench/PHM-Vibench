@@ -50,7 +50,7 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
                 if metric_key in metric_classes:
                     data_metrics[f"{stage}_{metric_key}"] = metric_classes[metric_key](
                         task=task_type,
-                        num_classes=n_class
+                        num_classes= int(n_class),
                     )
                 else:
                     print(f"警告: 不支持的指标类型 '{metric_name}'，已跳过。") # 或者抛出错误

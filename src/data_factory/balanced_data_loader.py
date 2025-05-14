@@ -1,5 +1,67 @@
 import torch
+from torch.utils.data import Dataset
 # Reference:UniTS
+
+
+class IdIncludedDataset(Dataset):
+    def __init__(self, dataset_dict):
+        """
+        包装一个 PyTorch Dataset 字典，使得每个样本都包含其原始ID。
+
+        Args:
+            dataset_dict (dict): 一个字典，键是字符串ID，值是 PyTorch Dataset 对象。
+                                 例如：{'id1': train_dataset_for_id1, 'id2': train_dataset_for_id2}
+                                 其中 train_dataset_for_id1 等实例的 __getitem__ 返回 (x, y)。
+        """
+        self.dataset_dict_refs = dataset_dict # 保存对原始数据集字典的引用
+        self.flat_sample_map = [] # 用于全局索引到 (id, 原始数据集中的索引) 的映射
+
+        for id_str, original_dataset in self.dataset_dict_refs.items():
+            if original_dataset is None:
+                print(f"警告: ID '{id_str}' 对应的 dataset 为 None，已跳过。")
+                continue
+            if len(original_dataset) == 0:
+                print(f"警告: ID '{id_str}' 对应的 dataset 为空，已跳过。")
+                continue
+            # if not isinstance(id_str,str):
+            #     print(f"警告: ID '{id_str}' 不是字符串，已跳过。")
+            #     continue
+            
+            for i in range(len(original_dataset)):
+                self.flat_sample_map.append({'id': id_str, 'original_idx': i})
+        
+        self._total_samples = len(self.flat_sample_map)
+
+    def __len__(self):
+        """
+        返回所有原始数据集中样本的总数。
+        """
+        return self._total_samples
+
+    def __getitem__(self, global_idx):
+        """
+        根据全局索引获取样本，并返回 (id, (x, y))。
+
+        Args:
+            global_idx (int): 全局样本索引。
+
+        Returns:
+            tuple: (str, tuple), 即 (id, (x, y))
+                   其中 x 是特征数据, y 是标签。
+        """
+        if global_idx < 0 or global_idx >= self._total_samples:
+            raise IndexError(f"全局索引 {global_idx} 超出范围 (总样本数: {self._total_samples})")
+
+        sample_info = self.flat_sample_map[global_idx]
+        original_id = sample_info['id']
+        idx_in_original_dataset = sample_info['original_idx']
+
+        # 从原始数据集中获取 (x, y)
+        original_dataset_instance = self.dataset_dict_refs[original_id]
+        out = original_dataset_instance[idx_in_original_dataset] # may be (x, y) or (x, y, z)
+        
+        return  out, original_id
+
 class BalancedDataLoaderIterator:
     def __init__(self, dataloaders):
         self.dataloaders = dataloaders
@@ -105,6 +167,7 @@ class Balanced_DataLoader_Dict_Iterator:
         # 初始化迭代器
         self.iterators = {data_name: iter(dataloader) 
                          for data_name, dataloader in self.dataloaders_dict.items()}
+        # self.iterators = {}
 
     def __iter__(self):
         # 重置迭代器和计数器

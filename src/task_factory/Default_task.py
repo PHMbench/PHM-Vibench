@@ -115,6 +115,7 @@ class Default_task(pl.LightningModule):
         """
         try:
             (x, y), id = batch
+            id = id[0].item()  # 确保 id 是字符串
             data_name = self.metadata[id]['Name']
         except (ValueError, TypeError) as e:
             raise ValueError(f"批次数据格式错误，期望 ((x, y), data_name)，但收到: {batch}. Error: {e}")
@@ -143,7 +144,7 @@ class Default_task(pl.LightningModule):
         step_metrics[f"{stage}_total_loss"] = total_loss
 
         # 添加 batch size 用于日志记录
-        step_metrics[f"{stage}_batch_size"] = torch.tensor(x.shape[0], dtype=torch.float, device=loss.device)
+        # step_metrics[f"{stage}_batch_size"] = torch.tensor(x.shape[0], dtype=torch.float, device=loss.device)
 
         return step_metrics
 
