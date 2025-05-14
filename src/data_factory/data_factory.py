@@ -228,6 +228,7 @@ class data_factory:
             try:
                 with h5py.File(cache_file, 'r') as h5f:
                     missing_ids = [id for id in dataset_id.keys() if str(id) not in h5f]
+                    # h5f.flush()
                 
                 if not missing_ids:
                     print(f"所有目标数据都在缓存中，直接使用缓存文件: {cache_file}")
@@ -272,7 +273,7 @@ class data_factory:
             for id, data, error in results:
                 if data is not None:
                     if str(id) in h5f:
-                        del h5f[str(id)]  # 如果已存在，先删除
+                        continue # del h5f[str(id)]  # 如果已存在，先删除
                     h5f.create_dataset(str(id), data=data)
                 else:
                     print(f"Error loading data for ID {id}: {error}")
