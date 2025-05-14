@@ -60,6 +60,10 @@ task:
     loss: "CE" # cross_entropy
     metrics: ["acc"]
     target_data: 'Dummy_Dataset'
+    target_dataset_id: [0]
+    target_domain_id: [1]
+    source_domain_id: [0]
+    source_dataset_id: [0]
     # metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
     optimizer: "adam"
     # max_epochs: 10

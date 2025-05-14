@@ -20,7 +20,7 @@ data:
   data_dir: "/home/user/data/PHMbenchdata"  # for dummy test
   metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
   batch_size: 32
-  num_workers: 4
+  num_workers: 32
   train_ratio: 0.8
   normalization: true
   window_size: 10
@@ -34,7 +34,7 @@ model:
   args:
     type: "Transformer"
     input_dim: 2
-    num_classes: 2
+    num_classes: 4 # 根据target data 自动设置
     num_heads: 4
     num_layers: 2
     d_model: 64
@@ -85,7 +85,7 @@ trainer:
     gpus: 1
     early_stopping: true
     patience: 5
-    device: 'cpu'
+    device: 'cuda'
 
 
 
