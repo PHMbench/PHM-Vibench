@@ -1,8 +1,8 @@
 # Vbench: 工业设备故障诊断基准平台
 
 <div align="center">
-  <img src="pic/logo.png" alt="Vbench Logo" width="300"/>
-  <p><strong>🏭 工业领域首个端到端可复现、模块化的故障诊断与预测性维护基准测试平台 🏭</strong></p>
+  <img src=".pic/logo.png" alt="Vbench Logo" width="300"/>
+  <p><strong>🏭 工业领域端到端可复现、模块化的故障诊断与预测性维护基准测试平台 🏭</strong></p>
   <p><em>⚠️ 内测阶段 - 仅限邀请访问 ⚠️</em></p>
 
   <p>

@@ -30,11 +30,13 @@ data:
 
 # 模型配置
 model:
-  name: "Transformer_Dummy"
+  name: "ISFM"
   args:
-    type: "Transformer"
+    type: "M_01_ISFM"
     input_dim: 2
+    
     num_classes: 4 # 根据target data 自动设置
+
     num_heads: 4
     num_layers: 2
     d_model: 64
@@ -43,19 +45,33 @@ model:
     feature_dim: 10
     hidden_dim: 64
     activation: "relu"
+    ISFM_args:
+      n_patches: 128
+      embedding:  E_01_HSE_abalation # E_01_HTFE
+      patch_size_L: 256
+      patch_size_C: 1
+      output_dim: 1024
+      backbone: B_05_Manba
+      nhead: 2
+      num_layers: 1
+      task_head: H_01_Linear_cla
 
 
 # 任务配置
 task:
   name: "Classification"
   args:
-    type: 'DG'
+    type: 'CDDG' # cross-dataset domain generalization
+    target_domain_num: 1
+
+
     target_domain_id: [3]
     source_domain_id: [0,1,2]
 
+
     loss: "CE" # cross_entropy
     metrics: ["acc"]
-    target_dataset_id: [1]
+    target_dataset_id: [1,6]
 
     
     optimizer: "adam"
