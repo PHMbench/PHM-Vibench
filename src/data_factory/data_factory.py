@@ -303,15 +303,18 @@ class data_factory:
         val_dataset = {}
         test_dataset = {}
         train_val_ids, test_ids = self.search_id()
-        for id in train_val_ids:
-
+        # Initialize datasets with progress bars
+        print("Initializing training and validation datasets...")
+        for id in tqdm(train_val_ids, desc="Creating train/val datasets"):
             train_dataset[id] = mod.set_dataset({id: self.data[id]},
-                                                 self.metadata, self.args_data, self.args_task, 'train')
+                             self.metadata, self.args_data, self.args_task, 'train')
             val_dataset[id] = mod.set_dataset({id: self.data[id]},
-                                               self.metadata, self.args_data, self.args_task, 'val')
-        for id in test_ids:
+                               self.metadata, self.args_data, self.args_task, 'val')
+        
+        print("Initializing test datasets...")
+        for id in tqdm(test_ids, desc="Creating test datasets"):
             test_dataset[id] = mod.set_dataset({id: self.data[id]},
-                                                self.metadata, self.args_data, self.args_task, 'test')
+                            self.metadata, self.args_data, self.args_task, 'test')
         train_dataset = IdIncludedDataset(train_dataset)
         val_dataset = IdIncludedDataset(val_dataset)
         test_dataset = IdIncludedDataset(test_dataset)

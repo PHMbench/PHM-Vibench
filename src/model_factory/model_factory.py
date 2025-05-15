@@ -45,6 +45,7 @@ def model_factory(args_model):
                         state_dict = torch.load(weights_path, map_location='cpu')
                         model.load_state_dict(state_dict)
                 except Exception as e:
+                    print(f"加载权重时出错: {str(e)},初始化模型时使用默认权重")
                     # 权重加载失败但不阻止模型使用
                     pass
         
