@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 class CrossAttention(nn.Module):
     def __init__(
@@ -100,7 +101,7 @@ class CrossAttention(nn.Module):
 
 
 class H_02_distance_cla(nn.Module):
-    def __init__(self, d_model, head_dropout=0):
+    def __init__(self, args_m,num_classes):
         """
         CLSHead模块，主要用于计算分类任务中的分类头。
 
@@ -109,6 +110,7 @@ class H_02_distance_cla(nn.Module):
             head_dropout: 分类头的dropout概率。
         """
         super().__init__()
+        d_model = args_m.output_dim  # 输入特征维度
         d_mid = d_model
 
         # 输入映射和交叉注意力层
@@ -117,8 +119,22 @@ class H_02_distance_cla(nn.Module):
 
         # 分类头的MLP层
         self.mlp = nn.Linear(d_mid, d_model)
+        
+        self.category_tokes = nn.ParameterDict()
+        for key,num_class in num_classes.items():
+            self.category_tokes[str(key)] = nn.Parameter(torch.randn(1,num_class, args_m.output_dim))
+            
+    def add_key_category(self, key, num_classes):
+        """
+        添加类别token的键值对。
 
-    def forward(self, x, category_token=None, return_feature=False):
+        参数:
+            key: 键名。
+            num_classes: 类别数。
+        """
+        self.category_tokes[str(key)] = nn.Parameter(torch.randn(1,num_classes, self.d_model))
+        
+    def forward(self, x, id, return_feature=False):
         """
         前向传播。
 
@@ -149,7 +165,9 @@ class H_02_distance_cla(nn.Module):
             return cls_token
 
         # 计算cls_token与category_token之间的距离
-        C = category_token.shape[1]  # 类别数 C
+        # C = category_token.shape[1]  # 类别数 C
+        
+        category_token = self.category_tokes[str(id)]
         distance = torch.einsum('bkc,bmc->bm', cls_token, category_token)  # 计算距离
 
         # 求均值，得到最终结果
@@ -164,7 +182,7 @@ if __name__ == '__main__':
 
     # 创建输入数据
     x = torch.randn(B, P, D)  # B, P, D 维度的输入信号
-    category_token = torch.randn(B, C, D)  # B, C, D 维度的类别 token
+    category_token = torch.randn(1, C, D)  # B, C, D 维度的类别 token
 
     # 初始化 CLSHead
     cls_head = H_02_distance_cla(d_model=D)

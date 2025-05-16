@@ -30,9 +30,9 @@ data:
 
 # 模型配置
 model:
-  name: "ISFM"
+  name: "M_01_ISFM"
   args:
-    type: "M_01_ISFM"
+    type: "ISFM"
     input_dim: 2
     
     num_classes: 4 # 根据target data 自动设置
@@ -45,16 +45,16 @@ model:
     feature_dim: 10
     hidden_dim: 64
     activation: "relu"
-    ISFM_args:
-      n_patches: 128
-      embedding:  E_01_HSE_abalation # E_01_HTFE
-      patch_size_L: 256
-      patch_size_C: 1
-      output_dim: 1024
-      backbone: B_05_Manba
-      nhead: 2
-      num_layers: 1
-      task_head: H_01_Linear_cla
+    # ISFM_args:
+    n_patches: 128
+    embedding:  E_01_HSE # E_01_HTFE
+    patch_size_L: 256
+    patch_size_C: 1
+    output_dim: 1024
+    backbone: B_01_basic_transformer
+    nhead: 2
+    num_layers: 1
+    task_head: H_02_distance_cla
 
 
 # 任务配置

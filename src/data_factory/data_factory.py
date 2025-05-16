@@ -338,7 +338,57 @@ class data_factory:
                 
                 self.train_val_ids = list(train_df['Id'])  # 或者 list(domain_0_df['Id'])
                 self.test_ids = list(test_df['Id'])
-
+            elif self.args_task.type == 'CDDG':
+                # 筛选出目标数据集
+                filtered_df = self.metadata.df[self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+                
+                # 找出每个数据集中的所有唯一domain_id
+                dataset_domains = {}
+                for dataset_id in self.args_task.target_dataset_id:
+                    dataset_df = filtered_df[filtered_df['Dataset_id'] == dataset_id]
+                    domains = sorted(dataset_df['Domain_id'].unique())
+                    # Filter out NaN values from domains
+                    domains = [d for d in domains if not pd.isna(d)]
+                    dataset_domains[dataset_id] = domains
+                
+                # 为每个数据集选择训练和测试domain
+                train_domains = {}
+                test_domains = {}
+                for dataset_id, domains in dataset_domains.items():
+                    test_count = min(self.args_task.target_domain_num, len(domains))
+                    train_domains[dataset_id] = domains[:-test_count] if test_count > 0 else domains
+                    test_domains[dataset_id] = domains[-test_count:] if test_count > 0 else []
+                
+                # 构建训练和测试集
+                train_rows = []
+                test_rows = []
+                for dataset_id in self.args_task.target_dataset_id:
+                    # 训练集rows
+                    for domain_id in train_domains[dataset_id]:
+                        train_rows.extend(
+                            filtered_df[(filtered_df['Dataset_id'] == dataset_id) & 
+                                    (filtered_df['Domain_id'] == domain_id)]['Id'].tolist()
+                        )
+                    # 测试集rows
+                    for domain_id in test_domains[dataset_id]:
+                        test_rows.extend(
+                            filtered_df[(filtered_df['Dataset_id'] == dataset_id) & 
+                                    (filtered_df['Domain_id'] == domain_id)]['Id'].tolist()
+                        )
+                
+                self.train_val_ids = train_rows
+                self.test_ids = test_rows
+                
+                # 记录分割信息
+                print(f"CDGD划分 - 选择每个数据集的最后{self.args_task.target_domain_num}个domain作为测试集")
+                for dataset_id in self.args_task.target_dataset_id:
+                    print(f"数据集 {dataset_id}:")
+                    print(f"  - 训练域: {train_domains[dataset_id]}")
+                    print(f"  - 测试域: {test_domains[dataset_id]}")
+                print(f"训练/验证样本数: {len(self.train_val_ids)}")
+                print(f"测试样本数: {len(self.test_ids)}")
+                
+        
         else:
             self.train_val_ids, self.test_ids = self.metadata.keys(), self.metadata.keys()
         return self.train_val_ids, self.test_ids    
