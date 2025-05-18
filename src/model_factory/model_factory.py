@@ -6,7 +6,7 @@ import os
 import importlib
 import torch
 
-def model_factory(args_model):
+def model_factory(args_model,metadata):
     """
     简化版模型读取器，直接加载单个模型
     
@@ -33,7 +33,7 @@ def model_factory(args_model):
     # 创建模型实例
     try:
         # 如果args_model.model_config存在，使用它作为参数
-        model = model_module.Model(args_model)
+        model = model_module.Model(args_model,metadata) # TODO metadata 
         
         # 如果指定了预训练权重路径，加载权重
         if hasattr(args_model, 'weights_path') and args_model.weights_path:

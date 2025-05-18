@@ -169,7 +169,7 @@ dataloader
 # 测试模型的构建和前向传播
 
 # %%
-model = build_model(args_model)
+model = build_model(args_model,metadata=data_factory.get_metadata())
 
 # %% [markdown]
 # ## 3. task_factory 任务工厂测试
