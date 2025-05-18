@@ -37,9 +37,9 @@ TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,
     'H_02_distance_cla': H_02_distance_cla,
 }
-class M_01_ISFM(nn.Module):
+class Model(nn.Module):
     def __init__(self, args_m,metadata): # args_d = False when not using H_02_distance_cla
-        super(M_01_ISFM, self).__init__()
+        super(Model, self).__init__()
         self.metadata = metadata
         self.args_m = args_m
         self.embedding = Embedding_dict[args_m.embedding](args_m)
@@ -116,7 +116,7 @@ if __name__ == '__main__':
                 import pandas as pd
                 self.df = pd.DataFrame({
                     'Dataset_id': [0, 0, 1, 1],
-                    'Class': [0, 1, 0, 2]
+                    'Label': [0, 1, 0, 2]
                 })
             
             def __getitem__(self, key):
@@ -125,7 +125,7 @@ if __name__ == '__main__':
         metadata = MockMetadata()
         
         # 初始化模型
-        model = M_01_ISFM(args_model, metadata)
+        model = Model(args_model, metadata)
         print(model)
         
         # 创建随机输入进行测试
