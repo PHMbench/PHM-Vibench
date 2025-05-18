@@ -123,7 +123,7 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 
 ## 🔄 支持的模型与数据集
 
-### 📊 支持的数据集 见huggingface
+### 📊 支持的数据集 见[Model scope](https://www.modelscope.cn/datasets/RichieTHU/Vbench_data)
 
 
 
