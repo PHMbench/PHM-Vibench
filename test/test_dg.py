@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Vbench 框架测试笔记本
+# # Vbench 框架测试笔记本-DG pipeline 
 # 
 # 这个笔记本提供了一套全面的测试功能，用于验证Vbench框架的各个子模块是否能够正常工作。通过这个笔记本，您可以：
 # 
@@ -33,29 +33,26 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import yaml
 from pprint import pprint
+sys.path.insert(0, "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench") # TODO: 修改为你的项目路径
+# 获取当前目录
+current_dir = os.getcwd()
+print(f"当前目录: {current_dir}")
 
-# # 获取当前目录
-# current_dir = os.getcwd()
-# print(f"当前目录: {current_dir}")
+# 设置项目根目录为上一级目录
 
-# # 设置项目根目录为上一级目录
-
-# if 'project_root' not in globals():
-#     project_root = os.path.dirname(current_dir)
-#     print(f"设置项目根目录: {project_root}")
-# os.chdir(project_root)
-# print(f"切换工作目录到项目根: {os.getcwd()}")
-
-
-# # 添加项目根目录到路径
-# if project_root not in sys.path:
-#     sys.path.append(project_root)
-#     print(f"✅ 已将项目根目录添加到系统路径: {project_root}")
-
-project_root = '/home/lq/LQcode/2_project/PHMBench/Vbench'
+if 'project_root' not in globals():
+    project_root = os.path.dirname(current_dir)
+    print(f"设置项目根目录: {project_root}")
 os.chdir(project_root)
-# 关键：将项目根目录添加到 Python 的模块搜索路径
-sys.path.append(project_root)
+print(f"切换工作目录到项目根: {os.getcwd()}")
+
+
+# 添加项目根目录到路径
+if project_root not in sys.path:
+    sys.path.append(project_root)
+    print(f"✅ 已将项目根目录添加到系统路径: {project_root}")
+
+
 
 from src.utils.config_utils import load_config, makedir, path_name, transfer_namespace
 from src.data_factory import build_data
@@ -63,14 +60,17 @@ from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 
+
 print("✅ 成功导入项目模块！")
 print("请检查项目结构和安装依赖。")
 
 # %% [markdown]
 # ### 导入配置文件
+# 
+# 记得修改环境变量
 
 # %%
-config_path='configs/demo/dummy_test.yaml'
+config_path='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml' 
 
 print(f"[INFO] 加载配置文件: {config_path}")
 configs = load_config(config_path)
@@ -155,12 +155,12 @@ dataloader
 # ### loop dataloader
 
 # %%
-for i, ((inputs,labels), name) in enumerate(dataloader):
-    print(f"第 {i+1} 批数据:")
-    print(f"输入: {inputs.shape}")
-    # print(f"输入: {inputs}")
-    print(f"标签: {labels}")
-    print(f"名称: {name}")
+# for i, ((inputs,labels), name) in enumerate(dataloader):
+#     print(f"第 {i+1} 批数据:")
+#     print(f"输入: {inputs.shape}")
+#     # print(f"输入: {inputs}")
+#     print(f"标签: {labels}")
+#     print(f"名称: {name}")
 
 
 # %% [markdown]

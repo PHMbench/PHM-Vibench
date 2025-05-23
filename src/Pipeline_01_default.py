@@ -9,6 +9,16 @@ from src.data_factory import build_dataset
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
+# 导入必要的库
+import os
+import sys
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+import yaml
+from pprint import pprint
+
 
 def pipeline(config_path='configs/demo/basic.yaml'):
     """默认流水线执行入口，使用工厂模式调用各个组件

@@ -17,18 +17,12 @@ environment:
 # 数据配置
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
-  data_dir: "/home/lq/LQcode/2_project/PHMBench/Vbench/data"  # for dummy test
-  metadata_file: "RM_001_CWRU.csv"  # 指定元数据文件路径
+  data_dir: "/home/user/data/PHMbenchdata"  # for dummy test
+  metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
   batch_size: 32
-  num_workers: 4
+  num_workers: 32
   train_ratio: 0.8
   normalization: true
-
-  train_domain: [0]
-  test_domain: [1]
-  train_dataset: [0]
-  test_dataset: [1]
-
   window_size: 10
   stride: 5
   truncate_lenth: 100
@@ -40,7 +34,7 @@ model:
   args:
     type: "Transformer"
     input_dim: 2
-    num_classes: 2
+    num_classes: 4 # 根据target data 自动设置
     num_heads: 4
     num_layers: 2
     d_model: 64
@@ -56,10 +50,14 @@ task:
   name: "Classification"
   args:
     type: 'DG'
+    target_domain_id: [3]
+    source_domain_id: [0,1,2]
+
     loss: "CE" # cross_entropy
     metrics: ["acc"]
-    target_data: 'Dummy_Dataset'
-    # metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
+    target_dataset_id: [1]# None # [1]
+
+    
     optimizer: "adam"
     # max_epochs: 10
     batch_size: 32
@@ -87,7 +85,7 @@ trainer:
     gpus: 1
     early_stopping: true
     patience: 5
-    device: 'cpu'
+    device: 'cuda'
 
 
 

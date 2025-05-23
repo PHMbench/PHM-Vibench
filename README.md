@@ -1,8 +1,8 @@
-# Vbench: 工业设备故障诊断基准平台
+# Vbench: 工业设备振动信号基准平台
 
 <div align="center">
-  <img src="pic/logo.png" alt="Vbench Logo" width="300"/>
-  <p><strong>🏭 工业领域首个端到端可复现、模块化的故障诊断与预测性维护基准测试平台 🏭</strong></p>
+  <img src="pic/Vbench.png" alt="Vbench Logo" width="300"/>
+  <p><strong>🏭 工业领域端到端可复现、模块化的故障诊断与预测性维护基准测试平台 🏭</strong></p>
   <p><em>⚠️ 内测阶段 - 仅限邀请访问 ⚠️</em></p>
 
   <p>
@@ -38,14 +38,14 @@
 - [📃 用了该项目发表的文章](#-用了该项目发表的文章)
 - [🔮 项目路线图](#-项目路线图)
 - [👥 贡献者与社区](#-贡献者与社区)
-- [🏛 许可证](#-许可证)
+- [🏛  许可证](#-许可证)
 - [📎 引用方式](#-引用方式)
 
 ## ✨ 项目亮点
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/features.png" alt="Vbench Features" width="700"/>
-</div>
+</div> -->
 
 - 🧩 **先进的模块化设计**：采用工厂设计模式实现数据集、模型、任务和训练器的高度模块化，为后续功能扩展提供了灵活架构
 - 🔄 **多样化任务支持**：内置对故障分类、异常检测和剩余使用寿命预测等多种故障诊断相关任务的全面支持
@@ -102,10 +102,10 @@
 2. 🔄 **可复现性困难**：缺乏标准化的实验流程和完整的实现细节
 3. ⚖️ **公平比较的障碍**：数据划分、预处理和评估标准的不一致性导致结果难以直接比较
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/motivation.png" alt="Vbench Motivation" width="600"/>
   <p><em>PHM研究面临的挑战</em></p>
-</div>
+</div> -->
 
 Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准测试平台，旨在提供一个标准化、可复现且易于使用的实验环境，以解决上述挑战。
 
@@ -116,113 +116,22 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 3. ⚖️ **公平的比较环境**：统一的数据划分策略和评估指标保证不同方法之间的公平比较
 4. 🚀 **快速原型开发支持**：模块化设计使研究人员能高效实施和验证新思路与方法
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/workflow.png" alt="Vbench Workflow" width="700"/>
   <p><em>Vbench工作流程</em></p>
-</div>
+</div> -->
 
 ## 🔄 支持的模型与数据集
 
-### 📊 支持的数据集
+### 📊 支持的数据集 见[Model scope](https://www.modelscope.cn/datasets/RichieTHU/Vbench_data)
 
-<table>
-  <tr>
-    <th>类别</th>
-    <th>数据集名称</th>
-    <th>设备类型</th>
-    <th>适用任务</th>
-  </tr>
-  <tr>
-    <td rowspan="4">轴承</td>
-    <td>CWRU</td>
-    <td>电机轴承</td>
-    <td>故障分类</td>
-  </tr>
-  <tr>
-    <td>Paderborn</td>
-    <td>电机轴承</td>
-    <td>故障分类，RUL预测</td>
-  </tr>
-  <tr>
-    <td>XJTU-SY</td>
-    <td>轴承</td>
-    <td>RUL预测，异常检测</td>
-  </tr>
-  <tr>
-    <td>IMS</td>
-    <td>轴承</td>
-    <td>RUL预测</td>
-  </tr>
-  <tr>
-    <td rowspan="2">齿轮</td>
-    <td>PHM2009</td>
-    <td>齿轮箱</td>
-    <td>故障分类，RUL预测</td>
-  </tr>
-  <tr>
-    <td>JNU</td>
-    <td>齿轮</td>
-    <td>故障分类</td>
-  </tr>
-  <tr>
-    <td rowspan="2">电机</td>
-    <td>MFPT</td>
-    <td>电机</td>
-    <td>故障分类</td>
-  </tr>
-  <tr>
-    <td>SIRF</td>
-    <td>感应电机</td>
-    <td>故障分类，异常检测</td>
-  </tr>
-</table>
+
 
 ### 🧠 支持的算法模型
 
-<table>
-  <tr>
-    <th>类别</th>
-    <th>算法</th>
-    <th>适用任务</th>
-  </tr>
-  <tr>
-    <td rowspan="3">传统机器学习</td>
-    <td>SVM, Random Forest, XGBoost</td>
-    <td>分类，回归</td>
-  </tr>
-  <tr>
-    <td>Isolation Forest, One-Class SVM</td>
-    <td>异常检测</td>
-  </tr>
-  <tr>
-    <td>ARIMA, Exponential Smoothing</td>
-    <td>时间序列预测</td>
-  </tr>
-  <tr>
-    <td rowspan="4">深度学习</td>
-    <td>1D-CNN, 2D-CNN, ResNet</td>
-    <td>分类，回归</td>
-  </tr>
-  <tr>
-    <td>LSTM, GRU, BiLSTM</td>
-    <td>时间序列预测，RUL预测</td>
-  </tr>
-  <tr>
-    <td>Transformer, TCN</td>
-    <td>时间序列分析</td>
-  </tr>
-  <tr>
-    <td>VAE, GAN</td>
-    <td>异常检测，数据增强</td>
-  </tr>
-</table>
 
-## 🔔 技术动态
 
-- **2023.05**: 🔍 增加模型解释性工具，支持可视化关键特征和决策依据
-- **2023.04**: 🧪 Vbench进入内测阶段，向特定研究团队开放访问
-- **2023.03**: 🔧 完成模块化框架设计、核心功能实现与性能测试
-- **2023.02**: 📝 项目启动，确定架构设计与开发计划
+
 
 ## 🛠️ 安装指南
 
@@ -231,7 +140,7 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 ### 环境要求
 - Python 3.8+
 - PyTorch 1.9+
-- CUDA 11.1+ (可选，用于GPU加速)
+- CUDA 11.1+ 
 
 ### 依赖安装
 
@@ -243,38 +152,33 @@ cd Vbench
 # 安装依赖
 pip install -r requirements.txt
 
-# 开发模式安装（推荐开发者使用）
-pip install -e .
-
-# 验证安装
-python -c "import vbench; print(vbench.__version__)"
 ```
 
 ## 🚀 快速开始
 
 通过以下步骤快速体验 Vbench 的功能：
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/quickstart.png" alt="Vbench Quick Start" width="650"/>
-</div>
+</div> -->
 
 ```bash
-# 使用示例配置运行故障诊断实验
-python main.py --config configs/demo/cwru_classification.yaml
+# demo pipeline
+python main.py --config configs/demo/dummy.yaml
 
-# 测试框架核心功能
-python main_dummy.py --all_modules
+# CWRU 分类任务
+python main.py --config configs/demo/CWRU.yaml
 
-# 一键复现经典模型在CWRU数据集上的性能
-python benchmark.py --dataset CWRU --models CNN1D CNN2D ResNet LSTM --repeat 5
+# Cross-dataset genealization
+python main.py --config configs/demo/CWRU_THU_using_ISFM.yaml
 ```
 
 ### 📊 性能基准示例
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/benchmark_results.png" alt="Benchmark Results" width="700"/>
   <p><em>不同模型在CWRU数据集上的性能对比</em></p>
-</div>
+</div> -->
 
 ## 📘 使用指南
 
@@ -321,10 +225,10 @@ trainer:
     patience: 10
 ```
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/config_structure.png" alt="Configuration Structure" width="550"/>
   <p><em>Vbench配置文件结构</em></p>
-</div>
+</div> -->
 
 ### 2. 运行实验 🧪
 
@@ -359,7 +263,7 @@ CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
 
 ### 4. 结果可视化 📈
 
-```bash
+<!-- ```bash
 # 生成实验结果可视化报告
 python scripts/visualize_results.py --result_dir results/experiment_name --output report.pdf
 
@@ -368,7 +272,7 @@ python scripts/compare_models.py --experiments exp1,exp2,exp3 --metric accuracy
 
 # 导出结果为LaTeX表格（用于论文）
 python scripts/export_latex.py --result_dir results/experiment_name
-```
+``` -->
 
 ## 📂 项目结构
 
@@ -407,70 +311,15 @@ python scripts/export_latex.py --result_dir results/experiment_name
 
 Vbench 采用模块化设计，遵循工厂模式，便于扩展和定制。如果您希望贡献代码，请参考[贡献者指南](./contributing.md)。
 
-### 扩展数据集 📊
+### 扩展数据集 📊 见[数据集贡献指南](./data_factory/contributing.md)
 
-创建新的数据集类需继承 `BaseDataset` 并实现以下方法：
-```python
-class NewDataset(BaseDataset):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # 初始化代码
-        
-    def download(self):
-        # 数据集下载逻辑
-        
-    def preprocess(self):
-        # 数据预处理逻辑
-        
-    def load_data(self):
-        # 数据加载逻辑
-        
-    def split_data(self):
-        # 数据划分逻辑
-```
+### 添加新模型 🧠 见[模型贡献指南](./model_factory/contributing.md)
 
-### 添加新模型 🧠
-
-创建新模型类需继承 `BaseModel` 并实现以下方法：
-```python
-class NewModel(BaseModel):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # 模型初始化代码
-        
-    def build_model(self):
-        # 模型构建逻辑
-        
-    def forward(self, x):
-        # 前向传播逻辑
-```
-
-<div align="center">
-  <img src="pic/extension_guide.png" alt="Extension Guide" width="650"/>
-  <p><em>Vbench扩展开发流程</em></p>
-</div>
-
-### 调试与测试 🐞
-
-1. 使用交互式测试笔记本：
-   ```bash
-   jupyter notebook test/test.ipynb
-   ```
-
-2. 使用命令行工具测试特定模块：
-   ```bash
-   python main_dummy.py --module data_factory
-   python main_dummy.py --module model_factory
-   ```
-
-3. 查看所有可用模块及其配置参数：
-   ```bash
-   python main_dummy.py --list_modules
-   ```
+### 调试与测试 🐞 见[测试指南](./test/README.md)
 
 ## ❓ 常见问题
 
-<details>
+<!-- <details>
 <summary><b>如何处理自定义数据集?</b></summary>
 <p>
 创建自定义数据集需要继承<code>BaseDataset</code>类并实现所需方法。详细步骤请参考<a href="#扩展数据集-">扩展数据集</a>部分或查看我们的<a href="docs/custom_dataset.md">自定义数据集教程</a>。
@@ -496,13 +345,11 @@ class NewModel(BaseModel):
 <p>
 请使用本页底部提供的引用格式。同时，建议在论文方法部分明确说明使用了Vbench平台进行实验，并指明所用配置文件和版本号。
 </p>
-</details>
+</details> -->
 
 ## 📃 用了该项目发表的文章
 
 1. 张三, 李四. (2023). *基于深度学习的轴承故障早期诊断方法研究*. 机械工程学报, 59(3), 131-142.
-2. Wang, X., & Liu, Y. (2023). *A Novel Transfer Learning Approach for Cross-Domain Fault Diagnosis*. IEEE Transactions on Industrial Electronics.
-3. Li, M., Chen, J., & Zhang, W. (2023). *Attention-Based Remaining Useful Life Prediction for Rolling Bearings*. Reliability Engineering & System Safety.
 
 ## 🔮 项目路线图
 
@@ -524,17 +371,16 @@ class NewModel(BaseModel):
 ## 👥 贡献者与社区
 
 ### 核心团队
-- **张教授** - *项目负责人* - [GitHub](https://github.com/zhang-prof)
-- **王博士** - *架构设计* - [GitHub](https://github.com/dr-wang)
-- **李工程师** - *主要开发者* - [GitHub](https://github.com/engineer-li)
+- [Qi Li](https://github.com/liq22)
 
 ### 参与贡献
 我们非常欢迎各种形式的贡献！无论是新功能开发、文档改进还是问题反馈。请参阅[贡献指南](CONTRIBUTING.md)了解详情。
 
 ### 社区交流
 - 加入我们的[Slack频道](https://phmbench.slack.com)讨论问题和新点子
-- 关注我们的[微信公众号](https://mp.weixin.qq.com/phmbench)获取最新资讯
-- 参与每月的[线上研讨会](https://phmbench.com/webinars)
+- 加入我们的[飞书群组](https://phmbench.feishu.cn/invite/2d8e0f3b-4a5c-4b1c-9a6f-7d2e0f3b4a5c)获取最新动态
+<!-- - 关注我们的[微信公众号](https://mp.weixin.qq.com/phmbench)获取最新资讯
+- 参与每月的[线上研讨会](https://phmbench.com/webinars) -->
 
 <div align="center">
   <br>
@@ -567,4 +413,4 @@ class NewModel(BaseModel):
 
 [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vbench&type=Date)](https://star-history.com/#PHMbench/Vbench&Date)
 
-<p align="center">如有任何问题或建议，请<a href="mailto:contact@phmbench.com">联系我们</a>或提交<a href="https://github.com/PHMbench/Vbench/issues">Issue</a>。</p>
+<p align="center">如有任何问题或建议，请联系我们</a>或提交<a href="https://github.com/PHMbench/Vbench/issues">Issue</a>。</p>

@@ -4,7 +4,7 @@
 
 environment:
   WANDB_MODE: "disabled"
-  VBENCH_HOME: "C:/Users/CCSLab/Desktop/lixuan/Vbench/Vbench"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
   PYTHONPATH: "/home/lq/.conda/envs/lq"
   PHMBench: "/home/lq/LQcode/2_project/PHMBench"
 
@@ -17,18 +17,12 @@ environment:
 # 数据配置
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
-  data_dir: "C:/Users/CCSLab/Desktop/lixuan/Vbench/Vbench/data"  # for dummy test
-  metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
+  data_dir: "/home/user/data/PHMbenchdata"  # for dummy test
+  metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
   batch_size: 32
-  num_workers: 4
+  num_workers: 32
   train_ratio: 0.8
   normalization: true
-
-  train_domain: [0]
-  test_domain: [1]
-  train_dataset: [0]
-  test_dataset: [1]
-
   window_size: 10
   stride: 5
   truncate_lenth: 100
@@ -36,11 +30,13 @@ data:
 
 # 模型配置
 model:
-  name: "Transformer_Dummy"
+  name: "M_01_ISFM"
   args:
-    type: "Transformer"
+    type: "ISFM"
     input_dim: 2
-    num_classes: 2
+    
+    num_classes: 4 # 根据target data 自动设置
+
     num_heads: 4
     num_layers: 2
     d_model: 64
@@ -49,21 +45,35 @@ model:
     feature_dim: 10
     hidden_dim: 64
     activation: "relu"
+    # ISFM_args:
+    n_patches: 128
+    embedding:  E_01_HSE # E_01_HTFE
+    patch_size_L: 256
+    patch_size_C: 1
+    output_dim: 1024
+    backbone: B_01_basic_transformer
+    nhead: 2
+    num_layers: 1
+    task_head: H_02_distance_cla
 
 
 # 任务配置
 task:
   name: "Classification"
   args:
-    type: 'DG'
+    type: 'CDDG' # cross-dataset domain generalization
+    target_domain_num: 1
+
+
+    target_domain_id: [3]
+    source_domain_id: [0,1,2]
+
+
     loss: "CE" # cross_entropy
     metrics: ["acc"]
-    target_data: 'Dummy_Dataset'
-    target_dataset_id: [0]
-    target_domain_id: [1]
-    source_domain_id: [0]
-    source_dataset_id: [0]
-    # metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
+    target_dataset_id: [1,6]
+
+    
     optimizer: "adam"
     # max_epochs: 10
     batch_size: 32
@@ -91,7 +101,7 @@ trainer:
     gpus: 1
     early_stopping: true
     patience: 5
-    device: 'cpu'
+    device: 'cuda'
 
 
 
