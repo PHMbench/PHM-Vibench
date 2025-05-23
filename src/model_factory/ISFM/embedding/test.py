@@ -15,7 +15,7 @@ def test_hse_model():
     args = SimpleNamespace(
         patch_size_L=4,
         patch_size_C=2,
-        n_patches=16,
+        num_patches=16,
         output_dim=1024
     )
     
@@ -44,16 +44,16 @@ def test_hse_model():
     
     model = E_01_HSE_abalation(args, args_d)
     out = model(x, 'test_dataset')
-    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.n_patches, args.output_dim)}")
-    assert out.shape == (batch_size, args.n_patches, args.output_dim), "形状不匹配!"
+    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.num_patches, args.output_dim)}")
+    assert out.shape == (batch_size, args.num_patches, args.output_dim), "形状不匹配!"
     
     # 测试2: 顺序采样
     print("\n测试2: 顺序采样")
     args.sampling_mode = 'sequential'
     model = E_01_HSE_abalation(args, args_d)
     out = model(x, 'test_dataset')
-    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.n_patches, args.output_dim)}")
-    assert out.shape == (batch_size, args.n_patches, args.output_dim), "形状不匹配!"
+    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.num_patches, args.output_dim)}")
+    assert out.shape == (batch_size, args.num_patches, args.output_dim), "形状不匹配!"
     
     # 测试3: 无mixing
     print("\n测试3: 无mixing")
@@ -61,8 +61,8 @@ def test_hse_model():
     args.apply_mixing = False
     model = E_01_HSE_abalation(args, args_d)
     out = model(x, 'test_dataset')
-    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.n_patches, args.output_dim)}")
-    assert out.shape == (batch_size, args.n_patches, args.output_dim), "形状不匹配!"
+    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.num_patches, args.output_dim)}")
+    assert out.shape == (batch_size, args.num_patches, args.output_dim), "形状不匹配!"
     
     # 测试4: 深层线性网络
     print("\n测试4: 深层线性网络 (2,2)")
@@ -70,8 +70,8 @@ def test_hse_model():
     args.linear_config = (2, 2)
     model = E_01_HSE_abalation(args, args_d)
     out = model(x, 'test_dataset')
-    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.n_patches, args.output_dim)}")
-    assert out.shape == (batch_size, args.n_patches, args.output_dim), "形状不匹配!"
+    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.num_patches, args.output_dim)}")
+    assert out.shape == (batch_size, args.num_patches, args.output_dim), "形状不匹配!"
     
     # 测试5: 放大patch参数
     print("\n测试5: 放大patch参数 (2,2,2)")
@@ -79,7 +79,7 @@ def test_hse_model():
     args.patch_scale = (2, 2, 2)
     model = E_01_HSE_abalation(args, args_d)
     out = model(x, 'test_dataset')
-    expected_patches = args.n_patches * args.patch_scale[2]
+    expected_patches = args.num_patches * args.patch_scale[2]
     print(f"输出形状: {out.shape}, 预期: {(batch_size, expected_patches, args.output_dim)}")
     assert out.shape == (batch_size, expected_patches, args.output_dim), "形状不匹配!"
     
@@ -89,8 +89,8 @@ def test_hse_model():
     args.activation_type = 'relu'
     model = E_01_HSE_abalation(args, args_d)
     out = model(x, 'test_dataset')
-    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.n_patches, args.output_dim)}")
-    assert out.shape == (batch_size, args.n_patches, args.output_dim), "形状不匹配!"
+    print(f"输出形状: {out.shape}, 预期: {(batch_size, args.num_patches, args.output_dim)}")
+    assert out.shape == (batch_size, args.num_patches, args.output_dim), "形状不匹配!"
     
     # 测试7: 极端情况 - 输入小于patch大小
     print("\n测试7: 极端情况 - 输入小于patch大小")
@@ -99,7 +99,7 @@ def test_hse_model():
     model = E_01_HSE_abalation(args, args_d)
     out = model(small_x, 'test_dataset')
     print(f"输入形状: {small_x.shape}, 输出形状: {out.shape}")
-    assert out.shape == (batch_size, args.n_patches, args.output_dim), "形状不匹配!"
+    assert out.shape == (batch_size, args.num_patches, args.output_dim), "形状不匹配!"
     
     print("\n所有测试通过! HSE模型在各种配置下正常工作")
 

@@ -5,9 +5,9 @@ import numpy as np
 from typing import Dict, List, Optional, Any, Tuple
 
 # 导入解耦后的组件
-from .components.loss import get_loss_fn
-from .components.metrics import get_metrics
-from .components.regularization import calculate_regularization
+from .Components.loss import get_loss_fn
+from .Components.metrics import get_metrics
+from .Components.regularization import calculate_regularization
 
 
 class Default_task(pl.LightningModule):
@@ -66,13 +66,13 @@ class Default_task(pl.LightningModule):
         self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
 
 
-    def forward(self, x):
+    def forward(self, x,data_id = False, task_id = False):
         """模型前向传播"""
-        return self.network(x)
+        return self.network(x,data_id,task_id)
 
-    def _forward_pass(self, x: torch.Tensor) -> torch.Tensor:
+    def _forward_pass(self, x: torch.Tensor,data_id = False, task_id = False) -> torch.Tensor:
         """执行前向传播"""
-        return self(x)
+        return self(x,data_id, task_id)
 
     def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """计算任务损失"""
@@ -108,7 +108,9 @@ class Default_task(pl.LightningModule):
             self.parameters() # 只对当前 LightningModule 的参数计算正则化
         )
 
-    def _shared_step(self, batch: Tuple[Tuple[torch.Tensor, torch.Tensor], str], stage: str) -> Dict[str, torch.Tensor]:
+    def _shared_step(self, batch: Tuple[Tuple[torch.Tensor, torch.Tensor], str],
+                     stage: str,
+                     task_id = False) -> Dict[str, torch.Tensor]:
         """
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
@@ -121,7 +123,7 @@ class Default_task(pl.LightningModule):
             raise ValueError(f"批次数据格式错误，期望 ((x, y), data_name)，但收到: {batch}. Error: {e}")
 
         # 1. 前向传播
-        y_hat = self._forward_pass(x)
+        y_hat = self._forward_pass(x,data_id = id, task_id = task_id)
 
         # 2. 计算任务损失
         loss = self._compute_loss(y_hat, y)

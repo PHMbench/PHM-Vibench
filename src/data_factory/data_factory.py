@@ -45,7 +45,7 @@ def smart_read_csv(file_path, auto_detect=True):
                 try:
                     return pd.read_csv(file_path, sep='\t')
                 except UnicodeDecodeError:
-                    return pd.read_csv(file_path, sep='\t', encoding='gbk')
+                    return pd.read_csv(file_path, sep='\t', encoding='gbk', low_memory=False)
                 
         except Exception as e:
             print(f"自动检测格式失败: {e}，尝试默认方法")

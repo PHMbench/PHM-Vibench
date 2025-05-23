@@ -122,7 +122,7 @@ class H_02_distance_cla(nn.Module):
         
         self.category_tokes = nn.ParameterDict()
         for key,num_class in num_classes.items():
-            self.category_tokes[str(key)] = nn.Parameter(torch.randn(1,num_class, args_m.output_dim))
+            self.category_tokes[str(key)] = nn.Parameter(torch.randn(1,int(num_class), args_m.output_dim))
             
     def add_key_category(self, key, num_classes):
         """

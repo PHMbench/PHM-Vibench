@@ -68,7 +68,7 @@ if __name__ == '__main__':
         trainer_name='Default_trainer',  # 指定使用默认训练器
         device='cuda',
         gpus=1,
-        n_epochs=100,
+        num_epochs=100,
         patience=10,
         wandb=False,
         pruning=False

@@ -29,10 +29,9 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
 
     # 确保最佳模型路径不是空的
     if not best_model_path:
-        raise ValueError("No best model path found. Please check if the training process saved checkpoints.")
-
+        print("No best model path found. Please check if the training process saved checkpoints.")
+    else:
     # 加载最佳检查点
-
-    state_dict = torch.load(best_model_path)
-    model.load_state_dict(state_dict['state_dict'])
+        state_dict = torch.load(best_model_path)
+        model.load_state_dict(state_dict['state_dict'])
     return model

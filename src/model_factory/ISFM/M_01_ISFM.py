@@ -60,7 +60,7 @@ class Model(nn.Module):
     def get_num_classes(self):
         num_classes = {}
         for key in np.unique(self.metadata.df['Dataset_id']):
-            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Class']) + 1
+            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
         return num_classes
 
     

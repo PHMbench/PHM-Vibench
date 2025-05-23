@@ -42,7 +42,7 @@ def trainer(args_e,args_t, args_d, path):
     trainer = pl.Trainer(
         callbacks=callback_list,
         accelerator=accelerate_type,
-        max_epochs=args_t.n_epochs,
+        max_epochs=args_t.num_epochs,
         devices=args_t.gpus,
         logger=log_list,
         # log_every_n_steps=20,
@@ -128,6 +128,6 @@ def create_early_stopping_callback(args):
         verbose=True,
         mode='min',
         check_finite=True,  # 防止无穷大或NaN值时停止训练
-        check_on_train_epoch_end=False  # 只在验证阶段检查
+        check_on_trainum_epoch_end=False  # 只在验证阶段检查
     )
     return early_stopping

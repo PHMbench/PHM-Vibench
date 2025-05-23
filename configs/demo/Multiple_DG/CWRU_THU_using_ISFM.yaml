@@ -2,17 +2,18 @@
 # 用于测试各模块的集成功能
 # 环境变量设置
 
+
+
 environment:
-  WANDB_MODE: "disabled"
   VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
   PYTHONPATH: "/home/lq/.conda/envs/lq"
   PHMBench: "/home/lq/LQcode/2_project/PHMBench"
-
   project: "dummy_test"
   seed: 42
   output_dir: "results/dummy_test"
   notes: "This is a dummy test configuration."
   iterations: 2
+  
 
 # 数据配置
 data:
@@ -35,24 +36,25 @@ model:
     type: "ISFM"
     input_dim: 2
     
-    num_classes: 4 # 根据target data 自动设置
+    # num_classes: 4 # 根据target data 自动设置
 
     num_heads: 4
     num_layers: 2
     d_model: 64
     d_ff: 128
+
     dropout: 0.1
-    feature_dim: 10
+
     hidden_dim: 64
     activation: "relu"
     # ISFM_args:
-    n_patches: 128
+    num_patches: 128
     embedding:  E_01_HSE # E_01_HTFE
     patch_size_L: 256
     patch_size_C: 1
     output_dim: 1024
     backbone: B_01_basic_transformer
-    nhead: 2
+
     num_layers: 1
     task_head: H_02_distance_cla
 
@@ -71,7 +73,7 @@ task:
 
     loss: "CE" # cross_entropy
     metrics: ["acc"]
-    target_dataset_id: [1,6]
+    target_dataset_id: [6]
 
     
     optimizer: "adam"
@@ -95,9 +97,9 @@ task:
 trainer:
   name: "Default_trainer"
   args:
-    wandb: true
+    wandb: False
     pruning: False
-    n_epochs: 10
+    num_epochs: 10
     gpus: 1
     early_stopping: true
     patience: 5

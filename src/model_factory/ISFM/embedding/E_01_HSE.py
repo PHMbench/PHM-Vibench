@@ -21,7 +21,7 @@ class E_01_HSE(nn.Module):
         super(E_01_HSE, self).__init__()
         self.patch_size_L = args.patch_size_L  # Patch size along L dimension
         self.patch_size_C = args.patch_size_C  # Patch size along C dimension
-        self.num_patches = args.n_patches    # Number of patches to sample
+        self.num_patches = args.num_patches    # Number of patches to sample
         self.output_dim =  args.output_dim
         # self.args_d = args_d   
         # self.f_s =  args_d.f_s  # Sampling frequency
@@ -126,7 +126,7 @@ class E_01_HSE_abalation(nn.Module):
         # 基本参数
         self.patch_size_L = args.patch_size_L  # Patch size along L dimension
         self.patch_size_C = args.patch_size_C  # Patch size along C dimension
-        self.num_patches = args.n_patches      # Number of patches to sample
+        self.num_patches = args.num_patches      # Number of patches to sample
         self.output_dim = args.output_dim
         self.args_d = args_d
         

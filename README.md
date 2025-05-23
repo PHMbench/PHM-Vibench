@@ -164,13 +164,13 @@ pip install -r requirements.txt
 
 ```bash
 # demo pipeline
-python main.py --config configs/demo/dummy.yaml
+python main.py --config configs/demo/dummy_test.yaml
 
 # CWRU 分类任务
-python main.py --config configs/demo/CWRU.yaml
+python main.py --config configs/demo/Single_DG/CWRU.yaml
 
 # Cross-dataset genealization
-python main.py --config configs/demo/CWRU_THU_using_ISFM.yaml
+python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 ```
 
 ### 📊 性能基准示例
@@ -186,51 +186,487 @@ python main.py --config configs/demo/CWRU_THU_using_ISFM.yaml
 
 Vbench 使用 YAML 配置文件定义实验，包含以下主要部分：
 
+
+
+### 配置文件结构
+
+Vbench使用YAML格式的配置文件来定义和管理实验。主要包含以下几个部分：
+
 ```yaml
-experiment:
-  name: "bearing_fault_diagnosis"
-  seed: 42
+environment:  # 环境配置
+  name: 'dummy'
+  args:
+    ...
+  ...
   
-dataset:
-  name: "CWRU"  # 案例西储大学轴承数据集
-  args:
-    task_type: "classification"
-    split_ratio: [0.7, 0.1, 0.2]  # 训练/验证/测试集比例
-    sampling_rate: 12000  # 采样率(Hz)
-    window_size: 1024  # 信号窗口长度
+data:      # 数据集配置
+  ...
 
-model:
-  name: "CNN1D"  # 一维卷积神经网络模型
-  args:
-    input_channels: 1
-    hidden_channels: [16, 32, 64]
-    kernel_size: 3
-    output_dim: 10
+model:        # 模型配置
+  ...
 
-task:
-  name: "ClassificationTask"  # 故障分类任务
-  args:
-    num_classes: 10
-    class_weights: null  # 可选，处理类别不平衡
+task:         # 任务配置
+  ...
 
-trainer:
-  name: "ModularTrainer"  # 训练器
-  args:
-    epochs: 100
-    batch_size: 64
-    optimizer: "adam"
-    lr: 0.001
-    metrics: ["accuracy", "precision", "recall", "f1", "confusion_matrix"]
-    early_stopping: true
-    patience: 10
+trainer:      # 训练器配置
+  ...
 ```
 
-<!-- <div align="center">
-  <img src="pic/config_structure.png" alt="Configuration Structure" width="550"/>
-  <p><em>Vbench配置文件结构</em></p>
-</div> -->
+<details>
+<summary><b>👉 环境配置参数 (Environment)</b></summary>
 
-### 2. 运行实验 🧪
+<table>
+  <tr>
+    <th>序号</th>
+    <th>参数名</th>
+    <th>解释</th>
+    <th>备注</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>VBENCH_HOME</td>
+    <td>Vbench框架根目录</td>
+    <td>指向框架源代码所在位置</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>PYTHONPATH</td>
+    <td>Python环境路径</td>
+    <td>通常指向conda虚拟环境</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>project</td>
+    <td>项目名称</td>
+    <td>用于结果目录命名和日志标识</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>seed</td>
+    <td>随机种子</td>
+    <td>保证实验可重复性</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>output_dir</td>
+    <td>输出目录</td>
+    <td>实验结果保存路径</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>notes</td>
+    <td>实验备注</td>
+    <td>记录实验目的和特殊说明</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>iterations</td>
+    <td>实验重复次数</td>
+    <td>用于评估结果稳定性</td>
+  </tr>
+</table>
+</details>
+
+<details>
+<summary><b>👉 数据集配置参数 (Dataset)</b></summary>
+
+<table>
+  <tr>
+    <th>序号</th>
+    <th>参数名</th>
+    <th>解释</th>
+    <th>备注</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>data_dir</td>
+    <td>数据根目录</td>
+    <td>数据集存储位置</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>metadata_file</td>
+    <td>元数据文件</td>
+    <td>包含数据集描述信息的CSV文件</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>batch_size</td>
+    <td>批量大小</td>
+    <td>训练时每批处理的样本数</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>num_workers</td>
+    <td>数据加载线程数</td>
+    <td>并行加载数据的进程数</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>train_ratio</td>
+    <td>训练集比例</td>
+    <td>用于划分训练集和测试集</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>normalization</td>
+    <td>是否归一化</td>
+    <td>控制数据预处理中的归一化步骤</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>window_size</td>
+    <td>窗口大小</td>
+    <td>信号处理时的滑动窗口大小</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>stride</td>
+    <td>滑动步长</td>
+    <td>窗口移动的步长大小</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>truncate_lenth</td>
+    <td>截断长度</td>
+    <td>信号最大长度限制</td>
+  </tr>
+</table>
+</details>
+
+<details>
+<summary><b>👉 模型配置参数 (Model)</b></summary>
+
+<table>
+  <tr>
+    <th>序号</th>
+    <th>参数名</th>
+    <th>解释</th>
+    <th>备注</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>name</td>
+    <td>模型名称</td>
+    <td>如"M_01_ISFM"等</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>type</td>
+    <td>模型类型</td>
+    <td>模型架构类型，如"ISFM"</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>input_dim</td>
+    <td>输入维度</td>
+    <td>输入信号的通道数</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>num_heads</td>
+    <td>注意力头数</td>
+    <td>Transformer模型的多头注意力参数</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>num_layers</td>
+    <td>网络层数</td>
+    <td>模型的深度</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>d_model</td>
+    <td>模型维度</td>
+    <td>Transformer特征维度</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>d_ff</td>
+    <td>前馈网络维度</td>
+    <td>Transformer前馈网络的隐藏层大小</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>dropout</td>
+    <td>丢弃率</td>
+    <td>防止过拟合的参数</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>hidden_dim</td>
+    <td>隐藏层维度</td>
+    <td>网络中间层的特征维度</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>activation</td>
+    <td>激活函数</td>
+    <td>如"relu"等</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>num_patches</td>
+    <td>补丁数量</td>
+    <td>信号分割的补丁数</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>embedding</td>
+    <td>嵌入方式</td>
+    <td>如"E_01_HSE"等</td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td>patch_size_L</td>
+    <td>补丁长度</td>
+    <td>每个补丁包含的时间步长</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td>patch_size_C</td>
+    <td>补丁通道数</td>
+    <td>每个补丁包含的特征通道数</td>
+  </tr>
+  <tr>
+    <td>15</td>
+    <td>output_dim</td>
+    <td>输出维度</td>
+    <td>模型输出特征的维度</td>
+  </tr>
+  <tr>
+    <td>16</td>
+    <td>backbone</td>
+    <td>骨干网络</td>
+    <td>如"B_01_basic_transformer"</td>
+  </tr>
+  <tr>
+    <td>17</td>
+    <td>task_head</td>
+    <td>任务头</td>
+    <td>如"H_02_distance_cla"，用于特定任务</td>
+  </tr>
+</table>
+</details>
+
+<details>
+<summary><b>👉 任务配置参数 (Task)</b></summary>
+
+<table>
+  <tr>
+    <th>序号</th>
+    <th>参数名</th>
+    <th>解释</th>
+    <th>备注</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>name</td>
+    <td>任务名称</td>
+    <td>如"Classification"等</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>type</td>
+    <td>任务类型</td>
+    <td>如"CDDG"(跨数据集域泛化)</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>target_domain_num</td>
+    <td>目标域数量</td>
+    <td>用于域泛化任务</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>target_domain_id</td>
+    <td>目标域ID</td>
+    <td>指定的目标域索引</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>source_domain_id</td>
+    <td>源域ID</td>
+    <td>指定的源域索引</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>loss</td>
+    <td>损失函数</td>
+    <td>如"CE"(交叉熵)</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>metrics</td>
+    <td>评估指标</td>
+    <td>如["acc"]等</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>target_dataset_id</td>
+    <td>目标数据集ID</td>
+    <td>用于跨数据集任务</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>optimizer</td>
+    <td>优化器</td>
+    <td>如"adam"等</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>batch_size</td>
+    <td>批量大小</td>
+    <td>每批处理
+  <tr>
+    <td>8</td>
+    <td>args.patience</td>
+    <td>早停耐心值</td>
+    <td>性能不提升多少轮次后停止训练</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>args.weight_decay</td>
+    <td>权重衰减</td>
+    <td>可选，L2正则化系数</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>args.lr_scheduler</td>
+    <td>学习率调度器</td>
+    <td>可选值: 'step', 'cosine', 'plateau'等</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>args.checkpoint_interval</td>
+    <td>检查点保存间隔</td>
+    <td>可选，每多少个epoch保存一次模型</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>args.gradient_clipping</td>
+    <td>梯度裁剪值</td>
+    <td>可选，防止梯度爆炸</td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td>args.validation_interval</td>
+    <td>验证间隔</td>
+    <td>可选，每多少个batch进行一次验证</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td>args.mixed_precision</td>
+    <td>是否使用混合精度训练</td>
+    <td>可选，加速训练并减少显存占用</td>
+  </tr>
+</table>
+</details>
+
+<details>
+<summary><b>👉 训练器配置参数 (Trainer)</b></summary>
+
+<table>
+  <tr>
+    <th>序号</th>
+    <th>参数名</th>
+    <th>解释</th>
+    <th>备注</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>name</td>
+    <td>训练器名称</td>
+    <td>如"Default_trainer"</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>args.wandb</td>
+    <td>是否启用WandB</td>
+    <td>用于实验跟踪和可视化</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>args.pruning</td>
+    <td>是否启用模型裁剪</td>
+    <td>用于模型压缩</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>args.num_epochs</td>
+    <td>训练轮数</td>
+    <td>模型训练的总轮数</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>args.gpus</td>
+    <td>GPU数量</td>
+    <td>用于训练的GPU数量</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>args.early_stopping</td>
+    <td>是否启用早停</td>
+    <td>防止过拟合的策略</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>args.patience</td>
+    <td>早停耐心值</td>
+    <td>性能不提升多少轮次后停止训练</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>args.device</td>
+    <td>训练设备</td>
+    <td>如'cuda'、'cpu'等</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>args.optimizer</td>
+    <td>优化器类型</td>
+    <td>可选，默认为'adam'</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>args.learning_rate</td>
+    <td>学习率</td>
+    <td>可选，默认为0.001</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>args.weight_decay</td>
+    <td>权重衰减系数</td>
+    <td>可选，L2正则化参数</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>args.gradient_accumulation</td>
+    <td>梯度累积步数</td>
+    <td>可选，用于大批量训练</td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td>args.checkpoint_dir</td>
+    <td>检查点保存目录</td>
+    <td>可选，模型保存路径</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td>args.resume</td>
+    <td>是否从检查点恢复</td>
+    <td>可选，用于继续之前的训练</td>
+  </tr>
+  <tr>
+    <td>15</td>
+    <td>args.mixed_precision</td>
+    <td>是否启用混合精度</td>
+    <td>可选，加速训练并减少显存占用</td>
+  </tr>
+</table>
+</details>
+
+<!-- ### 2. 运行实验 🧪
 
 ```bash
 # 基本用法
@@ -244,7 +680,7 @@ python main.py --config configs/your_config.yaml --wandb --project "vbench-exper
 
 # 使用特定GPU
 CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
-```
+``` -->
 
 ### 3. 结果分析 📊
 

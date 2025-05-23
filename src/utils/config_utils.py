@@ -49,7 +49,7 @@ def path_name(configs, iteration=0):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if model_name == "ISFM":
         model_name = f'ISFM_{configs["model"]["args"]["embedding"]}_{configs["model"]["args"]["backbone"]}_{configs["model"]["args"]["task_head"]}'
-    exp_name = f"Meta_{dataset_name}/Model_{model_name}/Task_{task_name}Trainer_{trainer_name}_{timestamp}"
+    exp_name = f"Meta_{dataset_name}/Model_{model_name}/Task_{task_name}_Trainer_{trainer_name}_{timestamp}"
     
     # 创建结果保存路径
     result_dir = f"save/{exp_name}/iter_{iteration}"

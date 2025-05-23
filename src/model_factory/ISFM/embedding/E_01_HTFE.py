@@ -15,7 +15,7 @@ class E_01_HTFE(nn.Module):
         super(E_01_HTFE, self).__init__()
         self.patch_size_L = args.patch_size_L  # Patch size along L dimension
         self.patch_size_C = args.patch_size_C  # Patch size along C dimension
-        self.num_patches = args.n_patches    # Number of patches to sample
+        self.num_patches = args.num_patches    # Number of patches to sample
         self.output_dim =  args.output_dim
         self.f_s =  args.f_s  # Sampling frequency
         self.T = 1.0 /  args_d.f_s  # Sampling period

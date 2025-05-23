@@ -2,10 +2,13 @@ import argparse
 import os
 import pandas as pd
 import wandb
+import torch
 from pytorch_lightning import seed_everything
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.utils.config_utils import load_config, path_name, transfer_namespace
-from src.data_factory import build_dataset
+from src.utils.utils import load_best_model_checkpoint
+from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
@@ -20,8 +23,8 @@ import yaml
 from pprint import pprint
 
 
-def pipeline(config_path='configs/demo/basic.yaml'):
-    """默认流水线执行入口，使用工厂模式调用各个组件
+def pipeline(args):
+    """领域泛化(Domain Generalization)任务的流水线
     
     Args:
         config_path: 配置文件路径
@@ -32,6 +35,7 @@ def pipeline(config_path='configs/demo/basic.yaml'):
     # -----------------------
     # 1. 加载配置文件
     # -----------------------
+    config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
     configs = load_config(config_path)
     
@@ -62,6 +66,13 @@ def pipeline(config_path='configs/demo/basic.yaml'):
             os.environ[key] = str(value)
             print(f"[INFO] 设置环境变量: {key}={value}")
     
+    # 创建实验目录
+    print("[INFO] 创建实验目录...")
+    VBENCH_HOME = args_environment.VBENCH_HOME
+    VBENCH_DATA = args_data.data_dir
+    sys.path.append(VBENCH_HOME)
+    sys.path.append(VBENCH_DATA)
+    
     # -----------------------
     # 2. 多次迭代训练与测试
     # -----------------------
@@ -79,74 +90,64 @@ def pipeline(config_path='configs/demo/basic.yaml'):
         print(f"[INFO] 设置随机种子: {current_seed}")
         
         # 初始化 WandB
-        if args_environment.WANDB_MODE:
+        if getattr(args_trainer, 'wandb', False):
             project_name = getattr(args_trainer, 'project', 'vbench')
-            wandb.init(project=project_name, name=name, notes=args_environment.notes)
+            notes = f'Note1:{args.notes}\
+                Note2:{args_environment.notes}'
+            wandb.init(project=project_name, name=name, notes=notes)
         else:
             wandb.init(mode='disabled')  # 避免 wandb 报错
         
-        # 按照 data -> model -> task -> trainer 的顺序构建组件
+        # 构建数据工厂
+        print("[INFO] 构建数据工厂...")
+        data_factory = build_data(args_data, args_task)
         
-        # 1. 构建数据集
-        print(f"[INFO] 构建数据集")
-        dataset = build_dataset(args_data)
+        # 构建模型
+        print("[INFO] 构建模型...")
+        model = build_model(args_model,metadata=data_factory.get_metadata())
         
-        # 2. 构建模型
-        print(f"[INFO] 构建模型: {args_model.name}")
-        model = build_model(configs['model'])
-        
-        # 3. 构建任务
-        print(f"[INFO] 构建任务: {configs['task']['name']}")
-        task_config = configs['task'].copy()
-        task_config['args'] = task_config.get('args', {})
-        task_config['args']['data_config'] = configs['data']
-        task = build_task(task_config)
-        
-        # 设置数据集和模型到任务中
-        task.set_dataset(dataset)
-        task.set_model(model)
-        
-        # 从任务中获取适配特定任务的数据加载器
-        print(f"[INFO] 从任务中获取数据加载器")
-        train_loader = task.get_train_loader()
-        val_loader = task.get_val_loader()
-        test_loader = task.get_test_loader()
-        
-        # 从任务中获取损失函数和其他评估指标
-        loss_fn = task.get_loss_function()
-        metrics = task.get_metrics()
-        
-        # 4. 构建训练器
-        print(f"[INFO] 构建训练器: {configs['trainer']['name']}")
-        trainer_config = configs['trainer'].copy()
-        trainer = build_trainer(trainer_config)
-        
-        # 执行训练和评估
-        print(f"[INFO] 开始训练 (迭代 {it+1})")
-        result = trainer(
-            task=task,
-            train_loader=train_loader,
-            val_loader=val_loader,
-            test_loader=test_loader,
-            loss_function=loss_fn,
-            metrics=metrics,
-            use_wandb=args_environment.use_wandb,
-            notes=args_environment.notes,
-            save_path=path,
-            configs=configs,
-            args_trainer=args_trainer,
-            args_model=args_model,
-            args_data=args_data,
+        # 构建任务
+        print("[INFO] 构建任务...")
+        task = build_task(
             args_task=args_task,
-            iteration=it
+            network=model,
+            args_data=args_data,
+            args_model=args_model,
+            args_trainer=args_trainer,
+            args_environment=args_environment,
+            metadata=data_factory.get_metadata()
         )
-        all_results.append(result)
+        
+        # 构建训练器
+        print("[INFO] 构建训练器...")
+        trainer = build_trainer(
+            args_environment,
+            args_trainer,
+            args_data,
+            path
+        )
+        
+        # 执行训练
+        print("[INFO] 开始训练...")
+        trainer.fit(
+            task,
+            data_factory.get_dataloader('train'),
+            data_factory.get_dataloader('val')
+        )
+        
+        # 加载最佳模型并测试
+        print("[INFO] 加载最佳模型并测试...")
+        task = load_best_model_checkpoint(task, trainer)
+        result = trainer.test(task, data_factory.get_dataloader('test'))
+        all_results.append(result[0])  # Lightning返回的是包含字典的列表
         
         # 保存结果
-        result_df = pd.DataFrame([result])
+        print("[INFO] 保存测试结果...")
+        result_df = pd.DataFrame([result[0]])
         result_df.to_csv(os.path.join(path, f'test_result_{it}.csv'), index=False)
-        # 确保 wandb 正确关闭
-        if args_environment.WANDB_MODE:
+        
+        # 关闭wandb
+        if getattr(args_environment, 'WANDB_MODE', False):
             wandb.finish()
     
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
@@ -154,37 +155,22 @@ def pipeline(config_path='configs/demo/basic.yaml'):
     return all_results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 解析命令行参数
-    parser = argparse.ArgumentParser(description='Vbench 默认流水线')
+    parser = argparse.ArgumentParser(description="领域泛化(DG)任务流水线")
     
     parser.add_argument('--config_path', 
-                        type=str,
-                        default='configs/demo/basic.yaml',
+                        type=str, 
+                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml',
                         help='配置文件路径')
-    parser.add_argument('--iterations', 
-                        type=int, 
-                        default=1,
-                        help='实验重复次数')
     parser.add_argument('--notes', 
                         type=str, 
-                        default='实验备注',
+                        default='',
                         help='实验备注')
-    parser.add_argument('--use_wandb', 
-                        action='store_true',
-                        help='是否使用 WandB 记录实验')
-    parser.add_argument('--seed', 
-                        type=int, 
-                        default=42,
-                        help='随机种子')
+
     
     args = parser.parse_args()
     
-    # 执行流水线
-    pipeline(
-        config_path=args.config_path,
-        iterations=args.iterations,
-        use_wandb=args.use_wandb,
-        notes=args.notes,
-        seed=args.seed
-    )
+    # 执行DG流水线
+    results = pipeline(args)
+    print(f"完成所有实验！")

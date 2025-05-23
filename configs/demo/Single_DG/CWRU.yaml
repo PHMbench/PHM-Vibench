@@ -12,7 +12,7 @@ environment:
   seed: 42
   output_dir: "results/dummy_test"
   notes: "This is a dummy test configuration."
-  iterations: 2
+  iterations: 1
 
 # 数据配置
 data:
@@ -65,7 +65,7 @@ task:
     pin_memory: true
     shuffle: true
     log_interval: 10
-    epochs: 10
+    epochs: 1
     lr: 0.001
     weight_decay: 0.0001
     early_stopping: true
@@ -81,7 +81,7 @@ trainer:
   args:
     wandb: true
     pruning: False
-    n_epochs: 10
+    num_epochs: 10
     gpus: 1
     early_stopping: true
     patience: 5
