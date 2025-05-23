@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class Model(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args,metadata=None):
         """
         Initialize a simple transformer model for sequence classification.
         

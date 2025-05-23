@@ -20,38 +20,51 @@ class H5DataDict:
         接口一致性：如果其他代码假定 data_dict[id] 直接返回 NumPy 数组，使用原始 h5f 会导致接口不一致。
                 
         """
-        if isinstance(h5file, str):
-            self.h5file = h5py.File(h5file, mode)
-            self.should_close = True
-        else:
-            self.h5file = h5file
-            self.should_close = False
+        # if isinstance(h5file, str):
+        #     self.h5file = h5py.File(h5file, mode)
+        #     self.should_close = True
+        # else:
+        #     self.h5file = h5file
+        self.should_close = True
+        self.h5_file = h5file
+        self.h5f = None
 
-        self._keys = set(self.h5file.keys())
+        
+        
+    def _open_if_needed(self):
+        if self.h5f is None or not hasattr(self.h5f, 'id') or not self.h5f.id.valid:
+            self.h5f = h5py.File(self.h5_file, 'r')
+        self._keys = set(self.h5f.keys())
     
     def __getitem__(self, key):
         """获取指定ID的数据，惰性加载"""
-        if str(key) not in self.h5file:
+        self._open_if_needed()
+        if str(key) not in self.h5f:
             raise KeyError(f"ID {key} not found in HDF5 file")
         # 调用时才实际加载数据到内存
-        return self.h5file[str(key)][:]
+        return self.h5f[str(key)][:]
     
     def __contains__(self, key):
+        self._open_if_needed()
         """检查是否包含指定ID"""
-        return str(key) in self.h5file
+        return str(key) in self.h5f
     
     def keys(self):
         """返回所有可用的ID"""
+        self._open_if_needed()
         return self._keys
     
     def items(self):
         """返回ID和数据的迭代器（惰性加载）"""
+        self._open_if_needed()
         for k in self._keys:
-            yield int(k), self.h5file[k][:]
+            yield int(k), self.h5f[k][:]
     
     def __len__(self):
         """返回数据集数量"""
+        self._open_if_needed()
         return len(self._keys)
     def __del__(self):
-        if self.should_close and hasattr(self, 'h5file') and self.h5file:
-            self.h5file.close()
+        self._open_if_needed()
+        if self.should_close and hasattr(self, 'h5file') and self.h5f:
+            self.h5f.close()

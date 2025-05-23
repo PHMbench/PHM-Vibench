@@ -7,7 +7,8 @@ import glob
 from typing import Dict, Any
 from .model_factory import model_factory
 
-def build_model(args: Dict[str, Any]) -> Any:
+
+def build_model(args: Dict[str, Any],metadata = None) -> Any:
     """根据配置构建模型实例
     
     Args:
@@ -17,7 +18,7 @@ def build_model(args: Dict[str, Any]) -> Any:
         模型实例
     """
 
-    return model_factory(args)
+    return model_factory(args,metadata = metadata)
 
 
 

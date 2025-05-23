@@ -17,13 +17,13 @@ class E_01_HSE(nn.Module):
         output_dim (int): Output feature dimension after linear mixing.
         f_s (int): Sampling frequency, used to compute sampling period (T = 1/f_s).
     """
-    def __init__(self, args,args_d):
+    def __init__(self, args):
         super(E_01_HSE, self).__init__()
         self.patch_size_L = args.patch_size_L  # Patch size along L dimension
         self.patch_size_C = args.patch_size_C  # Patch size along C dimension
         self.num_patches = args.n_patches    # Number of patches to sample
         self.output_dim =  args.output_dim
-        self.args_d = args_d   
+        # self.args_d = args_d   
         # self.f_s =  args_d.f_s  # Sampling frequency
         # self.T = 1.0 /  args_d.f_s  # Sampling period
 
@@ -32,7 +32,7 @@ class E_01_HSE(nn.Module):
         self.linear1 = nn.Linear(self.patch_size_L * (self.patch_size_C * 2), self.output_dim)
         self.linear2 = nn.Linear(self.output_dim, self.output_dim)
 
-    def forward(self, x: torch.Tensor,data_name) -> torch.Tensor:
+    def forward(self, x: torch.Tensor,fs) -> torch.Tensor:
         """
         Forward pass of RandomPatchMixer.
 
@@ -45,8 +45,8 @@ class E_01_HSE(nn.Module):
         """
         B, L, C = x.size()
         device = x.device
-        fs = self.args_d.task[data_name]['f_s']
-        T = 1.0 / fs
+        # fs = self.args_d.task[data_name]['f_s']
+        T = 1.0 / fs # [B,1]  # id one batch
 
         # Generate time axis 't' for each sample, shape: (B, L)
         t = torch.arange(L, device=device, dtype=torch.float32) * T
