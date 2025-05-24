@@ -27,10 +27,10 @@ class IdIncludedDataset(Dataset):
             #     print(f"警告: ID '{id_str}' 不是字符串，已跳过。")
             #     continue
             
-            for i in range(len(original_dataset)):
+            for i in range(len(original_dataset)): # 数据集id ，样本id； 样本id 当前数据集的id
                 self.flat_sample_map.append({'id': id_str, 'original_idx': i})
         
-        self._total_samples = len(self.flat_sample_map)
+        self._total_samples = len(self.flat_sample_map) # 计算所有原始数据集的样本总数
 
     def __len__(self):
         """
@@ -53,215 +53,215 @@ class IdIncludedDataset(Dataset):
             raise IndexError(f"全局索引 {global_idx} 超出范围 (总样本数: {self._total_samples})")
 
         sample_info = self.flat_sample_map[global_idx]
-        original_id = sample_info['id']
+        data_id = sample_info['id']
         idx_in_original_dataset = sample_info['original_idx']
 
         # 从原始数据集中获取 (x, y)
-        original_dataset_instance = self.dataset_dict_refs[original_id]
+        original_dataset_instance = self.dataset_dict_refs[data_id]
         out = original_dataset_instance[idx_in_original_dataset] # may be (x, y) or (x, y, z)
         
-        return  out, original_id
+        return  out, data_id
 
-class BalancedDataLoaderIterator:
-    def __init__(self, dataloaders):
-        self.dataloaders = dataloaders
+# class BalancedDataLoaderIterator:
+#     def __init__(self, dataloaders):
+#         self.dataloaders = dataloaders
 
-        self.num_dataloaders = len(dataloaders)
+#         self.num_dataloaders = len(dataloaders)
 
-        max_length = max(len(dataloader) for dataloader in dataloaders)
+#         max_length = max(len(dataloader) for dataloader in dataloaders)
 
-        length_list = [len(dataloader) for dataloader in dataloaders]
-        print("data loader length:", length_list)
-        print("max dataloader length:", max_length,
-              "epoch iteration:", max_length * self.num_dataloaders)
-        self.total_length = max_length * self.num_dataloaders
-        self.current_iteration = 0
-        self.probabilities = torch.ones(
-            self.num_dataloaders, dtype=torch.float) / self.num_dataloaders
+#         length_list = [len(dataloader) for dataloader in dataloaders]
+#         print("data loader length:", length_list)
+#         print("max dataloader length:", max_length,
+#               "epoch iteration:", max_length * self.num_dataloaders)
+#         self.total_length = max_length * self.num_dataloaders
+#         self.current_iteration = 0
+#         self.probabilities = torch.ones(
+#             self.num_dataloaders, dtype=torch.float) / self.num_dataloaders
 
-    def __iter__(self):
-        self.iterators = [iter(dataloader) for dataloader in self.dataloaders]
-        self.current_iteration = 0
-        return self
+#     def __iter__(self):
+#         self.iterators = [iter(dataloader) for dataloader in self.dataloaders]
+#         self.current_iteration = 0
+#         return self
 
-    def __next__(self):
-        if self.current_iteration >= self.total_length:
-            raise StopIteration
+#     def __next__(self):
+#         if self.current_iteration >= self.total_length:
+#             raise StopIteration
 
-        chosen_index = torch.multinomial(self.probabilities, 1).item()
-        try:
-            sample = next(self.iterators[chosen_index])
-        except StopIteration:
-            self.iterators[chosen_index] = iter(self.dataloaders[chosen_index])
-            sample = next(self.iterators[chosen_index])
+#         chosen_index = torch.multinomial(self.probabilities, 1).item()
+#         try:
+#             sample = next(self.iterators[chosen_index])
+#         except StopIteration:
+#             self.iterators[chosen_index] = iter(self.dataloaders[chosen_index])
+#             sample = next(self.iterators[chosen_index])
 
-        self.current_iteration += 1
-        return sample, chosen_index
+#         self.current_iteration += 1
+#         return sample, chosen_index
 
-    def __len__(self):
-        return self.total_length
+#     def __len__(self):
+#         return self.total_length
 
-    def generate_fake_samples_for_batch(self, dataloader_id, batch_size):  # Try
-        if dataloader_id >= len(self.dataloaders) or dataloader_id < 0:
-            raise ValueError("Invalid dataloader ID")
+#     def generate_fake_samples_for_batch(self, dataloader_id, batch_size):  # Try
+#         if dataloader_id >= len(self.dataloaders) or dataloader_id < 0:
+#             raise ValueError("Invalid dataloader ID")
 
-        dataloader = self.dataloaders[dataloader_id]
-        iterator = iter(dataloader)
+#         dataloader = self.dataloaders[dataloader_id]
+#         iterator = iter(dataloader)
 
-        try:
-            sample_batch = next(iterator)
-            fake_samples = []
+#         try:
+#             sample_batch = next(iterator)
+#             fake_samples = []
 
-            for sample in sample_batch:
-                if isinstance(sample, torch.Tensor):
-                    fake_sample = torch.zeros(
-                        [batch_size] + list(sample.shape)[1:])
-                    fake_samples.append(fake_sample)
-                else:
-                    pass
+#             for sample in sample_batch:
+#                 if isinstance(sample, torch.Tensor):
+#                     fake_sample = torch.zeros(
+#                         [batch_size] + list(sample.shape)[1:])
+#                     fake_samples.append(fake_sample)
+#                 else:
+#                     pass
 
-            return fake_samples, dataloader_id
-        except StopIteration:
-            return None
+#             return fake_samples, dataloader_id
+#         except StopIteration:
+#             return None
 
 
-class Balanced_DataLoader_Dict_Iterator:
-    def __init__(self, dataloaders_dict, mode='test'):
-        """
-        初始化平衡数据加载器迭代器
+# class Balanced_DataLoader_Dict_Iterator:
+#     def __init__(self, dataloaders_dict, mode='test'):
+#         """
+#         初始化平衡数据加载器迭代器
         
-        Args:
-            dataloaders_dict: 数据加载器字典 {数据集名称: DataLoader}
-            mode: 运行模式，可选值为 'train', 'val', 'test'
-                 'train' - 随机采样各数据集
-                 'val'/'test' - 顺序遍历所有数据集
-        """
-        self.dataloaders_dict = dataloaders_dict
-        self.data_names = list(dataloaders_dict.keys())  # 这个name 实际上是metadata的id 和这个BDDI 的id不同，CWRU从1开始，这里从0开始
-        self.num_dataloaders = len(dataloaders_dict)
-        self.mode = mode
+#         Args:
+#             dataloaders_dict: 数据加载器字典 {数据集名称: DataLoader}
+#             mode: 运行模式，可选值为 'train', 'val', 'test'
+#                  'train' - 随机采样各数据集
+#                  'val'/'test' - 顺序遍历所有数据集
+#         """
+#         self.dataloaders_dict = dataloaders_dict
+#         self.data_names = list(dataloaders_dict.keys())  # 这个name 实际上是metadata的id 和这个BDDI 的id不同，CWRU从1开始，这里从0开始
+#         self.num_dataloaders = len(dataloaders_dict)
+#         self.mode = mode
         
-        # 创建各个模式的索引和迭代器
-        if mode in ['val', 'test']:
-            # 验证/测试模式：准备顺序索引
-            self.current_dataloader_idx = 0
-            self.total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders_dict.values())
-            self.samples_seen = 0
+#         # 创建各个模式的索引和迭代器
+#         if mode in ['val', 'test']:
+#             # 验证/测试模式：准备顺序索引
+#             self.current_dataloader_idx = 0
+#             self.total_samples = sum(len(dataloader.dataset) for dataloader in dataloaders_dict.values())
+#             self.samples_seen = 0
             
-            # 记录每个数据集的样本数量，用于确定何时切换到下一个数据集
-            self.dataset_sizes = {name: len(loader.dataset) for name, loader in dataloaders_dict.items()}
-            self.current_dataset_samples_seen = 0
-        else:
-            # 训练模式：使用随机抽样
-            self.max_length = max(len(dataloader) for dataloader in dataloaders_dict.values())
-            length_list = [len(dataloader) for dataloader in dataloaders_dict.values()]
-            print("data loader length:", length_list)
-            print("max dataloader length:", self.max_length,
-                  "epoch iteration:", self.max_length * self.num_dataloaders)
-            self.total_length = self.max_length * self.num_dataloaders
-            self.probabilities = torch.ones(
-                self.num_dataloaders, dtype=torch.float) / self.num_dataloaders
+#             # 记录每个数据集的样本数量，用于确定何时切换到下一个数据集
+#             self.dataset_sizes = {name: len(loader.dataset) for name, loader in dataloaders_dict.items()}
+#             self.current_dataset_samples_seen = 0
+#         else:
+#             # 训练模式：使用随机抽样
+#             self.max_length = max(len(dataloader) for dataloader in dataloaders_dict.values())
+#             length_list = [len(dataloader) for dataloader in dataloaders_dict.values()]
+#             print("data loader length:", length_list)
+#             print("max dataloader length:", self.max_length,
+#                   "epoch iteration:", self.max_length * self.num_dataloaders)
+#             self.total_length = self.max_length * self.num_dataloaders
+#             self.probabilities = torch.ones(
+#                 self.num_dataloaders, dtype=torch.float) / self.num_dataloaders
         
-        self.current_iteration = 0
+#         self.current_iteration = 0
         
-        # 初始化迭代器
-        self.iterators = {data_name: iter(dataloader) 
-                         for data_name, dataloader in self.dataloaders_dict.items()}
-        # self.iterators = {}
+#         # 初始化迭代器
+#         self.iterators = {data_name: iter(dataloader) 
+#                          for data_name, dataloader in self.dataloaders_dict.items()}
+#         # self.iterators = {}
 
-    def __iter__(self):
-        # 重置迭代器和计数器
-        self.iterators = {data_name: iter(dataloader) 
-                         for data_name, dataloader in self.dataloaders_dict.items()}
-        self.current_iteration = 0
+#     def __iter__(self):
+#         # 重置迭代器和计数器
+#         self.iterators = {data_name: iter(dataloader) 
+#                          for data_name, dataloader in self.dataloaders_dict.items()}
+#         self.current_iteration = 0
         
-        if self.mode in ['val', 'test']:
-            self.current_dataloader_idx = 0
-            self.current_dataset_samples_seen = 0
-            self.samples_seen = 0
+#         if self.mode in ['val', 'test']:
+#             self.current_dataloader_idx = 0
+#             self.current_dataset_samples_seen = 0
+#             self.samples_seen = 0
             
-        return self
+#         return self
 
-    def __next__(self):
-        if self.mode in ['val', 'test']:
-            # 验证/测试模式：顺序迭代
-            if self.samples_seen >= self.total_samples:
-                raise StopIteration
+#     def __next__(self):
+#         if self.mode in ['val', 'test']:
+#             # 验证/测试模式：顺序迭代
+#             if self.samples_seen >= self.total_samples:
+#                 raise StopIteration
             
-            # 获取当前数据集名称
-            chosen_data_name = self.data_names[self.current_dataloader_idx]
+#             # 获取当前数据集名称
+#             chosen_data_name = self.data_names[self.current_dataloader_idx]
             
-            try:
-                sample = next(self.iterators[chosen_data_name])
-                batch_size = sample[0].shape[0] if isinstance(sample[0], torch.Tensor) else 1
-                self.samples_seen += batch_size
-                self.current_dataset_samples_seen += batch_size
+#             try:
+#                 sample = next(self.iterators[chosen_data_name])
+#                 batch_size = sample[0].shape[0] if isinstance(sample[0], torch.Tensor) else 1
+#                 self.samples_seen += batch_size
+#                 self.current_dataset_samples_seen += batch_size
                 
-                # 检查是否需要切换到下一个数据集
-                if self.current_dataset_samples_seen >= self.dataset_sizes[chosen_data_name]:
-                    self.current_dataloader_idx = (self.current_dataloader_idx + 1) % self.num_dataloaders
-                    self.current_dataset_samples_seen = 0
+#                 # 检查是否需要切换到下一个数据集
+#                 if self.current_dataset_samples_seen >= self.dataset_sizes[chosen_data_name]:
+#                     self.current_dataloader_idx = (self.current_dataloader_idx + 1) % self.num_dataloaders
+#                     self.current_dataset_samples_seen = 0
                 
-                return sample, chosen_data_name
-            except StopIteration:
-                # 如果当前数据集迭代完成，切换到下一个
-                self.current_dataloader_idx = (self.current_dataloader_idx + 1) % self.num_dataloaders
-                self.current_dataset_samples_seen = 0
+#                 return sample, chosen_data_name
+#             except StopIteration:
+#                 # 如果当前数据集迭代完成，切换到下一个
+#                 self.current_dataloader_idx = (self.current_dataloader_idx + 1) % self.num_dataloaders
+#                 self.current_dataset_samples_seen = 0
                 
-                if self.current_dataloader_idx == 0:  # 所有数据集都迭代完了一遍
-                    raise StopIteration
+#                 if self.current_dataloader_idx == 0:  # 所有数据集都迭代完了一遍
+#                     raise StopIteration
                 
-                # 重置当前数据集的迭代器
-                chosen_data_name = self.data_names[self.current_dataloader_idx]
-                self.iterators[chosen_data_name] = iter(self.dataloaders_dict[chosen_data_name])
-                return self.__next__()  # 递归调用，获取下一个数据集的样本
-        else:
-            # 训练模式：随机抽样
-            if self.current_iteration >= self.total_length:
-                raise StopIteration
+#                 # 重置当前数据集的迭代器
+#                 chosen_data_name = self.data_names[self.current_dataloader_idx]
+#                 self.iterators[chosen_data_name] = iter(self.dataloaders_dict[chosen_data_name])
+#                 return self.__next__()  # 递归调用，获取下一个数据集的样本
+#         else:
+#             # 训练模式：随机抽样
+#             if self.current_iteration >= self.total_length:
+#                 raise StopIteration
 
-            # 随机选择一个数据名称
-            chosen_index = torch.multinomial(self.probabilities, 1).item()
-            chosen_data_name = self.data_names[chosen_index]
+#             # 随机选择一个数据名称
+#             chosen_index = torch.multinomial(self.probabilities, 1).item()
+#             chosen_data_name = self.data_names[chosen_index]
             
-            try:
-                sample = next(self.iterators[chosen_data_name])
-            except StopIteration:
-                # 重新初始化迭代器
-                self.iterators[chosen_data_name] = iter(self.dataloaders_dict[chosen_data_name])
-                sample = next(self.iterators[chosen_data_name])
+#             try:
+#                 sample = next(self.iterators[chosen_data_name])
+#             except StopIteration:
+#                 # 重新初始化迭代器
+#                 self.iterators[chosen_data_name] = iter(self.dataloaders_dict[chosen_data_name])
+#                 sample = next(self.iterators[chosen_data_name])
 
-            self.current_iteration += 1
-            return sample, chosen_data_name
+#             self.current_iteration += 1
+#             return sample, chosen_data_name
 
-    def __len__(self):
-        if self.mode in ['val', 'test']:
-            return sum(len(dataloader) for dataloader in self.dataloaders_dict.values())
-        else:
-            return self.total_length
+#     def __len__(self):
+#         if self.mode in ['val', 'test']:
+#             return sum(len(dataloader) for dataloader in self.dataloaders_dict.values())
+#         else:
+#             return self.total_length
 
-    def generate_fake_samples_for_batch(self, data_name, batch_size):
-        if data_name not in self.dataloaders_dict:
-            raise ValueError(f"Invalid data name: {data_name}")
+#     def generate_fake_samples_for_batch(self, data_name, batch_size):
+#         if data_name not in self.dataloaders_dict:
+#             raise ValueError(f"Invalid data name: {data_name}")
 
-        dataloader = self.dataloaders_dict[data_name]
-        iterator = iter(dataloader)
+#         dataloader = self.dataloaders_dict[data_name]
+#         iterator = iter(dataloader)
 
-        try:
-            sample_batch = next(iterator)
-            fake_samples = []
+#         try:
+#             sample_batch = next(iterator)
+#             fake_samples = []
 
-            for sample in sample_batch:
-                if isinstance(sample, torch.Tensor):
-                    fake_sample = torch.zeros(
-                        [batch_size] + list(sample.shape)[1:])
-                    fake_samples.append(fake_sample)
-                else:
-                    pass
+#             for sample in sample_batch:
+#                 if isinstance(sample, torch.Tensor):
+#                     fake_sample = torch.zeros(
+#                         [batch_size] + list(sample.shape)[1:])
+#                     fake_samples.append(fake_sample)
+#                 else:
+#                     pass
 
-            return fake_samples, data_name
-        except StopIteration:
-            return None
+#             return fake_samples, data_name
+#         except StopIteration:
+#             return None
         
 #%% 
 if __name__ == "__main__":

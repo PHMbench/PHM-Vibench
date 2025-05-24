@@ -13,9 +13,9 @@ def main():
     
     parser.add_argument('--config_path', 
                         type=str, 
-                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml',
+                        default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-                        # default='configs/demo/dummy_test.yaml',
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
                         help='配置文件路径')
     parser.add_argument('--notes', 
                         type=str, 
@@ -30,7 +30,7 @@ def main():
     args = parser.parse_args()
     pipeline = importlib.import_module(f'src.{args.pipeline}')
     # 执行DG流水线
-    results = pipeline(args)
+    results = pipeline.pipeline(args)
     print(f"完成所有实验！")
     
     return results

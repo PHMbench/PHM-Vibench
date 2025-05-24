@@ -2,10 +2,10 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data import Sampler
 import random
-from .balanced_data_loader import IdIncludedDataset
+from ..balanced_data_loader import IdIncludedDataset
 
 class BalancedIdSampler(Sampler):
-    def __init__(self, data_source, common_samples_per_id=None, shuffle_within_id=True, shuffle_all=True):
+    def __init__(self, data_source: IdIncludedDataset, common_samples_per_id=None, shuffle_within_id=True, shuffle_all=True):
         """
         Sampler 实现对不同原始数据集(ID)的平衡加载。
 
@@ -35,6 +35,7 @@ class BalancedIdSampler(Sampler):
 
         self.id_list = list(self.indices_per_id.keys())
         if not self.id_list: # 如果没有任何有效的ID
+            print("没有有效的ID，Sampler将不会工作。")
             self._num_samples_epoch = 0
             self.target_samples_per_id = 0
             return
@@ -129,7 +130,7 @@ class GroupedIdBatchSampler(Sampler):
 
             if original_id not in self.indices_per_id:
                 self.indices_per_id[original_id] = []
-            self.indices_per_id[original_id].append(global_idx)
+            self.indices_per_id[original_id].append(global_idx) # 每个dataset的id
         
         self.id_list = list(self.indices_per_id.keys())
 
@@ -175,7 +176,7 @@ class GroupedIdBatchSampler(Sampler):
         # if self.shuffle and len(all_batches_for_epoch) > 1 :
         #     random.shuffle(all_batches_for_epoch)
             
-        return iter(all_batches_for_epoch)
+        return iter(all_batches_for_epoch) # [[1,2,3],[4,5,6],...,[7,8,9]] 这样的列表
 
     def __len__(self):
         """返回一个 epoch 中的总批次数。"""

@@ -9,13 +9,13 @@ import pandas as pd
 import numpy as np
 import h5py
 from .H5DataDict import H5DataDict
-from .balanced_data_loader import IdIncludedDataset,Balanced_DataLoader_Dict_Iterator # TODO del balanced_data_loader
+from .balanced_data_loader import IdIncludedDataset # ,Balanced_DataLoader_Dict_Iterator # TODO del balanced_data_loader
 from torch.utils.data import DataLoader
 import copy
 import concurrent.futures
 from tqdm import tqdm  # 用于显示进度条
 from torch.utils.data import Dataset
-from .sampler import GroupedIdBatchSampler
+from .samplers.sampler import GroupedIdBatchSampler, BalancedIdSampler
 
 
 def smart_read_csv(file_path, auto_detect=True):
@@ -423,42 +423,42 @@ class data_factory:
 
 
     def _init_dataloader(self):
-        train_batch_sampler = GroupedIdBatchSampler(
-            data_source=self.train_dataset,
-            batch_size=self.args_data.batch_size,
-            shuffle=True,
-            drop_last=True # 或 True，取决于您的需求
-        )
-        val_batch_sampler = GroupedIdBatchSampler(
-            data_source=self.val_dataset,
-            batch_size=self.args_data.batch_size,
-            shuffle=False,
-            drop_last=False # 或 True，取决于您的需求
-        )
-        test_batch_sampler = GroupedIdBatchSampler(
-            data_source=self.test_dataset,
-            batch_size=self.args_data.batch_size,
-            shuffle=False,
-            drop_last=False # 或 True，取决于您的需求
-        )
+        # train_batch_sampler = BalancedIdSampler(
+        #     data_source=self.train_dataset,
+        #     # batch_size=self.args_data.batch_size,
+        #     shuffle_within_id=True,
+        #     shuffle_all=True,
+        # )
+        # val_batch_sampler = GroupedIdBatchSampler(
+        #     data_source=self.val_dataset,
+        #     batch_size=self.args_data.batch_size,
+        #     shuffle=False,
+        #     drop_last=False # 或 True，取决于您的需求
+        # )
+        # test_batch_sampler = GroupedIdBatchSampler(
+        #     data_source=self.test_dataset,
+        #     batch_size=self.args_data.batch_size,
+        #     shuffle=False,
+        #     drop_last=False # 或 True，取决于您的需求
+        # )
         self.train_loader = DataLoader(self.train_dataset,
-                                #   batch_size=self.args_data.batch_size,
-                                         batch_sampler = train_batch_sampler,
-                                        #  shuffle=True,
+                                  batch_size=self.args_data.batch_size,
+                                        #  batch_sampler = train_batch_sampler,
+                                         shuffle=True,
                                          num_workers=self.args_data.num_workers,
                                          pin_memory=True,     
                                          persistent_workers=True)
         self.val_loader = DataLoader(self.val_dataset,
-                                #  batch_size=self.args_data.batch_size,
-                                        batch_sampler = val_batch_sampler,
-                                        # shuffle=False,
+                                 batch_size=self.args_data.batch_size,
+                                        # batch_sampler = val_batch_sampler,
+                                        shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
                                         persistent_workers=True)
         self.test_loader = DataLoader(self.test_dataset,
-                                #  batch_size=self.args_data.batch_size,
-                                        batch_sampler = test_batch_sampler,
-                                        # shuffle=False,
+                                 batch_size=self.args_data.batch_size,
+                                        # batch_sampler = test_batch_sampler,
+                                        shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
                                         persistent_workers=True)

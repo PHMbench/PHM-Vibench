@@ -2,18 +2,17 @@
 # 用于测试各模块的集成功能
 # 环境变量设置
 
-
-
 environment:
+  WANDB_MODE: "disabled"
   VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
   PYTHONPATH: "/home/lq/.conda/envs/lq"
   PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+
   project: "dummy_test"
   seed: 42
   output_dir: "results/dummy_test"
   notes: "This is a dummy test configuration."
-  iterations: 2
-  
+  iterations: 1
 
 # 数据配置
 data:
@@ -24,66 +23,49 @@ data:
   num_workers: 32
   train_ratio: 0.8
   normalization: true
-  window_size: 4096
+  window_size: 10
   stride: 5
   truncate_lenth: 100
 
 
 # 模型配置
 model:
-  name: "M_01_ISFM"
+  name: "Transformer_Dummy"
   args:
-    type: "ISFM"
+    type: "Transformer"
     input_dim: 2
-    
-    # num_classes: 4 # 根据target data 自动设置
-
+    num_classes: 4 # 根据target data 自动设置
     num_heads: 4
     num_layers: 2
     d_model: 64
     d_ff: 128
-
     dropout: 0.1
-
+    feature_dim: 10
     hidden_dim: 64
     activation: "relu"
-    # ISFM_args:
-    num_patches: 128
-    embedding:  E_01_HSE # E_01_HTFE
-    patch_size_L: 256
-    patch_size_C: 1
-    output_dim: 1024
-    backbone: B_01_basic_transformer
-
-    num_layers: 1
-    task_head: H_02_distance_cla
 
 
 # 任务配置
 task:
   name: "Classification"
   args:
-    type: 'CDDG' # cross-dataset domain generalization
-    target_domain_num: 1
-
-
-    # target_domain_id: [3]
-    # source_domain_id: [0,1,2]
-
+    type: 'DG'
+    target_domain_id: [2]
+    source_domain_id: [0,1]
 
     loss: "CE" # cross_entropy
     metrics: ["acc"]
-    target_dataset_id: [6]
+    target_dataset_id: [6]# None # [1]
 
     
     optimizer: "adam"
     # max_epochs: 10
     batch_size: 32
-    num_workers: 0
+    num_workers: 4
     pin_memory: true
     shuffle: true
     log_interval: 10
-    epochs: 10
+    epochs: 1
     lr: 0.001
     weight_decay: 0.0001
     early_stopping: true
@@ -97,7 +79,7 @@ task:
 trainer:
   name: "Default_trainer"
   args:
-    wandb: False
+    wandb: true
     pruning: False
     num_epochs: 10
     gpus: 1

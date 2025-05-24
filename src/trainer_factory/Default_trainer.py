@@ -128,6 +128,5 @@ def create_early_stopping_callback(args):
         verbose=True,
         mode='min',
         check_finite=True,  # 防止无穷大或NaN值时停止训练
-        check_on_trainum_epoch_end=False  # 只在验证阶段检查
     )
     return early_stopping

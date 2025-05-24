@@ -44,7 +44,7 @@ class Model(nn.Module):
         # Classification head
         self.classifier = nn.Linear(hidden_dim, num_classes)
     
-    def forward(self, x):
+    def forward(self, x,data_id = None,task_id = None):
         """
         Forward pass of the model.
         
