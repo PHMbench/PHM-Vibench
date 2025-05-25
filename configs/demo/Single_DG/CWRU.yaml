@@ -23,7 +23,7 @@ data:
   num_workers: 32
   train_ratio: 0.8
   normalization: true
-  window_size: 10
+  window_size: 4096
   stride: 5
   truncate_lenth: 100
 

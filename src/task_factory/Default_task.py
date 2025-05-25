@@ -66,13 +66,16 @@ class Default_task(pl.LightningModule):
         self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
 
 
-    def forward(self, x,data_id = False, task_id = False):
+    def forward(self, batch):
         """模型前向传播"""
-        return self.network(x,data_id,task_id)
+        x = batch['x']
+        id = batch['id'][0].item() if 'id' in batch else None
+        task_id = batch['task_id'] if 'task_id' in batch else None
+        return self.network(x, id, task_id)
 
-    def _forward_pass(self, x: torch.Tensor,data_id = False, task_id = False) -> torch.Tensor:
+    def _forward_pass(self, batch) -> torch.Tensor:
         """执行前向传播"""
-        return self(x,data_id, task_id)
+        return self(batch)
 
     def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """计算任务损失"""
@@ -116,16 +119,18 @@ class Default_task(pl.LightningModule):
         期望 batch 格式: ((x, y), data_name)
         """
         try:
-            (x, y), id = batch
-            id = id[0].item()  # 确保 id 是字符串
-            data_name = self.metadata[id]['Name']
+            # x, y, id = batch['x'], batch['y'], batch['id']
+            batch.update({'task_id': task_id})
+            id = batch['id'][0].item()  # 确保 id 是字符串
+            data_name = self.metadata[id]['Name']# .values
         except (ValueError, TypeError) as e:
             raise ValueError(f"批次数据格式错误，期望 ((x, y), data_name)，但收到: {batch}. Error: {e}")
 
         # 1. 前向传播
-        y_hat = self._forward_pass(x,data_id = id, task_id = task_id)
+        y_hat = self._forward_pass(batch)
 
         # 2. 计算任务损失
+        y = batch['y']
         loss = self._compute_loss(y_hat, y)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
@@ -150,7 +155,7 @@ class Default_task(pl.LightningModule):
 
         return step_metrics
 
-    def training_step(self, batch: tuple, batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: dict) -> torch.Tensor:
         """训练步骤"""
         metrics = self._shared_step(batch, "train")
         # 使用 _log_metrics 记录 (确保 batch_size 传递正确)
@@ -159,14 +164,14 @@ class Default_task(pl.LightningModule):
         # 返回用于反向传播的总损失
         return metrics["train_total_loss"]
 
-    def validation_step(self, batch: tuple, batch_idx: int) -> None:
+    def validation_step(self, batch: dict) -> None:
         """验证步骤"""
         metrics = self._shared_step(batch, "val")
       
         self._log_metrics(metrics, "val")
         # validation_step 通常不返回损失
 
-    def test_step(self, batch: tuple, batch_idx: int) -> None:
+    def test_step(self, batch: dict,) -> None:
         """测试步骤"""
         metrics = self._shared_step(batch, "test")
         

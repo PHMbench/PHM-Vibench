@@ -5,7 +5,7 @@ import random
 from ..balanced_data_loader import IdIncludedDataset
 
 class BalancedIdSampler(Sampler):
-    def __init__(self, data_source: IdIncludedDataset, common_samples_per_id=None, shuffle_within_id=True, shuffle_all=True):
+    def __init__(self, data_source: IdIncludedDataset, batch_size=32, common_samples_per_id=None, shuffle_within_id=True, shuffle_all=True):
         """
         Sampler 实现对不同原始数据集(ID)的平衡加载。
 
@@ -17,7 +17,7 @@ class BalancedIdSampler(Sampler):
             shuffle_within_id (bool): 是否在为每个ID选择样本时进行随机选择。
             shuffle_all (bool): 是否在最后将所有选出的索引进行全局随机打乱。
         """
-        super().__init__(data_source)
+        super().__init__(data_source,batch_size = batch_size)
         self.data_source = data_source
         self.shuffle_within_id = shuffle_within_id
         self.shuffle_all = shuffle_all

@@ -26,7 +26,7 @@ class Model(nn.Module):
         num_classes= args.num_classes
         dropout= args.dropout
         
-        self.input_projection = nn.Linear(input_dim, hidden_dim)
+        self.input_projection = nn.Linear(input_dim, hidden_dim) # shape [C, hidden_dim] wight 
         
         # Positional encoding
         self.pos_encoder = PositionalEncoding(hidden_dim, dropout)
@@ -56,7 +56,7 @@ class Model(nn.Module):
         """
         # If input doesn't have batch dimension, add it
         if x.dim() == 2:
-            x = x.unsqueeze(1)  # [L, C] -> [L, 1, C]
+            x = x.unsqueeze(2)  # [L, C] -> [L, 1, C]
             single_sample = True
         else:
             single_sample = False

@@ -11,6 +11,11 @@ def read(file_path,*args):
 
     elif file_path.endswith('.txt'):
         data = np.loadtxt(file_path)[:,1]
+
+    # 修复字节序问题
+    if isinstance(data, np.ndarray) and data.dtype.byteorder not in ('=', '|'):
+        # 转换为本机字节序
+        data = data.astype(data.dtype.newbyteorder('='), copy=False)
     return data
 
 if __name__ == "__main__":

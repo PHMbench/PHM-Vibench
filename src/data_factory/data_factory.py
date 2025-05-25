@@ -93,7 +93,7 @@ class MetadataAccessor:
             dict: 包含该行所有数据的字典
         """
         try:
-            return self.df.loc[key].to_dict()
+            return self.df.loc[key]#.to_dict()
         except KeyError:
             raise KeyError(f"找不到ID为{key}的记录")
     
@@ -247,6 +247,8 @@ class data_factory:
                 mod = importlib.import_module(f"src.data_factory.reader.{name}")
                 file_path = os.path.join(args_data.data_dir, f'raw/{name}/{file}')
                 data = mod.read(file_path, args_data)
+                if data.ndim == 2:
+                    data = np.expand_dims(data, axis=-1)  # 如果数据是2D的，添加一个维度 # B,L,C
                 return id, data, None  # 返回ID、数据和错误信息(None表示没有错误)
             except Exception as e:
                 return id, None, str(e)  # 返回ID、None和错误信息
@@ -423,45 +425,92 @@ class data_factory:
 
 
     def _init_dataloader(self):
-        # train_batch_sampler = BalancedIdSampler(
-        #     data_source=self.train_dataset,
-        #     # batch_size=self.args_data.batch_size,
-        #     shuffle_within_id=True,
-        #     shuffle_all=True,
-        # )
-        # val_batch_sampler = GroupedIdBatchSampler(
-        #     data_source=self.val_dataset,
-        #     batch_size=self.args_data.batch_size,
-        #     shuffle=False,
-        #     drop_last=False # 或 True，取决于您的需求
-        # )
-        # test_batch_sampler = GroupedIdBatchSampler(
-        #     data_source=self.test_dataset,
-        #     batch_size=self.args_data.batch_size,
-        #     shuffle=False,
-        #     drop_last=False # 或 True，取决于您的需求
-        # )
+        train_batch_sampler = GroupedIdBatchSampler(
+            data_source=self.train_dataset,
+            batch_size=self.args_data.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+        val_batch_sampler = GroupedIdBatchSampler(
+            data_source=self.val_dataset,
+            batch_size=self.args_data.batch_size,
+            shuffle=False,
+            drop_last=True # 或 True，取决于您的需求
+        )
+        test_batch_sampler = GroupedIdBatchSampler(
+            data_source=self.test_dataset,
+            batch_size=self.args_data.batch_size,
+            shuffle=False,
+            drop_last=True # 或 True，取决于您的需求
+        )
+        
+        def debug_collate_fn(batch):
+            """
+            自定义collate函数，修复字节序问题并提供调试信息
+            """
+            import torch
+            import numpy as np
+            from torch.utils.data._utils.collate import default_collate
+
+            def fix_byte_order(item):
+                """修复NumPy数组的字节序问题"""
+                if isinstance(item, np.ndarray) and item.dtype.byteorder not in ('=', '|'):
+                    print(f"修复字节序: {item.dtype} -> {item.dtype.newbyteorder('=')}")
+                    return item.astype(item.dtype.newbyteorder('='), copy=False)
+                return item
+
+            def process_item(item):
+                """递归处理复杂数据结构"""
+                if isinstance(item, dict):
+                    return {k: process_item(v) for k, v in item.items()}
+                elif isinstance(item, (list, tuple)):
+                    return type(item)(process_item(i) for i in item)
+                else:
+                    return fix_byte_order(item)
+
+            # 打印批次结构，帮助调试
+            print(f"\n>>> 批次类型: {type(batch)}, 长度: {len(batch)}")
+            if batch and isinstance(batch[0], tuple):
+                print(f">>> 第一个样本类型: {type(batch[0])}, 长度: {len(batch[0])}")
+                for i, part in enumerate(batch[0]):
+                    print(f">>> 样本部分[{i}]类型: {type(part)}")
+                    if isinstance(part, dict):
+                        print(f">>> 字典键: {list(part.keys())}")
+
+            # 处理所有样本
+            processed_batch = [process_item(item) for item in batch]
+            
+            try:
+                # 尝试使用默认collate函数
+                return default_collate(processed_batch)
+            except Exception as e:
+                print(f">>> 默认collate失败: {e}")
+                # 如果失败，返回处理后但未合并的批次
+                return processed_batch
         self.train_loader = DataLoader(self.train_dataset,
-                                  batch_size=self.args_data.batch_size,
-                                        #  batch_sampler = train_batch_sampler,
-                                         shuffle=True,
+                                #   batch_size=self.args_data.batch_size,
+                                         batch_sampler = train_batch_sampler,
+                                        #  shuffle=True,
                                          num_workers=self.args_data.num_workers,
                                          pin_memory=True,     
-                                         persistent_workers=True)
+                                         persistent_workers=True,
+                                         collate_fn=debug_collate_fn)
         self.val_loader = DataLoader(self.val_dataset,
-                                 batch_size=self.args_data.batch_size,
-                                        # batch_sampler = val_batch_sampler,
-                                        shuffle=False,
+                                #  batch_size=self.args_data.batch_size,
+                                        batch_sampler = val_batch_sampler,
+                                        # shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
-                                        persistent_workers=True)
+                                        persistent_workers=True,
+                                                                                 collate_fn=debug_collate_fn)
         self.test_loader = DataLoader(self.test_dataset,
-                                 batch_size=self.args_data.batch_size,
-                                        # batch_sampler = test_batch_sampler,
-                                        shuffle=False,
+                                #  batch_size=self.args_data.batch_size,
+                                        batch_sampler = test_batch_sampler,
+                                        # shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
-                                        persistent_workers=True)
+                                        persistent_workers=True,
+                                                                                 collate_fn=debug_collate_fn)
 #################################################################### DEL ##################################################################
         # train_dataloader = {}
         # val_dataloader = {}

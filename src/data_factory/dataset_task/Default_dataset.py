@@ -88,8 +88,11 @@ class Default_dataset(Dataset): # THU_006or018_basic
         
         sample = self.processed_data[idx]
 
-        
-        return sample, self.label
+        out = {
+            "x": sample,
+            "y": self.label
+        }
+        return out
 
 
 class Classification_dataset(Default_dataset):

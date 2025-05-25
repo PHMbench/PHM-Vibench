@@ -23,7 +23,7 @@ data:
   num_workers: 32
   train_ratio: 0.8
   normalization: true
-  window_size: 10
+  window_size: 4096
   stride: 5
   truncate_lenth: 100
 
@@ -33,7 +33,7 @@ model:
   name: "Transformer_Dummy"
   args:
     type: "Transformer"
-    input_dim: 2
+    input_dim: 1
     num_classes: 4 # 根据target data 自动设置
     num_heads: 4
     num_layers: 2

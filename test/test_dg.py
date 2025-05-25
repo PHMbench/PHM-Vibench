@@ -70,7 +70,7 @@ print("请检查项目结构和安装依赖。")
 # 记得修改环境变量
 
 # %%
-config_path='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml' 
+config_path='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/THU.yaml' 
 
 print(f"[INFO] 加载配置文件: {config_path}")
 configs = load_config(config_path)

@@ -34,7 +34,7 @@ class H5DataDict:
     def _open_if_needed(self):
         if self.h5f is None or not hasattr(self.h5f, 'id') or not self.h5f.id.valid:
             self.h5f = h5py.File(self.h5_file, 'r')
-        self._keys = set(self.h5f.keys())
+            self._keys = set(self.h5f.keys())
     
     def __getitem__(self, key):
         """获取指定ID的数据，惰性加载"""

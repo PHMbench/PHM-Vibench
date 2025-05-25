@@ -60,7 +60,8 @@ class IdIncludedDataset(Dataset):
         original_dataset_instance = self.dataset_dict_refs[data_id]
         out = original_dataset_instance[idx_in_original_dataset] # may be (x, y) or (x, y, z)
         
-        return  out, data_id
+        out.update({"id": data_id}) # 添加 id 信息
+        return  out
 
 # class BalancedDataLoaderIterator:
 #     def __init__(self, dataloaders):
