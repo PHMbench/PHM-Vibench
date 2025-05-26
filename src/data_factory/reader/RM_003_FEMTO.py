@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from .utils import fix_byte_order
 
 def read(file_path,*args):
     """
@@ -19,7 +20,10 @@ def read(file_path,*args):
         raw_data = pd.read_csv(file_path,header=None).loc[:,4:6] # NO sep='\t' for FEMTO
     
     # 整合数据
-    return raw_data.values
+    data = fix_byte_order(raw_data.values)
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
+    return data
 
 if __name__ == "__main__":
     file_path = "/home/user/data/PHMbenchdata/RM_003_FEMTO/Learning_set/Bearing1_2/acc_00001.csv"

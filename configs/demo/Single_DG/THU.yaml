@@ -18,7 +18,8 @@ environment:
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
   data_dir: "/home/user/data/PHMbenchdata"  # for dummy test
-  metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
+  # metadata_file: "metadata_5_data.csv"  # 指定元数据文件路径
+  metadata_file: 'metadata_5_data_backup.csv'  # 指定元数据文件路径
   batch_size: 32
   num_workers: 32
   train_ratio: 0.8

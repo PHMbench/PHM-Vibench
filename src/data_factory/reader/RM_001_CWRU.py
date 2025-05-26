@@ -1,7 +1,7 @@
 from .utils import load_data
 import os
 import numpy as np
-
+from .utils import fix_byte_order
 
 def read(file_path,*args):
     """
@@ -71,6 +71,9 @@ def read(file_path,*args):
         signal_data = de_data.reshape(-1, 1)
         print(f"仅DE_time数据形状: {signal_data.shape}")
     
+    signal_data = fix_byte_order(signal_data)
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)    
     return signal_data
 
 if __name__ == "__main__":

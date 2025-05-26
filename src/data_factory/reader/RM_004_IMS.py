@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-
+from .utils import fix_byte_order
 
 
 def read(file_path,*args):
@@ -18,9 +18,11 @@ def read(file_path,*args):
         raw_data = pd.read_csv(file_path, sep='\t',header=None).loc[:]
     else:
         raw_data = pd.read_csv(file_path, sep='\t',header=None).loc[:]
-    
+    data = fix_byte_order(raw_data.values)
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
     # 整合数据
-    return raw_data.values
+    return data
 
 if __name__ == "__main__":
     file_path = "/home/user/data/PHMbenchdata/RM_004_IMS/1st_test/2003.10.22.12.06.24"

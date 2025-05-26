@@ -1,5 +1,6 @@
 import pandas as pd
 import scipy.io as sio
+import numpy as np
 
 def load_mat_file(filepath):
     """加载MATLAB .mat文件"""
@@ -40,3 +41,14 @@ def load_data(file_path, file_type='mat', **kwargs):
         return load_txt_file(file_path, **kwargs)
     else:
         raise ValueError("Unsupported file type. Supported types are: 'mat', 'csv', 'txt'.")
+    
+def fix_byte_order(data):
+    """
+    修正字节序
+    :param data: 原始数据
+    :return: 修正后的数据
+    """
+    if isinstance(data, np.ndarray) and data.dtype.byteorder not in ('=', '|'):
+        # 转换为本机字节序
+        data = data.astype(data.dtype.newbyteorder('='), copy=False)
+    return data
