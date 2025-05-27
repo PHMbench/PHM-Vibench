@@ -4,7 +4,7 @@
 
 environment:
   WANDB_MODE: "disabled"
-  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  VBENCH_HOME: "C:/Users/CCSLab/Desktop/lixuan/Vbench/Vbench"
   PYTHONPATH: "/home/lq/.conda/envs/lq"
   PHMBench: "/home/lq/LQcode/2_project/PHMBench"
 
@@ -17,8 +17,7 @@ environment:
 # 数据配置
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
-  # data_dir: "/home/lq/LQcode/2_project/PHMBench/Vbench/data"  # for dummy test
-  data_dir: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data"  # for dummy test
+  data_dir: "C:/Users/CCSLab/Desktop/lixuan/Vbench/Vbench/data"  # for dummy test
   metadata_file: "metadata_dummy.csv"  # 指定元数据文件路径
   batch_size: 32
   num_workers: 4
