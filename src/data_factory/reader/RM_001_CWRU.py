@@ -72,8 +72,8 @@ def read(file_path,*args):
         print(f"仅DE_time数据形状: {signal_data.shape}")
     
     signal_data = fix_byte_order(signal_data)
-    if data.ndim == 1:
-        data = data.reshape(-1, 1)    
+    if signal_data.ndim == 1:
+        signal_data = signal_data.reshape(-1, 1)    
     return signal_data
 
 if __name__ == "__main__":
