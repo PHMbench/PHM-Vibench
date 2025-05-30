@@ -6,7 +6,15 @@ import os
 def load_mat_file(filepath):
     """加载MATLAB .mat文件"""
     try:
+        # 尝试使用scipy.io.loadmat加载
         return sio.loadmat(filepath)
+    except UnicodeDecodeError:
+        # 如果遇到编码错误，尝试使用不同的参数
+        try:
+            return sio.loadmat(filepath, squeeze_me=True, struct_as_record=False)
+        except Exception as e:
+            print(f"加载文件 {filepath} 时出错: {e}")
+            return None
     except Exception as e:
         print(f"加载文件 {filepath} 时出错: {e}")
         return None
@@ -14,7 +22,18 @@ def load_mat_file(filepath):
 def load_csv_file(filepath, **kwargs):
     """加载CSV文件"""
     try:
+        # 默认尝试utf-8编码
         return pd.read_csv(filepath, **kwargs)
+    except UnicodeDecodeError:
+        # 如果utf-8失败，尝试其他编码
+        try:
+            return pd.read_csv(filepath, encoding='gb2312', **kwargs)
+        except UnicodeDecodeError:
+            try:
+                return pd.read_csv(filepath, encoding='latin-1', **kwargs)
+            except Exception as e:
+                print(f"加载文件 {filepath} 时出错: {e}")
+                return None
     except Exception as e:
         print(f"加载文件 {filepath} 时出错: {e}")
         return None
@@ -63,7 +82,32 @@ def test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/
     
 
     
-    df = pd.read_csv(metadata_path, encoding='utf-8',sep= '\t')
+    try:
+        # Check file extension
+        file_ext = os.path.splitext(metadata_path)[1].lower()
+        
+        if file_ext == '.csv':
+            try:
+                df = pd.read_csv(metadata_path, encoding='utf-8', sep='\t')
+            except UnicodeDecodeError:
+                try:
+                    df = pd.read_csv(metadata_path, encoding='gb2312', sep='\t')
+                except UnicodeDecodeError:
+                    df = pd.read_csv(metadata_path, encoding='latin-1', sep='\t')
+        elif file_ext in ['.xlsx', '.xls']:
+            df = pd.read_excel(metadata_path)
+        else:
+            # Try CSV first, then Excel if that fails
+            try:
+                df = pd.read_csv(metadata_path, encoding='utf-8', sep='\t')
+            except Exception:
+                try:
+                    df = pd.read_excel(metadata_path)
+                except Exception as e:
+                    raise ValueError(f"无法读取文件 {metadata_path}: {str(e)}")
+    except Exception as e:
+        print(f"读取元数据文件时出错: {str(e)}")
+        raise
     
     # 2. 根据当前python文件名筛选数据
     current_name = name

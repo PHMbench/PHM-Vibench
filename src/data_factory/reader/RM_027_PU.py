@@ -1,10 +1,15 @@
 import os
 import numpy as np
 import scipy.io as io
-
+from utils import fix_byte_order
 def read(file_path):
     matdata = io.loadmat(file_path)  # 从.mat中加载所有列表数据，返回为字典类型
-    matdata = matdata[file_path[37:-4]]  # 访问第一层结构体
+    
+    # 使用路径分割获取文件名的倒数第二个部分
+    path_parts = file_path.split('/')
+    key_name = path_parts[-1][:-4]  # 去掉.mat后缀的文件名
+    
+    matdata = matdata[key_name]  # 访问第一层结构体
     matdata = matdata['Y'][0]  # 访问第二层结构体
     matdata = matdata[0].T  # 访问第三层结构体
     matdata_current_1 = matdata[1]
@@ -18,7 +23,7 @@ def read(file_path):
 
 
 if __name__ == "__main__":
-    path_ori = 'D:/Bench_dataset/RM_027_KAT(PU)/'
+    path_ori = '/home/user/data/PHMbenchdata/raw/RM_027_PU/'
     # 使用循环遍历数据集
     working_condition = ['N15_M07_F10', 'N09_M07_F10', 'N15_M01_F10', 'N15_M07_F04']
     fault_name = ['K001', 'KA04', 'KI04']
@@ -32,3 +37,9 @@ if __name__ == "__main__":
         data = read(path)
         print(data.shape)
     
+    # from utils import test_reader
+    # test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data/metadata_5_data.csv',
+    #              data_dir = '/home/user/data/PHMbenchdata/raw/',
+    #              name = 'RM_027_KAT',
+    #              output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
+    #              read=read)
