@@ -19,7 +19,19 @@ from .samplers.sampler import GroupedIdBatchSampler, BalancedIdSampler
 
 
 def smart_read_csv(file_path, auto_detect=True):
-    """智能读取CSV文件，自动尝试不同的分隔符和编码"""
+    """智能读取CSV/Excel文件，自动尝试不同的分隔符和编码"""
+    # 检查文件扩展名
+    file_ext = os.path.splitext(file_path)[1].lower()
+    
+    # 如果是Excel文件，直接使用pandas读取
+    if file_ext in ['.xlsx', '.xls']:
+        try:
+            return pd.read_excel(file_path)
+        except Exception as e:
+            print(f"读取Excel文件失败: {e}")
+            raise Exception(f"无法读取Excel文件 {file_path}: {e}")
+    
+    # CSV读取逻辑
     if auto_detect:
         # 先尝试检测文件前几行来判断可能的分隔符
         try:
