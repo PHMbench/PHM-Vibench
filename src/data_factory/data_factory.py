@@ -331,9 +331,9 @@ class data_factory:
         for id in tqdm(test_ids, desc="Creating test datasets"):
             test_dataset[id] = mod.set_dataset({id: self.data[id]},
                             self.metadata, self.args_data, self.args_task, 'test')
-        train_dataset = IdIncludedDataset(train_dataset)
-        val_dataset = IdIncludedDataset(val_dataset)
-        test_dataset = IdIncludedDataset(test_dataset)
+        train_dataset = IdIncludedDataset(train_dataset,self.metadata)
+        val_dataset = IdIncludedDataset(val_dataset,self.metadata)
+        test_dataset = IdIncludedDataset(test_dataset,self.metadata)
         return train_dataset, val_dataset, test_dataset
        
     def search_id(self):
@@ -459,56 +459,57 @@ class data_factory:
             drop_last=True # 或 True，取决于您的需求
         )
         
-        def debug_collate_fn(batch):
-            """
-            自定义collate函数，修复字节序问题并提供调试信息
-            """
-            import torch
-            import numpy as np
-            from torch.utils.data._utils.collate import default_collate
+        # def debug_collate_fn(batch):
+        #     """
+        #     自定义collate函数，修复字节序问题并提供调试信息
+        #     """
+        #     import torch
+        #     import numpy as np
+        #     from torch.utils.data._utils.collate import default_collate
 
-            def fix_byte_order(item):
-                """修复NumPy数组的字节序问题"""
-                if isinstance(item, np.ndarray) and item.dtype.byteorder not in ('=', '|'):
-                    print(f"修复字节序: {item.dtype} -> {item.dtype.newbyteorder('=')}")
-                    return item.astype(item.dtype.newbyteorder('='), copy=False)
-                return item
+        #     def fix_byte_order(item):
+        #         """修复NumPy数组的字节序问题"""
+        #         if isinstance(item, np.ndarray) and item.dtype.byteorder not in ('=', '|'):
+        #             print(f"修复字节序: {item.dtype} -> {item.dtype.newbyteorder('=')}")
+        #             return item.astype(item.dtype.newbyteorder('='), copy=False)
+        #         return item
 
-            def process_item(item):
-                """递归处理复杂数据结构"""
-                if isinstance(item, dict):
-                    return {k: process_item(v) for k, v in item.items()}
-                elif isinstance(item, (list, tuple)):
-                    return type(item)(process_item(i) for i in item)
-                else:
-                    return fix_byte_order(item)
+        #     def process_item(item):
+        #         """递归处理复杂数据结构"""
+        #         if isinstance(item, dict):
+        #             return {k: process_item(v) for k, v in item.items()}
+        #         elif isinstance(item, (list, tuple)):
+        #             return type(item)(process_item(i) for i in item)
+        #         else:
+        #             return fix_byte_order(item)
 
-            # 打印批次结构，帮助调试
-            print(f"\n>>> 批次类型: {type(batch)}, 长度: {len(batch)}")
-            if batch and isinstance(batch[0], tuple):
-                print(f">>> 第一个样本类型: {type(batch[0])}, 长度: {len(batch[0])}")
-                for i, part in enumerate(batch[0]):
-                    print(f">>> 样本部分[{i}]类型: {type(part)}")
-                    if isinstance(part, dict):
-                        print(f">>> 字典键: {list(part.keys())}")
+        #     # 打印批次结构，帮助调试
+        #     print(f"\n>>> 批次类型: {type(batch)}, 长度: {len(batch)}")
+        #     if batch and isinstance(batch[0], tuple):
+        #         print(f">>> 第一个样本类型: {type(batch[0])}, 长度: {len(batch[0])}")
+        #         for i, part in enumerate(batch[0]):
+        #             print(f">>> 样本部分[{i}]类型: {type(part)}")
+        #             if isinstance(part, dict):
+        #                 print(f">>> 字典键: {list(part.keys())}")
 
-            # 处理所有样本
-            processed_batch = [process_item(item) for item in batch]
+        #     # 处理所有样本
+        #     processed_batch = [process_item(item) for item in batch]
             
-            try:
-                # 尝试使用默认collate函数
-                return default_collate(processed_batch)
-            except Exception as e:
-                print(f">>> 默认collate失败: {e}")
-                # 如果失败，返回处理后但未合并的批次
-                return processed_batch
+        #     try:
+        #         # 尝试使用默认collate函数
+        #         return default_collate(processed_batch)
+        #     except Exception as e:
+        #         print(f">>> 默认collate失败: {e}")
+        #         # 如果失败，返回处理后但未合并的批次
+        #         return processed_batch
+        persistent_workers = self.args_data.num_workers > 0
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
                                          batch_sampler = train_batch_sampler,
                                         #  shuffle=True,
                                          num_workers=self.args_data.num_workers,
                                          pin_memory=True,     
-                                         persistent_workers=True,)
+                                         persistent_workers=persistent_workers,)
                                         #  collate_fn=debug_collate_fn)
         self.val_loader = DataLoader(self.val_dataset,
                                 #  batch_size=self.args_data.batch_size,
@@ -516,7 +517,7 @@ class data_factory:
                                         # shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
-                                        persistent_workers=True,)
+                                        persistent_workers=persistent_workers,)
                                                                                 #  collate_fn=debug_collate_fn)
         self.test_loader = DataLoader(self.test_dataset,
                                 #  batch_size=self.args_data.batch_size,
@@ -524,7 +525,7 @@ class data_factory:
                                         # shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
-                                        persistent_workers=True,)
+                                        persistent_workers=persistent_workers,)
                                                                                 #  collate_fn=debug_collate_fn)
 #################################################################### DEL ##################################################################
         # train_dataloader = {}

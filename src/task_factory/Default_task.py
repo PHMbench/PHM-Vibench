@@ -41,7 +41,7 @@ class Default_task(pl.LightningModule):
         :param metadata: 数据元信息
         """
         super().__init__()
-        self.network = network
+        self.network = network.cuda() if args_trainer.gpus else network  # 确保网络在正确的设备上
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
@@ -111,7 +111,7 @@ class Default_task(pl.LightningModule):
             self.parameters() # 只对当前 LightningModule 的参数计算正则化
         )
 
-    def _shared_step(self, batch: Tuple[Tuple[torch.Tensor, torch.Tensor], str],
+    def _shared_step(self, batch: Tuple,
                      stage: str,
                      task_id = False) -> Dict[str, torch.Tensor]:
         """
@@ -155,7 +155,7 @@ class Default_task(pl.LightningModule):
 
         return step_metrics
 
-    def training_step(self, batch: dict) -> torch.Tensor:
+    def training_step(self, batch: dict, *args, **kwargs) -> torch.Tensor:
         """训练步骤"""
         metrics = self._shared_step(batch, "train")
         # 使用 _log_metrics 记录 (确保 batch_size 传递正确)
@@ -164,14 +164,14 @@ class Default_task(pl.LightningModule):
         # 返回用于反向传播的总损失
         return metrics["train_total_loss"]
 
-    def validation_step(self, batch: dict) -> None:
+    def validation_step(self, batch: dict, *args, **kwargs) -> None:
         """验证步骤"""
         metrics = self._shared_step(batch, "val")
       
         self._log_metrics(metrics, "val")
         # validation_step 通常不返回损失
 
-    def test_step(self, batch: dict,) -> None:
+    def test_step(self, batch: dict, *args, **kwargs) -> None:
         """测试步骤"""
         metrics = self._shared_step(batch, "test")
         
@@ -319,9 +319,11 @@ if __name__ == '__main__':
     dummy_network = DummyModel(model_args, data_args)
     task_model = Default_task( # 使用 Default_task 类名
         network=dummy_network,
-        args_t=train_args,
-        args_m=model_args,
-        args_d=data_args,
+        args_trainer=Namespace(),  # 模拟训练参数
+        args_task=train_args,
+        args_model=model_args,
+        args_data=data_args,
+        args_environment=Namespace(WANDB_MODE=False),  # 模拟环境参数
         metadata=metadata # 传入 metadata
     )
 
@@ -335,7 +337,7 @@ if __name__ == '__main__':
     print(f"训练总损失 (Tensor): {train_loss_tensor}")
 
     print("\n测试验证步骤:")
-    task_model.validation_step(batch_with_name, 0)
+    task_model.validation_step(batch_with_name)
 
     print("\n测试前向传播:")
     output = task_model(torch.randn(5, 128))
