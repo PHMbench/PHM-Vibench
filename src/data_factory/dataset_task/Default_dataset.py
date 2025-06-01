@@ -16,7 +16,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
         """
         self.key = list(data.keys())[0]
         self.data = data[self.key]  # 取出第一个键的数据
-        self.metadata = metadata
+        # self.metadata = metadata
         self.args_data = args_data
         self.mode = mode
         
@@ -29,9 +29,9 @@ class Default_dataset(Dataset): # THU_006or018_basic
         self.processed_data = []  # 存储处理后的样本
                 
         # 处理数据
-        self.prepare_data()
+        self.prepare_data(metadata)
         
-    def prepare_data(self):
+    def prepare_data(self,metadata=None):
         """
         准备数据：将原始数据按窗口大小和步长分割成样本
         如果mode是train或valid，则划分数据集
@@ -43,14 +43,23 @@ class Default_dataset(Dataset): # THU_006or018_basic
             self._split_data_for_mode()
             
         self.total_samples = len(self.processed_data) # L'
-        self.label = self.metadata[self.key]["Label"]
+        self.label = metadata[self.key]["Label"]
     
     def _process_single_data(self, sample_data):
         """
         处理单个数据样本，应用滑动窗口
         """
+        # 根据配置转换数据类型
+        if self.args_data.dtype:
+            if self.args_data.dtype == 'float32':
+                sample_data = sample_data.astype(np.float32)
+            elif self.args_data.dtype == 'float64':
+                sample_data = sample_data.astype(np.float64)
+   
+        
         data_length = len(sample_data)
         num_samples = max(0, (data_length - self.window_size) // self.stride + 1)
+        num_samples = min(num_samples, self.args_data.num_window)  # 至少保留一个样本
         
         for i in range(num_samples):
             start_idx = i * self.stride
