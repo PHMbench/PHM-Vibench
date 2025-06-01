@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 
 class IdIncludedDataset(Dataset):
-    def __init__(self, dataset_dict):
+    def __init__(self, dataset_dict, metadata=None):
         """
         包装一个 PyTorch Dataset 字典，使得每个样本都包含其原始ID。
 
@@ -15,7 +15,7 @@ class IdIncludedDataset(Dataset):
         """
         self.dataset_dict_refs = dataset_dict # 保存对原始数据集字典的引用
         self.flat_sample_map = [] # 用于全局索引到 (id, 原始数据集中的索引) 的映射
-
+        self.metadata = metadata # 保存元数据，可能包含数据集的其他信息
         for id_str, original_dataset in self.dataset_dict_refs.items():
             if original_dataset is None:
                 print(f"警告: ID '{id_str}' 对应的 dataset 为 None，已跳过。")
@@ -53,14 +53,16 @@ class IdIncludedDataset(Dataset):
             raise IndexError(f"全局索引 {global_idx} 超出范围 (总样本数: {self._total_samples})")
 
         sample_info = self.flat_sample_map[global_idx]
+        
         data_id = sample_info['id']
+        dataset_id = self.metadata[data_id]['Dataset_id'] # 获取数据集的ID
         idx_in_original_dataset = sample_info['original_idx']
 
         # 从原始数据集中获取 (x, y)
         original_dataset_instance = self.dataset_dict_refs[data_id]
         out = original_dataset_instance[idx_in_original_dataset] # may be (x, y) or (x, y, z)
         
-        out.update({"id": data_id}) # 添加 id 信息
+        out.update({"id": dataset_id}) # 添加 id 信息
         return  out
 
 # class BalancedDataLoaderIterator:
