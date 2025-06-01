@@ -20,7 +20,7 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
 
     # Iterate through metadata to find unique data_ids and their maximum labels
     for item_id, item_data in metadata.items():
-        if isinstance(item_data, dict) and 'Name' in item_data:
+        if 'Name' in item_data:
             data_id = item_data['Name']
             unique_data_ids.add(data_id)
             
