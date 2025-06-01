@@ -1,8 +1,8 @@
 ## 需要将数据文件中文元素删去
 import numpy as np
 import csv
-
-def read(file_path):
+from .utils import fix_byte_order
+def read(file_path,*args):
     """
     Reads data from a xls file specified by file_path.
     Args:
@@ -21,6 +21,12 @@ def read(file_path):
         data = np.array([i[0].split('\t') for i in data])
         # 将data由一维ndarray中包含list转为二维ndarray
         data = np.array([i[2:5] for i in data])
+    data = fix_byte_order(data)
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
+    # 转换为浮点数
+    data = data.astype(float)
+    
     return data
 
 if __name__ == "__main__":

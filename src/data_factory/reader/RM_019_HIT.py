@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def read(file_path):
+def read(file_path,*args):
     """
     Reads data from a npy file specified by file_path.
     Args:

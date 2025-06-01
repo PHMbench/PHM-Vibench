@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-from utils import fix_byte_order,load_data
+from .utils import fix_byte_order,load_data
 
 def read(file_path, *args):
     """

@@ -2,8 +2,8 @@
 import os
 import numpy as np
 import scipy.io
-from utils import load_data
-from utils import fix_byte_order
+from .utils import load_data
+from .utils import fix_byte_order
 
 def read(file_path,*args):
     # ends = file_path.split('.')[-1]

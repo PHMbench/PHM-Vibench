@@ -1,7 +1,8 @@
 import numpy as np
 import csv
 import pandas as pd
-def read(file_path):
+from utils import fix_byte_order
+def read(file_path,*args):
     """
     Reads data from a csv file specified by file_path.
     Args:
@@ -17,23 +18,32 @@ def read(file_path):
     data = data[:, [0, 1, 4]]
     # 将数据转换为浮点数
     data = data.astype(float)
+    if data.shape == 3:
+        data = data.reshape(-1, data.shape[-1])
+    data = fix_byte_order(data)
     return data
 
 if __name__ == "__main__":
-    path_ori = 'D:/Bench_dataset/RM_005_Ottawa23/1_CSV_Raw_Data_Files (.csv)/'
-    # 测试正常类型数据
-    for i in range(20):
-        path = path_ori + '1_Healthy/' + 'H_' + str(i+1) + '_0.csv'
-        print(path)
-        data = read(path)
-        print(data.shape)
-    # 测试故障数据
-    fault_name_list = ['2_Inner_Race_Faults', '3_Outer_Race_Faults', '4_Ball_Faults', '5_Cage_Faults']
-    for i in range(4):
-        fault_name = fault_name_list[i]
-        for j in range(5):
-            for k in range(2):
-                path = path_ori + fault_name + '/' + fault_name[2] + '_' + str(i*5+j+1) + '_' + str(k+1) + '.csv'
-                # print(path)
-                data = read(path)
-                # print(data.shape)
+    # path_ori = 'D:/Bench_dataset/RM_005_Ottawa23/1_CSV_Raw_Data_Files (.csv)/'
+    # # 测试正常类型数据
+    # for i in range(20):
+    #     path = path_ori + '1_Healthy/' + 'H_' + str(i+1) + '_0.csv'
+    #     print(path)
+    #     data = read(path)
+    #     print(data.shape)
+    # # 测试故障数据
+    # fault_name_list = ['2_Inner_Race_Faults', '3_Outer_Race_Faults', '4_Ball_Faults', '5_Cage_Faults']
+    # for i in range(4):
+    #     fault_name = fault_name_list[i]
+    #     for j in range(5):
+    #         for k in range(2):
+    #             path = path_ori + fault_name + '/' + fault_name[2] + '_' + str(i*5+j+1) + '_' + str(k+1) + '.csv'
+    #             # print(path)
+    #             data = read(path)
+    #             # print(data.shape)
+    from utils import test_reader
+    test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data/metadata_5_data.csv',
+                 data_dir = '/home/user/data/PHMbenchdata/raw/',
+                 name = 'RM_005_Ottawa23',
+                 output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
+                 read=read)

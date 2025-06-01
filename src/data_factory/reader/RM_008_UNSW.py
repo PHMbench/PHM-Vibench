@@ -1,7 +1,7 @@
-from utils import load_data
+
 import os
 import numpy as np
-from utils import fix_byte_order
+from .utils import fix_byte_order,load_data
 
 def read(file_path,*args):
     data = load_data(file_path, file_type='mat')

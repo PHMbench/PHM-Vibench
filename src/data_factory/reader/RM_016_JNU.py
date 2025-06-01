@@ -2,7 +2,7 @@ import numpy as np
 import csv
 import pandas as pd
 
-def read(file_path):
+def read(file_path,*args):
     """
     Reads data from a csv file specified by file_path.
     Args:

@@ -5,3 +5,5 @@ torch>=1.10.0
 pytorch-lightning>=1.5.0
 scikit-learn>=1.0.0
 h5py
+
+xlrd < 2.0.0

@@ -1,8 +1,8 @@
 import os
 import numpy as np
 import scipy.io as io
-from utils import fix_byte_order
-def read(file_path):
+from .utils import fix_byte_order
+def read(file_path,*args):
     matdata = io.loadmat(file_path)  # 从.mat中加载所有列表数据，返回为字典类型
     
     # 使用路径分割获取文件名的倒数第二个部分
@@ -19,6 +19,10 @@ def read(file_path):
     matdata_vibration = matdata[6]
     matdata_vibration = matdata_vibration['Data'][0]
     matdata = np.concatenate((matdata_current_1, matdata_current_2, matdata_vibration), axis=0)
+    
+    matdata = fix_byte_order(matdata)  # 修复字节序问题
+    if matdata.ndim == 1:
+        matdata = matdata.reshape(-1, 1)  # 确保是二维数组
     return matdata.T  # 返回数据
 
 

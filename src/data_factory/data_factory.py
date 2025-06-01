@@ -217,7 +217,7 @@ class data_factory:
         
         return metadata
     
-    def _init_data(self, args_data, use_cache=True, max_workers=4):
+    def _init_data(self, args_data, use_cache=True, max_workers=32):
         """
         极简数据读取器 - 并行版本
         
@@ -257,6 +257,7 @@ class data_factory:
                 name = meta['Name']
                 file = meta['File']
                 mod = importlib.import_module(f"src.data_factory.reader.{name}")
+                print(f"正在读取ID {id} 的数据文件: {name}/{file}")
                 file_path = os.path.join(args_data.data_dir, f'raw/{name}/{file}')
                 data = mod.read(file_path, args_data)
                 if data.ndim == 2:
@@ -288,6 +289,7 @@ class data_factory:
                 if data is not None:
                     if str(id) in h5f:
                         continue # del h5f[str(id)]  # 如果已存在，先删除
+                    print(f"正在写入ID {id} 的数据到缓存")
                     h5f.create_dataset(str(id), data=data)
                 else:
                     print(f"Error loading data for ID {id}: {error}")
@@ -411,13 +413,14 @@ class data_factory:
     def search_dataset_id(self):
         
         
-        if self.args_task.target_dataset_id is None:
+        if not self.args_task.target_dataset_id:
             print("未指定目标数据集ID，返回全部元数据")
             return self.metadata
         
         # 筛选符合条件的数据
         filtered_df = self.metadata.df[
             self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)].copy()
+        
         
         # 记录筛选结果
         print(f"筛选前元数据行数: {len(self.metadata.df)}")
