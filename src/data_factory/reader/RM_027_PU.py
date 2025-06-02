@@ -27,23 +27,23 @@ def read(file_path,*args):
 
 
 if __name__ == "__main__":
-    path_ori = '/home/user/data/PHMbenchdata/raw/RM_027_PU/'
-    # 使用循环遍历数据集
-    working_condition = ['N15_M07_F10', 'N09_M07_F10', 'N15_M01_F10', 'N15_M07_F04']
-    fault_name = ['K001', 'KA04', 'KI04']
-    datasets_list = []
-    for i in range(4):
-        for j in range(3):
-            for k in range(20):
-                datasets_list.append(path_ori + fault_name[j] + '/' + working_condition[i] + '_' + fault_name[j] + '_' + str(k+1) + '.mat')
-    for path in datasets_list:
-        print(path)
-        data = read(path)
-        print(data.shape)
+    # path_ori = '/home/user/data/PHMbenchdata/raw/RM_027_PU/'
+    # # 使用循环遍历数据集
+    # working_condition = ['N15_M07_F10', 'N09_M07_F10', 'N15_M01_F10', 'N15_M07_F04']
+    # fault_name = ['K001', 'KA04', 'KI04',]
+    # datasets_list = []
+    # for i in range(4):
+    #     for j in range(3):
+    #         for k in range(20):
+    #             datasets_list.append(path_ori + fault_name[j] + '/' + working_condition[i] + '_' + fault_name[j] + '_' + str(k+1) + '.mat')
+    # for path in datasets_list:
+    #     print(path)
+    #     data = read(path)
+    #     print(data.shape)
     
-    # from utils import test_reader
-    # test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data/metadata_5_data.csv',
-    #              data_dir = '/home/user/data/PHMbenchdata/raw/',
-    #              name = 'RM_027_KAT',
-    #              output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
-    #              read=read)
+    from utils import test_reader
+    test_reader(metadata_path = '/home/user/data/PHMbenchdata/PHM-Vibench/metadata_6_1.xlsx',
+                 data_dir = '/home/user/data/PHMbenchdata/PHM-Vibench/raw/',
+                 name = 'RM_027_PU',
+                 output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
+                 read=read)

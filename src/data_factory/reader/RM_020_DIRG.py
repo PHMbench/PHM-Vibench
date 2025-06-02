@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-from utils import fix_byte_order,load_data
+from .utils import fix_byte_order,load_data
 
 def read(file_path, *args):
     """
@@ -20,6 +20,7 @@ def read(file_path, *args):
     
     # 修复字节序问题
     data = fix_byte_order(data)
+    data = data.astype(np.float64)  # 确保数据类型为 float32
     
     # 确保是二维数组
     if data.ndim == 1:

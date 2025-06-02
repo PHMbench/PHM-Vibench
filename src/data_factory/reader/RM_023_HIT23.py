@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-from utils import fix_byte_order,load_data
+from .utils import fix_byte_order,load_data
 
 def read(file_path, *args):
     """
@@ -31,7 +31,7 @@ def read(file_path, *args):
         raise ValueError(f"未找到有效的数组数据在文件 {file_path}")
     
     # 转换为浮点数
-    data = data.astype(float)
+    data = data.astype(np.float64)
     
     # 修复字节序问题
     data = fix_byte_order(data)

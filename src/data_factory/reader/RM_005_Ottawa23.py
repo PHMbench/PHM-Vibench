@@ -1,7 +1,7 @@
 import numpy as np
 import csv
 import pandas as pd
-from utils import fix_byte_order
+from .utils import fix_byte_order
 def read(file_path,*args):
     """
     Reads data from a csv file specified by file_path.

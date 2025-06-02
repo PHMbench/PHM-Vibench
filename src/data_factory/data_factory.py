@@ -378,7 +378,7 @@ class data_factory:
             if not task_relevant_metadata.keys(): # 再次检查，以防万一
                 print(f"没有相关数据ID，{final_cache_path} 将为空。")
             
-            for id_key_final in tqdm(task_relevant_metadata.keys(), desc="整合数据到 cache.h5", disable=not list(task_relevant_metadata.keys())):
+            for id_key_final in tqdm(task_relevant_metadata.keys(), desc="确认并整合数据到 cache.h5", disable=not list(task_relevant_metadata.keys())):
                 try:
                     h5_key_final = str(int(id_key_final))
                 except ValueError:
@@ -403,8 +403,11 @@ class data_factory:
                 try:
                     with h5py.File(name_specific_cache_file, 'r') as h5f_name_read:
                         if h5_key_final in h5f_name_read:
-                            data_to_consolidate = h5f_name_read[h5_key_final][()]
-                            h5f_consolidated.create_dataset(h5_key_final, data=data_to_consolidate)
+                            if h5_key_final in h5f_consolidated:
+                                continue
+                            else:
+                                data_to_consolidate = h5f_name_read[h5_key_final][()]
+                                h5f_consolidated.create_dataset(h5_key_final, data=data_to_consolidate)
                         else:
                             print(f"警告: ID {h5_key_final} 在 {name_specific_cache_file} 中未找到（在整合阶段）。这可能表示之前的 Name.h5 更新步骤中存在问题。")
                 except Exception as e_read:

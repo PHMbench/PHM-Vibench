@@ -25,7 +25,7 @@ def read(file_path,*args):
     return data
 
 if __name__ == "__main__":
-    file_path = "/home/user/data/PHMbenchdata/RM_004_IMS/1st_test/2003.10.22.12.06.24"
+    file_path = "/home/user/data/PHMbenchdata/PHM-Vibench/raw/RM_004_IMS/1st_test/2003.10.22.12.06.24"
     data = read(file_path)
     print(data)
     

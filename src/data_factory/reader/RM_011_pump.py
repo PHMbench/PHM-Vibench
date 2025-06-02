@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import signal
 from contextlib import contextmanager
-from utils import load_data, fix_byte_order
+from .utils import load_data, fix_byte_order
 
 # @contextmanager
 # def timeout(duration):
