@@ -123,7 +123,11 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 
 ## 🔄 支持的模型与数据集
 
-### 📊 支持的数据集 见[Model scope](https://www.modelscope.cn/datasets/RichieTHU/Vbench_data)
+### 📊 支持的数据集 见
+- [Model scope](https://www.modelscope.cn/datasets/RichieTHU/Vbench_data)
+- [h5](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
+- [raw_data(PHMbench group avaliable)](https://www.modelscope.cn/datasets/PHMbench/PHMbench-raw_data)
+
 
 
 
@@ -268,7 +272,7 @@ trainer:      # 训练器配置
 </details>
 
 <details>
-<summary><b>👉 数据集配置参数 (Dataset)</b></summary>
+<summary><b>👉 数据集配置参数 (Data)</b></summary>
 
 <table>
   <tr>
@@ -331,6 +335,18 @@ trainer:      # 训练器配置
     <td>截断长度</td>
     <td>信号最大长度限制</td>
   </tr>
+    <tr>
+      <td>10</td>
+      <td>dtype</td>
+      <td>数据类型</td>
+      <td>数据存储精度，如float32、float64等</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>num_window</td>
+      <td>窗口数量</td>
+      <td>每个样本包含的滑动窗口总数</td>
+    </tr>
 </table>
 </details>
 
