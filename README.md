@@ -912,6 +912,12 @@ PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制�
 ### 核心团队
 - [Qi Li](https://github.com/liq22)
 - [Xuan Li](https://github.com/Xuan423)
+### All Thanks To Our Contributors
+
+<a href="https://github.com/PHMbench/PHM-Vibench/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PHMbench/PHM-Vibench" />
+</a>
+
 
 ### 参与贡献
 我们非常欢迎各种形式的贡献！无论是新功能开发、文档改进还是问题反馈。请参阅[贡献指南](CONTRIBUTING.md)了解详情。
