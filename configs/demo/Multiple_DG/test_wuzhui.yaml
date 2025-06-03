@@ -29,8 +29,7 @@ data:
   truncate_length: 100
   dtype: float32
   num_window: 64
-  dtype: float32
-  num_window: 64
+
 
 
 # 模型配置

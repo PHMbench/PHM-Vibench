@@ -75,7 +75,8 @@ class Model(nn.Module):
         x = self.backbone(x)
         
         # TODO multiple task head 判断 data
-        x = self.task_head(x,data_id,task_id)
+        Dataset_id = self.metadata[data_id]['Dataset_id']
+        x = self.task_head(x,Dataset_id,task_id)
         return x
     
 if __name__ == '__main__':

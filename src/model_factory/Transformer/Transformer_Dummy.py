@@ -63,6 +63,10 @@ class Model(nn.Module):
             # x = x.permute(1, 0, 2)  # [B, L, C] -> [L, B, C]
         x = x.float()  # Ensure input is float
         # Project input to hidden dimension
+        
+        if x.shape[2] != self.input_projection.in_features: # Traditional expect the unique dimension of input
+            x = torch.nn.functional.pad(x, (0, self.input_projection.in_features - x.shape[2]), mode='constant', value=0)
+        
         x = self.input_projection(x)
         
         # Add positional encoding

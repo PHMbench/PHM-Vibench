@@ -27,7 +27,8 @@ data:
   window_size: 4096
   stride: 5
   truncate_lenth: 100
-
+  dtype: float32
+  num_window: 64
 
 # 模型配置
 model:
@@ -56,7 +57,7 @@ task:
 
     loss: "CE" # cross_entropy
     metrics: ["acc"]
-    target_dataset_id: [6]# None # [1]
+    target_dataset_id: [6] # None # [1]
 
     
     optimizer: "adam"

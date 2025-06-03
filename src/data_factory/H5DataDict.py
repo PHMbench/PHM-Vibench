@@ -64,7 +64,21 @@ class H5DataDict:
         """返回数据集数量"""
         self._open_if_needed()
         return len(self._keys)
-    def __del__(self):
-        self._open_if_needed()
-        if self.should_close and hasattr(self, 'h5file') and self.h5f:
+    def close(self):
+        """显式关闭HDF5文件"""
+        if self.should_close and hasattr(self, 'h5f') and self.h5f:
             self.h5f.close()
+            self.h5f = None
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+    
+    def __del__(self):
+        """析构函数，确保文件被关闭"""
+        try:
+            self.close()
+        except:
+            pass  # 忽略析构时的异常

@@ -55,14 +55,14 @@ class IdIncludedDataset(Dataset):
         sample_info = self.flat_sample_map[global_idx]
         
         data_id = sample_info['id']
-        dataset_id = self.metadata[data_id]['Dataset_id'] # 获取数据集的ID
+        # dataset_id = self.metadata[data_id]['Dataset_id'] # 获取数据集的ID
         idx_in_original_dataset = sample_info['original_idx']
 
         # 从原始数据集中获取 (x, y)
         original_dataset_instance = self.dataset_dict_refs[data_id]
         out = original_dataset_instance[idx_in_original_dataset] # may be (x, y) or (x, y, z)
         
-        out.update({"id": dataset_id}) # 添加 id 信息
+        out.update({"id": data_id}) # 添加 id 信息
         return  out
 
 # class BalancedDataLoaderIterator:

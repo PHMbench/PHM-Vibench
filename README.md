@@ -139,14 +139,14 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 
 ### 环境要求
 - Python 3.8+
-- PyTorch 1.9+
+- PyTorch 2.0+
 - CUDA 11.1+ 
 
 ### 依赖安装
 
 ```bash
 # 克隆仓库
-git clone https://github.com/PHMbench/Vbench.git
+git clone https://github.com/PHMbench/PHM-Vbench.git
 cd Vbench
 
 # 安装依赖
@@ -163,14 +163,15 @@ pip install -r requirements.txt
 </div> -->
 
 ```bash
-# demo pipeline
-python main.py --config configs/demo/dummy_test.yaml
 
 # CWRU 分类任务
 python main.py --config configs/demo/Single_DG/CWRU.yaml
 
 # Cross-dataset genealization
 python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
+
+# 所有数据集
+python main.py --config configs/demo/Multiple_DG/all.yaml
 ```
 
 ### 📊 性能基准示例

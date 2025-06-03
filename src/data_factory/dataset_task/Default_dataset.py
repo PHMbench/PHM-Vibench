@@ -55,7 +55,9 @@ class Default_dataset(Dataset): # THU_006or018_basic
                 sample_data = sample_data.astype(np.float32)
             elif self.args_data.dtype == 'float64':
                 sample_data = sample_data.astype(np.float64)
-   
+        if sample_data.ndim == 3:
+            # 如果数据是三维的，转换为二维
+            sample_data = sample_data.reshape(sample_data.shape[0], -1)
         
         data_length = len(sample_data)
         num_samples = max(0, (data_length - self.window_size) // self.stride + 1)

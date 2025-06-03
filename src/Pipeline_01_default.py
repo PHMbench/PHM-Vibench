@@ -149,6 +149,7 @@ def pipeline(args):
         # 关闭wandb
         if getattr(args_environment, 'WANDB_MODE', False):
             wandb.finish()
+        data_factory.data.close()  # 关闭数据工厂
     
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)

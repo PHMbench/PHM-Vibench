@@ -374,7 +374,7 @@ class data_factory:
         # 确保最终缓存文件的目录存在
         os.makedirs(os.path.dirname(final_cache_path), exist_ok=True)
 
-        with h5py.File(final_cache_path, 'w') as h5f_consolidated: # 写入模式，为当前任务覆盖/新建
+        with h5py.File(final_cache_path, 'a') as h5f_consolidated: # 写入模式，为当前任务覆盖/新建
             if not task_relevant_metadata.keys(): # 再次检查，以防万一
                 print(f"没有相关数据ID，{final_cache_path} 将为空。")
             
@@ -460,6 +460,31 @@ class data_factory:
         """
         should be implemented in the child class
         """
+
+        def remove_invalid_labels(df, label_column='Label'):
+            """
+            从DataFrame中删除指定列值为-1的行
+            
+            Args:
+                df (pd.DataFrame): 输入的DataFrame
+                label_column (str): 标签列名，默认为'Label'
+            
+            Returns:
+                pd.DataFrame: 删除指定条件行后的新DataFrame
+            """
+            # 检查列是否存在
+            if label_column not in df.columns:
+                raise ValueError(f"列 '{label_column}' 不存在于DataFrame中")
+            
+            # 删除Label为-1的行
+            filtered_df = df[df[label_column] != -1].copy()
+            
+            # 重置索引（可选）
+            filtered_df.reset_index(drop=True, inplace=True)
+            
+            return filtered_df
+            
+            
         if self.args_task.target_dataset_id is not None:
         
             if self.args_task.type == 'DG':
@@ -472,11 +497,16 @@ class data_factory:
                     (self.metadata.df['Domain_id'].isin(self.args_task.target_domain_id)) &
                     (self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id))]
                 
+                train_df = remove_invalid_labels(train_df)
+                test_df = remove_invalid_labels(test_df)
+                
                 self.train_val_ids = list(train_df['Id'])  # 或者 list(domain_0_df['Id'])
                 self.test_ids = list(test_df['Id'])
             elif self.args_task.type == 'CDDG':
                 # 筛选出目标数据集
                 filtered_df = self.metadata.df[self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+
+                filtered_df = remove_invalid_labels(filtered_df)
                 
                 # 找出每个数据集中的所有唯一domain_id
                 dataset_domains = {}

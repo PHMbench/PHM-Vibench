@@ -14,9 +14,9 @@ def main():
     parser.add_argument('--config_path', 
                         type=str, 
                         # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
-                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/all.yaml',
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/all.yaml',
                         help='配置文件路径')
     parser.add_argument('--notes', 
                         type=str, 

@@ -69,8 +69,9 @@ class Default_task(pl.LightningModule):
     def forward(self, batch):
         """模型前向传播"""
         x = batch['x']
-        id = batch['id'][0].item() if 'id' in batch else None
-        task_id = batch['task_id'] if 'task_id' in batch else None
+        id = batch['Data_id'] if 'Data_id' in batch else None
+
+        task_id = batch['Task_id'] if 'Task_id' in batch else None
         return self.network(x, id, task_id)
 
     def _forward_pass(self, batch) -> torch.Tensor:
@@ -85,6 +86,7 @@ class Default_task(pl.LightningModule):
     def _compute_metrics(self, y_hat: torch.Tensor, y: torch.Tensor, data_name: str, stage: str) -> Dict[str, torch.Tensor]:
         """计算并更新评估指标"""
         metric_values = {}
+        # print(f"计算 {stage} 阶段的指标: {data_name}")
         if data_name in self.metrics:
             for metric_key, metric_fn in self.metrics[data_name].items():
                 if metric_key.startswith(stage):
@@ -113,18 +115,20 @@ class Default_task(pl.LightningModule):
 
     def _shared_step(self, batch: Tuple,
                      stage: str,
-                     task_id = False) -> Dict[str, torch.Tensor]:
+                     Task_id = False) -> Dict[str, torch.Tensor]:
         """
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
         """
         try:
             # x, y, id = batch['x'], batch['y'], batch['id']
-            batch.update({'task_id': task_id})
-            id = batch['id'][0].item()  # 确保 id 是字符串
+            batch.update({'Task_id': Task_id})
+            id = batch['id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
             data_name = self.metadata[id]['Name']# .values
+            # dataset_id = self.metadata[id]['Dataset_id'].item() 
+            batch.update({'Data_id': id})
         except (ValueError, TypeError) as e:
-            raise ValueError(f"批次数据格式错误，期望 ((x, y), data_name)，但收到: {batch}. Error: {e}")
+            raise ValueError(f" Error: {e}")
 
         # 1. 前向传播
         y_hat = self._forward_pass(batch)
