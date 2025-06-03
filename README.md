@@ -154,6 +154,8 @@ git clone https://github.com/PHMbench/PHM-Vbench.git
 cd Vbench
 
 # 安装依赖
+conda create -n PHM python=3.10
+conda activate PHM
 pip install -r requirements.txt
 
 ```
