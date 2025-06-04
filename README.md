@@ -53,6 +53,7 @@
 - 📏 **精确的评估框架**：提供针对不同故障诊断场景优化的评估指标和专业可视化工具，支持结果的定量分析与比较
 - 🖱️ **简洁高效的用户体验**：基于配置文件的实验设计，使研究人员无需修改代码即可快速配置与运行实验
 - 📈 **一键复现与基准测试**：内置30+经典和最新算法实现，只需一行命令即可复现论文结果并进行公平比较
+- 🆕 **Few-Shot 学习模块**：新增对少样本故障诊断的支持，提供原型网络示例及任务流水线，便于快速研究
 
 <details>
 <summary><b>为什么选择Vbench？</b> (点击展开)</summary>
@@ -172,6 +173,12 @@ pip install -r requirements.txt
 
 # CWRU 分类任务
 python main.py --config configs/demo/Single_DG/CWRU.yaml
+
+# Few-Shot 原型网络示例
+python main.py --config configs/demo/FewShot/protonet.yaml
+
+# Pretrain + Few-Shot 流水线
+python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/pretrain.yaml --fs_config_path configs/demo/FewShot/protonet.yaml
 
 # Cross-dataset genealization
 python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml

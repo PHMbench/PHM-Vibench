@@ -590,6 +590,33 @@ class data_factory:
 
 
     def _init_dataloader(self):
+        # few-shot mode uses special episode dataset
+        if self.args_task.type == 'FS':
+            from .dataset_task.FS.episode_dataset import FewShotEpisodeDataset
+            n_way = getattr(self.args_task, 'n_way', 5)
+            k_shot = getattr(self.args_task, 'k_shot', 1)
+            q_query = getattr(self.args_task, 'q_query', 1)
+            episodes = getattr(self.args_task, 'episodes_per_epoch', 100)
+            self.train_loader = DataLoader(
+                FewShotEpisodeDataset(self.train_dataset, n_way, k_shot, q_query, episodes),
+                batch_size=1,
+                num_workers=self.args_data.num_workers,
+                pin_memory=True,
+            )
+            self.val_loader = DataLoader(
+                FewShotEpisodeDataset(self.val_dataset, n_way, k_shot, q_query, episodes),
+                batch_size=1,
+                num_workers=self.args_data.num_workers,
+                pin_memory=True,
+            )
+            self.test_loader = DataLoader(
+                FewShotEpisodeDataset(self.test_dataset, n_way, k_shot, q_query, episodes),
+                batch_size=1,
+                num_workers=self.args_data.num_workers,
+                pin_memory=True,
+            )
+            return self.train_loader, self.val_loader, self.test_loader
+
         train_batch_sampler = GroupedIdBatchSampler(
             data_source=self.train_dataset,
             batch_size=self.args_data.batch_size,
