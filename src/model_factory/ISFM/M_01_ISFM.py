@@ -36,6 +36,7 @@ Backbone_dict = {
 TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,
     'H_02_distance_cla': H_02_distance_cla,
+    'H_03_Linear_pred': H_03_Linear_pred,
 }
 class Model(nn.Module):
     def __init__(self, args_m,metadata): # args_d = False when not using H_02_distance_cla
