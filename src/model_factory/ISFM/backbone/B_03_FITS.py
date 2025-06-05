@@ -73,6 +73,7 @@ if __name__ == "__main__":
             self.enc_in = enc_in
             self.cut_freq = cut_freq
             self.individual = individual
+            self.patch_size_C = enc_in  # 假设通道数等于输入维度
 
     def test_fits_model():
         print("开始测试FITS模型...")
@@ -87,13 +88,13 @@ if __name__ == "__main__":
         # 测试1：共享参数模式
         print("\n测试1：共享参数模式 (individual=False)")
         configs = Config(seq_len, pred_len, channels, cut_freq, False)
-        model = Model(configs)
+        model = B_03_FITS(configs)
         
         # 创建随机输入
         x = torch.randn(batch_size, seq_len, channels)
         
         # 前向传播
-        output, low_freq_output = model(x)
+        output = model(x)
         
         # 检查输出
         print(f"输入形状: {x.shape}")
@@ -101,17 +102,17 @@ if __name__ == "__main__":
         print(f"预期输出形状: [{batch_size}, {seq_len + pred_len}, {channels}]")
         
         assert output.shape == (batch_size, seq_len + pred_len, channels), "输出形状错误！"
-        assert low_freq_output.shape == (batch_size, seq_len + pred_len, channels), "低频输出形状错误！"
+        # assert low_freq_output.shape == (batch_size, seq_len + pred_len, channels), "低频输出形状错误！"
         assert not torch.isnan(output).any(), "输出包含NaN值！"
         
         # 测试2：独立参数模式
         print("\n测试2：独立参数模式 (individual=True)")
         configs = Config(seq_len, pred_len, channels, cut_freq, True)
-        model = Model(configs)
+        model = B_03_FITS(configs)
         
         # 前向传播
-        output, low_freq_output = model(x)
-        
+        output = model(x)
+
         # 检查输出
         print(f"输出形状: {output.shape}")
         assert output.shape == (batch_size, seq_len + pred_len, channels), "输出形状错误！"
@@ -120,7 +121,7 @@ if __name__ == "__main__":
         # 测试3：正弦波预测
         print("\n测试3：正弦波预测")
         configs = Config(seq_len, pred_len, 1, 10, False)  # 单通道，较小的截断频率
-        model = Model(configs)
+        model = B_03_FITS(configs)
         
         # 创建正弦波输入
         t = np.linspace(0, 4*np.pi, seq_len)
@@ -128,8 +129,8 @@ if __name__ == "__main__":
         x = torch.FloatTensor(sine_wave).unsqueeze(0)  # [1, seq_len, 1]
         
         # 前向传播
-        output, _ = model(x)
-        
+        output = model(x)
+
         # 检查输出并计算MSE
         mse_input_region = torch.mean((output[0, :seq_len, 0] - x[0, :, 0])**2).item()
         print(f"输入区域MSE: {mse_input_region:.6f}")
