@@ -87,7 +87,7 @@ phm-vibench/
 
 - 遵循 PEP 8 风格，保持代码整洁。
 - 新功能请附带相应测试和文档。
-- 提交PR前请运行 `main_dummy.py` 或 `test/test.ipynb` 进行基本验证。
+- 提交PR前请运行 `main_dummy.py`进行基本验证。
 - [data_factory](./src/data_factory/contributing.md)、[model_factory](./src/model_factory/contributing.md)、[task_factory](./src/task_factory/contributing.md) 和 [trainer_factory](./src/trainer_factory/contributing.md) 的贡献请遵循各自的 `contributing.md` 文档。
 ## § Environment Setup
 
