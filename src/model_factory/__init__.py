@@ -29,5 +29,4 @@ __all__ = ["build_model",
            'MLP',
            'RNN',
            'ISFM',
-           'Other',
-           'FewShot']
+           'Other']
