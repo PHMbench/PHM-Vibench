@@ -30,4 +30,5 @@ def build_trainer(
 
 
 # 导出公共API
-__all__ = ["register_trainer", "build_trainer"]
+# 仅导出 `build_trainer`，原来的 `register_trainer` 接口已移除。
+__all__ = ["build_trainer"]
