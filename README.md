@@ -866,6 +866,6 @@ Vbench 采用模块化设计，遵循工厂模式，便于扩展和定制。如�
 
 ## ⭐ Star历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vbench&type=Date)](https://star-history.com/#PHMbench/Vbench&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date)
 
-<p align="center">如有任何问题或建议，请联系我们</a>或提交<a href="https://github.com/PHMbench/Vbench/issues">Issue</a>。</p>
+<p align="center">如有任何问题或建议，请联系我们</a>或提交<a href="https://github.com/PHMbench/Vibench/issues">Issue</a>。</p>
