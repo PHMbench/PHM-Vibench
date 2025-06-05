@@ -32,11 +32,14 @@ Backbone_dict = {
     'B_03_FITS': B_03_FITS,
     'B_04_Dlinear': B_04_Dlinear,
     'B_05_Manba': B_05_Manba,
+    
 }
 TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,
     'H_02_distance_cla': H_02_distance_cla,
 }
+
+
 class Model(nn.Module):
     def __init__(self, args_m,metadata): # args_d = False when not using H_02_distance_cla
         super(Model, self).__init__()
