@@ -24,7 +24,9 @@ class Default_dataset(Dataset): # THU_006or018_basic
         self.window_size = args_data.window_size
         self.stride = args_data.stride
         self.train_ratio = args_data.train_ratio
-        
+        self.num_window = args_data.num_window
+        self.window_sampling_strategy = getattr(args_data, 'window_sampling_strategy', 'evenly_spaced') # 新增：获取窗口采样策略，默认为evenly_spaced
+
         # 数据预处理
         self.processed_data = []  # 存储处理后的样本
                 
@@ -45,6 +47,58 @@ class Default_dataset(Dataset): # THU_006or018_basic
         self.total_samples = len(self.processed_data) # L'
         self.label = metadata[self.key]["Label"]
     
+    def _sequential_sampling(self, sample_data, data_length):
+        """顺序采样"""
+        num_samples = max(0, (data_length - self.window_size) // self.stride + 1)
+        num_samples = min(num_samples, self.num_window) 
+        
+        for i in range(num_samples):
+            start_idx = i * self.stride
+            end_idx = start_idx + self.window_size
+            self.processed_data.append(sample_data[start_idx:end_idx])
+
+    def _random_sampling(self, sample_data, data_length):
+        """随机采样"""
+        if data_length == self.window_size: # 如果数据长度刚好等于窗口大小
+             self.processed_data.append(sample_data)
+        else:
+            possible_starts = np.arange(data_length - self.window_size + 1)
+            if len(possible_starts) < self.num_window:
+                # 如果可能的起始点少于请求的窗口数，则取所有可能的窗口
+                selected_starts = possible_starts
+            else:
+                selected_starts = np.random.choice(possible_starts, size=self.num_window, replace=False)
+            
+            for start_idx in selected_starts:
+                end_idx = start_idx + self.window_size
+                self.processed_data.append(sample_data[start_idx:end_idx])
+
+    def _evenly_spaced_sampling(self, sample_data, data_length):
+        """等间隔采样"""
+        if self.num_window == 0:
+            return
+        if data_length == self.window_size: # 如果数据长度刚好等于窗口大小
+            self.processed_data.append(sample_data)
+        elif self.num_window == 1: # 如果只需要一个窗口，则从中间取
+            start_idx = (data_length - self.window_size) // 2
+            end_idx = start_idx + self.window_size
+            self.processed_data.append(sample_data[start_idx:end_idx])
+        else:
+            effective_length = data_length - self.window_size 
+            if effective_length < 0:
+                return
+
+            if self.num_window > effective_length + 1: 
+                step = max(0, effective_length / (self.num_window -1) if self.num_window > 1 else 0)
+            else:
+                step = effective_length / (self.num_window - 1) if self.num_window > 1 else 0
+            
+            for i in range(self.num_window):
+                start_idx = int(round(i * step))
+                start_idx = min(start_idx, data_length - self.window_size)
+                end_idx = start_idx + self.window_size
+                self.processed_data.append(sample_data[start_idx:end_idx])
+
     def _process_single_data(self, sample_data):
         """
         处理单个数据样本，应用滑动窗口
@@ -60,14 +114,41 @@ class Default_dataset(Dataset): # THU_006or018_basic
             sample_data = sample_data.reshape(sample_data.shape[0], -1)
         
         data_length = len(sample_data)
-        num_samples = max(0, (data_length - self.window_size) // self.stride + 1)
-        num_samples = min(num_samples, self.args_data.num_window)  # 至少保留一个样本
+
+        # normalization
+        if self.args_data.normalization == 'minmax':
+            min_vals = np.min(sample_data, axis=0)
+            max_vals = np.max(sample_data, axis=0)
+            # Avoid division by zero if max and min are the same for a channel
+            denominator = max_vals - min_vals
+            denominator[denominator == 0] = 1  # Or handle as appropriate
+            sample_data = (sample_data - min_vals) / denominator
+        elif self.args_data.normalization == 'standardization':
+            mean_vals = np.mean(sample_data, axis=0)
+            std_vals = np.std(sample_data, axis=0)
+            # Avoid division by zero if std is zero for a channel
+            std_vals[std_vals == 0] = 1  # Or handle as appropriate
+            sample_data = (sample_data - mean_vals) / std_vals
+        elif self.args_data.normalization == 'none':
+            pass
+        else:
+            raise ValueError(f"Unknown normalization method: {self.args_data.normalization}")
         
-        for i in range(num_samples):
-            start_idx = i * self.stride
-            end_idx = start_idx + self.window_size
-            
-            self.processed_data.append(sample_data[start_idx:end_idx])
+        if data_length < self.window_size:
+            # 如果数据长度小于窗口大小，则不处理或进行填充等操作（此处简单跳过）
+            # 可以根据需求添加更复杂的处理逻辑，例如报错、填充等
+            print(f"Warning: Data length ({data_length}) is less than window size ({self.window_size}). Skipping this data.")
+            return
+
+        if self.window_sampling_strategy == 'sequential':
+            self._sequential_sampling(sample_data, data_length)
+        elif self.window_sampling_strategy == 'random':
+            self._random_sampling(sample_data, data_length)
+        elif self.window_sampling_strategy == 'evenly_spaced':
+            self._evenly_spaced_sampling(sample_data, data_length)
+        else:
+            raise ValueError(f"Unknown window_sampling_strategy: {self.window_sampling_strategy}")
+
 
     def _split_data_for_mode(self):
         """
