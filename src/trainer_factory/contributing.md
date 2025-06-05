@@ -1,73 +1,30 @@
-# 贡献到训练器工厂（Trainer Factory）
+# Contributing Trainers
 
-感谢您有兴趣为PHMBench的训练器工厂组件做出贡献！本文档提供了贡献指南，以确保一致性和质量。
+The trainer factory creates PyTorch Lightning trainers used by PHMbench. Use this guide when adding a new training strategy.
 
-## 介绍
+## Workflow
+1. Fork the repository and create a branch `feature/trainer-<name>`.
+2. Implement the trainer class in `src/trainer_factory/<TrainerName>.py` and inherit from an existing base trainer.
+3. Register the trainer in `src/trainer_factory/trainer_factory.py` so it can be selected via configuration.
+4. Provide tests under `test/` to verify training works as expected.
+5. Document usage in the README or within this directory.
 
-训练器工厂模块负责为PHMBench框架中的训练器。它在基准测试过程中扮演着关键角色。
-
-## 如何贡献
-
-### 代码贡献
-
-1. 复刻（Fork）代码库
-2. 创建功能分支
-3. 实现您的更改
-4. 为您的实现添加测试
-5. 确保所有测试通过
-6. 提交拉取请求（Pull Request）
-
-### 添加新的训练器
-
-要添加新的训练器：
-
-1. 在`trainers/`目录下创建新文件
-2. 实现所需的接口方法（见下文）
-3. 在工厂注册表中注册您的训练器
-4. 为新训练器添加测试
-5. 更新文档
-
-### 必需的接口
-
-所有训练器必须实现：
-
+## Required Interface
+Your trainer should expose at least:
 ```python
-class YourTrainer(BaseTrainer):
+class YourTrainer(LightningTrainer):
     def __init__(self, config):
         super().__init__(config)
-        # 您的初始化代码
-
-    def train(self, data):
-        # 训练实现
-        
-    def validate(self, data):
-        # 验证实现
-        
-    # 其他必需的方法
+    # override fit/validate if necessary
 ```
 
-## 代码标准
+## Contribution Checklist
+- [ ] Trainer file added and registered.
+- [ ] Example config or docs updated.
+- [ ] Tests or minimal run succeed.
+- [ ] Tests pass or example run succeeds.
+- [ ] Documentation updated if necessary.
+- [ ] Code follows PEP8 and includes docstrings.
 
-- 遵循PEP 8风格指南
-- 为所有函数、类和方法编写文档字符串
-- 维持至少80%的测试覆盖率
-- 尽可能使用类型提示
 
-## 测试
-
-使用以下命令运行测试：
-
-```bash
-pytest src/trainer_factory/tests/
-```
-
-## 拉取请求流程
-
-1. 如果适用，更新README.md以包含更改的详细信息
-2. 更新任何修改功能的文档
-3. PR需要至少一名维护者的批准
-4. PR标题应遵循约定式提交格式
-
-## 有问题？
-
-如有任何关于贡献的问题或疑虑，请随时提出issue。
+Questions can be raised through GitHub issues.
