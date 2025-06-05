@@ -1,13 +1,13 @@
-# Vbench: 工业设备振动信号基准平台
+# PHM-Vibench: 工业设备振动信号基准平台
 
 <div align="center">
-  <img src="pic/Vbench.png" alt="Vbench Logo" width="300"/>
+  <img src="pic/PHM-Vibench.png" alt="PHM-Vibench Logo" width="300"/>
   <p><strong>🏭 工业领域端到端可复现、模块化的故障诊断与预测性维护基准测试平台 🏭</strong></p>
   <p><em>⚠️ 内测阶段 - 仅限邀请访问 ⚠️</em></p>
 
   <p>
     <img src="https://img.shields.io/badge/状态-内测中-orange" alt="Status: Alpha"/>
-    <img src="https://img.shields.io/badge/版本-0.1.0--alpha-blue" alt="Version"/>
+    <img src="https://img.shields.io/badge/版本-0.2.0--alpha-blue" alt="Version"/>
     <img src="https://img.shields.io/badge/许可-Apache%202.0-green" alt="License"/>
     <img src="https://img.shields.io/badge/数据集-15+-purple" alt="Datasets"/>
     <img src="https://img.shields.io/badge/算法-30+-red" alt="Algorithms"/>
@@ -44,7 +44,7 @@
 ## ✨ 项目亮点
 
 <!-- <div align="center">
-  <img src="pic/features.png" alt="Vbench Features" width="700"/>
+  <img src="pic/features.png" alt="PHM-Vibench Features" width="700"/>
 </div> -->
 
 - 🧩 **先进的模块化设计**：采用工厂设计模式实现数据集、模型、任务和训练器的高度模块化，为后续功能扩展提供了灵活架构
@@ -55,11 +55,11 @@
 - 📈 **一键复现与基准测试**：内置30+经典和最新算法实现，只需一行命令即可复现论文结果并进行公平比较
 
 <details>
-<summary><b>为什么选择Vbench？</b> (点击展开)</summary>
+<summary><b>为什么选择PHM-Vibench？</b> (点击展开)</summary>
 <table>
   <tr>
     <th>特性</th>
-    <th>Vbench</th>
+    <th>PHM-Vibench</th>
     <th>传统PHM工具</th>
   </tr>
   <tr>
@@ -92,7 +92,7 @@
 
 ## 📝 项目背景与简介
 
-**❓为什么需要 Vbench**
+**❓为什么需要 PHM-Vibench**
 
 ### 🎯 A. 项目定位与价值
 
@@ -103,11 +103,11 @@
 3. ⚖️ **公平比较的障碍**：数据划分、预处理和评估标准的不一致性导致结果难以直接比较
 
 <!-- <div align="center">
-  <img src="pic/motivation.png" alt="Vbench Motivation" width="600"/>
+  <img src="pic/motivation.png" alt="PHM-Vibench Motivation" width="600"/>
   <p><em>PHM研究面临的挑战</em></p>
 </div> -->
 
-Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准测试平台，旨在提供一个标准化、可复现且易于使用的实验环境，以解决上述挑战。
+PHM-Vibench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准测试平台，旨在提供一个标准化、可复现且易于使用的实验环境，以解决上述挑战。
 
 ### 🛠️ B. 核心功能与特性
 
@@ -117,16 +117,16 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 4. 🚀 **快速原型开发支持**：模块化设计使研究人员能高效实施和验证新思路与方法
 
 <!-- <div align="center">
-  <img src="pic/workflow.png" alt="Vbench Workflow" width="700"/>
-  <p><em>Vbench工作流程</em></p>
+  <img src="pic/workflow.png" alt="PHM-Vibench Workflow" width="700"/>
+  <p><em>PHM-Vibench工作流程</em></p>
 </div> -->
 
 ## 🔄 支持的模型与数据集
 
 ### 📊 支持的数据集 见
-- [Model scope](https://www.modelscope.cn/datasets/RichieTHU/Vbench_data)
-- [h5](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
-- [raw_data(PHMbench group avaliable)](https://www.modelscope.cn/datasets/PHMbench/PHMbench-raw_data)
+- [Model scope](https://www.modelscope.cn/datasets/RichieTHU/PHM-Vibench_data)
+- [处理好的 h5文件](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
+- [raw_data (PHMbench group avaliable)](https://www.modelscope.cn/datasets/PHMbench/PHMbench-raw_data)
 
 
 
@@ -150,22 +150,39 @@ Vbench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准
 
 ```bash
 # 克隆仓库
-git clone https://github.com/PHMbench/PHM-Vbench.git
-cd Vbench
+git clone https://github.com/PHMbench/PHM-Vibench.git
+cd PHM-Vibench
 
 # 安装依赖
 conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
+# 下载h5数据集 ## TODO 继承到程序中 @
+
+## 下载完整
+modelscope download --dataset PHMbench/PHM-Vibench --local_dir ./dir
+
+## 下载特定
+modelscope download --dataset PHMbench/PHM-Vibench README.md --local_dir ./dir
+
+# 修改配置文件中的数据集路径
+# 例如：在 configs/demo/Single_DG/CWRU.yaml 中设置 data.data_dir 为 ./dir
+
+例如 在configs/demo/Single_DG/CWRU.yaml 中
+data:
+  # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
+  data_dir: "自己的目录/PHM-Vibench"  # for dummy test
+  metadata_file: "metadata_版本号.xlsx"  # 指定元数据文件，在PHM-Vibench目录下
+
 ```
 
 ## 🚀 快速开始
 
-通过以下步骤快速体验 Vbench 的功能：
+通过以下步骤快速体验 PHM-Vibench 的功能：
 
 <!-- <div align="center">
-  <img src="pic/quickstart.png" alt="Vbench Quick Start" width="650"/>
+  <img src="pic/quickstart.png" alt="PHM-Vibench Quick Start" width="650"/>
 </div> -->
 
 ```bash
@@ -191,13 +208,13 @@ python main.py --config configs/demo/Multiple_DG/all.yaml
 
 ### 1. 配置文件详解 ⚙️
 
-Vbench 使用 YAML 配置文件定义实验，包含以下主要部分：
+PHM-Vibench 使用 YAML 配置文件定义实验，包含以下主要部分：
 
 
 
 ### 配置文件结构
 
-Vbench使用YAML格式的配置文件来定义和管理实验。主要包含以下几个部分：
+PHM-Vibench使用YAML格式的配置文件来定义和管理实验。主要包含以下几个部分：
 
 ```yaml
 environment:  # 环境配置
@@ -231,8 +248,8 @@ trainer:      # 训练器配置
   </tr>
   <tr>
     <td>1</td>
-    <td>VBENCH_HOME</td>
-    <td>Vbench框架根目录</td>
+    <td>PHM-Vibench_HOME</td>
+    <td>PHM-Vibench框架根目录</td>
     <td>指向框架源代码所在位置</td>
   </tr>
   <tr>
@@ -354,7 +371,7 @@ trainer:      # 训练器配置
 </details>
 
 <details>
-<summary><b>👉 模型配置参数 (Model)</b></summary>
+<summary><b>👉 模型配置参数 (Model) 部分模型有其特有参数</b></summary>
 
 <table>
   <tr>
@@ -695,7 +712,7 @@ python main.py --config configs/your_config.yaml
 python main.py --config configs/your_config.yaml --iterations 5 --seeds 42,43,44,45,46
 
 # 启用WandB实验跟踪
-python main.py --config configs/your_config.yaml --wandb --project "vbench-experiments"
+python main.py --config configs/your_config.yaml --wandb --project "PHM-Vibench-experiments"
 
 # 使用特定GPU
 CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
@@ -703,18 +720,32 @@ CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
 
 ### 3. 结果分析 📊
 
-实验结果保存在 `results/` 目录下，每次实验会创建以下文件：
+实验结果保存在 `save/` 目录下，按照以下层次结构组织：
 
-- 📁 **模型权重与检查点**：`{experiment_name}/checkpoints/`
-- 📄 **评估指标报告**：`{experiment_name}/metrics.json`
-- 📝 **详细日志**：`{experiment_name}/log.txt`
-- 📊 **可视化结果**：`{experiment_name}/figures/`，包括混淆矩阵、学习曲线等
-- 🔄 **实验配置备份**：`{experiment_name}/config.yaml`
+```
+save/
+└── {metadata_file}/
+  └── {model_name}/
+    └── {task_type}_{trainer_name}_{timestamp}/
+      ├── 📁 checkpoints/          # 模型权重与检查点
+      ├── 📄 metrics.json          # 评估指标报告
+      ├── 📝 log.txt              # 详细训练日志
+      ├── 📊 figures/             # 可视化结果
+      │   ├── confusion_matrix.png
+      │   ├── learning_curve.png
+      │   └── loss_curve.png
+      └── 🔄 config.yaml         # 实验配置备份
+```
 
-<div align="center">
+**目录结构说明**：
+- 📁 **元数据级别**：`Meta_metadata_6_1.xlsx` - 按数据集元数据文件分组
+- 🧠 **模型级别**：`Model_Transformer_Dummy` - 按使用的模型架构分组  
+- 🎯 **实验级别**：`Task_Classification_Trainer_Default_trainer_20250602_212530` - 按任务类型、训练器和时间戳命名
+
+<!-- <div align="center">
   <img src="pic/results_visualization.png" alt="Results Visualization" width="700"/>
-  <p><em>Vbench结果可视化示例</em></p>
-</div>
+  <p><em>PHM-Vibench结果可视化示例</em></p>
+</div> -->
 
 ### 4. 结果可视化 📈
 
@@ -732,39 +763,100 @@ python scripts/export_latex.py --result_dir results/experiment_name
 ## 📂 项目结构
 
 ```bash
-📂 Vbench
+📂 PHM-Vibench
 ├── 📄 README.md                 # 项目说明
 ├── 📄 main.py                   # 主入口程序
 ├── 📄 main_dummy.py             # 功能测试程序
 ├── 📄 benchmark.py              # 性能基准测试工具
 ├── 📂 configs                   # 配置文件目录
 │   ├── 📂 demo                  # 示例配置
-│   │   ├── 📄 cwru_classification.yaml  # CWRU分类实验
-│   │   ├── 📄 dummy_test.yaml   # 测试配置
-│   │   └── 📄 paderborn_rul.yaml # RUL预测实验
-│   └── 📂 experiments           # 实验配置
+│   │   ├── 📂 Single_DG         # 单数据集域泛化
+│   │   │   ├── 📄 CWRU.yaml     # CWRU数据集配置
+│   │   │   ├── 📄 MFPT.yaml     # MFPT数据集配置
+│   │   │   └── 📄 ...           # 其他单数据集配置
+│   │   ├── 📂 Multiple_DG       # 多数据集域泛化
+│   │   │   ├── 📄 CWRU_THU_using_ISFM.yaml  # 跨数据集实验
+│   │   │   ├── 📄 all.yaml      # 全数据集实验
+│   │   │   └── 📄 ...           # 其他跨数据集配置
+│   │   └── 📄 dummy_test.yaml   # 测试配置
+│   └── 📂 experiments           # 实验配置模板
 ├── 📂 src                       # 源代码目录
 │   ├── 📂 data_factory          # 数据集工厂
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 base_data.py      # 数据集基类
+│   │   ├── 📄 contributing.md   # 数据集贡献指南
+│   │   ├── 📄 data_factory.py   # 数据工厂类
+│   │   ├── 📄 H5DataDict.py     # H5数据字典
+│   │   └── 📂 dataset_task      # 具体数据集实现
 │   ├── 📂 model_factory         # 模型工厂
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 base_model.py     # 模型基类
+│   │   ├── 📄 contributing.md   # 模型贡献指南
+│   │   ├── 📄 model_factory.py  # 模型工厂类
+│   │   └── 📂 models            # 具体模型实现
+│   │       ├── 📂 backbone      # 骨干网络
+│   │       ├── 📂 embedding     # 嵌入层
+│   │       └── 📂 task_head     # 任务头
 │   ├── 📂 task_factory          # 任务工厂
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 base_task.py      # 任务基类
+│   │   ├── 📄 task_factory.py   # 任务工厂类
+│   │   └── 📂 tasks             # 具体任务实现
 │   ├── 📂 trainer_factory       # 训练器工厂
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 base_trainer.py   # 训练器基类
+│   │   ├── 📄 trainer_factory.py # 训练器工厂类
+│   │   └── 📂 trainers          # 具体训练器实现
 │   ├── 📂 visualization         # 可视化工具
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 metrics_plot.py   # 指标可视化
+│   │   └── 📄 result_analysis.py # 结果分析
 │   └── 📂 utils                 # 工具函数
+│       ├── 📄 __init__.py
+│       ├── 📄 config_loader.py  # 配置加载器
+│       ├── 📄 logger.py         # 日志工具
+│       └── 📄 reproducibility.py # 可复现性工具
 ├── 📂 test                      # 测试代码
-├── 📂 data                      # 数据目录
-├── 📂 results                   # 结果目录
-├── 📂 save                      # 模型保存目录
-└── 📂 scripts                   # 脚本目录
+│   ├── 📄 README.md            # 测试指南
+│   ├── 📄 test_data.py         # 数据测试
+│   ├── 📄 test_model.py        # 模型测试
+│   └── 📄 test_integration.py  # 集成测试
+├── 📂 pic                       # 项目图片资源
+│   ├── 📄 PHM-Vibench.png      # 项目Logo
+│   ├── 📄 contact_qrcode.png   # 联系二维码
+│   └── 📄 ...                  # 其他图片资源
+├── 📂 data                      # 数据目录(用户自定义)
+├── 📂 save                      # 实验结果保存目录
+│   └── 📂 {metadata_file}       # 按元数据文件分组
+│       └── 📂 {model_name}      # 按模型名称分组
+│           └── 📂 {experiment}  # 具体实验结果
+├── 📂 scripts                   # 辅助脚本目录
+│   ├── 📄 download_data.py     # 数据下载脚本
+│   ├── 📄 visualize_results.py # 结果可视化脚本
+│   └── 📄 export_latex.py      # LaTeX导出脚本
+├── 📄 requirements.txt         # Python依赖列表
+├── 📄 LICENSE                  # 许可证文件
+├── 📄 CONTRIBUTING.md          # 贡献指南
+└── 📄 .gitignore              # Git忽略文件
 ```
+
+**核心目录说明**：
+
+- 🏗️ **src/**: 模块化源代码，采用工厂模式设计
+- ⚙️ **configs/**: 实验配置文件，支持单/多数据集实验
+- 📊 **save/**: 实验结果按层次结构组织保存
+- 🧪 **test/**: 开发时测试套件确保代码质量
+- 📜 **scripts/**: 便捷的辅助工具和脚本
+
 
 <div align="center">
   <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
-  <p><em>Vbench项目结构概览</em></p>
+  <p><em>PHM-Vibench项目结构概览</em></p>
 </div>
 
-## 🧑‍💻 开发指南
+## 🧑‍💻 开发指南 TODO
 
-Vbench 采用模块化设计，遵循工厂模式，便于扩展和定制。如果您希望贡献代码，请参考[贡献者指南](./contributing.md)。
+PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制。如果您希望贡献代码，请参考[贡献者指南](./contributing.md)。
 
 ### 扩展数据集 📊 见[数据集贡献指南](./data_factory/contributing.md)
 
@@ -789,16 +881,16 @@ Vbench 采用模块化设计，遵循工厂模式，便于扩展和定制。如�
 </details>
 
 <details>
-<summary><b>Vbench是否支持分布式训练?</b></summary>
+<summary><b>PHM-Vibench是否支持分布式训练?</b></summary>
 <p>
-是的，Vbench支持基于PyTorch DDP的分布式训练。使用<code>--distributed</code>参数启动训练，例如：<code>python main.py --config your_config.yaml --distributed</code>
+是的，PHM-Vibench支持基于PyTorch DDP的分布式训练。使用<code>--distributed</code>参数启动训练，例如：<code>python main.py --config your_config.yaml --distributed</code>
 </p>
 </details>
 
 <details>
-<summary><b>如何引用使用Vbench的研究成果?</b></summary>
+<summary><b>如何引用使用PHM-Vibench的研究成果?</b></summary>
 <p>
-请使用本页底部提供的引用格式。同时，建议在论文方法部分明确说明使用了Vbench平台进行实验，并指明所用配置文件和版本号。
+请使用本页底部提供的引用格式。同时，建议在论文方法部分明确说明使用了PHM-Vibench平台进行实验，并指明所用配置文件和版本号。
 </p>
 </details> -->
 
@@ -808,57 +900,56 @@ Vbench 采用模块化设计，遵循工厂模式，便于扩展和定制。如�
 
 ## 🔮 项目路线图
 
-- **2023 Q3**: 
-  - 公开测试版发布
-  - 增加在线演示系统
-  - 扩展至20+数据集支持
+- **2025 Q2**: 
+  1. PHM-Vibench 0.2版本
+  2. 增加更多数据集支持
+  3. 完善文档和教程
+  4. 内测环节
 
-- **2023 Q4**: 
-  - 添加预训练模型库
-  - 实现自动超参数优化
-  - 增加迁移学习与跨域诊断模块
-
-- **2024 Q1**:
-  - 推出低代码Web界面
-  - 提供云端一键部署解决方案
-  - 发布完整文档与教程
 
 ## 👥 贡献者与社区
 
 ### 核心团队
 - [Qi Li](https://github.com/liq22)
+- [Xuan Li](https://github.com/Xuan423)
+### All Thanks To Our Contributors
+
+<a href="https://github.com/PHMbench/PHM-Vibench/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PHMbench/PHM-Vibench" />
+</a>
+
 
 ### 参与贡献
 我们非常欢迎各种形式的贡献！无论是新功能开发、文档改进还是问题反馈。请参阅[贡献指南](CONTRIBUTING.md)了解详情。
 
 ### 社区交流
 - 加入我们的[Slack频道](https://phmbench.slack.com)讨论问题和新点子
-- 加入我们的[飞书群组](https://phmbench.feishu.cn/invite/2d8e0f3b-4a5c-4b1c-9a6f-7d2e0f3b4a5c)获取最新动态
+- 加入我们的[飞书群组](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c9fh4f62-5d01-42ff-bb1c-520092457e2d)获取最新动态
 <!-- - 关注我们的[微信公众号](https://mp.weixin.qq.com/phmbench)获取最新资讯
 - 参与每月的[线上研讨会](https://phmbench.com/webinars) -->
 
-<div align="center">
+<!-- <div align="center">
   <br>
   <p>🌟 欢迎内测用户提供宝贵反馈! 🌟</p>
   <img src="pic/contact_qrcode.png" alt="联系方式" width="150"/>
   <p><em>扫描二维码加入内测讨论组</em></p>
-</div>
+</div> -->
 
 ## 🏛 许可证
 
-该基准测试平台采用 [Apache License (Version 2.0)](https://github.com/PHMbench/Vbench/blob/master/LICENSE) 许可。对于模型和数据集，请参考原始资源页面并遵循相应的许可证。
+该基准测试平台采用 [Apache License (Version 2.0)](https://github.com/PHMbench/PHM-Vibench/blob/master/LICENSE) 许可。对于模型和数据集，请参考原始资源页面并遵循相应的许可证。
 
 ## 📎 引用方式
 
 > 📝 **注意**: 项目尚未正式发布，以下引用格式仅供内测用户参考，正式引用格式将随项目公开发布提供。
 
 ```bibtex
-@misc{vbench2023,
-  title={Vbench: A Modular Benchmark for Industrial Fault Diagnosis and Prognosis},
+@misc{PHM-Vibench2023,
+  title={PHM-Vibench: A Modular Benchmark for Industrial Fault Diagnosis and Prognosis},
   author={PHMbench Team},
   year={2023},
   howpublished={Internal Testing Version},
-  url={https://github.com/PHMbench/Vbench}
+  url={https://github.com/PHMbench/PHM-Vibench}
 }
 ```
 
