@@ -37,7 +37,6 @@ Backbone_dict = {
 TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,
     'H_02_distance_cla': H_02_distance_cla,
-    'H_03_Linear_pred': H_03_Linear_pred,
 }
 
 
