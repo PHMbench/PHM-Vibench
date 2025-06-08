@@ -16,164 +16,7 @@ import concurrent.futures
 from tqdm import tqdm  # 用于显示进度条
 from torch.utils.data import Dataset
 from .samplers.sampler import GroupedIdBatchSampler, BalancedIdSampler
-
-
-def smart_read_csv(file_path, auto_detect=True):
-    """智能读取CSV/Excel文件，自动尝试不同的分隔符和编码"""
-    # 检查文件扩展名
-    file_ext = os.path.splitext(file_path)[1].lower()
-    
-    # 如果是Excel文件，直接使用pandas读取
-    if file_ext in ['.xlsx', '.xls']:
-        try:
-            return pd.read_excel(file_path)
-        except Exception as e:
-            print(f"读取Excel文件失败: {e}")
-            raise Exception(f"无法读取Excel文件 {file_path}: {e}")
-    
-    # CSV读取逻辑
-    if auto_detect:
-        # 先尝试检测文件前几行来判断可能的分隔符
-        try:
-            with open(file_path, 'rb') as f:
-                sample = f.read(4096)  # 读取前4KB判断格式
-                
-            # 尝试用UTF-8解码
-            sample_text = sample.decode('utf-8', errors='ignore')
-            
-            # 根据文件内容推测分隔符
-            comma_count = sample_text.count(',')
-            tab_count = sample_text.count('\t')
-            
-            # 根据分隔符频率选择解析策略
-            if comma_count > tab_count:
-                # 更可能是逗号分隔的文件
-                try:
-                    return pd.read_csv(file_path)
-                except UnicodeDecodeError:
-                    return pd.read_csv(file_path, encoding='gbk')
-            else:
-                # 更可能是制表符分隔的文件
-                try:
-                    return pd.read_csv(file_path, sep='\t')
-                except UnicodeDecodeError:
-                    return pd.read_csv(file_path, sep='\t', encoding='gbk', low_memory=False)
-                
-        except Exception as e:
-            print(f"自动检测格式失败: {e}，尝试默认方法")
-        
-        # 如果检测失败，按照优先级尝试不同组合
-        encodings = ['utf-8', 'gbk', 'latin1']
-        separators = [',', '\t']
-        
-        for encoding in encodings:
-            for sep in separators:
-                try:
-                    return pd.read_csv(file_path, encoding=encoding, sep=sep)
-                except Exception as e:
-                    continue
-                    
-        # 最后的后备方案，使用最宽松的参数
-        try:
-            return pd.read_csv(file_path, encoding='latin1', sep=None, engine='python')
-        except Exception as e:
-            raise Exception(f"无法读取文件 {file_path}，尝试了所有常见格式: {e}")
-
-
-class MetadataAccessor:
-    """提供类似字典的接口访问DataFrame数据的类"""
-    
-    def __init__(self, dataframe, key_column='Id'):
-        """初始化元数据访问器
-        
-        Args:
-            dataframe: pandas DataFrame包含元数据
-            key_column: 用作键的列名，默认为'Id'
-        """
-        self.df = dataframe
-        self.key_column = key_column
-        # 为了加速查询，将索引设置为key_column
-        self.df.set_index(key_column, inplace=True, drop=False)
-    
-    def __getitem__(self, key):
-        """通过键获取元数据行，返回一个字典
-        
-        Args:
-            key: 要查找的键值
-            
-        Returns:
-            dict: 包含该行所有数据的字典
-        """
-        try:
-            return self.df.loc[key]#.to_dict()
-        except KeyError:
-            raise KeyError(f"找不到ID为{key}的记录")
-    
-    def __contains__(self, key):
-        """检查键是否存在
-        
-        Args:
-            key: 要检查的键值
-            
-        Returns:
-            bool: 键是否存在
-        """
-        return key in self.df.index
-    
-    def keys(self):
-        """获取所有键的列表
-        
-        Returns:
-            列表: 所有键的列表
-        """
-        return list(self.df[self.key_column])
-    
-    def items(self):
-        """获取(key, value)对的列表，类似字典的items方法
-        
-        Returns:
-            列表: (key, value)元组的列表
-        """
-        for key in self.keys():
-            yield (key, self[key])
-    
-    def values(self):
-        """获取所有值的列表
-        
-        Returns:
-            列表: 所有行数据字典的列表
-        """
-        return [row.to_dict() for _, row in self.df.iterrows()]
-    
-    def get(self, key, default=None):
-        """获取键对应的值，如果不存在返回默认值
-        
-        Args:
-            key: 要查找的键
-            default: 键不存在时返回的默认值
-            
-        Returns:
-            字典或默认值
-        """
-        try:
-            return self[key]
-        except KeyError:
-            return default
-    
-    def __len__(self):
-        """返回元数据条目数量"""
-        return len(self.df)
-    
-    def query(self, query_str):
-        """使用pandas的query功能直接查询数据
-        
-        Args:
-            query_str: pandas query语法的查询字符串
-            
-        Returns:
-            查询结果DataFrame
-        """
-        return self.df.query(query_str)
+from .data_utils import smart_read_csv, MetadataAccessor, download_data
 
 
 
@@ -200,7 +43,6 @@ class data_factory:
         self.train_loader, self.val_loader, self.test_loader = self._init_dataloader()
 
     def _init_metadata(self, args_data):
-
         """
         初始化元数据
         
@@ -208,14 +50,27 @@ class data_factory:
             args_data: 包含data_dir和metadata_file的字典或命名空间
             
         Returns:
-            dict: {id: metadata_dict} 格式的元数据字典
+            MetadataAccessor: 元数据访问器对象
         """
-        # 1. 读取元数据
-        metadata_path = os.path.join(args_data.data_dir, args_data.metadata_file)
-        meta_df = smart_read_csv(metadata_path, auto_detect=True)
-        metadata =  MetadataAccessor(meta_df, key_column='Id')
+        # 1. 检查并自动下载元数据文件（如果不存在）
+        try:
+             download_data(data_file=args_data.metadata_file,
+                                           save_path=args_data.data_dir,
+                                             source='auto')
+        except FileNotFoundError as e:
+            print(f"[ERROR] {e}")
+            raise
         
-        return metadata
+        # 2. 读取元数据
+        try:
+            metadata_path = os.path.join(args_data.data_dir, args_data.metadata_file)
+            meta_df = smart_read_csv(metadata_path, auto_detect=True)
+            metadata = MetadataAccessor(meta_df, key_column='Id')
+            print(f"[SUCCESS] 成功加载元数据，共 {len(metadata)} 条记录")
+            return metadata
+        except Exception as e:
+            print(f"[ERROR] 读取元数据文件失败: {e}")
+            raise
     
     def _init_data(self, args_data, use_cache=True, max_workers=32):
         """
@@ -249,7 +104,11 @@ class data_factory:
                 
                 name_op = meta_op['Name']
                 file_op = meta_op['File']
-                
+
+                # 确保数据存在
+                download_data(data_file=args_data.metadata_file,
+                                            save_path=args_data.data_dir,
+                                                source='auto')                
                 # 确保导入路径相对于项目结构是正确的
                 mod = importlib.import_module(f"src.data_factory.reader.{name_op}")
                 

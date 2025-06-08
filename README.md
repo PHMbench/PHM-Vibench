@@ -159,20 +159,11 @@ conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# 下载h5数据集 ## TODO 继承到程序中 @
+# 下载h5数据集 
 
-## 下载完整
-modelscope download --dataset PHMbench/PHM-Vibench --local_dir ./dir
-
-## 下载特定
-modelscope download --dataset PHMbench/PHM-Vibench README.md --local_dir ./dir
-
-# 修改配置文件中的数据集路径
-# 例如：在 configs/demo/Single_DG/CWRU.yaml 中设置 data.data_dir 为 ./dir
 
 例如 在configs/demo/Single_DG/CWRU.yaml 中
 data:
-  # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
   data_dir: "自己的目录/PHM-Vibench"  # for dummy test
   metadata_file: "metadata_版本号.xlsx"  # 指定元数据文件，在PHM-Vibench目录下
 
