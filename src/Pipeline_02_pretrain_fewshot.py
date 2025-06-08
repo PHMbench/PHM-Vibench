@@ -17,13 +17,9 @@ def run_experiment(config_path, notes=""):
     configs = load_config(config_path)
     args_environment = transfer_namespace(configs.get('environment', {}))
     args_data = transfer_namespace(configs.get('data', {}))
-    args_data.name = configs['data'].get('name', 'default')
-    args_model = transfer_namespace(configs.get('model', {}).get('args', {}))
-    args_model.name = configs['model'].get('name', 'default')
-    args_task = transfer_namespace(configs.get('task', {}).get('args', {}))
-    args_task.name = configs['task'].get('name', 'default')
-    args_trainer = transfer_namespace(configs.get('trainer', {}).get('args', {}))
-    args_trainer.name = configs['trainer'].get('name', 'default')
+    args_model = transfer_namespace(configs.get('model', {}))
+    args_task = transfer_namespace(configs.get('task', {}))
+    args_trainer = transfer_namespace(configs.get('trainer', {}))
 
     for key, value in configs['environment'].items():
         if key.isupper():
@@ -66,13 +62,13 @@ def pipeline(args):
     fs_args_environment = transfer_namespace(fs_configs.get('environment', {}))
     fs_args_data = transfer_namespace(fs_configs.get('data', {}))
     fs_args_data.name = fs_configs['data'].get('name', 'default')
-    fs_args_model = transfer_namespace(fs_configs.get('model', {}).get('args', {}))
+    fs_args_model = transfer_namespace(fs_configs.get('model', {}))
     fs_args_model.name = fs_configs['model'].get('name', 'default')
     if ckpt_path:
         fs_args_model.weights_path = ckpt_path
-    fs_args_task = transfer_namespace(fs_configs.get('task', {}).get('args', {}))
+    fs_args_task = transfer_namespace(fs_configs.get('task', {}))
     fs_args_task.name = fs_configs['task'].get('name', 'default')
-    fs_args_trainer = transfer_namespace(fs_configs.get('trainer', {}).get('args', {}))
+    fs_args_trainer = transfer_namespace(fs_configs.get('trainer', {}))
     fs_args_trainer.name = fs_configs['trainer'].get('name', 'default')
 
     for key, value in fs_configs['environment'].items():

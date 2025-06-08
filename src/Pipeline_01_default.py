@@ -50,16 +50,12 @@ def pipeline(args):
     args_environment = transfer_namespace(configs.get('environment', {}))
 
     args_data = transfer_namespace(configs.get('data', {}))
-    args_data.name = configs['data'].get('name', 'default')
 
-    args_model = transfer_namespace(configs.get('model', {}).get('args', {}))
-    args_model.name = configs['model'].get('name', 'default')
+    args_model = transfer_namespace(configs.get('model', {}))
 
-    args_task = transfer_namespace(configs.get('task', {}).get('args', {}))
-    args_task.name = configs['task'].get('name', 'default')
+    args_task = transfer_namespace(configs.get('task', {}))
 
-    args_trainer = transfer_namespace(configs.get('trainer', {}).get('args', {}))
-    args_trainer.name = configs['trainer'].get('name', 'default')
+    args_trainer = transfer_namespace(configs.get('trainer', {}))
     
     for key, value in configs['environment'].items():
         if key.isupper():
