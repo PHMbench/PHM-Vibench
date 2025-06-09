@@ -1,5 +1,4 @@
 import argparse
-import importlib
 import os
 import pandas as pd
 from pytorch_lightning import seed_everything
@@ -13,13 +12,17 @@ from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 
 
-def run_experiment(config_path, notes=""):
+def run_stage(config_path, ckpt_path=None):
+    """Run a single training/testing stage given a config path."""
     configs = load_config(config_path)
     args_environment = transfer_namespace(configs.get('environment', {}))
     args_data = transfer_namespace(configs.get('data', {}))
     args_model = transfer_namespace(configs.get('model', {}))
     args_task = transfer_namespace(configs.get('task', {}))
     args_trainer = transfer_namespace(configs.get('trainer', {}))
+
+    if ckpt_path:
+        args_model.weights_path = ckpt_path
 
     for key, value in configs['environment'].items():
         if key.isupper():
@@ -48,55 +51,30 @@ def run_experiment(config_path, notes=""):
     return task, trainer
 
 
-def pipeline(args):
-    # 1. pretraining stage
-    pretask, trainer = run_experiment(args.config_path)
+def run_pretraining_stage(config_path):
+    """Run the pretraining stage and return the checkpoint path."""
+    task, trainer = run_stage(config_path)
     ckpt_path = None
     for cb in trainer.callbacks:
         if isinstance(cb, ModelCheckpoint):
             ckpt_path = cb.best_model_path
             break
+    return ckpt_path
 
-    # 2. few-shot stage
-    fs_configs = load_config(args.fs_config_path)
-    fs_args_environment = transfer_namespace(fs_configs.get('environment', {}))
-    fs_args_data = transfer_namespace(fs_configs.get('data', {}))
-    fs_args_data.name = fs_configs['data'].get('name', 'default')
-    fs_args_model = transfer_namespace(fs_configs.get('model', {}))
-    fs_args_model.name = fs_configs['model'].get('name', 'default')
-    if ckpt_path:
-        fs_args_model.weights_path = ckpt_path
-    fs_args_task = transfer_namespace(fs_configs.get('task', {}))
-    fs_args_task.name = fs_configs['task'].get('name', 'default')
-    fs_args_trainer = transfer_namespace(fs_configs.get('trainer', {}))
-    fs_args_trainer.name = fs_configs['trainer'].get('name', 'default')
 
-    for key, value in fs_configs['environment'].items():
-        if key.isupper():
-            os.environ[key] = str(value)
-
-    path, name = path_name(fs_configs, 0)
-    seed_everything(fs_args_environment.seed)
-
-    data_factory = build_data(fs_args_data, fs_args_task)
-    model = build_model(fs_args_model, metadata=data_factory.get_metadata())
-    task = build_task(
-        args_task=fs_args_task,
-        network=model,
-        args_data=fs_args_data,
-        args_model=fs_args_model,
-        args_trainer=fs_args_trainer,
-        args_environment=fs_args_environment,
-        metadata=data_factory.get_metadata()
-    )
-    trainer = build_trainer(fs_args_environment, fs_args_trainer, fs_args_data, path)
-    trainer.fit(task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
-    task = load_best_model_checkpoint(task, trainer) # Ensure the best model is loaded before testing
-    fs_result = trainer.test(task, data_factory.get_dataloader('test'))
-    fs_result_df = pd.DataFrame([fs_result[0]])
-    fs_result_df.to_csv(os.path.join(path, 'test_result_fewshot.csv'), index=False)
-
+def run_fewshot_stage(fs_config_path, ckpt_path=None):
+    """Run the few-shot stage. Optionally load a pretrained checkpoint."""
+    run_stage(fs_config_path, ckpt_path)
     return True
+
+def pipeline(args):
+    """Run pretraining followed by a few-shot stage."""
+    ckpt_path = run_pretraining_stage(args.config_path)
+    run_fewshot_stage(args.fs_config_path, ckpt_path)
+    return True
+
+
+
 
 
 if __name__ == "__main__":
