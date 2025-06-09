@@ -91,7 +91,10 @@ def pipeline(args):
     )
     trainer = build_trainer(fs_args_environment, fs_args_trainer, fs_args_data, path)
     trainer.fit(task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
-    trainer.test(task, data_factory.get_dataloader('test'))
+    task = load_best_model_checkpoint(task, trainer) # Ensure the best model is loaded before testing
+    fs_result = trainer.test(task, data_factory.get_dataloader('test'))
+    fs_result_df = pd.DataFrame([fs_result[0]])
+    fs_result_df.to_csv(os.path.join(path, 'test_result_fewshot.csv'), index=False)
 
     return True
 
