@@ -45,3 +45,4 @@ class FewShotEpisodeDataset(Dataset):
             'query_x': torch.stack(query_x),
             'query_y': torch.tensor(query_y)
         }
+if __name__ == "__main__":
