@@ -1,9 +1,10 @@
 import random
 from typing import List
 from torch.utils.data import Dataset
+from ..Default_dataset import Default_dataset
 import torch
 
-class FewShotEpisodeDataset(Dataset):
+class set_dataset(Dataset):
     """Generate few-shot episodes from a base dataset.
 
     Each item is a dict with support and query sets.
@@ -45,4 +46,4 @@ class FewShotEpisodeDataset(Dataset):
             'query_x': torch.stack(query_x),
             'query_y': torch.tensor(query_y)
         }
-if __name__ == "__main__":
+# if __name__ == "__main__":

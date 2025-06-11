@@ -123,7 +123,7 @@ class Default_task(pl.LightningModule):
         try:
             # x, y, id = batch['x'], batch['y'], batch['id']
             batch.update({'Task_id': Task_id})
-            id = batch['id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
+            id = batch['Id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
             data_name = self.metadata[id]['Name']# .values
             # dataset_id = self.metadata[id]['Dataset_id'].item() 
             batch.update({'Data_id': id})

@@ -537,7 +537,7 @@ trainer:      # 训练器配置
   </tr>
   <tr>
     <td>8</td>
-    <td>target_dataset_id</td>
+    <td>target_system_id</td>
     <td>目标数据集ID</td>
     <td>用于跨数据集任务</td>
   </tr>

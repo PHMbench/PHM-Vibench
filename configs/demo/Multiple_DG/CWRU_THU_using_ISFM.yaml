@@ -72,7 +72,7 @@ task:
 
   loss: "CE" # cross_entropy
   metrics: ["acc"]
-  target_dataset_id: [6]
+  target_system_id: [6]
 
   
   optimizer: "adam"

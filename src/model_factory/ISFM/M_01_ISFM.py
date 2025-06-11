@@ -68,19 +68,19 @@ class Model(nn.Module):
         return num_classes
 
     
-    def forward(self, x,data_id = False,task_id = False):
+    def forward(self, x, File_id = False,Task_id = False):
 
         
         if self.args_m.embedding == 'E_01_HSE':
-            fs = self.metadata[data_id]['Sample_rate']
+            fs = self.metadata[File_id]['Sample_rate']
             x = self.embedding(x,fs)
         else:
             x = self.embedding(x)
         x = self.backbone(x)
         
         # TODO multiple task head 判断 data
-        Dataset_id = self.metadata[data_id]['Dataset_id']
-        x = self.task_head(x,Dataset_id,task_id)
+        Dataset_id = self.metadata[File_id]['Dataset_id']
+        x = self.task_head(x,Dataset_id,File_id)
         return x
     
 if __name__ == '__main__':

@@ -9,14 +9,16 @@ import pandas as pd
 import numpy as np
 import h5py
 from .H5DataDict import H5DataDict
-from .balanced_data_loader import IdIncludedDataset # ,Balanced_DataLoader_Dict_Iterator # TODO del balanced_data_loader
+from .dataset_task.Dataset_cluster import IdIncludedDataset # ,Balanced_DataLoader_Dict_Iterator # TODO del balanced_data_loader
 from torch.utils.data import DataLoader
 import copy
 import concurrent.futures
 from tqdm import tqdm  # 用于显示进度条
 from torch.utils.data import Dataset
-from .samplers.sampler import GroupedIdBatchSampler, BalancedIdSampler
+from .samplers.Sampler import GroupedIdBatchSampler, BalancedIdSampler
 from .data_utils import smart_read_csv, MetadataAccessor, download_data
+from .samplers.Get_sampler import Get_sampler
+from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
 
 
 
@@ -316,232 +318,34 @@ class data_factory:
         return train_dataset, val_dataset, test_dataset
        
     def search_id(self):
-        """
-        should be implemented in the child class
-        """
+        self.train_val_ids, self.test_ids = search_ids_for_task(self.metadata, self.args_task)
+        return self.train_val_ids, self.test_ids
 
-        def remove_invalid_labels(df, label_column='Label'):
-            """
-            从DataFrame中删除指定列值为-1的行
-            
-            Args:
-                df (pd.DataFrame): 输入的DataFrame
-                label_column (str): 标签列名，默认为'Label'
-            
-            Returns:
-                pd.DataFrame: 删除指定条件行后的新DataFrame
-            """
-            # 检查列是否存在
-            if label_column not in df.columns:
-                raise ValueError(f"列 '{label_column}' 不存在于DataFrame中")
-            
-            # 删除Label为-1的行
-            filtered_df = df[df[label_column] != -1].copy()
-            
-            # 重置索引（可选）
-            filtered_df.reset_index(drop=True, inplace=True)
-            
-            return filtered_df
-            
-            
-        if self.args_task.target_dataset_id is not None:
-        
-            if self.args_task.type == 'DG':
-
-                # 找出Domain_id为0的行作为训练/验证集
-                train_df = self.metadata.df[
-                    (self.metadata.df['Domain_id'].isin(self.args_task.source_domain_id)) & 
-                    (self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id))]
-                test_df = self.metadata.df[
-                    (self.metadata.df['Domain_id'].isin(self.args_task.target_domain_id)) &
-                    (self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id))]
-                
-                train_df = remove_invalid_labels(train_df)
-                test_df = remove_invalid_labels(test_df)
-                
-                self.train_val_ids = list(train_df['Id'])  # 或者 list(domain_0_df['Id'])
-                self.test_ids = list(test_df['Id'])
-            elif self.args_task.type == 'CDDG':
-                # 筛选出目标数据集
-                filtered_df = self.metadata.df[self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
-
-                filtered_df = remove_invalid_labels(filtered_df)
-                
-                # 找出每个数据集中的所有唯一domain_id
-                dataset_domains = {}
-                for dataset_id in self.args_task.target_dataset_id:
-                    dataset_df = filtered_df[filtered_df['Dataset_id'] == dataset_id]
-                    domains = sorted(dataset_df['Domain_id'].unique())
-                    # Filter out NaN values from domains
-                    domains = [d for d in domains if not pd.isna(d)]
-                    dataset_domains[dataset_id] = domains
-                
-                # 为每个数据集选择训练和测试domain
-                train_domains = {}
-                test_domains = {}
-                for dataset_id, domains in dataset_domains.items():
-                    test_count = min(self.args_task.target_domain_num, len(domains))
-                    train_domains[dataset_id] = domains[:-test_count] if test_count > 0 else domains
-                    test_domains[dataset_id] = domains[-test_count:] if test_count > 0 else []
-                
-                # 构建训练和测试集
-                train_rows = []
-                test_rows = []
-                for dataset_id in self.args_task.target_dataset_id:
-                    # 训练集rows
-                    for domain_id in train_domains[dataset_id]:
-                        train_rows.extend(
-                            filtered_df[(filtered_df['Dataset_id'] == dataset_id) & 
-                                    (filtered_df['Domain_id'] == domain_id)]['Id'].tolist()
-                        )
-                    # 测试集rows
-                    for domain_id in test_domains[dataset_id]:
-                        test_rows.extend(
-                            filtered_df[(filtered_df['Dataset_id'] == dataset_id) & 
-                                    (filtered_df['Domain_id'] == domain_id)]['Id'].tolist()
-                        )
-                
-                self.train_val_ids = train_rows
-                self.test_ids = test_rows
-                
-                # 记录分割信息
-                print(f"CDGD划分 - 选择每个数据集的最后{self.args_task.target_domain_num}个domain作为测试集")
-                for dataset_id in self.args_task.target_dataset_id:
-                    print(f"数据集 {dataset_id}:")
-                    print(f"  - 训练域: {train_domains[dataset_id]}")
-                    print(f"  - 测试域: {test_domains[dataset_id]}")
-                print(f"训练/验证样本数: {len(self.train_val_ids)}")
-                print(f"测试样本数: {len(self.test_ids)}")
-                
-        
-        else:
-            self.train_val_ids, self.test_ids = self.metadata.keys(), self.metadata.keys()
-        return self.train_val_ids, self.test_ids    
-    
-    
     def search_dataset_id(self):
-        
-        
-        if not self.args_task.target_dataset_id:
-            print("未指定目标数据集ID，返回全部元数据")
-            return self.metadata
-        
-        # 筛选符合条件的数据
-        filtered_df = self.metadata.df[
-            self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)].copy()
-        
-        
-        # 记录筛选结果
-        print(f"筛选前元数据行数: {len(self.metadata.df)}")
-        print(f"筛选后元数据行数: {len(filtered_df)}")
-        
-        if len(filtered_df) == 0:
-            print(f"警告: 目标数据集ID {self.args_task.target_dataset_id} 没有匹配的记录")
-        
-        # 重置索引以确保索引连续
-        filtered_df.reset_index(drop=True, inplace=True)
-        # 创建新的MetadataAccessor对象
-        self.target_metadata = MetadataAccessor(filtered_df, key_column=self.metadata.key_column)
+        self.target_metadata = search_target_dataset_metadata(self.metadata, self.args_task)
         return self.target_metadata
         
 
-        
-
+    def get_sampler(self, mode='train'):
+        if mode == 'train':
+            dataset = self.train_dataset
+        elif mode == 'val':
+            dataset = self.val_dataset
+        elif mode == 'test':
+            dataset = self.test_dataset
+        else:
+            raise ValueError(f"Unknown mode for get_sampler: {mode}")
+        return Get_sampler(self.args_task, self.args_data, dataset, mode)
 
     def _init_dataloader(self):
-        # few-shot mode uses special episode dataset
-        if self.args_task.type == 'FS':
-            from .dataset_task.FS.episode_dataset import FewShotEpisodeDataset
-            n_way = getattr(self.args_task, 'n_way', 5)
-            k_shot = getattr(self.args_task, 'k_shot', 1)
-            q_query = getattr(self.args_task, 'q_query', 1)
-            episodes = getattr(self.args_task, 'episodes_per_epoch', 100)
-            self.train_loader = DataLoader(
-                FewShotEpisodeDataset(self.train_dataset, n_way, k_shot, q_query, episodes),
-                batch_size=1,
-                num_workers=self.args_data.num_workers,
-                pin_memory=True,
-            )
-            self.val_loader = DataLoader(
-                FewShotEpisodeDataset(self.val_dataset, n_way, k_shot, q_query, episodes),
-                batch_size=1,
-                num_workers=self.args_data.num_workers,
-                pin_memory=True,
-            )
-            self.test_loader = DataLoader(
-                FewShotEpisodeDataset(self.test_dataset, n_way, k_shot, q_query, episodes),
-                batch_size=1,
-                num_workers=self.args_data.num_workers,
-                pin_memory=True,
-            )
-            return self.train_loader, self.val_loader, self.test_loader
+        train_sampler = self.get_sampler(mode='train')
+        val_sampler = self.get_sampler(mode='val')
+        test_sampler = self.get_sampler(mode='test')
 
-        train_batch_sampler = GroupedIdBatchSampler(
-            data_source=self.train_dataset,
-            batch_size=self.args_data.batch_size,
-            shuffle=True,
-            drop_last=True,
-        )
-        val_batch_sampler = GroupedIdBatchSampler(
-            data_source=self.val_dataset,
-            batch_size=self.args_data.batch_size,
-            shuffle=False,
-            drop_last=True # 或 True，取决于您的需求
-        )
-        test_batch_sampler = GroupedIdBatchSampler(
-            data_source=self.test_dataset,
-            batch_size=self.args_data.batch_size,
-            shuffle=False,
-            drop_last=True # 或 True，取决于您的需求
-        )
-        
-        # def debug_collate_fn(batch):
-        #     """
-        #     自定义collate函数，修复字节序问题并提供调试信息
-        #     """
-        #     import torch
-        #     import numpy as np
-        #     from torch.utils.data._utils.collate import default_collate
-
-        #     def fix_byte_order(item):
-        #         """修复NumPy数组的字节序问题"""
-        #         if isinstance(item, np.ndarray) and item.dtype.byteorder not in ('=', '|'):
-        #             print(f"修复字节序: {item.dtype} -> {item.dtype.newbyteorder('=')}")
-        #             return item.astype(item.dtype.newbyteorder('='), copy=False)
-        #         return item
-
-        #     def process_item(item):
-        #         """递归处理复杂数据结构"""
-        #         if isinstance(item, dict):
-        #             return {k: process_item(v) for k, v in item.items()}
-        #         elif isinstance(item, (list, tuple)):
-        #             return type(item)(process_item(i) for i in item)
-        #         else:
-        #             return fix_byte_order(item)
-
-        #     # 打印批次结构，帮助调试
-        #     print(f"\n>>> 批次类型: {type(batch)}, 长度: {len(batch)}")
-        #     if batch and isinstance(batch[0], tuple):
-        #         print(f">>> 第一个样本类型: {type(batch[0])}, 长度: {len(batch[0])}")
-        #         for i, part in enumerate(batch[0]):
-        #             print(f">>> 样本部分[{i}]类型: {type(part)}")
-        #             if isinstance(part, dict):
-        #                 print(f">>> 字典键: {list(part.keys())}")
-
-        #     # 处理所有样本
-        #     processed_batch = [process_item(item) for item in batch]
-            
-        #     try:
-        #         # 尝试使用默认collate函数
-        #         return default_collate(processed_batch)
-        #     except Exception as e:
-        #         print(f">>> 默认collate失败: {e}")
-        #         # 如果失败，返回处理后但未合并的批次
-        #         return processed_batch
         persistent_workers = self.args_data.num_workers > 0
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
-                                         batch_sampler = train_batch_sampler,
+                                         batch_sampler = train_sampler,
                                         #  shuffle=True,
                                          num_workers=self.args_data.num_workers,
                                          pin_memory=True,     
@@ -549,50 +353,19 @@ class data_factory:
                                         #  collate_fn=debug_collate_fn)
         self.val_loader = DataLoader(self.val_dataset,
                                 #  batch_size=self.args_data.batch_size,
-                                        batch_sampler = val_batch_sampler,
+                                        batch_sampler = val_sampler,
                                         # shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
                                         persistent_workers=persistent_workers,)
-                                                                                #  collate_fn=debug_collate_fn)
         self.test_loader = DataLoader(self.test_dataset,
                                 #  batch_size=self.args_data.batch_size,
-                                        batch_sampler = test_batch_sampler,
+                                        batch_sampler = test_sampler,
                                         # shuffle=False,
                                         num_workers=self.args_data.num_workers,
                                         pin_memory=True,     
                                         persistent_workers=persistent_workers,)
-                                                                                #  collate_fn=debug_collate_fn)
-#################################################################### DEL ##################################################################
-        # train_dataloader = {}
-        # val_dataloader = {}
-        # test_dataloader = {}
-        
-        # for id in self.train_val_ids:
 
-        #     train_dataloader[id] = DataLoader(self.train_dataset[id],
-        #                                        batch_size=self.args_data.batch_size,
-        #                                               shuffle=True,
-        #                                                 num_workers=self.args_data.num_workers,
-        #                                                 pin_memory=False,     
-        #                                                 persistent_workers=False) 
-        #     val_dataloader[id] = DataLoader(self.val_dataset[id],
-        #                                      batch_size=self.args_data.batch_size,
-        #                                             shuffle=False,
-        #                                               num_workers=self.args_data.num_workers,
-        #                                                 pin_memory=False,     
-        #                                                 persistent_workers=False)
-        # for id in self.test_ids:
-        #     test_dataloader[id] = DataLoader(self.test_dataset[id],
-        #                                       batch_size=self.args_data.batch_size,
-        #                                              shuffle=False,
-        #                                                num_workers=self.args_data.num_workers,
-        #                                                 pin_memory=False,     
-        #                                                 persistent_workers=False)
-
-        # train_loader = Balanced_DataLoader_Dict_Iterator(train_dataloader,'train',)
-        # val_loader = Balanced_DataLoader_Dict_Iterator(val_dataloader,'val',)
-        # test_loader = Balanced_DataLoader_Dict_Iterator(test_dataloader,'test')
 
 
         return self.train_loader, self.val_loader, self.test_loader
