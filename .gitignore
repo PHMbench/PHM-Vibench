@@ -162,3 +162,4 @@ data/metadata_5_data.h5
 data/.msc
 # test/
 test.yaml
+configs/test
