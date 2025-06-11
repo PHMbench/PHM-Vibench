@@ -1,0 +1,90 @@
+# Vbench 框架测试配置文件
+# 用于测试各模块的集成功能
+# 环境变量设置
+
+environment:
+  WANDB_MODE: "disabled" # "online" or "disabled"
+  VBENCH_HOME: "C:/Users/CCSLab/Desktop/lixuan/Vbench/Vbench"
+  PYTHONPATH: "C:/Users/CCSLab/.conda/envs/xuanli_IFD"
+  PHMBench: "C:/Users/CCSLab/Desktop/lixuan/Vbench"
+
+  project: "dummy_test"
+  seed: 17
+  output_dir: "results/dummy_test"
+  notes: "This is a dummy test configuration."
+  iterations: 5
+
+# 数据配置
+data:
+  # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
+  data_dir: "D:/Vbench/PHMbench-raw_data"  # for dummy test
+  metadata_file: "metadata_6_1.xlsx"  # 指定元数据文件路径
+  batch_size: 64 # TODO: 和task.batch_size 保持一致
+  num_workers: 8
+  train_ratio: 0.8
+  normalization: 'standardization' # 'standardization' or 'minmax'
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+
+# 模型配置
+model:
+  name: "MWA_CNN"
+  type: "X_model"
+  device: cuda # TODO: 和trainer.device 保持一致
+  skip_connection: true
+  num_classes: 9 # 根据target data 自动设置
+  in_dim : 4096
+  out_dim : 4096
+  in_channels : 3
+  out_channels : 3
+  scale : 4
+  
+  f_c_mu: 0
+  f_c_sigma: 0.1
+  f_b_mu: 0
+  f_b_sigma: 0.1
+
+# 任务配置
+task:
+  name: "Classification"
+
+  type: 'DG'
+  target_domain_id: [10] # 10
+  source_domain_id: [0,1,2,3,4] # [0,1,2,3,4]
+  loss: "CE" # cross_entropy
+  metrics: ["acc"]
+  target_system_id: [19] # None # [1]
+  
+  optimizer: "adam"
+  regularization: {'flag': True, 'method': {'l1': 0.0001}} # 0.0001
+  
+  # max_epochs: 10
+  batch_size: 64
+  num_workers: 8
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 100
+  lr: 0.001
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 5
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 3
+  gamma: 0.5
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+
+  wandb: true
+  pruning: False
+  num_epochs: 10
+  gpus: 1
+  early_stopping: true
+  patience: 5
+  device: 'cuda'
