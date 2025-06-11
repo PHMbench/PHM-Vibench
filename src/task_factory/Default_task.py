@@ -69,7 +69,7 @@ class Default_task(pl.LightningModule):
     def forward(self, batch):
         """模型前向传播"""
         x = batch['x']
-        id = batch['Data_id'] if 'Data_id' in batch else None
+        id = batch['Id'][0].item() if 'Id' in batch else None
 
         task_id = batch['Task_id'] if 'Task_id' in batch else None
         return self.network(x, id, task_id)
