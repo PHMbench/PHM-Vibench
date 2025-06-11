@@ -54,17 +54,17 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
             raise ValueError(f"Unknown mode for CDDG sampler: {mode}")
 
     elif args_task.type == 'DG':
-        from torch.utils.data import Sampler # Assuming Sampler is from torch.utils.data
+        from .Sampler import Same_system_Sampler
         if mode == 'train':
-            sampler = Sampler(dataset, # PyTorch Sampler typically takes dataset as first arg
-                              batch_size=args_data.batch_size,
-                              shuffle=True,
-                              drop_last=True)
+            sampler = Same_system_Sampler(dataset, # PyTorch Sampler typically takes dataset as first arg
+                                          batch_size=args_data.batch_size,
+                                          shuffle=True,
+                                          drop_last=True)
         elif mode == 'val' or mode == 'test':
-            sampler = Sampler(dataset,
-                              batch_size=args_data.batch_size,
-                              shuffle=False,
-                              drop_last=True)
+            sampler = Same_system_Sampler(dataset,
+                                          batch_size=args_data.batch_size,
+                                          shuffle=False,
+                                          drop_last=True)
         else:
             raise ValueError(f"Unknown mode for DG sampler: {mode}")
     else:
