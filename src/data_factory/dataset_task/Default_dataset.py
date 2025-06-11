@@ -179,6 +179,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
             raise IndexError(f"索引 {idx} 超出范围")
         
         sample = self.processed_data[idx]
+        print(f"获取样本 {idx}，数据长度: {sample.shape}")
 
         out = {
             "x": sample,
