@@ -15,8 +15,12 @@ def load_config(config_path):
     print(os.getcwd())
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"配置文件 {config_path} 不存在")
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except UnicodeDecodeError:
+        with open(config_path, 'r', encoding='gb18030', errors='ignore') as f:
+            config = yaml.safe_load(f)
     return config
 
 def makedir(path):
