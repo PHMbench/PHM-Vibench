@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import yaml
 from pprint import pprint
-from swanlab.integration.pytorch_lightning import SwanLabLogger
+
 
 def pipeline(args):
     """领域泛化(Domain Generalization)任务的流水线
@@ -79,7 +79,8 @@ def pipeline(args):
         
         # 设置路径和名称
         path, name = path_name(configs, it)
-        
+        # 把name 加到args_trainer中
+        args_trainer.logger_name = name
         # 设置随机种子
         current_seed = args_environment.seed + it
         seed_everything(current_seed)
@@ -93,13 +94,6 @@ def pipeline(args):
             wandb.init(project=project_name, name=name, notes=notes)
         else:
             wandb.init(mode='disabled')  # 避免 wandb 报错
-        # swanlab
-        if getattr(args_trainer, 'swanlab', False):
-            swanlab_logger = SwanLabLogger(
-                project=getattr(args_trainer, 'project', 'vbench'),
-                experiment_name=name
-            )
-            args_trainer.logger = swanlab_logger
         
         # 构建数据工厂
         print("[INFO] 构建数据工厂...")
