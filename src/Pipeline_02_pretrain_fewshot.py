@@ -12,7 +12,7 @@ from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 
 
-def run_stage(config_path, ckpt_path=None):
+def run_stage(config_path, ckpt_path=None,iteration=0):
     """Run a single training/testing stage given a config path."""
     configs = load_config(config_path)
     args_environment = transfer_namespace(configs.get('environment', {}))
@@ -28,7 +28,7 @@ def run_stage(config_path, ckpt_path=None):
         if key.isupper():
             os.environ[key] = str(value)
 
-    path, name = path_name(configs, 0)
+    path, name = path_name(configs, iteration)
     seed_everything(args_environment.seed)
 
     data_factory = build_data(args_data, args_task)
@@ -53,24 +53,35 @@ def run_stage(config_path, ckpt_path=None):
 
 def run_pretraining_stage(config_path):
     """Run the pretraining stage and return the checkpoint path."""
-    task, trainer = run_stage(config_path)
-    ckpt_path = None
-    for cb in trainer.callbacks:
-        if isinstance(cb, ModelCheckpoint):
-            ckpt_path = cb.best_model_path
-            break
-    return ckpt_path
+    ckpt_dict = {}
+    for it in range(os.environ.get('iterations', 1)):
+        task, trainer = run_stage(config_path, iteration=it)
+        print(f"Pretraining stage iteration {it} completed.")
+        ckpt_path = None
+        for cb in trainer.callbacks:
+            if isinstance(cb, ModelCheckpoint):
+                ckpt_path = cb.best_model_path
+                break
+        ckpt_dict[it] = ckpt_path
+    return ckpt_dict
 
 
-def run_fewshot_stage(fs_config_path, ckpt_path=None):
+def run_fewshot_stage(fs_config_path, ckpt_dict=None):
     """Run the few-shot stage. Optionally load a pretrained checkpoint."""
-    run_stage(fs_config_path, ckpt_path)
+    for it1, ckpt_path in ckpt_dict.items():
+        for it2 in range(os.environ.get('iterations', 1)):
+            print(f"Running few-shot stage iteration {it1}-{it2} with checkpoint {ckpt_path}")
+            if ckpt_path:
+                run_stage(fs_config_path, ckpt_path, iteration=it1 * len(ckpt_dict) + it2)
+            else:
+                print(f"No checkpoint found for iteration {it1}, skipping few-shot stage.")
+                run_stage(fs_config_path, iteration=it1 * len(ckpt_dict) + it2)
     return True
 
 def pipeline(args):
     """Run pretraining followed by a few-shot stage."""
-    ckpt_path = run_pretraining_stage(args.config_path)
-    run_fewshot_stage(args.fs_config_path, ckpt_path)
+    ckpt_dict = run_pretraining_stage(args.config_path[0])
+    run_fewshot_stage(args.config_path[1], ckpt_dict)
     return True
 
 

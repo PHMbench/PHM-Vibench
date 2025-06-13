@@ -72,12 +72,17 @@ class HierarchicalFewShotSampler(Sampler[int]):
         self._build_index_hierarchy()
         self._filter_and_prepare_for_sampling()
 
+        self.len = self.num_episodes #* (self.m_systems *
+                            #    self.j_domains *
+                            #    self.n_labels_way *
+                            #    (self.k_shot + self.q_query))
+
     def _build_index_hierarchy(self):
         """
         Builds a Pandas DataFrame mapping global_idx to system, domain, and label.
         self.samples_df will have columns: ['global_idx', 'system_id', 'domain_id', 'label_id']
         """
-        file_windows_list = self.dataset.get_file_windows_list()
+        file_windows_list = self.dataset.get_file_windows_list() # {'File_id': file_id, 'Window_id': window_id}
 
         if not file_windows_list:
             print("Warning: dataset.get_file_windows_list() returned an empty list.")
@@ -86,7 +91,7 @@ class HierarchicalFewShotSampler(Sampler[int]):
 
         data_for_df = []
         for global_idx, sample_mapping_info in enumerate(file_windows_list):
-            original_dataset_key = str(sample_mapping_info['File_id'])
+            original_dataset_key = sample_mapping_info['File_id']
 
             if original_dataset_key not in self.metadata:
                 print(f"Warning: Key '{original_dataset_key}' from dataset.get_file_windows_list() "
@@ -183,7 +188,7 @@ class HierarchicalFewShotSampler(Sampler[int]):
         if self.samples_df.empty and self.num_episodes > 0:
             print("Warning: samples_df is empty, cannot generate episodes.")
             return
-
+        all_indices = []
         for _ in range(self.num_episodes):
             episode_indices = []
             
@@ -239,17 +244,13 @@ class HierarchicalFewShotSampler(Sampler[int]):
             
             if not episode_indices and self.m_systems > 0 :
                 print(f"Warning: Generated an empty episode. Check sampling logic and data availability.")
-            
-            for index in episode_indices:
-                yield index
+            all_indices.append(episode_indices)
+        for episode_indice in all_indices:
+            yield episode_indice
 
     def __len__(self):
         # Total number of indices yielded by the iterator over all episodes
-        samples_per_episode = (self.m_systems *
-                               self.j_domains *
-                               self.n_labels_way *
-                               (self.k_shot + self.q_query))
-        return self.num_episodes * samples_per_episode
+        return self.len 
 
 
 

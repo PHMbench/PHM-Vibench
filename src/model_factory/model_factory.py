@@ -41,9 +41,8 @@ def model_factory(args_model,metadata):
             if os.path.exists(weights_path):
                 try:
                     # 尝试加载模型权重
-                    if hasattr(model, 'load_state_dict'):
-                        state_dict = torch.load(weights_path, map_location='cpu')
-                        model.load_state_dict(state_dict)
+                    load_ckpt(model, weights_path)
+                    print(f"加载权重成功: {weights_path}")
                 except Exception as e:
                     print(f"加载权重时出错: {str(e)},初始化模型时使用默认权重")
                     # 权重加载失败但不阻止模型使用
@@ -53,3 +52,30 @@ def model_factory(args_model,metadata):
     
     except Exception as e:
         raise RuntimeError(f"创建模型实例时出错: {str(e)}")
+    
+
+def load_ckpt(model, ckpt_path):
+    """
+    加载模型权重，匹配shape后加载
+    Args:
+        ckpt_path (str): 模型权重文件路径
+    """
+    if not os.path.exists(ckpt_path):
+        raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")
+    state_dict = torch.load(ckpt_path, map_location='cpu')
+    model_dict = model.state_dict()
+    matched_dict = {}
+    skipped = []
+    for name, param in state_dict.items():
+        if name in model_dict:
+            matched_dict[name] = param
+        else:
+            skipped.append((name, "not in model"))
+    # 加载匹配的权重
+    model.load_state_dict(matched_dict, strict=False)
+    # 打印跳过的参数
+    if skipped:
+        print("跳过以下不匹配的参数：")
+        for name, model_sz in skipped:
+            print(f"  {name}: checkpoint vs model {model_sz}")
+    print(f"已加载匹配的权重: {ckpt_path}")

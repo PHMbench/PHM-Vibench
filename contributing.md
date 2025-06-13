@@ -94,6 +94,31 @@ pip install -r requirements.txt
 - 确保您的代码具有良好的可读性和注释
 - 为新功能添加示例配置文件和使用说明
 
+## 开发与测试指南
+
+为了保持代码库的整洁和可维护性，所有个人的、临时的或用于调试的测试文件（如配置文件、脚本）**不应提交到 Git 仓库**。
+
+### 1. 本地配置文件
+
+如果你需要创建自定义的配置文件进行测试，请将它们放置在 `configs/local/` 目录下。此目录已被 `.gitignore` 忽略，其中的文件不会被版本控制追踪。
+
+例如，你可以创建一个 `configs/local/my_debug_config.yaml`。
+
+### 2. 使用命令行进行快速测试
+
+对于仅需修改少数参数的测试，强烈推荐使用 Hydra 的命令行覆盖功能，这样无需创建任何新文件。
+
+**示例**:
+* 用`CWRU.yaml`配置，但只训练3个epoch：
+    ```bash
+    python src/main.py --config-name=demo/CWRU.yaml trainer.max_epochs=3
+    ```
+* 临时更换模型：
+    ```bash
+    python src/main.py --config-name=demo/CWRU.yaml model.name=NewTestModel
+    ```
+
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge

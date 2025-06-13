@@ -44,6 +44,13 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
     filtered_df = metadata_accessor.df[
         metadata_accessor.df['Dataset_id'].isin(args_task.target_system_id)].copy()
     
+
+    # 检查Label是否有空值 
+    filtered_df = filtered_df[filtered_df['Label'].notna()]
+
+    # # 检查是否visiable？
+    # filtered_df = filtered_df[filtered_df['Visible'] == True]
+
     print(f"筛选前元数据行数: {len(metadata_accessor.df)}")
     print(f"筛选后元数据行数: {len(filtered_df)}")
     

@@ -46,7 +46,7 @@ def path_name(configs, iteration=0):
     # 获取各组件名称
     dataset_name = configs['data']['metadata_file']
     model_name = configs['model']['name']
-    task_name = configs['task']['name']
+    task_name = configs['task']['type'] + configs['task']['name']
     trainer_name = configs['trainer']['name']
     
     # 组建实验名称

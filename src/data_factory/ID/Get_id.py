@@ -45,9 +45,34 @@ def Get_DG_ids(metadata_accessor, args_task):
     
     return train_val_ids, test_ids
 
+# def Get_GFS_ids(metadata_accessor, args_task):
+#     。。
+
+# def Get_pretrain_ids(metadata_accessor, args_task):
+#     """
+#     Retrieves training/validation and test IDs for pretraining tasks.
+    
+#     output:
+#         train_val_ids (list): List of IDs for training/validation set.
+#         test_ids (list): List of IDs for test set.
+#     """
+#     # For pretraining, we typically use all available IDs
+#     train_val_ids = list(metadata_accessor.df['Id'])
+#     test_ids = list(metadata_accessor.df['Id'])
+    
+#     print(f"Pretrain划分 - 使用全部数据集ID")
+#     print(f"训练/验证样本数: {len(train_val_ids)}")
+#     print(f"测试样本数: {len(test_ids)}")
+    
+#     return train_val_ids, test_ids
+
 def Get_CDDG_ids(metadata_accessor, args_task):
     """
     Retrieves training/validation and test IDs for Cross-Domain Domain Generalization (CDDG) tasks.
+
+    output:
+        train_val_ids (list): List of IDs for source domain for different systems.
+        test_ids (list): List of IDs for test set.
     """
     filtered_df = metadata_accessor.df[metadata_accessor.df['Dataset_id'].isin(args_task.target_system_id)]
     filtered_df = remove_invalid_labels(filtered_df)

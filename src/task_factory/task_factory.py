@@ -36,10 +36,18 @@ def task_factory(
     task_name = args_task.name
     task_type = args_task.type
 
-
-    # 模块路径: src.task_factory.<task_type>.<task_name>
-    # 例如: src.task_factory.Default_task.Default_task
-    full_module_path = f"src.task_factory.{task_name}.{task_type}"
+    # Module path construction:
+    # Default_task.py is assumed to be directly under src/task_factory/
+    # Other tasks are under src/task_factory/task/<task_type>/<task_name>.py
+    if task_type == 'Default_task' or task_name == 'Default_task':
+        # Handles Default_task.py at src/task_factory/Default_task.py
+        # Module path example: src.task_factory.Default_task
+        full_module_path = f"src.task_factory.{task_name}"
+    else:
+        # Handles tasks in the new structure: src/task_factory/task/<type>/<name>.py
+        # Module path example: src.task_factory.task.DG.Classification
+        full_module_path = f"src.task_factory.task.{task_type}.{task_name}"
+    
     task_module = importlib.import_module(full_module_path)
 
 
