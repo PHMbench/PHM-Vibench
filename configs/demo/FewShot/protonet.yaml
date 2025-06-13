@@ -1,0 +1,37 @@
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "/path/to/Vbench"
+  project: "fewshot_demo"
+  seed: 0
+  iterations: 1
+
+data:
+  data_dir: "/path/to/data"
+  metadata_file: "metadata.csv"
+  batch_size: 32
+  num_workers: 4
+  window_size: 1024
+  stride: 5
+  num_window: 32
+
+model:
+  name: "ProtoNet"
+  type: "FewShot"
+  input_dim: 1024
+  hidden_dim: 128
+  embedding_dim: 64
+
+task:
+  name: "Classification"
+  type: "FS"
+  n_way: 5
+  k_shot: 5
+  q_query: 15
+  episodes_per_epoch: 100
+  lr: 0.001
+
+trainer:
+  name: "Default_trainer"
+  num_epochs: 1
+  gpus: 1
+  device: 'cuda'

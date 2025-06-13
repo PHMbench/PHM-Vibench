@@ -2,7 +2,111 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data import Sampler
 import random
-from ..balanced_data_loader import IdIncludedDataset
+from ..dataset_task.Dataset_cluster import IdIncludedDataset
+from .FS_sampler import HierarchicalFewShotSampler
+
+
+
+class Same_system_Sampler(Sampler):
+
+    def __init__(self, dataset: IdIncludedDataset,
+                  batch_size: int,
+                    shuffle: bool = True,
+                      drop_last: bool = False,
+                        system_metadata_key: str = 'Dataset_id'):
+        """
+        Batch sampler，确保每个批次中的所有样本都来自同一个 system_id。
+        system_id 是从 dataset.metadata[File_id][system_metadata_key] 获取的。
+
+        Args:
+            dataset (IdIncludedDataset): 要从中采样的 IdIncludedDataset 实例。
+            batch_size (int): 每个批次的大小。
+            shuffle (bool): 如果为 True，则会打乱系统ID的处理顺序，
+                             打乱每个系统内的样本顺序，
+                             并且（可选地）打乱生成的批次本身的顺序。
+            drop_last (bool): 如果为 True，则对于每个系统，如果其最后一个批次小于 batch_size，则丢弃它。
+            system_metadata_key (str): 用于从 dataset.metadata 中查找系统ID的键。
+        """
+        if not isinstance(dataset, IdIncludedDataset):
+            raise ValueError("dataset 必须是 IdIncludedDataset 的实例。")
+        if not isinstance(batch_size, int) or batch_size <= 0:
+            raise ValueError("batch_size 必须是正整数。")
+        if not hasattr(dataset, 'metadata') or dataset.metadata is None:
+            raise ValueError("dataset 必须具有 'metadata' 属性。")
+
+
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.drop_last = drop_last
+        self.system_metadata_key = system_metadata_key
+
+        # 1. 按 system_id 对全局索引进行分组
+        self.indices_per_system = {}
+        for global_idx, sample_info in enumerate(self.dataset.file_windows_list):
+            File_id = sample_info['File_id']
+            if File_id not in self.dataset.metadata:
+                # print(f"警告: File_id '{File_id}' 在元数据中未找到，跳过样本 {global_idx}")
+                continue
+            
+            meta_entry = self.dataset.metadata[File_id]
+            if self.system_metadata_key not in meta_entry:
+                # print(f"警告: 系统元数据键 '{self.system_metadata_key}' 在 File_id '{File_id}' 的元数据中未找到，跳过样本 {global_idx}")
+                continue
+
+            system_id = meta_entry[self.system_metadata_key]
+
+            if system_id not in self.indices_per_system:
+                self.indices_per_system[system_id] = []
+            self.indices_per_system[system_id].append(global_idx)
+        
+        self.system_id_list = list(self.indices_per_system.keys())
+        
+        # 2. 预计算此 sampler 在一个 epoch 中将生成的总批次数
+        self._num_batches_epoch = 0
+        if self.system_id_list:
+            for system_id in self.system_id_list:
+                num_samples_for_system = len(self.indices_per_system[system_id])
+                if num_samples_for_system == 0: continue
+
+                if self.drop_last:
+                    self._num_batches_epoch += num_samples_for_system // self.batch_size
+                else:
+                    self._num_batches_epoch += (num_samples_for_system + self.batch_size - 1) // self.batch_size
+
+    def __iter__(self):
+        all_batches_for_epoch = []
+        
+        systems_to_process = list(self.system_id_list)
+        if self.shuffle:
+            random.shuffle(systems_to_process) # 打乱系统ID的处理顺序
+
+        for system_id in systems_to_process:
+            system_specific_global_indices = list(self.indices_per_system[system_id])
+            if not system_specific_global_indices:
+                continue
+
+            if self.shuffle:
+                random.shuffle(system_specific_global_indices) # 打乱当前系统内的样本顺序
+            
+            for i in range(0, len(system_specific_global_indices), self.batch_size):
+                batch_indices = system_specific_global_indices[i : i + self.batch_size]
+                
+                if len(batch_indices) < self.batch_size and self.drop_last:
+                    continue
+                
+                all_batches_for_epoch.append(batch_indices)
+        
+        # (可选) 如果需要，可以对所有生成的批次本身再进行一次全局打乱。
+        # 这会使得来自不同系统ID的批次序列完全随机，而不仅仅是系统ID处理顺序随机。
+        if self.shuffle and len(all_batches_for_epoch) > 1 :
+            random.shuffle(all_batches_for_epoch)
+            
+        return iter(all_batches_for_epoch)
+
+    def __len__(self):
+        """返回一个 epoch 中的总批次数。"""
+        return self._num_batches_epoch
 
 class BalancedIdSampler(Sampler):
     def __init__(self, data_source: IdIncludedDataset, batch_size=32, common_samples_per_id=None, shuffle_within_id=True, shuffle_all=True):
@@ -120,25 +224,20 @@ class GroupedIdBatchSampler(Sampler):
 
         # 1. 按 original_id 对全局索引进行分组
         self.indices_per_id = {}
-        for global_idx, sample_info in enumerate(self.data_source.flat_sample_map):
-            original_id = sample_info['id']
-            # 再次强调：original_id 必须是可哈希的，最好是字符串
-            if not (isinstance(original_id, str) or hasattr(original_id, '__hash__')):
-                 # 如果之前的警告和修复没有生效，这里可能仍然会遇到问题
-                 # 对于演示，我们假设它已经是字符串或可哈希
-                 pass
+        for global_idx, sample_info in enumerate(self.data_source.file_windows_list):
+            File_id = sample_info['File_id']
 
-            if original_id not in self.indices_per_id:
-                self.indices_per_id[original_id] = []
-            self.indices_per_id[original_id].append(global_idx) # 每个dataset的id
+            if File_id not in self.indices_per_id:
+                self.indices_per_id[File_id] = []
+            self.indices_per_id[File_id].append(global_idx) # 每个dataset的id
         
-        self.id_list = list(self.indices_per_id.keys())
+        self.File_id_list = list(self.indices_per_id.keys())
 
         # 2. 预计算此 sampler 在一个 epoch 中将生成的总批次数
         self._num_batches_epoch = 0
-        if self.id_list: # 仅当有ID时才计算
-            for id_str in self.id_list:
-                num_samples_for_id = len(self.indices_per_id[id_str])
+        if self.File_id_list: # 仅当有ID时才计算
+            for File_id in self.File_id_list:
+                num_samples_for_id = len(self.indices_per_id[File_id])
                 if num_samples_for_id == 0: continue
 
                 if self.drop_last:

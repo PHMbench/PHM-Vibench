@@ -2,7 +2,7 @@ if __name__ == '__main__':
     
     # 在 M_01_ISFM.py 文件开头添加
     import sys
-    import os
+
 
     # 获取当前文件的绝对路径
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,6 +19,8 @@ from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 import torch.nn as nn
 import numpy as np
+import os
+import torch
 
 Embedding_dict = {
 
@@ -37,6 +39,7 @@ Backbone_dict = {
 TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,
     'H_02_distance_cla': H_02_distance_cla,
+    'H_03_Linear_pred': H_03_Linear_pred,
 }
 
 
@@ -49,37 +52,27 @@ class Model(nn.Module):
         self.backbone = Backbone_dict[args_m.backbone](args_m)
         self.num_classes = self.get_num_classes()
         self.task_head = TaskHead_dict[args_m.task_head](args_m, self.num_classes)
-        
-        # if args_m.task_head == 'H_01_Linear_cla':
-            
-        
-        # elif args_m.task_head == 'H_02_distance_cla':
-        #     self.task_head = TaskHead_dict[args_m.task_head](args_m)
-        #     self.category_tokes = nn.ParameterDict()
-        #     for key in np.unique(metadata.df['Dataset_id']):
-        #         self.category_tokes[key] = nn.Parameter(torch.randn(self.num_classes[key], args_m.output_dim))
-        #     # self.category_token = nn.Parameter(torch.randn(args_m.n_classes, args_m.output_dim))
+    
             
     def get_num_classes(self):
         num_classes = {}
         for key in np.unique(self.metadata.df['Dataset_id']):
             num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
         return num_classes
-
     
-    def forward(self, x,data_id = False,task_id = False):
+    def forward(self, x, File_id = False,Task_id = False):
 
         
         if self.args_m.embedding == 'E_01_HSE':
-            fs = self.metadata[data_id]['Sample_rate']
+            fs = self.metadata[File_id]['Sample_rate']
             x = self.embedding(x,fs)
         else:
             x = self.embedding(x)
         x = self.backbone(x)
         
         # TODO multiple task head 判断 data
-        Dataset_id = self.metadata[data_id]['Dataset_id']
-        x = self.task_head(x,Dataset_id,task_id)
+        System_id = self.metadata[File_id]['Dataset_id']
+        x = self.task_head(x,System_id,Task_id, return_feature=False)
         return x
     
 if __name__ == '__main__':

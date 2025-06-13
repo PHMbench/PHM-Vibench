@@ -134,7 +134,7 @@ class H_02_distance_cla(nn.Module):
         """
         self.category_tokes[str(key)] = nn.Parameter(torch.randn(1,num_classes, self.d_model))
         
-    def forward(self, x, id, return_feature=False):
+    def forward(self, x, System_id,Task_id, return_feature=False):
         """
         前向传播。
 
@@ -167,7 +167,7 @@ class H_02_distance_cla(nn.Module):
         # 计算cls_token与category_token之间的距离
         # C = category_token.shape[1]  # 类别数 C
         
-        category_token = self.category_tokes[str(id)]
+        category_token = self.category_tokes[str(System_id)]
         distance = torch.einsum('bkc,bmc->bm', cls_token, category_token)  # 计算距离
 
         # 求均值，得到最终结果
