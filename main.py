@@ -24,10 +24,10 @@ def main():
                         default='',
                         help='实验备注')
 
-    parser.add_argument('--fs_config_path',
-                        type=str,
-                        default=None,
-                        help='few-shot config for pretrain pipeline')
+    # parser.add_argument('--fs_config_path',
+    #                     type=str,
+    #                     default=None,
+    #                     help='few-shot config for pretrain pipeline')
 
     parser.add_argument('--pipeline', 
                         type=str, 

@@ -551,48 +551,121 @@ trainer:      # 训练器配置
     <td>10</td>
     <td>batch_size</td>
     <td>批量大小</td>
-    <td>每批处理
+    <td>每批处理的样本数</td>
+  </tr>
   <tr>
-    <td>8</td>
-    <td>args.patience</td>
+    <td>11</td>
+    <td>num_workers</td>
+    <td>数据加载线程数</td>
+    <td>并行加载数据的进程数</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>pin_memory</td>
+    <td>是否锁页内存</td>
+    <td>加速数据到GPU的传输</td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td>shuffle</td>
+    <td>是否打乱数据</td>
+    <td>训练时是否随机打乱数据顺序</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td>log_interval</td>
+    <td>日志记录间隔</td>
+    <td>每隔多少个batch记录一次日志</td>
+  </tr>
+  <tr>
+    <td>15</td>
+    <td>epochs</td>
+    <td>训练轮数</td>
+    <td>模型训练的总轮数</td>
+  </tr>
+  <tr>
+    <td>16</td>
+    <td>lr</td>
+    <td>学习率</td>
+    <td>模型训练的学习率</td>
+  </tr>
+  <tr>
+    <td>17</td>
+    <td>weight_decay</td>
+    <td>权重衰减</td>
+    <td>L2正则化系数</td>
+  </tr>
+  <tr>
+    <td>18</td>
+    <td>early_stopping</td>
+    <td>是否启用早停</td>
+    <td>防止过拟合的策略</td>
+  </tr>
+  <tr>
+    <td>19</td>
+    <td>es_patience</td>
     <td>早停耐心值</td>
     <td>性能不提升多少轮次后停止训练</td>
   </tr>
   <tr>
-    <td>9</td>
-    <td>args.weight_decay</td>
-    <td>权重衰减</td>
-    <td>可选，L2正则化系数</td>
+    <td>20</td>
+    <td>scheduler</td>
+    <td>是否启用学习率调度器</td>
+    <td>动态调整学习率</td>
   </tr>
   <tr>
-    <td>10</td>
-    <td>args.lr_scheduler</td>
-    <td>学习率调度器</td>
-    <td>可选值: 'step', 'cosine', 'plateau'等</td>
+    <td>21</td>
+    <td>scheduler_type</td>
+    <td>学习率调度器类型</td>
+    <td>如 "step", "cosine" 等</td>
   </tr>
   <tr>
-    <td>11</td>
-    <td>args.checkpoint_interval</td>
-    <td>检查点保存间隔</td>
-    <td>可选，每多少个epoch保存一次模型</td>
+    <td>22</td>
+    <td>step_size</td>
+    <td>学习率下降步长</td>
+    <td>用于 "step" 类型的调度器</td>
   </tr>
   <tr>
-    <td>12</td>
-    <td>args.gradient_clipping</td>
-    <td>梯度裁剪值</td>
-    <td>可选，防止梯度爆炸</td>
+    <td>23</td>
+    <td>gamma</td>
+    <td>学习率衰减率</td>
+    <td>用于 "step" 类型的调度器</td>
   </tr>
   <tr>
-    <td>13</td>
-    <td>args.validation_interval</td>
-    <td>验证间隔</td>
-    <td>可选，每多少个batch进行一次验证</td>
+    <td>24</td>
+    <td>num_systems</td>
+    <td>系统数量</td>
+    <td>用于Few-Shot Learning, 表示参与训练的系统总数</td>
   </tr>
   <tr>
-    <td>14</td>
-    <td>args.mixed_precision</td>
-    <td>是否使用混合精度训练</td>
-    <td>可选，加速训练并减少显存占用</td>
+    <td>25</td>
+    <td>num_domains</td>
+    <td>域数量</td>
+    <td>用于Few-Shot Learning, 表示每个系统中的域数量</td>
+  </tr>
+  <tr>
+    <td>26</td>
+    <td>num_labels</td>
+    <td>标签数量</td>
+    <td>根据目标数据自动设置, 也可手动指定</td>
+  </tr>
+  <tr>
+    <td>27</td>
+    <td>num_support</td>
+    <td>支持集样本数量</td>
+    <td>Few-Shot Learning中每个类别的支持样本数</td>
+  </tr>
+  <tr>
+    <td>28</td>
+    <td>num_query</td>
+    <td>查询集样本数量</td>
+    <td>Few-Shot Learning中每个类别的查询样本数</td>
+  </tr>
+  <tr>
+    <td>29</td>
+    <td>num_episodes</td>
+    <td>Episode数量</td>
+    <td>Few-Shot Learning中的训练迭代次数</td>
   </tr>
 </table>
 </details>
