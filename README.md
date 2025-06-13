@@ -53,6 +53,7 @@
 - 📏 **精确的评估框架**：提供针对不同故障诊断场景优化的评估指标和专业可视化工具，支持结果的定量分析与比较
 - 🖱️ **简洁高效的用户体验**：基于配置文件的实验设计，使研究人员无需修改代码即可快速配置与运行实验
 - 📈 **一键复现与基准测试**：内置30+经典和最新算法实现，只需一行命令即可复现论文结果并进行公平比较
+- 🆕 **Few-Shot 学习模块**：新增对少样本故障诊断的支持，提供原型网络示例及任务流水线，便于快速研究
 
 <details>
 <summary><b>为什么选择PHM-Vibench？</b> (点击展开)</summary>
@@ -158,20 +159,11 @@ conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# 下载h5数据集 ## TODO 继承到程序中 @
+# 下载h5数据集 
 
-## 下载完整
-modelscope download --dataset PHMbench/PHM-Vibench --local_dir ./dir
-
-## 下载特定
-modelscope download --dataset PHMbench/PHM-Vibench README.md --local_dir ./dir
-
-# 修改配置文件中的数据集路径
-# 例如：在 configs/demo/Single_DG/CWRU.yaml 中设置 data.data_dir 为 ./dir
 
 例如 在configs/demo/Single_DG/CWRU.yaml 中
 data:
-  # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
   data_dir: "自己的目录/PHM-Vibench"  # for dummy test
   metadata_file: "metadata_版本号.xlsx"  # 指定元数据文件，在PHM-Vibench目录下
 
@@ -189,6 +181,12 @@ data:
 
 # CWRU 分类任务
 python main.py --config configs/demo/Single_DG/CWRU.yaml
+
+# Few-Shot 原型网络示例
+python main.py --config configs/demo/FewShot/protonet.yaml
+
+# Pretrain + Few-Shot 流水线
+python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/pretrain.yaml --fs_config_path configs/demo/FewShot/protonet.yaml
 
 # Cross-dataset genealization
 python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
@@ -539,7 +537,7 @@ trainer:      # 训练器配置
   </tr>
   <tr>
     <td>8</td>
-    <td>target_dataset_id</td>
+    <td>target_system_id</td>
     <td>目标数据集ID</td>
     <td>用于跨数据集任务</td>
   </tr>
@@ -553,48 +551,121 @@ trainer:      # 训练器配置
     <td>10</td>
     <td>batch_size</td>
     <td>批量大小</td>
-    <td>每批处理
+    <td>每批处理的样本数</td>
+  </tr>
   <tr>
-    <td>8</td>
-    <td>args.patience</td>
+    <td>11</td>
+    <td>num_workers</td>
+    <td>数据加载线程数</td>
+    <td>并行加载数据的进程数</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>pin_memory</td>
+    <td>是否锁页内存</td>
+    <td>加速数据到GPU的传输</td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td>shuffle</td>
+    <td>是否打乱数据</td>
+    <td>训练时是否随机打乱数据顺序</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td>log_interval</td>
+    <td>日志记录间隔</td>
+    <td>每隔多少个batch记录一次日志</td>
+  </tr>
+  <tr>
+    <td>15</td>
+    <td>epochs</td>
+    <td>训练轮数</td>
+    <td>模型训练的总轮数</td>
+  </tr>
+  <tr>
+    <td>16</td>
+    <td>lr</td>
+    <td>学习率</td>
+    <td>模型训练的学习率</td>
+  </tr>
+  <tr>
+    <td>17</td>
+    <td>weight_decay</td>
+    <td>权重衰减</td>
+    <td>L2正则化系数</td>
+  </tr>
+  <tr>
+    <td>18</td>
+    <td>early_stopping</td>
+    <td>是否启用早停</td>
+    <td>防止过拟合的策略</td>
+  </tr>
+  <tr>
+    <td>19</td>
+    <td>es_patience</td>
     <td>早停耐心值</td>
     <td>性能不提升多少轮次后停止训练</td>
   </tr>
   <tr>
-    <td>9</td>
-    <td>args.weight_decay</td>
-    <td>权重衰减</td>
-    <td>可选，L2正则化系数</td>
+    <td>20</td>
+    <td>scheduler</td>
+    <td>是否启用学习率调度器</td>
+    <td>动态调整学习率</td>
   </tr>
   <tr>
-    <td>10</td>
-    <td>args.lr_scheduler</td>
-    <td>学习率调度器</td>
-    <td>可选值: 'step', 'cosine', 'plateau'等</td>
+    <td>21</td>
+    <td>scheduler_type</td>
+    <td>学习率调度器类型</td>
+    <td>如 "step", "cosine" 等</td>
   </tr>
   <tr>
-    <td>11</td>
-    <td>args.checkpoint_interval</td>
-    <td>检查点保存间隔</td>
-    <td>可选，每多少个epoch保存一次模型</td>
+    <td>22</td>
+    <td>step_size</td>
+    <td>学习率下降步长</td>
+    <td>用于 "step" 类型的调度器</td>
   </tr>
   <tr>
-    <td>12</td>
-    <td>args.gradient_clipping</td>
-    <td>梯度裁剪值</td>
-    <td>可选，防止梯度爆炸</td>
+    <td>23</td>
+    <td>gamma</td>
+    <td>学习率衰减率</td>
+    <td>用于 "step" 类型的调度器</td>
   </tr>
   <tr>
-    <td>13</td>
-    <td>args.validation_interval</td>
-    <td>验证间隔</td>
-    <td>可选，每多少个batch进行一次验证</td>
+    <td>24</td>
+    <td>num_systems</td>
+    <td>系统数量</td>
+    <td>用于Few-Shot Learning, 表示参与训练的系统总数</td>
   </tr>
   <tr>
-    <td>14</td>
-    <td>args.mixed_precision</td>
-    <td>是否使用混合精度训练</td>
-    <td>可选，加速训练并减少显存占用</td>
+    <td>25</td>
+    <td>num_domains</td>
+    <td>域数量</td>
+    <td>用于Few-Shot Learning, 表示每个系统中的域数量</td>
+  </tr>
+  <tr>
+    <td>26</td>
+    <td>num_labels</td>
+    <td>标签数量</td>
+    <td>根据目标数据自动设置, 也可手动指定</td>
+  </tr>
+  <tr>
+    <td>27</td>
+    <td>num_support</td>
+    <td>支持集样本数量</td>
+    <td>Few-Shot Learning中每个类别的支持样本数</td>
+  </tr>
+  <tr>
+    <td>28</td>
+    <td>num_query</td>
+    <td>查询集样本数量</td>
+    <td>Few-Shot Learning中每个类别的查询样本数</td>
+  </tr>
+  <tr>
+    <td>29</td>
+    <td>num_episodes</td>
+    <td>Episode数量</td>
+    <td>Few-Shot Learning中的训练迭代次数</td>
   </tr>
 </table>
 </details>
@@ -957,6 +1028,9 @@ PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制�
 
 ## ⭐ Star历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/PHM-Vibench&type=Date)](https://star-history.com/#PHMbench/PHM-Vibench&Date)
+<!-- [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date) -->
 
-<p align="center">如有任何问题或建议，请联系我们</a>或提交<a href="https://github.com/PHMbench/PHM-Vibench/issues">Issue</a>。</p>
+
+<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5DZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
+
+<p align="center">如有任何问题或建议，请联系我们</a>或提交<a href="https://github.com/PHMbench/Vibench/issues">Issue</a>。</p>
