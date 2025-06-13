@@ -9,6 +9,8 @@ except ImportError:
     wandb = None
 try:
     import swanlab
+    from swanlab.plugin.notification import LarkCallback
+    from swanlab.plugin.notification import SlackCallback
 except ImportError:
     print("[WARNING] swanlab 未安装")
     swanlab = None
