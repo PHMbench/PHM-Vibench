@@ -1,3 +1,84 @@
+from .Sampler import HierarchicalFewShotSampler, Same_system_Sampler
+
+def _get_gfs_sampler(args_task, args_data, dataset, mode):
+    if mode == 'train':
+        sampler = HierarchicalFewShotSampler(
+            dataset=dataset,
+            num_episodes=args_task.num_episodes,
+            num_systems_per_episode=args_task.num_systems,
+            num_domains_per_system=args_task.num_domains,
+            num_labels_per_domain_task=args_task.num_labels,
+            num_support_per_label=args_task.num_support,
+            num_query_per_label=args_task.num_query,
+        )
+    elif mode == 'test' or mode == 'val':
+        sampler = Same_system_Sampler(
+            dataset=dataset,
+            batch_size=args_data.batch_size,
+            shuffle=False,
+            drop_last=True,
+        )
+    else:
+        raise ValueError(f"Unknown mode for GFS sampler: {mode}")
+    return sampler
+
+def _get_cddg_sampler(args_data, dataset, mode):
+    if mode == 'train':
+        sampler = Same_system_Sampler(
+            dataset=dataset,
+            batch_size=args_data.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+    elif mode == 'val' or mode == 'test':
+        sampler = Same_system_Sampler(
+            dataset=dataset,
+            batch_size=args_data.batch_size,
+            shuffle=False,
+            drop_last=True
+        )
+    else:
+        raise ValueError(f"Unknown mode for CDDG sampler: {mode}")
+    return sampler
+
+def _get_dg_sampler(args_data, dataset, mode):
+    if mode == 'train':
+        sampler = Same_system_Sampler(
+            dataset, 
+            batch_size=args_data.batch_size,
+            shuffle=True,
+            drop_last=True
+        )
+    elif mode == 'val' or mode == 'test':
+        sampler = Same_system_Sampler(
+            dataset,
+            batch_size=args_data.batch_size,
+            shuffle=False,
+            drop_last=True
+        )
+    else:
+        raise ValueError(f"Unknown mode for DG sampler: {mode}")
+    return sampler
+
+def _get_pretrain_sampler(args_data, dataset, mode):
+    if mode == 'train':
+        sampler = Same_system_Sampler(
+            dataset=dataset,
+            batch_size=args_data.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+    elif mode == 'val' or mode == 'test':
+        sampler = Same_system_Sampler(
+            dataset=dataset,
+            batch_size=args_data.batch_size,
+            shuffle=False,
+            drop_last=True
+        )
+    else:
+        raise ValueError(f"Unknown mode for Pretrain sampler: {mode}")
+    return sampler
+
 
 def Get_sampler(args_task, args_data, dataset, mode='train'):
     """
@@ -10,63 +91,21 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
         mode: 'train', 'val', or 'test'.
 
     Returns:
-        A sampler instance.
+        A sampler instance or None for 'FS' type.
     """
+    sampler = None # Initialize sampler to None
     if args_task.type == 'GFS': # Generalized Few-Shot Learning
-        from .Sampler import HierarchicalFewShotSampler, Same_system_Sampler
-        if mode == 'train' or mode == 'val':
-            sampler = HierarchicalFewShotSampler(
-                num_systems_per_episode=args_task.num_systems,    # M
-                num_domains_per_system=args_task.num_domains,     # J
-                num_labels_per_domain_task=args_task.num_labels, # N (N-way for each system-domain sub-task)
-                # Shot and query parameters
-                num_support_per_label=args_task.num_support,      # K
-                num_query_per_label=args_task.num_query,        # Q
-            )
-        elif mode == 'test':
-            sampler = Same_system_Sampler(
-                dataset=dataset,
-                batch_size=args_data.batch_size,
-                shuffle=False,
-                drop_last=True,
-            )
-        else:
-            raise ValueError(f"Unknown mode for GFS sampler: {mode}")
+        sampler = _get_gfs_sampler(args_task, args_data, dataset, mode)
     elif args_task.type == 'FS':
-        pass
+        # For 'FS' type, no specific sampler is defined, behavior is to do nothing.
+        # Explicitly return None or handle as per specific requirements for FS.
+        return None 
+    elif args_task.type == 'Pretrain':
+        sampler = _get_pretrain_sampler(args_data, dataset, mode)
     elif args_task.type == 'CDDG':
-        from .Sampler import Same_system_Sampler
-        if mode == 'train':
-            sampler = Same_system_Sampler(
-                dataset=dataset,
-                batch_size=args_data.batch_size,
-                shuffle=True,
-                drop_last=True,
-            )
-        elif mode == 'val' or mode == 'test':
-            sampler = Same_system_Sampler(
-                dataset=dataset,
-                batch_size=args_data.batch_size,
-                shuffle=False,
-                drop_last=True 
-            )
-        else:
-            raise ValueError(f"Unknown mode for CDDG sampler: {mode}")
-
+        sampler = _get_cddg_sampler(args_data, dataset, mode)
     elif args_task.type == 'DG':
-        from .Sampler import Same_system_Sampler
-        if mode == 'train':
-            sampler = Same_system_Sampler(dataset, # PyTorch Sampler typically takes dataset as first arg
-                                          batch_size=args_data.batch_size,
-                                          shuffle=True,
-                                          drop_last=True)
-        elif mode == 'val' or mode == 'test':
-            sampler = Same_system_Sampler(dataset,
-                                          batch_size=args_data.batch_size,
-                                          shuffle=False,
-                                          drop_last=True)
-        else:
-            raise ValueError(f"Unknown mode for DG sampler: {mode}")
+        sampler = _get_dg_sampler(args_data, dataset, mode)
     else:
         raise ValueError(f"Unknown task type for sampler: {args_task.type}")
         

@@ -304,26 +304,27 @@ class data_factory:
         print("Initializing training and validation datasets...")
         for id in tqdm(train_val_ids, desc="Creating train/val datasets"):
             train_dataset[id] = mod.set_dataset({id: self.data[id]},
-                             self.metadata, self.args_data, self.args_task, 'train')
+                             self.target_metadata, self.args_data, self.args_task, 'train')
             val_dataset[id] = mod.set_dataset({id: self.data[id]},
-                               self.metadata, self.args_data, self.args_task, 'val')
-        
+                               self.target_metadata, self.args_data, self.args_task, 'val')
+
         print("Initializing test datasets...")
         for id in tqdm(test_ids, desc="Creating test datasets"):
             test_dataset[id] = mod.set_dataset({id: self.data[id]},
-                            self.metadata, self.args_data, self.args_task, 'test')
-        train_dataset = IdIncludedDataset(train_dataset,self.metadata)
-        val_dataset = IdIncludedDataset(val_dataset,self.metadata)
-        test_dataset = IdIncludedDataset(test_dataset,self.metadata)
+                            self.target_metadata, self.args_data, self.args_task, 'test')
+        train_dataset = IdIncludedDataset(train_dataset,self.target_metadata)
+        val_dataset = IdIncludedDataset(val_dataset,self.target_metadata)
+        test_dataset = IdIncludedDataset(test_dataset,self.target_metadata)
         return train_dataset, val_dataset, test_dataset
-       
-    def search_id(self):
-        self.train_val_ids, self.test_ids = search_ids_for_task(self.metadata, self.args_task)
-        return self.train_val_ids, self.test_ids
+
 
     def search_dataset_id(self):
         self.target_metadata = search_target_dataset_metadata(self.metadata, self.args_task)
         return self.target_metadata
+    
+    def search_id(self):
+        self.train_val_ids, self.test_ids = search_ids_for_task(self.target_metadata, self.args_task)
+        return self.train_val_ids, self.test_ids
         
 
     def get_sampler(self, mode='train'):

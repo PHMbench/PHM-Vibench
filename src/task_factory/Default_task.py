@@ -199,7 +199,7 @@ class Default_task(pl.LightningModule):
 
         self.log_dict(
             log_dict,
-            on_step=(stage == "train"), # 训练时可以记录 step 级别的 loss
+            on_step= (stage == "train"), # 训练时可以记录 step 级别的 loss
             on_epoch=True,
             prog_bar=False, # 单独控制进度条
             logger=True,
