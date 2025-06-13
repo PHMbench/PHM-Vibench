@@ -40,7 +40,7 @@ def trainer(args_e,args_t, args_d, path):
     if args_t.swanlab:
         # swanlab
         swanlab_logger = SwanLabLogger(
-                project=getattr(args_t, 'project', 'vbench'),
+                project = args_e.project,
                 experiment_name=args_t.logger_name
             )
         log_list.append(swanlab_logger)
