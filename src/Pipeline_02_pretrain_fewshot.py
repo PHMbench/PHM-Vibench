@@ -5,7 +5,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.utils.config_utils import load_config, path_name, transfer_namespace
-from src.utils.utils import load_best_model_checkpoint
+from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
@@ -30,7 +30,7 @@ def run_stage(config_path, ckpt_path=None,iteration=0):
 
     path, name = path_name(configs, iteration)
     seed_everything(args_environment.seed)
-
+    init_lab(args_environment, args_task, name)
     data_factory = build_data(args_data, args_task)
     model = build_model(args_model, metadata=data_factory.get_metadata())
     task = build_task(
@@ -48,6 +48,7 @@ def run_stage(config_path, ckpt_path=None,iteration=0):
     result = trainer.test(task, data_factory.get_dataloader('test'))
     result_df = pd.DataFrame([result[0]])
     result_df.to_csv(os.path.join(path, 'test_result.csv'), index=False)
+    close_lab()
     return task, trainer
 
 
@@ -55,6 +56,7 @@ def run_pretraining_stage(config_path):
     """Run the pretraining stage and return the checkpoint path."""
     ckpt_dict = {}
     for it in range(os.environ.get('iterations', 1)):
+        
         task, trainer = run_stage(config_path, iteration=it)
         print(f"Pretraining stage iteration {it} completed.")
         ckpt_path = None
@@ -80,8 +82,8 @@ def run_fewshot_stage(fs_config_path, ckpt_dict=None):
 
 def pipeline(args):
     """Run pretraining followed by a few-shot stage."""
-    ckpt_dict = run_pretraining_stage(args.config_path[0])
-    run_fewshot_stage(args.config_path[1], ckpt_dict)
+    ckpt_dict = run_pretraining_stage(args.config_path)
+    run_fewshot_stage(args.fs_config_path, ckpt_dict)
     return True
 
 

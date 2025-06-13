@@ -2,23 +2,14 @@ import argparse
 import os
 import pandas as pd
 
-try: 
-    import wandb
-except ImportError:
-    print("[WARNING] wandb 未安装")
-    wandb = None
-try:
-    import swanlab
-except ImportError:
-    print("[WARNING] swanlab 未安装")
-    swanlab = None
+
 
 import torch
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.utils.config_utils import load_config, path_name, transfer_namespace
-from src.utils.utils import load_best_model_checkpoint
+from src.utils.utils import load_best_model_checkpoint,init_lab,close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
@@ -32,6 +23,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import yaml
 from pprint import pprint
+
 
 
 def pipeline(args):
@@ -96,30 +88,8 @@ def pipeline(args):
         current_seed = args_environment.seed + it
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
-        
-        # 初始化 WandB
-        args_environment.wandb = getattr(args_environment, 'wandb', False)
-        args_environment.swanlab = getattr(args_environment, 'swanlab', False)
-        if args_environment.wandb:
-            project_name = getattr(args_environment, 'project', 'vbench')
-            notes = f'Note1:{args.notes}\
-                Note2:{args_environment.notes}'
-            wandb.init(project=project_name,
-                        name=name,
-                          notes=notes)
-        else:
-            wandb.init(mode='disabled')  # 避免 wandb 报错
+        init_lab(args_environment, name, it)
 
-        if args_environment.swanlab:
-            notes = f'Note1:{args.notes}\
-                Note2:{args_environment.notes}'
-            swanlab.init(
-                project_name=getattr(args_environment, 'project', 'vbench'),
-                experiment_name=name,
-                notes=notes
-            )
-        else:
-            swanlab.init(mode='disabled')
 
         # 构建数据工厂
         print("[INFO] 构建数据工厂...")
@@ -168,14 +138,10 @@ def pipeline(args):
         print("[INFO] 保存测试结果...")
         result_df = pd.DataFrame([result[0]])
         result_df.to_csv(os.path.join(path, f'test_result_{it}.csv'), index=False)
-        
-        # 关闭wandb
-        if args_environment.wandb:
-            wandb.finish()
-        if args_environment.swanlab:
-            swanlab.finish()
-        data_factory.data.close()  # 关闭数据工厂
-    
+
+        # 关闭wandb和swanlab
+        close_lab()
+
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)
     return all_results

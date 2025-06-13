@@ -28,16 +28,17 @@ def trainer(args_e,args_t, args_d, path):
     # 获取回调列表
     callback_list = call_backs(args_t, path)
     log_list = [CSVLogger(path, name="logs")]
-    
+    use_wandb = getattr(args_e, 'wandb', False)
+    use_swanlab = getattr(args_e, 'swanlab', False)    
     # 根据 wandb_flag 确定日志记录器列表
-    if args_t.wandb:
+    if use_wandb:
         # 配置 WandB 日志记录
         wandb_logger = WandbLogger(project=args_e.project,
                                    offline= not is_main_process,
                                   )
         log_list.append(wandb_logger)
-    
-    if args_t.swanlab:
+
+    if use_swanlab:
         # swanlab
         swanlab_logger = SwanLabLogger(
                 project = args_e.project,

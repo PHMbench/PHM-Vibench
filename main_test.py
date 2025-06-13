@@ -24,6 +24,10 @@ def main():
                                  '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/Pretraining/test.yaml',
                                  '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/GFS/test.yaml'],
                         help='配置文件路径')
+    parser.add_argument('--fs_config_path',
+                        type=str,
+                        default=None,
+                        help='few-shot config for pretrain pipeline')
     parser.add_argument('--notes', 
                         type=str, 
                         default='',

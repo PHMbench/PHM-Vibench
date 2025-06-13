@@ -14,4 +14,7 @@ python main.py --config configs/demo/Few_Shot/CWRU.yaml
 
 
 # pretrain + few-shot
-python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path [configs/demo/Pretraining/Pretraining_demo.yaml,configs/demo/Few_Shot/pretrain_few_shot.yaml]
+python main.py \
+--pipeline Pipeline_02_pretrain_fewshot \
+--fs_config_path configs/demo/GFS/GFS_demo.yaml \
+--config_path configs/demo/Pretraining/Pretraining_demo.yaml
