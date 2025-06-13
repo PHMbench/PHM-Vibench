@@ -3,6 +3,8 @@ from pytorch_lightning.loggers import WandbLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, ModelPruning, EarlyStopping
 from torch.utils.tensorboard.writer import SummaryWriter
 import os
+import swanlab
+from swanlab.integration.pytorch_lightning import SwanLabLogger
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -34,7 +36,15 @@ def trainer(args_e,args_t, args_d, path):
                                    offline= not is_main_process,
                                   )
         log_list.append(wandb_logger)
-        
+    
+    if args_t.swanlab:
+        # swanlab
+        swanlab_logger = SwanLabLogger(
+                project = args_e.project,
+                experiment_name=args_t.logger_name
+            )
+        log_list.append(swanlab_logger)
+            
     # 设置设备类型：CPU 或自动选择
     accelerate_type = 'cpu' if args_t.device == 'cpu' else 'auto'
 

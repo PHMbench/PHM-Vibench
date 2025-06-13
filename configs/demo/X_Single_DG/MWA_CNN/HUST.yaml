@@ -4,6 +4,7 @@
 
 environment:
   WANDB_MODE: "disabled" # "online" or "disabled"
+  SWANLAB_MODE: "cloud" # "local", "cloud" or "disabled"
   VBENCH_HOME: "C:/Users/CCSLab/Desktop/lixuan/Vbench/Vbench"
   PYTHONPATH: "C:/Users/CCSLab/.conda/envs/xuanli_IFD"
   PHMBench: "C:/Users/CCSLab/Desktop/lixuan/Vbench"
@@ -81,7 +82,8 @@ task:
 trainer:
   name: "Default_trainer"
 
-  wandb: true
+  wandb: False
+  swanlab: true
   pruning: False
   num_epochs: 10
   gpus: 1
