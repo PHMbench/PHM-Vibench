@@ -25,6 +25,7 @@ import torch
 Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
+    'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
 
 }
 Backbone_dict = {
@@ -61,11 +62,15 @@ class Model(nn.Module):
         return num_classes
     
     def forward(self, x, File_id = False,Task_id = False):
-
         
         if self.args_m.embedding == 'E_01_HSE':
             fs = self.metadata[File_id]['Sample_rate']
-            x = self.embedding(x,fs)
+            System_id = self.metadata[File_id]['Dataset_id']
+            x = self.embedding(x, fs, System_id)
+        elif self.args_m.embedding == 'E_02_HSE_v2':
+            fs = self.metadata[File_id]['Sample_rate']
+            System_id = self.metadata[File_id]['Dataset_id']
+            x = self.embedding(x, fs, System_id)
         else:
             x = self.embedding(x)
         x = self.backbone(x)
