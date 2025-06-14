@@ -84,6 +84,7 @@ def init_lab(args_environment, cli_args, experiment_name):
             project_name = getattr(args_environment, 'project', 'vbench')
             notes = f'CLI Notes:{cli_args.notes}\nConfig Notes:{getattr(args_environment, "notes", "")}'
             swanlab.init(
+                workspace = getattr(args_environment, 'workspace', None), # SwanLab uses 'workspace'
                 project=project_name, # Assuming swanlab uses 'project' similar to wandb
                 experiment_name=experiment_name,
                 description=notes.strip() # Swanlab uses 'description' for notes
