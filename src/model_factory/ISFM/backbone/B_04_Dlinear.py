@@ -117,7 +117,7 @@ if __name__ == "__main__":
         configs = Config()
         
         # 创建模型实例
-        model = Model(configs, individual=False)
+        model = B_04_Dlinear(configs, individual=False)
         
         # 创建一批测试数据
         batch_size = 32
