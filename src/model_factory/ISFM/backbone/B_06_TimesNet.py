@@ -68,13 +68,13 @@ class TimesBlock(nn.Module):
         return res
 
 
-class Model(nn.Module):
+class B_06_TimesNet(nn.Module):
     """
     Paper link: https://openreview.net/pdf?id=ju_Uqw384Oq
     """
 
     def __init__(self, configs):
-        super(Model, self).__init__()
+        super(B_06_TimesNet, self).__init__()
         self.configs = configs
         self.task_name = configs.task_name
         self.seq_len = configs.seq_len
@@ -82,23 +82,23 @@ class Model(nn.Module):
         self.pred_len = configs.pred_len
         self.model = nn.ModuleList([TimesBlock(configs)
                                     for _ in range(configs.e_layers)])
-        self.enc_embedding = DataEmbedding(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                           configs.dropout)
-        self.layer = configs.e_layers
-        self.layer_norm = nn.LayerNorm(configs.d_model)
-        if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
-            self.predict_linear = nn.Linear(
-                self.seq_len, self.pred_len + self.seq_len)
-            self.projection = nn.Linear(
-                configs.d_model, configs.c_out, bias=True)
-        if self.task_name == 'imputation' or self.task_name == 'anomaly_detection':
-            self.projection = nn.Linear(
-                configs.d_model, configs.c_out, bias=True)
-        if self.task_name == 'classification':
-            self.act = F.gelu
-            self.dropout = nn.Dropout(configs.dropout)
-            self.projection = nn.Linear(
-                configs.d_model * configs.seq_len, configs.num_class)
+        # self.enc_embedding = DataEmbedding(configs.enc_in, configs.d_model, configs.embed, configs.freq,
+        #                                    configs.dropout)
+        # self.layer = configs.e_layers
+        # self.layer_norm = nn.LayerNorm(configs.d_model)
+        # if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
+        #     self.predict_linear = nn.Linear(
+        #         self.seq_len, self.pred_len + self.seq_len)
+        #     self.projection = nn.Linear(
+        #         configs.d_model, configs.c_out, bias=True)
+        # if self.task_name == 'imputation' or self.task_name == 'anomaly_detection':
+        #     self.projection = nn.Linear(
+        #         configs.d_model, configs.c_out, bias=True)
+        # if self.task_name == 'classification':
+        #     self.act = F.gelu
+        #     self.dropout = nn.Dropout(configs.dropout)
+        #     self.projection = nn.Linear(
+        #         configs.d_model * configs.seq_len, configs.num_class)
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
         # Normalization from Non-stationary Transformer
