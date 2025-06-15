@@ -1,227 +1,126 @@
+# patchtst_backbone.py  ───────────────────────────────────────────
 import torch
-from torch import nn
+import torch.nn as nn
 from layers.Transformer_EncDec import Encoder, EncoderLayer
 from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import PatchEmbedding
 
+
+# ────────────────────── 1. Tiny helpers ────────────────────────
 class Transpose(nn.Module):
-    def __init__(self, *dims, contiguous=False): 
+    """nn.Module wrapper around `tensor.transpose` so it can sit in nn.Sequential."""
+    def __init__(self, dim0, dim1, contiguous=False):
         super().__init__()
-        self.dims, self.contiguous = dims, contiguous
+        self.dim0, self.dim1, self.contig = dim0, dim1, contiguous
     def forward(self, x):
-        if self.contiguous: return x.transpose(*self.dims).contiguous()
-        else: return x.transpose(*self.dims)
+        x = x.transpose(self.dim0, self.dim1)
+        return x.contiguous() if self.contig else x
 
 
-class FlattenHead(nn.Module):
-    def __init__(self, n_vars, nf, target_window, head_dropout=0):
-        super().__init__()
-        self.n_vars = n_vars
-        self.flatten = nn.Flatten(start_dim=-2)
-        self.linear = nn.Linear(nf, target_window)
-        self.dropout = nn.Dropout(head_dropout)
-
-    def forward(self, x):  # x: [bs x nvars x d_model x patch_num]
-        x = self.flatten(x)
-        x = self.linear(x)
-        x = self.dropout(x)
-        return x
-
-
-class Model(nn.Module):
+# ────────────────────── 2. Backbone module ─────────────────────
+class PatchTSTBackbone(nn.Module):
     """
-    Paper link: https://arxiv.org/pdf/2211.14730.pdf
+    Backbone of PatchTST (Patch-patch Transformer for multivariate TS)
+    Output: encoded patch tokens  –  no heads, no de/normalisation.
+    Paper: https://arxiv.org/pdf/2211.14730.pdf
     """
 
-    def __init__(self, configs, patch_len=16, stride=8):
+    def __init__(self, cfg,
+                 patch_len: int = 16,
+                 stride: int    = 8):
         """
-        patch_len: int, patch len for patch_embedding
-        stride: int, stride for patch_embedding
+        Args
+        ----
+        cfg        : argparse.Namespace or similar with keys
+                     (d_model, n_heads, d_ff, e_layers, dropout, activation,
+                      seq_len, enc_in)
+        patch_len  : temporal length \(p\) of each patch
+        stride     : stride \(s\) between patches
         """
         super().__init__()
-        self.task_name = configs.task_name
-        self.seq_len = configs.seq_len
-        self.pred_len = configs.pred_len
-        padding = stride
 
-        # patching and embedding
-        self.patch_embedding = PatchEmbedding(
-            configs.d_model, patch_len, stride, padding, configs.dropout)
+        # ➀ Patch embedding
+        #   x   ∈ ℝ^{B×C×T}  →  U ∈ ℝ^{B·C×N_p×d_model}
+        #   where  N_p = \left\lfloor\frac{T-p}{s}\right\rfloor+1\;.
+        self.patch_embed = PatchEmbedding(
+            cfg.d_model, patch_len, stride, stride, cfg.dropout)
 
-        # Encoder
+        # ➁ Transformer encoder
         self.encoder = Encoder(
             [
                 EncoderLayer(
                     AttentionLayer(
-                        FullAttention(False, configs.factor, attention_dropout=configs.dropout,
-                                      output_attention=False), configs.d_model, configs.n_heads),
-                    configs.d_model,
-                    configs.d_ff,
-                    dropout=configs.dropout,
-                    activation=configs.activation
-                ) for l in range(configs.e_layers)
+                        FullAttention(
+                            False, cfg.factor, attention_dropout=cfg.dropout,
+                            output_attention=False),
+                        cfg.d_model, cfg.n_heads),
+                    cfg.d_model, cfg.d_ff,
+                    dropout=cfg.dropout,
+                    activation=cfg.activation
+                )
+                for _ in range(cfg.e_layers)
             ],
-            norm_layer=nn.Sequential(Transpose(1,2), nn.BatchNorm1d(configs.d_model), Transpose(1,2))
+            # LayerNorm replaced by channel-wise BatchNorm1d (as in the paper)
+            norm_layer=nn.Sequential(
+                Transpose(1, 2),             # [B·C, d_model, N_p]
+                nn.BatchNorm1d(cfg.d_model),
+                Transpose(1, 2)
+            )
         )
 
-        # Prediction Head
-        self.head_nf = configs.d_model * \
-                       int((configs.seq_len - patch_len) / stride + 2)
-        if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
-            self.head = FlattenHead(configs.enc_in, self.head_nf, configs.pred_len,
-                                    head_dropout=configs.dropout)
-        elif self.task_name == 'imputation' or self.task_name == 'anomaly_detection':
-            self.head = FlattenHead(configs.enc_in, self.head_nf, configs.seq_len,
-                                    head_dropout=configs.dropout)
-        elif self.task_name == 'classification':
-            self.flatten = nn.Flatten(start_dim=-2)
-            self.dropout = nn.Dropout(configs.dropout)
-            self.projection = nn.Linear(
-                self.head_nf * configs.enc_in, configs.num_class)
+    # ───────────────── forward ─────────────────
+    def forward(self, x):
+        """
+        Args
+        ----
+        x : Tensor[B, T, C]   (time, variables)
+        Returns
+        -------
+        z : Tensor[B, C, N_p, d_model]
+            encoded patch tokens per variable.
+        """
+        # Rearrange to [B, C, T] for patch extractor
+        x = x.permute(0, 2, 1)
 
-    def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
-        # Normalization from Non-stationary Transformer
-        means = x_enc.mean(1, keepdim=True).detach()
-        x_enc = x_enc - means
-        stdev = torch.sqrt(
-            torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
-        x_enc /= stdev
+        # Patchify & embed  →  U  [B·C, N_p, d_model]
+        U, n_vars = self.patch_embed(x)
 
-        # do patching and embedding
-        x_enc = x_enc.permute(0, 2, 1)
-        # u: [bs * nvars x patch_num x d_model]
-        enc_out, n_vars = self.patch_embedding(x_enc)
+        # Transformer encoder
+        Z, _ = self.encoder(U)                        # [B·C, N_p, d_model]
 
-        # Encoder
-        # z: [bs * nvars x patch_num x d_model]
-        enc_out, attns = self.encoder(enc_out)
-        # z: [bs x nvars x patch_num x d_model]
-        enc_out = torch.reshape(
-            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1]))
-        # z: [bs x nvars x d_model x patch_num]
-        enc_out = enc_out.permute(0, 1, 3, 2)
+        # Reshape back to per-variable tensor
+        Z = Z.reshape(-1, n_vars, Z.size(1), Z.size(2))   # [B, C, N_p, d_model]
 
-        # Decoder
-        dec_out = self.head(enc_out)  # z: [bs x nvars x target_window]
-        dec_out = dec_out.permute(0, 2, 1)
+        # Optional: permute to [B, C, d_model, N_p] if downstream wants channels last
+        return Z                                        # [B, C, N_p, d_model]
+# Example usage:
+if __name__ == "__main__":
+# test_patchtst_backbone.py
+    import torch
+    from argparse import Namespace
 
-        # De-Normalization from Non-stationary Transformer
-        dec_out = dec_out * \
-                  (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
-        dec_out = dec_out + \
-                  (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
-        return dec_out
+    cfg = Namespace(
+        seq_len     = 512,      # original series length T
+        enc_in      = 4,        # number of variables C
+        d_model     = 64,
+        n_heads     = 8,
+        d_ff        = 128,
+        e_layers    = 2,
+        dropout     = 0.1,
+        activation  = 'gelu',
+        factor      = 5         # used by FullAttention (chunk size)
+    )
 
-    def imputation(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask):
-        # Normalization from Non-stationary Transformer
-        means = torch.sum(x_enc, dim=1) / torch.sum(mask == 1, dim=1)
-        means = means.unsqueeze(1).detach()
-        x_enc = x_enc - means
-        x_enc = x_enc.masked_fill(mask == 0, 0)
-        stdev = torch.sqrt(torch.sum(x_enc * x_enc, dim=1) /
-                           torch.sum(mask == 1, dim=1) + 1e-5)
-        stdev = stdev.unsqueeze(1).detach()
-        x_enc /= stdev
+    model = PatchTSTBackbone(cfg, patch_len=16, stride=8)
 
-        # do patching and embedding
-        x_enc = x_enc.permute(0, 2, 1)
-        # u: [bs * nvars x patch_num x d_model]
-        enc_out, n_vars = self.patch_embedding(x_enc)
+    B = 6
+    x = torch.randn(B, cfg.seq_len, cfg.enc_in)   # [B,T,C]
+    z = model(x)
 
-        # Encoder
-        # z: [bs * nvars x patch_num x d_model]
-        enc_out, attns = self.encoder(enc_out)
-        # z: [bs x nvars x patch_num x d_model]
-        enc_out = torch.reshape(
-            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1]))
-        # z: [bs x nvars x d_model x patch_num]
-        enc_out = enc_out.permute(0, 1, 3, 2)
+    print(f"input  shape : {x.shape}")
+    print(f"output shape : {z.shape}")            # [B, C, N_p, d_model]
 
-        # Decoder
-        dec_out = self.head(enc_out)  # z: [bs x nvars x target_window]
-        dec_out = dec_out.permute(0, 2, 1)
-
-        # De-Normalization from Non-stationary Transformer
-        dec_out = dec_out * \
-                  (stdev[:, 0, :].unsqueeze(1).repeat(1, self.seq_len, 1))
-        dec_out = dec_out + \
-                  (means[:, 0, :].unsqueeze(1).repeat(1, self.seq_len, 1))
-        return dec_out
-
-    def anomaly_detection(self, x_enc):
-        # Normalization from Non-stationary Transformer
-        means = x_enc.mean(1, keepdim=True).detach()
-        x_enc = x_enc - means
-        stdev = torch.sqrt(
-            torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
-        x_enc /= stdev
-
-        # do patching and embedding
-        x_enc = x_enc.permute(0, 2, 1)
-        # u: [bs * nvars x patch_num x d_model]
-        enc_out, n_vars = self.patch_embedding(x_enc)
-
-        # Encoder
-        # z: [bs * nvars x patch_num x d_model]
-        enc_out, attns = self.encoder(enc_out)
-        # z: [bs x nvars x patch_num x d_model]
-        enc_out = torch.reshape(
-            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1]))
-        # z: [bs x nvars x d_model x patch_num]
-        enc_out = enc_out.permute(0, 1, 3, 2)
-
-        # Decoder
-        dec_out = self.head(enc_out)  # z: [bs x nvars x target_window]
-        dec_out = dec_out.permute(0, 2, 1)
-
-        # De-Normalization from Non-stationary Transformer
-        dec_out = dec_out * \
-                  (stdev[:, 0, :].unsqueeze(1).repeat(1, self.seq_len, 1))
-        dec_out = dec_out + \
-                  (means[:, 0, :].unsqueeze(1).repeat(1, self.seq_len, 1))
-        return dec_out
-
-    def classification(self, x_enc, x_mark_enc):
-        # Normalization from Non-stationary Transformer
-        means = x_enc.mean(1, keepdim=True).detach()
-        x_enc = x_enc - means
-        stdev = torch.sqrt(
-            torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5)
-        x_enc /= stdev
-
-        # do patching and embedding
-        x_enc = x_enc.permute(0, 2, 1)
-        # u: [bs * nvars x patch_num x d_model]
-        enc_out, n_vars = self.patch_embedding(x_enc)
-
-        # Encoder
-        # z: [bs * nvars x patch_num x d_model]
-        enc_out, attns = self.encoder(enc_out)
-        # z: [bs x nvars x patch_num x d_model]
-        enc_out = torch.reshape(
-            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1]))
-        # z: [bs x nvars x d_model x patch_num]
-        enc_out = enc_out.permute(0, 1, 3, 2)
-
-        # Decoder
-        output = self.flatten(enc_out)
-        output = self.dropout(output)
-        output = output.reshape(output.shape[0], -1)
-        output = self.projection(output)  # (batch_size, num_classes)
-        return output
-
-    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
-        if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
-            dec_out = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
-        if self.task_name == 'imputation':
-            dec_out = self.imputation(
-                x_enc, x_mark_enc, x_dec, x_mark_dec, mask)
-            return dec_out  # [B, L, D]
-        if self.task_name == 'anomaly_detection':
-            dec_out = self.anomaly_detection(x_enc)
-            return dec_out  # [B, L, D]
-        if self.task_name == 'classification':
-            dec_out = self.classification(x_enc, x_mark_enc)
-            return dec_out  # [B, N]
-        return None
+    # Expected patch count N_p
+    N_p = (cfg.seq_len - 16) // 8 + 1
+    assert z.shape == (B, cfg.enc_in, N_p, cfg.d_model)
+    print("Shape check passed ✔")
