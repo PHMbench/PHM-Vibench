@@ -21,3 +21,4 @@ openpyxl
 tensorboard
 swanlab
 plotly
+reformer_pytorch
