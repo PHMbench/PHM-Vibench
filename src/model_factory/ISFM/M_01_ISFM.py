@@ -41,11 +41,12 @@ TaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,
     'H_02_distance_cla': H_02_distance_cla,
     'H_03_Linear_pred': H_03_Linear_pred,
+    'H_09_multiple_task': H_09_multiple_task, # Add the new multiple task head
 }
 
 
 class Model(nn.Module):
-    def __init__(self, args_m,metadata): # args_d = False when not using H_02_distance_cla
+    def __init__(self, args_m, metadata):
         super(Model, self).__init__()
         self.metadata = metadata
         self.args_m = args_m
@@ -61,7 +62,7 @@ class Model(nn.Module):
             num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
         return num_classes
     
-    def forward(self, x, File_id = False,Task_id = False):
+    def forward(self, x, File_id = False,Task_id = False, return_feature=False):
         
         if self.args_m.embedding == 'E_01_HSE':
             fs = self.metadata[File_id]['Sample_rate']
@@ -77,7 +78,7 @@ class Model(nn.Module):
         
         # TODO multiple task head 判断 data
         System_id = self.metadata[File_id]['Dataset_id']
-        x = self.task_head(x,System_id,Task_id, return_feature=False)
+        x = self.task_head(x,System_id,Task_id, return_feature=return_feature)
         return x
     
 if __name__ == '__main__':

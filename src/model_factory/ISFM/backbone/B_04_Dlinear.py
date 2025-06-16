@@ -108,7 +108,7 @@ if __name__ == "__main__":
     class Config:
         def __init__(self):
             self.patch_size_L = 4096
-            self.patch_size_C = 1  # 输入通道数/特征维度
+            self.patch_size_C = 2  # 输入通道数/特征维度
             self.moving_avg = 125
 
     # DLinear模型测试

@@ -1,0 +1,107 @@
+# signal_prediction_loss.py  ───────────────────────────────────
+from __future__ import annotations
+import torch, torch.nn as nn
+from dataclasses import dataclass
+
+EPS = 1e-8
+# ───────────────────────── Loss Module ────────────────────────
+class Signal_mask_Loss(nn.Module):
+    r"""
+    **Self-supervised signal loss** that blends **imputation** and **forecasting**.
+
+    Given an episode signal \(X\in\mathbb R^{B\times L\times C}\):
+
+    * **Random mask**  
+      For each time-step \(t<L_f\) we drop it with prob. ρ.
+    * **Prediction mask**  
+      Entire last \(L_f=\lfloor L\cdot\lambda\rfloor\) steps are hidden.
+    * The model receives \(\tilde X\) (zeros at masked positions)  
+      and outputs \(\hat X=f_\theta(\tilde X)\).
+    * Loss is computed **only** on the masked points
+      \[
+        \mathcal L=
+        \begin{cases}
+        \text{MSE: }\frac{1}{N}\sum_{m}(\hat x_m-x_m)^2 \\[4pt]
+        \text{RelL2: }\dfrac{\lVert\hat X-X\rVert_2}{\lVert X\rVert_2}
+        \end{cases}
+      \]
+
+    Returns `(loss, stats_dict)`
+    """
+
+    def __init__(self, cfg: SigPredCfg):
+        super().__init__()
+        self.cfg = cfg
+        self.loss_type = 'rel_l2' # mse
+
+    # ──────────────────────── forward ─────────────────────────
+    def forward(self,
+                model:  nn.Module,
+                signal: torch.Tensor           # (B,L,C) ground-truth
+                ) -> tuple[torch.Tensor, dict]:
+
+        B, L, C = signal.shape
+        device  = signal.device
+        L_f     = int(L * self.cfg.forecast_part)         # future length
+        L_o     = L - L_f                                 # observed length
+
+        # 1️⃣ create masks ---------------------------------------------
+        mask_pred = torch.zeros(L, dtype=torch.bool, device=device)
+        mask_pred[L_o:] = True                              # last L_f steps
+
+        mask_rand = (torch.rand((B, L_o, 1), device=device) < self.cfg.mask_ratio)
+        mask_rand = torch.cat([mask_rand, torch.zeros(B, L_f, 1, device=device)], 1)
+        mask_rand = mask_rand.bool().expand(-1, -1, C)      # broadcast to channels
+
+        mask_pred = mask_pred.unsqueeze(0).unsqueeze(2).expand(B, L, C)
+
+        total_mask = mask_pred | mask_rand                  # union of two masks
+
+        # 2️⃣ prepare corrupted input -------------------------------
+        x_in = signal.clone()
+        x_in[total_mask] = 0.0                              # zero-drop
+
+        # 3️⃣ model prediction --------------------------------------
+        with torch.set_grad_enabled(self.training):
+            x_hat = model(x_in)                             # (B,L,C)
+
+        # 4️⃣ compute loss -----------------------------------------
+        if self.loss_type == "mse":
+            num = total_mask.sum().clamp(min=1)             # avoid /0
+            loss = nn.MSELoss(reduction="sum")(x_hat[total_mask], signal[total_mask]) / num
+
+        elif self.loss_type == "rel_l2":                # relative L2
+            diff = (x_hat - signal)[total_mask]
+            loss = diff.pow(2).sum() / (signal[total_mask].pow(2).sum() + EPS)
+
+
+
+        # 5️⃣ stats --------------------------------------------------
+        stats = {
+            "impute_frac": mask_rand.float().mean().item(),
+            "forecast_frac": mask_pred.float().mean().item(),
+            "mask_total_frac": total_mask.float().mean().item()
+        }
+        return loss, stats
+
+
+if __name__ == "__main__":
+    # ─────────────────────── Configuration dataclass ──────────────
+    @dataclass
+    class SigPredCfg:
+        mask_ratio: float = 0.50      # Bernoulli-mask ratio on *observed* part
+        loss_type:  str   = "rel_l2"     # "mse" | "rel_l2"
+        forecast_part: float = 0.5    # fraction of sequence regarded as “future”
+    # Dummy model that just copies input
+    class Identity(nn.Module):
+        def forward(self, x): return x
+
+    cfg   = SigPredCfg(mask_ratio=0.5, loss_type="mse", forecast_part=0.5)
+    crit  = SignalPredictionLoss(cfg).cuda()
+    model = Identity().cuda()
+
+    B, L, C = 8, 100, 3
+    x = torch.randn(B, L, C, device="cuda")
+
+    loss, st = crit(model, x)
+    print(f"loss={loss.item():.4f}  stats={st}")

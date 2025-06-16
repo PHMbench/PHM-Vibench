@@ -50,7 +50,7 @@ class Default_task(pl.LightningModule):
         self.args_environment = args_environment
 
         # 使用组件配置损失和指标
-        self.loss_fn = get_loss_fn(self.args_task.loss)
+        self.loss_fn = get_loss_fn(self.args_task)
         # 假设 get_metrics 需要数据配置来确定任务类型和类别数
         self.metrics = get_metrics(self.args_task.metrics, self.metadata)
 
@@ -74,9 +74,9 @@ class Default_task(pl.LightningModule):
         task_id = batch['Task_id'] if 'Task_id' in batch else None
         return self.network(x, id, task_id)
 
-    def _forward_pass(self, batch) -> torch.Tensor:
-        """执行前向传播"""
-        return self(batch)
+    # def _forward_pass(self, batch) -> torch.Tensor:
+    #     """执行前向传播"""
+    #     return self(batch)
 
     def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """计算任务损失"""
@@ -131,7 +131,7 @@ class Default_task(pl.LightningModule):
             raise ValueError(f" Error: {e}")
 
         # 1. 前向传播
-        y_hat = self._forward_pass(batch)
+        y_hat = self.forward(batch)
 
         # 2. 计算任务损失
         y = batch['y']

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.fft
 
 # ───────────────────── 1. Period discovery via FFT ─────────────
-def FFT_for_Period(x: torch.Tensor, k: int = 2):
+def FFT_for_Period(x: torch.Tensor, k: int = 5):
     """
     Estimate the dominant periods of a multivariate sequence by
     ranking the averaged amplitude spectrum.
@@ -52,7 +52,6 @@ class TimesBlock(nn.Module):
     """
     def __init__(self, cfg):
         super().__init__()
-        self.seq_len, self.pred_len, self.k = cfg.seq_len, cfg.pred_len, cfg.top_k
 
         # \mathrm{Conv}(C_{in}=d_{model}) → GELU → \mathrm{Conv}(C_{out}=d_{model})
         self.conv = nn.Sequential(
@@ -63,7 +62,7 @@ class TimesBlock(nn.Module):
 
     def forward(self, x):                         # x ∈ ℝ^{B×T×C}
         B, T, C = x.size()
-        periods, weights = FFT_for_Period(x, self.k)      # periods: ℕ^{k}
+        periods, weights = FFT_for_Period(x)      # periods: ℕ^{k}
 
         outputs = []
         for p in periods:                                  # Iterate over k periods
@@ -83,10 +82,10 @@ class TimesBlock(nn.Module):
         y_stack = torch.stack(outputs, dim=-1)
 
         # Softmax weights:  α_{b,i} =  \frac{e^{w_{b,i}}}{\sum_j e^{w_{b,j}}}
-        α = F.softmax(weights, dim=1).unsqueeze(1).unsqueeze(1)  # ℝ^{B×1×1×k}
+        res = F.softmax(weights, dim=1).unsqueeze(1).unsqueeze(1)  # ℝ^{B×1×1×k}
 
         # Weighted sum across periods + residual
-        y = (y_stack * α).sum(-1) + x                        # ℝ^{B×T×C}
+        y = (y_stack * res).sum(-1) + x                        # ℝ^{B×T×C}
         return y
 
 
