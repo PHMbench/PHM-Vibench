@@ -2,7 +2,7 @@ if __name__ == '__main__':
     
     # 在 M_01_ISFM.py 文件开头添加
     import sys
-    import os
+
 
     # 获取当前文件的绝对路径
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -51,48 +51,33 @@ class Model(nn.Module):
         self.args_m = args_m
         self.embedding = Embedding_dict[args_m.embedding](args_m)
         self.backbone = Backbone_dict[args_m.backbone](args_m)
-        # self.num_classes = self.get_num_classes()  # TODO prediction 任务不需要label？ @liq22
-        # args_m.num_classes = self.num_classes  # Ensure num_classes is set in args_m
-        self.task_head = TaskHead_dict[args_m.task_head](args_m)
-
-    def _embed(self, x, file_id):
-        """1 Embedding"""
-        if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
+        self.num_classes = self.get_num_classes()
+        self.task_head = TaskHead_dict[args_m.task_head](args_m, self.num_classes)
+    
+            
+    def get_num_classes(self):
+        num_classes = {}
+        for key in np.unique(self.metadata.df['Dataset_id']):
+            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
+        return num_classes
+    
+    def forward(self, x, file_id = False,task_id = False, return_feature=False):
+        
+        if self.args_m.embedding == 'E_01_HSE':
             fs = self.metadata[file_id]['Sample_rate']
-            # system_id = self.metadata[file_id]['Dataset_id']
-            x = self.embedding(x, fs)
+            system_id = self.metadata[file_id]['Dataset_id']
+            x = self.embedding(x, fs, system_id)
+        elif self.args_m.embedding == 'E_02_HSE_v2':
+            fs = self.metadata[file_id]['Sample_rate']
+            system_id = self.metadata[file_id]['Dataset_id']
+            x = self.embedding(x, fs, system_id)
         else:
             x = self.embedding(x)
-        return x
-
-    def _encode(self, x):
-        """2 Backbone"""
-        return self.backbone(x)
-
-    def _head(self, x, file_id = False, task_id = False, return_feature=False):
-        """3 Task Head"""
+        x = self.backbone(x)
+        
+        # TODO multiple task head 判断 data
         system_id = self.metadata[file_id]['Dataset_id']
-        # check if task_id is in the task head
-        # check if task have its head
-
-        if task_id in ['classification']:
-            # For classification or prediction tasks, we need to pass system_id
-            return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
-        if task_id in ['prediction']: # TODO individual prediction head
-            shape = (x.shape[1], x.shape[2]) if len(x.shape) > 2 else (x.shape[1],)
-            # For prediction tasks, we may not need system_id
-            return self.task_head(x, return_feature=return_feature, task_id=task_id, shape=shape)
-        # if task_id in ['classification', 'prediction']:
-        #     # For classification or prediction tasks, we need to pass system_id
-        #     return self.task_head(x, system_id=system_id, return_feature=return_feature)
-        # elif task_id in ['multitask']:
-        # return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
-
-    def forward(self, x, file_id=False, task_id=False, return_feature=False):
-        # 
-        x = self._embed(x, file_id)
-        x = self._encode(x)
-        x = self._head(x, file_id, task_id, return_feature)
+        x = self.task_head(x,system_id,task_id, return_feature=return_feature)
         return x
     
 if __name__ == '__main__':
@@ -109,31 +94,39 @@ if __name__ == '__main__':
     import torch
     
     # 使用指定的配置文件
-    # config_path = os.path.join(project_root, 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml')
-    config_path = os.path.join(project_root, 'script/LQ1/Pretraining/Pretraining_C+P.yaml')
-    # config_path = os.path.join(project_root, 'script/LQ1/GFS/GFS_C+M.yaml')
+    config_path = os.path.join(project_root, 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml')
     print(f"加载配置文件: {config_path}")
     
     try:
         configs = load_config(config_path)
 # 设置环境变量和命名空间
         args_environment = transfer_namespace(configs.get('environment', {}))
+
         args_data = transfer_namespace(configs.get('data', {}))
-        args_model = transfer_namespace(configs.get('model', {}))
-        args_task = transfer_namespace(configs.get('task', {}))
-        args_trainer = transfer_namespace(configs.get('trainer', {}))
-        args_model.num_classes = {'CWRU':2, 'THU': 3}  # 示例，实际应从配置中获取
+
+        args_model = transfer_namespace(configs.get('model', {}).get('args', {}))
+        args_model.name = configs['model'].get('name', 'default')
+
+        args_task = transfer_namespace(configs.get('task', {}).get('args', {}))
+        args_task.name = configs['task'].get('name', 'default')
+
+        args_trainer = transfer_namespace(configs.get('trainer', {}).get('args', {}))
+        args_trainer.name = configs['trainer'].get('name', 'default')
         
         print("模型配置:", args_model)
         print("数据集配置:", args_data)
         
+        # 创建模拟数据以便测试
         class MockMetadata:
-            def __getitem__(self, idx):
-                return {
-                    'Sample_rate': 16000,
-                    'Dataset_id': 'CWRU' if idx % 2 == 0 else 'THU',
-                    'Name': f"Sample_{idx}"
-                }
+            def __init__(self):
+                import pandas as pd
+                self.df = pd.DataFrame({
+                    'Dataset_id': [0, 0, 1, 1],
+                    'Label': [0, 1, 0, 2]
+                })
+            
+            def __getitem__(self, key):
+                return {'Sample_rate': 1000}
         
         metadata = MockMetadata()
         
@@ -146,10 +139,9 @@ if __name__ == '__main__':
         seq_len = 128
         feature_dim = 3
         x = torch.randn(batch_size, seq_len, feature_dim)
-
+        id = 0
         # 运行前向传播
-        # y = model(x, file_id=0, task_id='classification', return_feature=False)
-        y = model(x, file_id=0, task_id='prediction', return_feature=True)
+        y = model(x,id)
         print("输出形状:", y.shape)
         
     except Exception as e:

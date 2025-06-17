@@ -41,7 +41,7 @@ class Model(nn.Module):
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers)
         
-        # Classification head
+        # classification head
         self.classifier = nn.Linear(hidden_dim, num_classes)
     
     def forward(self, x,data_id = None,task_id = None):

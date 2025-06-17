@@ -21,6 +21,10 @@ def run_stage(config_path, ckpt_path=None,iteration=0):
     args_task = transfer_namespace(configs.get('task', {}))
     args_trainer = transfer_namespace(configs.get('trainer', {}))
 
+    if args_task.name == 'Multitask':
+        args_data.task_list = args_task.task_list
+        args_model.task_list = args_task.task_list
+
     if ckpt_path:
         args_model.weights_path = ckpt_path
 
@@ -83,7 +87,7 @@ def run_fewshot_stage(fs_config_path, ckpt_dict=None):
 def pipeline(args):
     """Run pretraining followed by a few-shot stage."""
     ckpt_dict = run_pretraining_stage(args.config_path)
-    run_fewshot_stage(args.fs_config_path, ckpt_dict)
+    # run_fewshot_stage(args.fs_config_path, ckpt_dict)
     return True
 
 

@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops import rearrange, repeat
 
-
-class FlattenProjectHead(nn.Module):
+class H_03_Linear_pred(nn.Module):
     """
     1) Flatten (B, P, C) -> (B, P*C)
     2) Hidden MLP -> (B, hidden)
@@ -16,24 +16,25 @@ class FlattenProjectHead(nn.Module):
     out_dim  : int    – desired channel count   (<= max_out)
     """
 
-    def __init__(
-        self,
-        P: int,                    # num_patches * patch_size
-        in_dim: int,               # C
-        hidden: int = 512,         # “bottleneck” width
-        max_len: int = 2048,       # maximum horizon the kernel can cover
-        max_out: int = 512,        # maximum channel count kernel covers
-        act: str | None = "gelu",
-    ):
+    def __init__(self, args):
         super().__init__()
-        Act = {"relu": nn.ReLU, "gelu": nn.GELU, None: nn.Identity}[act]
 
-        flat_dim = P * in_dim
-        self.fc1   = nn.Linear(flat_dim, hidden)
+        # flat_dim       = args.num_patches * args.d_model
+
+        hidden  = getattr(args, "hidden_dim", 64)
+        max_len = getattr(args, "max_len", 4096)
+        max_out = getattr(args, "max_out", 2)  # 
+        actname = getattr(args, "act", "relu")
+
+        Act  = {"relu": nn.ReLU, "gelu": nn.GELU, None: nn.Identity}[actname]
+
+
+        self.fc1   = nn.Linear(args.output_dim, hidden)
+        self.fc2   = nn.Linear(args.num_patches, hidden)
         self.act   = Act()
 
         # Universal projection kernel  (hidden -> max_len * max_out)
-        self.weight = nn.Parameter(torch.randn(hidden, max_len * max_out))
+        self.weight = nn.Parameter(torch.randn(int(hidden**2), max_len * max_out))
         self.bias   = nn.Parameter(torch.zeros(max_len * max_out))
 
         # store meta
@@ -42,23 +43,27 @@ class FlattenProjectHead(nn.Module):
 
     # ----------------------------------------------------------
     def forward(self,
-                x: torch.Tensor,            # (B,P,C)
-                pred_len: int,
-                out_dim:  int) -> torch.Tensor:
+                x: torch.Tensor,            # (B,L,C)
+                shape: tuple = None, **kwargs) -> torch.Tensor:
+        if x.dim() != 3:
+            raise ValueError("Input must be (B,L,C)")
+        pred_len = min(shape[0], self.max_len)
+        out_dim  = min(shape[1], self.max_out)
 
         if pred_len > self.max_len or out_dim > self.max_out:
             raise ValueError(f"Requested ({pred_len}, {out_dim}) exceeds "
                              f"kernel capacity ({self.max_len}, {self.max_out})")
-        if x.dim() != 3:
-            raise ValueError("Input must be (B,P,C)")
-
         B = x.size(0)
 
         # ① flatten whole signal
-        h = x.reshape(B, -1)                # (B, P*C)
+        # h = x.reshape(B, -1)                # (B, P*C)
 
         # ② hidden projection
-        h = self.act(self.fc1(h))           # (B, hidden)
+         # (B, P*C)
+        h = self.act(self.fc1(x))           # (B, hidden)
+        h = rearrange(h, "B L C -> B C L") 
+        h = self.act(self.fc2(h))           # (B, hidden)
+        h = h.view(B, -1)                # (B, hidden ** 2)
 
         # ③ universal projection
         univ = F.linear(h, self.weight.T, self.bias)   # (B, max_len*max_out)
@@ -71,17 +76,22 @@ class FlattenProjectHead(nn.Module):
 
 # ---------------------------- demo -----------------------------
 if __name__ == "__main__":
-    num_patches, patch_size, C_in = 128, 256, 64
-    P = num_patches * patch_size
+    class Args:
+        num_patches  = 128
+        patch_size_L = 256
+        in_dim       = 64
+        hidden       = 256
+        max_len      = 4096
+        max_out      = 8
+        act          = "gelu"
+        output_dim      = 64
 
-    head = FlattenProjectHead(P=P,
-                              in_dim=C_in,
-                              hidden=256,
-                              max_len=4096,
-                              max_out=8).cuda()
+    args = Args()
+    head = H_03_Linear_pred(args).cuda()
 
     B = 4
-    x = torch.randn(B, P, C_in, device="cuda")
-
-    y = head(x, pred_len=4096, out_dim=3)
-    print(y.shape)   # torch.Size([4, 4096, 128])
+    # P = args.num_patches * args.patch_size_L
+    x = torch.randn(B, args.num_patches, args.output_dim, device="cuda")
+    shape = (4096, 3)  # desired output shape
+    y = head(x, shape=shape)  # (B, pred_len, out_dim)
+    print(y.shape)        # torch.Size([4, 4096, 3])

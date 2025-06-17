@@ -497,7 +497,7 @@ trainer:      # 训练器配置
     <td>1</td>
     <td>name</td>
     <td>任务名称</td>
-    <td>如"Classification"等</td>
+    <td>如"classification"等</td>
   </tr>
   <tr>
     <td>2</td>
@@ -811,7 +811,7 @@ save/
 **目录结构说明**：
 - 📁 **元数据级别**：`Meta_metadata_6_1.xlsx` - 按数据集元数据文件分组
 - 🧠 **模型级别**：`Model_Transformer_Dummy` - 按使用的模型架构分组  
-- 🎯 **实验级别**：`Task_Classification_Trainer_Default_trainer_20250602_212530` - 按任务类型、训练器和时间戳命名
+- 🎯 **实验级别**：`Task_classification_Trainer_Default_trainer_20250602_212530` - 按任务类型、训练器和时间戳命名
 
 <!-- <div align="center">
   <img src="pic/results_visualization.png" alt="Results Visualization" width="700"/>

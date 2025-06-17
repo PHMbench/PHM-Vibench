@@ -190,7 +190,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
         return out
 
 
-class Classification_dataset(Default_dataset):
+class classification_dataset(Default_dataset):
     def __init__(self, data, metadata, args_data, args_task, mode="train"):
         super().__init__(data, metadata, args_data, args_task, mode)
 

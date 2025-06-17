@@ -32,7 +32,7 @@ class E_01_HSE(nn.Module):
         self.linear1 = nn.Linear(self.patch_size_L * (self.patch_size_C * 2), self.output_dim)
         self.linear2 = nn.Linear(self.output_dim, self.output_dim)
 
-    def forward(self, x: torch.Tensor,fs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, fs, **kwargs) -> torch.Tensor:
         """
         Forward pass of RandomPatchMixer.
 

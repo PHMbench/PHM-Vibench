@@ -26,29 +26,29 @@ class task(Default_task):
         x = batch['x']
         id = batch['Id'][0].item() if 'Id' in batch else None
 
-        task_id = batch['Task_id'] if 'Task_id' in batch else None
+        task_id = batch['task_id'] if 'task_id' in batch else None
         return self.network(x, id, task_id)
     def forward_feature(self, batch):
         """模型前向传播，返回特征"""
         x = batch['x']
         id = batch['Id'][0].item() if 'Id' in batch else None
-        task_id = batch['Task_id'] if 'Task_id' in batch else None
+        task_id = batch['task_id'] if 'task_id' in batch else None
         return self.network(x, id, task_id, return_feature=True)
     
     def _shared_step(self, batch: Tuple,
                      stage: str,
-                     Task_id = False):
+                     task_id = False):
         """
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
         """
         try:
             # x, y, id = batch['x'], batch['y'], batch['id']
-            batch.update({'Task_id': Task_id})
+            batch.update({'task_id': task_id})
             id = batch['Id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
             data_name = self.metadata[id]['Name']# .values
             # dataset_id = self.metadata[id]['Dataset_id'].item() 
-            batch.update({'Data_id': id})
+            batch.update({'file_id': id})
         except (ValueError, TypeError) as e:
             raise ValueError(f" Error: {e}")
 

@@ -37,8 +37,11 @@ class Signal_mask_Loss(nn.Module):
     # ──────────────────────── forward ─────────────────────────
     def forward(self,
                 model:  nn.Module,
-                signal: torch.Tensor           # (B,L,C) ground-truth
+                batch: torch.Tensor           # (B,L,C) ground-truth
                 ) -> tuple[torch.Tensor, dict]:
+        signal = batch['x']
+        file_id = batch.get('file_id', None)
+
 
         B, L, C = signal.shape
         device  = signal.device
@@ -57,13 +60,14 @@ class Signal_mask_Loss(nn.Module):
 
         total_mask = mask_pred | mask_rand                  # union of two masks
 
-        # 2️⃣ prepare corrupted input -------------------------------
+        # 2️⃣ prepare corrupted input --------------------------------
         x_in = signal.clone()
         x_in[total_mask] = 0.0                              # zero-drop
 
         # 3️⃣ model prediction --------------------------------------
         with torch.set_grad_enabled(self.training):
-            x_hat = model(x_in)                             # (B,L,C)
+            x_hat = model(x_in,file_id, task_id = 'prediction') 
+            # x_hat = model(x_in)                            # (B,L,C)
 
         # 4️⃣ compute loss -----------------------------------------
         if self.loss_type == "mse":
@@ -76,13 +80,13 @@ class Signal_mask_Loss(nn.Module):
 
 
 
-        # 5️⃣ stats --------------------------------------------------
-        stats = {
-            "impute_frac": mask_rand.float().mean().item(),
-            "forecast_frac": mask_pred.float().mean().item(),
-            "mask_total_frac": total_mask.float().mean().item()
-        }
-        return loss, stats
+        # # 5️⃣ stats --------------------------------------------------
+        # stats = {
+        #     "impute_frac": mask_rand.float().mean().item(),
+        #     "forecast_frac": mask_pred.float().mean().item(),
+        #     "mask_total_frac": total_mask.float().mean().item()
+        # }
+        return loss # , stats
 
 
 if __name__ == "__main__":
@@ -97,11 +101,12 @@ if __name__ == "__main__":
         def forward(self, x): return x
 
     cfg   = SigPredCfg(mask_ratio=0.5, loss_type="mse", forecast_part=0.5)
-    crit  = SignalPredictionLoss(cfg).cuda()
+    crit  = Signal_mask_Loss(cfg).cuda()
     model = Identity().cuda()
 
     B, L, C = 8, 100, 3
     x = torch.randn(B, L, C, device="cuda")
+    batch = {'x': x, 'file_id': None}  # Simulated batch with input signal
 
-    loss, st = crit(model, x)
+    loss, st = crit(model, batch)
     print(f"loss={loss.item():.4f}  stats={st}")

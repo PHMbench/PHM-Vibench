@@ -100,7 +100,7 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
         # For 'FS' type, no specific sampler is defined, behavior is to do nothing.
         # Explicitly return None or handle as per specific requirements for FS.
         return None 
-    elif args_task.type == 'Pretrain':
+    elif args_task.type == 'pretrain':
         sampler = _get_pretrain_sampler(args_data, dataset, mode)
     elif args_task.type == 'CDDG':
         sampler = _get_cddg_sampler(args_data, dataset, mode)

@@ -9,7 +9,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.utils.config_utils import load_config, path_name, transfer_namespace
-from src.utils.utils import load_best_model_checkpoint,init_lab,close_lab
+from src.utils.utils import load_best_model_checkpoint,init_lab,close_lab,get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
@@ -94,7 +94,6 @@ def pipeline(args):
         # 构建数据工厂
         print("[INFO] 构建数据工厂...")
         data_factory = build_data(args_data, args_task)
-        
         # 构建模型
         print("[INFO] 构建模型...")
         model = build_model(args_model,metadata=data_factory.get_metadata())

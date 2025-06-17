@@ -50,7 +50,7 @@ class Default_task(pl.LightningModule):
         self.args_environment = args_environment
 
         # 使用组件配置损失和指标
-        self.loss_fn = get_loss_fn(self.args_task)
+        self.loss_fn = get_loss_fn(self.args_task.loss)
         # 假设 get_metrics 需要数据配置来确定任务类型和类别数
         self.metrics = get_metrics(self.args_task.metrics, self.metadata)
 
@@ -69,10 +69,10 @@ class Default_task(pl.LightningModule):
     def forward(self, batch):
         """模型前向传播"""
         x = batch['x']
-        id = batch['Id'][0].item() if 'Id' in batch else None
+        file_id = batch['file_id']
+        task_id = batch['task_id'] if 'task_id' in batch else None
 
-        task_id = batch['Task_id'] if 'Task_id' in batch else None
-        return self.network(x, id, task_id)
+        return self.network(x, file_id, task_id)
 
     # def _forward_pass(self, batch) -> torch.Tensor:
     #     """执行前向传播"""
@@ -115,18 +115,18 @@ class Default_task(pl.LightningModule):
 
     def _shared_step(self, batch: Tuple,
                      stage: str,
-                     Task_id = False) -> Dict[str, torch.Tensor]:
+                     task_id = False) -> Dict[str, torch.Tensor]:
         """
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
         """
         try:
             # x, y, id = batch['x'], batch['y'], batch['id']
-            batch.update({'Task_id': Task_id})
-            id = batch['Id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
-            data_name = self.metadata[id]['Name']# .values
-            # dataset_id = self.metadata[id]['Dataset_id'].item() 
-            batch.update({'Data_id': id})
+            batch.update({'task_id': task_id})
+            file_id = batch['file_id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
+            data_name = self.metadata[file_id]['Name']# .values
+            # dataset_id = self.metadata[file_id]['Dataset_id'].item() 
+            batch.update({'file_id': file_id})
         except (ValueError, TypeError) as e:
             raise ValueError(f" Error: {e}")
 

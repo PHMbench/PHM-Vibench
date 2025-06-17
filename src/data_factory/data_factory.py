@@ -293,9 +293,14 @@ class data_factory:
         # TODO
 
     def _init_dataset(self):
-        task = self.args_task.name
+        task_name = self.args_task.name
         task_type = self.args_task.type
-        mod = importlib.import_module(f"src.data_factory.dataset_task.{task_type}.{task}_dataset")
+        try:
+            mod = importlib.import_module(f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset")
+        except ImportError as e:
+            print(f"Error importing dataset module for task {task_name}: {e}")
+            print(f"Using default task.")
+            mod = importlib.import_module(f"src.data_factory.dataset_task.DG.Classification_dataset")
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}

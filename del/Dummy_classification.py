@@ -9,8 +9,8 @@ from typing import Dict, Any, Optional
 from src.task_factory import register_task
 from Vbench.src.task_factory.task_factory import BaseTask
 
-@register_task('DummyClassificationTask')  # 修改注册名称
-class DummyClassificationTask(BaseTask):  # 修改类名
+@register_task('DummyclassificationTask')  # 修改注册名称
+class DummyclassificationTask(BaseTask):  # 修改类名
     """分类任务类，处理分类相关的训练和评估
     
     用于测试框架的示例分类任务类，支持多类分类
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     model = DummyCNNModel(input_channels=1, output_dim=10)  # 更新类名
     
     # 创建任务实例
-    task = DummyClassificationTask(  # 更新类名
+    task = DummyclassificationTask(  # 更新类名
         model=model,
         loss_fn="cross_entropy",
         metrics=["accuracy", "f1_score"]

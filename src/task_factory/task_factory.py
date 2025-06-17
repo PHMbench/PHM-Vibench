@@ -43,9 +43,17 @@ def task_factory(
         # Handles Default_task.py at src/task_factory/Default_task.py
         # Module path example: src.task_factory.Default_task
         full_module_path = f"src.task_factory.{task_name}"
+    elif task_name == 'multitask':
+        task_name = ''
+        for subtask in args_task.task_list:
+            if task_name == '':
+                task_name = subtask
+            else:
+                task_name += f"_{subtask}"
+        full_module_path = f"src.task_factory.task.{task_type}.{task_name}"
     else:
         # Handles tasks in the new structure: src/task_factory/task/<type>/<name>.py
-        # Module path example: src.task_factory.task.DG.Classification
+        # Module path example: src.task_factory.task.DG.classification
         full_module_path = f"src.task_factory.task.{task_type}.{task_name}"
     
     task_module = importlib.import_module(full_module_path)

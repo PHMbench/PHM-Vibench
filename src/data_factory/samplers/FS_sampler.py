@@ -82,7 +82,7 @@ class HierarchicalFewShotSampler(Sampler[int]):
         Builds a Pandas DataFrame mapping global_idx to system, domain, and label.
         self.samples_df will have columns: ['global_idx', 'system_id', 'domain_id', 'label_id']
         """
-        file_windows_list = self.dataset.get_file_windows_list() # {'File_id': file_id, 'Window_id': window_id}
+        file_windows_list = self.dataset.get_file_windows_list() # {'file_id': file_id, 'Window_id': window_id}
 
         if not file_windows_list:
             print("Warning: dataset.get_file_windows_list() returned an empty list.")
@@ -91,7 +91,7 @@ class HierarchicalFewShotSampler(Sampler[int]):
 
         data_for_df = []
         for global_idx, sample_mapping_info in enumerate(file_windows_list):
-            original_dataset_key = sample_mapping_info['File_id']
+            original_dataset_key = sample_mapping_info['file_id']
 
             if original_dataset_key not in self.metadata:
                 print(f"Warning: Key '{original_dataset_key}' from dataset.get_file_windows_list() "
@@ -268,12 +268,12 @@ if __name__ == "__main__":
             current_global_idx = 0
             for file_id, original_dataset_items in self.dataset_dict.items():
                 if file_id not in self.metadata:
-                    print(f"Test data warning: File_id '{file_id}' not in metadata. Skipping.")
+                    print(f"Test data warning: file_id '{file_id}' not in metadata. Skipping.")
                     continue
                 for _ in range(len(original_dataset_items)): # len() is important
                     # The sampler uses global_idx from enumerate(file_windows_list)
                     # So, the 'Window_id' here is more for mimicking the structure.
-                    self.file_windows_list.append({'File_id': file_id, 'Window_id': current_global_idx}) 
+                    self.file_windows_list.append({'file_id': file_id, 'Window_id': current_global_idx}) 
                     current_global_idx += 1
             self._total_samples = len(self.file_windows_list)
 
@@ -288,7 +288,7 @@ if __name__ == "__main__":
                 raise IndexError("Global index out of range")
             
             sample_info = self.file_windows_list[global_idx]
-            file_id = sample_info['File_id']
+            file_id = sample_info['file_id']
             # window_id_in_original_dataset = sample_info['Window_id'] # if we need to get from original
             
             # For sampler, it only needs global_idx. This __getitem__ is for completeness.
@@ -312,7 +312,7 @@ if __name__ == "__main__":
 
     dataset_dict_mock = {
         # S1/D1
-        's1d1l1_file': [None]*3, # File_id, list of dummy items (length matters)
+        's1d1l1_file': [None]*3, # file_id, list of dummy items (length matters)
         's1d1l2_file': [None]*3,
         's1d1l3_file': [None]*1, # Not enough for K+Q=2
         # S1/D2
@@ -427,7 +427,7 @@ if __name__ == "__main__":
             print("\nDetails for the first sample of the first episode:")
             first_idx = collected_episodes[0][0]
             sample_details = sampler.samples_df[sampler.samples_df['global_idx'] == first_idx].iloc[0]
-            original_file_id = mock_dataset.get_file_windows_list()[first_idx]['File_id']
+            original_file_id = mock_dataset.get_file_windows_list()[first_idx]['file_id']
             print(f"  Global Idx: {first_idx}")
             print(f"  Mapped via sampler.samples_df: System={sample_details['system_id']}, Domain={sample_details['domain_id']}, Label={sample_details['label_id']}")
             print(f"  Original File ID from mock_dataset: {original_file_id}")

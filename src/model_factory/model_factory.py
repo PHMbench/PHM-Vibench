@@ -5,7 +5,7 @@
 import os
 import importlib
 import torch
-
+from ..utils.utils import get_num_classes
 def model_factory(args_model,metadata):
     """
     简化版模型读取器，直接加载单个模型
@@ -22,6 +22,7 @@ def model_factory(args_model,metadata):
     # 获取模型名称
     model_name = args_model.name
     model_type = args_model.type
+    args_model.num_classes = get_num_classes(metadata)
     # 直接导入模型模块
     try:
         model_module = importlib.import_module(f"src.model_factory.{model_type}.{model_name}")

@@ -14,6 +14,7 @@ try:
 except ImportError:
     print("[WARNING] swanlab 未安装")
     swanlab = None
+import numpy as np
 
 
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
@@ -107,3 +108,9 @@ def close_lab():
     if swanlab and swanlab.run:
         swanlab.finish()
         print("[INFO] SwanLab logger closed.")
+
+def get_num_classes(metadata):
+    num_classes = {}
+    for key in np.unique(metadata.df['Dataset_id']):
+        num_classes[key] = max(metadata.df[metadata.df['Dataset_id'] == key]['Label']) + 1
+    return num_classes

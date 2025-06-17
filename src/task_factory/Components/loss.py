@@ -2,8 +2,8 @@
 
 import torch
 import torch.nn as nn
-from metric_loss import MatchingLoss
-from prediction_loss import *
+from .metric_loss import MatchingLoss
+from .prediction_loss import *
 
 def get_loss_fn(loss_name: str) -> nn.Module:
     """Return a loss module according to ``loss_name``.
@@ -22,7 +22,7 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         "BCE": nn.BCEWithLogitsLoss(),
         "NLL": nn.NLLLoss(),
         "Matching": MatchingLoss,  
-        "TS_pred": Signal_mask_Loss,  # Time Series Prediction
+        "TS_pred": Signal_mask_Loss,  # TODO Time Series Prediction
     }
 
     key = loss_name.upper()

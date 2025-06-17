@@ -16,7 +16,7 @@ class Same_system_Sampler(Sampler):
                         system_metadata_key: str = 'Dataset_id'):
         """
         Batch sampler，确保每个批次中的所有样本都来自同一个 system_id。
-        system_id 是从 dataset.metadata[File_id][system_metadata_key] 获取的。
+        system_id 是从 dataset.metadata[file_id][system_metadata_key] 获取的。
 
         Args:
             dataset (IdIncludedDataset): 要从中采样的 IdIncludedDataset 实例。
@@ -44,14 +44,14 @@ class Same_system_Sampler(Sampler):
         # 1. 按 system_id 对全局索引进行分组
         self.indices_per_system = {}
         for global_idx, sample_info in enumerate(self.dataset.file_windows_list):
-            File_id = sample_info['File_id']
-            if File_id not in self.dataset.metadata:
-                # print(f"警告: File_id '{File_id}' 在元数据中未找到，跳过样本 {global_idx}")
+            file_id = sample_info['file_id']
+            if file_id not in self.dataset.metadata:
+                # print(f"警告: file_id '{file_id}' 在元数据中未找到，跳过样本 {global_idx}")
                 continue
             
-            meta_entry = self.dataset.metadata[File_id]
+            meta_entry = self.dataset.metadata[file_id]
             if self.system_metadata_key not in meta_entry:
-                # print(f"警告: 系统元数据键 '{self.system_metadata_key}' 在 File_id '{File_id}' 的元数据中未找到，跳过样本 {global_idx}")
+                # print(f"警告: 系统元数据键 '{self.system_metadata_key}' 在 file_id '{file_id}' 的元数据中未找到，跳过样本 {global_idx}")
                 continue
 
             system_id = meta_entry[self.system_metadata_key]
@@ -225,19 +225,19 @@ class GroupedIdBatchSampler(Sampler):
         # 1. 按 original_id 对全局索引进行分组
         self.indices_per_id = {}
         for global_idx, sample_info in enumerate(self.data_source.file_windows_list):
-            File_id = sample_info['File_id']
+            file_id = sample_info['file_id']
 
-            if File_id not in self.indices_per_id:
-                self.indices_per_id[File_id] = []
-            self.indices_per_id[File_id].append(global_idx) # 每个dataset的id
+            if file_id not in self.indices_per_id:
+                self.indices_per_id[file_id] = []
+            self.indices_per_id[file_id].append(global_idx) # 每个dataset的id
         
-        self.File_id_list = list(self.indices_per_id.keys())
+        self.file_id_list = list(self.indices_per_id.keys())
 
         # 2. 预计算此 sampler 在一个 epoch 中将生成的总批次数
         self._num_batches_epoch = 0
-        if self.File_id_list: # 仅当有ID时才计算
-            for File_id in self.File_id_list:
-                num_samples_for_id = len(self.indices_per_id[File_id])
+        if self.file_id_list: # 仅当有ID时才计算
+            for file_id in self.file_id_list:
+                num_samples_for_id = len(self.indices_per_id[file_id])
                 if num_samples_for_id == 0: continue
 
                 if self.drop_last:

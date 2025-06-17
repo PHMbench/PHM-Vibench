@@ -7,8 +7,8 @@ from torch.utils.data import Dataset, Subset
 from src.task_factory import register_task
 from Vbench.src.task_factory.task_factory import BaseTask
 
-@register_task('DummyClassificationTask')
-class DummyClassificationTask(BaseTask):
+@register_task('DummyclassificationTask')
+class DummyclassificationTask(BaseTask):
     """示例分类任务类，用于框架测试
     
     实现了基本的分类任务，包括训练、验证和测试
@@ -357,7 +357,7 @@ class DummyClassificationTask(BaseTask):
         Returns:
             更新后的解析器
         """
-        parser = parent_parser.add_argument_group("DummyClassificationTask")
+        parser = parent_parser.add_argument_group("DummyclassificationTask")
         parser.add_argument("--num_classes", type=int, default=2)
         parser.add_argument("--learning_rate", type=float, default=0.001)
         parser.add_argument("--batch_size", type=int, default=32)
@@ -372,8 +372,8 @@ if __name__ == '__main__':
     from torch.utils.data import TensorDataset, DataLoader
     
     # 创建解析器
-    parser = argparse.ArgumentParser(description='DummyClassificationTask 测试')
-    parser = DummyClassificationTask.add_task_specific_args(parser)
+    parser = argparse.ArgumentParser(description='DummyclassificationTask 测试')
+    parser = DummyclassificationTask.add_task_specific_args(parser)
     args = parser.parse_args()
     
     # 创建一个简单的模型
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     model = SimpleModel()
     
     # 创建任务实例
-    task = DummyClassificationTask(
+    task = DummyclassificationTask(
         model=model,
         num_classes=args.num_classes,
         learning_rate=args.learning_rate,
