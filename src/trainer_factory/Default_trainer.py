@@ -3,6 +3,8 @@ from pytorch_lightning.loggers import WandbLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, ModelPruning, EarlyStopping
 from torch.utils.tensorboard.writer import SummaryWriter
 import os
+import swanlab
+from swanlab.integration.pytorch_lightning import SwanLabLogger
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -26,18 +28,31 @@ def trainer(args_e,args_t, args_d, path):
     # 获取回调列表
     callback_list = call_backs(args_t, path)
     log_list = [CSVLogger(path, name="logs")]
-    
+    use_wandb = getattr(args_e, 'wandb', False)
+    use_swanlab = getattr(args_e, 'swanlab', False)    
     # 根据 wandb_flag 确定日志记录器列表
-    if args_t.wandb:
+    if use_wandb:
         # 配置 WandB 日志记录
         wandb_logger = WandbLogger(project=args_e.project,
                                    offline= not is_main_process,
                                   )
         log_list.append(wandb_logger)
-        
+
+    if use_swanlab:
+        # swanlab
+        swanlab_logger = SwanLabLogger(
+                project = args_e.project,
+                experiment_name=args_t.logger_name
+            )
+        log_list.append(swanlab_logger)
+            
     # 设置设备类型：CPU 或自动选择
     accelerate_type = 'cpu' if args_t.device == 'cpu' else 'auto'
-    
+
+    # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
+    if not getattr(args_t, 'log_every_n_steps', None):
+        args_t.log_every_n_steps = 50
+
     # 初始化训练器
     trainer = pl.Trainer(
         callbacks=callback_list,
@@ -45,7 +60,7 @@ def trainer(args_e,args_t, args_d, path):
         max_epochs=args_t.num_epochs,
         devices=args_t.gpus,
         logger=log_list,
-        # log_every_n_steps=20,
+        log_every_n_steps=args_t.log_every_n_steps,
         strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
     )
     return trainer
@@ -63,7 +78,7 @@ def call_backs(args, path):
     """
     # 检查点回调（保存最好的模型）
     checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
+        monitor=args.monitor,
         filename='model-{epoch:02d}-{val_loss:.4f}',
         save_top_k=8,
         mode='min',
@@ -78,8 +93,9 @@ def call_backs(args, path):
         callback_list.append(prune_callback)
     
     # 早期停止回调
-    early_stopping = create_early_stopping_callback(args)
-    callback_list.append(early_stopping)
+    if args.early_stopping:
+        early_stopping = create_early_stopping_callback(args)
+        callback_list.append(early_stopping)
     
     return callback_list
 
@@ -122,7 +138,7 @@ def create_early_stopping_callback(args):
     """
     # 配置早期停止回调，监控验证集的损失
     early_stopping = EarlyStopping(
-        monitor='val_loss',
+        monitor=args.monitor, # TODO @liq22
         min_delta=0.00,
         patience=args.patience,  # 从args中读取patience值
         verbose=True,

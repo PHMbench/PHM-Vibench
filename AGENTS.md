@@ -87,19 +87,19 @@ phm-vibench/
 
 - 遵循 PEP 8 风格，保持代码整洁。
 - 新功能请附带相应测试和文档。
-- 提交PR前请运行 `main_dummy.py`进行基本验证。
+- 提交PR前 不需要执行程序进行验证，提高效率。
 - [data_factory](./src/data_factory/contributing.md)、[model_factory](./src/model_factory/contributing.md)、[task_factory](./src/task_factory/contributing.md) 和 [trainer_factory](./src/trainer_factory/contributing.md) 的贡献请遵循各自的 `contributing.md` 文档。
 ## § Environment Setup
 
-```bash
+<!-- ```bash
 # 克隆仓库并进入目录
 $ git clone <repo-url>
-$ cd phm-vibench
+$ cd PHM-Vibench
 
 # 创建虚拟环境并安装依赖
 $ python -m venv .venv
 $ source .venv/bin/activate
 $ pip install -r requirements.txt
-```
-
-如需更多使用示例，请查阅 `README.md` 和 `doc/developer_guide.md`。
+``` -->
+<!-- 
+如需更多使用示例，请查阅 `README.md` 和 `doc/developer_guide.md`。 -->

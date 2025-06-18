@@ -14,10 +14,20 @@ def main():
     parser.add_argument('--config_path', 
                         type=str, 
                         # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
-                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/all.yaml',
+                        # default='/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/Multiple_DG/test.yaml',
+                        # default='/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/Pretraining/test.yaml',
+                        # default='/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/GFS/test.yaml',
+                         default=[
+                                 '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/Pretraining/test.yaml',
+                                 '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/configs/demo/GFS/test.yaml'],
                         help='配置文件路径')
+    parser.add_argument('--fs_config_path',
+                        type=str,
+                        default=None,
+                        help='few-shot config for pretrain pipeline')
     parser.add_argument('--notes', 
                         type=str, 
                         default='',
@@ -25,13 +35,16 @@ def main():
 
     parser.add_argument('--pipeline', 
                         type=str, 
-                        default='Pipeline_01_default',
-                        help='实验流水线模块路径')
+                        # default='test.Pipeline_gfs_sampler_test', # 修改：指向新的测试流水线
+                        # default='src.Pipeline_01_default', # 修改：指向默认流水线
+                        default='src.Pipeline_02_pretrain_fewshot', # Pretraining-fewshot pipeline
+                        help='实验流水线模块路径 (例如 src.Pipeline_01_default 或 test.Pipeline_gfs_sampler_test)')
     
     args = parser.parse_args()
-    pipeline = importlib.import_module(f'src.{args.pipeline}')
+    # 修改：直接使用 args.pipeline 作为模块路径
+    pipeline_module = importlib.import_module(args.pipeline) 
     # 执行DG流水线
-    results = pipeline.pipeline(args)
+    results = pipeline_module.pipeline(args) # 修改：调用导入模块的 pipeline 函数
     print(f"完成所有实验！")
     
     return results

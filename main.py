@@ -13,14 +13,21 @@ def main():
     
     parser.add_argument('--config_path', 
                         type=str, 
-                        default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
+                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
+                        default= 'configs/demo/X_Single_DG/MWA_CNN/HUST.yaml',
+                        # default= 'configs/demo/X_Single_DG/TSPN/HUST.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
                         help='配置文件路径')
-    parser.add_argument('--notes', 
-                        type=str, 
+    parser.add_argument('--notes',
+                        type=str,
                         default='',
                         help='实验备注')
+
+    parser.add_argument('--fs_config_path',
+                        type=str,
+                        default=None,
+                        help='few-shot config for pretrain pipeline')
 
     parser.add_argument('--pipeline', 
                         type=str, 
