@@ -298,7 +298,7 @@ class data_factory:
         try:
             mod = importlib.import_module(f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset")
         except ImportError as e:
-            print(f"Error importing dataset module for task {task_name}: {e}")
+            # print(f"Error importing dataset module for task {task_name}: {e}")
             print(f"Using default task.")
             mod = importlib.import_module(f"src.data_factory.dataset_task.DG.Classification_dataset")
         train_dataset = {}

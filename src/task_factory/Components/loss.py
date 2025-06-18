@@ -21,8 +21,8 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         "MAE": nn.L1Loss(),
         "BCE": nn.BCEWithLogitsLoss(),
         "NLL": nn.NLLLoss(),
-        "Matching": MatchingLoss,  
-        "TS_pred": Signal_mask_Loss,  # TODO Time Series Prediction
+        "MATCHING": MatchingLoss,  
+        "SIGNAL_MASK_LOSS": Signal_mask_Loss,  # TODO Time Series Prediction
     }
 
     key = loss_name.upper()

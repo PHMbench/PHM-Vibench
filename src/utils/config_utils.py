@@ -50,10 +50,10 @@ def path_name(configs, iteration=0):
     trainer_name = configs['trainer']['name']
     
     # 组建实验名称
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%d_%H%M%S") # %Y%m
     if model_name == "ISFM":
-        model_name = f'ISFM_{configs["model"]["args"]["embedding"]}_{configs["model"]["args"]["backbone"]}_{configs["model"]["args"]["task_head"]}'
-    exp_name = f"Meta_{dataset_name}/Model_{model_name}/Task_{task_name}_Trainer_{trainer_name}_{timestamp}"
+        model_name = f'ISFM_{configs["model"]["embedding"]}_{configs["model"]["backbone"]}_{configs["model"]["task_head"]}'
+    exp_name = f"{dataset_name}/M_{model_name}/T_{task_name}_{timestamp}" # _Trainer_{trainer_name}
     
     # 创建结果保存路径
     result_dir = f"save/{exp_name}/iter_{iteration}"

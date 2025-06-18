@@ -63,7 +63,7 @@ def load_ckpt(model, ckpt_path):
     """
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")
-    state_dict = torch.load(ckpt_path, map_location='cpu')
+    state_dict = torch.load(ckpt_path, map_location='cpu', weights_only=False)
     model_dict = model.state_dict()
     matched_dict = {}
     skipped = []

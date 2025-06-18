@@ -34,7 +34,7 @@ def run_stage(config_path, ckpt_path=None,iteration=0):
 
     path, name = path_name(configs, iteration)
     seed_everything(args_environment.seed)
-    init_lab(args_environment, args_task, name)
+    init_lab(args_environment, configs, name)
     data_factory = build_data(args_data, args_task)
     model = build_model(args_model, metadata=data_factory.get_metadata())
     task = build_task(
@@ -87,7 +87,7 @@ def run_fewshot_stage(fs_config_path, ckpt_dict=None):
 def pipeline(args):
     """Run pretraining followed by a few-shot stage."""
     ckpt_dict = run_pretraining_stage(args.config_path)
-    # run_fewshot_stage(args.fs_config_path, ckpt_dict)
+    run_fewshot_stage(args.fs_config_path, ckpt_dict)
     return True
 
 

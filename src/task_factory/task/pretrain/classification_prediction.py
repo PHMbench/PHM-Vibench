@@ -17,12 +17,12 @@ class task(Default_task):
                  args_environment: Any,
                  metadata: Any):
         super().__init__(network,
-                          args_data,
-                            args_model,
-                              args_task,
-                                args_trainer,
-                                  args_environment,
-                                    metadata)
+                         args_data,
+                         args_model,
+                         args_task,
+                         args_trainer,
+                         args_environment,
+                         metadata)
         # 初始化 prediction head 和 prediction loss
 
         pred_cfg = getattr(self.args_task, 'pred_cfg', self.args_task)
@@ -43,8 +43,7 @@ class task(Default_task):
         期望 batch 格式: ((x, y), data_name)
         """
         try:
-            # x, y, id = batch['x'], batch['y'], batch['id']
-            batch.update({'task_id': task_id})
+
             file_id = batch['file_id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
             data_name = self.metadata[file_id]['Name']# .values
             # dataset_id = self.metadata[file_id]['Dataset_id'].item()
@@ -53,6 +52,7 @@ class task(Default_task):
             raise ValueError(f" Error: {e}")
 
         # 1. forward
+        batch.update({'task_id': 'classification'})
         y_hat = self.forward(batch)
 
         # 2. 计算任务损失
@@ -80,7 +80,7 @@ class task(Default_task):
 
         # 5. 计算总损失
         total_loss = loss + \
-            self.args.task.alpha_prediction * pred_loss + \
+            self.args_task.alpha_prediction * pred_loss + \
                 reg_dict.get('total', torch.tensor(0.0, device=loss.device))
         
         step_metrics[f"{stage}_total_loss"] = total_loss
