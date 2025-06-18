@@ -23,10 +23,9 @@ def read(file_path,*args):
     return data
 
 if __name__ == "__main__":
-    file_path = "/home/user/data/a_bearing/a_006_THU_raw/vibration/health_bearing/1hz_1.mat"
-    data = read(file_path)
-    print(data.shape)
-    
-    file_path = "/home/user/data/a_bearing/a_006_THU_raw/voltage/health_bearing/10hz_1.txt"
-    data = read(file_path)
-    print(data.shape)
+    from utils import test_reader
+    test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data/metadata_5_data.csv',
+                 data_dir = '/home/user/data/PHMbenchdata/PHM-Vibench/raw',
+                 name = 'RM_006_THU',
+                 output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
+                 read=read)
