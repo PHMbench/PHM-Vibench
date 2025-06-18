@@ -36,7 +36,7 @@ def read(file_path, *args):
 if __name__ == "__main__":
     from utils import test_reader
     test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data/metadata_5_data.csv',
-                 data_dir = '/home/user/data/PHMbenchdata/raw/',
+                 data_dir = '/home/user/data/PHMbenchdata/PHM-Vibench/raw',
                  name = 'RM_024_JUST',
                  output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
                  read=read)
