@@ -22,3 +22,4 @@ tensorboard
 swanlab
 plotly
 reformer_pytorch
+scienceplots
