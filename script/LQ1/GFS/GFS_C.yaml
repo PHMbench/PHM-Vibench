@@ -1,0 +1,126 @@
+# Vbench 框架测试配置文件
+# 用于测试各模块的集成功能
+# 环境变量设置
+
+
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "dummy_test"
+  seed: 42
+  output_dir: "results/dummy_test"
+  notes: "This is a dummy test configuration."
+  iterations: 2
+  
+
+# 数据配置
+data:
+  # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
+  data_dir: "/mnt/crucial/LQ/PHM-Vibench"  # for dummy test
+  metadata_file: "metadata_6_11.xlsx"  # 指定元数据文件路径
+  batch_size: 32
+  num_workers: 0 # 32
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: 'standardization'  # 'standardization' or 'minmax'
+
+
+
+# 模型配置
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  
+  # num_classes: 4 # 根据target data 自动设置
+
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+
+  dropout: 0.1
+
+  hidden_dim: 64
+  activation: "relu"
+  # ISFM_args:
+  num_patches: 128
+  embedding:  E_01_HSE # E_01_HTFE
+  patch_size_L: 256
+  patch_size_C: 1
+  output_dim: 1024
+  backbone: B_01_basic_transformer
+
+  num_layers: 1
+  task_head: H_02_distance_cla
+
+  # 权重
+  weight_path: False
+
+
+# 任务配置
+task:
+  name: "Classification"
+  type: 'GFS' # cross-dataset domain generalization
+  target_domain_num: 1
+
+
+  # target_domain_id: [3]
+  # source_domain_id: [0,1,2]
+
+  # target_system_id: [6] # 目标系统ID
+
+
+
+  loss: "CE" # cross_entropy
+  metrics: ["acc"]
+  target_system_id: [1,9,15]
+
+  
+  optimizer: "adam"
+  # max_epochs: 10
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 10
+  lr: 0.001
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 5
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 3
+  gamma: 0.5
+
+  num_systems: 1
+  num_domains: 1
+  num_labels: 2 # n_way to set num_labels, should be equal to the number of classes in the target domain
+  num_support: 1
+  num_query: 1
+  num_episodes: 2
+  
+
+
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  monitor: "val_total_loss" # 监控指标
+  # log_every_n_steps: 1 # 日志记录间隔
+
+  wandb: False
+  pruning: False
+  num_epochs: 2 # should larger than num_episodes * num_systems XXX
+  gpus: 1
+  early_stopping: True # TODO bug? 
+  patience: 5
+  device: 'cuda'
