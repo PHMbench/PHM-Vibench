@@ -337,6 +337,24 @@ Vbench包含以下轴承故障诊断数据集:
 
 </details>
 
+
+## dataset structure
+
+```
+src/data_factory/dataset_task/
+├── __init__.py
+├── Default_dataset.py
+├── DG/
+│   └── Classification_dataset.py
+├── CDDG/
+│   └── Classification_dataset.py
+├── FS/               
+│   └── Classification_dataset.py
+├── Pretrain/
+│   └── Classification_dataset.py
+└── ... (其他任务类型)
+```
+
 ## 🔗 项目链接
 
 GitHub: [https://github.com/PHMbench/Vbench](https://github.com/PHMbench/Vbench)

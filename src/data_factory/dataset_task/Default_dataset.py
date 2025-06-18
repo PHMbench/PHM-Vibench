@@ -126,9 +126,8 @@ class Default_dataset(Dataset): # THU_006or018_basic
         elif self.args_data.normalization == 'standardization':
             mean_vals = np.mean(sample_data, axis=0)
             std_vals = np.std(sample_data, axis=0)
-            # Avoid division by zero if std is zero for a channel
-            std_vals[std_vals == 0] = 1  # Or handle as appropriate
-            sample_data = (sample_data - mean_vals) / std_vals
+
+            sample_data = (sample_data - mean_vals) / (std_vals + 1e-8)  # 添加小常数以避免除零错误
         elif self.args_data.normalization == 'none':
             pass
         else:
@@ -139,6 +138,9 @@ class Default_dataset(Dataset): # THU_006or018_basic
             # 可以根据需求添加更复杂的处理逻辑，例如报错、填充等
             print(f"Warning: Data length ({data_length}) is less than window size ({self.window_size}). Skipping this data.")
             return
+
+        # print(self.key,sample_data.shape)
+        # windows 
 
         if self.window_sampling_strategy == 'sequential':
             self._sequential_sampling(sample_data, data_length)
@@ -179,6 +181,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
             raise IndexError(f"索引 {idx} 超出范围")
         
         sample = self.processed_data[idx]
+        # print(f"获取样本 {idx}，数据长度: {sample.shape}")
 
         out = {
             "x": sample,

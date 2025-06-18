@@ -36,7 +36,7 @@ class IDSelector:
             return self._split_cache['train_val_ids'], self._split_cache['test_ids']
         
         # 如果未指定目标数据集，返回所有ID
-        if not hasattr(self.args_task, 'target_dataset_id') or self.args_task.target_dataset_id is None:
+        if not hasattr(self.args_task, 'target_system_id') or self.args_task.target_system_id is None:
             self.train_val_ids = list(self.metadata.keys())
             self.test_ids = list(self.metadata.keys())
             print(f"未指定目标数据集ID，使用全部 {len(self.train_val_ids)} 个样本")
@@ -62,7 +62,7 @@ class IDSelector:
         import hashlib
         # 将关键参数转换为字符串并哈希
         params = {
-            'target_dataset_id': getattr(self.args_task, 'target_dataset_id', None),
+            'target_system_id': getattr(self.args_task, 'target_system_id', None),
             'type': getattr(self.args_task, 'type', None),
             'selector': getattr(self.args_task, 'selector', 'default'),
             'seed': getattr(self.args_task, 'seed', 42)
@@ -229,7 +229,7 @@ class DGIDSelector(IDSelector):
         """标准领域泛化选择"""
         # 过滤数据集
         filtered_df = self.metadata.df[
-            self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+            self.metadata.df['Dataset_id'].isin(self.args_task.target_system_id)]
         
         # 训练域
         train_df = filtered_df[
@@ -248,11 +248,11 @@ class DGIDSelector(IDSelector):
         """跨数据集领域泛化选择"""
         # 筛选出目标数据集
         filtered_df = self.metadata.df[
-            self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+            self.metadata.df['Dataset_id'].isin(self.args_task.target_system_id)]
         
         # 找出每个数据集的域
         dataset_domains = {}
-        for dataset_id in self.args_task.target_dataset_id:
+        for dataset_id in self.args_task.target_system_id:
             dataset_df = filtered_df[filtered_df['Dataset_id'] == dataset_id]
             domains = sorted(dataset_df['Domain_id'].unique())
             domains = [d for d in domains if not pd.isna(d)]
@@ -269,7 +269,7 @@ class DGIDSelector(IDSelector):
         # 收集ID
         train_rows = []
         test_rows = []
-        for dataset_id in self.args_task.target_dataset_id:
+        for dataset_id in self.args_task.target_system_id:
             # 训练集
             for domain_id in train_domains[dataset_id]:
                 train_rows.extend(
@@ -288,7 +288,7 @@ class DGIDSelector(IDSelector):
         
         # 打印信息
         print(f"CDDG选择 - 每个数据集使用最后{self.args_task.target_domain_num}个域作为测试")
-        for dataset_id in self.args_task.target_dataset_id:
+        for dataset_id in self.args_task.target_system_id:
             print(f"  数据集 {dataset_id}:")
             print(f"    训练域: {train_domains[dataset_id]}")
             print(f"    测试域: {test_domains[dataset_id]}")
@@ -297,7 +297,7 @@ class DGIDSelector(IDSelector):
         """自定义领域泛化选择"""
         # 类似于_select_cddg的实现...
         filtered_df = self.metadata.df[
-            self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+            self.metadata.df['Dataset_id'].isin(self.args_task.target_system_id)]
         
         # 构建分组和ID选择...
         group_by = getattr(self.args_task, 'group_by', 'Domain_id')
@@ -328,7 +328,7 @@ class FewShotIDSelector(IDSelector):
         """小样本学习ID选择"""
         # 过滤数据集
         filtered_df = self.metadata.df[
-            self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+            self.metadata.df['Dataset_id'].isin(self.args_task.target_system_id)]
         
         # 设置随机种子
         random.seed(getattr(self.args_task, 'seed', 42))
@@ -416,7 +416,7 @@ class ImbalancedIDSelector(IDSelector):
         """不平衡数据ID选择"""
         # 过滤数据集
         filtered_df = self.metadata.df[
-            self.metadata.df['Dataset_id'].isin(self.args_task.target_dataset_id)]
+            self.metadata.df['Dataset_id'].isin(self.args_task.target_system_id)]
         
         # 检查标签列
         label_col = getattr(self.args_task, 'label_column', 'Label')

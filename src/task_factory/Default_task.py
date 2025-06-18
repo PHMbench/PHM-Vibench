@@ -69,7 +69,7 @@ class Default_task(pl.LightningModule):
     def forward(self, batch):
         """模型前向传播"""
         x = batch['x']
-        id = batch['Data_id'] if 'Data_id' in batch else None
+        id = batch['Id'][0].item() if 'Id' in batch else None
 
         task_id = batch['Task_id'] if 'Task_id' in batch else None
         return self.network(x, id, task_id)
@@ -123,7 +123,7 @@ class Default_task(pl.LightningModule):
         try:
             # x, y, id = batch['x'], batch['y'], batch['id']
             batch.update({'Task_id': Task_id})
-            id = batch['id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
+            id = batch['Id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
             data_name = self.metadata[id]['Name']# .values
             # dataset_id = self.metadata[id]['Dataset_id'].item() 
             batch.update({'Data_id': id})
@@ -199,7 +199,7 @@ class Default_task(pl.LightningModule):
 
         self.log_dict(
             log_dict,
-            on_step=(stage == "train"), # 训练时可以记录 step 级别的 loss
+            on_step= (stage == "train"), # 训练时可以记录 step 级别的 loss
             on_epoch=True,
             prog_bar=False, # 单独控制进度条
             logger=True,

@@ -160,3 +160,9 @@ data/reader_test.ipynb
 data/metadata_5_data.h5
 
 data/.msc
+
+# @liq22 ignore
+test.yaml
+configs/test
+configs/LQ_paper
+main_LQ.py
