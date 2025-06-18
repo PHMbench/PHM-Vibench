@@ -14,12 +14,53 @@ from src.data_factory import build_data
 from src.model_factory import build_model
 from plot.A1_plot_config import configure_matplotlib
 
-def plot_prediction(config_path):
+def add_mask(signal, forecast_part, mask_ratio):
+    """
+    Applies forecasting and random masking to a signal tensor.
+
+    Args:
+        signal (torch.Tensor): The input signal tensor of shape (B, L, C).
+        forecast_part (float): The fraction of the sequence to be masked for forecasting.
+        mask_ratio (float): The ratio of random masking for imputation.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: A tuple containing:
+            - x_in (torch.Tensor): The masked signal tensor.
+            - total_mask (torch.Tensor): The boolean mask tensor.
+    """
+    B, L, C = signal.shape
+    device = signal.device
+
+    L_f = int(L * forecast_part)
+    L_o = L - L_f
+
+    # Prediction mask for forecasting
+    mask_pred = torch.zeros(L, dtype=torch.bool, device=device)
+    mask_pred[L_o:] = True
+
+    # Random mask for imputation
+    mask_rand = (torch.rand((B, L_o, 1), device=device) < mask_ratio)
+    mask_rand = torch.cat([mask_rand, torch.zeros(B, L_f, 1, device=device)], 1)
+    mask_rand = mask_rand.bool().expand(-1, -1, C)
+
+    # Combine masks
+    mask_pred_expanded = mask_pred.unsqueeze(0).unsqueeze(2).expand(B, L, C)
+    total_mask = mask_pred_expanded | mask_rand
+
+    # Apply mask to signal
+    x_in = signal.clone()
+    x_in[total_mask] = 0.0
+    
+    return x_in, total_mask
+
+def run_plot_stage(config_path, ckpt_path=None):
     """
     Loads a model and data based on a config file, performs a prediction task,
     and visualizes the results.
     """
     print(f"加载配置文件: {config_path}")
+    if ckpt_path:
+        print(f"加载预训练模型: {ckpt_path}")
     
     # 1. 配置 matplotlib
     configure_matplotlib(style='ieee', font_lang='en')
@@ -35,6 +76,9 @@ def plot_prediction(config_path):
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list
 
+    if ckpt_path:
+        args_model.weights_path = ckpt_path
+
     # 3. 获取数据和模型
     data_factory = build_data(args_data, args_task)
     metadata = data_factory.get_metadata()
@@ -47,28 +91,7 @@ def plot_prediction(config_path):
     file_id = batch.get('file_id', None)
 
     # 4. 执行预测任务并复现掩码逻辑
-    B, L, C = signal.shape
-    device = signal.device
-    
-    pred_loss_params = args_task.loss_param['prediction']
-    forecast_part = pred_loss_params['forecast_part']
-    mask_ratio = pred_loss_params['mask_ratio']
-
-    L_f = int(L * forecast_part)
-    L_o = L - L_f
-
-    mask_pred = torch.zeros(L, dtype=torch.bool, device=device)
-    mask_pred[L_o:] = True
-
-    mask_rand = (torch.rand((B, L_o, 1), device=device) < mask_ratio)
-    mask_rand = torch.cat([mask_rand, torch.zeros(B, L_f, 1, device=device)], 1)
-    mask_rand = mask_rand.bool().expand(-1, -1, C)
-
-    mask_pred_expanded = mask_pred.unsqueeze(0).unsqueeze(2).expand(B, L, C)
-    total_mask = mask_pred_expanded | mask_rand
-
-    x_in = signal.clone()
-    x_in[total_mask] = 0.0
+    x_in, total_mask = add_mask(signal, args_task.forecast_part, args_task.mask_ratio)
 
     with torch.no_grad():
         x_hat = model(x_in, file_id, task_id='prediction')
@@ -81,7 +104,7 @@ def plot_prediction(config_path):
     masked_to_plot = x_in[sample_idx, :, channel_to_plot].cpu().numpy()
     predicted_to_plot = x_hat[sample_idx, :, channel_to_plot].cpu().numpy()
     mask_to_plot = total_mask[sample_idx, :, channel_to_plot].cpu().numpy()
-    timesteps = np.arange(L)
+    timesteps = np.arange(signal.shape[1])
 
     fig, axes = plt.subplots(4, 1, figsize=(15, 12), sharex=True)
     fig.suptitle(f'Prediction Visualization (Sample {sample_idx}, Channel {channel_to_plot})')
@@ -126,15 +149,22 @@ def plot_prediction(config_path):
     print(f"Plot saved to {save_path}")
     plt.show()
 
+def plot_pipeline(args):
+    """Run the plot pipeline."""
+    run_plot_stage(args.config_path, args.ckpt_path)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Visualize pretraining prediction results.")
     parser.add_argument('--config_path', type=str, default='script/LQ1/Pretraining/Pretraining_C+P.yaml', help='Path to the pretraining configuration file.')
+    parser.add_argument('--ckpt_path', type=str, default=None, help='Path to the pretrained model checkpoint.')
     args = parser.parse_args()
     
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    
+    # Resolve paths
     if not os.path.isabs(args.config_path):
-        config_path = os.path.join(project_root, args.config_path)
-    else:
-        config_path = args.config_path
+        args.config_path = os.path.join(project_root, args.config_path)
+    if args.ckpt_path and not os.path.isabs(args.ckpt_path):
+        args.ckpt_path = os.path.join(project_root, args.ckpt_path)
 
-    plot_prediction(config_path)
+    plot_pipeline(args)

@@ -43,26 +43,27 @@ class Signal_mask_Loss(nn.Module):
         file_id = batch.get('file_id', None)
 
 
-        B, L, C = signal.shape
-        device  = signal.device
-        L_f     = int(L * self.cfg.forecast_part)         # future length
-        L_o     = L - L_f                                 # observed length
+        # B, L, C = signal.shape
+        # device  = signal.device
+        # L_f     = int(L * self.cfg.forecast_part)         # future length
+        # L_o     = L - L_f                                 # observed length
 
-        # 1️⃣ create masks ---------------------------------------------
-        mask_pred = torch.zeros(L, dtype=torch.bool, device=device)
-        mask_pred[L_o:] = True                              # last L_f steps
+        # # 1️⃣ create masks ---------------------------------------------
+        # mask_pred = torch.zeros(L, dtype=torch.bool, device=device)
+        # mask_pred[L_o:] = True                              # last L_f steps
 
-        mask_rand = (torch.rand((B, L_o, 1), device=device) < self.cfg.mask_ratio)
-        mask_rand = torch.cat([mask_rand, torch.zeros(B, L_f, 1, device=device)], 1)
-        mask_rand = mask_rand.bool().expand(-1, -1, C)      # broadcast to channels
+        # mask_rand = (torch.rand((B, L_o, 1), device=device) < self.cfg.mask_ratio)
+        # mask_rand = torch.cat([mask_rand, torch.zeros(B, L_f, 1, device=device)], 1)
+        # mask_rand = mask_rand.bool().expand(-1, -1, C)      # broadcast to channels
 
-        mask_pred = mask_pred.unsqueeze(0).unsqueeze(2).expand(B, L, C)
+        # mask_pred = mask_pred.unsqueeze(0).unsqueeze(2).expand(B, L, C)
 
-        total_mask = mask_pred | mask_rand                  # union of two masks
+        # total_mask = mask_pred | mask_rand                  # union of two masks
 
-        # 2️⃣ prepare corrupted input --------------------------------
-        x_in = signal.clone()
-        x_in[total_mask] = 0.0                              # zero-drop
+        # # 2️⃣ prepare corrupted input --------------------------------
+        # x_in = signal.clone()
+        # x_in[total_mask] = 0.0                              # zero-drop
+        x_in, total_mask = add_mask(signal, self.cfg.forecast_part, self.cfg.mask_ratio)
 
         # 3️⃣ model prediction --------------------------------------
         with torch.set_grad_enabled(self.training):
@@ -87,7 +88,44 @@ class Signal_mask_Loss(nn.Module):
         #     "mask_total_frac": total_mask.float().mean().item()
         # }
         return loss # , stats
+def add_mask(signal, forecast_part, mask_ratio):
+    """
+    Applies forecasting and random masking to a signal tensor.
 
+    Args:
+        signal (torch.Tensor): The input signal tensor of shape (B, L, C).
+        forecast_part (float): The fraction of the sequence to be masked for forecasting.
+        mask_ratio (float): The ratio of random masking for imputation.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: A tuple containing:
+            - x_in (torch.Tensor): The masked signal tensor.
+            - total_mask (torch.Tensor): The boolean mask tensor.
+    """
+    B, L, C = signal.shape
+    device = signal.device
+
+    L_f = int(L * forecast_part)
+    L_o = L - L_f
+
+    # Prediction mask for forecasting
+    mask_pred = torch.zeros(L, dtype=torch.bool, device=device)
+    mask_pred[L_o:] = True
+
+    # Random mask for imputation
+    mask_rand = (torch.rand((B, L_o, 1), device=device) < mask_ratio)
+    mask_rand = torch.cat([mask_rand, torch.zeros(B, L_f, 1, device=device)], 1)
+    mask_rand = mask_rand.bool().expand(-1, -1, C)
+
+    # Combine masks
+    mask_pred_expanded = mask_pred.unsqueeze(0).unsqueeze(2).expand(B, L, C)
+    total_mask = mask_pred_expanded | mask_rand
+
+    # Apply mask to signal
+    x_in = signal.clone()
+    x_in[total_mask] = 0.0
+    
+    return x_in, total_mask
 
 if __name__ == "__main__":
     # ─────────────────────── Configuration dataclass ──────────────
