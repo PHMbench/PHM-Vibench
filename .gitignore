@@ -165,8 +165,8 @@ data/.msc
 test.yaml
 configs/test
 configs/LQ_paper
-# main_LQ.py
-# LQ1/
+main_LQ.py
+LQ1/
 
 ##########################
 
