@@ -88,8 +88,8 @@ task:
 
   loss: "CE" # cross_entropy
   metrics: ["acc"]
-  # target_system_id: [6,9,15]
-  target_system_id: [1,2]
+  target_system_id: [6,9,15]
+  # target_system_id: [1,2]
 
   
   optimizer: "adam"
