@@ -78,8 +78,8 @@ class Model(nn.Module):
         if task_id in ['classification']:
             # For classification or prediction tasks, we need to pass system_id
             return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
-        if task_id in ['prediction']: # TODO individual prediction head
-            shape = (x.shape[1], x.shape[2]) if len(x.shape) > 2 else (x.shape[1],)
+        elif task_id in ['prediction']: # TODO individual prediction head
+            shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
             # For prediction tasks, we may not need system_id
             return self.task_head(x, return_feature=return_feature, task_id=task_id, shape=shape)
         # if task_id in ['classification', 'prediction']:
@@ -90,6 +90,7 @@ class Model(nn.Module):
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
         # 
+        self.shape = x.shape
         x = self._embed(x, file_id)
         x = self._encode(x)
         x = self._head(x, file_id, task_id, return_feature)

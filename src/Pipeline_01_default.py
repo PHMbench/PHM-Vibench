@@ -88,7 +88,7 @@ def pipeline(args):
         current_seed = args_environment.seed + it
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
-        init_lab(args_environment, name, it)
+        init_lab(args_environment, configs, name)
 
 
         # 构建数据工厂

@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--pipeline', 
                         type=str, 
                         default='Pipeline_02_pretrain_fewshot',
+                        # default='Pipeline_01_default',
                         help='实验流水线模块路径')
     
     args = parser.parse_args()

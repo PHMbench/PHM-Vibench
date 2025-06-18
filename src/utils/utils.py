@@ -46,7 +46,11 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
         print("No best model path found. Please check if the training process saved checkpoints.")
     else:
     # 加载最佳检查点
-        state_dict = torch.load(best_model_path)
+    # pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, [1mdo those steps only if you trust the source of the checkpoint[0m. 
+    # 	(1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.
+    # 	(2) Alternatively, to load with `weights_only=True` please check the recommended steps in the following error message.
+    # 	WeightsUnpickler error: Unsupported global: GLOBAL numpy._core.multiarray.scalar was not an allowed global by default. Please use `torch.serialization.add_safe_globals([scalar])` or the `torch.serialization.safe_globals([scalar])` context manager to allowlist this global if you trust this class/function.
+        state_dict = torch.load(best_model_path,weights_only =False)
         model.load_state_dict(state_dict['state_dict'])
     return model
 
@@ -67,7 +71,7 @@ def init_lab(args_environment, cli_args, experiment_name):
     if wandb: # Check if wandb module is available
         if use_wandb:
             project_name = getattr(args_environment, 'project', 'vbench')
-            notes = f'CLI Notes:{cli_args.notes}\nConfig Notes:{getattr(args_environment, "notes", "")}'
+            notes = f'Task Notes:{getattr(cli_args, "notes", "")}\nConfig Notes:{getattr(args_environment, "notes", "")}'
             wandb.init(project=project_name,
                         name=experiment_name,
                         notes=notes.strip())
@@ -83,9 +87,9 @@ def init_lab(args_environment, cli_args, experiment_name):
     if swanlab: # Check if swanlab module is available
         if use_swanlab:
             project_name = getattr(args_environment, 'project', 'vbench')
-            notes = f'CLI Notes:{cli_args.notes}\nConfig Notes:{getattr(args_environment, "notes", "")}'
+            notes = f'Task Notes:{getattr(cli_args, "notes", "")}\nConfig Notes:{getattr(args_environment, "notes", "")}'
             swanlab.init(
-                workspace = getattr(args_environment, 'workspace', None), # SwanLab uses 'workspace'
+                workspace = getattr(args_environment, 'workspace', 'PHMbench'), # SwanLab uses 'workspace'
                 project=project_name, # Assuming swanlab uses 'project' similar to wandb
                 experiment_name=experiment_name,
                 description=notes.strip() # Swanlab uses 'description' for notes
