@@ -33,7 +33,7 @@ class Signal_mask_Loss(nn.Module):
     def __init__(self, cfg: SigPredCfg):
         super().__init__()
         self.cfg = cfg
-        self.loss_type = 'rel_l2' # mse
+        self.loss_type = 'mse' # mse
 
     # ──────────────────────── forward ─────────────────────────
     def forward(self,

@@ -284,7 +284,7 @@ class data_factory:
                                 print(f"警告: ID {h5_key_final} 在 {name_specific_cache_file} 中未找到（在整合阶段）。这可能表示之前的 Name.h5 更新步骤中存在问题。")
                     except Exception as e_read:
                         print(f"从 {name_specific_cache_file} 读取ID {h5_key_final} 时出错（在整合阶段）: {e_read}")
-            h5f_consolidated.flush()
+                h5f_consolidated.flush()
         
         print(f"数据整合完成。最终缓存文件: {final_cache_path}")
         return H5DataDict(final_cache_path)
