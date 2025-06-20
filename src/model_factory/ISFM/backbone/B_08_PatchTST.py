@@ -36,7 +36,7 @@ class B_08_PatchTST(nn.Module):
               dropout, activation, factor
         """
         super().__init__()
-        d_model = cfg.d_model      # we assume d_model == C
+        d_model = cfg.output_dim      # we assume d_model == C
 
         # ➀ Positional encoding (optional).   Here: none → fully learnable.
         #     You can plug a sin/cos PE or learnable PE if desired.
@@ -52,7 +52,7 @@ class B_08_PatchTST(nn.Module):
                             attention_dropout=cfg.dropout,
                             output_attention=False),
                         d_model=d_model,
-                        n_heads=cfg.n_heads),
+                        n_heads=cfg.num_heads),
                     d_model=d_model,
                     d_ff=cfg.d_ff,
                     dropout=cfg.dropout,

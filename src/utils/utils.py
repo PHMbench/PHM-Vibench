@@ -87,11 +87,11 @@ def init_lab(args_environment, cli_args, experiment_name):
     if swanlab: # Check if swanlab module is available
         if use_swanlab:
             project_name = getattr(args_environment, 'project', 'vbench')
-            notes = f'Task Notes:{getattr(cli_args, "notes", "")}\nConfig Notes:{getattr(args_environment, "notes", "")}'
+            notes = f'N1:{getattr(cli_args, "notes", "")}\n_N2:{getattr(args_environment, "notes", "")}'
             swanlab.init(
                 workspace = getattr(args_environment, 'workspace', 'PHMbench'), # SwanLab uses 'workspace'
                 project=project_name, # Assuming swanlab uses 'project' similar to wandb
-                experiment_name=experiment_name,
+                experiment_name= notes, # experiment_name, 
                 description=notes.strip() # Swanlab uses 'description' for notes
                 # logdir= # Optional: specify log directory if needed
             )

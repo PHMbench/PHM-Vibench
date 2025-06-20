@@ -23,7 +23,7 @@ class H_03_Linear_pred(nn.Module):
 
         hidden  = getattr(args, "hidden_dim", 64)
         max_len = getattr(args, "max_len", 4096)
-        max_out = getattr(args, "max_out", 2)  # 
+        max_out = getattr(args, "max_out", 3)  # 
         actname = getattr(args, "act", "relu")
 
         Act  = {"relu": nn.ReLU, "gelu": nn.GELU, None: nn.Identity}[actname]
