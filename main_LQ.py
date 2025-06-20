@@ -13,7 +13,10 @@ def main():
     
     parser.add_argument('--config_path', 
                         type=str, 
-                        default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/LQ1/Pretraining/Pretraining_C+P.yaml', # CWRU.yaml
+                        # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/LQ1/Pretraining/Pretraining_C+P.yaml', # CWRU.yaml
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/GFS/GFS_C+M.yaml',
+                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/SGD/THU6.yaml',
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/SGD/CWRU.yaml',
                         help='配置文件路径')
     parser.add_argument('--notes',
                         type=str,
@@ -27,8 +30,8 @@ def main():
 
     parser.add_argument('--pipeline', 
                         type=str, 
-                        default='Pipeline_02_pretrain_fewshot',
-                        # default='Pipeline_01_default',
+                        # default='Pipeline_02_pretrain_fewshot',
+                        default='Pipeline_01_default',
                         help='实验流水线模块路径')
     
     args = parser.parse_args()

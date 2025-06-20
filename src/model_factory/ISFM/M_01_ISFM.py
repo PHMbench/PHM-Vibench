@@ -34,6 +34,9 @@ Backbone_dict = {
     'B_03_FITS': B_03_FITS,
     'B_04_Dlinear': B_04_Dlinear,
     'B_05_Manba': B_05_Manba,
+    'B_06_TimesNet': B_06_TimesNet,
+    'B_07_TSMixer': B_07_TSMixer,
+    'B_08_PatchTST': B_08_PatchTST,
     
 }
 TaskHead_dict = {

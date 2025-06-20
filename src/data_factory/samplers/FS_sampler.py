@@ -141,11 +141,16 @@ class HierarchicalFewShotSampler(Sampler[int]):
         system_domain_counts = self.valid_domains_s_d.groupby('system_id')['domain_id'].nunique()
         runnable_systems_series = system_domain_counts[system_domain_counts >= self.j_domains]
         self.runnable_system_ids = runnable_systems_series.index.tolist()
-        if len(self.runnable_system_ids) < self.m_systems:
+        # if len(self.runnable_system_ids) < self.m_systems:
+        #     raise ValueError(
+        #         f"Not enough systems meet the criteria. Need {self.m_systems} systems, "
+        #         f"found {len(self.runnable_system_ids)} runnable systems. "
+        #         f"Check M, J parameters and data distribution after N and K+Q filtering."
+        #     )
+        if len(self.runnable_system_ids) == 0:
             raise ValueError(
-                f"Not enough systems meet the criteria. Need {self.m_systems} systems, "
-                f"found {len(self.runnable_system_ids)} runnable systems. "
-                f"Check M, J parameters and data distribution after N and K+Q filtering."
+                f"No systems meet the criteria. "
+                f"Check data distribution after N and K+Q filtering."
             )
 
     # 步骤5：构建domain/label映射
@@ -168,9 +173,18 @@ class HierarchicalFewShotSampler(Sampler[int]):
         return random.sample(self.runnable_system_ids, 1)[0]
 
     # 步骤2：采样domains
+    # def _sample_domains(self, system_id):
+    #     available_domain_ids = self.system_to_valid_domains_map.get(system_id, [])
+    #     return random.sample(available_domain_ids, self.j_domains)
     def _sample_domains(self, system_id):
         available_domain_ids = self.system_to_valid_domains_map.get(system_id, [])
-        return random.sample(available_domain_ids, self.j_domains)
+        if len(available_domain_ids) >= self.j_domains:
+            # 足够domain时无放回采样
+            return random.sample(available_domain_ids, self.j_domains)
+        else:
+            # 不足时允许重复采样
+            return random.choices(available_domain_ids, k=self.j_domains)
+
 
     # 步骤3：采样labels
     def _sample_labels(self, system_id, domain_id):

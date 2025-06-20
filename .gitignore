@@ -174,3 +174,4 @@ plot/
 ##########################
 
 script/LQ1/Pretraining/Pretraining_C+P.yaml
+wandb/

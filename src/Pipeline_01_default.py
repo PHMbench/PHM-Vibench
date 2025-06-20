@@ -59,7 +59,9 @@ def pipeline(args):
     args_task = transfer_namespace(configs.get('task', {}))
 
     args_trainer = transfer_namespace(configs.get('trainer', {}))
-    
+    if args_task.name == 'Multitask':
+        args_data.task_list = args_task.task_list
+        args_model.task_list = args_task.task_list    
     for key, value in configs['environment'].items():
         if key.isupper():
             os.environ[key] = str(value)
@@ -131,6 +133,7 @@ def pipeline(args):
         print("[INFO] 加载最佳模型并测试...")
         task = load_best_model_checkpoint(task, trainer)
         result = trainer.test(task, data_factory.get_dataloader('test'))
+        data_factory.data.close()  # 关闭数据工厂，释放资源
         all_results.append(result[0])  # Lightning返回的是包含字典的列表
         
         # 保存结果

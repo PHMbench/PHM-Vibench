@@ -235,44 +235,55 @@ class data_factory:
         # 确保最终缓存文件的目录存在
         os.makedirs(os.path.dirname(final_cache_path), exist_ok=True)
 
-        with h5py.File(final_cache_path, 'a') as h5f_consolidated: # 写入模式，为当前任务覆盖/新建
-            if not task_relevant_metadata.keys(): # 再次检查，以防万一
-                print(f"没有相关数据ID，{final_cache_path} 将为空。")
-            
-            for id_key_final in tqdm(task_relevant_metadata.keys(), desc="确认并整合数据到 cache.h5", disable=not list(task_relevant_metadata.keys())):
+        # 先用只读模式收集缺失的 key
+        missing_keys = []
+        with h5py.File(final_cache_path, 'r') as h5f_consolidated:
+            for id_key_final in tqdm(task_relevant_metadata.keys(), desc="检查 cache.h5 是否已存在", disable=not list(task_relevant_metadata.keys())):
                 try:
                     h5_key_final = str(int(id_key_final))
                 except ValueError:
                     h5_key_final = str(id_key_final)
+                if h5_key_final not in h5f_consolidated:
+                    missing_keys.append(id_key_final)
+        if missing_keys:
+            with h5py.File(final_cache_path, 'a') as h5f_consolidated: # 写入模式，为当前任务覆盖/新建
+                # if not task_relevant_metadata.keys(): # 再次检查，以防万一
+                #     print(f"没有相关数据ID，{final_cache_path} 将为空。")
                 
-                try:
-                    meta_final = self.metadata[id_key_final]
-                    if not isinstance(meta_final, (pd.Series, dict)) or 'Name' not in meta_final:
-                        print(f"警告: ID {id_key_final} 的元数据不完整或类型不正确，无法在整合阶段定位其 Name.h5 文件。")
+                for id_key_final in tqdm(missing_keys, desc="确认并整合数据到 cache.h5"): # disable=not list(task_relevant_metadata.keys())
+                    try:
+                        h5_key_final = str(int(id_key_final))
+                    except ValueError:
+                        h5_key_final = str(id_key_final)
+                    
+                    try:
+                        meta_final = self.metadata[id_key_final]
+                        if not isinstance(meta_final, (pd.Series, dict)) or 'Name' not in meta_final:
+                            print(f"警告: ID {id_key_final} 的元数据不完整或类型不正确，无法在整合阶段定位其 Name.h5 文件。")
+                            continue
+                    except KeyError:
+                        print(f"警告: 在 self.metadata 中找不到ID {id_key_final} 的元数据，无法在整合阶段定位其 Name.h5 文件。")
                         continue
-                except KeyError:
-                    print(f"警告: 在 self.metadata 中找不到ID {id_key_final} 的元数据，无法在整合阶段定位其 Name.h5 文件。")
-                    continue
 
-                name_final = meta_final['Name']
-                name_specific_cache_file = os.path.join(args_data.data_dir, f"{name_final}.h5")
+                    name_final = meta_final['Name']
+                    name_specific_cache_file = os.path.join(args_data.data_dir, f"{name_final}.h5")
 
-                if not os.path.exists(name_specific_cache_file):
-                    print(f"警告: 在整合阶段，Name.h5 文件 {name_specific_cache_file} 不存在，无法为ID {id_key_final} 提取数据。这通常不应该发生，因为之前的步骤应该已经创建/更新了它。")
-                    continue
-                
-                try:
-                    with h5py.File(name_specific_cache_file, 'r') as h5f_name_read:
-                        if h5_key_final in h5f_name_read:
-                            if h5_key_final in h5f_consolidated:
-                                continue
+                    if not os.path.exists(name_specific_cache_file):
+                        print(f"警告: 在整合阶段，Name.h5 文件 {name_specific_cache_file} 不存在，无法为ID {id_key_final} 提取数据。这通常不应该发生，因为之前的步骤应该已经创建/更新了它。")
+                        continue
+                    
+                    try:
+                        with h5py.File(name_specific_cache_file, 'r') as h5f_name_read:
+                            if h5_key_final in h5f_name_read:
+                                if h5_key_final in h5f_consolidated:
+                                    continue
+                                else:
+                                    data_to_consolidate = h5f_name_read[h5_key_final][()]
+                                    h5f_consolidated.create_dataset(h5_key_final, data=data_to_consolidate)
                             else:
-                                data_to_consolidate = h5f_name_read[h5_key_final][()]
-                                h5f_consolidated.create_dataset(h5_key_final, data=data_to_consolidate)
-                        else:
-                            print(f"警告: ID {h5_key_final} 在 {name_specific_cache_file} 中未找到（在整合阶段）。这可能表示之前的 Name.h5 更新步骤中存在问题。")
-                except Exception as e_read:
-                    print(f"从 {name_specific_cache_file} 读取ID {h5_key_final} 时出错（在整合阶段）: {e_read}")
+                                print(f"警告: ID {h5_key_final} 在 {name_specific_cache_file} 中未找到（在整合阶段）。这可能表示之前的 Name.h5 更新步骤中存在问题。")
+                    except Exception as e_read:
+                        print(f"从 {name_specific_cache_file} 读取ID {h5_key_final} 时出错（在整合阶段）: {e_read}")
             h5f_consolidated.flush()
         
         print(f"数据整合完成。最终缓存文件: {final_cache_path}")

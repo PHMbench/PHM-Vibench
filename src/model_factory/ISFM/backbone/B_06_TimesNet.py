@@ -40,7 +40,7 @@ def FFT_for_Period(x: torch.Tensor, k: int = 5):
 
 
 # ─────────────── 2. Core temporal–spatial convolution block ────
-from layers.Conv_Blocks import Inception_Block_V1  # your existing impl.
+from .layers.Conv_Blocks import Inception_Block_V1  # your existing impl.
 
 class TimesBlock(nn.Module):
     """
@@ -55,9 +55,9 @@ class TimesBlock(nn.Module):
 
         # \mathrm{Conv}(C_{in}=d_{model}) → GELU → \mathrm{Conv}(C_{out}=d_{model})
         self.conv = nn.Sequential(
-            Inception_Block_V1(cfg.d_model, cfg.d_ff,  num_kernels=cfg.num_kernels),
+            Inception_Block_V1(cfg.output_dim, cfg.d_ff),
             nn.GELU(),
-            Inception_Block_V1(cfg.d_ff,   cfg.d_model, num_kernels=cfg.num_kernels)
+            Inception_Block_V1(cfg.d_ff,   cfg.output_dim)
         )
 
     def forward(self, x):                         # x ∈ ℝ^{B×T×C}
@@ -90,7 +90,7 @@ class TimesBlock(nn.Module):
 
 
 # ───────────────────── 3. Shallow TimesNet backbone ────────────
-class TimesNetBackbone(nn.Module):
+class B_06_TimesNet(nn.Module):
     """
     Minimal depth-stacked TimesNet.
     Output length == input length; additional heads can be added on top.
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         top_k = 2
 
     cfg = Config()
-    model = TimesNetBackbone(cfg)
+    model = B_06_TimesNet(cfg)
 
     # Example input tensor (batch_size=2, seq_len=128, channels=64)
     x = torch.randn(2, cfg.seq_len, cfg.d_model)
