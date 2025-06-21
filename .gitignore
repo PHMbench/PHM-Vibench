@@ -167,7 +167,7 @@ configs/test
 configs/LQ_paper
 main_LQ.py
 LQ1/
-plot/
+plot/save
 # main_LQ.py
 # LQ1/
 
