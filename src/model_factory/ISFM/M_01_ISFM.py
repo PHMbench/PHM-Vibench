@@ -37,6 +37,7 @@ Backbone_dict = {
     'B_06_TimesNet': B_06_TimesNet,
     'B_07_TSMixer': B_07_TSMixer,
     'B_08_PatchTST': B_08_PatchTST,
+    'B_09_FNO': B_09_FNO,
     
 }
 TaskHead_dict = {

@@ -41,6 +41,10 @@ class H_03_Linear_pred(nn.Module):
         self.max_len = max_len
         self.max_out = max_out
 
+        # self.layer_norm1 = nn.LayerNorm(hidden, elementwise_affine=False)
+        # self.layer_norm2 = nn.LayerNorm(hidden, elementwise_affine=False)
+        self.norm = nn.LayerNorm(int(hidden**2), elementwise_affine=False)
+
     # ----------------------------------------------------------
     def forward(self,
                 x: torch.Tensor,            # (B,L,C)
@@ -60,11 +64,12 @@ class H_03_Linear_pred(nn.Module):
 
         # ② hidden projection
          # (B, P*C)
+
         h = self.act(self.fc1(x))           # (B, hidden)
         h = rearrange(h, "B L C -> B C L") 
         h = self.act(self.fc2(h))           # (B, hidden)
         h = h.view(B, -1)                # (B, hidden ** 2)
-
+        h = self.norm(h)                # (B, hidden ** 2)
         # ③ universal projection
         univ = F.linear(h, self.weight.T, self.bias)   # (B, max_len*max_out)
         univ = univ.view(B, self.max_len, self.max_out)

@@ -40,7 +40,7 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
         if n_class is None:
             raise ValueError(f"数据集 '{data_name}' 的配置缺少 'n_classes'")
 
-        task_type = "multiclass" if n_class > 2 else "binary"
+        task_type = "multiclass" if n_class >= 2 else "binary" # fix
         data_metrics = nn.ModuleDict()
         for stage in ["train", "val", "test"]:
             for metric_name in metric_names:

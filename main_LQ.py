@@ -17,7 +17,9 @@ def main():
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/GFS/GFS_C+M.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/SGD/THU6.yaml',
                         # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/SGD/CWRU.yaml',
-                        default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/Pretraining/Pretraining_C+P_patchtst.yaml',
+                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/Pretraining/Pretraining_C+P_patchtst.yaml',
+                        # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/Vibench_paper/CDDG/config_CDDG_B_04_Dlinear.yaml',
+                        default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/Vibench_paper/DG/config_DG_B_06_TimesNet_target_13.yaml',
                         help='配置文件路径')
     parser.add_argument('--notes',
                         type=str,

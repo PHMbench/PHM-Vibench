@@ -117,8 +117,8 @@ def plot_pipeline(args):
         if isinstance(args.file_ids, str):
             # If a single file_id is provided as a string, convert it to a list
             args.file_ids = [args.file_ids]
-        elif isinstance(args.file_ids, list):
-            file_ids_to_plot = args.file_ids
+        # elif isinstance(args.file_ids, list):
+        file_ids_to_plot = args.file_ids
     else:
         # Default to plotting the first 5 available file_ids
         all_file_ids = list(dataset.dataset_dict.keys())
@@ -156,11 +156,13 @@ def plot_pipeline(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Visualize pretraining prediction results.")
     parser.add_argument('--config_path', type=str,
-                         default='script/LQ1/Pretraining/Pretraining_C+P.yaml', help='Path to the pretraining configuration file.')
+                         default='/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/LQ1/Pretraining/Pretraining_C+P_patchtst.yaml',
+                           help='Path to the pretraining configuration file.')
     parser.add_argument('--ckpt_path', type=str,
-                         default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/save/Meta_metadata_6_11.xlsx/Model_M_01_ISFM/Task_pretrainmultitask_Trainer_Default_trainer_20250617_224323/iter_0/model-epoch=22-val_loss=1.2717.ckpt', help='Path to the pretrained model checkpoint.')
+                         default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/save/metadata_6_11.xlsx/M_M_01_ISFM/T_pretrainmultitask_20_193514/iter_0/model-epoch=66-val_loss=0.0382.ckpt',
+                          help='Path to the pretrained model checkpoint.')
     parser.add_argument('--file_ids', nargs='+',
-                         default='46252', help='List of file_ids to plot.')
+                         default='10', help='List of file_ids to plot.')
     args = parser.parse_args()
     
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

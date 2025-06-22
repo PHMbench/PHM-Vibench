@@ -5,8 +5,8 @@ CUDA_VISIBLE_DEVICES=5 python main_LQ.py \
     --notes "EXP1_mask08" \
     # --pipeline 
 
-CUDA_VISIBLE_DEVICES=1 python main_LQ.py \
+CUDA_VISIBLE_DEVICES=0 python main_LQ.py \
     --config_path script/LQ1/Pretraining/Pretraining_C+P_patchtst.yaml \
     --fs_config_path script/LQ1/GFS/GFS_C+M.yaml \
     --pipeline Pipeline_01_default \
-    --notes "EXP1_mask0.1" \
+    --notes "EXP1_mask0.1+predict+reshape_norm" \
