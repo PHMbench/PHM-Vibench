@@ -175,3 +175,4 @@ plot/save
 
 script/LQ1/Pretraining/Pretraining_C+P.yaml
 wandb/
+script/Vibench_paper/

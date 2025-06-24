@@ -80,7 +80,7 @@ def call_backs(args, path):
     checkpoint_callback = ModelCheckpoint(
         monitor=args.monitor,
         filename='model-{epoch:02d}-{val_loss:.4f}',
-        save_top_k=8,
+        save_top_k=getattr(args, 'save_top_k', 1),  # 从args中读取保存的模型数量
         mode='min',
         dirpath=path
     )
