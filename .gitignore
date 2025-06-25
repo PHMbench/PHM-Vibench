@@ -175,3 +175,5 @@ plot/save
 
 script/LQ1/Pretraining/Pretraining_C+P.yaml
 wandb/
+configs/template/Pretraining_C+P_patchtst.yaml
+script/vibpaper/
