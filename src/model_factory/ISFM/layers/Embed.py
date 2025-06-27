@@ -6,6 +6,17 @@ import math
 
 
 class PositionalEmbedding(nn.Module):
+    r"""
+    绝对位置编码，使用不同频率的正弦和余弦函数。
+    其计算公式如下：
+
+    .. math::
+        \text{PE}_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{\frac{2i}{d_{\text{model}}}}}\right)
+
+        \text{PE}_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{\frac{2i}{d_{\text{model}}}}}\right)
+
+    其中 :math:`pos` 是位置，:math:`i` 是维度。
+    """
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
@@ -27,6 +38,15 @@ class PositionalEmbedding(nn.Module):
 
 
 class TokenEmbedding(nn.Module):
+    r"""
+    使用一维卷积对输入序列进行编码，将每个时间点的特征向量（c_in维度）映射到d_model维度。
+    这可以看作是一种对时间步的"token"化。
+
+    .. math::
+        \text{TokenEmbedding}(x) = \text{Conv1d}(\text{x.permute}(0, 2, 1))^T
+
+    其中 :math:`x \in \mathbb{R}^{B \times L \times C_{in}}`，B是批量大小，L是序列长度，:math:`C_{in}`是输入通道数。
+    """
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
         padding = 1 if torch.__version__ >= '1.5.0' else 2
@@ -43,6 +63,17 @@ class TokenEmbedding(nn.Module):
 
 
 class FixedEmbedding(nn.Module):
+    r"""
+    创建固定的、不可训练的嵌入，通常用于编码分类或周期性特征，如月份、星期几等。
+    它使用与位置编码类似的正弦和余弦函数。
+
+    .. math::
+        \text{W}_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{\frac{2i}{d_{\text{model}}}}}\right)
+
+        \text{W}_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{\frac{2i}{d_{\text{model}}}}}\right)
+
+    其中 :math:`W` 是嵌入矩阵。
+    """
     def __init__(self, c_in, d_model):
         super(FixedEmbedding, self).__init__()
 
@@ -64,6 +95,14 @@ class FixedEmbedding(nn.Module):
 
 
 class TemporalEmbedding(nn.Module):
+    r"""
+    时间特征嵌入。将从时间戳中提取的多个时间特征（如月、日、星期、小时、分钟）分别进行嵌入，然后相加。
+
+    .. math::
+        x_{temporal} = \text{Emb}_{month}(x_m) + \text{Emb}_{day}(x_d) + \text{Emb}_{weekday}(x_w) + \text{Emb}_{hour}(x_h) + \text{Emb}_{minute}(x_t)
+
+    其中 :math:`\text{Emb}` 可以是固定的(FixedEmbedding)或可学习的(nn.Embedding)。
+    """
     def __init__(self, d_model, embed_type='fixed', freq='h'):
         super(TemporalEmbedding, self).__init__()
 
@@ -94,6 +133,14 @@ class TemporalEmbedding(nn.Module):
 
 
 class TimeFeatureEmbedding(nn.Module):
+    r"""
+    对已经处理好的时间特征（通常是归一化后的连续值）进行线性嵌入。
+
+    .. math::
+        \text{TimeFeatureEmbedding}(x) = \text{Linear}(x)
+
+    其中 :math:`x` 是从时间戳派生出的特征向量。
+    """
     def __init__(self, d_model, embed_type='timeF', freq='h'):
         super(TimeFeatureEmbedding, self).__init__()
 
@@ -107,6 +154,14 @@ class TimeFeatureEmbedding(nn.Module):
 
 
 class DataEmbedding(nn.Module):
+    r"""
+    数据嵌入模块，整合了值嵌入、位置嵌入和时间嵌入。
+
+    .. math::
+        x_{emb} = \text{Dropout}(\text{ValueEmbedding}(x) + \text{PositionalEmbedding}(x) + \text{TemporalEmbedding}(x_{mark}))
+
+    其中 :math:`x` 是原始序列值, :math:`x_{mark}` 是时间特征。
+    """
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding, self).__init__()
 
@@ -127,6 +182,16 @@ class DataEmbedding(nn.Module):
 
 
 class DataEmbedding_inverted(nn.Module):
+    r"""
+    用于Inverted模型的特殊数据嵌入。它将时间和变量维度进行转置，然后通过一个线性层进行嵌入。
+    这种方式主要用于通道独立(channel-independent)的模型。
+
+    .. math::
+        x_{permuted} = x.\text{permute}(0, 2, 1)
+
+        \text{Embedding}(x, x_{mark}) = \text{Dropout}(\text{Linear}(\text{Concat}(x_{permuted}, x_{mark.permute}(0,2,1))))
+
+    """
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding_inverted, self).__init__()
         self.value_embedding = nn.Linear(c_in, d_model)
@@ -144,6 +209,14 @@ class DataEmbedding_inverted(nn.Module):
 
 
 class DataEmbedding_wo_pos(nn.Module):
+    r"""
+    不含位置嵌入的数据嵌入模块。
+
+    .. math::
+        x_{emb} = \text{Dropout}(\text{ValueEmbedding}(x) + \text{TemporalEmbedding}(x_{mark}))
+
+    其中 :math:`x` 是原始序列值, :math:`x_{mark}` 是时间特征。
+    """
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding_wo_pos, self).__init__()
 
@@ -163,6 +236,15 @@ class DataEmbedding_wo_pos(nn.Module):
 
 
 class PatchEmbedding(nn.Module):
+    r"""
+    将时间序列分块（Patching）并进行嵌入。首先将序列分割成重叠或不重叠的块，
+    然后对每个块进行线性投影，并添加位置编码。
+
+    .. math::
+        x_{patched} = \text{Unfold}(\text{Pad}(x))
+
+        x_{emb} = \text{Dropout}(\text{Linear}(x_{patched}) + \text{PositionalEmbedding}(x_{patched}))
+    """
     def __init__(self, d_model, patch_len, stride, padding, dropout):
         super(PatchEmbedding, self).__init__()
         # Patching
