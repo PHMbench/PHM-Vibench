@@ -1,8 +1,8 @@
 # seqtst_backbone.py  ───────────────────────────────────────────
 import torch
 import torch.nn as nn
-from .layers.Transformer_EncDec import Encoder, EncoderLayer
-from .layers.SelfAttention_Family import FullAttention, AttentionLayer
+from ..layers.Transformer_EncDec import Encoder, EncoderLayer
+from ..layers.SelfAttention_Family import FullAttention, AttentionLayer
 
 
 # ────────────────── 1. Helper (for channel-wise BatchNorm) ─────

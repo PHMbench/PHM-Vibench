@@ -124,6 +124,13 @@ task:
   mask_ratio: 0.1
   forecast_part: 0.1
 
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3 # n_way to set num_labels, should be equal to the number of classes in the target domain
+  num_support: 1
+  num_query: 1
+  num_episodes: 5
+
 # 训练器配置
 trainer:
   name: "Default_trainer"
