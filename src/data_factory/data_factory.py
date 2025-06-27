@@ -237,15 +237,21 @@ class data_factory:
 
         # 先用只读模式收集缺失的 key
         missing_keys = []
-        with h5py.File(final_cache_path, 'r') as h5f_consolidated:
-            for id_key_final in tqdm(task_relevant_metadata.keys(), desc="检查 cache.h5 是否已存在", disable=not list(task_relevant_metadata.keys())):
-                try:
-                    h5_key_final = str(int(id_key_final))
-                except ValueError:
-                    h5_key_final = str(id_key_final)
-                if h5_key_final not in h5f_consolidated:
-                    missing_keys.append(id_key_final)
+        if use_cache and os.path.exists(final_cache_path):
+            with h5py.File(final_cache_path, 'r') as h5f_consolidated:
+                for id_key_final in tqdm(task_relevant_metadata.keys(), desc="检查 cache.h5 是否已存在", disable=not list(task_relevant_metadata.keys())):
+                    try:
+                        h5_key_final = str(int(id_key_final))
+                    except ValueError:
+                        h5_key_final = str(id_key_final)
+                    if h5_key_final not in h5f_consolidated:
+                        missing_keys.append(id_key_final)
+        else:
+            print(f"未找到 {final_cache_path}，将创建新的缓存文件。")
+            missing_keys = list(task_relevant_metadata.keys())
+
         if missing_keys:
+            print(f"在 cache.h5 中未找到 {len(missing_keys)} 个ID，准备整合数据...")
             with h5py.File(final_cache_path, 'a') as h5f_consolidated: # 写入模式，为当前任务覆盖/新建
                 # if not task_relevant_metadata.keys(): # 再次检查，以防万一
                 #     print(f"没有相关数据ID，{final_cache_path} 将为空。")
