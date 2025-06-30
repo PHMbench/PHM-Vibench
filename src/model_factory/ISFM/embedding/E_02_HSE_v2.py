@@ -3,237 +3,249 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
-class E_02_HSE_v2(nn.Module):
-    """
-    Hierarchical Signal Embedding (HSE) with channel attribute embedding and system-specific prompts.
+import torch
+import torch.nn as nn
+import numpy as np
+import math
+from einops import rearrange
+import torch.nn.functional as F
+
+# --------------------------------------------------------------------------
+# SequencePatcher
+# --------------------------------------------------------------------------
+class SequencePatcher(nn.Module):
+    def __init__(self, num_patches, patch_size):
+        super().__init__()
+        self.num_patches = num_patches
+        self.patch_size = patch_size
+
+    def update_start_indices(self,x, L):
+        """ 更新 start_indices 以适应新的序列长度 L """
+        if L < self.patch_size:
+            raise ValueError(f"序列长度 ({L}) 不能小于补丁大小 ({self.patch_size})")
+        
+        new_start_indices = torch.linspace(
+            0, L - self.patch_size, steps=self.num_patches, device=x.device
+        ).round().long()
+        self.start_indices = new_start_indices
+        self.L_original = L
+        
+        return new_start_indices
+    def get_L_original(self):
+        """ 获取原始序列长度 """
+        if hasattr(self, 'L_original'):
+            return self.L_original
+        else:
+            raise ValueError("L_original 尚未设置，请先调用 update_start_indices 方法。")
+    def get_start_indices(self):
+        """ 获取当前的 start_indices """
+        if hasattr(self, 'start_indices'):
+            return self.start_indices
+        else:
+            raise ValueError("start_indices 尚未设置，请先调用 update_start_indices 方法。")
     
-    Randomly divides the input tensor along L (length) and C (channel) dimensions into patches,
-    then mixes these patches using linear layers. Incorporates time embedding, channel attribute 
-    embedding, and system-specific prompts for heterogeneous signal processing.
+    def patch(self, x):
+        """ 输入 (B, C, L), 输出 (B, T, C, P) 和 start_indices (T,) """
+        B, C, L = x.shape
+        if L < self.patch_size:
+            raise ValueError(f"序列长度 ({L}) 不能小于补丁大小 ({self.patch_size})")
 
-    Args:
-        args: Configuration object containing:
-            patch_size_L (int): Patch size along the L dimension.
-            patch_size_C (int): Patch size along the C dimension.
-            num_patches (int): Number of random patches to sample.
-            output_dim (int): Output feature dimension after linear mixing.
-            num_channel_types (int): Number of distinct channel types.
-            channel_embed_dim (int): Embedding dimension for channel attributes.
-            num_systems (int): Number of different systems for system prompts.
-            system_embed_dim (int): Embedding dimension for system prompts.
-    """
+        start_indices = self.update_start_indices(x, L)
+
+        patch_indices = torch.arange(self.patch_size, device=x.device)
+        absolute_indices = rearrange(start_indices, 't -> t 1') + rearrange(patch_indices, 'p -> 1 p')
+        absolute_indices_for_gather = rearrange(absolute_indices, 't p -> 1 1 t p').expand(B, C, -1, -1)
+        
+        patches = torch.gather(x.unsqueeze(2).expand(-1, -1, self.num_patches, -1), 3, absolute_indices_for_gather)
+        return rearrange(patches, 'b c t p -> b t c p')
+
+    def unpatch(self, patches):
+        """ 输入 (B, T, C, P), start_indices, L_original, 输出 (B, L, C) """
+        B, T, C, P = patches.shape
+        assert T == self.num_patches and P == self.patch_size
+        
+        L_original = self.get_L_original()
+        start_indices = self.get_start_indices()
+
+        output = torch.zeros(B, C, L_original, device=patches.device)
+        overlap_count = torch.zeros(B, C, L_original, device=patches.device)
+        
+        patch_pos_indices = torch.arange(P, device=patches.device).unsqueeze(0)
+        absolute_indices = start_indices.unsqueeze(1) + patch_pos_indices
+        absolute_indices_expanded = rearrange(absolute_indices, 't p -> 1 1 t p').expand(B, C, -1, -1)
+        patches_for_scatter = rearrange(patches, 'b t c p -> b c t p')
+        
+        output.scatter_add_(2, absolute_indices_expanded.flatten(2), patches_for_scatter.flatten(2))
+        overlap_count.scatter_add_(2, absolute_indices_expanded.flatten(2), torch.ones_like(patches_for_scatter).flatten(2))
+        
+        reconstructed_ts = output / torch.clamp(overlap_count, min=1.0)
+        return rearrange(reconstructed_ts, 'b c l -> b l c')
+
+# --------------------------------------------------------------------------
+# 模块一(B): 主要的 Embedding 模块
+# --------------------------------------------------------------------------
+class TimestepEmbedder(nn.Module):
+    """ for flow loss """
+    def __init__(self, dim, nfreq=256):
+        super().__init__()
+        self.mlp = nn.Sequential(nn.Linear(nfreq, dim),
+                                 nn.SiLU(),
+                                 nn.Linear(dim, dim))
+    @staticmethod
+    def timestep_embedding(t, dim, max_period=10000):
+        half = dim // 2
+        # Latex : freqs = torch.exp(-\log(max\_period) \cdot \frac{\text{arange}(half)}{half})
+        freqs = torch.exp(-math.log(max_period) * torch.arange(half, dtype=torch.float32) / half).to(t.device)
+        embedding = torch.cat([torch.cos(t[:, None] * freqs),
+                                torch.sin(t[:, None] * freqs)], dim=-1)
+        if dim % 2:
+            embedding = F.pad(embedding, (0, 1))
+        return embedding
+    def forward(self, t):
+        return self.mlp(self.timestep_embedding(t * 1000, self.mlp[0].in_features))
+
+class LabelEmbedder(nn.Module):
+    """ for conditional generation """
+    """ Embeds class labels into a vector of specified dimension. """
+    def __init__(self, num_classes, dim):
+         super().__init__()
+         self.embedding = nn.Embedding(num_classes + 1, dim)
+    def forward(self, labels):
+        return self.embedding(labels)
+
+def get_1d_sincos_pos_embed(embed_dim, num_patches):
+    pos = torch.arange(num_patches)
+    omega = torch.arange(embed_dim // 2, dtype=torch.float64) / (embed_dim / 2.)
+    omega = 1. / 10000**omega
+    out = torch.einsum('m,d->md', pos, omega)
+    return torch.cat([torch.sin(out), torch.cos(out)], dim=1).float()
+
+class E_02_HSE_v2(nn.Module):
     def __init__(self, args):
-        super(E_02_HSE_v2, self).__init__()
-        self.patch_size_L = args.patch_size_L
-        self.patch_size_C = args.patch_size_C
-        self.num_patches = args.num_patches
-        self.output_dim = args.output_dim
-        
-        # Channel embedding parameters
-        self.num_channel_types = getattr(args, 'num_channel_types', 10)
-        self.channel_embed_dim = getattr(args, 'channel_embed_dim', 8)
-        self.channel_embed = nn.Embedding(self.num_channel_types, self.channel_embed_dim)
-        
-        # System embedding parameters for system-specific prompts
-        self.num_systems = getattr(args, 'num_systems', 5)
-        self.system_embed_dim = getattr(args, 'system_embed_dim', 16)
-        self.system_embed = nn.Embedding(self.num_systems, self.system_embed_dim)
-        
-        # Learnable channel type mapping for different systems
-        self.use_adaptive_channel_mapping = getattr(args, 'use_adaptive_channel_mapping', True)
-        if self.use_adaptive_channel_mapping:
-            self.channel_type_mapping = nn.Parameter(
-                torch.randint(0, self.num_channel_types, (self.num_systems, 20))  # Max 20 channels per system
-            )
-        
-        # Input dimension calculation
-        # data + time + channel_embed + system_embed (broadcasted)
-        patch_data_dim = self.patch_size_L * self.patch_size_C
-        patch_time_dim = self.patch_size_L * self.patch_size_C
-        patch_channel_dim = self.patch_size_L * self.patch_size_C * self.channel_embed_dim
-        patch_system_dim = self.system_embed_dim  # System embedding is added per patch
-        
-        input_linear_dim = patch_data_dim + patch_time_dim + patch_channel_dim + patch_system_dim
-        
-        # Linear layers with improved architecture
-        self.norm1 = nn.LayerNorm(input_linear_dim)
-        self.linear1 = nn.Linear(input_linear_dim, self.output_dim)
-        self.dropout1 = nn.Dropout(0.1)
-        self.norm2 = nn.LayerNorm(self.output_dim)
-        self.linear2 = nn.Linear(self.output_dim, self.output_dim)
-        self.dropout2 = nn.Dropout(0.1)
+        super().__init__()
 
-    def get_channel_types(self, system_id: int, num_channels: int) -> torch.Tensor:
-        """
-        Get channel types for a given system and number of channels.
-        
-        Args:
-            system_id (int): System identifier
-            num_channels (int): Number of channels in the input
-            
-        Returns:
-            torch.Tensor: Channel type IDs of shape (num_channels,)
-        """
-        if self.use_adaptive_channel_mapping:
-            # Use learnable mapping
-            system_channel_types = self.channel_type_mapping[system_id]
-            if num_channels <= len(system_channel_types):
-                return system_channel_types[:num_channels]
+        # num_patches, patch_size, num_channels, c_dim, dim, num_classes = args.num_patches, args.patch_size, args.num_channels, args.c_dim, args.hidden_dim, args.num_classes
+        self.args = args
+
+        self.use_cond =  None # TODO for conditional generalization args.num_classes is not
+        self.use_interpolation = False # for generation
+        # 核心修改: 使用统一的补丁配置
+        self.patcher = SequencePatcher(args.num_patches, args.patch_size_L) # NOTE: 更新1
+
+        # S1
+        self.channel_embedders = nn.ModuleDict({
+            name: nn.Sequential(nn.Linear(num_channels + 1, args.c_dim * 2), nn.GELU(), nn.Linear(args.c_dim * 2, args.c_dim))
+            for name, num_channels in args.num_channels.items()
+        }) # NOTE : 更新2
+        # S2
+        self.proj_patch = nn.Linear(args.patch_size_L * args.c_dim, args.hidden_dim)
+        # S3 TODO ROPE
+        self.pos_embed = nn.Parameter(get_1d_sincos_pos_embed(args.hidden_dim, args.num_patches).unsqueeze(0), requires_grad=False)
+
+        if self.use_interpolation: # TODO
+            self.t_embedder, self.r_embedder = TimestepEmbedder(args.hidden_dim), TimestepEmbedder(args.hidden_dim)
+        if self.use_cond: # TODO y_embedder should be a module dict
+            self.y_embedder = LabelEmbedder(args.num_classes, args.hidden_dim) 
+
+
+    def update_channel_embedder(self, new_num_channels):
+        """ 更新 channel_embedders 以适应新的 num_channels """
+        for name, num_channels in new_num_channels.items():
+            if name not in self.channel_embedders:
+                self.channel_embedders[name] = nn.Sequential(
+                    nn.Linear(num_channels + 1, self.args.c_dim * 2),
+                    nn.GELU(),
+                    nn.Linear(self.args.c_dim * 2, self.args.c_dim)
+                )
             else:
-                # Repeat pattern if more channels than available
-                repeats = (num_channels + len(system_channel_types) - 1) // len(system_channel_types)
-                extended = system_channel_types.repeat(repeats)
-                return extended[:num_channels]
-        else:
-            # Simple sequential mapping
-            return torch.arange(num_channels) % self.num_channel_types
+                # 更新现有的 channel embedder
+                self.channel_embedders[name][0] = nn.Linear(num_channels + 1, self.channel_embedders[name][0].in_features)
 
-    def forward(self, x: torch.Tensor, fs: torch.Tensor, system_id: int) -> torch.Tensor:
-        """
-        Forward pass with system-aware channel attribute embedding.
+    def get_grid_1d(self, x,sample_f):
+        """生成1D坐标网格"""
+        batchsize, seq_len, n_feats = x.shape
+        grid = torch.arange(seq_len, device=x.device, dtype=torch.float32)  / sample_f
+        grid = grid.reshape(1, seq_len, 1).repeat(batchsize, 1, 1)
+        return grid
+    
+    def forward(self, x, name, sample_f, t = None, r = None, y=None):
+    
+        sample_T = self.get_grid_1d(x, sample_f)
 
-        Args:
-            x (torch.Tensor): Input tensor of shape (B, L, C)
-            fs (torch.Tensor): Sampling frequency (scalar or per-batch)
-            system_id (int): System identifier for system-specific processing
-
-        Returns:
-            torch.Tensor: Output tensor of shape (B, num_patches, output_dim)
-        """
-        B, L_orig, C_orig = x.size()
-        device = x.device
+        x_with_time = torch.cat([x, sample_T], dim=-1)
         
-        # Get channel types for this system
-        channel_types = self.get_channel_types(system_id, C_orig).to(device)
+        patches = self.patcher.patch(rearrange(x_with_time, 'b l c -> b c l'))
         
-        # Handle sampling frequency
-        if isinstance(fs, (int, float)):
-            T = 1.0 / fs
-        else:
-            T = 1.0 / fs
-            if T.ndim > 0:
-                T = T.unsqueeze(-1) if len(T.shape) == 1 else T
+        patches_for_mlp = rearrange(patches, 'b t c p -> b t p c')
 
-        # Generate time axis
-        time_axis_base = torch.arange(L_orig, device=device, dtype=torch.float32)
-        if isinstance(T, torch.Tensor) and T.ndim > 0:
-            t = time_axis_base.unsqueeze(0) * T
-        else:
-            t = (time_axis_base * T).unsqueeze(0).expand(B, -1)
+        channel_embedded_patches = self.channel_embedders[name](patches_for_mlp)
 
-        # Handle size mismatches with padding/repeating
-        current_channel_types = channel_types
-        if self.patch_size_L > L_orig:
-            repeats_L = (self.patch_size_L + L_orig - 1) // L_orig
-            x = repeat(x, 'b l c -> b (l r) c', r=repeats_L)
-            t = repeat(t, 'b l -> b (l r)', r=repeats_L)
-            L = x.size(1)
-        else:
-            L = L_orig
+        flattened_patches = rearrange(channel_embedded_patches, 'b t p c_dim -> b t (p c_dim)')
 
-        if self.patch_size_C > C_orig:
-            repeats_C = (self.patch_size_C + C_orig - 1) // C_orig
-            x = repeat(x, 'b l c -> b l (c r)', r=repeats_C)
-            current_channel_types = current_channel_types.repeat(repeats_C)[:x.size(2)]
-            C = x.size(2)
-        else:
-            C = C_orig
+        x_tokens = self.proj_patch(flattened_patches)
 
-        # Sample patch positions
-        max_start_L = max(0, L - self.patch_size_L)
-        max_start_C = max(0, C - self.patch_size_C)
+        x_tokens = x_tokens + self.pos_embed
         
-        start_indices_L = torch.randint(0, max(1, max_start_L + 1), (B, self.num_patches), device=device)
-        start_indices_C = torch.randint(0, max(1, max_start_C + 1), (B, self.num_patches), device=device)
+        c = None
 
-        # Create offsets
-        offsets_L = torch.arange(self.patch_size_L, device=device)
-        offsets_C = torch.arange(self.patch_size_C, device=device)
+        if self.use_interpolation:
+            t_emb, r_emb = self.t_embedder(t), self.r_embedder(r)
 
-        # Compute indices with proper boundary handling
-        idx_L = (start_indices_L.unsqueeze(-1) + offsets_L) % L
-        idx_C = (start_indices_C.unsqueeze(-1) + offsets_C) % C
+            c = t_emb + r_emb
+        if self.use_cond and y is not None: 
 
-        # Expand for gathering
-        idx_L_expanded = idx_L.unsqueeze(-1)
-        idx_C_expanded = idx_C.unsqueeze(-2)
+            c = c + self.y_embedder(y)
 
-        # Gather patches
-        patches_data = x.unsqueeze(1).expand(-1, self.num_patches, -1, -1)
-        patches_data = patches_data.gather(2, idx_L_expanded.expand(-1, -1, -1, C))
-        patches_data = patches_data.gather(3, idx_C_expanded.expand(-1, -1, self.patch_size_L, -1))
+        # 核心修改: 返回重建所需的 start_indices
+        return x_tokens, c
 
-        # Gather time embeddings
-        t_expanded = t.unsqueeze(1).expand(-1, self.num_patches, -1)
-        t_patches = t_expanded.gather(2, idx_L)
-        t_patches = t_patches.unsqueeze(-1).expand(-1, -1, -1, self.patch_size_C)
+if __name__ == "__main__":
+    # --- 模块一: 最终版 Embedding 独立测试 ---
+    print("--- 模块一: 统一补丁配置的 Embedding 独立测试 ---")
 
-        # Gather channel embeddings
-        patch_channel_ids = current_channel_types[idx_C.long()]
-        patch_channel_embeds = self.channel_embed(patch_channel_ids)
-        patch_channel_embeds = patch_channel_embeds.unsqueeze(2).expand(-1, -1, self.patch_size_L, -1, -1)
-        patch_channel_embeds = rearrange(patch_channel_embeds, 'b p l pc ced -> b p l (pc ced)')
-
-        # System embedding (broadcasted to all patches)
-        system_embed = self.system_embed(torch.tensor(system_id, device=device))
-        system_embed = system_embed.unsqueeze(0).unsqueeze(0).expand(B, self.num_patches, -1)
-
-        # Flatten and concatenate all features
-        patches_data_flat = rearrange(patches_data, 'b p l c -> b p (l c)')
-        t_patches_flat = rearrange(t_patches, 'b p l c -> b p (l c)')
-        
-        # Concatenate all features
-        patches = torch.cat([
-            patches_data_flat, 
-            t_patches_flat, 
-            patch_channel_embeds, 
-            system_embed
-        ], dim=-1)
-
-        # Apply improved linear layers with normalization and dropout
-        patches = self.norm1(patches)
-        out = self.linear1(patches)
-        out = F.silu(out)
-        out = self.dropout1(out)
-        out = self.norm2(out)
-        out = self.linear2(out)
-        out = self.dropout2(out)
-        
-        return out
-
-
-
-if __name__ == '__main__':
-    # 测试代码
-    class MockArgs:
+    # 1. 定义配置类
+    class Config:
         def __init__(self):
-            self.patch_size_L = 64
-            self.patch_size_C = 2
-            self.num_patches = 32
-            self.output_dim = 128
-            self.num_channel_types = 8
-            self.channel_embed_dim = 16
-            self.num_systems = 3
-            self.system_embed_dim = 32
-            self.use_adaptive_channel_mapping = True
+            # 统一的补丁配置
+            self.num_patches = 128
+            self.patch_size_L = 16
+            # 其他超参数
+            self.c_dim = 16
+            self.hidden_dim = 768
+            self.num_channels = {'vibration': 3, 'temperature': 1}
+            self.num_classes = 10 # 示例值
 
-    def test_hse():
-        args = MockArgs()
-        model = E_02_HSE_v2(args)
-        model.eval()
+    # 2. 实例化配置
+    args = Config()
 
-        B, L, C = 4, 512, 6
-        x = torch.randn(B, L, C)
-        fs = torch.tensor(1000.0)
-        system_id = 1
+    # 3. 实例化模块
+    embedding_layer = E_02_HSE_v2(args)
 
-        print("Testing E_01_HSE:")
-        y = model(x, fs, system_id)
-        print(f"Input shape: {x.shape}")
-        print(f"Output shape: {y.shape}")
-        print(f"Expected: ({B}, {args.num_patches}, {args.output_dim})")
-        
-        assert y.shape == (B, args.num_patches, args.output_dim)
-        print("✓ Test passed!")
+    # --- 测试'vibration'信号 ---
+    B, L_variable = 4, 3000
+    x_vib = torch.randn(B, L_variable, 3)
+    sample_f_in = 100.0 # 示例采样频率
+    t_in, r_in = torch.rand(B), torch.rand(B)
 
-    test_hse()
+    # 接收返回值
+    x_tokens_vib, c_vib = embedding_layer(x_vib, 'vibration', sample_f_in, t_in, r_in)
+
+    print(f"输入 vibration (3通道), L={L_variable}")
+    print(f"  -> 输出 tokens shape: {x_tokens_vib.shape}")
+    if c_vib is not None:
+        print(f"  -> 输出 condition shape: {c_vib.shape}")
+    assert x_tokens_vib.shape == (B, args.num_patches, args.hidden_dim)
+    print("  'vibration'信号处理成功!")
+    print("-" * 40)
+
+    # --- 测试'temperature'信号 ---
+    x_temp = torch.randn(B, L_variable, 1)
+    # 接收返回值
+    x_tokens_temp, c_temp = embedding_layer(x_temp, 'temperature', sample_f_in, t_in, r_in)
+    print(f"输入 temperature (1通道), L={L_variable}")
+    print(f"  -> 输出 tokens shape: {x_tokens_temp.shape}")
+    if c_temp is not None:
+        print(f"  -> 输出 condition shape: {c_temp.shape}")
+    assert x_tokens_temp.shape == (B, args.num_patches, args.hidden_dim)
+    print("  'temperature'信号处理成功!")
+    print("-" * 40)

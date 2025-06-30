@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
-class H_03_Linear_pred(nn.Module):
+class H_03_Linear_pred(nn.Module):  # TODO
     """
     1) Flatten (B, P, C) -> (B, P*C)
     2) Hidden MLP -> (B, hidden)

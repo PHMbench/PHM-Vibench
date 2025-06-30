@@ -15,6 +15,7 @@ if __name__ == '__main__':
 # from .backbone import *
 # from .task_head import *
 from src.model_factory.ISFM.embedding import *
+from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 import torch.nn as nn
@@ -26,11 +27,11 @@ Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
     'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
+    'E_03_Patch_DPOT': E_03_Patch_DPOT,
 
 }
 Backbone_dict = {
     'B_01_basic_transformer': B_01_basic_transformer,
-    
     'B_03_FITS': B_03_FITS,
     'B_04_Dlinear': B_04_Dlinear,
     'B_05_Manba': B_05_Manba,
@@ -55,9 +56,17 @@ class Model(nn.Module):
         self.args_m = args_m
         self.embedding = Embedding_dict[args_m.embedding](args_m)
         self.backbone = Backbone_dict[args_m.backbone](args_m)
-        # self.num_classes = self.get_num_classes()  # TODO prediction 任务不需要label？ @liq22
-        # args_m.num_classes = self.num_classes  # Ensure num_classes is set in args_m
+        self.num_classes = self.get_num_classes()  # TODO prediction 任务不需要label？ @liq22
+        args_m.num_classes = self.num_classes  # Ensure num_classes is set in args_m
         self.task_head = TaskHead_dict[args_m.task_head](args_m)
+
+    def get_num_classes(self):
+        num_classes = {}
+        for key in np.unique(self.metadata.df['Dataset_id']):
+            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
+        return num_classes
+    
+
 
     def _embed(self, x, file_id):
         """1 Embedding"""

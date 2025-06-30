@@ -40,7 +40,7 @@ def FFT_for_Period(x: torch.Tensor, k: int = 5):
 
 
 # ─────────────── 2. Core temporal–spatial convolution block ────
-from .layers.Conv_Blocks import Inception_Block_V1  # your existing impl.
+from ..layers.Conv_Blocks import Inception_Block_V1  # your existing impl.
 
 class TimesBlock(nn.Module):
     """

@@ -7,7 +7,7 @@ from einops import rearrange, repeat
 from . import embedding
 from . import backbone
 from . import task_head
-from . import M_01_ISFM, M_02_ISFM
+# from . import M_01_ISFM, M_02_ISFM
 
 __all__ = ['embedding', 'backbone', 'task_head',
-           'M_01_ISFM', 'M_02_ISFM']
+] #            'M_01_ISFM', 'M_02_ISFM'

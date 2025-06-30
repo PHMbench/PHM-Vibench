@@ -3,7 +3,9 @@ import torch.nn as nn
 
 
 class Normalize(nn.Module):
-    def __init__(self, num_features: int, eps=1e-5, affine=False, subtract_last=False, non_norm=False):
+    def __init__(self, num_features: int,
+                  eps=1e-5,
+                    affine=False, subtract_last=False, non_norm=False):
         """
         :param num_features: the number of features or channels
         :param eps: a value added for numerical stability
@@ -66,3 +68,11 @@ class Normalize(nn.Module):
         else:
             x = x + self.mean
         return x
+if __name__ == '__main__':
+    x = torch.randn(2, 3, 4)  # Example input
+    norm_layer = Normalize(num_features=4, affine=False)
+    normalized_x = norm_layer(x, mode='norm')
+    denormalized_x = norm_layer(normalized_x, mode='denorm')
+    print("Original x:", x)
+    print("Normalized x:", normalized_x)
+    print("Denormalized x:", denormalized_x)
