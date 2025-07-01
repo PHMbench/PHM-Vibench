@@ -50,7 +50,7 @@ def configure_matplotlib(style='ieee', font_lang='en', seaborn_theme=False, font
     """
     # Define font settings
     fonts = {
-        'en': {'family': 'Times New Roman', 'weight': 'normal', 'size': 12},
+        'en': {'family': 'Liberation Sans', 'weight': 'normal', 'size': 12}, # Liberation Sans Arial, Helvetica, sans-serif Times New Roman
         'cn': {'family': 'simhei', 'weight': 'normal', 'size': 12},
     }
 

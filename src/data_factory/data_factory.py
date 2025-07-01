@@ -74,7 +74,7 @@ class data_factory:
             print(f"[ERROR] 读取元数据文件失败: {e}")
             raise
     
-    def _init_data(self, args_data, use_cache=True, max_workers=32):
+    def _init_data(self, args_data, use_cache=True, max_workers=32): # TODO clear it
         """
         数据读取器 - 并行版本。
         1. 为每个 'Name' (数据集类型) 维护一个独立的、累积的 HDF5 缓存文件 (e.g., NameA.h5, NameB.h5)。

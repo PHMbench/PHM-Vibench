@@ -22,7 +22,7 @@ import torch.nn as nn
 import numpy as np
 import os
 import torch
-
+import pandas as pd
 Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
@@ -63,9 +63,13 @@ class Model(nn.Module):
 
         self.embedding = Embedding_dict[args_m.embedding](args_m)
         self.backbone = Backbone_dict[args_m.backbone](args_m)
-        self.task_head = TaskHead_dict[args_m.task_head](args_m)
-    
-            
+        if args_m.task_head == 'H_04_VIB_pred' and args_m.embedding == 'E_02_HSE_v2':
+            # If using multiple task head, we need to pass the metadata
+            self.task_head = TaskHead_dict[args_m.task_head](args_m, self.embedding.patcher)
+        else:
+            self.task_head = TaskHead_dict[args_m.task_head](args_m)
+
+
     def get_num_classes(self):
         num_classes = {}
         for key in np.unique(self.metadata.df['Dataset_id']):
@@ -76,47 +80,58 @@ class Model(nn.Module):
         for key in np.unique(self.metadata.df['Dataset_id']):
             num_channels[str(key)] = int(max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Channel']))
         return num_channels
-
+    def get_unique_dataset_ids(self):
+        return np.unique(self.metadata.df['Dataset_id'])
     def _embed(self, x, file_id):
         """1 Embedding"""
         if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
             fs = self.metadata[file_id]['Sample_rate']
-            name = self.metadata[file_id]['Name']
+            system_id = self.metadata[file_id]['Dataset_id'] 
+            if isinstance(system_id, pd.Series):
+                system_id = self.get_unique_dataset_ids()[0]  # 如果是Series，取第一个值
             # system_id = self.metadata[file_id]['Dataset_id']
-            x = self.embedding(x, name, fs)
+            x = self.embedding(x, system_id, fs)
         else:
             x = self.embedding(x)
         return x
 
-    def _encode(self, x):
+    def _encode(self, x,c=False):
         """2 Backbone"""
-        return self.backbone(x)
+        return self.backbone(x,c)
 
     def _head(self, x, file_id = False, task_id = False, return_feature=False):
         """3 Task Head"""
         system_id = self.metadata[file_id]['Dataset_id']
+        if isinstance(system_id, pd.Series):
+            system_id = self.get_unique_dataset_ids()[0]  # 如果是Series，取第一个值
         # check if task_id is in the task head
         # check if task have its head
 
         if task_id in ['classification']:
             # For classification or prediction tasks, we need to pass system_id
             return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
+        
         elif task_id in ['prediction']: # TODO individual prediction head
-            shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
-            # For prediction tasks, we may not need system_id
-            return self.task_head(x, return_feature=return_feature, task_id=task_id, shape=shape)
+            if self.args_m.task_head == 'H_04_VIB_pred':
+                # For Vibration prediction tasks, we need to pass system_id
+                return self.task_head(x, system_id=system_id)
+            else:
+
+                shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
+                # For prediction tasks, we may not need system_id
+                return self.task_head(x,shape=shape,system_id = system_id, return_feature=return_feature, task_id=task_id, )
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
         # 
         self.shape = x.shape
-        x = self._embed(x, file_id)
-        x = self._encode(x)
+        x,c = self._embed(x, file_id)
+        x = self._encode(x,c)
         x = self._head(x, file_id, task_id, return_feature)
         return x
 
     def get_rep(self, x, file_id = False):
-        x = self._embed(x, file_id)
-        x = self._encode(x)
+        x,c = self._embed(x, file_id)
+        x = self._encode(x,c)
         return x
 
 if __name__ == '__main__':

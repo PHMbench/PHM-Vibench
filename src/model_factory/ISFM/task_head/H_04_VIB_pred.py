@@ -23,16 +23,16 @@ class H_04_VIB_pred(nn.Module):
         super().__init__()
         # 核心修改: 使用统一的补丁配置
         self.patcher = patcher
-        self.channel_map = args.channel_map
-        self.final_norm = RMSNorm(args.dim)
-        self.final_mod = nn.Sequential(nn.SiLU(), nn.Linear(args.dim, 2 * args.dim))
-        self.proj_out = nn.Linear(args.dim, args.patch_size_L * args.c_dim)
+        self.num_channels = args.num_channels
+        self.final_norm = RMSNorm(args.hidden_dim)
+        self.final_mod = nn.Sequential(nn.SiLU(), nn.Linear(args.hidden_dim, 2 * args.hidden_dim))
+        self.proj_out = nn.Linear(args.hidden_dim, args.patch_size_L * args.c_dim)
         self.pred_heads = nn.ModuleDict({
             name: nn.Sequential(nn.Linear(args.c_dim, args.c_dim * 2), nn.GELU(), nn.Linear(args.c_dim * 2, num_channels + 1))
-            for name, num_channels in self.channel_map.items()
+            for name, num_channels in self.num_channels.items()
         })
         
-    def forward(self, x_tokens, name, c):
+    def forward(self, x_tokens, system_id, c = None):
 
         L_original = self.patcher.get_L_original()
         start_indices = self.patcher.get_start_indices() 
@@ -45,13 +45,13 @@ class H_04_VIB_pred(nn.Module):
         x = self.proj_out(x)
         
         patches_for_mlp = rearrange(x, 'b t (p c_dim) -> b t p c_dim', p=self.patcher.patch_size)
-        reconstructed_channels = self.recon_heads[name](patches_for_mlp)
+        reconstructed_channels = self.pred_heads[str(system_id)](patches_for_mlp)
         patches_to_unpatch = rearrange(reconstructed_channels, 'b t p c -> b t c p')
         
         # 核心修改: 使用传入的 start_indices 进行重建
-        reconstructed_ts_with_time = self.patcher.unpatch(patches_to_unpatch, start_indices, L_original)
+        reconstructed_ts_with_time = self.patcher.unpatch(patches_to_unpatch)
         
-        num_original_channels = self.channel_map[name]
+        num_original_channels = self.num_channels[str(system_id)]
         reconstructed_ts = reconstructed_ts_with_time[:, :, :num_original_channels]
         
         return reconstructed_ts
@@ -139,7 +139,7 @@ if __name__ == '__main__':
         dim=768,
         patch_size=16,
         c_dim=16,
-        channel_map={'vibration': 3, 'temperature': 1},
+        num_channels={'vibration': 3, 'temperature': 1},
         num_patches=128,
     )
     
@@ -151,15 +151,15 @@ if __name__ == '__main__':
     sequence_patcher.update_start_indices(torch.randn(B, args.c_dim, L_variable), L_variable)
 
     # 实例化 Task Head, 传入新的 Patcher
-    task_head = MfditTaskHead1d(args, sequence_patcher)
+    task_head = H_04_VIB_pred(args, sequence_patcher)
 
     # --- 测试重建 'vibration' (3通道) 信号 ---
     output_name = 'vibration'
-    C_out = args.channel_map[output_name]
+    C_out = args.num_channels[output_name]
     print(f"请求重建 '{output_name}' 信号 ({C_out}个通道)")
 
     # 模拟输入
-    features_in = torch.randn(B, args.num_patches, args.dim)
+    features_in = torch.randn(B, args.num_patches, args.hidden_dim)
     c_vector_in = None
     # 模拟从Embedding层得到的重建索引
     start_indices_in = torch.linspace(0, L_variable - args.patch_size, steps=args.num_patches).round().long()

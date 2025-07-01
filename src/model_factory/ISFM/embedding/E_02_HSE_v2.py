@@ -9,7 +9,7 @@ import numpy as np
 import math
 from einops import rearrange
 import torch.nn.functional as F
-
+import pandas as pd
 # --------------------------------------------------------------------------
 # SequencePatcher
 # --------------------------------------------------------------------------
@@ -164,11 +164,15 @@ class E_02_HSE_v2(nn.Module):
     def get_grid_1d(self, x,sample_f):
         """生成1D坐标网格"""
         batchsize, seq_len, n_feats = x.shape
-        grid = torch.arange(seq_len, device=x.device, dtype=torch.float32)  / sample_f
-        grid = grid.reshape(1, seq_len, 1).repeat(batchsize, 1, 1)
-        return grid
+        grid = torch.arange(seq_len)  
+        if isinstance(sample_f, (int, float)):
+            grid = grid.reshape(1, seq_len, 1).repeat(batchsize, 1, 1) / sample_f
+        elif isinstance(sample_f, pd.Series):
+            sample_f_tensor = torch.tensor(sample_f.values, dtype=x.dtype).reshape(-1, 1, 1)
+            grid = grid.reshape(1, seq_len, 1).repeat(batchsize, 1, 1) / sample_f_tensor
+        return grid.to(x.device)
     
-    def forward(self, x, name, sample_f, t = None, r = None, y=None):
+    def forward(self, x, system_id, sample_f, t = None, r = None, y=None):
     
         sample_T = self.get_grid_1d(x, sample_f)
 
@@ -178,7 +182,7 @@ class E_02_HSE_v2(nn.Module):
         
         patches_for_mlp = rearrange(patches, 'b t c p -> b t p c')
 
-        channel_embedded_patches = self.channel_embedders[name](patches_for_mlp)
+        channel_embedded_patches = self.channel_embedders[str(system_id)](patches_for_mlp)
 
         flattened_patches = rearrange(channel_embedded_patches, 'b t p c_dim -> b t (p c_dim)')
 
