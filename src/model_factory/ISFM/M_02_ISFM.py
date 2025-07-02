@@ -80,15 +80,14 @@ class Model(nn.Module):
         for key in np.unique(self.metadata.df['Dataset_id']):
             num_channels[str(key)] = int(max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Channel']))
         return num_channels
-    def get_unique_dataset_ids(self):
-        return np.unique(self.metadata.df['Dataset_id'])
+
     def _embed(self, x, file_id):
         """1 Embedding"""
         if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
             fs = self.metadata[file_id]['Sample_rate']
             system_id = self.metadata[file_id]['Dataset_id'] 
             if isinstance(system_id, pd.Series):
-                system_id = self.get_unique_dataset_ids()[0]  # 如果是Series，取第一个值
+                system_id = np.unique(system_id)[0]  # 如果是Series，取第一个值
             # system_id = self.metadata[file_id]['Dataset_id']
             x = self.embedding(x, system_id, fs)
         else:
@@ -103,7 +102,7 @@ class Model(nn.Module):
         """3 Task Head"""
         system_id = self.metadata[file_id]['Dataset_id']
         if isinstance(system_id, pd.Series):
-            system_id = self.get_unique_dataset_ids()[0]  # 如果是Series，取第一个值
+            system_id = np.unique(system_id)[0]  # 如果是Series，取第一个值
         # check if task_id is in the task head
         # check if task have its head
 

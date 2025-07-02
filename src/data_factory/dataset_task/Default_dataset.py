@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import random_split
-
+from pytorch_lightning.utilities import CombinedLoader
 class Default_dataset(Dataset): # THU_006or018_basic
     def __init__(self, data, metadata, args_data, args_task, mode="train"):
         """

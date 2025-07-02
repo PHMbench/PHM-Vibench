@@ -40,7 +40,8 @@ class Signal_mask_Loss(nn.Module):
                 model:  nn.Module,
                 batch: torch.Tensor           # (B,L,C) ground-truth
                 ) -> tuple[torch.Tensor, dict]:
-        signal = batch['x']
+        # device = model.device
+        signal = batch['x']# .to(device)  # (B,L,C)
         file_id = batch.get('file_id', None)
 
         x_in, total_mask, mask_rand, mask_pred = add_mask(signal, self.cfg.forecast_part, self.cfg.mask_ratio, return_component_masks=True)
@@ -48,7 +49,7 @@ class Signal_mask_Loss(nn.Module):
         # 3️⃣ model prediction --------------------------------------
         with torch.set_grad_enabled(self.training):
             x_hat = model(x_in,file_id, task_id = 'prediction') 
-            # x_hat = model(x_in)                            # (B,L,C)
+            # x_hat = model(x_in)                          # (B,L,C)
 
         # 4️⃣ compute loss -----------------------------------------
         if self.loss_type == "mse":

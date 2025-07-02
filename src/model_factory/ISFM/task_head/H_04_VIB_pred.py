@@ -34,8 +34,8 @@ class H_04_VIB_pred(nn.Module):
         
     def forward(self, x_tokens, system_id, c = None):
 
-        L_original = self.patcher.get_L_original()
-        start_indices = self.patcher.get_start_indices() 
+        # L_original = self.patcher.get_L_original()
+        # start_indices = self.patcher.get_start_indices() 
 
         if c is None:
             c = x_tokens.mean(dim=1)
