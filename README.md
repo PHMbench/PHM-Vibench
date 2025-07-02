@@ -789,6 +789,8 @@ python main.py --config configs/your_config.yaml --wandb --project "PHM-Vibench-
 CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
 ``` -->
 
+
+
 ### 3. 结果分析 📊
 
 实验结果保存在 `save/` 目录下，按照以下层次结构组织：
@@ -934,6 +936,10 @@ PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制�
 ### 添加新模型 🧠 见[模型贡献指南](./model_factory/contributing.md)
 
 ### 调试与测试 🐞 见[测试指南](./test/README.md)
+
+### wandb blocked issue
+
+export WANDB_BASE_URL=HTTP://api.bandw.top
 
 ## ❓ 常见问题
 
