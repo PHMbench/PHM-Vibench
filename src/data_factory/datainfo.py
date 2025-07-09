@@ -3,7 +3,7 @@ import re
 import pandas as pd
 from pathlib import Path
 from collections import defaultdict
-
+# 提取 metadata
 def natural_sort_key(s):
     """
     用于自然排序的键函数，确保10排在2后面
