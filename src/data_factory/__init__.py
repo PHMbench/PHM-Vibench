@@ -19,7 +19,11 @@ def build_data(args_data,args_task) -> Any:
         数据集实例
 
         
+
+        
     """
+    data_factory = importlib.import_module("src.data_factory.data_factory")
+
     return data_factory(args_data, args_task)
 
 
