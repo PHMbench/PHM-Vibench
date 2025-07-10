@@ -23,10 +23,14 @@ class SpectralConv1d(nn.Module):
         # 学习权重，形状为 (in_channels, out_channels, modes)，使用复数
         self.weights = nn.Parameter(self.scale * torch.rand(in_channels, out_channels, self.modes, dtype=torch.cfloat))
 
-    def forward(self, x):
-        """
-        :param x: 输入张量，形状为 (B, C, L)
-        :return: 经过谱卷积后的张量
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply spectral convolution.
+
+        Args:
+            x: 输入张量 ``(B, C, L)``。
+
+        Returns:
+            经过谱卷积的张量 ``(B, out_channels, L)``。
         """
         # x - b, c, l
         B, C, L = x.shape
@@ -43,14 +47,16 @@ class SpectralConv1d(nn.Module):
 
 
 class Model(nn.Module):
-    """
-    1D 傅里叶神经算子 (FNO) 主模型
-    """
-    def __init__(self, modes, width, n_layers=4, channels=1):
-        """
-        :param modes: 要保留的傅里叶模式数
-        :param width: 隐藏层的通道数 (宽度)
-        :param n_layers: FNO层的数量
+    """1D 傅里叶神经算子 (FNO) 主模型."""
+
+    def __init__(self, modes: int, width: int, n_layers: int = 4, channels: int = 1) -> None:
+        """Construct the network.
+
+        Args:
+            modes: 保留的傅里叶模式数。
+            width: 隐藏层通道数。
+            n_layers: FNO 层数。
+            channels: 输入与输出的通道数。
         """
         super(Model, self).__init__()
         self.modes = modes
@@ -71,10 +77,14 @@ class Model(nn.Module):
         # 3. 输出层：将宽度映射回输出通道数
         self.fc1 = nn.Linear(self.width, self.channels) # 假设输出通道数为1
 
-    def forward(self, x):
-        """
-        :param x: 输入张量，形状为 (B, L, C)
-        :return: 输出张量，形状为 (B, L, C)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass.
+
+        Args:
+            x: 输入张量 ``(B, L, C)``。
+
+        Returns:
+            输出张量 ``(B, L, C)``。
         """
         # 输入张量形状: (B, L, C)
         
@@ -95,28 +105,6 @@ class Model(nn.Module):
         x = x.permute(0, 2, 1) # (B, width, L) -> (B, L, width)
 
         # 映射回输出维度
-        x = self.fc1(x) # (B, L, width) -> (B, L, C)
+        x = self.fc1(x)  # (B, L, width) -> (B, L, C)
 
         return x
-
-# --- 使用示例 ---
-if __name__ == '__main__':
-    # B: batch_size, L: length, C: channels
-    B, L, C = 16, 1024, 3 
-    
-    # 初始化模型
-    modes = 16  # 傅里叶模式数
-    width = 64  # 隐藏层宽度
-    model = FNO1d(modes=modes, width=width, channels=C)
-
-    # 创建一个随机输入张量
-    input_tensor = torch.randn(B, L, C)
-    print(f"输入张量形状: {input_tensor.shape}")
-
-    # 前向传播
-    output_tensor = model(input_tensor)
-    print(f"输出张量形状: {output_tensor.shape}")
-
-    # 检查输入输出形状是否一致
-    assert input_tensor.shape == output_tensor.shape
-    print("\n模型成功创建，输入和输出形状一致！")

@@ -53,8 +53,15 @@ class SConv_1D(nn.Module):
 numf=12
 
 class Model(nn.Module):
+    """Wavelet based CNN classifier."""
+
     def __init__(self, args, metadata=None):
-    # def __init__(self,input_size = 1,num_class = 4):
+        """Initialize layers.
+
+        Args:
+            args: 配置参数，需包含 ``in_channels`` 等字段。
+            metadata: 可选元数据。
+        """
         super(Model, self).__init__()
     
         
@@ -81,8 +88,18 @@ class Model(nn.Module):
         self.fc = nn.Linear(numf*8, args.num_classes)
 
         
-    def forward(self, input,data_id = None,task_id = None):
-        
+    def forward(self, input: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
+        """Forward pass.
+
+        Args:
+            input: 输入信号 ``(B, L, C)``。
+            data_id: 样本 ID。
+            task_id: 任务 ID。
+
+        Returns:
+            分类 logits ``(B, num_classes)``。
+        """
+
         input = rearrange(input, 'b l c -> b c l')
         DMT_yl,DMT_yh = self.DWT0(input)
         output = torch.cat([DMT_yl,DMT_yh[0]], dim=1)

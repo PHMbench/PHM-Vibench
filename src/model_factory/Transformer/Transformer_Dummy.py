@@ -5,17 +5,14 @@ import torch.nn.functional as F
 
 
 class Model(nn.Module):
-    def __init__(self, args,metadata=None):
-        """
-        Initialize a simple transformer model for sequence classification.
-        
+    """Simple Transformer model for sequence classification."""
+
+    def __init__(self, args, metadata=None):
+        """Initialize network parameters.
+
         Args:
-            input_dim: Dimension of input features (C)
-            hidden_dim: Hidden dimension for transformer
-            num_heads: Number of attention heads
-            num_layers: Number of transformer layers
-            num_classes: Number of output classes
-            dropout: Dropout probability
+            args: 配置对象，包含 ``input_dim``、``hidden_dim`` 等字段。
+            metadata: 可选的元数据对象。
         """
         super(Model, self).__init__()
 
@@ -44,15 +41,16 @@ class Model(nn.Module):
         # classification head
         self.classifier = nn.Linear(hidden_dim, num_classes)
     
-    def forward(self, x,data_id = None,task_id = None):
-        """
-        Forward pass of the model.
-        
+    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
+        """Apply the transformer.
+
         Args:
-            x: Input tensor of shape [L, C] where L is sequence length and C is feature dimension
-            
+            x: 输入张量 ``(B, L, C)`` 或 ``(L, C)``。
+            data_id: 预留的样本标识。
+            task_id: 任务标识。
+
         Returns:
-            Output tensor of shape [L, num_classes]
+            分类 logits，形状为 ``(B, num_classes)``。
         """
         # If input doesn't have batch dimension, add it
         if x.dim() == 2:
@@ -105,20 +103,3 @@ class PositionalEncoding(nn.Module):
         """
         x = x + self.pos_encoding[:x.size(0), :]
         return self.dropout(x)
-
-if __name__ == "__main__":
-    # Example usage
-    class Args:
-        input_dim = 2
-        hidden_dim = 256
-        num_heads = 8
-        num_layers = 6
-        num_classes = 10
-        dropout = 0.1
-
-    args = Args()
-    model = Model(args)
-    print(model)
-    x = torch.randn(10, 512, 2)  # Example input
-    output = model(x)  # Forward pass with example input
-    print(output.shape)  # Print the output

@@ -5,7 +5,12 @@ from torch import nn
 
 
 class Model(nn.Module):
-    """A lightweight CNN used in few-shot baselines."""
+    """Lightweight CNN encoder for few-shot learning.
+
+    Args:
+        args_model: 配置对象，需包含 ``in_channels`` 与 ``embedding_dim``。
+        metadata: 预留的数据集元信息，默认为 ``None``。
+    """
 
     def __init__(self, args_model, metadata=None):
         super().__init__()
@@ -30,6 +35,15 @@ class Model(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Encode an input batch.
+
+        Args:
+            x: 输入张量 ``(B, L)`` 或 ``(B, C, L)``。
+
+        Returns:
+            嵌入向量 ``(B, embedding_dim)``。
+        """
         if x.ndim == 2:  # (B, L) -> (B, 1, L)
             x = x.unsqueeze(1)
         return self.encoder(x)
+
