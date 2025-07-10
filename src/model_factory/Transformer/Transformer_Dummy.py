@@ -44,15 +44,18 @@ class Model(nn.Module):
         # classification head
         self.classifier = nn.Linear(hidden_dim, num_classes)
     
-    def forward(self, x,data_id = None,task_id = None):
-        """
-        Forward pass of the model.
-        
-        Args:
-            x: Input tensor of shape [L, C] where L is sequence length and C is feature dimension
-            
-        Returns:
-            Output tensor of shape [L, num_classes]
+    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(B, L, C)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape ``(B, num_classes)``.
         """
         # If input doesn't have batch dimension, add it
         if x.dim() == 2:
@@ -105,20 +108,3 @@ class PositionalEncoding(nn.Module):
         """
         x = x + self.pos_encoding[:x.size(0), :]
         return self.dropout(x)
-
-if __name__ == "__main__":
-    # Example usage
-    class Args:
-        input_dim = 2
-        hidden_dim = 256
-        num_heads = 8
-        num_layers = 6
-        num_classes = 10
-        dropout = 0.1
-
-    args = Args()
-    model = Model(args)
-    print(model)
-    x = torch.randn(10, 512, 2)  # Example input
-    output = model(x)  # Forward pass with example input
-    print(output.shape)  # Print the output
