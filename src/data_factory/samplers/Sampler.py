@@ -27,15 +27,17 @@ class Same_system_Sampler(Sampler):
             drop_last (bool): 如果为 True，则对于每个系统，如果其最后一个批次小于 batch_size，则丢弃它。
             system_metadata_key (str): 用于从 dataset.metadata 中查找系统ID的键。
         """
-        if not isinstance(dataset, IdIncludedDataset):
-            raise ValueError("dataset 必须是 IdIncludedDataset 的实例。")
+        # if not isinstance(dataset, IdIncludedDataset) or  isinstance(dataset, IdIncludedDataset):
+        #     raise ValueError("dataset 必须是 IdIncludedDataset 的实例。")
         if not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("batch_size 必须是正整数。")
-        if not hasattr(dataset, 'metadata') or dataset.metadata is None:
-            raise ValueError("dataset 必须具有 'metadata' 属性。")
+        # if not hasattr(dataset, 'metadata') or dataset.metadata is None:
+        #     raise ValueError("dataset 必须具有 'metadata' 属性。")
 
-
-        self.dataset = dataset
+        if hasattr(dataset, 'file_windows_list'):
+            self.dataset = dataset
+        else: # For distribution dataset
+            self.dataset = dataset.dataset
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.drop_last = drop_last
@@ -43,6 +45,10 @@ class Same_system_Sampler(Sampler):
 
         # 1. 按 system_id 对全局索引进行分组
         self.indices_per_system = {}
+        # file_windows_list = getattr(self.dataset, 'file_windows_list', None)
+        # if file_windows_list is None:
+        #     file_windows_list = getattr(self.dataset.dataset, 'file_windows_list', None)
+            
         for global_idx, sample_info in enumerate(self.dataset.file_windows_list):
             file_id = sample_info['file_id']
             if file_id not in self.dataset.metadata:

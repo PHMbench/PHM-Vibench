@@ -15,7 +15,7 @@ except ImportError:
     print("[WARNING] swanlab 未安装")
     swanlab = None
 import numpy as np
-
+import os
 
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
     """
@@ -72,10 +72,11 @@ def init_lab(args_environment, cli_args, experiment_name):
         if use_wandb:
             project_name = getattr(args_environment, 'project', 'vbench')
             notes = f'Task Notes:{getattr(cli_args, "notes", "")}\nConfig Notes:{getattr(args_environment, "notes", "")}'
-            wandb.init(project=project_name,
-                        name=experiment_name,
-                        notes=notes.strip())
-            print(f"[INFO] WandB initialized for project '{project_name}', experiment '{experiment_name}'.")
+            if int(os.environ.get("LOCAL_RANK", 0)) == 0:
+                wandb.init(project=project_name,
+                            name=experiment_name,
+                            notes=notes.strip())
+                print(f"[INFO] WandB initialized for project '{project_name}', experiment '{experiment_name}'.")
         else:
             wandb.init(mode='disabled')
             print("[INFO] WandB disabled by configuration.")

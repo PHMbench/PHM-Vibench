@@ -53,8 +53,9 @@ class Signal_mask_Loss(nn.Module):
 
         # 4️⃣ compute loss -----------------------------------------
         if self.loss_type == "mse":
-            num = total_mask.sum().clamp(min=1)             # avoid /0
-            loss = nn.MSELoss(reduction="sum")(x_hat[total_mask], signal[total_mask]) / num
+            # num = total_mask.sum().clamp(min=1)             # avoid /0
+            # loss = nn.MSELoss(reduction="sum")(x_hat[total_mask], signal[total_mask]) / num
+            loss = nn.MSELoss(reduction="mean")(x_hat, signal) 
 
         elif self.loss_type == "rel_l2":                # relative L2
             diff = (x_hat - signal)[total_mask]

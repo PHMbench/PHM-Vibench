@@ -62,6 +62,8 @@ def trainer(args_e,args_t, args_d, path):
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
         strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
+        gradient_clip_val=1.0,  # 裁剪最大范数
+        gradient_clip_algorithm="norm"  # 默认为"norm"
     )
     return trainer
 
@@ -79,7 +81,7 @@ def call_backs(args, path):
     # 检查点回调（保存最好的模型）
     checkpoint_callback = ModelCheckpoint(
         monitor=args.monitor,
-        filename='model-{epoch:02d}-{val_loss:.4f}',
+        filename='model-{epoch:02d}-{val_total_loss:.4f}',
         save_top_k=getattr(args, 'save_top_k', 1),  # 从args中读取保存的模型数量
         mode='min',
         dirpath=path

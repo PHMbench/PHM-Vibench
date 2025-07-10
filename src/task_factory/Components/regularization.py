@@ -16,11 +16,11 @@ def calculate_regularization(reg_config: Dict[str, Any], params: Iterable[torch.
     reg_losses = {}
     total_reg_loss = torch.tensor(0.0, device=next(iter(params)).device if params else 'cpu', dtype=torch.float32) # 获取设备信息
 
-    if not reg_config or not reg_config.get('regularization', False):
+    if not reg_config : # or not reg_config.get('regularization', False)
         reg_losses['total'] = total_reg_loss
         return reg_losses
 
-    method_dict = reg_config.get('regularization', {})
+    method_dict = reg_config # .get('regularization', {})
     trainable_params = [p for p in params if p.requires_grad]
 
     if not trainable_params: # 如果没有可训练参数
@@ -28,6 +28,7 @@ def calculate_regularization(reg_config: Dict[str, Any], params: Iterable[torch.
         return reg_losses
 
     for reg_type, weight in method_dict.items():
+        weight = float(weight) #if isinstance(weight, (int, float)) else 0.0
         if weight == 0:
             continue
 
