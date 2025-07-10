@@ -1,17 +1,3 @@
-if __name__ == '__main__':
-    
-    # 在 M_01_ISFM.py 文件开头添加
-    import sys
-    import os
-
-    # 获取当前文件的绝对路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 计算项目根目录路径（假设文件在 src/models/ 下）
-    project_root = os.path.abspath(os.path.join(current_dir, "..","..", ".."))
-    sys.path.append(project_root)
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-# from .embedding import *
 # from .backbone import *
 # from .task_head import *
 from src.model_factory.ISFM.embedding import *
@@ -142,64 +128,4 @@ class Model(nn.Module):
         x = self._head(x, file_id, task_id, return_feature)
         return x
     
-if __name__ == '__main__':
-    import sys
-    import os
 
-    # 获取当前文件的绝对路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 计算项目根目录路径
-    project_root = os.path.abspath(os.path.join(current_dir, "..", "..", ".."))
-    sys.path.append(project_root)
-    
-    from utils.config_utils import *
-    import torch
-    
-    # 使用指定的配置文件
-    # config_path = os.path.join(project_root, 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml')
-    config_path = os.path.join(project_root, 'script/LQ1/Pretraining/Pretraining_C+P.yaml')
-    # config_path = os.path.join(project_root, 'script/LQ1/GFS/GFS_C+M.yaml')
-    print(f"加载配置文件: {config_path}")
-    
-    try:
-        configs = load_config(config_path)
-# 设置环境变量和命名空间
-        args_environment = transfer_namespace(configs.get('environment', {}))
-        args_data = transfer_namespace(configs.get('data', {}))
-        args_model = transfer_namespace(configs.get('model', {}))
-        args_task = transfer_namespace(configs.get('task', {}))
-        args_trainer = transfer_namespace(configs.get('trainer', {}))
-        args_model.num_classes = {'CWRU':2, 'THU': 3}  # 示例，实际应从配置中获取
-        
-        print("模型配置:", args_model)
-        print("数据集配置:", args_data)
-        
-        class MockMetadata:
-            def __getitem__(self, idx):
-                return {
-                    'Sample_rate': 16000,
-                    'Dataset_id': 'CWRU' if idx % 2 == 0 else 'THU',
-                    'Name': f"Sample_{idx}"
-                }
-        
-        metadata = MockMetadata()
-        
-        # 初始化模型
-        model = Model(args_model, metadata)
-        print(model)
-        
-        # 创建随机输入进行测试
-        batch_size = 2
-        seq_len = 128
-        feature_dim = 3
-        x = torch.randn(batch_size, seq_len, feature_dim)
-
-        # 运行前向传播
-        # y = model(x, file_id=0, task_id='classification', return_feature=False)
-        y = model(x, file_id=0, task_id='prediction', return_feature=True)
-        print("输出形状:", y.shape)
-        
-    except Exception as e:
-        import traceback
-        print(f"错误: {e}")
-        traceback.print_exc()
