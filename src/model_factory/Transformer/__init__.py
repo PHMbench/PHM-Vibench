@@ -1,4 +1,3 @@
-from . import Transformer_Dummy
-
-
-__all__ = ['Transformer_Dummy']
+"""Transformer family models."""
+from .Transformer_Dummy import Model as TransformerDummy
+__all__ = ["TransformerDummy"]

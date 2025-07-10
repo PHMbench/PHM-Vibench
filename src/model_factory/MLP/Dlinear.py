@@ -35,9 +35,14 @@ class series_decomp(nn.Module):
         return res, moving_mean
 
 class B_04_Dlinear(nn.Module):
-    """
-    DLinear Backbone
-    Paper link: https://arxiv.org/pdf/2205.13504.pdf
+    """DLinear backbone.
+
+    Parameters
+    ----------
+    configs : Namespace
+        Configuration object with ``patch_size_L`` and ``patch_size_C``.
+    individual : bool, optional
+        Whether to use individual linear layers per channel. Default ``False``.
     """
 
     def __init__(self, configs, individual=False):
@@ -72,8 +77,19 @@ class B_04_Dlinear(nn.Module):
             self.Linear_Trend.weight = nn.Parameter(
                 (1 / self.patch_size_L) * torch.ones([self.patch_size_L, self.patch_size_L]))
 
-    def forward(self, x):
-        # x: [B, L, C]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor with shape ``(B, L, C)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor with shape ``(B, L, C)``.
+        """
         seasonal_init, trend_init = self.decompsition(x)
         seasonal_init, trend_init = seasonal_init.permute(
             0, 2, 1), trend_init.permute(0, 2, 1)  # [B, C, L]
@@ -100,38 +116,6 @@ class B_04_Dlinear(nn.Module):
     
 
 
-if __name__ == "__main__":
-# 创建配置
-    import torch
-    import numpy as np
-    from argparse import Namespace
-    class Config:
-        def __init__(self):
-            self.patch_size_L = 4096
-            self.patch_size_C = 1  # 输入通道数/特征维度
-            self.moving_avg = 125
-
-    # DLinear模型测试
-    def test_dlinear_backbone():
-        # 创建配置
-        configs = Config()
-        
-        # 创建模型实例
-        model = Model(configs, individual=False)
-        
-        # 创建一批测试数据
-        batch_size = 32
-        x = torch.randn(batch_size, configs.patch_size_L, configs.patch_size_C)  # [B, L, C]
-        
-        # 运行模型
-        output = model(x)
-        
-        # 验证输出形状
-        print(f"输入形状: {x.shape}")
-        print(f"输出形状: {output.shape}")
-        assert output.shape == (batch_size, configs.patch_size_L, configs.patch_size_C), "输出形状应为 [B, L, C]"
-        print("测试通过！输入输出形状一致: [B, L, C]")
-        
-        return output
-
-    test_dlinear_backbone()
+class Model(B_04_Dlinear):
+    """Convenience wrapper for :class:`B_04_Dlinear`."""
+    pass
