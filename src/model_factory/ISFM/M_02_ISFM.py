@@ -1,17 +1,3 @@
-if __name__ == '__main__':
-    
-    # 在 M_01_ISFM.py 文件开头添加
-    import sys
-
-
-    # 获取当前文件的绝对路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 计算项目根目录路径（假设文件在 src/models/ 下）
-    project_root = os.path.abspath(os.path.join(current_dir, "..","..", ".."))
-    sys.path.append(project_root)
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-# from .embedding import *
 # from .backbone import *
 # from .task_head import *
 from src.model_factory.ISFM.embedding import *
@@ -135,7 +121,17 @@ class Model(nn.Module):
                 return self.task_head(x,shape=shape,system_id = system_id, return_feature=return_feature, task_id=task_id, )
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
-        """Process input through embedding, backbone and head."""
+        """Forward pass.
+
+        Args:
+            x: 输入序列 ``(B, L, C)``。
+            file_id: 样本索引。
+            task_id: 任务标识。
+            return_feature: 是否返回特征表示。
+
+        Returns:
+            模型输出张量。
+        """
         self.shape = x.shape
         x, c = self._embed(x, file_id)
         x = self._encode(x, c)
@@ -147,71 +143,3 @@ class Model(nn.Module):
         x = self._encode(x,c)
         return x
 
-if __name__ == '__main__':
-    import sys
-    import os
-
-    # 获取当前文件的绝对路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 计算项目根目录路径
-    project_root = os.path.abspath(os.path.join(current_dir, "..", "..", ".."))
-    sys.path.append(project_root)
-    
-    from utils.config_utils import *
-    import torch
-    
-    # 使用指定的配置文件
-    config_path = os.path.join(project_root, 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml')
-    print(f"加载配置文件: {config_path}")
-    
-    try:
-        configs = load_config(config_path)
-# 设置环境变量和命名空间
-        args_environment = transfer_namespace(configs.get('environment', {}))
-
-        args_data = transfer_namespace(configs.get('data', {}))
-
-        args_model = transfer_namespace(configs.get('model', {}).get('args', {}))
-        args_model.name = configs['model'].get('name', 'default')
-
-        args_task = transfer_namespace(configs.get('task', {}).get('args', {}))
-        args_task.name = configs['task'].get('name', 'default')
-
-        args_trainer = transfer_namespace(configs.get('trainer', {}).get('args', {}))
-        args_trainer.name = configs['trainer'].get('name', 'default')
-        
-        print("模型配置:", args_model)
-        print("数据集配置:", args_data)
-        
-        # 创建模拟数据以便测试
-        class MockMetadata:
-            def __init__(self):
-                import pandas as pd
-                self.df = pd.DataFrame({
-                    'Dataset_id': [0, 0, 1, 1],
-                    'Label': [0, 1, 0, 2]
-                })
-            
-            def __getitem__(self, key):
-                return {'Sample_rate': 1000}
-        
-        metadata = MockMetadata()
-        
-        # 初始化模型
-        model = Model(args_model, metadata)
-        print(model)
-        
-        # 创建随机输入进行测试
-        batch_size = 2
-        seq_len = 128
-        feature_dim = 3
-        x = torch.randn(batch_size, seq_len, feature_dim)
-        id = 0
-        # 运行前向传播
-        y = model(x,id)
-        print("输出形状:", y.shape)
-        
-    except Exception as e:
-        import traceback
-        print(f"错误: {e}")
-        traceback.print_exc()

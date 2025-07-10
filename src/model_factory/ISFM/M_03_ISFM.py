@@ -1,16 +1,3 @@
-if __name__ == '__main__':
-    
-    # 在 M_01_ISFM.py 文件开头添加
-    import sys
-    import os
-
-    # 获取当前文件的绝对路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 计算项目根目录路径（假设文件在 src/models/ 下）
-    project_root = os.path.abspath(os.path.join(current_dir, "..","..", ".."))
-    sys.path.append(project_root)
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 # from .embedding import *
 # from .backbone import *
 # from .task_head import *
@@ -49,7 +36,11 @@ TaskHead_dict = {
 
 
 class Model(nn.Module):
+<<<<<<< HEAD
     """ISFM model without dataset-specific label counts."""
+=======
+    """ISFM minimal variant."""
+>>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661
 
     def __init__(self, args_m, metadata):
         super(Model, self).__init__()
@@ -95,13 +86,28 @@ class Model(nn.Module):
         # return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
+<<<<<<< HEAD
         """Run the model on a batch."""
+=======
+        """Forward pass.
+
+        Args:
+            x: 输入序列 ``(B, L, C)``。
+            file_id: 样本索引。
+            task_id: 任务标识。
+            return_feature: 是否返回特征表示。
+
+        Returns:
+            模型输出张量。
+        """
+>>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661
         self.shape = x.shape
         x = self._embed(x, file_id)
         x = self._encode(x)
         x = self._head(x, file_id, task_id, return_feature)
         return x
     
+<<<<<<< HEAD
 if __name__ == '__main__':
     import sys
     import os
@@ -163,3 +169,5 @@ if __name__ == '__main__':
         import traceback
         print(f"错误: {e}")
         traceback.print_exc()
+=======
+>>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661

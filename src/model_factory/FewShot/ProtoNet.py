@@ -58,3 +58,4 @@ class Model(nn.Module):
         if x.ndim == 2:
             x = x.unsqueeze(1)
         return self.encoder(x)
+
