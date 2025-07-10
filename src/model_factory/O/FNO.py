@@ -43,15 +43,25 @@ class SpectralConv1d(nn.Module):
 
 
 class Model(nn.Module):
+    """1D Fourier Neural Operator.
+
+    Parameters
+    ----------
+    modes : int
+        Number of Fourier modes to keep.
+    width : int
+        Hidden channel width.
+    n_layers : int, optional
+        Number of FNO blocks.
+    channels : int, optional
+        Number of input and output channels.
+
+    Notes
+    -----
+    Input and output tensors have shape ``(B, L, C)``.
     """
-    1D 傅里叶神经算子 (FNO) 主模型
-    """
+
     def __init__(self, modes, width, n_layers=4, channels=1):
-        """
-        :param modes: 要保留的傅里叶模式数
-        :param width: 隐藏层的通道数 (宽度)
-        :param n_layers: FNO层的数量
-        """
         super(Model, self).__init__()
         self.modes = modes
         self.width = width
@@ -72,9 +82,17 @@ class Model(nn.Module):
         self.fc1 = nn.Linear(self.width, self.channels) # 假设输出通道数为1
 
     def forward(self, x):
-        """
-        :param x: 输入张量，形状为 (B, L, C)
-        :return: 输出张量，形状为 (B, L, C)
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(B, L, C)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of the same shape ``(B, L, C)``.
         """
         # 输入张量形状: (B, L, C)
         

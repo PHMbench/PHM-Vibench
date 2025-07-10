@@ -52,6 +52,20 @@ TaskHead_dict = {
 
 
 class Model(nn.Module):
+    """ISFM variant with channel-aware embedding.
+
+    Parameters
+    ----------
+    args_m : Namespace
+        Configuration including embedding, backbone and head choices.
+    metadata : Any
+        Metadata accessor used for channel and label counts.
+
+    Notes
+    -----
+    Expects inputs shaped ``(B, L, C)``.
+    """
+
     def __init__(self, args_m, metadata):
         super(Model, self).__init__()
         self.metadata = metadata
@@ -121,10 +135,10 @@ class Model(nn.Module):
                 return self.task_head(x,shape=shape,system_id = system_id, return_feature=return_feature, task_id=task_id, )
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
-        # 
+        """Process input through embedding, backbone and head."""
         self.shape = x.shape
-        x,c = self._embed(x, file_id)
-        x = self._encode(x,c)
+        x, c = self._embed(x, file_id)
+        x = self._encode(x, c)
         x = self._head(x, file_id, task_id, return_feature)
         return x
 
