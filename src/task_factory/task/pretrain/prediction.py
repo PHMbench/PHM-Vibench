@@ -69,9 +69,12 @@ class task(Default_task):
 
         # metric_values = self._compute_metrics(y_argmax, y, data_name, stage)
 
-        step_metrics.update(metric_values)
+        # step_metrics.update(metric_values)
 
         # 4. 计算正则化损失
+        if stage!= 'train':
+            step_metrics[f"{stage}_total_loss"] = pred_loss
+            return step_metrics
         reg_dict = self._compute_regularization()
         for reg_type, reg_loss_val in reg_dict.items():
             if reg_type != 'total':

@@ -198,7 +198,7 @@ class DefaultTrainer(BaseTrainer):
         
         # WandB 日志记录
         logger = None
-        if getattr(args_t, "wandb", False):
+        if getattr(args_t, "wandb", False) and int(os.environ.get("LOCAL_RANK", 0)) == 0:
             project = getattr(args_t, "project", "vbench")
             name = getattr(args_t, "name", "experiment")
             tags = getattr(args_t, "tags", [])
