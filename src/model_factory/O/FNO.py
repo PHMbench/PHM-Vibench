@@ -107,7 +107,7 @@ if __name__ == '__main__':
     # 初始化模型
     modes = 16  # 傅里叶模式数
     width = 64  # 隐藏层宽度
-    model = FNO1d(modes=modes, width=width, channels=C)
+    model = Model(modes=modes, width=width, channels=C)
 
     # 创建一个随机输入张量
     input_tensor = torch.randn(B, L, C)

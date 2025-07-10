@@ -35,9 +35,14 @@ class series_decomp(nn.Module):
         return res, moving_mean
 
 class B_04_Dlinear(nn.Module):
-    """
-    DLinear Backbone
-    Paper link: https://arxiv.org/pdf/2205.13504.pdf
+    """DLinear backbone for time-series forecasting.
+
+    Parameters
+    ----------
+    configs : Namespace
+        Provides ``patch_size_L`` and ``patch_size_C``.
+    individual : bool, optional
+        If ``True`` use an independent linear head for each channel.
     """
 
     def __init__(self, configs, individual=False):
@@ -72,7 +77,19 @@ class B_04_Dlinear(nn.Module):
             self.Linear_Trend.weight = nn.Parameter(
                 (1 / self.patch_size_L) * torch.ones([self.patch_size_L, self.patch_size_L]))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(B, L, C)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Tensor of the same shape as input.
+        """
         # x: [B, L, C]
         seasonal_init, trend_init = self.decompsition(x)
         seasonal_init, trend_init = seasonal_init.permute(
@@ -117,7 +134,7 @@ if __name__ == "__main__":
         configs = Config()
         
         # 创建模型实例
-        model = Model(configs, individual=False)
+        model = B_04_Dlinear(configs, individual=False)
         
         # 创建一批测试数据
         batch_size = 32

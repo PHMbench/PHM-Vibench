@@ -1,23 +1,32 @@
-"""
-模型读取模块
-负责加载和构建模型实例
+"""Model factory
+================
+
+This module dynamically imports model definitions under
+``src.model_factory`` and instantiates them using configuration
+objects. It also handles optional checkpoint loading.
 """
 import os
 import importlib
 import torch
 from ..utils.utils import get_num_classes
-def model_factory(args_model,metadata):
-    """
-    简化版模型读取器，直接加载单个模型
-    
-    Args:
-        args_model: 包含模型配置的命名空间或字典
-            必须包含:
-            - model_name: 模型名称
-            - model_config: 模型配置字典
-            
-    Returns:
-        model: 初始化好的模型实例
+
+
+def model_factory(args_model, metadata):
+    """Instantiate a model by name.
+
+    Parameters
+    ----------
+    args_model : Namespace
+        Configuration namespace with at least ``name`` and ``type``
+        fields. Other attributes are passed to the model's ``Model``
+        constructor.
+    metadata : Any
+        Dataset metadata, used here only to compute ``num_classes``.
+
+    Returns
+    -------
+    nn.Module
+        Instantiated model ready for training.
     """
     # 获取模型名称
     model_name = args_model.name
@@ -33,8 +42,8 @@ def model_factory(args_model,metadata):
     
     # 创建模型实例
     try:
-        # 如果args_model.model_config存在，使用它作为参数
-        model = model_module.Model(args_model,metadata) # TODO metadata 
+        # 将配置传递给模型构造函数
+        model = model_module.Model(args_model, metadata)
         
         # 如果指定了预训练权重路径，加载权重
         if hasattr(args_model, 'weights_path') and args_model.weights_path:
@@ -56,10 +65,14 @@ def model_factory(args_model,metadata):
     
 
 def load_ckpt(model, ckpt_path):
-    """
-    加载模型权重，匹配shape后加载
-    Args:
-        ckpt_path (str): 模型权重文件路径
+    """Load weights from ``ckpt_path`` into ``model``.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Model instance to be updated.
+    ckpt_path : str
+        Path to a PyTorch checkpoint file.
     """
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")

@@ -44,15 +44,18 @@ class Model(nn.Module):
         # classification head
         self.classifier = nn.Linear(hidden_dim, num_classes)
     
-    def forward(self, x,data_id = None,task_id = None):
-        """
-        Forward pass of the model.
-        
-        Args:
-            x: Input tensor of shape [L, C] where L is sequence length and C is feature dimension
-            
-        Returns:
-            Output tensor of shape [L, num_classes]
+    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Tensor of shape ``(B, L, C)`` or ``(L, C)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Class logits of shape ``(B, num_classes)`` or ``(num_classes,)``.
         """
         # If input doesn't have batch dimension, add it
         if x.dim() == 2:

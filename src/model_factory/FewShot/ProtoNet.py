@@ -30,6 +30,18 @@ class Model(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Return embeddings for ``x``.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input of shape ``(B, L)`` or ``(B, C, L)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Embedding tensor of shape ``(B, embedding_dim)``.
+        """
         if x.ndim == 2:  # (B, L) -> (B, 1, L)
             x = x.unsqueeze(1)
         return self.encoder(x)
