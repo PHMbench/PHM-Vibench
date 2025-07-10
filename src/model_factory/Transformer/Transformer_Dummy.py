@@ -5,18 +5,22 @@ import torch.nn.functional as F
 
 
 class Model(nn.Module):
-    def __init__(self, args,metadata=None):
-        """
-        Initialize a simple transformer model for sequence classification.
-        
-        Args:
-            input_dim: Dimension of input features (C)
-            hidden_dim: Hidden dimension for transformer
-            num_heads: Number of attention heads
-            num_layers: Number of transformer layers
-            num_classes: Number of output classes
-            dropout: Dropout probability
-        """
+    """Simplified transformer encoder for sequence classification.
+
+    Parameters
+    ----------
+    args : Namespace
+        Should define ``input_dim``, ``hidden_dim``, ``num_heads``,
+        ``num_layers`` and ``num_classes``.
+    metadata : Any, optional
+        Unused.
+
+    Notes
+    -----
+    Input tensor is ``(B, L, C)`` and the output is ``(B, num_classes)``.
+    """
+
+    def __init__(self, args, metadata=None):
         super(Model, self).__init__()
 
         input_dim = args.input_dim
@@ -44,18 +48,15 @@ class Model(nn.Module):
         # classification head
         self.classifier = nn.Linear(hidden_dim, num_classes)
     
-    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        """Forward pass.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor of shape ``(B, L, C)``.
-
-        Returns
-        -------
-        torch.Tensor
-            Output tensor of shape ``(B, num_classes)``.
+    def forward(self, x,data_id = None,task_id = None):
+        """
+        Forward pass of the model.
+        
+        Args:
+            x: Input tensor of shape [L, C] where L is sequence length and C is feature dimension
+            
+        Returns:
+            Output tensor of shape [L, num_classes]
         """
         # If input doesn't have batch dimension, add it
         if x.dim() == 2:

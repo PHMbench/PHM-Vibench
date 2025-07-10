@@ -50,6 +50,22 @@ TaskHead_dict = {
 
 
 class Model(nn.Module):
+    """ISFM architecture with flexible embedding/backbone/head.
+
+    Parameters
+    ----------
+    args_m : Namespace
+        Defines ``embedding``, ``backbone`` and ``task_head`` as well as
+        ``num_classes``.
+    metadata : Any
+        Metadata accessor providing dataset information.
+
+    Notes
+    -----
+    Input tensors are expected with shape ``(B, L, C)`` and outputs depend on
+    the selected task head.
+    """
+
     def __init__(self, args_m, metadata):
         super(Model, self).__init__()
         self.metadata = metadata
@@ -102,7 +118,24 @@ class Model(nn.Module):
         # return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
-        # 
+        """Forward pass through embedding, backbone and head.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor ``(B, L, C)``.
+        file_id : Any, optional
+            Key used to fetch metadata for the sample.
+        task_id : str, optional
+            Task type such as ``"classification"`` or ``"prediction"``.
+        return_feature : bool, optional
+            If ``True`` return features instead of logits.
+
+        Returns
+        -------
+        torch.Tensor
+            Model output defined by the task head.
+        """
         self.shape = x.shape
         x = self._embed(x, file_id)
         x = self._encode(x)

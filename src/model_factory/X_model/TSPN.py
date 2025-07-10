@@ -17,12 +17,19 @@ from .Signal_processing import *
 from .Feature_extract import *
 
 class Model(nn.Module):
-    """
-    Transparent Signal Processing Network (TSPN) for time series classification.
-    This model consists of multiple signal processing layers, feature extractor layers, and a classifier.
-    Args:
-        args: Arguments containing model configuration such as input channels, output channels, scale, skip connection, and number of classes.
-        metadata: Optional metadata for the model (not used in this implementation).
+    """Transparent Signal Processing Network (TSPN).
+
+    Parameters
+    ----------
+    args : Namespace
+        Defines the module composition and ``num_classes``.
+    metadata : Any, optional
+        Unused placeholder for compatibility.
+
+    Notes
+    -----
+    Accepts an input tensor ``(B, L, C)`` and returns logits of shape
+    ``(B, num_classes)``.
     """
     def __init__(self, args, metadata=None):
         super(Model, self).__init__()
@@ -88,6 +95,22 @@ class Model(nn.Module):
         self.clf = Classifier(self.channel_for_classifier, self.args.num_classes).to(self.args.device)
 
     def forward(self, x, data_id = None,task_id = None):
+        """Compute logits for a batch.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(B, L, C)``.
+        data_id : Any, optional
+            Unused.
+        task_id : Any, optional
+            Unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Logits of shape ``(B, num_classes)``.
+        """
         # TODO: data_id,task_id
         for layer in self.signal_processing_layers:
             x = layer(x)

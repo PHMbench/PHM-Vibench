@@ -49,6 +49,8 @@ TaskHead_dict = {
 
 
 class Model(nn.Module):
+    """ISFM model without dataset-specific label counts."""
+
     def __init__(self, args_m, metadata):
         super(Model, self).__init__()
         self.metadata = metadata
@@ -93,7 +95,7 @@ class Model(nn.Module):
         # return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
-        # 
+        """Run the model on a batch."""
         self.shape = x.shape
         x = self._embed(x, file_id)
         x = self._encode(x)

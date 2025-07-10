@@ -53,8 +53,21 @@ class SConv_1D(nn.Module):
 numf=12
 
 class Model(nn.Module):
+    """Multi-level wavelet CNN classifier.
+
+    Parameters
+    ----------
+    args : Namespace
+        Must define ``in_channels`` and ``num_classes``.
+    metadata : Any, optional
+        Unused placeholder for compatibility.
+
+    Notes
+    -----
+    Input shape is ``(B, L, C)`` and output shape is ``(B, num_classes)``.
+    """
+
     def __init__(self, args, metadata=None):
-    # def __init__(self,input_size = 1,num_class = 4):
         super(Model, self).__init__()
     
         
@@ -81,7 +94,23 @@ class Model(nn.Module):
         self.fc = nn.Linear(numf*8, args.num_classes)
 
         
-    def forward(self, input,data_id = None,task_id = None):
+    def forward(self, input, data_id=None, task_id=None):
+        """Run a forward pass.
+
+        Parameters
+        ----------
+        input : torch.Tensor
+            Tensor of shape ``(B, L, C)``.
+        data_id : Any, optional
+            Unused.
+        task_id : Any, optional
+            Unused.
+
+        Returns
+        -------
+        torch.Tensor
+            Logits of shape ``(B, num_classes)``.
+        """
         
         input = rearrange(input, 'b l c -> b c l')
         DMT_yl,DMT_yh = self.DWT0(input)
