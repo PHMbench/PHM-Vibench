@@ -97,3 +97,25 @@ class Model(nn.Module):
         # 映射回输出维度
         x = self.fc1(x)  # (B, L, width) -> (B, L, C)
         return x
+
+# --- 使用示例 ---
+if __name__ == '__main__':
+    # B: batch_size, L: length, C: channels
+    B, L, C = 16, 1024, 3 
+    
+    # 初始化模型
+    modes = 16  # 傅里叶模式数
+    width = 64  # 隐藏层宽度
+    model = Model(modes=modes, width=width, channels=C)
+
+    # 创建一个随机输入张量
+    input_tensor = torch.randn(B, L, C)
+    print(f"输入张量形状: {input_tensor.shape}")
+
+    # 前向传播
+    output_tensor = model(input_tensor)
+    print(f"输出张量形状: {output_tensor.shape}")
+
+    # 检查输入输出形状是否一致
+    assert input_tensor.shape == output_tensor.shape
+    print("\n模型成功创建，输入和输出形状一致！")
