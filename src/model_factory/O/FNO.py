@@ -43,20 +43,15 @@ class SpectralConv1d(nn.Module):
 
 
 class Model(nn.Module):
-    """1D Fourier Neural Operator model.
-
-    Parameters
-    ----------
-    modes : int
-        Number of Fourier modes to keep.
-    width : int
-        Hidden channel width.
-    n_layers : int, optional
-        Number of FNO layers. Default ``4``.
-    channels : int, optional
-        Input and output channel dimension. Default ``1``.
     """
-    def __init__(self, modes: int, width: int, n_layers: int = 4, channels: int = 1):
+    1D 傅里叶神经算子 (FNO) 主模型
+    """
+    def __init__(self, modes, width, n_layers=4, channels=1):
+        """
+        :param modes: 要保留的傅里叶模式数
+        :param width: 隐藏层的通道数 (宽度)
+        :param n_layers: FNO层的数量
+        """
         super(Model, self).__init__()
         self.modes = modes
         self.width = width
@@ -76,19 +71,12 @@ class Model(nn.Module):
         # 3. 输出层：将宽度映射回输出通道数
         self.fc1 = nn.Linear(self.width, self.channels) # 假设输出通道数为1
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward computation.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor of shape ``(B, L, C)``.
-
-        Returns
-        -------
-        torch.Tensor
-            Output tensor of shape ``(B, L, C)``.
+    def forward(self, x):
         """
+        :param x: 输入张量，形状为 (B, L, C)
+        :return: 输出张量，形状为 (B, L, C)
+        """
+        # 输入张量形状: (B, L, C)
         
         # 提升到隐藏维度
         x = self.fc0(x) # (B, L, C) -> (B, L, width)

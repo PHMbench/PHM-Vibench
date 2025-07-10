@@ -5,7 +5,7 @@ from torch.utils.data import random_split
 from pytorch_lightning.utilities import CombinedLoader
 
 class ID_dataset(Dataset):
-    def __init__(self, data,metadata, args_data = None, args_task = None, mode="train"):
+    def __init__(self, data,metadata, args_data, args_task, mode="train"):
         """
         数据集类，管理数据ID。
         在数据集层面不进行具体的数据处理，只返回ID。
@@ -34,5 +34,3 @@ class ID_dataset(Dataset):
         id = self.ids[idx]
         data = self.data[id]
         return {'id': id, 'data': data, 'metadata': self.metadata[id]}
-
-
