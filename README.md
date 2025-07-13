@@ -939,7 +939,7 @@ PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制�
 
 ### 调试与测试 🐞 见[测试指南](./test/README.md)
 
-### 可视化界面示例 🎨 见[Streamlit App Prompt](./doc/streamlit_prompt.md)
+### Streamlit 界面示例 🌐 见[Streamlit 应用提示词](./doc/streamlit_prompt.md)
 
 ### 按需数据处理
 
