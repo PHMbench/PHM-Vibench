@@ -14,7 +14,6 @@ environment:
   wandb: False
   swanlab: False
   notes: 'template'
-
   workspace: 'PHMbench'
 
 
@@ -68,8 +67,6 @@ model:
   num_layers: 1 # TODO 
 
   task_head: H_04_VIB_pred # H_09_multiple_task #
-  # classification_head: H_02_distance_cla
-  # prediction_head: H_03_Linear_pred
   e_layers: 2
   factor: 4
 
