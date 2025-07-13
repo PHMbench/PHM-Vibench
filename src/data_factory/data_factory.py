@@ -19,6 +19,13 @@ from .samplers.Sampler import GroupedIdBatchSampler, BalancedIdSampler
 from .data_utils import smart_read_csv, MetadataAccessor, download_data
 from .samplers.Get_sampler import Get_sampler
 from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
+from ..utils.registry import Registry
+
+DATA_FACTORY_REGISTRY = Registry()
+
+def register_data_factory(name: str):
+    """Decorator to register a data factory implementation."""
+    return DATA_FACTORY_REGISTRY.register(name)
 
 
 
@@ -387,3 +394,8 @@ class department_data_factory(data_factory):
     """
     def __init__(self, args_data, args_task):
         super().__init__(args_data, args_task)
+
+
+# Register default factories
+register_data_factory("default")(data_factory)
+register_data_factory("department")(department_data_factory)
