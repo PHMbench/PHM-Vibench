@@ -45,6 +45,15 @@ echo "WANDB_MODE=disabled" > .env
 echo "VBENCH_HOME=$(pwd)" >> .env
 ```
 
+### 配置工具
+
+`src/utils/config_utils.py` 提供了一组便捷函数用于读取配置文件并组织实验目录：
+
+- `load_config(path)`：读取 YAML 配置并返回字典。
+- `makedir(path)`：确保目录存在。
+- `path_name(config, iteration=0)`：根据配置生成实验结果路径和实验名称。
+- `transfer_namespace(dict)`：将字典转换为 `SimpleNamespace`，便于以属性方式访问。
+
 ### 2. 如何添加新模型
 
 1. 在 `src/model_factory/` 下创建新的模型文件，如 `my_model.py`
@@ -67,28 +76,37 @@ class MyModel(BaseModel):
 
 4. 在 `configs/` 目录下创建使用该模型的配置文件
 
-### 3. 如何添加新数据集
+### 3. 如何自定义数据工厂
 
-1. 在 `src/data_factory/` 下创建新的数据集文件，如 `my_dataset.py`
-2. 实现数据集类，继承自 `BaseDataset`
-3. 使用装饰器注册数据集：
+1. 在 `src/data_factory/` 下创建新的工厂文件，如 `my_factory.py`
+2. 实现类继承自 `data_factory`
+3. 使用装饰器注册数据工厂：
 
 ```python
-from src.data_factory import register_dataset
+from src.data_factory import register_data_factory, data_factory
 
-@register_dataset('MyDataset')
-class MyDataset(BaseDataset):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # 数据集初始化代码...
-    
-    def prepare_data(self):
-        # 数据准备和预处理...
-        pass
-    
-    def get_data_loaders(self):
-        # 返回训练、验证和测试数据加载器
-        return train_loader, val_loader, test_loader
+@register_data_factory('MyFactory')
+class MyFactory(data_factory):
+    def _init_dataset(self):
+        ...
+```
+默认实现 `ID_data_factory` 便是这样一个示例，用于配合 `ID_dataset` 在任务阶段再处理原始数据。
+
+### 4. 注册新的任务和训练器
+
+任务和训练器同样通过装饰器完成注册：
+
+```python
+from src.task_factory import register_task
+from src.trainer_factory import register_trainer
+
+@register_task('DG', 'classification')
+class MyTask(Default_task):
+    ...
+
+@register_trainer('MyTrainer')
+def my_trainer(args_e, args_t, args_d, path):
+    ...
 ```
 
 ### 4. 测试和调试

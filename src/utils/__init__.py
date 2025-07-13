@@ -1,4 +1,19 @@
-# Utils 包初始化文件
-from .config_utils import load_config, makedir, path_name, transfer_namespace
+"""Utility package initialization."""
 
-__all__ = ['load_config', 'makedir', 'path_name', 'transfer_namespace']
+from .config_utils import (
+    load_config,
+    makedir,
+    build_experiment_name,
+    path_name,
+    transfer_namespace,
+)
+from .registry import Registry
+
+__all__ = [
+    "load_config",
+    "makedir",
+    "build_experiment_name",
+    "path_name",
+    "transfer_namespace",
+    "Registry",
+]

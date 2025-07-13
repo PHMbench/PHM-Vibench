@@ -1,35 +1,64 @@
-"""
-数据集工厂模块
-"""
-import importlib
-import os
-import glob
-from functools import partial
-from typing import Dict, Any, Optional
-from .data_factory import data_factory
+"""Public API for the data factory package."""
+
+from typing import Any
+
+from .data_factory import (
+    DATA_FACTORY_REGISTRY,
+    data_factory,
+    register_data_factory,
+)
 from .dataset_task.Dataset_cluster import IdIncludedDataset
+from .id_data_factory import IDDataFactory
 
-def build_data(args_data,args_task) -> Any:
-    """根据配置构建数据集实例
-    
-    Args:
-        config: 数据集配置字典，包含 "name" 和 "args" 字段
-        
-    Returns:
-        数据集实例
 
-        
+def resolve_data_factory_class(name: str):
+    """Return the factory class registered as ``name``.
 
-        
+    Parameters
+    ----------
+    name : str
+        Factory identifier from configuration.
+
+    Returns
+    -------
+    type
+        Data factory class corresponding to ``name``.
     """
-    data_factory = importlib.import_module("src.data_factory.data_factory")
+    try:
+        return DATA_FACTORY_REGISTRY.get(name)
+    except KeyError:
+        # default fallback
+        if name == "default":
+            return data_factory
+        raise
 
-    return data_factory(args_data, args_task)
+
+def build_data(args_data: Any, args_task: Any) -> Any:
+    """Instantiate a dataset using the configured factory.
+
+    Parameters
+    ----------
+    args_data : Any
+        Data related configuration namespace.
+    args_task : Any
+        Task configuration used during dataset creation.
+
+    Returns
+    -------
+    Any
+        Instantiated dataset factory.
+    """
+    name = getattr(args_data, "factory_name", "default")
+    factory_cls = resolve_data_factory_class(name)
+    return factory_cls(args_data, args_task)
 
 
-
-# 导出公共API
-# 当前模块仅暴露 `build_data` 方法。原先的 `register_dataset` 等接口
-# 在早期版本中已被移除，继续暴露这些不存在的名称会导致 `import *`
-# 时出现 `ImportError`。因此将 `__all__` 更新为实际可用的函数列表。
-__all__ = ["build_data", "IdIncludedDataset"]
+# public exports
+__all__ = [
+    "build_data",
+    "resolve_data_factory_class",
+    "register_data_factory",
+    "DATA_FACTORY_REGISTRY",
+    "IdIncludedDataset",
+    "IDDataFactory",
+]
