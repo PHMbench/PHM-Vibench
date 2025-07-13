@@ -2,8 +2,10 @@ import torch
 from typing import Any, Dict, Tuple
 from .Default_task import Default_task
 from .utils.data_processing import prepare_batch
+from . import register_task
 
 
+@register_task("Default_task", "ID_task")
 class task(Default_task):
     """Task that dynamically processes data from :class:`ID_dataset`."""
 
