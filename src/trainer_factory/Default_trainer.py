@@ -5,6 +5,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 import os
 import swanlab
 from swanlab.integration.pytorch_lightning import SwanLabLogger
+from src.trainer_factory import register_trainer
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -13,6 +14,7 @@ if 'LOCAL_RANK' in os.environ:
     is_main_process = local_rank == 0
     
 
+@register_trainer("Default_trainer")
 def trainer(args_e,args_t, args_d, path):
     """
     设置训练器的配置，包括日志记录、回调函数和数据加载器等。
