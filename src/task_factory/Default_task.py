@@ -124,8 +124,10 @@ class Default_task(pl.LightningModule):
         """
         try:
             # x, y, id = batch['x'], batch['y'], batch['id']
-            batch.update({'task_id': 'classification'}) # TODO : can be set by the successive
-            file_id = batch['file_id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
+            # Ensure a default task identifier if not provided
+            batch.setdefault('task_id', 'classification')
+            # Convert tensor-based ID to a Python int for indexing metadata
+            file_id = batch['file_id'][0].item()
             data_name = self.metadata[file_id]['Name']# .values
             # dataset_id = self.metadata[file_id]['Dataset_id'].item() 
             batch.update({'file_id': file_id})
