@@ -2,8 +2,10 @@ import torch
 import math
 import torch.nn as nn
 import torch.nn.functional as F
+from src.model_factory import register_model
 
 
+@register_model("Transformer", "Transformer_Dummy")
 class Model(nn.Module):
     """Simplified transformer encoder for sequence classification.
 

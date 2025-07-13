@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
+from src.task_factory import register_task
 from typing import Dict, List, Optional, Any, Tuple
 
 # 导入解耦后的组件
@@ -10,6 +11,7 @@ from .Components.metrics import get_metrics
 from .Components.regularization import calculate_regularization
 
 
+@register_task("Default_task", "Default_task")
 class Default_task(pl.LightningModule):
     """
     通用 PyTorch Lightning 任务模块 (已重构)
@@ -275,82 +277,5 @@ class Default_task(pl.LightningModule):
 
         # 对于非 ReduceLROnPlateau 的调度器，返回列表形式
         return [optimizer], [{'scheduler': scheduler, 'interval': 'epoch', 'frequency': 1}]
-
-
-# __main__ 部分需要更新以匹配新的配置结构和组件用法
-if __name__ == '__main__':
-    from dataclasses import dataclass, field
-    from argparse import Namespace
-
-    # 模拟配置类 (使用 Namespace 模拟)
-    train_args = Namespace(
-        optimizer='adam',
-        lr=1e-3,
-        weight_decay=0.0,
-        monitor="val_total_loss",
-        patience=10,
-        cla_loss="CE",
-        metrics=["acc", "f1"],
-        regularization={'flag': True, 'method': {'l2': 0.001}},
-        scheduler={'name': 'reduceonplateau', 'options': {'patience': 5}},
-        max_epochs=50
-    )
-
-    model_args = Namespace(
-        input_dim=128,
-        name='DummyModel',
-        type='SimpleFC'
-    )
-
-    data_args = Namespace(
-        task={'mydataset': {'n_classes': 10, 'path': '/path/to/data'}},
-        batch_size=32
-    )
-
-    # 模拟 Metadata
-    metadata = {'info': 'some metadata'}
-
-    # 创建模拟网络
-    class DummyModel(nn.Module):
-        def __init__(self, args_m, args_d):
-            super().__init__()
-            first_task_name = list(args_d.task.keys())[0]
-            n_classes = args_d.task[first_task_name]['n_classes']
-            self.fc = nn.Linear(args_m.input_dim, n_classes)
-        def forward(self, x): return self.fc(x)
-
-    # 初始化模型和任务模块
-    dummy_network = DummyModel(model_args, data_args)
-    task_model = Default_task( # 使用 Default_task 类名
-        network=dummy_network,
-        args_trainer=Namespace(),  # 模拟训练参数
-        args_task=train_args,
-        args_model=model_args,
-        args_data=data_args,
-        args_environment=Namespace(WANDB_MODE=False),  # 模拟环境参数
-        metadata=metadata # 传入 metadata
-    )
-
-    # 模拟数据 (符合 ((x, y), data_name) 格式)
-    batch_with_name = ((torch.randn(16, 128), torch.randint(0, 10, (16,))), 'mydataset')
-
-    print("\n测试训练步骤:")
-    # 模拟 trainer 环境以避免 configure_optimizers 中的 trainer 访问错误
-    # task_model.trainer = pl.Trainer(max_epochs=train_args.max_epochs)
-    train_loss_tensor = task_model.training_step(batch_with_name, 0)
-    print(f"训练总损失 (Tensor): {train_loss_tensor}")
-
-    print("\n测试验证步骤:")
-    task_model.validation_step(batch_with_name)
-
-    print("\n测试前向传播:")
-    output = task_model(torch.randn(5, 128))
-    print("输出形状:", output.shape)
-
-    print("\n测试指标配置:")
-    print(task_model.metrics)
-
-    print("\n测试 Metadata:")
-    print(task_model.metadata)
 
 

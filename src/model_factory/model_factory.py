@@ -1,17 +1,28 @@
-"""Model factory
-================
+"""Utilities for instantiating models from configuration."""
 
-This module dynamically imports model definitions under
-``src.model_factory`` and instantiates them using configuration
-objects. It also handles optional checkpoint loading.
-"""
-import os
+from __future__ import annotations
+
 import importlib
+import os
+from typing import Any
+
 import torch
 from ..utils.utils import get_num_classes
+from ..utils.registry import Registry
+
+MODEL_REGISTRY = Registry()
+
+def register_model(model_type: str, name: str):
+    """Decorator to register a model implementation."""
+    return MODEL_REGISTRY.register(f"{model_type}.{name}")
 
 
-def model_factory(args_model, metadata):
+def resolve_model_module(args_model: Any) -> str:
+    """Return the Python import path for the model module."""
+    return f"src.model_factory.{args_model.type}.{args_model.name}"
+
+
+def model_factory(args_model: Any, metadata: Any):
     """Instantiate a model by name.
 
     Parameters
@@ -28,35 +39,25 @@ def model_factory(args_model, metadata):
     nn.Module
         Instantiated model ready for training.
     """
-    # 获取模型名称
-    model_name = args_model.name
-    model_type = args_model.type
     args_model.num_classes = get_num_classes(metadata)
-    # 直接导入模型模块
+    key = f"{args_model.type}.{args_model.name}"
     try:
-        model_module = importlib.import_module(f"src.model_factory.{model_type}.{model_name}")
-        print(f"成功导入模型模块: {model_name}")
-    except ImportError:
-        raise ValueError(f"未找到名为 {model_name} 的模型模块")
-    
-    
-    # 创建模型实例
+        model_cls = MODEL_REGISTRY.get(key)
+    except KeyError:
+        module_path = resolve_model_module(args_model)
+        model_module = importlib.import_module(module_path)
+        model_cls = model_module.Model
+
     try:
-        # 将配置传递给模型构造函数
-        model = model_module.Model(args_model, metadata)
+        model = model_cls(args_model, metadata)
         
-        # 如果指定了预训练权重路径，加载权重
-        if hasattr(args_model, 'weights_path') and args_model.weights_path:
+        if hasattr(args_model, "weights_path") and args_model.weights_path:
             weights_path = args_model.weights_path
             if os.path.exists(weights_path):
                 try:
-                    # 尝试加载模型权重
                     load_ckpt(model, weights_path)
-                    print(f"加载权重成功: {weights_path}")
-                except Exception as e:
-                    print(f"加载权重时出错: {str(e)},初始化模型时使用默认权重")
-                    # 权重加载失败但不阻止模型使用
-                    pass
+                except Exception as e:  # pragma: no cover - runtime safeguard
+                    print(f"加载权重时出错: {e}")
         
         return model
     
@@ -93,3 +94,4 @@ def load_ckpt(model, ckpt_path):
         for name, model_sz in skipped:
             print(f"  {name}: checkpoint vs model {model_sz}")
     print(f"已加载匹配的权重: {ckpt_path}")
+
