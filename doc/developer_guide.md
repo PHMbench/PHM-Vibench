@@ -30,6 +30,14 @@ Vbench/
 4. **训练器工厂（trainer_factory）**：实现各种训练策略和流程
 5. **流水线（Pipeline）**：协调各组件协同工作的流程控制器
 
+### 注册机制
+
+框架中的四个工厂（数据、模型、任务、训练器）都通过轻量级的
+`Registry` 类进行管理。开发者可使用 `register_data_factory`、
+`register_model`、`register_task` 和 `register_trainer` 装饰器
+将自定义实现加入注册表。`build_data`、`build_model` 等函数会优先
+从注册表检索对象，如果未找到才会按模块路径导入。
+
 ## 开发工作流程
 
 ### 1. 环境配置
