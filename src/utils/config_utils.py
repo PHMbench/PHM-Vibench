@@ -2,6 +2,7 @@ import os
 import yaml
 import types
 from datetime import datetime
+from typing import Any, Dict
 
 def load_config(config_path):
     """加载YAML配置文件
@@ -74,3 +75,11 @@ def transfer_namespace(raw_arg_dict):
     for k, v in raw_arg_dict.items():
         setattr(namespace, k, v)
     return namespace
+
+
+def save_config(config: Dict[str, Any], path: str) -> str:
+    """Save config dictionary to a YAML file."""
+    makedir(os.path.dirname(path))
+    with open(path, "w") as f:
+        yaml.safe_dump(config, f)
+    return path

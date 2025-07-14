@@ -18,3 +18,5 @@ xlrd > 2.0.0
 argparse
 openpyxl
 tensorboard
+
+streamlit
