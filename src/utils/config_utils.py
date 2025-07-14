@@ -29,9 +29,36 @@ def load_config(config_path: str) -> Dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def makedir(path: str) -> str:
-    """Ensure directory existence and return the path."""
-    os.makedirs(path, exist_ok=True)
+def save_config(config: Dict[str, Any], out_path: str) -> str:
+    """Save configuration dictionary as a YAML file.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration to persist.
+    out_path : str
+        Destination file path.
+
+    Returns
+    -------
+    str
+        The path where the file was saved.
+    """
+    dir_path = os.path.dirname(out_path)
+    if dir_path:
+        makedir(dir_path)
+    with open(out_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(config, f, allow_unicode=True)
+    return out_path
+
+def makedir(path):
+    """创建目录（如果不存在）
+    
+    Args:
+        path: 目录路径
+    """
+    if not os.path.exists(path):
+        os.makedirs(path)
     return path
 
 
