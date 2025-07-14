@@ -2,6 +2,7 @@ import os
 import yaml
 import types
 from datetime import datetime
+from typing import Any, Dict
 
 def load_config(config_path):
     """加载YAML配置文件
@@ -22,6 +23,29 @@ def load_config(config_path):
         with open(config_path, 'r', encoding='gb18030', errors='ignore') as f:
             config = yaml.safe_load(f)
     return config
+
+
+def save_config(config: Dict[str, Any], out_path: str) -> str:
+    """Save configuration dictionary as a YAML file.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration to persist.
+    out_path : str
+        Destination file path.
+
+    Returns
+    -------
+    str
+        The path where the file was saved.
+    """
+    dir_path = os.path.dirname(out_path)
+    if dir_path:
+        makedir(dir_path)
+    with open(out_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(config, f, allow_unicode=True)
+    return out_path
 
 def makedir(path):
     """创建目录（如果不存在）
