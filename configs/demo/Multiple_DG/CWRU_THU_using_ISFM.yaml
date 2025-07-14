@@ -29,6 +29,7 @@ data:
   truncate_lenth: 100
   dtype: float32
   num_window: 64
+  normalization: standardization
 
 # 模型配置
 model:

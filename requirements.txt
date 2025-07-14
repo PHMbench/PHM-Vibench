@@ -25,3 +25,5 @@ reformer_pytorch
 scienceplots
 transformers
 timm
+
+streamlit

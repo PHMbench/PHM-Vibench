@@ -193,7 +193,26 @@ python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 
 # 所有数据集
 python main.py --config configs/demo/Multiple_DG/all.yaml
+### Streamlit 图形界面
+
+使用 Streamlit 提供的图形界面运行实验：
+
+```bash
+streamlit run streamlit_app.py
 ```
+
+该界面会加载 configs 目录中的 YAML 文件，并允许在侧边栏调整常见参数。
+加载后，页面会以折叠面板的形式列出 `data`、`model`、`task` 和 `trainer`
+等配置项，可直接修改任意键值后启动实验。
+
+修改完参数后，可点击页面下方的 **"保存配置"** 按钮将结果导出为 YAML
+文件。若需要重新加载新的配置，可使用 **"刷新"** 按钮，相关的 `data`、
+`model`、`task` 与 `trainer` 面板会随之更新。
+
+在侧边栏中也可以选择不同的流水线模块（例如 `Pipeline_01_default`
+或 `Pipeline_02_pretrain_fewshot`），针对 few-shot 预训练流程时需额外
+指定 second-stage 的配置文件。
+
 
 ### 📊 性能基准示例
 
