@@ -51,6 +51,20 @@ def save_config(config: Dict[str, Any], out_path: str) -> str:
         yaml.safe_dump(config, f, allow_unicode=True)
     return out_path
 
+def save_config(config: dict, path: str) -> None:
+    """Save configuration dictionary as a YAML file.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary to write.
+    path : str
+        Destination file path.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(config, f, allow_unicode=True)
+
 def makedir(path):
     """创建目录（如果不存在）
     
