@@ -10,50 +10,30 @@ from typing import Any, Dict, Tuple
 import yaml
 
 
-def load_config(config_path: str) -> Dict[str, Any]:
-    """Load a YAML configuration file.
-
-    Parameters
-    ----------
-    config_path : str
-        Path to the YAML file.
-
-    Returns
-    -------
-    Dict[str, Any]
-        Parsed configuration dictionary.
+def load_config(config_path):
+    """加载YAML配置文件
+    
+    Args:
+        config_path: 配置文件路径
+        
+    Returns:
+        配置字典
     """
+    print(os.getcwd())
     if not os.path.exists(config_path):
-        raise FileNotFoundError(f"\u914d\u7f6e\u6587\u4ef6 {config_path} \u4e0d\u5b58\u5728")
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        raise FileNotFoundError(f"配置文件 {config_path} 不存在")
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except UnicodeDecodeError:
+        with open(config_path, 'r', encoding='gb18030', errors='ignore') as f:
+            config = yaml.safe_load(f)
+    return config
 
 
-def save_config(config: Dict[str, Any], out_path: str) -> str:
-    """Save configuration dictionary as a YAML file.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration to persist.
-    out_path : str
-        Destination file path.
-
-    Returns
-    -------
-    str
-        The path where the file was saved.
-    """
-    dir_path = os.path.dirname(out_path)
-    if dir_path:
-        makedir(dir_path)
-    with open(out_path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(config, f, allow_unicode=True)
-    return out_path
 
 def save_config(config: dict, path: str) -> None:
     """Save configuration dictionary as a YAML file.
-
     Parameters
     ----------
     config : dict

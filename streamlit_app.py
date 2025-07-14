@@ -150,26 +150,26 @@ def download_config(cfg: Dict[str, Any]) -> None:
         return
     yaml_str = config_to_yaml(cfg)
     st.download_button(
-        "\ud83d\udcbe \u4e0b\u8f7d\u914d\u7f6e | Download Config",
+        "💾 下载配置 | Download Config",
         yaml_str,
         file_name="edited_config.yaml",
     )
 
 
-def render_field(key: str, value: Any) -> Any:
+def render_field(label: str, value: Any, key: str) -> Any:
     """Render a single config field based on value type."""
     if st is None:
         return value
     if isinstance(value, bool):
-        return st.checkbox(key, value=value)
+        return st.checkbox(label, value=value, key=key)
     if isinstance(value, int) and not isinstance(value, bool):
-        return st.number_input(key, value=value, step=1)
+        return st.number_input(label, value=value, step=1, key=key)
     if isinstance(value, float):
-        return st.number_input(key, value=value, format="%f")
+        return st.number_input(label, value=value, format="%f", key=key)
     if isinstance(value, (list, dict)):
         import yaml  # local import
-        return st.text_input(key, value=yaml.safe_dump(value))
-    return st.text_input(key, value=str(value))
+        return st.text_input(label, value=yaml.safe_dump(value), key=key)
+    return st.text_input(label, value=str(value), key=key)
 
 
 def edit_section(name: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -179,7 +179,8 @@ def edit_section(name: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
     updated: Dict[str, Any] = {}
     with st.expander(f"{name} Parameters"):
         for k, v in cfg.items():
-            new_v = render_field(k, v)
+            widget_key = f"{name}_{k}"
+            new_v = render_field(k, v, key=widget_key)
             updated[k] = cast_value(v, new_v)
     return updated
 
@@ -281,7 +282,7 @@ def run_app() -> None:
         download_config(final_cfg)
 
     if refresh_clicked:
-        st.experimental_rerun()
+        st.rerun()
 
     if run_clicked:
         with st.spinner("实验进行中..."):
