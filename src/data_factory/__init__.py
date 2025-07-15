@@ -11,6 +11,15 @@ from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .id_data_factory import IDDataFactory
 
 
+# def build_data(args_data,args_task) -> Any:
+#     """根据配置构建数据集实例
+#
+#     Args:
+#         config: 数据集配置字典，包含 "name" 和 "args" 字段
+        
+#     Returns:
+#         数据集实例
+
 def resolve_data_factory_class(name: str):
     """Return the factory class registered as ``name``.
 
