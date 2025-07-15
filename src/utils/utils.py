@@ -1,4 +1,3 @@
-
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
@@ -68,7 +67,7 @@ def init_lab(args_environment, cli_args, experiment_name):
     use_swanlab = getattr(args_environment, 'swanlab', False)
 
     # Initialize WandB
-    if wandb: # Check if wandb module is available
+    if wandb and wandb.run is None: # Check if wandb module is available and not already initialized
         if use_wandb:
             project_name = getattr(args_environment, 'project', 'vbench')
             notes = f'Task Notes:{getattr(cli_args, "notes", "")}\nConfig Notes:{getattr(args_environment, "notes", "")}'
@@ -79,12 +78,12 @@ def init_lab(args_environment, cli_args, experiment_name):
         else:
             wandb.init(mode='disabled')
             print("[INFO] WandB disabled by configuration.")
-    elif use_wandb:
+    elif use_wandb and wandb is None:
         print("[WARNING] WandB is configured to be used, but the 'wandb' library is not installed.")
 
 
     # Initialize SwanLab
-    if swanlab: # Check if swanlab module is available
+    if swanlab and swanlab.run is None: # Check if swanlab module is available and not already initialized
         if use_swanlab:
             project_name = getattr(args_environment, 'project', 'vbench')
             notes = f'N1:{getattr(cli_args, "notes", "")}\n_N2:{getattr(args_environment, "notes", "")}'
@@ -99,7 +98,7 @@ def init_lab(args_environment, cli_args, experiment_name):
         else:
             swanlab.init(mode='disabled')
             print("[INFO] SwanLab disabled by configuration.")
-    elif use_swanlab:
+    elif use_swanlab and swanlab is None:
         print("[WARNING] SwanLab is configured to be used, but the 'swanlab' library is not installed.")
 
 def close_lab():

@@ -28,7 +28,7 @@ def trainer_factory(
     path: str,
 ) -> Optional[pl.Trainer]:
     """Instantiate a trainer using configuration namespaces."""
-    name = getattr(args_trainer, "trainer_name", "Default_trainer")
+    name = getattr(args_trainer, "name", "Default_trainer")
     try:
         trainer_fn = TRAINER_REGISTRY.get(name)
     except KeyError:
