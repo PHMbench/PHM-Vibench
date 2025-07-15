@@ -1,0 +1,36 @@
+# Demo configuration using id_data_factory
+
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "."
+  PYTHONPATH: "."
+  PHMBench: "."
+  project: "id_demo"
+  seed: 42
+  output_dir: "results/id_demo"
+  notes: "ID dataset demo"
+  iterations: 1
+
+data:
+  factory: "id_data_factory"
+  data_dir: "./data"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 0
+
+model:
+  name: "Transformer_Dummy"
+  type: "Transformer"
+  input_dim: 2
+  num_classes: 4
+
+task:
+  name: "Classification"
+  type: "DG"
+  source_domain_id: [0]
+  target_domain_id: [1]
+  target_system_id: [1]
+
+trainer:
+  name: "Default_trainer"
+  wandb: false
