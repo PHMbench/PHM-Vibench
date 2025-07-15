@@ -1,5 +1,6 @@
 # App Module
 
+<<<<<<< HEAD
 This package provides a Streamlit interface for PHM-Vibench.  The code is split
 into small modules:
 
@@ -9,6 +10,8 @@ into small modules:
 - `gui.py` assembles the above pieces into the final application.
 
 Launch the app with:
+=======
+>>>>>>> cbe3fed574e34e411cbe74923297c7d0a77a5393
 This directory contains a Streamlit interface for running PHM-Vibench pipelines.
 The web UI guides users through loading metadata, configuring parameters and
 starting experiments. Terminal output is streamed in real time and the process
