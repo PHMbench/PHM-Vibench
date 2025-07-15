@@ -9,6 +9,14 @@ from typing import Dict, Any, Optional
 from .data_factory import data_factory
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 
+def _select_factory(args_data):
+    """Return the data factory class based on args_data.factory."""
+    factory_name = getattr(args_data, "factory", "data_factory")
+    if factory_name == "id_data_factory":
+        from .id_data_factory import id_data_factory
+        return id_data_factory
+    return data_factory
+
 def build_data(args_data,args_task) -> Any:
     """根据配置构建数据集实例
     
@@ -20,7 +28,8 @@ def build_data(args_data,args_task) -> Any:
 
         
     """
-    return data_factory(args_data, args_task)
+    factory_cls = _select_factory(args_data)
+    return factory_cls(args_data, args_task)
 
 
 
