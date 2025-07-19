@@ -1,7 +1,7 @@
 # from .backbone import *
 # from .task_head import *
 from src.model_factory.ISFM.embedding import *
-from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
+# from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 import torch.nn as nn
@@ -9,6 +9,7 @@ import numpy as np
 import os
 import torch
 import pandas as pd
+from src.model_factory.layers.StandardNorm import Normalize
 Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
@@ -35,7 +36,6 @@ TaskHead_dict = {
     'H_09_multiple_task': H_09_multiple_task, 
     'H_04_VIB_pred': H_04_VIB_pred
 }
-
 
 class Model(nn.Module):
     """ISFM variant with channel-aware embedding.

@@ -1,0 +1,4 @@
+
+[submodule "data/Rotor_simulation"]
+	path = data/Rotor_simulation
+	url = git@github.com:liq22/Rotor_simulation.git
