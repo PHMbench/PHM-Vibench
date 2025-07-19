@@ -4,10 +4,13 @@ from torch.utils.data import Dataset
 from torch.utils.data import random_split
 from pytorch_lightning.utilities import CombinedLoader
 
+# TODO balance id
+# def balance_id
+
 class ID_dataset(Dataset):
     """Return raw arrays and metadata by ID."""
 
-    def __init__(self, data, metadata, args_data, args_task, mode="train"):
+    def __init__(self, metadata, args_data, args_task, mode="train"):
         """
         数据集类，管理数据ID。
         在数据集层面不进行具体的数据处理，只返回ID。
@@ -17,8 +20,11 @@ class ID_dataset(Dataset):
             args_data: 数据处理参数
             args_task: 任务参数
             mode: 数据模式，可选 "train", "valid", "test"
+        Returns:
+            id
+            meta
         """
-        self.data = data
+
         self.metadata = metadata
         self.ids = list(self.metadata.keys())
         self.args_data = args_data
@@ -34,8 +40,8 @@ class ID_dataset(Dataset):
         if idx >= len(self.ids):
             raise IndexError(f"索引 {idx} 超出范围")
         id = self.ids[idx]
-        data = self.data[id]
-        return {"id": id, "data": data, "metadata": self.metadata[id]}
+        # data = self.data[id]
+        return {"id": id,  "metadata": self.metadata[id]}
 
 
 class set_dataset(ID_dataset):
