@@ -10,6 +10,40 @@ import pandas as pd
 import streamlit as st
 
 
+def _show_update_message(section: str) -> None:
+    """Display a brief toast indicating that *section* parameters were saved."""
+    st.success(f"{section} parameters updated", icon="✅")
+
+
+def _validate_path(path: str) -> None:
+    """Show visual feedback for ``path`` existence."""
+    if os.path.exists(path):
+        st.success("\u8def\u5f84\u6b63\u786e")
+    else:
+        st.error("\u8def\u5f84\u65e0\u6548")
+
+
+def _id_selectors(ids: List[str]) -> None:
+    """Update train/val/test ID selections in session state."""
+    st.session_state.train_ids = st.multiselect(
+        "Train IDs", ids, default=st.session_state.train_ids
+    )
+    st.session_state.val_ids = st.multiselect(
+        "Val IDs", ids, default=st.session_state.val_ids
+    )
+    st.session_state.test_id = (
+        st.selectbox(
+            "Test ID",
+            ids,
+            index=ids.index(st.session_state.test_id)
+            if st.session_state.test_id in ids
+            else 0,
+        )
+        if ids
+        else None
+    )
+
+
 # ---------------------------- Data utilities ----------------------------
 
 def load_metadata(file) -> Optional[pd.DataFrame]:
@@ -65,7 +99,7 @@ def plot_signal(signal: List[float]) -> None:
 # ---------------------------- Layout sections ---------------------------
 
 def data_section(ids: List[str]) -> None:
-    """Render data-related parameters."""
+    """Render inputs related to dataset selection."""
     with st.expander("Data", expanded=False):
         st.session_state.data_dir = st.text_input(
             "HDF5 Data Directory",
@@ -73,28 +107,9 @@ def data_section(ids: List[str]) -> None:
             key="data_dir_input",
         )
         if st.session_state.data_dir:
-            if os.path.exists(st.session_state.data_dir):
-                st.success("\u8def\u5f84\u6b63\u786e")
-            else:
-                st.error("\u8def\u5f84\u65e0\u6548")
-        st.session_state.train_ids = st.multiselect(
-            "Train IDs", ids, default=st.session_state.train_ids
-        )
-        st.session_state.val_ids = st.multiselect(
-            "Val IDs", ids, default=st.session_state.val_ids
-        )
-        st.session_state.test_id = (
-            st.selectbox(
-                "Test ID",
-                ids,
-                index=ids.index(st.session_state.test_id)
-                if st.session_state.test_id in ids
-                else 0,
-            )
-            if ids
-            else None
-        )
-        st.button("Update Data", on_click=lambda: None)
+            _validate_path(st.session_state.data_dir)
+        _id_selectors(ids)
+        st.button("Update Data", on_click=lambda: _show_update_message("Data"))
 
 
 def model_section() -> None:
@@ -109,7 +124,9 @@ def model_section() -> None:
             format="%f",
             help="\u8bad\u7ec3\u7684\u5b66\u4e60\u7387",
         )
-        st.button("Update Model", on_click=lambda: None)
+        st.button(
+            "Update Model", on_click=lambda: _show_update_message("Model")
+        )
 
 
 def task_section() -> None:
@@ -120,14 +137,17 @@ def task_section() -> None:
             value=st.session_state.task_type,
             help="\u4efb\u52a1\u7c7b\u578b\uff0c\u5982\u5206\u7c7b",
         )
-        st.button("Update Task", on_click=lambda: None)
+        st.button("Update Task", on_click=lambda: _show_update_message("Task"))
 
 
 def trainer_section() -> None:
     """Render trainer parameter inputs."""
     with st.expander("Trainer", expanded=False):
         st.write("...")
-        st.button("Update Trainer", on_click=lambda: None)
+        st.button(
+            "Update Trainer",
+            on_click=lambda: _show_update_message("Trainer"),
+        )
 
 
 def run_controls(config_path: str) -> None:
@@ -142,5 +162,7 @@ def run_controls(config_path: str) -> None:
             st.warning("\u8bf7\u6307\u5b9a\u6709\u6548\u7684 HDF5 \u76ee\u5f55")
         else:
             start_pipeline(config_path)
+            _show_update_message("Run")
     if pause_col.button("Pause/Resume") and st.session_state.process:
         toggle_pause()
+        _show_update_message("Pause")

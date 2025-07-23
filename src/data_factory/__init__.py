@@ -10,7 +10,7 @@ from .data_factory import data_factory
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 
 def _select_factory(args_data):
-    """Return the data factory class based on args_data.factory."""
+    """Return the appropriate data factory class based on ``args_data``."""
     factory_name = getattr(args_data, "factory", "data_factory")
     if factory_name == "id_data_factory":
         from .id_data_factory import id_data_factory

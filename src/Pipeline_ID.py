@@ -1,4 +1,4 @@
-"""Pipeline that uses id_data_factory."""
+"""Pipeline wrapper for ID datasets."""
 
 from src.Pipeline_01_default import pipeline as default_pipeline
 

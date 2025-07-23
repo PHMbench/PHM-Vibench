@@ -10,22 +10,28 @@ from typing import List
 import streamlit as st
 
 
+def _append_output(line: bytes) -> None:
+    """Append a decoded output ``line`` and rerun the Streamlit app."""
+    st.session_state.output_lines.append(line.decode())
+    st.experimental_rerun()
+
+
 def _reader_thread(process: subprocess.Popen) -> None:
     """Collect ``process`` output and store lines in the session state."""
     for line in iter(process.stdout.readline, b""):
-        st.session_state.output_lines.append(line.decode())
-        # Trigger rerun so the UI updates with new output
-        st.experimental_rerun()
+        _append_output(line)
     process.wait()
     st.session_state.process = None
     st.session_state.paused = False
 
 
 def start_pipeline(config_path: str) -> None:
-    """Launch ``main.py`` with ``config_path`` if no subprocess is active."""
+    """Start the main training script as a subprocess."""
+
     if st.session_state.process:
         st.warning("\u5df2\u5b58\u5728\u6b63\u5728\u8fd0\u884c\u7684\u5b50\u8fdb\u7a0b")
         return
+
     cmd = ["python", "main.py", "--config_path", config_path]
     process = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
@@ -38,7 +44,7 @@ def start_pipeline(config_path: str) -> None:
 
 
 def toggle_pause() -> None:
-    """Pause or resume the subprocess using POSIX signals."""
+    """Pause or resume the active subprocess using POSIX signals."""
     process = st.session_state.process
     if not process:
         return

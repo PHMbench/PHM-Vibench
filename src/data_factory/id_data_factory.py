@@ -8,7 +8,7 @@ class id_data_factory(data_factory):
     """Data factory that initializes default dataloaders."""
 
     def _make_loader(self, dataset, shuffle: bool) -> DataLoader:
-        """Return a DataLoader with default parameters for ``dataset``."""
+        """Return a ``DataLoader`` with common defaults."""
         return DataLoader(
             dataset,
             batch_size=self.args_data.batch_size,
@@ -18,7 +18,7 @@ class id_data_factory(data_factory):
         )
 
     def _init_dataloader(self):
-        """Initialize train/val/test dataloaders using default sampler."""
+        """Return dataloaders for training, validation and test sets."""
         self.train_loader = self._make_loader(self.train_dataset, shuffle=True)
         self.val_loader = self._make_loader(self.val_dataset, shuffle=False)
         self.test_loader = self._make_loader(self.test_dataset, shuffle=False)
