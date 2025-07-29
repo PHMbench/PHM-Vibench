@@ -81,7 +81,7 @@ task:
 # 训练器配置
 trainer:
   name: "Default_trainer"
-
+  monitor: "val_total_loss"
   wandb: False
   swanlab: true
   pruning: False

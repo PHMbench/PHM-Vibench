@@ -12,7 +12,7 @@ environment:
   seed: 42
   output_dir: "results/dummy_test"
   notes: "This is a dummy test configuration."
-  iterations: 5
+  iterations: 2
 
 # 数据配置
 data:
@@ -86,9 +86,10 @@ task:
 # 训练器配置
 trainer:
   name: "Default_trainer"
+  monitor: "val_total_loss"
   wandb: true
   pruning: False
-  num_epochs: 10
+  num_epochs: 2
   gpus: 1
   early_stopping: true
   patience: 5

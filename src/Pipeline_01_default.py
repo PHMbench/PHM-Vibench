@@ -142,6 +142,9 @@ def pipeline(args):
         # 关闭wandb和swanlab
         close_lab()
 
+        # 关闭data_factory
+        data_factory.data.close()
+
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)
     return all_results
