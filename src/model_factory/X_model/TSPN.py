@@ -17,7 +17,6 @@ from .Signal_processing import *
 from .Feature_extract import *
 
 class Model(nn.Module):
-<<<<<<< HEAD
     """Transparent Signal Processing Network (TSPN).
 
     Parameters
@@ -32,10 +31,6 @@ class Model(nn.Module):
     Accepts an input tensor ``(B, L, C)`` and returns logits of shape
     ``(B, num_classes)``.
     """
-=======
-    """Transparent Signal Processing Network (TSPN)."""
-
->>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661
     def __init__(self, args, metadata=None):
         """Build network modules from configuration.
 
@@ -105,7 +100,6 @@ class Model(nn.Module):
         print('# build classifier')
         self.clf = Classifier(self.channel_for_classifier, self.args.num_classes).to(self.args.device)
 
-<<<<<<< HEAD
     def forward(self, x, data_id = None,task_id = None):
         """Compute logits for a batch.
 
@@ -124,19 +118,6 @@ class Model(nn.Module):
             Logits of shape ``(B, num_classes)``.
         """
         # TODO: data_id,task_id
-=======
-    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        """Run the TSPN network.
-
-        Args:
-            x: 原始输入 ``(B, L, C)``。
-            data_id: 样本标识。
-            task_id: 任务标识。
-
-        Returns:
-            分类 logits ``(B, num_classes)``。
-        """
->>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661
         for layer in self.signal_processing_layers:
             x = layer(x)
         x = self.feature_extractor_layers(x)
