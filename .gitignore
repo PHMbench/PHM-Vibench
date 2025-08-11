@@ -166,3 +166,7 @@ test.yaml
 configs/test
 configs/LQ_paper
 main_LQ.py
+dev/
+plot/
+script/
+wandb/
