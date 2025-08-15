@@ -18,7 +18,7 @@ environment:
 data:
   # data_dir: "/mnt/crucial/LQ/PHMbench_data"  # 数据目录
   data_dir: "/mnt/crucial/LQ/PHM-Vibench"  # for dummy test
-  metadata_file: "metadata_6_1.xlsx"  # 指定元数据文件路径
+  metadata_file: "metadata_6_11.xlsx"  # 指定元数据文件路径
   batch_size: 32
   num_workers: 32
   train_ratio: 0.8
