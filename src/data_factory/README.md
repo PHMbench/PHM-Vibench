@@ -25,7 +25,7 @@ The module is organized into several key components, each with a specific role:
 | `dataset_task/` | Includes task-oriented dataset wrappers that implement different data strategies, such as custom sampling, data augmentation, or specific data arrangements for tasks like Domain Generalization (`DG/`), Few-Shot Learning (`FS/`), or Pre-training (`Pretrain/`). |
 | `samplers/` | Provides custom mini-batch samplers (e.g., `FS_sampler.py`) that can be plugged into the `DataLoader` to control how batches are composed, which is especially useful for advanced training schemes. |
 | `ID/` | A set of utilities for querying and filtering sample IDs based on metadata criteria, enabling precise control over the data used in experiments. |
-
+| `utils/` | Contains utility functions for data processing, such as windowing, normalization, and other common operations. |
 ---
 
 ## 🌊 Workflow

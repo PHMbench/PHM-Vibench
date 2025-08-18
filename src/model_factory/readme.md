@@ -5,7 +5,7 @@
 
 ## 🎯 Purpose
 
-The **Model Factory** is responsible for dynamically building and initializing neural network models. It acts as a centralized dispatcher that constructs a model instance based on configuration parameters, promoting a clean separation between model architecture and the main training pipeline. This modular approach allows for easy experimentation and the addition of new architectures without modifying the core training code.
+The **Model Factory** is responsible for dynamically building and initializing neural network models. Models are grouped by family and loaded dynamically at runtime. It acts as a centralized dispatcher that constructs a model instance based on configuration parameters, promoting a clean separation between model architecture and the main training pipeline. This modular approach allows for easy experimentation and the addition of new architectures without modifying the core training code.
 
 ---
 
