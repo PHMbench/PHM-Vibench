@@ -32,6 +32,7 @@ TaskHead_dict = {
     'H_02_distance_cla': H_02_distance_cla,
     'H_03_Linear_pred': H_03_Linear_pred,
     'H_09_multiple_task': H_09_multiple_task, # Add the new multiple task head
+    'MultiTaskHead': MultiTaskHead, # Add the enhanced multi-task head
 }
 
 
