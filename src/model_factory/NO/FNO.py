@@ -47,85 +47,149 @@ class SpectralConv1d(nn.Module):
 
 
 class Model(nn.Module):
-    """1D 傅里叶神经算子 (FNO) 主模型."""
+    """1D Fourier Neural Operator (FNO) for time-series analysis.
 
-    def __init__(self, modes: int, width: int, n_layers: int = 4, channels: int = 1) -> None:
-        """Construct the network.
+    A neural operator that learns mappings between function spaces using
+    Fourier transforms. Particularly effective for PDEs and time-series modeling.
 
-        Args:
-            modes: 保留的傅里叶模式数。
-            width: 隐藏层通道数。
-            n_layers: FNO 层数。
-            channels: 输入与输出的通道数。
+    Parameters
+    ----------
+    args : Namespace
+        Configuration object containing:
+        - input_dim : int, input feature dimension
+        - modes : int, number of Fourier modes to keep (default: 16)
+        - width : int, hidden layer width (default: 64)
+        - n_layers : int, number of FNO layers (default: 4)
+        - output_dim : int, output dimension (default: input_dim)
+    metadata : Any, optional
+        Dataset metadata
+
+    Input Shape
+    -----------
+    x : torch.Tensor
+        Input tensor of shape (batch_size, seq_len, input_dim)
+
+    Output Shape
+    ------------
+    torch.Tensor
+        Output tensor of shape (batch_size, seq_len, output_dim)
+
+    References
+    ----------
+    Li et al. "Fourier Neural Operator for Parametric Partial Differential Equations" ICLR 2021.
+    Chen and Chen "Universal Approximation to Nonlinear Operators by Neural Networks with Arbitrary Activation Functions and Its Application to Dynamical Systems" IEEE Transactions on Neural Networks 1995.
+    Lu et al. "Learning Nonlinear Operators via DeepONet Based on the Universal Approximation Theorem of Operators" Nature Machine Intelligence 2021.
+    Adapted for time-series industrial signals with spectral convolutions for operator learning.
+    """
+
+    def __init__(self, args, metadata=None):
+        """Initialize FNO model.
+
+        Parameters
+        ----------
+        args : Namespace
+            Configuration containing model parameters
+        metadata : Any, optional
+            Dataset metadata (unused)
         """
         super(Model, self).__init__()
-        self.modes = modes
-        self.width = width
-        self.n_layers = n_layers
-        self.channels = channels
 
-        # 1. 输入层：将输入通道提升到指定的宽度 (width)
-        self.fc0 = nn.Linear(self.channels, self.width) # 假设输入通道数为1，可以按需修改
+        # Extract parameters from args
+        self.input_dim = args.input_dim
+        self.modes = getattr(args, 'modes', 16)
+        self.width = getattr(args, 'width', 64)
+        self.n_layers = getattr(args, 'n_layers', 4)
+        self.output_dim = getattr(args, 'output_dim', self.input_dim)
 
-        # 2. FNO谱卷积层和普通卷积层
+        # Input projection: lift input to hidden dimension
+        self.fc0 = nn.Linear(self.input_dim, self.width)
+
+        # FNO spectral convolution layers and skip connections
         self.spectral_layers = nn.ModuleList()
         self.conv_layers = nn.ModuleList()
         for _ in range(self.n_layers):
             self.spectral_layers.append(SpectralConv1d(self.width, self.width, self.modes))
             self.conv_layers.append(nn.Conv1d(self.width, self.width, 1))
 
-        # 3. 输出层：将宽度映射回输出通道数
-        self.fc1 = nn.Linear(self.width, self.channels) # 假设输出通道数为1
+        # Output projection: map back to output dimension
+        self.fc1 = nn.Linear(self.width, self.output_dim)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
         """Forward pass.
 
-        Args:
-            x: 输入张量 ``(B, L, C)``。
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (B, L, C)
+        data_id : Any, optional
+            Data identifier (unused)
+        task_id : Any, optional
+            Task identifier (unused)
 
-        Returns:
-            输出张量 ``(B, L, C)``。
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape (B, L, output_dim)
         """
-        # 输入张量形状: (B, L, C)
-        
-        # 提升到隐藏维度
-        x = self.fc0(x) # (B, L, C) -> (B, L, width)
+        # Input tensor shape: (B, L, C)
 
-        # FNO要求输入形状为 (B, C, L)，所以需要进行维度重排
-        x = x.permute(0, 2, 1) # (B, L, width) -> (B, width, L)
+        # Lift to hidden dimension
+        x = self.fc0(x)  # (B, L, C) -> (B, L, width)
 
-        # 迭代应用FNO层
+        # FNO requires input shape (B, C, L), so permute dimensions
+        x = x.permute(0, 2, 1)  # (B, L, width) -> (B, width, L)
+
+        # Apply FNO layers iteratively
         for i in range(self.n_layers):
-            x1 = self.spectral_layers[i](x)
-            x2 = self.conv_layers[i](x)
-            x = x1 + x2 # 残差连接
-            x = F.gelu(x) # 应用激活函数
+            x1 = self.spectral_layers[i](x)  # Spectral convolution
+            x2 = self.conv_layers[i](x)     # Skip connection
+            x = x1 + x2  # Residual connection
+            x = F.gelu(x)  # Activation function
 
-        # 将维度重排回 (B, L, C)
-        x = x.permute(0, 2, 1) # (B, width, L) -> (B, L, width)
+        # Permute back to (B, L, C)
+        x = x.permute(0, 2, 1)  # (B, width, L) -> (B, L, width)
 
-        # 映射回输出维度
-        x = self.fc1(x)  # (B, L, width) -> (B, L, C)
+        # Map to output dimension
+        x = self.fc1(x)  # (B, L, width) -> (B, L, output_dim)
         return x
 
-# --- 使用示例 ---
 if __name__ == '__main__':
-    # B: batch_size, L: length, C: channels
-    B, L, C = 16, 1024, 3 
-    
-    # 初始化模型
-    modes = 16  # 傅里叶模式数
-    width = 64  # 隐藏层宽度
-    model = Model(modes=modes, width=width, channels=C)
+    # Test FNO model
+    from argparse import Namespace
 
-    # 创建一个随机输入张量
-    input_tensor = torch.randn(B, L, C)
-    print(f"输入张量形状: {input_tensor.shape}")
+    def test_fno():
+        """Test FNO model with different configurations."""
+        print("Testing FNO model...")
 
-    # 前向传播
-    output_tensor = model(input_tensor)
-    print(f"输出张量形状: {output_tensor.shape}")
+        # Test configuration
+        args = Namespace(
+            input_dim=3,
+            modes=16,
+            width=64,
+            n_layers=4,
+            output_dim=3
+        )
 
-    # 检查输入输出形状是否一致
-    assert input_tensor.shape == output_tensor.shape
-    print("\n模型成功创建，输入和输出形状一致！")
+        # Create model
+        model = Model(args)
+        print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+
+        # Test data
+        B, L = 8, 512
+        input_tensor = torch.randn(B, L, args.input_dim)
+        print(f"Input tensor shape: {input_tensor.shape}")
+
+        # Forward pass
+        with torch.no_grad():
+            output_tensor = model(input_tensor)
+
+        print(f"Output tensor shape: {output_tensor.shape}")
+
+        # Check input/output shape consistency
+        expected_shape = (B, L, args.output_dim)
+        assert output_tensor.shape == expected_shape, f"Expected {expected_shape}, got {output_tensor.shape}"
+        print("✅ FNO model test passed!")
+
+        return True
+
+    test_fno()

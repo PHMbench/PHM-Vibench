@@ -36,7 +36,7 @@ class MultiTaskHead(nn.Module):
         - num_classes: dict, number of classes for each dataset/system
         - hidden_dim: int, dimension of hidden layers (default: 256)
         - dropout: float, dropout probability (default: 0.1)
-        - rul_max_value: float, maximum RUL value for normalization (default: 1000.0)
+        - rul_max_value: float, maximum RUL value for normalization (default: 1)
         - use_batch_norm: bool, whether to use batch normalization (default: True)
         - activation: str, activation function name (default: 'relu')
     
@@ -59,7 +59,7 @@ class MultiTaskHead(nn.Module):
         self.input_dim = args_m.output_dim
         self.hidden_dim = getattr(args_m, 'hidden_dim', 256)
         self.dropout_prob = getattr(args_m, 'dropout', 0.1)
-        self.rul_max_value = getattr(args_m, 'rul_max_value', 1000.0)
+        self.rul_max_value = getattr(args_m, 'rul_max_value', 1)
         self.use_batch_norm = getattr(args_m, 'use_batch_norm', True)
         self.activation_name = getattr(args_m, 'activation', 'relu')
         
@@ -101,14 +101,14 @@ class MultiTaskHead(nn.Module):
         if self.use_batch_norm:
             layers.append(nn.BatchNorm1d(self.hidden_dim))
         layers.append(self.activation)
-        layers.append(nn.Dropout(self.dropout_prob))
+        # layers.append(nn.Dropout(self.dropout_prob))
         
         # Second shared layer
         layers.append(nn.Linear(self.hidden_dim, self.hidden_dim))
         if self.use_batch_norm:
             layers.append(nn.BatchNorm1d(self.hidden_dim))
         layers.append(self.activation)
-        layers.append(nn.Dropout(self.dropout_prob))
+        # layers.append(nn.Dropout(self.dropout_prob))
         
         return nn.Sequential(*layers)
     
@@ -121,7 +121,7 @@ class MultiTaskHead(nn.Module):
             head = nn.Sequential(
                 nn.Linear(self.hidden_dim, self.hidden_dim // 2),
                 self.activation,
-                nn.Dropout(self.dropout_prob),
+                # nn.Dropout(self.dropout_prob),
                 nn.Linear(self.hidden_dim // 2, n_classes)
             )
             classification_heads[str(system_id)] = head
@@ -133,10 +133,10 @@ class MultiTaskHead(nn.Module):
         return nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim // 2),
             self.activation,
-            nn.Dropout(self.dropout_prob),
+            # nn.Dropout(self.dropout_prob),
             nn.Linear(self.hidden_dim // 2, self.hidden_dim // 4),
             self.activation,
-            nn.Dropout(self.dropout_prob),
+            # nn.Dropout(self.dropout_prob),
             nn.Linear(self.hidden_dim // 4, 1),
             nn.ReLU()  # Ensure positive RUL values
         )
@@ -146,7 +146,7 @@ class MultiTaskHead(nn.Module):
         return nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim // 2),
             self.activation,
-            nn.Dropout(self.dropout_prob),
+            # nn.Dropout(self.dropout_prob),
             nn.Linear(self.hidden_dim // 2, 1)
             # Note: No sigmoid here as we'll use BCEWithLogitsLoss
         )

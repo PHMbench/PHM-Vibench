@@ -8,7 +8,7 @@ from .data_factory import (
     register_data_factory,
 )
 from .dataset_task.Dataset_cluster import IdIncludedDataset
-from .id_data_factory import IDDataFactory
+from .id_data_factory import id_data_factory
 
 
 
@@ -62,5 +62,5 @@ __all__ = [
     "register_data_factory",
     "DATA_FACTORY_REGISTRY",
     "IdIncludedDataset",
-    "IDDataFactory",
+    "id_data_factory",
 ]
