@@ -9,7 +9,6 @@ from torch.utils.data import Dataset
 from typing import Dict, Any, List, Optional
 import logging
 
-logger = logging.getLogger(__name__)
 
 
 class ID_dataset(Dataset):
@@ -64,7 +63,6 @@ class ID_dataset(Dataset):
         self.args_task = args_task
         self.mode = mode
 
-        logger.debug(f"Initialized ID_dataset with {len(self.ids)} IDs in {mode} mode")
 
     def __len__(self) -> int:
         """Return the number of available IDs."""
@@ -162,10 +160,6 @@ class set_dataset(ID_dataset):
             args_task: Task parameters
             mode: Dataset mode
         """
-        # Log if data parameter is provided but will be ignored
-        if data is not None:
-            logger.debug(f"Data parameter provided to set_dataset but will be ignored. "
-                        f"Data loading is deferred to task processing stage.")
 
         super().__init__(metadata, args_data, args_task, mode)
 

@@ -1,0 +1,30 @@
+# PHM-Vibench Refactored GUI Requirements
+# Core Streamlit and web framework dependencies
+
+streamlit>=1.28.0
+plotly>=5.15.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Scientific computing and ML
+torch>=2.0.0
+pytorch-lightning>=2.0.0
+scikit-learn>=1.3.0
+scipy>=1.10.0
+
+# Configuration and validation
+pydantic>=2.0.0
+PyYAML>=6.0
+
+# Data handling
+h5py>=3.8.0
+openpyxl>=3.1.0
+
+# Testing (optional, for development)
+pytest>=7.0.0
+hypothesis>=6.0.0
+
+# Additional utilities
+python-dateutil>=2.8.0
+pathlib2>=2.3.0
