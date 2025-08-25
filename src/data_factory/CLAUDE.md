@@ -77,6 +77,52 @@ sampler = Get_sampler(
 )
 ```
 
+## Vbench Data Components Guide
+
+This guide provides a clear overview of the three core data files used in Vbench and how to access them.
+
+### Core Components
+
+The dataset is organized into three main files, linked by a common `Id`.
+
+1.  **`metadata.xlsx` (Excel File)**
+    * **Purpose**: The central index of the dataset. It contains all descriptive information, labels, and parameters for each data sample.
+    * **Primary Key**: The `Id` column uniquely identifies each sample and links the three files.
+
+2.  **`data.h5` (HDF5 File)**
+    * **Purpose**: Stores the raw time-series signal data.
+    * **Access**: Data is retrieved using the `Id` from the metadata file as the key.
+    * **Shape**: The data for each `Id` is a 2D array of shape `(L, C)`, where `L` (Sample_lenth) and `C` (Channel) are specified in `metadata.xlsx`.
+
+3.  **`corpus.xlsx` (Excel File)**
+    * **Purpose**: Contains supplementary text descriptions and natural language annotations for each sample.
+    * **Access**: Text is retrieved using the corresponding `Id`.
+
+### `metadata.xlsx`: Column Descriptions
+
+The first row of the metadata file contains the following headers:
+
+* `Id`: **(Primary Key)** Unique identifier for the sample.
+* `Dataset_id`: Source dataset identifier.
+* `Name`: Human-readable name.
+* `Description`: Brief description of the sample.
+* `TYPE`: Type of data (e.g., vibration, acoustic).
+* `File`: Source file name.
+* `Visiable`: Visibility or usage flag.
+* `Label`: The primary fault class or label.
+* `Label_Description`: Textual description of the `Label`.
+* `Fault_level`: Severity or stage of the fault.
+* `RUL_label`: Remaining Useful Life value.
+* `RUL_label_description`: Description for the RUL value.
+* `Domain_id`: Identifier for the operational condition.
+* `Domain_description`: Textual description of the domain.
+* `Sample_rate`: Signal sampling rate (Hz).
+* `Sample_lenth (L)`: Number of data points in the sample.
+* `Channel (C)`: Number of channels in the sample.
+* `Fault_Diagnosis`: Flag for fault diagnosis task suitability.
+* `Anomaly_Detection`: Flag for anomaly detection task suitability.
+* `Remaining_Life`: Flag for RUL prediction task suitability.
+
 ## Supported Industrial Datasets
 
 ### Major Datasets

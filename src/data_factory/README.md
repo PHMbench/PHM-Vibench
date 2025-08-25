@@ -51,9 +51,7 @@ The data loading process follows a sequential workflow, orchestrated by the `dat
 
 ## metadata understanding
 
-您好！我是一名高级Vbench代码构建者。很高兴能帮助您优化Vbench的文档。清晰的文档是高效开发的基础。
 
-我已经根据您的要求，将原始的 "Data Components Overview" 文档进行了重构和优化，使其更具可读性和条理性。以下是优化后的版本，分为英文和中文，供您参考。
 
 ---
 
