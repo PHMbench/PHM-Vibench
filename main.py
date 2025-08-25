@@ -13,11 +13,12 @@ def main():
     
     parser.add_argument('--config_path', 
                         type=str, 
-                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
-                        default= 'configs/demo/X_Single_DG/MWA_CNN/HUST.yaml',
-                        # default= 'configs/demo/X_Single_DG/TSPN/HUST.yaml',
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
+                        default='configs/demo/X_Single_DG/MWA_CNN/HUST.yaml',
+                        # Alternative configs:
+                        # 'configs/demo/Single_DG/CWRU.yaml'
+                        # 'configs/demo/X_Single_DG/TSPN/HUST.yaml'
+                        # 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml'
+                        # 'configs/demo/dummy_test.yaml'
                         help='配置文件路径')
     parser.add_argument('--notes',
                         type=str,
