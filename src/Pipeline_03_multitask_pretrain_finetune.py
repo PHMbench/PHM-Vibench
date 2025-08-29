@@ -34,7 +34,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 import pytorch_lightning as pl
 
 # Import PHM-Vibench framework components
-from src.utils.config_utils import load_config, path_name, transfer_namespace
+from src.configs.config_utils import load_config, path_name, transfer_namespace
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
