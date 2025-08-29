@@ -1,16 +1,18 @@
 """
 Multi-Task Head Module for PHM Foundation Model
 
-This module implements a neural network head that simultaneously performs three distinct tasks:
+This module implements a neural network head that simultaneously performs four distinct tasks:
 1. Fault Classification: Multi-class classification to identify different types of faults
 2. Remaining Useful Life (RUL) Prediction: Regression task to predict remaining operational time
 3. Anomaly Detection: Binary classification to detect abnormal operating conditions
+4. Signal Prediction: Time-series forecasting to predict future signal sequences
 
 The module is designed to work with the ISFM (Intelligent Signal Foundation Model) architecture
 and integrates seamlessly with the PHM-Vibench framework.
 
 Author: PHM-Vibench Team
 Date: 2025-08-18
+Updated: 2025-08-29 - Added Signal Prediction task
 """
 
 import torch
@@ -19,13 +21,16 @@ import torch.nn.functional as F
 from typing import Dict, Optional, Tuple, Union
 import numpy as np
 
+# Import H_03_Linear_pred for signal prediction task
+from .H_03_Linear_pred import H_03_Linear_pred
+
 
 class MultiTaskHead(nn.Module):
     """
-    Multi-task head for simultaneous fault classification, RUL prediction, and anomaly detection.
+    Multi-task head for simultaneous fault classification, RUL prediction, anomaly detection, and signal prediction.
     
-    This module takes shared feature representations from the backbone network and produces
-    predictions for all three PHM tasks through separate output layers with appropriate
+    This module takes feature representations from the backbone network and produces
+    predictions for all four PHM tasks through separate output layers with appropriate
     dimensions and activation functions.
     
     Parameters
@@ -76,6 +81,7 @@ class MultiTaskHead(nn.Module):
         self.fault_classification_heads = self._build_classification_heads()
         self.rul_prediction_head = self._build_rul_head()
         self.anomaly_detection_head = self._build_anomaly_head()
+        self.signal_prediction_head = H_03_Linear_pred(args_m)
         
         # Initialize weights
         self._initialize_weights()
@@ -180,7 +186,7 @@ class MultiTaskHead(nn.Module):
         system_id : str or int, optional
             System/dataset identifier for classification task
         task_id : str, optional
-            Specific task to execute ('classification', 'rul_prediction', 'anomaly_detection', 'all')
+            Specific task to execute ('classification', 'rul_prediction', 'anomaly_detection', 'signal_prediction', 'all')
         return_feature : bool, optional
             If True, return intermediate features instead of final predictions
         
@@ -189,7 +195,13 @@ class MultiTaskHead(nn.Module):
         torch.Tensor or Dict[str, torch.Tensor]
             Task predictions or feature representations
         """
-        # Handle input shape: (B, L, C) -> (B, C) via mean pooling
+        # Special handling for signal prediction task - preserve sequence dimension
+        if task_id == 'signal_prediction':
+            # Signal prediction expects (B,L,C) input, use shape parameter from kwargs
+            shape = kwargs.get('shape', (96, 2))  # Default: predict 96 timesteps, 2 channels
+            return self.signal_prediction_head(x, shape=shape)
+        
+        # For other tasks: Handle input shape (B, L, C) -> (B, C) via mean pooling
         if x.dim() == 3:
             x = x.mean(dim=1)  # Average pooling over sequence length
         elif x.dim() != 2:
@@ -209,7 +221,7 @@ class MultiTaskHead(nn.Module):
         elif task_id == 'anomaly_detection':
             return self._forward_anomaly_detection(shared_features)
         elif task_id == 'all' or task_id is None:
-            return self._forward_all_tasks(shared_features, system_id)
+            return self._forward_all_tasks(shared_features, system_id, x, **kwargs)
         else:
             raise ValueError(f"Unknown task_id: {task_id}")
     
@@ -234,7 +246,7 @@ class MultiTaskHead(nn.Module):
         """Forward pass for anomaly detection."""
         return self.anomaly_detection_head(features)
     
-    def _forward_all_tasks(self, features: torch.Tensor, system_id: Optional[Union[str, int]]) -> Dict[str, torch.Tensor]:
+    def _forward_all_tasks(self, features: torch.Tensor, system_id: Optional[Union[str, int]], original_x: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         """Forward pass for all tasks simultaneously."""
         results = {}
         
@@ -251,6 +263,10 @@ class MultiTaskHead(nn.Module):
         
         # Anomaly detection
         results['anomaly_detection'] = self._forward_anomaly_detection(features)
+        
+        # Signal prediction (use original sequence, not mean-pooled features)
+        shape = kwargs.get('shape', (96, 2))  # Default shape
+        results['signal_prediction'] = self.signal_prediction_head(original_x, shape=shape)
         
         return results
 

@@ -1,5 +1,5 @@
 # Utils 包初始化文件
-from .config_utils import (
+from ..configs.config_utils import (
     load_config,
     makedir,
     build_experiment_name,

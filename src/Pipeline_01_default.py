@@ -40,24 +40,24 @@ def pipeline(args):
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
     for section in required_sections:
-        if section not in configs:
+        if not hasattr(configs, section):
             print(f"[ERROR] 配置文件中缺少 {section} 部分")
             return
     
     # 设置环境变量和命名空间
-    args_environment = transfer_namespace(configs.get('environment', {}))
+    args_environment = transfer_namespace(configs.environment if hasattr(configs, 'environment') else {})
 
-    args_data = transfer_namespace(configs.get('data', {}))
+    args_data = transfer_namespace(configs.data if hasattr(configs, 'data') else {})
 
-    args_model = transfer_namespace(configs.get('model', {}))
+    args_model = transfer_namespace(configs.model if hasattr(configs, 'model') else {})
 
-    args_task = transfer_namespace(configs.get('task', {}))
+    args_task = transfer_namespace(configs.task if hasattr(configs, 'task') else {})
 
-    args_trainer = transfer_namespace(configs.get('trainer', {}))
+    args_trainer = transfer_namespace(configs.trainer if hasattr(configs, 'trainer') else {})
     if args_task.name == 'Multitask':
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list    
-    for key, value in configs['environment'].items():
+    for key, value in configs.environment.__dict__.items():
         if key.isupper():
             os.environ[key] = str(value)
             print(f"[INFO] 设置环境变量: {key}={value}")
