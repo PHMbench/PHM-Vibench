@@ -32,7 +32,7 @@ from itertools import product
 from typing import Dict, List, Any, Tuple, Union
 from types import SimpleNamespace
 
-from .config_utils import load_config
+from .config_manager import load_config
 
 
 class AblationHelper:
