@@ -266,6 +266,46 @@ if args.debug:
     config.update(load_config({'task': {'epochs': 2}, 'data': {'num_workers': 0}}))
 ```
 
+## 🧪 系统测试与验证
+
+配置系统v5.2包含完整的测试套件，验证所有16种配置组合的正确性：
+
+### 运行完整测试
+```bash
+# 运行所有测试（16种配置组合 + 使用模式演示）
+python -m src.configs.config_utils
+```
+
+### 测试覆盖范围
+
+#### 16种配置组合矩阵 (4×4)
+```
+✅ 预设×预设覆盖    ✅ 预设×文件覆盖    ✅ 预设×字典覆盖    ✅ 预设×ConfigWrapper覆盖
+✅ 文件×预设覆盖    ✅ 文件×文件覆盖    ✅ 文件×字典覆盖    ✅ 文件×ConfigWrapper覆盖  
+✅ 字典×预设覆盖    ✅ 字典×文件覆盖    ✅ 字典×字典覆盖    ✅ 字典×ConfigWrapper覆盖
+✅ ConfigWrapper×预设覆盖 ✅ ConfigWrapper×文件覆盖 ✅ ConfigWrapper×字典覆盖 ✅ ConfigWrapper×ConfigWrapper覆盖
+```
+
+#### 功能验证项目
+- **点符号覆盖**: 验证`{'model.dropout': 0.5}`正确展开为嵌套结构
+- **ConfigWrapper方法**: 测试copy、update、get、contains等核心方法
+- **多阶段Pipeline**: 验证配置继承和链式更新功能
+- **消融实验**: 测试quick_ablation和quick_grid_search双模式API
+- **预设系统**: 验证YAML模板预设加载
+- **递归合并**: 测试嵌套配置的智能合并
+
+### 测试结果示例
+```
+=== 配置系统v5.2完整性测试 ===
+测试16种配置组合 (4×4)...
+
+📊 测试结果汇总:
+✅ 成功: 16/16 (100.0%)
+❌ 失败: 0/16
+
+🎉 所有16种配置组合全部测试通过！
+```
+
 ## 🔍 故障排除
 
 ### 常见问题

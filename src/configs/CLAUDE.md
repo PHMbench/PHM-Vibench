@@ -301,11 +301,27 @@ for config, params in quick_ablation('quickstart', 'model.dropout', [0.1, 0.2, 0
     result = run_experiment(config)
 ```
 
-### Grid Search
+### Grid Search - 双模式API
+
+支持两种参数传递方式：
+
+#### 方式1：字典传参（推荐，语义清晰）
 ```python
 from src.configs import quick_grid_search
 
-# Multi-parameter grid search
+for config, params in quick_grid_search(
+    'isfm',
+    {'model.d_model': [128, 256, 512],     # 直接使用点号
+     'task.lr': [0.001, 0.01], 
+     'data.batch_size': [32, 64]}
+):
+    print(f"Testing: {params}")
+    result = run_experiment(config)
+```
+
+#### 方式2：kwargs传参（便捷，IDE友好）
+```python
+# 双下划线自动转为点号
 for config, params in quick_grid_search(
     'isfm',
     model__d_model=[128, 256, 512],
@@ -314,6 +330,16 @@ for config, params in quick_grid_search(
 ):
     print(f"Testing: {params}")
     result = run_experiment(config)
+```
+
+#### Python语法限制说明
+```python
+# Python不允许在关键字参数中使用点号
+func(model.dropout=0.5)    # ❌ SyntaxError: invalid syntax
+func(model__dropout=0.5)   # ✅ 需要使用双下划线
+
+# 因此提供字典方式直接支持点号
+func({'model.dropout': 0.5})  # ✅ 字典方式支持点号
 ```
 
 ### Custom Ablation Patterns
@@ -636,6 +662,56 @@ if args.gpu:
     config.update(create_gpu_config_template())
 if args.debug:
     config.update(create_debug_config_template())
+```
+
+---
+
+## 系统测试与验证
+
+配置系统v5.2包含完整的测试套件，验证所有功能组合：
+
+### 运行完整测试
+```bash
+# 运行所有测试（16种配置组合 + 使用模式演示）
+python -m src.configs.config_utils
+```
+
+### 测试覆盖范围
+
+#### 16种配置组合矩阵 (4×4)
+```
+✅ 预设×预设覆盖    ✅ 预设×文件覆盖    ✅ 预设×字典覆盖    ✅ 预设×ConfigWrapper覆盖
+✅ 文件×预设覆盖    ✅ 文件×文件覆盖    ✅ 文件×字典覆盖    ✅ 文件×ConfigWrapper覆盖
+✅ 字典×预设覆盖    ✅ 字典×文件覆盖    ✅ 字典×字典覆盖    ✅ 字典×ConfigWrapper覆盖
+✅ ConfigWrapper×预设覆盖 ✅ ConfigWrapper×文件覆盖 ✅ ConfigWrapper×字典覆盖 ✅ ConfigWrapper×ConfigWrapper覆盖
+```
+
+#### 功能验证项目
+- ✅ **点符号覆盖**: `{'model.dropout': 0.5}` 正确展开
+- ✅ **ConfigWrapper方法**: copy, update, get, contains等
+- ✅ **多阶段Pipeline**: 配置继承和链式更新
+- ✅ **消融实验**: quick_ablation和quick_grid_search
+- ✅ **预设系统**: YAML模板加载
+- ✅ **递归合并**: 嵌套配置智能合并
+
+### 使用模式演示
+测试包含4种常用配置模式：
+1. **简单配置加载**: 基础预设和文件加载
+2. **参数调优**: 点符号参数覆盖
+3. **多阶段Pipeline**: 预训练→微调配置继承
+4. **配置组合**: 多文件配置合并
+
+### 测试结果示例
+```
+=== 配置系统v5.2完整性测试 ===
+测试16种配置组合 (4×4)...
+
+📊 测试结果汇总:
+✅ 成功: 16/16 (100.0%)
+❌ 失败: 0/16
+
+🎉 所有16种配置组合全部测试通过！
+🎯 配置系统v5.2功能完整性验证成功！
 ```
 
 ---
