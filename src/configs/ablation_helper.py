@@ -29,7 +29,7 @@
 """
 
 from itertools import product
-from typing import Dict, List, Any, Tuple, Union
+from typing import Dict, List, Any, Tuple, Union, Optional
 from types import SimpleNamespace
 
 from .config_utils import load_config
@@ -193,21 +193,37 @@ def quick_ablation(base_config_path: str,
 
 
 def quick_grid_search(base_config_path: str, 
+                     param_grid: Optional[Dict[str, List[Any]]] = None,
                      **param_kwargs) -> List[Tuple[SimpleNamespace, Dict[str, Any]]]:
-    """快速网格搜索的便捷函数
+    """快速网格搜索的便捷函数 - 支持双模式API
     
-    例如:
+    支持两种参数传递方式：
+    
+    方式1 - 字典传参（推荐，支持点号）:
         configs = quick_grid_search(
-            'configs/base.yaml',
-            model__d_model=[128, 256],
+            'quickstart',
+            {'model.dropout': [0.1, 0.2], 'task.lr': [0.001, 0.01]}
+        )
+    
+    方式2 - kwargs传参（便捷，IDE友好）:
+        configs = quick_grid_search(
+            'quickstart',
+            model__dropout=[0.1, 0.2],  # 双下划线自动转为点号
             task__lr=[0.001, 0.01]
         )
+    
+    注意：Python语法不允许在关键字参数中使用点号，因此方式2需要使用双下划线。
     """
-    # 将双下划线转换为点号格式
-    param_grid = {}
+    if param_grid is None:
+        param_grid = {}
+    
+    # 合并kwargs参数（将双下划线转换为点号）
     for key, values in param_kwargs.items():
         param_key = key.replace('__', '.')
         param_grid[param_key] = values
+    
+    if not param_grid:
+        raise ValueError("必须提供参数网格，使用param_grid字典或**kwargs参数")
     
     return AblationHelper.grid_search(base_config_path, param_grid)
 
@@ -261,14 +277,24 @@ if __name__ == "__main__":
         print(f"  ❌ 网格搜索测试失败: {e}")
     
     try:
-        # 示例3: 便捷函数测试
-        print("\n⚡ 示例3: 便捷函数")
-        configs = quick_grid_search(
+        # 示例3: 双模式API测试
+        print("\n⚡ 示例3: 双模式API测试")
+        
+        # 方式1：字典传参（推荐）
+        configs1 = quick_grid_search(
             config_path,
-            model__d_model=[64, 128],
+            {'model.d_model': [64, 128], 'task.epochs': [10, 20]}
+        )
+        print(f"  方式1 - 字典传参: {len(configs1)} 个配置")
+        
+        # 方式2：kwargs传参（便捷）
+        configs2 = quick_grid_search(
+            config_path,
+            model__d_model=[64, 128],  # 双下划线转点号
             task__epochs=[10, 20]
         )
-        print(f"  便捷网格搜索生成: {len(configs)} 个配置")
+        print(f"  方式2 - kwargs传参: {len(configs2)} 个配置")
+        print(f"  两种方式生成的配置数相同: {len(configs1) == len(configs2)}")
         
     except Exception as e:
         print(f"  ❌ 便捷函数测试失败: {e}")

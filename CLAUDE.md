@@ -1,4 +1,4 @@
-# CLAUDE.md
+# CLAUDE.md (change before user confirm)
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -23,7 +23,13 @@ The framework supports multiple experimental pipelines:
 - `Pipeline_ID`: ID-based data processing pipeline
 
 ### Configuration-Driven Experiments
-All experiments are configured through YAML files in `configs/` with sections for:
+All experiments use the unified configuration system v5.0 with flexible loading options:
+- **YAML Templates**: Built-in presets like `quickstart`, `isfm`, `gfs` for common patterns
+- **File Overrides**: Use any YAML file to override base configurations
+- **Dictionary Overrides**: Programmatic configuration via Python dictionaries
+- **ConfigWrapper Chaining**: Multi-stage pipeline configuration inheritance
+
+Configuration sections include:
 - `data`: Dataset configuration and preprocessing parameters
 - `model`: Model architecture and hyperparameters
 - `task`: Task type, loss functions, and training settings
@@ -32,6 +38,7 @@ All experiments are configured through YAML files in `configs/` with sections fo
 ## Module-Specific Documentation
 
 For detailed guidance on specific components, see:
+- [Configuration System](./src/configs/CLAUDE.md) - Unified configuration management, YAML templates, and multi-stage pipelines
 - [Data Factory](./src/data_factory/CLAUDE.md) - Dataset integration, processing, and reader implementation
 - [Model Factory](./src/model_factory/CLAUDE.md) - Model architectures, ISFM foundation models, and implementations  
 - [Task Factory](./src/task_factory/CLAUDE.md) - Task definitions, training logic, and loss functions
