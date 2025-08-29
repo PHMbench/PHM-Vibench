@@ -622,8 +622,344 @@ def pipeline(args):
 
 ---
 
-**文档版本**：v2.1  
+---
+
+## 十一、预设配置外部化（2025-08-29 补充）
+
+### 动机
+当前ConfigManager中的预设配置是硬编码在_init_presets方法中，不利于维护和扩展。应该将预设配置外部化到YAML文件中。
+
+### 实施方案
+
+#### 1. 创建预设模板目录结构
+```
+configs/presets/
+├── quickstart.yaml    # 快速开始模板
+├── basic.yaml         # 基础配置模板
+└── isfm.yaml          # ISFM模型模板
+```
+
+#### 2. 预设YAML文件示例
+**configs/presets/quickstart.yaml:**
+```yaml
+environment:
+  experiment_name: quickstart
+  project: phm_quickstart
+  seed: 42
+  iterations: 1
+  wandb: false
+
+data:
+  data_dir: ./data
+  metadata_file: metadata_dummy.csv
+  batch_size: 32
+  num_workers: 4
+
+model:
+  name: ResNet1D
+  type: CNN
+  num_classes: 4
+
+task:
+  name: classification
+  type: DG
+  epochs: 10
+  lr: 0.001
+
+trainer:
+  num_epochs: 10
+  gpus: 1
+```
+
+#### 3. 优势
+- **灵活性**：用户可以轻松添加/修改预设，无需修改代码
+- **可维护性**：预设配置与代码分离，更易管理
+- **扩展性**：可以创建更多预设模板
+- **社区贡献**：用户可以贡献自己的预设模板
+
+---
+
+## 十二、Pipeline完全兼容方案（2025-08-29 补充）
+
+### 问题识别
+不同Pipeline使用配置的方式不一致：
+
+**Pipeline_01_default.py** (已自动适配) ✅
+```python
+args_environment = transfer_namespace(configs.environment if hasattr(configs, 'environment') else {})
+```
+
+**Pipeline_02_pretrain_fewshot.py** (需要兼容) ❌
+```python
+args_environment = transfer_namespace(configs.get('environment', {}))  # .get()对SimpleNamespace不适用
+```
+
+**Pipeline_03_multitask_pretrain_finetune.py** (需要兼容) ❌
+```python
+args_data = transfer_namespace(config.get('data', {}))  # 同样问题
+```
+
+### 兼容性解决方案：ConfigWrapper类
+
+```python
+class ConfigWrapper(SimpleNamespace):
+    """兼容包装器，同时支持属性访问和字典方法"""
+    
+    def get(self, key, default=None):
+        """模拟字典的get方法"""
+        return getattr(self, key, default)
+    
+    def __getitem__(self, key):
+        """支持字典式访问"""
+        return getattr(self, key)
+    
+    def __contains__(self, key):
+        """支持in操作"""
+        return hasattr(self, key)
+```
+
+### 实施效果
+- 仅修改`dict_to_namespace`函数返回ConfigWrapper
+- 所有Pipeline无需修改任何代码
+- 同时支持：`config.data.batch_size` 和 `config.get('data', {})`
+
+---
+
+## 十三、去冗余统一方案（2025-08-29 最终优化）
+
+### 当前冗余问题
+- config_manager.py和config_utils.py都有load_config函数
+- 职责重叠，容易混淆
+- 增加了不必要的复杂度
+
+### 统一解决方案：合并到config_utils.py
+
+#### 最终文件结构（仅3个文件）
+```
+src/configs/
+├── __init__.py          # 简单导出（15行）
+├── config_utils.py      # 统一配置处理（250行）
+└── ablation_helper.py   # 消融工具（280行）
+```
+
+#### config_utils.py统一职责
+```python
+"""配置工具函数 - 统一的配置加载和处理"""
+
+# 预设配置（简单字典）
+PRESETS = {
+    'quickstart': {...},
+    'basic': {...},
+    'isfm': {...}
+}
+
+class ConfigWrapper(SimpleNamespace):
+    """兼容包装器，支持所有Pipeline的访问方式"""
+    
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+    
+    def __getitem__(self, key):
+        return getattr(self, key)
+    
+    def __contains__(self, key):
+        return hasattr(self, key)
+
+def load_config(config_path, overrides=None):
+    """统一的配置加载函数"""
+    # 支持预设名称、文件路径、字典对象
+    # 支持参数覆盖
+    # 返回ConfigWrapper（兼容所有Pipeline）
+    
+def save_config(config, output_path):
+    """保存配置到文件"""
+
+def validate_required_fields(config_dict):
+    """验证必需字段"""
+
+# 保留所有原有工具函数
+def transfer_namespace(raw_arg_dict):
+def build_experiment_name(configs):
+def path_name(configs, iteration=0):
+```
+
+#### 实施步骤
+1. **扩展config_utils.py**：合并config_manager功能
+2. **删除config_manager.py**：消除冗余
+3. **更新__init__.py**：从config_utils导入所有功能
+4. **更新ablation_helper.py**：改为从config_utils导入
+
+#### 影响评估
+**需要的改动**：
+- 扩展config_utils.py（约100行新增代码）
+- 删除config_manager.py
+- 更新2个import语句
+
+**不受影响**：
+- 所有Pipeline文件（继续从config_utils导入）
+- 所有factory函数
+- 配置文件格式
+
+### 最终优势总结
+- **文件数量**：9个 → 3个（减少67%）
+- **代码量**：2000行 → 545行（减少73%）
+- **无冗余**：每个功能只有一个实现位置
+- **完全兼容**：所有Pipeline无需修改
+- **清晰简单**：职责明确，易于维护
+- **性能优化**：减少模块导入层次
+
+---
+
+---
+
+## 十四、基于YAML模板的预设系统 v4.0（2025-08-29 最新）
+
+### 需求背景
+用户反馈：_init_presets不应在程序中定义，而应读取YAML作为template
+
+### 当前问题
+```python
+# config_utils.py中硬编码的预设
+PRESETS = {
+    'quickstart': {
+        'environment': {...},  # 大量硬编码配置
+        'data': {...},
+        'model': {...},
+        ...
+    }
+}
+```
+
+### v4.0 解决方案：基于YAML模板的动态预设
+
+#### 1. 预设映射机制
+```python
+# 预设名称映射到实际YAML模板文件
+PRESET_TEMPLATES = {
+    'quickstart': 'configs/demo/Single_DG/CWRU.yaml',
+    'basic': 'configs/demo/Single_DG/THU.yaml', 
+    'isfm': 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+    'gfs': 'configs/demo/GFS/GFS_demo.yaml',
+    'pretrain': 'configs/demo/Pretraining/Pretraining_demo.yaml',
+    'id': 'configs/demo/ID/id_demo.yaml'
+}
+```
+
+#### 2. 统一加载函数改进
+```python
+def load_config(config_source: Union[str, Path, Dict], 
+                overrides: Optional[Dict[str, Any]] = None) -> ConfigWrapper:
+    """
+    统一配置加载，支持：
+    - 预设名称：'quickstart', 'basic', 'isfm' 等
+    - YAML文件路径：'configs/my_config.yaml'
+    - 配置字典：直接传入dict对象
+    
+    Args:
+        config_source: 配置源
+        overrides: 增量式参数覆盖
+    """
+    if isinstance(config_source, str):
+        if config_source in PRESET_TEMPLATES:
+            # 从预设模板YAML加载
+            template_path = PRESET_TEMPLATES[config_source]
+            config_dict = _load_yaml_file(template_path)
+        elif os.path.exists(config_source):
+            # 从指定文件加载
+            config_dict = _load_yaml_file(config_source)
+        else:
+            raise FileNotFoundError(f"配置文件或预设 {config_source} 不存在")
+    # ... 后续处理
+```
+
+#### 3. 增量式配置示例
+
+##### 基础用法
+```python
+# 使用预设模板
+config = load_config('quickstart')
+
+# 预设 + 微调（增量式）
+config = load_config('quickstart', {
+    'model.d_model': 256,
+    'task.epochs': 50,
+    'data.batch_size': 64
+})
+```
+
+##### 消融实验集成
+```python
+# 基于预设模板的消融实验
+configs = quick_ablation('isfm', 'model.d_model', [128, 256, 512])
+
+# 基于预设的网格搜索
+configs = quick_grid_search(
+    'quickstart',  # 使用预设模板
+    model__d_model=[128, 256],
+    task__lr=[0.001, 0.01]
+)
+```
+
+#### 4. 优势分析
+
+**灵活性提升**
+- ✅ 预设基于实际配置文件，不是硬编码
+- ✅ 用户可以轻松添加自定义预设
+- ✅ 社区可以贡献配置模板
+
+**维护性增强**
+- ✅ 修改预设只需编辑YAML文件
+- ✅ 配置与代码分离
+- ✅ 版本控制友好
+
+**扩展性改善**
+- ✅ 支持增量式配置
+- ✅ 与消融工具完美集成
+- ✅ 可以基于任何YAML作为模板
+
+#### 5. 实施变更
+
+**修改文件**：
+- `src/configs/config_utils.py`：删除PRESETS字典，改用PRESET_TEMPLATES
+
+**代码变化**：
+- 删除约100行硬编码配置
+- 添加约20行模板加载逻辑
+- 净减少约80行代码
+
+**兼容性**：
+- 所有现有用法保持不变
+- Pipeline无需修改
+- 消融工具继续工作
+
+### 最终架构总结
+
+**文件结构**（极简3文件）：
+```
+src/configs/
+├── __init__.py          # 导出接口（15行）
+├── config_utils.py      # 核心功能（~170行，减少80行）
+└── ablation_helper.py   # 消融工具（280行）
+```
+
+**配置模板**（灵活扩展）：
+```
+configs/demo/
+├── Single_DG/          # 单域配置模板
+├── Multiple_DG/        # 多域配置模板  
+├── GFS/                # Few-shot配置模板
+├── Pretraining/        # 预训练配置模板
+└── ID/                 # ID任务配置模板
+```
+
+---
+
+**文档版本**：v4.0  
 **创建日期**：2025-08-29  
 **更新日期**：2025-08-29  
 **作者**：PHM-Vibench优化小组  
-**状态**：v1.0已实施，v2.0+参数分发策略待确认
+**状态**：
+- ✅ v1.0 SimpleNamespace优化（已实施）
+- ✅ v2.0 配置系统简化（已完成）  
+- ✅ v3.0 去冗余统一（已完成）
+- ✅ v4.0 基于YAML模板的预设系统（已完成）

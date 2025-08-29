@@ -32,7 +32,7 @@ from itertools import product
 from typing import Dict, List, Any, Tuple, Union
 from types import SimpleNamespace
 
-from .config_manager import load_config
+from .config_utils import load_config
 
 
 class AblationHelper:
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     print("=" * 40)
     
     # 示例配置路径（需要根据实际情况调整）
-    config_path = "configs/demo/CWRU.yaml"
+    config_path = "configs/demo/Single_DG/CWRU.yaml"
     
     try:
         # 示例1: 单参数消融

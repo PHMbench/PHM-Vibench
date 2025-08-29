@@ -23,7 +23,7 @@ PHM-Vibench配置系统
 """
 
 # 核心配置管理
-from .config_manager import ConfigManager, load_config, save_config, validate_config
+from .config_utils import load_config, save_config, validate_config
 
 # 工具函数
 from .config_utils import (
@@ -31,7 +31,8 @@ from .config_utils import (
     apply_overrides,
     transfer_namespace,
     build_experiment_name,
-    path_name
+    path_name,
+    PRESET_TEMPLATES
 )
 
 # 消融实验工具
@@ -39,7 +40,6 @@ from .ablation_helper import AblationHelper, quick_ablation, quick_grid_search
 
 __all__ = [
     # 核心功能
-    'ConfigManager',
     'load_config',
     'save_config',
     'validate_config',
@@ -50,6 +50,7 @@ __all__ = [
     'transfer_namespace',
     'build_experiment_name',
     'path_name',
+    'PRESET_TEMPLATES',
     
     # 消融实验
     'AblationHelper',
