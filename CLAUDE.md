@@ -23,11 +23,23 @@ The framework supports multiple experimental pipelines:
 - `Pipeline_ID`: ID-based data processing pipeline
 
 ### Configuration-Driven Experiments
-All experiments use the unified configuration system v5.0 with flexible loading options:
-- **YAML Templates**: Built-in presets like `quickstart`, `isfm`, `gfs` for common patterns
-- **File Overrides**: Use any YAML file to override base configurations
-- **Dictionary Overrides**: Programmatic configuration via Python dictionaries
-- **ConfigWrapper Chaining**: Multi-stage pipeline configuration inheritance
+PHM-Vibench v5.0 配置系统提供了极简而强大的实验管理能力：
+
+**核心优势**:
+- **统一接口**: 单一`load_config()`函数处理所有配置需求
+- **4×4灵活性**: 支持预设/文件/字典/ConfigWrapper × 4种覆盖方式
+- **智能合并**: 递归合并嵌套配置，点号展开自动处理
+- **链式操作**: 支持copy().update()链式配置构建
+- **100%兼容**: 所有现有Pipeline无需修改即可使用
+
+**快速示例**:
+```python
+from src.configs import load_config
+# 从预设加载并覆盖参数
+config = load_config('isfm', {'model.d_model': 512, 'task.lr': 0.001})
+```
+
+📖 **详细文档**: [配置系统v5.0完整指南](./src/configs/CLAUDE.md)
 
 Configuration sections include:
 - `data`: Dataset configuration and preprocessing parameters

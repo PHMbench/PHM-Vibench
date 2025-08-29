@@ -225,7 +225,16 @@ streamlit run streamlit_app.py
 
 ### 1. 配置文件详解 ⚙️
 
-PHM-Vibench 使用 YAML 配置文件定义实验，包含以下主要部分：
+PHM-Vibench 使用强大的配置系统 v5.0，支持灵活的实验管理：
+
+#### 🚀 核心特性
+- **统一配置管理**: 基于ConfigWrapper，支持4×4种配置组合方式
+- **预设模板系统**: 内置6种预设配置（quickstart、isfm、gfs等）快速上手
+- **点号参数覆盖**: 支持 `{'model.d_model': 512}` 直接覆盖嵌套参数
+- **多阶段Pipeline**: 完美支持预训练→微调等多阶段配置继承
+- **消融实验工具**: 内置双模式API的网格搜索和参数消融
+
+📖 **详细文档**: [配置系统v5.0完整指南](./src/configs/README.md)
 
 
 
