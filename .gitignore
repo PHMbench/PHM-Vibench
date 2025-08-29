@@ -176,10 +176,10 @@ plot/save
 script/LQ1/Pretraining/Pretraining_C+P.yaml
 wandb/
 configs/template/Pretraining_C+P_patchtst.yaml
-script/vibpaper/
-script/Vibench_paper/
+# script/vibpaper/
+# script/Vibench_paper/
 plot/data/
-script/Vibench_paper/
+# script/Vibench_paper/
 
 
 
