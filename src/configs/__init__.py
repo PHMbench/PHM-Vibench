@@ -23,16 +23,16 @@ PHM-Vibench配置系统
 """
 
 # 核心配置管理
-from .config_utils import load_config, save_config, validate_config
+from .config_utils import load_config, save_config
+
+# 配置对象
+from .config_utils import ConfigWrapper, PRESET_TEMPLATES
 
 # 工具函数
 from .config_utils import (
-    dict_to_namespace, 
-    apply_overrides,
-    transfer_namespace,
+    dict_to_namespace,
     build_experiment_name,
-    path_name,
-    PRESET_TEMPLATES
+    path_name
 )
 
 # 消融实验工具
@@ -42,20 +42,18 @@ __all__ = [
     # 核心功能
     'load_config',
     'save_config',
-    'validate_config',
+    
+    # 配置对象
+    'ConfigWrapper',
+    'PRESET_TEMPLATES',
     
     # 工具函数
     'dict_to_namespace',
-    'apply_overrides', 
-    'transfer_namespace',
     'build_experiment_name',
     'path_name',
-    'PRESET_TEMPLATES',
     
     # 消融实验
     'AblationHelper',
     'quick_ablation',
     'quick_grid_search'
 ]
-
-# load_config 函数已在 config_manager.py 中实现，这里无需重复定义
