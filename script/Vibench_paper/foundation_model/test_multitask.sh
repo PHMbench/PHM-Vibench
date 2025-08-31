@@ -14,7 +14,7 @@ export CUDA_VISIBLE_DEVICES=0
 export PYTHONPATH="${PYTHONPATH}:/home/lq/LQcode/2_project/PHMBench/PHM-Vibench"
 
 # Test directory
-EXPERIMENT_DIR="script/Vibench_paper/foundation model"
+EXPERIMENT_DIR="script/Vibench_paper/foundation_model"
 TEST_RESULTS_DIR="results/test_multitask"
 
 # Create test results directory

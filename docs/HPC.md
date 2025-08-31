@@ -1,0 +1,163 @@
+下面是一份可直接落地的《YCRC（Grace & Bouchet）GPU 项目最佳实践：从代码到提交》手册。结构涵盖：目录组织→环境→调试→提交→队列与优先级→数组作业（dSQ）→参数传递→依赖编排→监控优化→常见故障→“什么时候提交更容易上机”。
+1) 项目目录基线（可直接套用）
+your-project/
+├─ src/                     # 源码（Python/R/CUDA等）
+│  └─ train.py
+├─ configs/                 # 训练/推理超参、数据路径（YAML/JSON）
+│  └─ default.yaml
+├─ envs/                    # 环境锁定文件（conda .yaml / requirements.txt）
+│  ├─ env.yaml
+│  └─ requirements.txt
+├─ slurm/                   # 提交脚本与模板
+│  ├─ grace_gpu_a100.sbatch
+│  ├─ bouchet_gpu_h200.sbatch
+│  └─ dsq_jobs.txt          # dSQ 作业清单（每行一条命令）
+├─ scripts/                 # 数据预处理、评测脚本
+│  ├─ preprocess.sh
+│  └─ eval.sh
+├─ logs/                    # 统一收集 slurm 日志（建议 slurm-%A_%a.out）
+├─ notebooks/               # OOD/Jupyter 调试用
+└─ README.md                # 用法、依赖、分区说明与常见问题
+Slurm 输出名可使用 %j/%A/%a 模式变量，便于按 jobid/数组下标归档，例如 #SBATCH -o logs/slurm-%A_%a.out。此用法见 YCRC “Run Jobs with Slurm” → Common Job Request Options（包含输出命名、--time/--mem/--cpus-per-task/--gpus 等常用选项）。
+2) 环境管理（Conda / 模块 / 容器）
+Conda（推荐）：通过 miniconda 模块创建/激活环境；不要把 Python/R 模块与 Conda 环境混用；创建/安装包必须在计算节点上进行（salloc 申请交互节点再 module load miniconda）。示例与注意事项详见官方 Conda 指南。
+Jupyter(OOD)：首次选择 ycrc_default 会自动构建；自建环境需包含 jupyter，并在构建后执行 ycrc_conda_env.sh update 让环境出现在 OOD 下拉列表。
+模块（modules）：系统已预装常用软件；避免与 Conda 同时加载 Python/R 模块，以免冲突。
+容器（Apptainer）：用于封装依赖/复现环境，支持在计算节点运行，官方提供容器开发指南。
+3) 开发→调试→提交：最短闭环
+交互调试（短时）
+申请交互会话（默认进 devel 分区），例如：
+ salloc -t 2:00:00 --mem=8G。
+进入后 module load miniconda && conda activate <env>，小规模跑通核心流程。
+锁定参数
+将路径/超参写入 configs/default.yaml；避免在脚本里硬编码。
+准备批处理脚本（sbatch）
+参考下文模板，根据目标集群/分区/卡型调整 --partition 与 --gpus。
+常用选项（--time/--mem/--cpus-per-task/--gpus/--output）详见 “Run Jobs with Slurm”。
+4) GPU 分区与模板
+4.1 Grace（公共 gpu 分区；需显式申请 GPU）
+必须用 --gpus 申请 GPU，例如 --gpus=a5000:2；未申请到 GPU 不要占用 GPU 节点。
+Grace · A100 单卡示例
+#!/bin/bash
+#SBATCH -J exp_grace_a100
+#SBATCH -p gpu
+#SBATCH --gpus=a100:1
+#SBATCH -t 08:00:00
+#SBATCH -c 4
+#SBATCH --mem=30G
+#SBATCH -o logs/slurm-%j.out
+
+module reset
+module load miniconda
+conda activate YOUR_ENV
+
+python -u src/train.py --config configs/default.yaml
+说明：--gpus 为 YCRC 官方推荐申请方式；其它通用选项见“Common Job Request Options”。
+4.2 Bouchet（H200/RTX 5000 Ada）
+Bouchet 配有 80× NVIDIA H200 与 48× RTX 5000 Ada；面向 AI 工作负载。
+Bouchet · H200 单卡示例
+#!/bin/bash
+#SBATCH -J exp_bch_h200
+#SBATCH -p gpu_h200
+#SBATCH --gpus=h200:1
+#SBATCH -t 08:00:00
+#SBATCH -c 8
+#SBATCH --mem=64G
+#SBATCH -o logs/slurm-%j.out
+
+module reset
+module load miniconda
+conda activate YOUR_ENV
+
+python -u src/train.py --config configs/default.yaml
+Bouchet · RTX 5000 Ada 单卡示例
+#!/bin/bash
+#SBATCH -J exp_bch_rtxada
+#SBATCH -p gpu
+#SBATCH --gpus=rtx_5000_ada:1
+#SBATCH -t 08:00:00
+#SBATCH -c 4
+#SBATCH --mem=32G
+#SBATCH -o logs/slurm-%j.out
+
+module reset && module load miniconda
+conda activate YOUR_ENV
+python -u src/train.py
+提示：具体分区/默认上限以集群页为准；YCRC 也提供 PyTorch 模块与 GPU 指南（若选模块路径）。
+4.3 可选：Priority & Scavenge
+Priority Tier：快车道分区（如 priority_gpu），在队列中优先于标准层；适合必须尽快启动的作业。
+Scavenge / scavenge_gpu：可被抢占的“捡漏”分区；Grace 亦有 scavenge_gpu。
+5) dSQ 作业数组（高效批量提交）
+当你有大量相似小任务，用 dSQ(Job Arrays) 比循环 sbatch 更好（回填/限速均更友好）。
+步骤
+写一个作业清单 slurm/dsq_jobs.txt：每行一条命令，例如
+python -u src/train.py --config configs/default.yaml --seed 1
+python -u src/train.py --config configs/default.yaml --seed 2
+...
+用 dSQ 生成并提交（常见 Slurm 选项可直接传入并转给 sbatch）：
+dsq --job-file slurm/dsq_jobs.txt \
+    -p gpu --gpus=a100:1 -t 4:00:00 -c 4 --mem=24G \
+    --submit --batch-file slurm/dsq-%j.sbatch
+YCRC 文档解释了 dSQ 的优势、写法与与 Slurm 集成方式；数组作业在“回填”与“Top-N 限制”统计上按一个作业计数，利于整体推进。
+也可与 Nextflow/COMSOL 等结合使用。
+6) 向作业传参（两种方式）
+命令行参数 或 环境变量 注入，YCRC 给出 Python/R 示例与推荐做法；避免修改源码即可更换输入/超参。
+7) 依赖编排（把多步流程串起来）
+使用 Slurm 依赖机制：--dependency=afterok:<jobid> 等，将预处理→训练→评测串成流水线；官方给了依赖类型与示例。
+8) 监控与优化（CPU/内存/GPU）
+运行后用 seff <jobid> / sacct -j <jobid> 看效率；“Run Jobs with Slurm”明确给出命令与上下文。
+Monitor CPU and Memory：文档教你 SSH 到作业所在节点查看瞬时占用；最大内存需等作业结束由记账生成。
+jobstats（门户/命令行）：查看 CPU/Memory/GPU/GPU 内存的利用曲线与报告；还有“总体 Slurm 使用量（getusage）”。
+资源申请策略：根据历史利用率下调到“刚好够”，尤其是 --time/--mem/--gpus/--cpus-per-task；更短墙时更利于回填启动。YCRC 在“Priority & Wait Time”中强调了数组作业与回填的交互。
+9) 常见故障与限速
+内存不足被 OOM：slurmstepd: error: Detected 1 oom-kill event(s) → 提高 --mem 或优化程序；详见“Common Job Failures”。
+提交限速（避免刷队列）：集群对提交速率有限制（如文档提到200 jobs/hour 阈值）；使用 dSQ/依赖作业/Nextflow 的混合执行模式可避免超限。
+10) 什么时候提交更容易上机（实践建议）
+晚间（22:00–08:00 ET）与周末：公共 GPU 分区普遍更空；9 月学期中 Bouchet 课程使用多，白天更拥挤，夜晚/周末更友好（YCRC 明确课程用户可用公共分区；“更拥挤”的结论基于此政策与典型 HPC 负载规律的合理推断，具体以你实际 squeue/监控为准）。
+必须马上跑：若你组开通 Priority Tier，优先投 priority_gpu。
+实时判断：
+ squeue --me 查看队列；sprio -j <jobid> 看优先级；配合门户状态与 getusage 评估组内 fairshare。关键命令与页面见 YCRC 的调度与监控文档。
+附录 A：通用 CPU 作业模板
+#!/bin/bash
+#SBATCH -J exp_cpu
+#SBATCH -p general
+#SBATCH -t 04:00:00
+#SBATCH -c 8
+#SBATCH --mem=32G
+#SBATCH -o logs/slurm-%j.out
+
+module reset
+module load miniconda
+conda activate YOUR_ENV
+
+python -u src/train.py --config configs/default.yaml --device cpu
+常用参数详见“Run Jobs with Slurm”→Common Job Request Options。
+附录 B：从 0 到 1 的最小提交流程（Checklist）
+创建/激活环境（交互节点）：module load miniconda && conda create -n proj ... && conda activate proj；OOD 场景执行 ycrc_conda_env.sh update。
+小规模调通（salloc）→ 保存超参到 configs/。
+编写 sbatch（Grace/Bouchet 各一份）并设置日志命名。
+批量任务 用 dSQ（数组作业）而不是循环 sbatch。
+提交后监控：seff/sacct + jobstats + getusage；下一波作业据此缩短墙时/降低资源请求。
+紧急任务：用 priority_gpu；能容忍中断的长作业考虑 scavenge/scavenge_gpu。
+如果你把目标卡型（A100/H200/RTX 5000 Ada）、单次训练时长/显存、并发规模告诉我，我可以按这份规范把 Grace/Bouchet 的 .sbatch 模板与 dSQ 作业清单直接为你填好，并按夜间/周末的时间窗切成最容易被回填启动的墙时组合。
+
+
+
+
+
+
+
+
+
+
+
+记录一些信息
+
+
+
+
+
+
+
+
+

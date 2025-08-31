@@ -106,6 +106,9 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
         sampler = _get_cddg_sampler(args_data, dataset, mode)
     elif args_task.type == 'DG':
         sampler = _get_dg_sampler(args_data, dataset, mode)
+    elif args_task.type == 'multi_task':
+        # Multi-task learning uses standard batch sampling
+        sampler = _get_pretrain_sampler(args_data, dataset, mode)  # Reuse pretrain sampler
     else:
         raise ValueError(f"Unknown task type for sampler: {args_task.type}")
         
