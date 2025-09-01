@@ -1,0 +1,54 @@
+# 长信号对比学习预训练配置
+# 基于ID_task架构，保持简洁实用
+
+data:
+  factory_name: "id"                    # 使用id_data_factory
+  dataset_name: "ID_dataset"            # 标准ID_dataset类
+  batch_size: 32                        # 批大小
+  num_workers: 4                        # 数据加载进程数
+  
+  # 窗口化参数（被BaseIDTask使用）
+  window_size: 1024                     # 固定窗口大小
+  stride: 512                           # 窗口步长
+  num_window: 2                         # 每个ID生成2个窗口
+  window_sampling_strategy: "random"    # 随机窗口采样
+  
+  # 数据预处理参数  
+  normalization: true                   # 启用标准化
+  truncate_length: 16384               # 最大信号长度
+
+model:
+  name: "M_01_ISFM"                    # ISFM基础模型
+  backbone: "B_08_PatchTST"            # PatchTST主干网络
+  d_model: 256                         # 模型隐藏维度
+
+task:
+  type: "pretrain"                     # 预训练任务类型
+  name: "contrastive_id"               # 任务名称
+  
+  # 训练参数
+  lr: 1e-3                            # 学习率
+  weight_decay: 1e-4                  # 权重衰减
+  
+  # 对比学习参数
+  temperature: 0.07                   # InfoNCE温度参数
+
+trainer:
+  # 基础训练参数
+  epochs: 50                          # 训练轮数
+  accelerator: "gpu"                  # 使用GPU
+  devices: 1                          # 单GPU训练
+  precision: 16                       # 混合精度训练
+  
+  # 优化参数
+  gradient_clip_val: 1.0              # 梯度裁剪
+  
+  # 验证和保存
+  check_val_every_n_epoch: 5          # 验证频率
+  
+  # 日志
+  log_every_n_steps: 50              # 日志记录频率
+
+environment:
+  save_dir: "save/"                   # 结果保存目录
+  experiment_name: "contrastive_pretrain"
