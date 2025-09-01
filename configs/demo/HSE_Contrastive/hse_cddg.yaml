@@ -1,0 +1,102 @@
+# HSE异构对比学习 跨系统域泛化配置
+# 基于CWRU_THU_using_ISFM.yaml，添加对比学习参数
+# 支持多系统间的异构信号泛化学习
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Contrastive_CDDG"
+  seed: 42
+  output_dir: "results/hse_contrastive"
+  notes: "HSE异构对比学习跨系统泛化实验"
+  iterations: 2
+
+# 数据配置
+data:
+  # 数据目录配置（根据实际环境调整）
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"  # for test environment
+  metadata_file: "metadata_6_1.xlsx"  # 指定元数据文件路径
+  batch_size: 32
+  num_workers: 32
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  
+  # ISFM架构配置
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  hidden_dim: 64
+  activation: "relu"
+  
+  # HSE嵌入配置（核心特征）
+  embedding: "E_01_HSE"       # 使用HSE异构信号嵌入
+  patch_size_L: 256           # 信号patch长度
+  patch_size_C: 1             # 通道patch大小
+  num_patches: 128            # patch数量
+  output_dim: 1024            # 嵌入维度
+  
+  # 骨干网络配置
+  backbone: "B_01_basic_transformer"
+  num_layers: 1
+  
+  # 任务头配置
+  task_head: "H_02_distance_cla"  # 距离分类头，支持度量学习
+
+# 任务配置（HSE对比学习核心配置）
+task:
+  name: "hse_contrastive"     # 对应任务文件名
+  type: "CDDG"                # 跨数据集域泛化任务类型
+  
+  # 跨系统泛化设置
+  target_domain_num: 1
+  target_system_id: [6]       # 目标系统ID
+  
+  # HSE对比学习参数（新增）
+  contrast_weight: 0.1        # 对比损失权重（0表示禁用对比学习）
+  temperature: 0.07           # 对比学习温度参数
+  use_hard_negatives: true    # 是否使用困难负样本挖掘
+  
+  # 标准训练参数
+  loss: "CE"                  # 主分类损失
+  metrics: ["acc"]            # 评估指标
+  optimizer: "adam"
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 10                  # 训练轮数
+  lr: 0.001                   # 学习率
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 5
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 3
+  gamma: 0.5
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  wandb: False
+  pruning: False
+  num_epochs: 10
+  gpus: 1
+  early_stopping: true
+  patience: 5
+  device: 'cuda'
