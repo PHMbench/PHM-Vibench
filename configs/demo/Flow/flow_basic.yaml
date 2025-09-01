@@ -1,0 +1,50 @@
+# Flow模型基础配置示例
+# M_04_ISFM_Flow - 最小可行版本
+
+model:
+  name: "M_04_ISFM_Flow"
+  type: "ISFM"
+  
+  # 序列参数
+  sequence_length: 1024
+  channels: 1
+  
+  # Flow模型参数  
+  hidden_dim: 256
+  time_dim: 64
+  condition_dim: 64
+  
+  # 噪声参数
+  sigma_min: 0.001
+  sigma_max: 1.0
+  
+  # 条件编码
+  use_conditional: true
+  num_domains: 20  # 预留空间
+  num_systems: 30  # 预留空间
+
+task:
+  name: "classification"  # 或者创建专门的flow task
+  
+  # 训练参数
+  optimizer:
+    name: "AdamW"
+    lr: 1e-4
+    weight_decay: 0.01
+  
+  scheduler:
+    name: "CosineAnnealingLR" 
+    eta_min_factor: 0.01
+
+trainer:
+  max_epochs: 50
+  batch_size: 32
+  num_workers: 4
+  precision: 16
+  gradient_clip_val: 1.0
+
+data:
+  datasets: ['CWRU']  # 单数据集开始测试
+  data_dir: 'data/'
+  sequence_length: 1024
+  normalize: true

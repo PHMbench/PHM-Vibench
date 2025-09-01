@@ -16,7 +16,10 @@ from .MultiModalFM import Model as MultiModalFM
 from .SignalLanguageFM import Model as SignalLanguageFM
 from .TemporalDynamicsSSL import Model as TemporalDynamicsSSL
 
+# Flow-based Generative Models
+from .M_04_ISFM_Flow import Model as M_04_ISFM_Flow
+
 __all__ = ['embedding', 'backbone', 'task_head',
            'ContrastiveSSL', 'MaskedAutoencoder', 'MultiModalFM',
-           'SignalLanguageFM', 'TemporalDynamicsSSL'
+           'SignalLanguageFM', 'TemporalDynamicsSSL', 'M_04_ISFM_Flow'
 ] #            'M_01_ISFM', 'M_02_ISFM'
