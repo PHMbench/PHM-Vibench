@@ -80,7 +80,7 @@ def call_backs(args, path):
     """
     # 检查点回调（保存最好的模型）
     checkpoint_callback = ModelCheckpoint(
-        monitor=args.monitor,
+        monitor=getattr(args, 'monitor', 'val_loss'),  # Default monitor
         filename='model-{epoch:02d}-{val_loss:.4f}',
         save_top_k=getattr(args, 'save_top_k', 1),  # 从args中读取保存的模型数量
         mode='min',
@@ -90,12 +90,12 @@ def call_backs(args, path):
     callback_list = [checkpoint_callback]
 
     # 模型修剪回调（根据需求添加）
-    if args.pruning:
+    if getattr(args, 'pruning', False):  # Default to False if not specified
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
     
     # 早期停止回调
-    if args.early_stopping:
+    if getattr(args, 'early_stopping', True):  # Default to True for safety
         early_stopping = create_early_stopping_callback(args)
         callback_list.append(early_stopping)
     
@@ -140,9 +140,9 @@ def create_early_stopping_callback(args):
     """
     # 配置早期停止回调，监控验证集的损失
     early_stopping = EarlyStopping(
-        monitor=args.monitor, # TODO @liq22
+        monitor=getattr(args, 'monitor', 'val_loss'),  # Default monitor
         min_delta=0.00,
-        patience=args.patience,  # 从args中读取patience值
+        patience=getattr(args, 'patience', 10),  # Default patience of 10 epochs
         verbose=True,
         mode='min',
         check_finite=True,  # 防止无穷大或NaN值时停止训练

@@ -3,15 +3,22 @@
 ## Root Cause Analysis
 
 ### Investigation Summary
-Conducted detailed analysis of multi-task model initialization failure. Investigation focused on the TypeError occurring during MultiTaskHead creation, traced back through the call stack to identify the source of None values in class count calculations.
+Conducted comprehensive analysis of multi-task model initialization failure by examining the full call stack, analyzing affected code components, and reviewing existing patterns in the codebase. Investigation confirmed that XJTU dataset uses -1 labels for samples that don't participate in classification training, and identified established filtering patterns already implemented in other components.
 
 ### Root Cause
-The `get_num_classes()` method in `M_01_ISFM.py` fails to properly handle datasets with NaN values and -1 labels. When `max()` is applied to pandas Series containing NaN values, it returns NaN, which propagates through the calculation and results in None being passed to PyTorch's `nn.Linear` layer.
+The `get_num_classes()` method in `M_01_ISFM.py` (lines 66-70) fails to handle datasets with NaN values and -1 labels. The method directly applies `max()` to pandas Series containing these invalid values:
+
+```python
+num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
+```
+
+When `max()` encounters NaN values, it returns NaN, which propagates through the calculation and ultimately causes PyTorch's `nn.Linear` layer to fail with TypeError.
 
 ### Contributing Factors
-1. **Inconsistent label formats**: Industrial datasets use different conventions (-1 for anomalies, NaN for unlabeled)
-2. **Lack of data validation**: No preprocessing to handle invalid label values
-3. **Brittle calculation**: Direct max() without filtering invalid values
+1. **Industrial dataset conventions**: Different datasets use -1 for non-training samples (confirmed: XJTU uses -1 for samples not participating in classification training)
+2. **Mixed label formats**: Some datasets contain NaN values for unlabeled samples  
+3. **No input validation**: Missing preprocessing to filter invalid label values
+4. **Inconsistent with existing patterns**: Other components already implement proper -1 filtering (e.g., `src/data_factory/ID/Get_id.py:19`)
 
 ## Technical Details
 
@@ -20,75 +27,93 @@ The `get_num_classes()` method in `M_01_ISFM.py` fails to properly handle datase
 - **File**: `src/model_factory/ISFM/M_01_ISFM.py`
   - **Function/Method**: `get_num_classes()`
   - **Lines**: `66-70`
-  - **Issue**: max() returns NaN when Label column contains NaN values
+  - **Issue**: Direct max() operation without filtering invalid values
 
 - **File**: `src/model_factory/ISFM/task_head/multi_task_head.py`
-  - **Function/Method**: `__init__()`
+  - **Function/Method**: `_build_classification_heads()`
   - **Lines**: `131`
-  - **Issue**: nn.Linear() receives None instead of integer for output dimension
+  - **Issue**: `nn.Linear(self.hidden_dim // 2, n_classes)` receives None when n_classes is NaN
 
 ### Data Flow Analysis
-1. Metadata loaded with Label column containing mixed data (valid labels, NaN, -1)
-2. `get_num_classes()` called during model initialization
-3. For each Dataset_id, `max()` applied to Label values
-4. NaN values cause max() to return NaN
-5. NaN + 1 = NaN, stored in num_classes dictionary
-6. MultiTaskHead tries to create nn.Linear with NaN dimension
-7. PyTorch raises TypeError for invalid arguments
+1. **Metadata Loading**: DataFrame contains Label column with mixed values (0,1,2,3,-1,NaN)
+2. **Model Initialization**: `M_01_ISFM.__init__()` calls `get_num_classes()` (line 62)
+3. **Class Calculation**: For each Dataset_id, `max()` applied to all Label values including invalid ones
+4. **NaN Propagation**: NaN values cause `max()` to return NaN, then NaN + 1 = NaN
+5. **Dictionary Storage**: num_classes dictionary stores NaN values
+6. **Head Creation**: MultiTaskHead receives NaN, converts to None for PyTorch
+7. **PyTorch Error**: `nn.Linear` validates arguments and raises TypeError
 
-### Dependencies
-- **pandas**: Series.max() behavior with NaN values
-- **numpy**: Data type handling and NaN propagation
-- **PyTorch**: nn.Linear dimension validation
+### Dependencies Analysis
+- **pandas**: Series.max() returns NaN when any values are NaN
+- **numpy**: NaN arithmetic propagation (NaN + 1 = NaN)
+- **PyTorch**: Strict type checking in nn.Linear constructor
+
+### Existing Pattern Analysis
+Investigation revealed the codebase already has established patterns for handling -1 labels:
+
+```python
+# From src/data_factory/ID/Get_id.py:19
+filtered_df = df[df[label_column] != -1].copy()
+
+# Function: remove_invalid_labels() (lines 3-24)
+def remove_invalid_labels(df, label_column='Label'):
+    filtered_df = df[df[label_column] != -1].copy()
+```
+
+This confirms that filtering -1 labels is the correct approach and aligns with existing codebase conventions.
 
 ## Impact Analysis
 
 ### Direct Impact
-- Complete failure of multi-task model initialization
-- Unable to run any multi-task experiments
-- Blocks foundation model training pipeline
+- **Critical system failure**: All multi-task model initialization fails
+- **Pipeline blockage**: Cannot run foundation model experiments  
+- **Training impossibility**: 4 planned models (B_04_Dlinear, B_06_TimesNet, B_08_PatchTST, B_09_FNO) all affected
 
 ### Indirect Impact  
-- Research workflow disrupted
-- Potential similar issues in other components using label statistics
-- Reduced confidence in data preprocessing robustness
+- **Research disruption**: Multi-task learning experiments completely blocked
+- **Code quality concerns**: Suggests similar vulnerabilities in other label-processing code
+- **Data integrity questions**: Highlights need for robust invalid data handling
 
 ### Risk Assessment
-- **High risk** if not fixed: Core functionality completely broken
-- **Medium risk** of similar issues: Other components may have same vulnerability
-- **Low risk** of data corruption: Issue is in computation, not storage
+- **High severity**: Core functionality completely non-functional
+- **Medium scope**: Affects all multi-task workflows but not single-task
+- **Low complexity**: Fix is straightforward and low-risk
 
 ## Solution Approach
 
 ### Fix Strategy
-Implement robust label handling in `get_num_classes()` method:
-1. Filter out NaN and invalid values (-1) before calculation
-2. Use only valid labels (>= 0) for class count
-3. Provide sensible default (2 for binary classification) when no valid labels exist
+Implement robust label filtering following existing codebase patterns:
+1. **Filter invalid values**: Remove NaN and -1 labels before calculation
+2. **Use established pattern**: Follow `Get_id.py` filtering approach
+3. **Provide defaults**: Use binary classification (2 classes) when no valid labels exist
+4. **Maintain compatibility**: Preserve existing behavior for valid datasets
 
-### Alternative Solutions
-1. **Preprocessing approach**: Clean metadata during loading
-2. **Validation approach**: Add explicit validation with detailed error messages
-3. **Configuration approach**: Allow manual specification of class counts
+### Alternative Solutions Considered
+1. **Metadata preprocessing**: Clean labels during data loading (too invasive)
+2. **Configuration override**: Allow manual class specification (adds complexity)
+3. **Validation-only approach**: Fail fast with detailed errors (doesn't solve issue)
+4. **Per-dataset handling**: Custom logic per dataset (not scalable)
 
 ### Risks and Trade-offs
-- **Chosen solution**: Minimal risk, preserves existing behavior for valid data
-- **Risk**: Default value of 2 might be incorrect for some datasets
-- **Mitigation**: Log warnings when defaults are used
+- **Chosen approach**: Low risk, follows existing patterns, backward compatible
+- **Main risk**: Default value of 2 might be suboptimal for some datasets
+- **Mitigation**: Could add logging/warnings when defaults are applied
 
 ## Implementation Plan
 
 ### Changes Required
 
-1. **Change 1**: Modify get_num_classes() method
-   - File: `src/model_factory/ISFM/M_01_ISFM.py`
-   - Modification: Replace lines 66-70 with robust implementation
+1. **Primary Change**: Update `get_num_classes()` method in `M_01_ISFM.py`
+   - **Location**: Lines 66-70
+   - **Approach**: Replace with robust filtering implementation following existing patterns
 
+**Proposed Implementation:**
 ```python
 def get_num_classes(self):
     num_classes = {}
     for key in np.unique(self.metadata.df['Dataset_id']):
-        # Filter out NaN and -1 values (-1 typically indicates unlabeled/anomalous samples)
+        # Filter out NaN and -1 values (following existing pattern from Get_id.py)
+        # -1 typically indicates samples that don't participate in classification training
         labels = self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']
         valid_labels = labels[labels.notna() & (labels >= 0)]
         
@@ -96,19 +121,21 @@ def get_num_classes(self):
             # Use valid labels to calculate class count
             num_classes[key] = int(valid_labels.max()) + 1
         else:
-            # Default to binary classification if no valid labels
+            # Default to binary classification if no valid labels exist
+            # This handles edge cases where entire datasets have only -1/NaN labels
             num_classes[key] = 2
             
     return num_classes
 ```
 
 ### Testing Strategy
-1. **Unit test**: Verify method handles NaN, -1, and valid labels correctly
-2. **Integration test**: Confirm model initialization succeeds
-3. **Regression test**: Ensure existing valid datasets still work
-4. **End-to-end test**: Run complete multi-task experiment
+1. **Reproduction test**: Verify original bug can be reproduced
+2. **Fix validation**: Confirm TypeError no longer occurs after fix
+3. **Regression test**: Ensure existing valid datasets continue to work
+4. **Edge case testing**: Test datasets with all -1, all NaN, mixed scenarios
+5. **Integration test**: Run complete multi-task training pipeline
 
 ### Rollback Plan
-- Simple git revert if issues arise
-- Original implementation is 5 lines, easy to restore
-- No database or configuration changes required
+- **Simple revert**: Original code is only 5 lines, easy to restore
+- **No side effects**: Change is isolated to single method
+- **Backward compatibility**: Fix preserves existing behavior for valid data
