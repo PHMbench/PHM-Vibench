@@ -78,7 +78,7 @@ model:
 # Task Configuration
 task:
   name: "multi_task_phm"
-  type: "multi_task"
+  type: "In_distribution"
   
   # Enabled tasks
   enabled_tasks: 

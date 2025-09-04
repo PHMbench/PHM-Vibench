@@ -25,6 +25,9 @@ def resolve_task_module(args_task: Namespace) -> str:
     if task_name == "multitask":
         composed = "_".join(args_task.task_list)
         return f"src.task_factory.task.{task_type}.{composed}"
+    # Support In_distribution tasks
+    if task_type == "In_distribution":
+        return f"src.task_factory.task.In_distribution.{task_name}"
     return f"src.task_factory.task.{task_type}.{task_name}"
 
 

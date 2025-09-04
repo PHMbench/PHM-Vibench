@@ -66,7 +66,19 @@ class Model(nn.Module):
     def get_num_classes(self):
         num_classes = {}
         for key in np.unique(self.metadata.df['Dataset_id']):
-            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
+            # Filter out NaN and -1 values (following existing pattern from Get_id.py)
+            # -1 typically indicates samples that don't participate in classification training
+            labels = self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']
+            valid_labels = labels[labels.notna() & (labels >= 0)]
+            
+            if len(valid_labels) > 0:
+                # Use valid labels to calculate class count
+                num_classes[key] = int(valid_labels.max()) + 1
+            else:
+                # Default to binary classification if no valid labels exist
+                # This handles edge cases where entire datasets have only -1/NaN labels
+                num_classes[key] = 2
+                
         return num_classes
     
 

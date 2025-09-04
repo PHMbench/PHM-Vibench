@@ -8,6 +8,7 @@ from .trainer_factory import (
     register_trainer,
     resolve_trainer_module,
     trainer_factory,
+    Default_trainer,
 )
 
 
@@ -50,4 +51,5 @@ __all__ = [
     "resolve_trainer_module",
     "register_trainer",
     "TRAINER_REGISTRY",
+    "Default_trainer"
 ]

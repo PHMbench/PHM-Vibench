@@ -25,7 +25,7 @@ data:
   window_size: 4096
   stride: 4
   truncate_length: 200
-  num_window: 512
+  num_window: 1 #
   normalization: 'standardization'
   dtype: float32
   window_sampling_strategy: 'evenly_spaced'
@@ -73,7 +73,7 @@ model:
 # Task Configuration
 task:
   name: "multi_task_phm"
-  type: "multi_task"
+  type: "In_distribution"
   
   # Enabled tasks
   enabled_tasks: 
