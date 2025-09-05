@@ -1,0 +1,69 @@
+# HSE消融研究：无Momentum编码器
+# 验证Momentum机制的贡献
+
+environment:
+  project: "HSE_Ablation_NoMomentum"
+  seed: 42
+  notes: "消融研究：关闭Momentum编码器"
+
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 64
+  window_size: 4096
+  num_window: 32
+  normalization: true
+  shuffle: true
+  num_workers: 8
+  pin_memory: true
+
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_08_PatchTST"
+  d_model: 256
+  num_layers: 4
+  num_heads: 8
+  task_head: "H_01_Linear_cla"
+  output_dim: 256
+  
+  # 不使用动量编码器包装器
+  use_momentum_encoder: false
+  
+  # 可选：使用投影头进行对比学习
+  use_projection_head: true
+  projection_dim: 128
+
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # 保持对比学习，但关闭Momentum
+  contrast_loss: "INFONCE"     # 使用已注册的InfoNCE损失
+  contrast_weight: 0.1
+  temperature: 0.07
+  use_hard_negatives: true
+  use_momentum: false          # 关闭Momentum编码器
+  projection_dim: 128
+  
+  target_system_id: [6]
+  source_domain_id: [1, 13, 19]
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  epochs: 50
+  lr: 5e-4
+  optimizer: "adamw"
+  scheduler: true
+  early_stopping: true
+  
+  # 实验跟踪
+  wandb: true
+  wandb_project: "HSE-Ablation-Studies"
+  wandb_tags: ["ablation", "no_momentum", "ICML2025"]
+
+trainer:
+  name: "Default_trainer"
+  gpus: 1
+  precision: 16
+  max_epochs: 50

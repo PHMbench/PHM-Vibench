@@ -48,11 +48,19 @@ model:
   output_dim: 1024
   
   # 骨干网络配置
-  backbone: "B_01_basic_transformer"
-  num_layers: 1
+  backbone: "B_08_PatchTST"  # 使用更好PatchTST骨干网络
+  num_layers: 4
   
   # 任务头配置
-  task_head: "H_02_distance_cla"
+  task_head: "H_01_Linear_cla"
+  
+  # 使用动量编码器包装器
+  use_momentum_encoder: true
+  momentum: 0.999
+  
+  # 可选：使用投影头进行对比学习
+  use_projection_head: true
+  projection_dim: 128
 
 # 任务配置（关键差异：高对比权重）
 task:
@@ -64,9 +72,12 @@ task:
   target_system_id: [6]
   
   # 对比学习参数（高权重实验）
+  contrast_loss: "INFONCE"    # 使用已注册的InfoNCE损失
   contrast_weight: 0.3        # 提高对比损失权重
   temperature: 0.05           # 降低温度增加对比强度
   use_hard_negatives: true    # 启用困难负样本挖掘
+  use_momentum: true          # 启用Momentum编码器
+  projection_dim: 128         # 投影头维度
   
   # 标准训练参数
   loss: "CE"
