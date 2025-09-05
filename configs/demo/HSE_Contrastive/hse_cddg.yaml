@@ -1,102 +1,227 @@
-# HSE异构对比学习 跨系统域泛化配置
-# 基于CWRU_THU_using_ISFM.yaml，添加对比学习参数
-# 支持多系统间的异构信号泛化学习
+# HSE异构对比学习 - 基础配置
+# 面向顶级论文发表的学术级实验配置
+# Target: ICML/NeurIPS 2025
 
 environment:
-  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
-  PYTHONPATH: "/home/lq/.conda/envs/lq"
-  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
   project: "HSE_Contrastive_CDDG"
   seed: 42
-  output_dir: "results/hse_contrastive"
-  notes: "HSE异构对比学习跨系统泛化实验"
-  iterations: 2
+  notes: "HSE异构系统对比学习 - 跨系统故障诊断突破"
+  output_dir: "save/"
 
-# 数据配置
 data:
-  # 数据目录配置（根据实际环境调整）
-  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"  # for test environment
-  metadata_file: "metadata_6_1.xlsx"  # 指定元数据文件路径
-  batch_size: 32
-  num_workers: 32
-  train_ratio: 0.8
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"  # 标准化数据路径
+  metadata_file: "metadata_6_1.xlsx"
+  
+  # 优化的数据配置
+  batch_size: 64        # 大批次支持更好的对比学习
+  window_size: 4096     # 足够的信号长度
+  num_window: 32        # 每样本窗口数
+  
+  # 数据增强（支持对比学习）
   normalization: true
-  window_size: 4096
-  stride: 5
-  truncate_lenth: 100
-  dtype: float32
-  num_window: 64
-  normalization: standardization
+  shuffle: true
+  num_workers: 8
+  pin_memory: true
+  
+  # 高级预处理
+  truncate_lenth: 4096
+  stride: 1024
+  dtype: "float32"
 
-# 模型配置
 model:
-  name: "M_01_ISFM"
+  name: "M_01_ISFM"     # ISFM基础模型
   type: "ISFM"
-  input_dim: 2
   
-  # ISFM架构配置
-  num_heads: 4
-  num_layers: 2
-  d_model: 64
-  d_ff: 128
-  dropout: 0.1
-  hidden_dim: 64
-  activation: "relu"
+  # HSE嵌入配置
+  embedding: "E_01_HSE"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 64       # 减少patches提高效率
   
-  # HSE嵌入配置（核心特征）
-  embedding: "E_01_HSE"       # 使用HSE异构信号嵌入
-  patch_size_L: 256           # 信号patch长度
-  patch_size_C: 1             # 通道patch大小
-  num_patches: 128            # patch数量
-  output_dim: 1024            # 嵌入维度
-  
-  # 骨干网络配置
-  backbone: "B_01_basic_transformer"
-  num_layers: 1
+  # 骨干网络配置 (优化超参数)
+  backbone: "B_08_PatchTST"
+  d_model: 256          # 特征维度
+  num_layers: 4         # 适中的层数
+  num_heads: 8          # 多头注意力
+  d_ff: 1024           # 前馈网络维度
+  dropout: 0.1         # 防过拟合
   
   # 任务头配置
-  task_head: "H_02_distance_cla"  # 距离分类头，支持度量学习
+  task_head: "H_01_Linear_cla"  # 线性分类头
+  
+  # 可选：使用动量编码器包装器
+  use_momentum_encoder: true
+  momentum: 0.999
+  
+  # 可选：使用投影头进行对比学习
+  use_projection_head: true
+  projection_dim: 128
+  
+  # 模型输出
+  output_dim: 256      # 与d_model保持一致
+  input_dim: 1         # 单通道振动信号
 
-# 任务配置（HSE对比学习核心配置）
 task:
-  name: "hse_contrastive"     # 对应任务文件名
-  type: "CDDG"                # 跨数据集域泛化任务类型
+  name: "hse_contrastive"  # 对应HSE对比学习任务
+  type: "CDDG"             # 跨域泛化任务类型
   
-  # 跨系统泛化设置
-  target_domain_num: 1
-  target_system_id: [6]       # 目标系统ID
+  # 🔥 HSE对比学习核心参数 (基于理论分析优化)
+  contrast_loss: "INFONCE"   # 使用已注册的InfoNCE损失
+  contrast_weight: 0.1     # InfoNCE损失权重 (论文消融关键参数)
+  temperature: 0.07        # 温度参数 (基于特征维度理论计算)
+  use_hard_negatives: true # Hard negative mining
+  use_momentum: true       # Momentum编码器
+  projection_dim: 128      # 投影头维度
   
-  # HSE对比学习参数（新增）
-  contrast_weight: 0.1        # 对比损失权重（0表示禁用对比学习）
-  temperature: 0.07           # 对比学习温度参数
-  use_hard_negatives: true    # 是否使用困难负样本挖掘
+  # 跨域设置
+  target_system_id: [6]    # 目标系统 (XJTU)
+  source_domain_id: [1, 13, 19]  # 源系统 (CWRU, THU, MFPT)
   
-  # 标准训练参数
-  loss: "CE"                  # 主分类损失
-  metrics: ["acc"]            # 评估指标
-  optimizer: "adam"
-  batch_size: 32
-  num_workers: 0
-  pin_memory: true
-  shuffle: true
-  log_interval: 10
-  epochs: 10                  # 训练轮数
-  lr: 0.001                   # 学习率
-  weight_decay: 0.0001
-  early_stopping: true
-  es_patience: 5
+  # 基础任务配置
+  loss: "CE"               # 分类损失
+  metrics: ["acc", "f1", "precision", "recall"]
+  
+  # 🎯 优化的训练配置 (面向顶会标准)
+  epochs: 50               # 充分训练
+  lr: 5e-4                # 学习率 (对比学习适用)
+  weight_decay: 1e-4       # L2正则化
+  optimizer: "adamw"       # AdamW优化器
+  
+  # 学习率调度
   scheduler: true
-  scheduler_type: "step"
-  step_size: 3
-  gamma: 0.5
+  scheduler_type: "cosine"
+  warmup_epochs: 5         # 预热轮次
+  
+  # 早停配置
+  early_stopping: true
+  es_patience: 8           # 耐心值
+  es_monitor: "val_acc"    # 监控指标
+  
+  # 高级训练策略
+  gradient_clip_val: 1.0   # 梯度裁剪
+  accumulate_grad_batches: 2  # 梯度累积
+  
+  # 日志配置
+  log_interval: 50         # 日志记录间隔
+  save_top_k: 3           # 保存最优模型数
+  
+  # 实验跟踪
+  wandb: true             # 启用WandB
+  wandb_project: "HSE-Contrastive-Learning"
+  wandb_tags: ["CDDG", "contrastive", "cross-system", "ICML2025"]
 
-# 训练器配置
 trainer:
   name: "Default_trainer"
-  wandb: False
-  pruning: False
-  num_epochs: 10
-  gpus: 1
+  
+  # GPU配置
+  gpus: 1                 # 单GPU训练
+  precision: 16           # 混合精度训练
+  
+  # 训练配置
+  max_epochs: 50
+  check_val_every_n_epoch: 1
+  
+  # 回调配置
   early_stopping: true
-  patience: 5
-  device: 'cuda'
+  patience: 8
+  
+  # 检查点配置  
+  save_top_k: 3
+  monitor: "val_acc"
+  mode: "max"
+  
+  # 高级配置
+  deterministic: true     # 确保可复现性
+  benchmark: true         # 优化CUDA性能
+  
+  # 分布式训练 (可选)
+  strategy: null          # 单GPU时设为null
+  num_sanity_val_steps: 2 # 验证检查步数
+
+# 🎓 论文实验专用配置
+paper_config:
+  # 消融研究标记
+  ablation_study: false
+  ablation_type: "baseline"  # baseline, no_contrast, no_momentum, etc.
+  
+  # 统计分析
+  num_runs: 5               # 重复实验次数
+  confidence_interval: 0.95 # 置信区间
+  
+  # 性能基准
+  baseline_acc: 0.85        # 基线准确率
+  target_improvement: 0.10   # 目标提升幅度
+  
+  # 计算资源
+  max_training_time: 120    # 最大训练时间(分钟)
+  memory_limit: 16          # GPU内存限制(GB)
+
+# 🔬 高级特性配置  
+advanced:
+  # 特征分析
+  feature_visualization: true
+  tsne_visualization: true
+  attention_visualization: false
+  
+  # 模型解释
+  grad_cam: false
+  feature_importance: false
+  
+  # 数据增强
+  mixup: false              # Mixup数据增强
+  mixup_alpha: 0.2
+  
+  # 正则化
+  label_smoothing: 0.0      # 标签平滑
+  dropout_path: 0.1         # 路径dropout
+  
+  # 测试时增强
+  test_time_augmentation: false
+  tta_steps: 5
+
+# 📊 评估配置
+evaluation:
+  # 评估指标
+  metrics: ["accuracy", "f1_score", "precision", "recall", "auc"]
+  average_type: "macro"     # macro/micro/weighted
+  
+  # 可视化
+  confusion_matrix: true
+  roc_curve: true
+  precision_recall_curve: true
+  
+  # 统计测试
+  significance_test: true
+  test_type: "t_test"       # t_test/wilcoxon
+  alpha: 0.01              # 显著性水平
+  
+  # 结果导出
+  save_predictions: true
+  save_features: true      # 保存学习的特征
+  export_latex: true       # 导出LaTeX表格
+
+# 🎯 论文发表检查清单
+publication_checklist:
+  code_quality:
+    - "类型提示完整"
+    - "文档字符串覆盖>90%"
+    - "单元测试覆盖>85%"
+    - "代码格式化(Black)"
+    
+  experiment_rigor:
+    - "随机种子固定"
+    - "多次重复实验(5次)"
+    - "统计显著性检验"
+    - "公平对比基线"
+    
+  reproducibility:
+    - "完整环境配置"
+    - "数据预处理记录"
+    - "模型检查点保存"
+    - "实验日志完整"
+    
+  innovation:
+    - "系统级对比学习"
+    - "HSE特征提取"
+    - "Momentum更新机制"
+    - "Hard negative mining"

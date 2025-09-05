@@ -48,11 +48,17 @@ model:
   output_dim: 1024
   
   # 骨干网络配置
-  backbone: "B_01_basic_transformer"
-  num_layers: 1
+  backbone: "B_08_PatchTST"  # 使用更好PatchTST骨干网络
+  num_layers: 4
   
   # 任务头配置
-  task_head: "H_02_distance_cla"
+  task_head: "H_01_Linear_cla"
+  
+  # 不使用动量编码器包装器(消融实验)
+  use_momentum_encoder: false
+  
+  # 不使用投影头(消融实验)
+  use_projection_head: false
 
 # 任务配置（关键差异：禁用对比学习）
 task:
@@ -64,9 +70,12 @@ task:
   target_system_id: [6]
   
   # 对比学习参数（消融实验：禁用对比学习）
+  contrast_loss: "INFONCE"    # 使用已注册的InfoNCE损失（但权重为0）
   contrast_weight: 0.0        # 设置为0，禁用对比损失
   temperature: 0.07           # 保留参数，但不会被使用
   use_hard_negatives: false   # 禁用困难负样本
+  use_momentum: false         # 禁用Momentum编码器
+  projection_dim: 128         # 保留参数
   
   # 标准训练参数
   loss: "CE"
