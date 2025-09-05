@@ -25,7 +25,7 @@ data:
   window_size: 4096
   stride: 4
   truncate_length: 200
-  num_window: 1 #
+  num_window: 4 #
   normalization: 'standardization'
   dtype: float32
   window_sampling_strategy: 'evenly_spaced'
@@ -116,7 +116,8 @@ task:
     loss_weight: 0.8
   
   # Target systems for evaluation
-  target_system_id: [1, 2, 5, 6, 13, 19]
+  # target_system_id: [1, 2, 5, 6, 13, 19]
+  target_system_id: [2]  # Test mode: single system
   
   # Optimization parameters
   optimizer: "adamw"

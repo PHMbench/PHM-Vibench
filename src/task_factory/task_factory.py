@@ -22,9 +22,9 @@ def resolve_task_module(args_task: Namespace) -> str:
     task_type = args_task.type
     if task_type == "Default_task" or task_name == "Default_task":
         return f"src.task_factory.{task_name}"
-    if task_name == "multitask":
-        composed = "_".join(args_task.task_list)
-        return f"src.task_factory.task.{task_type}.{composed}"
+    # if task_name == "multitask":
+    #     composed = "_".join(args_task.task_list)
+    #     return f"src.task_factory.task.{task_type}.{composed}"
     # Support In_distribution tasks
     if task_type == "In_distribution":
         return f"src.task_factory.task.In_distribution.{task_name}"

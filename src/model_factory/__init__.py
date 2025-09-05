@@ -3,9 +3,7 @@
 from typing import Any
 
 from .model_factory import (
-    MODEL_REGISTRY,
     model_factory,
-    register_model,
     resolve_model_module,
 )
 
@@ -34,6 +32,4 @@ def build_model(args: Any, metadata: Any = None) -> Any:
 __all__ = [
     "build_model",
     "resolve_model_module",
-    "register_model",
-    "MODEL_REGISTRY",
 ]

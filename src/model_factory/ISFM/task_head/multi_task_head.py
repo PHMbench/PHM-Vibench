@@ -174,6 +174,7 @@ class MultiTaskHead(nn.Module):
         system_id: Optional[Union[str, int]] = None,
         task_id: Optional[str] = None,
         return_feature: bool = False,
+        original_x: Optional[torch.Tensor] = None,
         **kwargs
     ) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         """
@@ -221,7 +222,9 @@ class MultiTaskHead(nn.Module):
         elif task_id == 'anomaly_detection':
             return self._forward_anomaly_detection(shared_features)
         elif task_id == 'all' or task_id is None:
-            return self._forward_all_tasks(shared_features, system_id, x, **kwargs)
+            # Use original_x if provided, otherwise fall back to the processed x
+            signal_input = original_x if original_x is not None else x
+            return self._forward_all_tasks(shared_features, system_id, signal_input, **kwargs)
         else:
             raise ValueError(f"Unknown task_id: {task_id}")
     

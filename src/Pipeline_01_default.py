@@ -91,6 +91,12 @@ def pipeline(args):
         # 构建数据工厂
         print("[INFO] 构建数据工厂...")
         data_factory = build_data(args_data, args_task)
+        
+        # 传递enabled_tasks从task配置到model配置（用于多任务ISFM）
+        if hasattr(args_task, 'enabled_tasks'):
+            args_model.enabled_tasks = args_task.enabled_tasks
+            print(f"[INFO] 传递enabled_tasks到模型配置: {args_model.enabled_tasks}")
+        
         # 构建模型
         print("[INFO] 构建模型...")
         model = build_model(args_model,metadata=data_factory.get_metadata())

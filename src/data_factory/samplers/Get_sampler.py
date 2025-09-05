@@ -109,6 +109,8 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
     elif args_task.type == 'multi_task':
         # Multi-task learning uses standard batch sampling
         sampler = _get_pretrain_sampler(args_data, dataset, mode)  # Reuse pretrain sampler
+    elif args_task.type == 'In_distribution':
+        sampler = _get_pretrain_sampler(args_data, dataset, mode)
     else:
         raise ValueError(f"Unknown task type for sampler: {args_task.type}")
         

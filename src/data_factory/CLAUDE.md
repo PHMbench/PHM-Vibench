@@ -44,6 +44,22 @@ Each dataset has a dedicated reader (e.g., `RM_001_CWRU.py`):
 - Handles dataset-specific preprocessing
 - Standardizes data format and metadata
 
+#### `IdIncludedDataset`
+Wrapper class that adds file IDs to dataset samples for task processing:
+- Wraps individual dataset instances in a unified interface
+- **Batch Format**: When iterating through DataLoader, returns dict with keys:
+  - `'x'`: Input tensor (B, L, C) - signal data
+  - `'y'`: Label tensor - classification/regression target
+  - `'file_id'`: Original dataset file ID for metadata lookup
+
+**Important**: Task implementations must use dict access (not tuple unpacking):
+```python
+def training_step(self, batch, batch_idx):
+    x = batch['x']           # Input tensor
+    y = batch['y']           # Labels  
+    file_id = batch['file_id'][0].item()  # File ID for metadata
+```
+
 ## Common Usage Patterns
 
 ### Loading Industrial Datasets
