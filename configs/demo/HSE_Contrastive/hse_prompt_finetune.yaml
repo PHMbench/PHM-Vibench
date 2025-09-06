@@ -1,0 +1,141 @@
+# HSE Prompt引导对比学习配置 - 阶段二：下游任务微调
+# 冻结预训练的prompt特征，只微调signal路径用于故障分类
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Prompt_Finetune"
+  seed: 42
+  output_dir: "results/hse_prompt_finetune"
+  notes: "阶段二：冻结Prompt特征，微调下游故障分类任务"
+  iterations: 3
+
+# 数据配置
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 64                  # 微调时可以使用更大batch size
+  num_workers: 16
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - 继承预训练的Prompt引导HSE
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  hidden_dim: 64
+  activation: "relu"
+  
+  # HSE Prompt嵌入配置（继承预训练设置）
+  embedding: "E_01_HSE_Prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+  
+  # Prompt特征配置（与预训练保持一致）
+  prompt_dim: 128
+  fusion_type: "attention"
+  use_system_prompt: true
+  use_sample_prompt: true
+  use_fault_prompt: true
+  
+  # 两阶段训练控制 - 关键差异：冻结prompt
+  training_stage: "finetune"      # 微调阶段：只训练signal路径
+  freeze_prompt: true             # 冻结预训练的prompt特征
+  
+  # 预训练检查点路径（需要从阶段一加载）
+  pretrained_checkpoint: "results/hse_prompt_pretrain/best_model.ckpt"
+  
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"
+  num_layers: 4
+  
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+  
+  # 微调时不需要动量编码器
+  use_momentum_encoder: false
+  
+  # 微调时不需要投影头
+  use_projection_head: false
+
+# 任务配置 - 下游故障分类任务
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # 下游任务设置
+  target_domain_num: 1
+  target_system_id: [6]           # 目标分类系统
+  
+  # 禁用对比学习（只做分类）
+  contrast_loss: "INFONCE"        # 保留注册但权重为0
+  contrast_weight: 0.0            # 禁用对比损失
+  temperature: 0.07
+  use_hard_negatives: false
+  use_momentum: false
+  projection_dim: 128
+  
+  # 标准分类训练参数
+  loss: "CE"                      # 只使用分类损失
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  batch_size: 64
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 5
+  epochs: 20                      # 微调轮数较少
+  lr: 1e-4                        # 较小学习率用于微调
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 5
+  scheduler: true
+  scheduler_type: "cosine"        # 余弦退火调度器
+  
+  # 实验跟踪
+  wandb: true
+  wandb_project: "HSE-Prompt-Contrastive"
+  wandb_tags: ["finetune", "classification", "frozen_prompt", "ICML2025"]
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  wandb: False
+  pruning: False
+  num_epochs: 20
+  gpus: 1
+  precision: 16
+  early_stopping: true
+  patience: 5
+  device: 'cuda'
+
+# 微调特定配置
+finetune:
+  # 学习率分层设置
+  backbone_lr_multiplier: 0.1     # 骨干网络使用更小学习率
+  head_lr_multiplier: 1.0         # 任务头使用完整学习率
+  
+  # 渐进解冻策略（可选）
+  gradual_unfreezing: false       # 是否启用渐进解冻
+  unfreeze_schedule: [5, 10, 15]  # 在这些epoch解冻更多层
+  
+  # 数据增强（微调时可能需要）
+  augmentation:
+    noise_std: 0.01               # 添加少量噪声
+    time_shift: 0.02              # 轻微时间偏移
+    amplitude_scale: [0.95, 1.05] # 幅度缩放范围

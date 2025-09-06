@@ -1,0 +1,127 @@
+# HSE Prompt引导对比学习配置 - 阶段一：预训练
+# 使用新的E_01_HSE_Prompt embedding进行跨系统对比学习预训练
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Prompt_Pretrain"
+  seed: 42
+  output_dir: "results/hse_prompt_pretrain"
+  notes: "阶段一：Prompt引导对比学习预训练，学习系统无关特征表示"
+  iterations: 3
+
+# 数据配置
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 32
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - 使用新的Prompt引导HSE
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  hidden_dim: 64
+  activation: "relu"
+  
+  # HSE Prompt嵌入配置
+  embedding: "E_01_HSE_Prompt"  # 使用新的Prompt引导HSE
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+  
+  # Prompt特征配置
+  prompt_dim: 128                 # Prompt特征维度
+  fusion_type: "attention"        # 融合策略：attention/concat/gating
+  use_system_prompt: true         # 启用系统级prompt (Dataset_id, Domain_id)
+  use_sample_prompt: true         # 启用样本级prompt (Sample_rate, Channel)
+  use_fault_prompt: true          # 启用故障级prompt (Label, Fault_level)
+  
+  # 两阶段训练控制
+  training_stage: "pretrain"      # 预训练阶段：学习signal和prompt特征
+  freeze_prompt: false            # 不冻结prompt，允许学习
+  
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"
+  num_layers: 4
+  
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+  
+  # 使用动量编码器包装器
+  use_momentum_encoder: true
+  momentum: 0.999
+  
+  # 使用投影头进行对比学习
+  use_projection_head: true
+  projection_dim: 128
+
+# 任务配置 - 对比学习预训练
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # 跨系统设置 - 使用多个源域进行预训练
+  target_domain_num: 1
+  target_system_id: [6]           # 目标测试系统
+  source_domain_id: [1, 13, 19]  # 多源域预训练
+  
+  # 对比学习参数
+  contrast_loss: "INFONCE"        # 使用InfoNCE损失
+  contrast_weight: 0.15           # 对比损失权重
+  temperature: 0.07               # 温度参数
+  use_hard_negatives: true        # 启用困难负样本
+  use_momentum: true              # 启用Momentum编码器
+  projection_dim: 128             # 投影头维度
+  
+  # 标准训练参数
+  loss: "CE"                      # 分类损失
+  metrics: ["acc", "f1"]          # 评估指标
+  optimizer: "adamw"
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 50                      # 预训练轮数
+  lr: 5e-4
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 10
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 15
+  gamma: 0.5
+  
+  # 实验跟踪
+  wandb: true
+  wandb_project: "HSE-Prompt-Contrastive"
+  wandb_tags: ["pretrain", "prompt_guided", "contrastive_learning", "ICML2025"]
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  wandb: False
+  pruning: False
+  num_epochs: 50
+  gpus: 1
+  precision: 16                   # 混合精度训练
+  early_stopping: true
+  patience: 10
+  device: 'cuda'
