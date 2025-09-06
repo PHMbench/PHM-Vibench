@@ -12,6 +12,7 @@ import torch
 Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
+    'E_01_HSE_Prompt': E_01_HSE_Prompt,  # Prompt-guided HSE for contrastive learning
     'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
     'E_03_Patch_DPOT': E_03_Patch_DPOT,
 

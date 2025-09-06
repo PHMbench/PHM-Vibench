@@ -45,12 +45,16 @@ class E_01_HSE(nn.Module):
         """
         B, L, C = x.size()
         device = x.device
-        # fs = self.args_d.task[data_name]['f_s']
-        T = 1.0 / fs # [B,1]  # id one batch
+        # Handle sampling frequency - support both tensor and scalar inputs
+        if torch.is_tensor(fs):
+            T = 1.0 / fs  # [B] tensor
+        else:
+            T = 1.0 / fs  # scalar
+            T = torch.full((B,), T, device=device)  # broadcast to [B]
 
         # Generate time axis 't' for each sample, shape: (B, L)
-        t = torch.arange(L, device=device, dtype=torch.float32) * T
-        t = t.unsqueeze(0).expand(B, -1)
+        t = torch.arange(L, device=device, dtype=torch.float32).unsqueeze(0)  # (1, L)
+        t = t * T.unsqueeze(1)  # (B, 1) * (1, L) -> (B, L)
 
         # If input is smaller than required patch size, repeat along L or C as needed
         if self.patch_size_L > L:
@@ -306,26 +310,438 @@ class E_01_HSE_abalation(nn.Module):
             
         return out
 
+class SystemPromptEncoder(nn.Module):
+    """
+    Encodes system metadata information into prompt embeddings.
+    
+    Supports multi-level prompts:
+    - System level: Dataset_id, Domain_id
+    - Sample level: Sample_rate, Channel  
+    - Fault level: Label, Fault_level
+    """
+    def __init__(self, prompt_dim=128, max_ids=50):
+        super().__init__()
+        self.prompt_dim = prompt_dim
+        self.max_ids = max_ids
+        
+        # Embedding tables for categorical features
+        self.dataset_embedding = nn.Embedding(max_ids, prompt_dim // 4)
+        self.domain_embedding = nn.Embedding(max_ids, prompt_dim // 4)
+        self.label_embedding = nn.Embedding(max_ids, prompt_dim // 4)
+        
+        # Linear layers for numerical features
+        self.sample_rate_proj = nn.Linear(1, prompt_dim // 4)
+        
+        # Fusion layers for different prompt levels
+        self.system_fusion = nn.Linear(prompt_dim // 2, prompt_dim)
+        self.sample_fusion = nn.Linear(prompt_dim // 4, prompt_dim)
+        self.fault_fusion = nn.Linear(prompt_dim // 4, prompt_dim)
+        
+        # Final prompt aggregation
+        self.prompt_aggregator = nn.MultiheadAttention(prompt_dim, 4, batch_first=True)
+        self.final_proj = nn.Linear(prompt_dim, prompt_dim)
+        
+    def forward(self, metadata_dict):
+        """
+        Args:
+            metadata_dict: Dictionary with system metadata
+                - 'Dataset_id': tensor of shape (B,)
+                - 'Domain_id': tensor of shape (B,)  
+                - 'Sample_rate': tensor of shape (B, 1)
+                - 'Label': tensor of shape (B,)
+        
+        Returns:
+            prompt_embedding: tensor of shape (B, prompt_dim)
+        """
+        batch_size = metadata_dict['Dataset_id'].size(0)
+        
+        # System-level prompt
+        dataset_emb = self.dataset_embedding(metadata_dict['Dataset_id'])
+        domain_emb = self.domain_embedding(metadata_dict['Domain_id'])
+        system_prompt = self.system_fusion(torch.cat([dataset_emb, domain_emb], dim=-1))
+        
+        # Sample-level prompt  
+        sample_rate_emb = self.sample_rate_proj(metadata_dict['Sample_rate'].unsqueeze(-1))
+        sample_prompt = self.sample_fusion(sample_rate_emb)
+        
+        # Fault-level prompt
+        label_emb = self.label_embedding(metadata_dict['Label'])
+        fault_prompt = self.fault_fusion(label_emb)
+        
+        # Stack all prompts for attention-based fusion
+        prompts = torch.stack([system_prompt, sample_prompt, fault_prompt], dim=1)  # (B, 3, prompt_dim)
+        
+        # Self-attention to fuse different prompt levels
+        fused_prompt, _ = self.prompt_aggregator(prompts, prompts, prompts)  # (B, 3, prompt_dim)
+        
+        # Aggregate to single prompt vector (mean pooling)
+        final_prompt = fused_prompt.mean(dim=1)  # (B, prompt_dim)
+        final_prompt = self.final_proj(final_prompt)
+        
+        return final_prompt
+
+
+class PromptFusion(nn.Module):
+    """
+    Fuses prompt embeddings with signal embeddings using different strategies.
+    """
+    def __init__(self, signal_dim, prompt_dim, fusion_type='attention'):
+        super().__init__()
+        self.fusion_type = fusion_type
+        self.signal_dim = signal_dim
+        self.prompt_dim = prompt_dim
+        
+        if fusion_type == 'concat':
+            self.fusion_proj = nn.Linear(signal_dim + prompt_dim, signal_dim)
+            
+        elif fusion_type == 'attention':
+            # Cross-attention: signal attends to prompt
+            self.cross_attention = nn.MultiheadAttention(signal_dim, 4, batch_first=True)
+            self.prompt_proj = nn.Linear(prompt_dim, signal_dim)
+            
+        elif fusion_type == 'gating':
+            # Adaptive gating mechanism
+            self.gate_proj = nn.Linear(prompt_dim, signal_dim)
+            self.transform_proj = nn.Linear(prompt_dim, signal_dim)
+            
+        self.layer_norm = nn.LayerNorm(signal_dim)
+        
+    def forward(self, signal_emb, prompt_emb):
+        """
+        Args:
+            signal_emb: (B, num_patches, signal_dim)
+            prompt_emb: (B, prompt_dim)
+            
+        Returns:
+            fused_emb: (B, num_patches, signal_dim)
+        """
+        if self.fusion_type == 'concat':
+            # Expand prompt to match signal patches
+            expanded_prompt = prompt_emb.unsqueeze(1).expand(-1, signal_emb.size(1), -1)
+            concatenated = torch.cat([signal_emb, expanded_prompt], dim=-1)
+            fused = self.fusion_proj(concatenated)
+            
+        elif self.fusion_type == 'attention':
+            # Project prompt to signal dimension
+            prompt_projected = self.prompt_proj(prompt_emb).unsqueeze(1)  # (B, 1, signal_dim)
+            
+            # Cross-attention: signal queries attend to prompt keys/values
+            attended_signal, _ = self.cross_attention(
+                signal_emb, prompt_projected, prompt_projected
+            )
+            fused = signal_emb + attended_signal  # Residual connection
+            
+        elif self.fusion_type == 'gating':
+            # Adaptive gating
+            gate = torch.sigmoid(self.gate_proj(prompt_emb)).unsqueeze(1)
+            transform = self.transform_proj(prompt_emb).unsqueeze(1)
+            fused = gate * signal_emb + (1 - gate) * transform
+            
+        return self.layer_norm(fused)
+
+
+class E_01_HSE_Prompt(nn.Module):
+    """
+    Prompt-guided Hierarchical Signal Embedding for heterogeneous system processing.
+    
+    Supports two-stage training:
+    - Stage 1 (pretrain): Learn both signal and prompt features with contrastive learning
+    - Stage 2 (finetune): Freeze prompt, finetune signal path for downstream tasks
+    
+    Args:
+        patch_size_L (int): Patch size along L dimension
+        patch_size_C (int): Patch size along C dimension  
+        num_patches (int): Number of patches to sample
+        output_dim (int): Output feature dimension
+        prompt_dim (int): Prompt embedding dimension
+        fusion_type (str): Fusion strategy ('concat', 'attention', 'gating')
+        use_system_prompt (bool): Whether to use system-level prompts
+        use_sample_prompt (bool): Whether to use sample-level prompts
+        use_fault_prompt (bool): Whether to use fault-level prompts
+    """
+    def __init__(self, args):
+        super().__init__()
+        # Basic HSE parameters
+        self.patch_size_L = getattr(args, 'patch_size_L', 256)
+        self.patch_size_C = getattr(args, 'patch_size_C', 1) 
+        self.num_patches = getattr(args, 'num_patches', 128)
+        self.output_dim = getattr(args, 'output_dim', 1024)
+        
+        # Prompt parameters
+        self.prompt_dim = getattr(args, 'prompt_dim', 128)
+        self.fusion_type = getattr(args, 'fusion_type', 'attention')
+        self.use_system_prompt = getattr(args, 'use_system_prompt', True)
+        self.use_sample_prompt = getattr(args, 'use_sample_prompt', True) 
+        self.use_fault_prompt = getattr(args, 'use_fault_prompt', True)
+        
+        # Training stage control
+        self.training_stage = getattr(args, 'training_stage', 'pretrain')  # 'pretrain' or 'finetune'
+        self.freeze_prompt = getattr(args, 'freeze_prompt', False)
+        
+        # Signal embedding path (based on original E_01_HSE)
+        self.signal_linear1 = nn.Linear(self.patch_size_L * (self.patch_size_C * 2), self.output_dim)
+        self.signal_linear2 = nn.Linear(self.output_dim, self.output_dim)
+        
+        # Prompt encoding path
+        if any([self.use_system_prompt, self.use_sample_prompt, self.use_fault_prompt]):
+            self.prompt_encoder = SystemPromptEncoder(self.prompt_dim)
+            
+            # Fusion module
+            self.prompt_fusion = PromptFusion(
+                signal_dim=self.output_dim,
+                prompt_dim=self.prompt_dim, 
+                fusion_type=self.fusion_type
+            )
+        
+        # Final projection
+        self.final_proj = nn.Linear(self.output_dim, self.output_dim)
+        
+    def set_training_stage(self, stage):
+        """Set training stage: 'pretrain' or 'finetune'"""
+        self.training_stage = stage
+        if stage == 'finetune':
+            self.freeze_prompt = True
+        
+    def encode_system_metadata(self, metadata_batch):
+        """
+        Extract and encode system information from metadata batch.
+        
+        Args:
+            metadata_batch: List of metadata dictionaries or single dict
+            
+        Returns:
+            metadata_dict: Dictionary with tensors for batch processing
+        """
+        if isinstance(metadata_batch, dict):
+            metadata_batch = [metadata_batch]
+            
+        batch_size = len(metadata_batch)
+        
+        # Extract system information
+        dataset_ids = []
+        domain_ids = []
+        sample_rates = []
+        labels = []
+        
+        for meta in metadata_batch:
+            dataset_ids.append(int(meta.get('Dataset_id', 0)))
+            domain_ids.append(int(meta.get('Domain_id', 0)))
+            sample_rates.append(float(meta.get('Sample_rate', 1000.0)))
+            labels.append(int(meta.get('Label', 0)))
+        
+        device = next(self.parameters()).device
+        
+        return {
+            'Dataset_id': torch.tensor(dataset_ids, device=device),
+            'Domain_id': torch.tensor(domain_ids, device=device),
+            'Sample_rate': torch.tensor(sample_rates, device=device),
+            'Label': torch.tensor(labels, device=device)
+        }
+    
+    def forward(self, x, fs=None, metadata=None, **kwargs):
+        """
+        Forward pass with prompt guidance.
+        
+        Args:
+            x: Input tensor (B, L, C)
+            fs: Sampling frequency (B,) or scalar
+            metadata: System metadata (list of dicts or single dict)
+            
+        Returns:
+            output: Signal embedding (B, num_patches, output_dim)
+            prompt: System prompt embedding (B, prompt_dim) - for contrastive learning
+        """
+        B, L, C = x.size()
+        device = x.device
+        
+        # Handle sampling frequency
+        if fs is None:
+            fs = 1000.0  # Default
+        if torch.is_tensor(fs):
+            T = 1.0 / fs
+        else:
+            T = 1.0 / fs
+            T = torch.full((B,), T, device=device)
+        
+        # Generate time axis 
+        t = torch.arange(L, device=device, dtype=torch.float32)
+        if T.dim() > 0:
+            t = t.unsqueeze(0) * T.unsqueeze(1)  # (B, L)
+        else:
+            t = t * T
+            t = t.unsqueeze(0).expand(B, -1)
+        
+        # Handle size mismatches (same as original E_01_HSE)
+        if self.patch_size_L > L:
+            repeats_L = (self.patch_size_L + L - 1) // L
+            x = repeat(x, 'b l c -> b (l r) c', r=repeats_L)
+            t = repeat(t, 'b l -> b (l r)', r=repeats_L)
+            L = x.size(1)
+            
+        if self.patch_size_C > C:
+            repeats_C = (self.patch_size_C + C - 1) // C
+            x = repeat(x, 'b l c -> b l (c r)', r=repeats_C)
+            C = x.size(2)
+        
+        # Random patch sampling (same as original E_01_HSE)
+        max_start_L = L - self.patch_size_L
+        max_start_C = C - self.patch_size_C
+        start_indices_L = torch.randint(0, max_start_L + 1, (B, self.num_patches), device=device)
+        start_indices_C = torch.randint(0, max_start_C + 1, (B, self.num_patches), device=device)
+        
+        # Create offsets and gather patches
+        offsets_L = torch.arange(self.patch_size_L, device=device)
+        offsets_C = torch.arange(self.patch_size_C, device=device)
+        
+        idx_L = (start_indices_L.unsqueeze(-1) + offsets_L) % L
+        idx_C = (start_indices_C.unsqueeze(-1) + offsets_C) % C
+        
+        idx_L = idx_L.unsqueeze(-1)
+        idx_C = idx_C.unsqueeze(-2)
+        
+        patches = x.unsqueeze(1).expand(-1, self.num_patches, -1, -1)
+        patches = patches.gather(2, idx_L.expand(-1, -1, -1, C))
+        patches = patches.gather(3, idx_C.expand(-1, -1, self.patch_size_L, -1))
+        
+        # Add time embeddings
+        t_expanded = t.unsqueeze(1).expand(-1, self.num_patches, -1)
+        t_patches = t_expanded.gather(2, idx_L.squeeze(-1))
+        t_patches = t_patches.unsqueeze(-1).expand(-1, -1, -1, self.patch_size_C)
+        
+        patches = torch.cat([patches, t_patches], dim=-1)
+        
+        # Signal embedding path
+        patches = rearrange(patches, 'b p l c -> b p (l c)')
+        signal_emb = self.signal_linear1(patches)
+        signal_emb = F.silu(signal_emb)
+        signal_emb = self.signal_linear2(signal_emb)
+        
+        # Prompt guidance
+        prompt_emb = None
+        if hasattr(self, 'prompt_encoder') and metadata is not None:
+            # Encode system metadata
+            metadata_dict = self.encode_system_metadata(metadata)
+            prompt_emb = self.prompt_encoder(metadata_dict)
+            
+            # Freeze prompt during finetune stage
+            if self.freeze_prompt or self.training_stage == 'finetune':
+                prompt_emb = prompt_emb.detach()
+            
+            # Fuse prompt with signal embeddings
+            signal_emb = self.prompt_fusion(signal_emb, prompt_emb)
+        
+        # Final projection
+        output = self.final_proj(signal_emb)
+        
+        return output if prompt_emb is None else (output, prompt_emb)
+
+
 if __name__ == '__main__':
-    # Testing the RandomPatchMixer class
-    def test_random_patch_mixer():
-        B = 2  # Batch size
-        L_list = [1024, 2048]  # Variable sequence lengths
-        C_list = [8, 3]   # Variable channel dimensions
-
-        patch_size_L = 128   # Patch size along L dimension
-        patch_size_C = 5   # Patch size along C dimension
-        num_patches = 100   # Number of patches to sample
-        output_dim = 16    # Output dimension after mixing
-        f_s = 100  # Sampling frequency
-
-        model = E_01_HSE(patch_size_L, patch_size_C, num_patches, output_dim, f_s)
-
-        for C in C_list:
-            for L in L_list:
-                x = torch.randn(B, L, C)
-                y = model(x)
-                print(f'Input shape: {x.shape}, Output shape: {y.shape}')
-
-    # Run the test
-    test_random_patch_mixer()
+    print("=== E_01_HSE Prompt-guided Testing ===")
+    
+    # Test original HSE
+    def test_original_hse():
+        print("\n1. Testing Original E_01_HSE:")
+        class Args:
+            patch_size_L = 128
+            patch_size_C = 1
+            num_patches = 64
+            output_dim = 256
+            
+        model = E_01_HSE(Args())
+        
+        B, L, C = 2, 1024, 2
+        x = torch.randn(B, L, C)
+        fs = torch.tensor([1000.0, 2000.0])
+        
+        output = model(x, fs)
+        print(f"  Input: {x.shape} -> Output: {output.shape}")
+        
+    # Test prompt-guided HSE
+    def test_prompt_hse():
+        print("\n2. Testing Prompt-guided E_01_HSE:")
+        
+        class Args:
+            patch_size_L = 128
+            patch_size_C = 1
+            num_patches = 64
+            output_dim = 256
+            prompt_dim = 128
+            fusion_type = 'attention'
+            use_system_prompt = True
+            use_sample_prompt = True
+            use_fault_prompt = True
+            training_stage = 'pretrain'
+            freeze_prompt = False
+            
+        model = E_01_HSE_Prompt(Args())
+        
+        B, L, C = 2, 1024, 2
+        x = torch.randn(B, L, C)
+        fs = 1000.0
+        
+        # Mock metadata
+        metadata = [
+            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0, 'Label': 2},
+            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0, 'Label': 1}
+        ]
+        
+        output, prompt = model(x, fs, metadata)
+        print(f"  Input: {x.shape} -> Output: {output.shape}, Prompt: {prompt.shape}")
+        
+        # Test stage switching
+        print("\n  Testing stage switching:")
+        model.set_training_stage('finetune')
+        output2, prompt2 = model(x, fs, metadata)
+        print(f"  Finetune stage - Output: {output2.shape}, Prompt: {prompt2.shape}")
+        
+        # Test without metadata (fallback)
+        print("\n  Testing without metadata:")
+        output3 = model(x, fs, metadata=None)
+        print(f"  No metadata - Output: {output3.shape if isinstance(output3, torch.Tensor) else output3[0].shape}")
+    
+    # Test system prompt encoder
+    def test_prompt_encoder():
+        print("\n3. Testing SystemPromptEncoder:")
+        
+        encoder = SystemPromptEncoder(prompt_dim=128)
+        
+        metadata_dict = {
+            'Dataset_id': torch.tensor([1, 2, 1]),
+            'Domain_id': torch.tensor([5, 3, 7]),
+            'Sample_rate': torch.tensor([1000.0, 2000.0, 1500.0]),
+            'Label': torch.tensor([2, 1, 0])
+        }
+        
+        prompt = encoder(metadata_dict)
+        print(f"  Metadata batch size 3 -> Prompt: {prompt.shape}")
+        
+    # Test fusion strategies
+    def test_fusion_strategies():
+        print("\n4. Testing Fusion Strategies:")
+        
+        signal_dim, prompt_dim = 256, 128
+        B, num_patches = 2, 64
+        
+        signal_emb = torch.randn(B, num_patches, signal_dim)
+        prompt_emb = torch.randn(B, prompt_dim)
+        
+        for fusion_type in ['concat', 'attention', 'gating']:
+            fusion = PromptFusion(signal_dim, prompt_dim, fusion_type)
+            fused = fusion(signal_emb, prompt_emb)
+            print(f"  {fusion_type}: Signal {signal_emb.shape} + Prompt {prompt_emb.shape} -> {fused.shape}")
+    
+    # Run all tests
+    test_original_hse()
+    test_prompt_hse()
+    test_prompt_encoder()
+    test_fusion_strategies()
+    
+    print("\n=== All tests completed successfully! ===")
+    print("\nKey features implemented:")
+    print("✓ System metadata encoding (Dataset_id, Domain_id, Sample_rate, Label)")
+    print("✓ Multi-level prompt fusion (system, sample, fault)")
+    print("✓ Three fusion strategies (concat, attention, gating)")
+    print("✓ Two-stage training support (pretrain/finetune)")
+    print("✓ Prompt freezing mechanism")
+    print("✓ Backward compatibility with original E_01_HSE")
