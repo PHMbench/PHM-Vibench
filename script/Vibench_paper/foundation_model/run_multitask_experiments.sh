@@ -51,7 +51,7 @@ run_experiment() {
     echo "Experiment: $model_name - Started: $(date)" >> $MAIN_LOG
     
     # Run the experiment
-    python main.py --config_path "$EXPERIMENT_DIR/$config_file" \
+    python main_LQ.py --config_path "$EXPERIMENT_DIR/$config_file" \
         --notes "Multi-task experiment with $model_name" \
         2>&1 | tee "$RESULTS_DIR/$model_name.log"
     

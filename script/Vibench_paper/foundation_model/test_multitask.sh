@@ -38,7 +38,7 @@ echo "=========================================="
 # Run the test
 start_time=$(date +%s)
 
-python main.py --config_path "$EXPERIMENT_DIR/multitask_B_04_Dlinear.yaml" \
+python main_LQ.py --config_path "$EXPERIMENT_DIR/multitask_B_04_Dlinear.yaml" \
     --notes "Quick test of multi-task functionality" \
     2>&1 | tee "$TEST_RESULTS_DIR/B_04_Dlinear_test.log"
 
