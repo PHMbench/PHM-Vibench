@@ -167,48 +167,11 @@ class task(pl.LightningModule):
             
         return y_dict
     
-    def training_step(self, batch, batch_idx):
-        """Override training step for multi-task training."""
-        # Extract data from batch dict (correct format from IdIncludedDataset)
-        x = batch['x']
-        y = batch['y'] 
-        file_id = batch['file_id'][0].item()
+    def _shared_step(self, batch, batch_idx, mode='train'):
+        """Shared logic for training/validation/testing steps."""
+        # batch_idx is kept for PyTorch Lightning interface compatibility
+        _ = batch_idx  # Acknowledge parameter for linting
         
-        # Get metadata for this sample
-        metadata = self.metadata[file_id]
-        
-        # Single forward pass with enabled tasks list
-        outputs = self.network(x, file_id, task_id=self.enabled_tasks)
-        
-        # Build task-specific labels from metadata
-        y_dict = self._build_task_labels(y, metadata)
-        
-        # Compute loss for each enabled task
-        total_loss = 0.0
-        task_losses = {}
-        
-        for task_name in self.enabled_tasks:
-            if task_name in y_dict:
-                try:
-                    task_loss = self._compute_task_loss(task_name, outputs, y_dict[task_name], x)
-                    if task_loss is not None:
-                        weighted_loss = self.task_weights[task_name] * task_loss
-                        task_losses[task_name] = task_loss
-                        total_loss += weighted_loss
-                        
-                        # Log individual task loss
-                        self.log(f'train_{task_name}_loss', task_loss, on_step=True, on_epoch=True)
-                except Exception as e:
-                    # Continue training if individual task fails
-                    print(f'WARNING: {task_name} loss computation failed: {e}')
-                    continue
-        
-        # Log total loss
-        self.log('train_loss', total_loss, on_step=True, on_epoch=True)
-        return total_loss
-    
-    def validation_step(self, batch, batch_idx):
-        """Override validation step for multi-task validation."""
         # Extract data from batch dict (correct format from IdIncludedDataset)
         x = batch['x']
         y = batch['y']
@@ -223,8 +186,8 @@ class task(pl.LightningModule):
         # Build task-specific labels from metadata
         y_dict = self._build_task_labels(y, metadata)
         
-        # Compute validation loss for each enabled task
-        total_val_loss = 0.0
+        # Compute loss for each enabled task
+        total_loss = 0.0
         
         for task_name in self.enabled_tasks:
             if task_name in y_dict:
@@ -232,17 +195,33 @@ class task(pl.LightningModule):
                     task_loss = self._compute_task_loss(task_name, outputs, y_dict[task_name], x)
                     if task_loss is not None:
                         weighted_loss = self.task_weights[task_name] * task_loss
-                        total_val_loss += weighted_loss
+                        total_loss += weighted_loss
                         
-                        # Log individual validation loss
-                        self.log(f'val_{task_name}_loss', task_loss, on_step=False, on_epoch=True)
+                        # Log individual task loss with mode-specific parameters
+                        on_step = (mode == 'train')
+                        self.log(f'{mode}_{task_name}_loss', task_loss, 
+                                on_step=on_step, on_epoch=True)
                 except Exception as e:
-                    print(f'WARNING: {task_name} validation failed: {e}')
+                    # Continue if individual task fails
+                    print(f'WARNING: {task_name} {mode} failed: {e}')
                     continue
         
-        # Log total validation loss
-        self.log('val_loss', total_val_loss, on_step=False, on_epoch=True)
-        return total_val_loss
+        # Log total loss with mode-specific parameters
+        on_step = (mode == 'train')
+        self.log(f'{mode}_loss', total_loss, on_step=on_step, on_epoch=True)
+        return total_loss
+    
+    def training_step(self, batch, batch_idx):
+        """Training step using shared logic."""
+        return self._shared_step(batch, batch_idx, mode='train')
+    
+    def validation_step(self, batch, batch_idx):
+        """Validation step using shared logic."""
+        return self._shared_step(batch, batch_idx, mode='val')
+    
+    def test_step(self, batch, batch_idx):
+        """Test step using shared logic."""
+        return self._shared_step(batch, batch_idx, mode='test')
     
     def _compute_task_loss(self, task_name: str, outputs: Any, targets: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
         """Compute loss for a specific task."""
