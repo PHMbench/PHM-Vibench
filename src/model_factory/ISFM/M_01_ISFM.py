@@ -66,39 +66,8 @@ class Model(nn.Module):
         self.num_classes = self.get_num_classes()  # TODO prediction 任务不需要label？ @liq22
         args_m.num_classes = self.num_classes  # Ensure num_classes is set in args_m
         
-        # Initialize task head(s) - support both single and multi-task modes
-        self.task_heads = nn.ModuleDict()
-        self._single_task_head = None
-        
-        # Available task head mapping for dynamic creation
-        self.task_head_mapping = {
-            'classification': 'H_01_Linear_cla',
-            'rul_prediction': 'H_05_RUL_pred',
-            'anomaly_detection': 'H_06_Anomaly_det', 
-            'signal_prediction': 'H_03_Linear_pred'
-        }
-        
-        # Check if this is a multi-task configuration
-        enabled_tasks = getattr(args_m, 'enabled_tasks', None)
-        
-        if enabled_tasks and len(enabled_tasks) > 1:
-            # Multi-task mode: preload individual heads for enabled tasks
-            for task in enabled_tasks:
-                head_name = self.task_head_mapping.get(task, args_m.task_head)
-                if head_name in TaskHead_dict:
-                    self.task_heads[task] = TaskHead_dict[head_name](args_m)
-                else:
-                    raise ValueError(f"Unknown task head: {head_name} for task: {task}")
-                    
-            print(f"[ISFM] Multi-task mode: Loaded {len(self.task_heads)} task heads for tasks: {list(self.task_heads.keys())}")
-        else:
-            # Single task mode or dynamic multi-task: use specified head as fallback
-            task_head_name = getattr(args_m, 'task_head', 'H_01_Linear_cla')
-            if task_head_name in TaskHead_dict:
-                self._single_task_head = TaskHead_dict[task_head_name](args_m)
-                print(f"[ISFM] Single-task mode: Loaded {task_head_name}")
-            else:
-                raise ValueError(f"Unknown task head: {task_head_name}")
+        # Initialize task head management system
+        self._init_task_heads(args_m)
 
     def get_num_classes(self):
         num_classes = {}
@@ -118,6 +87,85 @@ class Model(nn.Module):
                 
         return num_classes
     
+    # Task Head Management Functions (Decoupled)
+    
+    def _create_task_head(self, task_name, args_m):
+        """创建单个task head"""
+        head_class_name = self.task_head_mapping.get(task_name, getattr(args_m, 'task_head', 'H_01_Linear_cla'))
+        if head_class_name in TaskHead_dict:
+            return TaskHead_dict[head_class_name](args_m)
+        raise ValueError(f"Unknown task head: {head_class_name} for task: {task_name}")
+    
+    def _get_or_create_task_head(self, task_name):
+        """获取或动态创建task head"""
+        # 如果已存在，直接返回
+        if task_name in self.task_heads:
+            return self.task_heads[task_name]
+        
+        # 动态创建
+        head_class_name = self.task_head_mapping.get(task_name)
+        if head_class_name and head_class_name in TaskHead_dict:
+            head = TaskHead_dict[head_class_name](self.args_m)
+            self.task_heads[task_name] = head
+            print(f"[ISFM] Dynamically created {head_class_name} for task '{task_name}'")
+            return head
+        
+        # 使用fallback
+        if self._single_task_head:
+            print(f"[WARNING] Unknown task '{task_name}', using single task head as fallback")
+            return self._single_task_head
+        
+        raise ValueError(f"No head available for task: {task_name}")
+    
+    def _prepare_task_params(self, task_name, file_id, return_feature):
+        """准备任务特定的参数"""
+        params = {'return_feature': return_feature}
+        
+        if task_name == 'classification':
+            params['system_id'] = self.metadata[file_id]['Dataset_id']
+        elif task_name in ['signal_prediction', 'prediction']:  # Support legacy 'prediction' name
+            params['shape'] = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
+        # rul_prediction和anomaly_detection只需要return_feature
+        
+        return params
+    
+    def _execute_single_task(self, x, task_name, file_id, return_feature):
+        """执行单个任务"""
+        head = self._get_or_create_task_head(task_name)
+        params = self._prepare_task_params(task_name, file_id, return_feature)
+        return head(x, **params)
+    
+    def _init_task_heads(self, args_m):
+        """初始化task head管理系统"""
+        self.task_heads = nn.ModuleDict()
+        self._single_task_head = None
+        
+        self.task_head_mapping = {
+            'classification': 'H_01_Linear_cla',
+            'rul_prediction': 'H_05_RUL_pred',
+            'anomaly_detection': 'H_06_Anomaly_det',
+            'signal_prediction': 'H_03_Linear_pred'
+        }
+        
+        enabled_tasks = getattr(args_m, 'enabled_tasks', None)
+        
+        if enabled_tasks and len(enabled_tasks) > 1:
+            # 多任务模式：预加载所有enabled tasks的heads
+            for task in enabled_tasks:
+                try:
+                    head = self._create_task_head(task, args_m)
+                    self.task_heads[task] = head
+                except ValueError as e:
+                    print(f"[WARNING] Failed to create head for task '{task}': {e}")
+            print(f"[ISFM] Multi-task mode: Loaded {len(self.task_heads)} task heads for tasks: {list(self.task_heads.keys())}")
+        else:
+            # 单任务模式：只加载fallback head
+            task_head_name = getattr(args_m, 'task_head', 'H_01_Linear_cla')
+            if task_head_name in TaskHead_dict:
+                self._single_task_head = TaskHead_dict[task_head_name](args_m)
+                print(f"[ISFM] Single-task mode: Loaded {task_head_name}")
+            else:
+                raise ValueError(f"Unknown task head: {task_head_name}")
 
 
     def _embed(self, x, file_id):
@@ -135,69 +183,20 @@ class Model(nn.Module):
         return self.backbone(x)
 
     def _head(self, x, file_id=False, task_id=False, return_feature=False):
-        """3 Task Head - Orchestrates individual task heads"""
+        """3 Task Head - 简化后的任务头调度器"""
         if file_id is False:
             raise ValueError("file_id must be provided for task head")
-            
-        system_id = self.metadata[file_id]['Dataset_id']
-        shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
         
-        # Handle task_id as string or list
-        if isinstance(task_id, str):
-            task_id = [task_id]
+        # 统一处理为列表
+        task_list = [task_id] if isinstance(task_id, str) else task_id
         
-        # Check if we need multiple task heads (multi-task scenario)
-        if len(task_id) > 1 or any(task in self.task_heads for task in task_id):
-            # Multi-task mode: use/create individual heads
-            results = {}
-            
-            for task in task_id:
-                # Get or create task head
-                if task in self.task_heads:
-                    head = self.task_heads[task]
-                elif task in self.task_head_mapping:
-                    # Dynamically create head if not already loaded
-                    head_name = self.task_head_mapping[task]
-                    head = TaskHead_dict[head_name](self.args_m)
-                    self.task_heads[task] = head
-                    print(f"[ISFM] Dynamically created {head_name} for task '{task}'")
-                else:
-                    print(f"[WARNING] Unknown task '{task}', using single task head as fallback")
-                    head = self._single_task_head
-                    if head is None:
-                        raise ValueError(f"No fallback head available for unknown task: {task}")
-                
-                # Call appropriate head with task-specific parameters
-                if task == 'classification':
-                    results[task] = head(x, system_id=system_id, return_feature=return_feature)
-                elif task == 'signal_prediction':
-                    results[task] = head(x, return_feature=return_feature, shape=shape)
-                elif task in ['rul_prediction', 'anomaly_detection']:
-                    results[task] = head(x, return_feature=return_feature)
-                else:
-                    # Generic fallback
-                    results[task] = head(x, return_feature=return_feature)
-            
-            # Return single result if only one task, otherwise return dict
-            if len(results) == 1:
-                return list(results.values())[0]
-            else:
-                return results
-        else:
-            # Single task mode: use the single task head
-            task = task_id[0]
-            head = self._single_task_head
-            
-            if head is None:
-                raise ValueError("No single task head available")
-                
-            if task == 'classification':
-                return head(x, system_id=system_id, return_feature=return_feature)
-            elif task == 'prediction' or task == 'signal_prediction':
-                return head(x, return_feature=return_feature, shape=shape)
-            else:
-                # Generic fallback
-                return head(x, system_id=system_id, return_feature=return_feature)
+        # 执行任务
+        results = {}
+        for task in task_list:
+            results[task] = self._execute_single_task(x, task, file_id, return_feature)
+        
+        # 返回结果
+        return list(results.values())[0] if len(results) == 1 else results
 
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):

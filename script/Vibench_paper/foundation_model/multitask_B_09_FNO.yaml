@@ -148,7 +148,7 @@ trainer:
   # Early stopping (disabled for test mode)
   early_stopping: false  # Test mode: disabled
   patience: 25
-  monitor: "val_total_loss"
+  monitor: "val_loss"
   
   # Model checkpointing
   save_top_k: 3
