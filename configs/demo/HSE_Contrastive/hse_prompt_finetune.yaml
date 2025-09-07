@@ -28,8 +28,8 @@ data:
 
 # 模型配置 - 继承预训练的Prompt引导HSE
 model:
-  name: "M_01_ISFM"
-  type: "ISFM"
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
   input_dim: 2
   num_heads: 4
   num_layers: 2
@@ -51,7 +51,7 @@ model:
   fusion_type: "attention"
   use_system_prompt: true
   use_sample_prompt: true
-  use_fault_prompt: true
+  # REMOVED: use_fault_prompt - Label is prediction target, not prompt input!
   
   # 两阶段训练控制 - 关键差异：冻结prompt
   training_stage: "finetune"      # 微调阶段：只训练signal路径

@@ -12,7 +12,7 @@
 graph TB
     subgraph "数据层 Data Layer"
         D1[多源工业数据<br/>CWRU, XJTU, THU, MFPT...]
-        D2[元数据系统<br/>Dataset_id, Domain_id, Sample_rate, Label]
+        D2[元数据系统<br/>Dataset_id, Domain_id, Sample_rate]
     end
     
     subgraph "特征提取层 Feature Extraction"
@@ -46,7 +46,7 @@ graph TB
 ### 核心创新点
 
 1. **系统信息Prompt化**: 首创将工业系统metadata转化为可学习prompt向量
-2. **多层级Prompt融合**: 系统级+样本级+故障级三层次prompt设计
+2. **多层级Prompt融合**: 系统级+样本级两层次prompt设计
 3. **通用对比学习框架**: 单一接口适配所有SOTA对比学习算法
 4. **两阶段训练策略**: 预训练学习通用表示，微调适配特定任务
 
@@ -133,7 +133,7 @@ class E_01_HSE_Prompt(nn.Module):
 
 ### 2. 系统Prompt编码器 (SystemPromptEncoder)
 
-#### 2.1 多层级Prompt设计
+#### 2.1 两层级Prompt设计
 
 ```mermaid
 graph TD
@@ -141,13 +141,12 @@ graph TD
         M1[Dataset_id: 系统标识]
         M2[Domain_id: 工况信息]
         M3[Sample_rate: 采样频率]
-        M4[Label: 故障类型]
+        M4[Channel: 信号通道数]
     end
     
     subgraph "分层编码"
         L1[系统级Prompt<br/>Dataset_id + Domain_id]
         L2[样本级Prompt<br/>Sample_rate + Channel]
-        L3[故障级Prompt<br/>Label + Fault_level]
     end
     
     subgraph "融合机制"
@@ -158,40 +157,51 @@ graph TD
     M1 --> L1
     M2 --> L1
     M3 --> L2
-    M4 --> L3
+    M4 --> L2
     
     L1 --> A1
     L2 --> A1
-    L3 --> A1
     
     A1 --> A2
     A2 --> P[最终Prompt向量<br/>B×prompt_dim]
 ```
 
+**注意**: 故障类型(Label)是预测目标，不包含在Prompt中。这确保了模型不会获得"未来信息"，保持预测任务的合理性。
+
 #### 2.2 实现架构
 
 ```python
 class SystemPromptEncoder(nn.Module):
-    """多层级系统信息编码器"""
+    """两层级系统信息编码器（不含故障信息）"""
     
     def __init__(self, prompt_dim=128, max_ids=50):
         # 类别特征嵌入表
-        self.dataset_embedding = nn.Embedding(max_ids, prompt_dim // 4)
-        self.domain_embedding = nn.Embedding(max_ids, prompt_dim // 4) 
-        self.label_embedding = nn.Embedding(max_ids, prompt_dim // 4)
+        self.dataset_embedding = nn.Embedding(max_ids, prompt_dim // 3)
+        self.domain_embedding = nn.Embedding(max_ids, prompt_dim // 3)
         
         # 数值特征投影层
-        self.sample_rate_proj = nn.Linear(1, prompt_dim // 4)
+        self.sample_rate_proj = nn.Linear(1, prompt_dim // 3)
         
         # 分层融合网络
-        self.system_fusion = nn.Linear(prompt_dim // 2, prompt_dim)
-        self.sample_fusion = nn.Linear(prompt_dim // 4, prompt_dim)
-        self.fault_fusion = nn.Linear(prompt_dim // 4, prompt_dim)
+        self.system_fusion = nn.Linear(prompt_dim * 2 // 3, prompt_dim)
+        self.sample_fusion = nn.Linear(prompt_dim // 3, prompt_dim)
         
         # 最终聚合机制
-        self.prompt_aggregator = nn.MultiheadAttention(prompt_dim, 4)
+        self.prompt_aggregator = nn.MultiheadAttention(prompt_dim, 4, batch_first=True)
+        self.final_proj = nn.Linear(prompt_dim, prompt_dim)
         
     def forward(self, metadata_dict):
+        """
+        Args:
+            metadata_dict: Dictionary with system metadata
+                - 'Dataset_id': tensor of shape (B,)
+                - 'Domain_id': tensor of shape (B,)  
+                - 'Sample_rate': tensor of shape (B,)
+                注意：不包含Label，因为故障类型是预测目标
+        
+        Returns:
+            prompt_embedding: tensor of shape (B, prompt_dim)
+        """
         # 系统级prompt: Dataset_id + Domain_id
         system_prompt = self.system_fusion(
             torch.cat([
@@ -205,18 +215,51 @@ class SystemPromptEncoder(nn.Module):
             self.sample_rate_proj(metadata_dict['Sample_rate'].unsqueeze(-1))
         )
         
-        # 故障级prompt: Label
-        fault_prompt = self.fault_fusion(
-            self.label_embedding(metadata_dict['Label'])
-        )
-        
-        # 多头自注意力融合
-        prompts = torch.stack([system_prompt, sample_prompt, fault_prompt], dim=1)
+        # 两层级自注意力融合
+        prompts = torch.stack([system_prompt, sample_prompt], dim=1)  # (B, 2, prompt_dim)
         fused_prompt, _ = self.prompt_aggregator(prompts, prompts, prompts)
         
         # 聚合为最终prompt向量
-        final_prompt = fused_prompt.mean(dim=1)
+        final_prompt = fused_prompt.mean(dim=1)  # (B, prompt_dim)
+        final_prompt = self.final_proj(final_prompt)
+        
         return final_prompt
+    
+    @staticmethod
+    def create_metadata_dict(dataset_ids, domain_ids, sample_rates, device=None):
+        """创建metadata字典的便利函数"""
+        if device is None:
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            
+        return {
+            'Dataset_id': torch.tensor(dataset_ids, device=device),
+            'Domain_id': torch.tensor(domain_ids, device=device),
+            'Sample_rate': torch.tensor(sample_rates, device=device)
+        }
+
+# 自测试代码
+if __name__ == '__main__':
+    print("=== SystemPromptEncoder 自测试 ===")
+    
+    encoder = SystemPromptEncoder(prompt_dim=128)
+    
+    # 测试数据
+    metadata_dict = SystemPromptEncoder.create_metadata_dict(
+        dataset_ids=[1, 2, 6],       # CWRU, XJTU, 其他系统
+        domain_ids=[5, 3, 7],        # 不同工况
+        sample_rates=[1000.0, 2000.0, 1500.0]  # 不同采样率
+    )
+    
+    # 测试前向传播
+    prompt = encoder(metadata_dict)
+    print(f"✓ Prompt shape: {prompt.shape}")  # 应该是(3, 128)
+    
+    # 测试一致性
+    prompt2 = encoder(metadata_dict)
+    assert torch.allclose(prompt, prompt2), "Prompt应该保持一致"
+    print("✓ Prompt一致性测试通过")
+    
+    print("✅ 所有测试通过！")
 ```
 
 ### 3. Prompt融合策略 (PromptFusion)
@@ -452,28 +495,137 @@ class TwoStageTrainingController:
                 param.requires_grad = True
 ```
 
-### 6. 工厂模式集成
+### 6. 独立模型文件架构
 
-#### 6.1 组件注册架构
+#### 6.1 文件组织结构
+
+为避免与现有文件冲突，创建独立的Prompt引导模型模块：
+
+```
+src/model_factory/ISFM_Prompt/
+├── __init__.py                    # 模块初始化
+├── M_02_ISFM_Prompt.py           # 主模型文件（新建）
+├── components/                    # 组件目录
+│   ├── __init__.py
+│   ├── SystemPromptEncoder.py    # 系统Prompt编码器
+│   └── PromptFusion.py          # Prompt融合策略
+├── embedding/                    # 嵌入组件（复用现有）
+│   ├── __init__.py  
+│   └── E_01_HSE_Prompt.py       # 已实现，需要更新metadata处理
+└── README.md                     # 使用文档
+```
+
+#### 6.2 主模型文件架构 (M_02_ISFM_Prompt.py)
 
 ```python
-# src/model_factory/ISFM/M_01_ISFM.py
-Embedding_dict = {
-    'E_01_HSE': E_01_HSE,                    # 原版HSE
-    'E_01_HSE_Prompt': E_01_HSE_Prompt,      # Prompt引导版本
+"""
+Prompt引导的ISFM模型 - 独立版本
+避免与现有M_01_ISFM.py冲突
+"""
+import torch.nn as nn
+from .components.SystemPromptEncoder import SystemPromptEncoder
+from .components.PromptFusion import PromptFusion
+from .embedding.E_01_HSE_Prompt import E_01_HSE_Prompt
+from ..ISFM.backbone import *
+from ..ISFM.task_head import *
+
+# Prompt版本的组件字典
+PromptEmbedding_dict = {
+    'E_01_HSE_Prompt': E_01_HSE_Prompt,      # Prompt引导HSE嵌入
 }
 
-Backbone_dict = {
-    'B_08_PatchTST': B_08_PatchTST,         # Transformer骨干
-    'B_11_MomentumEncoder': B_11_MomentumEncoder,  # 动量编码器
+# 复用现有的Backbone和TaskHead
+PromptBackbone_dict = {
+    'B_08_PatchTST': B_08_PatchTST,          # Transformer骨干
+    'B_11_MomentumEncoder': B_11_MomentumEncoder,  # 动量编码器（已实现）
 }
 
-TaskHead_dict = {
-    'H_01_Linear_cla': H_01_Linear_cla,      # 线性分类头
-    'H_10_ProjectionHead': H_10_ProjectionHead,  # 对比学习投影头
+PromptTaskHead_dict = {
+    'H_01_Linear_cla': H_01_Linear_cla,       # 线性分类头
+    'H_10_ProjectionHead': H_10_ProjectionHead,  # 对比学习投影头（已实现）
 }
 
-# src/task_factory/Components/loss.py  
+class M_02_ISFM_Prompt(nn.Module):
+    """
+    Prompt引导的ISFM模型主类
+    
+    功能特性：
+    1. 系统信息Prompt编码
+    2. 两阶段训练支持
+    3. 完整的自测试机制
+    """
+    
+    def __init__(self, args_m, metadata=None):
+        super().__init__()
+        
+        # 基础配置
+        self.embedding_name = args_m.embedding
+        self.backbone_name = args_m.backbone  
+        self.task_head_name = args_m.task_head
+        
+        # Prompt配置（核心创新）
+        self.prompt_dim = getattr(args_m, 'prompt_dim', 128)
+        self.use_prompt = getattr(args_m, 'use_prompt', True)
+        self.training_stage = getattr(args_m, 'training_stage', 'pretrain')
+        
+        # 1. 嵌入层（已实现）
+        self.embedding = PromptEmbedding_dict[self.embedding_name](args_m)
+        
+        # 2. 骨干网络
+        if hasattr(args_m, 'backbone') and args_m.backbone:
+            self.backbone = PromptBackbone_dict[self.backbone_name](args_m)
+        else:
+            self.backbone = nn.Identity()
+            
+        # 3. 任务头
+        if hasattr(args_m, 'task_head') and args_m.task_head:
+            self.task_head = PromptTaskHead_dict[self.task_head_name](args_m)
+        else:
+            self.task_head = nn.Identity()
+    
+    def forward(self, x, metadata=None, **kwargs):
+        """
+        Args:
+            x: 输入信号 (B, L, C)
+            metadata: 系统metadata（不包含Label）
+        
+        Returns:
+            output: 模型输出
+            prompt: 系统prompt（用于对比学习）
+        """
+        # 1. 嵌入层处理（包含prompt）
+        if hasattr(self.embedding, 'forward') and metadata is not None:
+            emb_output = self.embedding(x, metadata=metadata, **kwargs)
+            if isinstance(emb_output, tuple):
+                emb_features, prompt = emb_output
+            else:
+                emb_features, prompt = emb_output, None
+        else:
+            # 降级处理：无prompt
+            emb_features = self.embedding(x, **kwargs)
+            prompt = None
+            
+        # 2. 骨干网络
+        backbone_output = self.backbone(emb_features)
+        
+        # 3. 任务头
+        final_output = self.task_head(backbone_output)
+        
+        return final_output if prompt is None else (final_output, prompt)
+    
+    def set_training_stage(self, stage):
+        """设置训练阶段"""
+        self.training_stage = stage
+        if hasattr(self.embedding, 'set_training_stage'):
+            self.embedding.set_training_stage(stage)
+
+# 注册到工厂系统
+Model_dict = {
+    'M_02_ISFM_Prompt': M_02_ISFM_Prompt,    # Prompt引导版本
+}
+
+# 对比学习损失函数复用现有实现
+# 在task_factory/Components/loss.py中已有：
 LOSS_MAPPING = {
     "INFONCE": InfoNCELoss,
     "TRIPLET": TripletLoss, 
@@ -482,14 +634,65 @@ LOSS_MAPPING = {
     "BARLOWTWINS": BarlowTwinsLoss,
     "VICREG": VICRegLoss,
 }
+
+if __name__ == '__main__':
+    print("=== M_02_ISFM_Prompt 主模型自测试 ===")
+    
+    # 测试配置
+    class TestArgs:
+        embedding = 'E_01_HSE_Prompt'
+        backbone = 'B_08_PatchTST'
+        task_head = 'H_01_Linear_cla'
+        prompt_dim = 128
+        use_prompt = True
+        training_stage = 'pretrain'
+        # 其他必要参数
+        patch_size_L = 256
+        num_patches = 64
+        output_dim = 512
+        num_classes = 4
+    
+    # 创建模型
+    args = TestArgs()
+    model = M_02_ISFM_Prompt(args)
+    
+    # 测试数据
+    batch_size, seq_len, channels = 2, 1024, 2
+    x = torch.randn(batch_size, seq_len, channels)
+    
+    # 测试metadata（不含Label）
+    metadata = [
+        {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0},
+        {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0}
+    ]
+    
+    # 前向传播测试
+    try:
+        output = model(x, metadata=metadata)
+        if isinstance(output, tuple):
+            final_output, prompt = output
+            print(f"✓ Model output shape: {final_output.shape}")
+            print(f"✓ Prompt shape: {prompt.shape}")
+        else:
+            print(f"✓ Model output shape: {output.shape}")
+        
+        # 测试阶段切换
+        model.set_training_stage('finetune')
+        print("✓ 训练阶段切换成功")
+        
+        print("✅ 主模型所有测试通过！")
+        
+    except Exception as e:
+        print(f"❌ 测试失败: {e}")
+        raise e
 ```
 
-#### 6.2 配置驱动实例化
+#### 6.3 配置文件示例
 
 ```yaml
-# 完整模型配置示例
+# Prompt引导模型配置示例
 model:
-  name: "M_01_ISFM"
+  name: "M_02_ISFM_Prompt"  # 使用独立的Prompt模型
   
   # 嵌入层配置
   embedding: "E_01_HSE_Prompt"
@@ -498,16 +701,16 @@ model:
   num_patches: 128
   output_dim: 1024
   
-  # Prompt配置
+  # Prompt配置（核心创新）
   prompt_dim: 128
-  fusion_type: "attention"
-  use_system_prompt: true
-  use_sample_prompt: true
-  use_fault_prompt: true
+  fusion_type: "attention"           # attention/concat/gating
+  use_system_prompt: true            # Dataset_id + Domain_id
+  use_sample_prompt: true            # Sample_rate + Channel
+  # 注意：移除use_fault_prompt，故障类型是预测目标
   
-  # 训练阶段控制
-  training_stage: "pretrain"
-  freeze_prompt: false
+  # 两阶段训练控制
+  training_stage: "pretrain"         # pretrain/finetune
+  freeze_prompt: false               # 预训练时不冻结
   
   # 骨干网络
   backbone: "B_08_PatchTST" 
@@ -515,12 +718,63 @@ model:
   
   # 任务头
   task_head: "H_01_Linear_cla"
+  num_classes: 4                     # 故障类型数量
   
-  # 对比学习组件
+  # 对比学习组件（复用现有实现）
   use_momentum_encoder: true
   momentum: 0.999
   use_projection_head: true
   projection_dim: 128
+```
+
+#### 6.4 配置验证与自测试
+
+每个组件都包含完整的自测试：
+
+```python
+# 组件自测试示例
+if __name__ == '__main__':
+    print(f"=== 测试 {__file__} ===")
+    
+    # 1. 基础功能测试
+    test_basic_functionality()
+    
+    # 2. 边界条件测试  
+    test_edge_cases()
+    
+    # 3. 性能基准测试（P2优先级）
+    if RUN_PERFORMANCE_TESTS:
+        test_performance_benchmarks()
+    
+    print("✅ 所有测试通过！")
+```
+
+**自测试要求**：
+- **P0**: 每个组件必须有基础功能测试
+- **P1**: 包含边界条件和错误处理测试
+- **P2**: 性能测试可选，优先级较低
+
+#### 6.5 优先级标记
+
+```yaml
+# 任务优先级分类
+P0_CORE_FUNCTIONALITY:          # 必须跑通
+  - SystemPromptEncoder (两层级)
+  - PromptFusion (基础版本)
+  - M_02_ISFM_Prompt (主模型)
+  - 基础配置文件支持
+
+P1_FEATURE_ENHANCEMENT:         # 功能增强  
+  - 两阶段训练控制器
+  - 实验中断恢复
+  - 配置验证器
+  - 完整的错误处理
+
+P2_PERFORMANCE_OPTIMIZATION:    # 性能优化（低优先级）
+  - 混合精度训练
+  - 梯度检查点
+  - Flash Attention优化
+  - 内存使用优化
 ```
 
 ## 现有组件复用分析
@@ -697,9 +951,9 @@ class E_01_HSE_Prompt(nn.Module):
             logger.info("Using default sampling frequency 1000Hz")
             
         if metadata is None:
-            # 创建默认metadata
-            metadata = [{'Dataset_id': 0, 'Domain_id': 0, 'Sample_rate': float(fs), 'Label': 0}] * x.size(0)
-            logger.info("Using default metadata for all samples")
+            # 创建默认metadata（不包含Label，因为Label是预测目标）
+            metadata = [{'Dataset_id': 0, 'Domain_id': 0, 'Sample_rate': float(fs)}] * x.size(0)
+            logger.info("Using default metadata for all samples (no Label - it's prediction target)")
             
         return x, fs, metadata
 ```
@@ -876,8 +1130,8 @@ class TestSystemPromptEncoder(unittest.TestCase):
         self.sample_metadata = {
             'Dataset_id': torch.tensor([1, 2, 3]),
             'Domain_id': torch.tensor([5, 3, 7]),
-            'Sample_rate': torch.tensor([1000.0, 2000.0, 1500.0]),
-            'Label': torch.tensor([2, 1, 0])
+            'Sample_rate': torch.tensor([1000.0, 2000.0, 1500.0])
+            # 注意：不包含Label，因为故障类型是预测目标
         }
     
     def test_prompt_shape(self):
@@ -904,8 +1158,7 @@ class TestSystemPromptEncoder(unittest.TestCase):
             metadata = {
                 'Dataset_id': torch.randint(0, 10, (batch_size,)),
                 'Domain_id': torch.randint(0, 10, (batch_size,)),
-                'Sample_rate': torch.rand(batch_size) * 1000 + 500,
-                'Label': torch.randint(0, 5, (batch_size,))
+                'Sample_rate': torch.rand(batch_size) * 1000 + 500
             }
             prompt = self.encoder(metadata)
             self.assertEqual(prompt.shape[0], batch_size)
@@ -950,7 +1203,6 @@ class TestE01HSEPrompt(unittest.TestCase):
             fusion_type = 'attention'
             use_system_prompt = True
             use_sample_prompt = True
-            use_fault_prompt = True
             training_stage = 'pretrain'
             freeze_prompt = False
             
@@ -962,8 +1214,8 @@ class TestE01HSEPrompt(unittest.TestCase):
         x = torch.randn(B, L, C)
         fs = 1000.0
         metadata = [
-            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0, 'Label': 2},
-            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0, 'Label': 1}
+            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0},
+            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0}
         ]
         
         output, prompt = self.model(x, fs, metadata)
@@ -987,8 +1239,8 @@ class TestE01HSEPrompt(unittest.TestCase):
         x = torch.randn(B, L, C)
         fs = 1000.0
         metadata = [
-            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0, 'Label': 2},
-            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0, 'Label': 1}
+            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0},
+            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0}
         ]
         
         # 预训练阶段
@@ -1051,10 +1303,9 @@ class TestHSEPromptWorkflow(unittest.TestCase):
     def test_ablation_studies(self):
         """测试消融研究组合"""
         ablation_configs = [
-            {'use_system_prompt': True, 'use_sample_prompt': False, 'use_fault_prompt': False},
-            {'use_system_prompt': False, 'use_sample_prompt': True, 'use_fault_prompt': False},
-            {'use_system_prompt': False, 'use_sample_prompt': False, 'use_fault_prompt': True},
-            {'use_system_prompt': True, 'use_sample_prompt': True, 'use_fault_prompt': True},
+            {'use_system_prompt': True, 'use_sample_prompt': False},
+            {'use_system_prompt': False, 'use_sample_prompt': True},
+            {'use_system_prompt': True, 'use_sample_prompt': True},
         ]
         
         results = []
@@ -1223,8 +1474,7 @@ graph TD
     subgraph "Prompt生成层"  
         P1[系统级Prompt<br/>Dataset_id + Domain_id]
         P2[样本级Prompt<br/>Sample_rate + Channel]
-        P3[故障级Prompt<br/>Label + Fault_level]
-        P4[Prompt聚合<br/>Multi-head Attention]
+        P3[Prompt聚合<br/>Multi-head Attention]
     end
     
     subgraph "特征融合层"
@@ -1253,13 +1503,11 @@ graph TD
     F1 --> FU1
     F2 --> FU1
     F3 --> P1
-    F3 --> P2  
-    F3 --> P3
+    F3 --> P2
     
-    P1 --> P4
-    P2 --> P4
-    P3 --> P4
-    P4 --> FU2
+    P1 --> P3
+    P2 --> P3
+    P3 --> FU2
     
     FU1 --> FU3
     FU2 --> FU3

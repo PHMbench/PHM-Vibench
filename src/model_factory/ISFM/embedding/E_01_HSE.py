@@ -310,36 +310,68 @@ class E_01_HSE_abalation(nn.Module):
             
         return out
 
+# Note: Updated SystemPromptEncoder and PromptFusion are now imported from ISFM_Prompt components
+# The classes below are kept for backward compatibility but use the new implementation
+
+# Import the updated components from our ISFM_Prompt module
+import sys
+import os
+
+# Try to import from ISFM_Prompt components if available, otherwise use fallback
+try:
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from ISFM_Prompt.components.SystemPromptEncoder import SystemPromptEncoder as NewSystemPromptEncoder
+    from ISFM_Prompt.components.PromptFusion import PromptFusion as NewPromptFusion
+    _USE_NEW_COMPONENTS = True
+except ImportError:
+    _USE_NEW_COMPONENTS = False
+    print("Warning: Could not import new Prompt components, using legacy implementations")
+
+# Wrapper classes for backward compatibility
 class SystemPromptEncoder(nn.Module):
     """
-    Encodes system metadata information into prompt embeddings.
+    Backward-compatible wrapper for the updated SystemPromptEncoder.
     
-    Supports multi-level prompts:
-    - System level: Dataset_id, Domain_id
-    - Sample level: Sample_rate, Channel  
-    - Fault level: Label, Fault_level
+    CRITICAL UPDATE: Now uses two-level prompts only (NO fault-level prompts)
+    - System level: Dataset_id + Domain_id  
+    - Sample level: Sample_rate
+    
+    Label is NOT included as it's the prediction target!
     """
     def __init__(self, prompt_dim=128, max_ids=50):
         super().__init__()
-        self.prompt_dim = prompt_dim
-        self.max_ids = max_ids
         
-        # Embedding tables for categorical features
-        self.dataset_embedding = nn.Embedding(max_ids, prompt_dim // 4)
-        self.domain_embedding = nn.Embedding(max_ids, prompt_dim // 4)
-        self.label_embedding = nn.Embedding(max_ids, prompt_dim // 4)
-        
-        # Linear layers for numerical features
-        self.sample_rate_proj = nn.Linear(1, prompt_dim // 4)
-        
-        # Fusion layers for different prompt levels
-        self.system_fusion = nn.Linear(prompt_dim // 2, prompt_dim)
-        self.sample_fusion = nn.Linear(prompt_dim // 4, prompt_dim)
-        self.fault_fusion = nn.Linear(prompt_dim // 4, prompt_dim)
-        
-        # Final prompt aggregation
-        self.prompt_aggregator = nn.MultiheadAttention(prompt_dim, 4, batch_first=True)
-        self.final_proj = nn.Linear(prompt_dim, prompt_dim)
+        if _USE_NEW_COMPONENTS:
+            # Use the new implementation
+            self.encoder = NewSystemPromptEncoder(
+                prompt_dim=prompt_dim,
+                max_dataset_ids=max_ids,
+                max_domain_ids=max_ids
+            )
+        else:
+            # Fallback implementation (two-level prompts, no fault-level)
+            self.prompt_dim = prompt_dim
+            self.max_ids = max_ids
+            
+            # Calculate embedding dimensions to ensure proper concatenation  
+            self.dataset_dim = prompt_dim // 3
+            self.domain_dim = prompt_dim // 3
+            self.sample_dim = prompt_dim - self.dataset_dim - self.domain_dim
+            
+            # Embedding tables for categorical features (NO Label embedding)
+            self.dataset_embedding = nn.Embedding(max_ids, self.dataset_dim)
+            self.domain_embedding = nn.Embedding(max_ids, self.domain_dim)
+            
+            # Linear layer for numerical features
+            self.sample_rate_proj = nn.Linear(1, self.sample_dim)
+            
+            # Two-level fusion layers (system + sample, NO fault level)
+            self.system_fusion = nn.Linear(self.dataset_dim + self.domain_dim, prompt_dim)
+            self.sample_fusion = nn.Linear(self.sample_dim, prompt_dim)
+            
+            # Final prompt aggregation  
+            self.prompt_aggregator = nn.MultiheadAttention(prompt_dim, 4, batch_first=True)
+            self.final_proj = nn.Linear(prompt_dim, prompt_dim)
         
     def forward(self, metadata_dict):
         """
@@ -347,64 +379,72 @@ class SystemPromptEncoder(nn.Module):
             metadata_dict: Dictionary with system metadata
                 - 'Dataset_id': tensor of shape (B,)
                 - 'Domain_id': tensor of shape (B,)  
-                - 'Sample_rate': tensor of shape (B, 1)
-                - 'Label': tensor of shape (B,)
+                - 'Sample_rate': tensor of shape (B,)
+                
+                CRITICAL: Does NOT contain 'Label' - fault type is prediction target!
         
         Returns:
             prompt_embedding: tensor of shape (B, prompt_dim)
         """
-        batch_size = metadata_dict['Dataset_id'].size(0)
-        
-        # System-level prompt
-        dataset_emb = self.dataset_embedding(metadata_dict['Dataset_id'])
-        domain_emb = self.domain_embedding(metadata_dict['Domain_id'])
-        system_prompt = self.system_fusion(torch.cat([dataset_emb, domain_emb], dim=-1))
-        
-        # Sample-level prompt  
-        sample_rate_emb = self.sample_rate_proj(metadata_dict['Sample_rate'].unsqueeze(-1))
-        sample_prompt = self.sample_fusion(sample_rate_emb)
-        
-        # Fault-level prompt
-        label_emb = self.label_embedding(metadata_dict['Label'])
-        fault_prompt = self.fault_fusion(label_emb)
-        
-        # Stack all prompts for attention-based fusion
-        prompts = torch.stack([system_prompt, sample_prompt, fault_prompt], dim=1)  # (B, 3, prompt_dim)
-        
-        # Self-attention to fuse different prompt levels
-        fused_prompt, _ = self.prompt_aggregator(prompts, prompts, prompts)  # (B, 3, prompt_dim)
-        
-        # Aggregate to single prompt vector (mean pooling)
-        final_prompt = fused_prompt.mean(dim=1)  # (B, prompt_dim)
-        final_prompt = self.final_proj(final_prompt)
-        
-        return final_prompt
+        if _USE_NEW_COMPONENTS:
+            return self.encoder(metadata_dict)
+        else:
+            # Fallback implementation
+            batch_size = metadata_dict['Dataset_id'].size(0)
+            
+            # System-level prompt (Dataset_id + Domain_id)
+            dataset_emb = self.dataset_embedding(metadata_dict['Dataset_id'])
+            domain_emb = self.domain_embedding(metadata_dict['Domain_id'])
+            system_prompt = self.system_fusion(torch.cat([dataset_emb, domain_emb], dim=-1))
+            
+            # Sample-level prompt (Sample_rate)
+            sample_rate_normalized = metadata_dict['Sample_rate'].unsqueeze(-1) / 10000.0
+            sample_emb = self.sample_rate_proj(sample_rate_normalized)
+            sample_prompt = self.sample_fusion(sample_emb)
+            
+            # Two-level prompt fusion (NO fault-level prompts)
+            prompts = torch.stack([system_prompt, sample_prompt], dim=1)  # (B, 2, prompt_dim)
+            
+            # Self-attention to fuse system and sample levels
+            fused_prompt, _ = self.prompt_aggregator(prompts, prompts, prompts)  # (B, 2, prompt_dim)
+            
+            # Aggregate to single prompt vector
+            final_prompt = fused_prompt.mean(dim=1)  # (B, prompt_dim)
+            final_prompt = self.final_proj(final_prompt)
+            
+            return final_prompt
 
 
 class PromptFusion(nn.Module):
     """
-    Fuses prompt embeddings with signal embeddings using different strategies.
+    Backward-compatible wrapper for the updated PromptFusion.
     """
     def __init__(self, signal_dim, prompt_dim, fusion_type='attention'):
         super().__init__()
-        self.fusion_type = fusion_type
-        self.signal_dim = signal_dim
-        self.prompt_dim = prompt_dim
         
-        if fusion_type == 'concat':
-            self.fusion_proj = nn.Linear(signal_dim + prompt_dim, signal_dim)
+        if _USE_NEW_COMPONENTS:
+            # Use the new implementation
+            self.fusion = NewPromptFusion(signal_dim, prompt_dim, fusion_type)
+        else:
+            # Fallback implementation
+            self.fusion_type = fusion_type
+            self.signal_dim = signal_dim
+            self.prompt_dim = prompt_dim
             
-        elif fusion_type == 'attention':
-            # Cross-attention: signal attends to prompt
-            self.cross_attention = nn.MultiheadAttention(signal_dim, 4, batch_first=True)
-            self.prompt_proj = nn.Linear(prompt_dim, signal_dim)
-            
-        elif fusion_type == 'gating':
-            # Adaptive gating mechanism
-            self.gate_proj = nn.Linear(prompt_dim, signal_dim)
-            self.transform_proj = nn.Linear(prompt_dim, signal_dim)
-            
-        self.layer_norm = nn.LayerNorm(signal_dim)
+            if fusion_type == 'concat':
+                self.fusion_proj = nn.Linear(signal_dim + prompt_dim, signal_dim)
+                
+            elif fusion_type == 'attention':
+                # Cross-attention: signal attends to prompt
+                self.cross_attention = nn.MultiheadAttention(signal_dim, 4, batch_first=True)
+                self.prompt_proj = nn.Linear(prompt_dim, signal_dim)
+                
+            elif fusion_type == 'gating':
+                # Adaptive gating mechanism
+                self.gate_proj = nn.Linear(prompt_dim, signal_dim)
+                self.transform_proj = nn.Linear(prompt_dim, signal_dim)
+                
+            self.layer_norm = nn.LayerNorm(signal_dim)
         
     def forward(self, signal_emb, prompt_emb):
         """
@@ -415,34 +455,43 @@ class PromptFusion(nn.Module):
         Returns:
             fused_emb: (B, num_patches, signal_dim)
         """
-        if self.fusion_type == 'concat':
-            # Expand prompt to match signal patches
-            expanded_prompt = prompt_emb.unsqueeze(1).expand(-1, signal_emb.size(1), -1)
-            concatenated = torch.cat([signal_emb, expanded_prompt], dim=-1)
-            fused = self.fusion_proj(concatenated)
-            
-        elif self.fusion_type == 'attention':
-            # Project prompt to signal dimension
-            prompt_projected = self.prompt_proj(prompt_emb).unsqueeze(1)  # (B, 1, signal_dim)
-            
-            # Cross-attention: signal queries attend to prompt keys/values
-            attended_signal, _ = self.cross_attention(
-                signal_emb, prompt_projected, prompt_projected
-            )
-            fused = signal_emb + attended_signal  # Residual connection
-            
-        elif self.fusion_type == 'gating':
-            # Adaptive gating
-            gate = torch.sigmoid(self.gate_proj(prompt_emb)).unsqueeze(1)
-            transform = self.transform_proj(prompt_emb).unsqueeze(1)
-            fused = gate * signal_emb + (1 - gate) * transform
-            
-        return self.layer_norm(fused)
+        if _USE_NEW_COMPONENTS:
+            return self.fusion(signal_emb, prompt_emb)
+        else:
+            # Fallback implementation
+            if self.fusion_type == 'concat':
+                # Expand prompt to match signal patches
+                expanded_prompt = prompt_emb.unsqueeze(1).expand(-1, signal_emb.size(1), -1)
+                concatenated = torch.cat([signal_emb, expanded_prompt], dim=-1)
+                fused = self.fusion_proj(concatenated)
+                
+            elif self.fusion_type == 'attention':
+                # Project prompt to signal dimension
+                prompt_projected = self.prompt_proj(prompt_emb).unsqueeze(1)  # (B, 1, signal_dim)
+                
+                # Cross-attention: signal queries attend to prompt keys/values
+                attended_signal, _ = self.cross_attention(
+                    signal_emb, prompt_projected, prompt_projected
+                )
+                fused = signal_emb + attended_signal  # Residual connection
+                
+            elif self.fusion_type == 'gating':
+                # Adaptive gating
+                gate = torch.sigmoid(self.gate_proj(prompt_emb)).unsqueeze(1)
+                transform = self.transform_proj(prompt_emb).unsqueeze(1)
+                fused = gate * signal_emb + (1 - gate) * transform
+                
+            return self.layer_norm(fused)
 
 
 class E_01_HSE_Prompt(nn.Module):
     """
     Prompt-guided Hierarchical Signal Embedding for heterogeneous system processing.
+    
+    CRITICAL UPDATE: Uses two-level prompts only (NO fault-level prompts):
+    - System level: Dataset_id + Domain_id (identifies system and operating conditions)
+    - Sample level: Sample_rate (captures signal acquisition parameters)
+    - NO fault level: Label is the prediction target, not prompt input!
     
     Supports two-stage training:
     - Stage 1 (pretrain): Learn both signal and prompt features with contrastive learning
@@ -455,9 +504,8 @@ class E_01_HSE_Prompt(nn.Module):
         output_dim (int): Output feature dimension
         prompt_dim (int): Prompt embedding dimension
         fusion_type (str): Fusion strategy ('concat', 'attention', 'gating')
-        use_system_prompt (bool): Whether to use system-level prompts
-        use_sample_prompt (bool): Whether to use sample-level prompts
-        use_fault_prompt (bool): Whether to use fault-level prompts
+        use_system_prompt (bool): Whether to use system-level prompts (Dataset_id + Domain_id)
+        use_sample_prompt (bool): Whether to use sample-level prompts (Sample_rate)
     """
     def __init__(self, args):
         super().__init__()
@@ -472,7 +520,7 @@ class E_01_HSE_Prompt(nn.Module):
         self.fusion_type = getattr(args, 'fusion_type', 'attention')
         self.use_system_prompt = getattr(args, 'use_system_prompt', True)
         self.use_sample_prompt = getattr(args, 'use_sample_prompt', True) 
-        self.use_fault_prompt = getattr(args, 'use_fault_prompt', True)
+        # REMOVED: use_fault_prompt - Label is prediction target, not prompt input!
         
         # Training stage control
         self.training_stage = getattr(args, 'training_stage', 'pretrain')  # 'pretrain' or 'finetune'
@@ -482,8 +530,8 @@ class E_01_HSE_Prompt(nn.Module):
         self.signal_linear1 = nn.Linear(self.patch_size_L * (self.patch_size_C * 2), self.output_dim)
         self.signal_linear2 = nn.Linear(self.output_dim, self.output_dim)
         
-        # Prompt encoding path
-        if any([self.use_system_prompt, self.use_sample_prompt, self.use_fault_prompt]):
+        # Prompt encoding path (only system + sample, NO fault prompts)
+        if any([self.use_system_prompt, self.use_sample_prompt]):
             self.prompt_encoder = SystemPromptEncoder(self.prompt_dim)
             
             # Fusion module
@@ -506,36 +554,38 @@ class E_01_HSE_Prompt(nn.Module):
         """
         Extract and encode system information from metadata batch.
         
+        CRITICAL UPDATE: Only extracts system and sample level information.
+        Label is NOT included as it's the prediction target!
+        
         Args:
             metadata_batch: List of metadata dictionaries or single dict
             
         Returns:
-            metadata_dict: Dictionary with tensors for batch processing
+            metadata_dict: Dictionary with tensors for batch processing (NO Label!)
         """
         if isinstance(metadata_batch, dict):
             metadata_batch = [metadata_batch]
             
         batch_size = len(metadata_batch)
         
-        # Extract system information
+        # Extract system information (NO Label - it's the prediction target!)
         dataset_ids = []
         domain_ids = []
         sample_rates = []
-        labels = []
         
         for meta in metadata_batch:
             dataset_ids.append(int(meta.get('Dataset_id', 0)))
             domain_ids.append(int(meta.get('Domain_id', 0)))
             sample_rates.append(float(meta.get('Sample_rate', 1000.0)))
-            labels.append(int(meta.get('Label', 0)))
+            # REMOVED: labels.append(int(meta.get('Label', 0))) - Label is prediction target!
         
         device = next(self.parameters()).device
         
         return {
             'Dataset_id': torch.tensor(dataset_ids, device=device),
             'Domain_id': torch.tensor(domain_ids, device=device),
-            'Sample_rate': torch.tensor(sample_rates, device=device),
-            'Label': torch.tensor(labels, device=device)
+            'Sample_rate': torch.tensor(sample_rates, device=device)
+            # REMOVED: 'Label' - fault type is prediction target, not prompt input!
         }
     
     def forward(self, x, fs=None, metadata=None, **kwargs):
@@ -670,7 +720,7 @@ if __name__ == '__main__':
             fusion_type = 'attention'
             use_system_prompt = True
             use_sample_prompt = True
-            use_fault_prompt = True
+            # REMOVED: use_fault_prompt - Label is prediction target, not prompt input!
             training_stage = 'pretrain'
             freeze_prompt = False
             
@@ -680,10 +730,10 @@ if __name__ == '__main__':
         x = torch.randn(B, L, C)
         fs = 1000.0
         
-        # Mock metadata
+        # Mock metadata (NO Label - it's the prediction target!)
         metadata = [
-            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0, 'Label': 2},
-            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0, 'Label': 1}
+            {'Dataset_id': 1, 'Domain_id': 5, 'Sample_rate': 1000.0},
+            {'Dataset_id': 2, 'Domain_id': 3, 'Sample_rate': 2000.0}
         ]
         
         output, prompt = model(x, fs, metadata)
@@ -709,8 +759,8 @@ if __name__ == '__main__':
         metadata_dict = {
             'Dataset_id': torch.tensor([1, 2, 1]),
             'Domain_id': torch.tensor([5, 3, 7]),
-            'Sample_rate': torch.tensor([1000.0, 2000.0, 1500.0]),
-            'Label': torch.tensor([2, 1, 0])
+            'Sample_rate': torch.tensor([1000.0, 2000.0, 1500.0])
+            # REMOVED: 'Label' - fault type is prediction target, not prompt input!
         }
         
         prompt = encoder(metadata_dict)
@@ -739,9 +789,11 @@ if __name__ == '__main__':
     
     print("\n=== All tests completed successfully! ===")
     print("\nKey features implemented:")
-    print("✓ System metadata encoding (Dataset_id, Domain_id, Sample_rate, Label)")
-    print("✓ Multi-level prompt fusion (system, sample, fault)")
+    print("✓ UPDATED: System metadata encoding (Dataset_id, Domain_id, Sample_rate)")
+    print("✓ CRITICAL: NO Label in prompts - it's the prediction target!")
+    print("✓ Two-level prompt fusion (system + sample, NO fault level)")
     print("✓ Three fusion strategies (concat, attention, gating)")
     print("✓ Two-stage training support (pretrain/finetune)")
     print("✓ Prompt freezing mechanism")
     print("✓ Backward compatibility with original E_01_HSE")
+    print("✓ Updated for ICML/NeurIPS 2025 publication requirements")

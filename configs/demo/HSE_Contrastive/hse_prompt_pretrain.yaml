@@ -28,8 +28,8 @@ data:
 
 # 模型配置 - 使用新的Prompt引导HSE
 model:
-  name: "M_01_ISFM"
-  type: "ISFM"
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
   input_dim: 2
   num_heads: 4
   num_layers: 2
@@ -51,7 +51,7 @@ model:
   fusion_type: "attention"        # 融合策略：attention/concat/gating
   use_system_prompt: true         # 启用系统级prompt (Dataset_id, Domain_id)
   use_sample_prompt: true         # 启用样本级prompt (Sample_rate, Channel)
-  use_fault_prompt: true          # 启用故障级prompt (Label, Fault_level)
+  # REMOVED: use_fault_prompt - Label is prediction target, not prompt input!
   
   # 两阶段训练控制
   training_stage: "pretrain"      # 预训练阶段：学习signal和prompt特征
