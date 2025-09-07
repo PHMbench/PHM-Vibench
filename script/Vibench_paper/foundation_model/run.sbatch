@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=multitask_test
 #SBATCH --partition=gpu
-#SBATCH --gpus=v100:1  
+#SBATCH --gpus=v100:4  
 ## a100
-#SBATCH --cpus-per-gpu=1
-#SBATCH --mem=32G
-#SBATCH --time=00:30:00
+#SBATCH --cpus-per-gpu=4
+#SBATCH --mem=64G
+#SBATCH --time=02:00:00
 #SBATCH --output=logs/multitask_%x_%j.out
 #SBATCH --error=logs/multitask_%x_%j.err
 #SBATCH --chdir=/vast/palmer/home.grace/ql334/LQ/PHM-Vibench/
