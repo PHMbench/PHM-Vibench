@@ -188,6 +188,90 @@ python -u src/train.py --config configs/default.yaml --device cpu
 
 
 
+## ✅ **正确的提交方式**
+
+### 方法1：使用 sbatch 命令提交（正确方式）
+```bash
+sbatch /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+sbatch /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+```
+
+### 方法2：先查看文件内容
+```bash
+# 查看脚本内容，确认配置
+cat /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+
+# 或用 less 查看长文件
+less /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+```
+
+### 方法3：检查并修复权限（如果需要）
+```bash
+# 查看当前权限
+ls -la /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+
+# 如果需要添加执行权限（通常不需要）
+chmod +x /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+
+# 但仍然要用 sbatch 提交
+sbatch /vast/palmer/home.grace/ql334/LQ/PHM-Vibench/script/Vibench_paper/foundation_model/run.sbatch
+```
+
+## 📋 **完整工作流程**
+
+```bash
+# 1. 进入项目目录
+cd /vast/palmer/home.grace/ql334/LQ/PHM-Vibench
+
+# 2. 查看脚本内容（可选）
+cat script/Vibench_paper/foundation_model/run.sbatch
+
+# 3. 提交作业
+sbatch script/Vibench_paper/foundation_model/run.sbatch
+
+# 4. 查看作业状态
+squeue --me
+
+# 5. 如果需要取消作业
+# scancel <jobid>
+```
+
+## 🔍 **常用 SLURM 命令**
+
+| 命令 | 用途 |
+|------|------|
+| `sbatch script.sbatch` | 提交批处理作业 |
+| `squeue --me` | 查看自己的作业队列 |
+| `squeue -p gpu` | 查看GPU分区队列 |
+| `scancel <jobid>` | 取消作业 |
+| `sinfo -p gpu` | 查看GPU分区节点状态 |
+| `sacct -j <jobid>` | 查看作业历史 |
+
+## ⚠️ **注意事项**
+
+1. **永远不要**直接执行 `.sbatch` 文件（`./run.sbatch`）
+2. **永远使用** `sbatch` 命令提交
+3. **确保在login节点**提交作业（您现在的位置是正确的）
+
+## 🎯 **快速开始**
+
+立即运行：
+```bash
+sbatch script/Vibench_paper/foundation_model/run.sbatch
+```
+
+提交后会返回类似：
+```
+Submitted batch job 12345678
+```
+
+然后查看状态：
+```bash
+squeue --me
+```
+
+如果脚本有问题或需要修改，请先用 `cat` 查看内容，我可以帮您调整参数。
+
 
 
 
