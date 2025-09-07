@@ -19,7 +19,7 @@ environment:
 
 # Data Configuration - Reduced for faster debugging
 data:
-  data_dir: "/mnt/crucial/LQ/PHM-Vibench"
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
   metadata_file: "metadata_6_11.xlsx"
   batch_size: 16  # DEBUG: Reduced from 128 to 16 for faster iteration
   num_workers: 4   # DEBUG: Reduced from 32 to 4 for simpler debugging
