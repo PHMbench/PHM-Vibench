@@ -18,7 +18,7 @@ environment:
 
 # Data Configuration
 data:
-  data_dir: "/mnt/crucial/LQ/PHM-Vibench"
+  data_dir: "/vast/palmer/home.grace/ql334/LQ/PHM-Vibench/data/"
   metadata_file: "metadata_6_11.xlsx"
   batch_size: 128
   num_workers: 32
