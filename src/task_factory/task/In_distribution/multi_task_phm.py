@@ -135,18 +135,28 @@ class task(pl.LightningModule):
                     
                     # Classification metrics need special parameters
                     if metric_name in ['acc', 'f1', 'precision', 'recall']:
+                        # Map metric names to torchmetrics class names
+                        metric_class_names = {
+                            'acc': 'Accuracy',
+                            'f1': 'F1Score', 
+                            'precision': 'Precision',
+                            'recall': 'Recall'
+                        }
+                        metric_class_name = metric_class_names[metric_name]
+                        
                         if task == 'anomaly_detection':
                             # Binary classification
-                            stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_name.upper() if metric_name == 'auroc' else metric_name.capitalize())(
+                            stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
                                 task='binary'
                             )
                         else:
                             # Multi-class classification - determine num_classes from metadata
-                            max_classes = max(
+                            labels = [
                                 item.get('Label', 0) for item in self.metadata.values() 
                                 if isinstance(item, dict) and 'Label' in item
-                            ) + 1
-                            stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_name.capitalize())(
+                            ]
+                            max_classes = max(labels) + 1 if labels else 2
+                            stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
                                 task='multiclass',
                                 num_classes=max(max_classes, 2)
                             )
@@ -154,64 +164,114 @@ class task(pl.LightningModule):
                         stage_metrics[stage][metric_key] = torchmetrics.AUROC(task='binary')
                     else:
                         # Regression metrics
-                        stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_name.upper())()
+                        regression_class_names = {
+                            'mse': 'MeanSquaredError',
+                            'mae': 'MeanAbsoluteError', 
+                            'r2': 'R2Score',
+                            'mape': 'MeanAbsolutePercentageError'
+                        }
+                        metric_class_name = regression_class_names.get(metric_name, metric_name.upper())
+                        stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)()
             
             task_metrics[task] = stage_metrics
         
         return task_metrics
     
-    def _compute_task_metrics(self, task_name: str, outputs, targets, mode: str) -> Dict[str, torch.Tensor]:
-        """Compute task-specific metrics and return values for logging."""
+    def _compute_task_metrics(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, mode: str) -> Dict[str, torch.Tensor]:
+        """Compute task-specific metrics using single dispatch to task-specific methods."""
         if task_name not in self.task_metrics:
             return {}
-            
+        
+        # Single dispatch to task-specific method
+        if task_name == 'classification':
+            return self._compute_classification_metrics(task_name, task_output, targets, mode)
+        elif task_name == 'anomaly_detection':
+            return self._compute_anomaly_metrics(task_name, task_output, targets, mode)
+        elif task_name in ['signal_prediction', 'rul_prediction']:
+            return self._compute_regression_metrics(task_name, task_output, targets, mode)
+        return {}
+    
+    def _compute_classification_metrics(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, mode: str) -> Dict[str, torch.Tensor]:
+        """Compute classification metrics with task-specific logic."""
         metric_values = {}
         stage_metrics = self.task_metrics[task_name][mode]
         
-        # Get task output
-        task_output = getattr(outputs, f'{task_name}_logits', outputs)
+        # Prepare classification predictions
+        preds = torch.argmax(task_output, dim=-1)
+        targets = targets.long()
         
-        # Prepare predictions and targets based on task type
-        if task_name == 'classification':
-            # Multi-class classification
-            preds = torch.argmax(task_output, dim=-1)
-            targets = targets.long()
-        elif task_name == 'anomaly_detection':
-            # Binary classification
-            preds = torch.sigmoid(task_output)
-            targets = targets.float()
-        elif task_name in ['signal_prediction', 'rul_prediction']:
-            # Regression tasks
-            preds = task_output
-            targets = targets.float()
-            if task_name == 'rul_prediction' and preds.dim() > targets.dim():
-                preds = preds.squeeze(-1)  # Remove extra dimensions for RUL
-        else:
-            return {}
-            
-        # Compute metrics
+        # Compute all classification metrics
         for metric_key, metric_fn in stage_metrics.items():
             try:
-                if 'auroc' in metric_key and task_name == 'anomaly_detection':
-                    # AUROC needs probabilities, not predictions
-                    value = metric_fn(preds, targets.int())
-                elif any(clf_metric in metric_key for clf_metric in ['acc', 'f1', 'precision', 'recall']) and task_name != 'anomaly_detection':
-                    # Classification metrics need integer predictions and targets
-                    value = metric_fn(preds, targets)
-                elif task_name == 'anomaly_detection' and any(clf_metric in metric_key for clf_metric in ['acc', 'f1', 'precision', 'recall']):
-                    # Binary classification metrics
-                    binary_preds = (preds > 0.5).int()
+                value = metric_fn(preds, targets)
+                metric_values[f"{task_name}_{metric_key}"] = value
+            except Exception as e:
+                print(f"Warning: Failed to compute {metric_key} for {task_name}: {e}")
+                continue
+        
+        return metric_values
+    
+    def _compute_anomaly_metrics(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, mode: str) -> Dict[str, torch.Tensor]:
+        """Compute anomaly detection metrics with task-specific logic."""
+        metric_values = {}
+        stage_metrics = self.task_metrics[task_name][mode]
+        
+        # Prepare anomaly detection outputs
+        prob_preds = torch.sigmoid(task_output).squeeze(-1)
+        binary_preds = (prob_preds > 0.5).int()
+        targets = targets.float()
+        
+        # Compute all anomaly detection metrics
+        for metric_key, metric_fn in stage_metrics.items():
+            try:
+                if 'auroc' in metric_key:
+                    # AUROC needs probabilities
+                    value = metric_fn(prob_preds, targets.int())
+                elif any(clf_metric in metric_key for clf_metric in ['acc', 'f1', 'precision', 'recall']):
+                    # Binary classification metrics need integer predictions
                     value = metric_fn(binary_preds, targets.int())
                 else:
-                    # Regression metrics
-                    value = metric_fn(preds, targets)
+                    # Other metrics use probabilities
+                    value = metric_fn(prob_preds, targets)
                     
                 metric_values[f"{task_name}_{metric_key}"] = value
             except Exception as e:
-                # Skip failed metrics to avoid breaking training
                 print(f"Warning: Failed to compute {metric_key} for {task_name}: {e}")
                 continue
-                
+        
+        return metric_values
+    
+    def _compute_regression_metrics(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, mode: str) -> Dict[str, torch.Tensor]:
+        """Compute regression metrics with task-specific logic for signal_prediction and rul_prediction."""
+        metric_values = {}
+        stage_metrics = self.task_metrics[task_name][mode]
+        
+        # Prepare regression predictions
+        preds = task_output
+        targets = targets.float()
+        
+        # Task-specific dimension handling
+        if task_name == 'rul_prediction':
+            # Handle RUL predictions - squeeze until dimensions match
+            while preds.dim() > targets.dim():
+                preds = preds.squeeze(-1)
+            # Final squeeze if last dimension is 1
+            if preds.shape[-1:] == torch.Size([1]) and len(targets.shape) == 1:
+                preds = preds.squeeze(-1)
+        elif task_name == 'signal_prediction' and preds.dim() > 2:
+            # For signal prediction with 3D tensors, flatten for metric computation
+            preds = preds.view(-1, preds.size(-1))
+            targets = targets.view(-1, targets.size(-1))
+        
+        # Compute all regression metrics
+        for metric_key, metric_fn in stage_metrics.items():
+            try:
+                value = metric_fn(preds, targets)
+                metric_values[f"{task_name}_{metric_key}"] = value
+            except Exception as e:
+                print(f"Warning: Failed to compute {metric_key} for {task_name}: {e}")
+                continue
+        
         return metric_values
     
     def configure_optimizers(self):
@@ -243,11 +303,28 @@ class task(pl.LightningModule):
         
         return optimizer
     
-    def _build_task_labels(self, y, metadata):
-        """Build task-specific labels from single label and metadata."""
+
+    
+    def _build_task_labels_batch(self, y, file_ids):
+        """Build task-specific labels for batch processing with individual metadata per sample."""
         y_dict = {}
+        batch_size = y.shape[0] if hasattr(y, 'shape') else len(y)
         
-        # Classification task - use original label
+        # Convert file_ids to consistent format
+        if hasattr(file_ids, 'tolist'):
+            file_ids = file_ids.tolist()
+        elif isinstance(file_ids, torch.Tensor):
+            file_ids = [fid.item() if isinstance(fid, torch.Tensor) else fid for fid in file_ids]
+        
+        # Ensure we have the right number of file_ids
+        if len(file_ids) != batch_size:
+            # Handle case where all samples might have same file_id (single file batch)
+            if len(file_ids) == 1:
+                file_ids = file_ids * batch_size
+            else:
+                raise ValueError(f"Mismatch: batch_size={batch_size}, file_ids={len(file_ids)}")
+        
+        # Classification task - use original labels
         if 'classification' in self.enabled_tasks:
             y_dict['classification'] = y
         
@@ -256,24 +333,31 @@ class task(pl.LightningModule):
             # Assume label 0 is normal, others are anomaly
             y_dict['anomaly_detection'] = (y > 0).float()
         
-        # RUL prediction - get from metadata with validation
+        # RUL prediction - get from metadata for each sample
         if 'rul_prediction' in self.enabled_tasks:
-            rul_value = metadata.get('RUL_label', None)
-            if rul_value is not None and isinstance(rul_value, (int, float)) and not torch.isnan(torch.tensor(rul_value)):
-                # Valid RUL value found
-                batch_size = y.shape[0] if len(y.shape) > 0 else 1
-                y_dict['rul_prediction'] = torch.full((batch_size,), float(rul_value), dtype=torch.float32).to(y.device)
-            else:
-                # Use default RUL value for missing/invalid data to prevent NaN
-                default_rul = 1000.0  # Reasonable default for most industrial datasets
-                batch_size = y.shape[0] if len(y.shape) > 0 else 1
-                y_dict['rul_prediction'] = torch.full((batch_size,), default_rul, dtype=torch.float32).to(y.device)
-                # Log warning only once per dataset to avoid spam
-                if not hasattr(self, '_rul_warnings'):
-                    self._rul_warnings = set()
-                if file_id not in self._rul_warnings:
-                    print(f"Warning: Missing/invalid RUL label for file {file_id}, using default value {default_rul}")
-                    self._rul_warnings.add(file_id)
+            rul_values = []
+            
+            for i, file_id in enumerate(file_ids):
+                metadata = self.metadata.get(file_id, {})
+                rul_value = metadata.get('RUL_label', None)
+                
+                if rul_value is not None and isinstance(rul_value, (int, float)) and not torch.isnan(torch.tensor(rul_value)):
+                    # Valid RUL value found
+                    rul_values.append(float(rul_value))
+                else:
+                    # Use default RUL value for missing/invalid data to prevent NaN
+                    default_rul = 1000.0
+                    rul_values.append(default_rul)
+                    
+                    # Log warning only once per dataset to avoid spam
+                    if not hasattr(self, '_rul_warnings'):
+                        self._rul_warnings = set()
+                    if file_id not in self._rul_warnings:
+                        print(f"Warning: Missing/invalid RUL label for file {file_id}, using default value {default_rul}")
+                        self._rul_warnings.add(file_id)
+            
+            # Convert to tensor
+            y_dict['rul_prediction'] = torch.tensor(rul_values, dtype=torch.float32, device=y.device)
         
         # Signal prediction - no label needed (reconstruction task)
         if 'signal_prediction' in self.enabled_tasks:
@@ -290,16 +374,23 @@ class task(pl.LightningModule):
         # Extract data from batch dict (correct format from IdIncludedDataset)
         x = batch['x']
         y = batch['y']
-        file_id = batch['file_id'][0].item()
+        file_ids = batch['file_id']  # Get all file IDs in the batch
         
-        # Get metadata for this sample
-        metadata = self.metadata[file_id]
+        # Handle both tensor and list formats for file_ids
+        if isinstance(file_ids, torch.Tensor):
+            file_ids = file_ids.tolist()
+        
+        batch_size = x.shape[0]
+        
+        # For model forward pass, use the first file_id (models typically need single ID)
+        # This maintains backward compatibility while we fix batch processing
+        primary_file_id = file_ids[0] if isinstance(file_ids[0], int) else file_ids[0].item()
         
         # Single forward pass with enabled tasks list
-        outputs = self.network(x, file_id, task_id=self.enabled_tasks)
+        outputs = self.network(x, primary_file_id, task_id=self.enabled_tasks)
         
-        # Build task-specific labels from metadata
-        y_dict = self._build_task_labels(y, metadata)
+        # Build task-specific labels for each sample using its own metadata
+        y_dict = self._build_task_labels_batch(y, file_ids)
         
         # Compute loss and metrics for each enabled task
         total_loss = 0.0
@@ -307,7 +398,14 @@ class task(pl.LightningModule):
         for task_name in self.enabled_tasks:
             if task_name in y_dict:
                 try:
-                    task_loss = self._compute_task_loss(task_name, outputs, y_dict[task_name], x)
+                    # Extract task-specific output once
+                    task_output = outputs.get(task_name) if isinstance(outputs, dict) else getattr(outputs, task_name, None)
+                    if task_output is None:
+                        print(f'WARNING: No output found for task {task_name}')
+                        continue
+                    
+                    # Compute task loss with extracted output
+                    task_loss = self._compute_task_loss(task_name, task_output, y_dict[task_name], x)
                     if task_loss is not None:
                         weighted_loss = self.task_weights[task_name] * task_loss
                         total_loss += weighted_loss
@@ -318,7 +416,7 @@ class task(pl.LightningModule):
                                 on_step=on_step, on_epoch=True)
                         
                         # Compute and log task-specific metrics
-                        task_metrics = self._compute_task_metrics(task_name, outputs, y_dict[task_name], mode)
+                        task_metrics = self._compute_task_metrics(task_name, task_output, y_dict[task_name], mode)
                         for metric_name, metric_value in task_metrics.items():
                             # Log metrics only on epoch for cleaner logging
                             self.log(metric_name, metric_value, 
@@ -346,21 +444,9 @@ class task(pl.LightningModule):
         """Test step using shared logic."""
         return self._shared_step(batch, batch_idx, mode='test')
     
-    def _compute_task_loss(self, task_name: str, outputs: Any, targets: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
-        """Compute loss for a specific task."""
+    def _compute_task_loss(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
+        """Compute loss for a specific task using task-specific output directly."""
         loss_fn = self.task_loss_fns[task_name]
-        
-        # Handle both dictionary and object-style outputs
-        if isinstance(outputs, dict):
-            # Dictionary format from MultiTaskHead
-            task_output = outputs.get(task_name, None)
-            if task_output is None:
-                print(f'WARNING: No output found for task {task_name} in outputs: {list(outputs.keys())}')
-                return None
-        else:
-            # Object/attribute format - try to get specific task output
-            task_output = getattr(outputs, task_name, 
-                                getattr(outputs, f'{task_name}_logits', outputs))
         
         if task_name == 'classification':
             return loss_fn(task_output, targets.long())

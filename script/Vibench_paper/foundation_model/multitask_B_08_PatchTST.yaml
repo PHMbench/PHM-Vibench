@@ -76,7 +76,7 @@ model:
   use_batch_norm: true
   
   # H_03_Linear_pred parameters for signal prediction - MEMORY OPTIMIZED
-  max_len: 512       # MEMORY FIX: Reduced from 4096 to 512
+  max_len: 4096      # USER REQUIREMENT: Keep max_len = 4096 
   max_out: 2         # MEMORY FIX: Reduced from 3 to 2
   act: "gelu"
 
