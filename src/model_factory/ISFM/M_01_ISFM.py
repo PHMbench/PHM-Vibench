@@ -122,7 +122,20 @@ class Model(nn.Module):
         params = {'return_feature': return_feature}
         
         if task_name == 'classification':
-            params['system_id'] = self.metadata[file_id]['Dataset_id']
+            # Handle missing Dataset_id with fallback to file_id or default
+            if file_id in self.metadata and 'Dataset_id' in self.metadata[file_id]:
+                params['system_id'] = self.metadata[file_id]['Dataset_id']
+            elif file_id in self.metadata and 'System_id' in self.metadata[file_id]:
+                # Fallback to System_id if available
+                params['system_id'] = self.metadata[file_id]['System_id']
+            else:
+                # Default fallback: use file_id as system_id or 0
+                params['system_id'] = file_id if isinstance(file_id, int) else 0
+                if not hasattr(self, '_dataset_id_warnings'):
+                    self._dataset_id_warnings = set()
+                if file_id not in self._dataset_id_warnings:
+                    print(f"Warning: Missing Dataset_id for file {file_id}, using fallback system_id={params['system_id']}")
+                    self._dataset_id_warnings.add(file_id)
         elif task_name in ['signal_prediction', 'prediction']:  # Support legacy 'prediction' name
             params['shape'] = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
         # rul_prediction和anomaly_detection只需要return_feature

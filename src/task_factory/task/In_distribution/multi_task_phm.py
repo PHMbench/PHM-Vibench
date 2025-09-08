@@ -155,10 +155,10 @@ class task(pl.LightningModule):
                                 item.get('Label', 0) for item in self.metadata.values() 
                                 if isinstance(item, dict) and 'Label' in item
                             ]
-                            max_classes = max(labels) + 1 if labels else 2
+                            max_classes = int(max(labels)) + 1 if labels else 2
                             stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
                                 task='multiclass',
-                                num_classes=max(max_classes, 2)
+                                num_classes=int(max(max_classes, 2))
                             )
                     elif metric_name == 'auroc':
                         stage_metrics[stage][metric_key] = torchmetrics.AUROC(task='binary')
@@ -398,10 +398,24 @@ class task(pl.LightningModule):
         for task_name in self.enabled_tasks:
             if task_name in y_dict:
                 try:
-                    # Extract task-specific output once
-                    task_output = outputs.get(task_name) if isinstance(outputs, dict) else getattr(outputs, task_name, None)
+                    # Extract task-specific output with improved validation
+                    task_output = None
+                    if isinstance(outputs, dict):
+                        task_output = outputs.get(task_name)
+                    else:
+                        # Handle object with attributes
+                        task_output = getattr(outputs, task_name, None)
+                    
                     if task_output is None:
-                        print(f'WARNING: No output found for task {task_name}')
+                        # Log warning and skip this task
+                        print(f'WARNING: No output found for task {task_name} in model outputs')
+                        self.log(f'{mode}_{task_name}_skipped', 1.0, on_step=False, on_epoch=True)
+                        continue
+                        
+                    # Validate output shape and type
+                    if not isinstance(task_output, torch.Tensor):
+                        print(f'WARNING: Task {task_name} output is not a tensor (type: {type(task_output)}), skipping')
+                        self.log(f'{mode}_{task_name}_invalid_output', 1.0, on_step=False, on_epoch=True)
                         continue
                     
                     # Compute task loss with extracted output
@@ -423,8 +437,19 @@ class task(pl.LightningModule):
                                     on_step=False, on_epoch=True, prog_bar=True)
                             
                 except Exception as e:
-                    # Continue if individual task fails
-                    print(f'WARNING: {task_name} {mode} failed: {e}')
+                    # Log detailed error information and continue
+                    error_msg = f'ERROR: {task_name} {mode} step failed - {type(e).__name__}: {str(e)}'
+                    print(error_msg)
+                    
+                    # Log error metrics for monitoring
+                    self.log(f'{mode}_{task_name}_error_count', 1.0, on_step=False, on_epoch=True)
+                    
+                    # Add shape information if available for debugging
+                    if 'task_output' in locals() and hasattr(task_output, 'shape'):
+                        print(f'  Task output shape: {task_output.shape}')
+                    if task_name in y_dict and hasattr(y_dict[task_name], 'shape'):
+                        print(f'  Target shape: {y_dict[task_name].shape}')
+                    
                     continue
         
         # Log total loss with mode-specific parameters
@@ -453,7 +478,10 @@ class task(pl.LightningModule):
         
         elif task_name == 'anomaly_detection':
             # Binary classification for anomaly detection
-            return loss_fn(task_output, targets.float())
+            # Fix dimension mismatch: BCE expects [batch_size] for both input and target
+            task_output_squeezed = task_output.squeeze(-1) if task_output.dim() > 1 and task_output.shape[-1] == 1 else task_output
+            targets_squeezed = targets.squeeze() if targets.dim() > 1 else targets
+            return loss_fn(task_output_squeezed, targets_squeezed.float())
         
         elif task_name == 'signal_prediction':
             # Signal prediction task - use original signal as target
