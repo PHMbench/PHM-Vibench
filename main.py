@@ -35,6 +35,16 @@ def main():
                         default='Pipeline_01_default',
                         help='实验流水线模块路径')
     
+    parser.add_argument('--data_dir',
+                        type=str,
+                        default=None,
+                        help='数据目录路径，会覆盖配置文件中的data_dir设置')
+    
+    parser.add_argument('--set', 
+                        action='append',
+                        metavar='KEY=VALUE',
+                        help='覆盖配置参数，支持点符号(例: --set model.lr=0.001 --set task.epochs=100)')
+    
     args = parser.parse_args()
     pipeline = importlib.import_module(f'src.{args.pipeline}')
     # 执行DG流水线

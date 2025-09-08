@@ -1,4 +1,18 @@
 
+#!/bin/bash
+#SBATCH --job-name=multitask_a100
+#SBATCH --partition=gpu
+#SBATCH --gpus=a100:1
+#SBATCH --cpus-per-gpu=8
+#SBATCH --mem=64G
+#SBATCH --time=04:00:00
+#SBATCH --output=results/multitask_a100_%j.out
+#SBATCH --error=results/multitask_a100_%j.err
+
+# Multi-Task Foundation Model A100 Experiments
+# Tests all backbone models with memory optimizations
+# Author: PHM-Vibench Team
+# Date: 2025-09-07
 
 # Set environment variables
 # export CUDA_VISIBLE_DEVICES=0

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.configs.config_utils import load_config, path_name, transfer_namespace
+from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -35,7 +35,25 @@ def pipeline(args):
     # -----------------------
     config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
-    configs = load_config(config_path)
+    
+    # 准备配置覆盖参数 - 统一处理所有覆盖
+    set_args = []
+    
+    # 将 --data_dir 转换为 --set 格式 (向后兼容)
+    if hasattr(args, 'data_dir') and args.data_dir is not None:
+        set_args.append(f'data.data_dir={args.data_dir}')
+        print(f"[INFO] 通过命令行参数覆盖data_dir: {args.data_dir}")
+    
+    # 添加 --set 参数
+    if hasattr(args, 'set') and args.set is not None:
+        set_args.extend(args.set)
+    
+    # 统一解析所有覆盖参数
+    overrides = parse_set_args(set_args) if set_args else {}
+    if overrides:
+        print(f"[INFO] 应用配置覆盖: {overrides}")
+    
+    configs = load_config(config_path, overrides if overrides else None)
     
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
