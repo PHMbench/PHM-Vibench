@@ -44,6 +44,12 @@ class task(pl.LightningModule):
         
         # Set required attributes (copied from Default_task logic)
         self.network = network.cuda() if args_trainer.gpus else network
+        # Store device for metrics initialization (use custom name to avoid conflict with Lightning)
+        try:
+            self._custom_device = next(self.network.parameters()).device
+        except StopIteration:
+            # Handle case where network has no parameters (e.g., mock networks in tests)
+            self._custom_device = torch.device('cuda' if args_trainer.gpus else 'cpu')
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
@@ -148,7 +154,7 @@ class task(pl.LightningModule):
                             # Binary classification
                             stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
                                 task='binary'
-                            )
+                            ).to(self._custom_device)
                         else:
                             # Multi-class classification - determine num_classes from metadata
                             labels = [
@@ -159,9 +165,9 @@ class task(pl.LightningModule):
                             stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
                                 task='multiclass',
                                 num_classes=int(max(max_classes, 2))
-                            )
+                            ).to(self._custom_device)
                     elif metric_name == 'auroc':
-                        stage_metrics[stage][metric_key] = torchmetrics.AUROC(task='binary')
+                        stage_metrics[stage][metric_key] = torchmetrics.AUROC(task='binary').to(self._custom_device)
                     else:
                         # Regression metrics
                         regression_class_names = {
@@ -171,7 +177,7 @@ class task(pl.LightningModule):
                             'mape': 'MeanAbsolutePercentageError'
                         }
                         metric_class_name = regression_class_names.get(metric_name, metric_name.upper())
-                        stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)()
+                        stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)().to(self._custom_device)
             
             task_metrics[task] = stage_metrics
         
@@ -246,6 +252,10 @@ class task(pl.LightningModule):
         metric_values = {}
         stage_metrics = self.task_metrics[task_name][mode]
         
+        # Skip if no targets available
+        if targets is None:
+            return {}
+        
         # Prepare regression predictions
         preds = task_output
         targets = targets.float()
@@ -260,9 +270,9 @@ class task(pl.LightningModule):
                 preds = preds.squeeze(-1)
         elif task_name == 'signal_prediction' and preds.dim() > 2:
             # For signal prediction with 3D tensors, flatten for metric computation
-            preds = preds.view(-1, preds.size(-1))
-            targets = targets.view(-1, targets.size(-1))
-        
+            preds = preds.reshape(-1, preds.size(-1)).contiguous()
+            targets = targets.reshape(-1, targets.size(-1)).contiguous()
+
         # Compute all regression metrics
         for metric_key, metric_fn in stage_metrics.items():
             try:
@@ -430,7 +440,9 @@ class task(pl.LightningModule):
                                 on_step=on_step, on_epoch=True)
                         
                         # Compute and log task-specific metrics
-                        task_metrics = self._compute_task_metrics(task_name, task_output, y_dict[task_name], mode)
+                        # Use input signal as target for signal_prediction reconstruction metrics
+                        metric_targets = x if task_name == 'signal_prediction' and y_dict[task_name] is None else y_dict[task_name]
+                        task_metrics = self._compute_task_metrics(task_name, task_output, metric_targets, mode)
                         for metric_name, metric_value in task_metrics.items():
                             # Log metrics only on epoch for cleaner logging
                             self.log(metric_name, metric_value, 
