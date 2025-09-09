@@ -10,9 +10,12 @@ import torch.nn as nn
 from typing import Dict, List, Any
 import pytorch_lightning as pl
 import pandas as pd
+import os
 
 from ...Components.loss import get_loss_fn
 from ...Components.metrics import get_metrics
+from ...Components.system_metrics_tracker import SystemMetricsTracker
+from ...Components.metrics_markdown_reporter import MetricsMarkdownReporter
 import torchmetrics
 
 
@@ -63,6 +66,18 @@ class task(pl.LightningModule):
         self.task_weights = self._get_task_weights()
         self.task_loss_fns = self._initialize_task_losses()
         self.task_metrics = self._initialize_task_metrics()
+        
+        # System-specific metrics tracking initialization
+        self.val_system_tracker = SystemMetricsTracker()
+        self.test_system_tracker = SystemMetricsTracker()
+        
+        # Initialize metrics reporter
+        reports_dir = os.path.join(getattr(args_trainer, 'default_root_dir', './'), 'metrics_reports')
+        self.metrics_reporter = MetricsMarkdownReporter(save_dir=reports_dir)
+        
+        # Configuration for system metrics tracking
+        self.track_system_metrics = getattr(args_task, 'track_system_metrics', True)
+        self.system_metrics_verbose = getattr(args_task, 'system_metrics_verbose', True)
         
         # Save hyperparameters (copied from Default_task)
         hparams_dict = {
@@ -382,10 +397,14 @@ class task(pl.LightningModule):
             preds = preds[valid_mask]
             targets = targets[valid_mask]
             
-        elif task_name == 'signal_prediction' and preds.dim() > 2:
-            # For signal prediction with 3D tensors, flatten for metric computation
-            preds = preds.reshape(-1, preds.size(-1)).contiguous()
-            targets = targets.reshape(-1, targets.size(-1)).contiguous()
+        elif task_name == 'signal_prediction':
+            # Handle channel mismatches using shared utility
+            preds, targets = self._handle_channel_mismatch(preds, targets, task_name)
+            
+            if preds.dim() > 2:
+                # For signal prediction with 3D tensors, flatten for metric computation
+                preds = preds.reshape(-1, preds.size(-1)).contiguous()
+                targets = targets.reshape(-1, targets.size(-1)).contiguous()
 
         # Compute all regression metrics
         for metric_key, metric_fn in stage_metrics.items():
@@ -580,6 +599,39 @@ class task(pl.LightningModule):
                     
                     continue
         
+        # System-specific metrics tracking (for validation and test phases)
+        if self.track_system_metrics and mode in ['val', 'test'] and file_ids:
+            system_id = self._extract_system_id_from_batch(file_ids)
+            if system_id is not None:
+                # Collect batch-level metrics for this system
+                batch_metrics = {}
+                
+                # Re-compute metrics for system tracking (without logging to avoid duplication)
+                for task_name in self.enabled_tasks:
+                    if task_name in y_dict:
+                        try:
+                            task_output = outputs.get(task_name) if isinstance(outputs, dict) else getattr(outputs, task_name, None)
+                            if task_output is not None and isinstance(task_output, torch.Tensor):
+                                metric_targets = x if task_name == 'signal_prediction' and y_dict[task_name] is None else y_dict[task_name]
+                                task_metrics = self._compute_task_metrics(task_name, task_output, metric_targets, mode)
+                                
+                                # Add task-specific metrics to batch metrics
+                                for metric_name, metric_value in task_metrics.items():
+                                    batch_metrics[metric_name] = metric_value
+                        except Exception as e:
+                            # Skip this task for system tracking if it fails
+                            continue
+                
+                # Update system tracker
+                if batch_metrics:
+                    tracker = self.val_system_tracker if mode == 'val' else self.test_system_tracker
+                    tracker.update(system_id, batch_metrics)
+                    
+                    # Log system-specific metrics with system ID prefix
+                    for metric_name, metric_value in batch_metrics.items():
+                        self.log(f'{mode}_sys{system_id}_{metric_name}', metric_value,
+                                on_step=False, on_epoch=True, add_dataloader_idx=False)
+        
         # Log total loss with mode-specific parameters
         on_step = (mode == 'train')
         self.log(f'{mode}_loss', total_loss, on_step=on_step, on_epoch=True)
@@ -597,6 +649,62 @@ class task(pl.LightningModule):
         """Test step using shared logic."""
         return self._shared_step(batch, batch_idx, mode='test')
     
+    def _extract_system_id_from_batch(self, file_ids: List[int]):
+        """Extract system ID from batch file IDs.
+        
+        Since Same_system_Sampler ensures all samples in a batch come from the same system,
+        we can use the first file_id to get the system ID.
+        
+        Args:
+            file_ids: List of file IDs in the batch
+            
+        Returns:
+            System ID or None if not found
+        """
+        if not file_ids:
+            return None
+            
+        first_file_id = file_ids[0]
+        if first_file_id not in self.metadata:
+            return None
+            
+        metadata_row = self.metadata[first_file_id]
+        
+        # Try Dataset_id first, then System_id as fallback
+        system_id = metadata_row.get('Dataset_id')
+        if system_id is None:
+            system_id = metadata_row.get('System_id')
+            
+        return system_id
+    
+    def _handle_channel_mismatch(self, task_output: torch.Tensor, targets: torch.Tensor, task_name: str) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Handle channel dimension mismatches between model outputs and targets.
+        Used by both loss and metrics computation to ensure consistency.
+        
+        Args:
+            task_output: Model prediction tensor
+            targets: Ground truth tensor
+            task_name: Name of the task for logging
+            
+        Returns:
+            Tuple of (adjusted_output, adjusted_targets)
+        """
+        if task_output.shape[-1] != targets.shape[-1]:
+            target_channels = targets.shape[-1]
+            output_channels = task_output.shape[-1]
+            
+            if output_channels < target_channels:
+                # Truncate target to match output channels (memory-constrained scenario)
+                print(f"Info: Truncating target channels from {target_channels} to {output_channels} for {task_name}")
+                targets = targets[..., :output_channels]
+            else:
+                # Pad output to match target channels (shouldn't happen with current logic)
+                print(f"Warning: Output channels ({output_channels}) > target channels ({target_channels}) for {task_name}, truncating output")
+                task_output = task_output[..., :target_channels]
+        
+        return task_output, targets
+
     def _compute_task_loss(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, x: torch.Tensor = None) -> torch.Tensor:
         """Compute loss for a specific task using task-specific output directly."""
         loss_fn = self.task_loss_fns[task_name]
@@ -620,19 +728,8 @@ class task(pl.LightningModule):
                 # Skip this task if no target available
                 return None
             
-            # Handle dimension mismatches due to max_out limitations
-            if task_output.shape[-1] != targets.shape[-1]:
-                target_channels = targets.shape[-1]
-                output_channels = task_output.shape[-1]
-                
-                if output_channels < target_channels:
-                    # Truncate target to match output channels (memory-constrained scenario)
-                    print(f"Info: Truncating target channels from {target_channels} to {output_channels} for memory efficiency")
-                    targets = targets[..., :output_channels]
-                else:
-                    # Pad output to match target channels (shouldn't happen with current logic)
-                    print(f"Warning: Output channels ({output_channels}) > target channels ({target_channels}), truncating output")
-                    task_output = task_output[..., :target_channels]
+            # Handle dimension mismatches using shared utility
+            task_output, targets = self._handle_channel_mismatch(task_output, targets, task_name)
             
             return loss_fn(task_output, targets.float())
         
@@ -662,6 +759,124 @@ class task(pl.LightningModule):
         else:
             # Default: use task output directly
             return loss_fn(task_output, targets)
+    
+    def on_validation_epoch_end(self):
+        """Validation epoch结束时汇总系统指标"""
+        if not self.track_system_metrics:
+            return
+            
+        if self.val_system_tracker.get_system_count() > 0:
+            # 计算系统级epoch指标
+            epoch_metrics = self.val_system_tracker.compute_epoch_metrics()
+            
+            # 记录每个系统的平均指标
+            for sys_id, sys_metrics in epoch_metrics.items():
+                for metric_name, metric_value in sys_metrics.items():
+                    self.log(f'val_epoch_sys{sys_id}_{metric_name}', metric_value,
+                            on_step=False, on_epoch=True)
+            
+            # 打印系统性能对比
+            if self.system_metrics_verbose:
+                self._print_system_comparison('Validation', epoch_metrics)
+            
+            # 清空追踪器准备下一epoch
+            self.val_system_tracker.clear()
+
+    def on_test_epoch_end(self):
+        """Test epoch结束时生成完整报告"""
+        if not self.track_system_metrics:
+            return
+            
+        if self.test_system_tracker.get_system_count() > 0:
+            # 计算系统级epoch指标
+            epoch_metrics = self.test_system_tracker.compute_epoch_metrics()
+            
+            # 收集全局指标
+            global_metrics = {}
+            if hasattr(self.trainer, 'logged_metrics'):
+                for key, value in self.trainer.logged_metrics.items():
+                    if key.startswith('test_') and 'sys' not in key:
+                        clean_key = key.replace('test_', '')
+                        global_metrics[clean_key] = float(value) if torch.is_tensor(value) else value
+            
+            # 准备配置信息
+            config_info = {
+                'model': getattr(self.args_model, 'name', 'Unknown'),
+                'enabled_tasks': ', '.join(self.enabled_tasks),
+                'batch_size': getattr(self.args_data, 'batch_size', 'Unknown'),
+                'systems_tested': len(epoch_metrics)
+            }
+            
+            try:
+                # 生成Markdown报告
+                report_path = self.metrics_reporter.generate_report(
+                    system_metrics=epoch_metrics,
+                    global_metrics=global_metrics,
+                    phase='test',
+                    experiment_name=getattr(self.args_task, 'name', 'multi_task_phm'),
+                    config_info=config_info
+                )
+                
+                # 记录报告路径
+                self.log('metrics_report_path', str(report_path), on_step=False, on_epoch=True)
+                
+                if self.system_metrics_verbose:
+                    print(f"\n📊 System metrics report generated: {report_path}")
+                
+            except Exception as e:
+                print(f"Warning: Failed to generate metrics report: {e}")
+            
+            # 打印系统性能对比
+            if self.system_metrics_verbose:
+                self._print_system_comparison('Test', epoch_metrics)
+            
+            # 清空追踪器
+            self.test_system_tracker.clear()
+
+    def _print_system_comparison(self, phase: str, epoch_metrics: Dict[str, Dict[str, float]]):
+        """打印系统间性能对比表"""
+        if not epoch_metrics:
+            return
+            
+        print(f"\n{phase} System-Level Metrics:")
+        print("-" * 80)
+        
+        # 组织成表格格式
+        all_metrics = set()
+        for sys_metrics in epoch_metrics.values():
+            all_metrics.update(sys_metrics.keys())
+        
+        # 选择前5个最重要的指标显示
+        priority_metrics = []
+        metric_priorities = ['classification_acc', 'classification_f1', 'anomaly_auroc', 'rul_mae', 'signal_r2']
+        
+        for priority in metric_priorities:
+            if priority in all_metrics:
+                priority_metrics.append(priority)
+        
+        # 添加其他指标直到5个
+        remaining_metrics = [m for m in sorted(all_metrics) if m not in priority_metrics]
+        display_metrics = priority_metrics + remaining_metrics[:max(0, 5 - len(priority_metrics))]
+        
+        # 打印表头
+        header = f"{'System':<15}"
+        for metric in display_metrics:
+            short_name = metric.replace('classification_', '').replace('anomaly_', '').replace('signal_', '')[:12]
+            header += f"{short_name:<15}"
+        print(header)
+        print("-" * 80)
+        
+        # 打印每个系统的指标
+        for sys_id, sys_metrics in sorted(epoch_metrics.items()):
+            row = f"{'sys_' + str(sys_id):<15}"
+            for metric in display_metrics:
+                value = sys_metrics.get(metric, 'N/A')
+                if isinstance(value, float):
+                    row += f"{value:<15.4f}"
+                else:
+                    row += f"{str(value):<15}"
+            print(row)
+        print("-" * 80)
 
 
 # Export for task factory compatibility
