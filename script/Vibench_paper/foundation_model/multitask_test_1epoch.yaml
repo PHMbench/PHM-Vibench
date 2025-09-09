@@ -1,7 +1,7 @@
-# Multi-Task PHM Foundation Model Configuration - B_06_TimesNet
-# Test Mode: 1 epoch, wandb dryrun, swanlab off
+# Multi-Task PHM Foundation Model Configuration - Quick Test (1 Epoch)
+# Based on B_04_Dlinear (fastest model) for validation testing
 # Author: PHM-Vibench Team
-# Date: 2025-08-29
+# Date: 2025-09-09
 
 environment:
   VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
@@ -9,23 +9,23 @@ environment:
   PHMBench: "/home/lq/LQcode/2_project/PHMBench"
   project: "MultiTask_Foundation_Model"
   seed: 42
-  output_dir: "results/multitask_B_06_TimesNet"
+  output_dir: "results/multitask_test_1epoch"
   iterations: 1  # Test mode: single iteration
   wandb: dryrun  # Test mode: dryrun (no upload)
   swanlab: False  # Test mode: disabled
-  notes: 'Multi-task foundation model with B_06_TimesNet - TEST MODE'
+  notes: 'Multi-task foundation model - QUICK TEST (1 epoch validation)'
   workspace: 'PHMbench'
 
 # Data Configuration
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 128
-  num_workers: 32
+  batch_size: 16     # Small batch for quick test
+  num_workers: 8     # Reduced workers for test
   window_size: 4096
   stride: 4
   truncate_length: 200
-  num_window: 512
+  num_window: 4      # Minimal windows for test
   normalization: 'standardization'
   dtype: float32
   window_sampling_strategy: 'evenly_spaced'
@@ -44,35 +44,30 @@ model:
   
   # Architecture components
   embedding: E_01_HSE
-  backbone: B_06_TimesNet  # TimesNet backbone
+  backbone: B_04_Dlinear  # Dlinear backbone - fastest for testing
   task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
   
-  # Model dimensions
-  num_patches: 128
-  patch_size_L: 256
+  # Model dimensions - MINIMAL for fast testing
+  num_patches: 32    # Reduced from 128 to 32
+  patch_size_L: 64   # Reduced from 256 to 64
   patch_size_C: 1
-  output_dim: 1024
-  num_heads: 8
-  num_layers: 3
-  d_ff: 2048
+  output_dim: 128    # Reduced from 1024 to 128
+  num_heads: 2       # Reduced from 8 to 2
+  num_layers: 1      # Reduced from 3 to 1
+  d_ff: 256          # Reduced from 2048 to 256
   dropout: 0.1
-  
-  # TimesNet-specific parameters
-  e_layers: 2
-  factor: 5
-  d_model: 128
   
   # Multi-task head configuration
   classification_head: H_02_distance_cla
   prediction_head: H_03_Linear_pred
-  hidden_dim: 512
+  hidden_dim: 32     # Minimal hidden dimension
   activation: "gelu"
   rul_max_value: 2000.0
   use_batch_norm: true
   
-  # H_03_Linear_pred parameters for signal prediction
+  # H_03_Linear_pred parameters for signal prediction - MINIMAL
   max_len: 4096
-  max_out: 3
+  max_out: 2         # Reduced from 3 to 2 for memory
   act: "gelu"
 
 # Task Configuration
@@ -120,12 +115,12 @@ task:
     dataset_id: 2  # XJTU dataset
     loss_weight: 0.8
   
-  # Target systems for evaluation
-  target_system_id: [1, 2, 5, 6, 13, 19]
+  # Target systems for evaluation - SINGLE SYSTEM for quick test
+  target_system_id: [2]  # Only test system 2
   
   # Optimization parameters
   optimizer: "adamw"
-  lr: 0.0005
+  lr: 0.001          # Slightly higher LR for faster test
   weight_decay: 0.01
   momentum: 0.9  # For SGD if needed
   
@@ -133,16 +128,16 @@ task:
   scheduler:
     name: "cosine"
     options:
-      T_max: 100
+      T_max: 1         # Only 1 epoch
       eta_min: 1e-6
 
 # Trainer Configuration
 trainer:
   name: "Default_trainer"
-  num_epochs: 1  # Test mode: 1 epoch only
+  num_epochs: 1        # QUICK TEST: Only 1 epoch
   gpus: 1
-  precision: 16  # Mixed precision
-  accumulate_grad_batches: 2
+  precision: 16        # Mixed precision for speed
+  accumulate_grad_batches: 1  # No accumulation for test
   gradient_clip_val: 1.0
   
   # Early stopping (disabled for test mode)
@@ -151,11 +146,11 @@ trainer:
   monitor: "val_loss"
   
   # Model checkpointing
-  save_top_k: 3
-  save_last: true
+  save_top_k: 1        # Only save best
+  save_last: false     # Don't save last for test
   
   # Logging
-  log_every_n_steps: 50
+  log_every_n_steps: 10  # More frequent logging for test
   
   # Device configuration
   device: 'cuda'
@@ -188,8 +183,8 @@ reproducibility:
 
 # Advanced Configuration (Test Mode)
 advanced:
-  effective_batch_size: 256  # Smaller for testing
-  use_amp: true  # Mixed precision
+  effective_batch_size: 64   # Small for testing
+  use_amp: true              # Mixed precision
   compile_model: false
   memory_efficient: true
-  profiler: null  # No profiling in test mode
+  profiler: null             # No profiling in test mode
