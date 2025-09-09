@@ -4,11 +4,11 @@
 
 This plan implements a Prompt-guided Contrastive Learning system for industrial vibration analysis, focusing on System Information Prompt encoding combined with SOTA contrastive learning methods. The implementation creates two-level prompts (System+Sample, NO fault-level since Label is prediction target), independent M_02_ISFM_Prompt model, two-stage training, and complete self-testing infrastructure.
 
-Key Innovation: First-ever combination of system metadata as learnable prompts with contrastive learning for cross-system fault diagnosis generalization.
+Key Innovation: First-ever combination of system metadata as learnable prompts with contrastive learning for cross-system fault diagnosis generalization, integrated with Pipeline_03_multitask_pretrain_finetune.py workflow.
 
 ## Steering Document Compliance
 
-All tasks follow PHM-Vibench factory patterns with strict component registration and self-testing requirements. The implementation maintains backward compatibility while introducing the M_02_ISFM_Prompt as an independent model to avoid conflicts. Each component includes `if __name__ == '__main__':` self-test sections and integrates with existing contrastive loss infrastructure.
+All tasks follow PHM-Vibench factory patterns with strict component registration and self-testing requirements. The implementation creates completely isolated M_02_ISFM_Prompt and E_01_HSE_v2 models to avoid any conflicts with existing code. Integration with Pipeline_03's MultiTaskPretrainFinetunePipeline ensures reuse of mature training infrastructure. Each component includes `if __name__ == '__main__':` self-test sections.
 
 ## Atomic Task Requirements
 
@@ -62,14 +62,16 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - _Requirements: FR3_
   - _Leverage: src/model_factory/ISFM/__init__.py (for factory patterns)_
 - [ ] 
-  - **File**: src/model_factory/ISFM_Prompt/embedding/E_01_HSE_Prompt.py
-  - Extend E_01_HSE with SystemPromptEncoder and PromptFusion integration
-  - Add metadata parameter to forward() method for system information processing
-  - Implement training_stage control with prompt freezing for two-stage training
-  - Include fallback to original HSE behavior when metadata unavailable
+  - **File**: src/model_factory/ISFM_Prompt/embedding/E_01_HSE_v2.py
+  - Create completely new HSE implementation with SystemPromptEncoder and PromptFusion integration
+  - DO NOT inherit from or modify existing E_01_HSE.py - this is a fresh implementation
+  - Add metadata parameter to forward() method for two-level prompt processing (System+Sample only)
+  - Implement training_stage control with prompt freezing for Pipeline_03 integration
+  - Include fallback to signal-only processing when metadata unavailable
   - Add complete self-test with metadata validation and stage switching
-  - _Requirements: FR1, FR2_
-  - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (as base class)_
+  - **Critical**: Ensure zero dependencies on existing E_01_HSE.py
+  - _Requirements: FR2, FR3_
+  - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for reference only, not inheritance)_
 - [ ] 
   - **File**: src/model_factory/ISFM_Prompt/M_02_ISFM_Prompt.py
   - Implement complete ISFM model with Prompt-guided embedding support
@@ -80,34 +82,37 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - _Requirements: FR1, FR3_
   - _Leverage: src/model_factory/ISFM/M_01_ISFM.py (for model structure patterns)_
 - [ ] 
-  - **File**: configs/demo/HSE_Contrastive/hse_prompt_pretrain.yaml
-  - Configure M_02_ISFM_Prompt with E_01_HSE_Prompt embedding for pretraining stage
-  - Set training_stage: 'pretrain', freeze_prompt: false, contrast_weight: 0.15
-  - Configure multi-source domain data loading with proper metadata handling
-  - Include model components: B_08_PatchTST backbone, H_10_ProjectionHead for contrastive learning
-  - Add contrastive loss configuration with InfoNCE as default
-  - _Requirements: FR1, FR4_
-  - _Leverage: configs/demo/Single_DG/CWRU.yaml (for structure patterns)_
-- [ ] 
-  - **File**: configs/demo/HSE_Contrastive/hse_prompt_finetune.yaml
-  - Configure M_02_ISFM_Prompt for finetuning stage with prompt freezing
-  - Set training_stage: 'finetune', freeze_prompt: true, contrast_weight: 0.0
-  - Use H_01_Linear_cla taskhead for classification, disable contrastive learning
-  - Configure lower learning rate (1e-4) for finetuning phase
-  - _Requirements: FR1, FR4_
-  - _Leverage: configs/demo/Single_DG/CWRU.yaml (for classification config patterns)_
+  - **File**: configs/pipeline_03/hse_prompt_multitask_config.yaml
+  - Configure Pipeline_03 MultiTaskPretrainFinetunePipeline with HSE prompt integration
+  - Set stage_1_pretraining with M_02_ISFM_Prompt and E_01_HSE_v2 embedding
+  - Configure backbone comparison: ['B_08_PatchTST', 'B_04_Dlinear', 'B_06_TimesNet', 'B_09_FNO']
+  - Set multi-source target_systems: [1, 5, 6, 13, 19] for pretraining
+  - Add HSE prompt specific task configuration with contrast_weight: 0.15
+  - Configure stage_2_finetuning with prompt freezing and classification tasks
+  - Include Pipeline_03 environment and evaluation configurations
+  - _Requirements: FR5, FR4_
+  - _Leverage: Pipeline_03 configuration patterns (create_pretraining_config, create_finetuning_config)_
 - [ ] 
   - **File**: src/model_factory/ISFM_Prompt/test_prompt_components.py
-  - Implement comprehensive component testing for SystemPromptEncoder, PromptFusion, E_01_HSE_Prompt
-  - Test integration between components with proper metadata flow
-  - Verify two-stage training functionality and prompt freezing behavior
+  - Implement comprehensive component testing for SystemPromptEncoder, PromptFusion, E_01_HSE_v2
+  - Test integration between components with proper metadata flow and two-level prompt processing
+  - Verify Pipeline_03 integration functionality and prompt freezing behavior
   - Add performance benchmarking for latency and memory usage requirements
-  - Include cross-component compatibility testing
-  - _Requirements: FR1, FR2, FR3_
-  - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for testing patterns)_
-
-### P1 Feature Enhancement (Implement after P0)
-
+  - Include cross-component compatibility testing and complete model isolation validation
+  - Test that E_01_HSE_v2 has zero dependencies on original E_01_HSE.py
+  - _Requirements: FR2, FR3, FR5_
+  - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for testing patterns only)_
+- [ ] 
+  - **File**: src/utils/pipeline_config/hse_prompt_integration.py
+  - Implement HSEPromptPipelineIntegration adapter for Pipeline_03 integration
+  - Add create_hse_prompt_pretraining_config() using Pipeline_03's utilities
+  - Add create_hse_prompt_finetuning_config() using Pipeline_03's utilities
+  - Include adapt_checkpoint_loading() for Pipeline_03 checkpoint format compatibility
+  - Add parameter freezing utilities for prompt-related components during finetuning
+  - Include comprehensive self-test for all Pipeline_03 integration functions
+  - **Critical**: This is essential for Pipeline_03 integration - must be P0
+  - _Requirements: FR5_
+  - _Leverage: src/Pipeline_03_multitask_pretrain_finetune.py (for integration patterns)_
 - [ ] 
   - **File**: src/task_factory/Components/prompt_contrastive.py
   - Implement universal wrapper for all 6 existing contrastive losses with prompt guidance
@@ -115,17 +120,9 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include prompt similarity loss to encourage system-invariant representations
   - Add comprehensive self-test for all LOSS_MAPPING combinations with prompt features
   - Support graceful fallback to standard contrastive learning when prompts unavailable
+  - **Critical**: Core functionality for prompt-guided contrastive learning - must be P0
   - _Requirements: FR1_
   - _Leverage: src/task_factory/Components/contrastive_losses.py (for all existing losses)_
-- [ ] 
-  - **File**: src/utils/training/TwoStageController.py
-  - Implement automated two-stage training workflow: pretrain → finetune
-  - Add checkpoint management with best model selection and recovery capability
-  - Include parameter freezing utilities for prompt-related components
-  - Add experiment state management for interruption recovery
-  - Include progress tracking and logging for both training stages
-  - _Requirements: FR1, FR5_
-  - _Leverage: src/trainer_factory/ (for training patterns)_
 - [ ] 
   - **File**: src/task_factory/task/CDDG/hse_contrastive.py
   - Implement task class integrating prompt-guided contrastive learning
@@ -133,8 +130,23 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include loss combination logic: classification + prompt-guided contrastive
   - Add comprehensive self-test for complete training workflow
   - Support both pretraining and finetuning modes through configuration
+  - **Critical**: Essential task implementation for training workflow - must be P0
   - _Requirements: FR1, FR3_
   - _Leverage: src/task_factory/task/CDDG/ (for existing CDDG patterns)_
+- [ ] 
+  - **File**: scripts/test_pipeline03_integration.py
+  - Implement end-to-end testing of HSE Prompt with Pipeline_03 workflow
+  - Test create_pretraining_config and create_finetuning_config integration
+  - Verify checkpoint loading and parameter freezing in Pipeline_03 context
+  - Test multi-backbone comparison experiments with HSE prompt features
+  - Include Pipeline_03 configuration validation and error handling
+  - Add comparison tests with baseline Pipeline_03 runs (no prompts)
+  - _Requirements: FR5_
+  - _Leverage: src/Pipeline_03_multitask_pretrain_finetune.py (for integration testing)_
+
+### P1 Feature Enhancement (Implement after P0)
+
+**Note**: Critical Pipeline_03 integration tasks have been moved to P0 for core functionality. P1 now focuses on enhancements, experiments, and optimizations.
 - [ ] 
   - **File**: src/utils/config/hse_prompt_validator.py
   - Implement configuration validation for HSE prompt-guided training
@@ -146,24 +158,26 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - _Leverage: src/utils/config/path_standardizer.py (for path handling patterns)_
 - [ ] 
   - **Files**:
-    - configs/demo/HSE_Contrastive/ablation/system_only_prompt.yaml
-    - configs/demo/HSE_Contrastive/ablation/sample_only_prompt.yaml
-    - configs/demo/HSE_Contrastive/ablation/no_prompt_baseline.yaml
-  - Create ablation study configurations for systematic component evaluation
-  - Configure different prompt level combinations for contribution analysis
-  - Add baseline configuration without prompts for performance comparison
-  - Include proper experimental controls with identical hyperparameters
+    - configs/pipeline_03/ablation/hse_system_prompt_only.yaml
+    - configs/pipeline_03/ablation/hse_sample_prompt_only.yaml 
+    - configs/pipeline_03/ablation/hse_no_prompt_baseline.yaml
+  - Create Pipeline_03 compatible ablation study configurations
+  - Configure different two-level prompt combinations: system-only, sample-only, none
+  - Ensure all ablation configs use identical Pipeline_03 training settings
+  - Add proper experimental controls with same backbone architectures and hyperparameters
+  - Include configuration for standard contrastive learning baseline (no prompts)
   - _Requirements: FR6_
-  - _Leverage: configs/demo/HSE_Contrastive/hse_prompt_pretrain.yaml (for base structure)_
+  - _Leverage: configs/pipeline_03/hse_prompt_multitask_config.yaml (for base structure)_
 - [ ] 
-  - **File**: scripts/run_cross_system_experiments.py
-  - Implement automated cross-dataset experiment execution
-  - Add support for source-target domain combinations (CWRU→XJTU, etc.)
-  - Include experiment progress tracking with interruption recovery
-  - Add result collection and standardized reporting functionality
-  - Support parallel experiment execution for efficiency
+  - **File**: scripts/run_hse_prompt_pipeline03.py
+  - Implement HSE Prompt experiments using Pipeline_03 workflow
+  - Add support for cross-dataset backbone comparison experiments
+  - Include HSEPromptPipelineIntegration adapter for seamless Pipeline_03 usage
+  - Add automated result collection from Pipeline_03's standardized output format
+  - Support stage-specific execution (pretraining-only, finetuning-only, complete)
+  - Include comprehensive logging and experiment tracking
   - _Requirements: FR5, FR6_
-  - _Leverage: main.py (for experiment execution patterns)_
+  - _Leverage: src/Pipeline_03_multitask_pretrain_finetune.py (main execution patterns)_
 
 ### P2 Performance Optimization (Lower priority)
 
@@ -206,13 +220,35 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 
 ## Implementation Notes
 
+### Implementation Order for P0 Core Functionality
+
+**Phase 1: Foundation (Tasks 1-4)**
+1. Module structure initialization (__init__.py files)
+2. SystemPromptEncoder.py (two-level prompt encoding)
+3. PromptFusion.py (fusion strategies) 
+4. E_01_HSE_v2.py (completely new HSE implementation)
+
+**Phase 2: Model Integration (Task 5)**
+5. M_02_ISFM_Prompt.py (main model with prompt support)
+
+**Phase 3: Pipeline_03 Integration (Tasks 6-8)**  
+6. hse_prompt_integration.py (Pipeline_03 adapter)
+7. prompt_contrastive.py (contrastive loss wrapper)
+8. hse_contrastive.py (task implementation)
+
+**Phase 4: Configuration & Testing (Tasks 9-11)**
+9. Pipeline_03 configuration YAML
+10. Component testing
+11. End-to-end integration testing
+
 ### Key Design Decisions
 
 1. **Two-Level Prompts Only**: System-level (Dataset_id + Domain_id) + Sample-level (Sample_rate) prompts. NO fault-level prompts since Label is the prediction target.
-2. **Independent Model Architecture**: M_02_ISFM_Prompt avoids conflicts with existing M_01_ISFM.py by being completely independent while reusing backbone and taskhead components.
-3. **Factory Pattern Compliance**: All components registered in appropriate factories with proper component dictionaries and configuration-driven initialization.
-4. **Self-Testing Requirements**: Every component must include `if __name__ == '__main__':` self-test with comprehensive validation of functionality.
-5. **Two-Stage Training**: Pretraining with contrastive learning enabled, finetuning with frozen prompts and classification-only loss.
+2. **Complete Model Isolation**: E_01_HSE_v2.py and M_02_ISFM_Prompt.py are completely independent from existing E_01_HSE.py and M_01_ISFM.py with zero code sharing or dependencies.
+3. **Pipeline_03 Integration**: Leverage MultiTaskPretrainFinetunePipeline's mature two-stage workflow instead of custom TwoStageController.
+4. **Factory Pattern Compliance**: All components registered in independent ISFM_Prompt namespace with proper component dictionaries.
+5. **Self-Testing Requirements**: Every component must include `if __name__ == '__main__':` self-test with comprehensive validation of functionality.
+6. **Configuration Reuse**: Utilize Pipeline_03's create_pretraining_config() and create_finetuning_config() utilities for seamless integration.
 
 ### Risk Mitigation
 
@@ -223,8 +259,20 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 
 ### Success Metrics
 
-- **P0 Completion**: Basic prompt-guided contrastive learning functional with self-tests passing
-- **P1 Completion**: Two-stage training and ablation studies operational
-- **P2 Completion**: Performance optimizations and comprehensive benchmarking complete
+**P0 Core Functionality Completion Criteria:**
+- [ ] All 11 P0 tasks completed with passing self-tests
+- [ ] E_01_HSE_v2.py completely independent from E_01_HSE.py (zero dependencies)
+- [ ] Pipeline_03 integration working with all backbone comparisons
+- [ ] Two-level prompt system functional (System + Sample, no fault-level)
+- [ ] End-to-end training workflow operational (pretrain → finetune via Pipeline_03)
+- [ ] Complete model isolation verified (ISFM_Prompt namespace)
+
+**P1 Enhancement Completion Criteria:**
+- [ ] Ablation studies and cross-system experiments operational  
+- [ ] Configuration validation and automated experiment scripts functional
+- [ ] Performance benchmarking and optimization features complete
+
+**Technical Performance Targets:**
 - **Cross-System Accuracy**: >85% accuracy on cross-dataset generalization tasks
 - **Performance Targets**: <100ms inference latency, <8GB memory usage, >50 samples/second throughput
+- **Integration**: 100% compatibility with existing PHM-Vibench workflows

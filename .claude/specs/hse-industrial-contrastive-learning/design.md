@@ -166,7 +166,11 @@ graph TD
     A2 --> P[最终Prompt向量<br/>B×prompt_dim]
 ```
 
-**注意**: 故障类型(Label)是预测目标，不包含在Prompt中。这确保了模型不会获得"未来信息"，保持预测任务的合理性。
+**关键设计约束**: 
+1. **二层级Prompt设计**: 仅包含系统级(Dataset_id + Domain_id)和样本级(Sample_rate)信息
+2. **严格禁止故障信息**: Label是预测目标，绝不包含在Prompt中，确保模型不会获得"未来信息" 
+3. **完全模型隔离**: E_01_HSE_v2.py与现有E_01_HSE.py完全独立，无任何代码共享或依赖关系
+4. **Pipeline_03兼容**: 所有设计都考虑与MultiTaskPretrainFinetunePipeline的无缝集成
 
 #### 2.2 实现架构
 
@@ -391,158 +395,174 @@ class PromptGuidedContrastiveLoss(nn.Module):
         return labels.unsqueeze(0) != labels.unsqueeze(1)
 ```
 
-### 5. 两阶段训练架构
+### 5. Pipeline_03集成架构
 
-#### 5.1 训练流程设计
+#### 5.1 MultiTaskPretrainFinetunePipeline集成设计
 
 ```mermaid
 sequenceDiagram
-    participant C as Config Manager
+    participant P as Pipeline_03
+    participant C as Config Utils
     participant D as Data Factory  
     participant M as Model Factory
     participant T as Task Factory
     participant TR as Trainer
     
-    Note over C,TR: 阶段一：预训练
-    C->>D: 加载多源域配置
+    Note over P,TR: 阶段一：预训练 (run_pretraining_stage)
+    P->>C: create_pretraining_config(backbone, HSE_prompt=True)
+    P->>D: 加载多源域配置
     D->>M: 提供系统metadata
-    M->>M: 初始化E_01_HSE_Prompt<br/>training_stage='pretrain'
+    M->>M: 初始化M_02_ISFM_Prompt<br/>E_01_HSE_v2, training_stage='pretrain'
     M->>T: 传递prompt-enabled模型
     T->>T: 启用对比学习损失<br/>contrast_weight=0.15
     T->>TR: 开始预训练
-    TR-->>C: 保存最佳checkpoint
+    TR-->>P: 保存最佳checkpoint到Pipeline_03格式
     
-    Note over C,TR: 阶段二：微调
-    C->>M: 加载预训练权重<br/>设置freeze_prompt=True
-    M->>M: 冻结prompt编码器参数
+    Note over P,TR: 阶段二：微调 (run_finetuning_stage)
+    P->>C: create_finetuning_config(checkpoint, freeze_prompt=True)
+    P->>M: load_pretrained_weights from Pipeline_03 checkpoint
+    M->>M: 设置training_stage='finetune', 冻结prompt参数
     T->>T: 禁用对比学习<br/>contrast_weight=0.0
     T->>TR: 开始微调训练
-    TR-->>C: 保存微调结果
+    TR-->>P: 保存微调结果到Pipeline_03格式
 ```
 
-#### 5.2 阶段控制机制
+#### 5.2 Pipeline_03集成机制
 
 ```python
-class TwoStageTrainingController:
-    """两阶段训练控制器"""
+class HSEPromptPipelineIntegration:
+    """HSE Prompt与Pipeline_03集成适配器"""
     
-    def __init__(self, model, pretrain_config, finetune_config):
-        self.model = model
-        self.pretrain_config = pretrain_config
-        self.finetune_config = finetune_config
+    def __init__(self, pipeline_instance):
+        self.pipeline = pipeline_instance
         
-    def run_pretraining_stage(self):
-        """阶段一：对比学习预训练"""
-        # 1. 设置预训练模式
-        self.model.set_training_stage('pretrain')
+    def create_hse_prompt_pretraining_config(self, backbone, target_systems, config):
+        """为HSE Prompt创建预训练配置"""
+        # 复用Pipeline_03的配置创建utilities
+        base_config = create_pretraining_config(
+            self.pipeline.configs, backbone, target_systems, config
+        )
         
-        # 2. 启用所有参数的梯度
-        for param in self.model.parameters():
-            param.requires_grad = True
+        # 添加HSE Prompt特定配置
+        base_config['model'].update({
+            'name': 'M_02_ISFM_Prompt',
+            'embedding': 'E_01_HSE_v2', 
+            'prompt_dim': 128,
+            'fusion_type': 'attention',
+            'training_stage': 'pretrain',
+            'freeze_prompt': False
+        })
+        
+        base_config['task'].update({
+            'name': 'hse_contrastive',
+            'contrast_loss': 'INFONCE',
+            'contrast_weight': 0.15,
+            'use_prompt_guidance': True
+        })
+        
+        return base_config
+        
+    def create_hse_prompt_finetuning_config(self, backbone, target_systems, config):
+        """为HSE Prompt创建微调配置"""
+        # 复用Pipeline_03的配置创建utilities
+        base_config = create_finetuning_config(
+            self.pipeline.configs, backbone, target_systems, 'classification', config, False
+        )
+        
+        # 添加HSE Prompt特定配置
+        base_config['model'].update({
+            'name': 'M_02_ISFM_Prompt',
+            'embedding': 'E_01_HSE_v2',
+            'training_stage': 'finetune',
+            'freeze_prompt': True,  # 微调时冻结prompt
+            'task_head': 'H_01_Linear_cla'  # 分类任务
+        })
+        
+        base_config['task'].update({
+            'name': 'classification',
+            'contrast_weight': 0.0,  # 微调时禁用对比学习
+            'use_prompt_guidance': False
+        })
+        
+        return base_config
+        
+    def adapt_checkpoint_loading(self, model, checkpoint_path):
+        """适配Pipeline_03的checkpoint加载"""
+        # 复用Pipeline_03的权重加载
+        load_pretrained_weights(model, checkpoint_path, strict=False)
+        
+        # 设置微调模式
+        if hasattr(model, 'set_training_stage'):
+            model.set_training_stage('finetune')
             
-        # 3. 配置对比学习损失
-        contrast_weight = self.pretrain_config.task.contrast_weight  # 0.15
+        # 冻结prompt参数
+        self._freeze_prompt_parameters(model)
         
-        # 4. 多源域数据加载
-        source_domains = self.pretrain_config.task.source_domain_id
-        
-        # 5. 执行预训练
-        best_checkpoint = self._train_epoch_loop(
-            stage='pretrain',
-            max_epochs=self.pretrain_config.task.epochs
-        )
-        
-        return best_checkpoint
-    
-    def run_finetuning_stage(self, pretrain_checkpoint):
-        """阶段二：下游任务微调"""
-        # 1. 加载预训练权重
-        self.model.load_state_dict(pretrain_checkpoint['model'])
-        
-        # 2. 设置微调模式（冻结prompt）
-        self.model.set_training_stage('finetune')
-        
-        # 3. 冻结prompt相关参数
-        self._freeze_prompt_parameters()
-        
-        # 4. 配置分类损失（禁用对比学习）
-        contrast_weight = 0.0
-        
-        # 5. 使用更小学习率
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(), 
-            lr=self.finetune_config.task.lr  # 1e-4
-        )
-        
-        # 6. 执行微调
-        final_result = self._train_epoch_loop(
-            stage='finetune',
-            max_epochs=self.finetune_config.task.epochs
-        )
-        
-        return final_result
-    
-    def _freeze_prompt_parameters(self):
+    def _freeze_prompt_parameters(self, model):
         """冻结prompt相关参数"""
-        for name, param in self.model.named_parameters():
-            if 'prompt_encoder' in name or 'prompt_fusion' in name:
+        for name, param in model.named_parameters():
+            if any(keyword in name for keyword in ['prompt_encoder', 'prompt_fusion']):
                 param.requires_grad = False
-                
-    def _unfreeze_signal_parameters(self):
-        """解冻信号处理参数"""  
-        for name, param in self.model.named_parameters():
-            if 'signal' in name or 'backbone' in name or 'task_head' in name:
-                param.requires_grad = True
 ```
 
 ### 6. 独立模型文件架构
 
-#### 6.1 文件组织结构
+#### 6.1 完全隔离的文件组织结构
 
-为避免与现有文件冲突，创建独立的Prompt引导模型模块：
+创建完全独立的ISFM_Prompt模块，确保与现有代码零冲突：
 
 ```
 src/model_factory/ISFM_Prompt/
-├── __init__.py                    # 模块初始化
-├── M_02_ISFM_Prompt.py           # 主模型文件（新建）
-├── components/                    # 组件目录
+├── __init__.py                    # 独立模块初始化，独立component注册
+├── M_02_ISFM_Prompt.py           # 主模型文件（完全新建）
+├── components/                    # 独立组件目录
 │   ├── __init__.py
-│   ├── SystemPromptEncoder.py    # 系统Prompt编码器
-│   └── PromptFusion.py          # Prompt融合策略
-├── embedding/                    # 嵌入组件（复用现有）
+│   ├── SystemPromptEncoder.py    # 系统Prompt编码器（新建）
+│   └── PromptFusion.py          # Prompt融合策略（新建）
+├── embedding/                    # 独立嵌入组件目录
 │   ├── __init__.py  
-│   └── E_01_HSE_Prompt.py       # 已实现，需要更新metadata处理
+│   └── E_01_HSE_v2.py           # 全新HSE实现，不修改现有E_01_HSE.py
 └── README.md                     # 使用文档
+
+# 关键隔离原则：
+# 1. E_01_HSE_v2.py 是全新实现，不继承或修改E_01_HSE.py
+# 2. M_02_ISFM_Prompt.py 使用独立的component dictionaries
+# 3. 所有组件注册在ISFM_Prompt命名空间下，避免与ISFM模块冲突
+# 4. 配置文件使用独立的模型名称和embedding名称
 ```
 
-#### 6.2 主模型文件架构 (M_02_ISFM_Prompt.py)
+#### 6.2 完全隔离的主模型文件架构 (M_02_ISFM_Prompt.py)
 
 ```python
 """
-Prompt引导的ISFM模型 - 独立版本
-避免与现有M_01_ISFM.py冲突
+Prompt引导的ISFM模型 - 完全独立版本
+与现有M_01_ISFM.py完全隔离，无任何依赖或冲突
 """
 import torch.nn as nn
 from .components.SystemPromptEncoder import SystemPromptEncoder
 from .components.PromptFusion import PromptFusion
-from .embedding.E_01_HSE_Prompt import E_01_HSE_Prompt
-from ..ISFM.backbone import *
-from ..ISFM.task_head import *
+from .embedding.E_01_HSE_v2 import E_01_HSE_v2  # 使用全新的v2版本
+from ..ISFM.backbone import *  # 复用backbone但通过独立注册
+from ..ISFM.task_head import *  # 复用task_head但通过独立注册
 
-# Prompt版本的组件字典
-PromptEmbedding_dict = {
-    'E_01_HSE_Prompt': E_01_HSE_Prompt,      # Prompt引导HSE嵌入
+# 完全独立的组件字典，避免与ISFM模块冲突
+ISFMPromptEmbedding_dict = {
+    'E_01_HSE_v2': E_01_HSE_v2,              # 全新HSE嵌入，独立实现
 }
 
-# 复用现有的Backbone和TaskHead
-PromptBackbone_dict = {
+# 复用现有组件但使用独立命名空间
+ISFMPromptBackbone_dict = {
     'B_08_PatchTST': B_08_PatchTST,          # Transformer骨干
-    'B_11_MomentumEncoder': B_11_MomentumEncoder,  # 动量编码器（已实现）
+    'B_11_MomentumEncoder': B_11_MomentumEncoder,  # 动量编码器（复用）
+    'B_04_Dlinear': B_04_Dlinear,            # 线性预测骨干  
+    'B_06_TimesNet': B_06_TimesNet,          # 时间序列骨干
+    'B_09_FNO': B_09_FNO,                    # 傅立叶神经算子
 }
 
-PromptTaskHead_dict = {
+ISFMPromptTaskHead_dict = {
     'H_01_Linear_cla': H_01_Linear_cla,       # 线性分类头
-    'H_10_ProjectionHead': H_10_ProjectionHead,  # 对比学习投影头（已实现）
+    'H_10_ProjectionHead': H_10_ProjectionHead,  # 对比学习投影头（复用）
+    'H_03_Linear_pred': H_03_Linear_pred,     # 线性预测头
 }
 
 class M_02_ISFM_Prompt(nn.Module):
@@ -687,44 +707,60 @@ if __name__ == '__main__':
         raise e
 ```
 
-#### 6.3 配置文件示例
+#### 6.3 Pipeline_03集成配置示例
 
 ```yaml
-# Prompt引导模型配置示例
+# HSE Prompt预训练阶段配置 (for Pipeline_03)
+training:
+  stage_1_pretraining:
+    enabled: true
+    backbones_to_compare: ['B_08_PatchTST', 'B_04_Dlinear', 'B_06_TimesNet', 'B_09_FNO']
+    target_systems: [1, 5, 6, 13, 19]  # 多源域预训练
+    epochs: 100
+    learning_rate: 0.001
+    
 model:
-  name: "M_02_ISFM_Prompt"  # 使用独立的Prompt模型
+  name: "M_02_ISFM_Prompt"          # 使用完全独立的Prompt模型
   
   # 嵌入层配置
-  embedding: "E_01_HSE_Prompt"
+  embedding: "E_01_HSE_v2"          # 使用全新v2版本，不是原有的E_01_HSE
   patch_size_L: 256
   patch_size_C: 1
   num_patches: 128
   output_dim: 1024
   
-  # Prompt配置（核心创新）
+  # 二层级Prompt配置（核心创新）
   prompt_dim: 128
   fusion_type: "attention"           # attention/concat/gating
-  use_system_prompt: true            # Dataset_id + Domain_id
-  use_sample_prompt: true            # Sample_rate + Channel
-  # 注意：移除use_fault_prompt，故障类型是预测目标
+  use_system_prompt: true            # Dataset_id + Domain_id（系统级）
+  use_sample_prompt: true            # Sample_rate（样本级）
+  # 严格禁止: 无use_fault_prompt，因为Label是预测目标
   
-  # 两阶段训练控制
-  training_stage: "pretrain"         # pretrain/finetune
-  freeze_prompt: false               # 预训练时不冻结
+  # Pipeline_03两阶段训练控制
+  training_stage: "pretrain"         # Pipeline_03会自动管理
+  freeze_prompt: false               # 预训练时学习prompt
   
-  # 骨干网络
-  backbone: "B_08_PatchTST" 
+  # 骨干网络（Pipeline_03会遍历多个backbone对比）
+  backbone: "B_08_PatchTST"          # 默认，Pipeline_03会替换
   num_layers: 4
   
-  # 任务头
-  task_head: "H_01_Linear_cla"
-  num_classes: 4                     # 故障类型数量
-  
-  # 对比学习组件（复用现有实现）
-  use_momentum_encoder: true
-  momentum: 0.999
-  use_projection_head: true
+  # 任务头（Pipeline_03会根据阶段自动配置）
+  task_head: "H_10_ProjectionHead"   # 预训练用投影头
   projection_dim: 128
+  
+task:
+  name: "hse_contrastive"            # 使用HSE对比学习任务
+  contrast_loss: "INFONCE"           # 默认InfoNCE损失
+  contrast_weight: 0.15              # 预训练阶段权重
+  use_prompt_guidance: true          # 启用prompt引导
+
+# 微调阶段配置会由Pipeline_03自动生成
+# 主要变化：
+# - training_stage: "finetune"
+# - freeze_prompt: true
+# - task_head: "H_01_Linear_cla"
+# - contrast_weight: 0.0
+# - task.name: "classification"
 ```
 
 #### 6.4 配置验证与自测试

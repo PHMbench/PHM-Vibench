@@ -1,38 +1,61 @@
 """
-ISFM_Prompt Module - Prompt-guided Industrial Signal Foundation Model
+ISFM_Prompt: Industrial Signal Foundation Model with Prompt-guided Learning
 
-This module implements the Prompt-guided ISFM architecture for industrial fault diagnosis.
-It combines system metadata as learnable prompts with SOTA contrastive learning methods.
+This module implements the innovative Prompt-guided ISFM architecture that combines
+system metadata as learnable prompt vectors with contrastive learning for enhanced
+cross-system fault diagnosis generalization.
 
-Components:
-- M_02_ISFM_Prompt: Main prompt-guided foundation model (lazy import)
-- SystemPromptEncoder: Two-level system metadata encoder 
-- PromptFusion: Multi-strategy fusion for signal and prompt features
+Key Innovation:
+- Two-level prompt encoding: System-level (Dataset_id + Domain_id) + Sample-level (Sample_rate)
+- Prompt-guided contrastive learning for cross-domain knowledge transfer  
+- Complete independence from existing ISFM models to avoid conflicts
+
+Architecture Components:
+- components: SystemPromptEncoder, PromptFusion utilities
+- embedding: E_01_HSE_v2 (Prompt-guided Hierarchical Signal Embedding)
+- backbone: Reuse existing ISFM backbone networks
+- task_head: Reuse existing ISFM task heads
 
 Author: PHM-Vibench Team
 Date: 2025-01-06
+License: MIT
 """
 
-# Lazy imports to avoid dependency issues during testing
-def _get_M_02_ISFM_Prompt():
-    """Lazy import for M_02_ISFM_Prompt to avoid dependency loading during testing."""
-    from .M_02_ISFM_Prompt import Model
-    return Model
+import torch.nn as nn
+import torch
+import torch.nn.functional as F
 
-# Direct imports for components (no ISFM dependencies)
-from .components.SystemPromptEncoder import SystemPromptEncoder
-from .components.PromptFusion import PromptFusion
+# Import prompt-specific submodules
+from . import components
+from . import embedding
+
+# Component dictionaries for factory pattern integration
+PROMPT_EMBEDDING_REGISTRY = {
+    'E_01_HSE_v2': 'embedding.E_01_HSE_v2'
+}
+
+PROMPT_COMPONENT_REGISTRY = {
+    'SystemPromptEncoder': 'components.SystemPromptEncoder',
+    'PromptFusion': 'components.PromptFusion'
+}
+
+# Model registry (lazy import to avoid circular dependencies)
+def _get_prompt_models():
+    """Lazy import for prompt models to avoid circular dependencies."""
+    models = {}
+    try:
+        from .M_02_ISFM_Prompt import Model as M_02_ISFM_Prompt
+        models['M_02_ISFM_Prompt'] = M_02_ISFM_Prompt
+    except ImportError:
+        pass  # Model not yet implemented
+    return models
+
+PROMPT_MODEL_REGISTRY = _get_prompt_models()
 
 __all__ = [
-    'SystemPromptEncoder', 
-    'PromptFusion'
+    'components',
+    'embedding', 
+    'PROMPT_EMBEDDING_REGISTRY',
+    'PROMPT_COMPONENT_REGISTRY',
+    'PROMPT_MODEL_REGISTRY'
 ]
-
-# Add M_02_ISFM_Prompt to __all__ but don't import it directly
-__all__.append('M_02_ISFM_Prompt')
-
-# Make M_02_ISFM_Prompt available through attribute access
-def __getattr__(name):
-    if name == 'M_02_ISFM_Prompt':
-        return _get_M_02_ISFM_Prompt()
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

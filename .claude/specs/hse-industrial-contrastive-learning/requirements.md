@@ -39,36 +39,41 @@
 - GIVEN 跨系统测试 WHEN 使用prompt-guided方法 THEN 相比传统方法准确率提升≥5%
 - GIVEN 运行自测试 WHEN 执行prompt_contrastive模块 THEN 所有6种算法+prompt组合均通过测试
 
-### FR2: 系统信息Prompt特征设计 [优先级: P0] 🔥  
+### FR2: 二层级Prompt特征设计 [优先级: P0] 🔥  
 
-**用户故事**: 作为工业AI研究者，我希望能够将丰富的系统metadata信息转化为有效的prompt特征，以便指导对比学习过程并提升跨系统泛化能力。
+**用户故事**: 作为工业AI研究者，我希望能够将系统metadata信息转化为有效的二层级prompt特征，以便指导对比学习过程并提升跨系统泛化能力，同时确保故障类型作为预测目标不被泄露。
 
 **需求描述**:
-- 从PHM-Vibench metadata直接查表获取系统信息（转速、负载、采样率、传感器类型等）
-- 设计可学习的System Prompt Encoder，将离散系统属性编码为连续向量
-- 创建多层级prompt特征：系统级(system-level) + 样本级(sample-level) + 故障级(fault-level)
+- 从PHM-Vibench metadata直接查表获取系统信息（Dataset_id, Domain_id, Sample_rate等）
+- 设计可学习的System Prompt Encoder，将系统属性编码为连续向量
+- **关键约束**: 仅创建二层级prompt特征：系统级(Dataset_id + Domain_id) + 样本级(Sample_rate)
+- **严格禁止**: 不得包含故障级(fault-level)prompt，因为Label是预测目标
 - 提供prompt特征与振动特征的融合策略（concatenation, cross-attention, adaptive gating）
+- 创建独立的E_01_HSE_v2.py实现，完全独立于现有E_01_HSE.py
 
 **验收标准**:
-- GIVEN metadata文件和系统ID WHEN 查询系统属性 THEN 能够准确获取所有系统特征信息
-- GIVEN 系统属性字典 WHEN 输入Prompt Encoder THEN 输出固定维度的可学习prompt向量
-- GIVEN 不同层级的prompt WHEN 进行特征融合 THEN 能够保持语义一致性和维度匹配
-- GIVEN 跨系统数据 WHEN 使用prompt特征 THEN 能够显著提升域适应效果
-- GIVEN 相同故障不同系统 WHEN 对比prompt距离 THEN 故障信息距离近，系统差异被解耦
+- GIVEN metadata文件和系统ID WHEN 查询系统属性 THEN 能够准确获取Dataset_id, Domain_id, Sample_rate信息
+- GIVEN 系统属性字典(不含Label) WHEN 输入Prompt Encoder THEN 输出固定维度的可学习prompt向量
+- GIVEN 二层级prompt WHEN 进行特征融合 THEN 能够保持语义一致性和维度匹配
+- GIVEN E_01_HSE_v2.py WHEN 与现有E_01_HSE.py共存 THEN 无任何代码冲突或依赖关系
+- GIVEN 相同故障不同系统 WHEN 对比prompt距离 THEN 系统差异被解耦但不包含故障标签信息
 
-### FR3: PHM-Vibench架构规范遵循 [优先级: P0] 🔥
+### FR3: 独立模型架构与完全隔离 [优先级: P0] 🔥
 
-**用户故事**: 作为PHM-Vibench维护者，我希望所有新增功能都严格遵循现有架构模式，以便保持代码库的一致性和可维护性。
+**用户故事**: 作为PHM-Vibench维护者，我希望新的prompt引导模型能够完全独立运行，不与现有模型产生任何混合或冲突，以便保持代码库的一致性和可维护性。
 
 **需求描述**:  
-- 将模型组件（MomentumEncoder, ProjectionHead）迁移至model_factory规范位置
-- 任务文件只包含训练逻辑，不允许定义模型类
-- 所有组件必须在相应工厂中注册并可通过配置文件调用
+- 创建完全独立的ISFM_Prompt模块，包含所有prompt相关组件
+- 实现E_01_HSE_v2.py作为独立的HSE嵌入组件，不修改现有E_01_HSE.py
+- M_02_ISFM_Prompt.py使用独立的component dictionaries，避免与M_01_ISFM混合
+- 复用现有的MomentumEncoder和ProjectionHead，但通过独立注册避免冲突
+- 所有组件必须在ISFM_Prompt工厂中注册并可通过配置文件调用
 
 **验收标准**:
-- GIVEN 查看hse_contrastive.py WHEN 检查代码结构 THEN 不包含任何模型类定义
-- GIVEN 配置文件指定backbone="B_11_MomentumEncoder" WHEN 初始化模型 THEN 能够正确从model_factory加载
-- GIVEN 执行架构合规性检查 WHEN 扫描任务文件 THEN 所有组件都正确使用工厂模式
+- GIVEN E_01_HSE_v2.py WHEN 与现有E_01_HSE.py同时存在 THEN 无任何代码依赖或冲突
+- GIVEN M_02_ISFM_Prompt配置 WHEN 初始化模型 THEN 仅使用ISFM_Prompt模块内组件
+- GIVEN 现有M_01_ISFM配置 WHEN 运行训练 THEN 完全不受新模块影响
+- GIVEN ISFM_Prompt模块 WHEN 检查组件注册 THEN 所有组件都有独立的命名空间
 
 ### FR4: 统一配置管理系统 [优先级: P1] ⚙️
 
@@ -84,19 +89,22 @@
 - GIVEN 消融实验需求 WHEN 使用配置模板 THEN 能够快速生成对应的实验配置
 - GIVEN 配置文件验证 WHEN 检查路径有效性 THEN 提供清晰的验证报告
 
-### FR5: 自动化实验执行框架 [优先级: P1] ⚙️
+### FR5: Pipeline_03集成框架 [优先级: P0] 🔥
 
-**用户故事**: 作为算法研究员，我希望能够批量执行SOTA方法对比实验，以便系统评估不同方法的性能差异。
+**用户故事**: 作为算法研究员，我希望能够将Prompt引导的对比学习无缝集成到Pipeline_03_multitask_pretrain_finetune.py的两阶段训练流程中，以便复用现有的成熟训练基础设施。
 
 **需求描述**:
-- 创建简单直观的实验运行器，支持批量执行和结果收集
-- 实现SOTA方法对比基线（包括InfoNCE, 传统域适应方法对比）
-- 提供实验进度跟踪和中断恢复功能
+- 集成MultiTaskPretrainFinetunePipeline的两阶段训练流程
+- 在预训练阶段启用prompt引导的对比学习
+- 在微调阶段冻结prompt参数并专注于分类任务
+- 复用Pipeline_03的配置生成utilities (create_pretraining_config, create_finetuning_config)
+- 支持多种backbone architectures的对比实验
 
 **验收标准**:
-- GIVEN 多个配置文件 WHEN 执行批量实验 THEN 能够自动运行所有实验并收集结果
-- GIVEN 实验中断 WHEN 重启实验 THEN 能够从断点继续执行未完成的实验
-- GIVEN 实验完成 WHEN 查看结果 THEN 提供标准化的性能对比报告
+- GIVEN HSE prompt配置 WHEN 使用Pipeline_03预训练 THEN 能够正确启用对比学习和prompt编码
+- GIVEN 预训练checkpoint WHEN 进入微调阶段 THEN 能够正确冻结prompt参数
+- GIVEN 多个backbone配置 WHEN 运行完整pipeline THEN 能够自动对比不同架构的性能
+- GIVEN Pipeline_03配置utilities WHEN 生成prompt配置 THEN 能够正确集成prompt相关参数
 
 ### FR6: 顶级期刊发表支撑 [优先级: P1] 📊
 
