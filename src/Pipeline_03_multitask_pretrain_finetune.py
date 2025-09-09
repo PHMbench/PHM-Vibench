@@ -1,4 +1,4 @@
-"""
+""" ## TODO
 Two-Stage Multi-Task PHM Foundation Model Training Pipeline
 
 This pipeline implements a systematic pretraining-to-fine-tuning approach with backbone
@@ -33,8 +33,9 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 import pytorch_lightning as pl
 
+
 # Import PHM-Vibench framework components
-from src.configs.config_utils import load_config, path_name, transfer_namespace
+from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -63,7 +64,14 @@ class MultiTaskPretrainFinetunePipeline:
     def __init__(self, config_path: str):
         """Initialize the pipeline with configuration."""
         self.config_path = config_path
-        self.configs = load_config(config_path)
+        
+        # 准备配置覆盖参数
+        overrides = {}
+        if '_override_params' in globals():
+            overrides = globals()['_override_params']
+            print(f"[INFO] 在Pipeline_03中覆盖配置参数: {overrides}")
+        
+        self.configs = load_config(config_path, overrides if overrides else None)
         self.results = {}
         
         # Extract configuration sections
@@ -786,3 +794,42 @@ if __name__ == "__main__":
         sys.exit(0 if success else 1)
     else:
         main()
+
+
+def pipeline(args):
+    """Pipeline wrapper function for compatibility"""
+    # 处理命令行参数
+    import sys
+    original_argv = sys.argv[:]
+    
+    # 构建新的参数列表
+    sys.argv = ['Pipeline_03_multitask_pretrain_finetune.py']
+    if hasattr(args, 'config_path'):
+        sys.argv.extend(['--config_path', args.config_path])
+        
+    # 准备配置覆盖参数 - 统一处理所有覆盖
+    global _override_params
+    set_args = []
+    
+    # 将 --data_dir 转换为 --set 格式 (向后兼容)
+    if hasattr(args, 'data_dir') and args.data_dir is not None:
+        set_args.append(f'data.data_dir={args.data_dir}')
+        print(f"[INFO] 通过命令行参数覆盖data_dir: {args.data_dir}")
+    
+    # 添加 --set 参数
+    if hasattr(args, 'set') and args.set is not None:
+        set_args.extend(args.set)
+    
+    # 统一解析所有覆盖参数
+    overrides = parse_set_args(set_args) if set_args else {}
+    if overrides:
+        print(f"[INFO] 应用配置覆盖: {overrides}")
+        _override_params = overrides
+    
+    try:
+        result = main()
+        return result
+    finally:
+        sys.argv = original_argv
+        if '_override_params' in globals():
+            del globals()['_override_params']

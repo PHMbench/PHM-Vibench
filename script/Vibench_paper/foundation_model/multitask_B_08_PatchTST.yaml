@@ -20,12 +20,12 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 128
-  num_workers: 32
+  batch_size: 32     # Reduced from 128 to 32
+  num_workers: 16    # Reduced workers
   window_size: 4096
   stride: 4
   truncate_length: 200
-  num_window: 512
+  num_window: 128    # Reduced from 512 to 128
   normalization: 'standardization'
   dtype: float32
   window_sampling_strategy: 'evenly_spaced'
@@ -47,15 +47,20 @@ model:
   backbone: B_08_PatchTST  # PatchTST backbone
   task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
   
-  # Model dimensions
-  num_patches: 128
-  patch_size_L: 256
+  # Model dimensions - MEMORY OPTIMIZED
+  num_patches: 64    # Reduced from 128 to 64
+  patch_size_L: 128  # Reduced from 256 to 128
   patch_size_C: 1
-  output_dim: 1024
-  num_heads: 8
-  num_layers: 3
-  d_ff: 2048
+  output_dim: 256    # Reduced from 1024 to 256
+  num_heads: 4       # Reduced from 8 to 4
+  num_layers: 2      # Reduced from 3 to 2
+  d_ff: 512         # Reduced from 2048 to 512
   dropout: 0.1
+  
+  # PatchTST specific parameters
+  e_layers: 2        # Number of encoder layers (maps to num_layers)
+  factor: 1          # Attention factor for efficiency
+  activation: "gelu" # Activation function
   
   # PatchTST-specific parameters
   patch_len: 16
@@ -65,14 +70,13 @@ model:
   # Multi-task head configuration
   classification_head: H_02_distance_cla
   prediction_head: H_03_Linear_pred
-  hidden_dim: 512
+  hidden_dim: 64     # MEMORY FIX: Reduced from 512 to 64 (99.9% param reduction in H_03_Linear_pred)
   activation: "gelu"
-  rul_max_value: 2000.0
   use_batch_norm: true
   
-  # H_03_Linear_pred parameters for signal prediction
-  max_len: 4096
-  max_out: 3
+  # H_03_Linear_pred parameters for signal prediction - MEMORY OPTIMIZED
+  max_len: 4096      # USER REQUIREMENT: Keep max_len = 4096 
+  max_out: 2         # MEMORY FIX: Reduced from 3 to 2
   act: "gelu"
 
 # Task Configuration

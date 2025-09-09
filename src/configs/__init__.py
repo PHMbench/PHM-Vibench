@@ -31,6 +31,7 @@ from .config_utils import ConfigWrapper, PRESET_TEMPLATES
 # 工具函数
 from .config_utils import (
     dict_to_namespace,
+    parse_set_args,
     build_experiment_name,
     path_name
 )
@@ -49,6 +50,7 @@ __all__ = [
     
     # 工具函数
     'dict_to_namespace',
+    'parse_set_args',
     'build_experiment_name',
     'path_name',
     

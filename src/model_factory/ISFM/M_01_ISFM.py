@@ -118,19 +118,51 @@ class Model(nn.Module):
         raise ValueError(f"No head available for task: {task_name}")
     
     def _prepare_task_params(self, task_name, file_id, return_feature):
-        """准备任务特定的参数"""
+        """准备任务特定的参数。支持单个file_id或file_ids列表。"""
         params = {'return_feature': return_feature}
         
         if task_name == 'classification':
-            params['system_id'] = self.metadata[file_id]['Dataset_id']
+            # Support both single file_id and batch file_ids
+            if isinstance(file_id, (list, tuple)):
+                # Batch processing: extract system_id for each file_id
+                system_ids = []
+                for fid in file_id:
+                    if fid in self.metadata and 'Dataset_id' in self.metadata[fid]:
+                        system_ids.append(self.metadata[fid]['Dataset_id'])
+                    elif fid in self.metadata and 'System_id' in self.metadata[fid]:
+                        system_ids.append(self.metadata[fid]['System_id'])
+                    else:
+                        fallback_id = fid if isinstance(fid, int) else 0
+                        system_ids.append(fallback_id)
+                        self._warn_missing_dataset_id(fid, fallback_id)
+                params['system_id'] = system_ids
+            else:
+                # Single file_id: original logic
+                if file_id in self.metadata and 'Dataset_id' in self.metadata[file_id]:
+                    params['system_id'] = self.metadata[file_id]['Dataset_id']
+                elif file_id in self.metadata and 'System_id' in self.metadata[file_id]:
+                    params['system_id'] = self.metadata[file_id]['System_id']
+                else:
+                    fallback_id = file_id if isinstance(file_id, int) else 0
+                    params['system_id'] = fallback_id
+                    self._warn_missing_dataset_id(file_id, fallback_id)
+                    
         elif task_name in ['signal_prediction', 'prediction']:  # Support legacy 'prediction' name
             params['shape'] = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
         # rul_prediction和anomaly_detection只需要return_feature
         
         return params
     
+    def _warn_missing_dataset_id(self, file_id, fallback_id):
+        """为缺失的Dataset_id记录警告信息（去重）。"""
+        if not hasattr(self, '_dataset_id_warnings'):
+            self._dataset_id_warnings = set()
+        if file_id not in self._dataset_id_warnings:
+            print(f"Warning: Missing Dataset_id for file {file_id}, using fallback system_id={fallback_id}")
+            self._dataset_id_warnings.add(file_id)
+    
     def _execute_single_task(self, x, task_name, file_id, return_feature):
-        """执行单个任务"""
+        """执行单个任务。支持单个file_id或batch file_ids。"""
         head = self._get_or_create_task_head(task_name)
         params = self._prepare_task_params(task_name, file_id, return_feature)
         return head(x, **params)
@@ -169,10 +201,18 @@ class Model(nn.Module):
 
 
     def _embed(self, x, file_id):
-        """1 Embedding"""
+        """1 Embedding - supports both single file_id and batch file_ids"""
         if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
-            fs = self.metadata[file_id]['Sample_rate']
-            # system_id = self.metadata[file_id]['Dataset_id']
+            # Handle both single file_id and batch file_ids
+            if isinstance(file_id, (list, tuple)):
+                # For batch processing, use the first file_id for embedding parameters
+                # Since embedding typically uses dataset-level parameters (sample rate)
+                # which should be consistent within a batch for most use cases
+                primary_file_id = file_id[0]
+            else:
+                primary_file_id = file_id
+                
+            fs = self.metadata[primary_file_id]['Sample_rate']
             x = self.embedding(x, fs)
         else:
             x = self.embedding(x)
@@ -187,6 +227,9 @@ class Model(nn.Module):
         if file_id is False:
             raise ValueError("file_id must be provided for task head")
         
+        # 记住原始task_id类型
+        original_task_id = task_id
+        
         # 统一处理为列表
         task_list = [task_id] if isinstance(task_id, str) else task_id
         
@@ -195,8 +238,11 @@ class Model(nn.Module):
         for task in task_list:
             results[task] = self._execute_single_task(x, task, file_id, return_feature)
         
-        # 返回结果
-        return list(results.values())[0] if len(results) == 1 else results
+        # 返回结果 - 保持一致性：list输入总是返回dict，string输入返回单值
+        if isinstance(original_task_id, list):
+            return results  # Always return dict for list input (multi-task consistency)
+        else:
+            return list(results.values())[0] if len(results) == 1 else results
 
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):

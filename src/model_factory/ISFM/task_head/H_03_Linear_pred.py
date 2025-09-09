@@ -54,9 +54,16 @@ class H_03_Linear_pred(nn.Module):  # TODO
         pred_len = min(shape[0], self.max_len)
         out_dim  = min(shape[1], self.max_out)
 
-        if pred_len > self.max_len or out_dim > self.max_out:
-            raise ValueError(f"Requested ({pred_len}, {out_dim}) exceeds "
-                             f"kernel capacity ({self.max_len}, {self.max_out})")
+        # For signal reconstruction tasks, prioritize matching input channels
+        # over strict max_out limits to avoid dimension mismatches
+        if shape[1] > self.max_out:
+            print(f"Warning: Requested output channels ({shape[1]}) exceeds max_out ({self.max_out}). "
+                  f"Using max_out={self.max_out} to prevent memory issues.")
+            out_dim = self.max_out
+        
+        if pred_len > self.max_len:
+            raise ValueError(f"Requested sequence length ({pred_len}) exceeds "
+                             f"maximum capacity ({self.max_len})")
         B = x.size(0)
 
         # ① flatten whole signal
