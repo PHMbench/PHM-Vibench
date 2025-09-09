@@ -1,0 +1,209 @@
+# Multi-Task PHM Foundation Model Configuration - B_04_Dlinear DEBUG VERSION
+# DEBUG MODE: Lightweight configuration for rapid iteration and debugging
+# Author: PHM-Vibench Team  
+# Date: 2025-09-05
+# Purpose: Fix parameter explosion and shape mismatch issues
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "MultiTask_DEBUG"
+  seed: 42
+  output_dir: "results/debug_multitask_B_04_Dlinear"
+  iterations: 1  # Debug mode: single iteration
+  wandb: False  # Debug mode: completely disabled
+  swanlab: False  # Debug mode: disabled
+  notes: 'Multi-task foundation model DEBUG - lightweight for rapid iteration'
+  workspace: 'PHMbench_DEBUG'
+
+# Data Configuration - Reduced for faster debugging
+data:
+  data_dir: "/mnt/crucial/LQ/PHM-Vibench"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 16  # DEBUG: Reduced from 128 to 16 for faster iteration
+  num_workers: 4   # DEBUG: Reduced from 32 to 4 for simpler debugging
+  window_size: 2048  # DEBUG: Reduced from 4096 to 2048 for faster processing
+  stride: 8        # DEBUG: Increased stride for fewer samples
+  truncate_length: 50  # DEBUG: Reduced from 200 for faster processing
+  num_window: 2    # DEBUG: Reduced from 4 for faster processing
+  normalization: 'standardization'
+  dtype: float32
+  window_sampling_strategy: 'evenly_spaced'
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  
+  # RUL-specific dataset configuration
+  rul_dataset_id: 2  # XJTU bearing dataset for RUL
+
+# Model Configuration - Lightweight for debugging
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  
+  # Architecture components
+  embedding: E_01_HSE
+  backbone: B_04_Dlinear  # Dlinear backbone
+  task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
+  
+  # Model dimensions - DRASTICALLY REDUCED for debugging
+  num_patches: 64    # DEBUG: Reduced from 128 to 64
+  patch_size_L: 128  # DEBUG: Reduced from 256 to 128
+  patch_size_C: 1
+  output_dim: 256    # DEBUG: CRITICAL FIX - Reduced from 1024 to 256 (75% reduction)
+  num_heads: 4       # DEBUG: Reduced from 8 to 4
+  num_layers: 2      # DEBUG: Reduced from 3 to 2
+  d_ff: 512         # DEBUG: Reduced from 2048 to 512
+  dropout: 0.1
+  
+  # B_04_Dlinear specific parameters - FIX parameter explosion
+  individual: false  # DEBUG: CRITICAL FIX - Explicitly set to false to prevent parameter explosion
+  
+  # Multi-task head configuration
+  classification_head: H_02_distance_cla
+  prediction_head: H_03_Linear_pred
+  hidden_dim: 128    # DEBUG: Reduced from 512 to 128
+  activation: "gelu"
+  rul_max_value: 2000.0
+  use_batch_norm: true
+  
+  # H_03_Linear_pred parameters for signal prediction
+  max_len: 2048      # DEBUG: Reduced from 4096 to 2048
+  max_out: 3
+  act: "gelu"
+
+# Task Configuration - Simplified for debugging
+task:
+  name: "multi_task_phm"
+  type: "In_distribution"
+  
+  # DEBUG: All tasks enabled for complete testing
+  enabled_tasks: 
+    - 'classification'       # Fault diagnosis
+    - 'anomaly_detection'   # Anomaly detection
+    - 'signal_prediction'   # Signal prediction
+    - 'rul_prediction'      # RUL prediction
+  
+  # Task weights for loss balancing
+  task_weights:
+    classification: 1.0
+    anomaly_detection: 0.6
+    signal_prediction: 0.7
+    rul_prediction: 0.8
+  
+  # Task-specific configurations
+  classification:
+    loss: "CE"  # Cross-entropy loss
+    num_classes: auto  # Auto-determined from dataset
+    label_smoothing: 0.0  # DEBUG: Disabled for simpler loss computation
+    loss_weight: 1.0
+  
+  anomaly_detection:
+    loss: "BCE"  # Binary cross-entropy loss
+    threshold: 0.5
+    class_weights: [1.0, 1.5]  # DEBUG: Reduced imbalance weight
+    loss_weight: 0.6
+  
+  signal_prediction:
+    loss: "MSE"  # Mean squared error loss
+    pred_len: 48  # DEBUG: Reduced from 96 to 48
+    use_mean_pooling: false  # Key: don't use mean pooling
+    loss_weight: 0.7
+  
+  rul_prediction:
+    loss: "MSE"  # Mean squared error loss
+    max_rul_value: 2000.0
+    normalize_targets: true
+    dataset_id: 2  # XJTU dataset
+    loss_weight: 0.8
+  
+  # Target systems for evaluation
+  target_system_id: [2]  # Debug mode: single system
+  
+  # Optimization parameters - Conservative for debugging
+  optimizer: "adam"      # DEBUG: Use simpler Adam instead of AdamW
+  lr: 0.001             # DEBUG: Slightly higher LR for faster convergence
+  weight_decay: 0.0     # DEBUG: Disabled for simpler optimization
+  momentum: 0.9         # For SGD if needed
+  
+  # Learning rate scheduling - Disabled for debugging
+  # scheduler:
+  #   name: "cosine"
+  #   options:
+  #     T_max: 100
+  #     eta_min: 1e-6
+
+# Trainer Configuration - Debug optimized
+trainer:
+  name: "Default_trainer"
+  num_epochs: 1  # Debug mode: 1 epoch only
+  gpus: 2
+  precision: 32  # DEBUG: Use full precision for numerical stability during debugging
+  accumulate_grad_batches: 1  # DEBUG: Disabled gradient accumulation for simpler debugging
+  gradient_clip_val: 1.0
+  
+  # Early stopping (disabled for debug mode)
+  early_stopping: false  # Debug mode: disabled
+  patience: 25
+  monitor: "val_loss"
+  
+  # Model checkpointing - Minimal for debugging
+  save_top_k: 1    # DEBUG: Only save best model
+  save_last: false # DEBUG: Don't save last
+  
+  # Logging - More verbose for debugging
+  log_every_n_steps: 10  # DEBUG: More frequent logging (was 50)
+  
+  # Device configuration
+  device: 'cuda'
+  
+  # Validation - More frequent for debugging
+  val_check_interval: 0.5  # DEBUG: Validate twice per epoch
+  check_val_every_n_epoch: 1
+
+# Evaluation Configuration - All tasks metrics  
+evaluation:
+  # DEBUG: Essential metrics for all tasks
+  compute_metrics:
+    - "accuracy"      # For classification
+    - "f1_score"      # For classification & anomaly detection
+    - "mse"           # For RUL & signal prediction
+    - "mae"           # For RUL & signal prediction
+    # - "precision"     # DEBUG: Optional for faster evaluation
+    # - "recall"        # DEBUG: Optional for faster evaluation
+    # - "roc_auc"       # DEBUG: Optional for faster evaluation
+    # - "r2_score"      # DEBUG: Optional for faster evaluation
+  
+  # Test after training - Disabled for debugging
+  test_after_training: false  # DEBUG: Skip testing for faster iteration
+
+# Reproducibility
+reproducibility:
+  deterministic: true
+  benchmark: false
+  seed_everything: true
+
+# Advanced Configuration - Debug optimized
+advanced:
+  effective_batch_size: 32   # DEBUG: Much smaller than 256
+  use_amp: false             # DEBUG: Disabled mixed precision for numerical stability
+  compile_model: false       # DEBUG: Disabled for cleaner error messages
+  memory_efficient: true     # Keep memory efficiency
+  profiler: null            # No profiling in debug mode
+
+# DEBUG INFORMATION - ALL TASKS ENABLED
+# Configuration optimizations:
+# - output_dim: 1024 → 256 (75% reduction) - Prevents parameter explosion
+# - batch_size: 128 → 16 (87.5% reduction) - Faster iteration
+# - individual: false (CRITICAL FIX) - Prevents B_04_Dlinear param explosion
+# - All 4 tasks enabled: classification, anomaly_detection, signal_prediction, rul_prediction
+# 
+# Expected model size reduction:
+# Original: ~3.2B parameters (12.8GB VRAM)  
+# Debug:    ~50M parameters (~200MB VRAM)
+# Speed improvement: ~10-20x faster training iteration
+#
+# Test command:
+# python main_LQ.py --config script/Vibench_paper/foundation_model/multitask_B_04_Dlinear_debug.yaml

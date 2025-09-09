@@ -1,5 +1,5 @@
 # Multi-Task PHM Foundation Model Configuration - B_09_FNO
-# Test Mode: 1 epoch, wandb dryrun, swanlab off
+# Production Mode: 200 epochs, wandb online, 2 iterations
 # Author: PHM-Vibench Team
 # Date: 2025-08-29
 
@@ -10,10 +10,10 @@ environment:
   project: "MultiTask_Foundation_Model"
   seed: 42
   output_dir: "results/multitask_B_09_FNO"
-  iterations: 1  # Test mode: single iteration
-  wandb: dryrun  # Test mode: dryrun (no upload)
+  iterations: 2  # Production mode: 2 iterations for stability
+  wandb: true  # Production mode: W&B logging enabled
   swanlab: False  # Test mode: disabled
-  notes: 'Multi-task foundation model with B_09_FNO - TEST MODE'
+  notes: 'Multi-task foundation model with B_09_FNO - PRODUCTION MODE'
   workspace: 'PHMbench'
 
 # Data Configuration
@@ -114,7 +114,7 @@ task:
   
   rul_prediction:
     loss: "MSE"  # Mean squared error loss
-    max_rul_value: 2000.0
+    max_rul_value: 1.0
     normalize_targets: true
     dataset_id: 2  # XJTU dataset
     loss_weight: 0.8
@@ -126,20 +126,20 @@ task:
   optimizer: "adamw"
   lr: 0.0005
   weight_decay: 0.01
-  momentum: 0.9  # For SGD if needed
+  momentum: 0.9  # For SGD if needed 
   
   # Learning rate scheduling
   scheduler:
     name: "cosine"
     options:
-      T_max: 100
+      T_max: 200
       eta_min: 1e-6
 
 # Trainer Configuration
 trainer:
   name: "Default_trainer"
-  num_epochs: 1  # Test mode: 1 epoch only
-  gpus: 1
+  num_epochs: 200  # Production mode: full 200 epochs
+  gpus: 2
   precision: 16  # Mixed precision
   accumulate_grad_batches: 8  # Increased to maintain effective batch size
   gradient_clip_val: 1.0

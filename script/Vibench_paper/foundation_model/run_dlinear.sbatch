@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=multitask_dlinear
 #SBATCH --partition=gpu
-#SBATCH --gpus=v100:1              # V100 is sufficient for DLinear
+#SBATCH --gpus=v100:2              # 2 V100 GPUs for DLinear data parallel
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem=48G
 #SBATCH --time=24:00:00            # 24 hours for full training
