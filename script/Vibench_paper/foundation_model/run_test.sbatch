@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=multitask_test
 #SBATCH --partition=gpu
-#SBATCH --gpus=v100:2              # 2 V100 GPUs for data parallel test
+#SBATCH --gpus=v100:1              # Single V100 GPU for optimized test
 #SBATCH --cpus-per-gpu=4
 #SBATCH --mem=32G                  # Reduced memory for test
 #SBATCH --time=01:00:00            # 1 hour for quick test

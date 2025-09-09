@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=multitask_fno
 #SBATCH --partition=gpu
-#SBATCH --gpus=a5000:2             # 2 A5000 GPUs for FNO data parallel
+#SBATCH --gpus=a5000:1             # Single A5000 GPU optimized for FNO
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem=48G
 #SBATCH --time=24:00:00            # 24 hours for full training

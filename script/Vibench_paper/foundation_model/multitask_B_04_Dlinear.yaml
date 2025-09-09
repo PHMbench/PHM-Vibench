@@ -20,7 +20,7 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 256     # MEMORY FIX: Reduced from 128 to 16
+  batch_size: 384     # Single GPU optimized: increased from 256 to 384
   num_workers: 32
   window_size: 4096
   stride: 4
@@ -144,9 +144,9 @@ task:
 trainer:
   name: "Default_trainer"
   num_epochs: 200  # Production mode: full 200 epochs
-  gpus: 2
+  gpus: 1
   precision: 16  # Mixed precision
-  accumulate_grad_batches: 2
+  accumulate_grad_batches: 2  # Effective batch size: 384×2=768
   gradient_clip_val: 1.0
   
   # Early stopping (disabled for test mode)
