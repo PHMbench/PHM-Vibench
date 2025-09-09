@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from typing import Dict, List, Any
 import pytorch_lightning as pl
+import pandas as pd
 
 from ...Components.loss import get_loss_fn
 from ...Components.metrics import get_metrics
@@ -140,7 +141,7 @@ class task(pl.LightningModule):
         
         # Check each dataset in metadata for task capability fields
         for file_id, meta in self.metadata.items():
-            if not isinstance(meta, dict):
+            if not (isinstance(meta, dict) or isinstance(meta, pd.Series)):
                 continue
                 
             # Check Fault Diagnosis capability

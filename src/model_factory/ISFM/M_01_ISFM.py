@@ -227,6 +227,9 @@ class Model(nn.Module):
         if file_id is False:
             raise ValueError("file_id must be provided for task head")
         
+        # 记住原始task_id类型
+        original_task_id = task_id
+        
         # 统一处理为列表
         task_list = [task_id] if isinstance(task_id, str) else task_id
         
@@ -235,8 +238,11 @@ class Model(nn.Module):
         for task in task_list:
             results[task] = self._execute_single_task(x, task, file_id, return_feature)
         
-        # 返回结果
-        return list(results.values())[0] if len(results) == 1 else results
+        # 返回结果 - 保持一致性：list输入总是返回dict，string输入返回单值
+        if isinstance(original_task_id, list):
+            return results  # Always return dict for list input (multi-task consistency)
+        else:
+            return list(results.values())[0] if len(results) == 1 else results
 
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
