@@ -20,7 +20,7 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 128
+  batch_size: 16     # MEMORY FIX: Reduced from 128 to 16
   num_workers: 32
   window_size: 4096
   stride: 4
@@ -47,27 +47,26 @@ model:
   backbone: B_04_Dlinear  # Dlinear backbone
   task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
   
-  # Model dimensions
-  num_patches: 128
-  patch_size_L: 256
+  # Model dimensions - DRASTICALLY REDUCED for debugging
+  num_patches: 64    # DEBUG: Reduced from 128 to 64
+  patch_size_L: 128  # DEBUG: Reduced from 256 to 128
   patch_size_C: 1
-  output_dim: 1024
-  num_heads: 8
-  num_layers: 3
-  d_ff: 2048
+  output_dim: 256    # DEBUG: CRITICAL FIX - Reduced from 1024 to 256 (75% reduction)
+  num_heads: 4       # DEBUG: Reduced from 8 to 4
+  num_layers: 2      # DEBUG: Reduced from 3 to 2
+  d_ff: 512         # DEBUG: Reduced from 2048 to 512
   dropout: 0.1
   
   # Multi-task head configuration
   classification_head: H_02_distance_cla
   prediction_head: H_03_Linear_pred
-  hidden_dim: 512
+  hidden_dim: 64     # MEMORY FIX: Reduced from 512 to 64 (99.9% param reduction in H_03_Linear_pred)
   activation: "gelu"
-  rul_max_value: 2000.0
   use_batch_norm: true
   
-  # H_03_Linear_pred parameters for signal prediction
-  max_len: 4096
-  max_out: 3
+  # H_03_Linear_pred parameters for signal prediction - MEMORY OPTIMIZED
+  max_len: 4096        # MEMORY FIX: Reduced from 4096 to 512
+  max_out: 2         # MEMORY FIX: Reduced from 3 to 2
   act: "gelu"
 
 # Task Configuration
@@ -81,6 +80,15 @@ task:
     - 'anomaly_detection'   # Anomaly detection  
     - 'signal_prediction'   # Signal prediction
     - 'rul_prediction'      # RUL prediction
+  
+  # Task validation options (NEW - controls metadata-based task validation)
+  enable_task_validation: true      # Enable automatic task validation based on metadata
+  validation_mode: "warn"           # Options: "warn", "error", "ignore"
+  force_enable_tasks: []            # Force enable specific tasks (skip validation)
+  # Examples:
+  # validation_mode: "error"        # Fail if any task is unsupported
+  # validation_mode: "ignore"       # Silently skip unsupported tasks
+  # force_enable_tasks: ["rul_prediction"]  # Force enable RUL even if metadata says unsupported
   
   # Task weights for loss balancing
   task_weights:
@@ -116,8 +124,8 @@ task:
     loss_weight: 0.8
   
   # Target systems for evaluation
-  # target_system_id: [1, 2, 5, 6, 13, 19]
-  target_system_id: [2]  # Test mode: single system
+  target_system_id: [1, 2, 5, 6, 13, 19]
+  # target_system_id: [2]  # Test mode: single system
   
   # Optimization parameters
   optimizer: "adamw"

@@ -347,6 +347,100 @@ def save_config(config: Union[ConfigWrapper, SimpleNamespace, Dict[str, Any]],
 
 
 
+def parse_set_args(set_args: list) -> dict:
+    """解析命令行 --set 参数为配置字典
+    
+    Args:
+        set_args: --set 参数列表，格式为 ['key1=value1', 'key2=value2', ...]
+        
+    Returns:
+        解析后的配置字典，支持点符号键和类型自动转换
+        
+    Example:
+        >>> parse_set_args(['model.lr=0.001', 'task.epochs=100', 'model.use_dropout=true'])
+        {'model.lr': 0.001, 'task.epochs': 100, 'model.use_dropout': True}
+    """
+    if not set_args:
+        return {}
+    
+    overrides = {}
+    for arg in set_args:
+        if '=' not in arg:
+            raise ValueError(f"--set 参数格式错误: {arg}，应为 key=value")
+        
+        key, value = arg.split('=', 1)  # 只按第一个=分割，支持value中包含=
+        key = key.strip()
+        value = value.strip()
+        
+        # 自动类型转换
+        parsed_value = _auto_convert_type(value)
+        overrides[key] = parsed_value
+    
+    return overrides
+
+
+def _auto_convert_type(value: str) -> Any:
+    """自动转换字符串值为合适的Python类型
+    
+    Args:
+        value: 字符串值
+        
+    Returns:
+        转换后的值，支持 int, float, bool, list, str
+    """
+    value = value.strip()
+    
+    # 列表 (简单支持逗号分隔) - 需要在布尔值检测之前处理
+    if ',' in value:
+        items = []
+        for item in value.split(','):
+            item = item.strip()
+            # 对每个列表项单独进行类型转换（但不递归处理逗号）
+            if item.lower() in ('true', 'yes'):
+                items.append(True)
+            elif item.lower() in ('false', 'no'):
+                items.append(False)
+            else:
+                try:
+                    # 尝试整数
+                    if '.' not in item:
+                        items.append(int(item))
+                    else:
+                        # 尝试浮点数
+                        items.append(float(item))
+                except ValueError:
+                    # 字符串 (去掉可能的引号)
+                    if (item.startswith('"') and item.endswith('"')) or \
+                       (item.startswith("'") and item.endswith("'")):
+                        items.append(item[1:-1])
+                    else:
+                        items.append(item)
+        return items
+    
+    # 布尔值 (单个值)
+    if value.lower() in ('true', 'yes'):
+        return True
+    elif value.lower() in ('false', 'no'):
+        return False
+    
+    # 数字
+    try:
+        # 尝试整数
+        if '.' not in value:
+            return int(value)
+        # 尝试浮点数
+        return float(value)
+    except ValueError:
+        pass
+    
+    # 字符串 (去掉可能的引号)
+    if (value.startswith('"') and value.endswith('"')) or \
+       (value.startswith("'") and value.endswith("'")):
+        return value[1:-1]
+    
+    return value
+
+
 def _namespace_to_dict(obj: Any) -> Any:
     """递归转换SimpleNamespace/ConfigWrapper为字典
     
@@ -373,6 +467,7 @@ __all__ = [
     
     # 工具函数
     "dict_to_namespace",
+    "parse_set_args",
 
     # "transfer_namespace",
     "build_experiment_name",
