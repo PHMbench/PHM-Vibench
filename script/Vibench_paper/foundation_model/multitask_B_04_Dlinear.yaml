@@ -62,7 +62,6 @@ model:
   prediction_head: H_03_Linear_pred
   hidden_dim: 64     # MEMORY FIX: Reduced from 512 to 64 (99.9% param reduction in H_03_Linear_pred)
   activation: "gelu"
-  rul_max_value: 2000.0
   use_batch_norm: true
   
   # H_03_Linear_pred parameters for signal prediction - MEMORY OPTIMIZED

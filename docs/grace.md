@@ -1,4 +1,4 @@
-data_dir /vast/palmer/scratch/lu_lu/ql334/PHM-Vibench/data
+data_dir /gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data
 
 # Load modules and environment
 module reset

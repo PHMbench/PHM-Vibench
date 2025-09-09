@@ -88,7 +88,13 @@ def pipeline(args):
     sys.path.append(VBENCH_DATA)
     
     # -----------------------
-    # 2. 多次迭代训练与测试
+    # 2. 构建数据工厂（一次性创建）
+    # -----------------------
+    print("[INFO] 构建数据工厂...")
+    data_factory = build_data(args_data, args_task)
+    
+    # -----------------------
+    # 3. 多次迭代训练与测试
     # -----------------------
     all_results = []
     
@@ -104,11 +110,6 @@ def pipeline(args):
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
         init_lab(args_environment, args, name)
-
-
-        # 构建数据工厂
-        print("[INFO] 构建数据工厂...")
-        data_factory = build_data(args_data, args_task)
         
         # 传递enabled_tasks从task配置到model配置（用于多任务ISFM）
         if hasattr(args_task, 'enabled_tasks'):
@@ -152,7 +153,6 @@ def pipeline(args):
         print("[INFO] 加载最佳模型并测试...")
         task = load_best_model_checkpoint(task, trainer)
         result = trainer.test(task, data_factory.get_dataloader('test'))
-        data_factory.data.close()  # 关闭数据工厂，释放资源
         all_results.append(result[0])  # Lightning返回的是包含字典的列表
         
         # 保存结果
@@ -163,6 +163,10 @@ def pipeline(args):
         # 关闭wandb和swanlab
         close_lab()
 
+    # 关闭数据工厂，释放资源
+    print("[INFO] 关闭数据工厂，释放资源...")
+    data_factory.data.close()
+    
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)
     return all_results
