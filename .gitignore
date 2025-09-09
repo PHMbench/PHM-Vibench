@@ -195,3 +195,5 @@ dev/project/valve.ipynb
 plot/
 test/
 metrics_reports/
+bugs/
+specs/
