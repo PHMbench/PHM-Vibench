@@ -27,8 +27,8 @@ class Same_system_Sampler(Sampler):
             drop_last (bool): 如果为 True，则对于每个系统，如果其最后一个批次小于 batch_size，则丢弃它。
             system_metadata_key (str): 用于从 dataset.metadata 中查找系统ID的键。
         """
-        if not isinstance(dataset, IdIncludedDataset):
-            raise ValueError("dataset 必须是 IdIncludedDataset 的实例。")
+        # if not isinstance(dataset, IdIncludedDataset):
+        #     raise ValueError("dataset 必须是 IdIncludedDataset 的实例。")
         if not isinstance(batch_size, int) or batch_size <= 0:
             raise ValueError("batch_size 必须是正整数。")
         if not hasattr(dataset, 'metadata') or dataset.metadata is None:

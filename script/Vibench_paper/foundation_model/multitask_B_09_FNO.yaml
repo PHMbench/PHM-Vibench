@@ -20,7 +20,7 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 256     # Aggressive reduction for FNO memory requirements
+  batch_size: 320     # Single GPU optimized: Conservative increase for FNO
   num_workers: 8     # Reduced workers accordingly
   window_size: 4096
   stride: 4
@@ -139,9 +139,9 @@ task:
 trainer:
   name: "Default_trainer"
   num_epochs: 200  # Production mode: full 200 epochs
-  gpus: 2
+  gpus: 1
   precision: 16  # Mixed precision
-  accumulate_grad_batches: 8  # Increased to maintain effective batch size
+  accumulate_grad_batches: 3  # Effective batch size: 320×3=960
   gradient_clip_val: 1.0
   
   # Early stopping (disabled for test mode)

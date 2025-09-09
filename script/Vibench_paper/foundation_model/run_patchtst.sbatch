@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=multitask_patchtst
 #SBATCH --partition=gpu
-#SBATCH --gpus=a100:2             # 2 A100 GPUs for PatchTST data parallel
+#SBATCH --gpus=a100:1             # Single A100 GPU optimized for PatchTST
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem=64G
 #SBATCH --time=36:00:00           # 36 hours for full training (PatchTST is slow)
