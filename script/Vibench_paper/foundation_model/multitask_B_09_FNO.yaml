@@ -20,7 +20,7 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 16     # Aggressive reduction for FNO memory requirements
+  batch_size: 256     # Aggressive reduction for FNO memory requirements
   num_workers: 8     # Reduced workers accordingly
   window_size: 4096
   stride: 4

@@ -20,7 +20,7 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 16     # MEMORY FIX: Reduced from 128 to 16
+  batch_size: 256     # MEMORY FIX: Reduced from 128 to 16
   num_workers: 32
   window_size: 4096
   stride: 4
