@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=multitask_timesnet
 #SBATCH --partition=gpu
-#SBATCH --gpus=a100:1             # A100 recommended for TimesNet (heavy)
+#SBATCH --gpus=a100:2             # 2 A100 GPUs for TimesNet data parallel
 #SBATCH --cpus-per-gpu=8
 #SBATCH --mem=64G
 #SBATCH --time=36:00:00           # 36 hours for full training (TimesNet is slow)
