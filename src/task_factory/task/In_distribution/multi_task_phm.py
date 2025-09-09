@@ -74,10 +74,114 @@ class task(pl.LightningModule):
         self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
         
     def _get_enabled_tasks(self) -> List[str]:
-        """Get enabled tasks from configuration."""
+        """Get enabled tasks from configuration with metadata validation."""
         default_tasks = ['classification', 'anomaly_detection', 
                         'signal_prediction', 'rul_prediction']
-        return getattr(self.args_task, 'enabled_tasks', default_tasks)
+        config_tasks = getattr(self.args_task, 'enabled_tasks', default_tasks)
+        
+        # Configuration options for task validation
+        enable_validation = getattr(self.args_task, 'enable_task_validation', True)
+        validation_mode = getattr(self.args_task, 'validation_mode', 'warn')  # 'warn', 'error', 'ignore'
+        force_enable_tasks = getattr(self.args_task, 'force_enable_tasks', [])
+        
+        # Skip validation if disabled
+        if not enable_validation:
+            print("Info: Task validation disabled, using configured tasks as-is")
+            return config_tasks
+            
+        # Filter tasks based on dataset capabilities from metadata
+        supported_tasks = self._get_dataset_supported_tasks()
+        validated_tasks = []
+        
+        for task in config_tasks:
+            # Check if task is force-enabled (skip validation)
+            if task in force_enable_tasks:
+                validated_tasks.append(task)
+                print(f"Info: Task '{task}' force-enabled, skipping validation")
+                continue
+                
+            # Check if task is supported by dataset
+            if task in supported_tasks:
+                validated_tasks.append(task)
+            else:
+                # Handle validation failure based on validation_mode
+                if validation_mode == 'error':
+                    raise ValueError(f"Task '{task}' not supported by current dataset(s)")
+                elif validation_mode == 'warn':
+                    print(f"Warning: Task '{task}' disabled - not supported by current dataset(s)")
+                elif validation_mode == 'ignore':
+                    # Silently skip unsupported tasks
+                    pass
+        
+        # Fallback handling
+        if not validated_tasks:
+            if validation_mode == 'error':
+                raise ValueError("No valid tasks found after validation")
+            else:
+                print("Warning: No valid tasks found, falling back to classification")
+                validated_tasks = ['classification']  # Fallback to basic classification
+            
+        return validated_tasks
+    
+    def _get_dataset_supported_tasks(self) -> List[str]:
+        """
+        Check which tasks are supported by the current dataset(s) based on metadata fields.
+        
+        Returns list of supported task names based on metadata fields:
+        - Fault_Diagnosis=1/TRUE → classification task
+        - Anomaly_Detection=1/TRUE → anomaly_detection task  
+        - Remaining_Life=1/TRUE → rul_prediction task
+        - signal_prediction is always supported (reconstruction task)
+        """
+        supported_tasks = set()
+        
+        # Signal prediction is always supported (reconstruction task)
+        supported_tasks.add('signal_prediction')
+        
+        # Check each dataset in metadata for task capability fields
+        for file_id, meta in self.metadata.items():
+            if not isinstance(meta, dict):
+                continue
+                
+            # Check Fault Diagnosis capability
+            fault_diagnosis = meta.get('Fault_Diagnosis', False)
+            if self._is_capability_enabled(fault_diagnosis):
+                supported_tasks.add('classification')
+                
+            # Check Anomaly Detection capability
+            anomaly_detection = meta.get('Anomaly_Detection', False)
+            if self._is_capability_enabled(anomaly_detection):
+                supported_tasks.add('anomaly_detection')
+                
+            # Check Remaining Life (RUL) capability
+            remaining_life = meta.get('Remaining_Life', False)
+            if self._is_capability_enabled(remaining_life):
+                supported_tasks.add('rul_prediction')
+        
+        supported_list = list(supported_tasks)
+        
+        # Log supported tasks for debugging
+        print(f"Dataset supported tasks: {supported_list}")
+        
+        return supported_list
+    
+    def _is_capability_enabled(self, value) -> bool:
+        """
+        Check if a capability field indicates the task is enabled.
+        Handles various formats: 1, 'TRUE', 'true', True, etc.
+        """
+        if value is None:
+            return False
+            
+        # Handle different value types and formats
+        if isinstance(value, bool):
+            return value
+        elif isinstance(value, (int, float)):
+            return value > 0
+        elif isinstance(value, str):
+            return value.upper() in ['TRUE', '1', 'YES', 'ENABLED']
+        else:
+            return False
     
     def _get_task_weights(self) -> Dict[str, float]:
         """Get task weights for loss balancing."""
@@ -514,6 +618,21 @@ class task(pl.LightningModule):
             elif targets is None:
                 # Skip this task if no target available
                 return None
+            
+            # Handle dimension mismatches due to max_out limitations
+            if task_output.shape[-1] != targets.shape[-1]:
+                target_channels = targets.shape[-1]
+                output_channels = task_output.shape[-1]
+                
+                if output_channels < target_channels:
+                    # Truncate target to match output channels (memory-constrained scenario)
+                    print(f"Info: Truncating target channels from {target_channels} to {output_channels} for memory efficiency")
+                    targets = targets[..., :output_channels]
+                else:
+                    # Pad output to match target channels (shouldn't happen with current logic)
+                    print(f"Warning: Output channels ({output_channels}) > target channels ({target_channels}), truncating output")
+                    task_output = task_output[..., :target_channels]
+            
             return loss_fn(task_output, targets.float())
         
         elif task_name == 'rul_prediction':

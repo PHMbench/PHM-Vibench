@@ -82,6 +82,15 @@ task:
     - 'signal_prediction'   # Signal prediction
     - 'rul_prediction'      # RUL prediction
   
+  # Task validation options (NEW - controls metadata-based task validation)
+  enable_task_validation: true      # Enable automatic task validation based on metadata
+  validation_mode: "warn"           # Options: "warn", "error", "ignore"
+  force_enable_tasks: []            # Force enable specific tasks (skip validation)
+  # Examples:
+  # validation_mode: "error"        # Fail if any task is unsupported
+  # validation_mode: "ignore"       # Silently skip unsupported tasks
+  # force_enable_tasks: ["rul_prediction"]  # Force enable RUL even if metadata says unsupported
+  
   # Task weights for loss balancing
   task_weights:
     classification: 1.0
