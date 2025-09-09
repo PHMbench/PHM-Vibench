@@ -268,6 +268,15 @@ class task(pl.LightningModule):
             # Final squeeze if last dimension is 1
             if preds.shape[-1:] == torch.Size([1]) and len(targets.shape) == 1:
                 preds = preds.squeeze(-1)
+                
+            # FIXED: Filter out NaN values for RUL metrics
+            valid_mask = ~torch.isnan(targets)
+            if valid_mask.sum() == 0:
+                # No valid targets, skip metrics
+                return {}
+            preds = preds[valid_mask]
+            targets = targets[valid_mask]
+            
         elif task_name == 'signal_prediction' and preds.dim() > 2:
             # For signal prediction with 3D tensors, flatten for metric computation
             preds = preds.reshape(-1, preds.size(-1)).contiguous()
@@ -346,28 +355,35 @@ class task(pl.LightningModule):
         # RUL prediction - get from metadata for each sample
         if 'rul_prediction' in self.enabled_tasks:
             rul_values = []
+            valid_rul_count = 0
             
-            for i, file_id in enumerate(file_ids):
+            for file_id in file_ids:
                 metadata = self.metadata.get(file_id, {})
                 rul_value = metadata.get('RUL_label', None)
                 
                 if rul_value is not None and isinstance(rul_value, (int, float)) and not torch.isnan(torch.tensor(rul_value)):
                     # Valid RUL value found
                     rul_values.append(float(rul_value))
+                    valid_rul_count += 1
                 else:
-                    # Use default RUL value for missing/invalid data to prevent NaN
-                    default_rul = 1000.0
-                    rul_values.append(default_rul)
+                    # FIXED: Skip samples with missing RUL instead of using default values
+                    # This prevents training on fake/default data that degrades performance
+                    rul_values.append(float('nan'))  # Mark as invalid
                     
-                    # Log warning only once per dataset to avoid spam
+                    # Log warning only once per file to avoid spam
                     if not hasattr(self, '_rul_warnings'):
                         self._rul_warnings = set()
                     if file_id not in self._rul_warnings:
-                        print(f"Warning: Missing/invalid RUL label for file {file_id}, using default value {default_rul}")
+                        print(f"Warning: Missing/invalid RUL label for file {file_id}, sample will be ignored in RUL task")
                         self._rul_warnings.add(file_id)
             
-            # Convert to tensor
-            y_dict['rul_prediction'] = torch.tensor(rul_values, dtype=torch.float32, device=y.device)
+            # Only create RUL targets if we have valid samples
+            if valid_rul_count > 0:
+                y_dict['rul_prediction'] = torch.tensor(rul_values, dtype=torch.float32, device=y.device)
+            else:
+                # Skip RUL task entirely for this batch if no valid labels
+                print(f"Warning: No valid RUL labels in current batch, skipping RUL task")
+                y_dict['rul_prediction'] = None
         
         # Signal prediction - no label needed (reconstruction task)
         if 'signal_prediction' in self.enabled_tasks:
@@ -390,14 +406,9 @@ class task(pl.LightningModule):
         if isinstance(file_ids, torch.Tensor):
             file_ids = file_ids.tolist()
         
-        batch_size = x.shape[0]
-        
-        # For model forward pass, use the first file_id (models typically need single ID)
-        # This maintains backward compatibility while we fix batch processing
-        primary_file_id = file_ids[0] if isinstance(file_ids[0], int) else file_ids[0].item()
-        
-        # Single forward pass with enabled tasks list
-        outputs = self.network(x, primary_file_id, task_id=self.enabled_tasks)
+        # FIXED: Pass full file_ids list to support batch-level system_id processing
+        # The model (M_01_ISFM) now supports both single file_id and batch file_ids
+        outputs = self.network(x, file_ids, task_id=self.enabled_tasks)
         
         # Build task-specific labels for each sample using its own metadata
         y_dict = self._build_task_labels_batch(y, file_ids)
@@ -507,7 +518,26 @@ class task(pl.LightningModule):
         
         elif task_name == 'rul_prediction':
             # RUL regression task
-            return loss_fn(task_output.squeeze(), targets.float())
+            if targets is None:
+                # Skip this task if no valid RUL targets in batch
+                return None
+                
+            # FIXED: Handle NaN values in RUL targets
+            targets_float = targets.float()
+            valid_mask = ~torch.isnan(targets_float)
+            
+            if valid_mask.sum() == 0:
+                # No valid RUL targets in this batch
+                return None
+            
+            # Only compute loss on valid (non-NaN) samples
+            valid_predictions = task_output.squeeze()[valid_mask]
+            valid_targets = targets_float[valid_mask]
+            
+            if len(valid_predictions) > 0:
+                return loss_fn(valid_predictions, valid_targets)
+            else:
+                return None
         
         else:
             # Default: use task output directly
