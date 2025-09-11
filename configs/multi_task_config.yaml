@@ -183,6 +183,24 @@ trainer:
   
   # Pruning (optional)
   pruning: false
+  
+  # Evaluation Configuration (moved from evaluation section)
+  compute_metrics:
+    - "accuracy"
+    - "f1_score"
+    - "precision"
+    - "recall"
+    - "confusion_matrix"
+    - "roc_auc"  # For anomaly detection
+    - "mse"      # For RUL prediction
+    - "mae"      # For RUL prediction
+    - "r2_score" # For RUL prediction
+  
+  # Evaluation frequency
+  eval_frequency: 5  # Every 5 epochs
+  
+  # Test set evaluation
+  test_after_training: true
   pruning_amount: [0.1, 0.3, 0.5]
   
   # Logging
@@ -219,25 +237,6 @@ logging:
     save_dir: "tensorboard_logs"
     name: "multi_task_tb"
 
-# Evaluation Configuration
-evaluation:
-  # Metrics to compute during evaluation
-  compute_metrics:
-    - "accuracy"
-    - "f1_score"
-    - "precision"
-    - "recall"
-    - "confusion_matrix"
-    - "roc_auc"  # For anomaly detection
-    - "mse"      # For RUL prediction
-    - "mae"      # For RUL prediction
-    - "r2_score" # For RUL prediction
-  
-  # Evaluation frequency
-  eval_frequency: 5  # Every 5 epochs
-  
-  # Test set evaluation
-  test_after_training: true
   
   # Cross-validation (optional)
   cross_validation:

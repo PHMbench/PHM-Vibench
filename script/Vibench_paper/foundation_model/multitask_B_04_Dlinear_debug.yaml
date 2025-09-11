@@ -163,8 +163,7 @@ trainer:
   val_check_interval: 0.5  # DEBUG: Validate twice per epoch
   check_val_every_n_epoch: 1
 
-# Evaluation Configuration - All tasks metrics  
-evaluation:
+  # Evaluation Configuration (moved from evaluation section)
   # DEBUG: Essential metrics for all tasks
   compute_metrics:
     - "accuracy"      # For classification
