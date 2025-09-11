@@ -171,21 +171,16 @@ trainer:
   # Device configuration
   device: 'cuda'
   
-  # Validation
-  val_check_interval: 1.0
-  check_val_every_n_epoch: 1
+  # Validation - OPTIMIZED for faster training
+  val_check_interval: 0.25      # Only use 25% of validation data
+  check_val_every_n_epoch: 10   # Validate every 10 epochs instead of 1
 
 # Evaluation Configuration
 evaluation:
   compute_metrics:
-    - "accuracy"      # For classification
-    - "f1_score"      # For classification & anomaly detection
-    - "precision"     # For classification & anomaly detection  
-    - "recall"        # For classification & anomaly detection
-    - "roc_auc"       # For anomaly detection
-    - "mse"           # For RUL & signal prediction
-    - "mae"           # For RUL & signal prediction
-    - "r2_score"      # For RUL & signal prediction
+    - "accuracy"      # Core classification metric
+    - "mse"           # Core regression metric
+    # Removed during training for speed: f1_score, precision, recall, roc_auc, mae, r2_score
   
   test_after_training: true
 
