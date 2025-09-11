@@ -199,3 +199,4 @@ bugs/
 specs/
 data/analyze_xjtu_dataset.py
 data/xjtu_dataset_analysis.md
+cache/

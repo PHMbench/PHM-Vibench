@@ -162,6 +162,9 @@ trainer:
   # Validation - More frequent for debugging
   val_check_interval: 0.5  # DEBUG: Validate twice per epoch
   check_val_every_n_epoch: 1
+  
+  # Validation Performance Optimization
+  validation_verbose: false  # DEBUG: Disable verbose warnings during validation
 
 # Evaluation Configuration - All tasks metrics  
 evaluation:

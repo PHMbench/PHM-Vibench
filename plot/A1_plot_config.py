@@ -54,8 +54,15 @@ def configure_matplotlib(style='ieee', font_lang='en', seaborn_theme=False, font
         'cn': {'family': 'simhei', 'weight': 'normal', 'size': 12},
     }
 
-    # Apply matplotlib style
-    plt.style.use(['science', style])
+    # Apply matplotlib style (disable LaTeX for compatibility)
+    try:
+        plt.style.use(['science', style])
+    except:
+        # Fallback to basic style if science plots unavailable
+        pass
+    
+    # Disable LaTeX to avoid tex errors
+    plt.rcParams['text.usetex'] = False
 
     # Configure fonts based on language
     if font_lang == 'cn':
