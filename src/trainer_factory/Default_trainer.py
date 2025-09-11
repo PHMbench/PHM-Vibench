@@ -63,6 +63,8 @@ def trainer(args_e,args_t, args_d, path):
         devices=args_t.gpus,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
+        check_val_every_n_epoch=getattr(args_t, 'check_val_every_n_epoch', 1),  # 验证频率控制
+        val_check_interval=getattr(args_t, 'val_check_interval', 1.0),  # 验证数据比例控制
         strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
     )
     return trainer
