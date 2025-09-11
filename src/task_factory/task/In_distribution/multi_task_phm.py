@@ -61,6 +61,11 @@ class task(pl.LightningModule):
         self.args_environment = args_environment
         self.metadata = metadata
         
+        # Performance optimization flags
+        self.validation_verbose = getattr(args_trainer, 'validation_verbose', False)
+        self.warning_counts = {'truncate_channels': 0, 'no_rul_labels': 0, 'output_mismatch': 0}
+        self.max_warnings_per_type = 5  # Only show first N warnings of each type
+        
         # Multi-task specific initialization (no single loss_fn needed)
         self.enabled_tasks = self._get_enabled_tasks()
         self.task_weights = self._get_task_weights()
@@ -279,7 +284,8 @@ class task(pl.LightningModule):
                         if task == 'anomaly_detection':
                             # Binary classification
                             stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
-                                task='binary'
+                                task='binary',
+                                sync_on_compute=False  # Optimize validation performance
                             ).to(self._custom_device)
                         else:
                             # Multi-class classification - determine num_classes from metadata
@@ -290,10 +296,14 @@ class task(pl.LightningModule):
                             max_classes = int(max(labels)) + 1 if labels else 2
                             stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
                                 task='multiclass',
-                                num_classes=int(max(max_classes, 2))
+                                num_classes=int(max(max_classes, 2)),
+                                sync_on_compute=False  # Optimize validation performance
                             ).to(self._custom_device)
                     elif metric_name == 'auroc':
-                        stage_metrics[stage][metric_key] = torchmetrics.AUROC(task='binary').to(self._custom_device)
+                        stage_metrics[stage][metric_key] = torchmetrics.AUROC(
+                            task='binary', 
+                            sync_on_compute=False  # Optimize validation performance
+                        ).to(self._custom_device)
                     else:
                         # Regression metrics
                         regression_class_names = {
@@ -303,11 +313,25 @@ class task(pl.LightningModule):
                             'mape': 'MeanAbsolutePercentageError'
                         }
                         metric_class_name = regression_class_names.get(metric_name, metric_name.upper())
-                        stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)().to(self._custom_device)
+                        stage_metrics[stage][metric_key] = getattr(torchmetrics, metric_class_name)(
+                            sync_on_compute=False  # Optimize validation performance
+                        ).to(self._custom_device)
             
             task_metrics[task] = stage_metrics
         
         return task_metrics
+    
+    def _log_warning(self, warning_type: str, message: str, force: bool = False):
+        """Controlled warning logging to reduce validation slowdown."""
+        # Initialize warning type counter if not exists
+        if warning_type not in self.warning_counts:
+            self.warning_counts[warning_type] = 0
+            
+        if force or self.validation_verbose or self.warning_counts[warning_type] < self.max_warnings_per_type:
+            print(message)
+            self.warning_counts[warning_type] += 1
+            if self.warning_counts[warning_type] == self.max_warnings_per_type and not force:
+                print(f"[INFO] Suppressing further '{warning_type}' warnings (showing first {self.max_warnings_per_type})")
     
     def _compute_task_metrics(self, task_name: str, task_output: torch.Tensor, targets: torch.Tensor, mode: str) -> Dict[str, torch.Tensor]:
         """Compute task-specific metrics using single dispatch to task-specific methods."""
@@ -512,7 +536,7 @@ class task(pl.LightningModule):
                 y_dict['rul_prediction'] = torch.tensor(rul_values, dtype=torch.float32, device=y.device)
             else:
                 # Skip RUL task entirely for this batch if no valid labels
-                print(f"Warning: No valid RUL labels in current batch, skipping RUL task")
+                self._log_warning('no_rul_labels', "Warning: No valid RUL labels in current batch, skipping RUL task")
                 y_dict['rul_prediction'] = None
         
         # Signal prediction - no label needed (reconstruction task)
@@ -638,8 +662,8 @@ class task(pl.LightningModule):
                         self.log(f'{mode}_sys{system_id}_{metric_name}', metric_value,
                                 on_step=False, on_epoch=True, add_dataloader_idx=False)
         
-        # Log total loss with mode-specific parameters
-        on_step = (mode == 'train')
+        # Log total loss with epoch-only logging to improve training speed
+        on_step = False  # Disable step-level logging for faster training
         self.log(f'{mode}_loss', total_loss, on_step=on_step, on_epoch=True)
         return total_loss
     
@@ -702,11 +726,13 @@ class task(pl.LightningModule):
             
             if output_channels < target_channels:
                 # Truncate target to match output channels (memory-constrained scenario)
-                print(f"Info: Truncating target channels from {target_channels} to {output_channels} for {task_name}")
+                self._log_warning('truncate_channels', 
+                    f"Info: Truncating target channels from {target_channels} to {output_channels} for {task_name}")
                 targets = targets[..., :output_channels]
             else:
                 # Pad output to match target channels (shouldn't happen with current logic)
-                print(f"Warning: Output channels ({output_channels}) > target channels ({target_channels}) for {task_name}, truncating output")
+                self._log_warning('output_mismatch', 
+                    f"Warning: Output channels ({output_channels}) > target channels ({target_channels}) for {task_name}, truncating output")
                 task_output = task_output[..., :target_channels]
         
         return task_output, targets

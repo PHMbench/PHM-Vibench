@@ -66,7 +66,7 @@ model:
   
   # H_03_Linear_pred parameters for signal prediction
   max_len: 4096
-  max_out: 2
+  max_out: 3
   act: "gelu"
 
 # Task Configuration
@@ -162,6 +162,9 @@ trainer:
   # Validation - OPTIMIZED for faster training
   val_check_interval: 0.25      # Only use 25% of validation data
   check_val_every_n_epoch: 10   # Validate every 10 epochs instead of 1
+  
+  # Validation Performance Optimization
+  validation_verbose: false  # Disable verbose warnings during validation for speed
 
 # Evaluation Configuration
 evaluation:
