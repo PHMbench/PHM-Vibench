@@ -1,0 +1,197 @@
+# Multi-Task PHM Foundation Model Configuration - B_09_FNO (No Overlap)
+# Optimized for sequential sampling with stride=window_size (no overlap)
+# Author: PHM-Vibench Team
+# Date: 2025-09-10
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "MultiTask_Foundation_Model_NoOverlap"
+  seed: 42
+  output_dir: "results/multitask_B_09_FNO_nooverlap"
+  iterations: 2  # Production mode: 2 iterations for stability
+  wandb: true  # Production mode: W&B logging enabled
+  swanlab: False  # Test mode: disabled
+  notes: 'Multi-task foundation model with B_09_FNO - NO OVERLAP WINDOWS'
+  workspace: 'PHMbench'
+
+# Data Configuration - Optimized for no-overlap windows
+data:
+  data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 80     # Reduced from 320 for better memory efficiency with no overlap
+  num_workers: 8     # Reduced for sequential access pattern
+  window_size: 4096
+  stride: 4096       # CHANGED: No overlap windows (stride = window_size)
+  truncate_length: 200
+  num_window: 128    # Aggressive setting: will use all available windows per dataset
+  normalization: 'standardization'
+  dtype: float32
+  window_sampling_strategy: 'sequential'  # CHANGED: Sequential sampling strategy
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  
+  # RUL-specific dataset configuration
+  rul_dataset_id: 2  # XJTU bearing dataset for RUL
+
+# Model Configuration
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  
+  # Architecture components
+  embedding: E_01_HSE
+  backbone: B_09_FNO  # FNO (Fourier Neural Operator) backbone
+  task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
+  
+  # Model dimensions - Optimized for no-overlap training
+  num_patches: 64    # Kept reduced for stability
+  patch_size_L: 128  # Kept reduced for stability
+  patch_size_C: 1
+  output_dim: 256    # Kept reduced for memory efficiency (critical for FNO)
+  num_heads: 4       # Kept reduced for stability
+  num_layers: 2      # Kept reduced for speed
+  d_ff: 512         # Kept reduced for memory
+  dropout: 0.1
+  
+  # FNO-specific parameters
+  modes: 32  # Fourier modes
+  width: 128  # Hidden layer width
+  d_model: 128
+  
+  # Multi-task head configuration
+  classification_head: H_02_distance_cla
+  prediction_head: H_03_Linear_pred
+  hidden_dim: 64     # Kept reduced for memory
+  activation: "gelu"
+  use_batch_norm: true
+  
+  # H_03_Linear_pred parameters for signal prediction
+  max_len: 4096
+  max_out: 2
+  act: "gelu"
+
+# Task Configuration
+task:
+  name: "multi_task_phm"
+  type: "In_distribution"
+  
+  # Enabled tasks
+  enabled_tasks: 
+    - 'classification'       # Fault diagnosis
+    - 'anomaly_detection'   # Anomaly detection  
+    - 'signal_prediction'   # Signal prediction
+    - 'rul_prediction'      # RUL prediction
+  
+  # Task validation options
+  enable_task_validation: true
+  validation_mode: "warn"
+  force_enable_tasks: []
+  
+  # Task weights for loss balancing
+  task_weights:
+    classification: 1.0
+    anomaly_detection: 0.6
+    signal_prediction: 0.7
+    rul_prediction: 0.8
+  
+  # Task-specific configurations
+  classification:
+    loss: "CE"
+    num_classes: auto
+    label_smoothing: 0.1
+    loss_weight: 1.0
+  
+  anomaly_detection:
+    loss: "BCE"
+    threshold: 0.5
+    class_weights: [1.0, 2.0]
+    loss_weight: 0.6
+  
+  signal_prediction:
+    loss: "MSE"
+    pred_len: 96
+    use_mean_pooling: false
+    loss_weight: 0.7
+  
+  rul_prediction:
+    loss: "MSE"
+    max_rul_value: 1.0
+    normalize_targets: true
+    dataset_id: 2
+    loss_weight: 0.8
+  
+  # Target systems for evaluation - All 6 datasets
+  target_system_id: [1, 2, 5, 6, 13, 19]
+  
+  # Optimization parameters
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.01
+  momentum: 0.9
+  
+  # Learning rate scheduling
+  scheduler:
+    name: "cosine"
+    options:
+      T_max: 200
+      eta_min: 1e-6
+
+# Trainer Configuration - Optimized for faster training
+trainer:
+  name: "Default_trainer"
+  num_epochs: 200
+  gpus: 1
+  precision: 16  # Mixed precision for memory efficiency
+  accumulate_grad_batches: 5  # Effective batch size: 80×5=400
+  gradient_clip_val: 1.0
+  
+  # Early stopping
+  early_stopping: false
+  patience: 25
+  monitor: "val_loss"
+  
+  # Model checkpointing
+  save_top_k: 3
+  save_last: true
+  
+  # Logging
+  log_every_n_steps: 20  # More frequent logging due to faster epochs
+  
+  # Device configuration
+  device: 'cuda'
+  
+  # Validation
+  val_check_interval: 1.0
+  check_val_every_n_epoch: 1
+
+# Evaluation Configuration
+evaluation:
+  compute_metrics:
+    - "accuracy"      # For classification
+    - "f1_score"      # For classification & anomaly detection
+    - "precision"     # For classification & anomaly detection  
+    - "recall"        # For classification & anomaly detection
+    - "roc_auc"       # For anomaly detection
+    - "mse"           # For RUL & signal prediction
+    - "mae"           # For RUL & signal prediction
+    - "r2_score"      # For RUL & signal prediction
+  
+  test_after_training: true
+
+# Reproducibility
+reproducibility:
+  deterministic: true
+  benchmark: false
+  seed_everything: true
+
+# Advanced Configuration - Optimized for no-overlap
+advanced:
+  effective_batch_size: 400  # Through gradient accumulation
+  use_amp: true  # Mixed precision
+  compile_model: false
+  memory_efficient: true
+  profiler: null
