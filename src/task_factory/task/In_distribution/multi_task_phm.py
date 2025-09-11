@@ -241,13 +241,19 @@ class task(pl.LightningModule):
     def _initialize_task_metrics(self) -> Dict[str, Dict[str, torchmetrics.Metric]]:
         """Initialize metrics for each enabled task."""
         # Define metrics for each task type
+        # task_metric_mapping = {
+        #     'classification': ['acc', 'f1', 'precision', 'recall'],
+        #     'anomaly_detection': ['acc', 'f1', 'precision', 'recall', 'auroc'],
+        #     'signal_prediction': ['mse', 'mae', 'r2'],
+        #     'rul_prediction': ['mse', 'mae', 'r2', 'mape']
+        # }
         task_metric_mapping = {
-            'classification': ['acc', 'f1', 'precision', 'recall'],
-            'anomaly_detection': ['acc', 'f1', 'precision', 'recall', 'auroc'],
-            'signal_prediction': ['mse', 'mae', 'r2'],
-            'rul_prediction': ['mse', 'mae', 'r2', 'mape']
+            'classification': ['acc'],
+            'anomaly_detection': ['acc', 'auroc'],
+            'signal_prediction': ['mse', 'mae'],
+            'rul_prediction': ['mse', 'mae',]
         }
-        
+
         task_metrics = {}
         for task in self.enabled_tasks:
             metrics_list = task_metric_mapping.get(task, ['mse', 'mae'])
