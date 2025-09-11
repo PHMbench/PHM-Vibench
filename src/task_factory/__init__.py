@@ -21,6 +21,7 @@ def build_task(
     args_trainer: Namespace,
     args_environment: Namespace,
     metadata: Any,
+    args_evaluation: Any = None,
 ) -> Any:
     """Instantiate a task module using :mod:`task_factory`.
 
@@ -40,6 +41,8 @@ def build_task(
         Runtime environment configuration.
     metadata : Any
         Dataset metadata passed to the task.
+    args_evaluation : Any, optional
+        Evaluation configuration namespace for metrics computation.
 
     Returns
     -------
@@ -54,6 +57,7 @@ def build_task(
         args_trainer=args_trainer,
         args_environment=args_environment,
         metadata=metadata,
+        args_evaluation=args_evaluation,
     )
 
 __all__ = [
