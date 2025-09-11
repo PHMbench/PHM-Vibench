@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=v100:1              # V100 GPU sufficient for DLinear with 128 windows
 #SBATCH --cpus-per-gpu=12          # Increased CPUs for better throughput
-#SBATCH --mem=32G                  # Increased memory for 128 windows
+#SBATCH --mem=64G                  # Increased memory for 128 windows
 #SBATCH --time=24:00:00            # 24 hours for DLinear with 128 windows
 #SBATCH --output=logs/dlinear_nooverlap_128_%x_%j.out
 #SBATCH --error=logs/dlinear_nooverlap_128_%x_%j.err
