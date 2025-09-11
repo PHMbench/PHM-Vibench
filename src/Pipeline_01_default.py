@@ -72,6 +72,17 @@ def pipeline(args):
     args_task = transfer_namespace(configs.task if hasattr(configs, 'task') else {})
 
     args_trainer = transfer_namespace(configs.trainer if hasattr(configs, 'trainer') else {})
+
+    # Handle evaluation config for backward compatibility
+    if hasattr(configs, 'evaluation') and configs.evaluation:
+        # If evaluation section exists but trainer doesn't have compute_metrics, copy it over
+        if hasattr(configs.evaluation, 'compute_metrics') and not hasattr(args_trainer, 'compute_metrics'):
+            args_trainer.compute_metrics = configs.evaluation.compute_metrics
+            print("[WARN] Moved evaluation.compute_metrics to trainer.compute_metrics for compatibility")
+        
+        # Copy other evaluation settings to trainer if not present
+        if hasattr(configs.evaluation, 'test_after_training') and not hasattr(args_trainer, 'test_after_training'):
+            args_trainer.test_after_training = configs.evaluation.test_after_training
     if args_task.name == 'Multitask':
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list    

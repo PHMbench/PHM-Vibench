@@ -258,9 +258,8 @@ trainer:
   # Distributed training (if using multiple GPUs)
   strategy: "auto"
   sync_batchnorm: false
-
-# Evaluation Configuration
-evaluation:
+  
+  # Evaluation Configuration (moved from evaluation section)
   # Metrics to track during training
   metrics_to_track:
     pretraining: 

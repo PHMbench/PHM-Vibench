@@ -162,10 +162,8 @@ trainer:
   # Validation
   val_check_interval: 1.0
   check_val_every_n_epoch: 1
-
-# Evaluation Configuration
-evaluation:
-  # Metrics to compute during evaluation
+  
+  # Evaluation Configuration (moved from evaluation section)
   compute_metrics:
     - "accuracy"      # For classification
     - "f1_score"      # For classification & anomaly detection
