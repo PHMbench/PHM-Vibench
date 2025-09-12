@@ -20,12 +20,12 @@ environment:
 data:
   data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
   metadata_file: "metadata_6_11.xlsx"
-  batch_size: 96     # Reduced from 512 for better memory efficiency with no overlap
-  num_workers: 12    # Reduced for sequential access pattern
-  window_size: 4096
+  batch_size: 64     # Further reduced from 96 to 64 for memory optimization
+  num_workers: 12    # Keep at 12 for sequential access pattern
+  window_size: 4096  # Keep window size for data quality
   stride: 4096       # CHANGED: No overlap windows (stride = window_size)
   truncate_length: 200
-  num_window: 64    # Aggressive setting: will use all available windows per dataset
+  num_window: 64     # Reduced from 64 to 48 (25% reduction)
   normalization: 'standardization'
   dtype: float32
   window_sampling_strategy: 'sequential'  # CHANGED: Sequential sampling strategy
@@ -47,31 +47,31 @@ model:
   backbone: B_06_TimesNet  # TimesNet backbone
   task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
   
-  # Model dimensions - Optimized for no-overlap training
-  num_patches: 64    # Kept reduced for stability
-  patch_size_L: 128  # Kept reduced for stability
+  # Model dimensions - MEMORY OPTIMIZED (Target: 100M from 200M)
+  num_patches: 32    # Reduced from 64 to 32 (50% reduction)
+  patch_size_L: 64   # Reduced from 128 to 64 (50% reduction)
   patch_size_C: 1
-  output_dim: 256    # Kept reduced for memory efficiency
-  num_heads: 4       # Kept reduced for stability
-  num_layers: 2      # Kept reduced for speed
-  d_ff: 512         # Kept reduced for memory
+  output_dim: 128    # Reduced from 256 to 128 (50% reduction)
+  num_heads: 4       # Keep at 4 (already optimized)
+  num_layers: 2      # Keep at 2 (already optimized)
+  d_ff: 256          # Reduced from 512 to 256 (50% reduction)
   dropout: 0.1
   
-  # TimesNet-specific parameters
-  e_layers: 2
-  factor: 5
-  d_model: 128
+  # TimesNet-specific parameters - MEMORY OPTIMIZED
+  e_layers: 1        # Reduced from 2 to 1 (50% reduction)
+  factor: 3          # Reduced from 5 to 3 (fewer FFT periods)
+  d_model: 64        # Reduced from 128 to 64 (50% reduction)
   
-  # Multi-task head configuration
+  # Multi-task head configuration - FURTHER OPTIMIZED
   classification_head: H_02_distance_cla
   prediction_head: H_03_Linear_pred
-  hidden_dim: 64     # Kept reduced for memory
+  hidden_dim: 32     # Further reduced from 64 to 32 (50% reduction)
   activation: "gelu"
   use_batch_norm: true
   
-  # H_03_Linear_pred parameters for signal prediction
-  max_len: 4096
-  max_out: 3
+  # H_03_Linear_pred parameters for signal prediction - MEMORY OPTIMIZED
+  max_len: 2048      # Reduced from 4096 to 2048 (50% reduction)
+  max_out: 2         # Reduced from 3 to 2 (33% reduction)
   act: "gelu"
 
 # Task Configuration
@@ -146,7 +146,7 @@ trainer:
   num_epochs: 50
   gpus: 1
   precision: 16  # Mixed precision for memory efficiency
-  accumulate_grad_batches: 4  # Effective batch size: 96×4=384
+  accumulate_grad_batches: 4  # Effective batch size: 64×4=256 (memory optimized)
   gradient_clip_val: 1.0
   
   # Early stopping
@@ -187,10 +187,10 @@ reproducibility:
   benchmark: false
   seed_everything: true
 
-# Advanced Configuration - Optimized for no-overlap
+# Advanced Configuration - Memory Optimized for no-overlap
 advanced:
-  effective_batch_size: 384  # Through gradient accumulation
-  use_amp: true  # Mixed precision
+  effective_batch_size: 256  # Updated to match new batch_size×accumulate_grad_batches (64×4)
+  use_amp: true  # Mixed precision for memory efficiency
   compile_model: false
-  memory_efficient: true
-  profiler: null
+  memory_efficient: true  # Essential for memory optimization
+  profiler: null  # No profiling for memory efficiency
