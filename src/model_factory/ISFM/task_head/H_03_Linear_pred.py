@@ -57,8 +57,7 @@ class H_03_Linear_pred(nn.Module):  # TODO
         # For signal reconstruction tasks, prioritize matching input channels
         # over strict max_out limits to avoid dimension mismatches
         if shape[1] > self.max_out:
-            print(f"Warning: Requested output channels ({shape[1]}) exceeds max_out ({self.max_out}). "
-                  f"Using max_out={self.max_out} to prevent memory issues.")
+            # Warning suppressed for performance - using max_out to prevent memory issues
             out_dim = self.max_out
         
         if pred_len > self.max_len:

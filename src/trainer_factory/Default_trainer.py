@@ -55,6 +55,27 @@ def trainer(args_e,args_t, args_d, path):
     if not getattr(args_t, 'log_every_n_steps', None):
         args_t.log_every_n_steps = 50
 
+    # 处理验证频率配置 - 避免参数冲突
+    check_val_every_n_epoch = getattr(args_t, 'check_val_every_n_epoch', 1)
+    val_check_interval = getattr(args_t, 'val_check_interval', 1.0)
+    
+    # 调试输出：确认验证配置
+    print(f"[DEBUG] Validation config: check_val_every_n_epoch={check_val_every_n_epoch}, val_check_interval={val_check_interval}")
+    
+    # 如果设置了check_val_every_n_epoch > 1，优先使用epoch级验证控制
+    if check_val_every_n_epoch > 1:
+        # 使用epoch级控制，禁用interval控制避免冲突
+        val_check_interval = 1.0
+        print(f"[INFO] Using epoch-based validation: every {check_val_every_n_epoch} epochs")
+    elif val_check_interval < 1.0:
+        # 使用interval控制，设置epoch控制为每epoch
+        check_val_every_n_epoch = 1
+        print(f"[INFO] Using interval-based validation: {val_check_interval} of validation data per epoch")
+
+    # 获取验证数据量限制配置
+    limit_val_batches = getattr(args_t, 'limit_val_batches', 1.0)
+    print(f"[INFO] Validation data limit: {limit_val_batches}")
+    
     # 初始化训练器
     trainer = pl.Trainer(
         callbacks=callback_list,
@@ -63,8 +84,9 @@ def trainer(args_e,args_t, args_d, path):
         devices=args_t.gpus,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-        check_val_every_n_epoch=getattr(args_t, 'check_val_every_n_epoch', 1),  # 验证频率控制
-        val_check_interval=getattr(args_t, 'val_check_interval', 1.0),  # 验证数据比例控制
+        check_val_every_n_epoch=check_val_every_n_epoch,  # 验证频率控制
+        val_check_interval=val_check_interval,  # 验证频率控制（已调整）
+        limit_val_batches=limit_val_batches,  # 验证数据量限制（正确的参数）
         strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
     )
     return trainer

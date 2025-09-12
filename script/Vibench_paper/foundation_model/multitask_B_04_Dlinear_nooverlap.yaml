@@ -25,7 +25,7 @@ data:
   window_size: 4096
   stride: 4096       # CHANGED: No overlap windows (stride = window_size)
   truncate_length: 200
-  num_window: 128    # Aggressive setting: will use all available windows per dataset
+  num_window: 64    # Aggressive setting: will use all available windows per dataset
   normalization: 'standardization'
   dtype: float32
   window_sampling_strategy: 'sequential'  # CHANGED: Sequential sampling strategy
@@ -138,7 +138,7 @@ task:
 # Trainer Configuration - Optimized for faster training
 trainer:
   name: "Default_trainer"
-  num_epochs: 200
+  num_epochs: 50
   gpus: 1
   precision: 16  # Mixed precision for memory efficiency
   accumulate_grad_batches: 4  # Effective batch size: 96×4=384
@@ -160,11 +160,12 @@ trainer:
   device: 'cuda'
   
   # Validation - OPTIMIZED for faster training
-  val_check_interval: 0.25      # Only use 25% of validation data
-  check_val_every_n_epoch: 10   # Validate every 10 epochs instead of 1
+  val_check_interval: 1.0       # Validate every epoch when validation occurs
+  check_val_every_n_epoch: 5    # Validate every 5 epochs for better monitoring
+  limit_val_batches: 0.25       # Use only 25% of validation data
   
   # Validation Performance Optimization
-  validation_verbose: false  # Disable verbose warnings during validation for speed
+  validation_verbose: false     # Disable verbose warnings during validation for speed
 
 # Evaluation Configuration
 evaluation:
