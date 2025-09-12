@@ -1,0 +1,107 @@
+# Flow+对比学习联合训练配置
+# 用于验证联合训练的性能提升
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  normalization: true
+  window_size: 1024
+  stride: 5
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'
+
+model:
+  name: "M_04_ISFM_Flow" 
+  type: "ISFM"
+  sequence_length: 1024
+  channels: 1
+  hidden_dim: 256
+  time_dim: 64
+  condition_dim: 64
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 必需的系统参数
+  target_system_id: [6, 9, 15]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc"]
+  
+  # Flow参数
+  num_steps: 100
+  flow_lr: 5e-4
+  
+  # 启用对比学习 - 核心特性
+  use_contrastive: true
+  contrastive_weight: 0.3   # 对比学习权重
+  flow_weight: 1.0          # Flow权重
+  
+  # 对比学习参数
+  temperature: 0.1          # 对比学习温度参数
+  projection_dim: 128       # 投影头维度
+  augmentation_strength: 0.2 # 数据增强强度
+  
+  # 梯度平衡
+  gradient_balancing: true  # 启用梯度平衡
+  balancing_method: "equal_weighting"  # 平衡方法
+  
+  # 增强监控
+  enable_visualization: false
+  track_memory: true
+  track_gradients: true
+  
+  # 联合训练参数
+  optimizer: "adamw"
+  lr: 5e-4
+  weight_decay: 1e-4
+  epochs: 60                # 更多轮次以观察联合效果
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  shuffle: true
+  log_interval: 20
+  early_stopping: true
+  es_patience: 15           # 更多耐心给联合训练
+  
+  # 学习率调度
+  scheduler: true
+  scheduler_type: "cosine"
+  warmup_epochs: 10         # 更长预热期
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  
+  # 联合训练设置
+  log_every_n_steps: 20
+  val_check_interval: 1.0
+  check_val_every_n_epoch: 1
+  
+  # 检查点保存
+  enable_checkpointing: true
+  default_root_dir: "results/flow_contrastive"
+
+environment:
+  WANDB_MODE: "disabled"    # 可改为"online"启用WandB
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow"
+  PYTHONPATH: "/home/lq/.conda/envs/P"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  
+  project: "flow_contrastive_experiment"
+  seed: 42
+  output_dir: "results/flow_contrastive"
+  notes: "Flow+对比学习联合训练 - 性能提升验证"
+  iterations: 1

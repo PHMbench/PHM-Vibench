@@ -1,0 +1,87 @@
+# Flow快速验证配置 - 5分钟内完成
+# 用于开发过程中的快速功能验证
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 8
+  num_workers: 0
+  train_ratio: 0.8
+  normalization: true
+  window_size: 256          # 较小窗口，快速训练
+  stride: 5
+  truncate_length: 20       # 大幅减少数据量
+  dtype: float32
+  num_window: 8             # 最少窗口数
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'
+
+model:
+  name: "M_04_ISFM_Flow" 
+  type: "ISFM"
+  sequence_length: 256      # 匹配window_size
+  channels: 1
+  hidden_dim: 64            # 较小模型，快速训练
+  time_dim: 16
+  condition_dim: 16
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 必需的系统参数
+  target_system_id: [6, 9, 15]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc"]
+  
+  # Flow参数 - 快速验证
+  num_steps: 20             # 减少Flow推理步数
+  flow_lr: 1e-3
+  
+  # 关闭对比学习，专注Flow验证
+  use_contrastive: false
+  
+  # 最简监控
+  enable_visualization: false
+  track_memory: false
+  track_gradients: false
+  
+  # 快速训练参数
+  optimizer: "adam"
+  lr: 1e-3
+  weight_decay: 1e-5
+  epochs: 5                 # 5轮次快速验证
+  batch_size: 8
+  num_workers: 0
+  pin_memory: false
+  shuffle: true
+  log_interval: 5
+  early_stopping: false
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  
+  # 快速训练设置
+  log_every_n_steps: 5
+  val_check_interval: 1.0
+  limit_train_batches: 20   # 限制训练批次
+  limit_val_batches: 10     # 限制验证批次
+  fast_dev_run: false
+
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow"
+  PYTHONPATH: "/home/lq/.conda/envs/P"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  
+  project: "flow_quick_validation"
+  seed: 42
+  output_dir: "results/flow_quick_validation"
+  notes: "Flow快速功能验证 - 5分钟完成"
+  iterations: 1

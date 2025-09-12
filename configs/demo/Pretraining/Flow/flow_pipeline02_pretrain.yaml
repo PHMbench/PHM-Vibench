@@ -1,0 +1,120 @@
+# Flow Pipeline_02 预训练配置
+# 专门用于Pipeline_02_pretrain_fewshot第一阶段
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 64            # 较大批次，充分预训练
+  num_workers: 6
+  train_ratio: 0.9          # 更多数据用于预训练
+  normalization: true
+  window_size: 1024
+  stride: 3                 # 更密集采样
+  truncate_length: 200      # 更多数据以充分预训练
+  dtype: float32
+  num_window: 128           # 更多窗口
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'
+
+model:
+  name: "M_04_ISFM_Flow" 
+  type: "ISFM"
+  sequence_length: 1024
+  channels: 1
+  hidden_dim: 256
+  time_dim: 64
+  condition_dim: 64
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 必需的系统参数
+  target_system_id: [6, 9, 15]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc"]
+  
+  # Flow参数 - 优化预训练
+  num_steps: 100
+  flow_lr: 3e-4
+  
+  # 对比学习增强预训练
+  use_contrastive: true
+  contrastive_weight: 0.2   # 适中的对比权重
+  flow_weight: 1.0
+  
+  # Pipeline特定参数
+  save_pretrained_every_n_epochs: 10  # 定期保存检查点
+  enable_transfer_preparation: true    # 启用转移准备
+  
+  # 预训练优化监控
+  enable_visualization: false
+  track_memory: true
+  track_gradients: true
+  
+  # 预训练训练参数
+  optimizer: "adamw"
+  lr: 3e-4
+  weight_decay: 1e-4
+  epochs: 100               # 充分预训练
+  batch_size: 64
+  num_workers: 6
+  pin_memory: true
+  shuffle: true
+  log_interval: 50
+  early_stopping: true
+  es_patience: 20
+  
+  # 学习率调度 - 适合长期训练
+  scheduler: true
+  scheduler_type: "warmup_cosine"
+  warmup_epochs: 20
+  min_lr: 1e-6
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  
+  # Pipeline预训练设置
+  log_every_n_steps: 50
+  val_check_interval: 0.5   # 更频繁验证
+  check_val_every_n_epoch: 1
+  
+  # 检查点策略 - Pipeline兼容
+  enable_checkpointing: true
+  default_root_dir: "results/flow_pipeline02_pretrain"
+  
+  # ModelCheckpoint回调 - Pipeline优化
+  save_top_k: 3
+  monitor: "val_loss"
+  mode: "min"
+  save_last: true
+  
+  # 早停回调
+  early_stop_monitor: "val_loss"
+  early_stop_patience: 20
+
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow"
+  PYTHONPATH: "/home/lq/.conda/envs/P"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  
+  project: "flow_pipeline02_pretrain"
+  seed: 42
+  output_dir: "results/flow_pipeline02_pretrain"
+  notes: "Flow Pipeline_02 第一阶段预训练 - 为Few-shot准备"
+  iterations: 1
+
+# Pipeline_02 特定设置
+pipeline_settings:
+  stage: "pretrain"         # 标识预训练阶段
+  next_stage: "fewshot"     # 下一阶段
+  checkpoint_format: "pipeline_compatible"  # Pipeline兼容格式
+  transfer_learning_ready: true             # 准备好转移学习
