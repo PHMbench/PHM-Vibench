@@ -173,7 +173,7 @@ All tasks follow these criteria:
   _File: src/task_factory/task/pretrain/__init__.py_  
   _Time: 10 minutes_
 
-- [ ] 25. Create task factory integration test  
+- [x] 25. Create task factory integration test  
   _Requirements: 1.1_  
   _Leverage: test/test_task_factory.py_  
   _File: test/test_flow_pretrain_factory.py_  

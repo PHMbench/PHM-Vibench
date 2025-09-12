@@ -589,3 +589,7 @@ class FlowPretrainTask(Default_task):
             return [optimizer], [scheduler]
         
         return optimizer
+
+
+# Backward compatibility alias for task factory
+task = FlowPretrainTask
