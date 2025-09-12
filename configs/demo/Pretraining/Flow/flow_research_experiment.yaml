@@ -1,0 +1,152 @@
+# Flow研究级实验配置
+# 用于发表论文的完整实验设置
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 128           # 大批次提高稳定性
+  num_workers: 8            # 更多工作进程
+  train_ratio: 0.8
+  normalization: true
+  window_size: 2048         # 更大窗口捕获更多信息
+  stride: 2                 # 更密集采样
+  truncate_length: 500      # 更多数据
+  dtype: float32
+  num_window: 256           # 更多窗口
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'
+
+model:
+  name: "M_04_ISFM_Flow" 
+  type: "ISFM"
+  sequence_length: 2048     # 匹配更大窗口
+  channels: 1
+  hidden_dim: 512           # 更大模型容量
+  time_dim: 128
+  condition_dim: 128
+  use_conditional: true
+  sigma_min: 0.0001         # 更精细的Flow范围
+  sigma_max: 2.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 必需的系统参数 - 研究级多系统
+  target_system_id: [6, 9, 15, 18, 21, 24]  # 更多目标系统
+  target_domain_num: 3      # 多域设置
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]  # 完整评估指标
+  
+  # Flow参数 - 研究级设置
+  num_steps: 200            # 更多Flow步数提高质量
+  flow_lr: 1e-4
+  
+  # 全功能对比学习
+  use_contrastive: true
+  contrastive_weight: 0.25  # 精调的权重
+  flow_weight: 1.0
+  temperature: 0.07         # 优化的温度参数
+  projection_dim: 256       # 更大投影空间
+  
+  # 高级训练特性
+  gradient_balancing: true
+  balancing_method: "gradnorm"  # 梯度归一化平衡
+  
+  # 完整监控和可视化
+  enable_visualization: true    # 启用完整可视化
+  track_memory: true
+  track_gradients: true
+  
+  # 研究级训练参数
+  optimizer: "adamw"
+  lr: 1e-4
+  weight_decay: 5e-5
+  epochs: 200               # 完整训练
+  batch_size: 128
+  num_workers: 8
+  pin_memory: true
+  shuffle: true
+  log_interval: 100
+  early_stopping: true
+  es_patience: 30
+  
+  # 高级学习率调度
+  scheduler: true
+  scheduler_type: "warmup_cosine_restarts"
+  warmup_epochs: 30
+  min_lr: 1e-7
+  cosine_restarts: true
+  restart_period: 50
+  
+  # 正则化
+  dropout: 0.1
+  weight_decay_schedule: true
+  
+  # 数据增强
+  augmentation: true
+  augmentation_strength: 0.15
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 0.5    # 更保守的梯度裁剪
+  accumulate_grad_batches: 2 # 梯度累积
+  
+  # 研究级训练设置
+  log_every_n_steps: 100
+  val_check_interval: 0.25  # 每1/4轮次验证
+  check_val_every_n_epoch: 1
+  
+  # 完整检查点策略
+  enable_checkpointing: true
+  default_root_dir: "results/flow_research"
+  save_top_k: 5             # 保存更多最佳检查点
+  monitor: "val_f1"         # 监控F1分数
+  mode: "max"
+  save_last: true
+  filename: "flow-research-{epoch:03d}-{val_f1:.4f}"
+  
+  # 性能监控
+  enable_progress_bar: true
+  profiler: "simple"        # 性能分析
+
+environment:
+  WANDB_MODE: "online"      # 启用WandB完整跟踪
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow"
+  PYTHONPATH: "/home/lq/.conda/envs/P"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  
+  project: "flow_research_experiment"
+  seed: 42
+  output_dir: "results/flow_research"
+  notes: "Flow预训练研究级实验 - 论文发表用"
+  iterations: 3             # 多次运行取平均
+  
+  # 实验跟踪
+  experiment_name: "Flow_Pretraining_Research_v1"
+  tags: ["flow", "pretraining", "contrastive", "research", "publication"]
+  
+  # 结果保存
+  save_predictions: true
+  save_model_summary: true
+  save_hyperparameters: true
+
+# 研究特定设置
+research_settings:
+  reproducibility_level: "strict"    # 严格可重现
+  statistical_tests: true           # 启用统计测试
+  ablation_studies: false          # 此配置非消融研究
+  baseline_comparison: true        # 与基线对比
+  publication_ready: true          # 发表就绪
+  
+  # 评估协议
+  evaluation_protocol: "standard"
+  cross_validation: false          # 如需要可启用
+  test_split: 0.2
+  
+  # 可视化和报告
+  generate_plots: true
+  save_training_curves: true
+  export_latex_tables: true
+  comprehensive_report: true
