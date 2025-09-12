@@ -54,12 +54,21 @@ trainer:
   log_every_n_steps: 100              # 适度日志记录
   
   # 早停和学习率调度
+  enable_early_stopping: true        # 启用早停
   patience: 15                        # 早停耐心
   monitor: "val_contrastive_acc"      # 监控验证准确率
+  mode: "max"                        # 监控指标的优化方向
+  min_delta: 0.001                   # 最小改善阈值
+  
+  # 学习率调度器
+  lr_scheduler: "cosine"             # 余弦退火调度器
+  lr_scheduler_patience: 10          # 学习率调度器耐心
+  lr_reduce_factor: 0.5              # 学习率降低因子
   
   # 检查点保存
   save_top_k: 3                       # 保存最佳3个模型
   save_last: true                     # 保存最后一个检查点
+  save_weights_only: false            # 保存完整模型状态
 
 environment:
   save_dir: "save/production/"        # 生产结果保存目录

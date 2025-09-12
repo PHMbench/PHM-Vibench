@@ -49,8 +49,12 @@ trainer:
   # 验证和保存
   check_val_every_n_epoch: 1          # 每个epoch验证
   
+  # 早停（调试时禁用，便于观察训练过程）
+  enable_early_stopping: false       # 调试时不启用早停
+  
   # 日志（调试用详细日志）
   log_every_n_steps: 1                # 每步记录日志
+  enable_progress_bar: true           # 显示进度条
 
 environment:
   save_dir: "debug/"                  # 调试结果保存目录
