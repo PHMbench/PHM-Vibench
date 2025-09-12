@@ -63,8 +63,14 @@ class task(pl.LightningModule):
         
         # Performance optimization flags
         self.validation_verbose = getattr(args_trainer, 'validation_verbose', False)
-        self.warning_counts = {'truncate_channels': 0, 'no_rul_labels': 0, 'output_mismatch': 0}
+        self.warning_counts = {'truncate_channels': 0, 'no_rul_labels': 0, 'output_mismatch': 0, 
+                               'missing_output': 0, 'invalid_output': 0, 'task_error': 0}
         self.max_warnings_per_type = 5  # Only show first N warnings of each type
+        
+        # Debug output: confirm configuration
+        model_max_out = getattr(args_model, 'max_out', 'NOT_SET')
+        print(f"[DEBUG] Model config: max_out={model_max_out}, validation_verbose={self.validation_verbose}")
+        print(f"[DEBUG] Warning suppression initialized: max_warnings_per_type={self.max_warnings_per_type}")
         
         # Multi-task specific initialization (no single loss_fn needed)
         self.enabled_tasks = self._get_enabled_tasks()
@@ -80,9 +86,9 @@ class task(pl.LightningModule):
         reports_dir = os.path.join(getattr(args_trainer, 'default_root_dir', './'), 'metrics_reports')
         self.metrics_reporter = MetricsMarkdownReporter(save_dir=reports_dir)
         
-        # Configuration for system metrics tracking
-        self.track_system_metrics = getattr(args_task, 'track_system_metrics', True)
-        self.system_metrics_verbose = getattr(args_task, 'system_metrics_verbose', True)
+        # Configuration for system metrics tracking (disabled by default for performance)
+        self.track_system_metrics = getattr(args_task, 'track_system_metrics', False)  # Changed to False for performance
+        self.system_metrics_verbose = getattr(args_task, 'system_metrics_verbose', False)  # Changed to False for performance
         
         # Save hyperparameters (copied from Default_task)
         hparams_dict = {
@@ -583,13 +589,13 @@ class task(pl.LightningModule):
                     
                     if task_output is None:
                         # Log warning and skip this task
-                        print(f'WARNING: No output found for task {task_name} in model outputs')
+                        self._log_warning('missing_output', f'WARNING: No output found for task {task_name} in model outputs')
                         self.log(f'{mode}_{task_name}_skipped', 1.0, on_step=False, on_epoch=True)
                         continue
                         
                     # Validate output shape and type
                     if not isinstance(task_output, torch.Tensor):
-                        print(f'WARNING: Task {task_name} output is not a tensor (type: {type(task_output)}), skipping')
+                        self._log_warning('invalid_output', f'WARNING: Task {task_name} output is not a tensor (type: {type(task_output)}), skipping')
                         self.log(f'{mode}_{task_name}_invalid_output', 1.0, on_step=False, on_epoch=True)
                         continue
                     
@@ -609,28 +615,30 @@ class task(pl.LightningModule):
                         metric_targets = x if task_name == 'signal_prediction' and y_dict[task_name] is None else y_dict[task_name]
                         task_metrics = self._compute_task_metrics(task_name, task_output, metric_targets, mode)
                         for metric_name, metric_value in task_metrics.items():
-                            # Log metrics only on epoch for cleaner logging
+                            # Log metrics only on epoch for cleaner logging, disable prog_bar for validation
+                            prog_bar_enabled = (mode == 'train')  # Only show progress bar during training
                             self.log(metric_name, metric_value, 
-                                    on_step=False, on_epoch=True, prog_bar=True)
+                                    on_step=False, on_epoch=True, prog_bar=prog_bar_enabled)
                             
                 except Exception as e:
                     # Log detailed error information and continue
                     error_msg = f'ERROR: {task_name} {mode} step failed - {type(e).__name__}: {str(e)}'
-                    print(error_msg)
+                    self._log_warning('task_error', error_msg, force=True)  # Force log errors
                     
                     # Log error metrics for monitoring
                     self.log(f'{mode}_{task_name}_error_count', 1.0, on_step=False, on_epoch=True)
                     
-                    # Add shape information if available for debugging
-                    if 'task_output' in locals() and hasattr(task_output, 'shape'):
-                        print(f'  Task output shape: {task_output.shape}')
-                    if task_name in y_dict and hasattr(y_dict[task_name], 'shape'):
-                        print(f'  Target shape: {y_dict[task_name].shape}')
+                    # Add shape information if available for debugging (only if verbose)
+                    if self.validation_verbose:
+                        if 'task_output' in locals() and hasattr(task_output, 'shape'):
+                            print(f'  Task output shape: {task_output.shape}')
+                        if task_name in y_dict and hasattr(y_dict[task_name], 'shape'):
+                            print(f'  Target shape: {y_dict[task_name].shape}')
                     
                     continue
         
         # System-specific metrics tracking (for validation and test phases)
-        if self.track_system_metrics and mode in ['val', 'test'] and file_ids:
+        if self.track_system_metrics and mode in ['test'] and file_ids:
             system_id = self._extract_system_id_from_batch(file_ids)
             if system_id is not None:
                 # Collect batch-level metrics for this system
