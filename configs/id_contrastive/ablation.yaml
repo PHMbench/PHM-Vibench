@@ -1,0 +1,80 @@
+# 消融实验配置模板
+# 用于系统性消融研究，可通过参数覆盖进行实验矩阵
+
+data:
+  factory_name: "id"                    # 使用id_data_factory
+  dataset_name: "ID_dataset"            # 标准ID_dataset类
+  data_dir: "data"                      # 数据目录
+  metadata_file: "metadata_6_1.xlsx"   # metadata文件
+  batch_size: 32                        # 标准批量
+  num_workers: 4                        # 标准进程数
+  
+  # 窗口化参数（消融实验变量）
+  window_size: 1024                     # 基线: [512, 1024, 2048, 4096]
+  stride: 512                           # 窗口步长
+  num_window: 2                         # 窗口数
+  window_sampling_strategy: "random"    # 采样策略: ['random', 'sequential', 'evenly_spaced']
+  
+  # 数据预处理参数  
+  normalization: true                   # 启用标准化
+  truncate_length: 16384               # 标准信号长度
+
+model:
+  type: "ISFM"                         # 模型类型
+  name: "M_01_ISFM"                    # ISFM基础模型
+  backbone: "B_08_PatchTST"            # 主干网络: ['B_08_PatchTST', 'B_04_Dlinear', 'B_06_TimesNet']
+  d_model: 256                         # 模型维度
+
+task:
+  type: "pretrain"                     # 预训练任务类型
+  name: "contrastive_id"               # 任务名称
+  
+  # 训练参数
+  lr: 1e-3                            # 学习率
+  weight_decay: 1e-4                  # 权重衰减
+  
+  # 对比学习参数（主要消融变量）
+  temperature: 0.07                   # 温度参数: [0.01, 0.05, 0.07, 0.1, 0.5]
+
+trainer:
+  # 基础训练参数
+  epochs: 1                           # 快速测试用单epoch
+  accelerator: "gpu"                  # 使用GPU
+  devices: 1                          # 单GPU训练
+  precision: 16                       # 混合精度训练
+  
+  # 优化参数
+  gradient_clip_val: 1.0              # 梯度裁剪
+  
+  # 验证和保存
+  check_val_every_n_epoch: 5          # 验证频率
+  
+  # 日志
+  log_every_n_steps: 50              # 日志记录频率
+
+environment:
+  save_dir: "save/ablation/"          # 消融实验结果保存目录
+  experiment_name: "contrastive_ablation"
+
+# 消融实验矩阵配置注释
+# 使用方式: python scripts/ablation_studies.py --base_config configs/id_contrastive/ablation.yaml
+#
+# 实验变量:
+# 1. 窗口大小消融:
+#    data.window_size: [512, 1024, 2048, 4096]
+#
+# 2. 温度参数消融:
+#    task.temperature: [0.01, 0.05, 0.07, 0.1, 0.5]
+#
+# 3. 批大小消融:
+#    data.batch_size: [16, 32, 64, 128]
+#
+# 4. 窗口采样策略消融:
+#    data.window_sampling_strategy: ['random', 'sequential', 'evenly_spaced']
+#
+# 5. 主干网络消融:
+#    model.backbone: ['B_08_PatchTST', 'B_04_Dlinear', 'B_06_TimesNet']
+#
+# 实验命名规则:
+# 格式: {变量名}_{变量值}_{timestamp}
+# 示例: temp_0.05_20240830_143502

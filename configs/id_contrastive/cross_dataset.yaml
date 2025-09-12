@@ -1,0 +1,103 @@
+# 跨数据集实验配置
+# 用于评估模型的泛化能力和域适应性
+
+data:
+  factory_name: "id"                    # 使用id_data_factory
+  dataset_name: "ID_dataset"            # 标准ID_dataset类
+  data_dir: "data"                      # 数据目录
+  metadata_file: "metadata_6_1.xlsx"   # metadata文件
+  batch_size: 32                        # 标准批量
+  num_workers: 4                        # 标准进程数
+  
+  # 窗口化参数（跨数据集实验）
+  window_size: 1024                     # 固定窗口大小
+  stride: 512                           # 窗口步长
+  num_window: 2                         # 每个ID生成2个窗口
+  window_sampling_strategy: "random"    # 随机窗口采样
+  
+  # 数据预处理参数  
+  normalization: true                   # 启用标准化
+  truncate_length: 16384               # 标准信号长度
+  
+  # 跨数据集特定参数
+  source_datasets: ["CWRU", "XJTU"]    # 源域数据集列表
+  target_datasets: ["PU", "MFPT"]      # 目标域数据集列表
+  domain_adaptation: true              # 启用域适应
+  dataset_balancing: "weighted"        # 数据集平衡策略: ['equal', 'proportional', 'weighted']
+
+model:
+  type: "ISFM"                         # 模型类型
+  name: "M_01_ISFM"                    # ISFM基础模型
+  backbone: "B_08_PatchTST"            # PatchTST主干网络
+  d_model: 256                         # 模型隐藏维度
+  
+  # 域适应相关参数
+  domain_embedding_dim: 64             # 域嵌入维度
+  enable_domain_classifier: false     # 是否启用域分类器
+
+task:
+  type: "pretrain"                     # 预训练任务类型
+  name: "contrastive_id"               # 任务名称
+  
+  # 训练参数
+  lr: 1e-3                            # 学习率
+  weight_decay: 1e-4                  # 权重衰减
+  
+  # 对比学习参数
+  temperature: 0.07                   # InfoNCE温度参数
+  
+  # 跨数据集特定损失权重
+  contrastive_weight: 1.0             # 对比损失权重
+  domain_weight: 0.1                  # 域适应损失权重（如果启用）
+
+trainer:
+  # 基础训练参数
+  epochs: 1                           # 快速测试用单epoch
+  accelerator: "gpu"                  # 使用GPU
+  devices: 1                          # 单GPU训练
+  precision: 16                       # 混合精度训练
+  
+  # 优化参数
+  gradient_clip_val: 1.0              # 梯度裁剪
+  
+  # 验证和保存
+  check_val_every_n_epoch: 5          # 验证频率
+  val_split_strategy: "target_only"   # 验证集策略: ['mixed', 'target_only', 'source_only']
+  
+  # 日志
+  log_every_n_steps: 50              # 日志记录频率
+  
+  # 跨数据集特定监控
+  monitor_domain_performance: true    # 监控各域性能
+  log_domain_metrics: true           # 记录域相关指标
+
+environment:
+  save_dir: "save/cross_dataset/"     # 跨数据集实验结果保存目录
+  experiment_name: "contrastive_cross_dataset"
+  
+  # 结果分析配置
+  generate_domain_analysis: true      # 生成域分析报告
+  save_domain_embeddings: true       # 保存域嵌入可视化
+
+# 实验配置说明
+# 
+# 跨数据集实验流程:
+# 1. 在source_datasets上进行预训练
+# 2. 在target_datasets上进行零样本评估
+# 3. 可选: 在target_datasets上进行少样本微调
+#
+# 数据集组合示例:
+# - 轴承故障: CWRU -> PU, XJTU -> MFPT
+# - 齿轮箱故障: PHM2009 -> FEMTO
+# - 多域泛化: [CWRU, XJTU] -> [PU, MFPT, JNU]
+#
+# 评估指标:
+# - 域内性能 (source domain performance)
+# - 域外性能 (target domain performance)  
+# - 域差距 (domain gap)
+# - 泛化能力 (generalization ability)
+#
+# 使用方式:
+# python main.py --config configs/id_contrastive/cross_dataset.yaml \
+#                --source_datasets CWRU XJTU \
+#                --target_datasets PU MFPT

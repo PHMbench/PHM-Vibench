@@ -1,0 +1,57 @@
+# 调试用小规模配置
+# 用于开发和调试，最小资源占用
+
+data:
+  factory_name: "id"                    # 使用id_data_factory
+  dataset_name: "ID_dataset"            # 标准ID_dataset类
+  data_dir: "data"                      # 数据目录
+  metadata_file: "metadata_6_1.xlsx"   # metadata文件
+  batch_size: 4                         # 最小批量
+  num_workers: 1                        # 单进程，便于调试
+  
+  # 窗口化参数（调试用小参数）
+  window_size: 256                      # 小窗口，快速迭代
+  stride: 128                           # 小步长
+  num_window: 2                         # 最小窗口数
+  window_sampling_strategy: "random"    # 随机采样
+  
+  # 数据预处理参数  
+  normalization: true                   # 启用标准化
+  truncate_length: 2048                # 小信号长度
+
+model:
+  type: "ISFM"                         # 模型类型
+  name: "M_01_ISFM"                    # ISFM基础模型
+  backbone: "B_08_PatchTST"            # PatchTST主干网络
+  d_model: 64                          # 最小模型维度
+
+task:
+  type: "pretrain"                     # 预训练任务类型
+  name: "contrastive_id"               # 任务名称
+  
+  # 训练参数
+  lr: 1e-3                            # 标准学习率
+  weight_decay: 1e-4                  # 权重衰减
+  
+  # 对比学习参数
+  temperature: 0.07                   # InfoNCE温度参数
+
+trainer:
+  # 基础训练参数
+  epochs: 1                           # 快速调试用单epoch
+  accelerator: "cpu"                  # 使用CPU，便于调试
+  devices: 1                          # 单设备
+  precision: 32                       # 32位精度，避免数值问题
+  
+  # 优化参数
+  gradient_clip_val: 1.0              # 梯度裁剪
+  
+  # 验证和保存
+  check_val_every_n_epoch: 1          # 每个epoch验证
+  
+  # 日志（调试用详细日志）
+  log_every_n_steps: 1                # 每步记录日志
+
+environment:
+  save_dir: "debug/"                  # 调试结果保存目录
+  experiment_name: "contrastive_debug"

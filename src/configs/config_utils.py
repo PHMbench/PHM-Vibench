@@ -30,7 +30,12 @@ PRESET_TEMPLATES = {
     'isfm': 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
     'gfs': 'configs/demo/GFS/GFS_demo.yaml',
     'pretrain': 'configs/demo/Pretraining/Pretraining_demo.yaml',
-    'id': 'configs/demo/ID/id_demo.yaml'
+    'id': 'configs/demo/ID/id_demo.yaml',
+    # Contrastive learning presets
+    'contrastive': 'configs/id_contrastive/debug.yaml',
+    'contrastive_ablation': 'configs/id_contrastive/ablation.yaml',
+    'contrastive_cross': 'configs/id_contrastive/cross_dataset.yaml',
+    'contrastive_prod': 'configs/id_contrastive/production.yaml'
 }
 
 
