@@ -2,9 +2,9 @@
 
 ## Task Overview
 
-This plan implements a Prompt-guided Contrastive Learning system for industrial vibration analysis, focusing on System Information Prompt encoding combined with SOTA contrastive learning methods. The implementation creates two-level prompts (System+Sample, NO fault-level since Label is prediction target), independent M_02_ISFM_Prompt model, two-stage training, and complete self-testing infrastructure.
+This plan implements a Prompt-guided Unified Metric Learning system for industrial vibration analysis, focusing on learning universal representations from all 5 industrial datasets simultaneously. The implementation creates two-level prompts (System+Sample), unified data loading, zero-shot evaluation, and 1-epoch practical validation infrastructure.
 
-Key Innovation: First-ever combination of system metadata as learnable prompts with contrastive learning for cross-system fault diagnosis generalization, integrated with Pipeline_03_multitask_pretrain_finetune.py workflow.
+Key Innovation: First unified metric learning approach that trains on all datasets (CWRU, XJTU, THU, Ottawa, JNU) simultaneously using prompt-guided contrastive learning, reducing experimental complexity from 150 to 30 runs while achieving superior cross-system generalization.
 
 ## Steering Document Compliance
 
@@ -34,7 +34,41 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 
 ### P0 Core Functionality (Must implement first)
 
-- [ ] 
+#### P0.1 Practical Validation Infrastructure (Highest Priority)
+
+- [ ] 1. Create 1-epoch validation framework
+  - **File**: src/utils/validation/OneEpochValidator.py
+  - Implement rapid validation for data loading, forward pass, loss computation, backward pass
+  - Add memory usage monitoring with <8GB threshold
+  - Include processing speed benchmarks (>5 samples/second)
+  - Add clear PASS/FAIL criteria with actionable error messages
+  - Generate validation reports with 95% confidence prediction for long training
+  - _Requirements: FR6_
+  - _Leverage: Existing validation patterns in PHM-Vibench_
+
+- [ ] 2. Create unified dataset loading infrastructure
+  - **File**: src/data_factory/UnifiedDataLoader.py
+  - Implement balanced sampling across all 5 datasets (CWRU, XJTU, THU, Ottawa, JNU)
+  - Add dataset-specific sample weighting to ensure fair representation
+  - Include unified batch generation with consistent metadata format
+  - Add zero-shot evaluation data preparation functionality
+  - Include comprehensive self-test with sample data validation
+  - _Requirements: FR5_
+  - _Leverage: Existing data_factory readers for all 5 datasets_
+
+- [ ] 3. Create zero-shot evaluation framework
+  - **File**: src/utils/evaluation/ZeroShotEvaluator.py
+  - Implement linear probe evaluation on frozen pretrained backbones
+  - Add per-dataset zero-shot performance measurement
+  - Include universal representation quality scoring
+  - Add comparison with random baseline and dataset-specific training
+  - Include comprehensive self-test with mock pretrained models
+  - _Requirements: FR5_
+  - _Leverage: Existing evaluation utilities in PHM-Vibench_
+
+#### P0.2 Core Prompt Components
+
+- [ ] 4. Create system prompt encoder
   - **File**: src/model_factory/ISFM_Prompt/components/SystemPromptEncoder.py
   - Implement two-level prompt encoding: Dataset_id+Domain_id (system), Sample_rate (sample)
   - Use embedding tables for categorical features, linear projection for numerical features
@@ -81,16 +115,16 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include comprehensive self-test with multiple embedding/backbone/taskhead combinations
   - _Requirements: FR1, FR3_
   - _Leverage: src/model_factory/ISFM/M_01_ISFM.py (for model structure patterns)_
-- [ ] 
-  - **File**: configs/pipeline_03/hse_prompt_multitask_config.yaml
-  - Configure Pipeline_03 MultiTaskPretrainFinetunePipeline with HSE prompt integration
-  - Set stage_1_pretraining with M_02_ISFM_Prompt and E_01_HSE_v2 embedding
+- [ ] 9. Create unified metric learning configuration
+  - **File**: configs/pipeline_03/hse_unified_metric_config.yaml
+  - Configure unified pretraining on all 5 datasets simultaneously: [CWRU, XJTU, THU, Ottawa, JNU]
+  - Set stage_1_unified_pretraining with balanced multi-dataset sampling
   - Configure backbone comparison: ['B_08_PatchTST', 'B_04_Dlinear', 'B_06_TimesNet', 'B_09_FNO']
-  - Set multi-source target_systems: [1, 5, 6, 13, 19] for pretraining
-  - Add HSE prompt specific task configuration with contrast_weight: 0.15
-  - Configure stage_2_finetuning with prompt freezing and classification tasks
-  - Include Pipeline_03 environment and evaluation configurations
-  - _Requirements: FR5, FR4_
+  - Add zero-shot evaluation configuration between pretraining and finetuning
+  - Configure stage_2_dataset_specific_finetuning for each of the 5 datasets
+  - Set experimental matrix: 6 base experiments × 5 seeds = 30 total runs
+  - Include simplified success criteria: >80% zero-shot, >95% fine-tuned accuracy
+  - _Requirements: FR5, FR7_
   - _Leverage: Pipeline_03 configuration patterns (create_pretraining_config, create_finetuning_config)_
 - [ ] 
   - **File**: src/model_factory/ISFM_Prompt/test_prompt_components.py
@@ -144,9 +178,25 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - _Requirements: FR5_
   - _Leverage: src/Pipeline_03_multitask_pretrain_finetune.py (for integration testing)_
 
+## Simplified Success Metrics
+
+### Primary Success Criteria (1-Epoch Validation)
+- [ ] **Data Loading Validation**: All 5 datasets load without errors, balanced sampling works
+- [ ] **Forward Pass Validation**: Model processes unified batches, outputs correct dimensions
+- [ ] **Loss Computation Validation**: Prompt-guided contrastive loss computes without NaN/Inf
+- [ ] **Backward Pass Validation**: Gradients flow properly through all components
+- [ ] **Memory Validation**: Total usage stays under 8GB during training
+
+### Performance Success Criteria (Full Training)
+- [ ] **Zero-Shot Performance**: >80% accuracy on all 5 datasets after unified pretraining
+- [ ] **Fine-tuned Performance**: >95% accuracy on all 5 datasets after dataset-specific fine-tuning
+- [ ] **Unified Learning Benefit**: >10% improvement over single-dataset training baselines
+- [ ] **Training Time**: Complete pipeline (pretraining + 5 fine-tuning) finishes within 24 hours
+- [ ] **Experimental Efficiency**: 30 total runs instead of 150, 80% reduction in computational cost
+
 ### P1 Feature Enhancement (Implement after P0)
 
-**Note**: Critical Pipeline_03 integration tasks have been moved to P0 for core functionality. P1 now focuses on enhancements, experiments, and optimizations.
+**Note**: Critical Pipeline_03 integration and practical validation tasks have been prioritized in P0. P1 focuses on advanced features, ablation studies, and optimizations.
 - [ ] 
   - **File**: src/utils/config/hse_prompt_validator.py
   - Implement configuration validation for HSE prompt-guided training

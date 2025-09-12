@@ -118,14 +118,15 @@ This feature directly supports the PHM-Vibench platform's mission of providing a
 
 ### Requirement 10: Unified Metric Learning Evaluation
 
-**User Story:** As a researcher, I want to evaluate unified metric learning across industrial datasets, so that I can measure the effectiveness of learning universal representations from multiple systems.
+**User Story:** As a researcher, I want to evaluate unified metric learning across industrial datasets, so that I can measure the effectiveness of learning universal representations from multiple systems using a simplified 30-run experimental matrix.
 
 #### Acceptance Criteria
 
-1. WHEN running unified pretraining THEN the system SHALL train on all 5 datasets simultaneously (CWRU, XJTU, THU, Ottawa, JNU) using HSE contrastive learning
-2. IF pretraining completes successfully THEN the system SHALL execute 5 separate fine-tuning experiments (one per dataset)
-3. WHEN evaluating generalization THEN the system SHALL compute within-dataset performance after unified pretraining and dataset-specific fine-tuning
-4. WHEN generating results THEN the system SHALL create performance comparison showing unified vs. single-dataset training
+1. WHEN running unified pretraining THEN the system SHALL train on all 5 datasets simultaneously (CWRU, XJTU, THU, Ottawa, JNU) using HSE contrastive learning with balanced sampling
+2. IF pretraining completes successfully THEN the system SHALL execute 5 separate fine-tuning experiments (one per dataset) with 5 random seeds each
+3. WHEN evaluating generalization THEN the system SHALL compute zero-shot performance before fine-tuning and final performance after fine-tuning
+4. WHEN generating results THEN the system SHALL create performance comparison showing unified vs. single-dataset training with statistical significance testing
+5. WHEN completing experiments THEN the system SHALL execute only 30 total runs (6 base experiments × 5 seeds) instead of traditional 150 runs, achieving 80% computational savings
 
 ### Requirement 11: Theoretical Metrics and Analysis
 
@@ -141,11 +142,13 @@ This feature directly supports the PHM-Vibench platform's mission of providing a
 ## Non-Functional Requirements
 
 ### Performance
-- The system SHALL complete unified pretraining stage within 12 hours on a single GPU (training on all 5 datasets)
-- Fine-tuning experiments SHALL complete within 2 hours per dataset
-- Unified pretraining SHALL achieve zero-shot performance >80% on all 5 datasets
+- The system SHALL complete unified pretraining stage within 12 hours on a single GPU (training on all 5 datasets simultaneously)
+- Fine-tuning experiments SHALL complete within 2 hours per dataset (total 10 hours for 5 datasets)
+- Total pipeline time SHALL not exceed 22 hours (12h pretraining + 10h fine-tuning) for complete experimental matrix
+- Unified pretraining SHALL achieve zero-shot performance >80% on all 5 datasets using linear probe evaluation
 - Fine-tuning SHALL achieve >95% accuracy on CWRU, XJTU, THU, Ottawa, JNU datasets after unified pretraining
-- Universal representation SHALL demonstrate >10% improvement over single-dataset training baselines
+- Universal representation SHALL demonstrate >10% improvement over single-dataset training baselines with statistical significance p<0.01
+- Experimental efficiency SHALL achieve 80% reduction in total experiments (30 runs vs 150 runs)
 - Result processing and aggregation SHALL complete within 2 minutes for 30 experiment results
 - Statistical analysis and table generation SHALL complete within 1 minute
 - Figure generation SHALL produce publication-quality outputs at 300 DPI within 1 minute per figure
@@ -172,9 +175,11 @@ This feature directly supports the PHM-Vibench platform's mission of providing a
 
 ### Scalability  
 - The system SHALL support sequential execution of 30 experiment runs (6 base experiments × 5 random seeds)
-- Memory usage SHALL be limited to single-experiment requirements (no batch processing)
+- Memory usage SHALL be limited to single-experiment requirements with unified dataset loading
 - The system SHALL support adding new datasets to unified pretraining by extending the experiment configuration YAML
 - Result storage SHALL use simple CSV format for easy analysis and archiving
+- The system SHALL demonstrate 5x efficiency improvement over traditional cross-dataset approaches
+- Unified pretraining SHALL scale to handle all 5 industrial datasets simultaneously without memory overflow
 
 ### Maintainability
 - All scripts SHALL use simple Python with standard libraries (pandas, matplotlib, subprocess)

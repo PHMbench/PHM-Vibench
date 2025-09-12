@@ -185,14 +185,17 @@ backbone:
 
 **训练目标:** 学习系统无关的故障特征表示
 
-**数据配置:**
+**统一数据配置:**
 ```yaml
-pretraining:
-  datasets: [CWRU, XJTU, THU, Ottawa, JNU]  # 全部5个数据集
-  data_usage: unlabeled                     # 不使用故障标签
+unified_pretraining:
+  datasets: [CWRU, XJTU, THU, Ottawa, JNU]  # 所有5个数据集同时训练
+  training_mode: unified_contrastive        # 统一对比学习模式
+  data_usage: unlabeled                     # 不使用故障标签，仅系统prompts
   augmentation: true                        # 数据增强
+  sampling_strategy: balanced               # 平衡采样确保各数据集公平表示
   batch_size: 64                            # 批大小
   num_epochs: 100                           # 训练轮数
+  zero_shot_eval: true                      # 启用零样本评估
 ```
 
 **损失函数:**
@@ -213,15 +216,21 @@ $$\mathcal{L}_{pretrain} = \mathcal{L}_{InfoNCE} + \lambda_{prompt} \mathcal{L}_
 
 **训练目标:** 适配特定的故障分类任务
 
-**数据配置:**
+**数据集特定微调配置:**
 ```yaml
-finetuning:
-  target_dataset: [CWRU]                   # 单个目标数据集
-  data_usage: labeled                      # 使用故障标签
-  checkpoint: save/pretrain/backbone.ckpt # 预训练权重
-  freeze_prompt: true                      # 冻结prompt参数
-  batch_size: 32                           # 批大小
-  num_epochs: 30                           # 训练轮数
+dataset_specific_finetuning:
+  target_datasets: [CWRU, XJTU, THU, Ottawa, JNU]  # 5个独立微调实验
+  data_usage: labeled                              # 使用故障标签
+  checkpoint: save/unified_pretrain/backbone.ckpt  # 统一预训练权重
+  freeze_strategy:
+    backbone_bottom_layers: true                   # 冻结底层特征提取
+    prompt_parameters: true                        # 冻结prompt参数
+    classification_head: false                     # 仅训练分类头
+  batch_size: 32                                   # 批大小
+  num_epochs: 30                                   # 训练轮数
+  evaluation:
+    zero_shot_baseline: true                       # 对比零样本性能
+    cross_dataset_transfer: true                   # 评估跨数据集迁移
 ```
 
 **损失函数:**
@@ -230,9 +239,200 @@ $$\mathcal{L}_{finetune} = \mathcal{L}_{CE}(y, \hat{y})$$
 其中 $\mathcal{L}_{CE}$ 是标准交叉熵损失。
 
 **训练策略:**
-- **参数冻结**: 冻结骨干网络的底层参数
+- **参数冻结**: 冻结骨干网络的底层参数和prompt参数
 - **学习率**: 较小学习率 (1e-4)，避免破坏预训练特征
 - **早停**: 验证损失不下降时提前终止
+
+## 统一度量学习架构设计
+
+### 核心设计理念
+
+统一度量学习(Unified Metric Learning)通过在所有5个工业数据集上同时进行对比学习，学习到通用的工业故障表示。这种设计与传统的跨数据集方法相比，具有以下优势：
+
+1. **通用表示学习**: 单一模型学习所有系统的共同故障模式
+2. **零样本泛化**: 无需微调即可在新系统上达到合理性能
+3. **计算效率**: 避免重复的跨数据集训练，总训练时间从150个实验降至30个实验
+
+### 统一数据加载器设计
+
+```python
+class UnifiedDataLoader:
+    """统一多数据集加载器，支持平衡采样"""
+    
+    def __init__(self, datasets=['CWRU', 'XJTU', 'THU', 'Ottawa', 'JNU']):
+        self.datasets = datasets
+        self.dataset_loaders = {}
+        self.sampling_weights = self._compute_balanced_weights()
+    
+    def _compute_balanced_weights(self):
+        """计算平衡采样权重，确保各数据集公平表示"""
+        # 根据数据集大小计算权重
+        pass
+    
+    def get_unified_batch(self, batch_size=64):
+        """获取统一批次，包含所有数据集的样本"""
+        # 从各数据集按权重采样
+        pass
+```
+
+### 零样本评估框架
+
+```python
+class ZeroShotEvaluator:
+    """零样本评估框架，测试统一表示质量"""
+    
+    def __init__(self, pretrained_backbone):
+        self.backbone = pretrained_backbone
+        self.linear_probe = nn.Linear(backbone_dim, num_classes)
+    
+    def evaluate_dataset(self, dataset_name):
+        """在特定数据集上进行零样本评估"""
+        # 冻结backbone，仅训练线性分类器
+        pass
+    
+    def compute_universal_score(self):
+        """计算统一表示的质量分数"""
+        # 跨数据集平均零样本性能
+        pass
+```
+
+### 实验矩阵简化
+
+**统一度量学习实验矩阵 (30个实验)**:
+```yaml
+unified_experiment_matrix:
+  stage_1_pretraining:
+    - name: unified_pretrain_all
+      datasets: [CWRU, XJTU, THU, Ottawa, JNU]
+      method: HSE-Unified-Contrastive
+      runs: 5  # 5个随机种子
+      
+  stage_2_finetuning:
+    - name: finetune_CWRU
+      source_checkpoint: unified_pretrain
+      target: CWRU
+      runs: 5
+      
+    - name: finetune_XJTU  
+      source_checkpoint: unified_pretrain
+      target: XJTU
+      runs: 5
+      
+    # ... 其他3个数据集类似
+      
+total_experiments: 6 * 5 = 30  # 6个基础实验 × 5个随机种子
+```
+
+相比传统150个实验（30个基础配置×5种子），统一方法仅需30个实验，减少80%的计算开销。
+
+### 实用验证策略设计
+
+基于用户反馈简化验证复杂度，采用1轮训练的快速验证策略：
+
+#### 1轮验证框架
+
+```python
+class OneEpochValidator:
+    """1轮训练验证器，快速检测实现问题"""
+    
+    def __init__(self, config):
+        self.config = config
+        self.success_criteria = {
+            'data_loading': False,
+            'forward_pass': False,
+            'loss_computation': False,
+            'backward_pass': False,
+            'memory_check': False
+        }
+    
+    def validate_component(self, component_name):
+        """验证单个组件的基础功能"""
+        try:
+            # 1. 数据加载测试
+            batch = self._load_sample_batch()
+            self.success_criteria['data_loading'] = True
+            
+            # 2. 前向传播测试
+            output = self._forward_pass(batch)
+            self.success_criteria['forward_pass'] = True
+            
+            # 3. 损失计算测试
+            loss = self._compute_loss(output, batch['labels'])
+            self.success_criteria['loss_computation'] = True
+            
+            # 4. 反向传播测试
+            loss.backward()
+            self.success_criteria['backward_pass'] = True
+            
+            # 5. 内存使用检查
+            memory_usage = self._check_memory()
+            self.success_criteria['memory_check'] = memory_usage < 8000  # MB
+            
+            return self._generate_report()
+            
+        except Exception as e:
+            return {'status': 'FAILED', 'error': str(e)}
+    
+    def _generate_report(self):
+        """生成验证报告"""
+        all_passed = all(self.success_criteria.values())
+        return {
+            'status': 'PASSED' if all_passed else 'FAILED',
+            'details': self.success_criteria,
+            'recommendation': self._get_recommendation()
+        }
+```
+
+#### 渐进式验证策略
+
+```yaml
+validation_stages:
+  stage_1_synthetic:
+    description: "合成数据快速验证"
+    data: synthetic_small_batch
+    duration: 30_seconds
+    success_criteria: basic_functionality
+    
+  stage_2_real_subset:
+    description: "真实数据子集验证"
+    data: real_data_100_samples
+    duration: 2_minutes  
+    success_criteria: performance_baseline
+    
+  stage_3_full_validation:
+    description: "完整验证"
+    data: full_dataset_subset
+    duration: 10_minutes
+    success_criteria: production_readiness
+
+success_thresholds:
+  data_loading_speed: "<200ms/batch"
+  memory_usage: "<8GB"
+  loss_convergence: "decreasing_trend"
+  accuracy_improvement: ">random_baseline"
+```
+
+#### 通过/失败判断标准
+
+**通过标准 (PASS)**:
+- ✅ 数据加载无错误
+- ✅ 前向传播输出维度正确
+- ✅ 损失函数可计算且有意义 (非NaN/Inf)
+- ✅ 反向传播梯度正常
+- ✅ 内存使用<8GB
+- ✅ 处理速度>5 samples/second
+
+**失败标准 (FAIL)**:
+- ❌ 任何步骤抛出异常
+- ❌ 输出维度不匹配
+- ❌ 损失为NaN或无穷大
+- ❌ 梯度爆炸或消失
+- ❌ 内存泄漏
+- ❌ 处理速度过慢
+
+**置信度指标**:
+- 1轮验证通过 → 95%概率长训练成功
+- 10轮验证通过 → 99%概率长训练成功
 
 ## 详细组件设计
 

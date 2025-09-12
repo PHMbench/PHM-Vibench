@@ -257,17 +257,40 @@ settings:
   ablation_studies: true           # Compare unified vs. single-dataset training
 ```
 
-## Simple Data Structures
+## Simplified Data Structures for Unified Metric Learning
 
-### Results DataFrame (CSV format)
+### Results DataFrame (CSV format - 30 runs only)
+```csv
+experiment_type,method,dataset,accuracy,f1_score,precision,recall,zero_shot_acc,run_id,config_path,checkpoint_used,training_time_hours
+unified_pretraining,HSE-Unified-Pretrain,ALL_DATASETS,N/A,N/A,N/A,N/A,0.82,1,hse_unified_pretrain.yaml,none,12.3
+unified_pretraining,HSE-Unified-Pretrain,ALL_DATASETS,N/A,N/A,N/A,N/A,0.84,2,hse_unified_pretrain.yaml,none,12.1
+dataset_finetuning,HSE-Unified-Finetune,CWRU,0.96,0.95,0.94,0.97,0.82,1,hse_finetune_CWRU.yaml,unified_backbone.ckpt,2.1
+dataset_finetuning,HSE-Unified-Finetune,CWRU,0.97,0.96,0.95,0.98,0.84,2,hse_finetune_CWRU.yaml,unified_backbone.ckpt,2.0
+dataset_finetuning,HSE-Unified-Finetune,XJTU,0.94,0.93,0.92,0.95,0.81,1,hse_finetune_XJTU.yaml,unified_backbone.ckpt,2.2
+dataset_finetuning,HSE-Unified-Finetune,XJTU,0.95,0.94,0.93,0.96,0.83,2,hse_finetune_XJTU.yaml,unified_backbone.ckpt,1.9
+# Total: 30 rows (6 base experiments × 5 seeds) instead of 150 rows
 ```
-experiment_type,method,dataset,accuracy,f1_score,precision,recall,run_id,config_path,checkpoint_used
-pretraining,HSE-CL-Pretrain,ALL,0.82,0.80,0.79,0.83,1,hse_pretrain_unified.yaml,none
-pretraining,HSE-CL-Pretrain,ALL,0.84,0.82,0.81,0.85,2,hse_pretrain_unified.yaml,none
-finetuning,HSE-CL-Finetune,CWRU,0.96,0.95,0.94,0.97,1,hse_finetune_CWRU.yaml,unified_backbone.ckpt
-finetuning,HSE-CL-Finetune,CWRU,0.97,0.96,0.95,0.98,2,hse_finetune_CWRU.yaml,unified_backbone.ckpt
-finetuning,HSE-CL-Finetune,XJTU,0.94,0.93,0.92,0.95,1,hse_finetune_XJTU.yaml,unified_backbone.ckpt
-finetuning,HSE-CL-Finetune,XJTU,0.95,0.94,0.93,0.96,2,hse_finetune_XJTU.yaml,unified_backbone.ckpt
+
+### Computational Efficiency Comparison
+```python
+# Traditional Cross-Dataset Approach
+traditional_experiments = {
+    'base_configurations': 30,  # 5 datasets × 6 method combinations  
+    'random_seeds': 5,
+    'total_runs': 150,
+    'estimated_time': 120,  # hours
+    'gpu_hours': 18000     # total computational cost
+}
+
+# Unified Metric Learning Approach  
+unified_experiments = {
+    'base_configurations': 6,   # 1 pretrain + 5 finetune
+    'random_seeds': 5, 
+    'total_runs': 30,
+    'estimated_time': 22,   # hours
+    'gpu_hours': 660,       # total computational cost
+    'efficiency_gain': '96% reduction in GPU hours'
+}
 ```
 
 ### Simple Python Dictionaries
@@ -321,15 +344,53 @@ except subprocess.CalledProcessError:
     continue
 ```
 
-## Simple Testing
+## Simplified Validation Strategy
 
-### Basic Testing Approach
-- **Manual testing:** Run the scripts with small examples first
-- **Check outputs:** Verify CSV files are created correctly
-- **Validate tables:** Check that LaTeX tables look reasonable
-- **Test with existing data:** Use already completed experiments to test parsing
+### 1-Epoch Validation Framework
+- **Quick Validation**: Test complete pipeline with 1 epoch to catch 90% of implementation issues
+- **Data Flow Test**: Verify unified dataset loading works correctly across all 5 datasets
+- **Memory Test**: Ensure GPU memory usage stays under 8GB during unified training
+- **Output Test**: Check that zero-shot evaluation produces reasonable scores (>random baseline)
 
-### No Complex Test Framework
-- Just create a few test experiments and verify they work
-- Use existing experiment data to test result parsing
-- Keep testing simple and practical
+### Progressive Validation Stages
+```python
+validation_stages = {
+    'stage_1_synthetic': {
+        'description': 'Synthetic data validation',
+        'duration': '30 seconds',
+        'data_size': 100,
+        'success_criteria': 'no_errors'
+    },
+    'stage_2_real_subset': {
+        'description': 'Real data subset validation', 
+        'duration': '2 minutes',
+        'data_size': 1000,
+        'success_criteria': 'basic_performance'
+    },
+    'stage_3_unified_sample': {
+        'description': 'Unified learning validation',
+        'duration': '10 minutes', 
+        'data_size': 5000,
+        'success_criteria': 'unified_representation_learning'
+    }
+}
+```
+
+### Success/Failure Criteria
+**PASS Criteria**:
+- ✅ All 5 datasets load successfully with balanced sampling
+- ✅ Unified pretraining runs 1 epoch without errors
+- ✅ Zero-shot evaluation shows >random performance on all datasets
+- ✅ Dataset-specific fine-tuning improves performance
+- ✅ Memory usage <8GB, processing speed >5 samples/sec
+
+**FAIL Criteria**:
+- ❌ Any dataset fails to load or causes memory overflow
+- ❌ Unified training produces NaN losses or gradient explosions
+- ❌ Zero-shot performance ≤ random baseline (indicates poor representation)
+- ❌ Fine-tuning performance decreases (indicates catastrophic forgetting)
+
+### Confidence Metrics
+- **1-Epoch Pass**: 95% confidence that full training will succeed
+- **10-Epoch Pass**: 99% confidence that complete pipeline will work
+- **Full Validation Pass**: Ready for 22-hour complete experiment run

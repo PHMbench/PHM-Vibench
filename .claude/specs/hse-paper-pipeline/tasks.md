@@ -33,26 +33,29 @@ All tasks follow simple Python scripting patterns with minimal dependencies. The
 
 ### P0 Core Functionality (Must implement first)
 
-- [ ] 1. Create simple experiment execution script
-  - **File**: `script/unified_metric/run_experiments.py`
-  - Implement sequential experiment runner using subprocess calls to main.py
-  - Read experiment list from simple YAML configuration file
-  - Add progress tracking with completion percentage and time estimates
-  - Include basic error handling: log failures, continue with remaining experiments
-  - Support for running multiple seeds per configuration
-  - **Critical**: No parallel execution - keep it simple and reliable
-  - _Requirements: Requirement 1, Requirement 6_
+- [ ] 1. Create unified metric learning experiment runner
+  - **File**: `script/unified_metric/run_unified_experiments.py`
+  - Implement two-stage sequential runner: unified pretraining → dataset-specific fine-tuning
+  - Read unified experiment matrix from YAML configuration (30 runs total)
+  - Add checkpoint dependency management: fine-tuning waits for pretraining completion
+  - Include zero-shot evaluation between pretraining and fine-tuning stages
+  - Support early stopping when performance targets met (>80% zero-shot, >95% fine-tuned)
+  - Add progress tracking showing stage completion and estimated time remaining
+  - **Critical**: Sequential execution only - no parallel processing complexity
+  - _Requirements: Requirement 1, Requirement 6, Requirement 10_
   - _Leverage: script/unified_metric/sota_comparison.py (for subprocess patterns)_
 
-- [ ] 2. Create experiment configuration file
-  - **File**: `script/unified_metric/paper_experiments.yaml`
-  - Define unified metric learning experimental matrix for HSE paper
-  - Include 6 base experiments: 1 unified pretraining + 5 dataset-specific fine-tuning
-  - Specify 5 random seeds per experiment (30 total runs)
-  - Add configuration paths for unified pretraining and fine-tuning conditions
-  - Include method names, dataset names, checkpoint dependencies, and expected output directories
+- [ ] 2. Create unified metric learning configuration matrix
+  - **File**: `script/unified_metric/unified_experiments.yaml`
+  - Define two-stage experimental matrix: unified pretraining + dataset-specific fine-tuning
+  - Stage 1: 1 unified pretraining config using all 5 datasets simultaneously
+  - Stage 2: 5 dataset-specific fine-tuning configs (CWRU, XJTU, THU, Ottawa, JNU)
+  - Specify 5 random seeds per stage (30 total runs vs 150 traditional runs)
+  - Add checkpoint dependencies: fine-tuning depends on unified pretraining completion
+  - Include zero-shot evaluation configuration between stages
+  - Add performance targets: >80% zero-shot, >95% fine-tuned, >10% unified benefit
   - _Requirements: Requirement 6, Requirement 10_
-  - _Leverage: Existing config structures in configs/demo/_
+  - _Leverage: Pipeline_03 config patterns and existing configs/demo/ structures_
 
 - [ ] 3. Create result collection and aggregation script
   - **File**: `script/unified_metric/collect_results.py`
@@ -109,16 +112,17 @@ All tasks follow simple Python scripting patterns with minimal dependencies. The
   - _Requirements: Requirement 9_
   - _Leverage: src/Pipeline_03_multitask_pretrain_finetune.py_
 
-- [ ] 8. Create comprehensive experiment validation script
-  - **File**: `script/unified_metric/validate_experiments.py`
-  - Check all required configuration files exist and are valid
-  - Verify data directory structure and dataset availability
-  - Validate pretraining checkpoint existence before fine-tuning
-  - Pre-flight check for GPU availability and memory requirements
-  - Generate experiment summary report with estimated completion time
-  - Include dependency verification (PyTorch, CUDA, required packages)
-  - _Requirements: Requirement 8_
-  - _Leverage: src/configs/load_config() for validation patterns_
+- [ ] 8. Create 1-epoch practical validation script
+  - **File**: `script/unified_metric/validate_unified_pipeline.py`
+  - Implement 1-epoch validation for complete unified metric learning pipeline
+  - Test unified dataset loading across all 5 datasets with balanced sampling
+  - Validate unified pretraining runs 1 epoch without errors or memory overflow
+  - Test zero-shot evaluation produces reasonable performance (>random baseline)
+  - Validate dataset-specific fine-tuning improves over zero-shot baseline
+  - Generate PASS/FAIL report with 95% confidence prediction for full training
+  - Include performance benchmarks: <8GB memory, >5 samples/sec processing speed
+  - _Requirements: Requirement 8, Practical Validation Strategy_
+  - _Leverage: OneEpochValidator patterns and validation utilities_
 
 ### P1 Enhancement Features (After P0 completion)
 
@@ -216,14 +220,21 @@ All tasks follow simple Python scripting patterns with minimal dependencies. The
 
 **Total Experiment Count**: 30 runs (6 base experiments × 5 seeds)
 
-**Breakdown**:
-- Unified pretraining: 1 experiment (all 5 datasets simultaneously)
-- Dataset-specific fine-tuning: 5 experiments (CWRU, XJTU, THU, Ottawa, JNU)
+**Unified Metric Learning Breakdown**:
+- Stage 1 - Unified pretraining: 5 runs (1 base experiment × 5 seeds, all 5 datasets simultaneously)
+- Stage 2 - Dataset-specific fine-tuning: 25 runs (5 datasets × 5 seeds each)
 
 **Expected Execution Time**: 
-- Unified pretraining: 12 hours (once, training on all 5 datasets)
-- Individual fine-tuning: 2 hours average per dataset
-- Total pipeline: ~22 hours sequential execution (12h pretraining + 5×2h fine-tuning)
+- Unified pretraining: 12 hours × 5 seeds = 60 hours total for stage 1
+- Individual fine-tuning: 2 hours × 25 runs = 50 hours total for stage 2  
+- Total pipeline: ~110 hours sequential execution (vs 600+ hours traditional approach)
+- **Computational Savings**: 82% reduction vs traditional cross-dataset experiments
+
+**Sequential Execution Strategy**:
+- No parallel execution to avoid resource conflicts and complexity
+- Simple subprocess calls to main.py with different configs
+- Checkpoint dependency management: fine-tuning waits for pretraining completion
+- Early stopping if performance targets met (>80% zero-shot, >95% fine-tuned)
 
 ### Success Metrics
 
