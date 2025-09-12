@@ -1,0 +1,51 @@
+# Flow预训练基本配置 - 快速验证用
+# 简洁配置，专注核心功能验证
+
+data:
+  data_dir: "data"
+  dataset: "CWRU"
+  batch_size: 32
+  sequence_length: 1024
+  channels: 1
+
+model:
+  name: "M_04_ISFM_Flow" 
+  hidden_dim: 256
+  time_dim: 64
+  condition_dim: 64
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 基本Flow参数
+  num_steps: 100          # 较少步数，快速验证
+  flow_lr: 1e-4
+  
+  # 对比学习关闭，专注Flow训练
+  use_contrastive: false
+  
+  # 简化监控
+  enable_visualization: false
+  track_memory: true
+  track_gradients: false
+  
+  # 基本训练参数
+  lr: 1e-4
+  weight_decay: 1e-5
+  max_epochs: 50          # 短期训练验证
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  
+  # 简化日志
+  log_every_n_steps: 50
+  val_check_interval: 1.0
+
+environment:
+  seed: 42

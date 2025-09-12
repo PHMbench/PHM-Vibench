@@ -1,0 +1,75 @@
+# Flow预训练小数据集配置 - Flow+对比学习联合训练
+# 中等规模训练，验证联合学习效果
+
+data:
+  data_dir: "data"
+  dataset: "CWRU"
+  batch_size: 64
+  sequence_length: 1024
+  channels: 1
+
+model:
+  name: "M_04_ISFM_Flow"
+  hidden_dim: 256
+  time_dim: 64
+  condition_dim: 64
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # Flow参数
+  num_steps: 500
+  flow_lr: 1e-4
+  
+  # 启用对比学习
+  use_contrastive: true
+  flow_weight: 1.0              # λ_flow
+  contrastive_weight: 0.1       # λ_contrastive  
+  contrastive_temperature: 0.1
+  use_gradient_balancing: true
+  
+  # 对比学习参数
+  projection_dim: 128
+  contrastive_hidden_dim: 256
+  
+  # 数据增强 - 保持简单
+  augmentation_noise_std: 0.01
+  augmentation_jitter_std: 0.03
+  augmentation_scaling_range: [0.9, 1.1]
+  
+  # 监控配置
+  enable_visualization: true
+  save_plots: false
+  track_memory: true
+  track_gradients: true
+  
+  # 质量评估
+  quality_assessment_frequency: 10
+  generation_samples: 16
+  
+  # 训练参数
+  lr: 5e-4
+  weight_decay: 1e-4
+  max_epochs: 200
+  use_scheduler: true
+  scheduler_type: "cosine"
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  
+  # 检查点和早停
+  early_stopping: true
+  es_patience: 20
+  save_top_k: 3
+  
+  log_every_n_steps: 100
+  val_check_interval: 0.5
+
+environment:
+  seed: 42
