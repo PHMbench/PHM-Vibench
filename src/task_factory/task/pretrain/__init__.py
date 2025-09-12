@@ -10,7 +10,26 @@ from .classification import *
 from .classification_prediction import *
 from .prediction import *
 from .masked_reconstruction import *
+from .flow_pretrain import *
+
+# Import self-testing infrastructure
+from .self_testing import (
+    ValidationResult,
+    TestConfiguration, 
+    PerformanceMetrics,
+    SelfTestOrchestrator,
+    ResourceManager,
+    TimeoutError,
+)
 
 __all__ = [
     'MaskedReconstructionTask',
+    'FlowPretrainTask',
+    # Self-testing infrastructure
+    'ValidationResult',
+    'TestConfiguration', 
+    'PerformanceMetrics',
+    'SelfTestOrchestrator',
+    'ResourceManager',
+    'TimeoutError',
 ]
