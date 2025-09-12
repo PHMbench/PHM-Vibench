@@ -15,6 +15,7 @@ import pytorch_lightning as pl
 from typing import Dict, Any, Optional, List
 import numpy as np
 import matplotlib.pyplot as plt
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 from ...Default_task import Default_task
 from ... import register_task
@@ -589,6 +590,413 @@ class FlowPretrainTask(Default_task):
             return [optimizer], [scheduler]
         
         return optimizer
+    
+    # ========================================================
+    # Pipeline_02_pretrain_fewshot Compatibility Methods
+    # ========================================================
+    
+    def get_pretrained_backbone(self) -> nn.Module:
+        """
+        Extract pretrained backbone for Pipeline_02_pretrain_fewshot compatibility.
+        
+        Returns the pretrained network/backbone that can be loaded into 
+        subsequent few-shot learning tasks.
+        
+        Returns
+        -------
+        nn.Module
+            The pretrained backbone network
+        """
+        return self.network
+    
+    def save_pretrained_state(self, filepath: str) -> Dict[str, Any]:
+        """
+        Save pretrained state for Pipeline_02_pretrain_fewshot compatibility.
+        
+        Saves both the model state and task-specific configuration that
+        can be loaded for few-shot learning stages.
+        
+        Parameters
+        ----------
+        filepath : str
+            Path to save the pretrained state
+            
+        Returns
+        -------
+        Dict[str, Any]
+            Saved state information including paths and metadata
+        """
+        # Prepare state dictionary with task-specific information
+        pretrained_state = {
+            'model_state_dict': self.network.state_dict(),
+            'task_type': 'flow_pretrain',
+            'task_config': {
+                'use_conditional': self.use_conditional,
+                'generation_mode': self.generation_mode,
+                'num_steps': self.num_steps,
+                'sigma_min': self.sigma_min,
+                'sigma_max': self.sigma_max,
+                'use_contrastive': self.use_contrastive,
+                'flow_weight': self.flow_weight,
+                'contrastive_weight': self.contrastive_weight,
+            },
+            'hyperparameters': dict(self.hparams),
+            'metadata': {
+                'training_epoch': self.current_epoch,
+                'model_architecture': self.args_model.name if hasattr(self.args_model, 'name') else 'M_04_ISFM_Flow',
+                'data_config': vars(self.args_data) if hasattr(self, 'args_data') else {},
+                'capabilities': self.validate_generation_capability()
+            }
+        }
+        
+        # Save the state
+        torch.save(pretrained_state, filepath)
+        
+        print(f"🔄 Flow预训练状态已保存:")
+        print(f"   路径: {filepath}")
+        print(f"   训练轮次: {self.current_epoch}")
+        print(f"   模型架构: {pretrained_state['metadata']['model_architecture']}")
+        print(f"   生成模式: {self.generation_mode}")
+        
+        return {
+            'filepath': filepath,
+            'state_info': pretrained_state['metadata'],
+            'success': True
+        }
+    
+    def load_pretrained_state(self, filepath: str, strict: bool = True) -> Dict[str, Any]:
+        """
+        Load pretrained state for Pipeline_02_pretrain_fewshot compatibility.
+        
+        Loads model state and task configuration from a pretrained checkpoint,
+        enabling continuation in few-shot learning pipelines.
+        
+        Parameters
+        ----------
+        filepath : str
+            Path to the pretrained state file
+        strict : bool, default=True
+            Whether to strictly enforce state_dict key matching
+            
+        Returns
+        -------
+        Dict[str, Any]
+            Loading results including success status and loaded configuration
+        """
+        try:
+            # Load the pretrained state
+            pretrained_state = torch.load(filepath, map_location=self.device, weights_only=False)
+            
+            # Verify compatibility
+            if pretrained_state.get('task_type') != 'flow_pretrain':
+                print(f"⚠️  警告: 加载的检查点不是Flow预训练任务类型 (实际: {pretrained_state.get('task_type')})")
+            
+            # Load model state
+            missing_keys, unexpected_keys = self.network.load_state_dict(
+                pretrained_state['model_state_dict'], 
+                strict=strict
+            )
+            
+            # Restore task configuration
+            task_config = pretrained_state.get('task_config', {})
+            for key, value in task_config.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+            
+            # Update FlowContrastiveLoss if needed and available
+            if self.use_contrastive and self.flow_contrastive_loss is not None:
+                self.flow_contrastive_loss.update_weights(
+                    task_config.get('flow_weight', self.flow_weight),
+                    task_config.get('contrastive_weight', self.contrastive_weight)
+                )
+            
+            load_info = {
+                'success': True,
+                'source_epoch': pretrained_state['metadata']['training_epoch'],
+                'model_architecture': pretrained_state['metadata']['model_architecture'],
+                'missing_keys': len(missing_keys),
+                'unexpected_keys': len(unexpected_keys),
+                'loaded_config': task_config
+            }
+            
+            print(f"✅ Flow预训练状态加载成功:")
+            print(f"   源文件: {filepath}")
+            print(f"   源训练轮次: {load_info['source_epoch']}")
+            print(f"   模型架构: {load_info['model_architecture']}")
+            print(f"   缺失键: {load_info['missing_keys']}")
+            print(f"   意外键: {load_info['unexpected_keys']}")
+            
+            return load_info
+            
+        except Exception as e:
+            error_info = {
+                'success': False,
+                'error': str(e),
+                'filepath': filepath
+            }
+            print(f"❌ Flow预训练状态加载失败: {e}")
+            return error_info
+    
+    def prepare_for_fewshot_transfer(self) -> Dict[str, Any]:
+        """
+        Prepare the Flow model for few-shot transfer learning.
+        
+        Configures the model for effective transfer to few-shot learning tasks
+        by freezing/unfreezing appropriate layers and preparing transfer metadata.
+        
+        Returns
+        -------
+        Dict[str, Any]
+            Transfer preparation information including frozen layers and recommendations
+        """
+        transfer_info = {
+            'frozen_layers': [],
+            'unfrozen_layers': [],
+            'transfer_recommendations': {},
+            'model_capabilities': self.validate_generation_capability()
+        }
+        
+        # Determine freezing strategy based on model architecture
+        if hasattr(self.network, 'flow_model'):
+            # Flow model layers - typically freeze Flow-specific components
+            # Keep encoder unfrozen for adaptation
+            flow_params = []
+            encoder_params = []
+            other_params = []
+            
+            for name, param in self.network.named_parameters():
+                if 'flow_model' in name or 'velocity_network' in name:
+                    flow_params.append(name)
+                elif 'encoder' in name or 'backbone' in name:
+                    encoder_params.append(name)
+                else:
+                    other_params.append(name)
+            
+            # Default strategy: freeze Flow-specific components, unfreeze encoders
+            freeze_flow_layers = getattr(self.args_task, 'freeze_flow_in_fewshot', True)
+            freeze_encoder_layers = getattr(self.args_task, 'freeze_encoder_in_fewshot', False)
+            
+            if freeze_flow_layers:
+                for name in flow_params:
+                    if hasattr(self.network, name.split('.')[0]):
+                        param = dict(self.network.named_parameters())[name]
+                        param.requires_grad = False
+                        transfer_info['frozen_layers'].append(name)
+            
+            if freeze_encoder_layers:
+                for name in encoder_params:
+                    if hasattr(self.network, name.split('.')[0]):
+                        param = dict(self.network.named_parameters())[name]
+                        param.requires_grad = False
+                        transfer_info['frozen_layers'].append(name)
+            else:
+                transfer_info['unfrozen_layers'].extend(encoder_params)
+            
+            # Keep other layers unfrozen by default
+            transfer_info['unfrozen_layers'].extend(other_params)
+        
+        # Transfer recommendations
+        transfer_info['transfer_recommendations'] = {
+            'suggested_lr_reduction': 0.1,  # Reduce learning rate for fine-tuning
+            'suggested_weight_decay': getattr(self.args_task, 'weight_decay', 1e-5) * 0.1,
+            'suggested_epochs': 20,  # Fewer epochs for fine-tuning
+            'use_conditional_generation': self.use_conditional,
+            'generation_quality_metrics': ['spectral_similarity', 'snr_score', 'diversity_score']
+        }
+        
+        print(f"🔧 Few-shot转移准备完成:")
+        print(f"   冻结层数: {len(transfer_info['frozen_layers'])}")
+        print(f"   可训练层数: {len(transfer_info['unfrozen_layers'])}")
+        print(f"   建议学习率缩放: {transfer_info['transfer_recommendations']['suggested_lr_reduction']}")
+        
+        return transfer_info
+    
+    def get_pipeline_checkpoint_callback(self) -> ModelCheckpoint:
+        """
+        Get optimized checkpoint callback for Pipeline_02_pretrain_fewshot.
+        
+        Returns a configured ModelCheckpoint callback that saves checkpoints
+        in a format compatible with the multi-stage pipeline.
+        
+        Returns
+        -------
+        ModelCheckpoint
+            Configured checkpoint callback for pipeline compatibility
+        """
+        # Create checkpoint callback optimized for pipeline transfer
+        checkpoint_callback = ModelCheckpoint(
+            monitor='val_loss',  # Monitor validation loss for best model
+            mode='min',
+            save_top_k=1,  # Save only the best checkpoint
+            save_last=True,  # Also save the last checkpoint
+            filename='flow_pretrain-{epoch:02d}-{val_loss:.4f}',
+            auto_insert_metric_name=False,
+            save_weights_only=False,  # Save full checkpoint for pipeline compatibility
+            verbose=True
+        )
+        
+        return checkpoint_callback
+    
+    def extract_feature_representations(self, dataloader) -> Dict[str, torch.Tensor]:
+        """
+        Extract feature representations for pipeline analysis.
+        
+        Extracts and returns feature representations from the pretrained Flow model,
+        useful for analyzing transfer learning effectiveness.
+        
+        Parameters
+        ----------
+        dataloader
+            DataLoader to extract features from
+            
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary containing extracted features and metadata
+        """
+        self.eval()
+        features = {
+            'encoded_features': [],
+            'flow_features': [],
+            'condition_features': [],
+            'file_ids': [],
+            'original_signals': []
+        }
+        
+        with torch.no_grad():
+            for batch in dataloader:
+                # Get features from different network components
+                x = batch['x'].to(self.device)
+                file_ids = batch['file_id']
+                
+                # Store original signals
+                features['original_signals'].append(x.cpu())
+                features['file_ids'].extend(file_ids if isinstance(file_ids, list) else [file_ids])
+                
+                # Extract encoder features if available
+                if hasattr(self.network, 'encoder') or hasattr(self.network, 'backbone'):
+                    try:
+                        # Try different encoder access patterns
+                        if hasattr(self.network, 'encode'):
+                            encoded = self.network.encode(x, file_ids)
+                        elif hasattr(self.network, 'encoder'):
+                            encoded = self.network.encoder(x)
+                        else:
+                            encoded = x  # Fallback to input if no encoder found
+                        
+                        features['encoded_features'].append(encoded.cpu())
+                    except Exception as e:
+                        print(f"⚠️  警告: 特征提取失败: {e}")
+                        features['encoded_features'].append(x.cpu())
+                
+                # Extract condition features if conditional model
+                if self.use_conditional and hasattr(self.network, 'condition_encoder'):
+                    try:
+                        condition_feats = self.network.condition_encoder(file_ids)
+                        features['condition_features'].append(condition_feats.cpu())
+                    except Exception:
+                        pass
+                
+                # Limit extraction to avoid memory issues
+                if len(features['original_signals']) * x.shape[0] > 1000:  # Limit to ~1000 samples
+                    break
+        
+        # Concatenate collected features
+        for key in ['encoded_features', 'flow_features', 'original_signals']:
+            if features[key]:
+                features[key] = torch.cat(features[key], dim=0)
+        
+        if features['condition_features']:
+            features['condition_features'] = torch.cat(features['condition_features'], dim=0)
+        
+        print(f"📊 特征提取完成:")
+        for key, value in features.items():
+            if isinstance(value, torch.Tensor):
+                print(f"   {key}: {value.shape}")
+            elif isinstance(value, list):
+                print(f"   {key}: {len(value)} items")
+        
+        return features
+    
+    def validate_pipeline_compatibility(self) -> Dict[str, Any]:
+        """
+        Validate compatibility with Pipeline_02_pretrain_fewshot.
+        
+        Performs comprehensive checks to ensure the Flow pretraining task
+        can work seamlessly with the multi-stage pipeline.
+        
+        Returns
+        -------
+        Dict[str, Any]
+            Validation results including compatibility status and recommendations
+        """
+        validation_results = {
+            'compatible': True,
+            'issues': [],
+            'warnings': [],
+            'recommendations': [],
+            'capabilities': {}
+        }
+        
+        # Check model architecture compatibility
+        if not hasattr(self.network, 'state_dict'):
+            validation_results['issues'].append("Network lacks state_dict method")
+            validation_results['compatible'] = False
+        
+        # Check checkpoint saving/loading capability
+        try:
+            # Test state dict serialization
+            state_dict = self.network.state_dict()
+            validation_results['capabilities']['state_dict_serializable'] = True
+        except Exception as e:
+            validation_results['issues'].append(f"State dict serialization failed: {e}")
+            validation_results['compatible'] = False
+        
+        # Check Flow model specific requirements
+        if hasattr(self.network, 'flow_model'):
+            validation_results['capabilities']['flow_model_available'] = True
+        else:
+            validation_results['warnings'].append("Flow model component not clearly identified")
+        
+        # Check conditional generation capability
+        validation_results['capabilities'].update(self.validate_generation_capability())
+        
+        # Check optimization configuration
+        if hasattr(self, 'configure_optimizers'):
+            validation_results['capabilities']['optimizer_configurable'] = True
+        else:
+            validation_results['warnings'].append("Optimizer configuration method missing")
+        
+        # Pipeline-specific recommendations
+        validation_results['recommendations'] = [
+            "Use val_loss monitoring for checkpoint selection",
+            "Enable save_weights_only=False for full pipeline compatibility", 
+            "Consider freezing Flow-specific layers during few-shot transfer",
+            "Validate generation quality before pipeline transitions",
+            f"Current generation mode: {self.generation_mode}",
+            f"Contrastive learning enabled: {self.use_contrastive}"
+        ]
+        
+        # Overall compatibility assessment
+        if len(validation_results['issues']) == 0:
+            validation_results['status'] = 'FULLY_COMPATIBLE'
+        elif len(validation_results['issues']) <= 2:
+            validation_results['status'] = 'MOSTLY_COMPATIBLE'
+        else:
+            validation_results['status'] = 'COMPATIBILITY_ISSUES'
+            validation_results['compatible'] = False
+        
+        print(f"🔍 Pipeline兼容性验证: {validation_results['status']}")
+        if validation_results['issues']:
+            print(f"   问题: {len(validation_results['issues'])} 个")
+            for issue in validation_results['issues']:
+                print(f"     - {issue}")
+        if validation_results['warnings']:
+            print(f"   警告: {len(validation_results['warnings'])} 个")
+            for warning in validation_results['warnings']:
+                print(f"     - {warning}")
+        
+        return validation_results
 
 
 # Backward compatibility alias for task factory
