@@ -181,23 +181,23 @@ All tasks follow these criteria:
 
 ### Pipeline Integration Tasks
 
-- [ ] 26. Add Pipeline_02_pretrain_fewshot compatibility methods  
+- [x] 26. Add Pipeline_02_pretrain_fewshot compatibility methods  
   _Requirements: 5.1_  
   _Leverage: src/task_factory/task/pretrain/masked_reconstruction.py_  
   _File: src/task_factory/task/pretrain/flow_pretrain.py_  
   _Time: 25 minutes_
 
-- [ ] 27. Test checkpoint compatibility with downstream tasks  
+- [x] 27. Test checkpoint compatibility with downstream tasks  
   _Requirements: 5.1_  
   _File: test/test_flow_pretrain_pipeline.py_  
   _Time: 15 minutes_
 
-- [ ] 28. Test pipeline configuration loading  
+- [x] 28. Test pipeline configuration loading  
   _Requirements: 5.1_  
   _File: test/test_flow_pretrain_pipeline.py_  
   _Time: 10 minutes_
 
-- [ ] 29. Test pipeline stage transitions and metadata  
+- [x] 29. Test pipeline stage transitions and metadata  
   _Requirements: 5.1_  
   _File: test/test_flow_pretrain_pipeline.py_  
   _Time: 15 minutes_
