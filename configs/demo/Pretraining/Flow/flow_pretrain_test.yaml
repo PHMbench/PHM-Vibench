@@ -1,0 +1,87 @@
+# Flow预训练测试配置 - 1轮次快速验证
+# 用于集成测试和快速验证
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 8
+  num_workers: 0
+  train_ratio: 0.8
+  normalization: true
+  window_size: 512
+  stride: 5
+  truncate_length: 100
+  dtype: float32
+  num_window: 16
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'
+
+model:
+  name: "M_04_ISFM_Flow" 
+  type: "ISFM"
+  hidden_dim: 128
+  time_dim: 32
+  condition_dim: 32
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 必需的系统参数
+  target_system_id: [6, 9, 15]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc"]
+  
+  # 测试Flow参数
+  num_steps: 50           # 减少推理步数
+  flow_lr: 1e-3
+  
+  # 关闭对比学习，专注Flow训练
+  use_contrastive: false
+  
+  # 简化监控
+  enable_visualization: false
+  track_memory: true
+  track_gradients: false
+  
+  # 基本训练参数 - 单轮次测试
+  optimizer: "adam"
+  lr: 1e-3
+  weight_decay: 1e-5
+  epochs: 1               # 单轮次快速测试
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  early_stopping: false
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  
+  # 快速日志
+  log_every_n_steps: 10
+  val_check_interval: 1.0
+  
+  # 快速测试设置
+  limit_train_batches: 10  # 限制训练批次
+  limit_val_batches: 5     # 限制验证批次
+  fast_dev_run: false      # 不使用dev模式，需要真实训练
+
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow"
+  PYTHONPATH: "/home/lq/.conda/envs/P"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  
+  project: "flow_integration_test"
+  seed: 42
+  output_dir: "results/flow_test"
+  notes: "Flow pretraining integration test"
+  iterations: 1
