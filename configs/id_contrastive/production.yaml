@@ -1,0 +1,70 @@
+# 生产环境优化配置
+# 用于正式实验，优化性能和精度
+
+data:
+  factory_name: "id"                    # 使用id_data_factory
+  dataset_name: "ID_dataset"            # 标准ID_dataset类
+  data_dir: "data"                      # 数据目录
+  metadata_file: "metadata_6_1.xlsx"   # metadata文件
+  batch_size: 64                        # 大批量，提高GPU利用率
+  num_workers: 8                        # 充分利用多核CPU
+  
+  # 窗口化参数（生产环境大参数）
+  window_size: 2048                     # 大窗口，捕获更多信息
+  stride: 1024                          # 大步长
+  num_window: 4                         # 更多窗口对
+  window_sampling_strategy: "random"    # 随机采样
+  
+  # 数据预处理参数  
+  normalization: true                   # 启用标准化
+  truncate_length: 32768               # 大信号长度
+
+model:
+  type: "ISFM"                         # 模型类型
+  name: "M_01_ISFM"                    # ISFM基础模型
+  backbone: "B_08_PatchTST"            # PatchTST主干网络
+  d_model: 512                         # 大模型维度
+
+task:
+  type: "pretrain"                     # 预训练任务类型
+  name: "contrastive_id"               # 任务名称
+  
+  # 训练参数
+  lr: 5e-4                            # 较小学习率，更稳定
+  weight_decay: 1e-5                  # 较小权重衰减
+  
+  # 对比学习参数
+  temperature: 0.05                   # 较低温度，更尖锐分布
+
+trainer:
+  # 基础训练参数
+  epochs: 100                         # 充分训练
+  accelerator: "gpu"                  # 使用GPU
+  devices: [0]                        # 指定GPU设备
+  precision: 16                       # 混合精度训练
+  
+  # 优化参数
+  gradient_clip_val: 0.5              # 更严格的梯度裁剪
+  accumulate_grad_batches: 2          # 梯度累积，模拟更大批量
+  
+  # 验证和保存
+  check_val_every_n_epoch: 10         # 较少验证，专注训练
+  
+  # 日志
+  log_every_n_steps: 100              # 适度日志记录
+  
+  # 早停和学习率调度
+  patience: 15                        # 早停耐心
+  monitor: "val_contrastive_acc"      # 监控验证准确率
+  
+  # 检查点保存
+  save_top_k: 3                       # 保存最佳3个模型
+  save_last: true                     # 保存最后一个检查点
+
+environment:
+  save_dir: "save/production/"        # 生产结果保存目录
+  experiment_name: "contrastive_production"
+  
+  # 资源监控
+  enable_memory_profiling: true       # 启用内存监控
+  enable_performance_profiling: true  # 启用性能监控
