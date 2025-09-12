@@ -24,6 +24,12 @@ data:
   target_datasets: ["PU", "MFPT"]      # 目标域数据集列表
   domain_adaptation: true              # 启用域适应
   dataset_balancing: "weighted"        # 数据集平衡策略: ['equal', 'proportional', 'weighted']
+  
+  # 高级跨数据集参数
+  enable_domain_randomization: false   # 域随机化增强
+  source_domain_weights: null          # 源域权重 (null 为自动计算)
+  cross_validation_folds: 5            # 交叉验证折数
+  enable_target_adaptation: false      # 是否在目标域上进行适应
 
 model:
   type: "ISFM"                         # 模型类型
@@ -63,6 +69,11 @@ trainer:
   # 验证和保存
   check_val_every_n_epoch: 5          # 验证频率
   val_split_strategy: "target_only"   # 验证集策略: ['mixed', 'target_only', 'source_only']
+  
+  # 早停配置
+  enable_early_stopping: true        # 启用早停
+  patience: 20                        # 跸域实验需要更多耐心
+  monitor: "val_target_acc"           # 监控目标域性能
   
   # 日志
   log_every_n_steps: 50              # 日志记录频率
