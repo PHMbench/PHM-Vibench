@@ -33,6 +33,12 @@ class H5DataDict:
         
     def _open_if_needed(self):
         if self.h5f is None or not hasattr(self.h5f, 'id') or not self.h5f.id.valid:
+            # 先关闭旧的文件句柄，防止泄漏
+            if self.h5f is not None:
+                try:
+                    self.h5f.close()
+                except:
+                    pass  # 忽略关闭时的异常
             self.h5f = h5py.File(self.h5_file, 'r', libver='latest', swmr=True)
             self._keys = set(self.h5f.keys())
     

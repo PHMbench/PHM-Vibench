@@ -21,7 +21,7 @@ data:
   data_dir: "/mnt/crucial/LQ/PHM-Vibench"
   metadata_file: "metadata_6_11.xlsx"
   batch_size: 32     # Reduced from 128 to 32 for memory efficiency
-  num_workers: 16    # Reduced workers to match smaller batches
+  num_workers: 4     # MEMORY OPTIMIZED: 限制到4个worker进程
   window_size: 4096
   stride: 4
   truncate_length: 200
@@ -159,9 +159,11 @@ trainer:
   # Device configuration
   device: 'cuda'
   
-  # Validation
+  # Validation - MEMORY OPTIMIZED
   val_check_interval: 1.0
-  check_val_every_n_epoch: 1
+  check_val_every_n_epoch: 5  # 减少验证频率：每5个epoch验证一次
+  limit_val_batches: 0.1      # 只使用10%的验证数据减少内存使用
+  limit_test_batches: 0.2     # 只使用20%的测试数据
   
   # Evaluation Configuration (moved from evaluation section)
   compute_metrics:
