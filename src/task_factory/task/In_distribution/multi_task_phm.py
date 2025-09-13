@@ -16,6 +16,7 @@ from ...Components.loss import get_loss_fn
 from ...Components.metrics import get_metrics
 from ...Components.system_metrics_tracker import SystemMetricsTracker
 from ...Components.metrics_markdown_reporter import MetricsMarkdownReporter
+from ....utils.memory_manager import clear_all_memory
 import torchmetrics
 
 
@@ -800,9 +801,21 @@ class task(pl.LightningModule):
             # Default: use task output directly
             return loss_fn(task_output, targets)
     
+    def on_train_epoch_end(self):
+        """Training epoch结束时进行内存清理"""
+        # 清理追踪器（如果有的话）
+        trackers = []
+        if hasattr(self, 'train_system_tracker'):
+            trackers.append(self.train_system_tracker)
+        
+        # 使用统一的内存清理函数
+        clear_all_memory(trackers=trackers)
+    
     def on_validation_epoch_end(self):
         """Validation epoch结束时汇总系统指标"""
         if not self.track_system_metrics:
+            # 即使没有系统追踪，也要清理内存
+            clear_all_memory()
             return
             
         if self.val_system_tracker.get_system_count() > 0:
@@ -818,13 +831,15 @@ class task(pl.LightningModule):
             # 打印系统性能对比
             if self.system_metrics_verbose:
                 self._print_system_comparison('Validation', epoch_metrics)
-            
-            # 清空追踪器准备下一epoch
-            self.val_system_tracker.clear()
+        
+        # 使用统一的内存清理函数（包含追踪器清理）
+        clear_all_memory(trackers=[self.val_system_tracker])
 
     def on_test_epoch_end(self):
         """Test epoch结束时生成完整报告"""
         if not self.track_system_metrics:
+            # 即使没有系统追踪，也要清理内存
+            clear_all_memory()
             return
             
         if self.test_system_tracker.get_system_count() > 0:
@@ -869,9 +884,9 @@ class task(pl.LightningModule):
             # 打印系统性能对比
             if self.system_metrics_verbose:
                 self._print_system_comparison('Test', epoch_metrics)
-            
-            # 清空追踪器
-            self.test_system_tracker.clear()
+        
+        # 使用统一的内存清理函数（包含追踪器清理）
+        clear_all_memory(trackers=[self.test_system_tracker])
 
     def _print_system_comparison(self, phase: str, epoch_metrics: Dict[str, Dict[str, float]]):
         """打印系统间性能对比表"""
