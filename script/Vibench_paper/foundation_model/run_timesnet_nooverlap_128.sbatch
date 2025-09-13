@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=timesnet_nooverlap_128
 #SBATCH --partition=gpu
-#SBATCH --gpus=A100:1              # A100 GPU for TimesNet with 128 windows
+#SBATCH --gpus=a100:1              # A100 GPU for TimesNet with 128 windows
 #SBATCH --cpus-per-gpu=12          # Increased CPUs for better throughput
 #SBATCH --mem=64G                  # Increased memory for TimesNet with 128 windows
 #SBATCH --time=36:00:00            # 36 hours for TimesNet with 128 windows
