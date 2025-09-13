@@ -159,9 +159,11 @@ trainer:
   # Device configuration
   device: 'cuda'
   
-  # Validation
+  # Validation - MEMORY OPTIMIZED
   val_check_interval: 1.0
-  check_val_every_n_epoch: 1
+  check_val_every_n_epoch: 5  # 减少验证频率：每5个epoch验证一次
+  limit_val_batches: 0.1      # 只使用10%的验证数据减少内存使用
+  limit_test_batches: 0.2     # 只使用20%的测试数据
   
   # Validation Performance Optimization
   validation_verbose: false  # Disable verbose warnings during validation for speed
