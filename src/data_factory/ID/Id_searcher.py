@@ -48,6 +48,9 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
     # 检查Label是否有空值 
     filtered_df = filtered_df[filtered_df['Label'].notna()]
 
+    # 检查Label是否有-1
+    filtered_df = filtered_df[filtered_df['Label'] != -1]
+
     # # 检查是否visiable？
     # filtered_df = filtered_df[filtered_df['Visible'] == True]
 

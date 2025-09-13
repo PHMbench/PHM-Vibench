@@ -7,7 +7,16 @@ from einops import rearrange, repeat
 from . import embedding
 from . import backbone
 from . import task_head
-from . import M_01_ISFM
+# from . import M_01_ISFM, M_02_ISFM
+
+# New SOTA Foundation Models
+from .ContrastiveSSL import Model as ContrastiveSSL
+from .MaskedAutoencoder import Model as MaskedAutoencoder
+from .MultiModalFM import Model as MultiModalFM
+from .SignalLanguageFM import Model as SignalLanguageFM
+from .TemporalDynamicsSSL import Model as TemporalDynamicsSSL
 
 __all__ = ['embedding', 'backbone', 'task_head',
-           'M_01_ISFM']
+           'ContrastiveSSL', 'MaskedAutoencoder', 'MultiModalFM',
+           'SignalLanguageFM', 'TemporalDynamicsSSL'
+] #            'M_01_ISFM', 'M_02_ISFM'

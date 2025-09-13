@@ -1,0 +1,267 @@
+# Multi-Task PHM Foundation Model Configuration
+# This configuration file defines parameters for training a multi-task Prognostics and Health Management
+# foundation model using the ISFM architecture within the PHM-Vibench framework.
+#
+# The model simultaneously performs three distinct tasks:
+# 1. Fault Classification: Multi-class classification to identify different types of faults
+# 2. Remaining Useful Life (RUL) Prediction: Regression task to predict remaining operational time
+# 3. Anomaly Detection: Binary classification to detect abnormal operating conditions
+#
+# Author: PHM-Vibench Team
+# Date: 2025-08-18
+
+# Environment Configuration
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "MultiTask_PHM_Foundation"
+  seed: 42
+  output_dir: "results/multi_task_phm"
+  iterations: 1
+  wandb: true
+  swanlab: true
+  notes: 'Multi-task PHM foundation model baseline implementation'
+  workspace: 'PHMbench'
+
+# Data Configuration
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 128
+  num_workers: 16
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  
+  # Data preprocessing parameters
+  window_size: 4096
+  stride: 4
+  truncate_length: 200
+  dtype: float32
+  num_window: 512
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'  # 'standardization' or 'minmax'
+  
+  # Data augmentation (optional)
+  augmentation:
+    enabled: true
+    noise_std: 0.01
+    time_shift_max: 0.1
+    amplitude_scale_range: [0.9, 1.1]
+
+# Model Configuration
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  
+  # ISFM Architecture Parameters
+  num_patches: 128
+  embedding: E_01_HSE  # E_01_HSE, E_02_HSE_v2, E_03_Patch_DPOT
+  patch_size_L: 256
+  patch_size_C: 1
+  output_dim: 1024
+  backbone: B_08_PatchTST  # B_01_basic_transformer, B_04_Dlinear, B_06_TimesNet, B_08_PatchTST
+  
+  # Backbone-specific parameters
+  num_heads: 8
+  num_layers: 3
+  d_ff: 2048
+  dropout: 0.1
+  e_layers: 2
+  factor: 5
+  
+  # Multi-task head configuration
+  task_head: MultiTaskHead
+  hidden_dim: 512
+  use_batch_norm: true
+  activation: "gelu"
+  rul_max_value: 2000.0
+  
+  # FNO-specific parameters (if using B_09_FNO backbone)
+  modes: 32
+  width: 128
+
+# Task Configuration
+task:
+  name: "multi_task_phm"
+  type: "multi_task"
+  
+  # Multi-task settings
+  enabled_tasks: ['classification', 'rul_prediction', 'anomaly_detection']
+  task_weights:
+    classification: 1.0
+    rul_prediction: 0.8
+    anomaly_detection: 0.6
+  
+  # Loss function configuration
+  classification_loss: "CE"  # CrossEntropy
+  rul_loss: "MSE"  # MSE or MAE
+  anomaly_loss: "BCE"  # Binary CrossEntropy with logits
+  
+  # Metrics configuration
+  metrics: ["acc", "f1", "precision", "recall"]
+  
+  # Target systems/datasets for evaluation
+  target_system_id: [1, 5, 6, 13, 19]
+  
+  # Optimization parameters
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.01
+  momentum: 0.9  # For SGD
+  
+  # Learning rate scheduling
+  scheduler:
+    name: "cosine"  # "reduceonplateau", "cosine", "step"
+    options:
+      T_max: 100
+      eta_min: 1e-6
+      # For ReduceLROnPlateau
+      patience: 15
+      factor: 0.5
+      mode: "min"
+      # For StepLR
+      step_size: 30
+      gamma: 0.1
+  
+  # Regularization
+  regularization:
+    l2: 1e-4
+    l1: 1e-5
+    dropout: 0.1
+  
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 25
+    min_delta: 1e-4
+    monitor: "val_total_loss"
+  
+  # Task-specific parameters
+  # RUL prediction parameters
+  rul_prediction:
+    max_rul_value: 2000.0
+    normalize_targets: true
+    loss_weight: 0.8
+  
+  # Anomaly detection parameters
+  anomaly_detection:
+    threshold: 0.5
+    class_weights: [1.0, 2.0]  # [normal, anomaly]
+    loss_weight: 0.6
+  
+  # Classification parameters
+  classification:
+    label_smoothing: 0.1
+    loss_weight: 1.0
+
+# Trainer Configuration
+trainer:
+  name: "Default_trainer"
+  monitor: "val_total_loss"
+  
+  # Training parameters
+  num_epochs: 150
+  gpus: 1
+  precision: 16  # Mixed precision training
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  
+  # Validation and testing
+  val_check_interval: 1.0
+  check_val_every_n_epoch: 1
+  
+  # Callbacks
+  early_stopping: true
+  patience: 25
+  
+  # Model checkpointing
+  save_top_k: 3
+  save_last: true
+  
+  # Pruning (optional)
+  pruning: false
+  
+  # Evaluation Configuration (moved from evaluation section)
+  compute_metrics:
+    - "accuracy"
+    - "f1_score"
+    - "precision"
+    - "recall"
+    - "confusion_matrix"
+    - "roc_auc"  # For anomaly detection
+    - "mse"      # For RUL prediction
+    - "mae"      # For RUL prediction
+    - "r2_score" # For RUL prediction
+  
+  # Evaluation frequency
+  eval_frequency: 5  # Every 5 epochs
+  
+  # Test set evaluation
+  test_after_training: true
+  pruning_amount: [0.1, 0.3, 0.5]
+  
+  # Logging
+  log_every_n_steps: 50
+  
+  # Device configuration
+  device: 'cuda'
+  
+  # Distributed training (if using multiple GPUs)
+  strategy: "ddp_find_unused_parameters_true"
+  sync_batchnorm: true
+
+# Logging and Monitoring Configuration
+logging:
+  # Weights & Biases configuration
+  wandb:
+    project: "MultiTask_PHM_Foundation"
+    entity: "phm-vibench"
+    tags: ["multi-task", "phm", "foundation-model", "isfm"]
+    notes: "Baseline multi-task PHM foundation model implementation"
+    
+  # SwanLab configuration
+  swanlab:
+    project: "MultiTask_PHM_Foundation"
+    experiment_name: "baseline_multi_task"
+    
+  # Local logging
+  csv_logger:
+    save_dir: "logs"
+    name: "multi_task_logs"
+    
+  # TensorBoard
+  tensorboard:
+    save_dir: "tensorboard_logs"
+    name: "multi_task_tb"
+
+  
+  # Cross-validation (optional)
+  cross_validation:
+    enabled: false
+    n_folds: 5
+    
+# Reproducibility
+reproducibility:
+  deterministic: true
+  benchmark: false
+  seed_everything: true
+
+# Advanced Configuration
+advanced:
+  # Gradient accumulation for large batch simulation
+  effective_batch_size: 512  # Will accumulate gradients to achieve this
+  
+  # Mixed precision training
+  use_amp: true
+  
+  # Model compilation (PyTorch 2.0+)
+  compile_model: false
+  
+  # Memory optimization
+  memory_efficient: true
+  
+  # Profiling (for debugging)
+  profiler: null  # "simple", "advanced", or null

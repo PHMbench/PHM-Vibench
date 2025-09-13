@@ -30,7 +30,9 @@ class series_decomp(nn.Module):
         self.moving_avg = moving_avg(kernel_size, stride=1)
 
     def forward(self, x):
+        # x: [B, L, C]
         moving_mean = self.moving_avg(x)
+        # x - moving_mean: 
         res = x - moving_mean
         return res, moving_mean
 
@@ -45,11 +47,11 @@ class B_04_Dlinear(nn.Module):
         individual: Bool, whether shared model among different variates.
         """
         super(B_04_Dlinear, self).__init__()
-        self.patch_size_L = configs.patch_size_L
+        self.patch_size_L = configs.num_patches
         # Series decomposition block from Autoformer
         self.decompsition = series_decomp(65)
         self.individual = individual
-        self.channels = configs.patch_size_C
+        self.channels = configs.output_dim  # number of channels
 
         if self.individual:
             self.Linear_Seasonal = nn.ModuleList()
@@ -107,8 +109,8 @@ if __name__ == "__main__":
     from argparse import Namespace
     class Config:
         def __init__(self):
-            self.patch_size_L = 4096
-            self.patch_size_C = 1  # 输入通道数/特征维度
+            self.num_patches = 256
+            self.output_dim = 1024  # 输入通道数/特征维度
             self.moving_avg = 125
 
     # DLinear模型测试
@@ -117,11 +119,11 @@ if __name__ == "__main__":
         configs = Config()
         
         # 创建模型实例
-        model = Model(configs, individual=False)
+        model = B_04_Dlinear(configs, individual=False)
         
         # 创建一批测试数据
         batch_size = 32
-        x = torch.randn(batch_size, configs.patch_size_L, configs.patch_size_C)  # [B, L, C]
+        x = torch.randn(batch_size, configs.num_patches, configs.output_dim)  # [B, L, C]
         
         # 运行模型
         output = model(x)
@@ -129,7 +131,7 @@ if __name__ == "__main__":
         # 验证输出形状
         print(f"输入形状: {x.shape}")
         print(f"输出形状: {output.shape}")
-        assert output.shape == (batch_size, configs.patch_size_L, configs.patch_size_C), "输出形状应为 [B, L, C]"
+        assert output.shape == (batch_size, configs.num_patches, configs.output_dim), "输出形状应为 [B, L, C]"
         print("测试通过！输入输出形状一致: [B, L, C]")
         
         return output

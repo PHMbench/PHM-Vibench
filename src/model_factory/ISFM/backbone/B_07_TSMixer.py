@@ -54,7 +54,7 @@ if __name__ == "__main__":
             self.dropout = 0.1
 
     configs = Config()
-    model = TSMixerBackbone(configs)
+    model = B_07_TSMixer(configs)
     x_enc = torch.randn(32, configs.seq_len, configs.enc_in)  # [B, L, D]
     output = model(x_enc)
     print(output.shape)  # 应该是 [B, L, D]

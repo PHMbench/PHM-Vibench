@@ -1,41 +1,68 @@
-"""
-任务工厂模块
-"""
-import importlib
-import os
-import glob
-from typing import Dict, Any
-from .task_factory import task_factory
-import torch.nn as nn
+"""Public API for the task factory package."""
+
 from argparse import Namespace
+from typing import Any
+
+import torch.nn as nn
+
+from .task_factory import (
+    TASK_REGISTRY,
+    register_task,
+    resolve_task_module,
+    task_factory,
+)
 
 
-def build_task(    args_task: Namespace,      # Task config (Namespace)
+def build_task(
+    args_task: Namespace,
     network: nn.Module,
-    args_data: Namespace,      # Data args (Namespace)
-    args_model: Namespace,     # Model args (Namespace)
-    args_trainer: Namespace,   # Training args (Namespace) - Renamed from args_t
-    args_environment: Namespace, # Environment args (Namespace)
-    metadata: Any         ) -> Any:
-    """根据配置构建任务实例
-    
-    Args:
-        config: 任务配置字典，包含 "name" 和 "args" 字段
-        
-    Returns:
-        任务实例
+    args_data: Namespace,
+    args_model: Namespace,
+    args_trainer: Namespace,
+    args_environment: Namespace,
+    metadata: Any,
+    args_evaluation: Any = None,
+) -> Any:
+    """Instantiate a task module using :mod:`task_factory`.
+
+    Parameters
+    ----------
+    args_task : Namespace
+        Task configuration namespace.
+    network : nn.Module
+        Model backbone to be wrapped by the task.
+    args_data : Namespace
+        Dataset related configuration.
+    args_model : Namespace
+        Model configuration namespace.
+    args_trainer : Namespace
+        Trainer configuration namespace.
+    args_environment : Namespace
+        Runtime environment configuration.
+    metadata : Any
+        Dataset metadata passed to the task.
+    args_evaluation : Any, optional
+        Evaluation configuration namespace for metrics computation.
+
+    Returns
+    -------
+    Any
+        Instantiated LightningModule or ``None`` on failure.
     """
     return task_factory(
-        args_task=args_task,      # Task config (Namespace)
+        args_task=args_task,
         network=network,
-        args_data=args_data,      # Data args (Namespace)
-        args_model=args_model,     # Model args (Namespace)
-        args_trainer=args_trainer,   # Training args (Namespace) - Renamed from args_t
-        args_environment=args_environment, # Environment args (Namespace)
-        metadata=metadata
+        args_data=args_data,
+        args_model=args_model,
+        args_trainer=args_trainer,
+        args_environment=args_environment,
+        metadata=metadata,
+        args_evaluation=args_evaluation,
     )
 
-
-
-# 导出公共API
-__all__ = ["build_task"]
+__all__ = [
+    "build_task",
+    "resolve_task_module",
+    "register_task",
+    "TASK_REGISTRY",
+]

@@ -22,7 +22,7 @@ model:
   embedding_dim: 64
 
 task:
-  name: "Classification"
+  name: "classification"
   type: "FS"
   n_way: 5
   k_shot: 5

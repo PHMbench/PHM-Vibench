@@ -1,0 +1,354 @@
+# Two-Stage Multi-Task PHM Foundation Model Training Configuration
+# This configuration supports both pretraining and fine-tuning stages with backbone comparison
+#
+# STAGE 1: Unsupervised pretraining using masked signal reconstruction
+# STAGE 2: Supervised fine-tuning on specific PHM tasks
+#
+# Author: PHM-Vibench Team
+# Date: 2025-08-18
+
+# Environment Configuration
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "MultiTask_Pretrain_Finetune"
+  seed: 42
+  output_dir: "results/multitask_pretrain_finetune"
+  iterations: 1
+  wandb: true
+  swanlab: true
+  notes: 'Two-stage multi-task PHM foundation model with backbone comparison'
+  workspace: 'PHMbench'
+
+# Training Configuration - Two-Stage Approach
+training:
+  # Stage 1: Unsupervised Pretraining Phase
+  stage_1_pretraining:
+    enabled: true
+    target_systems: [1, 5, 6, 13, 19]  # Systems for pretraining data
+    backbones_to_compare: ["B_09_FNO", "B_04_Dlinear", "B_06_TimesNet", "B_08_PatchTST"]
+    
+    # Training hyperparameters
+    epochs: 100
+    batch_size: 64
+    learning_rate: 0.001
+    weight_decay: 0.01
+    optimizer: "adamw"
+    
+    # Masking strategy for reconstruction
+    masking_ratio: 0.15        # 15% of signal patches masked
+    forecast_part: 0.1         # 10% of sequence for forecasting
+    
+    # Loss configuration
+    reconstruction_loss_weight: 1.0
+    loss_type: "mse"           # MSE or rel_l2
+    
+    # Checkpointing
+    checkpoint_every_n_epochs: 10
+    save_top_k: 3
+    
+    # Early stopping
+    patience: 20
+    min_delta: 1e-4
+    
+    # Scheduler
+    scheduler:
+      name: "cosine"
+      options:
+        T_max: 100
+        eta_min: 1e-6
+  
+  # Stage 2: Supervised Fine-Tuning Phase
+  stage_2_finetuning:
+    enabled: true
+    load_pretrained: true
+    
+    # System configuration
+    individual_systems: [1, 5, 6, 13, 19]  # Single-task fine-tuning systems
+    multitask_system: 2                     # Multi-task fine-tuning system
+    
+    # Training hyperparameters
+    epochs: 50
+    batch_size: 32
+    learning_rate: 0.0001
+    weight_decay: 0.001
+    optimizer: "adamw"
+    
+    # Multi-task loss weights (for multitask_system)
+    task_weights:
+      classification: 1.0
+      rul_prediction: 0.8
+      anomaly_detection: 0.6
+    
+    # Progressive unfreezing strategy
+    progressive_unfreezing:
+      enabled: false
+      freeze_backbone_epochs: 10
+      freeze_embedding_epochs: 5
+      unfreeze_schedule: "linear"
+    
+    # Early stopping
+    patience: 15
+    min_delta: 1e-4
+    
+    # Scheduler
+    scheduler:
+      name: "reduceonplateau"
+      options:
+        patience: 10
+        factor: 0.5
+        mode: "min"
+
+# Data Configuration
+data:
+  # Data paths and metadata
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_11.xlsx"
+  
+  # Data loading parameters
+  batch_size: 64  # Will be overridden by stage-specific settings
+  num_workers: 16
+  pin_memory: true
+  
+  # Data splitting
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  
+  # Signal preprocessing
+  window_size: 4096
+  stride: 4
+  truncate_length: 200
+  dtype: float32
+  num_window: 512
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'  # 'standardization' or 'minmax'
+  
+  # Data augmentation (optional)
+  augmentation:
+    enabled: false
+    noise_std: 0.01
+    time_shift_max: 0.1
+    amplitude_scale_range: [0.9, 1.1]
+
+# Model Configuration
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  
+  # ISFM Architecture Parameters
+  num_patches: 128
+  embedding: E_01_HSE  # E_01_HSE, E_02_HSE_v2, E_03_Patch_DPOT
+  patch_size_L: 256
+  patch_size_C: 1
+  output_dim: 1024
+  backbone: B_08_PatchTST  # Will be overridden by pipeline for comparison
+  
+  # Backbone-specific parameters
+  num_heads: 8
+  num_layers: 3
+  d_ff: 2048
+  dropout: 0.1
+  e_layers: 2
+  factor: 5
+  
+  # Multi-task head configuration (accounting for user modifications)
+  task_head: MultiTaskHead
+  hidden_dim: 512
+  use_batch_norm: true
+  activation: "gelu"
+  rul_max_value: 1  # User modified from 1000.0 to 1
+  # Note: dropout layers are commented out in MultiTaskHead per user modifications
+  
+  # FNO-specific parameters (for B_09_FNO backbone)
+  modes: 32
+  width: 128
+  
+  # Dlinear-specific parameters (for B_04_Dlinear backbone)
+  individual: false
+  
+  # TimesNet-specific parameters (for B_06_TimesNet backbone)
+  top_k: 5
+  d_model: 512
+  
+  # PatchTST-specific parameters (for B_08_PatchTST backbone)
+  fc_dropout: 0.1
+  head_dropout: 0.0
+  patch_len: 16
+  stride: 8
+
+# Task Configuration
+task:
+  name: "multitask_pretrain_finetune"
+  type: "multi_stage"
+  
+  # Task-specific configurations will be set by pipeline
+  # This section serves as defaults
+  
+  # Pretraining task defaults
+  pretraining:
+    loss: "MSE"
+    metrics: ["reconstruction_mse", "signal_correlation"]
+  
+  # Fine-tuning task defaults
+  finetuning:
+    # Single-task configurations
+    classification:
+      loss: "CE"
+      metrics: ["acc", "f1", "precision", "recall"]
+      label_smoothing: 0.1
+    
+    anomaly_detection:
+      loss: "BCE"
+      metrics: ["acc", "f1", "auroc", "auprc"]
+      threshold: 0.5
+      class_weights: [1.0, 2.0]  # [normal, anomaly]
+    
+    rul_prediction:
+      loss: "MSE"  # or "MAE"
+      metrics: ["mse", "mae", "r2_score", "correlation"]
+      normalize_targets: true
+    
+    # Multi-task configuration
+    multitask:
+      enabled_tasks: ['classification', 'rul_prediction', 'anomaly_detection']
+      loss_weights:
+        classification: 1.0
+        rul_prediction: 0.8
+        anomaly_detection: 0.6
+      metrics: ["acc", "f1", "mse", "mae", "auroc"]
+  
+  # Regularization
+  regularization:
+    l2: 1e-4
+    l1: 1e-5
+
+# Trainer Configuration
+trainer:
+  name: "Default_trainer"
+  monitor: "val_loss"  # Will be overridden by stage-specific settings
+  
+  # Training parameters
+  num_epochs: 100  # Will be overridden by stage-specific settings
+  gpus: 1
+  precision: 32  # Use 16 for mixed precision training
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  
+  # Validation and testing
+  val_check_interval: 1.0
+  check_val_every_n_epoch: 1
+  
+  # Callbacks
+  early_stopping: true
+  patience: 20  # Will be overridden by stage-specific settings
+  
+  # Model checkpointing
+  save_top_k: 3
+  save_last: true
+  
+  # Logging
+  log_every_n_steps: 50
+  
+  # Device configuration
+  device: 'cuda'
+  
+  # Distributed training (if using multiple GPUs)
+  strategy: "auto"
+  sync_batchnorm: false
+  
+  # Evaluation Configuration (moved from evaluation section)
+  # Metrics to track during training
+  metrics_to_track:
+    pretraining: 
+      - "reconstruction_mse"
+      - "signal_correlation" 
+      - "spectral_similarity"
+      - "mask_fraction"
+    
+    classification: 
+      - "accuracy"
+      - "f1_weighted"
+      - "precision"
+      - "recall"
+      - "confusion_matrix"
+    
+    regression: 
+      - "mse"
+      - "mae"
+      - "r2_score"
+      - "correlation"
+      - "prediction_error_distribution"
+    
+    anomaly: 
+      - "auroc"
+      - "auprc"
+      - "f1_score"
+      - "optimal_threshold"
+      - "precision_recall_curve"
+  
+  # Validation frequency
+  validation_frequency: 5  # Every 5 epochs
+  
+  # Test set evaluation
+  test_after_training: true
+  
+  # Performance comparison
+  backbone_comparison:
+    enabled: true
+    statistical_significance: true
+    significance_level: 0.05
+    
+  # Cross-validation (optional)
+  cross_validation:
+    enabled: false
+    n_folds: 5
+
+# Logging and Monitoring Configuration
+logging:
+  # Weights & Biases configuration
+  wandb:
+    project: "MultiTask_Pretrain_Finetune"
+    entity: "phm-vibench"
+    tags: ["multi-task", "pretraining", "fine-tuning", "backbone-comparison"]
+    notes: "Two-stage multi-task PHM foundation model with backbone architecture comparison"
+    
+  # SwanLab configuration
+  swanlab:
+    project: "MultiTask_Pretrain_Finetune"
+    experiment_name: "two_stage_multitask"
+    
+  # Local logging
+  csv_logger:
+    save_dir: "logs"
+    name: "multitask_pretrain_finetune_logs"
+    
+  # TensorBoard
+  tensorboard:
+    save_dir: "tensorboard_logs"
+    name: "multitask_pretrain_finetune_tb"
+
+# Reproducibility Configuration
+reproducibility:
+  deterministic: true
+  benchmark: false
+  seed_everything: true
+
+# Advanced Configuration
+advanced:
+  # Memory optimization
+  memory_efficient: true
+  
+  # Model compilation (PyTorch 2.0+)
+  compile_model: false
+  
+  # Profiling (for debugging)
+  profiler: null  # "simple", "advanced", or null
+  
+  # Checkpoint management
+  checkpoint_management:
+    auto_cleanup: true
+    keep_last_n: 5
+    cleanup_after_completion: false

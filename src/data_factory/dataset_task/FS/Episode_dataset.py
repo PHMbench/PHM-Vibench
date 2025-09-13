@@ -1,11 +1,11 @@
-# src/data_factory/dataset_task/FewShot/Classification_dataset.py
+# src/data_factory/dataset_task/FewShot/classification_dataset.py
 
 import torch
 from ..Default_dataset import Default_dataset
 
 class set_dataset(Default_dataset):
     """
-    Dataset for Few-Shot Classification tasks.
+    Dataset for Few-Shot classification tasks.
     It takes a list of indices for a whole episode from the sampler
     and returns a structured dictionary containing support and query sets.
     """

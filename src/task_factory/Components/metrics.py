@@ -16,11 +16,17 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
         Dataset metadata used to infer the number of classes.
     """
     metric_classes = {
+        # Classification metrics
         "acc": torchmetrics.Accuracy,
         "f1": torchmetrics.F1Score,
         "precision": torchmetrics.Precision,
         "recall": torchmetrics.Recall,
         "auroc": torchmetrics.AUROC,
+        # Regression metrics
+        "mse": torchmetrics.MeanSquaredError,
+        "mae": torchmetrics.MeanAbsoluteError,
+        "r2": torchmetrics.R2Score,
+        "mape": torchmetrics.MeanAbsolutePercentageError,
     }
 
     metrics = nn.ModuleDict()
@@ -40,16 +46,21 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
         if n_class is None:
             raise ValueError(f"数据集 '{data_name}' 的配置缺少 'n_classes'")
 
-        task_type = "multiclass" if n_class > 2 else "binary"
+        task_type = "multiclass" if n_class >= 2 else "binary" # fix
         data_metrics = nn.ModuleDict()
         for stage in ["train", "val", "test"]:
             for metric_name in metric_names:
                 key = metric_name.lower()
                 if key in metric_classes:
-                    data_metrics[f"{stage}_{key}"] = metric_classes[key](
-                        task=task_type,
-                        num_classes=int(n_class) + 1,
-                    )
+                    # Classification metrics need task and num_classes
+                    if key in ["acc", "f1", "precision", "recall", "auroc"]:
+                        data_metrics[f"{stage}_{key}"] = metric_classes[key](
+                            task=task_type,
+                            num_classes=int(n_class) + 1,
+                        )
+                    # Regression metrics don't need these parameters
+                    else:
+                        data_metrics[f"{stage}_{key}"] = metric_classes[key]()
                 else:
                     print(f"警告: 不支持的指标类型 '{metric_name}'，已跳过。")
         metrics[data_name] = data_metrics

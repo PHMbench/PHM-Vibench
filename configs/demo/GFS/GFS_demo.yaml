@@ -67,7 +67,7 @@ model:
 
 # 任务配置
 task:
-  name: "Classification"
+  name: "classification"
   type: 'GFS' # cross-dataset domain generalization
   target_domain_num: 1
 
@@ -103,10 +103,10 @@ task:
 
   num_systems: 1
   num_domains: 1
-  num_labels: 2 # 根据target data 自动设置
+  num_labels: 3 # n_way to set num_labels, should be equal to the number of classes in the target domain
   num_support: 1
   num_query: 1
-  num_episodes: 2
+  num_episodes: 5
   
 
 

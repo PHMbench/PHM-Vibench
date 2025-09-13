@@ -61,7 +61,7 @@ model:
 
 # 任务配置
 task:
-  name: "Classification"
+  name: "classification"
   type: 'CDDG' # cross-dataset domain generalization
   target_domain_num: 1
 

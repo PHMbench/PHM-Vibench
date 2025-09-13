@@ -1,52 +1,63 @@
-"""
-模型读取模块
-负责加载和构建模型实例
-"""
-import os
-import importlib
-import torch
+"""Utilities for instantiating models from configuration."""
 
-def model_factory(args_model,metadata):
+from __future__ import annotations
+
+import importlib
+import os
+from typing import Any
+
+import torch
+from ..utils.utils import get_num_classes
+from ..utils.registry import Registry
+
+# MODEL_REGISTRY = Registry()
+
+# def register_model(model_type: str, name: str):
+#     """Decorator to register a model implementation."""
+#     return MODEL_REGISTRY.register(f"{model_type}.{name}")
+
+
+def resolve_model_module(args_model: Any) -> str:
+    """Return the Python import path for the model module."""
+    return f"src.model_factory.{args_model.type}.{args_model.name}"
+
+
+def model_factory(args_model: Any, metadata: Any):
+    """Instantiate a model by name.
+
+    Parameters
+    ----------
+    args_model : Namespace
+        Configuration namespace with at least ``name`` and ``type``
+        fields. Other attributes are passed to the model's ``Model``
+        constructor.
+    metadata : Any
+        Dataset metadata, used here only to compute ``num_classes``.
+
+    Returns
+    -------
+    nn.Module
+        Instantiated model ready for training.
     """
-    简化版模型读取器，直接加载单个模型
-    
-    Args:
-        args_model: 包含模型配置的命名空间或字典
-            必须包含:
-            - model_name: 模型名称
-            - model_config: 模型配置字典
-            
-    Returns:
-        model: 初始化好的模型实例
-    """
-    # 获取模型名称
-    model_name = args_model.name
-    model_type = args_model.type
-    # 直接导入模型模块
+    args_model.num_classes = get_num_classes(metadata)
+    key = f"{args_model.type}.{args_model.name}"
+    # try:
+    #     model_cls = MODEL_REGISTRY.get(key)
+    # except KeyError:
+    module_path = resolve_model_module(args_model)
+    model_module = importlib.import_module(module_path)
+    model_cls = model_module.Model
+
     try:
-        model_module = importlib.import_module(f"src.model_factory.{model_type}.{model_name}")
-        print(f"成功导入模型模块: {model_name}")
-    except ImportError:
-        raise ValueError(f"未找到名为 {model_name} 的模型模块")
-    
-    
-    # 创建模型实例
-    try:
-        # 如果args_model.model_config存在，使用它作为参数
-        model = model_module.Model(args_model,metadata) # TODO metadata 
+        model = model_cls(args_model, metadata)
         
-        # 如果指定了预训练权重路径，加载权重
-        if hasattr(args_model, 'weights_path') and args_model.weights_path:
+        if hasattr(args_model, "weights_path") and args_model.weights_path:
             weights_path = args_model.weights_path
             if os.path.exists(weights_path):
                 try:
-                    # 尝试加载模型权重
                     load_ckpt(model, weights_path)
-                    print(f"加载权重成功: {weights_path}")
-                except Exception as e:
-                    print(f"加载权重时出错: {str(e)},初始化模型时使用默认权重")
-                    # 权重加载失败但不阻止模型使用
-                    pass
+                except Exception as e:  # pragma: no cover - runtime safeguard
+                    print(f"加载权重时出错: {e}")
         
         return model
     
@@ -55,14 +66,18 @@ def model_factory(args_model,metadata):
     
 
 def load_ckpt(model, ckpt_path):
-    """
-    加载模型权重，匹配shape后加载
-    Args:
-        ckpt_path (str): 模型权重文件路径
+    """Load weights from ``ckpt_path`` into ``model``.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Model instance to be updated.
+    ckpt_path : str
+        Path to a PyTorch checkpoint file.
     """
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")
-    state_dict = torch.load(ckpt_path, map_location='cpu')
+    state_dict = torch.load(ckpt_path, map_location='cpu', weights_only=False)
     model_dict = model.state_dict()
     matched_dict = {}
     skipped = []
@@ -79,3 +94,4 @@ def load_ckpt(model, ckpt_path):
         for name, model_sz in skipped:
             print(f"  {name}: checkpoint vs model {model_sz}")
     print(f"已加载匹配的权重: {ckpt_path}")
+

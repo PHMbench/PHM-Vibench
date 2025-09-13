@@ -13,11 +13,12 @@ def main():
     
     parser.add_argument('--config_path', 
                         type=str, 
-                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
-                        default= 'configs/demo/X_Single_DG/MWA_CNN/HUST.yaml',
-                        # default= 'configs/demo/X_Single_DG/TSPN/HUST.yaml',
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
+                        default='configs/demo/X_Single_DG/MWA_CNN/HUST.yaml',
+                        # Alternative configs:
+                        # 'configs/demo/Single_DG/CWRU.yaml'
+                        # 'configs/demo/X_Single_DG/TSPN/HUST.yaml'
+                        # 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml'
+                        # 'configs/demo/dummy_test.yaml'
                         help='配置文件路径')
     parser.add_argument('--notes',
                         type=str,
@@ -33,6 +34,16 @@ def main():
                         type=str, 
                         default='Pipeline_01_default',
                         help='实验流水线模块路径')
+    
+    parser.add_argument('--data_dir',
+                        type=str,
+                        default=None,
+                        help='数据目录路径，会覆盖配置文件中的data_dir设置')
+    
+    parser.add_argument('--set', 
+                        action='append',
+                        metavar='KEY=VALUE',
+                        help='覆盖配置参数，支持点符号(例: --set model.lr=0.001 --set task.epochs=100)')
     
     args = parser.parse_args()
     pipeline = importlib.import_module(f'src.{args.pipeline}')

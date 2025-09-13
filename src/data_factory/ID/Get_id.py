@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 def remove_invalid_labels(df, label_column='Label'):
@@ -27,21 +26,47 @@ def remove_invalid_labels(df, label_column='Label'):
 def Get_DG_ids(metadata_accessor, args_task):
     """
     Retrieves training/validation and test IDs for Domain Generalization (DG) tasks.
+    If target_domain_num is specified, it will be used to dynamically split domains.
+    Otherwise, it falls back to using source_domain_id and target_domain_id.
     """
-    train_df = metadata_accessor.df[
-        (metadata_accessor.df['Domain_id'].isin(args_task.source_domain_id)) & 
-        (metadata_accessor.df['Dataset_id'].isin(args_task.target_system_id))
+    # Filter by the target system(s) first
+    system_df = metadata_accessor.df[
+        metadata_accessor.df['Dataset_id'].isin(args_task.target_system_id)
     ]
-    test_df = metadata_accessor.df[
-        (metadata_accessor.df['Domain_id'].isin(args_task.target_domain_id)) &
-        (metadata_accessor.df['Dataset_id'].isin(args_task.target_system_id))
-    ]
-    
-    train_df = remove_invalid_labels(train_df)
-    test_df = remove_invalid_labels(test_df)
-    
+    system_df = remove_invalid_labels(system_df)
+
+    # Check if target_domain_num is specified for dynamic splitting
+    if hasattr(args_task, 'target_domain_num') and args_task.target_domain_num > 0:
+        # Dynamic splitting based on target_domain_num
+        all_domains = sorted(system_df['Domain_id'].unique())
+        all_domains = [d for d in all_domains if not pd.isna(d)]
+
+        test_count = min(args_task.target_domain_num, len(all_domains))
+        
+        train_domains = all_domains[:-test_count] if test_count > 0 else all_domains
+        test_domains = all_domains[-test_count:] if test_count > 0 else []
+
+        train_df = system_df[system_df['Domain_id'].isin(train_domains)]
+        test_df = system_df[system_df['Domain_id'].isin(test_domains)]
+
+        print(f"DG划分 - 使用 target_domain_num={args_task.target_domain_num} 进行动态划分")
+        print(f"  - 训练域: {train_domains}")
+        print(f"  - 测试域: {test_domains}")
+
+    else:
+        # Original logic using predefined source/target domains
+        train_df = system_df[system_df['Domain_id'].isin(args_task.source_domain_id)]
+        test_df = system_df[system_df['Domain_id'].isin(args_task.target_domain_id)]
+        
+        print(f"DG划分 - 使用预定义的 source_domain 和 target_domain")
+        print(f"  - 训练域: {getattr(args_task, 'source_domain_id', 'N/A')}")
+        print(f"  - 测试域: {getattr(args_task, 'target_domain_id', 'N/A')}")
+
     train_val_ids = list(train_df['Id'])
     test_ids = list(test_df['Id'])
+    
+    print(f"训练/验证样本数: {len(train_val_ids)}")
+    print(f"测试样本数: {len(test_ids)}")
     
     return train_val_ids, test_ids
 

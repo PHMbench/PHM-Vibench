@@ -1,34 +1,55 @@
-"""
-训练器工厂模块
-"""
-import importlib
-import os
-import glob
-from typing import Dict, Any
-from .trainer_factory import trainer_factory
+"""Public API for the trainer factory package."""
+
+from argparse import Namespace
+from typing import Any
+from . import Default_trainer
+from .trainer_factory import (
+    # TRAINER_REGISTRY,
+    # register_trainer,
+    resolve_trainer_module,
+    trainer_factory,
+
+)
 
 
 def build_trainer(
-        args_environment,
-        args_trainer,  # 训练参数 (Namespace)
-    args_data,     # 数据参数 (Namespace)
-    path) -> Any:
-    """根据配置构建训练器实例
-    
-    Args:
-        config: 训练器配置字典，包含 "name" 和 "args" 字段
-        
-    Returns:
-        训练器实例
+    args_environment: Namespace,
+    args_trainer: Namespace,
+    args_data: Namespace,
+    path: str,
+) -> Any:
+    """Instantiate a trainer via :mod:`trainer_factory`.
+
+    Parameters
+    ----------
+    args_environment : Namespace
+        Environment configuration.
+    args_trainer : Namespace
+        Trainer configuration namespace.
+    args_data : Namespace
+        Dataset configuration.
+    path : str
+        Output directory for checkpoints/logs.
+
+    Returns
+    -------
+    Any
+        Instantiated trainer object or ``None`` on failure.
     """
     return trainer_factory(
-        args_environment,  # 环境参数 (Namespace)
-        args_trainer,  # 训练参数 (Namespace)
-    args_data,     # 数据参数 (Namespace)
-    path)
+        args_environment,
+        args_trainer,
+        args_data,
+        path,
+    )
 
 
 
-# 导出公共API
-# 仅导出 `build_trainer`，原来的 `register_trainer` 接口已移除。
-__all__ = ["build_trainer"]
+# public exports
+__all__ = [
+    "build_trainer",
+    "resolve_trainer_module",
+    "register_trainer",
+    "TRAINER_REGISTRY",
+    "Default_trainer"
+]
