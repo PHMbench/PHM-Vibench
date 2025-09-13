@@ -152,15 +152,17 @@ class id_data_factory(data_factory):
         Returns:
             DataLoader configured for ID-based processing
         """
-        # Determine if persistent workers should be used
-        persistent_workers = getattr(self.args_data, 'num_workers', 0) > 0
+        # 强制禁用persistent_workers以防止内存累积
+        persistent_workers = False
+        # 限制num_workers数量以减少内存使用
+        num_workers = min(getattr(self.args_data, 'num_workers', 0), 4)
 
         return DataLoader(
             dataset,
             batch_size=getattr(self.args_data, 'batch_size', 32),
             shuffle=shuffle,
-            num_workers=getattr(self.args_data, 'num_workers', 0),
-            pin_memory=True,
+            num_workers=num_workers,
+            pin_memory=False,  # 禁用pin_memory减少内存压力
             persistent_workers=persistent_workers,
             drop_last=False,  # Keep all samples for ID-based processing
         )
