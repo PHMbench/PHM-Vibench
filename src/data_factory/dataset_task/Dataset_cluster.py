@@ -28,7 +28,7 @@ class IdIncludedDataset(Dataset):
             #     continue
             
             for window_id in range(len(original_dataset)): # 数据集id ，样本id； 样本id 当前数据集的id
-                self.file_windows_list.append({'File_id': file_id, 'Window_id': window_id}) # 1,2,3 | 1,2,3,4 ~ 1,2,3,4,5,6,7
+                self.file_windows_list.append({'file_id': file_id, 'window_id': window_id}) # 1,2,3 | 1,2,3,4 ~ 1,2,3,4,5,6,7
         
         self._total_samples = len(self.file_windows_list) # 计算所有原始数据集的样本总数
 
@@ -42,10 +42,10 @@ class IdIncludedDataset(Dataset):
         获取文件窗口列表。
 
         Returns:
-            list: 包含所有样本的文件窗口列表，每个元素是一个字典，包含 'File_id' 和 'Window_id'。
+            list: 包含所有样本的文件窗口列表，每个元素是一个字典，包含 'file_id' 和 'Window_id'。
         """
         return self.file_windows_list
-    def get_File_id(self, global_idx):
+    def get_file_id(self, global_idx):
         """
         根据全局索引获取文件ID。
 
@@ -55,7 +55,7 @@ class IdIncludedDataset(Dataset):
         Returns:
             str: 文件ID。
         """
-        return self.file_windows_list[global_idx]['File_id']
+        return self.file_windows_list[global_idx]['file_id']
 
     def __getitem__(self, global_idx):
         """
@@ -73,13 +73,13 @@ class IdIncludedDataset(Dataset):
 
         sample_info = self.file_windows_list[global_idx]
 
-        File_id = sample_info['File_id']
+        file_id = sample_info['file_id']
         # dataset_id = self.metadata[data_id]['Dataset_id'] # 获取数据集的ID
-        window_id_in_original_dataset = sample_info['Window_id']
+        window_id_in_original_dataset = sample_info['window_id']
 
         # 从原始数据集中获取 (x, y)
-        original_dataset_instance = self.dataset_dict[File_id]
+        original_dataset_instance = self.dataset_dict[file_id]
         out = original_dataset_instance[window_id_in_original_dataset] # may be (x, y) or (x, y, z)
 
-        out.update({"Id": File_id}) # 添加 id 信息
+        out.update({"file_id": file_id}) # 添加 id 信息
         return  out

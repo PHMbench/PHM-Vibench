@@ -1,7 +1,10 @@
-
 numpy>=1.20.0
 pandas>=1.3.0
-torch>=2.2.0
+# For PyTorch, torchvision, and torchaudio, consider using the specified index URL during installation:
+# pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu126
+torch==2.6.0
+torchvision==0.21.0
+torchaudio==2.6.0
 pytorch-lightning>=1.5.0
 scikit-learn>=1.0.0
 h5py
@@ -12,9 +15,15 @@ scipy
 seaborn
 umap-learn
 urllib3
-pandas
 modelscope
-xlrd > 2.0.0
-argparse
+xlrd>2.0.0
 openpyxl
 tensorboard
+swanlab
+plotly
+reformer_pytorch
+scienceplots
+transformers
+timm
+
+streamlit

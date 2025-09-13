@@ -1,28 +1,23 @@
 import argparse
 import os
+import sys
+from datetime import datetime
+from pprint import pprint
+
+import numpy as np
 import pandas as pd
-
-
-
 import torch
+import yaml
+import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.utils.config_utils import load_config, path_name, transfer_namespace
-from src.utils.utils import load_best_model_checkpoint,init_lab,close_lab
+from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
+from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
-# 导入必要的库
-import os
-import sys
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-from datetime import datetime
-import yaml
-from pprint import pprint
 
 
 
@@ -40,27 +35,58 @@ def pipeline(args):
     # -----------------------
     config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
-    configs = load_config(config_path)
+    
+    # 准备配置覆盖参数 - 统一处理所有覆盖
+    set_args = []
+    
+    # 将 --data_dir 转换为 --set 格式 (向后兼容)
+    if hasattr(args, 'data_dir') and args.data_dir is not None:
+        set_args.append(f'data.data_dir={args.data_dir}')
+        print(f"[INFO] 通过命令行参数覆盖data_dir: {args.data_dir}")
+    
+    # 添加 --set 参数
+    if hasattr(args, 'set') and args.set is not None:
+        set_args.extend(args.set)
+    
+    # 统一解析所有覆盖参数
+    overrides = parse_set_args(set_args) if set_args else {}
+    if overrides:
+        print(f"[INFO] 应用配置覆盖: {overrides}")
+    
+    configs = load_config(config_path, overrides if overrides else None)
     
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
     for section in required_sections:
-        if section not in configs:
+        if not hasattr(configs, section):
             print(f"[ERROR] 配置文件中缺少 {section} 部分")
             return
     
     # 设置环境变量和命名空间
-    args_environment = transfer_namespace(configs.get('environment', {}))
+    args_environment = transfer_namespace(configs.environment if hasattr(configs, 'environment') else {})
 
-    args_data = transfer_namespace(configs.get('data', {}))
+    args_data = transfer_namespace(configs.data if hasattr(configs, 'data') else {})
 
-    args_model = transfer_namespace(configs.get('model', {}))
+    args_model = transfer_namespace(configs.model if hasattr(configs, 'model') else {})
 
-    args_task = transfer_namespace(configs.get('task', {}))
+    args_task = transfer_namespace(configs.task if hasattr(configs, 'task') else {})
 
-    args_trainer = transfer_namespace(configs.get('trainer', {}))
-    
-    for key, value in configs['environment'].items():
+    args_trainer = transfer_namespace(configs.trainer if hasattr(configs, 'trainer') else {})
+
+    # Handle evaluation config for backward compatibility
+    if hasattr(configs, 'evaluation') and configs.evaluation:
+        # If evaluation section exists but trainer doesn't have compute_metrics, copy it over
+        if hasattr(configs.evaluation, 'compute_metrics') and not hasattr(args_trainer, 'compute_metrics'):
+            args_trainer.compute_metrics = configs.evaluation.compute_metrics
+            print("[WARN] Moved evaluation.compute_metrics to trainer.compute_metrics for compatibility")
+        
+        # Copy other evaluation settings to trainer if not present
+        if hasattr(configs.evaluation, 'test_after_training') and not hasattr(args_trainer, 'test_after_training'):
+            args_trainer.test_after_training = configs.evaluation.test_after_training
+    if args_task.name == 'Multitask':
+        args_data.task_list = args_task.task_list
+        args_model.task_list = args_task.task_list    
+    for key, value in configs.environment.__dict__.items():
         if key.isupper():
             os.environ[key] = str(value)
             print(f"[INFO] 设置环境变量: {key}={value}")
@@ -73,7 +99,13 @@ def pipeline(args):
     sys.path.append(VBENCH_DATA)
     
     # -----------------------
-    # 2. 多次迭代训练与测试
+    # 2. 构建数据工厂（一次性创建）
+    # -----------------------
+    print("[INFO] 构建数据工厂...")
+    data_factory = build_data(args_data, args_task)
+    
+    # -----------------------
+    # 3. 多次迭代训练与测试
     # -----------------------
     all_results = []
     
@@ -88,12 +120,12 @@ def pipeline(args):
         current_seed = args_environment.seed + it
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
-        init_lab(args_environment, name, it)
-
-
-        # 构建数据工厂
-        print("[INFO] 构建数据工厂...")
-        data_factory = build_data(args_data, args_task)
+        init_lab(args_environment, args, name)
+        
+        # 传递enabled_tasks从task配置到model配置（用于多任务ISFM）
+        if hasattr(args_task, 'enabled_tasks'):
+            args_model.enabled_tasks = args_task.enabled_tasks
+            print(f"[INFO] 传递enabled_tasks到模型配置: {args_model.enabled_tasks}")
         
         # 构建模型
         print("[INFO] 构建模型...")
@@ -142,6 +174,10 @@ def pipeline(args):
         # 关闭wandb和swanlab
         close_lab()
 
+    # 关闭数据工厂，释放资源
+    print("[INFO] 关闭数据工厂，释放资源...")
+    data_factory.data.close()
+    
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)
     return all_results

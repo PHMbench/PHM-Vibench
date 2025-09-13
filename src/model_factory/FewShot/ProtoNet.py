@@ -5,7 +5,20 @@ from torch import nn
 
 
 class Model(nn.Module):
-    """A lightweight CNN used in few-shot baselines."""
+    """Lightweight CNN encoder for prototypical networks.
+
+    Parameters
+    ----------
+    args_model : Namespace
+        Hyper parameters such as ``in_channels`` and ``embedding_dim``.
+    metadata : Any, optional
+        Unused but kept for compatibility.
+
+    Notes
+    -----
+    Expects input tensors shaped ``(B, L, C)`` or ``(B, L)`` and returns
+    embeddings of shape ``(B, embedding_dim)``.
+    """
 
     def __init__(self, args_model, metadata=None):
         super().__init__()
@@ -30,6 +43,19 @@ class Model(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.ndim == 2:  # (B, L) -> (B, 1, L)
+        """Encode a batch of sequences.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(B, L, C)`` or ``(B, L)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Embedding tensor of shape ``(B, embedding_dim)``.
+        """
+        if x.ndim == 2:
             x = x.unsqueeze(1)
         return self.encoder(x)
+

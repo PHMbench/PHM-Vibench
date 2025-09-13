@@ -167,7 +167,7 @@ class MetadataAccessor:
             dict: 包含该行所有数据的字典
         """
         try:
-            return self.df.loc[key]#.to_dict()
+            return self.df.loc[key].to_dict()
         except KeyError:
             raise KeyError(f"找不到ID为{key}的记录")
     

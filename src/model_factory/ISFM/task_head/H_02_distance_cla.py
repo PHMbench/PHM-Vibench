@@ -101,7 +101,7 @@ class CrossAttention(nn.Module):
 
 
 class H_02_distance_cla(nn.Module):
-    def __init__(self, args_m,num_classes):
+    def __init__(self, args_m, **kwargs):
         """
         CLSHead模块，主要用于计算分类任务中的分类头。
 
@@ -112,6 +112,7 @@ class H_02_distance_cla(nn.Module):
         super().__init__()
         d_model = args_m.output_dim  # 输入特征维度
         d_mid = d_model
+        num_classes = args_m.num_classes # if num_classes is None else num_classes  # 类别数
 
         # 输入映射和交叉注意力层
         self.proj_in = nn.Linear(d_model, d_mid)
@@ -133,8 +134,8 @@ class H_02_distance_cla(nn.Module):
             num_classes: 类别数。
         """
         self.category_tokes[str(key)] = nn.Parameter(torch.randn(1,num_classes, self.d_model))
-        
-    def forward(self, x, System_id,Task_id, return_feature=False):
+
+    def forward(self, x, system_id, return_feature=False, **kwargs):
         """
         前向传播。
 
@@ -167,7 +168,7 @@ class H_02_distance_cla(nn.Module):
         # 计算cls_token与category_token之间的距离
         # C = category_token.shape[1]  # 类别数 C
         
-        category_token = self.category_tokes[str(System_id)]
+        category_token = self.category_tokes[str(system_id)]
         distance = torch.einsum('bkc,bmc->bm', cls_token, category_token)  # 计算距离
 
         # 求均值，得到最终结果

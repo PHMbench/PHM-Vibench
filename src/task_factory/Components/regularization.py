@@ -16,11 +16,11 @@ def calculate_regularization(reg_config: Dict[str, Any], params: Iterable[torch.
     reg_losses = {}
     total_reg_loss = torch.tensor(0.0, device=next(iter(params)).device if params else 'cpu', dtype=torch.float32) # 获取设备信息
 
-    if not reg_config or not reg_config.get('flag', False):
+    if not reg_config or not reg_config.get('regularization', False):
         reg_losses['total'] = total_reg_loss
         return reg_losses
 
-    method_dict = reg_config.get('method', {})
+    method_dict = reg_config.get('regularization', {})
     trainable_params = [p for p in params if p.requires_grad]
 
     if not trainable_params: # 如果没有可训练参数
@@ -50,3 +50,22 @@ def calculate_regularization(reg_config: Dict[str, Any], params: Iterable[torch.
 
     reg_losses['total'] = total_reg_loss
     return reg_losses
+if __name__ == "__main__":
+    # 测试 calculate_regularization 函数
+    from torch import nn
+
+    # 创建一个简单的模型
+    model = nn.Linear(10, 2)
+    params = model.parameters()
+
+    # 定义正则化配置
+    reg_config = {
+        'regularization': {
+            'l1': 0.01,
+            'l2': 0.005
+        }
+    }
+
+    # 计算正则化损失
+    reg_losses = calculate_regularization(reg_config, params)
+    print("正则化损失:", reg_losses)

@@ -48,7 +48,7 @@ model:
 
 # 任务配置
 task:
-  name: "Classification"
+  name: "classification"
   type: 'DG'
   target_domain_id: [2]
   source_domain_id: [0,1]

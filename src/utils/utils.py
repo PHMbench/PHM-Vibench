@@ -1,4 +1,3 @@
-
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
@@ -14,6 +13,7 @@ try:
 except ImportError:
     print("[WARNING] swanlab 未安装")
     swanlab = None
+import numpy as np
 
 
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
@@ -45,7 +45,11 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
         print("No best model path found. Please check if the training process saved checkpoints.")
     else:
     # 加载最佳检查点
-        state_dict = torch.load(best_model_path)
+    # pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, [1mdo those steps only if you trust the source of the checkpoint[0m. 
+    # 	(1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.
+    # 	(2) Alternatively, to load with `weights_only=True` please check the recommended steps in the following error message.
+    # 	WeightsUnpickler error: Unsupported global: GLOBAL numpy._core.multiarray.scalar was not an allowed global by default. Please use `torch.serialization.add_safe_globals([scalar])` or the `torch.serialization.safe_globals([scalar])` context manager to allowlist this global if you trust this class/function.
+        state_dict = torch.load(best_model_path,weights_only =False)
         model.load_state_dict(state_dict['state_dict'])
     return model
 
@@ -63,10 +67,10 @@ def init_lab(args_environment, cli_args, experiment_name):
     use_swanlab = getattr(args_environment, 'swanlab', False)
 
     # Initialize WandB
-    if wandb: # Check if wandb module is available
+    if wandb and wandb.run is None: # Check if wandb module is available and not already initialized
         if use_wandb:
             project_name = getattr(args_environment, 'project', 'vbench')
-            notes = f'CLI Notes:{cli_args.notes}\nConfig Notes:{getattr(args_environment, "notes", "")}'
+            notes = f'Task Notes:{getattr(cli_args, "notes", "")}\nConfig Notes:{getattr(args_environment, "notes", "")}'
             wandb.init(project=project_name,
                         name=experiment_name,
                         notes=notes.strip())
@@ -74,26 +78,26 @@ def init_lab(args_environment, cli_args, experiment_name):
         else:
             wandb.init(mode='disabled')
             print("[INFO] WandB disabled by configuration.")
-    elif use_wandb:
+    elif use_wandb and wandb is None:
         print("[WARNING] WandB is configured to be used, but the 'wandb' library is not installed.")
 
 
-    # Initialize SwanLab
-    if swanlab: # Check if swanlab module is available
+    # Initialize SwanLab (only when explicitly enabled)
+    if swanlab and getattr(swanlab, 'run', None) is None:
         if use_swanlab:
             project_name = getattr(args_environment, 'project', 'vbench')
-            notes = f'CLI Notes:{cli_args.notes}\nConfig Notes:{getattr(args_environment, "notes", "")}'
+            notes = f'N1:{getattr(cli_args, "notes", "")}\n_N2:{getattr(args_environment, "notes", "")}'
             swanlab.init(
-                project=project_name, # Assuming swanlab uses 'project' similar to wandb
-                experiment_name=experiment_name,
-                description=notes.strip() # Swanlab uses 'description' for notes
-                # logdir= # Optional: specify log directory if needed
+                workspace=getattr(args_environment, 'workspace', 'PHMbench'),
+                project=project_name,
+                experiment_name=notes,
+                description=notes.strip()
             )
             print(f"[INFO] SwanLab initialized for project '{project_name}', experiment '{experiment_name}'.")
         else:
-            swanlab.init(mode='disabled')
+            # Do not initialize SwanLab when disabled; just log the state
             print("[INFO] SwanLab disabled by configuration.")
-    elif use_swanlab:
+    elif use_swanlab and swanlab is None:
         print("[WARNING] SwanLab is configured to be used, but the 'swanlab' library is not installed.")
 
 def close_lab():
@@ -103,6 +107,18 @@ def close_lab():
     if wandb and wandb.run:
         wandb.finish()
         print("[INFO] WandB logger closed.")
-    if swanlab and swanlab.run:
-        swanlab.finish()
-        print("[INFO] SwanLab logger closed.")
+    if swanlab:
+        try:
+            current_run = getattr(swanlab, 'run', None)
+            if current_run:
+                swanlab.finish()
+                print("[INFO] SwanLab logger closed.")
+        except Exception as e:
+            # Gracefully skip if SwanLab was never initialized or already closed
+            print(f"[INFO] SwanLab not initialized or already closed: {e}")
+
+def get_num_classes(metadata):
+    num_classes = {}
+    for key in np.unique(metadata.df['Dataset_id']):
+        num_classes[key] = max(metadata.df[metadata.df['Dataset_id'] == key]['Label']) + 1
+    return num_classes

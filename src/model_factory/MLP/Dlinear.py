@@ -35,9 +35,14 @@ class series_decomp(nn.Module):
         return res, moving_mean
 
 class B_04_Dlinear(nn.Module):
-    """
-    DLinear Backbone
-    Paper link: https://arxiv.org/pdf/2205.13504.pdf
+    """DLinear backbone for time-series forecasting.
+
+    Parameters
+    ----------
+    configs : Namespace
+        Provides ``patch_size_L`` and ``patch_size_C``.
+    individual : bool, optional
+        If ``True`` use an independent linear head for each channel.
     """
 
     def __init__(self, configs, individual=False):
@@ -72,7 +77,19 @@ class B_04_Dlinear(nn.Module):
             self.Linear_Trend.weight = nn.Parameter(
                 (1 / self.patch_size_L) * torch.ones([self.patch_size_L, self.patch_size_L]))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(B, L, C)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Tensor of the same shape as input.
+        """
         # x: [B, L, C]
         seasonal_init, trend_init = self.decompsition(x)
         seasonal_init, trend_init = seasonal_init.permute(
@@ -100,38 +117,167 @@ class B_04_Dlinear(nn.Module):
     
 
 
+class Model(nn.Module):
+    """DLinear model for time-series analysis.
+
+    A decomposition-based linear model that separates trend and seasonal components
+    for effective time-series modeling. Based on the DLinear paper.
+
+    Parameters
+    ----------
+    args : Namespace
+        Configuration object containing:
+        - input_dim : int, input feature dimension
+        - seq_len : int, sequence length (default: 512)
+        - individual : bool, whether to use individual linear layers per channel (default: False)
+        - kernel_size : int, moving average kernel size for decomposition (default: 25)
+    metadata : Any, optional
+        Dataset metadata (unused in this model)
+
+    Input Shape
+    -----------
+    x : torch.Tensor
+        Input tensor of shape (batch_size, seq_len, input_dim)
+
+    Output Shape
+    ------------
+    torch.Tensor
+        Output tensor of shape (batch_size, seq_len, input_dim)
+
+    References
+    ----------
+    Zeng et al. "Are Transformers Effective for Time Series Forecasting?" AAAI 2023.
+    Cleveland et al. "STL: A Seasonal-Trend Decomposition Procedure Based on Loess" Journal of Official Statistics 1990.
+    Hyndman and Athanasopoulos "Forecasting: Principles and Practice" OTexts 2018.
+    Implementation includes decomposition-based linear modeling for time-series forecasting with trend and seasonal components.
+    """
+
+    def __init__(self, args, metadata=None):
+        super(Model, self).__init__()
+
+        # Extract parameters from args
+        self.input_dim = getattr(args, 'input_dim', 1)
+        self.seq_len = getattr(args, 'seq_len', 512)
+        self.individual = getattr(args, 'individual', False)
+        kernel_size = getattr(args, 'kernel_size', 25)
+
+        # Series decomposition block
+        self.decomposition = series_decomp(kernel_size)
+
+        if self.individual:
+            # Individual linear layers for each channel
+            self.Linear_Seasonal = nn.ModuleList()
+            self.Linear_Trend = nn.ModuleList()
+
+            for i in range(self.input_dim):
+                self.Linear_Seasonal.append(nn.Linear(self.seq_len, self.seq_len))
+                self.Linear_Trend.append(nn.Linear(self.seq_len, self.seq_len))
+
+                # Initialize with identity-like weights
+                self.Linear_Seasonal[i].weight = nn.Parameter(
+                    (1 / self.seq_len) * torch.ones([self.seq_len, self.seq_len]))
+                self.Linear_Trend[i].weight = nn.Parameter(
+                    (1 / self.seq_len) * torch.ones([self.seq_len, self.seq_len]))
+        else:
+            # Shared linear layers
+            self.Linear_Seasonal = nn.Linear(self.seq_len, self.seq_len)
+            self.Linear_Trend = nn.Linear(self.seq_len, self.seq_len)
+
+            # Initialize with identity-like weights
+            self.Linear_Seasonal.weight = nn.Parameter(
+                (1 / self.seq_len) * torch.ones([self.seq_len, self.seq_len]))
+            self.Linear_Trend.weight = nn.Parameter(
+                (1 / self.seq_len) * torch.ones([self.seq_len, self.seq_len]))
+
+    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
+        """Forward pass.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (B, L, C)
+        data_id : Any, optional
+            Data identifier (unused)
+        task_id : Any, optional
+            Task identifier (unused)
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape (B, L, C)
+        """
+        # Decompose into seasonal and trend components
+        seasonal_init, trend_init = self.decomposition(x)
+
+        # Transpose for linear operations: (B, L, C) -> (B, C, L)
+        seasonal_init = seasonal_init.permute(0, 2, 1)
+        trend_init = trend_init.permute(0, 2, 1)
+
+        if self.individual:
+            # Apply individual linear layers
+            seasonal_output = torch.zeros_like(seasonal_init)
+            trend_output = torch.zeros_like(trend_init)
+
+            for i in range(self.input_dim):
+                seasonal_output[:, i, :] = self.Linear_Seasonal[i](seasonal_init[:, i, :])
+                trend_output[:, i, :] = self.Linear_Trend[i](trend_init[:, i, :])
+        else:
+            # Apply shared linear layers
+            seasonal_output = self.Linear_Seasonal(seasonal_init)
+            trend_output = self.Linear_Trend(trend_init)
+
+        # Combine seasonal and trend components
+        output = seasonal_output + trend_output
+
+        # Apply activation and transpose back: (B, C, L) -> (B, L, C)
+        output = F.silu(output)
+        return output.permute(0, 2, 1)
+
+
 if __name__ == "__main__":
-# 创建配置
+    # Test DLinear model
     import torch
-    import numpy as np
     from argparse import Namespace
-    class Config:
-        def __init__(self):
-            self.patch_size_L = 4096
-            self.patch_size_C = 1  # 输入通道数/特征维度
-            self.moving_avg = 125
 
-    # DLinear模型测试
-    def test_dlinear_backbone():
-        # 创建配置
-        configs = Config()
-        
-        # 创建模型实例
-        model = Model(configs, individual=False)
-        
-        # 创建一批测试数据
-        batch_size = 32
-        x = torch.randn(batch_size, configs.patch_size_L, configs.patch_size_C)  # [B, L, C]
-        
-        # 运行模型
-        output = model(x)
-        
-        # 验证输出形状
-        print(f"输入形状: {x.shape}")
-        print(f"输出形状: {output.shape}")
-        assert output.shape == (batch_size, configs.patch_size_L, configs.patch_size_C), "输出形状应为 [B, L, C]"
-        print("测试通过！输入输出形状一致: [B, L, C]")
-        
-        return output
+    def test_dlinear_model():
+        """Test DLinear model with different configurations."""
+        print("Testing DLinear Model...")
 
-    test_dlinear_backbone()
+        # Test configuration
+        args = Namespace(
+            input_dim=2,
+            seq_len=512,
+            individual=False,
+            kernel_size=25
+        )
+
+        # Create model
+        model = Model(args)
+        print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+
+        # Test data
+        batch_size = 8
+        x = torch.randn(batch_size, args.seq_len, args.input_dim)
+
+        # Forward pass
+        with torch.no_grad():
+            output = model(x)
+
+        # Verify shapes
+        print(f"Input shape: {x.shape}")
+        print(f"Output shape: {output.shape}")
+        assert output.shape == x.shape, f"Shape mismatch: {output.shape} != {x.shape}"
+
+        # Test individual mode
+        args.individual = True
+        model_individual = Model(args)
+        with torch.no_grad():
+            output_individual = model_individual(x)
+
+        print(f"Individual mode output shape: {output_individual.shape}")
+        assert output_individual.shape == x.shape
+
+        print("✅ DLinear model tests passed!")
+        return True
+
+    test_dlinear_model()

@@ -2,7 +2,8 @@
 
 import torch
 import torch.nn as nn
-
+from .metric_loss import MatchingLoss
+from .prediction_loss import *
 
 def get_loss_fn(loss_name: str) -> nn.Module:
     """Return a loss module according to ``loss_name``.
@@ -13,12 +14,15 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         Key identifying the loss type. Supported values are ``CE``, ``MSE``,
         ``MAE``, ``BCE`` and ``NLL``.
     """
+    # loss_name = args.loss
     loss_mapping = {
         "CE": nn.CrossEntropyLoss(),
         "MSE": nn.MSELoss(),
         "MAE": nn.L1Loss(),
         "BCE": nn.BCEWithLogitsLoss(),
         "NLL": nn.NLLLoss(),
+        "MATCHING": MatchingLoss,  
+        "SIGNAL_MASK_LOSS": Signal_mask_Loss,  # TODO Time Series Prediction
     }
 
     key = loss_name.upper()
@@ -26,6 +30,9 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         raise ValueError(
             f"不支持的损失函数类型: {loss_name}，可选类型: {list(loss_mapping.keys())}"
         )
+    if key == "Matching":
+        return loss_mapping[key] # (args)
+
     return loss_mapping[key]
 
 

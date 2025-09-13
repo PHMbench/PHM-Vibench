@@ -13,11 +13,15 @@ def main():
     
     parser.add_argument('--config_path', 
                         type=str, 
-                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml', # CWRU.yaml
-                        default= 'configs/demo/X_Single_DG/MWA_CNN/HUST.yaml',
-                        # default= 'configs/demo/X_Single_DG/TSPN/HUST.yaml',
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/dummy_test.yaml',
+                        # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/LQ1/Pretraining/Pretraining_C+P.yaml', # CWRU.yaml
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/GFS/GFS_C+M.yaml',
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/SGD/THU6.yaml',
+                        # default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/SGD/CWRU.yaml',
+                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/Pretraining/Pretraining_C+P_patchtst.yaml',
+                        # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/Vibench_paper/CDDG/config_CDDG_B_04_Dlinear.yaml',
+                        # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/Vibench_paper/DG/config_DG_B_06_TimesNet_target_13.yaml',
+                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/vibpaper/CDDG/config_CDDG_B_04_Dlinear.yaml',
+                        default = 'script/Vibench_paper/foundation_model/multitask_B_04_Dlinear_debug.yaml',
                         help='配置文件路径')
     parser.add_argument('--notes',
                         type=str,
@@ -26,14 +30,20 @@ def main():
 
     parser.add_argument('--fs_config_path',
                         type=str,
-                        default=None,
+                        default='/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/LQ1/GFS/GFS_C+M.yaml',
                         help='few-shot config for pretrain pipeline')
 
     parser.add_argument('--pipeline', 
                         type=str, 
+                        # default='Pipeline_02_pretrain_fewshot',
                         default='Pipeline_01_default',
                         help='实验流水线模块路径')
     
+    parser.add_argument('--set', 
+                        action='append',
+                        metavar='KEY=VALUE',
+                        help='覆盖配置参数，支持点符号(例: --set model.lr=0.001 --set task.epochs=100)')
+
     args = parser.parse_args()
     pipeline = importlib.import_module(f'src.{args.pipeline}')
     # 执行DG流水线

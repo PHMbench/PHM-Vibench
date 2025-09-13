@@ -50,7 +50,7 @@ model:
 
 # 任务配置
 task:
-  name: "Classification"
+  name: "classification"
 
   type: 'DG'
   target_domain_id: [10] # 10

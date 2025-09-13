@@ -161,7 +161,7 @@ data/metadata_5_data.h5
 
 data/.msc
 
-# @liq22 ignore
+# @liq22 ignore ###########
 test.yaml
 configs/test
 configs/LQ_paper
@@ -170,3 +170,29 @@ dev/
 plot/
 script/
 wandb/
+LQ1/
+plot/save
+# main_LQ.py
+# LQ1/
+
+##########################
+
+script/LQ1/Pretraining/Pretraining_C+P.yaml
+wandb/
+configs/template/Pretraining_C+P_patchtst.yaml
+# script/vibpaper/
+# script/Vibench_paper/
+plot/data/
+# script/Vibench_paper/
+
+dev/sundial_model/
+dev/preexp/*.csv
+dev/preexp
+dev/project/
+out.csv
+dev/project/valve.ipynb
+dev/ross_demo/fault.ipynb
+plot/
+test/
+metrics_reports/
+cache/

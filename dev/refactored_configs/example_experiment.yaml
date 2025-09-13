@@ -1,0 +1,119 @@
+# PHM-Vibench Refactored Configuration Example
+# ResNet1D Classification on CWRU Bearing Dataset
+# This configuration demonstrates the improved structure with validation and reproducibility
+
+name: "resnet1d_cwru_classification"
+description: "ResNet1D classification experiment on CWRU bearing fault dataset with domain generalization"
+tags: ["classification", "domain_generalization", "bearing_fault", "resnet1d"]
+
+# Reproducibility configuration - ensures deterministic results
+reproducibility:
+  global_seed: 42
+  torch_deterministic: true
+  torch_benchmark: false
+  track_environment: true
+  track_git_commit: true
+  track_dependencies: true
+
+# Data configuration - all data-related parameters
+data:
+  data_root: "data/"
+  metadata_file: "metadata_6_11.xlsx"
+  cache_dir: "data/cache"
+
+  # Data loading parameters
+  batch_size: 64
+  num_workers: 8
+  pin_memory: true
+
+  # Preprocessing parameters
+  normalization: "standardization"  # standardization | minmax | none
+  window_size: 4096
+  stride: 5
+
+  # Data splits
+  train_ratio: 0.8
+  val_ratio: 0.1
+  # test_ratio is automatically calculated as 1 - train_ratio - val_ratio
+
+# Model configuration - architecture and parameters
+model:
+  name: "ResNet1D"
+  type: "CNN"
+
+  # Architecture parameters
+  input_dim: 3
+  num_classes: 10  # Will be automatically determined from metadata if not specified
+
+  # ResNet-specific parameters
+  block_type: "basic"  # basic | bottleneck
+  layers: [2, 2, 2, 2]  # Number of blocks in each layer
+  initial_channels: 64
+  dropout: 0.1
+
+  # Weight initialization
+  weight_init: "xavier_uniform"
+  bias_init: "zeros"
+
+  # Pre-trained weights (optional)
+  # pretrained_path: "checkpoints/resnet1d_pretrained.pth"
+  # freeze_backbone: false
+
+# Optimization configuration - training parameters
+optimization:
+  # Optimizer settings
+  optimizer: "adam"  # adam | adamw | sgd | rmsprop
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  momentum: 0.9  # Used for SGD
+
+  # Learning rate scheduling
+  scheduler: "step"  # cosine | step | plateau | exponential
+  scheduler_params:
+    step_size: 30
+    gamma: 0.1
+
+  # Training parameters
+  max_epochs: 100
+  early_stopping: true
+  patience: 10
+  min_delta: 0.0001
+
+  # Gradient clipping
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: "norm"
+
+# Task configuration - task-specific parameters
+task:
+  name: "classification"
+  type: "DG"  # Domain Generalization
+
+  # Loss function
+  loss_function: "cross_entropy"
+  loss_params:
+    label_smoothing: 0.1
+    class_weights: null  # Auto-computed from data if null
+
+  # Evaluation metrics
+  metrics: ["accuracy", "f1_macro", "precision_macro", "recall_macro"]
+
+  # Domain generalization specific parameters
+  domain_config:
+    source_domains: [0, 1, 2, 3, 4]  # Source domain IDs
+    target_domains: [10]  # Target domain IDs
+    domain_adaptation_method: null  # DANN | CORAL | MMD | null
+
+  # Few-shot configuration (if applicable)
+  few_shot_config: null
+
+# Execution parameters
+num_runs: 5  # Number of independent runs for statistical significance
+output_dir: "results/resnet1d_cwru_classification"
+
+# Logging configuration
+log_level: "INFO"  # DEBUG | INFO | WARNING | ERROR
+log_interval: 10  # Log every N steps
+
+# Hardware configuration
+device: "auto"  # auto | cpu | cuda | cuda:0
+mixed_precision: false  # Enable automatic mixed precision training
