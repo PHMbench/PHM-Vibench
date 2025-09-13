@@ -333,28 +333,31 @@ class data_factory:
         val_sampler = self.get_sampler(mode='val')
         test_sampler = self.get_sampler(mode='test')
 
-        persistent_workers = self.args_data.num_workers > 0
+        # 强制禁用persistent_workers以防止内存累积
+        persistent_workers = False
+        # 限制num_workers数量以减少内存使用
+        num_workers = min(self.args_data.num_workers, 4)
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
                                          batch_sampler = train_sampler,
                                         #  shuffle=True,
-                                         num_workers=self.args_data.num_workers,
-                                         pin_memory=True,     
+                                         num_workers=num_workers,
+                                         pin_memory=False,     # 禁用pin_memory减少内存压力
                                          persistent_workers=persistent_workers,)
                                         #  collate_fn=debug_collate_fn)
         self.val_loader = DataLoader(self.val_dataset,
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = val_sampler,
                                         # shuffle=False,
-                                        num_workers=self.args_data.num_workers,
-                                        pin_memory=True,     
+                                        num_workers=num_workers,
+                                        pin_memory=False,     # 禁用pin_memory减少内存压力
                                         persistent_workers=persistent_workers,)
         self.test_loader = DataLoader(self.test_dataset,
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = test_sampler,
                                         # shuffle=False,
-                                        num_workers=self.args_data.num_workers,
-                                        pin_memory=True,     
+                                        num_workers=num_workers,
+                                        pin_memory=False,     # 禁用pin_memory减少内存压力
                                         persistent_workers=persistent_workers,)
 
 

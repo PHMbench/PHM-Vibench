@@ -766,6 +766,23 @@ class task(pl.LightningModule):
             # Default: use task output directly
             return loss_fn(task_output, targets)
     
+    def on_train_epoch_end(self):
+        """Training epoch结束时进行内存清理"""
+        import gc
+        import torch
+        
+        # 清理GPU缓存
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # 确保CUDA操作完成
+        
+        # Python垃圾回收
+        gc.collect()
+        
+        # 如果有系统追踪器，也清理一下
+        if hasattr(self, 'train_system_tracker'):
+            self.train_system_tracker.clear()
+    
     def on_validation_epoch_end(self):
         """Validation epoch结束时汇总系统指标"""
         if not self.track_system_metrics:
@@ -787,6 +804,13 @@ class task(pl.LightningModule):
             
             # 清空追踪器准备下一epoch
             self.val_system_tracker.clear()
+        
+        # 进行内存清理
+        import gc
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
 
     def on_test_epoch_end(self):
         """Test epoch结束时生成完整报告"""
@@ -838,6 +862,13 @@ class task(pl.LightningModule):
             
             # 清空追踪器
             self.test_system_tracker.clear()
+        
+        # 进行内存清理
+        import gc
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
 
     def _print_system_comparison(self, phase: str, epoch_metrics: Dict[str, Dict[str, float]]):
         """打印系统间性能对比表"""
