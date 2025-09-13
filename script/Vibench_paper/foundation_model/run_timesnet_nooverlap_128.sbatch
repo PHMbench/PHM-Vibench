@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=A100:1              # A100 GPU for TimesNet with 128 windows
 #SBATCH --cpus-per-gpu=12          # Increased CPUs for better throughput
-#SBATCH --mem=48G                  # Increased memory for TimesNet with 128 windows
+#SBATCH --mem=64G                  # Increased memory for TimesNet with 128 windows
 #SBATCH --time=36:00:00            # 36 hours for TimesNet with 128 windows
 #SBATCH --output=logs/timesnet_nooverlap_128_%x_%j.out
 #SBATCH --error=logs/timesnet_nooverlap_128_%x_%j.err
