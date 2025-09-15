@@ -36,7 +36,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 
 #### P0.1 Practical Validation Infrastructure (Highest Priority)
 
-- [ ] 1. Create 1-epoch validation framework
+- [ ] 
   - **File**: src/utils/validation/OneEpochValidator.py
   - Implement rapid validation for data loading, forward pass, loss computation, backward pass
   - Add memory usage monitoring with <8GB threshold
@@ -45,8 +45,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Generate validation reports with 95% confidence prediction for long training
   - _Requirements: FR6_
   - _Leverage: Existing validation patterns in PHM-Vibench_
-
-- [ ] 2. Create unified dataset loading infrastructure
+- [ ] 
   - **File**: src/data_factory/UnifiedDataLoader.py
   - Implement balanced sampling across all 5 datasets (CWRU, XJTU, THU, Ottawa, JNU)
   - Add dataset-specific sample weighting to ensure fair representation
@@ -55,8 +54,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include comprehensive self-test with sample data validation
   - _Requirements: FR5_
   - _Leverage: Existing data_factory readers for all 5 datasets_
-
-- [ ] 3. Create zero-shot evaluation framework
+- [ ] 
   - **File**: src/utils/evaluation/ZeroShotEvaluator.py
   - Implement linear probe evaluation on frozen pretrained backbones
   - Add per-dataset zero-shot performance measurement
@@ -68,7 +66,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 
 #### P0.2 Core Prompt Components
 
-- [ ] 4. Create system prompt encoder
+- [ ] 
   - **File**: src/model_factory/ISFM_Prompt/components/SystemPromptEncoder.py
   - Implement two-level prompt encoding: Dataset_id+Domain_id (system), Sample_rate (sample)
   - Use embedding tables for categorical features, linear projection for numerical features
@@ -77,7 +75,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - **Critical**: NO fault-level prompts since Label is prediction target
   - _Requirements: FR2_
   - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for parameter patterns)_
-- [ ] 
+- [ ]
   - **File**: src/model_factory/ISFM_Prompt/components/PromptFusion.py
   - Implement three fusion strategies: concatenation, cross-attention, adaptive gating
   - Add residual connections for attention-based fusion to preserve original signal features
@@ -85,7 +83,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Add comprehensive self-test for all three fusion strategies with gradient flow verification
   - _Requirements: FR1, FR2_
   - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for attention patterns)_
-- [ ] 
+- [ ]
   - **Files**:
     - src/model_factory/ISFM_Prompt/__init__.py
     - src/model_factory/ISFM_Prompt/components/__init__.py
@@ -95,7 +93,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Set up component dictionaries for factory pattern integration
   - _Requirements: FR3_
   - _Leverage: src/model_factory/ISFM/__init__.py (for factory patterns)_
-- [ ] 
+- [ ]
   - **File**: src/model_factory/ISFM_Prompt/embedding/E_01_HSE_v2.py
   - Create completely new HSE implementation with SystemPromptEncoder and PromptFusion integration
   - DO NOT inherit from or modify existing E_01_HSE.py - this is a fresh implementation
@@ -106,7 +104,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - **Critical**: Ensure zero dependencies on existing E_01_HSE.py
   - _Requirements: FR2, FR3_
   - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for reference only, not inheritance)_
-- [ ] 
+- [ ]
   - **File**: src/model_factory/ISFM_Prompt/M_02_ISFM_Prompt.py
   - Implement complete ISFM model with Prompt-guided embedding support
   - Add component dictionaries for PromptEmbedding, Backbone (reuse existing), TaskHead (reuse existing)
@@ -115,7 +113,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include comprehensive self-test with multiple embedding/backbone/taskhead combinations
   - _Requirements: FR1, FR3_
   - _Leverage: src/model_factory/ISFM/M_01_ISFM.py (for model structure patterns)_
-- [ ] 9. Create unified metric learning configuration
+- [ ] 
   - **File**: configs/pipeline_03/hse_unified_metric_config.yaml
   - Configure unified pretraining on all 5 datasets simultaneously: [CWRU, XJTU, THU, Ottawa, JNU]
   - Set stage_1_unified_pretraining with balanced multi-dataset sampling
@@ -126,7 +124,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include simplified success criteria: >80% zero-shot, >95% fine-tuned accuracy
   - _Requirements: FR5, FR7_
   - _Leverage: Pipeline_03 configuration patterns (create_pretraining_config, create_finetuning_config)_
-- [ ] 
+- [ ]
   - **File**: src/model_factory/ISFM_Prompt/test_prompt_components.py
   - Implement comprehensive component testing for SystemPromptEncoder, PromptFusion, E_01_HSE_v2
   - Test integration between components with proper metadata flow and two-level prompt processing
@@ -136,7 +134,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Test that E_01_HSE_v2 has zero dependencies on original E_01_HSE.py
   - _Requirements: FR2, FR3, FR5_
   - _Leverage: src/model_factory/ISFM/embedding/E_01_HSE.py (for testing patterns only)_
-- [ ] 
+- [ ]
   - **File**: src/utils/pipeline_config/hse_prompt_integration.py
   - Implement HSEPromptPipelineIntegration adapter for Pipeline_03 integration
   - Add create_hse_prompt_pretraining_config() using Pipeline_03's utilities
@@ -147,7 +145,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - **Critical**: This is essential for Pipeline_03 integration - must be P0
   - _Requirements: FR5_
   - _Leverage: src/Pipeline_03_multitask_pretrain_finetune.py (for integration patterns)_
-- [ ] 
+- [ ]
   - **File**: src/task_factory/Components/prompt_contrastive.py
   - Implement universal wrapper for all 6 existing contrastive losses with prompt guidance
   - Add system-aware positive/negative sampling using metadata system_ids
@@ -157,7 +155,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - **Critical**: Core functionality for prompt-guided contrastive learning - must be P0
   - _Requirements: FR1_
   - _Leverage: src/task_factory/Components/contrastive_losses.py (for all existing losses)_
-- [ ] 
+- [ ]
   - **File**: src/task_factory/task/CDDG/hse_contrastive.py
   - Implement task class integrating prompt-guided contrastive learning
   - Add metadata preprocessing for system information extraction
@@ -167,7 +165,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - **Critical**: Essential task implementation for training workflow - must be P0
   - _Requirements: FR1, FR3_
   - _Leverage: src/task_factory/task/CDDG/ (for existing CDDG patterns)_
-- [ ] 
+- [ ]
   - **File**: scripts/test_pipeline03_integration.py
   - Implement end-to-end testing of HSE Prompt with Pipeline_03 workflow
   - Test create_pretraining_config and create_finetuning_config integration
@@ -181,6 +179,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 ## Simplified Success Metrics
 
 ### Primary Success Criteria (1-Epoch Validation)
+
 - [ ] **Data Loading Validation**: All 5 datasets load without errors, balanced sampling works
 - [ ] **Forward Pass Validation**: Model processes unified batches, outputs correct dimensions
 - [ ] **Loss Computation Validation**: Prompt-guided contrastive loss computes without NaN/Inf
@@ -188,6 +187,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 - [ ] **Memory Validation**: Total usage stays under 8GB during training
 
 ### Performance Success Criteria (Full Training)
+
 - [ ] **Zero-Shot Performance**: >80% accuracy on all 5 datasets after unified pretraining
 - [ ] **Fine-tuned Performance**: >95% accuracy on all 5 datasets after dataset-specific fine-tuning
 - [ ] **Unified Learning Benefit**: >10% improvement over single-dataset training baselines
@@ -197,7 +197,8 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 ### P1 Feature Enhancement (Implement after P0)
 
 **Note**: Critical Pipeline_03 integration and practical validation tasks have been prioritized in P0. P1 focuses on advanced features, ablation studies, and optimizations.
-- [ ] 
+
+- [ ]
   - **File**: src/utils/config/hse_prompt_validator.py
   - Implement configuration validation for HSE prompt-guided training
   - Add automatic path standardization and metadata file verification
@@ -206,10 +207,10 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Support both pretraining and finetuning configuration validation
   - _Requirements: FR4_
   - _Leverage: src/utils/config/path_standardizer.py (for path handling patterns)_
-- [ ] 
+- [ ]
   - **Files**:
     - configs/pipeline_03/ablation/hse_system_prompt_only.yaml
-    - configs/pipeline_03/ablation/hse_sample_prompt_only.yaml 
+    - configs/pipeline_03/ablation/hse_sample_prompt_only.yaml
     - configs/pipeline_03/ablation/hse_no_prompt_baseline.yaml
   - Create Pipeline_03 compatible ablation study configurations
   - Configure different two-level prompt combinations: system-only, sample-only, none
@@ -218,7 +219,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include configuration for standard contrastive learning baseline (no prompts)
   - _Requirements: FR6_
   - _Leverage: configs/pipeline_03/hse_prompt_multitask_config.yaml (for base structure)_
-- [ ] 
+- [ ]
   - **File**: scripts/run_hse_prompt_pipeline03.py
   - Implement HSE Prompt experiments using Pipeline_03 workflow
   - Add support for cross-dataset backbone comparison experiments
@@ -231,7 +232,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 
 ### P2 Performance Optimization (Lower priority)
 
-- [ ] 
+- [ ]
   - **File**: src/model_factory/ISFM_Prompt/components/MixedPrecisionWrapper.py
   - Implement FP16 mixed precision wrapper for memory efficiency
   - Add gradient scaling and unscaling for stable training
@@ -240,7 +241,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Support automatic fallback to FP32 when hardware incompatible
   - _Requirements: NFR-P2 (memory efficiency)_
   - _Leverage: src/trainer_factory/ (for training optimization patterns)_
-- [ ] 
+- [ ]
   - **File**: src/model_factory/ISFM_Prompt/components/MemoryOptimizedFusion.py
   - Implement memory-optimized version of PromptFusion with gradient checkpointing
   - Add dynamic batch size adjustment based on available GPU memory
@@ -249,7 +250,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Support memory usage monitoring and automatic optimization
   - _Requirements: NFR-P2 (memory efficiency)_
   - _Leverage: src/model_factory/ISFM_Prompt/components/PromptFusion.py (as base)_
-- [ ] 
+- [ ]
   - **File**: tests/performance/prompt_benchmarks.py
   - Implement comprehensive performance testing for all prompt components
   - Add latency benchmarking with different input sizes and batch sizes
@@ -258,7 +259,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
   - Include comparative analysis with baseline methods
   - _Requirements: NFR-P1, NFR-P2, NFR-P3_
   - _Leverage: src/model_factory/ISFM_Prompt/ (for component testing)_
-- [ ] 
+- [ ]
   - **File**: tests/integration/test_hse_prompt_workflow.py
   - Implement end-to-end workflow testing for two-stage training
   - Add cross-system generalization testing with multiple datasets
@@ -273,15 +274,16 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 ### Implementation Order for P0 Core Functionality
 
 **Phase 1: Foundation (Tasks 1-4)**
+
 1. Module structure initialization (__init__.py files)
 2. SystemPromptEncoder.py (two-level prompt encoding)
-3. PromptFusion.py (fusion strategies) 
+3. PromptFusion.py (fusion strategies)
 4. E_01_HSE_v2.py (completely new HSE implementation)
 
 **Phase 2: Model Integration (Task 5)**
 5. M_02_ISFM_Prompt.py (main model with prompt support)
 
-**Phase 3: Pipeline_03 Integration (Tasks 6-8)**  
+**Phase 3: Pipeline_03 Integration (Tasks 6-8)**
 6. hse_prompt_integration.py (Pipeline_03 adapter)
 7. prompt_contrastive.py (contrastive loss wrapper)
 8. hse_contrastive.py (task implementation)
@@ -310,6 +312,7 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 ### Success Metrics
 
 **P0 Core Functionality Completion Criteria:**
+
 - [ ] All 11 P0 tasks completed with passing self-tests
 - [ ] E_01_HSE_v2.py completely independent from E_01_HSE.py (zero dependencies)
 - [ ] Pipeline_03 integration working with all backbone comparisons
@@ -318,11 +321,13 @@ All tasks follow PHM-Vibench factory patterns with strict component registration
 - [ ] Complete model isolation verified (ISFM_Prompt namespace)
 
 **P1 Enhancement Completion Criteria:**
-- [ ] Ablation studies and cross-system experiments operational  
+
+- [ ] Ablation studies and cross-system experiments operational
 - [ ] Configuration validation and automated experiment scripts functional
 - [ ] Performance benchmarking and optimization features complete
 
 **Technical Performance Targets:**
+
 - **Cross-System Accuracy**: >85% accuracy on cross-dataset generalization tasks
 - **Performance Targets**: <100ms inference latency, <8GB memory usage, >50 samples/second throughput
 - **Integration**: 100% compatibility with existing PHM-Vibench workflows
