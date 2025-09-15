@@ -1,0 +1,494 @@
+# HSE Prompt-guided Industrial Contrastive Learning - Main Pipeline_03 Configuration
+# Unified Metric Learning Experimental Matrix: 6 base experiments × 5 seeds = 30 total runs
+# Target: 82% computational efficiency vs traditional 150-run approach
+#
+# This configuration implements the first unified metric learning approach for industrial
+# fault diagnosis using prompt-guided contrastive learning across all 5 datasets:
+# CWRU, XJTU, THU, Ottawa, JNU
+#
+# Key Innovation: Two-level prompt system (System: Dataset_id+Domain_id, Sample: Sample_rate)
+# Expected Results: >80% zero-shot accuracy, >95% fine-tuned accuracy
+#
+# Author: PHM-Vibench Team
+# Date: 2025-09-13
+# Target Venue: ICML/NeurIPS 2025
+
+# Environment configuration - production ready
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Unified_Metric_Learning_Production"
+  output_dir: "results/pipeline_03/unified_metric_learning"
+  notes: "Production HSE Prompt-guided unified metric learning - 30 run experimental matrix"
+
+  # Experiment tracking and reproducibility
+  experiment_name: "HSE_Industrial_Contrastive_Learning_v1"
+  random_seeds: [42, 1337, 2023, 8888, 9999]  # 5 seeds for statistical significance
+  total_experiments: 30  # 6 base × 5 seeds
+  expected_duration_hours: 24  # Complete pipeline under 24 hours
+
+  # Resource management
+  max_concurrent_experiments: 2  # Prevent GPU memory conflicts
+  checkpoint_frequency: 10  # Save every 10 epochs
+  early_stopping_patience: 15  # Generous patience for complex training
+
+# Data configuration - Unified Multi-Dataset Learning
+data:
+  # Data paths and metadata
+  data_dir: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-metric/data"
+  metadata_file: "metadata_6_11.xlsx"
+
+  # Unified dataset configuration - all 5 standard datasets
+  unified_datasets: ["CWRU", "XJTU", "THU", "Ottawa", "JNU"]
+  dataset_ids: [1, 6, 5, 19, 23]  # Corresponding dataset IDs
+
+  # Balanced sampling configuration
+  dataset_sampling_strategy: "balanced"  # Equal representation across datasets
+  cross_dataset_augmentation: true       # Cross-dataset augmentation
+  system_aware_batching: true            # Batch composition aware of system diversity
+
+  # Data processing parameters
+  batch_size: 32                         # Optimized for GPU memory efficiency
+  num_workers: 4                         # Balanced I/O performance
+  pin_memory: true
+  train_ratio: 0.7                       # 70% train, 15% val, 15% test
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+  # Signal processing parameters
+  window_size: 4096                      # Standard window for all datasets
+  stride: 10                             # 90% overlap for robust sampling
+  normalization: "standardization"       # Z-score normalization
+  dtype: "float32"                       # Memory efficient precision
+
+  # Quality control
+  min_samples_per_class: 50              # Minimum samples for reliable training
+  max_class_imbalance_ratio: 10          # Maximum allowed class imbalance
+
+# Model configuration - M_02_ISFM_Prompt with full prompt system
+model:
+  # Main model architecture
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+
+  # Core architecture parameters
+  input_dim: 1                           # Single channel vibration signals
+  d_model: 256                          # Increased model capacity for multi-dataset learning
+  d_ff: 1024                            # Feed-forward dimension
+  num_heads: 8                          # Multi-head attention
+  num_layers: 4                         # Transformer layers
+  dropout: 0.1                          # Regularization
+
+  # HSE v2 embedding configuration
+  embedding: "E_01_HSE_v2"              # New independent HSE implementation
+  patch_size_L: 64                      # Patch length for temporal analysis
+  patch_size_C: 1                       # Single channel
+  num_patches: 64                       # Number of patches
+  output_dim: 256                       # Embedding output dimension
+
+  # Two-level Prompt System Configuration (Core Innovation)
+  use_prompt: true                      # Enable prompt-guided learning
+  prompt_dim: 128                       # Total prompt embedding dimension
+
+  # System-level prompts (Dataset_id + Domain_id)
+  system_prompt_dim: 64                 # System context embedding
+  max_dataset_ids: 50                   # Support up to 50 datasets
+  max_domain_ids: 50                    # Support up to 50 operating conditions
+  use_system_prompt: true               # Enable system-level context
+
+  # Sample-level prompts (Sample_rate)
+  sample_prompt_dim: 64                 # Sample context embedding
+  use_sample_prompt: true               # Enable sample-level context
+  sample_rate_normalization: true       # Normalize sampling rates
+
+  # CRITICAL: NO fault-level prompts (Label is prediction target!)
+  use_fault_prompt: false               # Fault type is what we predict!
+
+  # Prompt fusion strategy
+  fusion_strategy: "attention"          # Best performing fusion method
+  fusion_temperature: 0.1               # Temperature for attention fusion
+  residual_connection: true             # Preserve original signal features
+
+  # Training stage control for Pipeline_03
+  training_stage: "pretrain"            # Stage 1: Pretraining
+  freeze_prompt: false                  # Allow prompt learning in stage 1
+  freeze_prompts_in_finetuning: true    # Freeze in stage 2 to prevent overfitting
+
+  # Backbone network configuration
+  backbone: "B_08_PatchTST"             # Patch-based Time Series Transformer
+  backbone_config:
+    patch_len: 16                       # Patch length for PatchTST
+    stride: 8                           # Patch stride
+    padding_patch: "end"                # Padding strategy
+    n_layers: 3                         # Transformer layers in backbone
+    n_heads: 8                          # Attention heads
+    d_k: 32                             # Key dimension
+    d_v: 32                             # Value dimension
+    d_ff: 256                           # Feed-forward dimension
+    norm: "BatchNorm"                   # Normalization type
+    attn_dropout: 0.0                   # Attention dropout
+    dropout: 0.2                        # General dropout
+    act: "gelu"                         # Activation function
+    res_attention: true                 # Residual attention
+    pre_norm: false                     # Pre-normalization
+    store_attn: false                   # Store attention weights
+
+  # Task head configuration
+  task_head: "H_01_Linear_cla"          # Linear classification head
+  num_classes: 10                       # Standard across datasets
+  head_dropout: 0.1                     # Classification head dropout
+
+  # Contrastive learning components
+  use_momentum_encoder: true            # Momentum encoder for contrastive learning
+  momentum: 0.999                       # Momentum coefficient
+  use_projection_head: true             # Projection head for contrastive learning
+  projection_dim: 128                   # Projection dimension
+  projection_layers: 2                  # Number of projection layers
+
+# Task configuration - HSE Contrastive Learning
+task:
+  # Task identification
+  name: "hse_contrastive"
+  type: "CDDG"                          # Cross-Dataset Domain Generalization
+
+  # Unified Metric Learning Configuration
+  training_mode: "unified_pretraining"  # Train on all datasets simultaneously
+  target_datasets: ["CWRU", "XJTU", "THU", "Ottawa", "JNU"]
+  source_datasets: ["CWRU", "XJTU", "THU", "Ottawa", "JNU"]  # All datasets as sources
+
+  # Cross-system domain generalization
+  cross_system_training: true           # Enable cross-system training
+  system_aware_sampling: true           # System-aware positive/negative sampling
+  hard_negative_mining: true            # Mine hard negatives across systems
+
+  # Contrastive learning parameters (Core of HSE method)
+  contrast_loss: "INFONCE"              # InfoNCE loss for contrastive learning
+  contrast_weight: 0.15                 # Balance contrastive vs. classification loss
+  temperature: 0.07                     # Temperature parameter for softmax
+
+  # Prompt-specific contrastive learning (Innovation)
+  use_prompt_similarity: true           # Prompt similarity regularization
+  prompt_similarity_weight: 0.1         # Weight for prompt similarity loss
+  prompt_contrastive_temperature: 0.05  # Temperature for prompt similarity
+
+  # Advanced contrastive learning features
+  use_hard_negatives: true              # Hard negative mining
+  negative_sampling_ratio: 4            # Negative to positive sample ratio
+  queue_size: 4096                      # Memory queue for contrastive learning
+
+  # Multi-positive contrastive learning
+  multi_positive: true                  # Multiple positives per anchor
+  within_batch_positives: true          # Use batch samples as positives
+  cross_dataset_positives: true         # Cross-dataset positive sampling
+
+  # Standard training parameters
+  loss: "CE"                            # Classification loss
+  loss_weights: [1.0, 0.15]             # [classification_weight, contrastive_weight]
+
+  # Optimization configuration
+  optimizer: "adamw"                    # AdamW optimizer
+  lr: 1e-3                              # Learning rate for pretraining
+  weight_decay: 0.01                    # Weight decay for regularization
+  warmup_epochs: 5                      # Learning rate warmup
+  warmup_lr: 1e-5                       # Initial warmup learning rate
+
+  # Learning rate scheduling
+  scheduler: true
+  scheduler_type: "cosine"              # Cosine annealing
+  min_lr: 1e-6                          # Minimum learning rate
+  restart_epochs: 50                    # Cosine restart period
+
+  # Training configuration
+  epochs: 100                           # Pretraining epochs
+  early_stopping: true                  # Enable early stopping
+  es_patience: 15                       # Early stopping patience
+  es_min_delta: 0.001                   # Minimum improvement threshold
+
+  # Evaluation metrics
+  metrics: ["accuracy", "f1_weighted", "cross_system_accuracy", "domain_adaptation_score"]
+
+  # Advanced training features
+  gradient_clipping: true               # Gradient clipping
+  max_grad_norm: 1.0                    # Maximum gradient norm
+  label_smoothing: 0.1                  # Label smoothing for regularization
+
+  # Experiment tracking
+  wandb: true                           # Weights & Biases logging
+  wandb_project: "HSE-Unified-Metric-Learning"
+  wandb_tags: ["unified_metric", "prompt_guided", "contrastive", "pipeline_03", "ICML2025"]
+
+# Trainer configuration - Pipeline_03 compatible
+trainer:
+  # Basic trainer configuration
+  name: "Default_trainer"
+  accelerator: "auto"                   # Auto-detect GPU/CPU
+  devices: 1                            # Single GPU training
+  precision: "16-mixed"                 # Mixed precision for efficiency
+
+  # Training configuration
+  max_epochs: 100                       # Match task.epochs
+  gradient_clip_val: 1.0                # Gradient clipping
+  gradient_clip_algorithm: "norm"       # Clipping algorithm
+
+  # Validation and monitoring
+  val_check_interval: 0.25              # Validate 4 times per epoch
+  check_val_every_n_epoch: 1            # Validate every epoch
+  log_every_n_steps: 50                 # Logging frequency
+
+  # Checkpointing
+  enable_checkpointing: true            # Enable model checkpointing
+  save_top_k: 3                         # Save top 3 models
+  monitor: "val_accuracy"               # Metric to monitor
+  mode: "max"                           # Maximize validation accuracy
+  save_last: true                       # Save last checkpoint
+
+  # Performance optimization
+  sync_batchnorm: false                 # Sync batch norm (disable for single GPU)
+  enable_progress_bar: true             # Show progress bar
+  enable_model_summary: true            # Model summary
+
+  # Debugging and profiling
+  detect_anomaly: false                 # Anomaly detection (disable for speed)
+  profiler: null                        # Profiler (disable for production)
+
+# Pipeline_03 Configuration - Two-Stage Training Workflow
+pipeline_03:
+  # Pipeline metadata
+  version: "1.0"
+  description: "HSE Prompt-guided unified metric learning with two-stage training"
+
+  # Stage 1: Unified Pretraining across all 5 datasets
+  stage_1_pretraining:
+    enabled: true
+    name: "unified_pretraining"
+    description: "Train unified representations across all 5 datasets with prompt guidance"
+
+    # Stage 1 specific overrides
+    config_overrides:
+      model:
+        training_stage: "pretrain"      # Enable prompt learning
+        freeze_prompt: false            # Learn prompts during pretraining
+      task:
+        epochs: 100                     # Full pretraining epochs
+        contrast_weight: 0.15           # Strong contrastive learning
+        lr: 1e-3                        # Higher learning rate for pretraining
+        training_mode: "unified_pretraining"
+      trainer:
+        max_epochs: 100                 # Match task epochs
+
+    # Expected outcomes
+    success_criteria:
+      min_val_accuracy: 0.6             # Minimum 60% validation accuracy
+      min_contrastive_similarity: 0.4   # Minimum contrastive similarity score
+      max_training_time_hours: 12       # Maximum 12 hours for stage 1
+
+  # Zero-shot evaluation between stages
+  zero_shot_evaluation:
+    enabled: true
+    name: "cross_dataset_zero_shot"
+    description: "Evaluate pretrained model on each dataset without fine-tuning"
+
+    # Zero-shot configuration
+    target_datasets: ["CWRU", "XJTU", "THU", "Ottawa", "JNU"]
+    evaluation_metrics: ["accuracy", "f1_weighted", "domain_adaptation_score"]
+
+    # Success criteria for zero-shot (Key Innovation Metric)
+    success_criteria:
+      min_average_accuracy: 0.8         # >80% average zero-shot accuracy
+      min_per_dataset_accuracy: 0.65    # >65% per dataset minimum
+      max_std_deviation: 0.15           # <15% standard deviation across datasets
+
+  # Stage 2: Dataset-specific fine-tuning
+  stage_2_finetuning:
+    enabled: true
+    name: "dataset_specific_finetuning"
+    description: "Fine-tune on each dataset individually with frozen prompts"
+
+    # Fine-tuning for each dataset
+    target_datasets: ["CWRU", "XJTU", "THU", "Ottawa", "JNU"]
+
+    # Stage 2 specific overrides
+    config_overrides:
+      model:
+        training_stage: "finetune"      # Switch to finetuning mode
+        freeze_prompt: true             # Freeze learned prompts
+      task:
+        epochs: 50                      # Fewer epochs for fine-tuning
+        contrast_weight: 0.05           # Reduced contrastive weight
+        lr: 5e-4                        # Lower learning rate
+        training_mode: "single_dataset_finetuning"
+      trainer:
+        max_epochs: 50                  # Match task epochs
+
+    # Expected outcomes (Key Performance Metric)
+    success_criteria:
+      min_average_accuracy: 0.95        # >95% average fine-tuned accuracy
+      min_per_dataset_accuracy: 0.90    # >90% per dataset minimum
+      improvement_over_zero_shot: 0.1   # At least 10% improvement over zero-shot
+
+  # Checkpoint and model management
+  checkpoint_strategy:
+    load_pretrained_for_stage_2: true   # Load stage 1 for stage 2
+    stage_1_checkpoint_monitor: "val_accuracy"
+    stage_2_checkpoint_monitor: "val_accuracy"
+    save_intermediate_models: true      # Save models between stages
+
+  # Experiment matrix configuration
+  experiment_matrix:
+    base_experiments: 6                 # 6 base experimental configurations
+    random_seeds: [42, 1337, 2023, 8888, 9999]  # 5 seeds per experiment
+    total_runs: 30                      # 6 × 5 = 30 total experiments
+
+    # Base experiment variations
+    variations:
+      - name: "baseline"
+        description: "Standard HSE prompt configuration"
+        overrides: {}
+
+      - name: "high_contrast"
+        description: "Higher contrastive weight"
+        overrides:
+          task:
+            contrast_weight: 0.25
+
+      - name: "large_batch"
+        description: "Larger batch size"
+        overrides:
+          data:
+            batch_size: 64
+
+      - name: "deep_model"
+        description: "Deeper model architecture"
+        overrides:
+          model:
+            num_layers: 6
+            d_model: 512
+
+      - name: "strong_regularization"
+        description: "Enhanced regularization"
+        overrides:
+          model:
+            dropout: 0.2
+          task:
+            weight_decay: 0.05
+            label_smoothing: 0.2
+
+      - name: "optimized_fusion"
+        description: "Optimized prompt fusion"
+        overrides:
+          model:
+            fusion_strategy: "gating"
+            prompt_dim: 256
+
+# Results and analysis configuration
+results:
+  # Output organization
+  save_predictions: true                # Save model predictions
+  save_embeddings: true                # Save learned embeddings
+  save_attention_maps: true            # Save attention visualizations
+
+  # Statistical analysis
+  significance_testing: true            # Perform significance tests
+  bootstrap_samples: 1000              # Bootstrap samples for confidence intervals
+  confidence_level: 0.95               # 95% confidence intervals
+
+  # Visualization and reporting
+  generate_plots: true                 # Generate result plots
+  create_latex_tables: true           # Create publication-ready tables
+  export_formats: ["csv", "json", "xlsx"]  # Export formats
+
+  # Comparison baselines
+  compare_with_baselines: true         # Compare with baseline methods
+  baseline_methods: ["standard_contrastive", "single_dataset", "no_prompt"]
+
+  # Publication metrics (Target: ICML/NeurIPS 2025)
+  paper_metrics:
+    - "cross_system_generalization_accuracy"
+    - "zero_shot_transfer_performance"
+    - "computational_efficiency_ratio"
+    - "prompt_contribution_analysis"
+    - "statistical_significance_tests"
+
+# Performance and resource optimization
+performance:
+  # Memory optimization
+  enable_mixed_precision: true         # FP16 training
+  gradient_checkpointing: false        # Disable for faster training
+  pin_memory: true                     # Pin GPU memory
+
+  # Training optimization
+  compile_model: false                 # PyTorch 2.0 compilation (experimental)
+  cudnn_benchmark: true                # cuDNN benchmark mode
+
+  # Resource monitoring
+  log_gpu_memory: true                 # Log GPU memory usage
+  log_system_metrics: true            # Log system performance
+  memory_threshold_gb: 8               # Memory usage threshold
+
+  # Parallel processing
+  dataloader_num_workers: 4            # Optimal for most systems
+  prefetch_factor: 2                   # Prefetch batches
+  persistent_workers: true             # Keep workers alive
+
+# Validation and testing configuration
+validation:
+  # Cross-validation strategy
+  k_fold_validation: false             # Disable k-fold for large experiments
+  holdout_validation: true             # Use holdout validation
+
+  # Test configuration
+  test_batch_size: 64                  # Larger batch for testing
+  test_time_augmentation: false        # Disable TTA for speed
+
+  # Robustness testing
+  noise_robustness_test: true          # Test with added noise
+  adversarial_robustness_test: false   # Disable for production
+
+  # Domain adaptation testing
+  cross_domain_evaluation: true        # Evaluate cross-domain performance
+  domain_shift_analysis: true         # Analyze domain shift effects
+
+# Success criteria and monitoring (Key Innovation Metrics)
+success_criteria:
+  # Primary objectives (Must achieve for publication)
+  zero_shot_accuracy_threshold: 0.80   # >80% zero-shot accuracy (BREAKTHROUGH)
+  finetuned_accuracy_threshold: 0.95   # >95% fine-tuned accuracy
+  computational_efficiency_ratio: 0.82  # 82% efficiency vs. 150-run baseline
+  training_time_budget_hours: 24       # Complete pipeline < 24 hours
+
+  # Secondary objectives (Desirable for strong publication)
+  cross_system_consistency: 0.85       # <15% std dev across systems
+  prompt_contribution_significance: 0.05  # p < 0.05 for prompt benefits
+  memory_efficiency_gb: 8              # Peak GPU memory < 8GB
+
+  # Statistical significance requirements
+  statistical_power: 0.8               # 80% statistical power
+  effect_size_threshold: 0.5           # Medium to large effect size
+  multiple_testing_correction: "bonferroni"  # Multiple comparison correction
+
+# Metadata for experiment tracking and reproducibility
+metadata:
+  version: "1.0.0"
+  authors: ["PHM-Vibench Team"]
+  target_venue: "ICML/NeurIPS 2025"
+  experiment_date: "2025-09-13"
+
+  # Code and data versioning
+  code_version: "HSE-v2.0"
+  data_version: "PHMBench-v6.11"
+  model_version: "M_02_ISFM_Prompt-v1.0"
+
+  # Reproducibility information
+  pytorch_version: "2.6.0"
+  python_version: "3.9+"
+  cuda_version: "12.1+"
+
+  # Citation and references
+  related_work: ["InfoNCE", "PatchTST", "Industrial_Fault_Diagnosis"]
+  dataset_sources: ["CWRU", "XJTU-SY", "THU", "Ottawa", "JNU"]
+
+  # Legal and ethical
+  license: "MIT"
+  data_usage_agreement: "Academic_Research_Only"
+  ethical_approval: "Not_Required"
