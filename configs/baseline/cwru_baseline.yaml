@@ -1,0 +1,59 @@
+# CWRU Baseline Configuration - Simplified ID-based approach
+# Traditional single-dataset classification without prompt guidance
+# Used as baseline comparison for HSE prompt-guided experiments
+
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "."
+  PYTHONPATH: "."
+  PHMBench: "."
+  project: "CWRU_Baseline_Simple"
+  seed: 42
+  output_dir: "results/baseline/cwru_simple"
+  notes: "CWRU baseline - simplified ID-based data factory"
+  iterations: 1
+
+data:
+  factory: "id_data_factory"  # Use ID-based factory to avoid H5 cache issues
+  data_dir: "./data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 16  # Smaller batch for stability
+  num_workers: 0  # Disable multiprocessing for stability
+
+model:
+  name: "Transformer_Simple"
+  type: "Transformer"
+  input_dim: 2
+  num_classes: 4  # Start with fewer classes
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  feature_dim: 10
+  hidden_dim: 64
+  activation: "relu"
+
+task:
+  name: "classification"
+  type: "Default_task"
+  target_system_id: [1]  # CWRU dataset ID
+
+  # Simple training parameters
+  loss: "CE"
+  metrics: ["acc"]
+  optimizer: "adam"
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 5  # Short run for baseline
+  early_stopping: true
+  es_patience: 3
+
+trainer:
+  name: "Default_trainer"
+  wandb: false
+  num_epochs: 5  # Short baseline run
+  gpus: 1
+  early_stopping: true
+  patience: 3
+  device: 'cuda'

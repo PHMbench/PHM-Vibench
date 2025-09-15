@@ -337,7 +337,7 @@ class TestSuite:
         try:
             # Initialize components
             encoder = SystemPromptEncoder(prompt_dim=128).to(self.device)
-            fusion = PromptFusion(signal_dim=256, prompt_dim=128, 'attention').to(self.device)
+            fusion = PromptFusion(signal_dim=256, prompt_dim=128, fusion_strategy='attention').to(self.device)
             
             encoder.eval()
             fusion.eval()
@@ -427,7 +427,7 @@ class TestSuite:
         
         try:
             encoder = SystemPromptEncoder(prompt_dim=128).to(self.device)
-            fusion = PromptFusion(signal_dim=256, prompt_dim=128, 'attention').to(self.device)
+            fusion = PromptFusion(signal_dim=256, prompt_dim=128, fusion_strategy='attention').to(self.device)
             
             # Stage 1: Pretraining (all parameters trainable)
             encoder.train()
@@ -514,6 +514,22 @@ class TestSuite:
             print("  ⚠️  Some components need attention before deployment")
         
         print("="*60)
+
+
+def run_component_tests() -> bool:
+    """
+    Run component tests for integration testing.
+
+    Returns:
+        True if all tests pass, False otherwise
+    """
+    try:
+        test_suite = TestSuite()
+        results = test_suite.run_all_tests()
+        return results  # TestSuite returns boolean for success/failure
+    except Exception as e:
+        print(f"Component tests failed with error: {e}")
+        return False
 
 
 def main():

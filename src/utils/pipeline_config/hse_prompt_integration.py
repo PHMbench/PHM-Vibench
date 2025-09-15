@@ -54,31 +54,35 @@ class HSEPromptPipelineIntegration:
         """
         config = copy.deepcopy(base_configs)
         
+        # Import ConfigWrapper for proper updates
+        from src.configs.config_utils import ConfigWrapper
+
         # Update model configuration for prompt-guided learning
-        config['model'].update({
+        model_update = ConfigWrapper({
             'name': 'M_02_ISFM_Prompt',
             'type': 'ISFM_Prompt',
             'embedding': 'E_01_HSE_v2',
             'backbone': backbone,
             'task_head': pretraining_config.get('task_head', 'H_01_Linear_cla'),
-            
+
             # Prompt-specific configuration
             'use_prompt': True,
             'prompt_dim': pretraining_config.get('prompt_dim', 128),
             'fusion_type': pretraining_config.get('fusion_type', 'attention'),
             'training_stage': 'pretraining',
             'freeze_prompt': False,
-            
+
             # HSE v2 specific parameters
             'patch_size_L': pretraining_config.get('patch_size_L', 16),
             'patch_size_C': pretraining_config.get('patch_size_C', 1),
             'num_patches': pretraining_config.get('num_patches', 64),
             'output_dim': pretraining_config.get('output_dim', 128),
-            
+
             # Prompt system parameters
             'max_dataset_ids': pretraining_config.get('max_dataset_ids', 50),
             'max_domain_ids': pretraining_config.get('max_domain_ids', 50)
         })
+        config['model'].update(model_update)
         
         # Update task configuration for contrastive learning
         config['task'].update({
@@ -221,6 +225,37 @@ class HSEPromptPipelineIntegration:
         
         return config
     
+    def identify_prompt_parameters(self, state_dict: Dict) -> List[str]:
+        """
+        Identify prompt-related parameters from state dictionary.
+
+        Args:
+            state_dict: Model state dictionary
+
+        Returns:
+            List of parameter names related to prompt components
+        """
+        prompt_params = []
+
+        # Patterns for prompt-related parameters
+        prompt_patterns = [
+            'prompt_encoder',
+            'prompt_fusion',
+            'dataset_embedding',
+            'domain_embedding',
+            'sample_rate_projection',
+            'system_prompt',
+            'sample_prompt'
+        ]
+
+        for param_name in state_dict.keys():
+            for pattern in prompt_patterns:
+                if pattern in param_name:
+                    prompt_params.append(param_name)
+                    break
+
+        return prompt_params
+
     def freeze_prompt_parameters(self, model) -> int:
         """
         Freeze prompt-related parameters during finetuning.
