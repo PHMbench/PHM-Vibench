@@ -166,6 +166,10 @@ test.yaml
 configs/test
 configs/LQ_paper
 main_LQ.py
+dev/
+plot/
+script/
+wandb/
 LQ1/
 plot/save
 # main_LQ.py
@@ -181,17 +185,13 @@ configs/template/Pretraining_C+P_patchtst.yaml
 plot/data/
 # script/Vibench_paper/
 
-
-
 dev/sundial_model/
 dev/preexp/*.csv
 dev/preexp
 dev/project/
-dev/project/
 out.csv
 dev/project/valve.ipynb
 dev/ross_demo/fault.ipynb
-dev/project/valve.ipynb
 plot/
 test/
 metrics_reports/
