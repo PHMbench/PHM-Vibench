@@ -939,10 +939,10 @@ python scripts/export_latex.py --result_dir results/experiment_name
 - 🧪 **test/**: Development testing suite ensuring code quality
 - 📜 **scripts/**: Convenient auxiliary tools and scripts
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
   <p><em>PHM-Vibench Project Structure Overview</em></p>
-</div>
+</div> -->
 
 ## 🧑‍💻 Development Guide TODO
 
