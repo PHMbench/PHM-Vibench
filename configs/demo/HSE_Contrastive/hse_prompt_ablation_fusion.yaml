@@ -1,0 +1,199 @@
+# HSE Prompt融合策略消融研究配置
+# 对比测试三种融合策略：concatenation, attention, gating
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Prompt_Ablation_Fusion"
+  seed: 42
+  output_dir: "results/hse_ablation_fusion"
+  notes: "消融研究：对比不同Prompt融合策略的效果"
+  iterations: 2
+
+# 数据配置
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 16
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 32
+  normalization: standardization
+
+# 模型配置 - 消融实验设置
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  num_heads: 4
+  num_layers: 2
+  d_model: 128
+  d_ff: 256
+  dropout: 0.1
+  hidden_dim: 128
+  activation: "relu"
+  
+  # HSE Prompt嵌入配置
+  embedding: "E_01_HSE_Prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 64
+  output_dim: 512
+  
+  # Prompt特征配置
+  prompt_dim: 128
+  fusion_type: "attention"        # 主实验使用attention，通过参数扫描测试其他策略
+  use_system_prompt: true
+  use_sample_prompt: true
+  use_fault_prompt: true
+  
+  # 训练阶段设置
+  training_stage: "pretrain"
+  freeze_prompt: false
+  
+  # 网络结构
+  backbone: "B_08_PatchTST"
+  num_layers: 3
+  task_head: "H_01_Linear_cla"
+  
+  # 对比学习组件
+  use_momentum_encoder: true
+  momentum: 0.999
+  use_projection_head: true
+  projection_dim: 128
+
+# 任务配置
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # 跨系统设置
+  target_domain_num: 1
+  target_system_id: [6]
+  source_domain_id: [1, 13]       # 使用较少源域加速消融实验
+  
+  # 对比学习参数
+  contrast_loss: "INFONCE"
+  contrast_weight: 0.1
+  temperature: 0.07
+  use_hard_negatives: true
+  use_momentum: true
+  projection_dim: 128
+  
+  # 训练参数
+  loss: "CE"
+  metrics: ["acc", "f1"]
+  optimizer: "adamw"
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 30                      # 较短训练用于消融研究
+  lr: 5e-4
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 8
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 10
+  gamma: 0.7
+  
+  # 实验跟踪
+  wandb: true
+  wandb_project: "HSE-Ablation-Studies"
+  wandb_tags: ["ablation", "fusion_strategy", "ICML2025"]
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  wandb: False
+  pruning: False
+  num_epochs: 30
+  gpus: 1
+  precision: 16
+  early_stopping: true
+  patience: 8
+  device: 'cuda'
+
+# 参数扫描配置 - 消融研究核心
+parameter_sweep:
+  # 融合策略消融
+  fusion_strategies:
+    - name: "concat"
+      fusion_type: "concat"
+      description: "简单拼接融合"
+      
+    - name: "attention" 
+      fusion_type: "attention"
+      description: "交叉注意力融合"
+      
+    - name: "gating"
+      fusion_type: "gating"
+      description: "自适应门控融合"
+  
+  # Prompt组件消融
+  prompt_components:
+    - name: "all_prompts"
+      use_system_prompt: true
+      use_sample_prompt: true
+      use_fault_prompt: true
+      description: "使用所有Prompt组件"
+      
+    - name: "system_only"
+      use_system_prompt: true
+      use_sample_prompt: false
+      use_fault_prompt: false
+      description: "仅系统级Prompt"
+      
+    - name: "sample_only"
+      use_system_prompt: false
+      use_sample_prompt: true
+      use_fault_prompt: false
+      description: "仅样本级Prompt"
+      
+    - name: "fault_only"
+      use_system_prompt: false
+      use_sample_prompt: false
+      use_fault_prompt: true
+      description: "仅故障级Prompt"
+      
+    - name: "no_prompt"
+      use_system_prompt: false
+      use_sample_prompt: false
+      use_fault_prompt: false
+      description: "无Prompt基线（退化为原始HSE）"
+  
+  # Prompt维度消融
+  prompt_dimensions: [64, 128, 256, 512]
+  
+  # 实验命名模板
+  experiment_name_template: "HSE_{fusion_type}_{prompt_dim}d_{components}"
+
+# 结果分析配置
+analysis:
+  # 性能指标对比
+  comparison_metrics:
+    - "test_accuracy"
+    - "test_f1"
+    - "cross_system_accuracy"
+    - "training_time"
+    - "inference_time"
+  
+  # 统计显著性检验
+  statistical_tests:
+    - "t_test"
+    - "wilcoxon"
+  
+  # 可视化设置
+  plots:
+    - "fusion_strategy_comparison"
+    - "prompt_component_ablation" 
+    - "prompt_dimension_scaling"
+    - "training_curves"

@@ -1,0 +1,180 @@
+# HSE Prompt Ablation Study - Sample Prompt Only
+# Pipeline_03 compatible configuration for testing sample-level prompts (Sample_rate)
+# Part of P1 Feature Enhancement for HSE Industrial Contrastive Learning
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Ablation_Sample_Only"
+  seed: 42
+  output_dir: "results/pipeline_03/ablation/sample_prompt_only"
+  notes: "Ablation Study: Sample-level prompts only (Sample_rate), no system-level prompts"
+  iterations: 3
+
+# Data configuration - identical across all ablation studies for fair comparison
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 16
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# Model configuration - Pipeline_03 compatible with E_01_HSE_v2
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  input_dim: 2
+  num_heads: 4
+  num_layers: 2
+  d_model: 128
+  d_ff: 256
+  dropout: 0.1
+  hidden_dim: 128
+  activation: "relu"
+  
+  # HSE v2 embedding with sample prompts only
+  embedding: "E_01_HSE_v2"         # Use new independent HSE implementation
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 64
+  output_dim: 512
+  
+  # Sample-level prompt configuration (ABLATION TARGET)
+  prompt_dim: 64                   # Total prompt dimension
+  system_prompt_dim: 0             # DISABLED: No system-level prompts
+  sample_prompt_dim: 64            # Sample-level: Sample_rate only
+  fusion_strategy: "attention"     # Consistent fusion strategy across ablations
+  use_system_prompt: false         # DISABLED: No system-level metadata
+  use_sample_prompt: true          # ENABLED: Sample-level metadata only
+  # NOTE: NO fault-level prompts - Label is prediction target!
+  
+  # Training stage control for Pipeline_03 integration
+  training_stage: "pretrain"       # Pipeline_03 stage 1
+  freeze_prompt: false             # Allow prompt learning during pretraining
+  
+  # Backbone configuration - identical across ablations
+  backbone: "B_08_PatchTST"
+  num_layers: 3
+  
+  # Task head configuration
+  task_head: "H_01_Linear_cla"
+  
+  # Contrastive learning components
+  use_momentum_encoder: true
+  momentum: 0.999
+  use_projection_head: true
+  projection_dim: 128
+
+# Task configuration - HSE contrastive learning
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # Cross-system domain generalization
+  target_domain_num: 1
+  target_system_id: [6]           # Target test system
+  source_domain_id: [1, 13, 19]  # Multi-source pretraining
+  
+  # Contrastive learning parameters - identical across ablations
+  contrast_loss: "INFONCE"        # InfoNCE loss
+  contrast_weight: 0.15           # Contrastive loss weight
+  temperature: 0.07               # Temperature parameter
+  prompt_similarity_weight: 0.1   # Sample prompt similarity regularization
+  use_hard_negatives: true        # Hard negative sampling
+  use_momentum: true              # Momentum encoder
+  projection_dim: 128             # Projection head dimension
+  
+  # Standard training parameters
+  loss: "CE"                      # Classification loss
+  metrics: ["acc", "f1"]          # Evaluation metrics
+  optimizer: "adamw"
+  lr: 5e-4
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 10
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 15
+  gamma: 0.5
+  
+  # Pipeline_03 training parameters
+  epochs: 50                      # Pretraining epochs
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  
+  # Experiment tracking
+  wandb: true
+  wandb_project: "HSE-Pipeline03-Ablation"
+  wandb_tags: ["ablation", "sample_prompt_only", "pipeline_03", "ICML2025"]
+
+# Trainer configuration - Pipeline_03 compatible
+trainer:
+  name: "Default_trainer"
+  wandb: false
+  pruning: false
+  max_epochs: 50                  # Match task.epochs
+  devices: 1
+  accelerator: "auto"
+  precision: 16                   # Mixed precision training
+  early_stopping: true
+  patience: 10
+  
+# Pipeline_03 specific configuration
+pipeline_03:
+  # Stage 1: Pretraining configuration
+  stage_1:
+    enabled: true
+    type: "pretraining"
+    config_overrides:
+      model:
+        training_stage: "pretrain"
+        freeze_prompt: false      # Learn prompts during pretraining
+      task:
+        epochs: 50
+        contrast_weight: 0.15     # Enable contrastive learning
+    
+  # Stage 2: Finetuning configuration
+  stage_2:
+    enabled: true
+    type: "finetuning"
+    config_overrides:
+      model:
+        training_stage: "finetune"
+        freeze_prompt: true       # Freeze prompts during finetuning
+      task:
+        epochs: 20
+        contrast_weight: 0.05     # Reduce contrastive weight
+        lr: 1e-4                  # Lower learning rate for finetuning
+  
+  # Checkpoint handling
+  checkpoint:
+    load_pretrained: true         # Load stage 1 checkpoint for stage 2
+    save_best_only: true
+    monitor: "val_accuracy"
+    mode: "max"
+
+# Ablation study metadata
+ablation:
+  study_type: "sample_prompt_only"
+  description: "Tests sample-level prompts (Sample_rate) without system-level prompts"
+  baseline_comparison: "hse_no_prompt_baseline.yaml"
+  expected_benefits:
+    - "Signal processing parameter adaptation"
+    - "Sampling frequency awareness"
+    - "Within-system optimization"
+  comparison_metrics:
+    - "signal_quality_adaptation"
+    - "frequency_domain_performance"
+    - "within_system_accuracy"
+    - "parameter_sensitivity"
