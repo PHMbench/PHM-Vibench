@@ -1,0 +1,60 @@
+# HSE温度参数消融研究
+# 探索温度参数对对比学习效果的影响
+
+environment:
+  project: "HSE_Ablation_Temperature"
+  seed: 42
+  notes: "温度参数消融研究 - 测试不同温度值"
+
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 64
+  window_size: 4096
+  num_window: 32
+  normalization: true
+  shuffle: true
+
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_08_PatchTST"
+  d_model: 256
+  task_head: "H_01_Linear_cla"
+  
+  # 使用动量编码器包装器
+  use_momentum_encoder: true
+  momentum: 0.999
+  
+  # 可选：使用投影头进行对比学习
+  use_projection_head: true
+  projection_dim: 128
+
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # 温度参数扫描 (需要在实验脚本中遍历)
+  contrast_loss: "INFONCE"     # 使用已注册的InfoNCE损失
+  contrast_weight: 0.1
+  temperature: 0.1             # 较高温度值
+  use_hard_negatives: true
+  use_momentum: true
+  projection_dim: 128
+  
+  target_system_id: [6]
+  loss: "CE"
+  metrics: ["acc", "f1"]
+  epochs: 50
+  lr: 5e-4
+
+trainer:
+  name: "Default_trainer"
+  gpus: 1
+  max_epochs: 50
+
+# 参数扫描配置
+parameter_sweep:
+  temperature_values: [0.01, 0.05, 0.07, 0.1, 0.2]
+  experiment_name_template: "HSE_temp_{temperature}"

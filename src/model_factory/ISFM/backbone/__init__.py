@@ -7,6 +7,7 @@ from .B_07_TSMixer import B_07_TSMixer
 from .B_08_PatchTST import B_08_PatchTST
 from .B_09_FNO import B_09_FNO
 from .B_10_VIBT import B_10_VIBT  # Vibration Transformer Backbone
+from .B_11_MomentumEncoder import B_11_MomentumEncoder  # Momentum Encoder Backbone
 
 __all__ = ["B_01_basic_transformer",
        'B_03_FITS',
@@ -17,4 +18,5 @@ __all__ = ["B_01_basic_transformer",
        'B_08_PatchTST',
        'B_09_FNO',
        'B_10_VIBT',  # Vibration Transformer Backbone
+       'B_11_MomentumEncoder',  # Momentum Encoder Backbone
        ]

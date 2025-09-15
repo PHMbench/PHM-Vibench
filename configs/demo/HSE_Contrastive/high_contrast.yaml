@@ -1,0 +1,110 @@
+# HSE对比学习高权重实验配置  
+# 使用更高的对比损失权重，测试强对比学习的效果
+# 探索对比学习权重对性能的影响
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_CDDG_HighContrast"
+  seed: 42
+  output_dir: "results/hse_high_contrast"
+  notes: "高对比权重HSE CDDG实验"
+  iterations: 2
+
+# 数据配置（与基础配置相同）
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 32
+  train_ratio: 0.8
+  normalization: true
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置（与基础配置相同）
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  input_dim: 2
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  hidden_dim: 64
+  activation: "relu"
+  
+  # HSE嵌入配置
+  embedding: "E_01_HSE"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+  
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"  # 使用更好PatchTST骨干网络
+  num_layers: 4
+  
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+  
+  # 使用动量编码器包装器
+  use_momentum_encoder: true
+  momentum: 0.999
+  
+  # 可选：使用投影头进行对比学习
+  use_projection_head: true
+  projection_dim: 128
+
+# 任务配置（关键差异：高对比权重）
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # 跨系统设置
+  target_domain_num: 1
+  target_system_id: [6]
+  
+  # 对比学习参数（高权重实验）
+  contrast_loss: "INFONCE"    # 使用已注册的InfoNCE损失
+  contrast_weight: 0.3        # 提高对比损失权重
+  temperature: 0.05           # 降低温度增加对比强度
+  use_hard_negatives: true    # 启用困难负样本挖掘
+  use_momentum: true          # 启用Momentum编码器
+  projection_dim: 128         # 投影头维度
+  
+  # 标准训练参数
+  loss: "CE"
+  metrics: ["acc"]
+  optimizer: "adam"
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 10
+  lr: 0.001
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 5
+  scheduler: true
+  scheduler_type: "step"
+  step_size: 3
+  gamma: 0.5
+
+# 训练器配置
+trainer:
+  name: "Default_trainer"
+  wandb: False
+  pruning: False
+  num_epochs: 10
+  gpus: 1
+  early_stopping: true
+  patience: 5
+  device: 'cuda'

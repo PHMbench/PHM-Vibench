@@ -1,0 +1,152 @@
+# Ablation Study: Prompt Fusion Strategies
+# Evaluates different fusion methods for combining signal and prompt features
+
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  PYTHONPATH: "/home/lq/.conda/envs/lq"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  project: "HSE_Ablation_Fusion"
+  seed: 42
+  output_dir: "results/ablation_fusion"
+  notes: "Ablation study comparing attention, concatenation, and gating fusion strategies"
+  iterations: 1
+
+# Data configuration
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 16
+  train_ratio: 0.8
+  normalization: standardization
+  window_size: 4096
+  stride: 5
+  truncate_lenth: 100
+  dtype: float32
+  num_window: 64
+
+# Model configuration - Base HSE Prompt model
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  input_dim: 2
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  hidden_dim: 64
+  activation: "relu"
+  
+  # HSE Prompt embedding configuration
+  embedding: "E_01_HSE_Prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+  
+  # Prompt configuration
+  prompt_dim: 128
+  fusion_type: "attention"         # ABLATION TARGET: attention/concat/gating
+  use_system_prompt: true
+  use_sample_prompt: true
+  
+  # Training configuration
+  training_stage: "pretrain"
+  freeze_prompt: false
+  
+  # Network components
+  backbone: "B_08_PatchTST"
+  num_layers: 4
+  task_head: "H_01_Linear_cla"
+  
+  # Contrastive learning components
+  use_momentum_encoder: true
+  momentum: 0.999
+  use_projection_head: true
+  projection_dim: 128
+
+# Task configuration
+task:
+  name: "hse_contrastive"
+  type: "CDDG"
+  
+  # Domain generalization setup
+  target_domain_num: 1
+  target_system_id: [6]           # XJTU as target
+  source_domain_id: [1, 13, 19]  # CWRU, THU, MFPT as sources
+  
+  # Contrastive learning parameters
+  contrast_loss: "INFONCE"
+  contrast_weight: 0.15
+  temperature: 0.07
+  use_system_sampling: true
+  cross_system_contrast: true
+  prompt_weight: 0.1
+  
+  # Standard training parameters
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  batch_size: 32
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 30                      # Shorter for ablation
+  lr: 5e-4
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 8
+  scheduler: true
+  scheduler_type: "cosine"
+  
+  # Experiment tracking
+  wandb: true
+  wandb_project: "HSE-Prompt-Ablation"
+  wandb_tags: ["ablation", "fusion_strategy", "attention_fusion", "ICML2025"]
+
+# Trainer configuration
+trainer:
+  name: "Default_trainer"
+  wandb: False
+  pruning: False
+  num_epochs: 30
+  gpus: 1
+  precision: 16
+  early_stopping: true
+  patience: 8
+  device: 'cuda'
+
+# Ablation study specific configuration
+ablation:
+  study_type: "fusion_strategy"
+  baseline: "attention"
+  alternatives: ["concat", "gating"]
+  
+  # Metrics to track for comparison
+  comparison_metrics:
+    - "val_acc"
+    - "val_f1"
+    - "val_contrastive_loss"
+    - "val_prompt_loss"
+    - "training_time"
+    
+  # Expected results documentation
+  hypothesis: |
+    Attention fusion should perform best due to adaptive weight assignment,
+    followed by gating fusion, with concatenation as baseline.
+    
+  # Experimental variations (for automated grid search)
+  variations:
+    fusion_attention:
+      model.fusion_type: "attention"
+      wandb_tags: ["ablation", "fusion_strategy", "attention_fusion"]
+    
+    fusion_concat:
+      model.fusion_type: "concat" 
+      wandb_tags: ["ablation", "fusion_strategy", "concat_fusion"]
+    
+    fusion_gating:
+      model.fusion_type: "gating"
+      wandb_tags: ["ablation", "fusion_strategy", "gating_fusion"]
