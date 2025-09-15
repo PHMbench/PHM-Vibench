@@ -192,7 +192,7 @@ python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 python main.py --config configs/demo/Multiple_DG/all.yaml
 ```
 
-### Streamlit Graphical Interface
+### Streamlit Graphical Interface （TODO）
 
 Run experiments using the Streamlit graphical interface:
 
@@ -1061,8 +1061,8 @@ This benchmark platform is licensed under the [Apache License (Version 2.0)](htt
 
 ## ⭐ Star History
 
-<!-- [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date) -->
+[![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/PHM-Vibench&type=Date)](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
 
-<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
+<!-- <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
-<p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p>
+<p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p> -->
