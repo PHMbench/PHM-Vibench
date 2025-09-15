@@ -64,6 +64,42 @@
 - 🆕 **Few-Shot Learning Module**: New support for few-shot fault diagnosis, providing prototype network examples and task pipelines for rapid research
 - 🔥 **HSE Industrial Contrastive Learning**: Revolutionary prompt-guided contrastive learning for cross-system generalization, achieving 82% computational efficiency improvement
 
+<details>
+<summary><b>Why Choose PHM-Vibench?</b> (Click to expand)</summary>
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>PHM-Vibench</th>
+    <th>Traditional PHM Tools</th>
+  </tr>
+  <tr>
+    <td>Modular Design</td>
+    <td>✅ Highly modular, components freely combinable</td>
+    <td>❌ Usually tightly coupled, difficult to extend</td>
+  </tr>
+  <tr>
+    <td>Configuration-Driven</td>
+    <td>✅ YAML file configuration, no coding required</td>
+    <td>❌ Often requires code modification, complex configuration</td>
+  </tr>
+  <tr>
+    <td>Consistent Evaluation</td>
+    <td>✅ Unified data processing and evaluation standards</td>
+    <td>❌ Inconsistent evaluation standards</td>
+  </tr>
+  <tr>
+    <td>Reproducibility</td>
+    <td>✅ Complete experimental chain tracking, reproducible results</td>
+    <td>❌ Lacks complete experimental environment records</td>
+  </tr>
+  <tr>
+    <td>Multi-task Support</td>
+    <td>✅ Classification, detection, life prediction, and other tasks</td>
+    <td>⚠️ Usually focuses on single task types</td>
+  </tr>
+</table>
+</details>
+
 ## 🔥 HSE Industrial Contrastive Learning
 
 **HSE (Hierarchical Signal Embedding) Industrial Contrastive Learning** is a breakthrough approach for industrial fault diagnosis that employs a novel two-level prompt system to achieve exceptional cross-domain generalization.
@@ -121,42 +157,6 @@ HSE Industrial Contrastive Learning is designed for top-tier conference submissi
 - Significant performance improvements across multiple benchmarks
 - Comprehensive ablation studies and theoretical analysis
 - Production-ready implementation with extensive validation
-
-<details>
-<summary><b>Why Choose PHM-Vibench?</b> (Click to expand)</summary>
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>PHM-Vibench</th>
-    <th>Traditional PHM Tools</th>
-  </tr>
-  <tr>
-    <td>Modular Design</td>
-    <td>✅ Highly modular, components freely combinable</td>
-    <td>❌ Usually tightly coupled, difficult to extend</td>
-  </tr>
-  <tr>
-    <td>Configuration-Driven</td>
-    <td>✅ YAML file configuration, no coding required</td>
-    <td>❌ Often requires code modification, complex configuration</td>
-  </tr>
-  <tr>
-    <td>Consistent Evaluation</td>
-    <td>✅ Unified data processing and evaluation standards</td>
-    <td>❌ Inconsistent evaluation standards</td>
-  </tr>
-  <tr>
-    <td>Reproducibility</td>
-    <td>✅ Complete experimental chain tracking, reproducible results</td>
-    <td>❌ Lacks complete experimental environment records</td>
-  </tr>
-  <tr>
-    <td>Multi-task Support</td>
-    <td>✅ Classification, detection, life prediction, and other tasks</td>
-    <td>⚠️ Usually focuses on single task types</td>
-  </tr>
-</table>
-</details>
 
 ## 📝 Project Background and Introduction
 
