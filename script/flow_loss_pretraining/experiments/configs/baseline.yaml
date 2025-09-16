@@ -1,0 +1,96 @@
+# Flow基线实验配置 - 标准训练设置
+# 用于建立性能基线和标准对比
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_6_11.xlsx"
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  normalization: true
+  window_size: 1024         # 标准窗口大小
+  stride: 5
+  truncate_length: 100      # 标准数据量
+  dtype: float32
+  num_window: 64            # 标准窗口数
+  window_sampling_strategy: 'evenly_spaced'
+  normalization: 'standardization'
+
+model:
+  name: "M_04_ISFM_Flow" 
+  type: "ISFM"
+  sequence_length: 1024     # 匹配window_size
+  channels: 1
+  hidden_dim: 256           # 标准模型大小
+  time_dim: 64
+  condition_dim: 64
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain"
+  type: "pretrain"
+  
+  # 必需的系统参数
+  target_system_id: [6, 9, 15]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc"]
+  
+  # Flow参数 - 标准设置
+  num_steps: 100            # 标准Flow推理步数
+  flow_lr: 5e-4
+  
+  # 关闭对比学习，建立纯Flow基线
+  use_contrastive: false
+  
+  # 标准监控
+  enable_visualization: false
+  track_memory: true
+  track_gradients: true
+  
+  # 基线训练参数
+  optimizer: "adamw"
+  lr: 5e-4
+  weight_decay: 1e-4
+  epochs: 50                # 50轮次建立基线
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  shuffle: true
+  log_interval: 20
+  early_stopping: true
+  es_patience: 10
+  
+  # 学习率调度
+  scheduler: true
+  scheduler_type: "cosine"
+  warmup_epochs: 5
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  
+  # 标准训练设置
+  log_every_n_steps: 20
+  val_check_interval: 1.0
+  check_val_every_n_epoch: 1
+  
+  # 检查点保存
+  enable_checkpointing: true
+  default_root_dir: "results/flow_baseline"
+
+environment:
+  WANDB_MODE: "disabled"
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow"
+  PYTHONPATH: "/home/lq/.conda/envs/P"
+  PHMBench: "/home/lq/LQcode/2_project/PHMBench"
+  
+  project: "flow_baseline_experiment"
+  seed: 42
+  output_dir: "results/flow_baseline"
+  notes: "Flow预训练基线实验 - 建立性能基准"
+  iterations: 1
