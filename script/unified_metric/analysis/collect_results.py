@@ -36,7 +36,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent.parent  # Go up to PHM-Vibench-metric root
 sys.path.insert(0, str(project_root))
 
 # Set up matplotlib for publication-quality figures

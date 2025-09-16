@@ -34,8 +34,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
 
-# 添加项目路径
-sys.path.append('/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-metric')
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent.parent  # Go up to PHM-Vibench-metric root
+sys.path.insert(0, str(project_root))
 
 @dataclass
 class ExperimentResult:

@@ -29,8 +29,8 @@ environment:
 # Data Configuration - Unified Loading
 data:
   # UPDATE THIS PATH TO YOUR DATA DIRECTORY
-  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"  # <-- CHANGE THIS
-  metadata_file: "metadata_6_1.xlsx"
+  data_dir: "/mnt/crucial/LQ/PHM-Vibench"  # for dummy test
+  metadata_file: "metadata_6_11.xlsx"  # 指定元数据文件路径
   
   # Unified dataset configuration (all 5 datasets)
   unified_datasets: 
