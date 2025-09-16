@@ -1,0 +1,96 @@
+# Flow预训练生产配置 - 多数据集大规模训练
+# 适用于论文发表和实际部署
+
+data:
+  data_dir: "data"
+  # 多数据集训练
+  dataset: ["CWRU", "XJTU", "PU", "HUST"]
+  batch_size: 128
+  sequence_length: 1024
+  channels: 1
+  
+  # 数据平衡
+  balance_datasets: true
+  max_samples_per_dataset: 10000
+
+model:
+  name: "M_04_ISFM_Flow"
+  hidden_dim: 512          # 增大模型容量
+  time_dim: 128
+  condition_dim: 128
+  use_conditional: true
+  sigma_min: 0.001
+  sigma_max: 1.0
+
+task:
+  name: "flow_pretrain" 
+  type: "pretrain"
+  
+  # Flow参数
+  num_steps: 1000          # 完整采样步数
+  flow_lr: 1e-4
+  
+  # 联合训练
+  use_contrastive: true
+  flow_weight: 1.0
+  contrastive_weight: 0.15  # 略高权重
+  contrastive_temperature: 0.07  # 更严格对比
+  use_gradient_balancing: true
+  
+  # 对比学习
+  projection_dim: 256       # 更大投影空间
+  contrastive_hidden_dim: 512
+  
+  # 数据增强
+  augmentation_noise_std: 0.005   # 更小噪声（多数据集已有足够变化）
+  augmentation_jitter_std: 0.02
+  augmentation_scaling_range: [0.95, 1.05]
+  
+  # 监控和评估
+  enable_visualization: true
+  save_plots: true
+  plot_dir: "./results/flow_plots"
+  track_memory: true
+  track_gradients: true
+  
+  quality_assessment_frequency: 5   # 更频繁评估
+  generation_samples: 32
+  
+  # 训练参数
+  lr: 3e-4
+  weight_decay: 5e-4
+  max_epochs: 500          # 长期训练
+  
+  # 学习率调度
+  use_scheduler: true
+  scheduler_type: "warmup_cosine"
+  warmup_epochs: 20
+  
+  # 指数移动平均
+  use_ema: true
+  ema_decay: 0.999
+
+trainer:
+  gpus: 1
+  precision: 16
+  gradient_clip_val: 0.5
+  accumulate_grad_batches: 2    # 梯度累积增大有效batch size
+  
+  # 检查点
+  early_stopping: true
+  es_patience: 50           # 更长容忍期
+  save_top_k: 5
+  monitor: "val_total_loss"
+  
+  # 验证
+  log_every_n_steps: 200
+  val_check_interval: 0.25  # 更频繁验证
+
+environment:
+  seed: 42
+  
+# 分布式训练支持（未来扩展）
+# distributed:
+#   strategy: "ddp"
+#   num_nodes: 1
+#   devices: 2
