@@ -12,6 +12,7 @@
 本指南提供了基于**Flow生成模型**的工业故障诊断预训练研究的完整解决方案，涵盖从环境配置到论文发表的全流程。Flow模型作为新兴的生成式AI技术，在工业振动信号分析中表现出巨大潜力。
 
 ### 核心优势
+
 - 🔥 **生成建模**: 高质量工业信号生成和数据增强
 - ⚡ **预训练优势**: 显著提升下游任务性能
 - 🎯 **少样本学习**: 在稀缺故障数据上表现优异
@@ -23,6 +24,7 @@
 ## ⚡ 15分钟快速开始
 
 ### 1. 环境验证
+
 ```bash
 # 检查CUDA环境
 nvidia-smi
@@ -35,6 +37,7 @@ ls -la data/metadata_6_11.xlsx
 ```
 
 ### 2. 运行演示实验
+
 ```bash
 # 快速验证 (30分钟)
 python main.py --config script/flow_loss_pretraining/experiments/configs/quick_validation.yaml
@@ -44,6 +47,7 @@ ls -la save/Flow_*/
 ```
 
 ### 3. 多任务案例研究
+
 ```bash
 # 启动Jupyter演示
 cd script/flow_loss_pretraining/experiments/notebooks/
@@ -57,36 +61,42 @@ jupyter notebook flow_pretrain_demo.ipynb
 ### 🗓️ 14天论文发表计划
 
 #### 第1天：环境准备
-- [x] GPU资源确认 (RTX 3090/4090推荐)
-- [x] 数据集下载 (CWRU、XJTU、FEMTO等)
-- [x] 依赖环境配置
-- [x] 基础功能验证
+
+- [X] GPU资源确认 (RTX 3090/4090推荐)
+- [X] 数据集下载 (CWRU、XJTU、FEMTO等)
+- [X] 依赖环境配置
+- [X] 基础功能验证
 
 #### 第2-3天：基线实验
-- [x] Flow基线模型训练
-- [x] 传统预训练方法对比 (CNN、Transformer、VAE)
-- [x] 性能基准确立
+
+- [X] Flow基线模型训练
+- [X] 传统预训练方法对比 (CNN、Transformer、VAE)
+- [X] 性能基准确立
 
 #### 第4-7天：核心创新研究
-- [x] Flow+对比学习联合训练
-- [x] 多数据集联合预训练
-- [x] Few-shot下游任务评估
-- [x] 跨域泛化实验
+
+- [X] Flow+对比学习联合训练
+- [X] 多数据集联合预训练
+- [X] Few-shot下游任务评估
+- [X] 跨域泛化实验
 
 #### 第8-9天：消融研究
-- [x] 各组件重要性分析
-- [x] 超参数敏感性研究
-- [x] 计算效率分析
+
+- [X] 各组件重要性分析
+- [X] 超参数敏感性研究
+- [X] 计算效率分析
 
 #### 第10-11天：结果分析
-- [x] 统计显著性检验
-- [x] 可视化图表生成
-- [x] LaTeX表格导出
+
+- [X] 统计显著性检验
+- [X] 可视化图表生成
+- [X] LaTeX表格导出
 
 #### 第12-14天：论文撰写
-- [x] 实验部分撰写
-- [x] 结果讨论分析
-- [x] 补充材料准备
+
+- [X] 实验部分撰写
+- [X] 结果讨论分析
+- [X] 补充材料准备
 
 ---
 
@@ -95,6 +105,7 @@ jupyter notebook flow_pretrain_demo.ipynb
 ### 标准实验设置
 
 #### 数据集配置
+
 ```yaml
 # 推荐的多数据集设置
 datasets:
@@ -111,6 +122,7 @@ preprocessing:
 ```
 
 #### Flow模型配置
+
 ```yaml
 model:
   name: "M_04_ISFM_Flow"
@@ -129,6 +141,7 @@ model:
 ```
 
 #### 训练配置
+
 ```yaml
 task:
   name: "flow_pretrain"
@@ -148,6 +161,7 @@ task:
 ### 三种实验模式
 
 #### 🚀 快速验证模式 (1-2小时)
+
 ```bash
 python main.py --config experiments/configs/quick_validation.yaml
 # 用途: 快速功能验证，参数调试
@@ -156,6 +170,7 @@ python main.py --config experiments/configs/quick_validation.yaml
 ```
 
 #### ⚖️ 基线实验模式 (1天)
+
 ```bash
 python main.py --config experiments/configs/baseline.yaml
 # 用途: 标准基线对比实验
@@ -164,6 +179,7 @@ python main.py --config experiments/configs/baseline.yaml
 ```
 
 #### 🎯 完整研究模式 (7天)
+
 ```bash
 bash experiments/scripts/run_experiments.sh --full
 # 用途: 完整论文级实验
@@ -178,6 +194,7 @@ bash experiments/scripts/run_experiments.sh --full
 ### 自动化脚本
 
 #### 1. 主实验脚本
+
 ```bash
 # 运行完整实验套件
 bash experiments/scripts/run_experiments.sh
@@ -191,6 +208,7 @@ bash experiments/scripts/run_experiments.sh
 ```
 
 #### 2. 结果收集分析
+
 ```bash
 # 自动收集结果
 python experiments/scripts/collect_results.py \
@@ -205,6 +223,7 @@ python experiments/scripts/statistical_analysis.py \
 ```
 
 #### 3. 超参数优化
+
 ```bash
 # 贝叶斯优化 (推荐)
 python experiments/scripts/hyperparameter_sweep.py \
@@ -221,6 +240,7 @@ python experiments/scripts/hyperparameter_sweep.py \
 ### Jupyter演示
 
 #### 核心演示notebook
+
 - `experiments/notebooks/flow_pretrain_demo.ipynb`: 核心Flow预训练演示
 - `experiments/notebooks/multi_task_analysis.ipynb`: 多任务学习分析
 - `experiments/notebooks/visualization_toolkit.ipynb`: 可视化工具
@@ -233,13 +253,16 @@ python experiments/scripts/hyperparameter_sweep.py \
 
 Flow模型通过学习数据分布的连续归一化流来实现高质量的生成建模:
 
-$$\mathbf{x}_1 = \mathbf{x}_0 + \int_0^1 v(\mathbf{x}_t, t) dt$$
+$$
+\mathbf{x}_1 = \mathbf{x}_0 + \int_0^1 v(\mathbf{x}_t, t) dt
+$$
 
 其中 $v(\mathbf{x}_t, t)$ 是神经网络学习的速度场。
 
 ### 关键创新点
 
 #### 1. Flow+对比学习联合训练
+
 ```python
 # 联合损失函数
 total_loss = λ_flow × flow_loss + λ_contrastive × contrastive_loss
@@ -252,11 +275,13 @@ contrastive_loss = -log(exp(sim(z_i, z_j)/τ) / Σ_k exp(sim(z_i, z_k)/τ))
 ```
 
 #### 2. 多尺度特征学习
+
 - 层次化信号嵌入 (E_01_HSE)
 - 多分辨率Patch处理 (B_08_PatchTST)
 - 自适应时间建模
 
 #### 3. 工业信号特化
+
 - 振动信号特征提取优化
 - 故障模式条件生成
 - 跨设备域适应
@@ -267,14 +292,15 @@ contrastive_loss = -log(exp(sim(z_i, z_j)/τ) / Σ_k exp(sim(z_i, z_k)/τ))
 
 ### 性能提升幅度
 
-| 任务 | 传统预训练 | Flow预训练 | 相对提升 |
-|------|-----------|-----------|----------|
-| 故障分类 | 85.2% | 91.7% | +7.6% |
-| 异常检测 | 78.9% | 86.4% | +9.5% |
-| 少样本学习 | 67.3% | 79.8% | +18.6% |
-| 跨域泛化 | 62.1% | 74.2% | +19.5% |
+| 任务       | 传统预训练 | Flow预训练 | 相对提升 |
+| ---------- | ---------- | ---------- | -------- |
+| 故障分类   | 85.2%      | 91.7%      | +7.6%    |
+| 异常检测   | 78.9%      | 86.4%      | +9.5%    |
+| 少样本学习 | 67.3%      | 79.8%      | +18.6%   |
+| 跨域泛化   | 62.1%      | 74.2%      | +19.5%   |
 
 ### 关键指标
+
 - **数据效率**: 50%训练数据达到相同性能
 - **收敛速度**: 训练时间减少30%
 - **泛化能力**: 跨数据集平均提升15%
@@ -287,6 +313,7 @@ contrastive_loss = -log(exp(sim(z_i, z_j)/τ) / Σ_k exp(sim(z_i, z_k)/τ))
 ### 常见问题及解决方案
 
 #### 1. 内存不足错误
+
 ```bash
 # 问题: CUDA out of memory
 # 解决: 减小批量大小
@@ -297,6 +324,7 @@ sed -i 's/accumulate_grad_batches: 1/accumulate_grad_batches: 2/' config.yaml
 ```
 
 #### 2. 收敛问题
+
 ```python
 # 检查学习率设置
 if val_loss_not_decreasing_for(patience=10):
@@ -307,6 +335,7 @@ gradient_clip_val: 1.0  # 在config中设置
 ```
 
 #### 3. Flow模型不收敛
+
 ```yaml
 # 调整Flow参数
 num_steps: 50          # 减少求解步数
@@ -315,6 +344,7 @@ flow_loss_weight: 2.0  # 增加Flow损失权重
 ```
 
 #### 4. 数据加载慢
+
 ```python
 # 启用多进程加载
 dataloader:
@@ -328,13 +358,16 @@ dataloader:
 ## 📝 论文写作支持
 
 ### LaTeX模板
+
 论文模板位于 `paper/latex_template.tex`，包含:
+
 - 标准会议论文格式 (IEEE, AAAI等)
 - 自动表格生成代码
 - 标准图表模板
 - 参考文献样式
 
 ### 实验结果表格
+
 ```bash
 # 自动生成LaTeX表格
 python experiments/scripts/collect_results.py --generate_latex
@@ -354,6 +387,7 @@ Flow+Contrastive & \textbf{91.7±0.8} & \textbf{86.4±1.5} & \textbf{79.8±2.4} 
 ```
 
 ### 图表生成
+
 - `paper/figures/`: 自动化图表生成脚本
 - `paper/tables/`: LaTeX表格生成工具
 - 支持高质量矢量图输出 (PDF, SVG)
@@ -363,6 +397,7 @@ Flow+Contrastive & \textbf{91.7±0.8} & \textbf{86.4±1.5} & \textbf{79.8±2.4} 
 ## 🧪 测试验证
 
 ### 单元测试
+
 ```bash
 # 运行所有测试
 pytest tests/ -v
@@ -372,6 +407,7 @@ pytest tests/test_flow_model.py::TestFlowModel::test_forward_pass
 ```
 
 ### 集成测试
+
 ```bash
 # 端到端pipeline测试
 python tests/test_pipeline.py
@@ -381,6 +417,7 @@ bash tests/validation_checklist.md
 ```
 
 ### 性能测试
+
 ```bash
 # 基准测试
 python -m pytest tests/ --benchmark-only
@@ -413,6 +450,7 @@ script/flow_loss_pretraining/
 ## 🤝 贡献和支持
 
 ### 参与贡献
+
 1. Fork本仓库
 2. 创建特性分支 (`git checkout -b feature/new-experiment`)
 3. 提交更改 (`git commit -am 'Add new experiment'`)
@@ -420,6 +458,7 @@ script/flow_loss_pretraining/
 5. 创建Pull Request
 
 ### 获取帮助
+
 - 📧 邮件: phm-vibench@example.com
 - 🐛 Issue: [GitHub Issues](https://github.com/your-repo/issues)
 - 📖 文档: [在线文档](https://your-docs-site.com)
@@ -435,6 +474,7 @@ script/flow_loss_pretraining/
 ## 🙏 致谢
 
 感谢以下项目的启发和支持:
+
 - [RectifiedFlow](https://github.com/gnobitab/RectifiedFlow) - Flow模型基础
 - [PyTorch Lightning](https://github.com/Lightning-AI/lightning) - 深度学习框架
 - [PHM Conference](https://www.phmconf.org/) - 工业健康管理学术社区
