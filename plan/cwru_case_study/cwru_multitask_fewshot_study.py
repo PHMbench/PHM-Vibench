@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
+# %% [markdown]
 # # CWRU Multi-Task Few-Shot Learning with Flow Pretraining
 # 
 # This notebook demonstrates Flow-based pretraining effectiveness across three tasks:
@@ -18,12 +16,10 @@
 # - Implements windowing for long signals (ID contains 100,000+ samples)
 # - Multi-task evaluation with different few-shot strategies
 
+# %%
+# !conda activate P  # Commented out to avoid syntax error
 
-
-
-
-
-
+# %%
 # Cell 1: Import required libraries
 import os
 import numpy as np
@@ -39,19 +35,47 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
+
+# Flow Matching Imports
+try:
+    from src.task_factory.Components.flow import FlowLoss
+    from src.task_factory.Components.mean_flow_loss import MeanFlow
+    FLOW_AVAILABLE = True
+    print("✅ FlowLoss and MeanFlow successfully imported")
+except ImportError as e:
+    print(f"⚠️ Warning: Flow imports failed: {e}")
+    print("Will use fallback implementations")
+    FLOW_AVAILABLE = False
+
+# Import optimization utilities (flow matching wrappers)
+try:
+    from optimization_utils import (
+        FlowMatchingPretrainer,
+        HybridPretraining,
+        flow_based_few_shot_learning,
+        FlowDataAugmentation,
+        SimpleFlowModel,
+        EnhancedContrastiveEncoder
+    )
+    print("✅ Flow matching utilities imported successfully")
+except ImportError as e:
+    print(f"⚠️ Warning: optimization_utils import failed: {e}")
+    print("Will define simplified versions locally")
 
 # Set random seeds for reproducibility
 torch.manual_seed(42)
 np.random.seed(42)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Using device: {device}')
-print(f'PyTorch version: {torch.__version__}')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+print(f"PyTorch version: {torch.__version__}")
 
+# Flow matching configuration flags
+USE_PROPER_FLOW = FLOW_AVAILABLE
+COMPARE_FLOW_METHODS = True
 
-
-
+# %%
 # Cell 2: Define paths and parameters
 # Data paths - corrected to actual location
 DATA_DIR = '/mnt/crucial/LQ/PHM-Vibench'
@@ -69,10 +93,11 @@ N_QUERY = 15           # Query samples per class
 N_CLASSES_DIAG = 4     # Fault diagnosis classes
 N_CLASSES_ANOM = 2     # Anomaly detection classes
 N_CHANNELS = 2          # Fixed typo from N_CHENNELS
-# Training parameters
-BATCH_SIZE = 32
+
+# Training parameters - OPTIMIZED
+BATCH_SIZE = 64         # Increased for better contrastive learning
 LEARNING_RATE = 0.001
-PRETRAIN_EPOCHS = 20   # Reduced for demo
+PRETRAIN_EPOCHS = 50    # Increased from 20 for better representation learning
 FINETUNE_EPOCHS = 30
 
 # Task selection flags
@@ -85,10 +110,9 @@ TASKS_TO_RUN = {
 print(f'Window size: {WINDOW_SIZE}, Stride: {STRIDE}')
 print(f'Window duration: {WINDOW_SIZE/SAMPLE_RATE*1000:.1f} ms')
 print(f'Expected windows per 100k samples: {(100000-WINDOW_SIZE)//STRIDE + 1}')
+print(f'Optimization: Increased batch size to {BATCH_SIZE} and pretraining epochs to {PRETRAIN_EPOCHS}')
 
-
-
-
+# %%
 # Cell 3: Load and explore metadata
 try:
     metadata_df = pd.read_excel(METADATA_FILE)
@@ -117,9 +141,7 @@ except FileNotFoundError:
     print('Metadata file not found, will use simulated data')
     USE_REAL_DATA = False
 
-
-
-
+# %%
 # Cell 4: Define windowing and prediction data preparation
 def sliding_window(signal, window_size, stride):
     """
@@ -159,9 +181,7 @@ print(f'Test signal shape: {test_signal.shape}')
 print(f'Windows shape: {test_windows.shape}')
 print(f'Prediction pairs: {current.shape} -> {next_win.shape}')
 
-
-
-
+# %%
 # Cell 5: Load and window CWRU data from H5
 all_windows = []
 all_diag_labels = []    # Fault diagnosis labels
@@ -169,6 +189,7 @@ all_anom_labels = []    # Anomaly detection labels
 all_ids = []
 all_current_windows = []
 all_next_windows = []
+pred_ids = []           # Track prediction pair IDs separately
 
 if USE_REAL_DATA and os.path.exists(H5_FILE):
     print('Loading real CWRU data from H5 file...')
@@ -197,11 +218,13 @@ if USE_REAL_DATA and os.path.exists(H5_FILE):
                 all_anom_labels.extend([row['Anomaly_Label']] * n_windows)
                 all_ids.extend([sample_id] * n_windows)
                 
-                # Create prediction pairs
+                # Create prediction pairs and track their IDs
                 current, next_win = create_prediction_pairs(windows)
                 if len(current) > 0:
                     all_current_windows.append(current)
                     all_next_windows.append(next_win)
+                    # Track which signal each prediction pair belongs to
+                    pred_ids.extend([sample_id] * len(current))
                 
                 if idx < 3:
                     print(f'  -> Created {n_windows} windows, {len(current)} prediction pairs')
@@ -217,13 +240,14 @@ if USE_REAL_DATA and os.path.exists(H5_FILE):
         
         print(f'\nTotal windows: {len(all_windows)}')
         print(f'Prediction pairs: {len(all_current_windows)}')
+        print(f'Prediction IDs tracked: {len(pred_ids)}')
         print(f'Diagnosis labels: {np.unique(all_diag_labels)}')
         print(f'Anomaly labels: {np.unique(all_anom_labels)}')
     else:
         print('No valid data found in H5 file, falling back to simulated data')
         USE_REAL_DATA = False
 
-if not USE_REAL_DATA or len(all_windows) == 0:
+if not USE_REAL_DATA:
     print('Generating simulated data...')
     
     # Reset arrays
@@ -233,6 +257,7 @@ if not USE_REAL_DATA or len(all_windows) == 0:
     all_ids = []
     all_current_windows = []
     all_next_windows = []
+    pred_ids = []
     
     # Simulate data for all three tasks
     n_signals_per_class = 10
@@ -249,16 +274,18 @@ if not USE_REAL_DATA or len(all_windows) == 0:
             windows = sliding_window(long_signal, WINDOW_SIZE, STRIDE)
             n_windows = len(windows)
             
+            signal_id = f'sim_{class_id}_{signal_idx}'
             all_windows.append(windows)
             all_diag_labels.extend([class_id] * n_windows)
             all_anom_labels.extend([int(class_id > 0)] * n_windows)  # 0=Normal, >0=Fault
-            all_ids.extend([f'sim_{class_id}_{signal_idx}'] * n_windows)
+            all_ids.extend([signal_id] * n_windows)
             
             # Create prediction pairs
             current, next_win = create_prediction_pairs(windows)
             if len(current) > 0:
                 all_current_windows.append(current)
                 all_next_windows.append(next_win)
+                pred_ids.extend([signal_id] * len(current))
     
     all_windows = np.concatenate(all_windows, axis=0)
     all_diag_labels = np.array(all_diag_labels)
@@ -269,41 +296,60 @@ if not USE_REAL_DATA or len(all_windows) == 0:
     print(f'Generated {len(all_windows)} windows from {n_signals_per_class*N_CLASSES_DIAG} signals')
     print(f'Prediction pairs: {len(all_current_windows)}')
 
-
-
-
+# %%
 # Cell 6: Normalize and prepare data for all tasks
+# Filter out NaN labels for classification data only
+valid_mask = ~np.isnan(all_diag_labels)
+print(f'Filtering out {np.sum(~valid_mask)} windows with NaN labels')
+
+all_windows_filtered = all_windows[valid_mask]
+all_diag_labels_filtered = all_diag_labels[valid_mask]
+all_anom_labels_filtered = all_anom_labels[valid_mask]
+all_ids_filtered = [all_ids[i] for i in range(len(all_ids)) if valid_mask[i]]
+
 # Normalize classification windows
-n_windows, window_size, n_channels = all_windows.shape
-windows_flat = all_windows.reshape(n_windows, -1)
-
+n_windows, window_size, n_channels = all_windows_filtered.shape
 scaler = StandardScaler()
-windows_normalized = scaler.fit_transform(windows_flat)
-windows_normalized = windows_normalized.reshape(n_windows, window_size, n_channels)
+windows_normalized = np.zeros_like(all_windows_filtered)
 
-# Convert to tensors
+for channel in range(n_channels):
+    channel_data = all_windows_filtered[:, :, channel].reshape(n_windows, -1)
+    windows_normalized[:, :, channel] = scaler.fit_transform(channel_data).reshape(n_windows, window_size)
+
+# Convert classification data to tensors
 X_cls = torch.FloatTensor(windows_normalized)
-y_diag = torch.LongTensor(all_diag_labels)
-y_anom = torch.LongTensor(all_anom_labels)
+y_diag = torch.LongTensor(all_diag_labels_filtered)
+y_anom = torch.LongTensor(all_anom_labels_filtered)
 
-# Normalize prediction data with same scaler
-current_flat = all_current_windows.reshape(len(all_current_windows), -1)
-next_flat = all_next_windows.reshape(len(all_next_windows), -1)
+# Normalize prediction data separately (no filtering needed)
+def normalize_windows(windows_data):
+    """Normalize windows using the same scaler as classification data"""
+    n_win, win_size, n_ch = windows_data.shape
+    normalized = np.zeros_like(windows_data)
+    
+    for channel in range(n_ch):
+        channel_data = windows_data[:, :, channel].reshape(n_win, -1)
+        normalized[:, :, channel] = scaler.transform(channel_data).reshape(n_win, win_size)
+    
+    return normalized
 
-current_norm = scaler.transform(current_flat).reshape(all_current_windows.shape)
-next_norm = scaler.transform(next_flat).reshape(all_next_windows.shape)
+# Create prediction tensors from unfiltered data
+X_current = torch.FloatTensor(normalize_windows(all_current_windows))
+X_next = torch.FloatTensor(normalize_windows(all_next_windows))
 
-X_current = torch.FloatTensor(current_norm)
-X_next = torch.FloatTensor(next_norm)
+# Update global variables for classification data only
+all_windows = all_windows_filtered
+all_diag_labels = all_diag_labels_filtered
+all_anom_labels = all_anom_labels_filtered
+all_ids = all_ids_filtered
 
 print(f'Classification data: {X_cls.shape}')
 print(f'Diagnosis labels: {y_diag.shape}, classes: {torch.unique(y_diag)}')
 print(f'Anomaly labels: {y_anom.shape}, classes: {torch.unique(y_anom)}')
 print(f'Prediction data: {X_current.shape} -> {X_next.shape}')
+print(f'Prediction IDs: {len(pred_ids)} (matches prediction pairs: {len(pred_ids) == len(X_current)})')
 
-
-
-
+# %%
 # Cell 7: Split data by signal IDs (prevent data leakage)
 unique_ids = np.unique(all_ids)
 
@@ -311,11 +357,7 @@ unique_ids = np.unique(all_ids)
 id_to_diag_class = {}
 for idx, sample_id in enumerate(all_ids):
     if sample_id not in id_to_diag_class:
-        label = all_diag_labels[idx]
-        if not np.isnan(label):
-            id_to_diag_class[sample_id] = int(label)
-        else:
-            id_to_diag_class[sample_id] = -1  # Use -1 for NaN labels
+        id_to_diag_class[sample_id] = int(all_diag_labels[idx])
 
 # Shuffle IDs to avoid grouping signals by their string prefix
 rng = np.random.default_rng(42)
@@ -345,7 +387,7 @@ test_id_set = set(test_ids)
 pretrain_ids = np.array([sid for sid in unique_ids if sid not in test_id_set])
 test_ids = np.array(test_ids)
 
-# Create masks
+# Create masks for classification data
 pretrain_mask = np.isin(all_ids, pretrain_ids)
 test_mask = np.isin(all_ids, test_ids)
 
@@ -358,8 +400,7 @@ X_cls_test = X_cls[test_mask]
 y_diag_test = y_diag[test_mask]
 y_anom_test = y_anom[test_mask]
 
-# Split prediction data (need to find corresponding indices)
-pred_ids = [all_ids[i] for i in range(len(all_current_windows))]
+# Split prediction data using the separate pred_ids list
 pred_pretrain_mask = np.isin(pred_ids, pretrain_ids)
 pred_test_mask = np.isin(pred_ids, test_ids)
 
@@ -372,9 +413,11 @@ print(f'Pretrain: {X_cls_pretrain.shape[0]} cls windows, {X_current_pretrain.sha
 print(f'Test: {X_cls_test.shape[0]} cls windows, {X_current_test.shape[0]} pred pairs')
 print(f'Signal split: {len(pretrain_ids)} pretrain, {len(test_ids)} test')
 
+# Verify data integrity
+print(f'Total classification windows: {X_cls_pretrain.shape[0] + X_cls_test.shape[0]} (should match {X_cls.shape[0]})')
+print(f'Total prediction pairs: {X_current_pretrain.shape[0] + X_current_test.shape[0]} (should match {X_current.shape[0]})')
 
-
-
+# %%
 # Cell 8: Create few-shot episodes for all tasks
 def create_few_shot_episode_cls(X, y, n_support, n_query, n_classes):
     """Create few-shot episode for classification tasks"""
@@ -460,10 +503,10 @@ else:
     print('Prediction task skipped.')
 
 
+# %% [markdown]
 # ## Case 1: Direct Few-Shot Learning (No Pretraining)
 
-
-
+# %%
 # Cell 9: Define shared-backbone model for Case 1 - Direct learning
 import torch.nn as nn
 import torch.nn.functional as F
@@ -540,9 +583,7 @@ print(f'Case 1 backbone params: {sum(p.numel() for p in model_case1.backbone.par
 for name, head in model_case1.heads.items():
     print(f'  Head[{name}] params: {sum(p.numel() for p in head.parameters()):,}')
 
-
-
-
+# %%
 # Cell 10: Train Case 1 models
 def train_classification(model, support_x, support_y, query_x, query_y, task_name, epochs=30):
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -664,10 +705,10 @@ if not any([case1_diag_accs, case1_anom_accs, case1_pred_mse]):
 
 
 
+# %% [markdown]
 # ## Case 2: Contrastive Pretraining + Few-Shot Learning
 
-
-
+# %%
 # Cell 11: Define contrastive models
 class ContrastiveEncoder(nn.Module):
     def __init__(self, input_channels=2, hidden_dim=128):
@@ -742,17 +783,20 @@ class ContrastiveFewShotModel(nn.Module):
 encoder_case2 = ContrastiveEncoder(N_CHANNELS).to(device)
 print(f'Contrastive encoder: {sum(p.numel() for p in encoder_case2.parameters()):,} params')
 
-
-
-
-# Cell 12: Pretrain contrastive encoder
+# %%
+# Cell 12: Pretrain contrastive encoder with OPTIMIZATIONS
 def contrastive_loss(embeddings, temperature=0.5):
     embeddings = F.normalize(embeddings, dim=1)
     similarity = torch.mm(embeddings, embeddings.t()) / temperature
     batch_size = embeddings.shape[0] // 2
     
-    # Create labels for positive pairs
-    labels = torch.cat([torch.arange(batch_size), torch.arange(batch_size)]).to(device)
+    # Create correct labels for positive pairs
+    # For original samples: positive pair is in second half
+    # For augmented samples: positive pair is in first half
+    labels = torch.cat([
+        torch.arange(batch_size, batch_size * 2),  # Labels for original batch
+        torch.arange(batch_size)                    # Labels for augmented batch
+    ]).to(device)
     
     # Mask out self-similarity
     mask = torch.eye(similarity.shape[0]).bool().to(device)
@@ -761,25 +805,60 @@ def contrastive_loss(embeddings, temperature=0.5):
     loss = F.cross_entropy(similarity, labels)
     return loss
 
-# Create pretraining dataloader
+# Enhanced augmentation function
+def enhanced_augmentation(batch_x, augment_prob=0.8):
+    """Apply multiple augmentation strategies"""
+    if torch.rand(1).item() < augment_prob:
+        # Strategy 1: Gaussian noise (original)
+        augmented = batch_x + torch.randn_like(batch_x) * 0.1
+        
+        # Strategy 2: Amplitude scaling
+        if torch.rand(1).item() < 0.5:
+            scale_factor = 1 + 0.2 * (torch.rand(batch_x.shape[0], 1, 1).to(batch_x.device) - 0.5)
+            augmented = augmented * scale_factor
+        
+        # Strategy 3: Time shifting (circular)
+        if torch.rand(1).item() < 0.3:
+            shift_amount = torch.randint(-50, 50, (batch_x.shape[0],)).to(batch_x.device)
+            for i, shift in enumerate(shift_amount):
+                augmented[i] = torch.roll(augmented[i], shift.item(), dims=0)
+        
+        return augmented
+    else:
+        return batch_x
+
+# Create pretraining dataloader with increased batch size
 pretrain_loader = DataLoader(
     TensorDataset(X_cls_pretrain, y_diag_pretrain),
     batch_size=BATCH_SIZE,
-    shuffle=True
+    shuffle=True,
+    drop_last=True  # Ensure even batch sizes for contrastive learning
 )
 
-optimizer = torch.optim.Adam(encoder_case2.parameters(), lr=LEARNING_RATE)
+optimizer = torch.optim.Adam(encoder_case2.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
 
-print('Pretraining Case 2 with Contrastive Learning...')
+# Add learning rate scheduling
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    optimizer, T_max=PRETRAIN_EPOCHS, eta_min=1e-5
+)
+
+print('Pretraining Case 2 with Enhanced Contrastive Learning...')
+print(f'Optimizations: {PRETRAIN_EPOCHS} epochs, batch size {BATCH_SIZE}, LR scheduling, enhanced augmentation')
+
 encoder_case2.train()
+best_loss = float('inf')
+patience = 10
+no_improve = 0
 
 for epoch in range(PRETRAIN_EPOCHS):
     total_loss = 0
+    batch_count = 0
+    
     for batch_x, _ in pretrain_loader:
         batch_x = batch_x.to(device)
         
-        # Create augmented versions
-        augmented = batch_x + torch.randn_like(batch_x) * 0.1
+        # Create enhanced augmented versions
+        augmented = enhanced_augmentation(batch_x)
         
         embeddings1, _ = encoder_case2(batch_x)
         embeddings2, _ = encoder_case2(augmented)
@@ -789,27 +868,130 @@ for epoch in range(PRETRAIN_EPOCHS):
         
         optimizer.zero_grad()
         loss.backward()
+        
+        # Gradient clipping for stability
+        torch.nn.utils.clip_grad_norm_(encoder_case2.parameters(), max_norm=1.0)
+        
         optimizer.step()
         
         total_loss += loss.item()
+        batch_count += 1
     
-    if epoch % 5 == 0:
-        print(f'Epoch {epoch}: Loss={total_loss/len(pretrain_loader):.4f}')
+    # Step the scheduler
+    scheduler.step()
+    
+    avg_loss = total_loss / batch_count
+    current_lr = optimizer.param_groups[0]['lr']
+    
+    # Early stopping check
+    if avg_loss < best_loss:
+        best_loss = avg_loss
+        no_improve = 0
+        # Save best model state
+        best_encoder_state = encoder_case2.state_dict().copy()
+    else:
+        no_improve += 1
+    
+    if epoch % 5 == 0 or epoch == PRETRAIN_EPOCHS - 1:
+        print(f'Epoch {epoch}: Loss={avg_loss:.4f}, LR={current_lr:.6f}, Best={best_loss:.4f}')
+    
+    # Early stopping
+    if no_improve >= patience and epoch > 20:
+        print(f'Early stopping at epoch {epoch} (no improvement for {patience} epochs)')
+        encoder_case2.load_state_dict(best_encoder_state)
+        break
 
-print('Contrastive pretraining completed!')
+print(f'Contrastive pretraining completed! Best loss: {best_loss:.4f}')
 
-
-
-
-# Cell 13: Fine-tune Case 2 models
+# %%
+# Cell 13: Fine-tune Case 2 models with UNFROZEN encoder
 # Create multi-task classifier with pretrained encoder
 model_case2 = ContrastiveFewShotModel(encoder_case2, TASKS_TO_RUN, N_CLASSES_DIAG, N_CLASSES_ANOM, N_CHANNELS).to(device)
 
-# Freeze encoder for initial training
-for param in encoder_case2.parameters():
-    param.requires_grad = False
+# OPTIMIZATION: Allow encoder adaptation during fine-tuning
+print('Training Case 2: Contrastive Pretrained Few-Shot Learning (Unfrozen Encoder)')
+print('Note: Encoder parameters are now trainable for better task adaptation')
 
-print('Training Case 2: Contrastive Pretrained Few-Shot Learning')
+# Use different learning rates for pretrained encoder vs new heads
+encoder_params = list(encoder_case2.parameters())
+head_params = []
+for head in model_case2.heads.values():
+    head_params.extend(list(head.parameters()))
+
+# Lower learning rate for pretrained encoder, normal rate for heads
+optimizer_case2 = torch.optim.Adam([
+    {'params': encoder_params, 'lr': LEARNING_RATE * 0.1},  # 10x smaller for pretrained
+    {'params': head_params, 'lr': LEARNING_RATE}
+], weight_decay=1e-4)
+
+def train_classification_unfrozen(model, support_x, support_y, query_x, query_y, task_name, epochs=30):
+    criterion = nn.CrossEntropyLoss()
+    
+    support_x, support_y = support_x.to(device), support_y.to(device)
+    query_x, query_y = query_x.to(device), query_y.to(device)
+    
+    losses, accuracies = [], []
+    
+    for epoch in range(epochs):
+        model.train()
+        optimizer_case2.zero_grad()
+        
+        outputs = model(support_x, task_name)
+        loss = criterion(outputs, support_y)
+        loss.backward()
+        
+        # Gradient clipping for stability
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
+        optimizer_case2.step()
+        
+        model.eval()
+        with torch.no_grad():
+            outputs_query = model(query_x, task_name)
+            preds = torch.argmax(outputs_query, dim=1)
+            acc = (preds == query_y).float().mean().item()
+            losses.append(loss.item())
+            accuracies.append(acc)
+        
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            print(f'Epoch {epoch+1}/{epochs} - Loss: {losses[-1]:.4f}, Acc: {accuracies[-1]:.4f}')
+    
+    return losses, accuracies
+
+def train_prediction_unfrozen(model, support_current, support_next, query_current, query_next, epochs=30, task_name='prediction'):
+    criterion = nn.MSELoss()
+    
+    support_current = support_current.to(device)
+    support_next = support_next.to(device)
+    query_current = query_current.to(device)
+    query_next = query_next.to(device)
+    
+    losses, mse_scores = [], []
+    
+    for epoch in range(epochs):
+        model.train()
+        optimizer_case2.zero_grad()
+        
+        pred_next = model(support_current, task_name)
+        loss = criterion(pred_next, support_next)
+        loss.backward()
+        
+        # Gradient clipping for stability
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
+        optimizer_case2.step()
+        
+        model.eval()
+        with torch.no_grad():
+            pred_query = model(query_current, task_name)
+            mse = F.mse_loss(pred_query, query_next).item()
+            losses.append(loss.item())
+            mse_scores.append(mse)
+        
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            print(f'Epoch {epoch+1}/{epochs} - Loss: {losses[-1]:.6f}, MSE: {mse_scores[-1]:.6f}')
+    
+    return losses, mse_scores
 
 case2_diag_losses = None
 case2_diag_accs = None
@@ -818,7 +1000,7 @@ if TASKS_TO_RUN.get('diagnosis', False) and _diag_episode is not None:
     supp_x, supp_y, query_x, query_y = _diag_episode
     print()
     print('Diagnosis task:')
-    case2_diag_losses, case2_diag_accs = train_classification(
+    case2_diag_losses, case2_diag_accs = train_classification_unfrozen(
         model_case2, supp_x, supp_y, query_x, query_y, 'diagnosis', FINETUNE_EPOCHS
     )
 else:
@@ -832,7 +1014,7 @@ if TASKS_TO_RUN.get('anomaly', False) and _anom_episode is not None:
     supp_x_a, supp_y_a, query_x_a, query_y_a = _anom_episode
     print()
     print('Anomaly task:')
-    case2_anom_losses, case2_anom_accs = train_classification(
+    case2_anom_losses, case2_anom_accs = train_classification_unfrozen(
         model_case2, supp_x_a, supp_y_a, query_x_a, query_y_a, 'anomaly', FINETUNE_EPOCHS
     )
 else:
@@ -846,7 +1028,7 @@ if TASKS_TO_RUN.get('prediction', False) and _pred_episode is not None:
     supp_cur, supp_next, query_cur, query_next = _pred_episode
     print()
     print('Prediction task:')
-    case2_pred_losses, case2_pred_mse = train_prediction(
+    case2_pred_losses, case2_pred_mse = train_prediction_unfrozen(
         model_case2, supp_cur, supp_next, query_cur, query_next, FINETUNE_EPOCHS, task_name='prediction'
     )
 else:
@@ -854,7 +1036,7 @@ else:
     print('Prediction task skipped for Case 2.')
 
 print()
-print('Case 2 Results:')
+print('Case 2 Results (Optimized):')
 if case2_diag_accs is not None:
     print(f'Diagnosis Accuracy: {case2_diag_accs[-1]:.4f}')
 if case2_anom_accs is not None:
@@ -864,84 +1046,333 @@ if case2_pred_mse is not None:
 if not any([case2_diag_accs, case2_anom_accs, case2_pred_mse]):
     print('No tasks were run for Case 2.')
 
+# %%
+# Cell 12.5: OPTIONAL - Supervised Contrastive Learning Implementation
+def supervised_contrastive_loss(embeddings, labels, temperature=0.5):
+    """
+    Supervised contrastive loss that uses class labels to define positive pairs
+    Positive pairs: samples with same class label
+    Negative pairs: samples with different class labels
+    """
+    embeddings = F.normalize(embeddings, dim=1)
+    batch_size = embeddings.shape[0]
+    
+    # Create mask for positive pairs (same class)
+    labels = labels.contiguous().view(-1, 1)
+    mask = torch.eq(labels, labels.T).float().to(device)
+    
+    # Compute similarity matrix
+    similarity = torch.div(torch.matmul(embeddings, embeddings.T), temperature)
+    
+    # Mask out self-contrast cases
+    logits_mask = torch.scatter(
+        torch.ones_like(mask),
+        1,
+        torch.arange(batch_size).view(-1, 1).to(device),
+        0
+    )
+    mask = mask * logits_mask
+    
+    # Compute log probabilities
+    exp_logits = torch.exp(similarity) * logits_mask
+    log_prob = similarity - torch.log(exp_logits.sum(1, keepdim=True))
+    
+    # Compute mean of log-likelihood over positive pairs
+    mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+    
+    # Loss
+    loss = -mean_log_prob_pos.mean()
+    
+    return loss
 
+# Alternative pretraining with supervised contrastive learning
+def pretrain_supervised_contrastive(encoder, dataloader, epochs=50):
+    """Alternative pretraining using supervised contrastive loss"""
+    print('Pretraining with Supervised Contrastive Learning...')
+    print('Note: This approach uses class labels to improve contrastive learning')
+    
+    optimizer = torch.optim.Adam(encoder.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
+    
+    encoder.train()
+    best_loss = float('inf')
+    
+    for epoch in range(epochs):
+        total_loss = 0
+        batch_count = 0
+        
+        for batch_x, batch_y in dataloader:
+            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+            
+            # Create augmented versions
+            augmented = enhanced_augmentation(batch_x)
+            
+            # Combine original and augmented samples
+            combined_x = torch.cat([batch_x, augmented])
+            combined_y = torch.cat([batch_y, batch_y])  # Same labels for augmented
+            
+            embeddings, _ = encoder(combined_x)
+            loss = supervised_contrastive_loss(embeddings, combined_y)
+            
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(encoder.parameters(), max_norm=1.0)
+            optimizer.step()
+            
+            total_loss += loss.item()
+            batch_count += 1
+        
+        scheduler.step()
+        avg_loss = total_loss / batch_count
+        
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            best_encoder_state = encoder.state_dict().copy()
+        
+        if epoch % 10 == 0 or epoch == epochs - 1:
+            lr = optimizer.param_groups[0]['lr']
+            print(f'Epoch {epoch}: Supervised Loss={avg_loss:.4f}, LR={lr:.6f}')
+    
+    encoder.load_state_dict(best_encoder_state)
+    print(f'Supervised contrastive pretraining completed! Best loss: {best_loss:.4f}')
+    return encoder
+
+# EXPERIMENTAL: Uncomment to try supervised contrastive learning instead
+# print('\\n' + '='*60)
+# print('EXPERIMENTAL: Supervised Contrastive Pretraining')
+# print('='*60)
+# encoder_case2_supervised = ContrastiveEncoder(N_CHANNELS).to(device)
+# encoder_case2_supervised = pretrain_supervised_contrastive(
+#     encoder_case2_supervised, pretrain_loader, PRETRAIN_EPOCHS
+# )
+# print('Note: Replace encoder_case2 with encoder_case2_supervised in Case 2 to test this approach')
+
+print('Supervised contrastive learning implementation ready!')
+print('Uncomment the experimental section above to enable supervised pretraining')
+
+# %% [markdown]
 # ## Case 3: Flow + Contrastive Pretraining + Few-Shot Learning
 
+# %%
+# Cell 14: Define proper Flow model for Case 3
+print("Initializing Case 3: Flow + Contrastive Pretraining")
 
+# Initialize encoder for Case 3 (reuse from Case 2)
+encoder_case3 = ContrastiveEncoder(N_CHANNELS).to(device)
 
-# Cell 14: Define Flow model
-class SimpleFlowModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim=256):
-        super(SimpleFlowModel, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, input_dim)
-        )
-        
-    def forward(self, x, t):
-        batch_size = x.shape[0]
-        x_flat = x.view(batch_size, -1)
-        
-        # Add time conditioning
-        t_embed = t.unsqueeze(1).expand(-1, x_flat.shape[1])
-        x_t = x_flat + t_embed * torch.randn_like(x_flat) * 0.1
-        
-        velocity = self.encoder(x_t)
-        return velocity.view_as(x)
+# Proper Flow Matching Model
+if USE_PROPER_FLOW:
+    print("Using proper FlowLoss implementation")
+    flow_model = FlowLoss(
+        target_channels=WINDOW_SIZE * N_CHANNELS,  # 1024*2=2048 for flattened signal
+        z_channels=128,                              # Encoder output dimension
+        depth=4,                                     # Network depth (residual blocks)
+        width=256,                                   # Network width (hidden channels)
+        num_sampling_steps=20                        # Sampling steps for generation
+    ).to(device)
     
-    def generate(self, x, steps=10):
-        """Generate sequence for prediction"""
-        for i in range(steps):
-            t = torch.ones(x.shape[0]).to(x.device) * (i / steps)
-            velocity = self.forward(x, t)
-            x = x + velocity * (1.0 / steps)
-        return x
-
-# Initialize flow model
-flow_model = SimpleFlowModel(WINDOW_SIZE * N_CHANNELS).to(device)
-print(f'Flow model: {sum(p.numel() for p in flow_model.parameters()):,} params')
-
-
-
-
-# Cell 15: Pretrain Flow model
-flow_optimizer = torch.optim.Adam(flow_model.parameters(), lr=LEARNING_RATE)
-
-print('Pretraining Flow model...')
-flow_model.train()
-
-for epoch in range(PRETRAIN_EPOCHS):
-    total_loss = 0
+    # Create flow pretrainer wrapper for easier training
+    flow_pretrainer = FlowMatchingPretrainer(
+        encoder=encoder_case3,
+        target_channels=WINDOW_SIZE * N_CHANNELS,
+        z_channels=128,
+        depth=4,
+        width=256,
+        num_sampling_steps=20
+    )
     
-    for batch_x, _ in pretrain_loader:
-        batch_x = batch_x.to(device)
-        batch_size = batch_x.shape[0]
+    print(f"FlowLoss parameters: {sum(p.numel() for p in flow_model.parameters()):,}")
+else:
+    print("Using simplified flow model (fallback)")
+    # Fallback to improved SimpleFlowModel
+    class ImprovedFlowModel(nn.Module):
+        def __init__(self, target_channels, z_channels):
+            super().__init__()
+            self.target_channels = target_channels
+            
+            # Time embedding
+            self.time_embed = nn.Sequential(
+                nn.Linear(1, 64),
+                nn.ReLU(),
+                nn.Linear(64, 64)
+            )
+            
+            # Condition embedding
+            self.cond_embed = nn.Linear(z_channels, 64)
+            
+            # Velocity prediction network
+            self.velocity_net = nn.Sequential(
+                nn.Linear(target_channels + 64 + 64, 512),
+                nn.ReLU(),
+                nn.Linear(512, 512),
+                nn.ReLU(),
+                nn.Linear(512, target_channels)
+            )
         
-        # Sample time steps
-        t = torch.rand(batch_size).to(device)
+        def forward(self, target, condition):
+            batch_size = target.shape[0]
+            device = target.device
+            
+            # Random time steps
+            t = torch.rand(batch_size, 1, device=device)
+            
+            # Random noise
+            noise = torch.randn_like(target)
+            
+            # Linear interpolation: x_t = (1-t) * noise + t * target
+            noised_target = (1 - t) * noise + t * target
+            
+            # Embeddings
+            t_embed = self.time_embed(t)
+            c_embed = self.cond_embed(condition)
+            
+            # Predict velocity
+            net_input = torch.cat([noised_target, t_embed, c_embed], dim=1)
+            velocity_pred = self.velocity_net(net_input)
+            velocity_true = target - noise
+            
+            # Return loss
+            return F.mse_loss(velocity_pred, velocity_true)
         
-        # Flow matching loss
-        velocity = flow_model(batch_x, t)
-        target = torch.randn_like(batch_x)
-        loss = F.mse_loss(velocity, target)
-        
-        flow_optimizer.zero_grad()
-        loss.backward()
-        flow_optimizer.step()
-        
-        total_loss += loss.item()
+        def sample(self, condition, num_samples=1):
+            """Simple sampling"""
+            device = condition.device
+            batch_size = condition.shape[0]
+            
+            x = torch.randn(batch_size * num_samples, self.target_channels, device=device)
+            condition_expanded = condition.repeat_interleave(num_samples, dim=0)
+            
+            steps = 20
+            dt = 1.0 / steps
+            
+            for i in range(steps):
+                t = torch.full((x.shape[0], 1), i / steps, device=device)
+                t_embed = self.time_embed(t)
+                c_embed = self.cond_embed(condition_expanded)
+                
+                net_input = torch.cat([x, t_embed, c_embed], dim=1)
+                velocity = self.velocity_net(net_input)
+                x = x + velocity * dt
+            
+            return x.view(batch_size, num_samples, -1)
     
-    if epoch % 5 == 0:
-        print(f'Epoch {epoch}: Flow Loss={total_loss/len(pretrain_loader):.4f}')
+    flow_model = ImprovedFlowModel(
+        target_channels=WINDOW_SIZE * N_CHANNELS,
+        z_channels=128
+    ).to(device)
+    
+    flow_pretrainer = None  # Will handle manually
 
-print('Flow pretraining completed!')
+print("✅ Case 3 Flow model initialized successfully")
 
+# %%
+# Cell 15: Pretrain Flow model with proper implementation
+print("\n=== Case 3: Flow Matching Pretraining ===")
 
+if USE_PROPER_FLOW and flow_pretrainer is not None:
+    print("Using FlowMatchingPretrainer wrapper")
+    
+    # Pretrain using the wrapper (includes encoder + flow model)
+    encoder_case3 = flow_pretrainer.pretrain(
+        dataloader=pretrain_loader,
+        epochs=PRETRAIN_EPOCHS,
+        lr=LEARNING_RATE
+    )
+    
+    print(f"✅ Flow matching pretraining completed")
+    
+else:
+    print("Using manual flow pretraining (fallback)")
+    
+    # Manual training for fallback model
+    flow_optimizer = torch.optim.Adam(flow_model.parameters(), lr=LEARNING_RATE)
+    encoder_optimizer = torch.optim.Adam(encoder_case3.parameters(), lr=LEARNING_RATE * 0.1)
+    
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(flow_optimizer, T_max=PRETRAIN_EPOCHS)
+    
+    flow_model.train()
+    encoder_case3.train()
+    
+    print("Starting manual flow matching pretraining...")
+    
+    for epoch in range(PRETRAIN_EPOCHS):
+        total_loss = 0
+        batch_count = 0
+        
+        for batch_x, _ in pretrain_loader:
+            batch_x = batch_x.to(device)
+            
+            # Get conditional representation from encoder
+            with torch.no_grad():
+                condition = encoder_case3.get_rep(batch_x)
+            
+            # Flatten signal for flow matching
+            target = batch_x.view(batch_x.size(0), -1)
+            
+            # Flow matching loss
+            loss = flow_model(target, condition)
+            
+            # Backward pass
+            flow_optimizer.zero_grad()
+            encoder_optimizer.zero_grad()
+            loss.backward()
+            
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(flow_model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(encoder_case3.parameters(), max_norm=1.0)
+            
+            flow_optimizer.step()
+            encoder_optimizer.step()
+            
+            total_loss += loss.item()
+            batch_count += 1
+        
+        scheduler.step()
+        avg_loss = total_loss / batch_count
+        
+        if epoch % 10 == 0:
+            lr_current = flow_optimizer.param_groups[0]['lr']
+            print(f"Epoch {epoch:3d}: Flow Loss={avg_loss:.4f}, LR={lr_current:.6f}")
+    
+    print(f"✅ Manual flow pretraining completed. Final loss: {avg_loss:.4f}")
 
+# Test flow generation quality
+print("--- Testing Flow Generation Quality ---")
+flow_model.eval()
+encoder_case3.eval()
 
+with torch.no_grad():
+    # Get a test batch
+    test_batch = next(iter(pretrain_loader))
+    test_x = test_batch[0][:5].to(device)  # 5 samples
+    
+    # Get conditions
+    if hasattr(encoder_case3, 'get_rep'):
+        conditions = encoder_case3.get_rep(test_x)
+    else:
+        embeddings, _ = encoder_case3(test_x)
+        conditions = embeddings
+    
+    if USE_PROPER_FLOW:
+        # Generate using FlowLoss
+        generated = flow_model.sample(conditions, num_samples=1)
+        generated_signals = generated.view(5, WINDOW_SIZE, N_CHANNELS)
+    else:
+        # Generate using fallback model
+        generated = flow_model.sample(conditions, num_samples=1)
+        generated_signals = generated.view(5, WINDOW_SIZE, N_CHANNELS)
+    
+    # Compute generation quality metrics
+    original_std = test_x.std().item()
+    generated_std = generated_signals.std().item()
+    
+    print(f"Original signal std: {original_std:.4f}")
+    print(f"Generated signal std: {generated_std:.4f}")
+    print(f"Std ratio: {generated_std/original_std:.3f} (closer to 1.0 is better)")
+
+print("✅ Case 3 Flow pretraining phase completed")
+
+# %%
 # Cell 16: Define combined Flow+Contrastive models
 class FlowContrastiveClassifierHead(nn.Module):
     def __init__(self, n_classes):
@@ -1032,64 +1463,214 @@ print(f'Contrastive encoder params (shared): {sum(p.numel() for p in encoder_cas
 for name, head in model_case3.heads.items():
     print(f'  Head[{name}] params: {sum(p.numel() for p in head.parameters()):,}')
 
+# %%
+# Cell 17: Joint Flow + Contrastive pretraining for Case 3
+print("\n=== Case 3: Joint Flow + Contrastive Training ===")
 
+# Option 1: Use HybridPretraining if available
+if 'HybridPretraining' in globals():
+    print("Using HybridPretraining wrapper")
+    
+    hybrid_trainer = HybridPretraining(
+        encoder=encoder_case3,
+        target_channels=WINDOW_SIZE * N_CHANNELS
+    )
+    
+    encoder_case3 = hybrid_trainer.pretrain(
+        dataloader=pretrain_loader,
+        total_epochs=PRETRAIN_EPOCHS,
+        flow_epochs=PRETRAIN_EPOCHS // 3,
+        contrastive_epochs=PRETRAIN_EPOCHS // 2,
+        flow_weight=1.0,
+        contrastive_weight=0.5
+    )
+    
+else:
+    print("Using manual joint training")
+    
+    # Manual joint training implementation
+    flow_params = list(flow_model.parameters())
+    encoder_params = list(encoder_case3.parameters())
+    all_params = flow_params + encoder_params
+    
+    joint_optimizer = torch.optim.Adam(all_params, lr=LEARNING_RATE * 0.5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(joint_optimizer, T_max=PRETRAIN_EPOCHS//2)
+    
+    # Joint training epochs (reduced to avoid overtraining)
+    joint_epochs = min(PRETRAIN_EPOCHS // 2, 25)
+    
+    flow_model.train()
+    encoder_case3.train()
+    
+    print(f"Starting joint training for {joint_epochs} epochs...")
+    
+    for epoch in range(joint_epochs):
+        total_flow_loss = 0
+        total_contrastive_loss = 0
+        batch_count = 0
+        
+        for batch_x, batch_y in pretrain_loader:
+            batch_x = batch_x.to(device)
+            batch_y = batch_y.to(device) if batch_y is not None else None
+            
+            # Augmentation for contrastive learning
+            noise_level = 0.1
+            augmented = batch_x + torch.randn_like(batch_x) * noise_level
+            
+            # === Flow Loss ===
+            # Get representations
+            condition = encoder_case3.get_rep(batch_x) if hasattr(encoder_case3, 'get_rep') else encoder_case3(batch_x)[0]
+            target = batch_x.view(batch_x.size(0), -1)
+            
+            if USE_PROPER_FLOW:
+                flow_loss = flow_model(target, condition)
+            else:
+                flow_loss = flow_model(target, condition)
+            
+            # === Contrastive Loss ===
+            embeddings1, _ = encoder_case3(batch_x)
+            embeddings2, _ = encoder_case3(augmented)
+            
+            # Simple contrastive loss
+            embeddings = torch.cat([embeddings1, embeddings2])
+            embeddings = F.normalize(embeddings, dim=1)
+            
+            similarity = torch.mm(embeddings, embeddings.t()) / 0.5
+            batch_size = embeddings.shape[0] // 2
+            
+            labels = torch.cat([
+                torch.arange(batch_size, batch_size * 2),
+                torch.arange(batch_size)
+            ]).to(device)
+            
+            mask = torch.eye(similarity.shape[0]).bool().to(device)
+            similarity = similarity.masked_fill(mask, -float('inf'))
+            
+            contrastive_loss = F.cross_entropy(similarity, labels)
+            
+            # === Combined Loss ===
+            flow_weight = 1.0
+            contrastive_weight = 0.3  # Reduced weight for contrastive
+            
+            total_loss = flow_weight * flow_loss + contrastive_weight * contrastive_loss
+            
+            # Backward pass
+            joint_optimizer.zero_grad()
+            total_loss.backward()
+            torch.nn.utils.clip_grad_norm_(all_params, max_norm=1.0)
+            joint_optimizer.step()
+            
+            total_flow_loss += flow_loss.item()
+            total_contrastive_loss += contrastive_loss.item()
+            batch_count += 1
+        
+        scheduler.step()
+        
+        if epoch % 5 == 0:
+            avg_flow = total_flow_loss / batch_count
+            avg_contrastive = total_contrastive_loss / batch_count
+            lr_current = joint_optimizer.param_groups[0]['lr']
+            print(f"Epoch {epoch:3d}: Flow={avg_flow:.4f}, Contrastive={avg_contrastive:.4f}, LR={lr_current:.6f}")
 
+print("✅ Case 3 joint Flow + Contrastive pretraining completed")
 
-# Cell 17: Joint pretraining with Flow and Contrastive
-joint_parameters = list(flow_model.parameters()) + list(encoder_case2.parameters())
+# Final model preparation for Case 3
+print("\n--- Preparing Case 3 for few-shot evaluation ---")
+encoder_case3.eval()
+flow_model.eval()
+
+# %%
+# Cell 18: Fine-tune Case 3 models with UNFROZEN encoders
+# OPTIMIZATION: Allow pretrained components to adapt during fine-tuning
+print('Training Case 3: Flow + Contrastive Pretrained Few-Shot Learning (Adaptive Encoders)')
+print('Note: Both Flow and Contrastive encoders are now trainable for better task adaptation')
+
+# Use different learning rates for different components
+flow_params = list(flow_model.parameters())
+contrastive_params = list(encoder_case2.parameters())
+head_params = []
 for head in model_case3.heads.values():
-    joint_parameters.extend(list(head.parameters()))
+    head_params.extend(list(head.parameters()))
 
-joint_optimizer = torch.optim.Adam(joint_parameters, lr=LEARNING_RATE)
+# Progressive learning rates: heads > contrastive > flow
+optimizer_case3 = torch.optim.Adam([
+    {'params': flow_params, 'lr': LEARNING_RATE * 0.05},       # 20x smaller for flow
+    {'params': contrastive_params, 'lr': LEARNING_RATE * 0.1}, # 10x smaller for contrastive
+    {'params': head_params, 'lr': LEARNING_RATE}               # Normal rate for heads
+], weight_decay=1e-4)
 
-print('Joint pretraining with Flow and Contrastive learning...')
-
-for epoch in range(min(10, PRETRAIN_EPOCHS)):
-    total_loss = 0
+def train_classification_adaptive(model, support_x, support_y, query_x, query_y, task_name, epochs=30):
+    criterion = nn.CrossEntropyLoss()
     
-    for batch_x, batch_y in pretrain_loader:
-        batch_x = batch_x.to(device)
-        batch_size = batch_x.shape[0]
+    support_x, support_y = support_x.to(device), support_y.to(device)
+    query_x, query_y = query_x.to(device), query_y.to(device)
+    
+    losses, accuracies = [], []
+    
+    for epoch in range(epochs):
+        model.train()
+        optimizer_case3.zero_grad()
         
-        # Contrastive loss
-        augmented = batch_x + torch.randn_like(batch_x) * 0.1
-        embeddings1, _ = encoder_case2(batch_x)
-        embeddings2, _ = encoder_case2(augmented)
-        embeddings = torch.cat([embeddings1, embeddings2])
-        cont_loss = contrastive_loss(embeddings)
-        
-        # Flow loss
-        t = torch.rand(batch_size).to(device)
-        velocity = flow_model(batch_x, t)
-        target = torch.randn_like(batch_x)
-        flow_loss = F.mse_loss(velocity, target)
-        
-        # Combined loss
-        loss = cont_loss + 0.5 * flow_loss
-        
-        joint_optimizer.zero_grad()
+        outputs = model(support_x, task_name)
+        loss = criterion(outputs, support_y)
         loss.backward()
-        joint_optimizer.step()
         
-        total_loss += loss.item()
+        # Gradient clipping with different norms for different components
+        torch.nn.utils.clip_grad_norm_(flow_model.parameters(), max_norm=0.5)
+        torch.nn.utils.clip_grad_norm_(encoder_case2.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(head_params, max_norm=2.0)
+        
+        optimizer_case3.step()
+        
+        model.eval()
+        with torch.no_grad():
+            outputs_query = model(query_x, task_name)
+            preds = torch.argmax(outputs_query, dim=1)
+            acc = (preds == query_y).float().mean().item()
+            losses.append(loss.item())
+            accuracies.append(acc)
+        
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            print(f'Epoch {epoch+1}/{epochs} - Loss: {losses[-1]:.4f}, Acc: {accuracies[-1]:.4f}')
     
-    if epoch % 3 == 0:
-        print(f'Epoch {epoch}: Combined Loss={total_loss/len(pretrain_loader):.4f}')
+    return losses, accuracies
 
-print('Joint pretraining completed!')
-
-
-
-
-
-# Cell 18: Fine-tune Case 3 models
-# Freeze pretrained components
-for param in flow_model.parameters():
-    param.requires_grad = False
-for param in encoder_case2.parameters():
-    param.requires_grad = False
-
-print('Training Case 3: Flow + Contrastive Pretrained Few-Shot Learning')
+def train_prediction_adaptive(model, support_current, support_next, query_current, query_next, epochs=30, task_name='prediction'):
+    criterion = nn.MSELoss()
+    
+    support_current = support_current.to(device)
+    support_next = support_next.to(device)
+    query_current = query_current.to(device)
+    query_next = query_next.to(device)
+    
+    losses, mse_scores = [], []
+    
+    for epoch in range(epochs):
+        model.train()
+        optimizer_case3.zero_grad()
+        
+        pred_next = model(support_current, task_name)
+        loss = criterion(pred_next, support_next)
+        loss.backward()
+        
+        # Gradient clipping with different norms for different components
+        torch.nn.utils.clip_grad_norm_(flow_model.parameters(), max_norm=0.5)
+        torch.nn.utils.clip_grad_norm_(encoder_case2.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(head_params, max_norm=2.0)
+        
+        optimizer_case3.step()
+        
+        model.eval()
+        with torch.no_grad():
+            pred_query = model(query_current, task_name)
+            mse = F.mse_loss(pred_query, query_next).item()
+            losses.append(loss.item())
+            mse_scores.append(mse)
+        
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            print(f'Epoch {epoch+1}/{epochs} - Loss: {losses[-1]:.6f}, MSE: {mse_scores[-1]:.6f}')
+    
+    return losses, mse_scores
 
 case3_diag_losses = None
 case3_diag_accs = None
@@ -1098,7 +1679,7 @@ if TASKS_TO_RUN.get('diagnosis', False) and _diag_episode is not None:
     supp_x, supp_y, query_x, query_y = _diag_episode
     print()
     print('Diagnosis task:')
-    case3_diag_losses, case3_diag_accs = train_classification(
+    case3_diag_losses, case3_diag_accs = train_classification_adaptive(
         model_case3, supp_x, supp_y, query_x, query_y, 'diagnosis', FINETUNE_EPOCHS
     )
 else:
@@ -1112,7 +1693,7 @@ if TASKS_TO_RUN.get('anomaly', False) and _anom_episode is not None:
     supp_x_a, supp_y_a, query_x_a, query_y_a = _anom_episode
     print()
     print('Anomaly task:')
-    case3_anom_losses, case3_anom_accs = train_classification(
+    case3_anom_losses, case3_anom_accs = train_classification_adaptive(
         model_case3, supp_x_a, supp_y_a, query_x_a, query_y_a, 'anomaly', FINETUNE_EPOCHS
     )
 else:
@@ -1126,7 +1707,7 @@ if TASKS_TO_RUN.get('prediction', False) and _pred_episode is not None:
     supp_cur, supp_next, query_cur, query_next = _pred_episode
     print()
     print('Prediction task:')
-    case3_pred_losses, case3_pred_mse = train_prediction(
+    case3_pred_losses, case3_pred_mse = train_prediction_adaptive(
         model_case3, supp_cur, supp_next, query_cur, query_next, FINETUNE_EPOCHS, task_name='prediction'
     )
 else:
@@ -1134,7 +1715,7 @@ else:
     print('Prediction task skipped for Case 3.')
 
 print()
-print('Case 3 Results:')
+print('Case 3 Results (Optimized):')
 if case3_diag_accs is not None:
     print(f'Diagnosis Accuracy: {case3_diag_accs[-1]:.4f}')
 if case3_anom_accs is not None:
@@ -1144,10 +1725,7 @@ if case3_pred_mse is not None:
 if not any([case3_diag_accs, case3_anom_accs, case3_pred_mse]):
     print('No tasks were run for Case 3.')
 
-
-
-
-
+# %%
 # Cell 19: Comprehensive results comparison
 enabled_tasks = [task for task, run in TASKS_TO_RUN.items() if run]
 if not enabled_tasks:
@@ -1293,73 +1871,96 @@ else:
     plt.show()
 
 
-
-
-# Cell 20: Summary and analysis
+# %%
+# Cell 20: Summary and analysis - OPTIMIZED VERSION
 print('\n' + '='*80)
-print('COMPREHENSIVE RESULTS SUMMARY')
+print('COMPREHENSIVE RESULTS SUMMARY - OPTIMIZED NOTEBOOK')
 print('='*80)
+
+print('\n🔧 OPTIMIZATION FEATURES IMPLEMENTED:')
+print('-'*50)
+print('✅ Unfrozen encoders during fine-tuning with adaptive learning rates')
+print('✅ Increased pretraining epochs (20 → 50) with early stopping')
+print('✅ Learning rate scheduling (CosineAnnealingLR)')
+print('✅ Enhanced augmentation strategies (amplitude scaling, time shifting)')
+print('✅ Gradient clipping for training stability')
+print('✅ Weight decay regularization (L2=1e-4)')
+print('✅ Increased batch size (32 → 64) for better contrastive learning')
 
 # Diagnosis results
 print('\n🔧 FAULT DIAGNOSIS (4-class classification)')
 print('-'*50)
 print(f'Case 1 (Direct):           {case1_diag_accs[-1]:.4f}')
-print(f'Case 2 (Contrastive):      {case2_diag_accs[-1]:.4f}')
-print(f'Case 3 (Flow+Contrastive): {case3_diag_accs[-1]:.4f}')
+print(f'Case 2 (Contrastive OPT):  {case2_diag_accs[-1]:.4f}')
+print(f'Case 3 (Flow+Contr OPT):   {case3_diag_accs[-1]:.4f}')
 
 diag_imp_2 = (case2_diag_accs[-1] - case1_diag_accs[-1]) / case1_diag_accs[-1] * 100
 diag_imp_3 = (case3_diag_accs[-1] - case1_diag_accs[-1]) / case1_diag_accs[-1] * 100
 print(f'\nImprovement over baseline:')
-print(f'Case 2: {diag_imp_2:+.1f}%')
-print(f'Case 3: {diag_imp_3:+.1f}%')
+print(f'Case 2 (Optimized): {diag_imp_2:+.1f}%')
+print(f'Case 3 (Optimized): {diag_imp_3:+.1f}%')
 
 # Anomaly results
 print('\n🚨 ANOMALY DETECTION (binary classification)')
 print('-'*50)
 print(f'Case 1 (Direct):           {case1_anom_accs[-1]:.4f}')
-print(f'Case 2 (Contrastive):      {case2_anom_accs[-1]:.4f}')
-print(f'Case 3 (Flow+Contrastive): {case3_anom_accs[-1]:.4f}')
+print(f'Case 2 (Contrastive OPT):  {case2_anom_accs[-1]:.4f}')
+print(f'Case 3 (Flow+Contr OPT):   {case3_anom_accs[-1]:.4f}')
 
 anom_imp_2 = (case2_anom_accs[-1] - case1_anom_accs[-1]) / case1_anom_accs[-1] * 100
 anom_imp_3 = (case3_anom_accs[-1] - case1_anom_accs[-1]) / case1_anom_accs[-1] * 100
 print(f'\nImprovement over baseline:')
-print(f'Case 2: {anom_imp_2:+.1f}%')
-print(f'Case 3: {anom_imp_3:+.1f}%')
+print(f'Case 2 (Optimized): {anom_imp_2:+.1f}%')
+print(f'Case 3 (Optimized): {anom_imp_3:+.1f}%')
 
 # Prediction results
 print('\n📈 SIGNAL PREDICTION (next-window forecasting)')
 print('-'*50)
 print(f'Case 1 (Direct):           {case1_pred_mse[-1]:.6f} MSE')
-print(f'Case 2 (Contrastive):      {case2_pred_mse[-1]:.6f} MSE')
-print(f'Case 3 (Flow+Contrastive): {case3_pred_mse[-1]:.6f} MSE')
+print(f'Case 2 (Contrastive OPT):  {case2_pred_mse[-1]:.6f} MSE')
+print(f'Case 3 (Flow+Contr OPT):   {case3_pred_mse[-1]:.6f} MSE')
 
 pred_imp_2 = (case1_pred_mse[-1] - case2_pred_mse[-1]) / case1_pred_mse[-1] * 100
 pred_imp_3 = (case1_pred_mse[-1] - case3_pred_mse[-1]) / case1_pred_mse[-1] * 100
 print(f'\nMSE reduction (lower is better):')
-print(f'Case 2: {pred_imp_2:+.1f}%')
-print(f'Case 3: {pred_imp_3:+.1f}%')
+print(f'Case 2 (Optimized): {pred_imp_2:+.1f}%')
+print(f'Case 3 (Optimized): {pred_imp_3:+.1f}%')
 
 print('\n' + '='*80)
-print('KEY FINDINGS')
+print('KEY FINDINGS - OPTIMIZED RESULTS')
 print('='*80)
-print('1. 🎯 Flow pretraining provides significant benefits for all three tasks')
-print('2. 🔄 Signal prediction shows the largest improvement with Flow models')
-print('3. 📊 Contrastive learning helps with discriminative tasks')
-print('4. 🚀 Combined Flow+Contrastive achieves best overall performance')
-print('5. ⚡ Pretraining enables faster convergence in few-shot scenarios')
 
-print(f'\n📊 DATA STATISTICS')
+if case2_diag_accs[-1] > case1_diag_accs[-1]:
+    print('🎯 SUCCESS: Contrastive pretraining now IMPROVES fault diagnosis!')
+else:
+    print('⚠️  Contrastive pretraining still shows room for improvement')
+
+if case2_pred_mse[-1] < case1_pred_mse[-1]:
+    print('🔄 SUCCESS: Signal prediction now BENEFITS from pretraining!')
+else:
+    print('⚠️  Signal prediction still needs further optimization')
+
+print('📊 Unfrozen encoders allow adaptation to downstream tasks')
+print('🚀 Enhanced augmentation preserves industrial signal characteristics')
+print('⚡ Learning rate scheduling improves convergence stability')
+
+print(f'\n📊 OPTIMIZATION IMPACT SUMMARY')
 print('-'*50)
-print(f'Total windows created: {len(all_windows):,}')
-print(f'Window size: {WINDOW_SIZE} samples ({WINDOW_SIZE/SAMPLE_RATE*1000:.1f} ms)')
-print(f'Overlap: {(1-STRIDE/WINDOW_SIZE)*100:.1f}%')
-print(f'Prediction pairs: {len(all_current_windows):,}')
-print(f'Memory usage: {all_windows.nbytes / 1024**2:.2f} MB')
+print(f'Pretraining epochs: 20 → {PRETRAIN_EPOCHS} (+{(PRETRAIN_EPOCHS-20)/20*100:.0f}%)')
+print(f'Batch size: 32 → {BATCH_SIZE} (+{(BATCH_SIZE-32)/32*100:.0f}%)')
+print(f'Augmentation strategies: 1 → 3 (Gaussian + Amplitude + Time shift)')
+print(f'Learning rate adaptation: Fixed → Scheduled (Cosine annealing)')
+print(f'Encoder training: Frozen → Adaptive (Multi-rate optimization)')
+
+print('\n🔬 NEXT OPTIMIZATION PHASES')
+print('-'*50)
+print('Phase 2: Supervised contrastive loss with class labels')
+print('Phase 2: Progressive unfreezing strategy implementation')
+print('Phase 3: Residual connections and architectural improvements')
+print('Phase 3: Multi-task pretraining objectives')
 print('='*80)
 
-
-
-
+# %%
 # Cell 21: Ablation study - window size effects
 print('\n🔍 ABLATION STUDY: Window Size Effects')
 print('='*60)
@@ -1400,4 +2001,5 @@ print('2. Evaluate cross-dataset generalization (CWRU → XJTU)')
 print('3. Implement advanced Flow architectures (RectifiedFlow, CNF)')
 print('4. Compare with state-of-the-art few-shot learning methods')
 print('5. Analyze computational efficiency and deployment feasibility')
+
 

@@ -193,3 +193,5 @@ dev/project/valve.ipynb
 dev/ross_demo/fault.ipynb
 dev/project/valve.ipynb
 plot/
+plan/cwru_case_study/cwru_multitask_fewshot_study.ipynb
+*.ipynb
