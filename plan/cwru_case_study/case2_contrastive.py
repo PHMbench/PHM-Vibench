@@ -46,7 +46,8 @@ from common_utils import (
 
 def create_augmented_pairs(signals, logger):
     """Create augmented pairs for contrastive learning"""
-    logger.info("Creating augmented pairs for contrastive learning...")
+    if logger:
+        logger.info("Creating augmented pairs for contrastive learning...")
 
     batch_size = len(signals)
 
@@ -77,7 +78,8 @@ def create_augmented_pairs(signals, logger):
 
         signals_2[i] = signal
 
-    logger.info(f"Created {batch_size} augmented pairs")
+    if logger:
+        logger.info(f"Created {batch_size} augmented pairs")
     return signals_1, signals_2
 
 def pretrain_contrastive(model, signals, epochs, lr, logger):

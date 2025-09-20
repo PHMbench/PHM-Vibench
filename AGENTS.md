@@ -1,105 +1,19 @@
-# PHMbench Documentation Overview
+# Repository Guidelines
 
-## § Project Overview
+## Project Structure & Module Organization
+Framework code lives in `src/` with four core factories: `data_factory/`, `model_factory/`, `task_factory/`, and `trainer_factory/`. Configuration YAMLs sit in `configs/` (grouped by dataset, pipeline, and experiment), while automation utilities are under `script/`. Tests primarily live in `test/`; integration flows (e.g., `test_flow_*.py`) stay at the repo root. Shared assets and outputs belong in `data/`, `results/`, and `save/`. Update related docs in `doc/` or `docs/` when adding new capabilities.
 
-PHMbench (Prognostics and Health Management Benchmark) 提供一个基准平台，用于在统一标准下评估故障诊断与剩余寿命预测等PHM算法。框架整合了常用的工业数据集和基准模型，并通过配置驱动的工作流支持实验的复现与结果对比。
+## Build, Test, and Development Commands
+Install dependencies with `pip install -r requirements.txt`; add `-r requirements-test.txt` when working on the harness. Launch training via `python main.py +experiment=<config>` and queue batch runs with `python run_flow_experiment_batch.py --config-name <name>`. Run targeted validations using `python run_tests.py --pattern test_flow_*` and execute the full suite with `pytest`. Use `validate_flow_setup.py` after major config edits to verify entry points.
 
-## § Target Audience and Roles (Agents)
+## Coding Style & Naming Conventions
+Follow PEP 8, four-space indentation, and Black-compatible formatting; type hints are expected on new public APIs. Keep modules, configs, and Hydra groups in `snake_case` (or lowercase dash-separated), while classes stay `CamelCase` and functions `snake_case`. Document non-obvious PHM assumptions in short docstrings or inline comments. When extending factory registries, replicate the existing registration helper patterns.
 
-以下小节定义了项目中常见的五类角色，描述他们在PHMbench中的职责、目标以及与框架的主要交互方式。
+## Testing Guidelines
+Name tests `test_*.py` and colocate fixtures with the functionality they exercise. Cover factory registration, data loading, and trainer loops with fast smoke tests; tag slow or benchmark-heavy cases with `pytest.mark.slow` so they can be skipped in CI. Ensure deterministic behavior by seeding RNGs inside fixtures and reflecting any new CLI flags in `pytest.ini` when needed.
 
-### 1. PHM 研究员 / 数据科学家
-- **角色定位**：在学术或工业场景中使用PHMbench开展算法研究和实验验证。
-- **目标**：
-  - 在标准化数据集上运行并复现实验；
-  - 公平比较不同算法的性能；
-  - 产生可靠、可发布的研究结果。
-- **主要交互**：
-  - 通过 `configs/` 配置实验；
-  - 使用 `src/data_factory/reader/` 与 `src/model_factory/` 中的组件；
-  - 分析日志和评估输出。
+## Commit & Pull Request Guidelines
+Write imperative, under-72-character commit subjects (e.g., "Add reader cache") and group related changes together. Pull requests should link issues, outline behavioral impact, mention required config migrations, and note any doc updates. Include metric tables or screenshots when altering dashboards or benchmark outputs, and state whether the relevant `pytest` targets were executed.
 
-### 2. PHMbench 开发者 / 贡献者
-- **角色定位**：参与框架本身的开发、修复和功能扩展。
-- **目标**：
-  - 支持新的数据类型、模型或任务；
-  - 提升框架的稳定性与可维护性；
-  - 完善文档并保持代码质量。
-- **主要交互**：
-  - 深入阅读 `src/` 目录源码；
-  - 遵循 `contributing.md` 流程提交更改；
-  - 编写并运行测试（见 `test/`）。
-
-### 3. 数据集策展人 / 提供者
-- **角色定位**：向PHMbench引入和维护新的数据集。
-- **目标**：
-  - 编写或更新 `metadata_*.csv` 元数据；
-  - 开发新的读取脚本放在 `src/data_factory/reader/`；
-  - 撰写数据集使用说明。
-- **主要交互**：
-  - 按 `src/data_factory/contributing.md` 集成数据；
-  - 同步更新文档。
-
-### 4. AI 模型开发者 (PHM)
-- **角色定位**：在框架中实现并测试新型PHM模型。
-- **目标**：
-  - 集成最新模型架构；
-  - 通过标准流程验证模型效果；
-  - 确保与现有任务兼容。
-- **主要交互**：
-  - 在 `src/model_factory/` 下新增模型并更新注册；
-  - 新增相应配置文件。
-
-### 5. 基准测试分析师
-- **角色定位**：设计并执行大规模基准实验，撰写分析报告。
-- **目标**：
-  - 系统比较多种算法与数据集；
-  - 输出可信的性能评估与洞见。
-- **主要交互**：
-  - 大批量运行实验并汇总结果；
-  - 编写自动化脚本和可视化工具。
-
-## § Tech Stack
-
-- Python 3.8+
-- PyTorch 与 PyTorch Lightning
-- Pandas、NumPy 等科学计算库
-- Hydra 用于配置管理
-- 日志与实验跟踪工具：W&B、TensorBoard 等
-
-## § Project Structure
-
-```
-phm-vibench/
-├── configs/          # 实验配置文件
-├── data/             # 数据集与元数据
-├── doc/              # 开发者文档
-├── script/           # 实用脚本
-├── src/              # 框架源码
-│   ├── data_factory/
-│   ├── model_factory/
-│   ├── task_factory/
-│   └── trainer_factory/
-└── test/             # 测试代码
-```
-
-## § Development Guidelines
-
-- 遵循 PEP 8 风格，保持代码整洁。
-- 新功能请附带相应测试和文档。
-- 提交PR前 不需要执行程序进行验证，提高效率。
-- [data_factory](./src/data_factory/contributing.md)、[model_factory](./src/model_factory/contributing.md)、[task_factory](./src/task_factory/contributing.md) 和 [trainer_factory](./src/trainer_factory/contributing.md) 的贡献请遵循各自的 `contributing.md` 文档。
-## § Environment Setup
-
-<!-- ```bash
-# 克隆仓库并进入目录
-$ git clone <repo-url>
-$ cd PHM-Vibench
-
-# 创建虚拟环境并安装依赖
-$ python -m venv .venv
-$ source .venv/bin/activate
-$ pip install -r requirements.txt
-``` -->
-<!-- 
-如需更多使用示例，请查阅 `README.md` 和 `doc/developer_guide.md`。 -->
+## Configuration & Experiment Tips
+Treat Hydra configs as reusable templates: copy from `configs/benchmarks/` or `configs/pipelines/` and override parameters with CLI flags. Log reproducibility metadata—seed, config path, artifact location—in commit bodies or PR notes. Leverage existing W&B or TensorBoard hooks exposed by the trainer factories to keep long-running experiments auditable.
