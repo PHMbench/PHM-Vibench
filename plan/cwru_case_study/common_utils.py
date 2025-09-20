@@ -121,7 +121,7 @@ def load_cwru_data(logger):
         raise FileNotFoundError(f"Metadata file not found: {METADATA_FILE}")
 
     metadata = pd.read_excel(METADATA_FILE)
-    cwru_meta = metadata[metadata['data_name'] == 'CWRU'].reset_index(drop=True)
+    cwru_meta = metadata[metadata['Name'] == 'RM_001_CWRU'].reset_index(drop=True)
     logger.info(f"Found {len(cwru_meta)} CWRU files in metadata")
 
     # Load H5 data
@@ -137,7 +137,7 @@ def load_cwru_data(logger):
         file_ids_list = []
 
         for idx, row in cwru_meta.iterrows():
-            file_id = row['ID']
+            file_id = row['Id']
 
             try:
                 if str(file_id) in f:
@@ -155,7 +155,7 @@ def load_cwru_data(logger):
                     windows = create_windows(signal_data, WINDOW_SIZE, STRIDE)
 
                     # Labels
-                    diag_label = row.get('Health_indicator', 0)
+                    diag_label = row.get('Label', 0)
                     anom_label = 1 if diag_label > 0 else 0
 
                     signals_list.append(windows)
@@ -174,6 +174,10 @@ def load_cwru_data(logger):
     all_diag_labels = np.array(labels_diag_list)
     all_anom_labels = np.array(labels_anom_list)
     all_file_ids = np.array(file_ids_list)
+
+    # Squeeze last dimension if it exists (remove trailing dimension of size 1)
+    if all_signals.ndim == 4 and all_signals.shape[-1] == 1:
+        all_signals = all_signals.squeeze(-1)
 
     logger.info(f"Total loaded: {len(all_signals)} windows")
     logger.info(f"Signal shape: {all_signals.shape}")
@@ -304,11 +308,15 @@ class PredictionHead(nn.Module):
     """Prediction head for signal forecasting"""
     def __init__(self, feature_channels, output_channels=2):
         super(PredictionHead, self).__init__()
+        # Decoder with upsampling to restore original sequence length
+        # Input: 256 length -> Output: 1024 length (4x upsampling)
         self.decoder = nn.Sequential(
             nn.Conv1d(feature_channels, 64, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='linear', align_corners=False),  # 256 -> 512
             nn.Conv1d(64, 32, kernel_size=5, padding=2),
             nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='linear', align_corners=False),  # 512 -> 1024
             nn.Conv1d(32, output_channels, kernel_size=7, padding=3),
         )
 
