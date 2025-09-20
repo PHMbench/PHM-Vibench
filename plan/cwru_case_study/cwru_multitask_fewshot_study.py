@@ -558,7 +558,7 @@ class PredictionHead(nn.Module):
 class DirectFewShotModel(nn.Module):
     def __init__(self, input_channels, tasks_config, n_classes_diag, n_classes_anom):
         super(DirectFewShotModel, self).__init__()
-        self.backbone = DirectBackbone(input_channels)
+        self.backbone = UnifiedEncoder(input_channels)
         self.tasks_config = tasks_config
         self.heads = nn.ModuleDict()
         feature_dim = self.backbone.feature_dim
@@ -709,7 +709,52 @@ if not any([case1_diag_accs, case1_anom_accs, case1_pred_mse]):
 # ## Case 2: Contrastive Pretraining + Few-Shot Learning
 
 # %%
-# Cell 11: Define contrastive models
+# Cell 11: Define unified encoder for fair comparison across all cases
+class UnifiedEncoder(nn.Module):
+    """Single encoder architecture used by ALL cases for fair comparison"""
+    def __init__(self, input_channels=2, feature_dim=128):
+        super(UnifiedEncoder, self).__init__()
+        self.feature_dim = feature_dim
+
+        # Same CNN architecture for all cases
+        self.conv_layers = nn.Sequential(
+            nn.Conv1d(input_channels, 32, kernel_size=7, padding=3),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+            nn.Conv1d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+            nn.Conv1d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+        )
+        self.pool = nn.AdaptiveAvgPool1d(1)
+
+        # Optional projection head for contrastive learning
+        self.projection = nn.Sequential(
+            nn.Linear(128, feature_dim),
+            nn.ReLU(),
+            nn.Linear(feature_dim, feature_dim)
+        )
+
+    def forward(self, x, use_projection=False):
+        """Forward pass with optional projection for contrastive learning"""
+        x = x.transpose(1, 2)
+        feature_map = self.conv_layers(x)
+        pooled_features = self.pool(feature_map).squeeze(-1)
+
+        if use_projection:
+            embeddings = self.projection(pooled_features)
+            return embeddings, pooled_features
+        else:
+            # Return feature_map and pooled features for compatibility with heads
+            return feature_map, pooled_features
+
+    def get_rep(self, x):
+        """Get representation for flow matching compatibility"""
+        _, pooled_features = self.forward(x, use_projection=False)
+        return pooled_features
+
+# Original ContrastiveEncoder (kept for compatibility)
 class ContrastiveEncoder(nn.Module):
     def __init__(self, input_channels=2, hidden_dim=128):
         super(ContrastiveEncoder, self).__init__()
@@ -733,6 +778,11 @@ class ContrastiveEncoder(nn.Module):
         features = self.pool(x).squeeze(-1)
         embeddings = self.projection(features)
         return embeddings, features
+
+    def get_rep(self, x):
+        """Get representation for flow matching compatibility"""
+        _, features = self.forward(x)
+        return features
 
 class ContrastiveClassificationHead(nn.Module):
     def __init__(self, in_dim, n_classes):
@@ -776,11 +826,11 @@ class ContrastiveFewShotModel(nn.Module):
     def forward(self, x, task):
         if task not in self.heads:
             raise ValueError(f'Task {task} is not enabled for this model.')
-        _, features = self.encoder(x)
+        _, features = self.encoder(x, use_projection=False)
         return self.heads[task](features)
 
 # Initialize encoder
-encoder_case2 = ContrastiveEncoder(N_CHANNELS).to(device)
+encoder_case2 = UnifiedEncoder(N_CHANNELS).to(device)
 print(f'Contrastive encoder: {sum(p.numel() for p in encoder_case2.parameters()):,} params')
 
 # %%
@@ -860,8 +910,8 @@ for epoch in range(PRETRAIN_EPOCHS):
         # Create enhanced augmented versions
         augmented = enhanced_augmentation(batch_x)
         
-        embeddings1, _ = encoder_case2(batch_x)
-        embeddings2, _ = encoder_case2(augmented)
+        embeddings1, _ = encoder_case2(batch_x, use_projection=True)
+        embeddings2, _ = encoder_case2(augmented, use_projection=True)
         
         embeddings = torch.cat([embeddings1, embeddings2])
         loss = contrastive_loss(embeddings)
@@ -1158,7 +1208,7 @@ print('Uncomment the experimental section above to enable supervised pretraining
 print("Initializing Case 3: Flow + Contrastive Pretraining")
 
 # Initialize encoder for Case 3 (reuse from Case 2)
-encoder_case3 = ContrastiveEncoder(N_CHANNELS).to(device)
+encoder_case3 = UnifiedEncoder(N_CHANNELS).to(device)
 
 # Proper Flow Matching Model
 if USE_PROPER_FLOW:
@@ -1304,7 +1354,10 @@ else:
             
             # Get conditional representation from encoder
             with torch.no_grad():
-                condition = encoder_case3.get_rep(batch_x)
+                if hasattr(encoder_case3, 'get_rep'):
+                    condition = encoder_case3.get_rep(batch_x)
+                else:
+                    _, condition = encoder_case3(batch_x)
             
             # Flatten signal for flow matching
             target = batch_x.view(batch_x.size(0), -1)
@@ -1421,7 +1474,7 @@ class FlowContrastiveFewShotModel(nn.Module):
 
     def _classification_features(self, x):
         batch_size = x.shape[0]
-        _, conv_features = self.contrastive_encoder(x)
+        _, conv_features = self.contrastive_encoder(x, use_projection=False)
         t = torch.ones(batch_size, device=x.device) * 0.5
         flow_features = self.flow_model(x, t)
         flow_features = flow_features.view(batch_size, -1)
@@ -1431,7 +1484,7 @@ class FlowContrastiveFewShotModel(nn.Module):
 
     def _prediction_features(self, x):
         batch_size = x.shape[0]
-        _, conv_features = self.contrastive_encoder(x)
+        _, conv_features = self.contrastive_encoder(x, use_projection=False)
         flow_prediction = self.flow_model.generate(x, steps=5)
         flow_features = flow_prediction.view(batch_size, -1)
         flow_features = F.adaptive_avg_pool1d(flow_features.unsqueeze(1), 128).squeeze(1)
@@ -1528,8 +1581,8 @@ else:
                 flow_loss = flow_model(target, condition)
             
             # === Contrastive Loss ===
-            embeddings1, _ = encoder_case3(batch_x)
-            embeddings2, _ = encoder_case3(augmented)
+            embeddings1, _ = encoder_case3(batch_x, use_projection=True)
+            embeddings2, _ = encoder_case3(augmented, use_projection=True)
             
             # Simple contrastive loss
             embeddings = torch.cat([embeddings1, embeddings2])
@@ -1587,7 +1640,7 @@ print('Note: Both Flow and Contrastive encoders are now trainable for better tas
 
 # Use different learning rates for different components
 flow_params = list(flow_model.parameters())
-contrastive_params = list(encoder_case2.parameters())
+contrastive_params = list(encoder_case3.parameters())
 head_params = []
 for head in model_case3.heads.values():
     head_params.extend(list(head.parameters()))
