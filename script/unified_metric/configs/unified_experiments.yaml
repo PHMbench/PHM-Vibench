@@ -7,7 +7,7 @@ environment:
   VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench"
   project: "Unified_Metric_Learning_Pipeline"
   seed: 42
-  output_dir: "results/unified_metric_learning"
+  output_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/save"
   notes: "Two-stage unified metric learning with 82% computational savings"
   iterations: 5
 
