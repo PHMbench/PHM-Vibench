@@ -41,10 +41,21 @@ def Get_DG_ids(metadata_accessor, args_task):
         all_domains = sorted(system_df['Domain_id'].unique())
         all_domains = [d for d in all_domains if not pd.isna(d)]
 
-        test_count = min(args_task.target_domain_num, len(all_domains))
-        
-        train_domains = all_domains[:-test_count] if test_count > 0 else all_domains
-        test_domains = all_domains[-test_count:] if test_count > 0 else []
+        if not all_domains:
+            train_domains, test_domains = [], []
+        else:
+            # Keep at least one domain for training whenever possible
+            max_testable = max(len(all_domains) - 1, 0)
+            if args_task.target_domain_num > 0:
+                test_count = min(args_task.target_domain_num, max_testable)
+            else:
+                test_count = 0
+
+            if test_count == 0 and len(all_domains) > 0 and args_task.target_domain_num > 0:
+                print("[WARNING] Not enough domains to allocate test split. Falling back to train-only for this dataset.")
+
+            train_domains = all_domains[:-test_count] if test_count > 0 else all_domains
+            test_domains = all_domains[-test_count:] if test_count > 0 else []
 
         train_df = system_df[system_df['Domain_id'].isin(train_domains)]
         test_df = system_df[system_df['Domain_id'].isin(test_domains)]
@@ -113,7 +124,19 @@ def Get_CDDG_ids(metadata_accessor, args_task):
     train_domains = {}
     test_domains = {}
     for dataset_id, domains in dataset_domains.items():
-        test_count = min(args_task.target_domain_num, len(domains))
+        if not domains:
+            train_domains[dataset_id], test_domains[dataset_id] = [], []
+            continue
+
+        max_testable = max(len(domains) - 1, 0)
+        if args_task.target_domain_num > 0:
+            test_count = min(args_task.target_domain_num, max_testable)
+        else:
+            test_count = 0
+
+        if test_count == 0 and len(domains) > 0 and args_task.target_domain_num > 0:
+            print(f"[WARNING] 数据集 {dataset_id} 仅包含 {len(domains)} 个域，无法按照 target_domain_num 分配测试域，已全部用于训练。")
+
         train_domains[dataset_id] = domains[:-test_count] if test_count > 0 else domains
         test_domains[dataset_id] = domains[-test_count:] if test_count > 0 else []
     
