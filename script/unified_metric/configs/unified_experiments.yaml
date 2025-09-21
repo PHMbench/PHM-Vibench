@@ -8,8 +8,9 @@ environment:
   project: "Unified_Metric_Learning_Pipeline"
   seed: 42
   output_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/save"
-  notes: "Two-stage unified metric learning with 82% computational savings"
-  iterations: 5
+  notes: "Two-window_sampling_strategy"
+  iterations: 2
+  wandb: true
 
 # Data Configuration - Unified Loading
 data:
