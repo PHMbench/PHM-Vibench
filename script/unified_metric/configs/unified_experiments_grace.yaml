@@ -1,0 +1,120 @@
+# Unified Metric Learning Experimental Configuration
+# Two-Stage Training: Unified Pretraining → Dataset-Specific Fine-tuning
+# Following PHM-Vibench standard structure
+
+# Environment Configuration
+environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench"
+  project: "Unified_Metric_Learning_Pipeline"
+  seed: 42
+  output_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/save"
+  notes: "Two-window_sampling_strategy"
+  iterations: 2
+  wandb: true
+
+# Data Configuration - Unified Loading
+data:
+  data_dir: "/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data"
+  metadata_file: "metadata_6_11.xlsx"
+
+  # Data preprocessing
+  batch_size: 32
+  num_workers: 8
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  normalization: "standardization"
+  window_size: 4096
+  stride: 5
+  num_window: 64
+  dtype: "float32"
+  pin_memory: true
+
+# Model Configuration - ISFM Foundation Model
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+
+  # Architecture components
+  embedding: "E_01_HSE"
+  backbone: "B_08_PatchTST"
+  task_head: "H_01_Linear_cla"
+
+  # Model dimensions
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+
+  # Transformer configuration
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  dropout: 0.1
+  activation: "relu"
+  factor: 5
+
+  # Patch configuration
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+
+  # Memory optimization
+  gradient_checkpointing: true
+  mixed_precision: true
+
+# Task Configuration
+task:
+  name: "classification"
+  type: "CDDG"
+
+  # Unified pretraining on all datasets
+  target_system_id: [1, 2, 6, 5, 12]  # CWRU, XJTU, THU, Ottawa, JNU
+  target_domain_num: 5
+
+  # HSE Contrastive Learning Parameters
+  contrast_loss: "INFONCE"
+  contrast_weight: 0.15
+  temperature: 0.07
+  use_momentum: true
+  momentum: 0.999
+  projection_dim: 128
+
+  # Training hyperparameters
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.0001
+  epochs: 50
+  early_stopping: true
+  es_patience: 15
+
+  # Learning rate scheduling
+  scheduler: true
+  scheduler_type: "cosine"
+  warmup_epochs: 5
+
+  # Experiment tracking
+  wandb: true
+
+  # Required fields for task factory
+  gpus: 1
+  monitor: "val_accuracy"
+
+# Trainer Configuration
+trainer:
+  name: "Default_trainer"
+
+  # Required trainer fields
+  num_epochs: 1
+  gpus: 1
+  device: "cuda"
+  monitor: "val_accuracy"
+  pruning: false
+
+  # Performance settings
+  log_every_n_steps: 50
+  early_stopping: true
+  patience: 15
+  wandb: true
