@@ -13,8 +13,11 @@ conda activate P
 
 cd /home/lq/LQcode/2_project/PHMBench/PHM-Vibench-metric
 
+mkdir -p logs
+
 python main.py \
     --pipeline Pipeline_04_unified_metric \
     --config script/unified_metric/configs/unified_experiments.yaml \
     --model.d_model 1024 \
-    --notes "PatchTST d_model=1024 ablation - unified metric learning"
+    --notes "PatchTST d_model=1024 ablation - unified metric learning" \
+2>&1 | tee "logs/${SLURM_JOB_ID}.log"
