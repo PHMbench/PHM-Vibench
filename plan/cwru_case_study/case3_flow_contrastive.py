@@ -95,6 +95,10 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
     target_channels = WINDOW_SIZE * N_CHANNELS  # Flattened signal dimensions
     z_channels = model.backbone.feature_dim     # Encoder output dimension
 
+    using_fallback_flow = False
+    flow_weight = 1.0
+    contrastive_weight = 0.3
+
     if FLOW_AVAILABLE:
         try:
             flow_model = FlowLoss(
@@ -109,9 +113,15 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
             logger.warning(f"FlowLoss initialization failed: {e}")
             flow_model = SimpleFlowModel(target_channels, z_channels).to(device)
             logger.info("Using SimpleFlowModel fallback")
+            using_fallback_flow = True
     else:
         flow_model = SimpleFlowModel(target_channels, z_channels).to(device)
         logger.info("Using SimpleFlowModel (FlowLoss not available)")
+        using_fallback_flow = True
+
+    if using_fallback_flow:
+        flow_weight = 0.1
+        logger.info("Reducing flow loss weight to 0.1 and detaching encoder features for flow branch when using fallback model")
 
     # Setup optimizer for both encoder and flow model
     all_params = list(model.backbone.parameters()) + list(flow_model.parameters())
@@ -158,18 +168,20 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
             else:
                 _, condition = model.backbone(target_signal, use_projection=False)
 
+            condition_for_flow = condition.detach() if using_fallback_flow else condition
+
             # Flatten signal for flow matching
             target_flat = target_signal.view(target_signal.size(0), -1)
 
             # Compute flow loss
-            if FLOW_AVAILABLE and hasattr(flow_model, 'forward'):
+            if FLOW_AVAILABLE and hasattr(flow_model, 'forward') and not using_fallback_flow:
                 try:
-                    flow_loss = flow_model(target_flat, condition)
+                    flow_loss = flow_model(target_flat, condition_for_flow)
                 except Exception as e:
                     logger.warning(f"FlowLoss forward failed: {e}, using fallback")
-                    flow_loss = flow_model(target_flat, condition)
+                    flow_loss = flow_model(target_flat, condition_for_flow)
             else:
-                flow_loss = flow_model(target_flat, condition)
+                flow_loss = flow_model(target_flat, condition_for_flow)
 
             # ==================== CONTRASTIVE LOSS ====================
             # Get embeddings with projection heads for contrastive learning
@@ -180,8 +192,8 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
             contr_loss = contrastive_loss(embeddings_1, embeddings_2, temperature=0.1)
 
             # ==================== COMBINED LOSS ====================
-            # Joint loss: flow_loss + 0.3 * contrastive_loss
-            total_loss = flow_loss + 0.3 * contr_loss
+            # Joint loss: weighted combination of flow and contrastive objectives
+            total_loss = flow_weight * flow_loss + contrastive_weight * contr_loss
 
             # Backward pass
             optimizer.zero_grad()
@@ -250,7 +262,10 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
         'total_losses': losses,
         'flow_losses': flow_losses,
         'contrastive_losses': contrastive_losses,
-        'flow_model': flow_model
+        'flow_model': flow_model,
+        'flow_weight': flow_weight,
+        'contrastive_weight': contrastive_weight,
+        'using_flowloss': not using_fallback_flow
     }
 
 def main():
@@ -344,8 +359,14 @@ def main():
             'final_contrastive_loss': pretrain_results['contrastive_losses'][-1],
             'epochs_trained': len(pretrain_results['total_losses']),
             'num_samples': len(signals),
-            'flow_available': FLOW_AVAILABLE
+            'flow_available': FLOW_AVAILABLE,
+            'using_flowloss': pretrain_results['using_flowloss'],
+            'flow_weight': pretrain_results['flow_weight'],
+            'contrastive_weight': pretrain_results['contrastive_weight']
         }
+
+        results['hyperparameters']['flow_weight'] = pretrain_results['flow_weight']
+        results['hyperparameters']['contrastive_weight'] = pretrain_results['contrastive_weight']
 
         logger.info(f"✅ Joint pretraining completed")
         logger.info(f"   Final total loss: {pretrain_results['total_losses'][-1]:.4f}")
