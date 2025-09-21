@@ -136,6 +136,8 @@ def load_cwru_data(logger):
         labels_anom_list = []
         file_ids_list = []
 
+        skipped_nan_labels = 0
+
         for idx, row in cwru_meta.iterrows():
             file_id = row['Id']
 
@@ -156,7 +158,12 @@ def load_cwru_data(logger):
 
                     # Labels
                     diag_label = row.get('Label', 0)
-                    anom_label = 1 if diag_label > 0 else 0
+                    if pd.isna(diag_label):
+                        skipped_nan_labels += 1
+                        continue
+
+                    diag_label = int(diag_label)
+                    anom_label = int(diag_label > 0)
 
                     signals_list.append(windows)
                     labels_diag_list.extend([diag_label] * len(windows))
@@ -183,6 +190,8 @@ def load_cwru_data(logger):
     logger.info(f"Signal shape: {all_signals.shape}")
     logger.info(f"Diagnosis classes: {np.unique(all_diag_labels, return_counts=True)}")
     logger.info(f"Anomaly classes: {np.unique(all_anom_labels, return_counts=True)}")
+    if skipped_nan_labels:
+        logger.info(f"Skipped {skipped_nan_labels} windows with undefined diagnosis labels")
 
     # Normalize signals
     scaler = StandardScaler()
