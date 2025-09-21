@@ -66,8 +66,15 @@ class Model(nn.Module):
 
     def get_num_classes(self):
         num_classes = {}
-        for key in np.unique(self.metadata.df['Dataset_id']):
-            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
+        # Check if metadata has df attribute (MetadataAccessor)
+        if hasattr(self.metadata, 'df'):
+            df = self.metadata.df
+        else:
+            # Handle direct DataFrame case
+            df = self.metadata
+
+        for key in np.unique(df['Dataset_id']):
+            num_classes[str(key)] = int(max(df[df['Dataset_id'] == key]['Label']) + 1)
         return num_classes
     
 
@@ -88,7 +95,7 @@ class Model(nn.Module):
 
     def _head(self, x, file_id = False, task_id = False, return_feature=False):
         """3 Task Head"""
-        system_id = self.metadata[file_id]['Dataset_id']
+        system_id = str(self.metadata[file_id]['Dataset_id'])  # Convert to string
         # check if task_id is in the task head
         # check if task have its head
 

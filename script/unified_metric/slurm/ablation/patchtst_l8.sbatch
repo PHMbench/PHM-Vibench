@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH -J patchtst_l8
+#SBATCH -p gpu
+#SBATCH --gpus=a100:1
+#SBATCH -t 12:00:00
+#SBATCH -c 8
+#SBATCH --mem=64G
+#SBATCH -o logs/slurm-%j.out
+
+module reset
+module load miniconda
+conda activate YOUR_ENV
+
+cd /home/lq/LQcode/2_project/PHMBench/PHM-Vibench-metric
+
+python main.py \
+    --pipeline Pipeline_04_unified_metric \
+    --config script/unified_metric/configs/unified_experiments.yaml \
+    --model.num_layers 8 \
+    --notes "PatchTST num_layers=8 ablation - unified metric learning"

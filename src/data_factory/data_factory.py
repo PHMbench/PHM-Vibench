@@ -331,29 +331,23 @@ class data_factory:
         val_sampler = self.get_sampler(mode='val')
         test_sampler = self.get_sampler(mode='test')
 
-        persistent_workers = self.args_data.num_workers > 0
+
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
                                          batch_sampler = train_sampler,
                                         #  shuffle=True,
-                                         num_workers=self.args_data.num_workers,
-                                         pin_memory=True,     
-                                         persistent_workers=persistent_workers,)
+                                         num_workers=self.args_data.num_workers,)
                                         #  collate_fn=debug_collate_fn)
         self.val_loader = DataLoader(self.val_dataset,
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = val_sampler,
                                         # shuffle=False,
-                                        num_workers=self.args_data.num_workers,
-                                        pin_memory=True,     
-                                        persistent_workers=persistent_workers,)
+                                        num_workers=self.args_data.num_workers,)
         self.test_loader = DataLoader(self.test_dataset,
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = test_sampler,
                                         # shuffle=False,
-                                        num_workers=self.args_data.num_workers,
-                                        pin_memory=True,     
-                                        persistent_workers=persistent_workers,)
+                                        num_workers=self.args_data.num_workers,)
 
 
 

@@ -20,7 +20,8 @@ def main():
                         # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/LQ1/Pretraining/Pretraining_C+P_patchtst.yaml',
                         # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/Vibench_paper/CDDG/config_CDDG_B_04_Dlinear.yaml',
                         # default= '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench/script/Vibench_paper/DG/config_DG_B_06_TimesNet_target_13.yaml',
-                        default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/vibpaper/CDDG/config_CDDG_B_04_Dlinear.yaml',
+                        # default= '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/script/vibpaper/CDDG/config_CDDG_B_04_Dlinear.yaml',
+                        default='script/unified_metric/configs/unified_experiments_1epoch.yaml',
                         help='配置文件路径')
     parser.add_argument('--notes',
                         type=str,
@@ -35,7 +36,8 @@ def main():
     parser.add_argument('--pipeline', 
                         type=str, 
                         # default='Pipeline_02_pretrain_fewshot',
-                        default='Pipeline_01_default',
+                        # default='Pipeline_01_default',
+                        default='Pipeline_04_unified_metric',
                         help='实验流水线模块路径')
     
     args = parser.parse_args()

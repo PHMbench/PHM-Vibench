@@ -9,7 +9,7 @@ import numpy as np
 import os
 import torch
 import pandas as pd
-from src.model_factory.layers.StandardNorm import Normalize
+# from src.model_factory.ISFM.layers.StandardNorm import Normalize
 Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
@@ -72,13 +72,27 @@ class Model(nn.Module):
 
     def get_num_classes(self):
         num_classes = {}
-        for key in np.unique(self.metadata.df['Dataset_id']):
-            num_classes[str(key)] = int(max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1)
+        # Check if metadata has df attribute (MetadataAccessor)
+        if hasattr(self.metadata, 'df'):
+            df = self.metadata.df
+        else:
+            # Handle direct DataFrame case
+            df = self.metadata
+
+        for key in np.unique(df['Dataset_id']):
+            num_classes[str(key)] = int(max(df[df['Dataset_id'] == key]['Label']) + 1)
         return num_classes
     def get_num_channels(self):
         num_channels = {}
-        for key in np.unique(self.metadata.df['Dataset_id']):
-            num_channels[str(key)] = int(max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Channel']))
+        # Check if metadata has df attribute (MetadataAccessor)
+        if hasattr(self.metadata, 'df'):
+            df = self.metadata.df
+        else:
+            # Handle direct DataFrame case
+            df = self.metadata
+
+        for key in np.unique(df['Dataset_id']):
+            num_channels[str(key)] = int(max(df[df['Dataset_id'] == key]['Channel']))
         return num_channels
 
     def _embed(self, x, file_id):
@@ -103,6 +117,7 @@ class Model(nn.Module):
         system_id = self.metadata[file_id]['Dataset_id']
         if isinstance(system_id, pd.Series):
             system_id = np.unique(system_id)[0]  # 如果是Series，取第一个值
+        system_id = str(system_id)  # Convert to string to match task head keys
         # check if task_id is in the task head
         # check if task have its head
 

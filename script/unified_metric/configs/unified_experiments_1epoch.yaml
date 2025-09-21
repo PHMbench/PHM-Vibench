@@ -1,276 +1,110 @@
 # Unified Metric Learning 1-Epoch Test Configuration
 # Quick validation configuration for testing pipeline functionality
-# Total: 6 runs (1 pretraining + 5 fine-tuning) with 1 epoch each
-# Expected completion: ~5-10 minutes
-
-# =============================================================================
-# QUICK TEST OVERVIEW
-# =============================================================================
-# Stage 1: Unified Pretraining (1 run, 1 epoch)
-#   - Test training on all 5 datasets simultaneously
-#   - Single seed for quick validation
-#
-# Stage 2: Dataset-Specific Fine-tuning (5 runs, 1 epoch each)
-#   - Test fine-tuning on each dataset individually
-#   - Single seed, 1 epoch each
-# =============================================================================
+# Following PHM-Vibench standard structure
 
 # Environment Configuration
 environment:
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench"
   project: "Unified_Metric_Learning_1Epoch_Test"
-  experiment_name: "HSE_1Epoch_Validation"
-  seed_list: [42]  # Single seed for quick test
+  seed: 42
   output_dir: "results/unified_metric_learning_1epoch"
-  log_level: "INFO"
   notes: "1-epoch validation test for pipeline functionality"
+  iterations: 1
 
-# Data Configuration - Unified Loading
+# Data Configuration
 data:
-  # Update this path to your actual data directory
   data_dir: "/mnt/crucial/LQ/PHM-Vibench"
   metadata_file: "metadata_6_11.xlsx"
 
-  # Unified dataset configuration (all 5 datasets)
-  unified_datasets:
-    - CWRU     # Case Western Reserve University
-    - XJTU     # Xi'an Jiaotong University
-    - THU      # Tsinghua University
-    - Ottawa   # University of Ottawa
-    - JNU      # Jiangnan University
-
   # Data preprocessing - simplified for quick testing
-  window_size: 2048      # Smaller window for faster processing
-  stride: 10             # Larger stride for fewer samples
-  num_window: 32         # Fewer windows per sample
-  batch_size: 16         # Smaller batch size for memory efficiency
-  num_workers: 4         # Fewer workers
-  pin_memory: true
-  normalization: "standardization"
-  train_ratio: 0.7       # Smaller training set for speed
+  batch_size: 16
+  num_workers: 4
+  train_ratio: 0.7
   val_ratio: 0.15
   test_ratio: 0.15
+  normalization: "standardization"
+  window_size: 2048
+  stride: 10
+  num_window: 32
+  dtype: "float32"
+  pin_memory: true
 
   # Quick test settings
-  max_samples_per_class: 100  # Limit samples for quick testing
+  max_samples_per_class: 100
 
-# Model Configuration - Unified Architecture
+# Model Configuration - ISFM Foundation Model
 model:
-  # HSE Industrial Signal Foundation Model with prompt guidance
-  name: "M_02_ISFM_Prompt"
-  type: "ISFM_Prompt"
+  name: "M_01_ISFM"
+  type: "ISFM"
 
-  # Architecture parameters - simplified
-  d_model: 128           # Smaller model for faster testing
-  num_heads: 4
-  num_layers: 2          # Fewer layers
-  d_ff: 256             # Smaller feed forward
-  dropout: 0.1
-
-  # HSE embedding configuration
-  embedding: "E_01_HSE_v2"
-  hidden_dim: 64         # Smaller hidden dimension
-
-  # Backbone and heads - lightweight
+  # Architecture components
+  embedding: "E_01_HSE"
   backbone: "B_08_PatchTST"
-  patch_size: 64         # Smaller patches
-  num_patches: 32        # Fewer patches
+  task_head: "H_01_Linear_cla"
 
-  task_head: "H_09_multiple_task"
-  output_dim: 256        # Smaller output dimension
+  # Model dimensions
+  input_dim: 1
+  d_model: 128
+  output_dim: 64
 
-# =============================================================================
-# TRAINING CONFIGURATION
-# =============================================================================
-training:
-  # Stage 1: Unified Pretraining Configuration (1 epoch)
-  stage_1_pretraining:
-    enabled: true
-    type: "unified_pretraining"
+  # Transformer settings (reduced for fast testing)
+  num_heads: 4
+  num_layers: 2
+  e_layers: 2
+  d_ff: 256
+  dropout: 0.1
+  activation: "relu"
+  factor: 5
 
-    # Training configuration - fast mode
-    task:
-      name: "hse_contrastive"
-      type: "CDDG"
+  # Patch settings
+  patch_size_L: 16
+  patch_size_C: 1
+  num_patches: 64
 
-      # Unified pretraining on all datasets
-      source_domain_id: [1, 13, 19, 25, 31]  # All 5 datasets simultaneously
-      target_domain_num: 5
+# Task Configuration
+task:
+  name: "classification"
+  type: "CDDG"
 
-      # HSE Contrastive Learning Parameters - simplified
-      contrast_loss: "INFONCE"
-      contrast_weight: 0.15
-      temperature: 0.07
-      use_momentum: true
-      momentum: 0.999
-      projection_dim: 64     # Smaller projection
+  # Single dataset for initial test
+  target_system_id: [1]  # CWRU only for initial test
+  target_domain_num: 1
 
-      # Training hyperparameters - 1 epoch
-      loss: "CE"
-      metrics: ["acc", "f1"]
-      optimizer: "adamw"
-      lr: 1e-3               # Higher learning rate for single epoch
-      weight_decay: 0.001
-      epochs: 1              # Single epoch for testing
-      early_stopping: false  # Disabled for 1-epoch test
+  # HSE Contrastive Learning Parameters
+  contrast_loss: "INFONCE"
+  contrast_weight: 0.15
+  temperature: 0.07
+  use_momentum: true
+  momentum: 0.999
+  projection_dim: 64
 
-      # No scheduling for single epoch
-      scheduler: false
+  # Training hyperparameters - 1 epoch
+  loss: "CE"
+  metrics: ["acc", "f1"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.001
+  epochs: 1
+  early_stopping: false
+  scheduler: false
+  wandb: false
 
-      # Experiment tracking - disabled for quick test
-      wandb: false
+  # Required fields for task factory
+  gpus: 1
+  monitor: "val_loss"
 
-    # Trainer configuration - fast mode
-    trainer:
-      name: "Default_trainer"
-      max_epochs: 1
-      devices: 1
-      accelerator: "auto"
-      precision: 16          # Mixed precision for speed
-      gradient_clip_val: 1.0
-      log_every_n_steps: 10  # More frequent logging
-      val_check_interval: 1.0  # Validate once at end
+# Trainer Configuration
+trainer:
+  name: "Default_trainer"
 
-    # Expected outputs - relaxed for 1-epoch
-    target_metrics:
-      min_accuracy: 0.20     # Above random (20%)
-      max_training_time_min: 10  # <10 minutes
-      max_memory_usage_gb: 8
+  # Required trainer fields
+  num_epochs: 1
+  gpus: 1
+  device: "cuda"
+  monitor: "val_loss"
+  pruning: false
 
-  # =============================================================================
-  # STAGE 2: DATASET-SPECIFIC FINE-TUNING CONFIGURATION (1 EPOCH)
-  # =============================================================================
-  stage_2_finetuning:
-    enabled: true
-    type: "dataset_finetuning"
-
-    # Fine-tuning datasets (one at a time) - 1 epoch each
-    finetune_targets:
-      - dataset: CWRU
-        dataset_id: 1
-        expected_accuracy: 0.25  # Relaxed for 1-epoch
-      - dataset: XJTU
-        dataset_id: 13
-        expected_accuracy: 0.25
-      - dataset: THU
-        dataset_id: 19
-        expected_accuracy: 0.25
-      - dataset: Ottawa
-        dataset_id: 25
-        expected_accuracy: 0.25
-      - dataset: JNU
-        dataset_id: 31
-        expected_accuracy: 0.25
-
-    # Task configuration - 1 epoch fine-tuning
-    task:
-      name: "classification"
-      type: "CDDG"
-
-      # Fine-tuning parameters - simplified
-      loss: "CE"
-      metrics: ["acc", "f1"]
-      optimizer: "adamw"
-      lr: 5e-4               # Lower learning rate for fine-tuning
-      weight_decay: 0.001
-      epochs: 1              # Single epoch
-      early_stopping: false  # Disabled
-      scheduler: false       # No scheduling
-
-      # Freeze backbone for faster fine-tuning
-      freeze_backbone: true
-
-      # Experiment tracking - disabled
-      wandb: false
-
-    # Trainer configuration - fast mode
-    trainer:
-      name: "Default_trainer"
-      max_epochs: 1
-      devices: 1
-      accelerator: "auto"
-      precision: 16
-      gradient_clip_val: 1.0
-      log_every_n_steps: 5
-      val_check_interval: 1.0
-
-# =============================================================================
-# VALIDATION AND TESTING CONFIGURATION
-# =============================================================================
-validation:
-  # Quick validation settings
-  quick_test:
-    enabled: true
-    epochs: 1
-    batch_size: 8          # Very small batch for testing
-    datasets: ["CWRU"]     # Single dataset for health check
-    success_criteria:
-      no_errors: true
-      memory_under_8gb: true
-      loss_decreasing: true
-      accuracy_above_random: true
-
-  # Success criteria - relaxed for 1-epoch
-  success_criteria:
-    min_pretraining_acc: 0.20    # >20% (above random)
-    min_finetuning_improvement: 0.02  # Small improvement expected
-    max_total_time_min: 15       # <15 minutes total
-    memory_efficient: true       # <8GB memory
-
-# =============================================================================
-# OUTPUT CONFIGURATION
-# =============================================================================
-output:
-  base_dir: "results/unified_metric_learning_1epoch"
-  stage_1_dir: "pretraining"
-  stage_2_dir: "finetuning"
-  analysis_dir: "analysis"
-
-  # Save configurations
-  save_checkpoints: false  # Skip checkpoints for quick test
-  save_predictions: false  # Skip predictions
-  save_embeddings: false   # Skip embeddings
-
-  # Logging
-  log_level: "INFO"
-  console_output: true
-
-# =============================================================================
-# ANALYSIS CONFIGURATION - Simplified
-# =============================================================================
-analysis:
-  enabled: true
-
-  # Statistical analysis - basic
-  statistical_tests: false  # Skip for single seed
-  significance_level: 0.05
-
-  # Output generation
-  generate_tables: true
-  generate_figures: true
-  export_csv: true
-
-  # Publication outputs - disabled for quick test
-  latex_tables: false
-  publication_figures: false
-
-# =============================================================================
-# EXPECTED RESULTS (1-EPOCH)
-# =============================================================================
-# NOTE: These are expected results for 1-epoch validation testing.
-# Full training results will be much higher.
-
-expected_results:
-  stage_1_pretraining:
-    accuracy_range: [0.20, 0.35]     # Above random, below full training
-    training_time_min: [2, 8]        # 2-8 minutes
-    memory_usage_gb: [4, 7]          # 4-7GB memory
-
-  stage_2_finetuning:
-    accuracy_range: [0.22, 0.40]     # Small improvement over pretraining
-    improvement_range: [0.02, 0.08]  # 2-8% improvement
-    time_per_dataset_min: [0.5, 2]   # 0.5-2 minutes per dataset
-
-  overall_pipeline:
-    total_time_min: [5, 15]          # 5-15 minutes total
-    success_rate: 0.95               # 95% success rate
-    memory_efficient: true           # <8GB peak memory
+  # Performance settings
+  log_every_n_steps: 10
+  early_stopping: false
+  wandb: false

@@ -109,7 +109,10 @@ def close_lab():
         wandb.finish()
         print("[INFO] WandB logger closed.")
     if swanlab and swanlab.run:
-        swanlab.finish()
+        try:
+            swanlab.finish()
+        except Exception as e:
+            print(f"[INFO] SwanLab is not used: {e}")
         print("[INFO] SwanLab logger closed.")
 
 def get_num_classes(metadata):

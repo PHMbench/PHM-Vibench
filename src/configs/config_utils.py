@@ -259,6 +259,8 @@ def build_experiment_name(configs) -> str:
 def path_name(configs, iteration: int = 0) -> Tuple[str, str]:
     """Generate result directory and experiment name.
 
+    Uses output_dir from config if available, otherwise defaults to 'save'.
+
     Parameters
     ----------
     configs : Dict[str, Any]
@@ -272,7 +274,19 @@ def path_name(configs, iteration: int = 0) -> Tuple[str, str]:
         ``(result_dir, experiment_name)``.
     """
     exp_name = build_experiment_name(configs)
-    result_dir = os.path.join("save", exp_name, f"iter_{iteration}")
+
+    # Check for output_dir in different possible locations
+    base_dir = "save"  # default
+
+    # Try to get output_dir from environment config
+    if 'environment' in configs and 'output_dir' in configs['environment']:
+        base_dir = configs['environment']['output_dir']
+    # Also check top-level output_dir
+    elif 'output_dir' in configs:
+        base_dir = configs['output_dir']
+
+    # Build complete path
+    result_dir = os.path.join(base_dir, exp_name, f"iter_{iteration}")
     makedir(result_dir)
     return result_dir, exp_name
 
