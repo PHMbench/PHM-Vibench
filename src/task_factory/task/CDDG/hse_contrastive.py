@@ -20,7 +20,6 @@ License: Apache 2.0
 """
 
 import torch
-import torch.nn.functional as F
 import pytorch_lightning as pl
 from typing import Dict, Any, Optional, List, Tuple
 import logging
@@ -120,161 +119,201 @@ class task(Default_task):
     
     def training_step(self, batch, batch_idx):
         """Training step with prompt-guided contrastive learning."""
-        return self._shared_step(batch, batch_idx, stage='train')
+        metrics = self._shared_step(batch, batch_idx, stage='train')
+        self._log_metrics(metrics, "train")
+        return metrics["train_total_loss"]
     
     def validation_step(self, batch, batch_idx):
         """Validation step."""
-        return self._shared_step(batch, batch_idx, stage='val')
+        metrics = self._shared_step(batch, batch_idx, stage='val')
+        self._log_metrics(metrics, "val")
     
     def _shared_step(self, batch, batch_idx, stage='train'):
         """Shared step logic for training and validation."""
-        # Unpack batch
-        (x, y), data_name = batch
+        batch_dict = self._prepare_batch(batch)
+
+        x = batch_dict['x']
+        y = batch_dict['y']
+
+        if x is None or y is None:
+            raise ValueError("Batch must contain 'x' and 'y' entries for HSE contrastive task.")
+
+        if y.ndim > 1:
+            y = y.view(-1)
+        if y.dtype != torch.long:
+            y = y.long()
+
         batch_size = x.size(0)
-        
-        # Extract system information from data_name if available
-        system_ids = self._extract_system_ids(data_name) if data_name is not None else None
-        
-        # Forward pass through network
-        network_output = self.network(x, metadata=self._create_metadata_batch(data_name, batch_size))
-        
-        # Handle network output (may include prompt features)
-        if isinstance(network_output, tuple):
-            # HSE model returns (features, prompts)
-            features, prompts = network_output
-        else:
-            # Fallback: no prompt features available
-            features = network_output
-            prompts = None
-        
-        # 1. Classification loss (always computed)
-        classification_loss = self.loss_fn(features, y)
-        total_loss = classification_loss
-        
-        # 2. Contrastive loss (if enabled)
-        contrastive_loss_value = torch.tensor(0.0, device=x.device)
+
+        file_ids = self._ensure_file_id_list(batch_dict.get('file_id'), batch_size)
+        resolved_ids, dataset_names, system_ids_list = self._resolve_metadata(file_ids)
+        system_ids_tensor = self._system_ids_to_tensor(system_ids_list, device=x.device)
+
+        task_id = batch_dict.get('task_id', 'classification')
+        primary_file_id = resolved_ids[0] if resolved_ids else None
+
+        logits, prompts, feature_repr = self._forward_with_prompts(
+            x,
+            file_id=primary_file_id,
+            task_id=task_id
+        )
+
+        classification_loss = self.loss_fn(logits, y)
+
+        reg_dict = self._compute_regularization()
+        total_loss = classification_loss + reg_dict.get('total', torch.tensor(0.0, device=classification_loss.device))
+
+        contrastive_loss_value = torch.tensor(0.0, device=classification_loss.device)
+        contrastive_losses = None
         if self.enable_contrastive and prompts is not None:
             try:
                 contrastive_losses = self.contrastive_loss(
-                    features=features,
+                    features=feature_repr if feature_repr is not None else logits,
                     prompts=prompts,
                     labels=y,
-                    system_ids=system_ids
+                    system_ids=system_ids_tensor
                 )
                 contrastive_loss_value = contrastive_losses['total_loss']
-                total_loss += self.contrast_weight * contrastive_loss_value
-                
-                # Log individual contrastive loss components
-                if stage == 'train':
-                    self.log('train_contrastive_loss', contrastive_loss_value, prog_bar=True)
-                    self.log('train_base_loss', contrastive_losses['base_loss'])
-                    self.log('train_prompt_loss', contrastive_losses['prompt_loss'])
-                    self.log('train_system_loss', contrastive_losses['system_loss'])
-                else:
-                    self.log('val_contrastive_loss', contrastive_loss_value, prog_bar=True)
-            
-            except Exception as e:
-                logger.warning(f"Contrastive loss computation failed: {e}")
-                # Fallback: continue with classification loss only
-        
-        # 3. Compute metrics
-        self._compute_and_log_metrics(features, y, stage)
-        
-        # 4. Log losses
-        self.log(f'{stage}_classification_loss', classification_loss)
-        self.log(f'{stage}_total_loss', total_loss, prog_bar=True)
-        self.log(f'{stage}_loss', total_loss)  # Standard name for callbacks
-        
-        # 5. Additional logging for two-stage training
+                total_loss = total_loss + self.contrast_weight * contrastive_loss_value
+            except Exception as exc:
+                logger.warning(f"Contrastive loss computation failed: {exc}")
+
+        preds = torch.argmax(logits, dim=1)
+
+        dataset_name = dataset_names[0] if dataset_names else 'global'
+        step_metrics = {
+            f"{stage}_loss": total_loss,
+            f"{stage}_classification_loss": classification_loss,
+            f"{stage}_{dataset_name}_loss": classification_loss,
+            f"{stage}_total_loss": total_loss,
+        }
+
+        metric_values = super()._compute_metrics(preds, y, dataset_name, stage)
+        step_metrics.update(metric_values)
+
+        if contrastive_losses is not None:
+            step_metrics[f"{stage}_contrastive_loss"] = contrastive_loss_value
+            step_metrics[f"{stage}_contrastive_base_loss"] = contrastive_losses['base_loss']
+            step_metrics[f"{stage}_contrastive_prompt_loss"] = contrastive_losses['prompt_loss']
+            step_metrics[f"{stage}_contrastive_system_loss"] = contrastive_losses['system_loss']
+
+        for reg_type, reg_loss_val in reg_dict.items():
+            if reg_type != 'total':
+                step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
+
         if stage == 'train':
-            self.log('contrast_weight', self.contrast_weight)
+            self.log('contrast_weight', torch.tensor(self.contrast_weight, device=total_loss.device))
             if prompts is not None:
-                self.log('prompt_norm', prompts.norm().mean())
-        
-        return total_loss
+                prompt_norm = prompts.norm(dim=-1).mean()
+                step_metrics['train_prompt_norm'] = prompt_norm
+
+        return step_metrics
     
-    def _extract_system_ids(self, data_name) -> Optional[torch.Tensor]:
-        """Extract system IDs from data_name for cross-system learning."""
-        if data_name is None:
-            return None
-        
+    
+    def _prepare_batch(self, batch: Any) -> Dict[str, Any]:
+        if isinstance(batch, dict):
+            prepared = dict(batch)
+        else:
+            (x, y), data_name = batch
+            prepared = {'x': x, 'y': y, 'file_id': data_name}
+        prepared.setdefault('task_id', 'classification')
+        return prepared
+
+    def _ensure_file_id_list(self, file_id_field: Any, batch_size: int) -> List[Any]:
+        if file_id_field is None:
+            return [None] * batch_size
+
+        if isinstance(file_id_field, torch.Tensor):
+            values = file_id_field.view(-1).tolist()
+        elif isinstance(file_id_field, (list, tuple)):
+            values = list(file_id_field)
+        else:
+            values = [file_id_field]
+
+        if len(values) < batch_size and values:
+            values.extend([values[-1]] * (batch_size - len(values)))
+        return values
+
+    def _resolve_metadata(self, file_ids: List[Any]) -> Tuple[List[Any], List[str], List[int]]:
+        resolved_ids: List[Any] = []
+        dataset_names: List[str] = []
+        system_ids: List[int] = []
+
+        for fid in file_ids:
+            key, meta_dict = self._safe_metadata_lookup(fid)
+            resolved_ids.append(key)
+
+            dataset_name = meta_dict.get('Name', 'unknown') if meta_dict else 'unknown'
+            dataset_names.append(dataset_name)
+
+            try:
+                system_ids.append(int(meta_dict.get('Dataset_id', 0)))
+            except (ValueError, TypeError, AttributeError):
+                system_ids.append(0)
+
+        return resolved_ids, dataset_names, system_ids
+
+    def _safe_metadata_lookup(self, file_id: Any) -> Tuple[Any, Optional[Dict[str, Any]]]:
+        candidates: List[Any] = []
+
+        if isinstance(file_id, torch.Tensor):
+            try:
+                file_id = file_id.item()
+            except Exception:
+                file_id = file_id.detach().cpu().item()
+
+        candidates.append(file_id)
+
         try:
-            # data_name format: ['dataset_domain_sample', ...] or similar
-            system_ids = []
-            
-            for name in data_name:
-                if isinstance(name, str):
-                    # Parse dataset ID from name (e.g., 'CWRU_0_123' -> dataset_id=1 for CWRU)
-                    if 'CWRU' in name:
-                        system_ids.append(1)
-                    elif 'XJTU' in name:
-                        system_ids.append(6)
-                    elif 'THU' in name:
-                        system_ids.append(13)
-                    elif 'MFPT' in name:
-                        system_ids.append(19)
-                    else:
-                        # Parse from numeric prefix if available
-                        parts = name.split('_')
-                        if len(parts) > 0 and parts[0].isdigit():
-                            system_ids.append(int(parts[0]))
-                        else:
-                            system_ids.append(0)  # Unknown system
-                else:
-                    system_ids.append(0)  # Default
-            
-            return torch.tensor(system_ids, device=self.device)
-            
-        except Exception as e:
-            logger.warning(f"Failed to extract system IDs: {e}")
+            candidates.append(int(file_id))
+        except (ValueError, TypeError):
+            pass
+
+        candidates.append(str(file_id))
+
+        for cand in candidates:
+            try:
+                meta = self.metadata[cand]
+                meta_dict = meta.to_dict() if hasattr(meta, 'to_dict') else dict(meta)
+                return cand, meta_dict
+            except Exception:
+                continue
+
+        return candidates[0] if candidates else None, None
+
+    def _system_ids_to_tensor(self, system_ids: List[int], device: torch.device) -> Optional[torch.Tensor]:
+        if not system_ids:
             return None
-    
-    def _create_metadata_batch(self, data_name, batch_size) -> Optional[List[Dict[str, Any]]]:
-        """Create metadata batch for prompt encoding."""
-        if data_name is None or not hasattr(self.network, 'embedding'):
+        if all(sid == 0 for sid in system_ids):
             return None
-        
+        return torch.tensor(system_ids, device=device)
+
+    def _forward_with_prompts(self, x: torch.Tensor, file_id: Any, task_id: str):
+        network_kwargs = {
+            'file_id': file_id,
+            'task_id': task_id,
+        }
+
+        logits = None
+        prompts = None
+        feature_repr = None
+
         try:
-            metadata_batch = []
-            system_ids = self._extract_system_ids(data_name)
-            
-            for i in range(batch_size):
-                # Create metadata dict for each sample (NO fault label - it's prediction target!)
-                meta_dict = {
-                    'Dataset_id': system_ids[i].item() if system_ids is not None else 0,
-                    'Domain_id': 0,  # Default domain
-                    'Sample_rate': 1000.0,  # Default sampling rate
-                    # CRITICAL: NO Label field - fault type is prediction target, not prompt input!
-                }
-                metadata_batch.append(meta_dict)
-            
-            return metadata_batch
-            
-        except Exception as e:
-            logger.warning(f"Failed to create metadata batch: {e}")
-            return None
-    
-    def _compute_and_log_metrics(self, logits, labels, stage):
-        """Compute and log classification metrics."""
-        with torch.no_grad():
-            # Accuracy
-            preds = torch.argmax(logits, dim=1)
-            acc = (preds == labels).float().mean()
-            self.log(f'{stage}_acc', acc, prog_bar=True)
-            
-            # F1 score (if multi-class)
-            if len(torch.unique(labels)) > 1:
-                try:
-                    from sklearn.metrics import f1_score
-                    f1 = f1_score(
-                        labels.cpu().numpy(), 
-                        preds.cpu().numpy(), 
-                        average='macro',
-                        zero_division=0
-                    )
-                    self.log(f'{stage}_f1', f1)
-                except ImportError:
-                    pass  # Skip F1 if sklearn not available
+            output = self.network(x, return_prompt=True, return_feature=True, **network_kwargs)
+        except TypeError:
+            output = self.network(x, return_prompt=True, **network_kwargs)
+
+        if isinstance(output, tuple):
+            if len(output) == 3:
+                logits, prompts, feature_repr = output
+            elif len(output) == 2:
+                logits, prompts = output
+            else:
+                logits = output[0]
+        else:
+            logits = output
+
+        return logits, prompts, feature_repr
     
     def configure_optimizers(self):
         """Configure optimizers with support for fine-grained learning rates."""
@@ -459,11 +498,19 @@ if __name__ == "__main__":
                 self.backbone = nn.Linear(256, 512)
                 self.head = nn.Linear(512, 10)
                 
-            def forward(self, x, metadata=None):
-                # Simulate HSE model output: (features, prompts)
-                features = self.head(self.backbone(x.view(x.size(0), -1)))
-                prompts = torch.randn(x.size(0), 128, device=x.device)
-                return features, prompts
+            def forward(self, x, file_id=None, task_id=None, return_prompt=False, return_feature=False, **kwargs):
+                latent = self.backbone(x.view(x.size(0), -1))
+                logits = self.head(latent)
+                prompt = torch.randn(x.size(0), 128, device=x.device) if return_prompt else None
+                feature = latent if return_feature else None
+
+                if return_prompt and return_feature:
+                    return logits, prompt, feature
+                if return_prompt:
+                    return logits, prompt
+                if return_feature:
+                    return logits, feature
+                return logits
             
             def set_training_stage(self, stage):
                 pass  # Mock implementation
@@ -485,35 +532,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"   ✗ Task initialization failed: {e}")
     
-    print("\n2. Testing System ID Extraction:")
-    try:
-        # Test system ID extraction
-        data_names = ['CWRU_0_123', 'XJTU_1_456', 'THU_2_789', 'unknown_file']
-        system_ids = hse_task._extract_system_ids(data_names)
-        
-        print(f"   ✓ Data names: {data_names}")
-        print(f"   ✓ Extracted system IDs: {system_ids}")
-        
-    except Exception as e:
-        print(f"   ✗ System ID extraction failed: {e}")
-    
-    print("\n3. Testing Metadata Batch Creation:")
-    try:
-        metadata_batch = hse_task._create_metadata_batch(data_names, len(data_names))
-        
-        print(f"   ✓ Created metadata batch: {len(metadata_batch)} samples")
-        print(f"   ✓ First sample metadata: {metadata_batch[0] if metadata_batch else 'None'}")
-        
-        # Verify no Label field (critical requirement)
-        if metadata_batch and 'Label' in metadata_batch[0]:
-            print("   ⚠️ WARNING: Label found in metadata - this should not happen!")
-        else:
-            print("   ✓ Correctly excluded Label from metadata (prediction target)")
-            
-    except Exception as e:
-        print(f"   ✗ Metadata batch creation failed: {e}")
-    
-    print("\n4. Testing Training Stage Switching:")
+    print("\n2. Testing Training Stage Switching:")
     try:
         # Test stage switching
         original_weight = hse_task.contrast_weight
@@ -527,24 +546,23 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"   ✗ Training stage switching failed: {e}")
     
-    print("\n5. Testing Mock Forward Pass:")
+    print("\n3. Testing Mock Forward Pass:")
     try:
         # Create mock batch
         batch_size = 4
         x = torch.randn(batch_size, 2, 1024)  # (B, C, L) format
         y = torch.randint(0, 10, (batch_size,))
-        data_names = ['CWRU_0_1', 'XJTU_1_2', 'THU_2_3', 'CWRU_0_4']
-        
-        batch = ((x, y), data_names)
+        batch = {
+            'x': x,
+            'y': y,
+            'file_id': [0] * batch_size
+        }
         
         # Mock training step (would normally require full Lightning setup)
         print(f"   ✓ Created mock batch: {x.shape}, labels: {y}")
-        print(f"   ✓ Data names: {data_names}")
-        
-        # Test metadata creation
-        metadata = hse_task._create_metadata_batch(data_names, batch_size)
-        print(f"   ✓ Generated metadata for {len(metadata)} samples")
-        
+        metrics = hse_task._shared_step(batch, batch_idx=0, stage='train')
+        print(f"   ✓ Shared step metrics keys: {list(metrics.keys())[:5]} ...")
+
     except Exception as e:
         print(f"   ✗ Mock forward pass test failed: {e}")
     

@@ -14,6 +14,14 @@
 🏆 **Innovation**: Universal representations across industrial systems
 🏗️ **Framework**: Full PHM-Vibench integration with standard pipeline interface
 
+
+## 🧠 Prompt-Guided Innovations
+
+- **Prompt-guided contrastive learning** powered by the `hse_contrastive` task and `M_02_ISFM_Prompt` model.
+- **System-aware positive/negative sampling** driven by PHM-Vibench metadata (`target_system_id`, `target_domain_num`).
+- **Two-stage workflow support** with prompt freezing during fine-tuning (`model.training_stage`, `task.backbone_lr_multiplier`).
+- **Cross-dataset domain generalization** through prompt fusion weights (`prompt_weight`) and contrastive scaling (`contrast_weight`).
+
 ---
 
 ## 📊 Quick Reference Card
@@ -25,6 +33,8 @@
 | **Full Pipeline** | `bash script/unified_metric/run_unified_complete.sh` | 22 hrs | 🚀 Main run |
 | **Stage 1 Only** | `bash script/unified_metric/run_unified_pretraining.sh` | 12 hrs | 🔥 Pretraining |
 | **Stage 2 Only** | `bash script/unified_metric/run_unified_finetuning.sh` | 10 hrs | 🎯 Fine-tuning |
+| **Ablation (no prompts)** | `sbatch script/unified_metric/slurm/ablation/prompt_disable_prompt.sbatch` | 12 hrs | 🧪 Compare w/out prompt fusion |
+| **Ablation (no contrast)** | `sbatch script/unified_metric/slurm/ablation/prompt_disable_contrast.sbatch` | 12 hrs | 🧪 Contrast-free baseline |
 | **PHM-Vibench Call** | `python main.py --pipeline Pipeline_04_unified_metric --config script/unified_metric/configs/unified_experiments.yaml` | 22 hrs | 🏗️ Framework |
 | **Analysis** | `python script/unified_metric/analysis/collect_results.py --mode analyze` | 5 min | 📊 Get results |
 | **Visualization** | `python script/unified_metric/analysis/paper_visualization.py --demo` | 2 min | 🎨 Generate figures |
@@ -156,6 +166,15 @@ python script/unified_metric/pipeline/quick_validate.py --mode health_check --co
 | ❌ Missing metadata | Check `metadata_6_11.xlsx` exists |
 
 </details>
+
+### Prompt-Guided Ablations
+
+| Scenario | Local Command | Slurm Command |
+|----------|---------------|---------------|
+| Disable prompt fusion | `python main.py --pipeline Pipeline_04_unified_metric --config script/unified_metric/configs/unified_experiments.yaml --model.use_prompt false --task.prompt_weight 0.0` | `sbatch script/unified_metric/slurm/ablation/prompt_disable_prompt.sbatch` |
+| Disable contrastive loss | `python main.py --pipeline Pipeline_04_unified_metric --config script/unified_metric/configs/unified_experiments.yaml --task.contrast_weight 0.0 --task.prompt_weight 0.0` | `sbatch script/unified_metric/slurm/ablation/prompt_disable_contrast.sbatch` |
+
+> 🔬 Use these runs to isolate the contribution of prompt fusion or contrastive training before reporting final numbers.
 
 ### Quick Test
 **🕐 5 minutes | 🧪 Test full pipeline with 1 epoch**

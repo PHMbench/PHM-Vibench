@@ -334,7 +334,7 @@ class Model(nn.Module):
                 file_id: Optional[Any] = None, 
                 task_id: Optional[str] = None, 
                 return_feature: bool = False,
-                return_prompt: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+                return_prompt: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
         """
         Forward pass through the complete M_02_ISFM_Prompt model.
         
@@ -365,10 +365,17 @@ class Model(nn.Module):
         
         # Stage 3: Backbone processing
         encoded_features = self._encode(prompt_guided_emb)
-        
+
+        feature_vector: Optional[torch.Tensor] = None
+        if return_feature:
+            if encoded_features.ndim > 2:
+                feature_vector = encoded_features.mean(dim=1)
+            else:
+                feature_vector = encoded_features
+
         # Stage 4: Task-specific head
         final_output = self._head(encoded_features, file_id, task_id, return_feature)
-        
+
         # Return results based on requirements
         if return_prompt and self.use_prompt:
             # Extract prompt for contrastive learning
@@ -381,11 +388,16 @@ class Model(nn.Module):
                         device=x.device
                     )
                     prompt_vector = self.prompt_encoder(metadata_dict)
+                    if return_feature:
+                        return final_output, prompt_vector, feature_vector
                     return final_output, prompt_vector
                 except:
                     # Fallback if prompt extraction fails
                     pass
-        
+
+        if return_feature:
+            return final_output, feature_vector
+
         return final_output
     
     def get_model_info(self) -> Dict[str, Any]:

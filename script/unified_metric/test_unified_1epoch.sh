@@ -100,6 +100,7 @@ echo ""
 # ===========================================
 
 echo "📋 Test Configuration:"
+echo "🧠 Task: hse_contrastive + prompt-guided contrastive"
 echo "======================"
 echo "📄 Config File: $CONFIG_FILE"
 echo "📊 Test Mode: Single epoch validation"

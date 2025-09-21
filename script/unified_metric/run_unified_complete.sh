@@ -109,6 +109,7 @@ start_time=$(date +%s)
 
 echo "🚀 Starting Complete Unified Metric Learning Pipeline"
 echo "======================================================"
+echo "🧠 Task: hse_contrastive + prompt-guided contrastive"
 echo "🎯 Mode: Complete (pretraining + zero-shot + fine-tuning)"
 echo "📄 Config: $CONFIG_FILE"
 echo "📁 Output: $RESULTS_DIR"
