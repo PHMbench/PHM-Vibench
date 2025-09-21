@@ -284,7 +284,8 @@ def main():
 
         # Save results
         results_file = f"results/case1_results_{timestamp}.pkl"
-        save_results(results, results_file, logger)
+        
+        (results, results_file, logger)
 
         logger.info(f"\n✅ Case 1 completed successfully!")
         logger.info(f"📁 Results saved to: {results_file}")

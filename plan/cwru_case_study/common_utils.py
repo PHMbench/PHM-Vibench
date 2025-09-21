@@ -437,7 +437,11 @@ def contrastive_loss(z1, z2, temperature=0.1):
     sim_matrix = torch.mm(z, z.t()) / temperature  # 2B x 2B
 
     # Create labels for positive pairs
-    labels = torch.cat([torch.arange(batch_size), torch.arange(batch_size)]).to(z.device)
+    # First half samples (z1) should match second half (z2), and vice versa
+    labels = torch.cat([
+        torch.arange(batch_size) + batch_size,  # z1 → z2 (indices B to 2B-1)
+        torch.arange(batch_size)                # z2 → z1 (indices 0 to B-1)
+    ]).to(z.device)
 
     # Mask out self-similarities
     mask = torch.eye(2 * batch_size, dtype=torch.bool).to(z.device)
