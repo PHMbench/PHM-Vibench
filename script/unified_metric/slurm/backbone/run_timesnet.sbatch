@@ -17,7 +17,7 @@ mkdir -p logs
 
 python main.py \
     --pipeline Pipeline_04_unified_metric \
-    --config script/unified_metric/configs/unified_experiments.yaml \
+    --config script/unified_metric/configs/unified_experiments_grace.yaml \
     --model.backbone B_06_TimesNet \
     --notes "TimesNet backbone - unified metric learning" \
 2>&1 | tee "logs/${SLURM_JOB_ID}.log"
