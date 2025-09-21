@@ -9,7 +9,7 @@
 
 module reset
 module load miniconda
-conda activate YOUR_ENV
+conda activate P
 
 cd /home/lq/LQcode/2_project/PHMBench/PHM-Vibench-metric
 
