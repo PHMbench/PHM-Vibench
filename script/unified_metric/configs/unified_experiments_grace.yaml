@@ -100,7 +100,7 @@ task:
 
   # Required fields for task factory
   gpus: 1
-  monitor: "val_accuracy"
+  monitor: "val_loss"
 
 # Trainer Configuration
 trainer:
@@ -110,7 +110,7 @@ trainer:
   num_epochs: 1
   gpus: 1
   device: "cuda"
-  monitor: "val_accuracy"
+  monitor: "val_loss"
   pruning: false
 
   # Performance settings

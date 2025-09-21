@@ -70,7 +70,7 @@ task:
 
   # Unified pretraining on all datasets
   target_system_id: [1, 2, 6, 5, 12]  # CWRU, XJTU, THU, Ottawa, JNU
-  target_domain_num: 5
+  target_domain_num: 1
 
   # HSE Contrastive Learning Parameters
   contrast_loss: "INFONCE"
