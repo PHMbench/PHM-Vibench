@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from .metric_loss import MatchingLoss
 from .prediction_loss import *
+from .contrastive_loss import InfoNCELoss, SimCLRLoss, SupConLoss
 
 def get_loss_fn(loss_name: str) -> nn.Module:
     """Return a loss module according to ``loss_name``.
@@ -21,8 +22,11 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         "MAE": nn.L1Loss(),
         "BCE": nn.BCEWithLogitsLoss(),
         "NLL": nn.NLLLoss(),
-        "MATCHING": MatchingLoss,  
+        "MATCHING": MatchingLoss,
         "SIGNAL_MASK_LOSS": Signal_mask_Loss,  # TODO Time Series Prediction
+        "INFONCE": InfoNCELoss(),
+        "SIMCLR": SimCLRLoss(),
+        "SUPCON": SupConLoss(),
     }
 
     key = loss_name.upper()

@@ -5,7 +5,7 @@ data:
   factory_name: "id"                    # 使用id_data_factory
   dataset_name: "ID_dataset"            # 标准ID_dataset类
   data_dir: "data"                      # 数据目录
-  metadata_file: "metadata_6_1.xlsx"   # metadata文件
+  metadata_file: "metadata_6_11.xlsx"  # metadata文件
   batch_size: 4                         # 最小批量
   num_workers: 1                        # 单进程，便于调试
   
@@ -40,6 +40,9 @@ task:
   loss: "infonce"                     # 使用组件化InfoNCE损失
   metrics: ["contrastive_acc"]        # 使用组件化对比准确率
 
+  # 目标系统ID（验证用简化配置）
+  target_system_id: [1, 2]           # 使用少量系统进行快速验证
+
 trainer:
   # 基础训练参数
   epochs: 1                           # 快速调试用单epoch
@@ -61,10 +64,8 @@ trainer:
   enable_progress_bar: true           # 显示进度条
 
 environment:
-  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"  # PHM-Vibench根目录
-  save_dir: "debug/"                  # 调试结果保存目录
-  experiment_name: "contrastive_debug"  # 实验名称
-  iterations: 1                       # 单次迭代
+  VBENCH_HOME: "/home/lq/LQcode/2_project/PHMBench/Vbench"
+  save_dir: "validation/"             # 验证结果保存目录
+  experiment_name: "validation_1epoch" # 1 epoch验证实验
+  iterations: 1                       # 单次迭代验证
   seed: 42                           # 随机种子
-  wandb: false                       # 禁用WandB
-  swanlab: false                     # 禁用SwanLab
