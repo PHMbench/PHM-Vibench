@@ -1,0 +1,3 @@
+[mcp_servers.spec-workflow]
+command = "npx"
+args = ["-y", "@pimzino/spec-workflow-mcp@latest", "/home/lq/LQcode/2_project/PHMBench/PHM-Vibench-flow/"]

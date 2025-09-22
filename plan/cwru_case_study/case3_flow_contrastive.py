@@ -26,7 +26,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from datetime import datetime
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
 # Import common utilities
 from common_utils import (
@@ -87,7 +87,7 @@ def create_augmented_pairs(signals, logger):
 
     return signals_1, signals_2
 
-def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
+def pretrain_joint_flow_contrastive(model, signals, diag_labels, epochs, lr, logger):
     """Pretrain encoder using joint flow matching + contrastive learning"""
     logger.info(f"Starting joint flow + contrastive pretraining for {epochs} epochs...")
 
@@ -119,6 +119,8 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
         logger.info("Using SimpleFlowModel (FlowLoss not available)")
         using_fallback_flow = True
 
+    warmup_epochs = min(10, max(0, epochs // 5))
+
     if using_fallback_flow:
         flow_weight = 0.1
         logger.info("Reducing flow loss weight to 0.1 and detaching encoder features for flow branch when using fallback model")
@@ -129,8 +131,21 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
     # Create dataloader
-    dataset = TensorDataset(torch.FloatTensor(signals))
-    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
+    signal_tensor = torch.FloatTensor(signals)
+    if diag_labels is not None:
+        diag_array = np.asarray(diag_labels).astype(int)
+        diag_tensor = torch.LongTensor(diag_array)
+        dataset = TensorDataset(signal_tensor, diag_tensor)
+
+        class_counts = np.bincount(diag_array, minlength=int(diag_array.max()) + 1)
+        class_counts[class_counts == 0] = 1
+        sample_weights = 1.0 / class_counts[diag_array]
+        sampler = WeightedRandomSampler(torch.DoubleTensor(sample_weights), num_samples=len(sample_weights), replacement=True)
+        dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, sampler=sampler, drop_last=True)
+        logger.info("Using class-balanced sampler for joint pretraining")
+    else:
+        dataset = TensorDataset(signal_tensor)
+        dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
     losses = []
     flow_losses = []
@@ -147,8 +162,12 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
         epoch_flow_losses = []
         epoch_contrastive_losses = []
 
-        for batch_idx, (batch_signals,) in enumerate(dataloader):
-            batch_signals = batch_signals.numpy()
+        for batch_idx, batch in enumerate(dataloader):
+            if diag_labels is not None:
+                batch_signals = batch[0].numpy()
+            else:
+                (batch_signals,) = batch
+                batch_signals = batch_signals.numpy()
 
             # Create augmented pairs for contrastive learning
             signals_1, signals_2 = create_augmented_pairs(batch_signals,
@@ -192,8 +211,8 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
             contr_loss = contrastive_loss(embeddings_1, embeddings_2, temperature=0.1)
 
             # ==================== COMBINED LOSS ====================
-            # Joint loss: weighted combination of flow and contrastive objectives
-            total_loss = flow_weight * flow_loss + contrastive_weight * contr_loss
+            current_flow_weight = 0.0 if epoch < warmup_epochs else flow_weight
+            total_loss = current_flow_weight * flow_loss + contrastive_weight * contr_loss
 
             # Backward pass
             optimizer.zero_grad()
@@ -265,7 +284,8 @@ def pretrain_joint_flow_contrastive(model, signals, epochs, lr, logger):
         'flow_model': flow_model,
         'flow_weight': flow_weight,
         'contrastive_weight': contrastive_weight,
-        'using_flowloss': not using_fallback_flow
+        'using_flowloss': not using_fallback_flow,
+        'warmup_epochs': warmup_epochs
     }
 
 def main():
@@ -346,7 +366,7 @@ def main():
 
         # Perform joint pretraining
         pretrain_results = pretrain_joint_flow_contrastive(
-            model, signals, PRETRAIN_EPOCHS, LEARNING_RATE, logger
+            model, signals, diag_labels, PRETRAIN_EPOCHS, LEARNING_RATE, logger
         )
 
         # Store pretraining results
@@ -362,11 +382,13 @@ def main():
             'flow_available': FLOW_AVAILABLE,
             'using_flowloss': pretrain_results['using_flowloss'],
             'flow_weight': pretrain_results['flow_weight'],
-            'contrastive_weight': pretrain_results['contrastive_weight']
+            'contrastive_weight': pretrain_results['contrastive_weight'],
+            'warmup_epochs': pretrain_results['warmup_epochs']
         }
 
         results['hyperparameters']['flow_weight'] = pretrain_results['flow_weight']
         results['hyperparameters']['contrastive_weight'] = pretrain_results['contrastive_weight']
+        results['hyperparameters']['warmup_epochs'] = pretrain_results['warmup_epochs']
 
         logger.info(f"✅ Joint pretraining completed")
         logger.info(f"   Final total loss: {pretrain_results['total_losses'][-1]:.4f}")
@@ -403,10 +425,13 @@ def main():
             encoder_params = list(model.backbone.parameters())
             head_params = list(model.heads['diagnosis'].parameters())
 
+            encoder_lr = LEARNING_RATE * 0.2
+            head_lr = LEARNING_RATE * 1.5
             optimizer = torch.optim.Adam([
-                {'params': encoder_params, 'lr': LEARNING_RATE * 0.1},  # Lower LR for pretrained encoder
-                {'params': head_params, 'lr': LEARNING_RATE}            # Full LR for new head
+                {'params': encoder_params, 'lr': encoder_lr},
+                {'params': head_params, 'lr': head_lr}
             ])
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=FINETUNE_EPOCHS, eta_min=encoder_lr * 0.1)
 
             criterion = torch.nn.CrossEntropyLoss()
 
@@ -437,8 +462,11 @@ def main():
                 losses.append(loss.item())
                 accuracies.append(accuracy)
 
+                scheduler.step()
+
                 if epoch % 10 == 0:
-                    logger.info(f"Epoch {epoch:3d}: Loss {loss.item():.4f}, Accuracy {accuracy:.4f}")
+                    current_lrs = [group['lr'] for group in optimizer.param_groups]
+                    logger.info(f"Epoch {epoch:3d}: Loss {loss.item():.4f}, Accuracy {accuracy:.4f}, LRs {current_lrs}")
 
             # Final evaluation
             model.eval()
@@ -448,6 +476,27 @@ def main():
 
             diag_metrics = evaluate_classification_metrics(query_y.numpy(), query_preds, logger)
 
+            episode_accs = []
+            num_eval_episodes = 5
+            for _ in range(num_eval_episodes):
+                support_x_eval, support_y_eval, query_x_eval, query_y_eval = create_few_shot_episodes(
+                    signals, diag_labels, N_SUPPORT, N_QUERY, N_CLASSES_DIAG, logger
+                )
+                support_x_eval = torch.FloatTensor(support_x_eval).to(device)
+                support_y_eval = torch.LongTensor(support_y_eval).to(device)
+                query_x_eval = torch.FloatTensor(query_x_eval).to(device)
+                query_y_eval = torch.LongTensor(query_y_eval).to(device)
+
+                with torch.no_grad():
+                    _ = model(support_x_eval, 'diagnosis')
+                    query_logits_eval = model(query_x_eval, 'diagnosis')
+                    preds_eval = torch.argmax(query_logits_eval, dim=1)
+                    acc_eval = (preds_eval == query_y_eval).float().mean().item()
+                    episode_accs.append(acc_eval)
+
+            avg_episode_acc = float(np.mean(episode_accs)) if episode_accs else accuracies[-1]
+            std_episode_acc = float(np.std(episode_accs)) if episode_accs else 0.0
+
             # Store results
             results['tasks']['diagnosis'] = {
                 'final_accuracy': accuracies[-1],
@@ -455,6 +504,9 @@ def main():
                 'training_losses': losses,
                 'training_accuracies': accuracies,
                 'metrics': diag_metrics,
+                'episode_accuracy_mean': avg_episode_acc,
+                'episode_accuracy_std': std_episode_acc,
+                'evaluation_episodes': num_eval_episodes,
                 'support_shape': support_x.shape,
                 'query_shape': query_x.shape,
                 'fine_tuning_method': 'unfrozen_adaptive_lr_after_joint_pretraining'
@@ -485,10 +537,13 @@ def main():
             encoder_params = list(model.backbone.parameters())
             head_params = list(model.heads['anomaly'].parameters())
 
+            encoder_lr = LEARNING_RATE * 0.2
+            head_lr = LEARNING_RATE * 1.5
             optimizer = torch.optim.Adam([
-                {'params': encoder_params, 'lr': LEARNING_RATE * 0.1},
-                {'params': head_params, 'lr': LEARNING_RATE}
+                {'params': encoder_params, 'lr': encoder_lr},
+                {'params': head_params, 'lr': head_lr}
             ])
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=FINETUNE_EPOCHS, eta_min=encoder_lr * 0.1)
 
             criterion = torch.nn.CrossEntropyLoss()
 
@@ -515,8 +570,11 @@ def main():
                 losses.append(loss.item())
                 accuracies.append(accuracy)
 
+                scheduler.step()
+
                 if epoch % 10 == 0:
-                    logger.info(f"Epoch {epoch:3d}: Loss {loss.item():.4f}, Accuracy {accuracy:.4f}")
+                    current_lrs = [group['lr'] for group in optimizer.param_groups]
+                    logger.info(f"Epoch {epoch:3d}: Loss {loss.item():.4f}, Accuracy {accuracy:.4f}, LRs {current_lrs}")
 
             # Final evaluation
             model.eval()
@@ -526,6 +584,26 @@ def main():
 
             anom_metrics = evaluate_classification_metrics(query_y.numpy(), query_preds, logger)
 
+            episode_accs = []
+            num_eval_episodes = 5
+            for _ in range(num_eval_episodes):
+                support_x_eval, support_y_eval, query_x_eval, query_y_eval = create_few_shot_episodes(
+                    signals, anom_labels, N_SUPPORT, N_QUERY, N_CLASSES_ANOM, logger
+                )
+                support_x_eval = torch.FloatTensor(support_x_eval).to(device)
+                query_x_eval = torch.FloatTensor(query_x_eval).to(device)
+                query_y_eval = torch.LongTensor(query_y_eval).to(device)
+
+                with torch.no_grad():
+                    _ = model(support_x_eval, 'anomaly')
+                    query_logits_eval = model(query_x_eval, 'anomaly')
+                    preds_eval = torch.argmax(query_logits_eval, dim=1)
+                    acc_eval = (preds_eval == query_y_eval).float().mean().item()
+                    episode_accs.append(acc_eval)
+
+            avg_episode_acc = float(np.mean(episode_accs)) if episode_accs else accuracies[-1]
+            std_episode_acc = float(np.std(episode_accs)) if episode_accs else 0.0
+
             # Store results
             results['tasks']['anomaly'] = {
                 'final_accuracy': accuracies[-1],
@@ -533,6 +611,9 @@ def main():
                 'training_losses': losses,
                 'training_accuracies': accuracies,
                 'metrics': anom_metrics,
+                'episode_accuracy_mean': avg_episode_acc,
+                'episode_accuracy_std': std_episode_acc,
+                'evaluation_episodes': num_eval_episodes,
                 'support_shape': support_x.shape,
                 'query_shape': query_x.shape,
                 'fine_tuning_method': 'unfrozen_adaptive_lr_after_joint_pretraining'
