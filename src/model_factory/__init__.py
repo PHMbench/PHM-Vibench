@@ -3,9 +3,7 @@
 from typing import Any
 
 from .model_factory import (
-    MODEL_REGISTRY,
     model_factory,
-    register_model,
     resolve_model_module,
 )
 

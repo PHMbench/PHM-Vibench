@@ -24,6 +24,7 @@ import torch.nn as nn
 import numpy as np
 import os
 from typing import Optional, Dict, Any, Union, List, Tuple
+from src.utils.utils import get_num_classes
 
 # Import existing PHM-Vibench components for reuse
 from src.model_factory.ISFM.embedding import *
@@ -125,7 +126,7 @@ class Model(nn.Module):
             self.backbone = nn.Identity()
         
         # Get number of classes from metadata (following M_01_ISFM pattern)
-        self.num_classes = self.get_num_classes()
+        self.num_classes = get_num_classes(self.metadata)
         args_m.num_classes = self.num_classes
         
         # Initialize task head
@@ -153,21 +154,18 @@ class Model(nn.Module):
         # Set training stage
         self.set_training_stage(self.training_stage)
     
-    def get_num_classes(self):
-        """
-        Extract number of classes per dataset from metadata (following M_01_ISFM pattern).
-        
-        Returns:
-            Dictionary mapping dataset IDs to number of classes
-        """
-        if self.metadata is None:
-            # Fallback for testing scenarios
-            return {0: 10}  # Default single dataset with 10 classes
-        
-        num_classes = {}
-        for key in np.unique(self.metadata.df['Dataset_id']):
-            num_classes[key] = max(self.metadata.df[self.metadata.df['Dataset_id'] == key]['Label']) + 1
-        return num_classes
+    # def get_num_classes(self):
+    #     """
+    #     Extract number of classes per dataset from metadata (following M_01_ISFM pattern).
+
+    #     Returns:
+    #         Dictionary mapping dataset IDs to number of classes
+    #     """
+    #     if self.metadata is None:
+    #         # Fallback for testing scenarios
+    #         return {0: 10}  # Default single dataset with 10 classes, keep integer key
+
+    #     return get_num_classes(self.metadata)
     
     def set_training_stage(self, stage: str):
         """

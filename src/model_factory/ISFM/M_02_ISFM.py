@@ -9,6 +9,7 @@ import numpy as np
 import os
 import torch
 import pandas as pd
+from src.utils.utils import get_num_classes, get_num_channels
 # from src.model_factory.ISFM.layers.StandardNorm import Normalize
 Embedding_dict = {
 
@@ -71,29 +72,12 @@ class Model(nn.Module):
 
 
     def get_num_classes(self):
-        num_classes = {}
-        # Check if metadata has df attribute (MetadataAccessor)
-        if hasattr(self.metadata, 'df'):
-            df = self.metadata.df
-        else:
-            # Handle direct DataFrame case
-            df = self.metadata
+        """获取数据集类别数映射"""
+        return get_num_classes(self.metadata)
 
-        for key in np.unique(df['Dataset_id']):
-            num_classes[str(key)] = int(max(df[df['Dataset_id'] == key]['Label']) + 1)
-        return num_classes
     def get_num_channels(self):
-        num_channels = {}
-        # Check if metadata has df attribute (MetadataAccessor)
-        if hasattr(self.metadata, 'df'):
-            df = self.metadata.df
-        else:
-            # Handle direct DataFrame case
-            df = self.metadata
-
-        for key in np.unique(df['Dataset_id']):
-            num_channels[str(key)] = int(max(df[df['Dataset_id'] == key]['Channel']))
-        return num_channels
+        """获取数据集通道数映射"""
+        return get_num_channels(self.metadata)
 
     def _embed(self, x, file_id):
         """1 Embedding"""

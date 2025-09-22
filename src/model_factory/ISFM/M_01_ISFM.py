@@ -8,6 +8,7 @@ import torch.nn as nn
 import numpy as np
 import os
 import torch
+from src.utils.utils import get_num_classes
 
 Embedding_dict = {
 
@@ -65,17 +66,8 @@ class Model(nn.Module):
         self.task_head = TaskHead_dict[args_m.task_head](args_m)
 
     def get_num_classes(self):
-        num_classes = {}
-        # Check if metadata has df attribute (MetadataAccessor)
-        if hasattr(self.metadata, 'df'):
-            df = self.metadata.df
-        else:
-            # Handle direct DataFrame case
-            df = self.metadata
-
-        for key in np.unique(df['Dataset_id']):
-            num_classes[str(key)] = int(max(df[df['Dataset_id'] == key]['Label']) + 1)
-        return num_classes
+        """获取数据集类别数映射"""
+        return get_num_classes(self.metadata)
     
 
 
