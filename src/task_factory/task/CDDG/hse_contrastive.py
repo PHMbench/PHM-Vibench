@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional, List, Tuple
 import logging
 from collections import defaultdict
 
-from ..Default_task import Default_task
+from ...Default_task import Default_task
 from ...Components.prompt_contrastive import PromptGuidedContrastiveLoss
 from ...Components.loss import get_loss_fn
 from ...Components.metrics import get_metrics

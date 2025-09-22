@@ -10,11 +10,7 @@ import torch
 from ..utils.utils import get_num_classes
 from ..utils.registry import Registry
 
-MODEL_REGISTRY = Registry()
 
-def register_model(model_type: str, name: str):
-    """Decorator to register a model implementation."""
-    return MODEL_REGISTRY.register(f"{model_type}.{name}")
 
 
 def resolve_model_module(args_model: Any) -> str:
@@ -40,13 +36,12 @@ def model_factory(args_model: Any, metadata: Any):
         Instantiated model ready for training.
     """
     args_model.num_classes = get_num_classes(metadata)
-    key = f"{args_model.type}.{args_model.name}"
-    try:
-        model_cls = MODEL_REGISTRY.get(key)
-    except KeyError:
-        module_path = resolve_model_module(args_model)
-        model_module = importlib.import_module(module_path)
-        model_cls = model_module.Model
+    # key = f"{args_model.type}.{args_model.name}"
+
+
+    module_path = resolve_model_module(args_model)
+    model_module = importlib.import_module(module_path)
+    model_cls = model_module.Model
 
     try:
         model = model_cls(args_model, metadata)
