@@ -282,8 +282,9 @@ class data_factory:
             )
             dataset_cls = mod.set_dataset
         except ImportError as e:
-            print("Using ID_dataset for on-demand processing.")
-            from .dataset_task.ID_dataset import set_dataset as dataset_cls
+            print("Using Default datasets")
+            from .dataset_task.Default_dataset import Default_dataset
+            dataset_cls = Default_dataset
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
