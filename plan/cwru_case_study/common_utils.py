@@ -46,7 +46,7 @@ STRIDE = 256
 SAMPLE_RATE = 12000
 
 # Few-shot learning parameters
-N_SUPPORT = 5
+N_SUPPORT = 10
 N_QUERY = 15
 N_CLASSES_DIAG = 4
 N_CLASSES_ANOM = 2
@@ -54,7 +54,7 @@ N_CHANNELS = 2
 
 # Training parameters
 BATCH_SIZE = 64
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
 PRETRAIN_EPOCHS = 50
 FINETUNE_EPOCHS = 30
 
@@ -76,20 +76,24 @@ def setup_logger(name, log_file, level=logging.INFO):
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
+    # Logger
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    logger.handlers = []
+
     # File handler
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.DEBUG)
+    try:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.DEBUG)
+        logger.addHandler(file_handler)
+    except PermissionError:
+        print(f"⚠️ Unable to write log file at {log_file}, continuing with console logging only")
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     console_handler.setLevel(level)
-
-    # Logger
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
     return logger

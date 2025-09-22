@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 from typing import Dict, Any, List, Optional
 import logging
 
+from ..data_utils import MetadataAccessor
 
 
 class ID_dataset(Dataset):
@@ -47,7 +48,7 @@ class ID_dataset(Dataset):
             ValueError: If metadata is empty or mode is invalid
             TypeError: If metadata is not a dictionary
         """
-        if not isinstance(metadata, dict):
+        if not isinstance(metadata, (dict, MetadataAccessor)):
             raise TypeError(f"metadata must be a dictionary, got {type(metadata)}")
 
         if not metadata:
@@ -223,4 +224,3 @@ if __name__ == '__main__':
     print(f"Balanced groups: {balanced}")
 
     print("All tests passed!")
-
