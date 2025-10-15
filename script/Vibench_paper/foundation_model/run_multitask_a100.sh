@@ -5,6 +5,7 @@
 # export PYTHONPATH="${PYTHONPATH}:${SLURM_SUBMIT_DIR}"
 
 # Create results directory
+export WANDB_BASE_URL=HTTP://api.bandw.top
 EXPERIMENT_DIR="script/Vibench_paper/foundation_model"
 RESULTS_DIR="results/multitask_a100_${SLURM_JOB_ID}"
 mkdir -p $RESULTS_DIR/logs
