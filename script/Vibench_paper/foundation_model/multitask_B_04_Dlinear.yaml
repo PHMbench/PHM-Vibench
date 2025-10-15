@@ -48,13 +48,13 @@ model:
   task_head: MultiTaskHead  # Enhanced multi-task head with signal prediction
   
   # Model dimensions
-  num_patches: 128
-  patch_size_L: 256
+  num_patches: 64    # DEBUG: Reduced from 128 to 64
+  patch_size_L: 128  # DEBUG: Reduced from 256 to 128
   patch_size_C: 1
-  output_dim: 1024
-  num_heads: 8
-  num_layers: 3
-  d_ff: 2048
+  output_dim: 256    # DEBUG: CRITICAL FIX - Reduced from 1024 to 256 (75% reduction)
+  num_heads: 4       # DEBUG: Reduced from 8 to 4
+  num_layers: 2      # DEBUG: Reduced from 3 to 2
+  d_ff: 512         # DEBUG: Reduced from 2048 to 512
   dropout: 0.1
   
   # Multi-task head configuration
