@@ -78,20 +78,28 @@ class PromptGuidedContrastiveLoss(nn.Module):
         
     def _create_base_loss(self, loss_type: str, **kwargs) -> nn.Module:
         """Create base contrastive loss function."""
-        loss_mapping = {
-            "INFONCE": lambda: InfoNCELoss(temperature=self.temperature, **kwargs),
-            "TRIPLET": lambda: TripletLoss(**kwargs),
-            "SUPCON": lambda: SupConLoss(temperature=self.temperature, **kwargs),
-            "PROTOTYPICAL": lambda: PrototypicalLoss(**kwargs),
-            "BARLOWTWINS": lambda: BarlowTwinsLoss(**kwargs),
-            "VICREG": lambda: VICRegLoss(**kwargs),
-        }
-        
-        if loss_type not in loss_mapping:
+        if loss_type == "INFONCE":
+            # InfoNCELoss只接受temperature和normalize参数
+            valid_kwargs = {k: v for k, v in kwargs.items() if k in ['temperature', 'normalize']}
+            return InfoNCELoss(temperature=self.temperature, **valid_kwargs)
+        elif loss_type == "TRIPLET":
+            # TripletLoss需要margin参数
+            margin = kwargs.get('margin', 0.3)
+            return TripletLoss(margin=margin)
+        elif loss_type == "SUPCON":
+            # SupConLoss接受temperature参数
+            return SupConLoss(temperature=self.temperature)
+        elif loss_type == "PROTOTYPICAL":
+            return PrototypicalLoss(**kwargs)
+        elif loss_type == "BARLOWTWINS":
+            # BarlowTwinsLoss需要lambda_param参数
+            lambda_param = kwargs.get('lambda_param', 5e-3)
+            return BarlowTwinsLoss(lambda_param=lambda_param)
+        elif loss_type == "VICREG":
+            return VICRegLoss(**kwargs)
+        else:
             raise ValueError(f"Unsupported loss type: {loss_type}. "
-                           f"Supported: {list(loss_mapping.keys())}")
-        
-        return loss_mapping[loss_type]()
+                           f"Supported: INFONCE, TRIPLET, SUPCON, PROTOTYPICAL, BARLOWTWINS, VICREG")
     
     def forward(
         self, 

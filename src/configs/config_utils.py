@@ -132,7 +132,7 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
     if overrides is not None:
         override_config = _to_config_wrapper(overrides)
         config.update(override_config)
-    
+
     # 步骤3: 验证必需字段
     _validate_config_wrapper(config)
     
@@ -331,6 +331,36 @@ def transfer_namespace(raw_arg_dict: Union[Dict[str, Any], SimpleNamespace, Conf
         return ConfigWrapper(**raw_arg_dict.__dict__)
     # 否则转换为ConfigWrapper
     return ConfigWrapper(**raw_arg_dict)
+
+# ==================== 本机覆盖合并 ====================
+
+def merge_with_local_override(
+    base_config: Union[str, Path, Dict, SimpleNamespace, ConfigWrapper],
+    local_config: Optional[Union[str, Path]] = None,
+) -> ConfigWrapper:
+    """加载基础配置并与本机覆盖YAML合并（方案B）。
+
+    优先顺序：
+    1. 显式 `local_config` 参数（若存在且可读）
+    2. `configs/local/local.yaml`（若存在）
+    3. 仅使用基础配置
+
+    注意：不使用 hostname 或环境变量。
+    """
+    base_cfg = load_config(base_config)
+
+    # 显式覆盖路径优先
+    if local_config is not None:
+        local_path = Path(str(local_config))
+        if local_path.exists():
+            return load_config(base_cfg, local_path)
+
+    # 约定的默认本地覆盖
+    default_local = Path("configs/local/local.yaml")
+    if default_local.exists():
+        return load_config(base_cfg, default_local)
+
+    return base_cfg
 
 # ==================== 配置保存和验证 ====================
 

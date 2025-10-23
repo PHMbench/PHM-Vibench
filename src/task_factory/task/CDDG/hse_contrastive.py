@@ -452,7 +452,11 @@ class task(Default_task):
             return features, prompts
 
 
-# Self-testing section  
+# Alias for backward compatibility and registration
+HseContrastiveTask = task
+HSEContrastiveTask = task  # Additional alias for different naming conventions
+
+# Self-testing section
 if __name__ == "__main__":
     print("🎯 Testing HSE Contrastive Learning Task")
     
