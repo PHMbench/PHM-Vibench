@@ -195,3 +195,8 @@ dev/project/valve.ipynb
 plot/
 test/
 metrics_reports/
+.codex/
+.specify/
+script/unified_metric/existing_test_files/
+script/unified_metric/test_results/
+script/unified_metric/

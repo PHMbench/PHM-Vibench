@@ -34,6 +34,10 @@ def main():
                         type=str, 
                         default='Pipeline_01_default',
                         help='实验流水线模块路径')
+    parser.add_argument('--local_config',
+                        type=str,
+                        default=None,
+                        help='本机覆盖配置路径（可选，与主YAML合并）')
     
     args = parser.parse_args()
     pipeline = importlib.import_module(f'src.{args.pipeline}')
@@ -45,5 +49,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

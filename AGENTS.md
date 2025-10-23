@@ -6,6 +6,30 @@
 - Runtime assets stay outside Git: raw inputs in `data/`, results in `save/`, visuals in `pic/`, docs in `docs/`; active tests live in `test/` while legacy stress suites remain in `tests/`.
 - see @CLAUDE.md for better understanding of the Vibench.
 
+## Architecture Highlights
+- Factory pattern with registries for data, models, tasks, and trainers (`src/*_factory/CLAUDE.md` for deep dives).
+- Pipelines include `Pipeline_01_default`, `Pipeline_02_pretrain_fewshot`, `Pipeline_03_multitask_pretrain_finetune`, and `Pipeline_ID`.
+- Configuration-first design via `load_config()` supporting presets, YAML files, dictionaries, and `ConfigWrapper` overrides.
+- Save artifacts under `save/{metadata}/{model}/{task_trainer_timestamp}/` with checkpoints, metrics, logs, figures, and config backup.
+
+## Configuration System
+- Unified loader handles preset aliases plus recursive dot-notation overrides: `load_config('isfm', {'model.d_model': 512})`.
+- Keep YAML keys lowercase with hyphen-separated values to match samples in `configs/demo/`.
+- Pipelines read full experiment context from config; avoid hard-coded paths or hyperparameters.
+- Extended guide in `src/configs/CLAUDE.md` covers chaining (`copy().update()`), multi-stage pipelines, and override precedence.
+
+## Dataset Integration
+- Raw inputs belong in `data/raw/<dataset_name>/` with metadata spreadsheets (`metadata_*.xlsx`) and processed H5 files.
+- Implement readers by inheriting `BaseReader` and register them inside `src/data_factory/__init__.py`.
+- Reference examples in `src/data_factory/reader/RM_*.py` and document quirks in dataset-specific notes.
+- Maintain consistent directory casing and validate new datasets with `python scripts/hse_synthetic_demo.py`.
+
+## Model and Task Registry
+- Foundation models live under `model_factory` (e.g., `M_01_ISFM`, `M_02_ISFM`, `M_03_ISFM`) alongside backbone networks (`B_08_PatchTST`, `B_09_FNO`, etc.).
+- Attach heads such as `H_01_Linear_cla` or `H_03_Linear_pred` for classification vs prediction workloads.
+- Tasks cover classification, cross-dataset domain generalization, few-shot (FS/GFS), and pretraining—wire them via `task_factory`.
+- Trainer implementations extend PyTorch Lightning; keep Lightning callbacks and loggers configurable.
+
 ## Build, Test, and Development Commands
 - `python -m venv venv && source venv/bin/activate` then `pip install -r requirements.txt` (add `dev/test_history/requirements-test.txt` when evolving pytest suites).
 - Run baselines with `python main.py --config configs/demo/Single_DG/CWRU.yaml`; swap in unified metric configs when reproducing cross-domain benchmarks.

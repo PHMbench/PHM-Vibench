@@ -35,7 +35,10 @@ import pytorch_lightning as pl
 
 
 # Import PHM-Vibench framework components
-from src.configs.config_utils import load_config, path_name, transfer_namespace
+from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
+import socket
+from pathlib import Path
+from typing import Optional
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -61,10 +64,10 @@ class MultiTaskPretrainFinetunePipeline:
     Implements pretraining followed by fine-tuning with backbone architecture comparison.
     """
     
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, local_config: Optional[str] = None):
         """Initialize the pipeline with configuration."""
         self.config_path = config_path
-        self.configs = load_config(config_path)
+        self.configs = merge_with_local_override(config_path, local_config)
         self.results = {}
         
         # Extract configuration sections
@@ -522,6 +525,12 @@ def main():
         help='Which stage to run (default: complete)'
     )
     parser.add_argument(
+        '--local_config',
+        type=str,
+        default=None,
+        help='Path to machine-specific override YAML (optional)'
+    )
+    parser.add_argument(
         '--checkpoint_dir',
         type=str,
         help='Directory containing pretrained checkpoints (for finetuning stage only)'
@@ -535,7 +544,7 @@ def main():
         sys.exit(1)
 
     # Initialize pipeline
-    pipeline = MultiTaskPretrainFinetunePipeline(args.config_path)
+    pipeline = MultiTaskPretrainFinetunePipeline(args.config_path, local_config=args.local_config)
 
     try:
         if args.stage == 'pretraining':

@@ -100,7 +100,6 @@ class VerifiedModuleTester:
             print(f"✗ M_02_ISFM 失败: {e}")
             self.results.append(('M_02_ISFM', False, str(e)))
 
-        # 2. 测试 M_02_ISFM_Prompt
         print("\n--- M_02_ISFM_Prompt ---")
         try:
             from src.model_factory.ISFM_Prompt.M_02_ISFM_Prompt import Model

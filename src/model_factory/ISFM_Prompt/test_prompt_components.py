@@ -31,23 +31,23 @@ import tracemalloc
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 import sys
-import os
+from pathlib import Path
 
-# Add project root to path for imports
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-if project_root not in sys.path:
-    sys.path.append(project_root)
+# Ensure repository root is on sys.path for absolute imports (src.*)
+if __name__ == "__main__":
+    repo_root = Path(__file__).resolve().parents[3]  # .../Vbench
+    if str(repo_root) not in sys.path:
+        sys.path.append(str(repo_root))
 
-# Import ISFM_Prompt components
-from .components.SystemPromptEncoder import SystemPromptEncoder
-from .components.PromptFusion import PromptFusion
+# Import ISFM_Prompt components using absolute paths
+from src.model_factory.ISFM_Prompt.components import SystemPromptEncoder, PromptFusion
 
-# Try to import the main model (may fail due to dependencies)
+# Try to import the main model (may fail due to optional deps)
 try:
-    from .M_02_ISFM_Prompt import Model as M_02_ISFM_Prompt
+    from src.model_factory.ISFM_Prompt.M_02_ISFM_Prompt import Model as M_02_ISFM_Prompt
     _MAIN_MODEL_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: M_02_ISFM_Prompt not available due to dependencies: {e}")
+except Exception as e:
+    print(f"Warning: M_02_ISFM_Prompt not available: {e}")
     _MAIN_MODEL_AVAILABLE = False
 
 

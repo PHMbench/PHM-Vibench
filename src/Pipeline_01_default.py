@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.configs.config_utils import load_config, path_name, transfer_namespace
+from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -35,7 +35,9 @@ def pipeline(args):
     # -----------------------
     config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
-    configs = load_config(config_path)
+    # 支持机器特定的本地覆盖 YAML（方案B）
+    # 优先顺序：命令行 --local_config > configs/local/{hostname}.yaml > configs/local/local.yaml > configs/local/default.yaml
+    configs = merge_with_local_override(config_path, getattr(args, 'local_config', None))
     
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
@@ -156,6 +158,10 @@ if __name__ == "__main__":
                         type=str, 
                         default='',
                         help='实验备注')
+    parser.add_argument('--local_config',
+                        type=str,
+                        default=None,
+                        help='本机覆盖配置路径（可选）')
 
     
     args = parser.parse_args()

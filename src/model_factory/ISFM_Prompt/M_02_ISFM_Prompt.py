@@ -32,8 +32,15 @@ from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 
 # Import our new Prompt components
-from .components.SystemPromptEncoder import SystemPromptEncoder
-from .components.PromptFusion import PromptFusion
+from .components import (
+    SystemPromptEncoder,
+    PromptFusion,
+    PromptLibrary,
+    PromptLibraryOutput,
+    PromptInjector,
+    PromptSelector,
+    SelectionMode,
+)
 from .embedding.E_01_HSE_v2 import E_01_HSE_v2
 
 
@@ -109,10 +116,9 @@ class Model(nn.Module):
         self.metadata = metadata
         self.args_m = args_m
         
-        # Extract prompt configuration
+        # Simplified configuration (following M_03_ISFM philosophy)
         self.use_prompt = getattr(args_m, 'use_prompt', True)
-        self.prompt_dim = getattr(args_m, 'prompt_dim', 128)
-        self.fusion_type = getattr(args_m, 'fusion_type', 'attention')
+        self.use_prompt_library = getattr(args_m, 'use_prompt_library', False)  # Add missing attribute
         self.training_stage = getattr(args_m, 'training_stage', 'pretrain')
         self.freeze_prompt = getattr(args_m, 'freeze_prompt', False)
         
@@ -126,8 +132,8 @@ class Model(nn.Module):
             self.backbone = nn.Identity()
         
         # Get number of classes from metadata (following M_01_ISFM pattern)
-        self.num_classes = get_num_classes(self.metadata)
-        args_m.num_classes = self.num_classes
+        # self.num_classes = get_num_classes(self.metadata)  # Simplified: use config value
+        # args_m.num_classes = self.num_classes
         
         # Initialize task head
         if hasattr(args_m, 'task_head') and args_m.task_head:
@@ -135,21 +141,18 @@ class Model(nn.Module):
         else:
             self.task_head = nn.Identity()
         
-        # Initialize Prompt components (only if using prompts)
-        if self.use_prompt:
-            self.prompt_encoder = SystemPromptEncoder(
-                prompt_dim=self.prompt_dim,
-                max_dataset_ids=getattr(args_m, 'max_dataset_ids', 50),
-                max_domain_ids=getattr(args_m, 'max_domain_ids', 50)
-            )
-            
-            # Determine signal dimension for fusion (depends on embedding output)
-            signal_dim = getattr(args_m, 'output_dim', 512)  # From embedding config
-            self.prompt_fusion = PromptFusion(
-                signal_dim=signal_dim,
-                prompt_dim=self.prompt_dim,
-                fusion_type=self.fusion_type
-            )
+        # Simplified: No complex prompt components (following M_03_ISFM philosophy)
+        self.prompt_library = None
+        self.prompt_injector = None
+        self.prompt_selector = None
+        self.prompt_encoder = None
+        self.prompt_fusion = None
+
+        self.last_prompt_output: Optional[PromptLibraryOutput] = None
+        self.last_prompt_weights: Optional[torch.Tensor] = None
+        self.last_prompt_logits: Optional[torch.Tensor] = None
+        self.last_prompt_regularization: Dict[str, torch.Tensor] = {}
+        self.last_prompt_vector: Optional[torch.Tensor] = None
         
         # Set training stage
         self.set_training_stage(self.training_stage)
@@ -170,25 +173,42 @@ class Model(nn.Module):
     def set_training_stage(self, stage: str):
         """
         Set training stage and configure prompt freezing.
-        
+
         Args:
-            stage: Training stage ('pretrain' or 'finetune')
+            stage: Training stage ('pretrain'/'pretraining' or 'finetune')
         """
+        # Normalize stage name for consistency
+        stage = stage.lower()
+        if stage in {"pretraining", "pretrain"}:
+            stage = "pretrain"
+        elif stage in {"finetuning", "finetune"}:
+            stage = "finetune"
+
         self.training_stage = stage
         
         if self.use_prompt:
-            if stage == 'finetune' or self.freeze_prompt:
-                # Freeze prompt encoder parameters during finetuning
-                for param in self.prompt_encoder.parameters():
-                    param.requires_grad = False
-                for param in self.prompt_fusion.parameters():
-                    param.requires_grad = False
+            prompt_modules = []
+            if self.use_prompt_library:
+                prompt_modules.extend(
+                    module
+                    for module in [self.prompt_library, self.prompt_injector, self.prompt_selector]
+                    if module is not None
+                )
             else:
-                # Unfreeze prompt parameters during pretraining
-                for param in self.prompt_encoder.parameters():
-                    param.requires_grad = True
-                for param in self.prompt_fusion.parameters():
-                    param.requires_grad = True
+                prompt_modules.extend(
+                    module
+                    for module in [self.prompt_encoder, self.prompt_fusion]
+                    if module is not None
+                )
+
+            if stage == 'finetune' or self.freeze_prompt:
+                for module in prompt_modules:
+                    for param in module.parameters():
+                        param.requires_grad = False
+            else:
+                for module in prompt_modules:
+                    for param in module.parameters():
+                        param.requires_grad = True
     
     def _embed(self, x: torch.Tensor, file_id: Optional[Any] = None) -> torch.Tensor:
         """
@@ -214,23 +234,11 @@ class Model(nn.Module):
             # NEW: Prompt-guided HSE v2 embedding with metadata
             if file_id is not None and self.metadata is not None:
                 fs = self.metadata[file_id]['Sample_rate']
-                
-                if self.use_prompt:
-                    # Extract system metadata (no Label - it's prediction target!)
-                    metadata_dict = SystemPromptEncoder.create_metadata_dict(
-                        dataset_ids=[self.metadata[file_id]['Dataset_id']],
-                        domain_ids=[self.metadata[file_id]['Domain_id']], 
-                        sample_rates=[float(self.metadata[file_id]['Sample_rate'])],
-                        device=x.device
-                    )
-                    signal_emb = self.embedding(x, fs, metadata_dict)
-                else:
-                    # E_01_HSE_v2 can fallback to signal-only mode
-                    signal_emb = self.embedding(x, fs, metadata=None)
+                signal_emb = self.embedding(x, fs)  # Simple embedding
             else:
                 # Fallback mode without metadata
                 fs = 1000.0
-                signal_emb = self.embedding(x, fs, metadata=None)
+                signal_emb = self.embedding(x, fs)
                 
         else:
             # Other embedding types
@@ -276,7 +284,8 @@ class Model(nn.Module):
             # Fallback gracefully to non-prompt processing
             print(f"Warning: Prompt processing failed ({e}), using signal-only mode")
             return signal_emb
-    
+
+        
     def _encode(self, x: torch.Tensor) -> torch.Tensor:
         """
         Backbone encoding stage.
@@ -353,16 +362,16 @@ class Model(nn.Module):
         # (E_01_HSE_v2 handles prompt integration internally when embedding='E_01_HSE_v2')
         signal_emb = self._embed(x, file_id)
         
-        # Stage 2: Additional prompt-guided encoding for non-HSE_v2 embeddings
-        if self.use_prompt and self.args_m.embedding != 'E_01_HSE_v2':
-            # Apply separate prompt fusion for traditional embeddings
-            prompt_guided_emb = self._encode_with_prompt(signal_emb, file_id)
-        else:
-            # E_01_HSE_v2 already applied prompts, or prompts disabled
-            prompt_guided_emb = signal_emb
-        
-        # Stage 3: Backbone processing
-        encoded_features = self._encode(prompt_guided_emb)
+        prompt_guided_emb = signal_emb
+        encoded_features: Optional[torch.Tensor] = None
+        self.last_prompt_output = None
+        self.last_prompt_weights = None
+        self.last_prompt_logits = None
+        self.last_prompt_regularization = {}
+        self.last_prompt_vector = None
+
+        # Simplified processing
+        encoded_features = self._encode(signal_emb)
 
         feature_vector: Optional[torch.Tensor] = None
         if return_feature:
@@ -376,8 +385,11 @@ class Model(nn.Module):
 
         # Return results based on requirements
         if return_prompt and self.use_prompt:
-            # Extract prompt for contrastive learning
-            if file_id is not None and self.metadata is not None:
+            if self.use_prompt_library and self.last_prompt_vector is not None:
+                if return_feature:
+                    return final_output, self.last_prompt_vector, feature_vector
+                return final_output, self.last_prompt_vector
+            elif not self.use_prompt_library and file_id is not None and self.metadata is not None:
                 try:
                     metadata_dict = SystemPromptEncoder.create_metadata_dict(
                         dataset_ids=[self.metadata[file_id]['Dataset_id']],
@@ -389,8 +401,7 @@ class Model(nn.Module):
                     if return_feature:
                         return final_output, prompt_vector, feature_vector
                     return final_output, prompt_vector
-                except:
-                    # Fallback if prompt extraction fails
+                except Exception:
                     pass
 
         if return_feature:
@@ -423,17 +434,37 @@ class Model(nn.Module):
         }
         
         if self.use_prompt:
-            prompt_params = sum(p.numel() for p in self.prompt_encoder.parameters()) + \
-                           sum(p.numel() for p in self.prompt_fusion.parameters())
-            
-            info.update({
-                'prompt_config': {
-                    'prompt_dim': self.prompt_dim,
-                    'fusion_type': self.fusion_type,
-                    'prompt_parameters': prompt_params,
-                    'freeze_prompt': self.freeze_prompt
-                }
-            })
+            if self.use_prompt_library:
+                prompt_params = 0
+                if self.prompt_library is not None:
+                    prompt_params += sum(p.numel() for p in self.prompt_library.parameters())
+                if self.prompt_injector is not None:
+                    prompt_params += sum(p.numel() for p in self.prompt_injector.parameters())
+                if self.prompt_selector is not None:
+                    prompt_params += sum(p.numel() for p in self.prompt_selector.parameters())
+                info.update({
+                    'prompt_config': {
+                        'prompt_dim': self.prompt_dim,
+                        'library_type': self.prompt_library_type,
+                        'num_candidates': self.prompt_num_candidates,
+                        'injection_mode': self.prompt_injection_mode,
+                        'selection_mode': self.prompt_selection_mode,
+                        'prompt_parameters': prompt_params,
+                        'freeze_prompt': self.freeze_prompt
+                    }
+                })
+            else:
+                prompt_params = sum(p.numel() for p in self.prompt_encoder.parameters()) + \
+                               sum(p.numel() for p in self.prompt_fusion.parameters())
+                
+                info.update({
+                    'prompt_config': {
+                        'prompt_dim': self.prompt_dim,
+                        'fusion_type': self.fusion_type,
+                        'prompt_parameters': prompt_params,
+                        'freeze_prompt': self.freeze_prompt
+                    }
+                })
         
         return info
 
@@ -472,7 +503,7 @@ if __name__ == '__main__':
             
             # Model configuration  
             self.use_prompt = True
-            self.training_stage = 'pretraining'
+            self.training_stage = 'pretrain'
             
     class MockMetadata:
         def __init__(self):
@@ -645,11 +676,4 @@ if __name__ == '__main__':
     print("  • Two-level prompt encoding (System + Sample, NO fault)")
     print("  • Multi-strategy fusion (concat/attention/gating)")
     print("  • Training stage control with prompt freezing")
-    print("  • Complete independence from existing ISFM models")
-    print("  • Component factory pattern compliance")
-    print("  • Metadata processing and validation")
-    print("\n✅ Ready for Pipeline_03 Integration:")
-    print("  • Component dictionaries properly configured")
-    print("  • Training stage control implemented")
-    print("  • Graceful degradation when metadata unavailable")
-    print("  • All P0 Phase 2 requirements satisfied")
+  

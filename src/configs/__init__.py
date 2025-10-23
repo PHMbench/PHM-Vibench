@@ -23,7 +23,7 @@ PHM-Vibench配置系统
 """
 
 # 核心配置管理
-from .config_utils import load_config, save_config
+from .config_utils import load_config, save_config, merge_with_local_override
 
 # 配置对象
 from .config_utils import ConfigWrapper, PRESET_TEMPLATES
@@ -42,6 +42,7 @@ __all__ = [
     # 核心功能
     'load_config',
     'save_config',
+    'merge_with_local_override',
     
     # 配置对象
     'ConfigWrapper',
