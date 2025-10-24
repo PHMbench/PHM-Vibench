@@ -35,7 +35,9 @@ import pytorch_lightning as pl
 
 
 # Import PHM-Vibench framework components
-from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
+from src.configs.config_utils import load_config, path_name, transfer_namespace # , merge_with_local_override
+from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
+from src.utils.config.pipeline_adapters import adapt_p03
 import socket
 from pathlib import Path
 from typing import Optional
@@ -67,7 +69,7 @@ class MultiTaskPretrainFinetunePipeline:
     def __init__(self, config_path: str, local_config: Optional[str] = None):
         """Initialize the pipeline with configuration."""
         self.config_path = config_path
-        self.configs = merge_with_local_override(config_path, local_config)
+        self.configs = load_config(config_path, local_config)
         self.results = {}
         
         # Extract configuration sections
@@ -535,6 +537,11 @@ def main():
         type=str,
         help='Directory containing pretrained checkpoints (for finetuning stage only)'
     )
+    parser.add_argument(
+        '--use_unified',
+        action='store_true',
+        help='Use unified two-stage orchestrator (adapter) instead of legacy pipeline'
+    )
 
     args = parser.parse_args()
 
@@ -543,7 +550,19 @@ def main():
         print(f"❌ Configuration file not found: {args.config_path}")
         sys.exit(1)
 
-    # Initialize pipeline
+    # Optional unified orchestrator path
+    if args.use_unified:
+        try:
+            unified = adapt_p03(args.config_path, local_config=args.local_config)
+            orchestrator = TwoStageOrchestrator(unified)
+            summary = orchestrator.run_complete()
+            print("\nUnified two-stage pipeline completed.")
+            print(summary)
+            return
+        except Exception as e:
+            print(f"[WARN] Unified orchestrator failed, fallback to legacy: {e}")
+
+    # Initialize legacy pipeline
     pipeline = MultiTaskPretrainFinetunePipeline(args.config_path, local_config=args.local_config)
 
     try:

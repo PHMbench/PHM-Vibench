@@ -6,7 +6,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import load_config, path_name, transfer_namespace
 from typing import Optional
-from src.configs.config_utils import merge_with_local_override
+from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
+from src.utils.config.pipeline_adapters import adapt_p02
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -16,7 +17,7 @@ from src.trainer_factory import build_trainer
 
 def run_stage(config_path, ckpt_path=None, iteration=0, local_config: Optional[str] = None):
     """Run a single training/testing stage given a config path."""
-    configs = merge_with_local_override(config_path, local_config)
+    configs = load_config(config_path, local_config)
     args_environment = transfer_namespace(configs.get('environment', {}))
     args_data = transfer_namespace(configs.get('data', {}))
     args_model = transfer_namespace(configs.get('model', {}))
@@ -86,10 +87,22 @@ def run_fewshot_stage(fs_config_path, ckpt_dict=None, local_config: Optional[str
     return True
 
 def pipeline(args):
-    """Run pretraining followed by a few-shot stage."""
-    ckpt_dict = run_pretraining_stage(args.config_path, local_config=getattr(args, 'local_config', None))
-    run_fewshot_stage(args.fs_config_path, ckpt_dict, local_config=getattr(args, 'local_config', None))
-    return True
+    """Run pretraining followed by a few-shot stage.
+
+    Unified orchestrator path: adapt P02 configs and run two-stage flow.
+    Fallback to legacy functions if orchestrator fails for any reason.
+    """
+    try:
+        unified = adapt_p02(args.config_path, args.fs_config_path, getattr(args, 'local_config', None))
+        orchestrator = TwoStageOrchestrator(unified)
+        summary = orchestrator.run_complete()
+        print("[INFO] Unified two-stage pipeline completed.")
+        return summary
+    except Exception as e:
+        print(f"[WARN] Unified orchestrator fallback due to: {e}")
+        ckpt_dict = run_pretraining_stage(args.config_path, local_config=getattr(args, 'local_config', None))
+        run_fewshot_stage(args.fs_config_path, ckpt_dict, local_config=getattr(args, 'local_config', None))
+        return True
 
 
 

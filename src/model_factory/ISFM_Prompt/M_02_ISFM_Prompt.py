@@ -1,54 +1,45 @@
 """
-M_02_ISFM_Prompt: Prompt-guided Industrial Signal Foundation Model
+M_02_ISFM_Prompt: Simplified Prompt-guided Industrial Signal Foundation Model
 
-This model implements the first-ever combination of system metadata as learnable prompts
-with contrastive learning for industrial fault diagnosis. It integrates the two-level
-prompt encoding system with existing PHM-Vibench backbone and task head architectures.
+This model implements a simplified version of prompt-guided industrial signal processing
+with HSE (Heterogeneous Signal Embedding) and lightweight system-specific learnable prompts.
 
 Key Features:
-- Two-level prompt encoding: System (Dataset_id + Domain_id) + Sample (Sample_rate)
-- Multi-strategy prompt-signal fusion (concatenation/attention/gating)
-- Two-stage training support (pretrain with prompts, finetune with frozen prompts)
+- Heterogeneous Signal Embedding with system prompts
+- Simple Dataset_id → learnable prompt mapping
+- Direct signal + prompt combination (add/concat)
+- Two-stage training support (pretrain/finetune)
 - Full backward compatibility with non-prompt modes
-- Integration with all existing PHM-Vibench components
+- Integration with existing PHM-Vibench components
 
-CRITICAL: This model does NOT include fault-level prompts since Label is the prediction target!
+Simplified from original complex design:
+- Removed complex prompt library and selector
+- Removed multi-level prompt encoding
+- Kept core HSE + prompt functionality
+- Lightweight and easy to understand
 
 Author: PHM-Vibench Team
-Date: 2025-01-06
+Date: 2025-01-23
 License: MIT
 """
 
 import torch
 import torch.nn as nn
-import numpy as np
-import os
-from typing import Optional, Dict, Any, Union, List, Tuple
-from src.utils.utils import get_num_classes
+from typing import Optional, Dict, Any, Union
 
 # Import existing PHM-Vibench components for reuse
 from src.model_factory.ISFM.embedding import *
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 
-# Import our new Prompt components
-from .components import (
-    SystemPromptEncoder,
-    PromptFusion,
-    PromptLibrary,
-    PromptLibraryOutput,
-    PromptInjector,
-    PromptSelector,
-    SelectionMode,
-)
-from .embedding.E_01_HSE_v2 import E_01_HSE_v2
+# Import simplified prompt components
+from .embedding.HSE_prompt import HSE_prompt
 
 
-# Define available components for the Prompt-guided ISFM
+# Define available components for the simplified Prompt-guided ISFM
 PromptEmbedding_dict = {
-    'E_01_HSE_v2': E_01_HSE_v2,                 # NEW: Prompt-guided HSE v2 (completely independent)
+    'HSE_prompt': HSE_prompt,                   # NEW: Simplified HSE with system prompts
     'E_01_HSE': E_01_HSE,                       # Fallback to original HSE
-    'E_02_HSE_v2': E_02_HSE_v2,                 # Alternative embedding
 }
 
 # Reuse existing backbones - they work with any embedding output
@@ -74,51 +65,47 @@ PromptTaskHead_dict = {
 
 class Model(nn.Module):
     """
-    Prompt-guided Industrial Signal Foundation Model (M_02_ISFM_Prompt).
-    
-    This model integrates system metadata as learnable prompt vectors with signal
-    processing for enhanced cross-system generalization in industrial fault diagnosis.
-    
-    Architecture:
-    1. Signal Embedding: Process raw signals into patch-based embeddings
-    2. Prompt Encoding: Convert system metadata to prompt vectors (2-level)
-    3. Prompt Fusion: Combine signal and prompt features using configurable strategies
-    4. Backbone Network: Process fused features through transformer/CNN architectures
-    5. Task Head: Generate task-specific outputs (classification/prediction/contrastive)
-    
-    Training Modes:
-    - Pretrain: Learn universal representations with prompt guidance and contrastive losses
-    - Finetune: Adapt to specific tasks with frozen prompt encoders
+    Simplified Prompt-guided Industrial Signal Foundation Model (M_02_ISFM_Prompt).
+
+    This model integrates lightweight system-specific learnable prompts with heterogeneous
+    signal embedding for enhanced cross-system generalization in industrial fault diagnosis.
+
+    Simplified Architecture:
+    1. HSE_prompt: Process heterogeneous signals with system prompts
+    2. Backbone Network: Process embeddings through transformer/CNN architectures
+    3. Task Head: Generate task-specific outputs (classification/prediction)
+
+    Key Simplifications:
+    - Removed complex prompt library and selector
+    - Simplified to Dataset_id → learnable prompt mapping
+    - Direct signal + prompt combination (add/concat)
+    - Lightweight and easy to understand
     """
     
     def __init__(self, args_m, metadata=None):
         """
-        Initialize M_02_ISFM_Prompt model.
-        
+        Initialize simplified M_02_ISFM_Prompt model.
+
         Args:
             args_m: Configuration object with model parameters
                 Required attributes:
-                - embedding: Embedding layer type (e.g., 'E_01_HSE_Prompt')
-                - backbone: Backbone network type (e.g., 'B_08_PatchTST') 
+                - embedding: Embedding layer type (e.g., 'HSE_prompt')
+                - backbone: Backbone network type (e.g., 'B_08_PatchTST')
                 - task_head: Task head type (e.g., 'H_01_Linear_cla')
-                
-                Optional prompt-specific attributes:
+
+                Optional prompt-related attributes:
                 - use_prompt: Enable prompt functionality (default: True)
-                - prompt_dim: Prompt vector dimension (default: 128)
-                - fusion_type: Fusion strategy ('attention'/'concat'/'gating', default: 'attention')
                 - training_stage: Training stage ('pretrain'/'finetune', default: 'pretrain')
-                - freeze_prompt: Freeze prompt parameters (default: False)
-                
+
             metadata: Dataset metadata accessor for system information lookup
         """
         super().__init__()
-        
+
         self.metadata = metadata
         self.args_m = args_m
-        
-        # Simplified configuration (following M_03_ISFM philosophy)
+
+        # Simplified configuration
         self.use_prompt = getattr(args_m, 'use_prompt', True)
-        self.use_prompt_library = getattr(args_m, 'use_prompt_library', False)  # Add missing attribute
         self.training_stage = getattr(args_m, 'training_stage', 'pretrain')
         self.freeze_prompt = getattr(args_m, 'freeze_prompt', False)
         
@@ -141,19 +128,9 @@ class Model(nn.Module):
         else:
             self.task_head = nn.Identity()
         
-        # Simplified: No complex prompt components (following M_03_ISFM philosophy)
-        self.prompt_library = None
-        self.prompt_injector = None
-        self.prompt_selector = None
-        self.prompt_encoder = None
-        self.prompt_fusion = None
-
-        self.last_prompt_output: Optional[PromptLibraryOutput] = None
-        self.last_prompt_weights: Optional[torch.Tensor] = None
-        self.last_prompt_logits: Optional[torch.Tensor] = None
-        self.last_prompt_regularization: Dict[str, torch.Tensor] = {}
+        # Simplified: No complex prompt components
         self.last_prompt_vector: Optional[torch.Tensor] = None
-        
+
         # Set training stage
         self.set_training_stage(self.training_stage)
     
@@ -185,107 +162,49 @@ class Model(nn.Module):
             stage = "finetune"
 
         self.training_stage = stage
-        
-        if self.use_prompt:
-            prompt_modules = []
-            if self.use_prompt_library:
-                prompt_modules.extend(
-                    module
-                    for module in [self.prompt_library, self.prompt_injector, self.prompt_selector]
-                    if module is not None
-                )
-            else:
-                prompt_modules.extend(
-                    module
-                    for module in [self.prompt_encoder, self.prompt_fusion]
-                    if module is not None
-                )
 
-            if stage == 'finetune' or self.freeze_prompt:
-                for module in prompt_modules:
-                    for param in module.parameters():
-                        param.requires_grad = False
-            else:
-                for module in prompt_modules:
-                    for param in module.parameters():
-                        param.requires_grad = True
+        # For simplified version, HSE_prompt handles its own prompt freezing
+        if hasattr(self.embedding, 'set_training_stage'):
+            self.embedding.set_training_stage(stage)
     
     def _embed(self, x: torch.Tensor, file_id: Optional[Any] = None) -> torch.Tensor:
         """
-        Signal embedding stage with optional prompt integration.
-        
+        Signal embedding stage with simplified prompt integration.
+
         Args:
             x: Input signal tensor (B, L, C)
             file_id: File identifier for metadata lookup
-            
+
         Returns:
             Embedded signal tensor (B, num_patches, signal_dim)
         """
-        if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
+        if self.args_m.embedding == 'HSE_prompt':
+            # NEW: Simplified HSE with system prompts
+            if file_id is not None and self.metadata is not None:
+                fs = self.metadata[file_id]['Sample_rate']
+                dataset_id = self.metadata[file_id]['Dataset_id']
+                dataset_ids = torch.tensor([dataset_id] * x.size(0), device=x.device)
+                signal_emb = self.embedding(x, fs, dataset_ids)
+            else:
+                # Fallback mode without metadata
+                fs = 1000.0
+                signal_emb = self.embedding(x, fs, dataset_ids=None)
+
+        elif self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
             # Traditional HSE embeddings need sampling frequency
             if file_id is not None and self.metadata is not None:
                 fs = self.metadata[file_id]['Sample_rate']
             else:
                 fs = 1000.0  # Default sampling frequency
-            
+
             signal_emb = self.embedding(x, fs)
-            
-        elif self.args_m.embedding == 'E_01_HSE_v2':
-            # NEW: Prompt-guided HSE v2 embedding with metadata
-            if file_id is not None and self.metadata is not None:
-                fs = self.metadata[file_id]['Sample_rate']
-                signal_emb = self.embedding(x, fs)  # Simple embedding
-            else:
-                # Fallback mode without metadata
-                fs = 1000.0
-                signal_emb = self.embedding(x, fs)
-                
+
         else:
             # Other embedding types
             signal_emb = self.embedding(x)
-        
-        return signal_emb
-    
-    def _encode_with_prompt(self, 
-                           signal_emb: torch.Tensor, 
-                           file_id: Optional[Any] = None) -> torch.Tensor:
-        """
-        Encode signal with prompt guidance.
-        
-        Args:
-            signal_emb: Signal embedding tensor (B, num_patches, signal_dim)
-            file_id: File identifier for metadata lookup
-            
-        Returns:
-            Prompt-guided signal encoding (B, num_patches, signal_dim)
-        """
-        if not self.use_prompt or file_id is None or self.metadata is None:
-            # No prompt guidance - process signal directly
-            return signal_emb
-        
-        try:
-            # Extract system metadata for prompt encoding
-            metadata_dict = SystemPromptEncoder.create_metadata_dict(
-                dataset_ids=[self.metadata[file_id]['Dataset_id']],
-                domain_ids=[self.metadata[file_id]['Domain_id']],
-                sample_rates=[float(self.metadata[file_id]['Sample_rate'])],
-                device=signal_emb.device
-            )
-            
-            # Encode system information to prompt
-            prompt_emb = self.prompt_encoder(metadata_dict)  # (1, prompt_dim)
-            
-            # Fuse signal and prompt features
-            fused_emb = self.prompt_fusion(signal_emb, prompt_emb)  # (B, num_patches, signal_dim)
-            
-            return fused_emb
-            
-        except Exception as e:
-            # Fallback gracefully to non-prompt processing
-            print(f"Warning: Prompt processing failed ({e}), using signal-only mode")
-            return signal_emb
 
-        
+        return signal_emb
+
     def _encode(self, x: torch.Tensor) -> torch.Tensor:
         """
         Backbone encoding stage.
@@ -336,91 +255,56 @@ class Model(nn.Module):
             else:
                 return x
     
-    def forward(self, 
-                x: torch.Tensor, 
-                file_id: Optional[Any] = None, 
-                task_id: Optional[str] = None, 
-                return_feature: bool = False,
-                return_prompt: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
+    def forward(self,
+                x: torch.Tensor,
+                file_id: Optional[Any] = None,
+                task_id: Optional[str] = None,
+                return_feature: bool = False) -> torch.Tensor:
         """
-        Forward pass through the complete M_02_ISFM_Prompt model.
-        
+        Simplified forward pass through M_02_ISFM_Prompt model.
+
         Args:
             x: Input signal tensor (B, L, C)
             file_id: File identifier for metadata lookup
             task_id: Task type ('classification', 'prediction', etc.)
             return_feature: Return intermediate features instead of final outputs
-            return_prompt: Return prompt vectors alongside outputs (for contrastive learning)
-            
+
         Returns:
-            If return_prompt=True: (model_output, prompt_vector)
-            Else: model_output
+            Model output tensor or (output, features) if return_feature=True
         """
         self.shape = x.shape  # Store for prediction tasks
-        
-        # Stage 1: Signal embedding 
-        # (E_01_HSE_v2 handles prompt integration internally when embedding='E_01_HSE_v2')
-        signal_emb = self._embed(x, file_id)
-        
-        prompt_guided_emb = signal_emb
-        encoded_features: Optional[torch.Tensor] = None
-        self.last_prompt_output = None
-        self.last_prompt_weights = None
-        self.last_prompt_logits = None
-        self.last_prompt_regularization = {}
-        self.last_prompt_vector = None
 
-        # Simplified processing
+        # Stage 1: Signal embedding with simplified prompt integration
+        signal_emb = self._embed(x, file_id)
+
+        # Stage 2: Backbone encoding
         encoded_features = self._encode(signal_emb)
 
-        feature_vector: Optional[torch.Tensor] = None
+        # Stage 3: Task-specific head
+        final_output = self._head(encoded_features, file_id, task_id, return_feature)
+
+        # Return based on requirements
         if return_feature:
             if encoded_features.ndim > 2:
                 feature_vector = encoded_features.mean(dim=1)
             else:
                 feature_vector = encoded_features
-
-        # Stage 4: Task-specific head
-        final_output = self._head(encoded_features, file_id, task_id, return_feature)
-
-        # Return results based on requirements
-        if return_prompt and self.use_prompt:
-            if self.use_prompt_library and self.last_prompt_vector is not None:
-                if return_feature:
-                    return final_output, self.last_prompt_vector, feature_vector
-                return final_output, self.last_prompt_vector
-            elif not self.use_prompt_library and file_id is not None and self.metadata is not None:
-                try:
-                    metadata_dict = SystemPromptEncoder.create_metadata_dict(
-                        dataset_ids=[self.metadata[file_id]['Dataset_id']],
-                        domain_ids=[self.metadata[file_id]['Domain_id']],
-                        sample_rates=[float(self.metadata[file_id]['Sample_rate'])],
-                        device=x.device
-                    )
-                    prompt_vector = self.prompt_encoder(metadata_dict)
-                    if return_feature:
-                        return final_output, prompt_vector, feature_vector
-                    return final_output, prompt_vector
-                except Exception:
-                    pass
-
-        if return_feature:
             return final_output, feature_vector
 
         return final_output
     
     def get_model_info(self) -> Dict[str, Any]:
         """
-        Get comprehensive model information.
-        
+        Get simplified model information.
+
         Returns:
             Dictionary with model configuration and statistics
         """
         total_params = sum(p.numel() for p in self.parameters())
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        
+
         info = {
-            'model_name': 'M_02_ISFM_Prompt',
+            'model_name': 'M_02_ISFM_Prompt_Simplified',
             'use_prompt': self.use_prompt,
             'training_stage': self.training_stage,
             'total_parameters': total_params,
@@ -432,40 +316,17 @@ class Model(nn.Module):
                 'task_head': getattr(self.args_m, 'task_head', 'None')
             }
         }
-        
-        if self.use_prompt:
-            if self.use_prompt_library:
-                prompt_params = 0
-                if self.prompt_library is not None:
-                    prompt_params += sum(p.numel() for p in self.prompt_library.parameters())
-                if self.prompt_injector is not None:
-                    prompt_params += sum(p.numel() for p in self.prompt_injector.parameters())
-                if self.prompt_selector is not None:
-                    prompt_params += sum(p.numel() for p in self.prompt_selector.parameters())
-                info.update({
-                    'prompt_config': {
-                        'prompt_dim': self.prompt_dim,
-                        'library_type': self.prompt_library_type,
-                        'num_candidates': self.prompt_num_candidates,
-                        'injection_mode': self.prompt_injection_mode,
-                        'selection_mode': self.prompt_selection_mode,
-                        'prompt_parameters': prompt_params,
-                        'freeze_prompt': self.freeze_prompt
-                    }
-                })
-            else:
-                prompt_params = sum(p.numel() for p in self.prompt_encoder.parameters()) + \
-                               sum(p.numel() for p in self.prompt_fusion.parameters())
-                
-                info.update({
-                    'prompt_config': {
-                        'prompt_dim': self.prompt_dim,
-                        'fusion_type': self.fusion_type,
-                        'prompt_parameters': prompt_params,
-                        'freeze_prompt': self.freeze_prompt
-                    }
-                })
-        
+
+        # Add embedding-specific info for HSE_prompt
+        if self.args_m.embedding == 'HSE_prompt' and hasattr(self.embedding, 'get_model_info'):
+            embedding_info = self.embedding.get_model_info()
+            info['prompt_config'] = {
+                'prompt_dim': embedding_info.get('prompt_dim', 'unknown'),
+                'max_dataset_ids': embedding_info.get('max_dataset_ids', 'unknown'),
+                'prompt_combination': embedding_info.get('prompt_combination', 'unknown'),
+                'prompt_parameters': embedding_info.get('prompt_parameters', 0)
+            }
+
         return info
 
 

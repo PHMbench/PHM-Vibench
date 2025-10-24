@@ -1,41 +1,32 @@
 """
-ISFM_Prompt Embedding Module
+Simplified ISFM_Prompt Embedding Module
 
-This module contains embedding layers specifically designed for Prompt-guided
+This module contains simplified embedding layers for Prompt-guided
 Industrial Signal Foundation Model (ISFM) architecture.
 
-The embedding layers integrate system metadata as learnable prompts with
-signal processing for enhanced cross-system fault diagnosis generalization.
+The embedding layers combine heterogeneous signal processing with lightweight
+system-specific learnable prompts for enhanced cross-system generalization.
 
 Key Features:
-- Complete independence from existing ISFM embeddings (zero dependencies)
-- Two-level prompt encoding: System + Sample metadata integration
-- Seamless fallback to signal-only processing when metadata unavailable
+- Heterogeneous Signal Embedding (HSE) with system prompts
+- Simple Dataset_id → learnable prompt mapping
+- Direct signal + prompt combination (add/concat)
+- Lightweight and easy to understand
 
 Components:
-- E_01_HSE_v2: Completely new Prompt-guided Hierarchical Signal Embedding
-  
-CRITICAL: E_01_HSE_v2 has ZERO dependencies on existing E_01_HSE.py to ensure
-complete model isolation and avoid any code mixing conflicts.
+- HSE_prompt: Simplified HSE with system prompts
 
-Author: PHM-Vibench Team  
-Date: 2025-01-06
+Author: PHM-Vibench Team
+Date: 2025-01-23
 License: MIT
 """
 
-# Import prompt-guided embedding components
-# Note: Using lazy import to handle cases where components are not yet implemented
-def _get_prompt_embeddings():
-    """Lazy import for prompt embeddings to avoid dependency issues."""
-    embeddings = {}
-    try:
-        from .E_01_HSE_v2 import E_01_HSE_v2
-        embeddings['E_01_HSE_v2'] = E_01_HSE_v2
-    except ImportError:
-        pass  # Component not yet implemented
-    return embeddings
+# Import simplified prompt embedding components
+from .HSE_prompt import HSE_prompt
 
 # Component registry for factory pattern
-PROMPT_EMBEDDINGS = _get_prompt_embeddings()
+PROMPT_EMBEDDINGS = {
+    'HSE_prompt': HSE_prompt,
+}
 
-__all__ = list(PROMPT_EMBEDDINGS.keys()) if PROMPT_EMBEDDINGS else []
+__all__ = ['HSE_prompt']

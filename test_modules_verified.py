@@ -64,16 +64,8 @@ class VerifiedModuleTester:
                 seq_len=1024
             )
 
-            # Mock metadata
-            class MockMetadata:
-                def __getitem__(self, idx):
-                    return {
-                        'Sample_rate': 12000 if idx in [0, 'sample_001'] else 25600,
-                        'Dataset_id': '0' if idx in [0, 'sample_001'] else '1',
-                        'Length': 1024 if idx in [0, 'sample_001'] else 2048,
-                        'Channel': 1 if idx in [0, 'sample_001'] else 2,
-                        'Label': 0 if idx in [0, 'sample_001'] else 1
-                    }
+            # 使用统一的MockMetadata
+            from test.MockMetadata import MockMetadata
 
             # 初始化模型
             model = Model(config, MockMetadata()).to(self.device)
@@ -105,7 +97,7 @@ class VerifiedModuleTester:
             from src.model_factory.ISFM_Prompt.M_02_ISFM_Prompt import Model
 
             config = SimpleNamespace(
-                embedding='E_01_HSE_v2',
+                embedding='E_01_HSE',
                 backbone='B_01_basic_transformer',
                 task_head='H_01_Linear_cla',
                 d_model=128,
@@ -140,11 +132,11 @@ class VerifiedModuleTester:
             params = sum(p.numel() for p in model.parameters())
             print(f"✓ 模型初始化: {params:,}参数")
 
-            # 验证prompt组件
-            assert hasattr(model, 'prompt_library')
-            assert hasattr(model, 'prompt_injector')
-            assert hasattr(model, 'prompt_selector')
-            print("✓ Prompt组件验证")
+            # 验证简化prompt组件
+            assert hasattr(model, 'last_prompt_vector')
+            assert hasattr(model, 'set_training_stage')
+            assert hasattr(model, 'use_prompt')
+            print("✓ 简化Prompt组件验证")
 
             # 前向传播
             x = torch.randn(4, 1024, 1, device=self.device)

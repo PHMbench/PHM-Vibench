@@ -1,0 +1,405 @@
+# 论文实验第4部分：消融研究
+# 对应论文表4：HSE-Prompt组件消融研究
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "Paper_Table4_Ablation_Study"
+  seed: 42
+  output_dir: "results/paper/table4_ablation"
+  notes: "论文表4：HSE-Prompt消融研究"
+  iterations: 5  # 消融实验需要多次重复
+
+# 数据配置 - 标准跨设备设置
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: true
+  window_size: 4096
+  stride: 64
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - 消融研究（根据ablation_config动态调整）
+model:
+  name: "M_02_ISFM_Prompt_Ablation"
+  type: "M_02_ISFM_Prompt"
+
+  # HSE嵌入配置 - 可通过消融关闭
+  embedding: "HSE_prompt"  # 将通过消融配置修改
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+
+  # 提示配置 - 可通过消融关闭
+  use_prompt: true  # 将通过消融配置修改
+  prompt_dim: 64
+  max_dataset_ids: 30
+  prompt_combination: "add"
+
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"
+
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+
+  # 训练阶段
+  training_stage: "finetune"
+  freeze_prompt: false
+
+# 任务配置 - 标准跨设备分类
+task:
+  name: "ablation_study"
+  type: "CDDG"
+  task_type: "classification"
+
+  # 跨设备设置
+  target_domain_num: 1
+  # target_system_id: [1]  # 将在实验循环中设置
+  # source_domain_id: [5, 6, 13, 14, 19]
+
+  # 损失函数和评估指标
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+
+  # 训练超参数
+  optimizer: "adamw"
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  batch_size: 32
+  epochs: 100
+
+  # 学习率调度
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # 早停
+  early_stopping: true
+  patience: 15
+  monitor: "val_accuracy"
+  mode: "max"
+
+# 训练器配置
+trainer:
+  name: "T_01_Lightning"
+
+  # 训练参数
+  epochs: 100
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # 早停配置
+  early_stopping:
+    patience: 15
+    monitor: "val_accuracy"
+    mode: "max"
+
+  # 检查点
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 3
+    filename: "ablation-{epoch:02d}-{val_accuracy:.3f}"
+
+  # 日志记录
+  logger: "tensorboard"
+  log_every_n_steps: 10
+
+  # 硬件配置
+  accelerator: "auto"
+  precision: 16
+  devices: 1
+
+# 输出配置
+output:
+  save_dir: "save/paper/table4_ablation"
+  log_dir: "logs/paper/table4_ablation"
+  checkpoint_dir: "checkpoints/paper/table4_ablation"
+  results_dir: "results/paper/table4_ablation"
+
+# 实验配置
+experiment:
+  name: "table4_ablation_study"
+  description: "论文表4：HSE-Prompt消融研究"
+  tags: ["paper", "table4", "ablation", "hse_prompt"]
+
+  # 消融研究配置
+  ablation_studies:
+    # 1. 完整模型（基线）
+    full_model:
+      name: "完整HSE-Prompt"
+      description: "包含所有组件的完整模型"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 64
+      fusion_strategy: "add"
+      pretraining: true
+
+    # 2. 无预训练
+    no_pretraining:
+      name: "无预训练"
+      description: "不进行预训练，直接端到端训练"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 64
+      fusion_strategy: "add"
+      pretraining: false
+
+    # 3. 无提示机制
+    no_prompt:
+      name: "无提示机制"
+      description: "移除提示机制，仅使用HSE嵌入"
+      use_hse: true
+      use_prompt: false
+      use_shared_embedding: false
+      prompt_dim: 0
+      fusion_strategy: "none"
+      pretraining: true
+
+    # 4. 无HSE嵌入
+    no_hse:
+      name: "无HSE嵌入"
+      description: "使用标准嵌入代替HSE"
+      use_hse: false
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 64
+      fusion_strategy: "add"
+      pretraining: true
+      standard_embedding: "E_01_HTFE"
+
+    # 5. 无共享嵌入
+    no_shared_embedding:
+      name: "无共享嵌入"
+      description: "每个域使用独立的嵌入"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: false
+      prompt_dim: 64
+      fusion_strategy: "add"
+      pretraining: true
+      domain_specific_embeddings: true
+
+    # 6. 小提示维度
+    small_prompt:
+      name: "小提示维度"
+      description: "使用较小的提示维度"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 16
+      fusion_strategy: "add"
+      pretraining: true
+
+    # 7. 大提示维度
+    large_prompt:
+      name: "大提示维度"
+      description: "使用较大的提示维度"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 128
+      fusion_strategy: "add"
+      pretraining: true
+
+    # 8. 拼接融合
+    concat_fusion:
+      name: "拼接融合"
+      description: "使用拼接而非加法融合"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 64
+      fusion_strategy: "concat"
+      pretraining: true
+
+    # 9. 端到端训练
+    end_to_end:
+      name: "端到端训练"
+      description: "不使用两阶段训练，直接端到端训练"
+      use_hse: true
+      use_prompt: true
+      use_shared_embedding: true
+      prompt_dim: 64
+      fusion_strategy: "add"
+      pretraining: false
+      training_strategy: "end_to_end"
+
+    # 10. 最小基线
+    minimal_baseline:
+      name: "最小基线"
+      description: "仅使用骨干网络和分类头"
+      use_hse: false
+      use_prompt: false
+      use_shared_embedding: false
+      prompt_dim: 0
+      fusion_strategy: "none"
+      pretraining: false
+
+  # 评估指标
+  metrics: ["Accuracy", "F1-Score", "Performance_Drop", "Component_Contribution"]
+
+  # 统计分析
+  statistics:
+    num_seeds: 5
+    confidence_level: 0.95
+    report_mean_std: true
+    statistical_test: "wilcoxon"
+
+# 目标域配置
+target_domain_configs:
+  CWRU:
+    target_system_id: [1]
+    source_domain_id: [5, 6, 13, 14, 19]
+    num_classes: 10
+
+  Ottawa-19:
+    target_system_id: [5]
+    source_domain_id: [1, 6, 13, 14, 19]
+    num_classes: 5
+
+  Ottawa-23:
+    target_system_id: [6]
+    source_domain_id: [1, 5, 13, 14, 19]
+    num_classes: 3
+
+  THU-2:
+    target_system_id: [13]
+    source_domain_id: [1, 5, 6, 14, 19]
+    num_classes: 8
+
+  HUST:
+    target_system_id: [19]
+    source_domain_id: [1, 5, 6, 13, 14]
+    num_classes: 7
+
+# 消融实验矩阵
+ablation_matrix:
+  # 总实验数量：10(消融配置) × 5(目标域) × 5(随机种子) = 250个实验
+
+  # 性能分析
+  performance_analysis:
+    baseline_method: "full_model"
+    comparison_metrics:
+      - "performance_drop": "相对于完整模型的性能下降"
+      - "component_contribution": "各组件的贡献度"
+      - "efficiency_gain": "计算效率提升"
+
+  # 组件重要性排序
+  component_importance:
+    ranking_method: "performance_impact"
+    metrics:
+      - accuracy_drop
+      - f1_drop
+      - robustness_change
+
+# 消融实验执行配置
+execution_config:
+  # 并行执行配置
+  parallel_execution: true
+  max_parallel_jobs: 4
+
+  # 资源配置
+  resource_allocation:
+    gpu_memory_per_job: "4GB"
+    cpu_cores_per_job: 2
+    max_execution_time: "2h"
+
+  # 结果聚合
+  result_aggregation:
+    aggregate_across_domains: true
+    compute_average_performance: true
+    generate_ranking: true
+
+# 性能阈值和分析
+performance_analysis:
+  # 性能下降阈值
+  significant_drop_threshold: 5.0  # 性能下降超过5%认为显著
+
+  # 组件重要性分类
+  importance_categories:
+    critical: ">10% performance drop"
+    important: "5-10% performance drop"
+    moderate: "1-5% performance drop"
+    minimal: "<1% performance drop"
+
+  # 效率分析
+  efficiency_metrics:
+    - training_time
+    - memory_usage
+    - inference_time
+    - parameter_count
+
+# 预期结果假设
+expected_results:
+  # 组件重要性预期
+  component_importance_expectations:
+    hse_embedding: "critical"
+    prompt_mechanism: "important"
+    shared_embedding: "important"
+    pretraining: "important"
+    prompt_dimension: "moderate"
+    fusion_strategy: "moderate"
+
+  # 性能影响预期
+  performance_impact_expectations:
+    no_pretraining: "5-10% performance drop"
+    no_prompt: "10-15% performance drop"
+    no_hse: "15-20% performance drop"
+    no_shared_embedding: "5-8% performance drop"
+
+# 可重现性配置
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# 实验说明
+experiment_notes: |
+  ## 消融研究实验说明
+
+  ### 实验目标
+  系统性地评估HSE-Prompt各个组件对整体性能的贡献，验证设计选择的合理性
+
+  ### 消融组件
+  1. **HSE嵌入**：异构信号嵌入的核心组件
+  2. **提示机制**：系统特定可学习提示
+  3. **共享嵌入**：跨系统的嵌入共享机制
+  4. **预训练策略**：两阶段训练的有效性
+  5. **提示维度**：提示大小的影响
+  6. **融合策略**：信号与提示的融合方式
+
+  ### 实验设计
+  1. **对照组**：完整HSE-Prompt模型
+  2. **消融组**：逐个移除或修改组件
+  3. **评估指标**：性能下降、组件贡献度
+  4. **统计分析**：多次重复，确保显著性
+
+  ### 预期发现
+  1. **HSE嵌入**是最关键的组件，移除会导致最大性能下降
+  2. **提示机制**对跨域泛化有重要贡献
+  3. **预训练**显著提升少样本学习性能
+  4. **共享嵌入**比域特定嵌入更有效
+  5. **提示维度**存在最优值，过小或过大都会影响性能
+
+  ### 分析维度
+  1. **性能分析**：各组件对准确率的影响
+  2. **效率分析**：组件对计算开销的影响
+  3. **鲁棒性分析**：组件对噪声鲁棒性的影响
+  4. **泛化分析**：组件对跨域泛化的影响
+
+  ### 实际意义
+  消融研究验证了HSE-Prompt设计的合理性，为后续改进提供了指导，也帮助理解各组件的作用机制。

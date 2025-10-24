@@ -26,6 +26,8 @@ from typing import Dict, Any, Optional
 
 # PHM-Vibench framework imports
 from src.configs.config_utils import load_config, path_name, transfer_namespace
+from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
+from src.utils.config.pipeline_adapters import adapt_p04
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -49,7 +51,16 @@ def pipeline(args: argparse.Namespace) -> Dict[str, Any]:
         Dict containing experiment results
     """
 
-    # 1. Load configuration
+    # Unified orchestrator fast-path (adapter). Fallback to legacy below on failure.
+    try:
+        unified = adapt_p04(args.config_path, getattr(args, 'local_config', None))
+        orchestrator = TwoStageOrchestrator(unified)
+        summary = orchestrator.run_complete()
+        return {"results": summary, "unified": True}
+    except Exception as e:
+        print(f"[WARN] Unified orchestrator for Pipeline_04 failed, fallback to legacy: {e}")
+
+    # 1. Load configuration (legacy)
     config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
 
