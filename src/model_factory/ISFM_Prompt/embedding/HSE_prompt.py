@@ -123,6 +123,33 @@ class HSE_prompt(nn.Module):
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
 
+    def set_training_stage(self, stage: str):
+        """
+        Set training stage and handle prompt freezing.
+
+        Args:
+            stage: Training stage ('pretraining' or 'finetuning')
+        """
+        stage = stage.lower()
+        if stage in {"pretraining", "pretrain"}:
+            stage = "pretrain"
+        elif stage in {"finetuning", "finetune"}:
+            stage = "finetune"
+
+        self.training_stage = stage
+
+        if self.use_prompt and hasattr(self, 'prompt_encoder'):
+            if stage == 'finetuning' and self.freeze_prompts_in_finetuning:
+                # Freeze prompt encoder parameters during finetuning
+                for param in self.prompt_encoder.parameters():
+                    param.requires_grad = False
+                print(f"✓ Prompt encoder frozen for finetuning stage")
+            else:
+                # Unfreeze all parameters
+                for param in self.prompt_encoder.parameters():
+                    param.requires_grad = True
+                print(f"✓ Prompt encoder active for {stage} stage")
+
     def forward(self,
                 x: torch.Tensor,
                 fs: Union[torch.Tensor, float],
