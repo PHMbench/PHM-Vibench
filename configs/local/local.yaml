@@ -1,0 +1,13 @@
+# Minimal machine-specific override. Copy to configs/local/local.yaml or <hostname>.yaml
+# and adjust the paths below for your device.
+
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_11.xlsx"
+
+# Optional per-host trainer/environment overrides
+# trainer:
+#   accelerator: cpu
+# environment:
+#   VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+
