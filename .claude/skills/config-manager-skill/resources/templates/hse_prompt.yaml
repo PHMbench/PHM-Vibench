@@ -1,0 +1,215 @@
+# PHM-Vibench HSE-Prompt 实验配置模板
+# 专门用于HSE-Prompt跨域泛化和少样本学习实验
+
+# 数据配置
+data:
+  # 标准跨域数据集系统ID
+  # 1: CWRU, 2: XJTU, 6: THU, 5: Ottawa, 12: JNU
+  target_system_id: [1, 2, 6, 5, 12]
+
+  # 跨域实验设置
+  cross_domain:
+    enabled: true
+    source_domains: [1, 2]      # CWRU, XJTU as source
+    target_domains: [6, 5, 12]  # THU, Ottawa, JNU as target
+
+  # 数据预处理
+  preprocessing:
+    normalize: true
+    standardize: true
+    segment_length: 2048
+    overlap: 0.75
+    window_function: "hann"
+
+  # HSE特定预处理
+  hse_preprocessing:
+    wavelet_decomposition: true
+    wavelet_type: "db4"
+    decomposition_level: 3
+    hilbert_transform: true
+
+# 模型配置
+model:
+  # ISFM with Prompt模型
+  name: "M_02_ISFM_Prompt"
+
+  # HSE嵌入层 v2版本 (ISFM_Prompt专用)
+  embedding: "E_01_HSE_v2"
+
+  # 推荐骨干网络
+  backbone: "B_08_PatchTST"
+  # 可选骨干网络: B_04_Dlinear, B_06_TimesNet, B_09_FNO
+
+  # 距离分类头 (适用于对比学习)
+  task_head: "H_02_distance_cla"
+
+  # 模型参数
+  d_model: 512
+  n_layers: 6
+  n_heads: 8
+  dropout: 0.1
+
+  # Prompt配置
+  prompt:
+    num_prompts: 10
+    prompt_length: 16
+    prompt_dropout: 0.1
+    learn_prompts: true
+
+  # HSE配置
+  hse_config:
+    frequency_bands: [0, 100, 500, 1000, 2000]  # Hz
+    multi_scale: true
+    attention_weights: true
+
+# 任务配置
+task:
+  # HSE对比学习任务
+  name: "hse_contrastive"
+  type: "classification"
+
+  # 训练参数 (针对HSE优化)
+  lr: 0.001
+  batch_size: 64
+  max_epochs: 100
+  warmup_epochs: 10
+
+  # 对比学习参数
+  contrastive:
+    temperature: 0.1
+    margin: 0.5
+    contrastive_loss_weight: 0.7
+    classification_loss_weight: 0.3
+
+  # 优化器配置
+  optimizer:
+    type: "AdamW"
+    weight_decay: 0.01
+    betas: [0.9, 0.999]
+
+  # 学习率调度器 (余弦退火)
+  scheduler:
+    type: "CosineAnnealingLR"
+    T_max: 100
+    eta_min: 0.00001
+
+  # 性能目标
+  performance_targets:
+    cross_domain_accuracy: 0.928    # 92.8% 跨域准确率目标
+    few_shot_5shot_accuracy: 0.876  # 87.6% 5-shot准确率目标
+
+# 训练器配置
+trainer:
+  name: "hse_trainer"
+
+  # 硬件配置
+  gpu_ids: [0]
+  accelerator: "gpu"
+  precision: 16
+
+  # 训练策略
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 2
+
+  # 验证设置
+  check_val_every_n_epoch: 5
+  val_check_interval: 0.5
+
+  # 早停设置 (针对跨域性能)
+  early_stopping:
+    monitor: "val_cross_domain_accuracy"
+    patience: 30
+    mode: "max"
+    min_delta: 0.001
+
+  # 模型保存
+  save_top_k: 5
+  save_last: true
+
+# 小样本学习配置 (可选)
+few_shot:
+  enabled: true
+
+  # Episode配置
+  episode_config:
+    n_way: 5           # 5-way分类
+    k_shot: [1, 3, 5]  # 1-shot, 3-shot, 5-shot
+    n_query: 15        # 查询样本数量
+    n_episodes: 100    # Episode数量
+
+  # 少样本学习策略
+  strategy: "meta_learning"  # meta_learning | metric_learning | fine_tuning
+
+  # 元学习参数
+  meta_learning:
+    inner_lr: 0.01
+    inner_steps: 5
+    meta_lr: 0.001
+
+# 评估配置
+evaluation:
+  # 评估指标
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "auc"
+    - "confusion_matrix"
+
+  # 跨域评估
+  cross_domain_evaluation:
+    enabled: true
+    leave_one_domain_out: true
+    report_domain_wise_results: true
+
+  # 小样本评估
+  few_shot_evaluation:
+    enabled: true
+    multiple_runs: 10  # 多次运行取平均
+    confidence_intervals: true
+
+# 输出配置
+save:
+  save_dir: "save"
+  experiment_name: "hse_prompt_experiment"
+
+  # 保存配置
+  save_top_k: 5
+  monitor: "val_cross_domain_accuracy"
+  mode: "max"
+
+  # 结果保存
+  save_predictions: true
+  save_features: true
+  save_attention_weights: true
+
+# 日志配置
+logging:
+  # 使用WandB
+  wandb:
+    enabled: true
+    project: "PHM-Vibench-HSE-Prompt"
+    tags: ["HSE-Prompt", "cross_domain", "few_shot"]
+
+  # 日志级别
+  log_level: "INFO"
+
+  # 日志频率
+  log_every_n_steps: 50
+
+# 可视化配置
+visualization:
+  # 启用可视化
+  enabled: true
+
+  # 可视化内容
+  plots:
+    - "training_curves"
+    - "confusion_matrix"
+    - "domain_performance"
+    - "attention_weights"
+    - "feature_distribution"
+
+  # 保存频率
+  plot_frequency: 10

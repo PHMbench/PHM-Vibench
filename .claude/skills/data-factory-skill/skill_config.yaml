@@ -1,0 +1,347 @@
+# PHM-Vibench Data Factory Skill 配置文件
+
+skill_info:
+  name: "data-factory-skill"
+  version: "1.0.0"
+  description: "PHM-Vibench数据处理核心Skill，支持30+工业数据集管理"
+  author: "PHM-Vibench Team"
+  created_date: "2025-01-13"
+
+# 功能模块配置
+modules:
+  dataset_loader:
+    enabled: true
+    parallel_loading: true
+    cache_enabled: true
+    memory_limit: "8GB"
+
+  modelscope_integration:
+    enabled: true
+    auto_update: false
+    cache_dir: "./data/modelscope"
+    offline_mode: true
+
+  data_preprocessing:
+    enabled: true
+    batch_processing: true
+    gpu_acceleration: false
+
+  cross_domain_manager:
+    enabled: true
+    auto_alignment: true
+    label_mapping: "standard"
+
+  few_shot_generator:
+    enabled: true
+    stratified_sampling: true
+    balance_classes: true
+
+# 支持的数据集
+supported_datasets:
+  # 轴承故障数据集
+  bearing_datasets:
+    - system_id: 1
+      name: "CWRU"
+      full_name: "Case Western Reserve University Bearing Data"
+      description: "最常用的轴承故障诊断数据集"
+      sampling_rate: 12000
+      fault_types: ["Normal", "IR007", "IR014", "IR021", "OR007", "OR014", "OR021", "B007", "B014", "B021"]
+      load_conditions: [0, 1, 2, 3]  # HP: 0, 1, 2, 3
+
+    - system_id: 2
+      name: "XJTU"
+      full_name: "Xi'an Jiaotong University Bearing Data"
+      description: "西安交通大学轴承寿命数据集"
+      sampling_rate: 25600
+      fault_types: ["Normal", "InnerRace", "OuterRace", "Cage", "Ball"]
+      operating_conditions: ["normal", "accelerated"]
+
+    - system_id: 5
+      name: "Ottawa"
+      full_name: "University of Ottawa Bearing Data"
+      description: "渥太华大学轴承故障数据集"
+      sampling_rate: 200000
+      fault_types: ["Normal", "Inner", "Outer", "Ball"]
+      speed_ranges: [1800, 2100, 2400]  # RPM
+
+    - system_id: 6
+      name: "THU"
+      full_name: "Tsinghua University Bearing Data"
+      description: "清华大学轴承故障诊断数据集"
+      sampling_rate: 20480
+      fault_types: ["Healthy", "Inner", "Outer", "Ball"]
+      load_types: ["light", "medium", "heavy"]
+
+    - system_id: 12
+      name: "JNU"
+      full_name: "Jinan University Bearing Data"
+      description: "暨南大学轴承故障数据集"
+      sampling_rate: 10240
+      fault_types: ["Normal", "Inner", "Outer", "Ball", "Combined"]
+
+  # 齿轮故障数据集
+  gear_datasets:
+    - system_id: 7
+      name: "HUST"
+      full_name: "Huazhong University of Science and Technology Gear Data"
+      description: "华中科技大学齿轮故障数据集"
+      sampling_rate: 12000
+      fault_types: ["Normal", "Chipped", "Missing", "Cracked", "Surface"]
+
+    - system_id: 8
+      name: "SEU"
+      full_name: "Southeast University Gear Data"
+      description: "东南大学齿轮故障数据集"
+      sampling_rate: 1024
+      fault_types: ["Healthy", "Chipped", "Missing", "Crack"]
+
+  # 其他工业数据集
+  other_datasets:
+    - system_id: 3
+      name: "FEMTO"
+      full_name: "FEMTO-ST Bearing Data"
+      description: "FEMTO-ST预测性维护数据集"
+      sampling_rate: 25600
+      fault_types: ["Normal", "Inner", "Outer", "Ball"]
+
+    - system_id: 4
+      name: "MFPT"
+      full_name: "Mechanical Failure Prevention Technology Society"
+      description: "机械故障预防技术学会数据集"
+      sampling_rate: 97656
+      fault_types: ["Normal", "Inner", "Outer", "Ball"]
+
+# 跨域配置
+cross_domain_config:
+  # 标准跨域组合
+  standard_combinations:
+    - name: "CWRU_to_THU"
+      source: [1]
+      target: [6]
+      difficulty: "medium"
+
+    - name: "CWRU_to_Ottawa"
+      source: [1]
+      target: [5]
+      difficulty: "hard"
+
+    - name: "Multi_Source_Cross_Domain"
+      source: [1, 2, 6]
+      target: [5, 12]
+      difficulty: "very_hard"
+
+  # 域适配策略
+  adaptation_strategies:
+    - "correlation_alignment"
+    - "mmd_matching"
+    - "adversarial_alignment"
+    - "importance_weighting"
+
+  # 标签映射标准
+  label_standards:
+    "simple": {
+      "Normal": 0,
+      "Fault": 1
+    }
+    "detailed": {
+      "Normal": 0,
+      "Inner_Race": 1,
+      "Outer_Race": 2,
+      "Ball_Fault": 3,
+      "Cage_Fault": 4
+    }
+    "component_based": {
+      "Normal": 0,
+      "Inner": 1,
+      "Outer": 2,
+      "Ball": 3,
+      "Combined": 4
+    }
+
+# 数据预处理配置
+preprocessing_config:
+  # 信号预处理
+  signal_processing:
+    normalization:
+      method: "z_score"  # z_score, min_max, robust
+      per_channel: true
+
+    filtering:
+      enabled: true
+      filter_type: "bandpass"
+      low_cutoff: 1.0    # Hz
+      high_cutoff: 5000  # Hz
+      filter_order: 4
+
+    segmentation:
+      enabled: true
+      window_length: 2048
+      overlap_ratio: 0.75
+      window_function: "hann"  # hann, hamming, blackman
+
+  # 特征提取
+  feature_extraction:
+    statistical_features:
+      enabled: true
+      features: ["mean", "std", "skew", "kurt", "rms", "peak", "crest", "clearance"]
+
+    frequency_features:
+      enabled: true
+      fft_bins: 512
+      frequency_bands: [0, 100, 500, 1000, 2000, 5000]
+
+    time_frequency_features:
+      enabled: true
+      wavelet_type: "db4"
+      decomposition_levels: 3
+      cwt_scales: [1, 2, 4, 8, 16, 32]
+
+  # 数据增强
+  data_augmentation:
+    enabled: false
+    methods:
+      - name: "add_noise"
+        parameters: {noise_factor: 0.05}
+      - name: "time_shift"
+        parameters: {max_shift: 0.1}
+      - name: "amplitude_scale"
+        parameters: {scale_range: [0.8, 1.2]}
+      - name: "time_stretch"
+        parameters: {stretch_range: [0.9, 1.1]}
+
+# 小样本学习配置
+few_shot_config:
+  # Episode配置
+  episode_config:
+    n_way: 5               # N-way分类
+    k_shot: [1, 3, 5, 10] # K-shot设置
+    n_query: 15            # 查询样本数量
+    n_episodes: 1000       # Episode数量
+
+  # 采样策略
+  sampling_strategy:
+    method: "stratified"   # stratified, random, balanced
+    ensure_balance: true
+    seed: 42
+
+  # 数据管理
+  data_management:
+    cache_episodes: true
+    cache_dir: "./cache/episodes"
+    regenerate_on_change: true
+
+# ModelScope集成配置
+modelscope_config:
+  # 数据集配置
+  dataset_config:
+    base_url: "https://www.modelscope.cn"
+    api_timeout: 300  # seconds
+
+  # 缓存配置
+  cache_config:
+    enabled: true
+    base_dir: "./data/modelscope"
+    max_cache_size: "100GB"
+    cleanup_policy: "lru"  # lru, fifo, size_based
+
+  # 下载配置
+  download_config:
+    parallel_downloads: 4
+    chunk_size: "8MB"
+    resume_download: true
+    verify_checksum: true
+
+# 性能优化配置
+performance_config:
+  # 内存管理
+  memory_config:
+    max_memory_usage: "8GB"
+    enable_memory_mapping: true
+    garbage_collection_threshold: 0.8
+
+  # 并行处理
+  parallel_config:
+    num_workers: 4
+    process_based: true
+    chunk_size: 1000
+
+  # I/O优化
+  io_config:
+    use_h5_format: true
+    compression: "gzip"
+    compression_level: 6
+    prefetch_buffer_size: "100MB"
+
+# 数据验证配置
+validation_config:
+  # 数据质量检查
+  quality_checks:
+    check_missing_values: true
+    check_outliers: true
+    check_distribution: true
+    check_signal_quality: true
+
+  # 跨域验证
+  cross_domain_checks:
+    check_label_consistency: true
+    check_feature_alignment: true
+    check_distribution_similarity: true
+
+  # 小样本验证
+  few_shot_checks:
+    check_episode_balance: true
+    check_sample_diversity: true
+    check_label_distribution: true
+
+# 错误处理配置
+error_handling:
+  # 数据加载错误
+  data_loading_errors:
+    retry_attempts: 3
+    retry_delay: 1  # seconds
+    fallback_methods: ["alternative_loader", "synthetic_data"]
+
+  # 内存错误
+  memory_errors:
+    enable_swap: true
+    reduce_batch_size: true
+    fallback_to_streaming: true
+
+  # 网络错误 (ModelScope)
+  network_errors:
+    enable_offline_mode: true
+    use_local_cache: true
+    retry_with_backoff: true
+
+# 日志配置
+logging_config:
+  level: "INFO"
+  log_file: "./logs/data_factory.log"
+  max_file_size: "100MB"
+  backup_count: 5
+
+  # 性能监控
+  performance_monitoring:
+    enabled: true
+    log_interval: 100  # samples
+    track_memory: true
+    track_timing: true
+
+# 输出配置
+output_config:
+  # 数据输出格式
+  output_formats:
+    primary: "h5"
+    secondary: ["numpy", "torch"]
+
+  # 元数据输出
+  metadata_output:
+    format: "json"
+    include_statistics: true
+    include_preprocessing_history: true
+
+  # 报告生成
+  report_generation:
+    enabled: true
+    formats: ["html", "pdf"]
+    include_visualizations: true
