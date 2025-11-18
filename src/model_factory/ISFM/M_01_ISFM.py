@@ -1,7 +1,7 @@
 # from .backbone import *
 # from .task_head import *
 from src.model_factory.ISFM.embedding import *
-from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
+from src.model_factory.ISFM.embedding import E_03_Patch
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 import torch.nn as nn
@@ -11,12 +11,12 @@ import torch
 from src.utils.utils import get_num_classes
 
 Embedding_dict = {
-
     'E_01_HSE': E_01_HSE,
     # 'E_01_HSE_Prompt': E_01_HSE_Prompt,  # Prompt-guided HSE for contrastive learning
     'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
-    'E_03_Patch_DPOT': E_03_Patch_DPOT,
-
+    'E_03_Patch_DPOT': E_03_Patch,
+    # Alias to make configs more readable (P1: experiment_0 embedding)
+    'E_03_Patch': E_03_Patch,
 }
 Backbone_dict = {
     'B_01_basic_transformer': B_01_basic_transformer,
@@ -129,4 +129,3 @@ class Model(nn.Module):
         x = self._head(x, file_id, task_id, return_feature)
         return x
     
-

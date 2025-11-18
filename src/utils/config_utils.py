@@ -99,10 +99,17 @@ def apply_overrides_to_config(config: Union[Dict, Any], overrides: Dict[str, Any
     # 如果config是对象，尝试设置属性
     for key, value in overrides.items():
         if '.' in key:
+            # 形如 "task.target_system_id" 的键，通过嵌套属性方式设置
             _set_nested_object_attr(config, key, value)
         else:
+            # 顶层键（如 "task": {...}），优先做“合并”而不是整体覆盖
             if hasattr(config, key):
-                setattr(config, key, value)
+                existing = getattr(config, key)
+                # 如果 override 是 dict 且现有对象是可写对象，则递归合并字段
+                if isinstance(value, dict) and hasattr(existing, '__dict__'):
+                    _merge_into_object(existing, value)
+                else:
+                    setattr(config, key, value)
             else:
                 # 如果对象没有该属性，可以考虑添加到__dict__
                 setattr(config, key, value)
@@ -129,6 +136,20 @@ def _merge_configs(base_config: Dict, override_config: Dict) -> Dict:
             result[key] = value
 
     return result
+
+
+def _merge_into_object(obj: Any, override_dict: Dict[str, Any]) -> None:
+    """递归合并 dict 覆盖到已有对象属性上，而不是整体替换对象本身。
+
+    典型用例：CLI 传入 ``task.target_system_id=[1]`` 被解析为
+    ``{'task': {'target_system_id': [1]}}``，应当在保留
+    ``task.name/type/...`` 的同时，仅更新 ``target_system_id``。
+    """
+    for sub_key, sub_val in override_dict.items():
+        if isinstance(sub_val, dict) and hasattr(obj, sub_key) and hasattr(getattr(obj, sub_key), '__dict__'):
+            _merge_into_object(getattr(obj, sub_key), sub_val)
+        else:
+            setattr(obj, sub_key, sub_val)
 
 
 def _set_nested_object_attr(obj: Any, key: str, value: Any) -> None:

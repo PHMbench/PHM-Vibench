@@ -62,8 +62,12 @@ def run_stage(config_path, ckpt_path=None, iteration=0, local_config: Optional[s
 
 def run_pretraining_stage(config_path, local_config: Optional[str] = None):
     """Run the pretraining stage and return the checkpoint path."""
+    # 加载配置以获取iterations设置
+    configs = load_config(config_path, local_config)
+    iterations = configs.get('environment', {}).get('iterations', 1)
+
     ckpt_dict = {}
-    for it in range(os.environ.get('iterations', 1)):
+    for it in range(iterations):
         task, trainer = run_stage(config_path, iteration=it, local_config=local_config)
         print(f"Pretraining stage iteration {it} completed.")
         ckpt_path = None
@@ -77,8 +81,12 @@ def run_pretraining_stage(config_path, local_config: Optional[str] = None):
 
 def run_fewshot_stage(fs_config_path, ckpt_dict=None, local_config: Optional[str] = None):
     """Run the few-shot stage. Optionally load a pretrained checkpoint."""
+    # 加载配置以获取iterations设置
+    configs = load_config(fs_config_path, local_config)
+    iterations = configs.get('environment', {}).get('iterations', 1)
+
     for it1, ckpt_path in ckpt_dict.items():
-        for it2 in range(os.environ.get('iterations', 1)):
+        for it2 in range(iterations):
             print(f"Running few-shot stage iteration {it1}-{it2} with checkpoint {ckpt_path}")
             if ckpt_path:
                 run_stage(fs_config_path, ckpt_path, iteration=it1 * len(ckpt_dict) + it2, local_config=local_config)

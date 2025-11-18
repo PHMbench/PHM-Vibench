@@ -13,7 +13,7 @@ ACTIVATION = {
     'softplus': nn.Softplus(), 'ELU': nn.ELU(), 'silu': nn.SiLU()
 }
 
-class E_03_Patch_DPOT(nn.Module):
+class E_03_Patch(nn.Module):
     """
     将1D序列分块并进行线性嵌入的模块。
     """
