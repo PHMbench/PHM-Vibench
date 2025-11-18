@@ -43,7 +43,19 @@ class Default_task(pl.LightningModule):
         :param metadata: 数据元信息
         """
         super().__init__()
-        self.network = network.cuda() if args_trainer.gpus else network  # 确保网络在正确的设备上
+
+        # 兼容旧配置：为 gpus 提供合理默认值，避免缺少属性导致崩溃
+        gpus = getattr(args_trainer, "gpus", None)
+        if gpus is None:
+            gpus = getattr(args_trainer, "devices", 1)
+            setattr(args_trainer, "gpus", gpus)
+
+        # 将网络移动到 GPU（仅在 CUDA 可用且配置要求使用 GPU 时）
+        use_cuda = bool(gpus) and torch.cuda.is_available()
+        if use_cuda and hasattr(network, "cuda"):
+            self.network = network.cuda()
+        else:
+            self.network = network  # 在当前环境（无 GPU）下保持 CPU 训练
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
@@ -279,5 +291,3 @@ class Default_task(pl.LightningModule):
 
         # 对于非 ReduceLROnPlateau 的调度器，返回列表形式
         return [optimizer], [{'scheduler': scheduler, 'interval': 'epoch', 'frequency': 1}]
-
-

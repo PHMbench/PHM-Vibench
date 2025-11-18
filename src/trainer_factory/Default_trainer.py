@@ -27,6 +27,14 @@ def trainer(args_e,args_t, args_d, path):
     返回:
     - trainer: 训练器对象
     """
+    # 为兼容旧配置，填充 num_epochs / gpus / pruning 的合理默认值
+    if not hasattr(args_t, "num_epochs"):
+        setattr(args_t, "num_epochs", getattr(args_t, "max_epochs", 1))
+    if not hasattr(args_t, "gpus"):
+        setattr(args_t, "gpus", getattr(args_t, "devices", 1))
+    if not hasattr(args_t, "pruning"):
+        setattr(args_t, "pruning", 0.0)
+
     # 获取回调列表
     callback_list = call_backs(args_t, path)
     log_list = [CSVLogger(path, name="logs")]
@@ -63,7 +71,7 @@ def trainer(args_e,args_t, args_d, path):
         devices=args_t.gpus,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-        strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
+        strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
     )
     return trainer
 
@@ -90,7 +98,7 @@ def call_backs(args, path):
     callback_list = [checkpoint_callback]
 
     # 模型修剪回调（根据需求添加）
-    if args.pruning:
+    if getattr(args, "pruning", 0.0):
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
     
