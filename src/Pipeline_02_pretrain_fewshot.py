@@ -5,6 +5,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import load_config, path_name, transfer_namespace
+from src.utils.config_utils import parse_overrides, apply_overrides_to_config
 from typing import Optional
 from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
 from src.utils.config.pipeline_adapters import adapt_p02
@@ -94,6 +95,14 @@ def pipeline(args):
     """
     try:
         unified = adapt_p02(args.config_path, args.fs_config_path, getattr(args, 'local_config', None))
+
+        # 应用CLI override参数（最高优先级）
+        if hasattr(args, 'override') and args.override:
+            print(f"[INFO] 应用CLI override参数到两阶段流程: {args.override}")
+            overrides = parse_overrides(args.override)
+            unified = apply_overrides_to_config(unified, overrides)
+            print(f"[INFO] 已应用 {len(overrides)} 个override参数到两阶段配置")
+
         orchestrator = TwoStageOrchestrator(unified)
         summary = orchestrator.run_complete()
         print("[INFO] Unified two-stage pipeline completed.")

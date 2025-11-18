@@ -38,7 +38,10 @@ def main():
                         type=str,
                         default=None,
                         help='本机覆盖配置路径（可选，与主YAML合并）')
-    
+    parser.add_argument('--override',
+                        action='append',
+                        help='覆盖配置参数 (格式: key=value)，可多次使用')
+
     args = parser.parse_args()
     pipeline = importlib.import_module(f'src.{args.pipeline}')
     # 执行DG流水线

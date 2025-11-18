@@ -13,6 +13,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
+from src.utils.config_utils import parse_overrides, apply_overrides_to_config
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -38,7 +39,14 @@ def pipeline(args):
     # 支持机器特定的本地覆盖 YAML（方案B）
     # 优先顺序：命令行 --local_config > configs/local/{hostname}.yaml > configs/local/local.yaml > configs/local/default.yaml
     configs = merge_with_local_override(config_path, getattr(args, 'local_config', None))
-    
+
+    # 应用CLI override参数（最高优先级）
+    if hasattr(args, 'override') and args.override:
+        print(f"[INFO] 应用CLI override参数: {args.override}")
+        overrides = parse_overrides(args.override)
+        configs = apply_overrides_to_config(configs, overrides)
+        print(f"[INFO] 已应用 {len(overrides)} 个override参数")
+
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
     for section in required_sections:

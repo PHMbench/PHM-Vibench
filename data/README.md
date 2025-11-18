@@ -2,7 +2,80 @@
 license: Apache License 2.0
 ---
 
+# 🛠️ PHM-Vibench振动信号基准数据库
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-green)](https://www.python.org/)
+[![Size](https://img.shields.io/badge/Size-163GB-orange)](https://github.com/example/PHM-Vibench)
+
+## 🔗 数据获取平台
+
+[![ModelScope](https://img.shields.io/badge/ModelScope-PHM--Vibench-red)](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-PHM--Vibench-yellow)](https://huggingface.co/datasets/PHMbench/PHM-Vibench/tree/main)
+
+> **PHM-Vibench** 是一个全面的工业设备振动信号分析基准平台，该项目是其中用到的数据，专注于机械故障诊断和预测性维护研究。
+
+## 📋 目录
+
+- [📊 项目概览](#-项目概览)
+- [🗂️ 数据集目录](#️-数据集目录)
+- [🚀 快速开始](#-快速开始)
+- [📁 项目结构](#-项目结构)
+- [🔧 工具脚本](#-工具脚本)
+- [📈 数据统计](#-数据统计)
+- [🤝 如何贡献](#-如何贡献)
+- [📜 更新日志](#-更新日志)
+
+## 📊 项目概览
+
+PHM-Vibench是一个包含多个轴承故障诊断数据集的集合项目。该项目收集了来自全球多个研究机构的轴承振动数据，用于机械故障诊断和预测性维护研究。
+
+### 技术特性
+
+- **数据规模**: 163GB+ 原始振动数据
+- **数据集数量**: 30+ 个测试台数据
+- **样本总数**: 49,000+ 个振动样本
+- **故障类型**: 正常、内圈故障、外圈故障、滚动体故障、复合故障等
+- **数据格式**: .mat, .csv, .xlsx, .h5 等多种格式，整合成h5文件
+- **采样频率**: 6Hz - 512kHz 范围
+- **应用场景**: 机械故障诊断、预测性维护、状态监测
+
+### 数据集统计
+
+| 统计项        | 数值                               |
+| ------------- | ---------------------------------- |
+| 📁 数据集数量 | 19个主要数据集 + 更多收集中        |
+| 📊 样本总数   | 49,000+                            |
+| 💾 数据大小   | 163GB+                             |
+| 🏭 测试台数量 | 30+                                |
+| 🌍 来源国家   | 中国、美国、加拿大、德国、意大利等 |
+
+## 🗂️ 数据集目录
+
+### 🔍 轴承故障数据集总览（调整数据顺序）
+
+| 序号 |   数据集名称   |   缩写   |      VB_name      |  开源状态  |                详情链接(TODO)                |
+| :--: | :-------------: | :------: | :----------------: | :---------: | :-------------------------------------------: |
+|  1  |  凯斯西储大学  |   CWRU   |    RM_001_CWRU    | ✅ 经典开源 |  [详情](#rm_001_cwru---凯斯西储大学轴承数据集)  |
+|  2  |  西安交通大学  |   XJTU   |    RM_002_XJTU    |   ✅ 开源   |  [详情](#rm_002_xjtu---西安交通大学轴承数据集)  |
+|  3  | FEMTO-ST研究所 |  FEMTO  |    RM_003_FEMTO    |   ✅ 开源   |   [详情](#rm_003_femto---femto-st研究所数据集)   |
+|  4  | IMS齿轮轴承数据 |   IMS   |     RM_004_IMS     |   ✅ 开源   |      [详情](#rm_004_ims---ims齿轮轴承数据)      |
+|  5  | 渥太华大学2023 | Ottawa23 |  RM_005_Ottawa23  |   ✅ 开源   | [详情](#rm_005_ottawa23---渥太华大学2023数据集) |
+|  6  |    清华大学    |   THU   |     RM_006_THU     |   ✅ 开源   |       [详情](#rm_006_thu---清华大学数据集)       |
+|  7  |    MFPT学会    |   MFPT   |    RM_007_MFPT    |   ✅ 开源   |      [详情](#rm_007_mfpt---mfpt学会数据集)      |
+|  8  | 新南威尔士大学 |   UNSW   |    RM_008_UNSW    |   ✅ 开源   |   [详情](#rm_008_unsw---新南威尔士大学数据集)   |
+|  9  | 东南大学(轴承) |   SEU   |     RM_010_SEU     |   ✅ 开源   | [详情](#rm_009_seu_bearing---东南大学轴承数据集) |
+|  10  |        -        |    -    | **暂无数据** |   🔒 空缺   |                 RM_010不存在                 |
+|  11  |      越南      |   susu   |    RM_015_susu    |   ✅ 开源   |   [详情](#rm_011_susu---苏州大学苏老师数据集)   |
+|  12  |    江南大学    |   JNU   |     RM_016_JNU     |   ✅ 开源   |       [详情](#rm_012_jnu---江南大学数据集)       |
+|  13  | 渥太华大学2019 | Ottawa19 |  RM_017_Ottawa19  |   ✅ 开源   | [详情](#rm_013_ottawa19---渥太华大学2019数据集) |
+|  14  |  清华大学2024  |  THU24  |    RM_018_THU24    |   ✅ 开源   |    [详情](#rm_014_thu24---清华大学2024数据集)    |
+|  15  | 东南大学(齿轮) |   SEU   |     RM_010_SEU     |   ✅ 开源   |  [详情](#rm_015_seu_gear---东南大学齿轮数据集)  |
+|  16  |  都灵理工大学  |   DIRG   |    RM_020_DIRG    |   ✅ 开源   |    [详情](#rm_016_dirg---都灵理工大学数据集)    |
+|  17  |   哈工大2023   |  HIT23  |    RM_023_HIT23    |   ✅ 开源   |     [详情](#rm_017_hit23---哈工大2023数据集)     |
+|  18  |  江苏科技大学  |   JUST   |    RM_024_JUST    |   ✅ 开源   |      [详情](#rm_018_just---just大学数据集)      |
+|  19  |    华科2024    |  HUST24  |   RM_031_HUST24   |   ✅ 开源   |     [详情](#rm_019_hust24---华科2024数据集)     |
+|  20  |  帕德博恩大学  |    PU    |     RM_027_PU     |   ✅ 开源   |     [详情](#rm_020_pu---帕德博恩大学数据集)     |
 
 
 # 🛠️ [Vbench](https://github.com/PHMbench/PHM-Vibench/tree/main/src/data_factory)  
@@ -19,19 +92,11 @@ Vbench是一个包含多个轴承故障诊断数据集的集合项目。该项�
 ## 📂 数据集文件
 数据集文件元信息以及数据文件，请浏览"数据集文件"页面获取。
 
-- *.csv 元数据
-- *.h5 根据元数据组织的数据集
 
 
-当前数据集卡片使用的是默认模版，数据集的贡献者未提供更加详细的数据集介绍，但是您可以通过如下GIT Clone命令，或者ModelScope SDK来下载数据集
+<!-- ## 📊 数据集介绍 --> 已更新
 
-### ⬇️ 下载方法 
-:modelscope-code[]{type="sdk"}
-:modelscope-code[]{type="git"}
-
-## 📊 数据集介绍
-
-Vbench包含以下轴承故障诊断数据集:
+<!-- Vbench包含以下轴承故障诊断数据集:
 
 <div align="center" id="dataset-table">
 
@@ -48,7 +113,7 @@ Vbench包含以下轴承故障诊断数据集:
 | 7 | 东南大学数据集 | SEU | RM_007_SEU | ✅ 开源 | [详情](#seu) |
 | 8 | 山东科技大学轴承数据集 | SDUST | RM_008_SDUST | 🔒 非开源 | [详情](#sdust) |
 <!-- | 9 | 苏大小轴承数据集 | SUDA_shen | RM_009_SUDA_shen | 🔒 非开源 | [详情](#suda_shen) | -->
-| 10 | 江南大学轴承数据集 | JNU | RM_010_JNU | ✅ 开源 | [详情](#jnu) |
+<!-- | 10 | 江南大学轴承数据集 | JNU | RM_010_JNU | ✅ 开源 | [详情](#jnu) |
 | 11 | 渥太华变转速数据集2 | Ottawa19 | RM_011_Ottawa19 | ✅ 开源 | [详情](#ottawa19) |
 | 12 | 清华大学压电、摩擦电数据集 | THU24 | RM_012_THU24 | 🔒 非开源 | [详情](#thu24) |
 | 13 | 哈工大双转子数据集 | HIT | RM_013_HIT | ✅ 开源| [详情](#hit) |
@@ -56,12 +121,12 @@ Vbench包含以下轴承故障诊断数据集:
 | 15 | 德国帕德博恩大学 | KAT(PU) | RM_015_KAT | ✅ 开源 | [详情](#katpu) |
 <!-- | 16 | 苏大飞轮轴承数据 | SUDA_FW | RM_016_SUDA_FW | 🔒 非开源 | [详情](#suda_fw) |
 | 17 | 苏大2023新轮对轴承数据 | SUDA23 | RM_017_SUDA23 | 🔒 非开源 | [详情](#suda23) | -->
-| 18 | 华科数据集 | HUST | RM_018_HUST | ✅ 开源 | [详情](#hust) |
+<!-- | 18 | 华科数据集 | HUST | RM_018_HUST | ✅ 开源 | [详情](#hust) |
 | 19 | 讯飞数据集 | IFlytek | RM_019_IFlytek | ✅ 开源 | [详情](#iflytek) |
 | 20 | 哈工大轴承数据集 | HIT23 | RM_020_HIT | ✅ 开源 | [详情](#hit_bearing) |
-| 21 | 苏科大轴承数据集 | SUST | RM_021_SUST | ✅ 开源 | [详情](#sust) |
+| 21 | 苏科大轴承数据集 | SUST | RM_021_SUST | ✅ 开源 | [详情](#sust) | --> -->
 
-### 🔍 齿轮箱数据集总览
+### 🔍 齿轮箱数据集总览 -->
 
 
 </div>
