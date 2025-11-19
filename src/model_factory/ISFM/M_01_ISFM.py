@@ -1,5 +1,5 @@
 from src.model_factory.ISFM.embedding import *
-from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
+from src.model_factory.ISFM.embedding import E_03_Patch
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
 import torch.nn as nn
@@ -12,10 +12,8 @@ Embedding_dict = {
     'E_01_HSE': E_01_HSE,
     # 'E_01_HSE_Prompt': E_01_HSE_Prompt,  # Prompt-guided HSE for contrastive learning
     'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
-    # DPOT-style patch embedding, implemented via E_03_Patch wrapper
-    'E_03_Patch_DPOT': E_03_Patch_DPOT,
-    # Alias to make configs更直观
-    'E_03_Patch': E_03_Patch_DPOT,
+    # Patch-based embedding as basic baseline (P1)
+    'E_03_Patch': E_03_Patch,
 }
 Backbone_dict = {
     'B_01_basic_transformer': B_01_basic_transformer,
