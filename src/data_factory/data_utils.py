@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 
-def download_data(data_file: Optional[str] = "metadata_6_1.xlsx",
+def download_data(data_file: Optional[str] = "metadata.xlsx",
                        save_path: Optional[str] = './data/',
                        source: str = 'auto') -> bool:
     """

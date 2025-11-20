@@ -3,7 +3,7 @@
 
 data:
   data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
-  metadata_file: "metadata_6_11.xlsx"
+  metadata_file: "metadata.xlsx"
 
 # Optional per-host trainer/environment overrides
 # trainer:

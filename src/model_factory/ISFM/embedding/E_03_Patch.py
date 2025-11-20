@@ -56,12 +56,46 @@ class E_03_Patch(nn.Module):
         )
 
     def forward(self, x):
-        # 输入 x 形状: (B, C, L)
+        # 自动检测并转换维度格式
+        # 支持两种常见格式:
+        # 1. (B, C, L) - 标准Conv1d格式
+        # 2. (B, L, C) - 数据加载器常见格式
+
+        if len(x.shape) != 3:
+            raise ValueError(f"E_03_Patch expects 3D input, got {len(x.shape)}D input with shape {x.shape}")
+
+        B, dim1, dim2 = x.shape
+
+        # 检测输入格式并转换
+        if dim2 <= self.in_chans and dim1 > dim2:
+            # 可能是 (B, L, C) 格式: 长度 > 通道数
+            # 转换为 (B, C, L) 格式
+            if dim2 != self.in_chans:
+                raise ValueError(f"Channel dimension mismatch: expected {self.in_chans}, got {dim2}")
+            x = x.transpose(1, 2)  # (B, L, C) -> (B, C, L)
+            # print(f"E_03_Patch: 自动转换维度 (B, L, C) -> (B, C, L): ({B}, {dim1}, {dim2}) -> {x.shape}")
+        elif dim1 <= self.in_chans and dim2 > dim1:
+            # 可能是 (B, C, L) 格式: 通道数 < 长度
+            if dim1 != self.in_chans:
+                raise ValueError(f"Channel dimension mismatch: expected {self.in_chans}, got {dim1}")
+            # 已经是正确格式，无需转换
+        else:
+            raise ValueError(f"Cannot determine input format: {x.shape}. Expected (B, C, L) or (B, L, C)")
+
         B, C, L = x.shape
+
+        # 验证维度匹配
+        if C != self.in_chans:
+            raise ValueError(f"Channel mismatch: model expects {self.in_chans}, got {C}")
+
         # 允许动态长度，只要满足 patch_len 要求即可；seq_len 主要用于 num_patches 估计
         # 如果 L 与 seq_len 不一致，这里不再强制报错，以兼容不同 window_size
-        # 输出 x 形状: (B, out_dim, num_patches)
+        # proj 输出 x 形状: (B, out_dim, num_patches)
         x = self.proj(x)
+
+        # 转换为 Transformer 期望的格式: (B, out_dim, num_patches) -> (B, num_patches, out_dim)
+        x = x.transpose(1, 2)  # (B, D, L) -> (B, L, D)
+
         return x
 
 if __name__ == "__main__":
@@ -69,4 +103,4 @@ if __name__ == "__main__":
     model = E_03_Patch(seq_len=4096, patch_len=16, in_chans=3, embed_dim=256, out_dim=128, act='gelu')
     x = torch.randn(2, 3, 1024)  # (B, C, L)
     out = model(x)
-    print(out.shape)  # 预期输出形状: (2, 128, 64)
+    print(out.shape)  # 预期输出形状: (2, 64, 128) - (B, num_patches, out_dim)
