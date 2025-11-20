@@ -26,15 +26,15 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         "MAE": nn.L1Loss(),
         "BCE": nn.BCEWithLogitsLoss(),
         "NLL": nn.NLLLoss(),
-        "MATCHING": MatchingLoss,  
+        "MATCHING": MatchingLoss,
         "SIGNAL_MASK_LOSS": Signal_mask_Loss,  # TODO Time Series Prediction
         # SOTA Contrastive Learning Losses
-        "INFONCE": InfoNCELoss,
-        "TRIPLET": TripletLoss,
-        "SUPCON": SupConLoss,
-        "PROTOTYPICAL": PrototypicalLoss,
-        "BARLOWTWINS": BarlowTwinsLoss,
-        "VICREG": VICRegLoss,
+        "INFONCE": InfoNCELoss(),
+        "TRIPLET": TripletLoss(),
+        "SUPCON": SupConLoss(),
+        "PROTOTYPICAL": PrototypicalLoss(),
+        "BARLOWTWINS": BarlowTwinsLoss(),
+        "VICREG": VICRegLoss(),
     }
 
     key = loss_name.upper()
@@ -42,8 +42,10 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         raise ValueError(
             f"不支持的损失函数类型: {loss_name}，可选类型: {list(loss_mapping.keys())}"
         )
-    if key == "Matching":
-        return loss_mapping[key] # (args)
+    if key == "MATCHING":
+        return MatchingLoss  # Return class for special initialization
+    if key == "SIGNAL_MASK_LOSS":
+        return Signal_mask_Loss  # Return class for special initialization
 
     return loss_mapping[key]
 

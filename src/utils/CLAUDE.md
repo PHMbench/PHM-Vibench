@@ -419,3 +419,8 @@ def check_registry_status(registry):
 - **Model Factory**: Uses registry for model instantiation
 - **Task Factory**: Uses utility functions and configuration helpers
 - **Trainer Factory**: Uses logging and checkpoint utilities
+
+## Maintenance Notes
+- Current release: v2.0.0-alpha (2025-11-20) with HSE utilities consolidated under `src/utils/hse/`.
+- Deprecated (scheduled removal in v2.1.0): `pipeline_config.py`, `config/hse_prompt_validator.py`, `pipeline_config/hse_prompt_integration.py` (use new HSE modules instead).
+- Docs are now centralized to this file and `src/utils/README.md`; removed changelog/refactoring summaries have been folded into those two files.

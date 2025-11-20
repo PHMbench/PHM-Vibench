@@ -34,48 +34,256 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-class MultiStageOrchestrator:
-    """通用多阶段 Orchestrator，TwoStageOrchestrator 作为其向后兼容子类。"""
+def deep_merge(base: dict, override: dict) -> dict:
+    """递归合并配置，只更新叶子节点，避免破坏嵌套结构
 
-    def __init__(self, unified_config: Any, dry_run: bool = False) -> None:
+    Args:
+        base: 基础配置字典
+        override: 覆盖配置字典
+
+    Returns:
+        合并后的配置字典
+    """
+    from copy import deepcopy
+
+    if not isinstance(base, dict) or not isinstance(override, dict):
+        return override
+
+    result = deepcopy(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def nested_set(config: dict, path: str, value: Any) -> None:
+    """安全设置嵌套配置值，支持点号路径
+
+    Args:
+        config: 配置字典
+        path: 点号路径，如 "task.lr" 或 "model.d_model"
+        value: 要设置的值
+    """
+    keys = path.split('.')
+    current = config
+
+    # 创建嵌套路径
+    for key in keys[:-1]:
+        if key not in current:
+            current[key] = {}
+        current = current[key]
+
+    # 设置最终值
+    current[keys[-1]] = value
+
+
+def parse_stage_overrides(override_list):
+    """解析阶段特定的override参数
+
+    支持格式：
+    - stage_1.task.lr=0.001 (阶段特定)
+    - task.lr=0.001 (全局，应用到所有阶段)
+
+    Args:
+        override_list: override参数列表
+
+    Returns:
+        (global_overrides, stage_overrides) 元组
+    """
+    if not override_list:
+        return {}, {}
+
+    import yaml
+
+    global_overrides = {}
+    stage_overrides = {}
+
+    for override in override_list:
+        if '=' not in override:
+            continue
+
+        key, value = override.split('=', 1)
+        key = key.strip()
+        value = yaml.safe_load(value.strip())
+
+        if key.startswith('stage_'):
+            # 阶段特定override
+            parts = key.split('.', 2)
+            if len(parts) >= 3:
+                stage_name = parts[0]
+                config_path = parts[2]
+
+                if stage_name not in stage_overrides:
+                    stage_overrides[stage_name] = {}
+
+                nested_set(stage_overrides[stage_name], config_path, value)
+        else:
+            # 全局override
+            if '.' in key:
+                nested_set(global_overrides, key, value)
+            else:
+                global_overrides[key] = value
+
+    return global_overrides, stage_overrides
+
+
+def apply_stage_overrides(stage_config, global_config, stage_overrides):
+    """应用阶段特定的override配置
+
+    Args:
+        stage_config: 阶段基础配置
+        global_config: 全局默认配置
+        stage_overrides: 阶段特定override配置
+
+    Returns:
+        合并后的配置字典
+    """
+    from copy import deepcopy
+
+    # 1. 从global_config继承默认配置
+    merged_config = deepcopy(global_config)
+
+    # 2. 应用stage特定的配置
+    if stage_overrides:
+        merged_config = deep_merge(merged_config, stage_overrides)
+
+    # 3. 合并stage_config（如果存在）
+    if stage_config:
+        if isinstance(stage_config, dict):
+            merged_config = deep_merge(merged_config, stage_config)
+        elif hasattr(stage_config, '__dict__'):
+            merged_config = deep_merge(merged_config, stage_config.__dict__)
+
+    return merged_config
+
+
+class MultiStageOrchestrator:
+    """通用多阶段 Orchestrator，支持stages.overrides配置模式。"""
+
+    def __init__(self, unified_config: Any, dry_run: bool = False, cli_overrides: list = None) -> None:
         self.dry_run = dry_run
+        self.cli_overrides = cli_overrides or []
 
         # 1) 已经是 ConfigWrapper：直接使用
         if isinstance(unified_config, ConfigWrapper):
             self.cfg = unified_config
 
-        # 2) dict：支持 {'stages': [...]} 或 {'stage_1': ..., 'stage_2': ...}
+        # 2) dict：支持多种配置格式
         elif isinstance(unified_config, dict):
-            if 'stages' in unified_config:
-                stages_dict_list = unified_config['stages']
+            # 检查是否为单YAML + stages.overrides格式
+            if self._is_unified_yaml_format(unified_config):
+                self.cfg = self._load_unified_yaml_config(unified_config)
             else:
-                stages_dict_list = [
-                    unified_config.get('stage_1', {}),
-                    unified_config.get('stage_2', {}),
-                ]
-            stages_ns = [dict_to_namespace(s or {}) for s in stages_dict_list if s]
-            attrs: Dict[str, Any] = {'stages': stages_ns}
-            # 保留 stage_1/stage_2 映射，兼容旧的 CLI override 和代码访问
-            if len(stages_ns) >= 1:
-                attrs['stage_1'] = stages_ns[0]
-            if len(stages_ns) >= 2:
-                attrs['stage_2'] = stages_ns[1]
-            self.cfg = ConfigWrapper(**attrs)
+                # 兼容旧的双阶段格式
+                self.cfg = self._load_legacy_config(unified_config)
 
-        # 3) 其他情况：视为单阶段配置源（路径/预设），做最小兼容
+        # 3) 其他情况：视为单阶段配置源（路径/预设）
         else:
-            base_cfg = load_config(unified_config)
-            stage_ns = SimpleNamespace(
-                data=getattr(base_cfg, 'data', SimpleNamespace()),
-                model=getattr(base_cfg, 'model', SimpleNamespace()),
-                task=getattr(base_cfg, 'task', SimpleNamespace()),
-                trainer=getattr(base_cfg, 'trainer', SimpleNamespace()),
-                environment=getattr(base_cfg, 'environment', SimpleNamespace()),
-            )
-            self.cfg = ConfigWrapper(stages=[stage_ns], stage_1=stage_ns)
+            self.cfg = self._load_single_stage_config(unified_config)
 
         # 验证每个阶段的 data/model/task 必需字段
         self._validate_stages()
+
+    def _is_unified_yaml_format(self, config: dict) -> bool:
+        """检查是否为单YAML + stages.overrides格式"""
+        return (
+            'stages' in config and
+            isinstance(config['stages'], list) and
+            len(config['stages']) > 0 and
+            all(isinstance(stage, dict) and 'overrides' in stage for stage in config['stages'])
+        )
+
+    def _load_unified_yaml_config(self, config: dict) -> ConfigWrapper:
+        """加载单YAML + stages.overrides格式配置"""
+        # 提取全局配置作为基础
+        global_sections = ['data', 'model', 'task', 'trainer', 'environment']
+        global_config = {section: config.get(section, {}) for section in global_sections}
+
+        # 处理CLI overrides
+        global_cli_overrides, stage_cli_overrides = parse_stage_overrides(self.cli_overrides)
+        if global_cli_overrides:
+            global_config = deep_merge(global_config, global_cli_overrides)
+
+        # 处理stages
+        processed_stages = []
+        for stage_idx, stage_dict in enumerate(config['stages']):
+            stage_name = stage_dict.get('name', f"stage_{stage_idx}")
+
+            # 合并配置：全局配置 + stage overrides + CLI overrides
+            stage_overrides = stage_dict.get('overrides', {})
+
+            # 应用CLI stage-specific overrides
+            if stage_name in stage_cli_overrides:
+                stage_overrides = deep_merge(stage_overrides, stage_cli_overrides[stage_name])
+
+            merged_stage_config = apply_stage_overrides(
+                stage_dict.get('config', {}),
+                global_config,
+                stage_overrides
+            )
+
+            # 转换为Namespace并添加stage名称
+            stage_ns = dict_to_namespace(merged_stage_config)
+            if hasattr(stage_ns, 'environment'):
+                stage_ns.environment.stage_name = stage_name
+            else:
+                stage_ns.environment = SimpleNamespace(stage_name=stage_name)
+
+            processed_stages.append(stage_ns)
+
+        # 保留stage_1/stage_2映射以兼容现有代码
+        attrs = {'stages': processed_stages}
+        if len(processed_stages) >= 1:
+            attrs['stage_1'] = processed_stages[0]
+        if len(processed_stages) >= 2:
+            attrs['stage_2'] = processed_stages[1]
+
+        return ConfigWrapper(**attrs)
+
+    def _load_legacy_config(self, config: dict) -> ConfigWrapper:
+        """加载旧的双阶段格式配置"""
+        if 'stages' in config:
+            stages_dict_list = config['stages']
+        else:
+            stages_dict_list = [
+                config.get('stage_1', {}),
+                config.get('stage_2', {}),
+            ]
+
+        stages_ns = [dict_to_namespace(s or {}) for s in stages_dict_list if s]
+
+        # 应用CLI overrides
+        global_cli_overrides, stage_cli_overrides = parse_stage_overrides(self.cli_overrides)
+
+        # 应用CLI overrides到所有stage
+        for idx, stage_ns in enumerate(stages_ns):
+            stage_key = f"stage_{idx+1}"
+            if stage_key in stage_cli_overrides:
+                stage_dict = stage_ns.__dict__
+                merged_dict = deep_merge(stage_dict, stage_cli_overrides[stage_key])
+                stages_ns[idx] = dict_to_namespace(merged_dict)
+
+        attrs = {'stages': stages_ns}
+        if len(stages_ns) >= 1:
+            attrs['stage_1'] = stages_ns[0]
+        if len(stages_ns) >= 2:
+            attrs['stage_2'] = stages_ns[1]
+
+        return ConfigWrapper(**attrs)
+
+    def _load_single_stage_config(self, config_source: Any) -> ConfigWrapper:
+        """加载单阶段配置"""
+        base_cfg = load_config(config_source)
+        stage_ns = SimpleNamespace(
+            data=getattr(base_cfg, 'data', SimpleNamespace()),
+            model=getattr(base_cfg, 'model', SimpleNamespace()),
+            task=getattr(base_cfg, 'task', SimpleNamespace()),
+            trainer=getattr(base_cfg, 'trainer', SimpleNamespace()),
+            environment=getattr(base_cfg, 'environment', SimpleNamespace()),
+        )
+        return ConfigWrapper(stages=[stage_ns], stage_1=stage_ns)
 
     # ------------------------ validation ------------------------
     def _validate_stages(self) -> None:

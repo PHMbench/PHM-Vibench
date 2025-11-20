@@ -16,6 +16,13 @@ except ImportError:
 import numpy as np
 
 
+def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
+    """Load pretrained weights via the shared loader (backward compatibility helper)."""
+    from src.utils.pipeline_config.base_utils import load_pretrained_weights as _load_pretrained_weights
+
+    return _load_pretrained_weights(model, checkpoint_path, strict)
+
+
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
     """
     加载训练过程中保存的最佳模型检查点。
