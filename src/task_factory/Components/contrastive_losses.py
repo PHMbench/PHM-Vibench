@@ -29,15 +29,26 @@ class InfoNCELoss(nn.Module):
     def __init__(self, temperature: float = 0.07, normalize: bool = True):
         """
         Initialize InfoNCE loss.
-        
+
         Args:
             temperature: Temperature parameter for softmax scaling (0.01-0.5)
             normalize: Whether to L2-normalize features before computing similarity
         """
         super().__init__()
+
+        # Fix: Handle tensor temperature parameter
+        if isinstance(temperature, torch.Tensor):
+            if temperature.numel() == 1:
+                temperature = temperature.item()
+            else:
+                # For multi-element tensors, use the first element or convert to float
+                temperature = temperature[0].item() if temperature.numel() > 0 else 0.07
+
+        # Convert to float and validate
+        temperature = float(temperature)
         if temperature <= 0:
             raise ValueError(f"Temperature must be positive, got {temperature}")
-        
+
         self.temperature = temperature
         self.normalize = normalize
         
