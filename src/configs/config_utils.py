@@ -205,10 +205,10 @@ def _load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
 
 def _validate_config_wrapper(config: ConfigWrapper) -> None:
     """验证ConfigWrapper的必需字段
-    
+
     Args:
         config: ConfigWrapper对象
-        
+
     Raises:
         ValueError: 缺少必需字段时
     """
@@ -217,18 +217,142 @@ def _validate_config_wrapper(config: ConfigWrapper) -> None:
         'model': ['name', 'type'],
         'task': ['name', 'type']
     }
-    
+
     for section, fields in required_sections.items():
         if not hasattr(config, section):
             raise ValueError(f"缺少配置节: {section}")
-        
+
         section_obj = getattr(config, section)
         if not isinstance(section_obj, SimpleNamespace):
             continue
-            
+
         for field in fields:
             if not hasattr(section_obj, field):
                 raise ValueError(f"缺少必需字段: {section}.{field}")
+
+    # 扩展验证：对比学习配置验证
+    _validate_contrastive_config(config)
+
+
+def _validate_contrastive_config(config: ConfigWrapper) -> None:
+    """验证对比学习配置的完整性和正确性
+
+    Args:
+        config: ConfigWrapper对象
+
+    Raises:
+        ValueError: 对比学习配置错误时
+    """
+    # 检查是否为对比学习任务
+    if not hasattr(config.task, 'name') or config.task.name != 'hse_contrastive':
+        return
+
+    task = config.task
+
+    # 新格式配置验证 (contrastive_strategy)
+    if hasattr(task, 'contrastive_strategy'):
+        strategy_config = task.contrastive_strategy
+
+        # 验证策略类型
+        if not hasattr(strategy_config, 'type'):
+            raise ValueError("对比学习策略配置缺少 'type' 字段")
+
+        strategy_type = strategy_config.type
+        if strategy_type not in ['single', 'ensemble']:
+            raise ValueError(f"不支持的对比学习策略类型: {strategy_type}")
+
+        # 单策略验证
+        if strategy_type == 'single':
+            if not hasattr(strategy_config, 'loss_type'):
+                raise ValueError("单策略配置缺少 'loss_type' 字段")
+
+            loss_type = strategy_config.loss_type
+            valid_losses = ['INFONCE', 'SUPCON', 'TRIPLET', 'PROTOTYPICAL', 'BARLOWTWINS', 'VICREG']
+            if loss_type not in valid_losses:
+                raise ValueError(f"不支持的对比损失类型: {loss_type}")
+
+            # 验证温度参数 (InfoNCE/SupCon需要)
+            if loss_type in ['INFONCE', 'SUPCON']:
+                if not hasattr(strategy_config, 'temperature'):
+                    raise ValueError(f"{loss_type} 损失需要 'temperature' 参数")
+                temp = strategy_config.temperature
+                if not (0 < temp < 1.0):
+                    raise ValueError(f"温度参数应在(0,1)范围内，当前值: {temp}")
+
+        # 集成策略验证
+        elif strategy_type == 'ensemble':
+            if not hasattr(strategy_config, 'losses'):
+                raise ValueError("集成策略配置缺少 'losses' 列表")
+
+            losses = strategy_config.losses
+            if not isinstance(losses, list) or len(losses) == 0:
+                raise ValueError("集成策略的 'losses' 必须是非空列表")
+
+            # 验证每个损失配置
+            valid_losses = ['INFONCE', 'SUPCON', 'TRIPLET', 'PROTOTYPICAL', 'BARLOWTWINS', 'VICREG']
+            for i, loss_config in enumerate(losses):
+                if not isinstance(loss_config, SimpleNamespace):
+                    raise ValueError(f"损失配置[{i}]应为SimpleNamespace对象")
+
+                if not hasattr(loss_config, 'loss_type'):
+                    raise ValueError(f"损失配置[{i}]缺少 'loss_type' 字段")
+
+                loss_type = loss_config.loss_type
+                if loss_type not in valid_losses:
+                    raise ValueError(f"不支持的对比损失类型[{i}]: {loss_type}")
+
+                # 验证权重
+                if not hasattr(loss_config, 'weight'):
+                    raise ValueError(f"损失配置[{i}]缺少 'weight' 字段")
+
+                weight = loss_config.weight
+                if not (0 < weight <= 1.0):
+                    raise ValueError(f"损失权重[{i}]应在(0,1]范围内，当前值: {weight}")
+
+                # 验证温度参数 (InfoNCE/SupCon需要)
+                if loss_type in ['INFONCE', 'SUPCON']:
+                    if not hasattr(loss_config, 'temperature'):
+                        raise ValueError(f"{loss_type} 损失配置[{i}]需要 'temperature' 参数")
+                    temp = loss_config.temperature
+                    if not (0 < temp < 1.0):
+                        raise ValueError(f"温度参数[{i}]应在(0,1)范围内，当前值: {temp}")
+
+                # 验证margin参数 (Triplet需要)
+                if loss_type == 'TRIPLET':
+                    if not hasattr(loss_config, 'margin'):
+                        raise ValueError(f"Triplet损失配置[{i}]需要 'margin' 参数")
+                    margin = loss_config.margin
+                    if not (0 < margin < 2.0):
+                        raise ValueError(f"Triplet margin[{i}]应在(0,2)范围内，当前值: {margin}")
+
+    # 向后兼容配置验证 (旧格式)
+    else:
+        # 检查旧格式的对比学习参数
+        contrast_loss = getattr(task, 'contrast_loss', None)
+        if contrast_loss:
+            valid_losses = ['INFONCE', 'SUPCON', 'TRIPLET', 'PROTOTYPICAL', 'BARLOWTWINS', 'VICREG']
+            if contrast_loss not in valid_losses:
+                raise ValueError(f"不支持的对比损失类型: {contrast_loss}")
+
+            # 验证温度参数
+            if contrast_loss in ['INFONCE', 'SUPCON']:
+                temperature = getattr(task, 'temperature', None)
+                if temperature is None:
+                    raise ValueError(f"{contrast_loss} 损失需要 'temperature' 参数")
+                if not (0 < temperature < 1.0):
+                    raise ValueError(f"温度参数应在(0,1)范围内，当前值: {temperature}")
+
+    # 验证对比学习权重
+    contrast_weight = getattr(task, 'contrast_weight', None)
+    if contrast_weight is not None:
+        if not (0 < contrast_weight <= 2.0):
+            raise ValueError(f"对比学习权重应在(0,2]范围内，当前值: {contrast_weight}")
+
+    # 验证模型配置中的投影头维度
+    if hasattr(config.model, 'projection_dim'):
+        proj_dim = config.model.projection_dim
+        if not isinstance(proj_dim, int) or proj_dim <= 0:
+            raise ValueError(f"投影头维度必须为正整数，当前值: {proj_dim}")
 
 
 # 旧版 save_config (dict 专用) 已合并到新版通用 save_config，避免重复定义

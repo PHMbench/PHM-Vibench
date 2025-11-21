@@ -6,9 +6,9 @@
 - `MultiStageOrchestrator`：通用多阶段调度器，支持任意 `stages=[...]`。
 - `TwoStageOrchestrator`：`MultiStageOrchestrator` 的二阶段别名，接口保持 `run_complete()` 返回 `{'stage_1': ..., 'stage_2': ...}`。
 
-## 2. 配置输入格式
+## 2. 配置输入格式（推荐优先：单 YAML + stages.overrides）
 
-### 2.1 推荐格式：`stages` 列表（多阶段通用）
+### 2.1 推荐格式：单 YAML + `stages.overrides`
 ```python
 unified = {
     "stages": [
@@ -86,8 +86,8 @@ orch = TwoStageOrchestrator(unified)
 summary = orch.run_complete()  # 等价两阶段
 ```
 
-### 3.4 单 YAML + `stages.overrides`（推荐未来用法）
-1. YAML 示例（单文件）：
+### 3.4 单 YAML + `stages.overrides`（推荐）
+1) YAML 示例（单文件）：
 ```yaml
 data: {...}
 model: {...}
@@ -97,7 +97,7 @@ stages:
   - name: pretrain
     environment: {stage_name: "pretrain"}
     overrides:
-      task.type: "pretrain"
+      task.type: "CDDG"          # 仅写差异
       trainer.max_epochs: 30
   - name: cddg_ft
     environment: {stage_name: "cddg_ft"}
@@ -106,7 +106,7 @@ stages:
       trainer.max_epochs: 20
       data.num_window: 64
 ```
-2. 组装：
+2) 组装：
 ```python
 from src.configs.config_utils import load_config
 from src.utils.config_utils import apply_overrides_to_config
@@ -147,3 +147,5 @@ results = orch.run_all_stages()
   可以，`TwoStageOrchestrator` 会保留 `stage_1`/`stage_2` 属性；多阶段时推荐 `stages[i].task.lr`。
 - **能否恢复任意阶段？**  
   当前 `_ckpt_registry` 已记录阶段 ckpt，恢复逻辑可在 Pipeline 层根据需要扩展（预留 `resume_stage_name`/`resume_checkpoint` 字段）。
+
+> 提醒：优先采用“单 YAML + stages.overrides”减少重复配置；双 YAML 仅作兼容。
