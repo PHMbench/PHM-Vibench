@@ -13,8 +13,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 from types import SimpleNamespace
+import logging
 
 from copy import deepcopy
+
+logger = logging.getLogger(__name__)
 
 from src.configs.config_utils import (
     load_config,
@@ -80,53 +83,151 @@ def nested_set(config: dict, path: str, value: Any) -> None:
 
 
 def parse_stage_overrides(override_list):
-    """解析阶段特定的override参数
+    """
+    解析CLI阶段覆盖参数，支持多种格式
 
     支持格式：
-    - stage_1.task.lr=0.001 (阶段特定)
-    - task.lr=0.001 (全局，应用到所有阶段)
-
-    Args:
-        override_list: override参数列表
-
-    Returns:
-        (global_overrides, stage_overrides) 元组
+    1. stages[0].task.lr=0.001     # 新格式：推荐使用
+    2. stage_1.task.lr=0.001      # 旧格式：向后兼容
+    3. trainer.max_epochs=10       # 全局覆盖：应用到所有阶段
     """
     if not override_list:
         return {}, {}
 
     import yaml
+    import re
 
+    stage_overrides = []
     global_overrides = {}
-    stage_overrides = {}
+
+    # 初始化阶段覆盖列表
+    # 注意：这里返回列表格式，用于和现有代码兼容
+    processed_stage_overrides = {}
 
     for override in override_list:
         if '=' not in override:
             continue
 
-        key, value = override.split('=', 1)
-        key = key.strip()
-        value = yaml.safe_load(value.strip())
+        try:
+            key, value = override.split('=', 1)
+            key = key.strip()
+            value = _parse_value(value.strip())
 
-        if key.startswith('stage_'):
-            # 阶段特定override
-            parts = key.split('.', 2)
-            if len(parts) >= 3:
-                stage_name = parts[0]
-                config_path = parts[2]
+            if override.startswith('stages['):
+                # 解析新格式：stages[index].path=value
+                parsed = _parse_stages_index_format(override)
+                if parsed:
+                    stage_idx, path, value = parsed
+                    if stage_idx not in processed_stage_overrides:
+                        processed_stage_overrides[stage_idx] = {}
+                    _set_nested_value(processed_stage_overrides[stage_idx], path, value)
+                else:
+                    logger.warning(f"Failed to parse stages[index] format: {override}")
 
-                if stage_name not in stage_overrides:
-                    stage_overrides[stage_name] = {}
+            elif key.startswith('stage_'):
+                # 解析旧格式：stage_N.path=value
+                parsed = _parse_stage_n_format(override)
+                if parsed:
+                    stage_idx, path, value = parsed
+                    if stage_idx not in processed_stage_overrides:
+                        processed_stage_overrides[stage_idx] = {}
+                    _set_nested_value(processed_stage_overrides[stage_idx], path, value)
+                else:
+                    logger.warning(f"Failed to parse stage_N format: {override}")
 
-                nested_set(stage_overrides[stage_name], config_path, value)
-        else:
-            # 全局override
-            if '.' in key:
-                nested_set(global_overrides, key, value)
             else:
-                global_overrides[key] = value
+                # 解析全局覆盖：path=value
+                if '.' in key:
+                    _set_nested_value(global_overrides, key, value)
+                else:
+                    global_overrides[key] = value
+
+        except Exception as e:
+            logger.error(f"解析覆盖参数失败: {override}, 错误: {e}")
+            raise ValueError(f"Invalid override format: {override}")
+
+    # 转换为列表格式以保持向后兼容
+    max_stage_idx = max(processed_stage_overrides.keys(), default=-1) + 1
+    stage_overrides = [processed_stage_overrides.get(i, {}) for i in range(max_stage_idx)]
 
     return global_overrides, stage_overrides
+
+
+def _parse_stages_index_format(override: str):
+    """解析stages[index]格式"""
+    # 匹配模式：stages[0].task.lr=0.001
+    pattern = r'stages\[(\d+)\]\.(.+?)=(.+)'
+    match = re.match(pattern, override)
+
+    if match:
+        stage_idx = int(match.group(1))
+        path = match.group(2)
+        value_str = match.group(3)
+
+        # 尝试解析值的类型
+        value = _parse_value(value_str)
+
+        return stage_idx, path, value
+
+    return None
+
+
+def _parse_stage_n_format(override: str):
+    """解析stage_N格式"""
+    # 分割出stage_N部分
+    if '=' not in override:
+        return None
+
+    key_part, value_part = override.split('=', 1)
+    parts = key_part.split('.', 1)
+
+    if len(parts) < 2:
+        return None
+
+    stage_part, path = parts
+    # 提取数字
+    match = re.match(r'stage_(\d+)', stage_part)
+
+    if match:
+        stage_idx = int(match.group(1)) - 1  # stage_1 -> index 0
+        value = _parse_value(value_part.strip())
+        return stage_idx, path, value
+
+    return None
+
+
+def _parse_value(value_str: str):
+    """智能解析值的类型"""
+    import ast
+
+    value_str = value_str.strip()
+
+    # 尝试解析为Python字面量
+    try:
+        return ast.literal_eval(value_str)
+    except (ValueError, SyntaxError):
+        pass
+
+    # 特殊字符串处理
+    if value_str.lower() in ['true', 'false']:
+        return value_str.lower() == 'true'
+    elif value_str.lower() in ['null', 'none']:
+        return None
+    elif value_str.startswith(('\"', "'")) and value_str.endswith(('\"', "'")):
+        return value_str[1:-1]  # 去掉引号
+    else:
+        return value_str  # 保持字符串
+
+
+def _set_nested_value(d: dict, path: str, value: Any) -> None:
+    """在嵌套字典中设置值"""
+    keys = path.split('.')
+    current = d
+    for key in keys[:-1]:
+        if key not in current:
+            current[key] = {}
+        current = current[key]
+    current[keys[-1]] = value
 
 
 def apply_stage_overrides(stage_config, global_config, stage_overrides):

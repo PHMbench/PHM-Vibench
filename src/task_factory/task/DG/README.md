@@ -1,5 +1,21 @@
 # DG Task Module
 
+## 🚧 实现状态 (Implementation Status)
+
+### ✅ 已实现 (Fully Implemented)
+- **基础分类包装器**: `classification.py` - 基于`Default_task`的21行基础实现
+- **标准分类功能**: 基本交叉熵损失分类
+
+### ❌ TODO: 待实现 (Not Yet Implemented)
+- **领域自适应损失**: MMD, CORAL, DANN等所有领域对齐技术
+- **对抗训练**: 梯度反转层和对抗域适应
+- **正则化技术**: domain_penalty, adversarial, coral等正则化方法
+- **域感知批归一化**: 分离的域特定批归一化
+- **渐进式域适应**: 动态权重调整机制
+- **域拆分策略**: 基于条件、负载、速度的自动域分割
+
+> **注意**: 当前实现为最小包装器，以下文档描述的功能大部分为设计目标，需要逐步实现。
+
 ## Overview
 
 The DG (Domain Generalization) task module implements domain generalization techniques for single-dataset experiments. Unlike CDDG which handles cross-dataset scenarios, DG focuses on improving model robustness within a single dataset by learning domain-invariant representations that generalize across different conditions, equipment states, or operational environments.
@@ -29,12 +45,12 @@ task:
   type: "DG"
   name: "classification"
   loss: "CE"                     # Cross-entropy loss
-  regularization: ["domain_penalty"]  # Domain regularization techniques
-  domain_weight: 0.1             # Weight for domain regularization
+  # TODO: regularization: ["domain_penalty"]  # Domain regularization techniques - NOT IMPLEMENTED
+  # TODO: domain_weight: 0.1             # Weight for domain regularization - NOT IMPLEMENTED
 
-  # Domain configuration (optional)
-  source_domains: [1, 2, 3]      # Source domain IDs within dataset
-  target_domain: 4               # Target domain ID for evaluation
+  # TODO: Domain configuration (optional) - NOT IMPLEMENTED
+  # source_domains: [1, 2, 3]      # Source domain IDs within dataset
+  # target_domain: 4               # Target domain ID for evaluation
 ```
 
 ### DG with Advanced Regularization
@@ -44,18 +60,18 @@ task:
   name: "classification"
   loss: "CE"
 
-  # Multiple regularization techniques
-  regularization:
-    - "domain_penalty"           # L2 penalty on domain-specific features
-    - "adversarial"              # Adversarial domain adaptation
-    - "coral"                    # CORAL domain alignment
+  # TODO: Multiple regularization techniques - NOT IMPLEMENTED
+  # regularization:
+  #   - "domain_penalty"           # L2 penalty on domain-specific features
+  #   - "adversarial"              # Adversarial domain adaptation
+  #   - "coral"                    # CORAL domain alignment
 
-  # Regularization weights
-  domain_weight: 0.1
-  adversarial_weight: 0.05
-  coral_weight: 0.02
+  # TODO: Regularization weights - NOT IMPLEMENTED
+  # domain_weight: 0.1
+  # adversarial_weight: 0.05
+  # coral_weight: 0.02
 
-  # Training parameters
+  # Training parameters (BASIC ONES WORK)
   lr: 1e-3
   epochs: 100
   batch_size: 64
@@ -80,34 +96,34 @@ task:
 
 ## Regularization Techniques
 
-### 1. Domain Penalty
+### 1. TODO: Domain Penalty - NOT IMPLEMENTED
 Applies L2 penalty to encourage domain-invariant features:
 ```yaml
-regularization: ["domain_penalty"]
-domain_weight: 0.1
+# TODO: regularization: ["domain_penalty"] - NOT IMPLEMENTED
+# domain_weight: 0.1
 ```
 
-### 2. Adversarial Training
+### 2. TODO: Adversarial Training - NOT IMPLEMENTED
 Uses adversarial loss to confuse domain classifier:
 ```yaml
-regularization: ["adversarial"]
-adversarial_weight: 0.05
-gradient_reversal_lambda: 1.0
+# TODO: regularization: ["adversarial"] - NOT IMPLEMENTED
+# adversarial_weight: 0.05
+# gradient_reversal_lambda: 1.0
 ```
 
-### 3. CORAL (Correlation Alignment)
+### 3. TODO: CORAL (Correlation Alignment) - NOT IMPLEMENTED
 Aligns feature distributions across domains:
 ```yaml
-regularization: ["coral"]
-coral_weight: 0.02
+# TODO: regularization: ["coral"] - NOT IMPLEMENTED
+# coral_weight: 0.02
 ```
 
-### 4. MMD (Maximum Mean Discrepancy)
+### 4. TODO: MMD (Maximum Mean Discrepancy) - NOT IMPLEMENTED
 Minimizes distribution difference between domains:
 ```yaml
-regularization: ["mmd"]
-mmd_weight: 0.03
-mmd_kernel: "rbf"              # Kernel type for MMD
+# TODO: regularization: ["mmd"] - NOT IMPLEMENTED
+# mmd_weight: 0.03
+# mmd_kernel: "rbf"              # Kernel type for MMD
 ```
 
 ## Usage Examples
@@ -147,38 +163,38 @@ The DG classification task inherits from `Default_task` and adds domain-specific
 
 ## Domain Splitting Strategies
 
-### 1. Condition-Based
+### 1. TODO: Condition-Based - NOT IMPLEMENTED
 Split by operating conditions (normal, fault types):
 ```yaml
-domain_split_method: "condition"
-source_conditions: ["normal", "inner_race", "outer_race"]
-target_condition: "ball_fault"
+# TODO: domain_split_method: "condition" - NOT IMPLEMENTED
+# source_conditions: ["normal", "inner_race", "outer_race"]
+# target_condition: "ball_fault"
 ```
 
-### 2. Load-Based
+### 2. TODO: Load-Based - NOT IMPLEMENTED
 Split by mechanical load levels:
 ```yaml
-domain_split_method: "load"
-source_loads: [0, 1, 2]        # 0HP, 1HP, 2HP
-target_load: 3                 # 3HP
+# TODO: domain_split_method: "load" - NOT IMPLEMENTED
+# source_loads: [0, 1, 2]        # 0HP, 1HP, 2HP
+# target_load: 3                 # 3HP
 ```
 
-### 3. Speed-Based
+### 3. TODO: Speed-Based - NOT IMPLEMENTED
 Split by rotational speeds:
 ```yaml
-domain_split_method: "speed"
-source_speeds: [1797, 1772, 1750]  # RPM values
-target_speed: 1730
+# TODO: domain_split_method: "speed" - NOT IMPLEMENTED
+# source_speeds: [1797, 1772, 1750]  # RPM values
+# target_speed: 1730
 ```
 
-### 4. Custom Domain Definition
+### 4. TODO: Custom Domain Definition - NOT IMPLEMENTED
 Define custom domain splits:
 ```yaml
-domain_split_method: "custom"
-domain_mapping:
-  domain_0: [0, 1, 2]          # File indices for domain 0
-  domain_1: [3, 4, 5]          # File indices for domain 1
-  domain_2: [6, 7, 8]          # File indices for domain 2
+# TODO: domain_split_method: "custom" - NOT IMPLEMENTED
+# domain_mapping:
+#   domain_0: [0, 1, 2]          # File indices for domain 0
+#   domain_1: [3, 4, 5]          # File indices for domain 1
+#   domain_2: [6, 7, 8]          # File indices for domain 2
 ```
 
 ## Evaluation Metrics
@@ -201,27 +217,27 @@ domain_mapping:
 
 ## Advanced Features
 
-### 1. Gradient Reversal Layer
+### 1. TODO: Gradient Reversal Layer - NOT IMPLEMENTED
 For adversarial domain adaptation:
 ```python
-# Automatically included when using adversarial regularization
-regularization: ["adversarial"]
-gradient_reversal_lambda: 1.0
+# TODO: Automatically included when using adversarial regularization - NOT IMPLEMENTED
+# regularization: ["adversarial"]
+# gradient_reversal_lambda: 1.0
 ```
 
-### 2. Domain-Adaptive Batch Normalization
+### 2. TODO: Domain-Adaptive Batch Normalization - NOT IMPLEMENTED
 Separate batch normalization for different domains:
 ```yaml
-use_domain_bn: true
-num_domains: 4
+# TODO: use_domain_bn: true - NOT IMPLEMENTED
+# num_domains: 4
 ```
 
-### 3. Progressive Domain Adaptation
+### 3. TODO: Progressive Domain Adaptation - NOT IMPLEMENTED
 Gradually increase domain adaptation weight:
 ```yaml
-progressive_adaptation: true
-adaptation_schedule: "linear"    # or "exponential"
-max_adaptation_weight: 0.1
+# TODO: progressive_adaptation: true - NOT IMPLEMENTED
+# adaptation_schedule: "linear"    # or "exponential"
+# max_adaptation_weight: 0.1
 ```
 
 ## Research Applications

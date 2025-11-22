@@ -1,5 +1,28 @@
 # GFS Task Module
 
+## 🚧 实现状态 (Implementation Status)
+
+### ✅ 已实现 (Fully Implemented)
+- **基础分类**: `classification.py` - 21行Default_task基础包装器
+- **匹配网络**: `matching.py` - 91行基础匹配网络实现
+- **基本少样本支持**: 基础的support/query结构
+
+### 🚧 部分实现 (Partially Implemented)
+- **基础参数**: base_classes, novel_classes, num_support, num_query等基本配置
+- **简单权重**: 基础的base_class_weight, novel_class_weight支持
+
+### ❌ TODO: 待实现 (Not Yet Implemented)
+- **知识蒸馏**: teacher-student知识传递机制
+- **特征对齐**: MMD等特征分布对齐技术
+- **自适应加权**: 基于不确定性的动态权重调整
+- **持续学习**: 内存回放和防遗忘机制
+- **元学习**: MAML等元学习算法
+- **渐进式训练**: 多阶段训练策略
+- **高级匹配网络**: 注意力机制和记忆增强
+- **多任务GFS**: 跨任务共享学习
+
+> **注意**: 当前实现为基础版本，以下文档描述的大部分高级功能为设计目标。
+
 ## Overview
 
 The GFS (Generalized Few-Shot Learning) task module implements generalized few-shot learning algorithms that handle both base classes (with many examples) and novel classes (with few examples) simultaneously. Unlike standard few-shot learning which only considers novel classes, GFS maintains performance on base classes while adapting to new classes. This is crucial for industrial applications where systems must continue recognizing known faults while learning new fault patterns.
@@ -58,61 +81,61 @@ task:
   epochs: 100
 ```
 
-### Advanced GFS with Knowledge Distillation
+### Advanced GFS with Knowledge Distillation ❌ TODO: NOT IMPLEMENTED
 ```yaml
 task:
   type: "GFS"
   name: "classification"
 
-  # Class configuration
-  base_classes: 8
-  novel_classes: 2
-  num_support: 5
-  num_query: 15
+  # Class configuration (BASIC SUPPORT)
+  base_classes: 8               # ✅ WORKS
+  novel_classes: 2              # ✅ WORKS
+  num_support: 5                # ✅ WORKS
+  num_query: 15                 # ✅ WORKS
 
-  # Knowledge transfer
-  use_knowledge_distillation: true
-  distillation_weight: 0.5     # Weight for distillation loss
-  teacher_temperature: 4.0     # Temperature for knowledge distillation
+  # TODO: Knowledge transfer - NOT IMPLEMENTED
+  # use_knowledge_distillation: true
+  # distillation_weight: 0.5     # Weight for distillation loss
+  # teacher_temperature: 4.0     # Temperature for knowledge distillation
 
-  # Feature alignment
-  feature_alignment: true
-  alignment_weight: 0.1        # Weight for feature alignment loss
+  # TODO: Feature alignment - NOT IMPLEMENTED
+  # feature_alignment: true
+  # alignment_weight: 0.1        # Weight for feature alignment loss
 
-  # Dynamic weighting
-  adaptive_weighting: true     # Dynamically balance base/novel losses
-  weighting_strategy: "uncertainty"  # "uncertainty", "gradient", "performance"
+  # TODO: Dynamic weighting - NOT IMPLEMENTED
+  # adaptive_weighting: true     # Dynamically balance base/novel losses
+  # weighting_strategy: "uncertainty"  # "uncertainty", "gradient", "performance"
 
-  # Training parameters
+  # Training parameters (WORKING)
   lr: 1e-3
   epochs: 100
 ```
 
-### GFS Matching Networks
+### GFS Matching Networks 🚧 PARTIALLY IMPLEMENTED
 ```yaml
 task:
   type: "GFS"
   name: "matching"
 
-  # Class configuration
-  base_classes: 8
-  novel_classes: 2
-  num_support: 5
-  num_query: 15
+  # Class configuration (BASIC SUPPORT)
+  base_classes: 8               # ✅ WORKS
+  novel_classes: 2              # ✅ WORKS
+  num_support: 5                # ✅ WORKS
+  num_query: 15                 # ✅ WORKS
 
-  # Matching configuration
-  use_attention: true
-  attention_type: "cosine"
+  # TODO: Matching configuration - PARTIALLY IMPLEMENTED
+  # use_attention: true          # Basic attention may work
+  # attention_type: "cosine"     # Cosine similarity should work
 
-  # Base class memory
-  base_memory_size: 1000       # Size of base class memory bank
-  memory_update_rate: 0.1      # Rate for updating memory
+  # TODO: Base class memory - NOT IMPLEMENTED
+  # base_memory_size: 1000       # Size of base class memory bank
+  # memory_update_rate: 0.1      # Rate for updating memory
 
-  # Matching strategies
-  base_matching_weight: 0.7    # Weight for base class matching
-  novel_matching_weight: 0.3   # Weight for novel class matching
+  # TODO: Matching strategies - BASIC IMPLEMENTATION
+  base_matching_weight: 0.7     # ✅ MAY WORK
+  novel_matching_weight: 0.3    # ✅ MAY WORK
 
-  # Training parameters
+  # Training parameters (WORKING)
   lr: 1e-3
   epochs: 100
 ```
@@ -255,32 +278,32 @@ metrics:
 
 ## Advanced Features
 
-### 1. Adaptive Class Balancing
+### 1. TODO: Adaptive Class Balancing - NOT IMPLEMENTED
 Dynamically adjust sampling based on performance:
 ```yaml
-adaptive_sampling: true
-sampling_strategy: "performance"  # "performance", "uncertainty", "gradient"
-rebalance_frequency: 10           # Episodes between rebalancing
+# TODO: adaptive_sampling: true - NOT IMPLEMENTED
+# sampling_strategy: "performance"  # "performance", "uncertainty", "gradient"
+# rebalance_frequency: 10           # Episodes between rebalancing
 ```
 
-### 2. Continual Learning
+### 2. TODO: Continual Learning - NOT IMPLEMENTED
 Handle sequential arrival of novel classes:
 ```yaml
-continual_learning: true
-memory_replay: true              # Replay base class examples
-memory_size: 1000               # Size of replay memory
-anti_forgetting_weight: 0.1     # Weight for anti-forgetting loss
+# TODO: continual_learning: true - NOT IMPLEMENTED
+# memory_replay: true              # Replay base class examples
+# memory_size: 1000               # Size of replay memory
+# anti_forgetting_weight: 0.1     # Weight for anti-forgetting loss
 ```
 
-### 3. Multi-Task GFS
+### 3. TODO: Multi-Task GFS - NOT IMPLEMENTED
 Handle multiple tasks with shared base classes:
 ```yaml
-multi_task_gfs: true
-shared_base_classes: [0, 1, 2, 3]    # Classes shared across tasks
-task_specific_classes: {
-  task_1: [4, 5],                     # Novel classes for task 1
-  task_2: [6, 7]                      # Novel classes for task 2
-}
+# TODO: multi_task_gfs: true - NOT IMPLEMENTED
+# shared_base_classes: [0, 1, 2, 3]    # Classes shared across tasks
+# task_specific_classes: {
+#   task_1: [4, 5],                     # Novel classes for task 1
+#   task_2: [6, 7]                      # Novel classes for task 2
+# }
 ```
 
 ## Industrial Applications

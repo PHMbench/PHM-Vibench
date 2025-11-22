@@ -10,6 +10,8 @@ The **Task Factory** is the central orchestrator of the Vibench training pipelin
 
 This factory-based approach allows Vibench to handle diverse tasks—from standard classification to complex domain generalization—by simply swapping out the task configuration.
 
+> 提示：`CLAUDE.md` 仅作导航，最新字段说明与示例请以本 README 为准。
+
 -----
 
 ## 📂 Module Structure
@@ -51,7 +53,7 @@ task:
 
   loss: "CE" # cross_entropy
   metrics: ["acc"]
-  target_system_id: [1,5,6,13,19]
+  target_system_id: [1,13,6,12,19]
 
   
   optimizer: "adam"

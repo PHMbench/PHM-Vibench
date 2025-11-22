@@ -30,52 +30,47 @@ import logging
 from ...Default_task import Default_task
 from ...Components.loss import get_loss_fn
 from ...Components.metrics import get_metrics
-from .contrastive_strategies import ContrastiveStrategyManager, create_contrastive_strategy
+from ..CDDG.contrastive_strategies import ContrastiveStrategyManager, create_contrastive_strategy
 
 logger = logging.getLogger(__name__)
 
 
 class task(Default_task):
     """
-    HSE Prompt-guided Contrastive Learning Task
-    
+    HSE Prompt-guided Contrastive Learning Task for Pretraining
+
     Inherits from Default_task and extends with:
     1. Prompt-guided contrastive learning capabilities
     2. System-aware positive/negative sampling
-    3. Two-stage training workflow support
-    4. Cross-dataset domain generalization
-    
-    Training Stages:
-    - **Pretrain**: Multi-system contrastive learning with prompt guidance
-    - **Finetune**: Task-specific adaptation with frozen prompts
+    3. Cross-dataset domain generalization
+
+    Note: This task is designed for pretraining phase only, focusing on
+    contrastive learning with HSE prompts for cross-domain generalization.
     """
-    
+
     def __init__(
-        self, 
-        network, 
-        args_data, 
-        args_model, 
-        args_task, 
-        args_trainer, 
-        args_environment, 
+        self,
+        network,
+        args_data,
+        args_model,
+        args_task,
+        args_trainer,
+        args_environment,
         metadata
     ):
         """Initialize HSE contrastive learning task."""
-        
+
         # Initialize parent class
         super().__init__(network, args_data, args_model, args_task, args_trainer, args_environment, metadata)
-        
+
         # HSE-specific configuration
         self.args_task = args_task
         self.args_model = args_model
         self.metadata = metadata
-        
-        # Training stage control
-        self.training_stage = getattr(args_model, 'training_stage', 'pretrain')
-        self.freeze_prompt = getattr(args_model, 'freeze_prompt', False)
-        
-        # Contrastive learning setup with new strategy system
-        self.contrast_weight = getattr(args_task, 'contrast_weight', 0.15)
+
+        # Contrastive learning setup (pretrain-focused)
+        self.contrast_weight = getattr(args_task, 'contrast_weight', 0.9)
+        self.classification_weight = getattr(args_task, 'classification_weight', 0.1)
         self.enable_contrastive = self.contrast_weight > 0
 
         # Initialize contrastive strategy manager
@@ -121,14 +116,11 @@ class task(Default_task):
     def _log_task_config(self):
         """Log task configuration for debugging."""
         logger.info("HSE Contrastive Learning Task Configuration:")
-        logger.info(f"  - Training stage: {self.training_stage}")
         logger.info(f"  - Contrastive learning: {self.enable_contrastive}")
+        logger.info(f"  - Contrastive weight: {self.contrast_weight}")
+        logger.info(f"  - Classification weight: {self.classification_weight}")
         logger.info(f"  - Source domains: {self.source_domain_id}")
         logger.info(f"  - Target domains: {self.target_domain_id}")
-        logger.info(f"  - Prompt frozen: {self.freeze_prompt}")
-        if self.enable_contrastive:
-            logger.info(f"  - Contrastive loss: {self.args_task.contrast_loss}")
-            logger.info(f"  - Contrastive weight: {self.contrast_weight}")
     
     def training_step(self, batch, batch_idx):
         """Training step with prompt-guided contrastive learning."""
@@ -142,9 +134,16 @@ class task(Default_task):
         self._log_metrics(metrics, "val")
     
     def _shared_step(self, batch, batch_idx, stage='train'):
-        """Shared step logic with dual-view contrastive learning."""
-        batch_dict = self._prepare_batch(batch)
+        """
+        重构后的共享步骤：严格分离分类流和对比流，实现真正的阶段感知训练
 
+        核心改进：
+        1. 流分离：分类和对比计算完全独立
+        2. 阶段感知：根据 pretrain/finetune 阶段调整行为
+        3. 权重动态：支持配置驱动的损失权重调整
+        """
+        # 准备基础数据
+        batch_dict = self._prepare_batch(batch)
         x = batch_dict['x']
         y = batch_dict['y']
 
@@ -165,79 +164,204 @@ class task(Default_task):
         task_id = batch_dict.get('task_id', 'classification')
         primary_file_id = resolved_ids[0] if resolved_ids else None
 
-        # 关键修复1：实现真正的双视图数据生成
-        if self.enable_contrastive and self.strategy_manager is not None:
-            # 创建双视图数据用于对比学习
-            view1, view2 = self._create_augmented_views(x)
+        # 初始化损失张量（确保在正确设备上）
+        classification_loss = torch.tensor(0.0, device=x.device)
+        contrastive_loss = torch.tensor(0.0, device=x.device)
+        preds = None
 
-            # 获取双视图的特征表示和prompt
-            logits1, prompts1, features1 = self._forward_with_prompts(
-                view1, file_id=primary_file_id, task_id=task_id
-            )
-            logits2, prompts2, features2 = self._forward_with_prompts(
-                view2, file_id=primary_file_id, task_id=task_id
-            )
+        # 分类流：仅在需要时执行
+        if self._should_run_classification():
+            classification_outputs = self._run_classification_flow(x, y, stage, primary_file_id, task_id)
+            classification_loss = classification_outputs['loss']
+            preds = classification_outputs['preds']
 
-            # 使用第一个视图进行分类（保持与原始流程兼容）
-            classification_loss = self.loss_fn(logits1, y)
+        # 对比流：仅在启用时执行
+        if self.enable_contrastive and self._should_run_contrastive():
+            contrastive_outputs = self._run_contrastive_flow(x, y, stage, primary_file_id, task_id, system_ids_tensor)
+            contrastive_loss = contrastive_outputs['loss']
 
-            # 关键修复2：实现真正的双视图对比学习
-            contrastive_loss_value, contrastive_loss_components = self._compute_dual_view_contrastive_loss(
-                features1=features1,
-                features2=features2,
-                prompts1=prompts1,
-                prompts2=prompts2,
-                labels=y,
-                system_ids=system_ids_tensor
-            )
+        # 阶段感知的损失组合
+        total_loss, loss_dict = self._combine_losses_stage_aware(
+            classification_loss, contrastive_loss, stage
+        )
 
-            # 分类损失 + 对比损失
-            reg_dict = self._compute_regularization()
-            total_loss = classification_loss + self.contrast_weight * contrastive_loss_value + reg_dict.get('total', torch.tensor(0.0, device=classification_loss.device))
+        # 扩展损失字典
+        loss_dict.update({
+            f'{stage}_classification_loss': classification_loss,
+            f'{stage}_contrastive_loss': contrastive_loss,
+        })
 
-            # 使用第一个视图的预测进行评估
-            preds = torch.argmax(logits1, dim=1)
-
-        else:
-            # 回退到原始的单视图分类模式
-            logits, prompts, feature_repr = self._forward_with_prompts(
-                x, file_id=primary_file_id, task_id=task_id
-            )
-
-            classification_loss = self.loss_fn(logits, y)
-            reg_dict = self._compute_regularization()
-            total_loss = classification_loss + reg_dict.get('total', torch.tensor(0.0, device=classification_loss.device))
-
-            contrastive_loss_value = torch.tensor(0.0, device=classification_loss.device)
-            contrastive_loss_components = {}
-            preds = torch.argmax(logits, dim=1)
-
+        # 构建步骤指标
         dataset_name = dataset_names[0] if dataset_names else 'global'
-        step_metrics = {
-            f"{stage}_loss": total_loss,
-            f"{stage}_classification_loss": classification_loss,
-            f"{stage}_{dataset_name}_loss": classification_loss,
-            f"{stage}_total_loss": total_loss,
+        step_metrics = self._build_step_metrics(loss_dict, dataset_name, stage, preds, y, batch_dict)
+
+        return step_metrics
+
+    def _should_run_classification(self) -> bool:
+        """根据训练阶段和配置决定是否运行分类流"""
+        # 检查是否有明确的训练阶段设置
+        training_stage = getattr(self.args_task, 'training_stage', None)
+
+        if training_stage == 'pretrain':
+            # 预训练阶段：检查分类权重
+            classification_weight = getattr(self.args_task, 'classification_weight', 0.1)
+            return classification_weight > 0
+        elif training_stage == 'finetune':
+            # 微调阶段：默认启用分类
+            return True
+
+        # 向后兼容：如果没有明确阶段设置，默认启用分类
+        return True
+
+    def _should_run_contrastive(self) -> bool:
+        """根据训练阶段和配置决定是否运行对比流"""
+        # 检查是否有明确的训练阶段设置
+        training_stage = getattr(self.args_task, 'training_stage', None)
+
+        if training_stage == 'pretrain':
+            # 预训练阶段：默认启用对比
+            contrast_weight = getattr(self.args_task, 'contrast_weight', 1.0)
+            return contrast_weight > 0
+        elif training_stage == 'finetune':
+            # 微调阶段：检查对比权重
+            contrast_weight = getattr(self.args_task, 'contrast_weight', 0.1)
+            return contrast_weight > 0
+
+        # 向后兼容：如果没有明确阶段设置，使用全局对比权重
+        return self.contrast_weight > 0
+
+    def _combine_losses_stage_aware(self, classification_loss: torch.Tensor,
+                                   contrastive_loss: torch.Tensor,
+                                   stage: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """
+        阶段感知的损失组合策略
+
+        Args:
+            classification_loss: 分类损失
+            contrastive_loss: 对比损失
+            stage: 当前阶段 ('train', 'val', 'test')
+
+        Returns:
+            total_loss: 总损失
+            loss_dict: 损失分量字典
+        """
+        training_stage = getattr(self.args_task, 'training_stage', None)
+
+        if training_stage == 'pretrain':
+            # 预训练阶段：对比学习为主，分类为辅助
+            contrast_weight = getattr(self.args_task, 'contrast_weight', 1.0)
+            classification_weight = getattr(self.args_task, 'classification_weight', 0.1)
+        elif training_stage == 'finetune':
+            # 微调阶段：分类为主，对比为正则化
+            classification_weight = getattr(self.args_task, 'classification_weight', 1.0)
+            contrast_weight = getattr(self.args_task, 'contrast_weight', 0.1)
+        else:
+            # 向后兼容：使用静态权重
+            classification_weight = self.classification_weight
+            contrast_weight = self.contrast_weight
+
+        # 计算加权总损失
+        total_loss = (classification_weight * classification_loss +
+                     contrast_weight * contrastive_loss)
+
+        # 构建损失字典
+        loss_dict = {
+            f'{stage}_total_loss': total_loss,
+            f'{stage}_class_weight': torch.tensor(classification_weight, device=total_loss.device),
+            f'{stage}_contrast_weight': torch.tensor(contrast_weight, device=total_loss.device),
+            f'{stage}_training_stage': training_stage or 'legacy'
         }
 
-        metric_values = super()._compute_metrics(preds, y, dataset_name, stage)
-        step_metrics.update(metric_values)
+        return total_loss, loss_dict
 
-        # 记录对比损失组件指标
-        if contrastive_loss_components:
-            for loss_name, loss_value in contrastive_loss_components.items():
-                step_metrics[f"{stage}_{loss_name}_loss"] = loss_value
-            step_metrics[f"{stage}_contrastive_total_loss"] = contrastive_loss_value
+  
+    def _run_classification_flow(self, x: torch.Tensor, y: torch.Tensor, stage: str,
+                               primary_file_id: Any, task_id: str) -> Dict[str, Any]:
+        """执行分类流：纯粹的特征提取和分类"""
+        # 使用原始数据（无增强）进行分类
+        logits, prompts, feature_repr = self._forward_with_prompts(
+            x, file_id=primary_file_id, task_id=task_id
+        )
 
+        # 计算分类损失
+        classification_loss = self.loss_fn(logits, y)
+        preds = torch.argmax(logits, dim=1)
+
+        return {
+            'loss': classification_loss,
+            'preds': preds,
+            'logits': logits,
+            'prompts': prompts,
+            'features': feature_repr
+        }
+
+    def _run_contrastive_flow(self, x: torch.Tensor, y: torch.Tensor, stage: str,
+                            primary_file_id: Any, task_id: str,
+                            system_ids_tensor: Optional[torch.Tensor]) -> Dict[str, Any]:
+        """执行对比流：双视图增强和对比学习"""
+        # 创建双视图数据用于对比学习
+        view1, view2 = self._create_augmented_views(x)
+
+        # 获取双视图的特征表示和prompt
+        logits1, prompts1, features1 = self._forward_with_prompts(
+            view1, file_id=primary_file_id, task_id=task_id
+        )
+        logits2, prompts2, features2 = self._forward_with_prompts(
+            view2, file_id=primary_file_id, task_id=task_id
+        )
+
+        # 计算真正的双视图对比损失
+        contrastive_loss_value, contrastive_loss_components = self._compute_dual_view_contrastive_loss(
+            features1=features1,
+            features2=features2,
+            prompts1=prompts1,
+            prompts2=prompts2,
+            labels=y,
+            system_ids=system_ids_tensor
+        )
+
+        # 返回对比流结果，包括基于第一个视图的预测（用于评估）
+        preds = torch.argmax(logits1, dim=1)
+
+        return {
+            'loss': contrastive_loss_value,
+            'preds': preds,
+            'components': contrastive_loss_components,
+            'view1_features': features1,
+            'view2_features': features2,
+            'view1_prompts': prompts1,
+            'view2_prompts': prompts2,
+            'view1_logits': logits1,
+            'view2_logits': logits2
+        }
+
+  
+    def _build_step_metrics(self, loss_dict: Dict[str, Any], dataset_name: str,
+                          stage: str, preds: Optional[torch.Tensor],
+                          y: torch.Tensor, batch_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """构建步骤指标字典"""
+        step_metrics = loss_dict.copy()
+
+        # 添加基础损失指标
+        step_metrics.update({
+            f"{stage}_loss": loss_dict[f'{stage}_total_loss'],
+            f"{stage}_{dataset_name}_loss": loss_dict[f'{stage}_classification_loss'],
+        })
+
+        # 如果有预测，计算分类指标
+        if preds is not None:
+            metric_values = super()._compute_metrics(preds, y, dataset_name, stage)
+            step_metrics.update(metric_values)
+
+        # 添加正则化损失
+        reg_dict = self._compute_regularization()
         for reg_type, reg_loss_val in reg_dict.items():
             if reg_type != 'total':
                 step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
 
-        if stage == 'train':
-            self.log('contrast_weight', torch.tensor(self.contrast_weight, device=total_loss.device))
-            if prompts1 is not None:
-                prompt_norm = prompts1.norm(dim=-1).mean()
-                step_metrics['train_prompt_norm'] = prompt_norm
+        # 添加正则化损失到总损失
+        total_reg_loss = reg_dict.get('total', torch.tensor(0.0, device=step_metrics[f'{stage}_total_loss'].device))
+        step_metrics[f'{stage}_total_loss'] = step_metrics[f'{stage}_total_loss'] + total_reg_loss
 
         return step_metrics
     
@@ -640,247 +764,115 @@ class task(Default_task):
         system_ids: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
-        Advanced prompt integration for true prompt-level contrastive learning.
-
-        This method implements sophisticated prompt-projection interaction that goes
-        beyond simple addition, enabling true prompt-level contrastive learning.
-
-        Key Innovations:
-        1. Prompt-to-Prompt Contrastive Computation
-        2. Cross-View Prompt Consistency Regularization
-        3. System-Aware Prompt Modulation
-        4. Gated Prompt Integration Mechanism
+        简化的Prompt融合机制：支持4种可配置策略
 
         Args:
-            projections: Projection features [batch_size, projection_dim]
-            prompts: Prompt vectors [batch_size, prompt_dim]
-            system_ids: System IDs for system-aware processing
+            projections: 投影特征 [batch_size, projection_dim]
+            prompts: Prompt向量 [batch_size, prompt_dim]
+            system_ids: 系统ID（可选）
 
         Returns:
-            Enhanced projections with advanced prompt integration
+            融合后的特征向量
         """
-        if prompts is None:
+        if prompts is None or len(prompts) == 0:
             return projections
 
-        batch_size, proj_dim = projections.shape
-        prompt_dim = prompts.shape[-1]
-        device = projections.device
+        fusion_type = getattr(self.args_task, 'prompt_fusion', 'attention')
 
-        # Initialize prompt processing components if needed
-        if not hasattr(self, 'prompt_processor'):
-            self._initialize_prompt_processor(proj_dim, prompt_dim, device)
-
-        # 1. Prompt projection and normalization
-        if proj_dim != prompt_dim:
-            prompt_features = self.prompt_processor.prompt_proj(prompts)
+        if fusion_type == 'none':
+            return projections
+        elif fusion_type == 'add':
+            return self._add_fusion(projections, prompts)
+        elif fusion_type == 'attention':
+            return self._attention_fusion(projections, prompts)
+        elif fusion_type == 'gate':
+            return self._gate_fusion(projections, prompts)
         else:
-            prompt_features = prompts
+            logger.warning(f"Unknown fusion type: {fusion_type}, using attention")
+            return self._attention_fusion(projections, prompts)
 
-        # Normalize features for stable training
-        prompt_features = F.normalize(prompt_features, dim=-1)
-        normalized_projections = F.normalize(projections, dim=-1)
+    def _add_fusion(self, projections: torch.Tensor, prompts: torch.Tensor) -> torch.Tensor:
+        """直接相加融合策略"""
+        # 确保维度匹配
+        if projections.shape[-1] != prompts.shape[-1]:
+            prompts = self._project_prompts_to_dim(prompts, projections.shape[-1])
+        return projections + prompts
 
-        # 2. Compute prompt-to-projection similarity matrix
-        prompt_similarity = torch.matmul(prompt_features, normalized_projections.T)  # [B, B]
-        prompt_similarity = prompt_similarity / torch.sqrt(torch.tensor(proj_dim, dtype=torch.float, device=device))
+    def _attention_fusion(self, projections: torch.Tensor, prompts: torch.Tensor) -> torch.Tensor:
+        """注意力融合策略"""
+        # 确保维度匹配
+        if projections.shape[-1] != prompts.shape[-1]:
+            prompts = self._project_prompts_to_dim(prompts, projections.shape[-1])
 
-        # 3. System-aware prompt modulation
-        if system_ids is not None:
-            system_weights = self._compute_system_weights(system_ids, prompt_dim, device)
-            prompt_features = prompt_features * system_weights
+        # 简化的单头注意力
+        attention_scores = torch.matmul(projections, prompts.transpose(-2, -1))
+        attention_weights = F.softmax(attention_scores, dim=-1)
+        attended_prompts = torch.matmul(attention_weights, prompts)
 
-        # 4. Gated fusion mechanism
-        gate_value = self.prompt_processor.gate(torch.cat([normalized_projections, prompt_features], dim=-1))
-        gate_value = torch.sigmoid(gate_value)
+        return projections + attended_prompts
 
-        # 5. Advanced prompt integration with learnable weighting
-        alpha = self.prompt_processor.prompt_weight  # Learnable prompt influence
-        beta = self.prompt_processor.contrastive_weight  # Learnable contrastive emphasis
+    def _gate_fusion(self, projections: torch.Tensor, prompts: torch.Tensor) -> torch.Tensor:
+        """门控融合策略"""
+        # 确保维度匹配
+        if projections.shape[-1] != prompts.shape[-1]:
+            prompts = self._project_prompts_to_dim(prompts, projections.shape[-1])
 
-        # 6. Prompt-level contrastive enhancement
-        # Compute cross-view prompt consistency
-        prompt_consistency = self._compute_prompt_consistency(prompt_features, system_ids)
+        # 学习门控权重（如果不存在则初始化）
+        if not hasattr(self, 'fusion_gate'):
+            gate_dim = projections.shape[-1]
+            self.fusion_gate = nn.Sequential(
+                nn.Linear(gate_dim * 2, gate_dim),
+                nn.ReLU(),
+                nn.Linear(gate_dim, 1),
+                nn.Sigmoid()
+            ).to(projections.device)
 
-        # 7. Final integration with multiple mechanisms
-        enhanced_projections = (
-            normalized_projections * (1 - alpha * gate_value) +  # Preserve original features
-            prompt_features * (alpha * gate_value) +  # Add gated prompt features
-            beta * prompt_consistency  # Add prompt-level contrastive signal
-        )
+        # 计算门控值
+        concat_features = torch.cat([projections, prompts], dim=-1)
+        gate = self.fusion_gate(concat_features)
 
-        return enhanced_projections
+        return projections * gate + prompts * (1 - gate)
 
-    def _initialize_prompt_processor(self, proj_dim: int, prompt_dim: int, device: torch.device):
-        """
-        Initialize prompt processing components for advanced integration.
+    def _project_prompts_to_dim(self, prompts: torch.Tensor, target_dim: int) -> torch.Tensor:
+        """将prompt投影到目标维度"""
+        if not hasattr(self, 'prompt_projector'):
+            prompt_dim = prompts.shape[-1]
+            self.prompt_projector = nn.Linear(prompt_dim, target_dim).to(prompts.device)
 
-        Creates neural network modules for sophisticated prompt-feature interaction.
-        """
-        import torch.nn as nn
+        return self.prompt_projector(prompts)
 
-        class PromptProcessor(nn.Module):
-            def __init__(self, proj_dim: int, prompt_dim: int):
-                super().__init__()
-                self.proj_dim = proj_dim
-                self.prompt_dim = prompt_dim
-
-                # Prompt projection layer (if dimensions differ)
-                self.prompt_proj = nn.Linear(prompt_dim, proj_dim)
-
-                # Gated fusion network
-                self.gate = nn.Sequential(
-                    nn.Linear(proj_dim * 2, proj_dim),
-                    nn.ReLU(),
-                    nn.Linear(proj_dim, 1)
-                )
-
-                # Learnable weights for different integration components
-                self.prompt_weight = nn.Parameter(torch.tensor(0.1))
-                self.contrastive_weight = nn.Parameter(torch.tensor(0.05))
-
-                # System-aware modulation network
-                self.system_modulator = nn.Sequential(
-                    nn.Linear(16, proj_dim),  # 16 is embedding dim for system IDs
-                    nn.Sigmoid()
-                )
-
-                # Prompt consistency network
-                self.prompt_consistency_net = nn.Sequential(
-                    nn.Linear(prompt_dim, prompt_dim // 2),
-                    nn.ReLU(),
-                    nn.Linear(prompt_dim // 2, prompt_dim),
-                    nn.Tanh()
-                )
-
-        self.prompt_processor = PromptProcessor(proj_dim, prompt_dim).to(device)
-
-    def _compute_system_weights(self, system_ids: torch.Tensor, prompt_dim: int, device: torch.device) -> torch.Tensor:
-        """
-        Compute system-aware weights for prompt modulation.
-
-        Args:
-            system_ids: System IDs [batch_size]
-            prompt_dim: Prompt feature dimension
-            device: Device for computation
-
-        Returns:
-            System modulation weights [batch_size, prompt_dim]
-        """
-        # Embed system IDs (simple approach: one-hot like embedding)
-        num_systems = len(torch.unique(system_ids))
-        system_embeddings = torch.zeros(len(system_ids), max(16, num_systems), device=device)
-
-        for i, sys_id in enumerate(system_ids):
-            if sys_id < 16:  # Use first 16 dimensions for direct system ID encoding
-                system_embeddings[i, sys_id] = 1.0
-
-        # If we have more systems than 16, use modulo encoding
-        if num_systems > 16:
-            for i, sys_id in enumerate(system_ids):
-                system_embeddings[i, sys_id % 16] = 1.0
-
-        # Reduce to prompt_dim using system modulator
-        if system_embeddings.shape[1] != 16:
-            # Pad or truncate to 16 dimensions
-            if system_embeddings.shape[1] > 16:
-                system_embeddings = system_embeddings[:, :16]
-            else:
-                padding = torch.zeros(len(system_ids), 16 - system_embeddings.shape[1], device=device)
-                system_embeddings = torch.cat([system_embeddings, padding], dim=1)
-
-        system_weights = self.prompt_processor.system_modulator(system_embeddings)
-
-        # Expand/truncate to match prompt_dim
-        if system_weights.shape[1] != prompt_dim:
-            if system_weights.shape[1] > prompt_dim:
-                system_weights = system_weights[:, :prompt_dim]
-            else:
-                padding = torch.zeros(len(system_ids), prompt_dim - system_weights.shape[1], device=device)
-                system_weights = torch.cat([system_weights, padding], dim=1)
-
-        return system_weights
-
-    def _compute_prompt_consistency(self, prompt_features: torch.Tensor, system_ids: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """
-        Compute prompt-level consistency regularization for cross-view prompt alignment.
-
-        This implements true prompt-level contrastive learning by ensuring that
-        prompts from the same system are consistent while maintaining discriminative
-        power across different systems.
-
-        Args:
-            prompt_features: Prompt features [batch_size, prompt_dim]
-            system_ids: System IDs for system-aware consistency
-
-        Returns:
-            Prompt consistency signal [batch_size, prompt_dim]
-        """
-        batch_size, prompt_dim = prompt_features.shape
-
-        # Compute prompt similarity matrix
-        prompt_sim_matrix = torch.matmul(prompt_features, prompt_features.T)  # [B, B]
-
-        # Apply system-aware masking
-        if system_ids is not None:
-            system_mask = torch.eq(system_ids.unsqueeze(0), system_ids.unsqueeze(1)).float()
-            # Positive pairs: same system (excluding self)
-            positive_mask = system_mask - torch.eye(batch_size, device=prompt_features.device)
-            # Negative pairs: different systems
-            negative_mask = 1.0 - system_mask
-        else:
-            # Without system information, treat all as negative pairs (except self)
-            positive_mask = torch.zeros(batch_size, batch_size, device=prompt_features.device)
-            negative_mask = 1.0 - torch.eye(batch_size, device=prompt_features.device)
-
-        # Compute consistency loss (InfoNCE-style at prompt level)
-        # Positive pairs should have high similarity, negative pairs should have low similarity
-        temperature = 0.07
-        prompt_sim_matrix = prompt_sim_matrix / temperature
-
-        # For each sample, compute consistency with its positive pairs
-        consistency_signals = []
-        for i in range(batch_size):
-            positive_sims = prompt_sim_matrix[i] * positive_mask[i]
-            negative_sims = prompt_sim_matrix[i] * negative_mask[i]
-
-            if positive_mask[i].sum() > 0:
-                # Average similarity with positive pairs
-                pos_sim = positive_sims.sum() / (positive_mask[i].sum() + 1e-8)
-                # Max similarity with negative pairs
-                neg_sim = negative_sims.max() if negative_mask[i].sum() > 0 else torch.tensor(0.0, device=prompt_features.device)
-
-                # Consistency signal: encourage positive, discourage negative
-                consistency = pos_sim - neg_sim
-            else:
-                # No positive pairs, use self-consistency
-                consistency = torch.tensor(1.0, device=prompt_features.device)
-
-            consistency_signals.append(consistency)
-
-        consistency_signals = torch.stack(consistency_signals)  # [batch_size]
-
-        # Expand consistency signals to match prompt dimensions
-        prompt_consistency = consistency_signals.unsqueeze(1) * prompt_features
-
-        # Apply prompt consistency network for refinement
-        refined_consistency = self.prompt_processor.prompt_consistency_net(prompt_consistency)
-
-        return refined_consistency
+    # 复杂的 prompt 处理方法已简化为 4 种可配置策略，以降低复杂度
 
     def _forward_with_prompts(self, x: torch.Tensor, file_id: Any, task_id: str):
+        """
+        Safe forward wrapper:
+        - If the backbone supports prompt/feature returns, use them.
+        - Otherwise, fall back to plain forward without extra kwargs.
+        """
         network_kwargs = {
-            'file_id': file_id,
-            'task_id': task_id,
+            "file_id": file_id,
+            "task_id": task_id,
         }
 
         logits = None
         prompts = None
         feature_repr = None
 
+        output = None
+        tried_prompt = False
+
+        # First attempt: if model supports prompt/feature outputs
         try:
-            output = self.network(x, return_prompt=True, return_feature=True, **network_kwargs)
+            output = self.network(
+                x, return_prompt=True, return_feature=True, **network_kwargs
+            )
+            tried_prompt = True
         except TypeError:
-            output = self.network(x, return_prompt=True, **network_kwargs)
+            # Fallback: plain forward without prompt flags
+            try:
+                output = self.network(x, **network_kwargs)
+            except TypeError:
+                output = self.network(x)
 
         if isinstance(output, tuple):
             if len(output) == 3:
@@ -892,100 +884,25 @@ class task(Default_task):
         else:
             logits = output
 
+        # If prompt was requested but model did not return it, ensure prompts=None
+        if tried_prompt and prompts is None:
+            prompts = None
+
         return logits, prompts, feature_repr
     
     def configure_optimizers(self):
-        """Configure optimizers with support for fine-grained learning rates."""
-        # Get base configuration from parent
-        optimizer_config = super().configure_optimizers()
-        
-        # Handle fine-grained learning rates for two-stage training
-        if hasattr(self.args_task, 'backbone_lr_multiplier') and self.training_stage == 'finetune':
-            # Different learning rates for different components
-            param_groups = []
-            
-            # Backbone parameters (lower LR)
-            backbone_params = []
-            # Task head parameters (full LR)  
-            head_params = []
-            # Other parameters (full LR)
-            other_params = []
-            
-            for name, param in self.network.named_parameters():
-                if not param.requires_grad:
-                    continue  # Skip frozen parameters
-                    
-                if 'backbone' in name.lower() or 'embedding' in name.lower():
-                    backbone_params.append(param)
-                elif 'head' in name.lower() or 'classifier' in name.lower():
-                    head_params.append(param)
-                else:
-                    other_params.append(param)
-            
-            # Create parameter groups
-            base_lr = self.args_task.lr
-            backbone_lr = base_lr * getattr(self.args_task, 'backbone_lr_multiplier', 0.1)
-            
-            if backbone_params:
-                param_groups.append({'params': backbone_params, 'lr': backbone_lr})
-            if head_params:
-                param_groups.append({'params': head_params, 'lr': base_lr})
-            if other_params:
-                param_groups.append({'params': other_params, 'lr': base_lr})
-            
-            if param_groups:
-                optimizer = torch.optim.AdamW(
-                    param_groups,
-                    weight_decay=getattr(self.args_task, 'weight_decay', 1e-4)
-                )
-                
-                logger.info(f"Fine-grained LR: backbone={backbone_lr:.1e}, head={base_lr:.1e}")
-                
-                # Return with scheduler if specified
-                if hasattr(self.args_task, 'scheduler') and self.args_task.scheduler:
-                    scheduler = self._create_scheduler(optimizer)
-                    return [optimizer], [scheduler]
-                else:
-                    return optimizer
-        
-        # Fallback to parent configuration
-        return optimizer_config
-    
-    def _create_scheduler(self, optimizer):
-        """Create learning rate scheduler."""
-        scheduler_type = getattr(self.args_task, 'scheduler_type', 'cosine')
-        
-        if scheduler_type == 'cosine':
-            from torch.optim.lr_scheduler import CosineAnnealingLR
-            return CosineAnnealingLR(
-                optimizer, 
-                T_max=getattr(self.args_task, 'epochs', 50)
-            )
-        elif scheduler_type == 'step':
-            from torch.optim.lr_scheduler import StepLR
-            return StepLR(
-                optimizer,
-                step_size=getattr(self.args_task, 'step_size', 15),
-                gamma=getattr(self.args_task, 'gamma', 0.5)
-            )
-        else:
-            # Fallback to no scheduler
-            return None
-    
+        """Configure optimizers for HSE contrastive pretraining."""
+        # Simply use parent configuration - no complex two-stage logic needed
+        return super().configure_optimizers()
+
     def on_train_epoch_end(self):
         """Called at the end of training epoch."""
         super().on_train_epoch_end()
-        
-        # Log training stage
-        self.log('training_stage', 1.0 if self.training_stage == 'pretrain' else 0.0)
-        
-        # Additional HSE-specific logging
+
+        # Simple periodic logging for contrastive pretraining
         current_epoch = self.current_epoch
-        
-        if current_epoch % 10 == 0:  # Log every 10 epochs
-            logger.info(f"Epoch {current_epoch}: Stage={self.training_stage}, "
-                       f"Contrastive={self.enable_contrastive}, "
-                       f"Frozen_prompt={self.freeze_prompt}")
+        if current_epoch % 20 == 0:  # Log every 20 epochs
+            logger.info(f"Epoch {current_epoch}: HSE contrastive pretraining (contrast_weight={self.contrast_weight:.2f})")
     
     def on_validation_epoch_end(self):
         """Called at the end of validation epoch.""" 
@@ -993,27 +910,7 @@ class task(Default_task):
         
         # Could add epoch-level validation logging here if needed
         pass
-    
-    def set_training_stage(self, stage: str):
-        """Set training stage (for two-stage training)."""
-        self.training_stage = stage
-        
-        # Update contrastive learning based on stage
-        if stage == 'finetune':
-            # Disable contrastive learning for finetuning
-            self.contrast_weight = 0.0
-            self.enable_contrastive = False
-            logger.info("Switched to finetuning: disabled contrastive learning")
-        elif stage == 'pretrain':
-            # Enable contrastive learning for pretraining
-            self.contrast_weight = getattr(self.args_task, 'contrast_weight', 0.15)
-            self.enable_contrastive = self.contrast_weight > 0
-            logger.info(f"Switched to pretraining: enabled contrastive learning (weight: {self.contrast_weight})")
-        
-        # Update network training stage if supported
-        if hasattr(self.network, 'set_training_stage'):
-            self.network.set_training_stage(stage)
-    
+
     def get_contrastive_features(self, batch) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """Extract features and prompts for contrastive learning analysis."""
         (x, y), data_name = batch
@@ -1047,9 +944,7 @@ if __name__ == "__main__":
     
     # Test configuration
     args_model = MockArgs(
-        embedding='E_01_HSE_Prompt',
-        training_stage='pretrain',
-        freeze_prompt=False,
+        embedding='E_01_HSE',
         prompt_dim=128
     )
     
@@ -1094,10 +989,7 @@ if __name__ == "__main__":
                 if return_feature:
                     return logits, feature
                 return logits
-            
-            def set_training_stage(self, stage):
-                pass  # Mock implementation
-        
+
         mock_network = MockNetwork()
         mock_metadata = {'num_classes': 10}
         
@@ -1108,28 +1000,14 @@ if __name__ == "__main__":
         )
         
         print("   ✓ HSE contrastive task initialized successfully")
-        print(f"   ✓ Training stage: {hse_task.training_stage}")
         print(f"   ✓ Contrastive learning: {hse_task.enable_contrastive}")
         print(f"   ✓ Contrastive weight: {hse_task.contrast_weight}")
+        print(f"   ✓ Classification weight: {hse_task.classification_weight}")
         
     except Exception as e:
         print(f"   ✗ Task initialization failed: {e}")
     
-    print("\n2. Testing Training Stage Switching:")
-    try:
-        # Test stage switching
-        original_weight = hse_task.contrast_weight
-        
-        hse_task.set_training_stage('finetune')
-        print(f"   ✓ Switched to finetune: contrast_weight={hse_task.contrast_weight}")
-        
-        hse_task.set_training_stage('pretrain')
-        print(f"   ✓ Switched to pretrain: contrast_weight={hse_task.contrast_weight}")
-        
-    except Exception as e:
-        print(f"   ✗ Training stage switching failed: {e}")
-    
-    print("\n3. Testing Mock Forward Pass:")
+    print("\n2. Testing Mock Forward Pass:")
     try:
         # Create mock batch
         batch_size = 4
