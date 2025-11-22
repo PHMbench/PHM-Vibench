@@ -9,7 +9,7 @@ for cross-system industrial fault diagnosis, targeting ICML/NeurIPS 2025.
 
 Key Features:
 1. Prompt-guided contrastive learning with system-aware sampling
-2. Two-stage training support (pretrain/finetune)
+2. Two-stage training support (pretrain/finetune) or One stage pretraining only
 3. Cross-dataset domain generalization (CDDG)
 4. Integration with all 6 SOTA contrastive losses
 5. System-invariant representation learning
@@ -30,7 +30,7 @@ import logging
 from ...Default_task import Default_task
 from ...Components.loss import get_loss_fn
 from ...Components.metrics import get_metrics
-from ..CDDG.contrastive_strategies import ContrastiveStrategyManager, create_contrastive_strategy
+from ...Components.contrastive_strategies import ContrastiveStrategyManager, create_contrastive_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class task(Default_task):
         self.args_model = args_model
         self.metadata = metadata
 
-        # Contrastive learning setup (pretrain-focused)
+        # Contrastive learning setup (pretrain-focused, weights可通过配置调节)
         self.contrast_weight = getattr(args_task, 'contrast_weight', 0.9)
         self.classification_weight = getattr(args_task, 'classification_weight', 0.1)
         self.enable_contrastive = self.contrast_weight > 0
@@ -109,18 +109,6 @@ class task(Default_task):
         # Metrics tracking
         self.train_metrics_dict = defaultdict(list)
         self.val_metrics_dict = defaultdict(list)
-        
-        # Log configuration
-        self._log_task_config()
-    
-    def _log_task_config(self):
-        """Log task configuration for debugging."""
-        logger.info("HSE Contrastive Learning Task Configuration:")
-        logger.info(f"  - Contrastive learning: {self.enable_contrastive}")
-        logger.info(f"  - Contrastive weight: {self.contrast_weight}")
-        logger.info(f"  - Classification weight: {self.classification_weight}")
-        logger.info(f"  - Source domains: {self.source_domain_id}")
-        logger.info(f"  - Target domains: {self.target_domain_id}")
     
     def training_step(self, batch, batch_idx):
         """Training step with prompt-guided contrastive learning."""
@@ -198,43 +186,20 @@ class task(Default_task):
         return step_metrics
 
     def _should_run_classification(self) -> bool:
-        """根据训练阶段和配置决定是否运行分类流"""
-        # 检查是否有明确的训练阶段设置
-        training_stage = getattr(self.args_task, 'training_stage', None)
-
-        if training_stage == 'pretrain':
-            # 预训练阶段：检查分类权重
-            classification_weight = getattr(self.args_task, 'classification_weight', 0.1)
-            return classification_weight > 0
-        elif training_stage == 'finetune':
-            # 微调阶段：默认启用分类
-            return True
-
-        # 向后兼容：如果没有明确阶段设置，默认启用分类
-        return True
+        """根据配置决定是否运行分类流（仅 pretrain 语义）"""
+        classification_weight = getattr(self.args_task, "classification_weight", 0.1)
+        return classification_weight > 0
 
     def _should_run_contrastive(self) -> bool:
-        """根据训练阶段和配置决定是否运行对比流"""
-        # 检查是否有明确的训练阶段设置
-        training_stage = getattr(self.args_task, 'training_stage', None)
-
-        if training_stage == 'pretrain':
-            # 预训练阶段：默认启用对比
-            contrast_weight = getattr(self.args_task, 'contrast_weight', 1.0)
-            return contrast_weight > 0
-        elif training_stage == 'finetune':
-            # 微调阶段：检查对比权重
-            contrast_weight = getattr(self.args_task, 'contrast_weight', 0.1)
-            return contrast_weight > 0
-
-        # 向后兼容：如果没有明确阶段设置，使用全局对比权重
-        return self.contrast_weight > 0
+        """根据配置决定是否运行对比流（仅 pretrain 语义）"""
+        contrast_weight = getattr(self.args_task, "contrast_weight", self.contrast_weight)
+        return self.enable_contrastive and contrast_weight > 0
 
     def _combine_losses_stage_aware(self, classification_loss: torch.Tensor,
                                    contrastive_loss: torch.Tensor,
                                    stage: str) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """
-        阶段感知的损失组合策略
+        对比预训练阶段的损失组合策略（仅 pretrain，不区分 finetune）
 
         Args:
             classification_loss: 分类损失
@@ -245,20 +210,9 @@ class task(Default_task):
             total_loss: 总损失
             loss_dict: 损失分量字典
         """
-        training_stage = getattr(self.args_task, 'training_stage', None)
-
-        if training_stage == 'pretrain':
-            # 预训练阶段：对比学习为主，分类为辅助
-            contrast_weight = getattr(self.args_task, 'contrast_weight', 1.0)
-            classification_weight = getattr(self.args_task, 'classification_weight', 0.1)
-        elif training_stage == 'finetune':
-            # 微调阶段：分类为主，对比为正则化
-            classification_weight = getattr(self.args_task, 'classification_weight', 1.0)
-            contrast_weight = getattr(self.args_task, 'contrast_weight', 0.1)
-        else:
-            # 向后兼容：使用静态权重
-            classification_weight = self.classification_weight
-            contrast_weight = self.contrast_weight
+        # 仅使用预训练语义：对比为主，分类为辅
+        classification_weight = getattr(self.args_task, "classification_weight", self.classification_weight)
+        contrast_weight = getattr(self.args_task, "contrast_weight", self.contrast_weight)
 
         # 计算加权总损失
         total_loss = (classification_weight * classification_loss +
@@ -269,7 +223,7 @@ class task(Default_task):
             f'{stage}_total_loss': total_loss,
             f'{stage}_class_weight': torch.tensor(classification_weight, device=total_loss.device),
             f'{stage}_contrast_weight': torch.tensor(contrast_weight, device=total_loss.device),
-            f'{stage}_training_stage': training_stage or 'legacy'
+            f'{stage}_training_stage': torch.tensor(1.0, device=total_loss.device)  # 1.0 indicates pretrain stage
         }
 
         return total_loss, loss_dict
@@ -454,14 +408,25 @@ class task(Default_task):
         Returns:
             Tuple of (view1, view2) tensors
         """
+        # Ensure input is not None
+        if x is None:
+            raise ValueError("Input tensor x cannot be None in _prepare_views")
+
         if not self.strategy_manager.requires_multiple_views:
-            return x, None
+            # Return two copies of original data for single-view mode
+            return x.clone(), x.clone()
 
         # View 1: Time-frequency masking
         view1 = self._apply_time_frequency_masking(x)
 
         # View 2: Gaussian noise augmentation
         view2 = self._apply_gaussian_noise(x)
+
+        # Ensure neither view is None
+        if view1 is None:
+            view1 = x.clone()
+        if view2 is None:
+            view2 = x.clone()
 
         return view1, view2
 
@@ -558,6 +523,10 @@ class task(Default_task):
         Returns:
             Tuple of (view1, view2) tensors
         """
+        # Ensure input is not None
+        if x is None:
+            raise ValueError("Input tensor x cannot be None in _create_augmented_views")
+
         if self.enable_contrastive and self.strategy_manager is not None:
             return self._prepare_views(x)
         else:
@@ -845,67 +814,50 @@ class task(Default_task):
 
     def _forward_with_prompts(self, x: torch.Tensor, file_id: Any, task_id: str):
         """
-        Enhanced forward wrapper with comprehensive validation:
-        - Input validation to prevent None tensor errors
-        - If the backbone supports prompt/feature returns, use them.
-        - Otherwise, fall back to plain forward without extra kwargs.
+        Simplified forward wrapper that ensures feature extraction:
+        - Uses network forward with return_feature=True to get features
+        - Returns standard format expected by contrastive learning pipeline
         """
-        # Input validation to prevent None tensor errors
-        if x is None:
-            raise ValueError("Input tensor x cannot be None in _forward_with_prompts")
-
         network_kwargs = {
             "file_id": file_id,
             "task_id": task_id,
         }
 
-        logits = None
-        prompts = None
-        feature_repr = None
-
-        output = None
-        tried_prompt = False
-
-        # First attempt: if model supports prompt/feature outputs
+        # Use forward call with return_feature=True to get features
         try:
-            output = self.network(
-                x, return_prompt=True, return_feature=True, **network_kwargs
-            )
-            tried_prompt = True
-        except TypeError as e1:
-            # Enhanced fallback: try without prompt flags first
+            output = self.network(x, return_feature=True, **network_kwargs)
+        except TypeError:
+            # Try with return_feature=True but no additional kwargs
             try:
-                output = self.network(x, **network_kwargs)
-            except TypeError as e2:
-                # Final fallback: minimal forward call
-                try:
-                    output = self.network(x)
-                except Exception as e3:
-                    raise RuntimeError(f"All forward attempts failed: prompt_error={e1}, network_kwargs_error={e2}, minimal_error={e3}")
+                output = self.network(x, return_feature=True)
+            except TypeError:
+                # Final fallback: get logits and manually extract features
+                logits = self.network(x)
+                # Use logits as features if no dedicated features available
+                features = logits
+                prompts = None
+                return logits, prompts, features
 
-        # Parse output based on model capability
+        # Handle different output formats
         if isinstance(output, tuple):
-            if len(output) == 3:
-                logits, prompts, feature_repr = output
-            elif len(output) == 2:
-                logits, prompts = output
-                feature_repr = None
+            if len(output) >= 2:
+                logits, features = output[0], output[1]
             else:
-                logits = output[0]
-                prompts, feature_repr = None, None
+                logits, features = output[0], None
         else:
-            logits = output
-            prompts, feature_repr = None, None
+            # Single output, use as both logits and features
+            logits, features = output, output
+
+        # Ensure features is not None and has proper shape
+        if features is None:
+            features = logits  # Fallback to using logits as features
 
         # Ensure proper feature representation format
-        if feature_repr is not None and feature_repr.ndim > 2:
-            feature_repr = feature_repr.mean(dim=1)
+        if features is not None and features.ndim > 2:
+            features = features.mean(dim=1)
 
-        # If prompt was requested but model did not return it, ensure prompts=None
-        if tried_prompt and prompts is None:
-            prompts = None
-
-        return logits, prompts, feature_repr
+        # Return in expected format (logits, prompts, features)
+        return logits, None, features
     
     def configure_optimizers(self):
         """Configure optimizers for HSE contrastive pretraining."""

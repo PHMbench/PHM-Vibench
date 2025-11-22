@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 from types import SimpleNamespace
 import logging
+import re
 
 from copy import deepcopy
 
@@ -94,9 +95,6 @@ def parse_stage_overrides(override_list):
     if not override_list:
         return {}, {}
 
-    import yaml
-    import re
-
     stage_overrides = []
     global_overrides = {}
 
@@ -174,6 +172,8 @@ def _parse_stages_index_format(override: str):
 
 def _parse_stage_n_format(override: str):
     """解析stage_N格式"""
+    import re  # 显式导入以确保可用性
+
     # 分割出stage_N部分
     if '=' not in override:
         return None
@@ -315,9 +315,9 @@ class MultiStageOrchestrator:
             # 合并配置：全局配置 + stage overrides + CLI overrides
             stage_overrides = stage_dict.get('overrides', {})
 
-            # 应用CLI stage-specific overrides
-            if stage_name in stage_cli_overrides:
-                stage_overrides = deep_merge(stage_overrides, stage_cli_overrides[stage_name])
+            # 应用CLI stage-specific overrides（按索引，而不是名称）
+            if 0 <= stage_idx < len(stage_cli_overrides):
+                stage_overrides = deep_merge(stage_overrides, stage_cli_overrides[stage_idx])
 
             merged_stage_config = apply_stage_overrides(
                 stage_dict.get('config', {}),
@@ -358,12 +358,17 @@ class MultiStageOrchestrator:
         # 应用CLI overrides
         global_cli_overrides, stage_cli_overrides = parse_stage_overrides(self.cli_overrides)
 
-        # 应用CLI overrides到所有stage
+        # 先应用全局overrides到每个stage
+        if global_cli_overrides:
+            for idx, stage_ns in enumerate(stages_ns):
+                merged = deep_merge(stage_ns.__dict__, global_cli_overrides)
+                stages_ns[idx] = dict_to_namespace(merged)
+
+        # 再应用按索引的stage-specific overrides（兼容stage_1.* / stages[0].*）
         for idx, stage_ns in enumerate(stages_ns):
-            stage_key = f"stage_{idx+1}"
-            if stage_key in stage_cli_overrides:
+            if 0 <= idx < len(stage_cli_overrides):
                 stage_dict = stage_ns.__dict__
-                merged_dict = deep_merge(stage_dict, stage_cli_overrides[stage_key])
+                merged_dict = deep_merge(stage_dict, stage_cli_overrides[idx])
                 stages_ns[idx] = dict_to_namespace(merged_dict)
 
         attrs = {'stages': stages_ns}
@@ -428,6 +433,12 @@ class MultiStageOrchestrator:
         trainer.logger_name = name
         init_lab(env, self.cfg, name)
 
+        # Ensure trainer has required attributes for build_trainer
+        if not hasattr(trainer, 'monitor'):
+            setattr(trainer, 'monitor', 'val_loss')
+        if not hasattr(trainer, 'save_dir'):
+            setattr(trainer, 'save_dir', path)
+
         if self.dry_run:
             close_lab()
             return {'checkpoint_path': None, 'metrics': {'dry_run': True}, 'path': path}
@@ -482,6 +493,12 @@ class MultiStageOrchestrator:
         path, name = path_name(ConfigWrapper(data=data, model=model, task=task, trainer=trainer))
         trainer.logger_name = name
         init_lab(env, self.cfg, name)
+
+        # Ensure trainer has required attributes for build_trainer
+        if not hasattr(trainer, 'monitor'):
+            setattr(trainer, 'monitor', 'val_loss')
+        if not hasattr(trainer, 'save_dir'):
+            setattr(trainer, 'save_dir', path)
 
         if self.dry_run:
             close_lab()

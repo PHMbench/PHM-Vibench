@@ -24,7 +24,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List, Tuple, Union
 import logging
 
-from ...Components.contrastive_losses import (
+from .contrastive_losses import (
     InfoNCELoss, TripletLoss, SupConLoss, PrototypicalLoss,
     BarlowTwinsLoss, VICRegLoss
 )
@@ -264,9 +264,10 @@ class ContrastiveStrategy(ABC):
         Check if strategy requires HSE prompt vectors.
 
         Returns:
-            True if strategy uses prompt-guided learning, False otherwise
+            True if strategy uses prompt-guided learning, False otherwise.
+            默认返回 False，允许在没有 prompt 的场景下使用（如 Experiment 2）。
         """
-        return True
+        return False
 
     @property
     def requires_labels(self) -> bool:
@@ -301,9 +302,6 @@ class ContrastiveStrategy(ABC):
         batch_size = features.size(0)
         if projections.size(0) != batch_size:
             raise ValueError(f"Batch size mismatch: features {batch_size}, projections {projections.size(0)}")
-
-        if self.requires_prompts and prompts is None:
-            raise ValueError("This strategy requires prompt vectors")
 
         if self.requires_labels and labels is None:
             raise ValueError("This strategy requires ground truth labels")

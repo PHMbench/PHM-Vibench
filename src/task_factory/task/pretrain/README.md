@@ -12,12 +12,41 @@
 - **分类预训练**: `classification.py` - 标准监督预训练
 - **信号预测**: `prediction.py` - 时序预测基础功能
 
-### ❌ TODO: 待实现 (Not Yet Implemented)
+### ✅ 已实现的对比学习任务 (HSE Contrastive)
+
+文件：`hse_contrastive.py` + `Components/contrastive_strategies.py` + `Components/contrastive_losses.py`
+
+当前支持的对比学习损失（均已在 `contrastive_losses.py` 中实现，并通过 `ContrastiveStrategyManager` 统一调度）：
+
+| Loss 名称      | Key / 类型        | 说明                           |
+| -------------- | ----------------- | ------------------------------ |
+| InfoNCE        | `INFONCE`         | 标准对比 InfoNCE / NT-Xent    |
+| Supervised Con | `SUPCON`          | 监督式对比损失 (SupCon)       |
+| Triplet        | `TRIPLET`         | 带 hard mining 的 Triplet loss |
+| Prototypical   | `PROTOTYPICAL`    | 原型网络式对比 / 度量学习     |
+| Barlow Twins   | `BARLOWTWINS`     | 冗余减少型自监督损失          |
+| VICReg         | `VICREG`          | Variance–Invariance–Covariance 正则 |
+
+策略层能力（`contrastive_strategies.py`）：
+
+- `type: "single"`：单一对比损失，`loss_type` 取上述 Key 之一；支持 `temperature`、`margin` 等超参；
+- `type: "ensemble"`：多损失组合，每个子损失带 `loss_type` / `weight` / `temperature` / `margin` 等字段，支持加权组合；
+- prompt 融合：提供注意力融合、门控融合等模块，用于将 HSE prompt 与特征进行融合（需要模型返回 prompt 表征时使用）；
+- 多视图支持：通过 `requires_multiple_views` 和 `_prepare_views`，可在 Task 内部生成双视图（time/freq mask + Gaussian noise）用于对比训练。
+
+在 `hse_contrastive` 任务中，对比损失与分类损失的组合方式：
+
+- 通过 `contrast_weight` 和 `classification_weight` 控制：
+  - 纯对比预训练：`contrast_weight > 0` 且 `classification_weight = 0`；
+  - 单阶段“对比 + CE 分类”：`contrast_weight > 0` 且 `classification_weight > 0`；
+- 该 Task 仅设计用于 **预训练阶段**（`type: "pretrain", name: "hse_contrastive"`），下游分类阶段仍推荐使用 CDDG/FS/GFS 等专用任务。
+
+### ❌ TODO: 待实现 / 后续扩展 (Not Yet Implemented)
 - **高级掩码策略**: block, temporal, frequency等复杂掩码模式
 - **多尺度预训练**: 不同时间尺度的表示学习
 - **域自适应预训练**: 域感知的预训练策略
 - **渐进式训练**: 动态增加难度的训练策略
-- **高级对比学习**: SimCLR, MoCo, SwAV等对比学习方法
+- **更高阶对比学习流水线**: 如完整的 SimCLR / MoCo / SwAV 风格 pipeline（当前可用损失已具备，但未封装成独立 pipeline）
 
 > **注意**: masked_reconstruction是核心实现，其他功能和高级特性为设计目标。
 

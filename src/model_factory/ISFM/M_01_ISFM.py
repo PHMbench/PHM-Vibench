@@ -101,7 +101,7 @@ class Model(nn.Module):
         # elif task_id in ['multitask']:
         # return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
 
-    def forward(self, x, file_id=False, task_id=False, return_feature=False, return_prompt=False):
+    def forward(self, x, file_id=False, task_id=False, return_feature=False):
         """Forward pass through embedding, backbone and head.
 
         Parameters
@@ -114,46 +114,20 @@ class Model(nn.Module):
             Task type such as ``"classification"`` or ``"prediction"``.
         return_feature : bool, optional
             If ``True`` return features instead of logits.
-        return_prompt : bool, optional
-            If ``True`` return prompts alongside output for contrastive learning.
 
         Returns
         -------
-        torch.Tensor or tuple
-            Model output defined by the task head, optionally with prompts and features.
+        torch.Tensor
+            Model output defined by the task head.
         """
-        # Input validation to prevent None tensor errors
-        if x is None:
-            raise ValueError("Input tensor x cannot be None")
-
         self.shape = x.shape
         x = self._embed(x, file_id)
-        x = self._encode(x)
-
-        # Extract prompt information if available and requested
-        prompts = None
-        if return_prompt and hasattr(self.embedding, 'last_prompt_vector'):
-            prompts = self.embedding.last_prompt_vector
-
-        # Get task head output
-        head_output = self._head(x, file_id, task_id, return_feature)
-
-        # Handle different return combinations for contrastive learning
-        if return_prompt and return_feature:
-            # Return logits, prompts, and features
-            if isinstance(head_output, tuple):
-                # _head already returns features
-                features = head_output[0] if return_feature else head_output
-            else:
-                features = head_output
-            return head_output, prompts, features
-        elif return_prompt:
-            # Return logits and prompts
-            return head_output, prompts
-        elif return_feature:
-            # Return features (already handled by _head)
-            return head_output
+        if return_feature:
+            feature = self._encode(x)
+            x = self._head(feature, file_id, task_id)
+            return x, feature
         else:
-            # Standard forward - return logits only
-            return head_output
+            x = self._encode(x)
+            x = self._head(x, file_id, task_id)
+        return x
     
