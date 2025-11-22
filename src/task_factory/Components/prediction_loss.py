@@ -2,7 +2,7 @@
 from __future__ import annotations
 import torch, torch.nn as nn
 from dataclasses import dataclass
-from src.utils.masking import add_mask
+from src.utils.training.masking import add_mask
 
 EPS = 1e-8
 # ───────────────────────── Loss Module ────────────────────────
