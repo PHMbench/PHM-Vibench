@@ -16,7 +16,7 @@ import numpy as np
 
 from ...Default_task import Default_task
 from ...Components.prediction_loss import Signal_mask_Loss
-from ....utils.masking import add_mask
+from ....utils.training.masking import add_mask
 from ... import register_task
 
 

@@ -845,10 +845,15 @@ class task(Default_task):
 
     def _forward_with_prompts(self, x: torch.Tensor, file_id: Any, task_id: str):
         """
-        Safe forward wrapper:
+        Enhanced forward wrapper with comprehensive validation:
+        - Input validation to prevent None tensor errors
         - If the backbone supports prompt/feature returns, use them.
         - Otherwise, fall back to plain forward without extra kwargs.
         """
+        # Input validation to prevent None tensor errors
+        if x is None:
+            raise ValueError("Input tensor x cannot be None in _forward_with_prompts")
+
         network_kwargs = {
             "file_id": file_id,
             "task_id": task_id,
@@ -867,22 +872,34 @@ class task(Default_task):
                 x, return_prompt=True, return_feature=True, **network_kwargs
             )
             tried_prompt = True
-        except TypeError:
-            # Fallback: plain forward without prompt flags
+        except TypeError as e1:
+            # Enhanced fallback: try without prompt flags first
             try:
                 output = self.network(x, **network_kwargs)
-            except TypeError:
-                output = self.network(x)
+            except TypeError as e2:
+                # Final fallback: minimal forward call
+                try:
+                    output = self.network(x)
+                except Exception as e3:
+                    raise RuntimeError(f"All forward attempts failed: prompt_error={e1}, network_kwargs_error={e2}, minimal_error={e3}")
 
+        # Parse output based on model capability
         if isinstance(output, tuple):
             if len(output) == 3:
                 logits, prompts, feature_repr = output
             elif len(output) == 2:
                 logits, prompts = output
+                feature_repr = None
             else:
                 logits = output[0]
+                prompts, feature_repr = None, None
         else:
             logits = output
+            prompts, feature_repr = None, None
+
+        # Ensure proper feature representation format
+        if feature_repr is not None and feature_repr.ndim > 2:
+            feature_repr = feature_repr.mean(dim=1)
 
         # If prompt was requested but model did not return it, ensure prompts=None
         if tried_prompt and prompts is None:
