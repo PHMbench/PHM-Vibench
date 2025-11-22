@@ -1,5 +1,26 @@
 # CDDG Task Module
 
+## 🚧 实现状态 (Implementation Status)
+
+### ✅ 已实现 (Fully Implemented)
+- **HSE对比学习**: `hse_contrastive.py` - 1037行复杂实现，支持阶段感知训练
+- **对比策略系统**: `contrastive_strategies.py` - 1225行完整的对比学习框架
+- **多阶段训练**: 两阶段预训练+微调，真正的流分离架构
+- **系统提示融合**: attention/gate/concat等融合机制
+- **双视图对比学习**: SimCSE风格的数据增强策略
+
+### 🚧 部分实现 (Partially Implemented)
+- **标准分类包装器**: `classification.py` - 21行基础Default_task包装器
+- **跨域基本功能**: 基础的source_domain_id/target_domain_id支持
+
+### ❌ TODO: 待实现 (Not Yet Implemented)
+- **其他对比损失**: SimCLR, SwAV, MoCo, VICReg, BarlowTwins, BYOL等6种SOTA方法
+- **域自适应损失**: MMD, CORAL, DANN等域对齐技术
+- **系统感知采样**: 跨系统正负样本对的智能采样策略
+- **多源域自适应**: 真正的多源域训练和域间对齐
+
+> **注意**: HSE对比学习是核心实现，其他功能为设计目标或基础包装。
+
 ## Overview
 
 The CDDG (Cross-Dataset Domain Generalization) task module implements tasks designed for training models that can generalize across different datasets and domains. This is critical for industrial fault diagnosis where models need to work reliably across different equipment types, operating conditions, and measurement systems.
@@ -40,55 +61,54 @@ The CDDG module focuses on learning domain-invariant representations that mainta
 task:
   type: "CDDG"
   name: "classification"
-  source_domain_id: [1, 5, 6]    # Training domains
-  target_domain_id: 19           # Test domain
-  loss: "CE"                     # Cross-entropy loss
-  domain_adaptation_loss: "MMD"  # Domain adaptation
-  domain_weight: 0.1             # Weight for domain loss
+  source_domain_id: [1, 5, 6]    # Training domains (BASIC SUPPORT)
+  target_domain_id: 19           # Test domain (BASIC SUPPORT)
+  loss: "CE"                     # Cross-entropy loss (WORKS)
+  # TODO: domain_adaptation_loss: "MMD"  # Domain adaptation - NOT IMPLEMENTED
+  # TODO: domain_weight: 0.1             # Weight for domain loss - NOT IMPLEMENTED
 ```
 
-### HSE Contrastive Learning
+### HSE Contrastive Learning ✅ IMPLEMENTED
 ```yaml
 task:
   type: "CDDG"
   name: "hse_contrastive"
-  source_domain_id: [1, 5, 6]
-  target_domain_id: 19
+  source_domain_id: [1, 5, 6]    # WORKS
+  target_domain_id: 19           # WORKS
 
-  # Contrastive learning settings
-  contrastive_loss: "SimCLR"     # SimCLR, SwAV, MoCo, etc.
-  temperature: 0.07
-  contrastive_weight: 1.0
+  # Contrastive learning settings (WORKING)
+  contrast_weight: 1.0           # ✅ WORKS (renamed from contrastive_weight)
+  classification_weight: 0.1    # ✅ WORKS
+  temperature: 0.07              # ✅ WORKS
 
-  # Prompt settings
-  use_system_prompts: true
-  prompt_dim: 256
-  prompt_fusion: "attention"
+  # Prompt settings (WORKING)
+  prompt_fusion: "attention"     # ✅ WORKS (attention/gate/add/none)
 
-  # Two-stage training
-  training_stage: "pretrain"     # "pretrain" or "finetune"
-  freeze_prompts: false          # Set to true in finetune stage
+  # Two-stage training (WORKING)
+  training_stage: "pretrain"     # ✅ WORKS ("pretrain" or "finetune")
+  # freeze_prompts: false          # Controlled by stage settings
 ```
 
 ## Key Parameters
 
 ### Domain Configuration
-- `source_domain_id`: List of source domain IDs for training
-- `target_domain_id`: Target domain ID for evaluation
-- `domain_adaptation_loss`: Type of domain adaptation loss ("MMD", "CORAL", "DANN")
-- `domain_weight`: Weight for domain adaptation loss
+- `source_domain_id`: ✅ List of source domain IDs for training (BASIC SUPPORT)
+- `target_domain_id`: ✅ Target domain ID for evaluation (BASIC SUPPORT)
+- `domain_adaptation_loss`: ❌ TODO: Type of domain adaptation loss ("MMD", "CORAL", "DANN") - NOT IMPLEMENTED
+- `domain_weight`: ❌ TODO: Weight for domain adaptation loss - NOT IMPLEMENTED
 
-### Contrastive Learning (HSE)
-- `contrastive_loss`: Contrastive loss type ("SimCLR", "SwAV", "MoCo", "VICReg", "BarlowTwins", "BYOL")
-- `temperature`: Temperature parameter for contrastive loss
-- `contrastive_weight`: Weight for contrastive loss term
-- `num_negatives`: Number of negative samples per positive
+### Contrastive Learning (HSE) ✅ IMPLEMENTED
+- `contrast_weight`: ✅ Weight for contrastive loss term (WORKS)
+- `classification_weight`: ✅ Weight for classification loss term (WORKS)
+- `temperature`: ✅ Temperature parameter for contrastive loss (WORKS)
+- `num_negatives`: ❌ TODO: Number of negative samples per positive - NOT NEEDED (auto-handled)
+- `contrast_loss`: ❌ TODO: Other loss types ("SimCLR", "SwAV", "MoCo", "VICReg", "BarlowTwins", "BYOL") - NOT IMPLEMENTED
 
-### Prompt System (HSE)
-- `use_system_prompts`: Enable system metadata prompts
-- `prompt_dim`: Dimension of prompt embeddings
-- `prompt_fusion`: Method for fusing prompts ("concat", "attention", "add")
-- `freeze_prompts`: Whether to freeze prompt parameters
+### Prompt System (HSE) ✅ IMPLEMENTED
+- `prompt_fusion`: ✅ Method for fusing prompts ("attention", "gate", "add", "none") (WORKS)
+- `training_stage`: ✅ Stage for training behavior ("pretrain", "finetune") (WORKS)
+- `prompt_dim`: ❌ TODO: Dimension of prompt embeddings - AUTO-CONFIGURED
+- `freeze_prompts`: ❌ TODO: Whether to freeze prompt parameters - CONTROLLED BY STAGE
 
 ## Usage Examples
 
@@ -130,11 +150,13 @@ Tasks are automatically registered when imported. The HSE contrastive task exten
 
 ## Advanced Features
 
-### System-Aware Sampling (HSE)
-The HSE contrastive task implements intelligent sampling strategies:
+### System-Aware Sampling (HSE) ❌ TODO: NOT IMPLEMENTED
+The HSE contrastive task plans to implement intelligent sampling strategies:
 - **Positive pairs**: Same fault type, different systems (cross-system invariance)
 - **Negative pairs**: Different fault types with system awareness
 - **Hard negatives**: Similar faults from different systems
+
+> **当前实现**: 使用基础的双视图对比学习，未实现高级系统感知采样策略。
 
 ### Two-Stage Training
 1. **Pretraining Stage**: Learn system-invariant representations via contrastive learning

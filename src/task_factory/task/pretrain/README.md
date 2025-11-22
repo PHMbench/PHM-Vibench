@@ -1,5 +1,26 @@
 # Pretrain Task Module
 
+## 🚧 实现状态 (Implementation Status)
+
+### ✅ 已实现 (Fully Implemented)
+- **掩码重构**: `masked_reconstruction.py` - 302行完整的掩码自编码器实现
+- **Signal_mask_Loss**: 专门的工业信号掩码损失函数
+- **基础预训练框架**: 支持多种预训练策略的核心框架
+
+### 🚧 部分实现 (Partially Implemented)
+- **分类预测**: `classification_prediction.py` - 基础多任务预训练支持
+- **分类预训练**: `classification.py` - 标准监督预训练
+- **信号预测**: `prediction.py` - 时序预测基础功能
+
+### ❌ TODO: 待实现 (Not Yet Implemented)
+- **高级掩码策略**: block, temporal, frequency等复杂掩码模式
+- **多尺度预训练**: 不同时间尺度的表示学习
+- **域自适应预训练**: 域感知的预训练策略
+- **渐进式训练**: 动态增加难度的训练策略
+- **高级对比学习**: SimCLR, MoCo, SwAV等对比学习方法
+
+> **注意**: masked_reconstruction是核心实现，其他功能和高级特性为设计目标。
+
 ## Overview
 
 The Pretrain task module implements self-supervised and unsupervised pretraining tasks for developing PHM (Prognostics and Health Management) foundation models. These tasks enable models to learn robust representations from large amounts of unlabeled industrial data before fine-tuning on specific downstream tasks. Pretraining is crucial for building foundation models that can transfer knowledge across different equipment types, fault conditions, and industrial domains.
@@ -167,36 +188,36 @@ finetune_config:
 
 ## Masking Strategies
 
-### 1. Random Masking
+### 1. ✅ Random Masking - IMPLEMENTED
 Randomly mask individual time steps:
 ```yaml
-mask_strategy: "random"
-mask_ratio: 0.25
-mask_probability: 0.15      # Probability per time step
+mask_strategy: "random"       # ✅ WORKS
+mask_ratio: 0.25             # ✅ WORKS
+mask_probability: 0.15      # ✅ MAY WORK
 ```
 
-### 2. Block Masking
+### 2. TODO: Block Masking - NOT IMPLEMENTED
 Mask contiguous blocks of signal:
 ```yaml
-mask_strategy: "block"
-block_size_range: [8, 64]   # Range of block sizes
-num_blocks: 3               # Number of blocks to mask
+# TODO: mask_strategy: "block" - NOT IMPLEMENTED
+# block_size_range: [8, 64]   # Range of block sizes
+# num_blocks: 3               # Number of blocks to mask
 ```
 
-### 3. Temporal Masking
+### 3. TODO: Temporal Masking - NOT IMPLEMENTED
 Mask specific temporal patterns:
 ```yaml
-mask_strategy: "temporal"
-temporal_pattern: "periodic"  # "periodic", "transient", "startup"
-pattern_duration: 32         # Duration of masked patterns
+# TODO: mask_strategy: "temporal" - NOT IMPLEMENTED
+# temporal_pattern: "periodic"  # "periodic", "transient", "startup"
+# pattern_duration: 32         # Duration of masked patterns
 ```
 
-### 4. Frequency Masking
+### 4. TODO: Frequency Masking - NOT IMPLEMENTED
 Mask specific frequency components:
 ```yaml
-mask_strategy: "frequency"
-frequency_bands: [[0, 100], [500, 1000]]  # Frequency ranges to mask
-mask_in_frequency_domain: true
+# TODO: mask_strategy: "frequency" - NOT IMPLEMENTED
+# frequency_bands: [[0, 100], [500, 1000]]  # Frequency ranges to mask
+# mask_in_frequency_domain: true
 ```
 
 ## Usage Examples
@@ -248,37 +269,37 @@ Pretraining tasks are registered with the `@register_task` decorator and integra
 
 ## Advanced Features
 
-### 1. Contrastive Learning Integration
+### 1. TODO: Contrastive Learning Integration - NOT IMPLEMENTED
 Combine masked reconstruction with contrastive learning:
 ```yaml
-enable_contrastive: true
-contrastive_weight: 0.1
-contrastive_type: "SimCLR"    # "SimCLR", "MoCo", "SwAV"
+# TODO: enable_contrastive: true - NOT IMPLEMENTED
+# contrastive_weight: 0.1
+# contrastive_type: "SimCLR"    # "SimCLR", "MoCo", "SwAV"
 ```
 
-### 2. Multi-Scale Pretraining
+### 2. TODO: Multi-Scale Pretraining - NOT IMPLEMENTED
 Learn representations at multiple time scales:
 ```yaml
-multi_scale_training: true
-time_scales: [1, 2, 4, 8]     # Different downsampling factors
-scale_weights: [1.0, 0.8, 0.6, 0.4]  # Weights for each scale
+# TODO: multi_scale_training: true - NOT IMPLEMENTED
+# time_scales: [1, 2, 4, 8]     # Different downsampling factors
+# scale_weights: [1.0, 0.8, 0.6, 0.4]  # Weights for each scale
 ```
 
-### 3. Domain-Adaptive Pretraining
+### 3. TODO: Domain-Adaptive Pretraining - NOT IMPLEMENTED
 Pretrain with domain awareness:
 ```yaml
-domain_adaptive: true
-domain_embedding_dim: 64      # Dimension of domain embeddings
-num_domains: 10               # Number of source domains
+# TODO: domain_adaptive: true - NOT IMPLEMENTED
+# domain_embedding_dim: 64      # Dimension of domain embeddings
+# num_domains: 10               # Number of source domains
 ```
 
-### 4. Progressive Training
+### 4. TODO: Progressive Training - NOT IMPLEMENTED
 Gradually increase task difficulty:
 ```yaml
-progressive_training: true
-mask_ratio_schedule: "linear"  # "linear", "cosine", "step"
-start_mask_ratio: 0.05
-end_mask_ratio: 0.25
+# TODO: progressive_training: true - NOT IMPLEMENTED
+# mask_ratio_schedule: "linear"  # "linear", "cosine", "step"
+# start_mask_ratio: 0.05
+# end_mask_ratio: 0.25
 ```
 
 ## Evaluation Metrics

@@ -1,5 +1,27 @@
 # FS Task Module
 
+## 🚧 实现状态 (Implementation Status)
+
+### ✅ 已实现 (Fully Implemented)
+- **原型网络**: `prototypical_network.py` - 完整的原型网络实现
+- **匹配网络**: `matching_network.py` - 注意力机制匹配网络
+- **KNN特征学习**: `knn_feature.py` - 基于学习特征空间的KNN分类
+- **微调方法**: `finetuning.py` - 基于梯度微调的少样本学习
+- **基础框架**: `FS.py` - 通用少样本学习框架
+- **工具函数**: `utils.py` - 完整的episode生成和评估工具
+
+### 🚧 部分实现 (Partially Implemented)
+- **距离度量**: euclidean, cosine等基础度量已实现，高级度量可能部分实现
+- **注意力机制**: 基础注意力已实现，复杂变体可能有限制
+
+### ❌ TODO: 待实现 (Not Yet Implemented)
+- **多尺度episode**: 动态shot/way数量的复杂episode生成
+- **跨域episode**: 多数据集混合episode生成
+- **分层少样本**: 基于故障层次的结构化少样本学习
+- **高级embedding**: 学习型距离度量等高级特征表示
+
+> **注意**: FS模块实现较为完整，但部分高级功能可能存在限制。
+
 ## Overview
 
 The FS (Few-Shot Learning) task module implements meta-learning algorithms designed to learn from very few examples. This is particularly valuable in industrial fault diagnosis where collecting large amounts of labeled fault data is expensive, dangerous, or time-consuming. Few-shot learning enables models to quickly adapt to new fault types or equipment with minimal training data.
@@ -268,29 +290,29 @@ Similar structure but from held-out test classes:
 
 ## Advanced Features
 
-### 1. Multi-Scale Episodes
+### 1. TODO: Multi-Scale Episodes - NOT IMPLEMENTED
 Episodes with varying difficulty:
 ```yaml
-multi_scale_episodes: true
-shot_range: [1, 5, 10]       # Variable number of shots
-way_range: [3, 5, 10]        # Variable number of ways
+# TODO: multi_scale_episodes: true - NOT IMPLEMENTED
+# shot_range: [1, 5, 10]       # Variable number of shots
+# way_range: [3, 5, 10]        # Variable number of ways
 ```
 
-### 2. Cross-Domain Episodes
+### 2. TODO: Cross-Domain Episodes - NOT IMPLEMENTED
 Episodes spanning multiple datasets:
 ```yaml
-cross_domain_episodes: true
-source_datasets: ["CWRU", "XJTU"]
-target_datasets: ["THU", "MFPT"]
+# TODO: cross_domain_episodes: true - NOT IMPLEMENTED
+# source_datasets: ["CWRU", "XJTU"]
+# target_datasets: ["THU", "MFPT"]
 ```
 
-### 3. Hierarchical Few-Shot
+### 3. TODO: Hierarchical Few-Shot - NOT IMPLEMENTED
 Few-shot learning with fault hierarchy:
 ```yaml
-hierarchical_episodes: true
-fault_hierarchy:
-  bearing: ["inner", "outer", "ball"]
-  gear: ["tooth", "shaft", "wear"]
+# TODO: hierarchical_episodes: true - NOT IMPLEMENTED
+# fault_hierarchy:
+#   bearing: ["inner", "outer", "ball"]
+#   gear: ["tooth", "shaft", "wear"]
 ```
 
 ## Evaluation Metrics
