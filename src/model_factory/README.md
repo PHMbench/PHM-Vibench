@@ -55,13 +55,10 @@ Convolutional architectures for temporal pattern recognition:
 - **MobileNet1D**: Efficient CNN with depthwise separable convolutions
 - **MultiScaleCNN**: Multi-scale CNN with Inception-style modules
 
-### 6. **ISFM (Industrial Signal Foundation Models)** - 5 Models
-Foundation models for self-supervised and multi-modal learning:
-- **ContrastiveSSL**: Self-supervised contrastive learning
-- **MaskedAutoencoder**: Masked autoencoder for signal reconstruction
-- **MultiModalFM**: Multi-modal foundation model
-- **SignalLanguageFM**: Signal-language foundation model
-- **TemporalDynamicsSSL**: Self-supervised temporal dynamics learning
+### 6. **ISFM (Industrial Signal Foundation Models)** - ISFM / ISFM_Prompt
+Foundation models for industrial signal representation,对齐 Vbench 实验 0–7：
+- `ISFM/`：标准工业信号基础模型族（`M_01_ISFM`, `M_02_ISFM`, `M_03_ISFM` 等），基于 HSE / Patch 嵌入 + 系统感知 head；
+- `ISFM_Prompt/`：简化版 HSE-Prompt 模型族（`M_02_ISFM_Prompt`），用于 Experiment 3+ 的 HSE-Prompt 对比与下游分类。
 
 ## 🚀 Quick Start
 
