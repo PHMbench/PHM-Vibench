@@ -25,6 +25,8 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 from typing import Optional, Union
 
+from src.model_factory.ISFM.system_utils import normalize_fs
+
 # Import simplified prompt encoder
 from ..components.SimpleSystemPromptEncoder import SimpleSystemPromptEncoder
 
@@ -216,12 +218,9 @@ class HSE_prompt(nn.Module):
         B, L, C = x.size()
         device = x.device
 
-        # Handle sampling frequency
-        if torch.is_tensor(fs):
-            T = 1.0 / fs  # [B] tensor
-        else:
-            T = 1.0 / fs  # scalar
-            T = torch.full((B,), T, device=device, dtype=torch.float32)
+        # Handle sampling frequency (统一为 [B])
+        fs_tensor = normalize_fs(fs, batch_size=B, device=device, as_column=False)  # [B]
+        T = 1.0 / fs_tensor  # [B]
 
         # Generate time embeddings
         time_idx = torch.arange(L, device=device, dtype=torch.float32).unsqueeze(0)  # (1, L)

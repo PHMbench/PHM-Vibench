@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
+from src.model_factory.ISFM.system_utils import normalize_fs
 
 class E_01_HSE(nn.Module):
     """
@@ -45,12 +46,14 @@ class E_01_HSE(nn.Module):
         """
         B, L, C = x.size()
         device = x.device
-        # fs = self.args_d.task[data_name]['f_s']
-        T = 1.0 / fs # [B,1]  # id one batch
+
+        # 归一化 fs → [B,1]
+        fs_tensor = normalize_fs(fs, batch_size=B, device=device, as_column=True)  # [B,1]
+        T = 1.0 / fs_tensor  # [B,1]
 
         # Generate time axis 't' for each sample, shape: (B, L)
-        t = torch.arange(L, device=device, dtype=torch.float32) * T
-        t = t.unsqueeze(0).expand(B, -1)
+        t = torch.arange(L, device=device, dtype=torch.float32).view(1, L)  # [1,L]
+        t = t * T  # 广播到 [B, L]
 
         # If input is smaller than required patch size, repeat along L or C as needed
         if self.patch_size_L > L:
