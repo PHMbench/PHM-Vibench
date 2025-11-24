@@ -366,7 +366,7 @@ class SingleContrastiveStrategy(ContrastiveStrategy):
                 raise ValueError(f"Unsupported loss type: {self.loss_type}")
 
             # Add prompt regularization loss for better training
-            prompt_regularization = self._compute_prompt_regularization(prompts)
+            prompt_regularization = self._compute_prompt_regularization(prompts, device=features.device)
 
             total_loss = loss_value + prompt_regularization
 
@@ -584,14 +584,25 @@ class SingleContrastiveStrategy(ContrastiveStrategy):
 
         return self.contrastive_loss(features, labels)
 
-    def _compute_prompt_regularization(self, prompts: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def _compute_prompt_regularization(
+        self,
+        prompts: Optional[torch.Tensor] = None,
+        device: Optional[torch.device] = None
+    ) -> torch.Tensor:
         """
         Compute prompt regularization loss for better training stability.
         """
-        if prompts is None:
-            return torch.tensor(0.0, device=next(self.parameters()).device)
+        # 确定正则项所在设备：优先使用传入 device，其次使用 prompts.device，最后退回 CPU
+        if device is None:
+            if prompts is not None:
+                device = prompts.device
+            else:
+                device = torch.device("cpu")
 
-        reg_loss = torch.tensor(0.0, device=prompts.device)
+        if prompts is None:
+            return torch.tensor(0.0, device=device)
+
+        reg_loss = torch.tensor(0.0, device=device)
 
         # L2 regularization
         if self.config.get('prompt_l2_reg', True):

@@ -5,6 +5,7 @@
 ## 目录与职责
 - `loss.py`：Loss 工厂，统一 `get_loss_fn(name)` 接口。
 - `contrastive_losses.py`：对比/度量学习损失实现（InfoNCE, SupCon, Triplet, BarlowTwins, VICReg 等）。
+- `contrastive_strategies.py`：对比学习策略架构，支持 HSE Prompt 集成和系统感知对比学习，详见 [CONTRASTIVE_STRATEGIES.md](./README_CONTRASTIVE_STRATEGIES.md)。
 - `metrics.py`：评估指标工厂，封装 torchmetrics。
 - `regularization.py`：正则化工具（L1/L2/Domain penalty/mixup 等）。
 - 其他：prompt_contrastive、metric_loss 等高级模块。

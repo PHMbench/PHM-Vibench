@@ -404,6 +404,30 @@ class MultiStageOrchestrator:
             _validate_config_wrapper(stage_wrapped)
 
     # ------------------------ helpers ------------------------
+    def _ensure_trainer_attributes(self, trainer: Any, path: str) -> None:
+        """确保trainer配置包含所有必需的属性"""
+        if not hasattr(trainer, 'monitor'):
+            setattr(trainer, 'monitor', 'val_loss')
+        if not hasattr(trainer, 'save_dir'):
+            setattr(trainer, 'save_dir', path)
+
+        # 关键修复：处理device属性（Default_trainer需要）
+        if not hasattr(trainer, 'device'):
+            device = getattr(trainer, 'accelerator', 'cpu')
+            if device == 'gpu':
+                device = 'cuda'
+            setattr(trainer, 'device', device)
+
+        # 处理其他必需属性
+        if not hasattr(trainer, 'devices') and not hasattr(trainer, 'gpus'):
+            setattr(trainer, 'devices', 1)
+        if not hasattr(trainer, 'log_every_n_steps'):
+            setattr(trainer, 'log_every_n_steps', 50)
+
+        # 处理num_epochs/max_epochs
+        if not hasattr(trainer, 'num_epochs') and hasattr(trainer, 'max_epochs'):
+            setattr(trainer, 'num_epochs', trainer.max_epochs)
+
     def _stage_to_namespaces(self, stage_cfg: Any):
         # stage_cfg may be dict / ConfigWrapper / SimpleNamespace
         if isinstance(stage_cfg, dict):
@@ -434,10 +458,7 @@ class MultiStageOrchestrator:
         init_lab(env, self.cfg, name)
 
         # Ensure trainer has required attributes for build_trainer
-        if not hasattr(trainer, 'monitor'):
-            setattr(trainer, 'monitor', 'val_loss')
-        if not hasattr(trainer, 'save_dir'):
-            setattr(trainer, 'save_dir', path)
+        self._ensure_trainer_attributes(trainer, path)
 
         if self.dry_run:
             close_lab()
@@ -495,10 +516,7 @@ class MultiStageOrchestrator:
         init_lab(env, self.cfg, name)
 
         # Ensure trainer has required attributes for build_trainer
-        if not hasattr(trainer, 'monitor'):
-            setattr(trainer, 'monitor', 'val_loss')
-        if not hasattr(trainer, 'save_dir'):
-            setattr(trainer, 'save_dir', path)
+        self._ensure_trainer_attributes(trainer, path)
 
         if self.dry_run:
             close_lab()
