@@ -174,19 +174,47 @@ class E_02_HSE_v2(nn.Module):
             grid = grid.reshape(1, seq_len, 1).repeat(batchsize, 1, 1) / sample_f_tensor
         return grid.to(x.device)
     
-    def forward(self, x, system_id, sample_f, t = None, r = None, y=None):
-    
+    def forward(self, x, system_ids, sample_f, t=None, r=None, y=None):
+
         sample_T = self.get_grid_1d(x, sample_f)
 
         x_with_time = torch.cat([x, sample_T], dim=-1)
-        
+
         patches = self.patcher.patch(rearrange(x_with_time, 'b l c -> b c l'))
-        
-        patches_for_mlp = rearrange(patches, 'b t c p -> b t p c')
 
-        channel_embedded_patches = self.channel_embedders[str(system_id)](patches_for_mlp)
+        patches_for_mlp = rearrange(patches, 'b t c p -> b t p c')  # [B, T, P, C_in]
 
-        flattened_patches = rearrange(channel_embedded_patches, 'b t p c_dim -> b t (p c_dim)')
+        # 支持 per-sample system_ids：逐系统分组处理 channel_embedders
+        B = patches_for_mlp.size(0)
+        device = patches_for_mlp.device
+
+        if isinstance(system_ids, (int, str)):
+            sid_tensor = torch.full((B,), int(system_ids), dtype=torch.long, device=device)
+        elif isinstance(system_ids, torch.Tensor):
+            sid_tensor = system_ids.view(-1).to(dtype=torch.long, device=device)
+        elif isinstance(system_ids, (list, tuple)):
+            vals = [int(v) for v in system_ids]
+            sid_tensor = torch.as_tensor(vals, dtype=torch.long, device=device)
+        else:
+            raise ValueError("system_ids must be scalar or per-sample list/tensor")
+
+        if sid_tensor.shape[0] != B:
+            sid_tensor = sid_tensor[0:1].expand(B)
+
+        channel_embedders_out = torch.empty_like(patches_for_mlp)
+        uniq, inv = torch.unique(sid_tensor, sorted=True, return_inverse=True)
+
+        for k, s_val in enumerate(uniq.tolist()):
+            key = str(int(s_val))
+            if key not in self.channel_embedders:
+                raise KeyError(f"Missing channel embedder for system_id '{key}' in E_02_HSE_v2.")
+            mask = (inv == k)
+            if not mask.any():
+                continue
+            subset = patches_for_mlp[mask]  # [B_k, T, P, C_in]
+            channel_embedders_out[mask] = self.channel_embedders[key](subset)
+
+        flattened_patches = rearrange(channel_embedders_out, 'b t p c_dim -> b t (p c_dim)')
 
         x_tokens = self.proj_patch(flattened_patches)
 
