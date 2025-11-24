@@ -2,10 +2,12 @@ from src.model_factory.ISFM.embedding import *
 from src.model_factory.ISFM.embedding import E_03_Patch
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
+from src.model_factory.ISFM.system_utils import resolve_batch_metadata
 import torch.nn as nn
 import numpy as np
 import os
 import torch
+import pandas as pd
 from src.utils.utils import get_num_classes
 
 Embedding_dict = {
@@ -71,9 +73,8 @@ class Model(nn.Module):
     def _embed(self, x, file_id):
         """1 Embedding"""
         if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
-            fs = self.metadata[file_id]['Sample_rate']
-            # system_id = self.metadata[file_id]['Dataset_id']
-            x = self.embedding(x, fs)
+            _, fs_tensor = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+            x = self.embedding(x, fs_tensor)
         else:
             x = self.embedding(x)
         return x
@@ -84,16 +85,16 @@ class Model(nn.Module):
 
     def _head(self, x, file_id = False, task_id = False, return_feature=False):
         """3 Task Head"""
-        system_id = str(self.metadata[file_id]['Dataset_id'])  # Convert to string
-        # check if task_id is in the task head
-        # check if task have its head
+        B = x.size(0)
+
+        system_ids_tensor, _ = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+        system_ids = [int(v) for v in system_ids_tensor.view(-1).tolist()]
 
         if task_id in ['classification']:
-            # For classification or prediction tasks, we need to pass system_id
-            return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
-        elif task_id in ['prediction']: # TODO individual prediction head
+            # 对于分类任务，将 per-sample system_ids 传递给多头线性分类器
+            return self.task_head(x, system_id=system_ids, return_feature=return_feature, task_id=task_id)
+        elif task_id in ['prediction']:
             shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
-            # For prediction tasks, we may not need system_id
             return self.task_head(x, return_feature=return_feature, task_id=task_id, shape=shape)
         # if task_id in ['classification', 'prediction']:
         #     # For classification or prediction tasks, we need to pass system_id

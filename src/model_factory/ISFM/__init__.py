@@ -1,22 +1,27 @@
-import torch.nn as nn
-import math
-import torch
-import torch.nn.functional as F
-from einops import rearrange, repeat
+"""
+ISFM package exports.
+
+仅导出当前仓库中实际存在且被 Vbench 使用的组件：
+- embedding 子模块
+- backbone 子模块
+- task_head 子模块
+- M_01_ISFM / M_02_ISFM / M_03_ISFM 模型实现
+"""
 
 from . import embedding
 from . import backbone
 from . import task_head
-# from . import M_01_ISFM, M_02_ISFM
+from .M_01_ISFM import Model as M_01_ISFM
+from .M_02_ISFM import Model as M_02_ISFM
+from .M_02_ISFM_heterogeneous_batch import Model as M_02_ISFM_heterogeneous_batch
+from .M_03_ISFM import Model as M_03_ISFM
 
-# New SOTA Foundation Models
-from .ContrastiveSSL import Model as ContrastiveSSL
-from .MaskedAutoencoder import Model as MaskedAutoencoder
-from .MultiModalFM import Model as MultiModalFM
-from .SignalLanguageFM import Model as SignalLanguageFM
-from .TemporalDynamicsSSL import Model as TemporalDynamicsSSL
-
-__all__ = ['embedding', 'backbone', 'task_head',
-           'ContrastiveSSL', 'MaskedAutoencoder', 'MultiModalFM',
-           'SignalLanguageFM', 'TemporalDynamicsSSL'
-] #            'M_01_ISFM', 'M_02_ISFM'
+__all__ = [
+    "embedding",
+    "backbone",
+    "task_head",
+    "M_01_ISFM",
+    "M_02_ISFM",
+    "M_02_ISFM_heterogeneous_batch",
+    "M_03_ISFM",
+]
