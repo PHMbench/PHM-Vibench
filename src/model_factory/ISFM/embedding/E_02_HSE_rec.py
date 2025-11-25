@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
+from src.model_factory.ISFM.system_utils import normalize_fs
 
 import torch
 import torch.nn as nn
@@ -122,7 +123,7 @@ def get_1d_sincos_pos_embed(embed_dim, num_patches):
     out = torch.einsum('m,d->md', pos, omega)
     return torch.cat([torch.sin(out), torch.cos(out)], dim=1).float()
 
-class E_02_HSE_v2(nn.Module):
+class E_02_HSE_rec(nn.Module):
     def __init__(self, args):
         super().__init__()
 
@@ -232,6 +233,11 @@ class E_02_HSE_v2(nn.Module):
 
         # 核心修改: 返回重建所需的 start_indices
         return x_tokens, c
+
+
+# 向后兼容别名：原始代码和工厂注册使用 E_02_HSE_v2 名称
+# 现在的实现类名为 E_02_HSE_rec，这里显式提供别名以避免 ImportError。
+E_02_HSE_v2 = E_02_HSE_rec
 
 if __name__ == "__main__":
     # --- 模块一: 最终版 Embedding 独立测试 ---

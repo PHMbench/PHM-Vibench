@@ -4,6 +4,7 @@ from src.model_factory.ISFM.embedding import *
 # from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
+from src.model_factory.ISFM.system_utils import resolve_batch_metadata
 import torch.nn as nn
 import numpy as np
 import os
@@ -14,8 +15,7 @@ from src.utils.utils import get_num_classes, get_num_channels
 Embedding_dict = {
 
     'E_01_HSE': E_01_HSE,
-    'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
-    'E_03_Patch_DPOT': E_03_Patch_DPOT,
+    'E_02_HSE_v2': E_02_HSE_v2,  # Reconstruction-focused HSE variant
 
 }
 Backbone_dict = {
@@ -80,44 +80,41 @@ class Model(nn.Module):
         return get_num_channels(self.metadata)
 
     def _embed(self, x, file_id):
-        """1 Embedding"""
-        if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
-            fs = self.metadata[file_id]['Sample_rate']
-            system_id = self.metadata[file_id]['Dataset_id'] 
-            if isinstance(system_id, pd.Series):
-                system_id = np.unique(system_id)[0]  # 如果是Series，取第一个值
-            # system_id = self.metadata[file_id]['Dataset_id']
-            x = self.embedding(x, system_id, fs)
+        """1 Embedding：支持 per-sample system_id / Sample_rate。"""
+        system_ids_tensor, sample_f_tensor = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+
+        if self.args_m.embedding == 'E_01_HSE':
+            # HSE v1 仅依赖 fs
+            x = self.embedding(x, sample_f_tensor)
+            c = None
+        elif self.args_m.embedding == 'E_02_HSE_v2':
+            # HSE v2 使用 system_id + sample_f
+            x, c = self.embedding(x, system_ids_tensor, sample_f_tensor)
         else:
             x = self.embedding(x)
-        return x
+            c = None
+
+        return x, c
 
     def _encode(self, x,c=False):
         """2 Backbone"""
         return self.backbone(x,c)
 
     def _head(self, x, file_id = False, task_id = False, return_feature=False):
-        """3 Task Head"""
-        system_id = self.metadata[file_id]['Dataset_id']
-        if isinstance(system_id, pd.Series):
-            system_id = np.unique(system_id)[0]  # 如果是Series，取第一个值
-        system_id = str(system_id)  # Convert to string to match task head keys
-        # check if task_id is in the task head
-        # check if task have its head
+        """3 Task Head：按样本传递 system_id 给多头分类器/预测头。"""
+        B = x.size(0)
+        system_ids_tensor, _ = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+        system_ids = [int(v) for v in system_ids_tensor.view(-1).tolist()]
 
         if task_id in ['classification']:
-            # For classification or prediction tasks, we need to pass system_id
-            return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
-        
-        elif task_id in ['prediction']: # TODO individual prediction head
-            if self.args_m.task_head == 'H_04_VIB_pred':
-                # For Vibration prediction tasks, we need to pass system_id
-                return self.task_head(x, system_id=system_id)
-            else:
+            return self.task_head(x, system_id=system_ids, return_feature=return_feature, task_id=task_id)
 
+        elif task_id in ['prediction']:
+            if self.args_m.task_head == 'H_04_VIB_pred':
+                return self.task_head(x, system_id=system_ids)
+            else:
                 shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
-                # For prediction tasks, we may not need system_id
-                return self.task_head(x,shape=shape,system_id = system_id, return_feature=return_feature, task_id=task_id, )
+                return self.task_head(x, shape=shape, system_id=system_ids, return_feature=return_feature, task_id=task_id)
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
         """Forward pass.
@@ -141,4 +138,3 @@ class Model(nn.Module):
         x,c = self._embed(x, file_id)
         x = self._encode(x,c)
         return x
-

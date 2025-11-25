@@ -407,7 +407,7 @@ class MultiStageOrchestrator:
     def _ensure_trainer_attributes(self, trainer: Any, path: str) -> None:
         """确保trainer配置包含所有必需的属性"""
         if not hasattr(trainer, 'monitor'):
-            setattr(trainer, 'monitor', 'val_loss')
+            setattr(trainer, 'monitor', 'val_total_loss')
         if not hasattr(trainer, 'save_dir'):
             setattr(trainer, 'save_dir', path)
 

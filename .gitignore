@@ -201,3 +201,4 @@ script/unified_metric/existing_test_files/
 script/unified_metric/test_results/
 script/unified_metric/
 # paper/ (except 2025-10_foundation_model_0_metric which is a submodule)
+.claude/

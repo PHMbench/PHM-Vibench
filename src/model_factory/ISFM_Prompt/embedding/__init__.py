@@ -25,6 +25,10 @@ License: MIT
 from .HSE_prompt import HSE_prompt
 
 # Component registry for factory pattern
+# 说明：
+# - 当前主线实验（Experiment 3–7）只使用 `HSE_prompt` 作为标准 HSE-Prompt embedding；
+# - `E_01_HSE_v2` 保留在单独文件中作为研究用实现，不再在此自动注册，避免在加载
+#   ISFM_Prompt 时引入额外依赖和复杂度。
 PROMPT_EMBEDDINGS = {
     'HSE_prompt': HSE_prompt,
 }
