@@ -265,6 +265,13 @@ class task(Default_task):
                 sync_dist=True,
             )
 
+        # 兼容性别名：为val_total_loss提供val_loss别名
+        if stage == "val":
+            total_loss_key = f"{stage}_total_loss"
+            if total_loss_key in metrics:
+                self.log("val_loss", metrics[total_loss_key],
+                        on_step=False, on_epoch=True, prog_bar=False, sync_dist=True)
+
     # 仍然使用 Default_task 的优化器配置逻辑
     def configure_optimizers(self):
         return super().configure_optimizers()

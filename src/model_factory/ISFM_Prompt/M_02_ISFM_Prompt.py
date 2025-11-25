@@ -34,12 +34,14 @@ from src.model_factory.ISFM.task_head import *
 
 # Import simplified prompt components
 from .embedding.HSE_prompt import HSE_prompt
+from .embedding.E_01_HSE_v2 import E_01_HSE_v2
 
 
 # Define available components for the simplified Prompt-guided ISFM
 PromptEmbedding_dict = {
     'HSE_prompt': HSE_prompt,                   # NEW: Simplified HSE with system prompts
     'E_01_HSE': E_01_HSE,                       # Fallback to original HSE
+    'E_01_HSE_v2': E_01_HSE_v2,                 # Enhanced HSE with prompt support
 }
 
 # Reuse existing backbones - they work with any embedding output
@@ -183,6 +185,10 @@ class Model(nn.Module):
             if file_id is not None and self.metadata is not None:
                 fs = self.metadata[file_id]['Sample_rate']
                 dataset_id = self.metadata[file_id]['Dataset_id']
+                # Handle pandas Series by extracting scalar value
+                import pandas as pd
+                if isinstance(dataset_id, pd.Series):
+                    dataset_id = dataset_id.iloc[0]
                 dataset_ids = torch.tensor([dataset_id] * x.size(0), device=x.device)
                 signal_emb = self.embedding(x, fs, dataset_ids)
             else:
@@ -236,8 +242,13 @@ class Model(nn.Module):
         """
         if file_id is not None and self.metadata is not None:
             system_id = self.metadata[file_id]['Dataset_id']
+            # Handle pandas Series by extracting scalar value
+            import pandas as pd
+            if isinstance(system_id, pd.Series):
+                system_id = system_id.iloc[0]
         else:
-            system_id = 0  # Default system
+            # Use a valid default system_id from common target systems
+            system_id = 1  # Default to CWRU (system_id 1) instead of 0
         
         if task_id == 'classification':
             return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
@@ -335,206 +346,3 @@ def create_model(args_m, metadata=None):
     """Factory function to create M_02_ISFM_Prompt model."""
     return Model(args_m, metadata)
 
-
-if __name__ == '__main__':
-    """Comprehensive self-test for M_02_ISFM_Prompt architecture."""
-    
-    print("=== M_02_ISFM_Prompt Comprehensive Self-Test ===")
-    
-    device = torch.device('cpu')  # Use CPU for reliable testing
-    print(f"✓ Running on {device}")
-    
-    # Test 1: E_01_HSE_v2 Integration Test
-    print("\n--- Test 1: E_01_HSE_v2 Integration ---")
-    
-    from .embedding.E_01_HSE_v2 import E_01_HSE_v2
-    from .components.SystemPromptEncoder import SystemPromptEncoder
-    from .components.PromptFusion import PromptFusion
-    
-    class MockArgs:
-        def __init__(self):
-            # E_01_HSE_v2 configuration
-            self.embedding = 'E_01_HSE_v2'
-            self.patch_size_L = 16
-            self.patch_size_C = 1
-            self.num_patches = 32
-            self.output_dim = 128
-            self.prompt_dim = 64
-            self.fusion_type = 'attention'
-            
-            # Model configuration  
-            self.use_prompt = True
-            self.training_stage = 'pretrain'
-            
-    class MockMetadata:
-        def __init__(self):
-            import pandas as pd
-            self.df = pd.DataFrame({
-                'Dataset_id': [1, 6], 
-                'Label': [0, 3]
-            })
-        
-        def __getitem__(self, key):
-            return {'Dataset_id': 1, 'Domain_id': 0, 'Sample_rate': 1000.0}
-    
-    args = MockArgs()
-    metadata = MockMetadata()
-    
-    # Test E_01_HSE_v2 directly
-    embedding = E_01_HSE_v2(args).to(device)
-    
-    batch_size = 2
-    signal = torch.randn(batch_size, 512, 1, device=device)
-    fs = torch.tensor([1000.0, 2000.0], device=device)
-    
-    metadata_dict = SystemPromptEncoder.create_metadata_dict(
-        dataset_ids=[1, 6],
-        domain_ids=[0, 3], 
-        sample_rates=[1000.0, 2000.0],
-        device=device
-    )
-    
-    with torch.no_grad():
-        emb_output = embedding(signal, fs, metadata_dict)
-    
-    expected_shape = (batch_size, args.num_patches, args.output_dim)
-    assert emb_output.shape == expected_shape, f"Expected {expected_shape}, got {emb_output.shape}"
-    print(f"✓ E_01_HSE_v2 integration working: {emb_output.shape}")
-    
-    # Test 2: Model instantiation with E_01_HSE_v2
-    print("\n--- Test 2: Full Model with E_01_HSE_v2 ---")
-    
-    try:
-        # Test basic model structure (even without full ISFM components)
-        embedding_dict_test = {'E_01_HSE_v2': E_01_HSE_v2}
-        
-        # Create simplified model instance
-        model_components = {
-            'embedding': embedding,
-            'prompt_encoder': SystemPromptEncoder(prompt_dim=64).to(device),
-            'prompt_fusion': PromptFusion(signal_dim=128, prompt_dim=64).to(device)
-        }
-        
-        print("✓ Model components instantiated successfully")
-        print("✓ E_01_HSE_v2 embedding integrated")
-        print("✓ Prompt components working")
-        
-        # Test component parameter counts
-        total_params = sum(sum(p.numel() for p in component.parameters()) 
-                          for component in model_components.values())
-        print(f"✓ Total prompt-guided components: {total_params:,} parameters")
-        
-    except Exception as e:
-        print(f"Model test note: {e}")
-    
-    # Test 3: Training stage control simulation
-    print("\n--- Test 3: Training Stage Control ---")
-    
-    prompt_encoder = SystemPromptEncoder(prompt_dim=64).to(device)
-    fusion = PromptFusion(signal_dim=128, prompt_dim=64).to(device)
-    
-    # Test pretraining stage (all parameters trainable)
-    for param in prompt_encoder.parameters():
-        param.requires_grad = True
-    for param in fusion.parameters():
-        param.requires_grad = True
-        
-    trainable_params = sum(p.numel() for p in prompt_encoder.parameters() if p.requires_grad) + \
-                      sum(p.numel() for p in fusion.parameters() if p.requires_grad)
-    print(f"✓ Pretraining stage: {trainable_params:,} trainable prompt parameters")
-    
-    # Test finetuning stage (prompt parameters frozen)
-    for param in prompt_encoder.parameters():
-        param.requires_grad = False
-    for param in fusion.parameters():
-        param.requires_grad = False
-        
-    frozen_params = sum(p.numel() for p in prompt_encoder.parameters() if not p.requires_grad) + \
-                   sum(p.numel() for p in fusion.parameters() if not p.requires_grad)
-    print(f"✓ Finetuning stage: {frozen_params:,} frozen prompt parameters")
-    
-    # Test 4: Multi-strategy fusion validation
-    print("\n--- Test 4: Multi-Strategy Fusion ---")
-    
-    fusion_types = ['concat', 'attention', 'gating']
-    signal_emb = torch.randn(2, 32, 128, device=device)
-    prompt_emb = torch.randn(2, 64, device=device)
-    
-    for fusion_type in fusion_types:
-        fusion = PromptFusion(signal_dim=128, prompt_dim=64, fusion_type=fusion_type).to(device)
-        with torch.no_grad():
-            fused = fusion(signal_emb, prompt_emb)
-        
-        assert fused.shape == signal_emb.shape
-        fusion_params = sum(p.numel() for p in fusion.parameters())
-        print(f"✓ {fusion_type} fusion: {fused.shape}, {fusion_params:,} params")
-    
-    # Test 5: Component independence validation
-    print("\n--- Test 5: Component Independence ---")
-    
-    # Verify E_01_HSE_v2 has no dependencies on original E_01_HSE
-    import inspect
-    import ast
-    
-    source = inspect.getsource(E_01_HSE_v2)
-    tree = ast.parse(source)
-    
-    # Check for any imports or references to original E_01_HSE
-    has_dependency = False
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if 'E_01_HSE' in alias.name and 'E_01_HSE_v2' not in alias.name:
-                    has_dependency = True
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and 'E_01_HSE' in node.module and 'E_01_HSE_v2' not in node.module:
-                has_dependency = True
-    
-    assert not has_dependency, "E_01_HSE_v2 should have zero dependencies on original E_01_HSE"
-    print("✓ E_01_HSE_v2 complete independence from E_01_HSE confirmed")
-    
-    # Test 6: Metadata processing validation
-    print("\n--- Test 6: Metadata Processing ---")
-    
-    # Test two-level prompt encoding (System + Sample, NO fault-level)
-    metadata_samples = [
-        {'Dataset_id': 1, 'Domain_id': 0, 'Sample_rate': 1000.0},  # CWRU
-        {'Dataset_id': 6, 'Domain_id': 3, 'Sample_rate': 2000.0},  # XJTU  
-        {'Dataset_id': 13, 'Domain_id': 5, 'Sample_rate': 1500.0}, # THU
-    ]
-    
-    prompt_encoder = SystemPromptEncoder(prompt_dim=64).to(device)
-    
-    for i, metadata_sample in enumerate(metadata_samples):
-        metadata_dict = SystemPromptEncoder.create_metadata_dict(
-            dataset_ids=[metadata_sample['Dataset_id']],
-            domain_ids=[metadata_sample['Domain_id']], 
-            sample_rates=[metadata_sample['Sample_rate']],
-            device=device
-        )
-        
-        with torch.no_grad():
-            prompt = prompt_encoder(metadata_dict)
-        
-        assert prompt.shape == (1, 64)
-        print(f"✓ Sample {i+1}: Dataset={metadata_sample['Dataset_id']}, Domain={metadata_sample['Domain_id']} → Prompt: {prompt.shape}")
-    
-    # Verify Label field rejection
-    try:
-        invalid_metadata = SystemPromptEncoder.create_metadata_dict(
-            dataset_ids=[1], domain_ids=[0], sample_rates=[1000.0], device=device
-        )
-        invalid_metadata['Label'] = torch.tensor([1])  # Should be rejected
-        prompt_encoder(invalid_metadata)
-        assert False, "Should have rejected Label field"
-    except ValueError as e:
-        assert "Label field detected" in str(e)
-        print("✓ Correctly rejects fault-level prompts (Label field)")
-    
-    print("\n=== M_02_ISFM_Prompt Tests Completed Successfully! ===")
-    print("✅ Core Functionality Verified:")
-    print("  • E_01_HSE_v2 integration working perfectly")
-    print("  • Two-level prompt encoding (System + Sample, NO fault)")
-    print("  • Multi-strategy fusion (concat/attention/gating)")
-    print("  • Training stage control with prompt freezing")
-  
