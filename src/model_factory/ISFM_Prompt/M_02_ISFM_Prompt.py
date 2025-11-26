@@ -196,7 +196,7 @@ class Model(nn.Module):
                 fs = 1000.0
                 signal_emb = self.embedding(x, fs, dataset_ids=None)
 
-        elif self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
+        elif self.args_m.embedding == 'E_01_HSE':
             # Traditional HSE embeddings need sampling frequency
             if file_id is not None and self.metadata is not None:
                 fs = self.metadata[file_id]['Sample_rate']

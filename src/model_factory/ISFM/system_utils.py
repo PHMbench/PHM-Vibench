@@ -110,6 +110,9 @@ def normalize_system_ids(system_id: Any, batch_size: int, device: torch.device) 
     - 标量 int/str: 整批使用同一个 system_id；
     - list/tuple/tensor: 每个样本一个 system_id。
     """
+    # Debug: Print the actual type and value
+    # print(f"[DEBUG] normalize_system_ids: system_id={system_id}, type={type(system_id)}, batch_size={batch_size}")
+
     if isinstance(system_id, (int, str)):
         sid = int(system_id)
         return torch.full((batch_size,), sid, dtype=torch.long, device=device)
@@ -118,7 +121,12 @@ def normalize_system_ids(system_id: Any, batch_size: int, device: torch.device) 
     if isinstance(system_id, (list, tuple)):
         vals = [int(v) for v in system_id]
         return torch.as_tensor(vals, dtype=torch.long, device=device)
-    raise ValueError("system_id must be scalar or per-sample list/tensor")
+    # Handle numpy scalar types
+    import numpy as np
+    if isinstance(system_id, (np.int64, np.int32, np.int16, np.int8)):
+        sid = int(system_id)
+        return torch.full((batch_size,), sid, dtype=torch.long, device=device)
+    raise ValueError(f"system_id must be scalar or per-sample list/tensor, got {type(system_id)} with value {system_id}")
 
 
 def group_forward_by_system(
