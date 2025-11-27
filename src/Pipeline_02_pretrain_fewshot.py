@@ -185,7 +185,7 @@ def pipeline(args):
             print("[INFO] Single-stage pipeline via P02 completed.")
             return True
 
-        # 兼容路径：config_path + fs_config_path 双 YAML（legacy）
+        # 情况C 兼容路径：config_path + fs_config_path 双 YAML（legacy）
         unified = adapt_p02(args.config_path, args.fs_config_path, getattr(args, 'local_config', None))
 
         # 应用CLI override参数（最高优先级）——旧路径仍使用全局 override 机制
