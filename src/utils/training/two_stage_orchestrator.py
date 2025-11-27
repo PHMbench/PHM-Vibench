@@ -452,8 +452,15 @@ class MultiStageOrchestrator:
         seed = getattr(env, 'seed', 42) + int(iteration)
         seed_everything(seed)
 
-        # path and logging
-        path, name = path_name(ConfigWrapper(data=data, model=model, task=task, trainer=trainer))
+        # path and logging（包含 environment，允许使用 environment.output_dir 控制结果根目录）
+        cfg_for_path = ConfigWrapper(
+            environment=env,
+            data=data,
+            model=model,
+            task=task,
+            trainer=trainer,
+        )
+        path, name = path_name(cfg_for_path)
         trainer.logger_name = name
         init_lab(env, self.cfg, name)
 
@@ -511,7 +518,14 @@ class MultiStageOrchestrator:
         seed = getattr(env, 'seed', 42) + int(iteration)
         seed_everything(seed)
 
-        path, name = path_name(ConfigWrapper(data=data, model=model, task=task, trainer=trainer))
+        cfg_for_path = ConfigWrapper(
+            environment=env,
+            data=data,
+            model=model,
+            task=task,
+            trainer=trainer,
+        )
+        path, name = path_name(cfg_for_path)
         trainer.logger_name = name
         init_lab(env, self.cfg, name)
 
