@@ -5,12 +5,12 @@ import torch.nn.functional as F
 from einops import rearrange, repeat# , einsum
 from torch import einsum
 
-class B_05_Manba(nn.Module):
+class B_05_Mamba(nn.Module):
     """
     解耦的Mamba核心模型，确保输入输出格式一致为[B, L, C]
     """
     def __init__(self, args):
-        super(B_05_Manba, self).__init__()
+        super(B_05_Mamba, self).__init__()
         d_model = args.output_dim
         d_state=16 # by default
         expand=2
@@ -187,7 +187,7 @@ if __name__ == "__main__":
         num_layers = 2      # 层数
         
         # 创建模型实例
-        model = B_05_Manba(
+        model = B_05_Mamba(
             d_model=d_model,
             d_state=16,
             expand=2,

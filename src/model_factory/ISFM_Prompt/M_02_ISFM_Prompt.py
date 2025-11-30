@@ -31,6 +31,7 @@ from typing import Optional, Dict, Any, Union
 from src.model_factory.ISFM.embedding import *
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
+from src.model_factory.ISFM.system_utils import resolve_batch_metadata
 
 # Import simplified prompt components
 from .embedding.HSE_prompt import HSE_prompt
@@ -48,7 +49,7 @@ PromptEmbedding_dict = {
 PromptBackbone_dict = {
     'B_01_basic_transformer': B_01_basic_transformer,
     'B_04_Dlinear': B_04_Dlinear,
-    'B_05_Manba': B_05_Manba,
+    'B_05_Mamba': B_05_Mamba,
     'B_06_TimesNet': B_06_TimesNet,
     'B_08_PatchTST': B_08_PatchTST,            # Recommended for Prompt fusion
     'B_09_FNO': B_09_FNO,
@@ -168,6 +169,37 @@ class Model(nn.Module):
         # For simplified version, HSE_prompt handles its own prompt freezing
         if hasattr(self.embedding, 'set_training_stage'):
             self.embedding.set_training_stage(stage)
+
+    def _normalize_single_file_id(self, file_id: Optional[Any]) -> Optional[Any]:
+        """
+        将批量或张量形式的 file_id 归一化为单个标量 key，
+        用于 metadata 索引。
+
+        支持:
+        - list/tuple: 取第一个元素（Same_system_Sampler 下 batch 内同一系统）;
+        - torch.Tensor: 取第一个元素并转为 Python 标量（避免 CUDA→NumPy 错误）;
+        - 其他标量类型: 原样返回。
+        """
+        if file_id is None:
+            return None
+
+        import torch
+
+        # 批量场景：DataLoader 默认会把 file_id 聚合为 list
+        if isinstance(file_id, (list, tuple)):
+            if not file_id:
+                return None
+            fid0 = file_id[0]
+            if isinstance(fid0, torch.Tensor):
+                return fid0.view(-1)[0].item()
+            return fid0
+
+        # 单个张量 ID（可能已被 Lightning 移到 CUDA）
+        if isinstance(file_id, torch.Tensor):
+            return file_id.view(-1)[0].item()
+
+        # 其他标量（int/str 等）
+        return file_id
     
     def _embed(self, x: torch.Tensor, file_id: Optional[Any] = None) -> torch.Tensor:
         """
@@ -183,13 +215,15 @@ class Model(nn.Module):
         if self.args_m.embedding == 'HSE_prompt':
             # NEW: Simplified HSE with system prompts
             if file_id is not None and self.metadata is not None:
-                fs = self.metadata[file_id]['Sample_rate']
-                dataset_id = self.metadata[file_id]['Dataset_id']
-                # Handle pandas Series by extracting scalar value
-                import pandas as pd
-                if isinstance(dataset_id, pd.Series):
-                    dataset_id = dataset_id.iloc[0]
-                dataset_ids = torch.tensor([dataset_id] * x.size(0), device=x.device)
+                # 统一解析 batch 元数据，避免直接在 CUDA tensor 上调用 NumPy
+                system_ids, sample_rates = resolve_batch_metadata(
+                    self.metadata, file_id_batch=file_id, device=x.device
+                )
+                # HSE_prompt 当前设计假设单系统 batch，取第一个 system_id
+                dataset_id = int(system_ids[0].item())
+                fs = sample_rates  # shape [B]，交给 HSE_prompt 内部的 normalize_fs 处理
+
+                dataset_ids = system_ids  # [B]
                 signal_emb = self.embedding(x, fs, dataset_ids)
             else:
                 # Fallback mode without metadata
@@ -199,7 +233,10 @@ class Model(nn.Module):
         elif self.args_m.embedding == 'E_01_HSE':
             # Traditional HSE embeddings need sampling frequency
             if file_id is not None and self.metadata is not None:
-                fs = self.metadata[file_id]['Sample_rate']
+                _, sample_rates = resolve_batch_metadata(
+                    self.metadata, file_id_batch=file_id, device=x.device
+                )
+                fs = sample_rates  # [B]
             else:
                 fs = 1000.0  # Default sampling frequency
 
@@ -241,11 +278,12 @@ class Model(nn.Module):
             Task-specific outputs or features
         """
         if file_id is not None and self.metadata is not None:
-            system_id = self.metadata[file_id]['Dataset_id']
-            # Handle pandas Series by extracting scalar value
-            import pandas as pd
-            if isinstance(system_id, pd.Series):
-                system_id = system_id.iloc[0]
+            # 使用统一的批量解析逻辑，避免 file_id 为 CUDA tensor 时触发 NumPy 错误
+            system_ids_tensor, _ = resolve_batch_metadata(
+                self.metadata, file_id_batch=file_id, device=x.device
+            )
+            # 当前实现假设 Same_system_Sampler 保证单系统 per batch，取第一个 system_id
+            system_id = int(system_ids_tensor[0].item())
         else:
             # Use a valid default system_id from common target systems
             system_id = 1  # Default to CWRU (system_id 1) instead of 0
@@ -292,17 +330,28 @@ class Model(nn.Module):
         encoded_features = self._encode(signal_emb)
 
         # Stage 3: Task-specific head
-        final_output = self._head(encoded_features, file_id, task_id, return_feature)
+        task_output = self._head(encoded_features, file_id, task_id, return_feature)
 
         # Return based on requirements
         if return_feature:
-            if encoded_features.ndim > 2:
-                feature_vector = encoded_features.mean(dim=1)
+            # 检查task_head是否返回了tuple，避免嵌套构造
+            if isinstance(task_output, tuple):
+                task_logits, task_features = task_output
+                # 使用backbone特征而不是task_features，避免嵌套
+                if encoded_features.ndim > 2:
+                    backbone_features = encoded_features.mean(dim=1)
+                else:
+                    backbone_features = encoded_features
+                return task_logits, backbone_features
             else:
-                feature_vector = encoded_features
-            return final_output, feature_vector
+                # task_head不支持return_feature，构造特征
+                if encoded_features.ndim > 2:
+                    backbone_features = encoded_features.mean(dim=1)
+                else:
+                    backbone_features = encoded_features
+                return task_output, backbone_features
 
-        return final_output
+        return task_output
     
     def get_model_info(self) -> Dict[str, Any]:
         """
@@ -345,4 +394,3 @@ class Model(nn.Module):
 def create_model(args_m, metadata=None):
     """Factory function to create M_02_ISFM_Prompt model."""
     return Model(args_m, metadata)
-

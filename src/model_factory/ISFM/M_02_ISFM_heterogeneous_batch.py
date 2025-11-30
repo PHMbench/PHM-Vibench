@@ -18,7 +18,7 @@ Backbone_dict = {
     "B_01_basic_transformer": B_01_basic_transformer,
     "B_03_FITS": B_03_FITS,
     "B_04_Dlinear": B_04_Dlinear,
-    "B_05_Manba": B_05_Manba,
+    "B_05_Mamba": B_05_Mamba,
     "B_06_TimesNet": B_06_TimesNet,
     "B_07_TSMixer": B_07_TSMixer,
     "B_08_PatchTST": B_08_PatchTST,
