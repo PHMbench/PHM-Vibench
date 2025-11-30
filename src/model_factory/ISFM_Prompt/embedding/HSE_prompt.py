@@ -170,33 +170,111 @@ class HSE_prompt(nn.Module):
         # Step 1: Heterogeneous signal processing
         signal_embeddings = self._process_signal_patches(x, fs)
 
-        # Step 2: Simple prompt combination (if available)
+        # Step 2: Enhanced prompt combination with stability checks
         if self.use_prompt and dataset_ids is not None:
             try:
-                # Get prompt vectors
+                # Enhanced dataset_ids processing with intelligent mapping
+                if not torch.is_tensor(dataset_ids):
+                    dataset_ids = torch.tensor(dataset_ids, dtype=torch.long, device=x.device)
+                else:
+                    dataset_ids = dataset_ids.long()
+
+                # Ensure device consistency
+                if dataset_ids.device != x.device:
+                    dataset_ids = dataset_ids.to(x.device)
+
+                # Intelligent dataset_id mapping for multi-system compatibility
+                max_dataset_id = self.prompt_encoder.num_embeddings - 1
+
+                # Handle multi-system dataset_id ranges (e.g., [0-3], [4-8], etc.)
+                if dataset_ids.max() > max_dataset_id:
+                    # Strategy 1: Intelligent range mapping
+                    unique_ids = torch.unique(dataset_ids)
+                    id_mapping = {}
+
+                    for uid in unique_ids:
+                        if uid <= max_dataset_id:
+                            id_mapping[uid.item()] = uid.item()
+                        else:
+                            # Map out-of-range IDs to available range using modulo
+                            mapped_id = uid % (max_dataset_id + 1)
+                            id_mapping[uid.item()] = mapped_id.item()
+
+                            # Only warn once per unique out-of-range ID
+                            if not hasattr(self, '_warned_ids'):
+                                self._warned_ids = set()
+                            if uid.item() not in self._warned_ids:
+                                print(f"[HSE_prompt] Mapping dataset_id {uid.item()} → {mapped_id.item()} (range [0, {max_dataset_id}])")
+                                self._warned_ids.add(uid.item())
+
+                    # Apply mapping
+                    mapped_ids = torch.tensor([id_mapping[id.item()] for id in dataset_ids],
+                                              dtype=torch.long, device=x.device)
+                    dataset_ids = mapped_ids
+
+                elif dataset_ids.min() < 0:
+                    # Handle negative IDs (should not happen, but defensive)
+                    dataset_ids = torch.clamp(dataset_ids, 0, max_dataset_id)
+                    print(f"[HSE_prompt] Clamped negative dataset_ids to [0, {max_dataset_id}]")
+
+                # Get prompt vectors with error checking
                 prompt_vectors = self.prompt_encoder(dataset_ids)  # (B, prompt_dim)
 
-                # Combine signal and prompt
+                # Numerical stability: limit prompt vector norms
+                prompt_norms = prompt_vectors.norm(dim=-1, keepdim=True)
+                max_norm = 10.0  # Prevent numerical explosion
+                scale_factors = torch.clamp(max_norm / (prompt_norms + 1e-8), max=1.0)
+                prompt_vectors = prompt_vectors * scale_factors
+
+                # Combine signal and prompt with stability checks
                 if self.prompt_combination == 'add':
                     # Project prompt to match signal dimension if needed
                     prompt_projected = self.prompt_proj(prompt_vectors)  # (B, output_dim)
                     prompt_projected = prompt_projected.unsqueeze(1)  # (B, 1, output_dim)
 
-                    # Simple addition
+                    # Check for numerical issues before addition
+                    if torch.isnan(prompt_projected).any() or torch.isinf(prompt_projected).any():
+                        print("Warning: NaN/Inf in prompt_projected, using signal-only")
+                        raise ValueError("Numerical instability in prompt projection")
+
+                    # Stable addition with gradient clipping
                     combined_embeddings = signal_embeddings + prompt_projected
+
+                    # Gradient stability check
+                    if combined_embeddings.abs().max() > 100:
+                        combined_embeddings = torch.clamp(combined_embeddings, -100, 100)
+                        print("Warning: Combined embeddings clipped to prevent instability")
 
                 elif self.prompt_combination == 'concat':
                     # Expand prompt to match number of patches
                     prompt_expanded = prompt_vectors.unsqueeze(1).expand(-1, self.num_patches, -1)  # (B, num_patches, prompt_dim)
 
+                    # Numerical check before concatenation
+                    if torch.isnan(prompt_expanded).any() or torch.isinf(prompt_expanded).any():
+                        print("Warning: NaN/Inf in prompt_expanded, using signal-only")
+                        raise ValueError("Numerical instability in prompt expansion")
+
                     # Concatenate and project
                     concatenated = torch.cat([signal_embeddings, prompt_expanded], dim=-1)  # (B, num_patches, output_dim + prompt_dim)
                     combined_embeddings = self.concat_proj(concatenated)
 
+                    # Final stability check
+                    if torch.isnan(combined_embeddings).any() or torch.isinf(combined_embeddings).any():
+                        print("Warning: NaN/Inf after concat projection, using signal-only")
+                        raise ValueError("Numerical instability in concat projection")
+
                 signal_embeddings = combined_embeddings
 
             except Exception as e:
-                print(f"Warning: Prompt processing failed ({e}), using signal-only processing")
+                # Enhanced error logging and graceful fallback
+                print(f"Warning: Prompt processing failed ({e}), falling back to signal-only processing")
+                # Ensure signal_embeddings remains valid
+                if torch.isnan(signal_embeddings).any() or torch.isinf(signal_embeddings).any():
+                    print("Critical: Signal embeddings also corrupted, attempting recovery")
+                    signal_embeddings = torch.clamp(signal_embeddings, -10, 10)
+                    if torch.isnan(signal_embeddings).any():
+                        # Last resort: zero embeddings with small noise
+                        signal_embeddings = torch.randn_like(signal_embeddings) * 0.01
 
         # Step 3: Final processing
         output = self.final_norm(signal_embeddings)

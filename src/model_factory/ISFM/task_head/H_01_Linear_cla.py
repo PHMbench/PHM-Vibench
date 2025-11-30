@@ -20,6 +20,7 @@ class H_01_Linear_cla(nn.Module):
         - system_id:
           * 标量 int/str：整批同一系统；
           * list/tuple/tensor：若传入 per-sample ID，当前实现会取第一个，假设 batch 内已按 Dataset_id 分组。
+        - return_feature: 是否返回特征（除了logits外）。
         """
         if x.ndim == 3:
             x = x.mean(dim=1)  # [B, D]
@@ -33,4 +34,9 @@ class H_01_Linear_cla(nn.Module):
 
         head = self.mutiple_fc[key]
         logits = head(x)  # [B, num_classes_for_this_system]
-        return logits
+
+        # 支持return_feature参数
+        if return_feature:
+            return logits, x
+        else:
+            return logits

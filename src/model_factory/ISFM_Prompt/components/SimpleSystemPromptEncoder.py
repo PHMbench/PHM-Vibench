@@ -58,6 +58,9 @@ class SimpleSystemPromptEncoder(nn.Module):
         # Initialize parameters
         self._init_parameters()
 
+        # Add standard PyTorch attribute for compatibility
+        self.num_embeddings = self.prompt_embedding.num_embeddings
+
     def _init_parameters(self):
         """Initialize embedding parameters."""
         nn.init.normal_(self.prompt_embedding.weight, mean=0.0, std=0.1)
