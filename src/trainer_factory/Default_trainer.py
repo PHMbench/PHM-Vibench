@@ -102,8 +102,8 @@ def call_backs(args, path):
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
     
-    # 早期停止回调
-    if args.early_stopping:
+    # 早期停止回调（若未配置 early_stopping，则默认为不启用）
+    if getattr(args, "early_stopping", False):
         early_stopping = create_early_stopping_callback(args)
         callback_list.append(early_stopping)
     
@@ -150,7 +150,7 @@ def create_early_stopping_callback(args):
     early_stopping = EarlyStopping(
         monitor=args.monitor, # TODO @liq22
         min_delta=0.00,
-        patience=args.patience,  # 从args中读取patience值
+        patience=getattr(args, "patience", 10),  # 从args中读取patience值，如缺失则使用默认值
         verbose=True,
         mode='min',
         check_finite=True,  # 防止无穷大或NaN值时停止训练
