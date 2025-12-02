@@ -114,24 +114,6 @@ class Default_dataset(Dataset): # THU_006or018_basic
             sample_data = sample_data.reshape(sample_data.shape[0], -1)
         
         data_length = len(sample_data)
-
-        # normalization
-        if self.args_data.normalization == 'minmax':
-            min_vals = np.min(sample_data, axis=0)
-            max_vals = np.max(sample_data, axis=0)
-            # Avoid division by zero if max and min are the same for a channel
-            denominator = max_vals - min_vals
-            denominator[denominator == 0] = 1  # Or handle as appropriate
-            sample_data = (sample_data - min_vals) / denominator
-        elif self.args_data.normalization == 'standardization':
-            mean_vals = np.mean(sample_data, axis=0)
-            std_vals = np.std(sample_data, axis=0)
-
-            sample_data = (sample_data - mean_vals) / (std_vals + 1e-8)  # 添加小常数以避免除零错误
-        elif self.args_data.normalization == 'none':
-            pass
-        else:
-            raise ValueError(f"Unknown normalization method: {self.args_data.normalization}")
         
         if data_length < self.window_size:
             # 如果数据长度小于窗口大小，则不处理或进行填充等操作（此处简单跳过）
@@ -141,7 +123,6 @@ class Default_dataset(Dataset): # THU_006or018_basic
 
         # print(self.key,sample_data.shape)
         # windows 
-
         if self.window_sampling_strategy == 'sequential':
             self._sequential_sampling(sample_data, data_length)
         elif self.window_sampling_strategy == 'random':
@@ -150,6 +131,60 @@ class Default_dataset(Dataset): # THU_006or018_basic
             self._evenly_spaced_sampling(sample_data, data_length)
         else:
             raise ValueError(f"Unknown window_sampling_strategy: {self.window_sampling_strategy}")
+
+        # 对已切好的窗口逐个做归一化和加噪声
+        normalized_windows = []
+        for window in self.processed_data:
+            w = self._normalize_window(window)
+            w = self._maybe_add_noise(w)
+            normalized_windows.append(w)
+        self.processed_data = normalized_windows
+
+    def _normalize_window(self, window: np.ndarray) -> np.ndarray:
+        """
+        对单个窗口执行归一化。支持与 args_data.normalization 相同的选项，
+        但按窗口级别进行统计（min/max 或 mean/std）。
+        """
+        norm = getattr(self.args_data, 'normalization', 'standardization')
+        if norm == 'minmax':
+            min_vals = np.min(window, axis=0)
+            max_vals = np.max(window, axis=0)
+            denominator = max_vals - min_vals
+            denominator[denominator == 0] = 1
+            return (window - min_vals) / denominator
+        elif norm == 'standardization':
+            mean_vals = np.mean(window, axis=0)
+            std_vals = np.std(window, axis=0)
+            return (window - mean_vals) / (std_vals + 1e-8)
+        elif norm == 'none':
+            return window
+        else:
+            raise ValueError(f"Unknown normalization method: {norm}")
+
+    def _maybe_add_noise(self, window: np.ndarray) -> np.ndarray:
+        """
+        根据 args_data.noise_snr 对单个窗口注入 AWGN。
+        若未设置 noise_snr 或计算失败，则返回原窗口。
+        """
+        noise_snr = getattr(self.args_data, 'noise_snr', None)
+        if noise_snr is None:
+            return window
+        try:
+            snr_db = float(noise_snr)
+            signal_power = np.mean(window.astype(np.float64) ** 2)
+            if signal_power <= 0:
+                return window
+            snr_linear = 10.0 ** (snr_db / 10.0)
+            noise_power = signal_power / snr_linear
+            noise_std = np.sqrt(noise_power)
+            noise = np.random.normal(
+                loc=0.0,
+                scale=noise_std,
+                size=window.shape
+            ).astype(window.dtype)
+            return window + noise
+        except Exception:
+            return window
 
 
     def _split_data_for_mode(self):
