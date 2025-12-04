@@ -220,7 +220,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
 
         out = {
             "x": sample,
-            "y": self.label
+            "y": self.label # 所有的label
         }
         return out
 

@@ -221,10 +221,10 @@ pip install -r requirements.txt
 
 # Download h5 datasets 
 
-# For example, in configs/demo/Single_DG/CWRU.yaml
+# For example, in configs/base/data/base_classification.yaml
 data:
-  data_dir: "your_directory/PHM-Vibench"  # for dummy test
-  metadata_file: "metadata_version.xlsx"  # Specify metadata file, in PHM-Vibench directory
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
 ```
 
 ## 🚀 Quick Start
@@ -236,20 +236,29 @@ Experience PHM-Vibench functionality through the following steps:
 </div> -->
 
 ```bash
-# CWRU classification task
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+# 1. Cross-domain DG (CWRU → Ottawa)
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Few-Shot prototype network example
-python main.py --config configs/demo/FewShot/protonet.yaml
+# 2. Cross-system CDDG (multi-system)
+python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Pretrain + Few-Shot pipeline
-python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/pretrain.yaml --fs_config_path configs/demo/FewShot/protonet.yaml
+# 3. Single-system few-shot (FS)
+python main.py --config configs/demo/03_fewshot/cwru_protonet.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Cross-dataset generalization
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
+# 4. Cross-system few-shot (GFS)
+python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# All datasets
-python main.py --config configs/demo/Multiple_DG/all.yaml
+# 5. HSE pretrain (single-stage) via Pipeline_02_pretrain_fewshot
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
+
+# 6. HSE pretrain for CDDG (single-stage view)
+python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
 ### Streamlit Graphical Interface
@@ -285,6 +294,7 @@ PHM-Vibench uses the powerful configuration system v5.0, supporting flexible exp
 - **Dot Notation Parameter Override**: Supports `{'model.d_model': 512}` for direct nested parameter override
 - **Multi-stage Pipeline**: Perfect support for pretraining→fine-tuning and other multi-stage configuration inheritance
 - **Ablation Experiment Tools**: Built-in dual-mode API grid search and parameter ablation
+- **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/readme.md` for details).
 
 📖 **Detailed Documentation**: [Configuration System v5.0 Complete Guide](./src/configs/README.md)
 
@@ -324,42 +334,36 @@ trainer:      # Trainer configuration
   </tr>
   <tr>
     <td>1</td>
-    <td>PHM-Vibench_HOME</td>
-    <td>PHM-Vibench framework root directory</td>
-    <td>Points to framework source code location</td>
+    <td>PROJECT_HOME</td>
+    <td>PHM-Vibench project root directory</td>
+    <td>Used to locate source code and configs</td>
   </tr>
   <tr>
     <td>2</td>
-    <td>PYTHONPATH</td>
-    <td>Python environment path</td>
-    <td>Usually points to conda virtual environment</td>
-  </tr>
-  <tr>
-    <td>3</td>
     <td>project</td>
     <td>Project name</td>
     <td>Used for result directory naming and log identification</td>
   </tr>
   <tr>
-    <td>4</td>
+    <td>3</td>
     <td>seed</td>
     <td>Random seed</td>
     <td>Ensures experiment reproducibility</td>
   </tr>
   <tr>
-    <td>5</td>
+    <td>4</td>
     <td>output_dir</td>
     <td>Output directory</td>
     <td>Experiment result save path</td>
   </tr>
   <tr>
-    <td>6</td>
+    <td>5</td>
     <td>notes</td>
     <td>Experiment notes</td>
     <td>Records experiment purpose and special instructions</td>
   </tr>
   <tr>
-    <td>7</td>
+    <td>6</td>
     <td>iterations</td>
     <td>Experiment repetition count</td>
     <td>Used to evaluate result stability</td>
@@ -922,17 +926,11 @@ python scripts/export_latex.py --result_dir results/experiment_name
 ├── 📄 main_dummy.py             # Function testing program
 ├── 📄 benchmark.py              # Performance benchmark testing tool
 ├── 📂 configs                   # Configuration file directory
-│   ├── 📂 demo                  # Example configurations
-│   │   ├── 📂 Single_DG         # Single dataset domain generalization
-│   │   │   ├── 📄 CWRU.yaml     # CWRU dataset configuration
-│   │   │   ├── 📄 MFPT.yaml     # MFPT dataset configuration
-│   │   │   └── 📄 ...           # Other single dataset configurations
-│   │   ├── 📂 Multiple_DG       # Multi-dataset domain generalization
-│   │   │   ├── 📄 CWRU_THU_using_ISFM.yaml  # Cross-dataset experiments
-│   │   │   ├── 📄 all.yaml      # All dataset experiments
-│   │   │   └── 📄 ...           # Other cross-dataset configurations
-│   │   └── 📄 dummy_test.yaml   # Test configuration
-│   └── 📂 experiments           # Experiment configuration templates
+│   ├── 📂 base                  # Base templates (environment/data/model/task/trainer)
+│   ├── 📂 demo                  # v0.1.0 demo experiments (6 representative configs)
+│   ├── 📂 reference             # Reference configs aligned with paper experiments
+│   ├── 📄 default.yaml          # Legacy default configuration
+│   └── 📄 config_registry.csv   # Registry of base/demo configs
 ├── 📂 src                       # Source code directory
 │   ├── 📂 data_factory          # Dataset factory
 │   │   ├── 📄 __init__.py

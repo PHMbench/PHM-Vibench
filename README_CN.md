@@ -168,11 +168,10 @@ pip install -r requirements.txt
 
 # 下载h5数据集 
 
-
-例如 在configs/demo/Single_DG/CWRU.yaml 中
+例如在 configs/base/data/base_classification.yaml 中
 data:
-  data_dir: "自己的目录/PHM-Vibench"  # for dummy test
-  metadata_file: "metadata_版本号.xlsx"  # 指定元数据文件，在PHM-Vibench目录下
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
 
 ```
 
@@ -185,23 +184,29 @@ data:
 </div> -->
 
 ```bash
+# 1. 跨域 DG 示例（CWRU → Ottawa）
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
+# 2. 跨系统 CDDG 示例（多系统）
+python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
+# 3. 单系统 Few-shot 示例（FS）
+python main.py --config configs/demo/03_fewshot/cwru_protonet.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# CWRU cross-domain 分类任务 
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+# 4. 跨系统 Few-shot 示例（GFS）
+python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# CWRU Few-Shot 原型网络示例
-python main.py --config configs/demo/FewShot/protonet.yaml
+# 5. HSE 预训练单阶段示例（通过 Pipeline_02_pretrain_fewshot）
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
-# CWRU Pretrain + Few-Shot 流水线
-python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/pretrain.yaml --fs_config_path configs/demo/FewShot/protonet.yaml
-
-# CWRU + Ottawa Cross-dataset genealization use HSE embedding
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
-
-# CWRU + Ottawa Cross-dataset few-shot use HSE embedding
-python main.py --config configs/demo/Multiple_DG/all.yaml
+# 6. 面向 CDDG 的 HSE 预训练示例
+python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
 ### Streamlit 图形界面 TODO
 
@@ -243,6 +248,7 @@ PHM-Vibench 使用强大的配置系统 v5.0，支持灵活的实验管理：
 - **点号参数覆盖**: 支持 `{'model.d_model': 512}` 直接覆盖嵌套参数
 - **多阶段Pipeline**: 完美支持预训练→微调等多阶段配置继承
 - **消融实验工具**: 内置双模式API的网格搜索和参数消融
+- **v0.1.0 更新**: 采用统一的 `base_configs + override` 结构（`configs/base/` + `configs/demo/`），并通过 `configs/config_registry.csv` 进行索引，详细说明见 `docs/v0.1.0/v0.1.0_update.md` 与 `configs/readme.md`。
 
 📖 **详细文档**: [配置系统v5.0完整指南](./src/configs/README.md)
 
@@ -284,42 +290,36 @@ trainer:      # 训练器配置
   </tr>
   <tr>
     <td>1</td>
-    <td>PHM-Vibench_HOME</td>
-    <td>PHM-Vibench框架根目录</td>
-    <td>指向框架源代码所在位置</td>
+    <td>PROJECT_HOME</td>
+    <td>PHM-Vibench 项目根目录</td>
+    <td>用于定位源代码与配置文件</td>
   </tr>
   <tr>
     <td>2</td>
-    <td>PYTHONPATH</td>
-    <td>Python环境路径</td>
-    <td>通常指向conda虚拟环境</td>
-  </tr>
-  <tr>
-    <td>3</td>
     <td>project</td>
     <td>项目名称</td>
     <td>用于结果目录命名和日志标识</td>
   </tr>
   <tr>
-    <td>4</td>
+    <td>3</td>
     <td>seed</td>
     <td>随机种子</td>
     <td>保证实验可重复性</td>
   </tr>
   <tr>
-    <td>5</td>
+    <td>4</td>
     <td>output_dir</td>
     <td>输出目录</td>
     <td>实验结果保存路径</td>
   </tr>
   <tr>
-    <td>6</td>
+    <td>5</td>
     <td>notes</td>
     <td>实验备注</td>
     <td>记录实验目的和特殊说明</td>
   </tr>
   <tr>
-    <td>7</td>
+    <td>6</td>
     <td>iterations</td>
     <td>实验重复次数</td>
     <td>用于评估结果稳定性</td>
@@ -884,17 +884,11 @@ python scripts/export_latex.py --result_dir results/experiment_name
 ├── 📄 main_dummy.py             # 功能测试程序
 ├── 📄 benchmark.py              # 性能基准测试工具
 ├── 📂 configs                   # 配置文件目录
-│   ├── 📂 demo                  # 示例配置
-│   │   ├── 📂 Single_DG         # 单数据集域泛化
-│   │   │   ├── 📄 CWRU.yaml     # CWRU数据集配置
-│   │   │   ├── 📄 MFPT.yaml     # MFPT数据集配置
-│   │   │   └── 📄 ...           # 其他单数据集配置
-│   │   ├── 📂 Multiple_DG       # 多数据集域泛化
-│   │   │   ├── 📄 CWRU_THU_using_ISFM.yaml  # 跨数据集实验
-│   │   │   ├── 📄 all.yaml      # 全数据集实验
-│   │   │   └── 📄 ...           # 其他跨数据集配置
-│   │   └── 📄 dummy_test.yaml   # 测试配置
-│   └── 📂 experiments           # 实验配置模板
+│   ├── 📂 base                  # 基础模板（environment/data/model/task/trainer）
+│   ├── 📂 demo                  # v0.1.0 示例实验（6 个代表性配置）
+│   ├── 📂 reference             # 与论文实验对应的完整配置
+│   ├── 📄 default.yaml          # 历史默认配置
+│   └── 📄 config_registry.csv   # base/demo 配置索引表
 ├── 📂 src                       # 源代码目录
 │   ├── 📂 data_factory          # 数据集工厂
 │   │   ├── 📄 __init__.py
