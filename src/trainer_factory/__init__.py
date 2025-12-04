@@ -2,13 +2,12 @@
 
 from argparse import Namespace
 from typing import Any
-from . import Default_trainer
+
 from .trainer_factory import (
-    # TRAINER_REGISTRY,
-    # register_trainer,
+    TRAINER_REGISTRY,
+    register_trainer,
     resolve_trainer_module,
     trainer_factory,
-
 )
 
 
@@ -51,5 +50,4 @@ __all__ = [
     "resolve_trainer_module",
     "register_trainer",
     "TRAINER_REGISTRY",
-    "Default_trainer"
 ]

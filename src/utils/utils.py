@@ -89,20 +89,21 @@ def init_lab(args_environment, cli_args, experiment_name):
         print("[WARNING] WandB is configured to be used, but the 'wandb' library is not installed.")
 
 
-    # Initialize SwanLab (only when explicitly enabled)
-    if swanlab and getattr(swanlab, 'run', None) is None:
+    # Initialize SwanLab
+    if swanlab and swanlab.run is None: # Check if swanlab module is available and not already initialized
         if use_swanlab:
             project_name = getattr(args_environment, 'project', 'vbench')
             notes = f'N1:{getattr(cli_args, "notes", "")}\n_N2:{getattr(args_environment, "notes", "")}'
             swanlab.init(
-                workspace=getattr(args_environment, 'workspace', 'PHMbench'),
-                project=project_name,
-                experiment_name=notes,
-                description=notes.strip()
+                workspace = getattr(args_environment, 'workspace', 'PHMbench'), # SwanLab uses 'workspace'
+                project=project_name, # Assuming swanlab uses 'project' similar to wandb
+                experiment_name= notes, # experiment_name, 
+                description=notes.strip() # Swanlab uses 'description' for notes
+                # logdir= # Optional: specify log directory if needed
             )
             print(f"[INFO] SwanLab initialized for project '{project_name}', experiment '{experiment_name}'.")
         else:
-            # Do not initialize SwanLab when disabled; just log the state
+            swanlab.init(mode='disabled')
             print("[INFO] SwanLab disabled by configuration.")
     elif use_swanlab and swanlab is None:
         print("[WARNING] SwanLab is configured to be used, but the 'swanlab' library is not installed.")
@@ -114,24 +115,12 @@ def close_lab():
     if wandb and wandb.run:
         wandb.finish()
         print("[INFO] WandB logger closed.")
-<<<<<<< HEAD
-    if swanlab:
-        try:
-            current_run = getattr(swanlab, 'run', None)
-            if current_run:
-                swanlab.finish()
-                print("[INFO] SwanLab logger closed.")
-        except Exception as e:
-            # Gracefully skip if SwanLab was never initialized or already closed
-            print(f"[INFO] SwanLab not initialized or already closed: {e}")
-=======
     if swanlab and swanlab.run:
         try:
             swanlab.finish()
         except Exception as e:
             print(f"[INFO] SwanLab is not used: {e}")
         print("[INFO] SwanLab logger closed.")
->>>>>>> release/v0.1.0
 
 def get_num_classes(metadata, dataset_id=None):
     """

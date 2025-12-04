@@ -5,7 +5,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 import os
 import swanlab
 from swanlab.integration.pytorch_lightning import SwanLabLogger
-# from src.trainer_factory import register_trainer
+from src.trainer_factory import register_trainer
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -14,7 +14,7 @@ if 'LOCAL_RANK' in os.environ:
     is_main_process = local_rank == 0
     
 
-# @register_trainer("Default_trainer")
+@register_trainer("Default_trainer")
 def trainer(args_e,args_t, args_d, path):
     """
     设置训练器的配置，包括日志记录、回调函数和数据加载器等。
@@ -71,13 +71,7 @@ def trainer(args_e,args_t, args_d, path):
         devices=args_t.gpus,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-<<<<<<< HEAD
-        check_val_every_n_epoch=getattr(args_t, 'check_val_every_n_epoch', 1),  # 验证频率控制
-        val_check_interval=getattr(args_t, 'val_check_interval', 1.0),  # 验证数据比例控制
-        strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
-=======
         strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
->>>>>>> release/v0.1.0
     )
     return trainer
 
@@ -94,7 +88,7 @@ def call_backs(args, path):
     """
     # 检查点回调（保存最好的模型）
     checkpoint_callback = ModelCheckpoint(
-        monitor=getattr(args, 'monitor', 'val_loss'),  # Default monitor
+        monitor=args.monitor,
         filename='model-{epoch:02d}-{val_loss:.4f}',
         save_top_k=getattr(args, 'save_top_k', 1),  # 从args中读取保存的模型数量
         mode='min',
@@ -104,21 +98,12 @@ def call_backs(args, path):
     callback_list = [checkpoint_callback]
 
     # 模型修剪回调（根据需求添加）
-<<<<<<< HEAD
-    if getattr(args, 'pruning', False):  # Default to False if not specified
-        prune_callback = Prune_callback(args)
-        callback_list.append(prune_callback)
-    
-    # 早期停止回调
-    if getattr(args, 'early_stopping', True):  # Default to True for safety
-=======
     if getattr(args, "pruning", 0.0):
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
     
     # 早期停止回调（若未配置 early_stopping，则默认为不启用）
     if getattr(args, "early_stopping", False):
->>>>>>> release/v0.1.0
         early_stopping = create_early_stopping_callback(args)
         callback_list.append(early_stopping)
     
@@ -163,13 +148,9 @@ def create_early_stopping_callback(args):
     """
     # 配置早期停止回调，监控验证集的损失
     early_stopping = EarlyStopping(
-        monitor=getattr(args, 'monitor', 'val_loss'),  # Default monitor
+        monitor=args.monitor, # TODO @liq22
         min_delta=0.00,
-<<<<<<< HEAD
-        patience=getattr(args, 'patience', 10),  # Default patience of 10 epochs
-=======
         patience=getattr(args, "patience", 10),  # 从args中读取patience值，如缺失则使用默认值
->>>>>>> release/v0.1.0
         verbose=True,
         mode='min',
         check_finite=True,  # 防止无穷大或NaN值时停止训练

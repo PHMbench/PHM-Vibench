@@ -4,15 +4,11 @@ import pandas as pd
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-<<<<<<< HEAD
-from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
-=======
 from src.configs.config_utils import load_config, path_name, transfer_namespace, ConfigWrapper
 from src.utils.config_utils import parse_overrides, apply_overrides_to_config
 from typing import Optional
 from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
 from src.utils.config.pipeline_adapters import adapt_p02
->>>>>>> release/v0.1.0
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -20,28 +16,6 @@ from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 
 
-<<<<<<< HEAD
-def run_stage(config_path, ckpt_path=None,iteration=0, args=None):
-    """Run a single training/testing stage given a config path."""
-    # 准备配置覆盖参数 - 统一处理所有覆盖
-    set_args = []
-    if args:
-        # 将 --data_dir 转换为 --set 格式 (向后兼容)
-        if hasattr(args, 'data_dir') and args.data_dir is not None:
-            set_args.append(f'data.data_dir={args.data_dir}')
-            print(f"[INFO] 通过命令行参数覆盖data_dir: {args.data_dir}")
-        
-        # 添加 --set 参数
-        if hasattr(args, 'set') and args.set is not None:
-            set_args.extend(args.set)
-    
-    # 统一解析所有覆盖参数
-    overrides = parse_set_args(set_args) if set_args else {}
-    if overrides:
-        print(f"[INFO] 应用配置覆盖: {overrides}")
-    
-    configs = load_config(config_path, overrides if overrides else None)
-=======
 def _run_single_stage_from_cfg(cfg: ConfigWrapper):
     """在无需多阶段编排时，直接按单阶段配置运行一次训练+测试。
 
@@ -100,7 +74,6 @@ def _run_single_stage_from_cfg(cfg: ConfigWrapper):
 def run_stage(config_path, ckpt_path=None, iteration=0, local_config: Optional[str] = None):
     """Run a single training/testing stage given a config path."""
     configs = load_config(config_path, local_config)
->>>>>>> release/v0.1.0
     args_environment = transfer_namespace(configs.get('environment', {}))
     args_data = transfer_namespace(configs.get('data', {}))
     args_model = transfer_namespace(configs.get('model', {}))
@@ -142,25 +115,15 @@ def run_stage(config_path, ckpt_path=None, iteration=0, local_config: Optional[s
     return task, trainer
 
 
-<<<<<<< HEAD
-def run_pretraining_stage(config_path, args=None):
-=======
 def run_pretraining_stage(config_path, local_config: Optional[str] = None):
->>>>>>> release/v0.1.0
     """Run the pretraining stage and return the checkpoint path."""
     # 加载配置以获取iterations设置
     configs = load_config(config_path, local_config)
     iterations = configs.get('environment', {}).get('iterations', 1)
 
     ckpt_dict = {}
-<<<<<<< HEAD
-    for it in range(os.environ.get('iterations', 1)):
-        
-        task, trainer = run_stage(config_path, iteration=it, args=args)
-=======
     for it in range(iterations):
         task, trainer = run_stage(config_path, iteration=it, local_config=local_config)
->>>>>>> release/v0.1.0
         print(f"Pretraining stage iteration {it} completed.")
         ckpt_path = None
         for cb in trainer.callbacks:
@@ -171,11 +134,7 @@ def run_pretraining_stage(config_path, local_config: Optional[str] = None):
     return ckpt_dict
 
 
-<<<<<<< HEAD
-def run_fewshot_stage(fs_config_path, ckpt_dict=None, args=None):
-=======
 def run_fewshot_stage(fs_config_path, ckpt_dict=None, local_config: Optional[str] = None):
->>>>>>> release/v0.1.0
     """Run the few-shot stage. Optionally load a pretrained checkpoint."""
     # 加载配置以获取iterations设置
     configs = load_config(fs_config_path, local_config)
@@ -185,19 +144,6 @@ def run_fewshot_stage(fs_config_path, ckpt_dict=None, local_config: Optional[str
         for it2 in range(iterations):
             print(f"Running few-shot stage iteration {it1}-{it2} with checkpoint {ckpt_path}")
             if ckpt_path:
-<<<<<<< HEAD
-                run_stage(fs_config_path, ckpt_path, iteration=it1 * len(ckpt_dict) + it2, args=args)
-            else:
-                print(f"No checkpoint found for iteration {it1}, skipping few-shot stage.")
-                run_stage(fs_config_path, iteration=it1 * len(ckpt_dict) + it2, args=args)
-    return True
-
-def pipeline(args):
-    """Run pretraining followed by a few-shot stage."""
-    ckpt_dict = run_pretraining_stage(args.config_path, args)
-    run_fewshot_stage(args.fs_config_path, ckpt_dict, args)
-    return True
-=======
                 run_stage(fs_config_path, ckpt_path, iteration=it1 * len(ckpt_dict) + it2, local_config=local_config)
             else:
                 print(f"No checkpoint found for iteration {it1}, skipping few-shot stage.")
@@ -261,7 +207,6 @@ def pipeline(args):
             run_fewshot_stage(args.fs_config_path, ckpt_dict, local_config=getattr(args, 'local_config', None))
             return True
         raise
->>>>>>> release/v0.1.0
 
 
 

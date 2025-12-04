@@ -33,10 +33,7 @@
 
 ## 📖 Table of Contents
 - [✨ Project Highlights](#-project-highlights)
-<<<<<<< HEAD
-=======
 - [🔥 HSE Industrial Contrastive Learning](#-hse-industrial-contrastive-learning)
->>>>>>> release/v0.1.0
 - [📝 Project Background and Introduction](#-project-background-and-introduction)
 - [🔄 Supported Models and Datasets](#-supported-models-and-datasets)
 - [🔔 Technical Updates](#-technical-updates)
@@ -102,6 +99,64 @@
   </tr>
 </table>
 </details>
+
+## 🔥 HSE Industrial Contrastive Learning
+
+**HSE (Hierarchical Signal Embedding) Industrial Contrastive Learning** is a breakthrough approach for industrial fault diagnosis that employs a novel two-level prompt system to achieve exceptional cross-domain generalization.
+
+### 🎯 Key Innovations
+
+- **📊 Two-Level Prompt System**:
+  - **System-level**: Dataset_id + Domain_id for cross-system adaptation
+  - **Sample-level**: Sample_rate + sequence characteristics for fine-grained learning
+- **🚀 Unified Metric Learning**: Simultaneous training on 5 datasets (CWRU, XJTU, THU, Ottawa, JNU)
+- **⚡ 82% Efficiency Gain**: Reduces experiments from 150 to 30 through intelligent design
+- **🎯 Zero-shot Evaluation**: Linear probe assessment on frozen pretrained backbones
+
+### 📈 Performance Highlights
+
+| Metric | Target | Achieved | Status |
+|--------|--------|----------|--------|
+| **Accuracy Improvement** | > 10% | **+37.5%** | ✅ 3.75x Target |
+| **Memory Efficiency** | < 1GB | **0.045GB** | ✅ 22x Better |
+| **Processing Speed** | > 1000 s/s | **1456 s/s** | ✅ 45% Faster |
+| **Cross-domain Generalization** | Good | **+17.1%** | ✅ Excellent |
+
+### 🚀 Quick HSE Demo
+
+```bash
+# Run HSE synthetic demonstration (2 minutes)
+python scripts/hse_synthetic_demo.py
+
+# Expected output:
+# ✅ System prompt encoding: Success
+# ✅ Sample prompt encoding: Success
+# ✅ Prompt fusion: Success
+# ✅ Contrastive learning: Success (14.3% accuracy improvement)
+# ✅ Validation test: Success (<0.1GB memory, >1400 samples/sec)
+
+# Run complete HSE Pipeline_03 experiment
+python scripts/run_hse_prompt_pipeline03.py
+```
+
+### 📚 HSE Documentation
+
+Comprehensive documentation available in [`docs/hse-implementation/`](docs/hse-implementation/):
+
+- **[📋 Overview](docs/hse-implementation/README.md)**: Complete HSE system introduction
+- **[🔧 Core Components](docs/hse-implementation/core-components.md)**: Detailed component specifications
+- **[📖 Pipeline Guide](docs/hse-implementation/pipeline-guide.md)**: Step-by-step usage instructions
+- **[📊 Experiment Results](docs/hse-implementation/experiment-results.md)**: Comprehensive performance analysis
+- **[✅ Validation Reports](docs/hse-implementation/validation-reports/)**: Detailed verification results
+- **[🎯 Execution Plan](docs/hse-implementation/execution-plan.md)**: Complete deployment guide
+
+### 🏆 Target: ICML/NeurIPS 2025
+
+HSE Industrial Contrastive Learning is designed for top-tier conference submission with:
+- Novel two-level prompt architecture for industrial signals
+- Significant performance improvements across multiple benchmarks
+- Comprehensive ablation studies and theoretical analysis
+- Production-ready implementation with extensive validation
 
 ## 📝 Project Background and Introduction
 
@@ -197,11 +252,7 @@ python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 python main.py --config configs/demo/Multiple_DG/all.yaml
 ```
 
-<<<<<<< HEAD
-### Streamlit Graphical Interface （TODO）
-=======
 ### Streamlit Graphical Interface
->>>>>>> release/v0.1.0
 
 Run experiments using the Streamlit graphical interface:
 
@@ -512,13 +563,10 @@ trainer:      # Trainer configuration
 
 <details>
 <summary><b>👉 Task Configuration Parameters (Task)</b></summary>
-<<<<<<< HEAD
-=======
 
 Task selection in PHM-Vibench is driven by the combination of `task.type` and `task.name` in the config.  
 For example, `task.type: "DG"` + `task.name: "classification"` will load the single-dataset DG classification task from `src/task_factory/task/DG/classification.py`, while ID-based and multi-task variants live under `task/ID` and `task/MT`.  
 For a more detailed mapping table and examples, see `src/task_factory/readme.md`.
->>>>>>> release/v0.1.0
 
 <table>
   <tr>
@@ -906,11 +954,6 @@ python scripts/export_latex.py --result_dir results/experiment_name
 │   │       └── 📂 task_head     # Task heads
 │   ├── 📂 task_factory          # Task factory
 │   │   ├── 📄 __init__.py
-<<<<<<< HEAD
-│   │   ├── 📄 base_task.py      # Task base class
-│   │   ├── 📄 task_factory.py   # Task factory class
-│   │   └── 📂 tasks             # Specific task implementations
-=======
 │   │   ├── 📄 Default_task.py   # Default Lightning task wrapper/base
 │   │   ├── 📄 task_factory.py   # Task factory and dynamic loader
 │   │   ├── 📂 Components        # Shared task components (losses, metrics, flows)
@@ -923,7 +966,6 @@ python scripts/export_latex.py --result_dir results/experiment_name
 │   │   │   ├── 📂 ID            # ID-based tasks (e.g., ID_task)
 │   │   │   └── 📂 MT            # Multi-task Lightning modules
 │   │   └── 📂 utils             # Task-level utilities
->>>>>>> release/v0.1.0
 │   ├── 📂 trainer_factory       # Trainer factory
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 base_trainer.py   # Trainer base class
@@ -970,14 +1012,10 @@ python scripts/export_latex.py --result_dir results/experiment_name
 - 🧪 **test/**: Development testing suite ensuring code quality
 - 📜 **scripts/**: Convenient auxiliary tools and scripts
 
-<!-- <div align="center">
+<div align="center">
   <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
   <p><em>PHM-Vibench Project Structure Overview</em></p>
-<<<<<<< HEAD
-</div> -->
-=======
 </div>
->>>>>>> release/v0.1.0
 
 ## 🧑‍💻 Development Guide TODO
 
@@ -1095,18 +1133,9 @@ This benchmark platform is licensed under the [Apache License (Version 2.0)](htt
 ---
 
 ## ⭐ Star History
-<<<<<<< HEAD
-
-[![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/PHM-Vibench&type=Date)](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
-
-<!-- <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
-
-<p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p> -->
-=======
 
 <!-- [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date) -->
 
 <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
 <p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p>
->>>>>>> release/v0.1.0

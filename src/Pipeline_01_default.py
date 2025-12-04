@@ -12,12 +12,8 @@ import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-<<<<<<< HEAD
-from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
-=======
 from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
 from src.utils.config_utils import parse_overrides, apply_overrides_to_config
->>>>>>> release/v0.1.0
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -40,28 +36,6 @@ def pipeline(args):
     # -----------------------
     config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
-<<<<<<< HEAD
-    
-    # 准备配置覆盖参数 - 统一处理所有覆盖
-    set_args = []
-    
-    # 将 --data_dir 转换为 --set 格式 (向后兼容)
-    if hasattr(args, 'data_dir') and args.data_dir is not None:
-        set_args.append(f'data.data_dir={args.data_dir}')
-        print(f"[INFO] 通过命令行参数覆盖data_dir: {args.data_dir}")
-    
-    # 添加 --set 参数
-    if hasattr(args, 'set') and args.set is not None:
-        set_args.extend(args.set)
-    
-    # 统一解析所有覆盖参数
-    overrides = parse_set_args(set_args) if set_args else {}
-    if overrides:
-        print(f"[INFO] 应用配置覆盖: {overrides}")
-    
-    configs = load_config(config_path, overrides if overrides else None)
-    
-=======
     # 支持机器特定的本地覆盖 YAML（方案B）
     # 优先顺序：命令行 --local_config > configs/local/{hostname}.yaml > configs/local/local.yaml > configs/local/default.yaml
     configs = merge_with_local_override(config_path, getattr(args, 'local_config', None))
@@ -73,7 +47,6 @@ def pipeline(args):
         configs = apply_overrides_to_config(configs, overrides)
         print(f"[INFO] 已应用 {len(overrides)} 个override参数")
 
->>>>>>> release/v0.1.0
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
     for section in required_sections:
@@ -91,17 +64,6 @@ def pipeline(args):
     args_task = transfer_namespace(configs.task if hasattr(configs, 'task') else {})
 
     args_trainer = transfer_namespace(configs.trainer if hasattr(configs, 'trainer') else {})
-
-    # Handle evaluation config for backward compatibility
-    if hasattr(configs, 'evaluation') and configs.evaluation:
-        # If evaluation section exists but trainer doesn't have compute_metrics, copy it over
-        if hasattr(configs.evaluation, 'compute_metrics') and not hasattr(args_trainer, 'compute_metrics'):
-            args_trainer.compute_metrics = configs.evaluation.compute_metrics
-            print("[WARN] Moved evaluation.compute_metrics to trainer.compute_metrics for compatibility")
-        
-        # Copy other evaluation settings to trainer if not present
-        if hasattr(configs.evaluation, 'test_after_training') and not hasattr(args_trainer, 'test_after_training'):
-            args_trainer.test_after_training = configs.evaluation.test_after_training
     if args_task.name == 'Multitask':
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list    
@@ -114,13 +76,7 @@ def pipeline(args):
     print("[INFO] 创建实验目录...")
     
     # -----------------------
-    # 2. 构建数据工厂（一次性创建）
-    # -----------------------
-    print("[INFO] 构建数据工厂...")
-    data_factory = build_data(args_data, args_task)
-    
-    # -----------------------
-    # 3. 多次迭代训练与测试
+    # 2. 多次迭代训练与测试
     # -----------------------
     all_results = []
     
@@ -136,12 +92,11 @@ def pipeline(args):
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
         init_lab(args_environment, args, name)
-        
-        # 传递enabled_tasks从task配置到model配置（用于多任务ISFM）
-        if hasattr(args_task, 'enabled_tasks'):
-            args_model.enabled_tasks = args_task.enabled_tasks
-            print(f"[INFO] 传递enabled_tasks到模型配置: {args_model.enabled_tasks}")
-        
+
+
+        # 构建数据工厂
+        print("[INFO] 构建数据工厂...")
+        data_factory = build_data(args_data, args_task)
         # 构建模型
         print("[INFO] 构建模型...")
         model = build_model(args_model,metadata=data_factory.get_metadata())
@@ -179,6 +134,7 @@ def pipeline(args):
         print("[INFO] 加载最佳模型并测试...")
         task = load_best_model_checkpoint(task, trainer)
         result = trainer.test(task, data_factory.get_dataloader('test'))
+        data_factory.data.close()  # 关闭数据工厂，释放资源
         all_results.append(result[0])  # Lightning返回的是包含字典的列表
         
         # 保存结果
@@ -189,10 +145,6 @@ def pipeline(args):
         # 关闭wandb和swanlab
         close_lab()
 
-    # 关闭数据工厂，释放资源
-    print("[INFO] 关闭数据工厂，释放资源...")
-    data_factory.data.close()
-    
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)
     return all_results
