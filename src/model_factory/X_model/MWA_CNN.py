@@ -50,10 +50,10 @@ class SConv_1D(nn.Module):
         x = self.conv(x)
         return x
 
-numf=12
+numf = 12
+
 
 class Model(nn.Module):
-<<<<<<< HEAD
     """Multi-level wavelet CNN classifier.
 
     Parameters
@@ -69,17 +69,6 @@ class Model(nn.Module):
     """
 
     def __init__(self, args, metadata=None):
-=======
-    """Wavelet based CNN classifier."""
-
-    def __init__(self, args, metadata=None):
-        """Initialize layers.
-
-        Args:
-            args: 配置参数，需包含 ``in_channels`` 等字段。
-            metadata: 可选元数据。
-        """
->>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661
         super(Model, self).__init__()
     
         
@@ -105,9 +94,7 @@ class Model(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool1d((1))
         self.fc = nn.Linear(numf*8, args.num_classes)
 
-        
-<<<<<<< HEAD
-    def forward(self, input, data_id=None, task_id=None):
+    def forward(self, input: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
         """Run a forward pass.
 
         Parameters
@@ -124,21 +111,6 @@ class Model(nn.Module):
         torch.Tensor
             Logits of shape ``(B, num_classes)``.
         """
-        
-=======
-    def forward(self, input: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        """Forward pass.
-
-        Args:
-            input: 输入信号 ``(B, L, C)``。
-            data_id: 样本 ID。
-            task_id: 任务 ID。
-
-        Returns:
-            分类 logits ``(B, num_classes)``。
-        """
-
->>>>>>> ac497b9dd2f708105a2354e0c2ce65569a936661
         input = rearrange(input, 'b l c -> b c l')
         DMT_yl,DMT_yh = self.DWT0(input)
         output = torch.cat([DMT_yl,DMT_yh[0]], dim=1)
