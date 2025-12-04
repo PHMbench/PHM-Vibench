@@ -21,12 +21,8 @@ The module is composed of a main factory function and a structured set of direct
 | File / Directory | Description |
 | :--- | :--- |
 | `task_factory.py` | The main entry point. It contains the `task_factory(...)` function that receives the model, all configuration arguments, and metadata to build the final `LightningModule`. |
-| `Default_task.py` | A baseline implementation for a standard classification task. It serves as a simple, ready-to-use option and a good starting point for creating new tasks. |
-| `task/` | A directory containing subfolders for specialized task families. Each subfolder (e.g., `DG/` for Domain Generalization, `FS/` for Few-Shot) contains specific `LightningModule` implementations tailored to that paradigm. In the sub folder, there are multiple PHM tasks including classification, RUL prediction, anomaly detection, etc. 
-|
-
-
-
+| `Default_task.py` | Baseline Lightning task wrapper, used as default single-task implementation and as a base class for many custom tasks. |
+| `task/` | Subfolders for concrete task families: `DG/`, `CDDG/`, `pretrain/`, `FS/`, `GFS/`, `ID/` (e.g. `ID_task`) and `MT/` (multi-task Lightning modules). Each subfolder contains one or more `LightningModule` implementations. |
 | `Components/` | A collection of reusable modules for building tasks, such as specialized loss functions (`loss.py`), performance metrics (`metrics.py`), and regularization techniques. |
 
 -----
@@ -37,8 +33,8 @@ The behavior of the `Task_Factory` is controlled via the `task` section in your 
 
 **Key Configuration Fields:**
 
-  * **`type`**: Specifies the task category. This corresponds to a subfolder within the `src/task_factory/task/` directory (e.g., `DG`, `FS`, `Pretrain`). Use `"Default_task"` to select the baseline task.
-  * **`name`**: The name of the Python file within the `type` subfolder that contains the task logic.
+  * **`type`**: Specifies the task category. This corresponds to a subfolder within the `src/task_factory/task/` directory (e.g., `DG`, `CDDG`, `FS`, `pretrain`).
+  * **`name`**: The name of the Python file within the `type` subfolder that contains the task logic（例如 `classification.py` → `name: "classification"`，`hse_contrastive.py` → `name: "hse_contrastive"`）。
   * **Task-Specific Options**: Any other parameters needed by the task, such as the names of loss functions, metric choices, regularization strengths, or learning algorithm hyperparameters.
 
 **Example Configuration (`.yaml`):**
@@ -46,7 +42,7 @@ The behavior of the `Task_Factory` is controlled via the `task` section in your 
 ```yaml
 task:
   name: "classification"
-  type: 'DG' # CDDG  # FS
+  type: "DG"   # 或 "CDDG" / "FS" / "pretrain"
 
   task_list: ['classification', 'prediction']
   target_domain_num: 1
@@ -84,6 +80,29 @@ task:
   num_support: 1
   num_query: 1
   num_episodes: 5
+
+-----
+
+## 🔖 Common `type` / `name` combinations (v0.1.0)
+
+下面的 CSV 表是当前版本中 **推荐/已有实现** 的 `task.type` 与 `task.name` 组合，一行对应一种可选任务；你只需要在配置里填这两列，就能通过 Task Factory 正确加载对应模块。  
+同时给出了 Task 的构造函数 `args`、对应的 `dataset_task` 路径与构造参数，以及预留的 `test_status` 列方便你标记测试情况。  
+完整表格维护在 `src/task_factory/task_registry.csv` 中，下面是其结构示意：
+
+```csv
+id,task.type,task.name,path,args,dataset_path,dataset_args,batch_format,notes,test_status
+1,Default_task,Default_task,Default_task.py,"(network, args_data, args_model, args_task, args_trainer, args_environment, metadata)",dataset_task/Default_dataset.py,"(data, metadata, args_data, args_task, mode)","Default windows: {'x','y'}","Baseline single-task Lightning wrapper",
+2,Default_task,ID_task,task/ID/ID_task.py,"(network, args_data, args_model, args_task, args_trainer, args_environment, metadata)",dataset_task/ID/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","ID-based windows: {'x','y','file_id',...}","ID_dataset / ID_task pipeline with flexible windowing",
+3,DG,classification,task/DG/classification.py,"(network, args_data, args_model, args_task, args_trainer, args_environment, metadata)",dataset_task/DG/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}","Single-dataset domain generalization classification",
+4,CDDG,classification,task/CDDG/classification.py,"(network, args_data, args_model, args_task, args_trainer, args_environment, metadata)",dataset_task/CDDG/classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id','domain_id',...}","Cross-dataset (CDDG) classification",
+...
+```
+```
+
+- 当你编写 config 时，只要保证：
+  - `task.type` 正好是上表中的 `task.type` 字段
+  - `task.name` 正好是上表中的 `task.name` 字段  
+ 其余超参数（如 loss、metrics、mask_ratio 等）会在各自的任务 README 中详细说明（例如 `task/pretrain/README.md`、`task/FS/README.md` 等）。
 
 -----
 

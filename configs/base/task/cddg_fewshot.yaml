@@ -1,0 +1,24 @@
+task:
+  name: "classification"
+  type: "GFS"
+
+  # CDDG/GFS few-shot 任务基础配置（参考 experiment_1_gfs_hse.yaml）
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 15
+
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+
+  # GFS sampler 所需参数
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15

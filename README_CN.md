@@ -186,21 +186,24 @@ data:
 
 ```bash
 
-# CWRU 分类任务
+
+
+# CWRU cross-domain 分类任务 
 python main.py --config configs/demo/Single_DG/CWRU.yaml
 
-# Few-Shot 原型网络示例
+# CWRU Few-Shot 原型网络示例
 python main.py --config configs/demo/FewShot/protonet.yaml
 
-# Pretrain + Few-Shot 流水线
+# CWRU Pretrain + Few-Shot 流水线
 python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/pretrain.yaml --fs_config_path configs/demo/FewShot/protonet.yaml
 
-# Cross-dataset genealization
+# CWRU + Ottawa Cross-dataset genealization use HSE embedding
 python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 
-# 所有数据集
+# CWRU + Ottawa Cross-dataset few-shot use HSE embedding
 python main.py --config configs/demo/Multiple_DG/all.yaml
-### Streamlit 图形界面
+
+### Streamlit 图形界面 TODO
 
 使用 Streamlit 提供的图形界面运行实验：
 
@@ -520,6 +523,10 @@ trainer:      # 训练器配置
 
 <details>
 <summary><b>👉 任务配置参数 (Task)</b></summary>
+
+在 PHM-Vibench 中，真正决定内部任务实现的是配置中的 `task.type` 和 `task.name`。  
+例如 `task.type: "DG"` 且 `task.name: "classification"` 会映射到 `src/task_factory/task/DG/classification.py`，而 ID 类任务和多任务 Lightning 模块分别位于 `task/ID` 和 `task/MT` 目录下。  
+更完整的映射表和示例请参考 `src/task_factory/readme.md`。
 
 <table>
   <tr>
@@ -909,9 +916,18 @@ python scripts/export_latex.py --result_dir results/experiment_name
 │   │       └── 📂 task_head     # 任务头
 │   ├── 📂 task_factory          # 任务工厂
 │   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_task.py      # 任务基类
-│   │   ├── 📄 task_factory.py   # 任务工厂类
-│   │   └── 📂 tasks             # 具体任务实现
+│   │   ├── 📄 Default_task.py   # 默认 Lightning 任务封装/基类
+│   │   ├── 📄 task_factory.py   # 任务工厂与动态加载
+│   │   ├── 📂 Components        # 任务通用组件（loss、metrics、flow 等）
+│   │   ├── 📂 task              # 具体任务实现
+│   │   │   ├── 📂 DG            # 单数据集域泛化任务
+│   │   │   ├── 📂 CDDG          # 跨数据集域泛化任务
+│   │   │   ├── 📂 pretrain      # 预训练任务（如 masked reconstruction）
+│   │   │   ├── 📂 FS            # Few-shot 任务
+│   │   │   ├── 📂 GFS           # Generalized Few-shot 任务
+│   │   │   ├── 📂 ID            # ID 类任务（如 ID_task）
+│   │   │   └── 📂 MT            # 多任务 Lightning 模块
+│   │   └── 📂 utils             # 任务级工具函数
 │   ├── 📂 trainer_factory       # 训练器工厂
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 base_trainer.py   # 训练器基类

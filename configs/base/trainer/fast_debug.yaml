@@ -1,0 +1,9 @@
+# Base trainer config for fast debug runs (v0.1.0)
+
+name: "Default_trainer"
+num_epochs: 1
+gpus: 1
+device: "cuda"
+early_stopping: false
+patience: 1
+

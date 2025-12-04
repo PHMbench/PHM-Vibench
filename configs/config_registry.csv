@@ -1,0 +1,21 @@
+id,category,path,description,pipeline,base_environment,base_data,base_model,base_task,base_trainer,status
+base_env_default,base_environment,configs/base/environment/base.yaml,"通用 environment base（PROJECT_HOME + iterations）",,,,,,/ 
+base_data_classification,base_data,configs/base/data/base_classification.yaml,"单数据集分类 / DG data base",,,,,,/ 
+base_data_cross_domain,base_data,configs/base/data/base_cross_domain.yaml,"单数据集 cross-domain DG data base",,,,,,/ 
+base_data_cross_system,base_data,configs/base/data/base_cross_system.yaml,"多系统 CDDG data base",,,,,,/ 
+base_data_fewshot,base_data,configs/base/data/base_fewshot.yaml,"单系统 few-shot data base",,,,,,/ 
+base_data_cross_system_fewshot,base_data,configs/base/data/base_cross_system_fewshot.yaml,"跨系统 few-shot data base",,,,,,/ 
+base_model_isfm_hse,base_model,configs/base/model/backbone_dlinear.yaml,"M_01_ISFM + E_01_HSE + B_04_Dlinear + H_01_Linear_cla",,,,,,/ 
+base_task_classification,base_task,configs/base/task/classification.yaml,"单数据集分类 / 简单 DG 任务 base",,,,,,/ 
+base_task_dg,base_task,configs/base/task/dg.yaml,"cross-domain DG 任务 base",,,,,,/ 
+base_task_cddg,base_task,configs/base/task/cddg.yaml,"多系统 CDDG 任务 base",,,,,,/ 
+base_task_fewshot,base_task,configs/base/task/fewshot.yaml,"单系统 few-shot 任务 base",,,,,,/ 
+base_task_cddg_fewshot,base_task,configs/base/task/cddg_fewshot.yaml,"跨系统 few-shot 任务 base（仍用 FS 类型）",,,,,,/ 
+base_task_pretrain,base_task,configs/base/task/pretrain.yaml,"HSE / ISFM 预训练任务 base",,,,,,/ 
+base_trainer_default_single_gpu,base_trainer,configs/base/trainer/default_single_gpu.yaml,"单 GPU 默认 Trainer base",,,,,,/ 
+demo_01_cross_domain,demo,configs/demo/01_cross_domain/cwru_dg.yaml,"Cross-domain DG demo（单数据集 DG 示例）",Pipeline_01_default,configs/base/environment/base.yaml,configs/base/data/base_cross_domain.yaml,configs/base/model/backbone_dlinear.yaml,configs/base/task/dg.yaml,configs/base/trainer/default_single_gpu.yaml,sanity_ok 
+demo_02_cross_system,demo,configs/demo/02_cross_system/multi_system_cddg.yaml,"Cross-system CDDG demo（多系统 CDDG 示例）",Pipeline_01_default,configs/base/environment/base.yaml,configs/base/data/base_cross_system.yaml,configs/base/model/backbone_dlinear.yaml,configs/base/task/cddg.yaml,configs/base/trainer/default_single_gpu.yaml,sanity_ok 
+demo_03_fewshot,demo,configs/demo/03_fewshot/cwru_protonet.yaml,"Few-shot demo（单系统 few-shot 示例）",Pipeline_01_default,configs/base/environment/base.yaml,configs/base/data/base_fewshot.yaml,configs/base/model/backbone_dlinear.yaml,configs/base/task/fewshot.yaml,configs/base/trainer/default_single_gpu.yaml,sanity_ok 
+demo_04_cross_system_fewshot,demo,configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml,"Cross-system few-shot demo（跨系统 few-shot 示例）",Pipeline_01_default,configs/base/environment/base.yaml,configs/base/data/base_cross_system_fewshot.yaml,configs/base/model/backbone_dlinear.yaml,configs/base/task/cddg_fewshot.yaml,configs/base/trainer/default_single_gpu.yaml,sanity_ok 
+demo_05_pretrain_fewshot,demo,configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml,"Pretrain + few-shot two-stage demo（当前为单阶段 HSE 对比预训练示例）",Pipeline_02_pretrain_fewshot,configs/base/environment/base.yaml,configs/base/data/base_classification.yaml,configs/base/model/backbone_dlinear.yaml,configs/base/task/pretrain.yaml,configs/base/trainer/default_single_gpu.yaml,sanity_ok 
+demo_06_pretrain_cddg,demo,configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml,"Pretrain HSE for CDDG demo（单阶段 HSE 对比预训练视角）",Pipeline_01_default,configs/base/environment/base.yaml,configs/base/data/base_cross_system.yaml,configs/base/model/backbone_dlinear.yaml,configs/base/task/pretrain.yaml,configs/base/trainer/default_single_gpu.yaml,sanity_ok 

@@ -1,0 +1,7 @@
+environment:
+  PROJECT_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "demo_project"
+  seed: 42
+  output_dir: "results/demo"
+  notes: ""
+  iterations: 1

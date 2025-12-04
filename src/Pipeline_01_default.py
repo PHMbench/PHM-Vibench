@@ -71,13 +71,9 @@ def pipeline(args):
         if key.isupper():
             os.environ[key] = str(value)
             print(f"[INFO] 设置环境变量: {key}={value}")
-    
-    # 创建实验目录
+
+    # 创建实验目录（依赖 environment.output_dir / path_name，不再强制依赖 VBENCH_* 变量）
     print("[INFO] 创建实验目录...")
-    VBENCH_HOME = args_environment.VBENCH_HOME
-    VBENCH_DATA = args_data.data_dir
-    sys.path.append(VBENCH_HOME)
-    sys.path.append(VBENCH_DATA)
     
     # -----------------------
     # 2. 多次迭代训练与测试

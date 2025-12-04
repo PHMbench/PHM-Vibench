@@ -1,0 +1,29 @@
+# Few-shot demo: CWRU ProtoNet-style classification (v0.1.0 draft)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+
+data: {}
+
+# 模型配置全部由 base_configs.model (backbone_dlinear.yaml) 提供
+
+# FS 视作单系统 few-shot 场景下的分类任务；具体 few-shot 算法属于模型层，不在 task.name 中体现
+task:
+  type: "FS"
+  name: "classification"
+  n_way: 5
+  k_shot: 5
+  q_query: 15
+  episodes_per_epoch: 100
+  lr: 0.001
+
+trainer:
+  # 对于 few-shot demo，可以采用 fast debug 风格，必要时通过命令行 override `trainer.num_epochs`
+  num_epochs: 1

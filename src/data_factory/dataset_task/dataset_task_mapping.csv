@@ -1,0 +1,17 @@
+id,task.type,task.name,path,args,batch_format,test_status
+1,DG,classification,dataset_task/DG/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
+2,CDDG,classification,dataset_task/CDDG/classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id','domain_id',...}",
+3,pretrain,classification,dataset_task/Pretrain/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
+4,pretrain,hse_contrastive,dataset_task/Pretrain/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id','domain_id',...}",
+5,pretrain,masked_reconstruction,dataset_task/Pretrain/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','mask','file_id',...}",
+6,pretrain,prediction,dataset_task/Pretrain/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
+7,pretrain,classification_prediction,dataset_task/Pretrain/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
+8,FS,prototypical_network,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","per-sample few-shot view; sampler builds episodes",
+9,FS,matching_network,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","per-sample few-shot view; sampler builds episodes",
+10,FS,knn_feature,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","per-sample feature view for kNN",
+11,FS,finetuning,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","standard supervised few-shot finetuning batches",
+12,GFS,classification,dataset_task/GFS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','base/novel flags',...}",
+13,GFS,matching,dataset_task/GFS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","GFS-style episodes / batches",
+14,Default_task,Default_task,dataset_task/Default_dataset.py,"(data, metadata, args_data, args_task, mode)","Default windows: {'x','y'}",
+15,Default_task,ID_task,dataset_task/ID/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","ID-based windows: {'x','y','file_id',...}",
+

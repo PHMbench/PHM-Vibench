@@ -1,0 +1,9 @@
+# Base trainer config for multi-GPU training (v0.1.0)
+
+name: "Default_trainer"
+num_epochs: 10
+gpus: 2
+device: "cuda"
+early_stopping: true
+patience: 5
+

@@ -1,282 +1,141 @@
 # PHM-Vibench Model Factory
 
-The PHM-Vibench Model Factory provides a comprehensive collection of state-of-the-art deep learning models specifically designed for Prognostics and Health Management (PHM) applications. This factory includes 30+ SOTA models across 6 major categories, each optimized for industrial signal analysis and time-series modeling.
+The PHM-Vibench Model Factory provides a collection of deep learning models for Prognostics and Health Management (PHM), wired through a unified configuration-first interface.
 
-## 📋 Table of Contents
+This document focuses on:
+- how to choose a model via `config.model.*`
+- how `model.type` / `embedding` / `backbone` / `task_head` map to code
+- where to find the full list of available options
 
-- [Model Categories](#model-categories)
-- [Quick Start](#quick-start)
-- [Model Usage](#model-usage)
-- [Configuration](#configuration)
-- [Examples](#examples)
-- [Performance Benchmarks](#performance-benchmarks)
-- [Contributing](#contributing)
+For a Chinese overview, see `README_CN.md`.
 
-## 🏗️ Model Categories
+## 1. Directory Layout
 
-### 1. **MLP (Multi-Layer Perceptron)** - 5 Models
-Modern MLP architectures with advanced techniques for time-series analysis:
-- **ResNetMLP**: Deep MLP with residual connections for gradient flow
-- **MLPMixer**: All-MLP architecture with temporal and channel mixing
-- **gMLP**: Gated MLP with spatial gating units for sequence modeling
-- **DenseNetMLP**: Dense connections for feature reuse and efficient training
-- **Dlinear**: Decomposition-based linear modeling for forecasting
+Core files and submodules:
 
-### 2. **Neural Operators (NO)** - 5 Models
-Operator learning approaches for continuous function approximation:
-- **FNO**: Fourier Neural Operator with spectral convolutions
-- **DeepONet**: Branch-trunk architecture for operator learning
-- **NeuralODE**: Continuous-time dynamics with neural ODEs
-- **GraphNO**: Graph-based spectral neural operators
-- **WaveletNO**: Multi-scale wavelet neural operators
+| File / Directory        | Description                                                                                           |
+| :---------------------- | :---------------------------------------------------------------------------------------------------- |
+| `model_factory.py`      | Main entry; `model_factory(args_model, metadata)` builds and returns a `torch.nn.Module`.            |
+| `MLP/`                  | MLP-based models.                                                                                     |
+| `CNN/`                  | Convolutional models (e.g., `ResNet1D`).                                                              |
+| `RNN/`                  | Recurrent models.                                                                                     |
+| `NO/`                   | Neural Operator models (e.g., `FNO`).                                                                 |
+| `Transformer/`          | Transformer-based architectures (e.g., `PatchTST`).                                                  |
+| `ISFM/`                 | Industrial Signal Foundation Models with embedding/backbone/task_head submodules.                    |
+| `ISFM_Prompt/`          | Prompt-style ISFM variants.                                                                           |
+| `X_model/`              | XAI and auxiliary models.                                                                             |
 
-### 3. **Transformer** - 6 Models
-Attention-based architectures optimized for long sequences:
-- **Informer**: Efficient transformer with ProbSparse attention
-- **Autoformer**: Decomposition transformer with auto-correlation
-- **PatchTST**: Patch-based transformer with channel independence
-- **Linformer**: Linear complexity self-attention mechanism
-- **ConvTransformer**: Hybrid CNN-Transformer architecture
-- **TransformerDummy**: Basic transformer baseline
+Each model file normally exposes a `Model` class and can be instantiated via the factory.
 
-### 4. **RNN (Recurrent Neural Networks)** - 5 Models
-Advanced recurrent architectures for sequential modeling:
-- **AttentionLSTM**: LSTM with attention mechanism
-- **ConvLSTM**: Convolutional LSTM for spatial-temporal data
-- **ResidualRNN**: Deep RNN with residual connections
-- **AttentionGRU**: GRU with multi-head self-attention
-- **TransformerRNN**: Hybrid Transformer-RNN architecture
+## 2. Configuration Interface (YAML)
 
-### 5. **CNN (Convolutional Neural Networks)** - 5 Models
-Convolutional architectures for temporal pattern recognition:
-- **ResNet1D**: 1D ResNet for time-series analysis
-- **TCN**: Temporal Convolutional Network with dilated convolutions
-- **AttentionCNN**: CNN with CBAM attention mechanisms
-- **MobileNet1D**: Efficient CNN with depthwise separable convolutions
-- **MultiScaleCNN**: Multi-scale CNN with Inception-style modules
+The factory is driven by the `model` section in your experiment YAML. The key idea is:
 
-### 6. **ISFM (Industrial Signal Foundation Models)** - ISFM / ISFM_Prompt
-Foundation models for industrial signal representation,对齐 Vbench 实验 0–7：
-- `ISFM/`：标准工业信号基础模型族（`M_01_ISFM`, `M_02_ISFM`, `M_03_ISFM` 等），基于 HSE / Patch 嵌入 + 系统感知 head；
-- `ISFM_Prompt/`：简化版 HSE-Prompt 模型族（`M_02_ISFM_Prompt`），用于 Experiment 3+ 的 HSE-Prompt 对比与下游分类。
+- `model.type`: which subdirectory to use (e.g. `ISFM`, `Transformer`).
+- `model.name`: which Python module/class to use inside that directory (e.g. `M_01_ISFM`).
+- `model.embedding`: which embedding component to plug into ISFM-style models.
+- `model.backbone`: which backbone network to use.
+- `model.task_head`: which task head to attach (classification / prediction / multi-task).
+- any other fields under `model` are passed through as hyperparameters.
 
-## 🚀 Quick Start
+### 2.1 Minimal example (ISFM)
 
-### Installation
+```yaml
+model:
+  type: "ISFM"
+  name: "M_01_ISFM"
 
-```bash
-# Clone the repository
-git clone https://github.com/PHMbench/PHM-Vibench.git
-cd PHM-Vibench
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
 
-# Install dependencies
-pip install -r requirements.txt
+  d_model: 256
+  n_layers: 2
+  dropout: 0.1
 ```
 
-### Basic Usage
+### 2.2 How the factory resolves your config
+
+Internally, the factory:
+
+1. Reads `model.type` and `model.name`.
+2. Imports `src.model_factory.{type}.{name}`.
+3. Instantiates `Model(args_model, metadata)` with the full `model` dict (plus metadata).
+
+In pseudo-code:
 
 ```python
-from src.model_factory import build_model
-from argparse import Namespace
-
-# Define model configuration
-args = Namespace(
-    model_name='ResNetMLP',
-    input_dim=3,
-    hidden_dim=256,
-    num_layers=6,
-    num_classes=5,  # For classification
-    dropout=0.1
+model_module = importlib.import_module(
+    f".{args_model.type}.{args_model.name}", package="src.model_factory"
 )
-
-# Build model
-model = build_model(args)
-
-# Forward pass
-import torch
-x = torch.randn(32, 100, 3)  # (batch_size, seq_len, input_dim)
-output = model(x)
-print(f"Output shape: {output.shape}")  # (32, 5) for classification
+model = model_module.Model(args_model, metadata)
 ```
 
-## 📖 Model Usage
+If `weights_path` is provided, the factory will load that checkpoint into the model.
 
-### Classification Task
+## 3. Recommended v0.1.0 demo configuration
 
-```python
-# Configuration for classification
-args = Namespace(
-    model_name='AttentionLSTM',
-    input_dim=6,           # Number of sensor channels
-    hidden_dim=128,        # Hidden layer dimension
-    num_layers=3,          # Number of LSTM layers
-    num_classes=4,         # Number of fault classes
-    dropout=0.2,
-    bidirectional=True
-)
+For v0.1.0 demos we recommend the following ISFM configuration (aligned with `configs/base/model/backbone_dlinear.yaml`):
 
-model = build_model(args)
+```yaml
+model:
+  type: "ISFM"
+  name: "M_01_ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
 ```
 
-### Regression Task
+This combination matches the backbone used in `configs/reference/experiment_1_cddg_hse.yaml` and can be reused for CDDG / DG / FS / pretraining by changing only the `task.*` and trainer config.
 
-```python
-# Configuration for regression (forecasting)
-args = Namespace(
-    model_name='Informer',
-    input_dim=3,           # Input features
-    output_dim=3,          # Output features (same for forecasting)
-    d_model=512,           # Model dimension
-    n_heads=8,             # Number of attention heads
-    e_layers=2,            # Encoder layers
-    d_layers=1,            # Decoder layers
-    seq_len=96,            # Input sequence length
-    pred_len=24            # Prediction length
-)
+## 4. Model registry CSV
 
-model = build_model(args)
-```
+The full list of currently supported combinations is maintained as a CSV:
 
-### Self-Supervised Learning
+- `src/model_factory/model_registry.csv`
 
-```python
-# Configuration for contrastive learning
-args = Namespace(
-    model_name='ContrastiveSSL',
-    input_dim=3,
-    hidden_dim=256,
-    projection_dim=128,
-    temperature=0.1,
-    num_layers=6
-)
+Columns:
+- `model.type`: high-level model type (e.g. `ISFM`, `Transformer`, `CNN`).
+- `model.name`: model file/class name (e.g. `M_01_ISFM`, `PatchTST`).
+- `module_path`: Python import path of the model file.
+- `args`: short list of typical/important configuration fields for this model.
+- `notes`: short description or recommended usage.
+- `test_status`: testing status marker (e.g. `/` = unknown/not recorded, `pass`, `fail`).
 
-model = build_model(args)
+When in doubt, look up your intended model in this CSV to confirm `type`/`name`/`module_path`, and scan the `args` column to see which config fields you are expected to provide. Then fill in any additional type-specific fields (such as `embedding` / `backbone` / `task_head` for ISFM) according to the relevant README and configs.
 
-# Contrastive learning mode
-x = torch.randn(16, 64, 3)
-output = model(x, mode='contrastive')
-print(f"Contrastive loss: {output['loss'].item():.4f}")
-```
+## 5. Type-specific configuration (where to look)
 
-## ⚙️ Configuration
+Each `model.type` can have its own configuration details and valid options:
 
-### Model-Specific Parameters
+- `ISFM/README.md` (or `CONFIG.md`):  
+  - explains how `embedding` / `backbone` / `task_head` are wired;  
+  - lists all ISFM subcomponents, e.g. `E_01_HSE`, `B_04_Dlinear`, `H_01_Linear_cla` etc.;  
+  - documents extra arguments required by each component (e.g. `patch_size_L`, `patch_size_C` for `E_01_HSE`).
+- `Transformer/README.md` (if present):  
+  - lists transformer backbones such as `PatchTST`, `Autoformer`, `Informer`, etc., and their key hyperparameters.
+- Likewise for `CNN/`, `RNN/`, `MLP/`, `NO/` once their READMEs are added.
 
-Each model category has specific configuration parameters. See individual model documentation for details:
+If a directory does not yet have its own README, refer to the model code directly and consider adding a short documentation section when you introduce changes.
 
-- [MLP Models Configuration](MLP/README.md)
-- [Neural Operators Configuration](NO/README.md)
-- [Transformer Models Configuration](Transformer/README.md)
-- [RNN Models Configuration](RNN/README.md)
-- [CNN Models Configuration](CNN/README.md)
-- [ISFM Models Configuration](ISFM/README.md)
+## 6. Factory workflow summary
 
-### Common Parameters
+1. **Read config**: pipeline parses YAML and builds `args_model` from `config.model`.
+2. **Dynamic import**: `model_factory` imports via `model.type` and `model.name`.
+3. **Instantiate**: `Model(args_model, metadata)` is constructed.
+4. **Load checkpoint (optional)**: `weights_path` is used to restore parameters.
+5. **Return**: an initialized `torch.nn.Module`, ready for use by the task/trainer.
 
-All models support these common parameters:
+This workflow is described in more detail (with code snippets) in the previous `readme.md`; those explanations have now been merged here and into the Chinese `README_CN.md`.
 
-```python
-args = Namespace(
-    # Data parameters
-    input_dim=3,           # Input feature dimension
-    seq_len=100,           # Sequence length
-    
-    # Model parameters
-    hidden_dim=256,        # Hidden dimension
-    num_layers=6,          # Number of layers
-    dropout=0.1,           # Dropout probability
-    
-    # Task parameters
-    num_classes=None,      # For classification (set to None for regression)
-    output_dim=None,       # For regression (defaults to input_dim)
-    
-    # Training parameters
-    learning_rate=1e-3,    # Learning rate
-    batch_size=32,         # Batch size
-    epochs=100             # Training epochs
-)
-```
+## 7. Notes for contributors
 
-## 📊 Performance Benchmarks
+When adding a new model:
 
-| Model Category | Best Model | Accuracy | Parameters | Speed (ms/batch) |
-|----------------|------------|----------|------------|------------------|
-| MLP | MLPMixer | 94.2% | 2.1M | 12.3 |
-| Neural Operators | FNO | 91.8% | 3.4M | 18.7 |
-| Transformer | PatchTST | 95.1% | 4.2M | 22.1 |
-| RNN | AttentionLSTM | 93.7% | 1.8M | 15.4 |
-| CNN | ResNet1D | 94.5% | 2.9M | 14.2 |
-| ISFM | ContrastiveSSL | 96.3% | 5.1M | 28.9 |
-
-*Benchmarks performed on CWRU bearing dataset with standard train/test split.*
-
-## 🔧 Advanced Usage
-
-### Custom Model Registration
-
-```python
-from src.model_factory import register_model
-
-@register_model('CustomModel')
-class CustomModel(nn.Module):
-    def __init__(self, args, metadata=None):
-        super().__init__()
-        # Your model implementation
-        
-    def forward(self, x, data_id=None, task_id=None):
-        # Forward pass implementation
-        return output
-```
-
-### Multi-Modal Usage
-
-```python
-# Multi-modal foundation model
-args = Namespace(
-    model_name='MultiModalFM',
-    modality_dims={'vibration': 3, 'acoustic': 1, 'thermal': 2},
-    hidden_dim=256,
-    fusion_type='attention',
-    num_classes=4
-)
-
-model = build_model(args)
-
-# Multi-modal input
-x = {
-    'vibration': torch.randn(16, 64, 3),
-    'acoustic': torch.randn(16, 64, 1),
-    'thermal': torch.randn(16, 2)
-}
-output = model(x)
-```
-
-## 📚 Examples
-
-Detailed examples are available in the `examples/` directory:
-
-- [Basic Classification Example](examples/basic_classification.py)
-- [Time Series Forecasting Example](examples/forecasting.py)
-- [Self-Supervised Learning Example](examples/self_supervised.py)
-- [Multi-Modal Learning Example](examples/multimodal.py)
-- [Custom Model Development](examples/custom_model.py)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
-
-- Adding new models
-- Improving existing implementations
-- Documentation updates
-- Bug reports and feature requests
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📞 Contact
-
-For questions and support:
-- GitHub Issues: [PHM-Vibench Issues](https://github.com/PHMbench/PHM-Vibench/issues)
-- Email: phm-vibench@example.com
-- Documentation: [PHM-Vibench Docs](https://phmbench.github.io/PHM-Vibench/)
+- Place the implementation under the correct subdirectory (`ISFM/`, `Transformer/`, etc.).
+- Ensure the file exposes a `Model` class with constructor signature `Model(args_model, metadata)`.
+- Register its typical configuration in `docs/v0.1.0/codex/model_registry.csv`.
+- Update or create the corresponding type-specific README (e.g. `ISFM/README.md`) with:
+  - a minimal YAML example;
+  - a table of supported `embedding` / `backbone` / `task_head` values and required arguments.
+- Keep configuration keys in YAML lowercase with underscores, consistent with the rest of the repo.
