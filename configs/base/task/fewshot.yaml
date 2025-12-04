@@ -1,0 +1,17 @@
+task:
+  name: "classification"
+  type: "FS"
+  loss: "CE"
+  metrics:
+    - "acc"
+
+  # Few-shot 暂时复用 CDDG/CWRU 的系统定义，后续按需细化
+  target_system_id: [1]
+
+  n_way: 5
+  k_shot: 5
+  q_query: 15
+  episodes_per_epoch: 100
+  lr: 0.001
+  optimizer: "adamw"
+  weight_decay: 0.0001

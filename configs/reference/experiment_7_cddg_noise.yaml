@@ -1,0 +1,137 @@
+# Experiment 7 (CDDG): Noise Robustness for Cross-Domain Classification
+#
+# 说明：
+# - 本配置是 Experiment 7 的 CDDG 版本，研究噪声条件下 CDDG 任务的鲁棒性；
+# - 继承统一的噪声注入设计，仅将任务类型设置为 CDDG。
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "experiment_7_cddg_noise_robustness"
+  seed: 42
+  output_dir: "paper/2025-10_foundation_model_0_metric/results/cddg/exp7_noise"
+  notes: "Experiment 7 (CDDG): HSE-Prompt robustness under noisy conditions (cross-domain classification)"
+  iterations: 1
+
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
+  batch_size: 256
+  num_workers: 8
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: "standardization"
+  window_size: 4096
+  stride: 5
+  num_window: 64
+  dtype: "float32"
+  pin_memory: true
+
+  noise_injection:
+    enabled: true
+    noise_types: ["gaussian", "uniform", "colored"]
+    snr_levels: [20, 10, 5, 0, -5]
+    base_snr: 20
+    gaussian_noise:
+      mean: 0.0
+      std_range: [0.01, 0.1]
+    uniform_noise:
+      range_factor: 0.05
+    colored_noise:
+      colors: ["pink", "brown", "blue"]
+      filter_order: 4
+
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  dropout: 0.1
+  activation: "relu"
+  factor: 5
+
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  system_prompt_dim: 64
+  sample_prompt_dim: 32
+
+  noise_robust_features:
+    enabled: true
+    spectral_filtering: true
+    denoising_prompts: true
+    adaptive_threshold: true
+    ensemble_predictions: true
+
+  gradient_checkpointing: true
+  mixed_precision: true
+
+task:
+  name: "classification"
+  type: "CDDG"
+
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 15
+
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall", "robustness_score"]
+
+  noise_robustness:
+    enabled: true
+    noise_augmentation:
+      enabled: true
+      noise_prob: 0.5
+      snr_range: [10, 20]
+      noise_types: ["gaussian", "uniform"]
+    test_time_augmentation:
+      enabled: true
+      num_augmentations: 5
+      voting_strategy: "majority"
+
+trainer:
+  name: "Default_trainer"
+  monitor: "val_loss"
+  max_epochs: 30
+  devices: 1
+  device: "cuda"
+  accelerator: "gpu"
+  precision: 16
+
+  auto_select_gpus: true
+  progress_bar_refresh_rate: 20
+  check_val_every_n_epoch: 5
+  deterministic: true
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+
+  use_wandb: true
+  save_checkpoints: true
+  log_every_n_steps: 10
+  save_dir: "results/experiment_7_cddg_noise_robustness"
+
+  early_stopping: true
+  patience: 15
+  wandb: false
+
+# 推荐 pipeline：Pipeline_01_default（CDDG 单阶段分类）

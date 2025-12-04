@@ -1,0 +1,16 @@
+task:
+  name: "classification"
+  type: "DG"
+  loss: "CE"
+  metrics:
+    - "acc"
+
+  optimizer: "adam"
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  shuffle: true
+  log_interval: 10
+  epochs: 10
+  lr: 0.001
+  weight_decay: 0.0001

@@ -15,10 +15,13 @@ def search_ids_for_task(metadata_accessor, args_task):
             train_val_ids, test_ids = Get_DG_ids(metadata_accessor, args_task)
         elif args_task.type == 'CDDG':
             train_val_ids, test_ids = Get_CDDG_ids(metadata_accessor, args_task)
+        elif args_task.type == 'FS':
+            # Few-shot 学习：在筛选出的目标系统范围内，直接使用全部 ID
+            train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
         elif args_task.type == 'GFS':
             train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
-        elif args_task.type == 'Pretrain':
-            # For pretraining, we typically use all available IDs
+        elif args_task.type in ['pretrain', 'Pretrain']:
+            # 对于预训练任务，通常使用全部可用 ID
             train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
         # Add other task types here if needed
         # elif args_task.type == 'SOME_OTHER_TYPE':
@@ -37,7 +40,8 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
     """
     根据任务参数筛选目标数据集的元数据。
     """
-    if not args_task.target_system_id:
+    # 某些任务（如部分 pretrain 配置）可能未显式指定 target_system_id，此时直接返回全部元数据
+    if not hasattr(args_task, 'target_system_id') or not args_task.target_system_id:
         print("未指定目标数据集ID，返回全部元数据")
         return metadata_accessor
     

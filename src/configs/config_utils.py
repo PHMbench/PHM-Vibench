@@ -25,12 +25,13 @@ import yaml
 # ==================== 预设配置模板映射 ====================
 
 PRESET_TEMPLATES = {
-    'quickstart': 'configs/demo/Single_DG/CWRU.yaml',
-    'basic': 'configs/demo/Single_DG/THU.yaml', 
-    'isfm': 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-    'gfs': 'configs/demo/GFS/GFS_demo.yaml',
-    'pretrain': 'configs/demo/Pretraining/Pretraining_demo.yaml',
-    'id': 'configs/demo/ID/id_demo.yaml'
+    # Legacy v0.0.9 presets (kept for backward compatibility)
+    'quickstart': 'configs/v0.0.9/demo/Single_DG/CWRU.yaml',
+    'basic': 'configs/v0.0.9/demo/Single_DG/THU.yaml',
+    'isfm': 'configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+    'gfs': 'configs/v0.0.9/demo/GFS/GFS_demo.yaml',
+    'pretrain': 'configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml',
+    'id': 'configs/v0.0.9/demo/ID/id_demo.yaml',
 }
 
 
@@ -125,9 +126,49 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
     Returns:
         ConfigWrapper: 统一的配置对象
     """
-    # 步骤1: 将config_source转为ConfigWrapper
-    config = _to_config_wrapper(config_source)
-    
+    # 步骤0：支持 base_configs 的组合加载（仅针对 YAML / 预设）
+    base_merged: Optional[ConfigWrapper] = None
+
+    # 识别是否是预设名或 YAML 路径
+    if isinstance(config_source, (str, Path)):
+        src_str = str(config_source)
+        yaml_path: Optional[Path] = None
+
+        if src_str in PRESET_TEMPLATES:
+            yaml_path = Path(PRESET_TEMPLATES[src_str])
+        elif Path(src_str).exists():
+            yaml_path = Path(src_str)
+
+        if yaml_path is not None and yaml_path.exists():
+            raw_dict = _load_yaml_file(yaml_path)
+            if isinstance(raw_dict, dict) and raw_dict.get("base_configs"):
+                base_cfgs = raw_dict.get("base_configs") or {}
+                if isinstance(base_cfgs, dict):
+                    # 1) 先叠加所有 base yaml（使用 _to_config_wrapper 加载局部配置）
+                    merged = ConfigWrapper()
+                    for _, base_rel in base_cfgs.items():
+                        base_path_str = str(base_rel)
+                        # 约定：以 configs/ 或绝对路径开头的，按仓库根相对/绝对路径解析；
+                        # 否则按当前 YAML 文件所在目录的相对路径解析。
+                        if os.path.isabs(base_path_str) or base_path_str.startswith("configs/"):
+                            base_path = Path(base_path_str)
+                        else:
+                            base_path = yaml_path.parent / base_path_str
+                        merged.update(_to_config_wrapper(base_path))
+
+                    # 2) 当前 YAML 自身作为 override（移除 base_configs 字段）
+                    override_dict = {k: v for k, v in raw_dict.items() if k != "base_configs"}
+                    override_cfg = _to_config_wrapper(override_dict)
+                    merged.update(override_cfg)
+
+                    base_merged = merged
+
+    # 步骤1: 将config_source转为ConfigWrapper（若已通过 base_configs 合并，则直接使用）
+    if base_merged is not None:
+        config = base_merged
+    else:
+        config = _to_config_wrapper(config_source)
+
     # 步骤2: 如果有overrides，也转为ConfigWrapper并合并
     if overrides is not None:
         override_config = _to_config_wrapper(overrides)
@@ -135,7 +176,7 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
 
     # 步骤3: 验证必需字段
     _validate_config_wrapper(config)
-    
+
     return config
 
 
@@ -170,19 +211,19 @@ def _to_config_wrapper(source: Union[str, Path, Dict, SimpleNamespace]) -> Confi
         
         return dict_to_namespace(expanded_dict)
     
-    # 字符串/路径处理
+    # 字符串/路径处理（不在此处处理 base_configs，统一交给 load_config）
     elif isinstance(source, (str, Path)):
-        source = str(source)
-        
+        source_str = str(source)
+
         # 检查是否为预设
-        if source in PRESET_TEMPLATES:
-            config_dict = _load_yaml_file(PRESET_TEMPLATES[source])
+        if source_str in PRESET_TEMPLATES:
+            config_dict = _load_yaml_file(PRESET_TEMPLATES[source_str])
         # 检查是否为文件
-        elif os.path.exists(source):
-            config_dict = _load_yaml_file(source)
+        elif os.path.exists(source_str):
+            config_dict = _load_yaml_file(source_str)
         else:
-            raise FileNotFoundError(f"配置 {source} 不存在")
-        
+            raise FileNotFoundError(f"配置 {source_str} 不存在")
+
         return dict_to_namespace(config_dict)
     
     else:
@@ -193,14 +234,14 @@ def _to_config_wrapper(source: Union[str, Path, Dict, SimpleNamespace]) -> Confi
 
 def _load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
     """从YAML文件加载配置字典"""
-    
+
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             config_dict = yaml.safe_load(f)
     except UnicodeDecodeError:
         with open(file_path, 'r', encoding='gb18030', errors='ignore') as f:
             config_dict = yaml.safe_load(f)
-    
+
     return config_dict or {}
 
 def _validate_config_wrapper(config: ConfigWrapper) -> None:

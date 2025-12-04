@@ -1,0 +1,31 @@
+# Two-stage demo: pretrain (HSE) + few-shot finetune (v0.1.0 draft)
+
+pipeline: "Pipeline_02_pretrain_fewshot"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_classification.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_pretrain_hse_then_fewshot"
+  seed: 42
+  output_dir: "results/demo/pretrain_hse_then_fewshot"
+  notes: "Two-stage pretrain (HSE) + few-shot finetune demo."
+
+data: {}
+
+# 模型配置全部由 base_configs.model (backbone_dlinear.yaml) 提供
+
+# 当前版本将此 demo 视作单阶段 HSE 对比预训练示例（后续可通过 stages 扩展为真正的两阶段：pretrain + few-shot）
+task:
+  type: "pretrain"
+  name: "hse_contrastive"
+  # 预训练阶段在 CDDG 视角下，默认覆盖多个系统
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 20

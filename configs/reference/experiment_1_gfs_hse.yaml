@@ -1,0 +1,92 @@
+# Experiment 1 (GFS view, optional): HSE Few-Shot Baseline
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "experiment_1_gfs_hse"
+  seed: 42
+  output_dir: "paper/2025-10_foundation_model_0_metric/results/gfs/exp1_hse"
+  notes: "Experiment 1 (GFS, optional): Direct few-shot/GFS classification with HSE (no pretraining)"
+  iterations: 1
+
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
+  batch_size: 256
+  num_workers: 8
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: "standardization"
+  window_size: 4096
+  stride: 5
+  num_window: 64
+  dtype: "float32"
+  pin_memory: true
+
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  dropout: 0.1
+  activation: "relu"
+  factor: 5
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: false
+  prompt_dim: 0
+  gradient_checkpointing: true
+  mixed_precision: true
+
+task:
+  name: "classification"
+  type: "GFS"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 15
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15
+
+trainer:
+  name: "Default_trainer"
+  monitor: "val_loss"
+  max_epochs: 50
+  devices: 1
+  device: "cuda"
+  accelerator: "gpu"
+  precision: 16
+  auto_select_gpus: true
+  progress_bar_refresh_rate: 20
+  check_val_every_n_epoch: 5
+  deterministic: true
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  use_wandb: true
+  save_checkpoints: true
+  log_every_n_steps: 10
+  save_dir: "results/experiment_1_gfs_hse"
+  early_stopping: true
+  patience: 15
+  wandb: false
+
+pipeline:
+  name: "Pipeline_01_default"

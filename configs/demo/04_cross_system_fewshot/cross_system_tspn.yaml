@@ -1,0 +1,26 @@
+# Cross-system few-shot demo: TSPN-style (v0.1.0 draft)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_cross_system_fewshot_tspn"
+  seed: 0
+  output_dir: "results/demo/cross_system_fewshot_tspn"
+  notes: "Cross-system few-shot TSPN demo."
+
+data: {}
+
+task:
+  # 使用 GFS 任务，选择两个典型系统做跨系统 few-shot 示例
+  target_system_id: [1, 6]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 1

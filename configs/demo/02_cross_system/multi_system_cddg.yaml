@@ -1,0 +1,19 @@
+# Cross-system CDDG demo: multi-system generalization (v0.1.0 draft)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_multi_system_cddg"
+  seed: 42
+  output_dir: "results/demo/multi_system_cddg"
+  notes: "Multi-system CDDG demo."
+
+task:
+  target_system_id: [1]

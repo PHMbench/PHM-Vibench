@@ -564,6 +564,10 @@ trainer:      # Trainer configuration
 <details>
 <summary><b>👉 Task Configuration Parameters (Task)</b></summary>
 
+Task selection in PHM-Vibench is driven by the combination of `task.type` and `task.name` in the config.  
+For example, `task.type: "DG"` + `task.name: "classification"` will load the single-dataset DG classification task from `src/task_factory/task/DG/classification.py`, while ID-based and multi-task variants live under `task/ID` and `task/MT`.  
+For a more detailed mapping table and examples, see `src/task_factory/readme.md`.
+
 <table>
   <tr>
     <th>No.</th>
@@ -950,9 +954,18 @@ python scripts/export_latex.py --result_dir results/experiment_name
 │   │       └── 📂 task_head     # Task heads
 │   ├── 📂 task_factory          # Task factory
 │   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_task.py      # Task base class
-│   │   ├── 📄 task_factory.py   # Task factory class
-│   │   └── 📂 tasks             # Specific task implementations
+│   │   ├── 📄 Default_task.py   # Default Lightning task wrapper/base
+│   │   ├── 📄 task_factory.py   # Task factory and dynamic loader
+│   │   ├── 📂 Components        # Shared task components (losses, metrics, flows)
+│   │   ├── 📂 task              # Concrete task implementations
+│   │   │   ├── 📂 DG            # Single-dataset domain generalization tasks
+│   │   │   ├── 📂 CDDG          # Cross-dataset domain generalization tasks
+│   │   │   ├── 📂 pretrain      # Pretraining tasks (e.g., masked reconstruction)
+│   │   │   ├── 📂 FS            # Few-shot tasks
+│   │   │   ├── 📂 GFS           # Generalized few-shot tasks
+│   │   │   ├── 📂 ID            # ID-based tasks (e.g., ID_task)
+│   │   │   └── 📂 MT            # Multi-task Lightning modules
+│   │   └── 📂 utils             # Task-level utilities
 │   ├── 📂 trainer_factory       # Trainer factory
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 base_trainer.py   # Trainer base class
