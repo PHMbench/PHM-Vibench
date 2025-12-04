@@ -1,0 +1,273 @@
+# 论文实验第2部分：少样本学习 - 微调阶段
+# 对应论文表2：HSE-Prompt少样本学习微调阶段配置
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "Paper_Table2_FewShot"
+  seed: 42
+  output_dir: "results/paper/table2_fewshot_finetune"
+  notes: "论文表2：HSE-Prompt少样本学习微调阶段"
+  iterations: 5  # 微调阶段使用更多随机种子确保统计显著性
+
+# 数据配置 - 目标域少样本数据
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 16  # 少样本使用较小批次
+  num_workers: 4
+  train_ratio: 0.6  # 少样本场景下调整比例
+  val_ratio: 0.2
+  test_ratio: 0.2
+  normalization: true
+  window_size: 4096
+  stride: 64
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - HSE-Prompt微调
+model:
+  name: "M_02_ISFM_Prompt_Simplified"
+  type: "M_02_ISFM_Prompt"
+
+  # HSE嵌入配置 - 与预训练保持一致
+  embedding: "HSE_prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+
+  # 简化提示配置
+  use_prompt: true
+  prompt_dim: 64
+  max_dataset_ids: 30
+  prompt_combination: "add"
+
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"
+
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+
+  # 微调阶段配置
+  training_stage: "finetune"
+  freeze_prompt: false  # 不冻结提示，允许目标域适应
+
+  # 预训练权重路径 - 将在运行时动态设置
+  # weights_path: "path/to/pretrained/checkpoint.ckpt"
+
+# 任务配置 - 少样本微调
+task:
+  name: "fewshot_finetune"
+  type: "FS"  # Few-shot learning
+  task_type: "classification"
+
+  # 少样本设置
+  target_domain_num: 1
+  fewshot_shots: [1, 2, 5, 10]  # 微调样本数
+
+  # 损失函数和评估指标
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+
+  # 微调超参数
+  optimizer: "adamw"
+  learning_rate: 1e-3  # 微调使用较大学习率
+  weight_decay: 1e-5   # 较小的权重衰减
+  batch_size: 16
+  epochs: 100  # 微调较少轮数防止过拟合
+
+  # 学习率调度
+  scheduler: "step"
+  step_size: 30
+  gamma: 0.5
+
+  # 早停
+  early_stopping: true
+  patience: 20
+  monitor: "val_accuracy"
+  mode: "max"
+
+  # 少样本特定设置
+  fewshot_sampling: "stratified"  # 分层采样
+  support_set_size: "variable"    # 可变支持集大小
+  query_set_size: "remaining"     # 剩余样本作为查询集
+
+# 训练器配置
+trainer:
+  name: "T_01_Lightning"
+
+  # 微调参数
+  epochs: 100
+  learning_rate: 1e-3
+  weight_decay: 1e-5
+  optimizer: "adamw"
+  scheduler: "step"
+  step_size: 30
+  gamma: 0.5
+
+  # 早停配置
+  early_stopping:
+    patience: 20
+    monitor: "val_accuracy"
+    mode: "max"
+
+  # 检查点
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 3
+    filename: "finetune-{epoch:02d}-{val_accuracy:.3f}"
+
+  # 日志记录
+  logger: "tensorboard"
+  log_every_n_steps: 5
+
+  # 硬件配置
+  accelerator: "auto"
+  precision: 16
+  devices: 1
+  gradient_clip_val: 0.5  # 微调阶段使用较小梯度裁剪
+
+# 输出配置
+output:
+  save_dir: "save/paper/table2_fewshot_finetune"
+  log_dir: "logs/paper/table2_fewshot_finetune"
+  checkpoint_dir: "checkpoints/paper/table2_fewshot_finetune"
+  results_dir: "results/paper/table2_fewshot_finetune"
+
+# 实验配置
+experiment:
+  name: "table2_fewshot_finetune"
+  description: "论文表2：HSE-Prompt少样本学习微调阶段"
+  tags: ["paper", "table2", "fewshot", "finetune", "hse_prompt"]
+
+  # 实验组合
+  pretrain_shots: [1, 2, 5, 10, "all"]
+  finetune_shots: [1, 2, 5, 10]
+  target_domains: ["CWRU", "Ottawa-19", "Ottawa-23", "THU-2", "HUST"]
+  metrics: ["Accuracy", "F1-Score", "Generalization_Gap"]
+
+  # 统计分析
+  statistics:
+    num_seeds: 5
+    confidence_level: 0.95
+    report_mean_std: true
+    statistical_test: "wilcoxon"
+
+  # 实验组合数量
+  total_experiments: 125  # 5(pretrain) × 5(finetune) × 5(targets)
+
+# 少样本实验矩阵
+fewshot_matrix:
+  # 行：预训练样本数，列：微调样本数
+  # 每个单元格需要在5个目标域上测试
+  combinations:
+    - pretrain_shots: 1
+      finetune_shots: [1, 2, 5, 10]
+    - pretrain_shots: 2
+      finetune_shots: [1, 2, 5, 10]
+    - pretrain_shots: 5
+      finetune_shots: [1, 2, 5, 10]
+    - pretrain_shots: 10
+      finetune_shots: [1, 2, 5, 10]
+    - pretrain_shots: "all"
+      finetune_shots: [1, 2, 5, 10]
+
+# 目标域配置
+target_domain_configs:
+  CWRU:
+    target_system_id: [1]
+    source_pretrain_domains: [5, 6, 13, 14, 19]
+    num_classes: 10
+    fewshot_shots: [1, 2, 5, 10]
+
+  Ottawa-19:
+    target_system_id: [5]
+    source_pretrain_domains: [1, 6, 13, 14, 19]
+    num_classes: 5
+    fewshot_shots: [1, 2, 5, 10]
+
+  Ottawa-23:
+    target_system_id: [6]
+    source_pretrain_domains: [1, 5, 13, 14, 19]
+    num_classes: 3
+    fewshot_shots: [1, 2, 5, 10]
+
+  THU-2:
+    target_system_id: [13]
+    source_pretrain_domains: [1, 5, 6, 14, 19]
+    num_classes: 8
+    fewshot_shots: [1, 2, 5, 10]
+
+  HUST:
+    target_system_id: [19]
+    source_pretrain_domains: [1, 5, 6, 13, 14]
+    num_classes: 7
+    fewshot_shots: [1, 2, 5, 10]
+
+# 微调策略
+finetune_strategies:
+  # 全参数微调
+  full_finetune:
+    freeze_backbone: false
+    freeze_prompt: false
+    freeze_embedding: false
+
+  # 冻结骨干网络，仅微调提示和分类头
+  prompt_only_finetune:
+    freeze_backbone: true
+    freeze_prompt: false
+    freeze_embedding: false
+
+  # 线性探测，仅微调分类头
+  linear_probe:
+    freeze_backbone: true
+    freeze_prompt: true
+    freeze_embedding: true
+
+# 默认微调策略
+default_strategy: "full_finetune"
+
+# 可重现性配置
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# 实验说明
+experiment_notes: |
+  ## 少样本学习微调阶段实验说明
+
+  ### 实验目标
+  评估HSE-Prompt在不同少样本设置下的微调性能
+
+  ### 实验设计
+  1. **预训练-微调组合**：
+     - 5种预训练样本数：[1, 2, 5, 10, all]
+     - 4种微调样本数：[1, 2, 5, 10]
+     - 5个目标域：CWRU, Ottawa-19, Ottawa-23, THU-2, HUST
+     - 总计125种实验组合
+
+  2. **评估指标**：
+     - 少样本准确率
+     - F1-Score
+     - 泛化差距（与全量数据的性能差异）
+
+  3. **统计分析**：
+     - 5个随机种子
+     - 报告均值±标准差
+     - Wilcoxon符号秩检验
+
+  ### 预期结果
+  - 预训练样本数越多，微调性能越好
+  - 微调样本数增加带来边际效益递减
+  - HSE-Prompt在极端少样本（1-2样本）场景下表现优异
+
+  ### 使用方法
+  1. 首先运行Table2_FewShot_Pretrain获得预训练模型
+  2. 使用预训练权重初始化模型
+  3. 运行本配置文件进行少样本微调
+  4. 汇总所有组合的结果形成论文表2

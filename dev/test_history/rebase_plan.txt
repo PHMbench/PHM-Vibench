@@ -1,0 +1,50 @@
+# HSE提交整理计划
+#
+# 目标：将17个提交整理为7个清晰的提交
+# - 3个HSE功能提交（合并后）
+# - 4个Claude工具提交（保持独立）
+
+# 当前提交顺序（从新到旧）：
+# 9f941ee feat(validation): Implement OneEpochValidator for comprehensive 1-epoch training validation
+# 33fccad Add MetricsMarkdownReporter and SystemMetricsTracker for comprehensive metrics reporting and tracking
+# c10e3b5 🤖 [Claude] docs: Update claude_auto_commit_user_guide.md
+# bca0be7 🤖 [Claude] feat: Update claude_commit.sh
+# 73e5ec6 🤖 [Claude] feat: Update claude_auto_commit.py
+# b330048 🤖 [Claude] chore: Update auto_commit_config.yaml
+# 8201067 feat: Add generated task commands for HSE paper pipeline
+# ec28971 refactor: Simplify HSE specifications for unified metric learning approach
+# df0184c feat: Implement unified metric learning pipeline with complete user guide
+# 4d25a0d Add HSE Paper Pipeline: Implement requirements, design, and tasks for automated experiment execution and analysis
+# 0de238c Add comprehensive performance benchmarking for HSE Prompt components
+# 8a84564 feat: Introduce E_01_HSE_v2 for prompt-guided hierarchical signal embedding
+# 1ca9d7f feat: Implement Two-Stage Training Controller for HSE Prompt-Guided Contrastive Learning
+# deb8971 feat: Add HSE Prompt guided contrastive learning configurations and usage guide
+# 6532f10 feat: Add MomentumEncoder and ProjectionHead for contrastive learning task 1-5
+# bfa05b4 feat: Add templates for product, requirements, structure, tasks, and technology stack
+# 52361f5 feat: 添加HSE异构对比学习详细实施计划
+
+# 合并策略：
+# 组1 - HSE核心功能实现（保留最新的提交信息，其他squash）:
+#   pick 52361f5 feat: 添加HSE异构对比学习详细实施计划
+#   squash bfa05b4 feat: Add templates for product, requirements, structure, tasks, and technology stack
+#   squash 6532f10 feat: Add MomentumEncoder and ProjectionHead for contrastive learning task 1-5
+#   squash deb8971 feat: Add HSE Prompt guided contrastive learning configurations and usage guide
+#   squash 1ca9d7f feat: Implement Two-Stage Training Controller for HSE Prompt-Guided Contrastive Learning
+#   squash 8a84564 feat: Introduce E_01_HSE_v2 for prompt-guided hierarchical signal embedding
+#   squash 0de238c Add comprehensive performance benchmarking for HSE Prompt components
+
+# 组2 - HSE Pipeline和实验框架:
+#   pick 4d25a0d Add HSE Paper Pipeline: Implement requirements, design, and tasks
+#   squash df0184c feat: Implement unified metric learning pipeline with complete user guide
+#   squash ec28971 refactor: Simplify HSE specifications for unified metric learning approach
+#   squash 8201067 feat: Add generated task commands for HSE paper pipeline
+
+# 组3 - Claude工具（保持独立）:
+#   pick b330048 🤖 [Claude] chore: Update auto_commit_config.yaml
+#   pick 73e5ec6 🤖 [Claude] feat: Update claude_auto_commit.py
+#   pick bca0be7 🤖 [Claude] feat: Update claude_commit.sh
+#   pick c10e3b5 🤖 [Claude] docs: Update claude_auto_commit_user_guide.md
+
+# 组4 - 验证和监控工具:
+#   pick 33fccad Add MetricsMarkdownReporter and SystemMetricsTracker
+#   squash 9f941ee feat(validation): Implement OneEpochValidator for comprehensive 1-epoch training validation

@@ -1,0 +1,11 @@
+model:
+  name: "Transformer_Base"
+  type: "Transformer"
+  input_dim: 2
+  num_classes: 4
+  num_heads: 4
+  num_layers: 2
+  d_model: 64
+  d_ff: 128
+  dropout: 0.1
+  activation: "relu"

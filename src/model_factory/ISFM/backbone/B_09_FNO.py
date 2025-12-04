@@ -53,9 +53,13 @@ class B_09_FNO(nn.Module):
         :param n_layers: FNO层的数量
         """
         super(B_09_FNO, self).__init__()
-        self.modes = args.modes
-        self.width = args.width
-        self.n_layers = args.num_layers
+        # 兼容多种配置命名：
+        # - modes / num_modes
+        # - width / d_model
+        # - num_layers
+        self.modes = getattr(args, "modes", getattr(args, "num_modes", 16))
+        self.width = getattr(args, "width", getattr(args, "d_model", 256))
+        self.n_layers = getattr(args, "num_layers", 4)
         self.channels = args.output_dim
 
         # 1. 输入层：将输入通道提升到指定的宽度 (width)

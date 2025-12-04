@@ -1,0 +1,34 @@
+# Two-stage demo: pretrain HSE for CDDG-style unified metric learning (v0.1.0 draft)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_pretrain_hse_cddg"
+  seed: 42
+  output_dir: "results/demo/pretrain_hse_cddg"
+  notes: "Pretrain HSE for CDDG / unified metric learning demo."
+
+data:
+  train_ratio: 0.7
+  stride: 10
+
+# 模型配置全部由 base_configs.model (backbone_dlinear.yaml) 提供
+
+# 作为 CDDG 预训练视角下的 HSE 对比预训练示例，使用 pretrain 任务 + hse_contrastive
+task:
+  name: "hse_contrastive"
+  type: "pretrain"
+  target_system_id: [1]
+  target_domain_num: 1
+  lr: 0.0005
+  weight_decay: 0.0001
+
+trainer:
+  num_epochs: 50

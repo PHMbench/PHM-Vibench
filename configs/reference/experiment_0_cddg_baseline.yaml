@@ -1,0 +1,133 @@
+# Experiment 0 (CDDG view): Independent Dataset Baseline
+# Backbone + Head baseline for individual datasets (Work A · CDDG)
+# 对应原始 unified 配置：configs/experiment_0_backbone_head.yaml
+
+# Environment Configuration
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "experiment_0_cddg_baseline"
+  seed: 42
+  output_dir: "paper/2025-10_foundation_model_0_metric/results/cddg/exp0_baseline"
+  notes: "Experiment 0 (CDDG): Independent dataset training (Backbone+Head baseline)"
+  iterations: 1
+
+# Data Configuration
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
+  batch_size: 256
+  num_workers: 8
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: "standardization"
+  window_size: 4096
+  stride: 5
+  num_window: 64
+  dtype: "float32"
+  pin_memory: true
+
+# Model Configuration - Simple Backbone+Head (No HSE, No Prompts)
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+
+  # Simple architecture components
+  # 使用 E_03_Patch 作为非 HSE 的 baseline embedding
+  embedding: "E_03_Patch"
+  backbone: "B_01_basic_transformer"   # Simple backbone
+  task_head: "H_01_Linear_cla"
+
+  # Model dimensions
+  input_dim: 2              # 默认通道数，运行时由脚本覆盖
+  d_model: 256
+  output_dim: 128
+
+  # Simple transformer configuration
+  num_heads: 4
+  num_layers: 2
+  e_layers: 2
+  d_ff: 256
+  dropout: 0.1
+  activation: "relu"
+
+  # Patch configuration
+  patch_size_L: 128
+  patch_size_C: 1
+  num_patches: 32
+
+  # Disable all advanced features
+  use_prompt: false
+  prompt_dim: 0
+
+# Task Configuration - Standard CDDG Classification
+task:
+  name: "classification"
+  type: "CDDG"
+
+  # 单数据集训练（run_experiment0.sh 中按数据集覆盖）
+  target_system_id: [1]
+  target_domain_num: 1
+
+  # Standard classification
+  contrast_loss: "CE"
+  contrast_weight: 0.0
+  temperature: 0.07
+  use_momentum: false
+  momentum: 0.999
+  projection_dim: 64
+
+  # Training hyperparameters
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  early_stopping: true
+  es_patience: 10
+
+  # Few-shot 配置保持开启，但训练形式仍是 CDDG
+  few_shot:
+    enabled: true
+    shots: [5]
+    samples_per_class: [5]
+    support_query_split: 0.5
+
+# Trainer Configuration
+trainer:
+  name: "Default_trainer"
+
+  # Required for ModelCheckpoint callback
+  monitor: "val_loss"
+
+  # PyTorch Lightning standard attributes
+  max_epochs: 100
+  devices: 1
+  device: "cuda"
+  accelerator: "gpu"
+  precision: 16
+
+  # Training settings
+  auto_select_gpus: true
+  progress_bar_refresh_rate: 20
+  check_val_every_n_epoch: 5
+  deterministic: true
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+
+  # Logging and saving
+  use_wandb: true
+  save_checkpoints: true
+  log_every_n_steps: 10
+  save_dir: "results/experiment_0_backbone_head"
+
+  # Early stopping
+  early_stopping: true
+  patience: 10
+
+  # Experiment settings
+  wandb: false
+
+# Pipeline Configuration - Single Stage Training
+pipeline:
+  name: "Pipeline_01_default"

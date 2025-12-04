@@ -1,0 +1,22 @@
+# Cross-domain DG demo: CWRU → Ottawa (v0.1.0 draft)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_cwru_to_ottawa_dg"
+  seed: 42
+  output_dir: "results/demo/cwru_to_ottawa_dg"
+  notes: "CWRU→Ottawa cross-domain DG demo."
+
+task:
+  # 仍需指定 target_system_id 以兼容当前 data_factory 的 search_dataset_id 逻辑
+  target_system_id: [1]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]

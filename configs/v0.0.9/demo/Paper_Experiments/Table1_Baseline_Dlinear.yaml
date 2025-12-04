@@ -1,0 +1,158 @@
+# 论文实验第1部分：基线方法 - Dlinear（无HSE-Prompt）
+# 用于对比的纯Dlinear方法配置，作为表1的基线
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "Paper_Table1_Baselines"
+  seed: 42
+  output_dir: "results/paper/table1_baselines"
+  notes: "论文表1基线方法：纯Dlinear跨机械设备故障诊断"
+  iterations: 5
+
+# 数据配置 - 与HSE-Prompt相同
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: true
+  window_size: 4096
+  stride: 64
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - 纯Dlinear基线
+model:
+  name: "Dlinear_Baseline"
+  type: "M_01_ISFM"  # 使用标准ISFM框架
+
+  # 标准嵌入配置（无HSE，无Prompt）
+  embedding: "E_01_HSE"  # 仅使用标准HSE，无提示
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+
+  # 无提示配置
+  use_prompt: false
+
+  # 骨干网络配置 - 使用Dlinear
+  backbone: "B_04_Dlinear"
+
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+
+# 任务配置 - 与HSE-Prompt相同
+task:
+  name: "cross_machinery_classification"
+  type: "CDDG"
+  task_type: "classification"
+  target_domain_num: 1
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+  optimizer: "adamw"
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  batch_size: 32
+  epochs: 100
+  scheduler: "cosine"
+  warmup_epochs: 10
+  early_stopping: true
+  patience: 15
+  monitor: "val_accuracy"
+  mode: "max"
+
+# 训练器配置
+trainer:
+  name: "T_01_Lightning"
+  epochs: 100
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  optimizer: "adamw"
+  scheduler: "cosine"
+  early_stopping:
+    patience: 15
+    monitor: "val_accuracy"
+    mode: "max"
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 3
+    filename: "dlinear_baseline-{epoch:02d}-{val_accuracy:.3f}"
+  logger: "tensorboard"
+  log_every_n_steps: 10
+  accelerator: "auto"
+  precision: 16
+  devices: 1
+
+# 输出配置
+output:
+  save_dir: "save/paper/table1_dlinear_baseline"
+  log_dir: "logs/paper/table1_dlinear_baseline"
+  checkpoint_dir: "checkpoints/paper/table1_dlinear_baseline"
+  results_dir: "results/paper/table1_dlinear_baseline"
+
+# 实验配置
+experiment:
+  name: "table1_dlinear_baseline"
+  description: "论文表1基线方法：纯Dlinear跨机械设备故障诊断"
+  tags: ["paper", "table1", "baseline", "dlinear", "cross_machinery"]
+  method: "Dlinear"
+  datasets: ["CWRU", "Ottawa-19", "Ottawa-23", "THU-2", "HUST"]
+  metrics: ["Accuracy", "F1-Score", "Precision", "Recall"]
+  statistics:
+    num_seeds: 5
+    confidence_level: 0.95
+    report_mean_std: true
+    statistical_test: "wilcoxon"
+
+# 数据集配置 - 与HSE-Prompt相同
+dataset_configs:
+  CWRU:
+    target_system_id: [1]
+    source_domain_id: [5, 6, 13, 14, 19]
+    num_classes: 10
+  Ottawa-19:
+    target_system_id: [5]
+    source_domain_id: [1, 6, 13, 14, 19]
+    num_classes: 5
+  Ottawa-23:
+    target_system_id: [6]
+    source_domain_id: [1, 5, 13, 14, 19]
+    num_classes: 3
+  THU-2:
+    target_system_id: [13]
+    source_domain_id: [1, 5, 6, 14, 19]
+    num_classes: 8
+  HUST:
+    target_system_id: [19]
+    source_domain_id: [1, 5, 6, 13, 14]
+    num_classes: 7
+
+# 可重现性配置
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# 实验说明
+experiment_notes: |
+  ## Dlinear基线方法实验说明
+
+  ### 方法特点
+  - 基于Dlinear架构的标准方法
+  - 无HSE嵌入优化
+  - 无Prompt机制
+  - 与HSE-Prompt相同的训练设置确保公平对比
+
+  ### 实验目的
+  作为论文表1的基线方法，验证HSE-Prompt优化策略相对于标准Dlinear方法的性能提升
+
+  ### 预期结果
+  作为性能基准，HSE-Prompt应显著优于此基线方法

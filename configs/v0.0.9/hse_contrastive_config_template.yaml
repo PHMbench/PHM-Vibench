@@ -1,0 +1,219 @@
+# HSE Contrastive Learning Configuration Template
+# ===============================================
+# Simplified configuration for effective HSE contrastive learning
+#
+# This template provides a clean, manageable starting point for HSE contrastive
+# experiments while maintaining the advanced features implemented in the system.
+#
+
+# Basic HSE Contrastive Learning Configuration
+hse_contrastive_basic:
+  description: "Basic HSE contrastive learning with InfoNCE"
+
+  # Model Configuration (using ISFM with prompt support)
+  model:
+    name: "M_02_ISFM_Prompt"
+    type: "ISFM_Prompt"
+    embedding: "E_01_HSE_v2"
+    backbone: "B_08_PatchTST"
+    task_head: "H_01_Linear_cla"
+    training_stage: "pretrain"  # Options: "pretrain", "finetune"
+    freeze_prompt: false
+
+  # Task Configuration
+  task:
+    name: "hse_contrastive"
+    type: "CDDG"
+
+    # Primary loss function (classification)
+    loss_fn: "CE"
+
+    # HSE Contrastive Learning Settings
+    contrast_weight: 0.15  # Weight for contrastive loss (0.0 to 1.0)
+
+    # Contrastive Strategy (Simple Configuration)
+    contrastive_strategy:
+      type: "single"  # Options: "single", "ensemble"
+      loss_type: "INFONCE"  # Options: "INFONCE", "SUPCON", "TRIPLET"
+      temperature: 0.07
+      prompt_fusion: "attention"  # Options: "add", "concat", "attention", "gate"
+      prompt_weight: 0.1
+
+      # System-aware sampling (simplified)
+      use_system_sampling: true
+      enable_cross_system_contrast: true
+
+    # Target datasets for cross-domain generalization
+    target_system_id: [1, 2, 6, 5, 12]  # CWRU, XJTU, THU, Ottawa, JNU
+
+  # Trainer Configuration
+  trainer:
+    max_epochs: 100
+    batch_size: 64
+    learning_rate: 0.001
+    optimizer: "adamw"
+    scheduler: "cosine"
+
+    # Early stopping for training efficiency
+    early_stopping:
+      patience: 15
+      monitor: "val_loss"
+      mode: "min"
+
+  # Data Configuration
+  data:
+    # Standard data processing settings
+    normalization: true
+    augmentation: true
+
+    # HSE-specific data settings
+    enable_system_metadata: true
+    prompt_integration: true
+
+---
+
+# Advanced HSE Contrastive Learning Configuration
+hse_contrastive_advanced:
+  description: "Advanced HSE contrastive learning with ensemble losses"
+
+  # Model Configuration
+  model:
+    name: "M_02_ISFM_Prompt"
+    type: "ISFM_Prompt"
+    embedding: "E_01_HSE_v2"
+    backbone: "B_08_PatchTST"
+    task_head: "H_01_Linear_cla"
+    training_stage: "pretrain"
+    freeze_prompt: false
+
+  # Task Configuration
+  task:
+    name: "hse_contrastive"
+    type: "CDDG"
+    loss_fn: "CE"
+    contrast_weight: 0.2  # Higher weight for advanced contrastive learning
+
+    # Ensemble Contrastive Strategy
+    contrastive_strategy:
+      type: "ensemble"
+      auto_normalize_weights: true
+
+      # Multiple loss functions for robustness
+      losses:
+        - name: "INFONCE"
+          weight: 0.5
+          temperature: 0.07
+          prompt_fusion: "attention"
+
+        - name: "SUPCON"
+          weight: 0.3
+          temperature: 0.05
+          prompt_fusion: "gate"
+
+        - name: "TRIPLET"
+          weight: 0.2
+          margin: 0.3
+          prompt_fusion: "add"
+
+      # Advanced system-aware sampling
+      use_system_sampling: true
+      enable_cross_system_contrast: true
+      system_sampling_strategy: "hard_negative"  # Options: "balanced", "hard_negative", "progressive_mixing"
+      adaptive_temperature: true
+      mixing_ratio: 0.3
+
+    target_system_id: [1, 2, 6, 5, 12]
+
+  # Trainer Configuration (same as basic)
+  trainer:
+    max_epochs: 100
+    batch_size: 64
+    learning_rate: 0.001
+    optimizer: "adamw"
+    scheduler: "cosine"
+    early_stopping:
+      patience: 15
+      monitor: "val_loss"
+      mode: "min"
+
+  # Data Configuration
+  data:
+    normalization: true
+    augmentation: true
+    enable_system_metadata: true
+    prompt_integration: true
+
+---
+
+# Few-shot Learning Configuration
+hse_contrastive_fewshot:
+  description: "HSE contrastive learning for few-shot adaptation"
+
+  model:
+    name: "M_02_ISFM_Prompt"
+    type: "ISFM_Prompt"
+    embedding: "E_01_HSE_v2"
+    backbone: "B_08_PatchTST"
+    task_head: "H_01_Linear_cla"
+    training_stage: "finetune"  # Finetune stage for few-shot
+    freeze_prompt: true  # Freeze prompts for few-shot stability
+
+  task:
+    name: "hse_contrastive"
+    type: "GFS"  # Generalized Few-Shot
+    loss_fn: "CE"
+    contrast_weight: 0.1  # Lower weight for few-shot stability
+
+    contrastive_strategy:
+      type: "single"
+      loss_type: "SUPCON"  # SupCon works well for few-shot
+      temperature: 0.05
+      prompt_fusion: "gate"  # Gated fusion for stability
+      prompt_weight: 0.05
+
+      # Conservative sampling for few-shot
+      use_system_sampling: true
+      enable_cross_system_contrast: false  # Disable for few-shot stability
+      system_sampling_strategy: "balanced"
+
+    # Few-shot specific settings
+    target_system_id: [1, 2, 6, 5, 12]
+    num_support_shots: 5
+    num_query_shots: 10
+
+  trainer:
+    max_epochs: 50  # Fewer epochs for few-shot
+    batch_size: 16   # Smaller batch for few-shot
+    learning_rate: 0.0005  # Lower learning rate for finetuning
+    optimizer: "adamw"
+    scheduler: "step"
+    early_stopping:
+      patience: 10
+      monitor: "val_accuracy"
+      mode: "max"
+
+  data:
+    normalization: true
+    augmentation: false  # Disable augmentation for few-shot stability
+    enable_system_metadata: true
+    prompt_integration: true
+
+---
+
+# Usage Examples:
+#
+# 1. Basic HSE Contrastive Learning:
+#    python main.py --config configs/hse_contrastive/hse_contrastive_basic.yaml
+#
+# 2. Advanced Ensemble Learning:
+#    python main.py --config configs/hse_contrastive/hse_contrastive_advanced.yaml
+#
+# 3. Few-shot Adaptation:
+#    python main.py --config configs/hse_contrastive/hse_contrastive_fewshot.yaml
+#
+# 4. Custom Configuration:
+#    # Copy basic config and modify:
+#    # - contrast_weight: Adjust contrastive learning influence
+#    # - prompt_fusion: Try different fusion strategies
+#    # - system_sampling_strategy: Experiment with sampling methods
+#    # - temperature: Fine-tune contrastive learning sharpness

@@ -1,0 +1,91 @@
+# PHM-Vibench 快速开始配置模板
+# 由 Config Manager Skill 自动生成
+
+# 数据配置
+data:
+  # 目标数据集系统ID
+  # 1: CWRU, 2: XJTU, 5: Ottawa, 6: THU, 12: JNU
+  target_system_id: [1, 2]
+
+  # 数据预处理参数
+  preprocessing:
+    normalize: true
+    segment_length: 1024
+    overlap: 0.5
+
+# 模型配置
+model:
+  # 模型名称 (M_01_ISFM)
+  name: "M_01_ISFM"
+
+  # 信号嵌入层 (E_01_HSE)
+  embedding: "E_01_HSE"
+
+  # 骨干网络 (B_04_Dlinear)
+  backbone: "B_04_Dlinear"
+
+  # 任务头 (H_01_Linear_cla)
+  task_head: "H_01_Linear_cla"
+
+  # 模型参数
+  d_model: 128
+  n_layers: 3
+  n_heads: 8
+
+# 任务配置
+task:
+  # 任务名称
+  name: "classification"
+
+  # 任务类型
+  type: "classification"
+
+  # 训练参数
+  lr: 0.001
+  batch_size: 64
+  max_epochs: 100
+
+  # 优化器配置
+  optimizer:
+    type: "Adam"
+    weight_decay: 0.0001
+
+  # 学习率调度器
+  scheduler:
+    type: "StepLR"
+    step_size: 30
+    gamma: 0.1
+
+# 训练器配置
+trainer:
+  # 训练器名称
+  name: "default_trainer"
+
+  # 硬件配置
+  gpu_ids: [0]
+  accelerator: "gpu"
+
+  # 训练设置
+  precision: 16
+  gradient_clip_val: 1.0
+
+  # 验证设置
+  check_val_every_n_epoch: 10
+
+  # 早停设置
+  early_stopping:
+    monitor: "val_accuracy"
+    patience: 20
+    mode: "max"
+
+# 输出配置
+save:
+  # 保存目录
+  save_dir: "save"
+
+  # 实验信息
+  experiment_name: "quickstart_experiment"
+
+  # 保存检查点
+  save_top_k: 3
+  monitor: "val_accuracy"

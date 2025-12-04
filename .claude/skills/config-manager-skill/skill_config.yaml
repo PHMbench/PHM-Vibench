@@ -1,0 +1,290 @@
+# PHM-Vibench Config Manager Skill 配置文件
+
+skill_info:
+  name: "config-manager-skill"
+  version: "1.0.0"
+  description: "PHM-Vibench v5.0配置管理核心Skill"
+  author: "PHM-Vibench Team"
+  created_date: "2025-01-13"
+
+# 功能模块配置
+modules:
+  vbench_validator:
+    enabled: true
+    strict_mode: true  # 严格验证Vbench标准
+
+  config_generator:
+    enabled: true
+    template_dir: "resources/templates"
+    output_dir: "generated_configs"
+
+  naming_checker:
+    enabled: true
+    auto_fix: true  # 自动修复命名错误
+
+  paper_experiments:
+    enabled: true
+    tables: [1, 2, 3, 4]  # 支持的论文表格
+
+  chinese_interface:
+    enabled: true
+    natural_language_processing: true
+
+# Vbench标准组件映射
+vbench_components:
+  embeddings:
+    standard:
+      - "E_01_HSE"           # 标准HSE嵌入
+      - "E_01_HSE_v2"        # ISFM_Prompt版本
+      - "E_02_Wavelet"       # 小波变换嵌入
+      - "E_03_Fourier"       # 傅里叶变换嵌入
+    legacy_mapping:          # 旧名称映射到标准名称
+      "HSE_Prompt": "E_01_HSE_v2"
+      "HSE": "E_01_HSE"
+      "Wavelet": "E_02_Wavelet"
+
+  backbones:
+    standard:
+      - "B_01_ResNet"        # ResNet骨干网络
+      - "B_02_CNN"           # CNN骨干网络
+      - "B_03_Transformer"   # Transformer骨干网络
+      - "B_04_Dlinear"       # 直接线性网络
+      - "B_05_LSTM"          # LSTM网络
+      - "B_06_TimesNet"      # TimesNet
+      - "B_07_Inception"     # Inception网络
+      - "B_08_PatchTST"      # Patch TST
+      - "B_09_FNO"           # 傅里叶神经算子
+      - "B_10_TCN"           # 时间卷积网络
+    legacy_mapping:
+      "Dlinear": "B_04_Dlinear"
+      "TimesNet": "B_06_TimesNet"
+      "PatchTST": "B_08_PatchTST"
+      "FNO": "B_09_FNO"
+
+  task_heads:
+    standard:
+      - "H_01_Linear_cla"    # 线性分类头
+      - "H_02_distance_cla"  # 距离分类头
+      - "H_03_Linear_pred"   # 线性预测头
+      - "H_04_MLP_cla"       # MLP分类头
+      - "H_05_Attention_cla" # 注意力分类头
+      - "H_06_RNN_pred"      # RNN预测头
+      - "H_07_CNN_pred"      # CNN预测头
+      - "H_08_Transformer_pred" # Transformer预测头
+      - "H_09_multiple_task" # 多任务头
+      - "H_10_adaptive_cla"  # 自适应分类头
+    legacy_mapping:
+      "Linear_cla": "H_01_Linear_cla"
+      "distance_cla": "H_02_distance_cla"
+      "Linear_pred": "H_03_Linear_pred"
+
+  models:
+    standard:
+      - "M_01_ISFM"          # 基础ISFM模型
+      - "M_02_ISFM_Prompt"   # ISFM with Prompt
+      - "M_03_ISFM_v2"       # ISFM v2版本
+      - "M_04_Transformer"   # Transformer模型
+      - "M_05_CNN"           # CNN模型
+      - "M_06_RNN"           # RNN模型
+    legacy_mapping:
+      "ISFM_Prompt": "M_02_ISFM_Prompt"
+      "ISFM": "M_01_ISFM"
+
+# 数据集系统ID映射
+dataset_mapping:
+  system_ids:
+    1: "CWRU"               # Case Western Reserve University
+    2: "XJTU"               # Xi'an Jiaotong University
+    3: "FEMTO"              # FEMTO-ST
+    4: "MFT"                # MFPT
+    5: "Ottawa"             # University of Ottawa
+    6: "THU"                # Tsinghua University
+    7: "HUST"               # Huazhong University of Science and Technology
+    8: "SEU"                # Southeast University
+    9: "NUAA"               # Nanjing University of Aeronautics and Astronautics
+    10: "SJTU"              # Shanghai Jiao Tong University
+    11: "MIT"               # Massachusetts Institute of Technology
+    12: "JNU"               # Jinan University
+
+# 预设配置模板
+preset_configs:
+  quickstart:
+    description: "快速开始实验配置"
+    model:
+      name: "M_01_ISFM"
+      embedding: "E_01_HSE"
+      backbone: "B_04_Dlinear"
+      task_head: "H_01_Linear_cla"
+    task:
+      name: "classification"
+      lr: 0.001
+      batch_size: 64
+
+  isfm:
+    description: "ISFM基础模型配置"
+    model:
+      name: "M_01_ISFM"
+      embedding: "E_01_HSE"
+      backbone: "B_08_PatchTST"
+      task_head: "H_01_Linear_cla"
+    task:
+      name: "classification"
+      lr: 0.0001
+      batch_size: 32
+
+  gfs:
+    description: "广义少样本学习配置"
+    model:
+      name: "M_02_ISFM_Prompt"
+      embedding: "E_01_HSE_v2"
+      backbone: "B_08_PatchTST"
+      task_head: "H_02_distance_cla"
+    task:
+      name: "generalized_few_shot"
+      lr: 0.0001
+      batch_size: 16
+
+  hse_prompt:
+    description: "HSE-Prompt实验配置"
+    model:
+      name: "M_02_ISFM_Prompt"
+      embedding: "E_01_HSE_v2"
+      backbone: "B_08_PatchTST"
+      task_head: "H_02_distance_cla"
+    task:
+      name: "hse_contrastive"
+      lr: 0.001
+      batch_size: 64
+    data:
+      target_system_id: [1, 2, 6, 5, 12]  # 标准跨域数据集
+
+  baseline:
+    description: "基线实验配置"
+    model:
+      name: "M_01_ISFM"
+      embedding: "E_01_HSE"
+      backbone: "B_04_Dlinear"
+      task_head: "H_01_Linear_cla"
+    task:
+      name: "classification"
+      lr: 0.001
+      batch_size: 128
+
+# HSE-Prompt特定配置
+hse_prompt_config:
+  performance_targets:
+    cross_domain_accuracy: 0.928  # 92.8%跨域准确率目标
+    few_shot_5shot_accuracy: 0.876  # 87.6% 5-shot准确率目标
+
+  recommended_components:
+    embedding: "E_01_HSE_v2"
+    backbones: ["B_04_Dlinear", "B_06_TimesNet", "B_08_PatchTST", "B_09_FNO"]
+    task_head: "H_02_distance_cla"
+    task_name: "hse_contrastive"
+
+  standard_datasets:
+    target_system_id: [1, 2, 6, 5, 12]  # CWRU, XJTU, THU, Ottawa, JNU
+
+  training_params:
+    lr: 0.001
+    batch_size: 64
+    max_epochs: 100
+    weight_decay: 0.0001
+    scheduler: "cosine"
+
+# 论文实验配置
+paper_experiments:
+  table1_baseline:
+    description: "Table 1: Baseline experiment results"
+    models: ["B_04_Dlinear", "B_06_TimesNet", "B_08_PatchTST", "B_09_FNO"]
+    datasets: ["CWRU", "THU", "Ottawa"]
+    metrics: ["accuracy", "precision", "recall", "f1_score"]
+
+  table2_fewshot:
+    description: "Table 2: Few-shot learning results"
+    shots: [1, 3, 5, 10]
+    target_accuracy: 0.876  # 5-shot目标
+    pretrain_config: "hse_prompt"
+    finetune_config: "few_shot_adaptation"
+
+  table3_robustness:
+    description: "Table 3: Robustness analysis"
+    noise_levels: [0.1, 0.2, 0.3, 0.4]
+    missing_data_rates: [0.1, 0.2, 0.3]
+    evaluation_metrics: ["accuracy_robustness", "performance_degradation"]
+
+  table4_ablation:
+    description: "Table 4: Ablation study"
+    ablation_components: ["HSE", "Prompt", "Fusion", "Contrastive"]
+    baseline: "full_hse_prompt"
+    evaluation_metrics: ["accuracy", "parameter_count", "training_time"]
+
+# 验证规则
+validation_rules:
+  required_fields:
+    - "model.name"
+    - "model.embedding"
+    - "model.backbone"
+    - "model.task_head"
+    - "task.name"
+    - "task.lr"
+    - "task.batch_size"
+
+  naming_conventions:
+    prefix_patterns:
+      embedding: "^E_\\d{2}_"
+      backbone: "^B_\\d{2}_"
+      task_head: "^H_\\d{2}_"
+      model: "^M_\\d{2}_"
+
+  value_constraints:
+    lr:
+      min: 0.00001
+      max: 0.1
+      recommended: [0.0001, 0.001, 0.01]
+    batch_size:
+      min: 1
+      max: 512
+      recommended: [16, 32, 64, 128]
+    max_epochs:
+      min: 1
+      max: 1000
+      recommended: [50, 100, 200]
+
+# 输出配置
+output:
+  config_format: "yaml"
+  include_comments: true
+  validation_report: true
+  auto_backup: true
+
+  file_naming:
+    pattern: "{task_name}_{model_name}_{timestamp}"
+    include_version: false
+    timestamp_format: "%Y%m%d_%H%M%S"
+
+# 错误处理配置
+error_handling:
+  auto_fix_naming: true
+  suggest_alternatives: true
+  validate_before_save: true
+  backup_original_config: true
+
+  common_fixes:
+    - component_naming_standardization
+    - missing_field_completion
+    - value_range_adjustment
+    - dependency_validation
+
+# 性能配置
+performance:
+  cache_templates: true
+  parallel_validation: false  # 配置验证较轻量，不需要并行
+  max_config_size: "10MB"
+
+# 调试配置
+debug:
+  log_level: "INFO"
+  verbose_validation: false
+  save_intermediate_steps: false
+  show_fix_suggestions: true

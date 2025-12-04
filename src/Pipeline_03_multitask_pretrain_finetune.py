@@ -35,7 +35,16 @@ import pytorch_lightning as pl
 
 
 # Import PHM-Vibench framework components
+<<<<<<< HEAD
 from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
+=======
+from src.configs.config_utils import load_config, path_name, transfer_namespace # , merge_with_local_override
+from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
+from src.utils.config.pipeline_adapters import adapt_p03
+import socket
+from pathlib import Path
+from typing import Optional
+>>>>>>> release/v0.1.0
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -61,9 +70,10 @@ class MultiTaskPretrainFinetunePipeline:
     Implements pretraining followed by fine-tuning with backbone architecture comparison.
     """
     
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, local_config: Optional[str] = None):
         """Initialize the pipeline with configuration."""
         self.config_path = config_path
+<<<<<<< HEAD
         
         # 准备配置覆盖参数
         overrides = {}
@@ -72,6 +82,9 @@ class MultiTaskPretrainFinetunePipeline:
             print(f"[INFO] 在Pipeline_03中覆盖配置参数: {overrides}")
         
         self.configs = load_config(config_path, overrides if overrides else None)
+=======
+        self.configs = load_config(config_path, local_config)
+>>>>>>> release/v0.1.0
         self.results = {}
         
         # Extract configuration sections
@@ -529,9 +542,20 @@ def main():
         help='Which stage to run (default: complete)'
     )
     parser.add_argument(
+        '--local_config',
+        type=str,
+        default=None,
+        help='Path to machine-specific override YAML (optional)'
+    )
+    parser.add_argument(
         '--checkpoint_dir',
         type=str,
         help='Directory containing pretrained checkpoints (for finetuning stage only)'
+    )
+    parser.add_argument(
+        '--use_unified',
+        action='store_true',
+        help='Use unified two-stage orchestrator (adapter) instead of legacy pipeline'
     )
 
     args = parser.parse_args()
@@ -541,8 +565,20 @@ def main():
         print(f"❌ Configuration file not found: {args.config_path}")
         sys.exit(1)
 
-    # Initialize pipeline
-    pipeline = MultiTaskPretrainFinetunePipeline(args.config_path)
+    # Optional unified orchestrator path
+    if args.use_unified:
+        try:
+            unified = adapt_p03(args.config_path, local_config=args.local_config)
+            orchestrator = TwoStageOrchestrator(unified)
+            summary = orchestrator.run_complete()
+            print("\nUnified two-stage pipeline completed.")
+            print(summary)
+            return
+        except Exception as e:
+            print(f"[WARN] Unified orchestrator failed, fallback to legacy: {e}")
+
+    # Initialize legacy pipeline
+    pipeline = MultiTaskPretrainFinetunePipeline(args.config_path, local_config=args.local_config)
 
     try:
         if args.stage == 'pretraining':

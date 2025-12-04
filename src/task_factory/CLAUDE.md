@@ -1,6 +1,7 @@
 # Task Factory - CLAUDE.md
 
-This module provides guidance for working with the task factory system in PHM-Vibench, which defines training objectives, loss functions, and evaluation metrics for different industrial fault diagnosis tasks.
+This module provides guidance for working with the task factory system in PHM-Vibench, which defines training objectives, loss functions, and evaluation metrics for different industrial fault diagnosis tasks.  
+**Canonical reference:** see `src/task_factory/readme.md` for the up-to-date task format, configuration fields, and examples; this file is a quick overview that points you there.
 
 ## Architecture Overview
 

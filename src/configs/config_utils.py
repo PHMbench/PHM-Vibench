@@ -25,12 +25,13 @@ import yaml
 # ==================== 预设配置模板映射 ====================
 
 PRESET_TEMPLATES = {
-    'quickstart': 'configs/demo/Single_DG/CWRU.yaml',
-    'basic': 'configs/demo/Single_DG/THU.yaml', 
-    'isfm': 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-    'gfs': 'configs/demo/GFS/GFS_demo.yaml',
-    'pretrain': 'configs/demo/Pretraining/Pretraining_demo.yaml',
-    'id': 'configs/demo/ID/id_demo.yaml'
+    # Legacy v0.0.9 presets (kept for backward compatibility)
+    'quickstart': 'configs/v0.0.9/demo/Single_DG/CWRU.yaml',
+    'basic': 'configs/v0.0.9/demo/Single_DG/THU.yaml',
+    'isfm': 'configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+    'gfs': 'configs/v0.0.9/demo/GFS/GFS_demo.yaml',
+    'pretrain': 'configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml',
+    'id': 'configs/v0.0.9/demo/ID/id_demo.yaml',
 }
 
 
@@ -125,17 +126,57 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
     Returns:
         ConfigWrapper: 统一的配置对象
     """
-    # 步骤1: 将config_source转为ConfigWrapper
-    config = _to_config_wrapper(config_source)
-    
+    # 步骤0：支持 base_configs 的组合加载（仅针对 YAML / 预设）
+    base_merged: Optional[ConfigWrapper] = None
+
+    # 识别是否是预设名或 YAML 路径
+    if isinstance(config_source, (str, Path)):
+        src_str = str(config_source)
+        yaml_path: Optional[Path] = None
+
+        if src_str in PRESET_TEMPLATES:
+            yaml_path = Path(PRESET_TEMPLATES[src_str])
+        elif Path(src_str).exists():
+            yaml_path = Path(src_str)
+
+        if yaml_path is not None and yaml_path.exists():
+            raw_dict = _load_yaml_file(yaml_path)
+            if isinstance(raw_dict, dict) and raw_dict.get("base_configs"):
+                base_cfgs = raw_dict.get("base_configs") or {}
+                if isinstance(base_cfgs, dict):
+                    # 1) 先叠加所有 base yaml（使用 _to_config_wrapper 加载局部配置）
+                    merged = ConfigWrapper()
+                    for _, base_rel in base_cfgs.items():
+                        base_path_str = str(base_rel)
+                        # 约定：以 configs/ 或绝对路径开头的，按仓库根相对/绝对路径解析；
+                        # 否则按当前 YAML 文件所在目录的相对路径解析。
+                        if os.path.isabs(base_path_str) or base_path_str.startswith("configs/"):
+                            base_path = Path(base_path_str)
+                        else:
+                            base_path = yaml_path.parent / base_path_str
+                        merged.update(_to_config_wrapper(base_path))
+
+                    # 2) 当前 YAML 自身作为 override（移除 base_configs 字段）
+                    override_dict = {k: v for k, v in raw_dict.items() if k != "base_configs"}
+                    override_cfg = _to_config_wrapper(override_dict)
+                    merged.update(override_cfg)
+
+                    base_merged = merged
+
+    # 步骤1: 将config_source转为ConfigWrapper（若已通过 base_configs 合并，则直接使用）
+    if base_merged is not None:
+        config = base_merged
+    else:
+        config = _to_config_wrapper(config_source)
+
     # 步骤2: 如果有overrides，也转为ConfigWrapper并合并
     if overrides is not None:
         override_config = _to_config_wrapper(overrides)
         config.update(override_config)
-    
+
     # 步骤3: 验证必需字段
     _validate_config_wrapper(config)
-    
+
     return config
 
 
@@ -170,19 +211,19 @@ def _to_config_wrapper(source: Union[str, Path, Dict, SimpleNamespace]) -> Confi
         
         return dict_to_namespace(expanded_dict)
     
-    # 字符串/路径处理
+    # 字符串/路径处理（不在此处处理 base_configs，统一交给 load_config）
     elif isinstance(source, (str, Path)):
-        source = str(source)
-        
+        source_str = str(source)
+
         # 检查是否为预设
-        if source in PRESET_TEMPLATES:
-            config_dict = _load_yaml_file(PRESET_TEMPLATES[source])
+        if source_str in PRESET_TEMPLATES:
+            config_dict = _load_yaml_file(PRESET_TEMPLATES[source_str])
         # 检查是否为文件
-        elif os.path.exists(source):
-            config_dict = _load_yaml_file(source)
+        elif os.path.exists(source_str):
+            config_dict = _load_yaml_file(source_str)
         else:
-            raise FileNotFoundError(f"配置 {source} 不存在")
-        
+            raise FileNotFoundError(f"配置 {source_str} 不存在")
+
         return dict_to_namespace(config_dict)
     
     else:
@@ -193,22 +234,22 @@ def _to_config_wrapper(source: Union[str, Path, Dict, SimpleNamespace]) -> Confi
 
 def _load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
     """从YAML文件加载配置字典"""
-    
+
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             config_dict = yaml.safe_load(f)
     except UnicodeDecodeError:
         with open(file_path, 'r', encoding='gb18030', errors='ignore') as f:
             config_dict = yaml.safe_load(f)
-    
+
     return config_dict or {}
 
 def _validate_config_wrapper(config: ConfigWrapper) -> None:
     """验证ConfigWrapper的必需字段
-    
+
     Args:
         config: ConfigWrapper对象
-        
+
     Raises:
         ValueError: 缺少必需字段时
     """
@@ -217,18 +258,142 @@ def _validate_config_wrapper(config: ConfigWrapper) -> None:
         'model': ['name', 'type'],
         'task': ['name', 'type']
     }
-    
+
     for section, fields in required_sections.items():
         if not hasattr(config, section):
             raise ValueError(f"缺少配置节: {section}")
-        
+
         section_obj = getattr(config, section)
         if not isinstance(section_obj, SimpleNamespace):
             continue
-            
+
         for field in fields:
             if not hasattr(section_obj, field):
                 raise ValueError(f"缺少必需字段: {section}.{field}")
+
+    # 扩展验证：对比学习配置验证
+    _validate_contrastive_config(config)
+
+
+def _validate_contrastive_config(config: ConfigWrapper) -> None:
+    """验证对比学习配置的完整性和正确性
+
+    Args:
+        config: ConfigWrapper对象
+
+    Raises:
+        ValueError: 对比学习配置错误时
+    """
+    # 检查是否为对比学习任务
+    if not hasattr(config.task, 'name') or config.task.name != 'hse_contrastive':
+        return
+
+    task = config.task
+
+    # 新格式配置验证 (contrastive_strategy)
+    if hasattr(task, 'contrastive_strategy'):
+        strategy_config = task.contrastive_strategy
+
+        # 验证策略类型
+        if not hasattr(strategy_config, 'type'):
+            raise ValueError("对比学习策略配置缺少 'type' 字段")
+
+        strategy_type = strategy_config.type
+        if strategy_type not in ['single', 'ensemble']:
+            raise ValueError(f"不支持的对比学习策略类型: {strategy_type}")
+
+        # 单策略验证
+        if strategy_type == 'single':
+            if not hasattr(strategy_config, 'loss_type'):
+                raise ValueError("单策略配置缺少 'loss_type' 字段")
+
+            loss_type = strategy_config.loss_type
+            valid_losses = ['INFONCE', 'SUPCON', 'TRIPLET', 'PROTOTYPICAL', 'BARLOWTWINS', 'VICREG']
+            if loss_type not in valid_losses:
+                raise ValueError(f"不支持的对比损失类型: {loss_type}")
+
+            # 验证温度参数 (InfoNCE/SupCon需要)
+            if loss_type in ['INFONCE', 'SUPCON']:
+                if not hasattr(strategy_config, 'temperature'):
+                    raise ValueError(f"{loss_type} 损失需要 'temperature' 参数")
+                temp = strategy_config.temperature
+                if not (0 < temp < 1.0):
+                    raise ValueError(f"温度参数应在(0,1)范围内，当前值: {temp}")
+
+        # 集成策略验证
+        elif strategy_type == 'ensemble':
+            if not hasattr(strategy_config, 'losses'):
+                raise ValueError("集成策略配置缺少 'losses' 列表")
+
+            losses = strategy_config.losses
+            if not isinstance(losses, list) or len(losses) == 0:
+                raise ValueError("集成策略的 'losses' 必须是非空列表")
+
+            # 验证每个损失配置
+            valid_losses = ['INFONCE', 'SUPCON', 'TRIPLET', 'PROTOTYPICAL', 'BARLOWTWINS', 'VICREG']
+            for i, loss_config in enumerate(losses):
+                if not isinstance(loss_config, SimpleNamespace):
+                    raise ValueError(f"损失配置[{i}]应为SimpleNamespace对象")
+
+                if not hasattr(loss_config, 'loss_type'):
+                    raise ValueError(f"损失配置[{i}]缺少 'loss_type' 字段")
+
+                loss_type = loss_config.loss_type
+                if loss_type not in valid_losses:
+                    raise ValueError(f"不支持的对比损失类型[{i}]: {loss_type}")
+
+                # 验证权重
+                if not hasattr(loss_config, 'weight'):
+                    raise ValueError(f"损失配置[{i}]缺少 'weight' 字段")
+
+                weight = loss_config.weight
+                if not (0 < weight <= 1.0):
+                    raise ValueError(f"损失权重[{i}]应在(0,1]范围内，当前值: {weight}")
+
+                # 验证温度参数 (InfoNCE/SupCon需要)
+                if loss_type in ['INFONCE', 'SUPCON']:
+                    if not hasattr(loss_config, 'temperature'):
+                        raise ValueError(f"{loss_type} 损失配置[{i}]需要 'temperature' 参数")
+                    temp = loss_config.temperature
+                    if not (0 < temp < 1.0):
+                        raise ValueError(f"温度参数[{i}]应在(0,1)范围内，当前值: {temp}")
+
+                # 验证margin参数 (Triplet需要)
+                if loss_type == 'TRIPLET':
+                    if not hasattr(loss_config, 'margin'):
+                        raise ValueError(f"Triplet损失配置[{i}]需要 'margin' 参数")
+                    margin = loss_config.margin
+                    if not (0 < margin < 2.0):
+                        raise ValueError(f"Triplet margin[{i}]应在(0,2)范围内，当前值: {margin}")
+
+    # 向后兼容配置验证 (旧格式)
+    else:
+        # 检查旧格式的对比学习参数
+        contrast_loss = getattr(task, 'contrast_loss', None)
+        if contrast_loss:
+            valid_losses = ['INFONCE', 'SUPCON', 'TRIPLET', 'PROTOTYPICAL', 'BARLOWTWINS', 'VICREG']
+            if contrast_loss not in valid_losses:
+                raise ValueError(f"不支持的对比损失类型: {contrast_loss}")
+
+            # 验证温度参数
+            if contrast_loss in ['INFONCE', 'SUPCON']:
+                temperature = getattr(task, 'temperature', None)
+                if temperature is None:
+                    raise ValueError(f"{contrast_loss} 损失需要 'temperature' 参数")
+                if not (0 < temperature < 1.0):
+                    raise ValueError(f"温度参数应在(0,1)范围内，当前值: {temperature}")
+
+    # 验证对比学习权重
+    contrast_weight = getattr(task, 'contrast_weight', None)
+    if contrast_weight is not None:
+        if not (0 < contrast_weight <= 2.0):
+            raise ValueError(f"对比学习权重应在(0,2]范围内，当前值: {contrast_weight}")
+
+    # 验证模型配置中的投影头维度
+    if hasattr(config.model, 'projection_dim'):
+        proj_dim = config.model.projection_dim
+        if not isinstance(proj_dim, int) or proj_dim <= 0:
+            raise ValueError(f"投影头维度必须为正整数，当前值: {proj_dim}")
 
 
 # 旧版 save_config (dict 专用) 已合并到新版通用 save_config，避免重复定义
@@ -259,6 +424,8 @@ def build_experiment_name(configs) -> str:
 def path_name(configs, iteration: int = 0) -> Tuple[str, str]:
     """Generate result directory and experiment name.
 
+    Uses output_dir from config if available, otherwise defaults to 'save'.
+
     Parameters
     ----------
     configs : Dict[str, Any]
@@ -272,7 +439,19 @@ def path_name(configs, iteration: int = 0) -> Tuple[str, str]:
         ``(result_dir, experiment_name)``.
     """
     exp_name = build_experiment_name(configs)
-    result_dir = os.path.join("save", exp_name, f"iter_{iteration}")
+
+    # Check for output_dir in different possible locations
+    base_dir = "save"  # default
+
+    # Try to get output_dir from environment config
+    if 'environment' in configs and 'output_dir' in configs['environment']:
+        base_dir = configs['environment']['output_dir']
+    # Also check top-level output_dir
+    elif 'output_dir' in configs:
+        base_dir = configs['output_dir']
+
+    # Build complete path
+    result_dir = os.path.join(base_dir, exp_name, f"iter_{iteration}")
     makedir(result_dir)
     return result_dir, exp_name
 
@@ -317,6 +496,36 @@ def transfer_namespace(raw_arg_dict: Union[Dict[str, Any], SimpleNamespace, Conf
         return ConfigWrapper(**raw_arg_dict.__dict__)
     # 否则转换为ConfigWrapper
     return ConfigWrapper(**raw_arg_dict)
+
+# ==================== 本机覆盖合并 ====================
+
+def merge_with_local_override(
+    base_config: Union[str, Path, Dict, SimpleNamespace, ConfigWrapper],
+    local_config: Optional[Union[str, Path]] = None,
+) -> ConfigWrapper:
+    """加载基础配置并与本机覆盖YAML合并（方案B）。
+
+    优先顺序：
+    1. 显式 `local_config` 参数（若存在且可读）
+    2. `configs/local/local.yaml`（若存在）
+    3. 仅使用基础配置
+
+    注意：不使用 hostname 或环境变量。
+    """
+    base_cfg = load_config(base_config)
+
+    # 显式覆盖路径优先
+    if local_config is not None:
+        local_path = Path(str(local_config))
+        if local_path.exists():
+            return load_config(base_cfg, local_path)
+
+    # 约定的默认本地覆盖
+    default_local = Path("configs/local/local.yaml")
+    if default_local.exists():
+        return load_config(base_cfg, default_local)
+
+    return base_cfg
 
 # ==================== 配置保存和验证 ====================
 

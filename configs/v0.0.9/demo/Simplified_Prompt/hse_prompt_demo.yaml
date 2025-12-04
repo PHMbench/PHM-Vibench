@@ -1,0 +1,121 @@
+# Simplified HSE_prompt Configuration Demo
+# This configuration demonstrates the simplified prompt-guided industrial signal foundation model
+
+# Environment variables
+environment:
+  WANDB_MODE: "disabled"  # Disable wandb for demo
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+
+# Experiment configuration (top level fields)
+project: "hse_prompt_demo"
+seed: 42
+output_dir: "results/hse_prompt_demo"
+notes: "Simplified HSE with system-specific prompts demo"
+iterations: 1
+
+# Experiment metadata
+experiment:
+  name: "hse_prompt_demo"
+  description: "Simplified HSE with system-specific prompts demo"
+  tags: ["simplified", "prompt", "hse", "demo"]
+
+# Data configuration
+data:
+  dataset_name: "CWRU"
+  data_dir: "data/raw/CWRU"
+  metadata_file: "metadata_CWRU.xlsx"
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+# Model configuration - Simplified
+model:
+  name: "M_02_ISFM_Prompt_Simplified"
+  type: "M_02_ISFM_Prompt"  # Required field for model factory
+
+  # Embedding configuration
+  embedding: "HSE_prompt"
+  patch_size_L: 16
+  patch_size_C: 1
+  num_patches: 64
+  output_dim: 128
+
+  # Simplified prompt configuration
+  use_prompt: true
+  prompt_dim: 64
+  max_dataset_ids: 30
+  prompt_combination: "add"  # Options: "add" or "concat"
+
+  # Backbone configuration
+  backbone: "B_08_PatchTST"
+
+  # Task head configuration
+  task_head: "H_01_Linear_cla"
+
+  # Training stage configuration
+  training_stage: "pretrain"  # Options: "pretrain" or "finetune"
+  freeze_prompt: false
+
+# Task configuration
+task:
+  name: "classification"
+  type: "classification"
+  task_type: "classification"
+  num_classes: 10
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+
+# Training configuration
+trainer:
+  name: "T_01_Lightning"
+
+  # Training parameters
+  epochs: 100
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  optimizer: "adam"
+  scheduler: "cosine"
+
+  # Early stopping
+  early_stopping:
+    patience: 10
+    monitor: "val_accuracy"
+    mode: "max"
+
+  # Checkpointing
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 3
+
+  # Logging
+  logger: "tensorboard"
+  log_every_n_steps: 10
+
+# Hardware configuration
+hardware:
+  device: "auto"  # Options: "auto", "cpu", "cuda"
+  accelerator: "auto"
+  precision: 32  # Options: 16, 32, "mixed"
+
+# Output configuration
+output:
+  save_dir: "save/hse_prompt_demo"
+  log_dir: "logs/hse_prompt_demo"
+  checkpoint_dir: "checkpoints/hse_prompt_demo"
+
+# Reproducibility
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# Simplified configuration notes:
+# 1. Only one prompt component: SimpleSystemPromptEncoder
+# 2. Direct signal + prompt combination (no complex fusion strategies)
+# 3. Simple Dataset_id → learnable prompt mapping
+# 4. No prompt library, selector, or injector components
+# 5. Lightweight and easy to understand

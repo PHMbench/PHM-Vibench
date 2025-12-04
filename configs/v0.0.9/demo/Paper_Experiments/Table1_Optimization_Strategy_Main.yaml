@@ -1,0 +1,216 @@
+# 论文实验第1部分：优化策略效果对比
+# 对应论文表1：HSE-Prompt不同优化策略的跨机械设备故障诊断性能对比
+# 注：统一使用Dlinear作为backbone，重点对比优化策略效果
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "Paper_Table1_Optimization_Strategy"
+  seed: 42
+  output_dir: "results/paper/table1_optimization_strategy"
+  notes: "论文表1：优化策略效果对比，HSE-Prompt不同配置的性能差异"
+  iterations: 5  # 5个随机种子确保统计显著性
+
+# 数据配置 - 使用多个异构数据集
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"  # 包含6个主要数据集的元数据
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: true
+  window_size: 4096
+  stride: 64
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - HSE-Prompt方法
+model:
+  name: "M_02_ISFM_Prompt_Simplified"
+  type: "M_02_ISFM_Prompt"
+
+  # HSE嵌入配置
+  embedding: "HSE_prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+
+  # 简化提示配置
+  use_prompt: true
+  prompt_dim: 64
+  max_dataset_ids: 30
+  prompt_combination: "add"  # 简化加法融合
+
+  # 骨干网络配置 - 统一使用Dlinear
+  backbone: "B_04_Dlinear"
+
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+
+  # 训练阶段
+  training_stage: "finetune"  # 微调阶段
+  freeze_prompt: false
+
+# 任务配置 - 跨数据集域泛化
+task:
+  name: "cross_machinery_classification"
+  type: "CDDG"  # Cross-Dataset Domain Generalization
+  task_type: "classification"
+
+  # 跨设备设置 - 每个目标域使用其他所有域作为源域
+  target_domain_num: 1
+  # 将为每个目标数据集单独运行实验
+  # target_system_id: [1]  # CWRU作为目标域
+  # source_domain_id: [5, 6, 13, 14, 19]  # 其他域作为源域
+
+  # 损失函数和评估指标
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+
+  # 训练超参数
+  optimizer: "adamw"
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  batch_size: 32
+  epochs: 100
+
+  # 学习率调度
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # 早停
+  early_stopping: true
+  patience: 15
+  monitor: "val_accuracy"
+  mode: "max"
+
+# 训练器配置
+trainer:
+  name: "T_01_Lightning"
+
+  # 训练参数
+  epochs: 100
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  optimizer: "adamw"
+  scheduler: "cosine"
+
+  # 早停配置
+  early_stopping:
+    patience: 15
+    monitor: "val_accuracy"
+    mode: "max"
+
+  # 检查点
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 3
+    filename: "hse_prompt-{epoch:02d}-{val_accuracy:.3f}"
+
+  # 日志记录
+  logger: "tensorboard"
+  log_every_n_steps: 10
+
+  # 硬件配置
+  accelerator: "auto"
+  precision: 16
+  devices: 1
+
+# 输出配置
+output:
+  save_dir: "save/paper/table1_cross_machinery"
+  log_dir: "logs/paper/table1_cross_machinery"
+  checkpoint_dir: "checkpoints/paper/table1_cross_machinery"
+  results_dir: "results/paper/table1_cross_machinery"
+
+# 实验配置
+experiment:
+  name: "table1_cross_machinery_main"
+  description: "论文表1：HSE-Prompt跨机械设备泛化主要结果"
+  tags: ["paper", "table1", "cross_machinery", "hse_prompt", "main_results"]
+  methods: ["HSE-Prompt", "PatchTST", "Dlinear", "TimesNet", "FNO"]
+  datasets: ["CWRU", "Ottawa-19", "Ottawa-23", "THU-2", "HUST"]
+  metrics: ["Accuracy", "F1-Score", "Precision", "Recall"]
+
+  # 统计分析配置
+  statistics:
+    num_seeds: 5
+    confidence_level: 0.95
+    report_mean_std: true
+    statistical_test: "wilcoxon"  # Wilcoxon符号秩检验
+
+# 可重现性配置
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# 数据集特定配置
+dataset_configs:
+  CWRU:
+    target_system_id: [1]
+    source_domain_id: [5, 6, 13, 14, 19]
+    num_classes: 10
+
+  Ottawa-19:
+    target_system_id: [5]
+    source_domain_id: [1, 6, 13, 14, 19]
+    num_classes: 5
+
+  Ottawa-23:
+    target_system_id: [6]
+    source_domain_id: [1, 5, 13, 14, 19]
+    num_classes: 3
+
+  THU-2:
+    target_system_id: [13]
+    source_domain_id: [1, 5, 6, 14, 19]
+    num_classes: 8
+
+  HUST:
+    target_system_id: [19]
+    source_domain_id: [1, 5, 6, 13, 14]
+    num_classes: 7
+
+# 实验说明
+experiment_notes: |
+  ## 论文表1实验说明
+
+  ### 实验目标
+  验证HSE-Prompt方法在跨机械设备故障诊断任务中的优越性能
+
+  ### 实验设置
+  1. **数据集**：5个异构机械设备数据集
+     - CWRU (轴承故障诊断)
+     - Ottawa-19 (齿轮箱故障诊断)
+     - Ottawa-23 (电机故障诊断)
+     - THU-2 (泵故障诊断)
+     - HUST (风机故障诊断)
+
+  2. **对比方法**：
+     - HSE-Prompt (本文方法)
+     - PatchTST (时序Transformer基础方法)
+     - Dlinear (线性预测方法)
+     - TimesNet (时序分析网络)
+     - FNO (傅里叶神经算子)
+
+  3. **评估协议**：
+     - 每个数据集轮流作为目标域
+     - 其他数据集作为源域进行训练
+     - 5个随机种子确保统计显著性
+     - 报告均值±标准差
+
+  4. **评估指标**：
+     - Accuracy (准确率)
+     - F1-Score (F1分数)
+     - Precision (精确率)
+     - Recall (召回率)
+
+  ### 预期结果
+  HSE-Prompt应在所有跨设备任务上显著优于基线方法，特别是在少样本场景下

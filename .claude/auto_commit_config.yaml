@@ -1,0 +1,181 @@
+# Claude Auto-Commit Configuration
+# Manages automatic git commits during Claude sessions
+
+# Enable/disable auto-commit functionality
+enabled: true
+
+# Commit mode: atomic (one file per commit), batch (all files together), grouped (by file type)
+mode: grouped
+
+# Maximum files per commit (safety limit)
+max_files_per_commit: 10
+
+# Prefix for all auto-commit messages
+commit_prefix: "🤖 [Claude]"
+
+# File grouping rules (regex patterns for grouping related files)
+group_rules:
+  # Specifications and documentation
+  specs: '\.claude/specs/.*\.md$'
+  docs: '.*\.md$'
+  
+  # Code files
+  scripts: 'script/.*\.py$'
+  models: 'src/model_factory/.*'
+  tasks: 'src/task_factory/.*'
+  utils: 'src/utils/.*'
+  tests: 'test.*\.py$'
+  
+  # Configuration files
+  configs: '.*\.(yaml|yml|json)$'
+  
+  # Data and results
+  data: 'data/.*'
+  results: 'results/.*'
+  
+  # Notebooks and experiments
+  notebooks: '.*\.ipynb$'
+  experiments: 'experiments/.*'
+
+# Commit message templates by type
+commit_templates:
+  feat: "feat: {description}"
+  fix: "fix: {description}"
+  docs: "docs: {description}"
+  refactor: "refactor: {description}"
+  test: "test: {description}"
+  chore: "chore: {description}"
+  style: "style: {description}"
+  perf: "perf: {description}"
+
+# Files and patterns to exclude from auto-commit
+exclusions:
+  # Temporary files
+  - '.*\.tmp$'
+  - '.*\.cache$'
+  - '.*\.swp$'
+  - '.*\.bak$'
+  
+  # Build artifacts
+  - '__pycache__/.*'
+  - '.*\.pyc$'
+  - '.*\.pyo$'
+  - '.*\.egg-info/.*'
+  - 'build/.*'
+  - 'dist/.*'
+  
+  # System files
+  - '\.DS_Store$'
+  - 'Thumbs\.db$'
+  - '\.git/.*'
+  
+  # Log files
+  - '.*\.log$'
+  - 'logs/.*\.txt$'
+  
+  # Large data files (commit manually if needed)
+  - '.*\.h5$'
+  - '.*\.pkl$'
+  - '.*\.npz$'
+  - '.*\.pt$'
+  - '.*\.ckpt$'
+
+# Advanced configuration options
+advanced:
+  # Add Claude signature to commit messages
+  add_claude_signature: true
+  
+  # Include list of changed files in commit message
+  include_file_list: true
+  
+  # Maximum commit message length
+  max_commit_message_length: 500
+  
+  # Automatically stage files before committing
+  auto_stage: true
+  
+  # Minimum time between commits (seconds) - prevents spam
+  min_time_between_commits: 30
+  
+  # Maximum number of commits per session
+  max_commits_per_session: 50
+
+# Specific rules for PHM-Vibench project
+phm_vibench:
+  # Group model-related files together
+  model_patterns:
+    - 'src/model_factory/.*'
+    - 'configs/.*model.*\.yaml$'
+    
+  # Group experiment-related files
+  experiment_patterns:
+    - 'configs/demo/.*'
+    - 'script/.*experiment.*'
+    - 'results/.*'
+    
+  # Group documentation updates
+  doc_patterns:
+    - '.*README.*\.md$'
+    - 'docs/.*\.md$'
+    - '.*CLAUDE\.md$'
+    - '.*_guide\.md$'
+
+# Notification settings
+notifications:
+  # Show commit summary after successful commits
+  show_summary: true
+  
+  # Show file count in commit messages
+  show_file_count: true
+  
+  # Log all operations to file
+  log_to_file: true
+  
+  # Log file location
+  log_file: '.claude/auto_commit.log'
+
+# Integration with Claude Code
+claude_integration:
+  # Automatically trigger commits when Claude modifies files
+  auto_trigger: true
+  
+  # Commit modes for different Claude operations
+  file_creation: 'grouped'      # When Claude creates new files
+  file_modification: 'grouped'  # When Claude modifies existing files
+  file_deletion: 'atomic'       # When Claude deletes files
+  
+  # Special handling for different file types
+  handle_notebooks: true        # Commit Jupyter notebooks
+  handle_large_files: false     # Skip large files by default
+  handle_binary_files: false    # Skip binary files by default
+
+# Safety settings
+safety:
+  # Maximum number of files to commit at once
+  max_files_safety_limit: 20
+  
+  # Require confirmation for large commits
+  confirm_large_commits: true
+  large_commit_threshold: 10
+  
+  # Backup uncommitted changes before major operations
+  backup_before_commit: false
+  
+  # Dry run mode (show what would be committed without committing)
+  dry_run_default: false
+
+# Git-specific settings
+git_settings:
+  # Use --no-verify to skip git hooks during auto-commit
+  skip_hooks: false
+  
+  # Add Co-Authored-By tag for Claude
+  add_coauthor: true
+  coauthor_name: "Claude"
+  coauthor_email: "noreply@anthropic.com"
+  
+  # Sign commits with GPG (if configured)
+  sign_commits: false
+  
+  # Use conventional commit format
+  conventional_commits: true

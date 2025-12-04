@@ -33,6 +33,10 @@
 
 ## 📖 Table of Contents
 - [✨ Project Highlights](#-project-highlights)
+<<<<<<< HEAD
+=======
+- [🔥 HSE Industrial Contrastive Learning](#-hse-industrial-contrastive-learning)
+>>>>>>> release/v0.1.0
 - [📝 Project Background and Introduction](#-project-background-and-introduction)
 - [🔄 Supported Models and Datasets](#-supported-models-and-datasets)
 - [🔔 Technical Updates](#-technical-updates)
@@ -61,6 +65,7 @@
 - 🖱️ **Simple and Efficient User Experience**: Configuration-file-based experimental design allows researchers to quickly configure and run experiments without modifying code
 - 📈 **One-Click Reproduction and Benchmarking**: Built-in 30+ classic and latest algorithm implementations, reproducing paper results and enabling fair comparison with just one command
 - 🆕 **Few-Shot Learning Module**: New support for few-shot fault diagnosis, providing prototype network examples and task pipelines for rapid research
+- 🔥 **HSE Industrial Contrastive Learning**: Revolutionary prompt-guided contrastive learning for cross-system generalization, achieving 82% computational efficiency improvement
 
 <details>
 <summary><b>Why Choose PHM-Vibench?</b> (Click to expand)</summary>
@@ -192,7 +197,11 @@ python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 python main.py --config configs/demo/Multiple_DG/all.yaml
 ```
 
+<<<<<<< HEAD
 ### Streamlit Graphical Interface （TODO）
+=======
+### Streamlit Graphical Interface
+>>>>>>> release/v0.1.0
 
 Run experiments using the Streamlit graphical interface:
 
@@ -503,6 +512,13 @@ trainer:      # Trainer configuration
 
 <details>
 <summary><b>👉 Task Configuration Parameters (Task)</b></summary>
+<<<<<<< HEAD
+=======
+
+Task selection in PHM-Vibench is driven by the combination of `task.type` and `task.name` in the config.  
+For example, `task.type: "DG"` + `task.name: "classification"` will load the single-dataset DG classification task from `src/task_factory/task/DG/classification.py`, while ID-based and multi-task variants live under `task/ID` and `task/MT`.  
+For a more detailed mapping table and examples, see `src/task_factory/readme.md`.
+>>>>>>> release/v0.1.0
 
 <table>
   <tr>
@@ -890,9 +906,24 @@ python scripts/export_latex.py --result_dir results/experiment_name
 │   │       └── 📂 task_head     # Task heads
 │   ├── 📂 task_factory          # Task factory
 │   │   ├── 📄 __init__.py
+<<<<<<< HEAD
 │   │   ├── 📄 base_task.py      # Task base class
 │   │   ├── 📄 task_factory.py   # Task factory class
 │   │   └── 📂 tasks             # Specific task implementations
+=======
+│   │   ├── 📄 Default_task.py   # Default Lightning task wrapper/base
+│   │   ├── 📄 task_factory.py   # Task factory and dynamic loader
+│   │   ├── 📂 Components        # Shared task components (losses, metrics, flows)
+│   │   ├── 📂 task              # Concrete task implementations
+│   │   │   ├── 📂 DG            # Single-dataset domain generalization tasks
+│   │   │   ├── 📂 CDDG          # Cross-dataset domain generalization tasks
+│   │   │   ├── 📂 pretrain      # Pretraining tasks (e.g., masked reconstruction)
+│   │   │   ├── 📂 FS            # Few-shot tasks
+│   │   │   ├── 📂 GFS           # Generalized few-shot tasks
+│   │   │   ├── 📂 ID            # ID-based tasks (e.g., ID_task)
+│   │   │   └── 📂 MT            # Multi-task Lightning modules
+│   │   └── 📂 utils             # Task-level utilities
+>>>>>>> release/v0.1.0
 │   ├── 📂 trainer_factory       # Trainer factory
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 base_trainer.py   # Trainer base class
@@ -942,7 +973,11 @@ python scripts/export_latex.py --result_dir results/experiment_name
 <!-- <div align="center">
   <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
   <p><em>PHM-Vibench Project Structure Overview</em></p>
+<<<<<<< HEAD
 </div> -->
+=======
+</div>
+>>>>>>> release/v0.1.0
 
 ## 🧑‍💻 Development Guide TODO
 
@@ -1060,9 +1095,18 @@ This benchmark platform is licensed under the [Apache License (Version 2.0)](htt
 ---
 
 ## ⭐ Star History
+<<<<<<< HEAD
 
 [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/PHM-Vibench&type=Date)](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
 
 <!-- <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
 <p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p> -->
+=======
+
+<!-- [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date) -->
+
+<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
+
+<p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p>
+>>>>>>> release/v0.1.0

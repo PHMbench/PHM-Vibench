@@ -27,6 +27,14 @@ def trainer(args_e,args_t, args_d, path):
     返回:
     - trainer: 训练器对象
     """
+    # 为兼容旧配置，填充 num_epochs / gpus / pruning 的合理默认值
+    if not hasattr(args_t, "num_epochs"):
+        setattr(args_t, "num_epochs", getattr(args_t, "max_epochs", 1))
+    if not hasattr(args_t, "gpus"):
+        setattr(args_t, "gpus", getattr(args_t, "devices", 1))
+    if not hasattr(args_t, "pruning"):
+        setattr(args_t, "pruning", 0.0)
+
     # 获取回调列表
     callback_list = call_backs(args_t, path)
     log_list = [CSVLogger(path, name="logs")]
@@ -63,9 +71,13 @@ def trainer(args_e,args_t, args_d, path):
         devices=args_t.gpus,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
+<<<<<<< HEAD
         check_val_every_n_epoch=getattr(args_t, 'check_val_every_n_epoch', 1),  # 验证频率控制
         val_check_interval=getattr(args_t, 'val_check_interval', 1.0),  # 验证数据比例控制
         strategy= "ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
+=======
+        strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
+>>>>>>> release/v0.1.0
     )
     return trainer
 
@@ -92,12 +104,21 @@ def call_backs(args, path):
     callback_list = [checkpoint_callback]
 
     # 模型修剪回调（根据需求添加）
+<<<<<<< HEAD
     if getattr(args, 'pruning', False):  # Default to False if not specified
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
     
     # 早期停止回调
     if getattr(args, 'early_stopping', True):  # Default to True for safety
+=======
+    if getattr(args, "pruning", 0.0):
+        prune_callback = Prune_callback(args)
+        callback_list.append(prune_callback)
+    
+    # 早期停止回调（若未配置 early_stopping，则默认为不启用）
+    if getattr(args, "early_stopping", False):
+>>>>>>> release/v0.1.0
         early_stopping = create_early_stopping_callback(args)
         callback_list.append(early_stopping)
     
@@ -144,7 +165,11 @@ def create_early_stopping_callback(args):
     early_stopping = EarlyStopping(
         monitor=getattr(args, 'monitor', 'val_loss'),  # Default monitor
         min_delta=0.00,
+<<<<<<< HEAD
         patience=getattr(args, 'patience', 10),  # Default patience of 10 epochs
+=======
+        patience=getattr(args, "patience", 10),  # 从args中读取patience值，如缺失则使用默认值
+>>>>>>> release/v0.1.0
         verbose=True,
         mode='min',
         check_finite=True,  # 防止无穷大或NaN值时停止训练

@@ -1,28 +1,32 @@
-# from .backbone import *
-# from .task_head import *
 from src.model_factory.ISFM.embedding import *
-from src.model_factory.ISFM.embedding import E_03_Patch_DPOT
+from src.model_factory.ISFM.embedding import E_03_Patch
 from src.model_factory.ISFM.backbone import *
 from src.model_factory.ISFM.task_head import *
+<<<<<<< HEAD
 from src.model_factory.ISFM.task_head.H_05_RUL_pred import H_05_RUL_pred
 from src.model_factory.ISFM.task_head.H_06_Anomaly_det import H_06_Anomaly_det
+=======
+from src.model_factory.ISFM.system_utils import resolve_batch_metadata
+>>>>>>> release/v0.1.0
 import torch.nn as nn
 import numpy as np
 import os
 import torch
+import pandas as pd
+from src.utils.utils import get_num_classes
 
 Embedding_dict = {
-
     'E_01_HSE': E_01_HSE,
+    # 'E_01_HSE_Prompt': E_01_HSE_Prompt,  # Prompt-guided HSE for contrastive learning
     'E_02_HSE_v2': E_02_HSE_v2,  # Updated to use the new HSE class
-    'E_03_Patch_DPOT': E_03_Patch_DPOT,
-
+    # Patch-based embedding as basic baseline (P1)
+    'E_03_Patch': E_03_Patch,
 }
 Backbone_dict = {
     'B_01_basic_transformer': B_01_basic_transformer,
     'B_03_FITS': B_03_FITS,
     'B_04_Dlinear': B_04_Dlinear,
-    'B_05_Manba': B_05_Manba,
+    'B_05_Mamba': B_05_Mamba,
     'B_06_TimesNet': B_06_TimesNet,
     'B_07_TSMixer': B_07_TSMixer,
     'B_08_PatchTST': B_08_PatchTST,
@@ -70,6 +74,7 @@ class Model(nn.Module):
         self._init_task_heads(args_m)
 
     def get_num_classes(self):
+<<<<<<< HEAD
         num_classes = {}
         for key in np.unique(self.metadata.df['Dataset_id']):
             # Filter out NaN and -1 values (following existing pattern from Get_id.py)
@@ -86,6 +91,10 @@ class Model(nn.Module):
                 num_classes[key] = 2
                 
         return num_classes
+=======
+        """获取数据集类别数映射"""
+        return get_num_classes(self.metadata)
+>>>>>>> release/v0.1.0
     
     # Task Head Management Functions (Decoupled)
     
@@ -203,6 +212,7 @@ class Model(nn.Module):
     def _embed(self, x, file_id):
         """1 Embedding - supports both single file_id and batch file_ids"""
         if self.args_m.embedding in ('E_01_HSE', 'E_02_HSE_v2'):
+<<<<<<< HEAD
             # Handle both single file_id and batch file_ids
             if isinstance(file_id, (list, tuple)):
                 # For batch processing, use the first file_id for embedding parameters
@@ -214,6 +224,10 @@ class Model(nn.Module):
                 
             fs = self.metadata[primary_file_id]['Sample_rate']
             x = self.embedding(x, fs)
+=======
+            _, fs_tensor = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+            x = self.embedding(x, fs_tensor)
+>>>>>>> release/v0.1.0
         else:
             x = self.embedding(x)
         return x
@@ -222,6 +236,7 @@ class Model(nn.Module):
         """2 Backbone"""
         return self.backbone(x)
 
+<<<<<<< HEAD
     def _head(self, x, file_id=False, task_id=False, return_feature=False):
         """3 Task Head - 简化后的任务头调度器"""
         if file_id is False:
@@ -244,6 +259,26 @@ class Model(nn.Module):
         else:
             return list(results.values())[0] if len(results) == 1 else results
 
+=======
+    def _head(self, x, file_id = False, task_id = False, return_feature=False):
+        """3 Task Head"""
+        B = x.size(0)
+
+        system_ids_tensor, _ = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+        system_ids = [int(v) for v in system_ids_tensor.view(-1).tolist()]
+
+        if task_id in ['classification']:
+            # 对于分类任务，将 per-sample system_ids 传递给多头线性分类器
+            return self.task_head(x, system_id=system_ids, return_feature=return_feature, task_id=task_id)
+        elif task_id in ['prediction']:
+            shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
+            return self.task_head(x, return_feature=return_feature, task_id=task_id, shape=shape)
+        # if task_id in ['classification', 'prediction']:
+        #     # For classification or prediction tasks, we need to pass system_id
+        #     return self.task_head(x, system_id=system_id, return_feature=return_feature)
+        # elif task_id in ['multitask']:
+        # return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
+>>>>>>> release/v0.1.0
 
     def forward(self, x, file_id=False, task_id=False, return_feature=False):
         """Forward pass through embedding, backbone and head.
@@ -266,10 +301,16 @@ class Model(nn.Module):
         """
         self.shape = x.shape
         x = self._embed(x, file_id)
-        x = self._encode(x)
-        x = self._head(x, file_id, task_id, return_feature)
+        if return_feature:
+            feature = self._encode(x)
+            x = self._head(feature, file_id, task_id)
+            return x, feature
+        else:
+            x = self._encode(x)
+            x = self._head(x, file_id, task_id)
         return x
     
+<<<<<<< HEAD
 
 
 if __name__ == '__main__':
@@ -415,3 +456,5 @@ if __name__ == '__main__':
         print(f"❌ Dynamic task head creation test failed: {e}")
     
     print("\n=== M_01_ISFM Tests Complete ===")
+=======
+>>>>>>> release/v0.1.0

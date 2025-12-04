@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
+<<<<<<< HEAD
 from src.configs.config_utils import load_config, path_name, transfer_namespace, parse_set_args
+=======
+from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
+from src.utils.config_utils import parse_overrides, apply_overrides_to_config
+>>>>>>> release/v0.1.0
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -35,6 +40,7 @@ def pipeline(args):
     # -----------------------
     config_path = args.config_path
     print(f"[INFO] 加载配置文件: {config_path}")
+<<<<<<< HEAD
     
     # 准备配置覆盖参数 - 统一处理所有覆盖
     set_args = []
@@ -55,6 +61,19 @@ def pipeline(args):
     
     configs = load_config(config_path, overrides if overrides else None)
     
+=======
+    # 支持机器特定的本地覆盖 YAML（方案B）
+    # 优先顺序：命令行 --local_config > configs/local/{hostname}.yaml > configs/local/local.yaml > configs/local/default.yaml
+    configs = merge_with_local_override(config_path, getattr(args, 'local_config', None))
+
+    # 应用CLI override参数（最高优先级）
+    if hasattr(args, 'override') and args.override:
+        print(f"[INFO] 应用CLI override参数: {args.override}")
+        overrides = parse_overrides(args.override)
+        configs = apply_overrides_to_config(configs, overrides)
+        print(f"[INFO] 已应用 {len(overrides)} 个override参数")
+
+>>>>>>> release/v0.1.0
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
     for section in required_sections:
@@ -90,13 +109,9 @@ def pipeline(args):
         if key.isupper():
             os.environ[key] = str(value)
             print(f"[INFO] 设置环境变量: {key}={value}")
-    
-    # 创建实验目录
+
+    # 创建实验目录（依赖 environment.output_dir / path_name，不再强制依赖 VBENCH_* 变量）
     print("[INFO] 创建实验目录...")
-    VBENCH_HOME = args_environment.VBENCH_HOME
-    VBENCH_DATA = args_data.data_dir
-    sys.path.append(VBENCH_HOME)
-    sys.path.append(VBENCH_DATA)
     
     # -----------------------
     # 2. 构建数据工厂（一次性创建）
@@ -195,6 +210,10 @@ if __name__ == "__main__":
                         type=str, 
                         default='',
                         help='实验备注')
+    parser.add_argument('--local_config',
+                        type=str,
+                        default=None,
+                        help='本机覆盖配置路径（可选）')
 
     
     args = parser.parse_args()

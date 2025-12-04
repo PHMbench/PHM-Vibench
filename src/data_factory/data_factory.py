@@ -282,10 +282,9 @@ class data_factory:
             )
             dataset_cls = mod.set_dataset
         except ImportError as e:
-            print("Using ID_dataset for on-demand processing.")
-            # from .dataset_task.ID_dataset import set_dataset as dataset_cls
-            dataset_cls = importlib.import_module("src.data_factory.dataset_task.Default_dataset")
-            dataset_cls = dataset_cls.Default_dataset
+            print("Using Default datasets")
+            from .dataset_task.Default_dataset import Default_dataset
+            dataset_cls = Default_dataset
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
@@ -333,32 +332,22 @@ class data_factory:
         val_sampler = self.get_sampler(mode='val')
         test_sampler = self.get_sampler(mode='test')
 
-        # 强制禁用persistent_workers以防止内存累积
-        persistent_workers = False
-        # 限制num_workers数量以减少内存使用
-        num_workers = min(self.args_data.num_workers, 4)
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
                                          batch_sampler = train_sampler,
                                         #  shuffle=True,
-                                         num_workers=num_workers,
-                                         pin_memory=False,     # 禁用pin_memory减少内存压力
-                                         persistent_workers=persistent_workers,)
+                                         num_workers=self.args_data.num_workers,)
                                         #  collate_fn=debug_collate_fn)
         self.val_loader = DataLoader(self.val_dataset,
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = val_sampler,
                                         # shuffle=False,
-                                        num_workers=num_workers,
-                                        pin_memory=False,     # 禁用pin_memory减少内存压力
-                                        persistent_workers=persistent_workers,)
+                                        num_workers=self.args_data.num_workers,)
         self.test_loader = DataLoader(self.test_dataset,
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = test_sampler,
                                         # shuffle=False,
-                                        num_workers=num_workers,
-                                        pin_memory=False,     # 禁用pin_memory减少内存压力
-                                        persistent_workers=persistent_workers,)
+                                        num_workers=self.args_data.num_workers,)
 
 
 

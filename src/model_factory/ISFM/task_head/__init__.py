@@ -5,6 +5,7 @@ from .H_05_RUL_pred import H_05_RUL_pred
 from .H_06_Anomaly_det import H_06_Anomaly_det
 from .H_09_multiple_task import H_09_multiple_task # 新增导入
 from .H_04_VIB_pred import H_04_VIB_pred
+from .H_10_ProjectionHead import H_10_ProjectionHead
 from .multi_task_head import MultiTaskHead
 
 __all__ = ["H_01_Linear_cla",
@@ -14,4 +15,5 @@ __all__ = ["H_01_Linear_cla",
                 "H_06_Anomaly_det",
                 "H_09_multiple_task",
                 "H_04_VIB_pred",
+                "H_10_ProjectionHead",
                 "MultiTaskHead"] # 新增到 __all__

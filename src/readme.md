@@ -45,6 +45,59 @@ An experiment in Vibench is executed by a top-level pipeline script (e.g., `Pipe
 
 ---
 
+## 🧭 Pipelines Overview (What To Use When)
+
+Vibench ships multiple pipelines tailored to different experiment shapes. Choose based on your goal and stage structure.
+
+### Pipeline_01_default
+- Purpose: Single‑stage, single‑task training. Ideal for domain generalization/classification/regression baselines.
+- Flow: load_config → build_data → build_model → build_task → build_trainer → fit → test (best checkpoint).
+- When to use: Fast baselines, ablations, dataset readers/model bring‑up.
+- Run:
+  - `python -m src.Pipeline_01_default --config_path configs/demo/Single_DG/CWRU.yaml`
+  - Local override: add `--local_config configs/local/local.yaml` or create `configs/local/local.yaml`.
+
+### Pipeline_02_pretrain_fewshot
+- Purpose: Two‑stage training (pretraining on source → few‑shot adaptation). Supports K‑shot episodes and checkpoint hand‑off.
+- Flow: run_pretraining_stage(config) → collect best ckpts → run_fewshot_stage(fs_config, ckpts).
+- Notable: Can control multiple iterations; passes checkpoint paths into stage 2 automatically.
+- When to use: Cross‑machine few‑shot transfer; target system with limited labels.
+- Run:
+  - `python -m src.Pipeline_02_pretrain_fewshot --config_path <pretrain.yaml> --fs_config_path <fewshot.yaml> [--local_config configs/local/local.yaml]`
+
+### Pipeline_03_multitask_pretrain_finetune
+- Purpose: Two‑stage multi‑task pipeline (unsupervised/masked pretraining → supervised fine‑tuning). Supports backbone comparison and multi‑task heads.
+- Flow: create_pretraining_config → train (stage 1) → create_finetuning_config → fine‑tune (single‑task and/or multi‑task) with best ckpts.
+- Notable: Compares backbones (e.g., PatchTST, FNO, DLinear, TimesNet); produces structured results and summaries.
+- When to use: Foundation‑model style experiments; larger studies that require controlled stage‑by‑stage configs.
+- Run:
+  - `python -m src.Pipeline_03_multitask_pretrain_finetune --config_path configs/multitask_pretrain_finetune_config.yaml --stage complete [--local_config configs/local/local.yaml]`
+  - Stage‑only: `--stage pretraining` or `--stage finetuning`.
+
+### Pipeline_04_unified_metric
+- Purpose: Unified metric learning across multiple datasets (Stage 1 unified pretraining → Stage 2 fine‑tuning). Tightly integrated with `script/unified_metric/` utilities.
+- Flow: unified multi‑dataset pretraining → dataset‑wise fine‑tuning; includes zero‑shot evaluation and reporting.
+- When to use: Cross‑dataset benchmarking with standardized metrics and reporting.
+- Run (via pipeline):
+  - `python main.py --pipeline Pipeline_04_unified_metric --config script/unified_metric/configs/unified_experiments_1epoch.yaml [--local_config configs/local/local.yaml]`
+  - Or use helpers:
+    - Health check: `python script/unified_metric/pipeline/quick_validate.py --mode health_check --config script/unified_metric/configs/unified_experiments_1epoch.yaml`
+    - Runner: `python script/unified_metric/pipeline/run_unified_experiments.py --mode complete --config script/unified_metric/configs/unified_experiments_1epoch.yaml`
+
+### Pipeline_ID
+- Purpose: Alias pipeline that routes to the default pipeline while using ID‑based data ingestion (id_data_factory).
+- When to use: If your config selects the ID dataset implementation and you prefer a distinct entry name.
+- Run:
+  - `python -m src.Pipeline_ID --config_path <your_config.yaml> [--local_config configs/local/local.yaml]`
+
+---
+
+## 🗂️ Local Overrides Across Machines
+- For cross‑device paths (e.g., `data.data_dir`), keep the main YAML portable and place machine‑specific settings in `configs/local/local.yaml`, or pass `--local_config`.
+- All pipelines automatically merge base YAML with `configs/local/local.yaml` if present; no hostname or environment variables required.
+
+---
+
 ## 🚀 How to Extend Vbench
 
 Adding your own custom components is the primary way to leverage the power of Vbench. Here’s where to start:

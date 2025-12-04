@@ -13,7 +13,7 @@ from src.utils.config_utils import load_config, transfer_namespace
 from src.data_factory import build_data
 from src.model_factory import build_model
 from plot.A1_plot_config import configure_matplotlib
-from src.utils.masking import add_mask
+from src.utils.training.masking import add_mask
 
 def setup_pipeline(config_path, ckpt_path=None):
     """Loads configurations and sets up the environment."""

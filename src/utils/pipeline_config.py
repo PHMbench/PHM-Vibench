@@ -1,22 +1,31 @@
 """
-Essential utilities for the two-stage multi-task pipeline.
+⚠️ DEPRECATED: pipeline_config.py
 
-This module provides core utility functions for weight loading and result summarization.
-Configuration management is now handled directly through YAML files.
+This module is deprecated and will be removed in a future version.
+The weight loading functionality has been moved to maintain better organization.
 
-Author: PHM-Vibench Team
-Date: 2025-08-18
+NEW: from src.utils.utils import load_pretrained_weights
+NEW: Use result summarization in training orchestration modules
+
+Migration Guide:
+- Replace 'from src.utils import pipeline_config' with appropriate imports
+- Use load_pretrained_weights from src.utils.utils
+- Pipeline summary functionality now integrated in orchestrator
+
+Last updated: 2025-11-20
+Removal timeline: v2.1.0
 """
 
+import warnings
 from typing import Dict
-import torch
-import os
 
 
 def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
     """
+    ⚠️ DEPRECATED: Use src.utils.utils.load_pretrained_weights instead
+
     Load pretrained weights into a model.
-    
+
     Parameters
     ----------
     model : nn.Module
@@ -25,69 +34,52 @@ def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -
         Path to the checkpoint file
     strict : bool, optional
         Whether to strictly enforce that the keys in state_dict match
-        
+
     Returns
     -------
     bool
         True if weights were loaded successfully, False otherwise
     """
-    import torch
-    import os
-    
-    if not checkpoint_path or not os.path.exists(checkpoint_path):
-        print(f"Warning: Checkpoint path does not exist: {checkpoint_path}")
-        return False
-    
-    try:
-        print(f"Loading pretrained weights from: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location='cpu')
-        
-        # Extract backbone weights from checkpoint
-        if 'state_dict' in checkpoint:
-            state_dict = checkpoint['state_dict']
-            # Filter backbone weights (exclude task head weights)
-            backbone_weights = {
-                k.replace('network.', ''): v for k, v in state_dict.items() 
-                if k.startswith('network.') and not k.startswith('network.task_head')
-            }
-            
-            # Load backbone weights with strict=False to allow missing task head weights
-            missing_keys, unexpected_keys = model.load_state_dict(backbone_weights, strict=strict)
-            
-            if not strict and (missing_keys or unexpected_keys):
-                print(f"Loaded pretrained weights with {len(missing_keys)} missing keys and {len(unexpected_keys)} unexpected keys")
-                if missing_keys:
-                    print(f"Missing keys: {missing_keys[:5]}...")  # Show first 5
-                if unexpected_keys:
-                    print(f"Unexpected keys: {unexpected_keys[:5]}...")  # Show first 5
-            
-            print("✓ Pretrained backbone weights loaded successfully")
-            return True
-        else:
-            print("Warning: No 'state_dict' found in checkpoint")
-            return False
-            
-    except Exception as e:
-        print(f"Error loading pretrained weights: {e}")
-        return False
+    # Issue deprecation warning
+    warnings.warn(
+        "pipeline_config.load_pretrained_weights is deprecated. "
+        "Please use src.utils.utils.load_pretrained_weights instead. "
+        "This function will be removed in v2.1.0.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    # Delegate to the new implementation
+    from .utils import load_pretrained_weights as new_load_pretrained_weights
+    return new_load_pretrained_weights(model, checkpoint_path, strict)
 
 
 def generate_pipeline_summary(checkpoint_paths: Dict[str, str], finetuning_results: Dict) -> Dict:
     """
+    ⚠️ DEPRECATED: This functionality is now integrated in training orchestration modules
+
     Generate a summary of pipeline results.
-    
+
     Parameters
     ----------
     checkpoint_paths : Dict[str, str]
         Dictionary mapping backbone names to checkpoint paths
     finetuning_results : Dict
         Dictionary containing fine-tuning results
-        
+
     Returns
     -------
     Dict
         Summary dictionary with statistics and text summary
     """
+    # Issue deprecation warning
+    warnings.warn(
+        "pipeline_config.generate_pipeline_summary is deprecated. "
+        "This functionality is now integrated in training orchestration modules. "
+        "This function will be removed in v2.1.0.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     summary = {
         'successful_pretraining': sum(1 for path in checkpoint_paths.values() if path is not None),
         'total_backbones': len(checkpoint_paths),

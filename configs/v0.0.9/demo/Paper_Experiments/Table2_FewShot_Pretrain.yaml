@@ -1,0 +1,220 @@
+# 论文实验第2部分：少样本学习 - 预训练阶段
+# 对应论文表2：HSE-Prompt少样本学习性能的预训练阶段配置
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "Paper_Table2_FewShot"
+  seed: 42
+  output_dir: "results/paper/table2_fewshot_pretrain"
+  notes: "论文表2：HSE-Prompt少样本学习预训练阶段"
+  iterations: 3  # 预训练阶段使用较少的随机种子
+
+# 数据配置 - 预训练使用多源域数据
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 64  # 预训练使用较大批次
+  num_workers: 4
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: true
+  window_size: 4096
+  stride: 64
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+# 模型配置 - HSE-Prompt预训练
+model:
+  name: "M_02_ISFM_Prompt_Simplified"
+  type: "M_02_ISFM_Prompt"
+
+  # HSE嵌入配置
+  embedding: "HSE_prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+
+  # 简化提示配置
+  use_prompt: true
+  prompt_dim: 64
+  max_dataset_ids: 30
+  prompt_combination: "add"
+
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"
+
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+
+  # 预训练阶段配置
+  training_stage: "pretrain"
+  freeze_prompt: false
+
+# 任务配置 - 多源域预训练
+task:
+  name: "fewshot_pretrain"
+  type: "CDDG"
+  task_type: "classification"
+
+  # 多源域设置 - 使用除目标域外的所有域进行预训练
+  source_domains: "multi_source"  # 使用多源域进行预训练
+  exclude_targets: [1, 5, 6, 13, 19]  # 预训练阶段排除所有目标域
+
+  # 预训练特定设置
+  pretrain_strategy: "cross_domain_contrastive"  # 跨域对比学习预训练
+  contrastive_learning: true
+  contrastive_weight: 0.1
+  temperature: 0.07
+
+  # 损失函数和评估指标
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+
+  # 预训练超参数
+  optimizer: "adamw"
+  learning_rate: 5e-4  # 预训练使用较小学习率
+  weight_decay: 1e-4
+  batch_size: 64
+  epochs: 200  # 预训练更多轮数
+
+  # 学习率调度
+  scheduler: "cosine"
+  warmup_epochs: 20
+
+  # 早停
+  early_stopping: true
+  patience: 25
+  monitor: "val_accuracy"
+  mode: "max"
+
+# 训练器配置
+trainer:
+  name: "T_01_Lightning"
+
+  # 预训练参数
+  epochs: 200
+  learning_rate: 5e-4
+  weight_decay: 1e-4
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 20
+
+  # 早停配置
+  early_stopping:
+    patience: 25
+    monitor: "val_accuracy"
+    mode: "max"
+
+  # 检查点
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 5
+    filename: "pretrain-{epoch:02d}-{val_accuracy:.3f}"
+    save_last: true
+
+  # 日志记录
+  logger: "tensorboard"
+  log_every_n_steps: 10
+
+  # 硬件配置
+  accelerator: "auto"
+  precision: 16
+  devices: 1
+  gradient_clip_val: 1.0  # 防止梯度爆炸
+
+# 输出配置
+output:
+  save_dir: "save/paper/table2_fewshot_pretrain"
+  log_dir: "logs/paper/table2_fewshot_pretrain"
+  checkpoint_dir: "checkpoints/paper/table2_fewshot_pretrain"
+  results_dir: "results/paper/table2_fewshot_pretrain"
+
+# 实验配置
+experiment:
+  name: "table2_fewshot_pretrain"
+  description: "论文表2：HSE-Prompt少样本学习预训练阶段"
+  tags: ["paper", "table2", "fewshot", "pretrain", "hse_prompt"]
+  pretrain_shots: [1, 2, 5, 10, "all"]  # 预训练样本数
+  target_domains: ["CWRU", "Ottawa-19", "Ottawa-23", "THU-2", "HUST"]
+  metrics: ["Pretrain_Accuracy", "Feature_Quality"]
+
+  # 预训练策略
+  pretrain_strategies:
+    multi_source_contrastive: true
+    domain_adversarial: false
+    self_supervised: false
+
+# 少样本配置
+fewshot_config:
+  # 预训练样本数设置
+  pretrain_shots:
+    - 1   # 1样本预训练
+    - 2   # 2样本预训练
+    - 5   # 5样本预训练
+    - 10  # 10样本预训练
+    - "all"  # 全量数据预训练
+
+  # 微调样本数设置（将在微调阶段使用）
+  finetune_shots:
+    - 1   # 1样本微调
+    - 2   # 2样本微调
+    - 5   # 5样本微调
+    - 10  # 10样本微调
+
+  # 少样本策略
+  sampling_strategy: "balanced"  # 平衡采样
+  support_set_sampling: "stratified"  # 分层采样
+  query_set_sampling: "random"  # 随机采样
+
+# 预训练数据集配置
+pretrain_datasets:
+  source_domains:
+    - domain_ids: [5, 6, 13, 14]  # 排除CWRU (domain 1)
+      target_for: "CWRU"
+    - domain_ids: [1, 6, 13, 14]  # 排除Ottawa-19 (domain 5)
+      target_for: "Ottawa-19"
+    - domain_ids: [1, 5, 13, 14]  # 排除Ottawa-23 (domain 6)
+      target_for: "Ottawa-23"
+    - domain_ids: [1, 5, 6, 14]   # 排除THU-2 (domain 13)
+      target_for: "THU-2"
+    - domain_ids: [1, 5, 6, 13]   # 排除HUST (domain 19)
+      target_for: "HUST"
+
+# 可重现性配置
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# 实验说明
+experiment_notes: |
+  ## 少样本学习预训练阶段实验说明
+
+  ### 实验目标
+  为HSE-Prompt少样本学习提供高质量的特征表示预训练
+
+  ### 预训练策略
+  1. **多源域预训练**：使用除目标域外的所有源域数据
+  2. **跨域对比学习**：学习域不变的特征表示
+  3. **提示学习**：在预训练阶段同时学习系统特定提示
+
+  ### 预训练样本数设置
+  - 1样本：极度少样本预训练
+  - 2样本：超少样本预训练
+  - 5样本：少样本预训练
+  - 10样本：中少样本预训练
+  - 全量：无限制预训练（作为上界）
+
+  ### 预训练评估指标
+  - 预训练准确率
+  - 特征质量评估
+  - 域间泛化能力
+
+  ### 下一步
+  预训练完成后，将在Table2_FewShot_Finetune中配置少样本微调阶段

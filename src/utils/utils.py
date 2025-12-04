@@ -16,6 +16,13 @@ except ImportError:
 import numpy as np
 
 
+def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
+    """Load pretrained weights via the shared loader (backward compatibility helper)."""
+    from src.utils.pipeline_config.base_utils import load_pretrained_weights as _load_pretrained_weights
+
+    return _load_pretrained_weights(model, checkpoint_path, strict)
+
+
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
     """
     加载训练过程中保存的最佳模型检查点。
@@ -107,6 +114,7 @@ def close_lab():
     if wandb and wandb.run:
         wandb.finish()
         print("[INFO] WandB logger closed.")
+<<<<<<< HEAD
     if swanlab:
         try:
             current_run = getattr(swanlab, 'run', None)
@@ -116,9 +124,73 @@ def close_lab():
         except Exception as e:
             # Gracefully skip if SwanLab was never initialized or already closed
             print(f"[INFO] SwanLab not initialized or already closed: {e}")
+=======
+    if swanlab and swanlab.run:
+        try:
+            swanlab.finish()
+        except Exception as e:
+            print(f"[INFO] SwanLab is not used: {e}")
+        print("[INFO] SwanLab logger closed.")
+>>>>>>> release/v0.1.0
 
-def get_num_classes(metadata):
-    num_classes = {}
-    for key in np.unique(metadata.df['Dataset_id']):
-        num_classes[key] = max(metadata.df[metadata.df['Dataset_id'] == key]['Label']) + 1
-    return num_classes
+def get_num_classes(metadata, dataset_id=None):
+    """
+    获取数据集类别数。
+
+    Args:
+        metadata: 元数据对象
+        dataset_id: 可选，指定数据集ID时返回该数据集的类别数(int)，否则返回所有数据集的映射(dict)
+
+    Returns:
+        int: 当指定dataset_id时，返回该数据集的类别数
+        dict: 当未指定dataset_id时，返回{dataset_id: num_classes}映射
+
+    Raises:
+        ValueError: 当指定的dataset_id不存在时
+    """
+    df = metadata.df if hasattr(metadata, 'df') else metadata
+
+    if dataset_id is not None:
+        # 返回特定数据集的类别数(int)
+        dataset_data = df[df['Dataset_id'] == dataset_id]
+        if len(dataset_data) == 0:
+            raise ValueError(f"Dataset_id {dataset_id} not found in metadata")
+        return int(max(dataset_data['Label']) + 1)
+    else:
+        # 返回所有数据集的类别数映射(dict) - 保持原有格式
+        num_classes = {}
+        for key in np.unique(df['Dataset_id']):
+            num = max(df[df['Dataset_id'] == key]['Label']) + 1
+            num_classes[str(key)] = int(num)  # 保持原有的整型key
+        return num_classes
+
+
+def get_num_channels(metadata, dataset_id=None):
+    """
+    获取数据集通道数。
+
+    Args:
+        metadata: 元数据对象
+        dataset_id: 可选，指定数据集ID时返回该数据集的通道数(int)，否则返回所有数据集的映射(dict)
+
+    Returns:
+        int: 当指定dataset_id时，返回该数据集的通道数
+        dict: 当未指定dataset_id时，返回{dataset_id: num_channels}映射
+
+    Raises:
+        ValueError: 当指定的dataset_id不存在时
+    """
+    df = metadata.df if hasattr(metadata, 'df') else metadata
+
+    if dataset_id is not None:
+        # 返回特定数据集的通道数(int)
+        dataset_data = df[df['Dataset_id'] == dataset_id]
+        if len(dataset_data) == 0:
+            raise ValueError(f"Dataset_id {dataset_id} not found in metadata")
+        return int(max(dataset_data['Channel']))
+    else:
+        # 返回所有数据集的通道数映射(dict)
+        num_channels = {}
+        for key in np.unique(df['Dataset_id']):
+            num_channels[key] = int(max(df[df['Dataset_id'] == key]['Channel']))
+        return num_channels

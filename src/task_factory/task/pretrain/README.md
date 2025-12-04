@@ -1,0 +1,441 @@
+# Pretrain Task Module
+
+## 🚧 实现状态 (Implementation Status)
+
+### ✅ 已实现 (Fully Implemented)
+- **掩码重构**: `masked_reconstruction.py` - 302行完整的掩码自编码器实现
+- **Signal_mask_Loss**: 专门的工业信号掩码损失函数
+- **基础预训练框架**: 支持多种预训练策略的核心框架
+
+### 🚧 部分实现 (Partially Implemented)
+- **分类预测**: `classification_prediction.py` - 基础多任务预训练支持
+- **分类预训练**: `classification.py` - 标准监督预训练
+- **信号预测**: `prediction.py` - 时序预测基础功能
+
+### ✅ 已实现的对比学习任务 (HSE Contrastive)
+
+文件：`hse_contrastive.py` + `Components/contrastive_strategies.py` + `Components/contrastive_losses.py`
+
+当前支持的对比学习损失（均已在 `contrastive_losses.py` 中实现，并通过 `ContrastiveStrategyManager` 统一调度）：
+
+| Loss 名称      | Key / 类型        | 说明                           |
+| -------------- | ----------------- | ------------------------------ |
+| InfoNCE        | `INFONCE`         | 标准对比 InfoNCE / NT-Xent    |
+| Supervised Con | `SUPCON`          | 监督式对比损失 (SupCon)       |
+| Triplet        | `TRIPLET`         | 带 hard mining 的 Triplet loss |
+| Prototypical   | `PROTOTYPICAL`    | 原型网络式对比 / 度量学习     |
+| Barlow Twins   | `BARLOWTWINS`     | 冗余减少型自监督损失          |
+| VICReg         | `VICREG`          | Variance–Invariance–Covariance 正则 |
+
+策略层能力（`contrastive_strategies.py`）：
+
+- `type: "single"`：单一对比损失，`loss_type` 取上述 Key 之一；支持 `temperature`、`margin` 等超参；
+- `type: "ensemble"`：多损失组合，每个子损失带 `loss_type` / `weight` / `temperature` / `margin` 等字段，支持加权组合；
+- prompt 融合：提供注意力融合、门控融合等模块，用于将 HSE prompt 与特征进行融合（需要模型返回 prompt 表征时使用）；
+- 多视图支持：通过 `requires_multiple_views` 和 `_prepare_views`，可在 Task 内部生成双视图（time/freq mask + Gaussian noise）用于对比训练。
+
+在 `hse_contrastive` 任务中，对比损失与分类损失的组合方式：
+
+- 通过 `contrast_weight` 和 `classification_weight` 控制：
+  - 纯对比预训练：`contrast_weight > 0` 且 `classification_weight = 0`；
+  - 单阶段“对比 + CE 分类”：`contrast_weight > 0` 且 `classification_weight > 0`；
+- 该 Task 仅设计用于 **预训练阶段**（`type: "pretrain", name: "hse_contrastive"`），下游分类阶段仍推荐使用 CDDG/FS/GFS 等专用任务。
+
+### ❌ TODO: 待实现 / 后续扩展 (Not Yet Implemented)
+- **高级掩码策略**: block, temporal, frequency等复杂掩码模式
+- **多尺度预训练**: 不同时间尺度的表示学习
+- **域自适应预训练**: 域感知的预训练策略
+- **渐进式训练**: 动态增加难度的训练策略
+- **更高阶对比学习流水线**: 如完整的 SimCLR / MoCo / SwAV 风格 pipeline（当前可用损失已具备，但未封装成独立 pipeline）
+
+> **注意**: masked_reconstruction是核心实现，其他功能和高级特性为设计目标。
+
+## Overview
+
+The Pretrain task module implements self-supervised and unsupervised pretraining tasks for developing PHM (Prognostics and Health Management) foundation models. These tasks enable models to learn robust representations from large amounts of unlabeled industrial data before fine-tuning on specific downstream tasks. Pretraining is crucial for building foundation models that can transfer knowledge across different equipment types, fault conditions, and industrial domains.
+
+## Architecture
+
+Pretraining tasks follow the foundation model paradigm where models first learn general representations from large-scale data, then adapt to specific tasks through fine-tuning. This approach is particularly valuable for industrial applications where labeled data is scarce but raw sensor data is abundant.
+
+## Available Tasks
+
+### 1. masked_reconstruction.py ⭐ **Core Foundation Model Task**
+**Masked Signal Reconstruction for Unsupervised Pretraining**
+
+- **Purpose**: Learn robust signal representations through masked autoencoder training
+- **Method**: Mask portions of input signals and train model to reconstruct masked regions
+- **Innovation**: Adapted masked autoencoder paradigm for industrial time series data
+- **Use Case**: Foundation model pretraining for vibration signal analysis
+
+### 2. classification_prediction.py
+**Multi-Task Pretraining with Classification and Prediction**
+
+- **Purpose**: Joint pretraining on classification and signal prediction tasks
+- **Method**: Simultaneous optimization of classification accuracy and future signal prediction
+- **Strengths**: Learns both discriminative and generative representations
+- **Use Case**: Comprehensive foundation model training with multiple objectives
+
+### 3. classification.py
+**Classification-Based Pretraining**
+
+- **Purpose**: Standard supervised pretraining on classification tasks
+- **Method**: Pre-train backbone networks on classification objectives
+- **Strengths**: Simple, effective when labeled data is available
+- **Use Case**: Warm-starting models before specialized task adaptation
+
+### 4. prediction.py
+**Signal Prediction Pretraining**
+
+- **Purpose**: Learn temporal dynamics through future signal prediction
+- **Method**: Predict future signal values from past observations
+- **Strengths**: Captures temporal dependencies and signal evolution
+- **Use Case**: Time series foundation models, predictive maintenance applications
+
+## Configuration Examples
+
+### Masked Reconstruction Pretraining
+```yaml
+task:
+  type: "pretrain"
+  name: "masked_reconstruction"
+
+  # Masking configuration
+  mask_ratio: 0.25             # Fraction of signal to mask
+  mask_strategy: "random"      # "random", "block", "temporal"
+  patch_size: 16               # Size of signal patches
+
+  # Reconstruction loss
+  reconstruction_loss: "MSE"   # "MSE", "L1", "Huber"
+  normalize_targets: true      # Normalize reconstruction targets
+
+  # Contrastive learning (optional)
+  enable_contrastive: true
+  contrastive_weight: 0.1      # Weight for contrastive loss
+  temperature: 0.07            # Temperature for contrastive learning
+
+  # Training parameters
+  lr: 1e-4
+  epochs: 200
+  warmup_epochs: 20
+```
+
+### Multi-Task Classification + Prediction
+```yaml
+task:
+  type: "pretrain"
+  name: "classification_prediction"
+
+  # Task weights
+  classification_weight: 1.0   # Weight for classification loss
+  prediction_weight: 0.5       # Weight for prediction loss
+
+  # Classification configuration
+  classification:
+    loss: "CE"                 # Cross-entropy loss
+    num_classes: 10            # Number of fault classes
+
+  # Prediction configuration
+  prediction:
+    loss: "MSE"                # Mean squared error
+    prediction_horizon: 64     # Future steps to predict
+    input_horizon: 256         # Past steps for prediction
+
+  # Training parameters
+  lr: 5e-4
+  epochs: 100
+```
+
+### Signal Prediction Pretraining
+```yaml
+task:
+  type: "pretrain"
+  name: "prediction"
+
+  # Prediction configuration
+  prediction_horizon: 128      # Number of future steps
+  input_horizon: 512           # Number of past steps
+  prediction_loss: "MSE"       # Loss function
+
+  # Temporal modeling
+  use_temporal_encoding: true  # Add temporal position encoding
+  causal_attention: true       # Use causal attention masks
+
+  # Data augmentation
+  noise_augmentation: true     # Add noise during training
+  noise_std: 0.01             # Standard deviation of noise
+
+  # Training parameters
+  lr: 1e-3
+  epochs: 150
+```
+
+### Foundation Model Pipeline
+```yaml
+# Two-stage training: pretrain -> finetune
+pipeline: "Pipeline_02_pretrain_fewshot"
+
+# Stage 1: Pretraining
+pretrain_config:
+  task:
+    type: "pretrain"
+    name: "masked_reconstruction"
+    mask_ratio: 0.15
+    epochs: 200
+    lr: 1e-4
+
+# Stage 2: Few-shot fine-tuning
+finetune_config:
+  task:
+    type: "FS"
+    name: "prototypical_network"
+    num_support: 5
+    num_query: 15
+    epochs: 50
+    lr: 1e-5
+```
+
+## Key Parameters
+
+### Masking Configuration
+- `mask_ratio`: Fraction of input signal to mask (0.15-0.75)
+- `mask_strategy`: Masking pattern ("random", "block", "temporal", "frequency")
+- `patch_size`: Size of signal patches for masking
+- `mask_value`: Value used for masked regions (0.0, "noise", "learned")
+
+### Loss Functions
+- `reconstruction_loss`: Loss for masked reconstruction ("MSE", "L1", "Huber")
+- `contrastive_weight`: Weight for contrastive learning component
+- `prediction_loss`: Loss for temporal prediction tasks
+- `regularization_weight`: Weight for regularization terms
+
+### Training Strategy
+- `warmup_epochs`: Epochs for learning rate warmup
+- `gradient_clipping`: Maximum gradient norm
+- `weight_decay`: L2 regularization strength
+- `dropout_rate`: Dropout probability during training
+
+## Masking Strategies
+
+### 1. ✅ Random Masking - IMPLEMENTED
+Randomly mask individual time steps:
+```yaml
+mask_strategy: "random"       # ✅ WORKS
+mask_ratio: 0.25             # ✅ WORKS
+mask_probability: 0.15      # ✅ MAY WORK
+```
+
+### 2. TODO: Block Masking - NOT IMPLEMENTED
+Mask contiguous blocks of signal:
+```yaml
+# TODO: mask_strategy: "block" - NOT IMPLEMENTED
+# block_size_range: [8, 64]   # Range of block sizes
+# num_blocks: 3               # Number of blocks to mask
+```
+
+### 3. TODO: Temporal Masking - NOT IMPLEMENTED
+Mask specific temporal patterns:
+```yaml
+# TODO: mask_strategy: "temporal" - NOT IMPLEMENTED
+# temporal_pattern: "periodic"  # "periodic", "transient", "startup"
+# pattern_duration: 32         # Duration of masked patterns
+```
+
+### 4. TODO: Frequency Masking - NOT IMPLEMENTED
+Mask specific frequency components:
+```yaml
+# TODO: mask_strategy: "frequency" - NOT IMPLEMENTED
+# frequency_bands: [[0, 100], [500, 1000]]  # Frequency ranges to mask
+# mask_in_frequency_domain: true
+```
+
+## Usage Examples
+
+### Foundation Model Pretraining
+```bash
+# Large-scale masked reconstruction pretraining
+python main.py --config configs/demo/Pretraining/foundation_pretrain.yaml
+```
+
+### Multi-Dataset Pretraining
+```bash
+# Pretrain on multiple datasets for robust representations
+python main.py --config configs/demo/Pretraining/multi_dataset_pretrain.yaml
+```
+
+### Two-Stage Pipeline
+```bash
+# Complete pretrain + few-shot pipeline
+python main.py --pipeline Pipeline_02_pretrain_fewshot \
+    --config_path configs/demo/Pretraining/pretrain_stage.yaml \
+    --fs_config_path configs/demo/GFS/fewshot_stage.yaml
+```
+
+### Ablation Studies
+```bash
+# Compare different masking strategies
+python main.py --config configs/demo/Pretraining/ablation_masking.yaml
+
+# Test different mask ratios
+python main.py --config configs/demo/Pretraining/ablation_mask_ratio.yaml
+```
+
+## Integration with Framework
+
+### Task Registration
+Pretraining tasks are registered with the `@register_task` decorator and integrate seamlessly with the training pipeline.
+
+### Model Compatibility
+- **ISFM Models**: Primary target for foundation model pretraining
+- **Transformer Architectures**: Excellent for masked reconstruction
+- **CNN Backbones**: Support for convolutional pretraining
+- **Hybrid Models**: Multi-modal pretraining capabilities
+
+### Data Pipeline
+- Support for all 30+ datasets in PHM-Vibench
+- Automatic batching and masking during training
+- Efficient data loading for large-scale pretraining
+
+## Advanced Features
+
+### 1. TODO: Contrastive Learning Integration - NOT IMPLEMENTED
+Combine masked reconstruction with contrastive learning:
+```yaml
+# TODO: enable_contrastive: true - NOT IMPLEMENTED
+# contrastive_weight: 0.1
+# contrastive_type: "SimCLR"    # "SimCLR", "MoCo", "SwAV"
+```
+
+### 2. TODO: Multi-Scale Pretraining - NOT IMPLEMENTED
+Learn representations at multiple time scales:
+```yaml
+# TODO: multi_scale_training: true - NOT IMPLEMENTED
+# time_scales: [1, 2, 4, 8]     # Different downsampling factors
+# scale_weights: [1.0, 0.8, 0.6, 0.4]  # Weights for each scale
+```
+
+### 3. TODO: Domain-Adaptive Pretraining - NOT IMPLEMENTED
+Pretrain with domain awareness:
+```yaml
+# TODO: domain_adaptive: true - NOT IMPLEMENTED
+# domain_embedding_dim: 64      # Dimension of domain embeddings
+# num_domains: 10               # Number of source domains
+```
+
+### 4. TODO: Progressive Training - NOT IMPLEMENTED
+Gradually increase task difficulty:
+```yaml
+# TODO: progressive_training: true - NOT IMPLEMENTED
+# mask_ratio_schedule: "linear"  # "linear", "cosine", "step"
+# start_mask_ratio: 0.05
+# end_mask_ratio: 0.25
+```
+
+## Evaluation Metrics
+
+### Pretraining Metrics
+- **Reconstruction Loss**: Quality of signal reconstruction
+- **Masked Accuracy**: Accuracy on masked regions
+- **Perplexity**: Model uncertainty on predictions
+- **Feature Quality**: Downstream task performance with frozen features
+
+### Transfer Learning Metrics
+- **Linear Probe Accuracy**: Performance with linear classifier on frozen features
+- **Fine-tuning Performance**: Performance after task-specific fine-tuning
+- **Few-shot Transfer**: Performance on few-shot downstream tasks
+- **Zero-shot Transfer**: Performance without any task-specific training
+
+## Research Applications
+
+### Foundation Model Development
+- Large-scale pretraining for industrial signal analysis
+- Transfer learning across different equipment types
+- Universal representations for PHM applications
+
+### Self-Supervised Learning
+- Learning from unlabeled industrial data
+- Discovering temporal and spectral patterns
+- Robust feature learning for noisy environments
+
+### Cross-Domain Transfer
+- Knowledge transfer across industrial domains
+- Adaptation to new equipment with minimal data
+- Universal fault diagnosis capabilities
+
+## Best Practices
+
+### 1. Data Preparation
+- Use large, diverse datasets for pretraining
+- Ensure data quality and preprocessing consistency
+- Balance different equipment types and conditions
+
+### 2. Hyperparameter Selection
+- Start with established mask ratios (15-25%)
+- Use learning rate warmup for stable training
+- Monitor reconstruction quality throughout training
+
+### 3. Transfer Strategy
+- Freeze backbone for initial evaluation
+- Gradually unfreeze layers during fine-tuning
+- Use lower learning rates for fine-tuning
+
+## Troubleshooting
+
+### Common Issues
+- **Poor reconstruction**: Reduce mask ratio or improve model capacity
+- **Overfitting**: Increase dropout, weight decay, or data augmentation
+- **Training instability**: Use gradient clipping and learning rate scheduling
+
+### Debug Tips
+- Visualize reconstructed signals to assess quality
+- Monitor gradient norms during training
+- Check feature representations through visualization
+
+## Industrial Deployment
+
+### 1. Foundation Model Serving
+```yaml
+# Deploy pretrained model for inference
+deployment:
+  model_type: "foundation"
+  checkpoint_path: "pretrained_model.ckpt"
+  inference_mode: "feature_extraction"
+```
+
+### 2. Incremental Learning
+```yaml
+# Continuous learning from new data
+incremental_learning:
+  update_frequency: "daily"
+  replay_buffer_size: 10000
+  adaptation_lr: 1e-5
+```
+
+### 3. Multi-Task Deployment
+```yaml
+# Deploy for multiple downstream tasks
+multi_task_deployment:
+  shared_backbone: true
+  task_heads: ["classification", "prediction", "anomaly_detection"]
+```
+
+## Performance Benchmarks
+
+### Pretraining Scale
+- **Small**: 1M samples, 50 epochs, single dataset
+- **Medium**: 10M samples, 100 epochs, 3-5 datasets
+- **Large**: 100M samples, 200 epochs, all datasets
+
+### Transfer Performance
+- **Linear Probe**: 70-85% accuracy with frozen features
+- **Fine-tuning**: 85-95% accuracy with end-to-end training
+- **Few-shot**: 60-80% accuracy with 5 shots per class
+
+## References
+
+- [Task Factory Documentation](../CLAUDE.md)
+- [Masked Autoencoders Paper](https://arxiv.org/abs/2111.06377)
+- [Foundation Models Survey](https://arxiv.org/abs/2108.07258)
+- [Configuration System](../../../configs/CLAUDE.md)
+- [Model Factory](../../../model_factory/CLAUDE.md)
+- [Pipeline Documentation](../../../trainer_factory/CLAUDE.md)

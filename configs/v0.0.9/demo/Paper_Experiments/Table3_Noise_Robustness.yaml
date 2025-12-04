@@ -1,0 +1,341 @@
+# 论文实验第3部分：噪声鲁棒性评估
+# 对应论文表3：HSE-Prompt在噪声环境下的鲁棒性评估
+
+environment:
+  VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PYTHONPATH: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  project: "Paper_Table3_Noise_Robustness"
+  seed: 42
+  output_dir: "results/paper/table3_noise_robustness"
+  notes: "论文表3：HSE-Prompt噪声鲁棒性评估"
+  iterations: 5  # 噪声实验需要多次重复
+
+# 数据配置 - 包含噪声注入的数据
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata_6_1.xlsx"
+  batch_size: 32
+  num_workers: 4
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: true
+  window_size: 4096
+  stride: 64
+  truncate_length: 100
+  dtype: float32
+  num_window: 64
+  normalization: standardization
+
+  # 噪声配置
+  noise_injection:
+    enabled: true
+    noise_types: ["gaussian", "uniform", "impulse"]
+    snr_levels: [20, 10, 5, 0]  # dB
+    noise_stage: "test_only"  # 仅在测试阶段注入噪声
+
+# 模型配置 - HSE-Prompt方法
+model:
+  name: "M_02_ISFM_Prompt_Simplified"
+  type: "M_02_ISFM_Prompt"
+
+  # HSE嵌入配置
+  embedding: "HSE_prompt"
+  patch_size_L: 256
+  patch_size_C: 1
+  num_patches: 128
+  output_dim: 1024
+
+  # 简化提示配置
+  use_prompt: true
+  prompt_dim: 64
+  max_dataset_ids: 30
+  prompt_combination: "add"
+
+  # 骨干网络配置
+  backbone: "B_08_PatchTST"
+
+  # 任务头配置
+  task_head: "H_01_Linear_cla"
+
+  # 训练阶段
+  training_stage: "finetune"
+  freeze_prompt: false
+
+# 任务配置 - 噪声鲁棒性测试
+task:
+  name: "noise_robustness_test"
+  type: "CDDG"
+  task_type: "classification"
+
+  # 跨设备设置
+  target_domain_num: 1
+  # target_system_id: [1]  # 将在实验循环中设置
+  # source_domain_id: [5, 6, 13, 14, 19]
+
+  # 损失函数和评估指标
+  loss_function: "cross_entropy"
+  metrics: ["accuracy", "precision", "recall", "f1"]
+
+  # 训练超参数
+  optimizer: "adamw"
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  batch_size: 32
+  epochs: 100
+
+  # 学习率调度
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # 早停
+  early_stopping: true
+  patience: 15
+  monitor: "val_accuracy"
+  mode: "max"
+
+  # 噪声测试配置
+  noise_testing:
+    enabled: true
+    test_noise_types: ["gaussian", "uniform", "impulse"]
+    test_snr_levels: [20, 10, 5, 0]
+    noise_injection_method: "additive"
+    multiple_noise_tests: true
+
+# 训练器配置
+trainer:
+  name: "T_01_Lightning"
+
+  # 训练参数
+  epochs: 100
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  optimizer: "adamw"
+  scheduler: "cosine"
+  warmup_epochs: 10
+
+  # 早停配置
+  early_stopping:
+    patience: 15
+    monitor: "val_accuracy"
+    mode: "max"
+
+  # 检查点
+  checkpoint:
+    monitor: "val_accuracy"
+    mode: "max"
+    save_top_k: 3
+    filename: "noise_test-{epoch:02d}-{val_accuracy:.3f}"
+
+  # 日志记录
+  logger: "tensorboard"
+  log_every_n_steps: 10
+
+  # 硬件配置
+  accelerator: "auto"
+  precision: 16
+  devices: 1
+
+# 输出配置
+output:
+  save_dir: "save/paper/table3_noise_robustness"
+  log_dir: "logs/paper/table3_noise_robustness"
+  checkpoint_dir: "checkpoints/paper/table3_noise_robustness"
+  results_dir: "results/paper/table3_noise_robustness"
+
+# 实验配置
+experiment:
+  name: "table3_noise_robustness"
+  description: "论文表3：HSE-Prompt噪声鲁棒性评估"
+  tags: ["paper", "table3", "noise_robustness", "hse_prompt"]
+
+  # 噪声实验设置
+  noise_types:
+    gaussian:
+      name: "高斯噪声"
+      description: "添加零均值高斯白噪声"
+      parameters:
+        mean: 0.0
+        std: "auto"  # 根据SNR自动计算
+
+    uniform:
+      name: "均匀噪声"
+      description: "添加均匀分布噪声"
+      parameters:
+        low: "auto"
+        high: "auto"  # 根据SNR自动计算
+
+    impulse:
+      name: "脉冲噪声"
+      description: "添加随机脉冲噪声"
+      parameters:
+        probability: 0.05
+        amplitude: "auto"  # 根据SNR自动计算
+
+  # 信噪比设置
+  snr_levels:
+    - 20   # 高信噪比（轻微噪声）
+    - 10   # 中等信噪比
+    - 5    # 低信噪比（强噪声）
+    - 0    # 极低信噪比（极强噪声）
+
+  # 评估指标
+  metrics: ["Clean_Accuracy", "Noisy_Accuracy", "Performance_Degradation", "Robustness_Score"]
+
+  # 统计分析
+  statistics:
+    num_seeds: 5
+    confidence_level: 0.95
+    report_mean_std: true
+    statistical_test: "wilcoxon"
+
+# 噪声实验矩阵
+noise_experiment_matrix:
+  # 行：噪声类型，列：信噪比水平
+  # 每个单元格需要在5个目标域上测试
+  combinations:
+    - noise_type: "gaussian"
+      snr_levels: [20, 10, 5, 0]
+    - noise_type: "uniform"
+      snr_levels: [20, 10, 5, 0]
+    - noise_type: "impulse"
+      snr_levels: [20, 10, 5, 0]
+
+  # 总实验数量：3(噪声类型) × 4(SNR) × 5(目标域) × 5(随机种子) = 300个实验
+
+# 目标域配置
+target_domain_configs:
+  CWRU:
+    target_system_id: [1]
+    source_domain_id: [5, 6, 13, 14, 19]
+    num_classes: 10
+
+  Ottawa-19:
+    target_system_id: [5]
+    source_domain_id: [1, 6, 13, 14, 19]
+    num_classes: 5
+
+  Ottawa-23:
+    target_system_id: [6]
+    source_domain_id: [1, 5, 13, 14, 19]
+    num_classes: 3
+
+  THU-2:
+    target_system_id: [13]
+    source_domain_id: [1, 5, 6, 14, 19]
+    num_classes: 8
+
+  HUST:
+    target_system_id: [19]
+    source_domain_id: [1, 5, 6, 13, 14]
+    num_classes: 7
+
+# 对比方法配置
+baseline_methods:
+  - name: "HSE-Prompt"
+    config: "HSE-Prompt"
+    description: "本文提出的HSE-Prompt方法"
+
+  - name: "PatchTST"
+    config: "PatchTST"
+    description: "Patch时序Transformer基线"
+
+  - name: "Dlinear"
+    config: "Dlinear"
+    description: "线性预测方法基线"
+
+  - name: "TimesNet"
+    config: "TimesNet"
+    description: "时序分析网络基线"
+
+# 噪声鲁棒性评估指标
+robustness_metrics:
+  # 性能下降率
+  performance_degradation:
+    formula: "(clean_acc - noisy_acc) / clean_acc * 100%"
+    description: "噪声导致性能下降百分比"
+
+  # 鲁棒性分数
+  robustness_score:
+    formula: "noisy_acc / clean_acc"
+    description: "噪声环境下性能保持率"
+
+  # 噪声敏感性
+  noise_sensitivity:
+    formula: "abs(clean_acc - noisy_acc)"
+    description: "噪声敏感性绝对值"
+
+# 噪声生成配置
+noise_generation:
+  gaussian:
+    type: "normal"
+    mean: 0.0
+    std_calculation: "snr_based"
+
+  uniform:
+    type: "uniform"
+    range_calculation: "snr_based"
+
+  impulse:
+    type: "impulse"
+    probability: 0.05
+    amplitude_calculation: "snr_based"
+    spike_duration: 1
+
+# 预期性能阈值
+expected_performance_thresholds:
+  # 在20dB SNR下的最小性能
+  min_accuracy_20db: 90.0
+
+  # 在0dB SNR下的最小性能
+  min_accuracy_0db: 60.0
+
+  # 最大允许性能下降
+  max_degradation: 40.0
+
+  # 最小鲁棒性分数
+  min_robustness_score: 0.6
+
+# 可重现性配置
+reproducibility:
+  seed: 42
+  deterministic: true
+  benchmark: false
+
+# 实验说明
+experiment_notes: |
+  ## 噪声鲁棒性评估实验说明
+
+  ### 实验目标
+  评估HSE-Prompt方法在各种噪声环境下的鲁棒性能
+
+  ### 噪声类型
+  1. **高斯噪声**：最常见的环境噪声
+  2. **均匀噪声**：模拟传感器量化噪声
+  3. **脉冲噪声**：模拟突发干扰和传感器故障
+
+  ### 信噪比水平
+  - 20dB：轻微噪声环境
+  - 10dB：中等噪声环境
+  - 5dB：强噪声环境
+  - 0dB：极强噪声环境
+
+  ### 评估指标
+  1. **噪声环境准确率**：在特定噪声条件下的分类准确率
+  2. **性能下降率**：相对于清洁环境的性能下降百分比
+  3. **鲁棒性分数**：噪声环境下性能保持率
+  4. **噪声敏感性**：对噪声的敏感程度
+
+  ### 实验设计
+  1. **训练阶段**：在清洁数据上训练模型
+  2. **测试阶段**：在注入不同类型和强度噪声的数据上测试
+  3. **对比分析**：与多个基线方法进行对比
+  4. **统计分析**：5次重复实验，报告均值±标准差
+
+  ### 预期结果
+  - HSE-Prompt在所有噪声条件下都应优于基线方法
+  - 随着SNR降低，所有方法性能下降，但HSE-Prompt下降更缓慢
+  - HSE-Prompt对脉冲噪声应具有更强的鲁棒性
+
+  ### 实际意义
+  工业现场环境复杂，传感器数据常受各种噪声干扰。噪声鲁棒性评估验证了HSE-Prompt在实际工业环境中的适用性和可靠性。
