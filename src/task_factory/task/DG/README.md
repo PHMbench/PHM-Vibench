@@ -126,24 +126,13 @@ Minimizes distribution difference between domains:
 # mmd_kernel: "rbf"              # Kernel type for MMD
 ```
 
-## Usage Examples
+## Usage Examples (v0.1.0 demo)
 
-### Basic Single-Dataset DG
+### Basic Cross-Domain DG on CWRU
 ```bash
-# Train with domain generalization on CWRU dataset
-python main.py --config configs/demo/Single_DG/CWRU_DG.yaml
-```
-
-### Cross-Validation DG
-```bash
-# Domain generalization with cross-validation
-python main.py --config configs/demo/Single_DG/CWRU_DG_CV.yaml
-```
-
-### Advanced Regularization
-```bash
-# Multiple regularization techniques
-python main.py --config configs/demo/Single_DG/CWRU_DG_advanced.yaml
+# Cross-domain DG demo: CWRU → Ottawa
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
 ## Integration with Framework

@@ -4,6 +4,13 @@
 
 HSE (Hierarchical Signal Embedding) Industrial Contrastive Learning 是一个针对工业设备振动信号分析的先进深度学习框架。该实现旨在通过提示引导的对比学习实现跨系统泛化，为 ICML/NeurIPS 2025 论文提供技术支撑。
 
+> ℹ️ **仓库范围说明（v0.1.0）**  
+> 本文档描述的是完整的 HSE 工程化实现与论文流水线，其中部分路径（如 `scripts/*`、`configs/pipeline_03/*`）对应的是扩展工程仓库（例如 `PHM-Vibench-metric`）。  
+> 当前 PHM-Vibench 仓库中主要包含：
+> - HSE 相关模型/Task 实现（如 `src/model_factory/ISFM/`、`src/task_factory/task/pretrain/hse_contrastive.py`）；  
+> - v0.1.0 下用于 sanity 验证的 demo 与 reference 配置（见 `configs/demo/*`、`configs/reference/*`）。  
+> 若需运行文档中提到的完整脚本流水线，请对照实际存在的脚本与配置文件，或参考外部工程仓库。
+
 ## 🎯 核心特性
 
 ### 📊 技术创新

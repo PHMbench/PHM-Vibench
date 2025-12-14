@@ -15,9 +15,9 @@ PHM-Vibench Utils 模块提供了一套完整的工具库，支持配置管理�
 
 ### 5分钟快速上手
 ```python
-# 配置加载
-from src.utils.config_utils import load_config
-config = load_config('config.yaml')
+# 配置加载（推荐直接使用 src.configs.load_config）
+from src.configs import load_config
+config = load_config('configs/demo/01_cross_domain/cwru_dg.yaml')
 
 # 模型注册
 from src.utils.registry import Registry
@@ -41,10 +41,9 @@ src/utils/
 ├── README.md                          # 本文档
 ├── __init__.py                        # 模块初始化
 ├── registry.py                        # 🔧 核心注册系统
-├── config_utils.py                    # ⚙️ 配置管理核心
+├── config_utils.py                    # ⚙️ CLI override 与局部配置合并工具
 ├── utils.py                           # 🔧 通用工具
 ├── env_builders.py                    # 🏗️ 环境构建器
-├── masking.py                         # 🎭 信号掩码工具
 ├── pipeline_config.py                 # ⚠️ [弃用] 旧版配置管理
 │
 ├── config/                            # ⚙️ 配置管理工具

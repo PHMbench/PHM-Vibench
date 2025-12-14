@@ -80,7 +80,7 @@ FS tasks follow the episodic training paradigm where the model learns from multi
 
 ## Configuration Examples
 
-### Prototypical Networks
+### Prototypical Networks (advanced usage)
 ```yaml
 task:
   type: "FS"
@@ -101,7 +101,7 @@ task:
   episode_batch_size: 4        # Episodes per batch
 ```
 
-### Matching Networks
+### Matching Networks (advanced usage)
 ```yaml
 task:
   type: "FS"
@@ -127,7 +127,7 @@ task:
   epochs: 100
 ```
 
-### KNN Feature Learning
+### KNN Feature Learning (advanced usage)
 ```yaml
 task:
   type: "FS"
@@ -153,7 +153,7 @@ task:
   epochs: 100
 ```
 
-### Fine-tuning Approach
+### Fine-tuning Approach (advanced usage)
 ```yaml
 task:
   type: "FS"
@@ -226,35 +226,27 @@ attention_type: "cosine"
 memory_size: 1000
 ```
 
-## Usage Examples
+## Usage Examples (v0.1.0 demos)
 
-### Basic Few-Shot Experiment
+### Basic Few-Shot Experiment (single system FS)
 ```bash
-# 5-way 5-shot prototypical networks
-python main.py --config configs/demo/GFS/proto_5way_5shot.yaml
+# 5-way 5-shot FS classification on CWRU (ProtoNet-style)
+python main.py --config configs/demo/03_fewshot/cwru_protonet.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Cross-Dataset Few-Shot
+### Cross-System Few-Shot (see GFS task)
 ```bash
-# Train on CWRU, test few-shot adaptation to new datasets
-python main.py --config configs/demo/GFS/cross_dataset_fewshot.yaml
+# Cross-system few-shot classification (GFS), see GFS task README
+python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Pretraining + Few-Shot Pipeline
+### Pretraining + Few-Shot (single-stage pretrain demo)
 ```bash
-# Two-stage: pretrain backbone, then few-shot adaptation
-python main.py --pipeline Pipeline_02_pretrain_fewshot \
-    --config_path configs/demo/Pretraining/backbone_pretrain.yaml \
-    --fs_config_path configs/demo/GFS/fewshot_adapt.yaml
-```
-
-### Ablation Studies
-```bash
-# Compare different shot numbers
-python main.py --config configs/demo/GFS/ablation_shots.yaml
-
-# Compare different methods
-python main.py --config configs/demo/GFS/ablation_methods.yaml
+# HSE pretrain (single-stage) via Pipeline_02_pretrain_fewshot
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
 ## Integration with Framework

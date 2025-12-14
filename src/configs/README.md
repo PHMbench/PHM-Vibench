@@ -22,8 +22,8 @@ from src.configs import load_config
 # 1. 从预设加载
 config = load_config('quickstart')
 
-# 2. 从文件加载  
-config = load_config('configs/demo/Single_DG/CWRU.yaml')
+# 2. 从文件加载（直接指定 YAML）
+config = load_config('configs/demo/01_cross_domain/cwru_dg.yaml')
 
 # 3. 从字典加载
 config = load_config({'data': {...}, 'model': {...}, 'task': {...}})
@@ -59,16 +59,19 @@ result = base_config.copy().update(
 )
 ```
 
-## 📋 可用预设
+## 📋 可用预设（v0.0.9 兼容）
+
+> 说明：以下预设仍指向 `configs/v0.0.9/demo/` 下的旧版配置，用于兼容历史脚本。  
+> v0.1.0 推荐直接使用 `configs/demo/*` + `base_configs` 结构（见 `docs/v0.1.0/v0.1.0_update.md` 和 `configs/readme.md`）。
 
 | 预设名称 | 模板文件 | 说明 |
 |---------|---------|------|
-| `quickstart` | configs/demo/Single_DG/CWRU.yaml | 快速上手 |
-| `basic` | configs/demo/Single_DG/THU.yaml | 基础配置 |
-| `isfm` | configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml | ISFM模型 |
-| `gfs` | configs/demo/GFS/GFS_demo.yaml | Few-shot学习 |
-| `pretrain` | configs/demo/Pretraining/Pretraining_demo.yaml | 预训练 |
-| `id` | configs/demo/ID/id_demo.yaml | ID任务 |
+| `quickstart` | configs/v0.0.9/demo/Single_DG/CWRU.yaml | 快速上手（旧版 Single_DG 示例） |
+| `basic` | configs/v0.0.9/demo/Single_DG/THU.yaml | 基础配置（旧版 Single_DG 示例） |
+| `isfm` | configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml | ISFM 模型（旧版 Multiple_DG 示例） |
+| `gfs` | configs/v0.0.9/demo/GFS/GFS_demo.yaml | Few-shot 学习（旧版 GFS 示例） |
+| `pretrain` | configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml | 预训练（旧版 Pretraining 示例） |
+| `id` | configs/v0.0.9/demo/ID/id_demo.yaml | ID 任务（旧版 ID 示例） |
 
 ```python
 # 查看所有预设

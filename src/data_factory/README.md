@@ -69,8 +69,8 @@ The dataset is organized into three main files, linked by a common `Id`.
     * **Purpose**: The central index of the dataset. It contains all descriptive information, labels, and parameters for each data sample.
     * **Primary Key**: The `Id` column uniquely identifies each sample and links the three files.
 
-2.  **`data.h5` (HDF5 File)**
-    * **Purpose**: Stores the raw time-series signal data.
+2.  **HDF5 Signal Cache (`*.h5`)**
+    * **Purpose**: Stores the raw time-series signal data, usually as an aggregated cache file such as `cache.h5` generated from per-file `Name.h5`.
     * **Access**: Data is retrieved using the `Id` from the metadata file as the key.
     * **Shape**: The data for each `Id` is a 2D array of shape `(L, C)`, where `L` (Sample_lenth) and `C` (Channel) are specified in `metadata.xlsx`.
 

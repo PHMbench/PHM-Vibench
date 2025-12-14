@@ -213,33 +213,20 @@ Align feature distributions between base and novel classes:
 alignment_loss = MMD(base_features, novel_features)
 ```
 
-## Usage Examples
+## Usage Examples (v0.1.0 demos)
 
-### Basic GFS Experiment
+### Basic Cross-System GFS Experiment
 ```bash
-# 8 base classes + 2 novel classes with 5-shot learning
-python main.py --config configs/demo/GFS/gfs_8base_2novel.yaml
+# Cross-system few-shot classification (GFS) demo
+python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Incremental Learning Simulation
+### HSE Pretrain + GFS (single-stage pretrain demo)
 ```bash
-# Simulate adding new fault types to existing system
-python main.py --config configs/demo/GFS/incremental_learning.yaml
-```
-
-### Cross-Dataset GFS
-```bash
-# Base classes from CWRU, novel classes from THU
-python main.py --config configs/demo/GFS/cross_dataset_gfs.yaml
-```
-
-### Ablation Studies
-```bash
-# Compare different weighting strategies
-python main.py --config configs/demo/GFS/ablation_weighting.yaml
-
-# Test different numbers of novel classes
-python main.py --config configs/demo/GFS/ablation_novel_classes.yaml
+# HSE pretraining for CDDG (can be followed by GFS-style few-shot tasks)
+python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
 ## Integration with Framework
