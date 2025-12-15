@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import tempfile
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 
@@ -16,6 +17,17 @@ try:
     import streamlit as st  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     st = None
+
+
+def namespace_to_dict(value: Any) -> Any:
+    """Recursively convert ConfigWrapper/SimpleNamespace into plain dict/list primitives."""
+    if isinstance(value, SimpleNamespace):
+        return {k: namespace_to_dict(v) for k, v in value.__dict__.items()}
+    if isinstance(value, dict):
+        return {k: namespace_to_dict(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [namespace_to_dict(v) for v in value]
+    return value
 
 
 def list_config_files() -> List[str]:
@@ -45,8 +57,9 @@ def run_pipeline(
     """Run a pipeline using a temporary config file."""
     module = importlib.import_module(f"src.{pipeline_name}")
     import yaml  # local import
+    config_dict = namespace_to_dict(config)
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
-        yaml.safe_dump(config, f)
+        yaml.safe_dump(config_dict, f, allow_unicode=True)
         temp_path = f.name
     args = argparse.Namespace(
         config_path=temp_path,
@@ -199,7 +212,6 @@ def select_environment() -> Optional[Dict[str, Any]]:
     if load_mode == "传统文件上传模式":
         return build_traditional_ui()
     return build_phmbench_ui()
-    return None
 
 
 def select_pipeline() -> (str, Optional[str]):
@@ -218,7 +230,7 @@ def select_pipeline() -> (str, Optional[str]):
 def load_base_config() -> Dict[str, Any]:
     """Load a base YAML config selected from sidebar."""
     if st is None:
-        return load_config(list_config_files()[0])
+        return namespace_to_dict(load_config(list_config_files()[0]))
     st.sidebar.header("实验配置")
     config_files = list_config_files()
     selected_cfg_path = st.sidebar.selectbox("选择配置文件", config_files)
@@ -231,7 +243,7 @@ def update_config(
     env: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Merge edited sections and environment into base config."""
-    cfg = dict(base_cfg)
+    cfg = namespace_to_dict(base_cfg)
     for sec, val in sections.items():
         cfg[sec] = val
     if env is not None:
@@ -244,13 +256,17 @@ def display_results(result: Any) -> None:
     if st is None:
         return
     import pandas as pd
-    tab1, _, _, tab4 = st.tabs(["指标总结", "训练曲线", "预测详情", "原始日志"])
+    tab1, tab2, tab3, tab4 = st.tabs(["指标总结", "训练曲线", "预测详情", "原始日志"])
     with tab1:
         if isinstance(result, list) and result:
             df = pd.DataFrame(result)
             st.dataframe(df)
         else:
             st.write("无结果")
+    with tab2:
+        st.info("TODO: 训练曲线可视化尚未实现")
+    with tab3:
+        st.info("TODO: 预测详情可视化尚未实现")
     with tab4:
         st.code(str(result))
 
