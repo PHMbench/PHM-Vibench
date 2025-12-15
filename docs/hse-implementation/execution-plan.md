@@ -33,14 +33,14 @@ python -c "import wandb, swanlab; print('✅ 实验跟踪工具已安装')"
 # 激活conda环境
 conda activate P
 
-# 验证安装
-python scripts/hse_synthetic_demo.py --quick-test
+# NOTE（12_15）：论文级脚本计划迁移到 paper submodule（见 paper/README_SUBMODULE.md）
+# 初始化 submodule 后，按 submodule 内 README 执行 synthetic demo / quick-test（TODO）。
 ```
 
 ### 步骤2: 基础验证
 ```bash
-# 运行合成数据演示 (推荐首次使用)
-python scripts/hse_synthetic_demo.py
+# 论文级脚本（TODO：迁移到 paper submodule）
+# 初始化 submodule 后，按 submodule 内 README 执行 synthetic demo。
 
 # 预期输出:
 # ✅ 系统提示编码: 成功
@@ -52,8 +52,8 @@ python scripts/hse_synthetic_demo.py
 
 ### 步骤3: Pipeline测试
 ```bash
-# 运行Pipeline_03集成测试
-python scripts/test_pipeline03_integration.py
+# 论文级脚本（TODO：迁移到 paper submodule）
+# 初始化 submodule 后，按 submodule 内 README 执行 pipeline03 集成测试。
 
 # 预期结果: 5/9测试通过 (55.6%成功率)
 ```
@@ -101,8 +101,9 @@ print('✅ HSE提示系统组件可用')
 
 #### 2.1 CWRU基线实验
 ```bash
-# 运行CWRU基线实验
-python main.py --config configs/baseline/cwru_baseline.yaml
+# 主仓库基线/快速验证示例（以 configs/demo/ 为准）
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 
 # 预期结果:
 # - 训练完成无错误
@@ -112,8 +113,9 @@ python main.py --config configs/baseline/cwru_baseline.yaml
 
 #### 2.2 HSE演示实验
 ```bash
-# 运行HSE对比学习演示
-python main.py --config configs/demo/HSE_Contrastive/hse_cddg.yaml
+# 主仓库的 HSE-style demo 示例见：
+# python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml
+# python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml
 
 # 预期结果:
 # - HSE准确度 > 基线准确度
@@ -125,49 +127,26 @@ python main.py --config configs/demo/HSE_Contrastive/hse_cddg.yaml
 
 #### 3.1 两阶段训练
 ```bash
-# 阶段1: 预训练
-python scripts/run_hse_prompt_pipeline03.py \
-  --stage pretrain \
-  --config configs/demo/HSE_Contrastive/hse_prompt_pretrain.yaml
-
-# 阶段2: 微调
-python scripts/run_hse_prompt_pipeline03.py \
-  --stage finetune \
-  --config configs/demo/HSE_Contrastive/hse_prompt_finetune.yaml
+# 论文级两阶段训练（TODO：迁移到 paper submodule）
+# 初始化 submodule 后，按 submodule 内 README 执行 pretrain/finetune。
 ```
 
 #### 3.2 多任务实验
 ```bash
-# 运行多任务预训练-微调pipeline
-python main.py --pipeline Pipeline_03 \
-  --config configs/pipeline_03/hse_prompt_multitask_config.yaml
+# 论文级多任务 pipeline（TODO：迁移到 paper submodule）
+# 主仓库当前入口：python main.py --config <yaml>（pipeline 由 YAML 的 pipeline 字段选择）
 ```
 
 ### 阶段4: 生产验证 (4-6小时)
 
 #### 4.1 多数据集验证
 ```bash
-# 依次在5个数据集上验证
-datasets=("CWRU" "XJTU" "THU" "Ottawa" "JNU")
-for dataset in "${datasets[@]}"; do
-    echo "验证数据集: $dataset"
-    python main.py --config configs/demo/Single_DG/${dataset}.yaml
-done
+# 主仓库请使用 `configs/demo/` 的 demo 逐个验证（按实际 metadata 的 Dataset_id/Domain 划分配置）。
 ```
 
 #### 4.2 消融研究
 ```bash
-# 运行消融研究实验
-ablation_configs=(
-    "configs/pipeline_03/ablation/hse_no_prompt_baseline.yaml"
-    "configs/pipeline_03/ablation/hse_system_prompt_only.yaml"
-    "configs/pipeline_03/ablation/hse_sample_prompt_only.yaml"
-)
-
-for config in "${ablation_configs[@]}"; do
-    echo "运行消融实验: $config"
-    python main.py --config "$config"
-done
+# 论文级 ablation 配置计划迁移到 paper submodule（TODO）
 ```
 
 ## 🔧 故障排除指南
@@ -177,19 +156,14 @@ done
 #### 问题1: ConfigWrapper兼容性错误
 ```bash
 # 症状: TypeError: 'ConfigWrapper' object is not iterable
-# 解决方案:
-git checkout main src/configs/config_utils.py
-# 或者
-pip install --upgrade pyyaml
+# 说明：该问题多来自旧版文档/脚本的 dict/namespace 混用；主仓库以 `src/configs/config_utils.py` 的 ConfigWrapper 行为为准。
 ```
 
 #### 问题2: H5数据加载失败
 ```bash
 # 症状: FileNotFoundError: *.h5
 # 解决方案:
-export DATA_DIR=/path/to/your/data
-python scripts/check_data_paths.py
-# 确保data/目录包含正确的metadata文件
+# 确保 YAML 中 `data.data_dir` 与 `data.metadata_file` 指向实际存在的文件/目录。
 ```
 
 #### 问题3: CUDA内存不足

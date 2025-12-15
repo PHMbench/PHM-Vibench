@@ -4,11 +4,14 @@
 
 HSE (Hierarchical Signal Embedding) Industrial Contrastive Learning 是一个针对工业设备振动信号分析的先进深度学习框架。该实现旨在通过提示引导的对比学习实现跨系统泛化，为 ICML/NeurIPS 2025 论文提供技术支撑。
 
+> NOTE（12_15）  
+> HSE 相关的“论文级脚本/流水线/配置”计划迁移到 paper submodule（`paper/2025-10_foundation_model_0_metric/`），以避免与主仓库的 demo/入口混淆（TODO）。
+
 > ℹ️ **仓库范围说明（v0.1.0）**  
 > 本文档描述的是完整的 HSE 工程化实现与论文流水线，其中部分路径（如 `scripts/*`、`configs/pipeline_03/*`）对应的是扩展工程仓库（例如 `PHM-Vibench-metric`）。  
 > 当前 PHM-Vibench 仓库中主要包含：
 > - HSE 相关模型/Task 实现（如 `src/model_factory/ISFM/`、`src/task_factory/task/pretrain/hse_contrastive.py`）；  
-> - v0.1.0 下用于 sanity 验证的 demo 与 reference 配置（见 `configs/demo/*`、`configs/reference/*`）。  
+> - v0.1.0 下用于 sanity 验证的 demo 配置（见 `configs/demo/*`；`configs/reference/*` 计划删除/迁移）。  
 > 若需运行文档中提到的完整脚本流水线，请对照实际存在的脚本与配置文件，或参考外部工程仓库。
 
 ## 🎯 核心特性
@@ -52,20 +55,16 @@ pip install -r requirements.txt
 
 ### 2. 基础验证
 ```bash
-# 运行合成数据演示
-python scripts/hse_synthetic_demo.py
-
-# 运行Pipeline_03集成测试
-python scripts/test_pipeline03_integration.py
+# 论文级脚本/演示（TODO：迁移到 paper submodule）
+# 1) 初始化 submodule（需要网络权限）
+# git submodule update --init --recursive paper/2025-10_foundation_model_0_metric
+#
+# 2) 进入 submodule 并按其 README 运行 synthetic demo / pipeline03 集成测试
 ```
 
 ### 3. 完整实验
 ```bash
-# 运行HSE提示引导的多任务预训练
-python scripts/run_hse_prompt_pipeline03.py
-
-# 查看实验结果
-python script/unified_metric/collect_results.py
+# 论文级完整实验同样计划迁移到 paper submodule（TODO）
 ```
 
 ## 📊 实验结果概要
@@ -84,13 +83,12 @@ python script/unified_metric/collect_results.py
 
 ## 🔧 主要配置文件
 
-### HSE提示配置
-- `configs/pipeline_03/hse_prompt_multitask_config.yaml`: 主要多任务配置
-- `configs/demo/HSE_Contrastive/`: HSE对比学习演示配置
-- `configs/pipeline_03/ablation/`: 消融研究配置
+### 主仓库（可用 demo）
+- `configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
+- `configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml`
 
-### 基线对比
-- `configs/baseline/cwru_baseline.yaml`: CWRU基线实验配置
+### 论文级配置（TODO：迁移到 paper submodule）
+本文档中提到的 `configs/pipeline_03/*`、`configs/demo/HSE_Contrastive/*`、`configs/baseline/*` 属于论文级工程内容，不保证在主仓库存在。
 
 ## 📈 开发状态
 

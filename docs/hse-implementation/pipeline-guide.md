@@ -4,6 +4,10 @@
 
 本指南详细说明如何使用HSE Industrial Contrastive Learning pipeline进行工业振动信号分析。涵盖从环境设置到生产实验的完整流程。
 
+> NOTE（12_15）  
+> 本文档中的 `scripts/*`、`configs/pipeline_03/*` 等路径属于论文级工程内容，计划迁移到 paper submodule（见 `paper/README_SUBMODULE.md`）。  
+> 主仓库请以 `configs/demo/` 的命令行 demo 为准；本指南暂作为历史说明（TODO 清理/迁移）。
+
 ## 🚀 快速开始
 
 ### 1. 环境准备
@@ -22,8 +26,8 @@ ls data/  # 确保包含metadata文件和H5数据文件
 ### 2. 基础验证
 
 ```bash
-# 运行合成数据演示（推荐首次使用）
-python scripts/hse_synthetic_demo.py
+# 论文级脚本（TODO：迁移到 paper submodule）
+# 参考 paper/README_SUBMODULE.md 初始化 submodule 后，按 submodule 内 README 执行 synthetic demo。
 
 # 预期输出：
 # ✅ 系统提示编码: 成功
@@ -36,8 +40,8 @@ python scripts/hse_synthetic_demo.py
 ### 3. Pipeline集成测试
 
 ```bash
-# 运行Pipeline_03集成测试
-python scripts/test_pipeline03_integration.py
+# 论文级脚本（TODO：迁移到 paper submodule）
+# 参考 paper/README_SUBMODULE.md 初始化 submodule 后，按 submodule 内 README 执行 pipeline03 集成测试。
 
 # 预期输出：
 # ✅ 配置加载测试: 通过
@@ -61,12 +65,8 @@ python scripts/test_pipeline03_integration.py
 - 多任务联合训练
 
 ```bash
-# 使用Pipeline_03运行HSE实验
-python scripts/run_hse_prompt_pipeline03.py
-
-# 或使用配置文件方式
-python main.py --pipeline Pipeline_03 \
-  --config configs/pipeline_03/hse_prompt_multitask_config.yaml
+# 论文级脚本（TODO：迁移到 paper submodule）
+# 主仓库当前入口：python main.py --config <yaml>（pipeline 由 YAML 的 pipeline 字段选择）
 ```
 
 ### Pipeline_01: 标准训练
@@ -77,16 +77,17 @@ python main.py --pipeline Pipeline_03 \
 - 快速验证
 
 ```bash
-# 基线实验示例
-python main.py --config configs/baseline/cwru_baseline.yaml
+# 主仓库快速验证示例（以 configs/demo/ 为准）
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
 ## 📊 实验配置
 
 ### 主配置文件
 
-#### 1. HSE多任务配置
-**文件**: `configs/pipeline_03/hse_prompt_multitask_config.yaml`
+#### 1. HSE多任务配置（paper submodule, TODO）
+**文件**: paper submodule（计划迁移；主仓库不保证存在 `configs/pipeline_03/*`）
 
 ```yaml
 # 核心配置项
@@ -113,34 +114,22 @@ trainer:
   learning_rate: 1e-4
 ```
 
-#### 2. 消融研究配置
+#### 2. 消融研究配置（paper submodule, TODO）
 
-**目录**: `configs/pipeline_03/ablation/`
+**目录**: paper submodule（TODO）
 
 ```bash
-# 无提示基线
-configs/pipeline_03/ablation/hse_no_prompt_baseline.yaml
-
-# 仅系统提示
-configs/pipeline_03/ablation/hse_system_prompt_only.yaml
-
-# 仅样本提示
-configs/pipeline_03/ablation/hse_sample_prompt_only.yaml
+# 论文级 ablation 配置计划迁移到 paper submodule（TODO）
 ```
 
-#### 3. HSE对比学习演示
+#### 3. HSE对比学习演示（主仓库 demo）
 
-**目录**: `configs/demo/HSE_Contrastive/`
+**示例**:
 
 ```bash
-# 高对比度实验
-configs/demo/HSE_Contrastive/high_contrast.yaml
-
-# 跨数据集域泛化
-configs/demo/HSE_Contrastive/hse_cddg.yaml
-
-# 提示融合消融
-configs/demo/HSE_Contrastive/hse_prompt_ablation_fusion.yaml
+# 以主仓库 `configs/demo/` 为准（HSE-style single-stage view）
+configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml
+configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml
 ```
 
 ## 🎯 两阶段训练流程
@@ -148,40 +137,15 @@ configs/demo/HSE_Contrastive/hse_prompt_ablation_fusion.yaml
 ### 阶段1: 对比学习预训练
 
 ```bash
-# 1. 配置预训练参数
-vim configs/demo/HSE_Contrastive/hse_prompt_pretrain.yaml
-
-# 关键配置
-stage1:
-  epochs: 100
-  learning_rate: 1e-3
-  task_type: "contrastive"
-  datasets: ["CWRU", "XJTU", "THU", "Ottawa", "JNU"]
-
-# 2. 启动预训练
-python scripts/run_hse_prompt_pipeline03.py \
-  --stage pretrain \
-  --config configs/demo/HSE_Contrastive/hse_prompt_pretrain.yaml
+# 论文级两阶段训练（TODO：迁移到 paper submodule）
+# 初始化 submodule 后，按 submodule 内 README 运行 pretrain stage。
 ```
 
 ### 阶段2: 下游任务微调
 
 ```bash
-# 1. 配置微调参数
-vim configs/demo/HSE_Contrastive/hse_prompt_finetune.yaml
-
-# 关键配置
-stage2:
-  epochs: 20
-  learning_rate: 1e-4
-  task_type: "classification"
-  freeze_backbone: false
-  pretrained_path: "save/stage1_checkpoint.pth"
-
-# 2. 启动微调
-python scripts/run_hse_prompt_pipeline03.py \
-  --stage finetune \
-  --config configs/demo/HSE_Contrastive/hse_prompt_finetune.yaml
+# 论文级两阶段训练（TODO：迁移到 paper submodule）
+# 初始化 submodule 后，按 submodule 内 README 运行 finetune stage。
 ```
 
 ## 🔍 提示系统配置
@@ -305,11 +269,7 @@ data:
 ### 2. 分布式训练
 
 ```bash
-# 多GPU训练
-python -m torch.distributed.launch \
-  --nproc_per_node=4 \
-  scripts/run_hse_prompt_pipeline03.py \
-  --config configs/pipeline_03/hse_prompt_multitask_config.yaml
+# 论文级多 GPU/分布式训练（TODO：迁移到 paper submodule）
 ```
 
 ### 3. 超参数调优
@@ -339,8 +299,7 @@ config.update({'model.backbone.name': 'new_value'})
 ```bash
 # 症状: No such file or directory: '*.h5'
 # 解决: 检查数据目录配置
-export DATA_DIR=/path/to/your/data
-python scripts/check_data_paths.py
+# 确保 YAML 中 `data.data_dir` 与 `data.metadata_file` 指向实际存在的文件/目录。
 ```
 
 #### 3. 内存不足
