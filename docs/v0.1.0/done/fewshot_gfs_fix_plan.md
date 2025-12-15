@@ -44,9 +44,9 @@
     - `src/data_factory/dataset_task/GFS/Classification_dataset.py`；
     - `src/data_factory/samplers/FS_sampler.HierarchicalFewShotSampler`；
     - `Get_sampler` 对 `task.type == "GFS"` 调用 `_get_gfs_sampler(...)`。
-- 参考配置：
-  - `configs/reference/experiment_1_gfs_hse.yaml` 已给出 GFS 标准字段；
-  - v0.1.0 中我们只拿它做“schema 参考”，不会在 CSV 中长期依赖。
+- 参考配置（历史）：
+  - `configs/reference/experiment_1_gfs_hse.yaml` 曾用于给出 GFS 标准字段（后续计划迁移到 paper submodule 并删除 `configs/reference/`）；
+  - v0.1.0 中只把它做“schema 参考”，不在 CSV 中长期依赖。
 - 结果：demo4 想表达的是“跨系统 few-shot / GFS baseline”，但当前 task 仍是 `FS` 类型，与 GFS sampler 不对齐。
 
 ### 1.3 ID 搜索行为
@@ -167,7 +167,7 @@
 - 配置上使用 `task.type="GFS"`, `task.name="classification"`；
 - 数据使用 `dataset_task.GFS.Classification_dataset`；
 - sampler 使用 `HierarchicalFewShotSampler` 生成跨 system/domain 的 episodes；
-- YAML 字段完全参考 `configs/reference/experiment_1_gfs_hse.yaml` 的 schema，不新造 key。
+- YAML 字段完全参考历史 schema（原 `configs/reference/experiment_1_gfs_hse.yaml`；后续迁移到 paper submodule），不新造 key。
 
 ### 3.1 base task：从 FS 调整为 GFS
 
@@ -334,4 +334,3 @@
      - 在 `configs/config_registry.csv` 中将 `demo_03_fewshot` 和 `demo_04_cross_system_fewshot` 的 `status` 标为 `sanity_ok`；
      - 在 `docs/v0.1.0/codex/demo_validation_report.md` 中补充对应的验证结果条目；
      - 在 `docs/v0.1.0/cc/pipeline_fix_and_validation_plan.md` 中把 demo3/4 状态从 TODO 改为已完成（带上命令记录）。
-
