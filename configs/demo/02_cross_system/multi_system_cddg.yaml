@@ -1,4 +1,4 @@
-# Cross-system CDDG demo: multi-system generalization (v0.1.0 draft)
+# Cross-system CDDG demo (edit target_system_id for multi-system) (v0.1.0 draft)
 
 pipeline: "Pipeline_01_default"
 
@@ -13,7 +13,7 @@ environment:
   project: "demo_multi_system_cddg"
   seed: 42
   output_dir: "results/demo/multi_system_cddg"
-  notes: "Multi-system CDDG demo."
+  notes: "Cross-system CDDG demo (edit target_system_id for multi-system)."
 
 task:
   target_system_id: [1]

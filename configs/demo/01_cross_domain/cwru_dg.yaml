@@ -1,4 +1,4 @@
-# Cross-domain DG demo: CWRU → Ottawa (v0.1.0 draft)
+# Cross-domain DG demo (single dataset, domain split) (v0.1.0 draft)
 
 pipeline: "Pipeline_01_default"
 
@@ -10,10 +10,10 @@ base_configs:
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 
 environment:
-  project: "demo_cwru_to_ottawa_dg"
+  project: "demo_cwru_dg"
   seed: 42
-  output_dir: "results/demo/cwru_to_ottawa_dg"
-  notes: "CWRU→Ottawa cross-domain DG demo."
+  output_dir: "results/demo/cwru_dg"
+  notes: "Single-dataset DG demo via domain split."
 
 task:
   # 仍需指定 target_system_id 以兼容当前 data_factory 的 search_dataset_id 逻辑
