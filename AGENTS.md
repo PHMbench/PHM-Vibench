@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - `src/` holds runnable pipelines and the data/model/task/trainer factories; implement new logic in the matching factory to preserve modular wiring.
-- `configs/` stores experiment YAMLs—start from `configs/demo/Single_DG/CWRU.yaml`, clone templates in `configs/experiments/`, and keep local variants under a dedicated subfolder.
+- `configs/` stores experiment YAMLs—start from a demo under `configs/demo/` (e.g. `configs/demo/01_cross_domain/cwru_dg.yaml`), and keep local variants under a dedicated subfolder.
 - Runtime assets stay outside Git: raw inputs in `data/`, results in `save/`, visuals in `pic/`, docs in `docs/`; active tests live in `test/` while legacy stress suites remain in `tests/`.
 - see @CLAUDE.md for better understanding of the Vibench.
 
@@ -22,7 +22,7 @@
 - Raw inputs belong in `data/raw/<dataset_name>/` with metadata spreadsheets (`metadata_*.xlsx`) and processed H5 files.
 - Implement readers by inheriting `BaseReader` and register them inside `src/data_factory/__init__.py`.
 - Reference examples in `src/data_factory/reader/RM_*.py` and document quirks in dataset-specific notes.
-- Maintain consistent directory casing and validate new datasets with `python scripts/hse_synthetic_demo.py`.
+- (TODO) Research/paper-specific validation scripts are planned to live in the paper submodule; keep core repo validation via `python -m pytest test/`.
 
 ## Model and Task Registry
 - Foundation models live under `model_factory` (e.g., `M_01_ISFM`, `M_02_ISFM`, `M_03_ISFM`) alongside backbone networks (`B_08_PatchTST`, `B_09_FNO`, etc.).
@@ -31,10 +31,10 @@
 - Trainer implementations extend PyTorch Lightning; keep Lightning callbacks and loggers configurable.
 
 ## Build, Test, and Development Commands
-- `python -m venv venv && source venv/bin/activate` then `pip install -r requirements.txt` (add `dev/test_history/requirements-test.txt` when evolving pytest suites).
-- Run baselines with `python main.py --config configs/demo/Single_DG/CWRU.yaml`; swap in unified metric configs when reproducing cross-domain benchmarks.
-- `python scripts/hse_synthetic_demo.py` validates the HSE pipeline quickly, and `streamlit run streamlit_app.py` launches the monitoring UI for manual QA.
-- Use `python -m pytest test/` for routine checks; call `python dev/test_history/run_tests.py --unit` or append `--coverage` when mirroring the historical matrix.
+- `python -m venv venv && source venv/bin/activate` then `pip install -r requirements.txt`.
+- Run baselines with `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml`; use `configs/demo/` as the template source for new configs.
+- `streamlit run streamlit_app.py` is an experimental UI (TODO: visualization is incomplete); do not rely on it for automated validation.
+- Use `python -m pytest test/` for routine checks.
 
 ## Coding Style & Naming Conventions
 - Follow PEP 8 with a 100-character limit, grouped imports, and NumPy-style docstrings for any public API.

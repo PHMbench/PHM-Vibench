@@ -50,9 +50,8 @@ Configuration sections include:
 ## Paper Experiments Configuration
 
 ### HSE-Prompt Research Experiments
-- **Location**: `paper/2025-10_foundation_model_0_metric/`
-- **Configuration**: `paper/2025-10_foundation_model_0_metric/configs/vbench_standard/` (Vbench standard format)
-- **Scripts**: `paper/2025-10_foundation_model_0_metric/scripts/` (Standardized experiment scripts)
+- **Location**: `paper/2025-10_foundation_model_0_metric/` (git submodule; may be empty until initialized)
+- **How to enable**: See `paper/README_SUBMODULE.md`
 - **Target**: Validate HSE-Prompt cross-domain generalization capability
 - **Performance Goal**: 92.8% cross-domain accuracy, 87.6% 5-shot learning accuracy
 
@@ -62,33 +61,19 @@ Configuration sections include:
 - **Backbone**: B_04_Dlinear, B_06_TimesNet, B_08_PatchTST, B_09_FNO
 - **Task Head**: H_01_Linear_cla (Classification), H_02_distance_cla (Metric learning)
 - **Task**: hse_contrastive (HSE contrastive learning)
-- **Datasets**: Use target_system_id [1,2,6,5,12] for CWRU, XJTU, THU, Ottawa, JNU
+- **Datasets**: Use `task.target_system_id` to select systems; the numeric IDs come from your metadata file's `Dataset_id` column.
 
 ### Quick Start for Paper Experiments
-```bash
-# 1. Environment validation (5 minutes)
-bash paper/2025-10_foundation_model_0_metric/scripts/validation/quick_validation.sh
-
-# 2. Run baseline experiments
-python paper/2025-10_foundation_model_0_metric/scripts/baseline_experiments/run_all_baseline.py --quick
-
-# 3. Collect and analyze results
-python paper/2025-10_foundation_model_0_metric/scripts/analysis/collect_results.py
-```
+- If the paper submodule is initialized, follow its README under `paper/2025-10_foundation_model_0_metric/`.
+- Otherwise, use `configs/demo/` as the local template source and keep paper-only scripts out of the main repo workflow.
 
 ## Important Configuration Standards
 
 ### Paper vs Script Configuration Differences
-- **Paper Configs**: Located in `paper/2025-10_foundation_model_0_metric/configs/vbench_standard/` - ✅ RECOMMENDED
-  - Uses Vbench standard format
-  - Standard component naming (E_01_HSE_v2, B_08_PatchTST, etc.)
-  - Consistent data set mapping (target_system_id)
-  - Complete documentation and examples
-- **Script Configs**: Located in `script/unified_metric/configs/` - ⚠️ LEGACY FORMAT
-  - Legacy format, may have compatibility issues
-  - Use only for reference or migration purposes
-- **Demo Configs**: Located in `configs/demo/` - ✅ VBECH STANDARD
-  - Good reference for Vbench configuration patterns
+- **Demo Configs**: Located in `configs/demo/` - ✅ Preferred templates for this repo
+  - Matches current `main.py --config <yaml>` entrypoint
+  - Uses the same `base_configs` composition pattern as other configs
+  - Keep research/paper configs in the paper submodule to avoid drift
 
 ### Model Component Naming Standards
 When creating or modifying configuration files, use the following Vbench standard format:
@@ -126,15 +111,11 @@ model:
 #### ✅ CORRECT Dataset Configuration
 ```yaml
 task:
-  # Use system_id for dataset specification
-  target_system_id: [1, 2, 6, 5, 12]  # ✅ Correct: Use system ID
+  # Use Dataset_id values from your metadata file
+  target_system_id: [1, 2]
 
-# Dataset mapping:
-# System ID 1: CWRU      (Case Western Reserve University)
-# System ID 2: XJTU      (Xi'an Jiaotong University)
-# System ID 5: Ottawa    (University of Ottawa)
-# System ID 6: THU       (Tsinghua University)
-# System ID 12: JNU      (Jinan University)
+# How to check the mapping (metadata.xlsx example):
+# python -c "import pandas as pd; df=pd.read_excel('metadata.xlsx'); print(df[['Dataset_id','Name']].drop_duplicates().sort_values('Dataset_id'))"
 ```
 
 #### ❌ INCORRECT Dataset Configuration (AVOID IN PAPER CONFIGS)
@@ -190,8 +171,9 @@ ImportError: No module named 'src.model_factory.ISFM_Prompt'
 ```
 FileNotFoundError: Dataset name not found
 ```
-**Solution**: Use system_id instead of dataset names:
-- `target_system_id: [1, 2, 6, 5, 12]` instead of `target_domains: ["CWRU", "XJTU"]`
+**Solution**:
+- Ensure `data.data_dir` + `data.metadata_file` point to a valid metadata file.
+- Use `task.target_system_id` values that exist in the metadata's `Dataset_id` column.
 
 #### Problem: Model Configuration Conflicts
 ```
@@ -215,25 +197,22 @@ For detailed guidance on specific components, see:
 
 ### Running Experiments
 ```bash
-# Basic single dataset experiment
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+# 1) DG demo (domain split; see task.target_system_id)
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml
 
-# Cross-dataset domain generalization
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
+# 2) CDDG demo (edit task.target_system_id for multi-system)
+python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml
 
-# Pretraining + Few-shot pipeline
-python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/Pretraining_demo.yaml --fs_config_path configs/demo/GFS/GFS_demo.yaml
-
-# All datasets experiment
-python main.py --config configs/demo/Multiple_DG/all.yaml
+# 3) Pretrain + few-shot pipeline demo (pipeline selected by YAML)
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml
 ```
 
 ### Testing
 ```bash
-# Run comprehensive test suite
-python run_tests.py
+# Fast unit suite (maintained)
+python -m pytest test/
 
-# Run specific test categories
+# Run specific pytest categories
 pytest test/ -m "not slow"  # Skip slow tests
 pytest test/ -m "unit"      # Unit tests only
 pytest test/ -m "gpu" --tb=short  # GPU tests
@@ -244,11 +223,10 @@ pytest test/ -m "gpu" --tb=short  # GPU tests
 # Launch interactive experiment interface
 streamlit run streamlit_app.py
 ```
+Status: experimental (TODO). Use CLI demos under `configs/demo/` for reliable runs.
 
 ### Test Configuration
-- Tests are configured in `pytest.ini` with comprehensive coverage settings
-- Test requirements in `requirements-test.txt` include pytest, coverage, and ML testing tools
-- Minimum 80% code coverage required
+- Tests are configured in `pytest.ini`
 
 ## Dataset Integration
 

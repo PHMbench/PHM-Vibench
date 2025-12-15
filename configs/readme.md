@@ -4,7 +4,7 @@
 
 - `base/`：data/model/task/trainer/environment 的基础模板；
 - `demo/`：轻量级示例实验（v0.1.0）；
-- `reference/`：与论文实验对应的完整配置（experiment_0~7）。
+- `reference/`：（TODO: planned removal）历史参考配置，后续将迁移到 paper submodule，避免与主仓库 demo/入口混淆。
 
 ---
 
@@ -14,7 +14,7 @@
 
 | 文件路径                                   | 作用场景                  | 核心字段（示意）                                                    |
 | ------------------------------------------ | ------------------------- | ------------------------------------------------------------------- |
-| `configs/base/data/base_classification.yaml`      | 单数据集分类 / DG         | `data_dir=/home/user/data/PHMbenchdata/PHM-Vibench`, `metadata_file=metadata.xlsx` |
+| `configs/base/data/base_classification.yaml`      | 单数据集分类 / DG         | `data_dir=/path/to/PHM-Vibench`, `metadata_file=metadata.xlsx` |
 | `configs/base/data/base_cross_domain.yaml`       | 单数据集 DG（cross-domain） | 同上，batch/window 等与 reference 实验对齐                         |
 | `configs/base/data/base_cross_system.yaml`       | 多系统 CDDG               | 同上                                                                |
 | `configs/base/data/base_fewshot.yaml`            | 单系统 few-shot           | `window_size=1024`, 其余字段同上                                   |
@@ -58,10 +58,10 @@
 
 | Demo 文件路径                                     | 使用的 base 组件                                                                 |
 | ------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `configs/demo/01_cross_domain/cwru_to_ottawa_dg.yaml` | `environment/base.yaml` + `data/base_cross_domain.yaml` + `model/backbone_dlinear.yaml` + `task/dg.yaml` + `trainer/default_single_gpu.yaml` |
+| `configs/demo/01_cross_domain/cwru_dg.yaml` | `environment/base.yaml` + `data/base_cross_domain.yaml` + `model/backbone_dlinear.yaml` + `task/dg.yaml` + `trainer/default_single_gpu.yaml` |
 
 - YAML 顶层通过 `base_configs` 引用上述 base；
-- `task` 中使用 `source_domain_id` / `target_domain_id`（来自旧版 CWRU demo）表达不同 domain；
+- `task` 中使用 `source_domain_id` / `target_domain_id` 表达不同 domain（同一系统内的 domain split）；
 - data 仅使用统一的 `metadata.xlsx` / `data_dir`，不再引入 `source_dataset` / `target_dataset` 字段。
 
 **2）Cross-system CDDG**

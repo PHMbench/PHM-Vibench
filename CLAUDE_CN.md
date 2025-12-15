@@ -63,25 +63,22 @@ config = load_config('isfm', {'model.d_model': 512, 'task.lr': 0.001})
 
 ### 运行实验
 ```bash
-# 基础单数据集实验
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+# 1) DG 示例（domain split；具体系统见 task.target_system_id）
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml
 
-# 跨数据集域泛化
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
+# 2) CDDG 示例（多系统请调整 task.target_system_id）
+python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml
 
-# 预训练+少样本学习管道
-python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/Pretraining_demo.yaml --fs_config_path configs/demo/GFS/GFS_demo.yaml
-
-# 所有数据集实验
-python main.py --config configs/demo/Multiple_DG/all.yaml
+# 3) 预训练 + few-shot 管道示例（pipeline 由 YAML 的 pipeline 字段选择）
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml
 ```
 
 ### 测试
 
 测试文件要放在 test 目录下
 ```bash
-# 运行全面测试套件
-python run_tests.py
+# 维护中的 pytest 套件
+python -m pytest test/
 
 # 运行特定测试类别
 pytest test/ -m "not slow"  # 跳过慢速测试
@@ -94,11 +91,10 @@ pytest test/ -m "gpu" --tb=short  # GPU测试
 # 启动交互式实验界面
 streamlit run streamlit_app.py
 ```
+状态：实验性功能（TODO），建议以 `configs/demo/` 的命令行 demo 为准。
 
 ### 测试配置
-- 测试在`pytest.ini`中配置，具有全面的覆盖率设置
-- `requirements-test.txt`中的测试要求包括pytest、coverage和ML测试工具
-- 要求最低80%代码覆盖率
+- 测试在`pytest.ini`中配置
 
 ## 数据集集成
 

@@ -125,18 +125,12 @@
 ### 🚀 Quick HSE Demo
 
 ```bash
-# Run HSE synthetic demonstration (2 minutes)
-python dev/scripts/hse_synthetic_demo.py
+# (Paper submodule) Run HSE synthetic demonstration
+# See paper/README_SUBMODULE.md to initialize the paper submodule first.
+# Then follow the README inside the submodule.
 
-# Expected output:
-# ✅ System prompt encoding: Success
-# ✅ Sample prompt encoding: Success
-# ✅ Prompt fusion: Success
-# ✅ Contrastive learning: Success (14.3% accuracy improvement)
-# ✅ Validation test: Success (<0.1GB memory, >1400 samples/sec)
-
-# Run complete HSE Pipeline_03 experiment
-python dev/scripts/run_hse_prompt_pipeline03.py
+# NOTE: HSE research scripts are intentionally kept out of the main repo workflow
+# to avoid confusing the core demos and entrypoints.
 ```
 
 ### 📚 HSE Documentation
@@ -223,7 +217,7 @@ pip install -r requirements.txt
 
 # For example, in configs/base/data/base_classification.yaml
 data:
-  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  data_dir: "/path/to/PHM-Vibench"
   metadata_file: "metadata.xlsx"
 ```
 
@@ -236,11 +230,11 @@ Experience PHM-Vibench functionality through the following steps:
 </div> -->
 
 ```bash
-# 1. Cross-domain DG (CWRU → Ottawa)
+# 1. DG demo (domain split; see `task.target_system_id`)
 python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
-# 2. Cross-system CDDG (multi-system)
+# 2. CDDG demo (adjust `task.target_system_id` for multi-system)
 python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
@@ -261,7 +255,7 @@ python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Streamlit Graphical Interface
+### Streamlit Graphical Interface (TODO)
 
 Run experiments using the Streamlit graphical interface:
 
@@ -269,11 +263,9 @@ Run experiments using the Streamlit graphical interface:
 streamlit run streamlit_app.py
 ```
 
-This interface loads YAML files from the configs directory and allows adjustment of common parameters in the sidebar. After loading, the page displays configuration items such as `data`, `model`, `task`, and `trainer` in collapsible panels, allowing direct modification of any key-value pairs before starting experiments.
+Status: the UI is experimental. Basic config editing + pipeline launching works, but visualization (curves/figures) is still incomplete.
 
-After modifying parameters, you can click the **"Save Configuration"** button at the bottom of the page to export results as a YAML file. To reload new configurations, use the **"Refresh"** button, and related `data`, `model`, `task`, and `trainer` panels will update accordingly.
-
-You can also select different pipeline modules in the sidebar (e.g., `Pipeline_01_default` or `Pipeline_02_pretrain_fewshot`). For few-shot pretraining processes, you need to additionally specify the second-stage configuration file.
+If Streamlit fails to start, treat it as a TODO and use the CLI demos under `configs/demo/` instead.
 
 ### 📊 Performance Benchmark Examples
 
@@ -863,16 +855,16 @@ For a more detailed mapping table and examples, see `src/task_factory/readme.md`
 
 ```bash
 # Basic usage
-python main.py --config configs/your_config.yaml
+python main.py --config configs/<your_config>.yaml
 
 # Multiple repeated experiments for enhanced result stability
-python main.py --config configs/your_config.yaml --iterations 5 --seeds 42,43,44,45,46
+python main.py --config configs/<your_config>.yaml --iterations 5 --seeds 42,43,44,45,46
 
 # Enable WandB experiment tracking
-python main.py --config configs/your_config.yaml --wandb --project "PHM-Vibench-experiments"
+python main.py --config configs/<your_config>.yaml --wandb --project "PHM-Vibench-experiments"
 
 # Use specific GPUs
-CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
+CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/<your_config>.yaml
 ``` -->
 
 ### 3. Result Analysis 📊
