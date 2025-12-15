@@ -86,7 +86,7 @@ model:
   task_head: "H_01_Linear_cla"
 ```
 
-This combination matches the backbone used in `configs/reference/experiment_1_cddg_hse.yaml` and can be reused for CDDG / DG / FS / pretraining by changing only the `task.*` and trainer config.
+This combination is used across `configs/demo/` and can be reused for CDDG / DG / FS / pretraining by changing only the `task.*` and trainer config.
 
 ## 4. Model registry CSV
 

@@ -249,7 +249,7 @@ Mask specific frequency components:
 # mask_in_frequency_domain: true
 ```
 
-## Usage Examples (v0.1.0 demos & reference configs)
+## Usage Examples (v0.1.0 demos)
 
 ### Single-Stage HSE Pretraining Demo
 ```bash
@@ -265,11 +265,8 @@ python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Two-Stage HSE Pretrain + CDDG (reference, multi-stage config)
-```bash
-# Two-stage pipeline: HSE pretraining + CDDG classification
-python main.py --config configs/reference/experiment_2_cddg_hse_pretrain.yaml
-```
+### Two-Stage HSE Pretrain + CDDG (paper submodule, TODO)
+Multi-stage research configs/scripts are planned to live in the paper submodule to keep the main repo workflow stable.
 
 ## Integration with Framework
 

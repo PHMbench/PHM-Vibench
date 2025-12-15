@@ -87,7 +87,7 @@ model:
   task_head: "H_01_Linear_cla"
 ```
 
-该组合与 `configs/reference/experiment_1_cddg_hse.yaml` 主干一致，可以在以下场景中复用：
+该组合在 `configs/demo/` 的多个配置中复用，可以在以下场景中复用：
 
 - 单数据集 / 多数据集 CDDG 故障诊断；
 - DG / FS / 预训练 等场景；
