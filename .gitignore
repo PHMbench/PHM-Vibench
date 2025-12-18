@@ -211,3 +211,13 @@ script/unified_metric/
 GEMINI.md
 
 LQ_fix/
+
+# Re-include maintained tests and tracked planning docs
+# !test/
+# !test/**/*.py
+# !test/**/*.md
+# !test/**/*.txt
+# !test/**/*.yaml
+# !test/**/*.yml
+# !docs/LQ_fix/
+# !docs/LQ_fix/**
