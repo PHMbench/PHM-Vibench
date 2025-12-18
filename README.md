@@ -31,6 +31,29 @@
 
 ---
 
+## Start Here (Maintained)
+
+The maintained workflow is configuration-first:
+- Entry point: `python main.py --config <yaml> [--override key=value ...]`
+- Template source: `configs/demo/` (copy into `configs/experiments/` for local variants)
+- Config docs + tools: `configs/README.md`
+- Change/run checklists: `AGENTS.md` (runbook) and `CLAUDE.md` (change strategy gate)
+
+Minimal offline smoke run (no downloads):
+```bash
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+```
+
+Config tooling:
+```bash
+python -m scripts.validate_configs
+python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+```
+
+Note: The rest of this README contains background/roadmap material; for up-to-date runnable configs rely on
+`configs/README.md` + `docs/CONFIG_ATLAS.md`.
+
 ## 📖 Table of Contents
 - [✨ Project Highlights](#-project-highlights)
 - [🔥 HSE Industrial Contrastive Learning](#-hse-industrial-contrastive-learning)
@@ -213,7 +236,7 @@ conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# Download h5 datasets 
+# (Optional) Download datasets (H5 / raw)
 
 # For example, in configs/base/data/base_classification.yaml
 data:
@@ -230,6 +253,9 @@ Experience PHM-Vibench functionality through the following steps:
 </div> -->
 
 ```bash
+# 0. Offline smoke run (repo-shipped dummy data; no downloads required)
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+
 # 1. DG demo (domain split; see `task.target_system_id`)
 python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
@@ -288,7 +314,12 @@ PHM-Vibench uses the powerful configuration system v5.0, supporting flexible exp
 - **Ablation Experiment Tools**: Built-in dual-mode API grid search and parameter ablation
 - **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/readme.md` for details).
 
-📖 **Detailed Documentation**: [Configuration System v5.0 Complete Guide](./src/configs/README.md)
+📖 **Start here**: [`configs/README.md`](configs/README.md) (30-second smoke run + override rules + config tools)
+
+Helpful tools:
+- Config Registry → Atlas: `python -m scripts.gen_config_atlas` (generates `docs/CONFIG_ATLAS.md`)
+- Inspect resolved config / sources / targets: `python -m scripts.config_inspect --config <yaml> --override key=value`
+- Schema validate demos: `python -m scripts.validate_configs`
 
 ### Configuration File Structure
 

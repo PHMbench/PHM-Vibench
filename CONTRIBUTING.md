@@ -39,17 +39,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 3. **Install Dependencies**
 ```bash
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # Development dependencies
 ```
 
-4. **Install in Development Mode**
+4. **Run Tests (maintained suite)**
 ```bash
-pip install -e .
-```
-
-5. **Run Tests**
-```bash
-python -m pytest tests/
+python -m pytest test/
 ```
 
 ## 📝 Contributing Guidelines
@@ -266,16 +260,16 @@ We follow PEP 8 with some modifications:
 
 ```bash
 # Format code
-black src/ tests/ examples/
+black src/ test/
 
 # Check style
-flake8 src/ tests/ examples/
+flake8 src/ test/
 
 # Type checking
 mypy src/
 
 # Sort imports
-isort src/ tests/ examples/
+isort src/ test/
 ```
 
 ### Docstring Standards
@@ -319,14 +313,10 @@ def function_name(param1: int, param2: str = "default") -> bool:
 ### Test Structure
 
 ```
-tests/
-├── unit/                 # Unit tests for individual components
-│   ├── test_models/      # Model-specific tests
-│   ├── test_utils/       # Utility function tests
-│   └── test_factory/     # Factory function tests
-├── integration/          # Integration tests
-├── performance/          # Performance benchmarks
-└── fixtures/            # Test data and fixtures
+test/
+├── test_end_to_end_integration.py
+├── test_parameter_consistency.py
+└── ...
 ```
 
 ### Writing Tests
@@ -392,17 +382,14 @@ class TestYourModel:
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
+# Run all maintained tests
+python -m pytest test/
 
-# Run specific test file
-pytest tests/unit/test_models/test_your_model.py
+# Run a specific test file
+python -m pytest test/test_parameter_consistency.py
 
-# Run with coverage
-pytest --cov=src tests/
-
-# Run performance tests
-pytest tests/performance/ -v
+# Legacy historical runner (optional; may require extra deps)
+python dev/test_history/run_tests.py --unit
 ```
 
 ## 📚 Documentation
@@ -416,17 +403,7 @@ pytest tests/performance/ -v
 
 ### Building Documentation
 
-```bash
-# Install documentation dependencies
-pip install -r docs/requirements.txt
-
-# Build documentation
-cd docs/
-make html
-
-# View documentation
-open _build/html/index.html
-```
+Docs are maintained as Markdown under `docs/` and `configs/**/README.md`.
 
 ## 🔄 Pull Request Process
 

@@ -31,6 +31,7 @@
 
 ---
 
+
 ## 📖 目录
 - [✨ 项目亮点](#-项目亮点)
 - [📝 项目背景与简介](#-项目背景与简介)
@@ -166,7 +167,7 @@ conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# 下载h5数据集 
+# （可选）下载数据集（H5 / raw）
 
 例如在 configs/base/data/base_classification.yaml 中
 data:
@@ -175,6 +176,9 @@ data:
 
 ```
 
+
+
+
 ## 🚀 快速开始
 
 通过以下步骤快速体验 PHM-Vibench 的功能：
@@ -182,8 +186,31 @@ data:
 <!-- <div align="center">
   <img src="pic/quickstart.png" alt="PHM-Vibench Quick Start" width="650"/>
 </div> -->
+- 入口：`python main.py --config <yaml> [--override key=value ...]`
+- 模板来源：`configs/demo/`（本地变体放到 `configs/experiments/`）
+- 配置文档与工具：`configs/README.md`
+- 变更/运行门禁：`AGENTS.md`（runbook）与 `CLAUDE.md`（change strategy gate）
+
+离线冒烟（无需下载数据）：
+```bash
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+```
+
+配置工具链：
+```bash
+python -m scripts.validate_configs
+python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+```
+
+说明：本文档后半部分包含背景/路线图等内容；以 `configs/README.md` + `docs/CONFIG_ATLAS.md` 作为“可运行配置”的
+最新依据。
+
 
 ```bash
+# 0. 离线冒烟（仓库内置 Dummy_Data；无需下载数据）
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+
 # 1. DG 示例（domain split；具体系统见 `task.target_system_id`）
 python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
@@ -241,7 +268,12 @@ PHM-Vibench 使用强大的配置系统 v5.0，支持灵活的实验管理：
 - **消融实验工具**: 内置双模式API的网格搜索和参数消融
 - **v0.1.0 更新**: 采用统一的 `base_configs + override` 结构（`configs/base/` + `configs/demo/`），并通过 `configs/config_registry.csv` 进行索引，详细说明见 `docs/v0.1.0/v0.1.0_update.md` 与 `configs/readme.md`。
 
-📖 **详细文档**: [配置系统v5.0完整指南](./src/configs/README.md)
+📖 **从这里开始**: [`configs/README.md`](configs/README.md)（30 秒冒烟 + override 规则 + 配置工具）
+
+配置工具：
+- Registry → Atlas：`python -m scripts.gen_config_atlas`（生成 `docs/CONFIG_ATLAS.md`）
+- Inspect（最终配置/来源/实例化落点）：`python -m scripts.config_inspect --config <yaml> --override key=value`
+- Schema 校验 demo：`python -m scripts.validate_configs`
 
 
 
