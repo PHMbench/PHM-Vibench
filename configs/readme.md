@@ -1,5 +1,7 @@
 # Configs 目录结构与组合说明（v0.1.0）
 
+> NOTE: This file is kept as legacy notes. The maintained entrypoint is `configs/README.md`.
+
 本目录包含三类配置：
 
 - `base/`：data/model/task/trainer/environment 的基础模板；
