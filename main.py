@@ -49,7 +49,7 @@ def main():
         config_path = args.config_path
     else:
         # 默认使用 v0.1.0 的跨域 DG demo
-        config_path = "configs/demo/01_cross_domain/cwru_to_ottawa_dg.yaml"
+        config_path = "configs/demo/01_cross_domain/cwru_dg.yaml"
 
     # 为下游 Pipeline 保持向后兼容：填充 config_path 属性
     args.config_path = config_path

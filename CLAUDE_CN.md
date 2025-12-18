@@ -1,12 +1,15 @@
 # CLAUDE_CN.md
 
-**说明**: 本文档为PHM-Vibench项目的中文使用指南。后续与Claude Code的交互将默认使用中文进行。
-
-本文档为Claude Code (claude.ai/code)在此代码库中工作时提供指导。
+**说明**：本文档用于描述 PHM-Vibench 的定位、架构与“修改门禁”（double-check gate）。
+运行/验证命令请优先参考 `AGENTS.md`（如需中文 runbook，可使用 `AGENTS_CN.md`）。
 
 ## 仓库概述
 
 PHM-Vibench是一个全面的工业设备振动信号分析基准平台，专注于故障诊断和预测性维护。它采用模块化工厂设计模式，广泛支持多种数据集、模型和任务。
+
+本仓库的关键目标是：
+- **可复现**：实验由配置文件定义，避免硬编码与环境依赖漂移。
+- **可扩展**：新增 data/model/task/trainer 走工厂/注册表入口，保持 wiring 清晰。
 
 ## 关键架构组件
 
@@ -41,7 +44,7 @@ from src.configs import load_config
 config = load_config('isfm', {'model.d_model': 512, 'task.lr': 0.001})
 ```
 
-📖 **详细文档**: [配置系统v5.0完整指南](./src/configs/CLAUDE.md)
+📖 **从这里开始**: [`configs/README.md`](configs/README.md)（30 秒冒烟 + override 规则 + 配置工具）
 
 配置部分包括：
 - `data`: 数据集配置和预处理参数
@@ -49,10 +52,38 @@ config = load_config('isfm', {'model.d_model': 512, 'task.lr': 0.001})
 - `task`: 任务类型、损失函数和训练设置
 - `trainer`: 训练编排和硬件设置
 
+### 单一入口契约（避免歧义）
+本仓库维护的入口为：
+```bash
+python main.py --config <yaml> [--override key=value ...]
+```
+pipeline 由 YAML 顶层 `pipeline:` 选择（不使用 `--pipeline`）。
+
+### 配置“单一事实源”（SSOT）与工具链
+- Registry：`configs/config_registry.csv`（字段说明：`docs/config_registry_schema.md`）
+- Atlas：`docs/CONFIG_ATLAS.md`（生成：`python -m scripts.gen_config_atlas`）
+- Inspect：`python -m scripts.config_inspect`（最终配置 + 字段来源 + 实例化落点 + sanity）
+- 校验：`python -m scripts.validate_configs`（loader 驱动 + pydantic；schema 在 `src/config_schema/`）
+
+## Paper / 研究工作流（与主仓库解耦）
+
+论文级实验放在 git submodule 中，避免与主仓库 onboarding/demo 混用：
+- `paper/2025-10_foundation_model_0_metric/`（初始化需要网络）：
+  - `git submodule update --init --recursive paper/2025-10_foundation_model_0_metric`
+  - 说明见 `paper/README_SUBMODULE.md`
+
+原则：主仓库的验证门禁不依赖 paper-only 脚本/配置。
+
+### HSE / HSE-Prompt（论文级）
+- 位置：`paper/2025-10_foundation_model_0_metric/`（submodule）
+- 目标：HSE/HSE-Prompt 的跨系统泛化实验与论文复现
+- 若 submodule 未初始化：以主仓库可运行 demo 为准（`configs/demo/05_pretrain_fewshot/`、`configs/demo/06_pretrain_cddg/`）
+
 ## 模块特定文档
 
 有关特定组件的详细指导，请参阅：
-- [配置系统](./src/configs/CLAUDE.md) - 统一配置管理、YAML模板和多阶段管道
+- [`configs/README.md`](configs/README.md) - config 目录结构、模板、override 规则与工具链（维护入口）
+- [配置系统（源码侧）](./src/configs/CLAUDE.md) - loader/ConfigWrapper 的更深说明（内部实现）
 - [数据工厂](./src/data_factory/CLAUDE.md) - 数据集集成、处理和读取器实现
 - [模型工厂](./src/model_factory/CLAUDE.md) - 模型架构、ISFM基础模型和实现
 - [任务工厂](./src/task_factory/CLAUDE.md) - 任务定义、训练逻辑和损失函数
@@ -63,30 +94,38 @@ config = load_config('isfm', {'model.d_model': 512, 'task.lr': 0.001})
 
 ### 运行实验
 ```bash
-# 基础单数据集实验
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+# 0) 离线冒烟（仓库内置 Dummy_Data；无需下载数据）
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 
-# 跨数据集域泛化
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
+# 1) DG 示例（domain split；具体系统见 task.target_system_id）
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml
 
-# 预训练+少样本学习管道
-python main.py --pipeline Pipeline_02_pretrain_fewshot --config_path configs/demo/Pretraining/Pretraining_demo.yaml --fs_config_path configs/demo/GFS/GFS_demo.yaml
+# 2) CDDG 示例（多系统请调整 task.target_system_id）
+python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml
 
-# 所有数据集实验
-python main.py --config configs/demo/Multiple_DG/all.yaml
+# 3) 预训练 + few-shot 管道示例（pipeline 由 YAML 的 pipeline 字段选择）
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml
 ```
 
 ### 测试
 
 测试文件要放在 test 目录下
 ```bash
-# 运行全面测试套件
-python run_tests.py
+# 维护中的 pytest 套件
+python -m pytest test/
+```
 
-# 运行特定测试类别
-pytest test/ -m "not slow"  # 跳过慢速测试
-pytest test/ -m "unit"      # 仅单元测试
-pytest test/ -m "gpu" --tb=short  # GPU测试
+### 额外自检（可选）
+```bash
+# YAML 语法检查
+python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+
+# loader 冒烟（确认可加载）
+python - <<'PY'
+from src.configs import load_config
+cfg = load_config('configs/demo/00_smoke/dummy_dg.yaml')
+print('loaded:', type(cfg), 'keys:', list(cfg.__dict__.keys()))
+PY
 ```
 
 ### Streamlit GUI
@@ -94,11 +133,11 @@ pytest test/ -m "gpu" --tb=short  # GPU测试
 # 启动交互式实验界面
 streamlit run streamlit_app.py
 ```
+状态：实验性功能（TODO），建议以 `configs/demo/` 的命令行 demo 为准。
 
 ### 测试配置
-- 测试在`pytest.ini`中配置，具有全面的覆盖率设置
-- `requirements-test.txt`中的测试要求包括pytest、coverage和ML测试工具
-- 要求最低80%代码覆盖率
+- 本仓库根目录没有 `pytest.ini`；`pytest` 使用默认发现规则。
+- `dev/test_history/pytest.ini` 仅用于历史 runner（可选）。
 
 ## 数据集集成
 
@@ -159,7 +198,10 @@ streamlit run streamlit_app.py
 ## 结果和输出
 
 ### 目录结构
-结果保存在`save/`下的分层结构中：
+默认结果保存在 `save/` 下；若设置了 `environment.output_dir`（demo 常用 `results/demo/...`），则以其为准。
+最终目录结构为：`base_dir/<experiment_name>/iter_<k>/`（见 `src/configs/config_utils.py:path_name`）。
+
+示意（具体文件随 trainer/task 变化）：
 ```
 save/{metadata_file}/{model_name}/{task_type}_{trainer_name}_{timestamp}/
 ├── checkpoints/     # 模型权重
@@ -181,3 +223,29 @@ save/{metadata_file}/{model_name}/{task_type}_{trainer_name}_{timestamp}/
 - 结果按元数据文件、模型和时间戳自动组织
 - 框架支持传统ML方法和现代基础模型
 - 多任务和跨数据集能力是工业应用的核心功能
+
+## 模型与任务（高层地图）
+
+### 常见基础模型/组件
+- ISFM 家族：`M_01_ISFM`、`M_02_ISFM`、`M_03_ISFM`
+- backbone 示例：`B_04_Dlinear`、`B_06_TimesNet`、`B_08_PatchTST`、`B_09_FNO`
+- head 示例：`H_01_Linear_cla`（分类）、`H_03_Linear_pred`（预测）
+
+### 任务类型（示例）
+- 分类 / DG / CDDG（域泛化）
+- FS / GFS（少样本）
+- pretrain（自监督/对比预训练）
+
+## 变更门禁（double-check）
+
+### 不做破坏性变更
+- 不随意改 `main.py` 公共 CLI 或核心 YAML keyspace（environment/data/model/task/trainer）。
+- 如确需调整：必须提供兼容层 + 迁移说明。
+
+### 稳定执行顺序（避免“文档/配置漂移”）
+1) Registry（`configs/config_registry.csv`）
+2) Atlas（`docs/CONFIG_ATLAS.md`）
+3) Inspect（`scripts/config_inspect.py`）
+4) Schema validate（`scripts/validate_configs.py`）
+5) `configs/**/README.md`（先命令后解释）
+6) CI/tests + 最终验收

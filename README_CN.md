@@ -31,6 +31,7 @@
 
 ---
 
+
 ## 📖 目录
 - [✨ 项目亮点](#-项目亮点)
 - [📝 项目背景与简介](#-项目背景与简介)
@@ -166,14 +167,17 @@ conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# 下载h5数据集 
+# （可选）下载数据集（H5 / raw）
 
 例如在 configs/base/data/base_classification.yaml 中
 data:
-  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  data_dir: "/path/to/PHM-Vibench"
   metadata_file: "metadata.xlsx"
 
 ```
+
+
+
 
 ## 🚀 快速开始
 
@@ -182,13 +186,36 @@ data:
 <!-- <div align="center">
   <img src="pic/quickstart.png" alt="PHM-Vibench Quick Start" width="650"/>
 </div> -->
+- 入口：`python main.py --config <yaml> [--override key=value ...]`
+- 模板来源：`configs/demo/`（本地变体放到 `configs/experiments/`）
+- 配置文档与工具：`configs/README.md`
+- 变更/运行门禁：`AGENTS.md`（runbook）与 `CLAUDE.md`（change strategy gate）
+
+离线冒烟（无需下载数据）：
+```bash
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+```
+
+配置工具链：
+```bash
+python -m scripts.validate_configs
+python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+```
+
+说明：本文档后半部分包含背景/路线图等内容；以 `configs/README.md` + `docs/CONFIG_ATLAS.md` 作为“可运行配置”的
+最新依据。
+
 
 ```bash
-# 1. 跨域 DG 示例（CWRU → Ottawa）
+# 0. 离线冒烟（仓库内置 Dummy_Data；无需下载数据）
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+
+# 1. DG 示例（domain split；具体系统见 `task.target_system_id`）
 python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
-# 2. 跨系统 CDDG 示例（多系统）
+# 2. CDDG 示例（多系统请调整 `task.target_system_id`）
 python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
@@ -208,25 +235,16 @@ python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewsh
 python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
-### Streamlit 图形界面 TODO
+### Streamlit 图形界面（TODO）
 
-使用 Streamlit 提供的图形界面运行实验：
+使用 Streamlit 提供的图形界面运行实验（实验性功能）：
 
 ```bash
 streamlit run streamlit_app.py
 ```
 
-该界面会加载 configs 目录中的 YAML 文件，并允许在侧边栏调整常见参数。
-加载后，页面会以折叠面板的形式列出 `data`、`model`、`task` 和 `trainer`
-等配置项，可直接修改任意键值后启动实验。
-
-修改完参数后，可点击页面下方的 **"保存配置"** 按钮将结果导出为 YAML
-文件。若需要重新加载新的配置，可使用 **"刷新"** 按钮，相关的 `data`、
-`model`、`task` 与 `trainer` 面板会随之更新。
-
-在侧边栏中也可以选择不同的流水线模块（例如 `Pipeline_01_default`
-或 `Pipeline_02_pretrain_fewshot`），针对 few-shot 预训练流程时需额外
-指定 second-stage 的配置文件。
+当前界面仍在开发中：可视化能力不完整，且可能存在运行问题。
+如无法启动，请优先使用 `configs/demo/` 下的命令行 demo。
 
 
 ### 📊 性能基准示例
@@ -250,7 +268,12 @@ PHM-Vibench 使用强大的配置系统 v5.0，支持灵活的实验管理：
 - **消融实验工具**: 内置双模式API的网格搜索和参数消融
 - **v0.1.0 更新**: 采用统一的 `base_configs + override` 结构（`configs/base/` + `configs/demo/`），并通过 `configs/config_registry.csv` 进行索引，详细说明见 `docs/v0.1.0/v0.1.0_update.md` 与 `configs/readme.md`。
 
-📖 **详细文档**: [配置系统v5.0完整指南](./src/configs/README.md)
+📖 **从这里开始**: [`configs/README.md`](configs/README.md)（30 秒冒烟 + override 规则 + 配置工具）
+
+配置工具：
+- Registry → Atlas：`python -m scripts.gen_config_atlas`（生成 `docs/CONFIG_ATLAS.md`）
+- Inspect（最终配置/来源/实例化落点）：`python -m scripts.config_inspect --config <yaml> --override key=value`
+- Schema 校验 demo：`python -m scripts.validate_configs`
 
 
 
@@ -819,16 +842,16 @@ trainer:      # 训练器配置
 
 ```bash
 # 基本用法
-python main.py --config configs/your_config.yaml
+python main.py --config configs/<your_config>.yaml
 
 # 多次重复实验增强结果稳定性
-python main.py --config configs/your_config.yaml --iterations 5 --seeds 42,43,44,45,46
+python main.py --config configs/<your_config>.yaml --iterations 5 --seeds 42,43,44,45,46
 
 # 启用WandB实验跟踪
-python main.py --config configs/your_config.yaml --wandb --project "PHM-Vibench-experiments"
+python main.py --config configs/<your_config>.yaml --wandb --project "PHM-Vibench-experiments"
 
 # 使用特定GPU
-CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
+CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/<your_config>.yaml
 ``` -->
 
 
@@ -864,100 +887,24 @@ save/
 
 ### 4. 结果可视化 📈
 
-<!-- ```bash
-# 生成实验结果可视化报告
-python scripts/visualize_results.py --result_dir results/experiment_name --output report.pdf
-
-# 生成模型性能比较报告
-python scripts/compare_models.py --experiments exp1,exp2,exp3 --metric accuracy
-
-# 导出结果为LaTeX表格（用于论文）
-python scripts/export_latex.py --result_dir results/experiment_name
-``` -->
+可视化/绘图相关脚本位于 `plot/`（通常读取 `save/` 下的训练产出）。
 
 ## 📂 项目结构
 
 ```bash
-📂 PHM-Vibench
-├── 📄 README.md                 # 项目说明
-├── 📄 main.py                   # 主入口程序
-├── 📄 main_dummy.py             # 功能测试程序
-├── 📄 benchmark.py              # 性能基准测试工具
-├── 📂 configs                   # 配置文件目录
-│   ├── 📂 base                  # 基础模板（environment/data/model/task/trainer）
-│   ├── 📂 demo                  # v0.1.0 示例实验（6 个代表性配置）
-│   ├── 📂 reference             # 与论文实验对应的完整配置
-│   ├── 📄 default.yaml          # 历史默认配置
-│   └── 📄 config_registry.csv   # base/demo 配置索引表
-├── 📂 src                       # 源代码目录
-│   ├── 📂 data_factory          # 数据集工厂
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_data.py      # 数据集基类
-│   │   ├── 📄 contributing.md   # 数据集贡献指南
-│   │   ├── 📄 data_factory.py   # 数据工厂类
-│   │   ├── 📄 H5DataDict.py     # H5数据字典
-│   │   ├── 📄 ID_data_factory.py # 基于ID_dataset的数据工厂
-│   │   └── 📂 dataset_task      # 具体数据集实现
-│   │       └── ID_dataset.py  # 提供按需处理的原始数据集
-│   ├── 📂 model_factory         # 模型工厂
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_model.py     # 模型基类
-│   │   ├── 📄 contributing.md   # 模型贡献指南
-│   │   ├── 📄 model_factory.py  # 模型工厂类
-│   │   └── 📂 models            # 具体模型实现
-│   │       ├── 📂 backbone      # 骨干网络
-│   │       ├── 📂 embedding     # 嵌入层
-│   │       └── 📂 task_head     # 任务头
-│   ├── 📂 task_factory          # 任务工厂
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 Default_task.py   # 默认 Lightning 任务封装/基类
-│   │   ├── 📄 task_factory.py   # 任务工厂与动态加载
-│   │   ├── 📂 Components        # 任务通用组件（loss、metrics、flow 等）
-│   │   ├── 📂 task              # 具体任务实现
-│   │   │   ├── 📂 DG            # 单数据集域泛化任务
-│   │   │   ├── 📂 CDDG          # 跨数据集域泛化任务
-│   │   │   ├── 📂 pretrain      # 预训练任务（如 masked reconstruction）
-│   │   │   ├── 📂 FS            # Few-shot 任务
-│   │   │   ├── 📂 GFS           # Generalized Few-shot 任务
-│   │   │   ├── 📂 ID            # ID 类任务（如 ID_task）
-│   │   │   └── 📂 MT            # 多任务 Lightning 模块
-│   │   └── 📂 utils             # 任务级工具函数
-│   ├── 📂 trainer_factory       # 训练器工厂
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_trainer.py   # 训练器基类
-│   │   ├── 📄 trainer_factory.py # 训练器工厂类
-│   │   └── 📂 trainers          # 具体训练器实现
-│   ├── 📂 visualization         # 可视化工具
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 metrics_plot.py   # 指标可视化
-│   │   └── 📄 result_analysis.py # 结果分析
-│   └── 📂 utils                 # 工具函数
-│       ├── 📄 __init__.py
-│       ├── 📄 config_loader.py  # 配置加载器
-│       ├── 📄 logger.py         # 日志工具
-│       └── 📄 reproducibility.py # 可复现性工具
-├── 📂 test                      # 测试代码
-│   ├── 📄 README.md            # 测试指南
-│   ├── 📄 test_data.py         # 数据测试
-│   ├── 📄 test_model.py        # 模型测试
-│   └── 📄 test_integration.py  # 集成测试
-├── 📂 pic                       # 项目图片资源
-│   ├── 📄 PHM-Vibench.png      # 项目Logo
-│   ├── 📄 contact_qrcode.png   # 联系二维码
-│   └── 📄 ...                  # 其他图片资源
-├── 📂 data                      # 数据目录(用户自定义)
-├── 📂 save                      # 实验结果保存目录
-│   └── 📂 {metadata_file}       # 按元数据文件分组
-│       └── 📂 {model_name}      # 按模型名称分组
-│           └── 📂 {experiment}  # 具体实验结果
-├── 📂 scripts                   # 辅助脚本目录
-│   ├── 📄 download_data.py     # 数据下载脚本
-│   ├── 📄 visualize_results.py # 结果可视化脚本
-│   └── 📄 export_latex.py      # LaTeX导出脚本
-├── 📄 requirements.txt         # Python依赖列表
-├── 📄 LICENSE                  # 许可证文件
-├── 📄 CONTRIBUTING.md          # 贡献指南
-└── 📄 .gitignore              # Git忽略文件
+PHM-Vibench/
+├── README.md
+├── README_CN.md
+├── main.py
+├── configs/        # 实验 YAML + 注册表
+├── src/            # pipelines + factories
+├── dev/            # 开发辅助与实验性脚本（如 HSE demo）
+├── docs/           # 文档
+├── test/           # pytest 测试集
+├── plot/           # 可视化/绘图工具
+├── pic/            # README/docs 使用的图片
+├── data/           # 用户数据（不建议纳入版本控制）
+└── save/           # 运行产出（不建议纳入版本控制）
 ```
 
 **核心目录说明**：
@@ -966,25 +913,26 @@ python scripts/export_latex.py --result_dir results/experiment_name
 - ⚙️ **configs/**: 实验配置文件，支持单/多数据集实验
 - 📊 **save/**: 实验结果按层次结构组织保存
 - 🧪 **test/**: 开发时测试套件确保代码质量
-- 📜 **scripts/**: 便捷的辅助工具和脚本
+- 🧰 **dev/**: 开发辅助与实验性脚本
+- 📈 **plot/**: 可视化/绘图工具
 
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
   <p><em>PHM-Vibench项目结构概览</em></p>
-</div>
+</div> -->
 
 ## 🧑‍💻 开发指南 TODO
 
 PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制。如果您希望贡献代码，请参考[贡献者指南](./contributing.md)。
 
-### 扩展数据集 📊 见[数据集贡献指南](./data_factory/contributing.md)
+### 扩展数据集 📊 见[数据集贡献指南](src/data_factory/contributing.md)
 
-### 添加新模型 🧠 见[模型贡献指南](./model_factory/contributing.md)
+### 添加新模型 🧠 见[模型贡献指南](src/model_factory/contributing.md)
 
-### 调试与测试 🐞 见[测试指南](./test/README.md)
+### 调试与测试 🐞 见[测试指南](docs/testing.md)
 
-### Streamlit 界面示例 🌐 见[Streamlit 应用提示词](./doc/streamlit_prompt.md)
+### Streamlit 界面示例 🌐 见[Streamlit 应用提示词](docs/streamlit_prompt.md)
 
 ### 按需数据处理
 
@@ -1102,4 +1050,4 @@ export WANDB_BASE_URL=HTTP://api.bandw.top
 
 <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5DZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
-<p align="center">如有任何问题或建议，请联系我们</a>或提交<a href="https://github.com/PHMbench/Vibench/issues">Issue</a>。</p>
+<p align="center">如有任何问题或建议，请联系我们或提交 <a href="https://github.com/PHMbench/PHM-Vibench/issues">Issue</a>。</p>

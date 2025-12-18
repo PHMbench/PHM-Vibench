@@ -3,6 +3,9 @@
 ## Overview
 This directory contains all execution scripts for PHM-Vibench experiments, organized by research focus and experimental approach.
 
+> ⚠️ **Note (v0.1.0)**: This README documents the legacy v0.0.9-style demo/config layout under `configs/v0.0.9/demo/`.  
+> For the new v0.1.0 `base_configs + demo` structure, see `README.md` and `configs/readme.md`.
+
 ## Directory Structure
 
 ### 📁 Core Experiment Scripts
@@ -36,22 +39,22 @@ All experiments use `main.py` as the entry point with standardized YAML configur
 
 ```bash
 # Basic single dataset experiment
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+python main.py --config configs/v0.0.9/demo/Single_DG/CWRU.yaml
 
 # Cross-dataset domain generalization
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
+python main.py --config configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml
 
 # Pretraining experiments
-python main.py --config configs/demo/Pretraining/Pretraining_demo.yaml
+python main.py --config configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml
 
 # Few-shot learning
-python main.py --config configs/demo/Few_Shot/CWRU.yaml
+python main.py --config configs/v0.0.9/demo/Few_Shot/CWRU.yaml
 
-# Multi-stage pretraining + few-shot
+# Multi-stage pretraining + few-shot (legacy v0.0.9 CLI; v0.1.0 uses single --config with stages)
 python main.py \
     --pipeline Pipeline_02_pretrain_fewshot \
-    --fs_config_path configs/demo/GFS/GFS_demo.yaml \
-    --config_path configs/demo/Pretraining/Pretraining_demo.yaml
+    --fs_config_path configs/v0.0.9/demo/GFS/GFS_demo.yaml \
+    --config_path configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml
 ```
 
 ### Run Demo Script
@@ -130,10 +133,10 @@ bash script/Vibench_paper/foundation\ model/test_multitask.sh
 
 ## 📊 Configuration Management
 
-### Standard Config Locations
+### Standard Config Locations (legacy v0.0.9 layout)
 ```bash
 configs/
-├── demo/                           # Demonstration configs
+├── v0.0.9/demo/                    # Demonstration configs (legacy)
 │   ├── Single_DG/                  # Single dataset experiments
 │   ├── Multiple_DG/                # Cross-dataset experiments
 │   ├── Pretraining/                # Pretraining configs
@@ -222,8 +225,8 @@ python script/unified_metric/quick_validate.py --mode health_check
 # 1-epoch tests
 python script/unified_metric/test_1epoch.py
 
-# Single dataset validation
-python main.py --config configs/demo/Single_DG/CWRU.yaml
+# Single dataset validation (legacy demo)
+python main.py --config configs/v0.0.9/demo/Single_DG/CWRU.yaml
 ```
 
 ## 📈 Performance Optimization

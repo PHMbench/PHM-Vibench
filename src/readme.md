@@ -6,6 +6,10 @@
 
 This document provides a high-level overview of the source code structure.
 
+> NOTE: The maintained user-facing entrypoint is `python main.py --config <yaml> [--override key=value ...]`.
+> Pipelines are selected by the YAML top-level `pipeline:` field (not by a `--pipeline` CLI flag).
+> Running `python -m src.Pipeline_*` is considered a developer/debug path and may lag behind the main CLI docs.
+
 ## Core Philosophy: The Factory Pattern 🏭
 
 The entire framework is built around a **Factory design pattern**. This means that the core components—data, models, and training logic—are decoupled into independent modules. A "factory" is responsible for assembling a specific component based on a configuration file. This powerful design choice allows you to:
@@ -54,8 +58,8 @@ Vibench ships multiple pipelines tailored to different experiment shapes. Choose
 - Flow: load_config → build_data → build_model → build_task → build_trainer → fit → test (best checkpoint).
 - When to use: Fast baselines, ablations, dataset readers/model bring‑up.
 - Run:
-  - `python -m src.Pipeline_01_default --config_path configs/demo/Single_DG/CWRU.yaml`
-  - Local override: add `--local_config configs/local/local.yaml` or create `configs/local/local.yaml`.
+  - `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml`
+  - Smoke (no downloads): `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
 
 ### Pipeline_02_pretrain_fewshot
 - Purpose: Two‑stage training (pretraining on source → few‑shot adaptation). Supports K‑shot episodes and checkpoint hand‑off.
@@ -63,7 +67,7 @@ Vibench ships multiple pipelines tailored to different experiment shapes. Choose
 - Notable: Can control multiple iterations; passes checkpoint paths into stage 2 automatically.
 - When to use: Cross‑machine few‑shot transfer; target system with limited labels.
 - Run:
-  - `python -m src.Pipeline_02_pretrain_fewshot --config_path <pretrain.yaml> --fs_config_path <fewshot.yaml> [--local_config configs/local/local.yaml]`
+  - `python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
 
 ### Pipeline_03_multitask_pretrain_finetune
 - Purpose: Two‑stage multi‑task pipeline (unsupervised/masked pretraining → supervised fine‑tuning). Supports backbone comparison and multi‑task heads.
@@ -71,24 +75,18 @@ Vibench ships multiple pipelines tailored to different experiment shapes. Choose
 - Notable: Compares backbones (e.g., PatchTST, FNO, DLinear, TimesNet); produces structured results and summaries.
 - When to use: Foundation‑model style experiments; larger studies that require controlled stage‑by‑stage configs.
 - Run:
-  - `python -m src.Pipeline_03_multitask_pretrain_finetune --config_path configs/multitask_pretrain_finetune_config.yaml --stage complete [--local_config configs/local/local.yaml]`
-  - Stage‑only: `--stage pretraining` or `--stage finetuning`.
+  - (Advanced) Prefer a dedicated YAML under `configs/` that selects `pipeline: Pipeline_03_multitask_pretrain_finetune`.
+  - Use `python -m scripts.config_inspect --config <yaml>` to verify resolved config + instantiation targets.
 
 ### Pipeline_04_unified_metric
-- Purpose: Unified metric learning across multiple datasets (Stage 1 unified pretraining → Stage 2 fine‑tuning). Tightly integrated with `script/unified_metric/` utilities.
-- Flow: unified multi‑dataset pretraining → dataset‑wise fine‑tuning; includes zero‑shot evaluation and reporting.
-- When to use: Cross‑dataset benchmarking with standardized metrics and reporting.
-- Run (via pipeline):
-  - `python main.py --pipeline Pipeline_04_unified_metric --config script/unified_metric/configs/unified_experiments_1epoch.yaml [--local_config configs/local/local.yaml]`
-  - Or use helpers:
-    - Health check: `python script/unified_metric/pipeline/quick_validate.py --mode health_check --config script/unified_metric/configs/unified_experiments_1epoch.yaml`
-    - Runner: `python script/unified_metric/pipeline/run_unified_experiments.py --mode complete --config script/unified_metric/configs/unified_experiments_1epoch.yaml`
+- Status: legacy/experimental. Historical docs may reference `script/unified_metric/`, but that directory is not part of the maintained workflow of this repo.
+- If you need unified-metric experiments, keep them in a paper/research submodule and avoid mixing them into the core `configs/demo/` onboarding path.
 
 ### Pipeline_ID
 - Purpose: Alias pipeline that routes to the default pipeline while using ID‑based data ingestion (id_data_factory).
 - When to use: If your config selects the ID dataset implementation and you prefer a distinct entry name.
 - Run:
-  - `python -m src.Pipeline_ID --config_path <your_config.yaml> [--local_config configs/local/local.yaml]`
+  - `python main.py --config <your_config.yaml>`
 
 ---
 

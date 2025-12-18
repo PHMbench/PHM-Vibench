@@ -1,5 +1,5 @@
 environment:
-  PROJECT_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
+  PROJECT_HOME: "."
   project: "demo_project"
   seed: 42
   output_dir: "results/demo"

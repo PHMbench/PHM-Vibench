@@ -27,3 +27,10 @@ transformers
 timm
 
 streamlit
+
+# Config tooling (schema validate + inspect)
+pydantic>=2.0.0
+PyYAML>=6.0
+
+# Tests (CI + local)
+pytest>=7.0.0

@@ -70,7 +70,7 @@ id,category,path,description,pipeline,base_environment,base_data,base_model,base
 
    其他 demo 按同样模式填充，只改变 path 与描述。
 
-> 注意：**不在 CSV 中记录 `configs/reference/experiment_*.yaml`**，以便你后续清理 reference 时不会引入额外维护负担。
+> 注意：**不在 CSV 中记录 `configs/reference/experiment_*.yaml`**（reference 后续计划迁移到 paper submodule 并删除），以便你清理时不会引入额外维护负担。
 
 -----
 
@@ -78,7 +78,7 @@ id,category,path,description,pipeline,base_environment,base_data,base_model,base
 
 下列 6 个实验均基于 v0.1.0 的 base + demo 体系，统一使用：
 
-- `data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"`
+- `data_dir: "/path/to/PHM-Vibench"`
 - `metadata_file: "metadata.xlsx"`
 - 模型：
 
@@ -251,4 +251,3 @@ id,category,path,description,pipeline,base_environment,base_data,base_model,base
    ```
 
 这样，后续你在真正合并 `release/v0.1.0` 时，可以一眼看出 “哪些 YAML 已经跑过、哪些还只是设计稿”。***
-

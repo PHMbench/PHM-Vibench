@@ -1,0 +1,34 @@
+# Smoke demo: runs end-to-end on repo-shipped dummy data (no external dataset required)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_dummy_dg_smoke"
+  seed: 0
+  output_dir: "results/demo/dummy_dg_smoke"
+  notes: "Smoke test on repo-shipped dummy metadata + raw csv."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

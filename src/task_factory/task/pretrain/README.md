@@ -249,36 +249,24 @@ Mask specific frequency components:
 # mask_in_frequency_domain: true
 ```
 
-## Usage Examples
+## Usage Examples (v0.1.0 demos)
 
-### Foundation Model Pretraining
+### Single-Stage HSE Pretraining Demo
 ```bash
-# Large-scale masked reconstruction pretraining
-python main.py --config configs/demo/Pretraining/foundation_pretrain.yaml
+# HSE contrastive pretraining demo (single-stage, via Pipeline_02_pretrain_fewshot)
+python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Multi-Dataset Pretraining
+### HSE Pretrain for CDDG (demo, single-stage view)
 ```bash
-# Pretrain on multiple datasets for robust representations
-python main.py --config configs/demo/Pretraining/multi_dataset_pretrain.yaml
+# Pretrain HSE features for CDDG-style tasks
+python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Two-Stage Pipeline
-```bash
-# Complete pretrain + few-shot pipeline
-python main.py --pipeline Pipeline_02_pretrain_fewshot \
-    --config_path configs/demo/Pretraining/pretrain_stage.yaml \
-    --fs_config_path configs/demo/GFS/fewshot_stage.yaml
-```
-
-### Ablation Studies
-```bash
-# Compare different masking strategies
-python main.py --config configs/demo/Pretraining/ablation_masking.yaml
-
-# Test different mask ratios
-python main.py --config configs/demo/Pretraining/ablation_mask_ratio.yaml
-```
+### Two-Stage HSE Pretrain + CDDG (paper submodule, TODO)
+Multi-stage research configs/scripts are planned to live in the paper submodule to keep the main repo workflow stable.
 
 ## Integration with Framework
 

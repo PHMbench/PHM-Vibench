@@ -110,28 +110,24 @@ task:
 - `prompt_dim`: ❌ TODO: Dimension of prompt embeddings - AUTO-CONFIGURED
 - `freeze_prompts`: ❌ TODO: Whether to freeze prompt parameters - CONTROLLED BY STAGE
 
-## Usage Examples
+## Usage Examples (v0.1.0 demos)
 
-### Basic CDDG Experiment
+### Basic CDDG Classification (demo)
 ```bash
-# Train on CWRU, test on THU
-python main.py --config configs/demo/Multiple_DG/CWRU_THU_basic.yaml
+# Multi-system CDDG classification demo
+python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### HSE Contrastive Learning Pipeline
+### HSE Contrastive Learning (demo, single-stage view)
 ```bash
-# Stage 1: Pretraining with contrastive learning
-python main.py --config configs/hse/pretrain_contrastive.yaml
-
-# Stage 2: Fine-tuning for classification
-python main.py --config configs/hse/finetune_classification.yaml
+# HSE-style pretraining demo (single-stage view)
+python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Multi-Domain Training
-```bash
-# Train on multiple sources, test on single target
-python main.py --config configs/demo/Multiple_DG/all_to_THU.yaml
-```
+### Two-Stage HSE Pretrain + CDDG (paper submodule, TODO)
+Multi-stage research configs/scripts are planned to live in the paper submodule to keep the main repo workflow stable.
 
 ## Integration with Framework
 

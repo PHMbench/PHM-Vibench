@@ -31,6 +31,29 @@
 
 ---
 
+## Start Here (Maintained)
+
+The maintained workflow is configuration-first:
+- Entry point: `python main.py --config <yaml> [--override key=value ...]`
+- Template source: `configs/demo/` (copy into `configs/experiments/` for local variants)
+- Config docs + tools: `configs/README.md`
+- Change/run checklists: `AGENTS.md` (runbook) and `CLAUDE.md` (change strategy gate)
+
+Minimal offline smoke run (no downloads):
+```bash
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+```
+
+Config tooling:
+```bash
+python -m scripts.validate_configs
+python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+```
+
+Note: The rest of this README contains background/roadmap material; for up-to-date runnable configs rely on
+`configs/README.md` + `docs/CONFIG_ATLAS.md`.
+
 ## 📖 Table of Contents
 - [✨ Project Highlights](#-project-highlights)
 - [🔥 HSE Industrial Contrastive Learning](#-hse-industrial-contrastive-learning)
@@ -125,18 +148,12 @@
 ### 🚀 Quick HSE Demo
 
 ```bash
-# Run HSE synthetic demonstration (2 minutes)
-python scripts/hse_synthetic_demo.py
+# (Paper submodule) Run HSE synthetic demonstration
+# See paper/README_SUBMODULE.md to initialize the paper submodule first.
+# Then follow the README inside the submodule.
 
-# Expected output:
-# ✅ System prompt encoding: Success
-# ✅ Sample prompt encoding: Success
-# ✅ Prompt fusion: Success
-# ✅ Contrastive learning: Success (14.3% accuracy improvement)
-# ✅ Validation test: Success (<0.1GB memory, >1400 samples/sec)
-
-# Run complete HSE Pipeline_03 experiment
-python scripts/run_hse_prompt_pipeline03.py
+# NOTE: HSE research scripts are intentionally kept out of the main repo workflow
+# to avoid confusing the core demos and entrypoints.
 ```
 
 ### 📚 HSE Documentation
@@ -219,11 +236,11 @@ conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# Download h5 datasets 
+# (Optional) Download datasets (H5 / raw)
 
 # For example, in configs/base/data/base_classification.yaml
 data:
-  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  data_dir: "/path/to/PHM-Vibench"
   metadata_file: "metadata.xlsx"
 ```
 
@@ -236,11 +253,14 @@ Experience PHM-Vibench functionality through the following steps:
 </div> -->
 
 ```bash
-# 1. Cross-domain DG (CWRU → Ottawa)
+# 0. Offline smoke run (repo-shipped dummy data; no downloads required)
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+
+# 1. DG demo (domain split; see `task.target_system_id`)
 python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
-# 2. Cross-system CDDG (multi-system)
+# 2. CDDG demo (adjust `task.target_system_id` for multi-system)
 python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 
@@ -261,7 +281,7 @@ python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Streamlit Graphical Interface
+### Streamlit Graphical Interface (TODO)
 
 Run experiments using the Streamlit graphical interface:
 
@@ -269,11 +289,9 @@ Run experiments using the Streamlit graphical interface:
 streamlit run streamlit_app.py
 ```
 
-This interface loads YAML files from the configs directory and allows adjustment of common parameters in the sidebar. After loading, the page displays configuration items such as `data`, `model`, `task`, and `trainer` in collapsible panels, allowing direct modification of any key-value pairs before starting experiments.
+Status: the UI is experimental. Basic config editing + pipeline launching works, but visualization (curves/figures) is still incomplete.
 
-After modifying parameters, you can click the **"Save Configuration"** button at the bottom of the page to export results as a YAML file. To reload new configurations, use the **"Refresh"** button, and related `data`, `model`, `task`, and `trainer` panels will update accordingly.
-
-You can also select different pipeline modules in the sidebar (e.g., `Pipeline_01_default` or `Pipeline_02_pretrain_fewshot`). For few-shot pretraining processes, you need to additionally specify the second-stage configuration file.
+If Streamlit fails to start, treat it as a TODO and use the CLI demos under `configs/demo/` instead.
 
 ### 📊 Performance Benchmark Examples
 
@@ -296,7 +314,12 @@ PHM-Vibench uses the powerful configuration system v5.0, supporting flexible exp
 - **Ablation Experiment Tools**: Built-in dual-mode API grid search and parameter ablation
 - **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/readme.md` for details).
 
-📖 **Detailed Documentation**: [Configuration System v5.0 Complete Guide](./src/configs/README.md)
+📖 **Start here**: [`configs/README.md`](configs/README.md) (30-second smoke run + override rules + config tools)
+
+Helpful tools:
+- Config Registry → Atlas: `python -m scripts.gen_config_atlas` (generates `docs/CONFIG_ATLAS.md`)
+- Inspect resolved config / sources / targets: `python -m scripts.config_inspect --config <yaml> --override key=value`
+- Schema validate demos: `python -m scripts.validate_configs`
 
 ### Configuration File Structure
 
@@ -863,16 +886,16 @@ For a more detailed mapping table and examples, see `src/task_factory/readme.md`
 
 ```bash
 # Basic usage
-python main.py --config configs/your_config.yaml
+python main.py --config configs/<your_config>.yaml
 
 # Multiple repeated experiments for enhanced result stability
-python main.py --config configs/your_config.yaml --iterations 5 --seeds 42,43,44,45,46
+python main.py --config configs/<your_config>.yaml --iterations 5 --seeds 42,43,44,45,46
 
 # Enable WandB experiment tracking
-python main.py --config configs/your_config.yaml --wandb --project "PHM-Vibench-experiments"
+python main.py --config configs/<your_config>.yaml --wandb --project "PHM-Vibench-experiments"
 
 # Use specific GPUs
-CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/your_config.yaml
+CUDA_VISIBLE_DEVICES=0,1 python main.py --config configs/<your_config>.yaml
 ``` -->
 
 ### 3. Result Analysis 📊
@@ -906,100 +929,24 @@ save/
 
 ### 4. Result Visualization 📈
 
-<!-- ```bash
-# Generate experimental result visualization reports
-python scripts/visualize_results.py --result_dir results/experiment_name --output report.pdf
-
-# Generate model performance comparison reports
-python scripts/compare_models.py --experiments exp1,exp2,exp3 --metric accuracy
-
-# Export results as LaTeX tables (for papers)
-python scripts/export_latex.py --result_dir results/experiment_name
-``` -->
+Plotting utilities live in `plot/` (typically consuming artifacts under `save/`).
 
 ## 📂 Project Structure
 
 ```bash
-📂 PHM-Vibench
-├── 📄 README.md                 # Project documentation
-├── 📄 main.py                   # Main entry program
-├── 📄 main_dummy.py             # Function testing program
-├── 📄 benchmark.py              # Performance benchmark testing tool
-├── 📂 configs                   # Configuration file directory
-│   ├── 📂 base                  # Base templates (environment/data/model/task/trainer)
-│   ├── 📂 demo                  # v0.1.0 demo experiments (6 representative configs)
-│   ├── 📂 reference             # Reference configs aligned with paper experiments
-│   ├── 📄 default.yaml          # Legacy default configuration
-│   └── 📄 config_registry.csv   # Registry of base/demo configs
-├── 📂 src                       # Source code directory
-│   ├── 📂 data_factory          # Dataset factory
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_data.py      # Dataset base class
-│   │   ├── 📄 contributing.md   # Dataset contribution guide
-│   │   ├── 📄 data_factory.py   # Data factory class
-│   │   ├── 📄 H5DataDict.py     # H5 data dictionary
-│   │   ├── 📄 ID_data_factory.py # ID_dataset-based data factory
-│   │   └── 📂 dataset_task      # Specific dataset implementations
-│   │       └── ID_dataset.py  # Provides on-demand processing of raw datasets
-│   ├── 📂 model_factory         # Model factory
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_model.py     # Model base class
-│   │   ├── 📄 contributing.md   # Model contribution guide
-│   │   ├── 📄 model_factory.py  # Model factory class
-│   │   └── 📂 models            # Specific model implementations
-│   │       ├── 📂 backbone      # Backbone networks
-│   │       ├── 📂 embedding     # Embedding layers
-│   │       └── 📂 task_head     # Task heads
-│   ├── 📂 task_factory          # Task factory
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 Default_task.py   # Default Lightning task wrapper/base
-│   │   ├── 📄 task_factory.py   # Task factory and dynamic loader
-│   │   ├── 📂 Components        # Shared task components (losses, metrics, flows)
-│   │   ├── 📂 task              # Concrete task implementations
-│   │   │   ├── 📂 DG            # Single-dataset domain generalization tasks
-│   │   │   ├── 📂 CDDG          # Cross-dataset domain generalization tasks
-│   │   │   ├── 📂 pretrain      # Pretraining tasks (e.g., masked reconstruction)
-│   │   │   ├── 📂 FS            # Few-shot tasks
-│   │   │   ├── 📂 GFS           # Generalized few-shot tasks
-│   │   │   ├── 📂 ID            # ID-based tasks (e.g., ID_task)
-│   │   │   └── 📂 MT            # Multi-task Lightning modules
-│   │   └── 📂 utils             # Task-level utilities
-│   ├── 📂 trainer_factory       # Trainer factory
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 base_trainer.py   # Trainer base class
-│   │   ├── 📄 trainer_factory.py # Trainer factory class
-│   │   └── 📂 trainers          # Specific trainer implementations
-│   ├── 📂 visualization         # Visualization tools
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 metrics_plot.py   # Metrics visualization
-│   │   └── 📄 result_analysis.py # Result analysis
-│   └── 📂 utils                 # Utility functions
-│       ├── 📄 __init__.py
-│       ├── 📄 config_loader.py  # Configuration loader
-│       ├── 📄 logger.py         # Logging tools
-│       └── 📄 reproducibility.py # Reproducibility tools
-├── 📂 test                      # Test code
-│   ├── 📄 README.md            # Testing guide
-│   ├── 📄 test_data.py         # Data testing
-│   ├── 📄 test_model.py        # Model testing
-│   └── 📄 test_integration.py  # Integration testing
-├── 📂 pic                       # Project image resources
-│   ├── 📄 PHM-Vibench.png      # Project logo
-│   ├── 📄 contact_qrcode.png   # Contact QR code
-│   └── 📄 ...                  # Other image resources
-├── 📂 data                      # Data directory (user-defined)
-├── 📂 save                      # Experiment results save directory
-│   └── 📂 {metadata_file}       # Grouped by metadata files
-│       └── 📂 {model_name}      # Grouped by model names
-│           └── 📂 {experiment}  # Specific experiment results
-├── 📂 scripts                   # Auxiliary scripts directory
-│   ├── 📄 download_data.py     # Data download script
-│   ├── 📄 visualize_results.py # Result visualization script
-│   └── 📄 export_latex.py      # LaTeX export script
-├── 📄 requirements.txt         # Python dependency list
-├── 📄 LICENSE                  # License file
-├── 📄 CONTRIBUTING.md          # Contribution guide
-└── 📄 .gitignore              # Git ignore file
+PHM-Vibench/
+├── README.md
+├── README_CN.md
+├── main.py
+├── configs/        # experiment YAMLs + registry
+├── src/            # pipelines + factories
+├── dev/            # development utilities + scripts (e.g., HSE demos)
+├── docs/           # documentation
+├── test/           # pytest suite
+├── plot/           # plotting utilities
+├── pic/            # images used by README/docs
+├── data/           # user datasets (not tracked)
+└── save/           # run outputs (not tracked)
 ```
 
 **Core Directory Explanations**:
@@ -1008,24 +955,25 @@ python scripts/export_latex.py --result_dir results/experiment_name
 - ⚙️ **configs/**: Experimental configuration files supporting single/multi-dataset experiments
 - 📊 **save/**: Experimental results organized and saved hierarchically
 - 🧪 **test/**: Development testing suite ensuring code quality
-- 📜 **scripts/**: Convenient auxiliary tools and scripts
+- 🧰 **dev/**: Development utilities and experimental scripts
+- 📈 **plot/**: Plotting and visualization utilities
 
-<div align="center">
+<!-- <div align="center">
   <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
   <p><em>PHM-Vibench Project Structure Overview</em></p>
-</div>
+</div> -->
 
 ## 🧑‍💻 Development Guide TODO
 
 PHM-Vibench adopts a modular design following factory patterns, facilitating extension and customization. If you wish to contribute code, please refer to the [Contributor Guide](./contributing.md).
 
-### Extending Datasets 📊 See [Dataset Contribution Guide](./data_factory/contributing.md)
+### Extending Datasets 📊 See [Dataset Contribution Guide](src/data_factory/contributing.md)
 
-### Adding New Models 🧠 See [Model Contribution Guide](./model_factory/contributing.md)
+### Adding New Models 🧠 See [Model Contribution Guide](src/model_factory/contributing.md)
 
-### Debugging and Testing 🐞 See [Testing Guide](./test/README.md)
+### Debugging and Testing 🐞 See [Testing Guide](docs/testing.md)
 
-### Streamlit Interface Examples 🌐 See [Streamlit Application Prompts](./doc/streamlit_prompt.md)
+### Streamlit Interface Examples 🌐 See [Streamlit Application Prompts](docs/streamlit_prompt.md)
 
 ### On-Demand Data Processing
 
@@ -1136,4 +1084,4 @@ This benchmark platform is licensed under the [Apache License (Version 2.0)](htt
 
 <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
-<p align="center">If you have any questions or suggestions, please contact us</a> or submit an <a href="https://github.com/PHMbench/Vibench/issues">Issue</a>.</p>
+<p align="center">If you have any questions or suggestions, please contact us or submit an <a href="https://github.com/PHMbench/PHM-Vibench/issues">Issue</a>.</p>
