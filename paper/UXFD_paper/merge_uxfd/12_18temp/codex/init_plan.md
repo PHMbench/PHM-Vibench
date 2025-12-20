@@ -60,7 +60,7 @@ paper/UXFD_paper/
   moe_xfd/                    # git submodule
   fuzzy_xfd/                  # git submodule
   nesy_theory/                # git submodule
-  op_attention_tii/           # git submodule
+  op_attention/           # git submodule
 ```
 
 submodule 原则：
@@ -77,7 +77,7 @@ submodule 原则：
   - 兼容方案：新增一个不破坏旧行为的模型名（例如 `TSPN_UXFD`），并在 `src/model_factory/model_registry.csv` 注册
 - explain 统一入口：新增 `src/explain_factory/`（主仓库可复用）
 - agent 统一入口：新增 `src/agent_factory/`（先只落盘 TODO 蒸馏）
-- paper→vibench 映射文档：`docs/paper_hub/<paper_id>.md`（主仓库侧“怎么跑”）
+- paper→vibench 映射文档：`submodule 目录下 / docs/paper_hub/<paper_id>.md`（主仓库侧“怎么跑”）
 
 ---
 
