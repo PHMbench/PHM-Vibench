@@ -32,3 +32,5 @@ NO,GraphNO,src/model_factory/NO/GraphNO.py,"input_dim, hidden_dim, num_layers, n
 NO,WaveletNO,src/model_factory/NO/WaveletNO.py,"input_dim, hidden_dim, num_layers, wavelet, num_levels, mode, num_classes/output_dim","multi-scale wavelet neural operator","/"
 X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"input_dim, num_windows, kernel_size, num_classes/output_dim","multi-window attention CNN for auxiliary analysis","/"
 X_model,TSPN,src/model_factory/X_model/TSPN.py,"input_dim, hidden_dim, num_prototypes, num_classes/output_dim","time-series prototype/explainability network","/"
+X_model,TSPN_UXFD,src/model_factory/X_model/TSPN_UXFD.py,"signal_processing_configs, feature_extractor_configs, in_channels, num_classes/output_dim","UXFD-aligned TSPN wrapper (stable name for paper submodules)","/"
+X_model,BASE_ExplainableCNN,src/model_factory/X_model/BASE_ExplainableCNN.py,"in_channels, width, dropout, num_classes/output_dim","torch-only 1D CNN baseline for UXFD comparisons","/"
