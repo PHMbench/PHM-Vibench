@@ -22,6 +22,9 @@ python main.py --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.n
 ## Common Pitfalls
 
 1) Running from a different working directory (paths are repo-relative).
-2) Deleting `data/metadata_dummy.csv` or `data/raw/Dummy_Data/*.csv`.
-3) Increasing `data.window_size` beyond the dummy signal length.
+2) Deleting `data/metadata_dummy.csv`.
+3) Using a very large `data.batch_size` (the smoke dataset is tiny; keep it small, e.g. `4`).
+4) Increasing `data.window_size` beyond the dummy signal length (when using real dummy CSVs).
 
+Note:
+- If `data/raw/Dummy_Data/*.csv` is missing, `Dummy_Data` will generate synthetic signals so the smoke demo still runs.
