@@ -1,10 +1,17 @@
-# 信号处理 / 特征提取 / 逻辑推理（含融合/路由）算子库补全计划（12/23 待确认）
+# 信号处理 / 特征提取 / 逻辑推理（含融合/路由）算子库补全计划（v1.0）
 
-目标：把 `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/` 中与 UXFD 相关的三类“可插拔算子”
+目标：把 `${UXFD_UPSTREAM}/model/` 中与 UXFD 相关的三类“可插拔算子”
 （以及 TSPN 里实际依赖的“融合/路由算子”）在 **不偏离上游范式** 的前提下，整理并迁移到 vibench 主仓库的
-`src/model_factory/X_model/UXFD/**`，使其可以被 `TSPN_UXFD`（以及后续 paper configs）稳定复用。
+`src/model_factory/X_model/UXFD_component/**`，使其可以被 `TSPN`/`TSPN_UXFD`（以及后续 paper configs）稳定复用。
 
 未完成 TODO 汇总（从 12_22 迁移的 backlog）：`paper/UXFD_paper/merge_uxfd/12_23/TODO_BACKLOG.md`
+
+上游路径约定（避免写死绝对路径）：
+
+```bash
+# default for this machine:
+export UXFD_UPSTREAM=/home/user/LQ/B_Signal/Unified_X_fault_diagnosis
+```
 
 约束复述（必须遵守）：
 - 不改变 vibench 单入口：`python main.py --config ...`
@@ -23,6 +30,15 @@
 - **WP1（Logic Porting / Operators Porting）是最大风险点**：上游 `Fusion1D2D.py`、`FuzzyLogic.py` 等逻辑复杂。
   迁移策略优先采用 **Copy + Adapter（先跑通，再优化）**，避免一次性重构导致无法收敛。
 
+## 优先级矩阵（建议）
+
+| WP | 名称 | 阻塞关系 | 风险等级 | 建议顺序 |
+|---:|------|----------|----------|:--------:|
+| WP0 | Submodules（Pilot min.yaml） | 无 | 低 | 1 |
+| WP1 | Operators Porting（Copy+Adapter） | WP0 | **高** | 2 |
+| WP2 | HookStore Wrapper | WP1 | 中 | 3 |
+| WP3 | 测试验证（collect 单测 + 回归） | WP2 | 低 | 4 |
+
 ---
 
 ## 0) 当前现状（Gap）
@@ -31,7 +47,7 @@ vibench 已存在：
 - `src/model_factory/X_model/Signal_processing.py`（上游 1D SP 的一部分/变体）
 - `src/model_factory/X_model/Feature_extract.py`（上游 `Feature_extract.py` 的一部分/变体）
 - `src/model_factory/X_model/TSPN.py` + `src/model_factory/X_model/TSPN_UXFD.py`（稳定别名）
-- `src/model_factory/X_model/UXFD/signal_processing_2d/stft_tfr.py`（**非上游**，仅为纯 PyTorch 最小 STFT）
+- `src/model_factory/X_model/UXFD/signal_processing_2d/stft_tfr.py`（**历史落位**：非上游，仅为纯 PyTorch 最小 STFT；实现阶段将并入 `UXFD_component/signal_processing/sp_2d/`）
 
 尚未系统化整合（本计划要补齐）：
 - 上游 `Signal_processing_2D.py`（2D 时频算子族、输出布局 BTFC 等）
@@ -48,21 +64,99 @@ vibench 已存在：
 
 ## 1) 目标目录结构（vibench 主仓库）
 
-在 `src/model_factory/X_model/UXFD/` 内补全三块：
+在 `src/model_factory/X_model/UXFD_component/` 内补全组件区（按你的要求：signal_processing 不只 1D）：
 
-1) `signal_processing_1d/`
+1) `signal_processing/`（**统一的 Signal Processing 能力区**，覆盖 1D/2D/adapter/通用算子）
+   - `adapters/`：把不同数据集/reader 的输入形状归一化为 `BLC` / `BTFC`
+   - `sp_1d/`：对齐上游 `Signal_processing.py`（时域/频域 1D 算子族）
+   - `sp_2d/`：对齐上游 `Signal_processing_2D.py`（时频/谱图 2D 算子族，输出 BTFC）
+   - （迁移说明）当前 vibench 已有的 `X_model/UXFD/signal_processing_2d/*` 会在实现阶段迁移/并入 `signal_processing/sp_2d/`
 2) `feature_extractor/`
 3) `logic_inference/`
 4) `fusion_routing/`（1D↔2D 融合、OperatorAttention、MoE 等）
+5) `tspn/`（TSPN 组装层 + adapters + HookStore wrapper）
 
-并在 `src/model_factory/X_model/UXFD/tspn/` 内提供“组装层面的 glue”（保持上游层级结构）：
+`tspn/` 的职责（保持上游层级结构）：
 - TSPN 仍是 `SignalProcessingLayer → FeatureExtractorlayer → Classifier`
 - 融合/路由与逻辑推理都作为 **可选** 分支/头部（由配置决定是否参与前向）
 
 补充（按你的要求更新）：
-- `signal_processing_1d/` 不仅覆盖“1D 信号处理算子”，也要包含 **不同数据集输入形状的归一化/适配**：
-  - 支持 1D 数据集（时域序列），也支持 2D 数据集（已给出时频图/谱图）的“进入 TSPN 的统一入口”
-  - 目标是：无论数据集怎样给 `x`，进入后续模块前都能被规范化为本文约定的 `BLC` 或 `BTFC`
+- `signal_processing/` 是统一入口：既包含 1D/2D 的 signal processing 算子，也包含 **不同数据集输入形状的归一化/适配**。
+
+---
+
+## 1.5 去重与统一配置（你提出的“整理到 X_model / 统一配置方法 / model_factory 识别”）
+
+现状痛点（重复点）：
+- `src/model_factory/X_model/Signal_processing.py` / `Feature_extract.py` / `TSPN.py` 是可运行实现，但 `src/model_factory/X_model/UXFD/**` 又在新增“能力区”，容易产生双份逻辑与双份文档。
+- `TSPN_UXFD.py` 目前只是 alias，无法承载 UXFD 的扩展能力（HookStore / 2D / Fusion / Logic）。
+
+目标（不破坏现有可运行性）：
+- **把“实现与复用”统一沉淀到 `X_model/UXFD_component/**` 组件区**；
+- **把 `X_model/*.py` 作为“model_factory 可识别的 entrypoints + 兼容 shim”**，减少重复代码；
+- 所有 UXFD paper configs 使用**同一套 model 配置 schema**（不随 paper 漂移）。
+
+### 1.5.1 model_factory 如何“识别模型”（关键约束）
+
+当前 `model_factory` 的识别规则是硬编码的 import 约定：
+- `module_path = f"src.model_factory.{model.type}.{model.name}"`
+- 并要求该模块导出 `Model` 类（参见 `src/model_factory/model_factory.py`）
+
+因此要让 model_factory 继续工作，有两种可行策略（择优采用 A）：
+
+**策略 A（推荐，最小侵入）：entrypoint 不动，内部重定向到 UXFD 能力区**
+- 保留（或新增）入口文件：`src/model_factory/X_model/<ModelName>.py`
+- 入口模块只做两件事：
+  1) 解析统一的 UXFD config schema（见 1.5.2）
+  2) 从 `src/model_factory/X_model/UXFD_component/**` 组装实际网络并返回 logits
+- 如果需要重排目录/重命名模块：通过 **shim re-export** 保持老 import 路径不崩（例如 `Signal_processing.py` 仅 re-export）
+
+> 你最新要求是：把组件全部整理到 `src/model_factory/X_model/UXFD_component/`，并把
+> `src/model_factory/X_model/Signal_processing.py` 与 `src/model_factory/X_model/Feature_extract.py` 也整合进去。
+> 因此策略 A 的“shim”会成为过渡期的关键：先保证可运行，再逐步把真实实现迁入组件区。
+
+**策略 B（可选，后续优化）：让 model_factory 读取 registry CSV 解析 module_path**
+- 把 `src/model_factory/model_registry.csv` 从“文档”升级为“运行时映射”
+- 优点：可以把 entrypoint 移到子包（例如 `X_model/UXFD/tspn/entry.py`），不用把所有入口挤在 `X_model/` 根目录
+- 缺点：改动更大；本阶段 WP0/WP1 不建议先做
+
+### 1.5.2 UXFD 统一模型配置 schema（各 paper 共用）
+
+约束：只扩展 `model:` block，不新增第 6 个一级 block。
+
+建议把 UXFD 的可复用模型配置收敛为：
+- `model.name`: 入口模型名（model_factory 用它 import）
+- `model.preset`: 选择 `tspn` / `baseline` / `tspn_hooked`（避免每篇 paper 乱写 name）
+- `model.signal_processing* / feature_extractor* / fusion_routing / logic_inference`: 统一字段集合（默认关闭）
+
+两种落地方式（择优采用 A）：
+
+**方式 A（最稳妥）：维持 `model.name: TSPN_UXFD`，统一其字段**
+- paper configs 全部写：`name: TSPN_UXFD`
+- 通过字段启用/关闭 2D/Fusion/Logic/HookStore
+- baselines 仍使用各自 `BASE_*` entrypoint（短期足够）
+
+**方式 B（更统一）：新增 1 个“总入口” `model.name: UXFD_component` 作为 dispatcher**
+- 在 `src/model_factory/X_model/UXFD_component/__init__.py` 导出 `Model`，内部根据 `args_model.preset` 分派到：
+  - TSPN（含 HookStore）
+  - Baselines（torch-only）
+- 好处：paper configs 的 `model.name` 永远不变，只换 `preset`
+- 风险：需要新增 dispatcher 实现；但不改变主入口/5-block
+
+并保留 `src/model_factory/X_model/UXFD/` 作为 deprecated shim（只 re-export），避免既有导入路径/文档失效。
+
+### 1.5.3 具体去重动作（以“不破坏现有 demo”为前提）
+
+实现阶段（WP1）按以下原则做：
+- `X_model/UXFD_component/**`：只放“可复用组件”（SP/FE/Fusion/Logic/HookStore/Adapters），不放 entrypoints
+- `X_model/*.py`：只保留“可被 model_factory import 的入口模块”
+  - `TSPN.py`：保持“上游映射纯净”，但内部可改为调用 `UXFD_component/tspn/core.py`（减少重复）
+  - `TSPN_UXFD.py`：从 alias 升级为真正的 UXFD 入口（组装 2D/Fusion/Logic/HookStore；默认关闭保持行为不变）
+  - `Signal_processing.py` / `Feature_extract.py`：逐步变为 shim（re-export 到 `UXFD_component/signal_processing/sp_1d` 与 `UXFD_component/feature_extractor`）
+
+验收标准（去重不破坏）：
+- `python main.py --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1` 行为不变
+- paper pilot 的 `min.yaml` 能通过同一 schema 跑通
 
 ---
 
@@ -94,14 +188,14 @@ vibench 已存在：
 ### 3.1 信号处理算子库（Signal Processing）
 
 来源：
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/Signal_processing.py`
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/Signal_processing_2D.py`
+- `${UXFD_UPSTREAM}/model/Signal_processing.py`
+- `${UXFD_UPSTREAM}/model/Signal_processing_2D.py`
 
 落位：
-- `src/model_factory/X_model/UXFD/signal_processing_1d/`：整理 1D SP 算子（按上游命名/实现）
-- `src/model_factory/X_model/UXFD/signal_processing_2d/`：移植上游 2D 算子族（替换当前临时 STFT 或并存）
+- `src/model_factory/X_model/UXFD_component/signal_processing/sp_1d/`：整理 1D SP 算子（按上游命名/实现）
+- `src/model_factory/X_model/UXFD_component/signal_processing/sp_2d/`：移植上游 2D 算子族（替换当前临时 STFT 或并存）
 
-补充：数据集输入形状适配（放在 `signal_processing_1d/`，作为“统一入口”）
+补充：数据集输入形状适配（放在 `signal_processing/adapters/`，作为“统一入口”）
 - 目标：把不同数据集/不同 reader 输出的 `x` 规范化为：
   - 1D：`BLC`
   - 2D：`BTFC`
@@ -128,11 +222,11 @@ vibench 已存在：
 ### 3.2 特征提取算子库（Feature Extraction）
 
 来源：
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/Feature_extract.py`
+- `${UXFD_UPSTREAM}/model/Feature_extract.py`
 - （可选补充）`FeatureExtractor.py` 若存在不同实现
 
 落位：
-- `src/model_factory/X_model/UXFD/feature_extractor/`
+- `src/model_factory/X_model/UXFD_component/feature_extractor/`
 
 迁移策略：
 1) 以 `FeatureExtractionBase` + `FeatureExtractionModuleDict` 为核心接口（与上游一致）
@@ -159,10 +253,10 @@ vibench 已存在：
 ### 3.3 逻辑推理算子库（Logic Inference / Neuro-Symbolic）
 
 来源：
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/Logic_inference.py`
+- `${UXFD_UPSTREAM}/model/Logic_inference.py`
 
 落位：
-- `src/model_factory/X_model/UXFD/logic_inference/`
+- `src/model_factory/X_model/UXFD_component/logic_inference/`
 
 关键修正点（必须做，P0）：
 - 上游文件目前存在 import-time `ONE = torch.Tensor([1]).cuda()` / `ZERO = ...cuda()`：
@@ -189,14 +283,14 @@ vibench 已存在：
 ### 3.4 融合/路由算子库（Fusion + Routing）
 
 来源（上游同目录下常见文件名）：
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/Fusion1D2D.py`
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/Fusion1D2D_simple.py`
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/operator_attention.py`
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/OperatorAttention_*.py`
-- `/home/user/LQ/B_Signal/Unified_X_fault_diagnosis/model/MoE.py` / `MoE_*`
+- `${UXFD_UPSTREAM}/model/Fusion1D2D.py`
+- `${UXFD_UPSTREAM}/model/Fusion1D2D_simple.py`
+- `${UXFD_UPSTREAM}/model/operator_attention.py`
+- `${UXFD_UPSTREAM}/model/OperatorAttention_*.py`
+- `${UXFD_UPSTREAM}/model/MoE.py` / `MoE_*`
 
 落位：
-- `src/model_factory/X_model/UXFD/fusion_routing/`
+- `src/model_factory/X_model/UXFD_component/fusion_routing/`
 
 设计理由（为什么放这里、且不偏离上游范式）：
 - 在上游 UXFD 的 `TSPN*.py` 变体中，Fusion/Attention/MoE 通常是 “SP/FE 之后、Classifier 之前” 的中间模块；
@@ -236,33 +330,52 @@ P0 交付：
 
 ### 4.2 vibench YAML 约定（保持 5-block）
 
-本阶段只在 `model:` block 内扩展字段（不新增顶层 block）：
+原则：只在 `model:` block 内扩展字段（不新增顶层 block）。
+
+#### 基础配置（保持现有）
 
 ```yaml
 model:
   type: "X_model"
   name: "TSPN_UXFD"
+  signal_processing_configs: {...}
+  feature_extractor_configs: [...]
+```
 
-  signal_processing_configs: {...}   # 保持现有 TSPN 方式
-  feature_extractor_configs: [...]   # 保持现有 TSPN 方式
+#### 新增：2D 时频处理（可选）
 
-  # 新增（可选）
-  signal_processing_2d: {...}        # 2D 算子/参数（仅当某 paper 需要）
-  feature_extractor_2d:             # 2D(TF) 双分支特征（可选；默认关闭）
+```yaml
+model:
+  signal_processing_2d: {...}  # 仅当某 paper 需要 2D 时频算子
+```
+
+#### 新增：2D(TF) 双分支特征（可选）
+
+```yaml
+model:
+  feature_extractor_2d:
     enable: false
     branches:
-      time:
-        reduce: "mean_F"            # F 维投影
-        fft: true                  # rfft over T, magnitude
-      freq:
-        reduce: "mean_T"            # T 维投影
-        fft: true                  # rfft over F, magnitude
-  fusion_routing:                   # 1D↔2D 融合、attention、MoE（可选）
+      time: {reduce: "mean_F", fft: true}  # rfft over T, magnitude
+      freq: {reduce: "mean_T", fft: true}  # rfft over F, magnitude
+```
+
+#### 新增：融合/路由（可选）
+
+```yaml
+model:
+  fusion_routing:
     enable: false
-    fusion: {name: "Fusion1D2D"}    # 或 simple 版本
+    fusion: {name: "Fusion1D2D"}
     attention: {enable: false, name: "OperatorAttention"}
     moe: {enable: false, name: "MoE"}
-  logic_inference:                  # 逻辑推理开关与算子组合
+```
+
+#### 新增：逻辑推理（可选）
+
+```yaml
+model:
+  logic_inference:
     enable: false
     operators: ["LOGIC/Implication", "LOGIC/Negation"]
     alpha: 20
@@ -299,30 +412,35 @@ model:
 建议 Pilot（默认）：
 - `paper/UXFD_paper/1D-2D_fusion_explainable`（天然覆盖 Fusion + 2D 处理）
 
-WP0 交付物（必须在 Pilot submodule 内）：
-- `paper/UXFD_paper/<pilot>/configs/vibench/min.yaml`
-  - 仅依赖主仓库的通用模块（`X_model`/`TSPN_UXFD`/extensions 等），避免 submodule 自己写新训练代码
-  - 通过 `environment.output_dir` 把输出落在 vibench 的 `results/`（或 `save/`）下，确保 `manifest.json` 与 collect 脚本可复用
-- `paper/UXFD_paper/<pilot>/VIBENCH.md`
-  - 写清：paper 原始入口 → vibench 入口映射（“用哪个 config 跑”）
-- `paper/UXFD_paper/<pilot>/configs/vibench/README.md`（若新建目录必须有 README）
+WP0 Step 1（在 submodule 内落位入口文件）：
+- 新增（必须在 Pilot submodule 内）：
+  - `paper/UXFD_paper/<pilot>/configs/vibench/min.yaml`
+    - 仅依赖主仓库的通用模块（`X_model`/`TSPN_UXFD`/extensions 等），避免 submodule 自己写新训练代码
+    - 通过 `environment.output_dir` 把输出落在 vibench 的 `results/`（或 `save/`）下，确保 `manifest.json` 与 collect 脚本可复用
+  - `paper/UXFD_paper/<pilot>/VIBENCH.md`（paper 原始入口 → vibench 入口映射）
+  - `paper/UXFD_paper/<pilot>/configs/vibench/README.md`（若新建目录必须有 README）
 
-WP0 验证方式（Pilot 必须能跑）：
+WP0 Step 2（Pilot 端到端验证）：
 - `python main.py --config paper/UXFD_paper/<pilot>/configs/vibench/min.yaml --override trainer.num_epochs=1`
+- 检查 `<run_dir>/artifacts/manifest.json` 是否生成
 - `python -m scripts.collect_uxfd_runs --input <output_root> --out_dir reports/`
+
+WP0 Step 3（推广到其余 6 篇）：
+- 基于 Pilot 模板，在其他 submodule 内也落 1 份能跑的 `configs/vibench/min.yaml` + `VIBENCH.md`
 
 注意：
 - submodule 内文件修改需要在 submodule 仓库里提交（本地 commit 即可），主仓库记录 gitlink 指向该 commit。
 
 ### WP1：Operators Porting（Copy + Adapter，先跑通）
 
-Step 1（准备目录，P0）：
+WP1 Step 1（准备目录，P0）：
 - 新建目录（均含 README）：
-  - `src/model_factory/X_model/UXFD/feature_extractor/`
-  - `src/model_factory/X_model/UXFD/logic_inference/`
-  - `src/model_factory/X_model/UXFD/fusion_routing/`
+  - `src/model_factory/X_model/UXFD_component/signal_processing/`（含 `adapters/`, `sp_1d/`, `sp_2d/`）
+  - `src/model_factory/X_model/UXFD_component/feature_extractor/`
+  - `src/model_factory/X_model/UXFD_component/logic_inference/`
+  - `src/model_factory/X_model/UXFD_component/fusion_routing/`
 
-Step 2（优先迁移“Pilot 必需”的算子，按 Copy + Adapter）：
+WP1 Step 2（优先迁移“Pilot 必需”的算子，按 Copy + Adapter）：
 - 先以“能跑通 Pilot”为准，优先级建议：
   1) `Fusion1D2D`（1D↔2D glue）
   2) `Signal_processing_2D`（至少 1 条 BTFC 可用路径）
@@ -330,41 +448,51 @@ Step 2（优先迁移“Pilot 必需”的算子，按 Copy + Adapter）：
   4) `FuzzyLogic`（若 Pilot 需要；否则进入下一轮）
 - 对每个上游文件：先 Copy 过来，再用最小 adapter 适配 vibench 的输入输出布局；不要先做“完美重构”。
 
-Step 3（迁移 FE 全量算子，P1）：
+WP1 Step 3（迁移 FE 全量算子，P1）：
 - 移植 `Feature_extract.py` 全量统计特征算子
 - 统一 `BLC→BCL` 的进出接口规则，保证所有 paper configs 可复用
 
-Step 4（迁移 LogicInference，P1 但高风险必须早做）：
+WP1 Step 4（迁移 LogicInference，P1 但高风险必须早做）：
 - 移植 `Logic_inference.py` 并修复 import-time cuda 常量（CPU 安全）
 - 默认关闭，通过 `model.logic_inference.enable` 打开
 
 ### WP2：HookStore Wrapper（Explainability 的关键前置）
 
-Step 5（新增 Wrapper，不改 TSPN.py）：
-- 在 `src/model_factory/X_model/UXFD/tspn/` 新增 wrapper（组合/继承）：
+WP2 Step 1（新增 Wrapper，不改 TSPN.py）：
+- 在 `src/model_factory/X_model/UXFD_component/tspn/` 新增 wrapper（组合/继承）：
   - 捕获 `features / attention_weights / router_weights / fusion_weights` 等
   - best-effort 写 `artifacts/explain/hookstore.json`（不影响训练）
 - 在 `src/model_factory/model_registry.csv` 增加一个新模型条目（例如 `TSPN_UXFD_HOOKED`），让 paper config 可选用
 
 ### WP3：测试与最小验证（新增代码必须有测试）
 
-Step 6（新增单测：collect 脚本稳定性）：
+WP3 Step 1（新增单测：collect 脚本稳定性）：
 - 为 `scripts/collect_uxfd_runs.py` 增加一个最小单元测试：
   - 在临时目录构造 `run/artifacts/manifest.json`
   - 调用 `collect_manifests()` 或 `main()` 生成 CSV
   - 断言 CSV 列与关键字段（`run_dir/metrics_path/metric/*`）存在且值正确
 
-Step 7（回归验证）：
+WP3 Step 2（回归验证）：
 - `python main.py --config paper/UXFD_paper/<pilot>/configs/vibench/min.yaml --override trainer.num_epochs=1`
 - `python -m pytest test/`
 
 ---
 
+## 风险与缓解（择优采纳 review）
+
+| 风险 | 影响 | 概率 | 缓解措施 |
+|------|------|------|----------|
+| WP0 未跑通 | 无法在真实 Context 验证 WP1 | 高 | 先做 1 篇 Pilot（含 2D/Fusion），以 config 驱动移植 |
+| `Logic_inference.py` import-time `.cuda()` | CPU 环境直接崩溃 | 高 | Copy 时优先修复为 runtime `x.new_tensor(...)` |
+| 上游路径硬编码 | 其他机器无法复现 | 中 | 统一用 `${UXFD_UPSTREAM}`，文档给默认值 |
+| 2D 维度语义不清（T/F/C） | Fusion/FE 形状错导致训练崩溃 | 中 | 强制 BTFC + adapter；无法判别时抛可读错误 |
+| 一次性重构过度 | 迁移周期拉长、难回退 | 中 | 固定策略：Copy + Adapter 先跑通，之后再优化 |
+
 ## 7) Definition of Done（本阶段）
 
 当满足以下条件，视为“算子库补全（第一版）”完成：
 - WP0：至少 1 个 pilot paper submodule 的 `min.yaml` 能端到端跑通并产出 `artifacts/manifest.json`
-- `signal_processing_1d/feature_extractor/logic_inference/signal_processing_2d/fusion_routing` 五个目录齐全且有 README
+- `signal_processing/feature_extractor/logic_inference/fusion_routing/tspn` 五个目录齐全且有 README（signal_processing 内部包含 `adapters/sp_1d/sp_2d`）
 - 逻辑推理库在 CPU 环境可 import（无 `.cuda()` import-time 依赖）
 - `TSPN_UXFD` 能在默认关闭逻辑推理/2D 时频时保持现有行为不变
 - `feature_extractor_2d` 提供 BTFC 的 `T/F` 双分支特征提取最小闭环（含 `torch.fft` magnitude）
@@ -377,3 +505,11 @@ Step 7（回归验证）：
 - `torch.fft` complex 处理：统一 **方案 A（magnitude）**
 - 逻辑推理对接：默认 **logits additive term（方案 A）**
 - 配置归属：`logic_inference` / `fusion_routing` / `feature_extractor_2d` 都放在 `model:` 下（默认关闭）
+
+---
+
+## 9) 变更记录
+
+| 日期 | 版本 | 变更内容 |
+|------|------|----------|
+| 2025-12-23 | v1.0 | 初始版本；按 review 强化 WP0/WP1、HookStore、collect 单测与风险缓解 |

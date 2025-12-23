@@ -1,5 +1,17 @@
 # plot/ → src/plot_factory 迁移计划（KISS / 渐进式 / 高解耦）
 
+## 执行摘要
+
+目标：把 `plot/` 的“脚本集合”收敛为 **离线可复用工具**，并在必要时逐步沉淀为 `src/plot_factory/` 能力区。
+
+核心原则：
+- KISS：先做 1–2 张最有价值的图（学习曲线、混淆矩阵）
+- 强解耦：基于稳定产物（`manifest.json`、`metrics.csv`），尽量不绑定模型内部结构
+- Optional import：缺依赖时降级并写入 eligibility，不崩溃、不影响训练
+
+交付优先级（建议顺序）：
+- WP0（post-run 检查）→ WP1（离线绘图）→ WP3（plot_factory 骨架）→ WP4（plotters）
+
 目标：把仓库根目录的 `plot/`（当前为脚本集合、且被 `.gitignore` 忽略）整理为**可维护、可复用、可选启用**的绘图能力。
 本计划默认采用“**离线脚本 + 配置文件**”方式落地：不集成到 `main.py`，不引入新的 pipeline。
 后续如确有必要，再把核心绘图能力迁移进主仓库能力区 `src/plot_factory/`（供脚本复用）。
@@ -178,7 +190,7 @@ src/plot_factory/
 
 ---
 
-### WP5：补齐“可画图所需的最小产物”（按需再做，避免过早）
+### WP6：补齐“可画图所需的最小产物”（按需再做，避免过早）
 当且仅当你确认“混淆矩阵/样本可视化必须在主流程自动产出”时，再做此步：
 
 - 在 task/test_step 或 callback 中增加一个**最小**的预测落盘：
@@ -190,7 +202,7 @@ src/plot_factory/
 
 ---
 
-### WP6：消化/迁移 legacy 脚本（长期，逐个吃掉）
+### WP7：消化/迁移 legacy 脚本（长期，逐个吃掉）
 策略：
 - 先把 `plot/` 原脚本复制到 `src/plot_factory/legacy/`，只做最小清理：
   - 移除 `sys.path` hack
@@ -217,10 +229,10 @@ src/plot_factory/
 
 ---
 
-## 5) 需要你确认的 3 个决策（避免返工）
+## 5) 需要你确认的关键决策（避免返工）
 
-1) 绘图输出主目录：`<run_dir>/figures/`（推荐）还是 `<run_dir>/artifacts/plots/`？
-2) plot 默认开关：`trainer.extensions.plot.enable` 默认 `false`（推荐，最安全）还是默认 `true`？
-3) 是否需要主流程自动落盘 `predictions.npz`（用于混淆矩阵/样本可视化）？
-   - 如果“先不要”：confusion_matrix plotter 先做可选（缺文件就 skip）
-   - 如果“必须要”：WP5 需要改 task/callback（会更侵入）
+| 决策点 | 选项 | 推荐 | 影响 |
+|--------|------|------|------|
+| 绘图输出目录 | `<run_dir>/figures/` / `<run_dir>/artifacts/plots/` | `<run_dir>/figures/` | 与 manifest 字段 `figures_dir` 一致、最少改动 |
+| plot 默认开关 | `trainer.extensions.plot.enable: false/true` | `false` | 默认不自动出图，避免影响主流程 |
+| predictions 落盘 | 主流程自动 / 手动（仅对已有文件画图） | 手动 | 若要自动落盘需做 WP6（侵入性更高） |

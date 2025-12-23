@@ -3,7 +3,9 @@
 input:
   # Option A: auto-discover run dirs by scanning for manifests under a root dir.
   mode: manifest_glob
+  # `root_dir` can be an absolute path or a repo-relative path.
   root_dir: save
+  # Glob is written in Unix style; on Windows it is still interpreted by Python's Path.glob.
   manifests_glob: "**/artifacts/manifest.json"
 
   # Option B: explicit run dirs (takes precedence if mode=run_dirs)
@@ -11,6 +13,8 @@ input:
 
 checks:
   enable: true
+  # If true: a run fails eligibility when any required pattern is missing.
+  # If false: missing required patterns are only reported (best-effort).
   fail_on_missing_required: true
   required:
     - "artifacts/manifest.json"
@@ -23,7 +27,8 @@ checks:
 plots:
   enable: true
   out_dir: figures
-  save_formats: ["png"]
+  # Common choices for papers: png + pdf. (eps is also possible but may require extra backend support.)
+  save_formats: ["png", "pdf"]
   items:
     - type: learning_curve
       metrics_glob: "logs/**/metrics.csv"
@@ -32,4 +37,3 @@ plots:
     - type: confusion_matrix
       predictions_glob: "artifacts/predictions.npz"
       normalize: true
-
