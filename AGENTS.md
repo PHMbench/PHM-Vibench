@@ -74,6 +74,8 @@ python -m pytest test/
 
 ## Commit & PR Guidelines (keep changes reviewable)
 - Keep changes focused (configs vs factories vs docs should be separable when possible).
+- Vibecoding (AI-assisted changes): keep it simple (KISS). Avoid over-engineering, premature abstractions, and
+  unnecessary defensive design; apply Occam’s razor; work from first principles; develop incrementally.
 - Every PR/step should include:
   - What changed + why
   - How to validate (commands above)

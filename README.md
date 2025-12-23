@@ -39,6 +39,9 @@ The maintained workflow is configuration-first:
 - Config docs + tools: `configs/README.md`
 - Change/run checklists: `AGENTS.md` (runbook) and `CLAUDE.md` (change strategy gate)
 
+Vibecoding (AI-assisted updates): keep it simple (KISS). Avoid over-engineering and unnecessary defensive design;
+apply Occam’s razor; work from first principles; develop incrementally.
+
 Minimal offline smoke run (no downloads):
 ```bash
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml

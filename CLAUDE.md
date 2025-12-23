@@ -204,6 +204,8 @@ Typical artifacts depend on trainer/task, but usually include checkpoints, metri
 - Always register new components via the appropriate factory/registry instead of hardcoding imports in pipelines.
 - Keep demos runnable with minimal assumptions; prefer smoke-friendly defaults (e.g. `--override trainer.num_epochs=1`).
 - When changing config structure, update SSOT (registry/atlas) and add a migration note if any user-facing key changes.
+- Vibecoding (AI-assisted changes): default to the simplest viable implementation. Avoid over-engineering and
+  unnecessary defensive design; apply Occam’s razor; reason from first principles; iterate incrementally.
 
 ## Hard Constraints (Do Not Break)
 - Do not introduce breaking changes to `main.py` public CLI or core YAML keyspaces (`environment/data/model/task/trainer`)
