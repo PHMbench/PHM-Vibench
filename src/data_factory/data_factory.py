@@ -106,7 +106,9 @@ class data_factory:
             mod = importlib.import_module(f"src.data_factory.reader.{name}")
             file_path = os.path.join(args_data.data_dir, f"raw/{name}/{file_name}")
             if not os.path.exists(file_path):
-                return id_key, None, f"原始数据文件未找到: {file_path}"
+                # Smoke/demo robustness: allow synthetic readers (e.g. Dummy_Data) to generate data.
+                if name != "Dummy_Data":
+                    return id_key, None, f"原始数据文件未找到: {file_path}"
             data = mod.read(file_path, args_data)
             if data.ndim == 2:
                 data = np.expand_dims(data, axis=-1)

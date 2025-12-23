@@ -49,6 +49,12 @@ The data loading process follows a sequential workflow, orchestrated by the `dat
 
 5.  **Output**: The `data_factory` returns the final objects required for the training pipeline.
 
+## Smoke demo note (`Dummy_Data`)
+
+The repo-shipped smoke config `configs/demo/00_smoke/dummy_dg.yaml` uses `Name=Dummy_Data`.
+For offline runs, `src/data_factory/reader/Dummy_Data.py` will generate **synthetic data** when
+the raw CSV files are not present under `data/raw/Dummy_Data/`.
+
 ## metadata understanding
 
 
