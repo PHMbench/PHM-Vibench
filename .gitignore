@@ -211,6 +211,7 @@ script/unified_metric/
 GEMINI.md
 
 LQ_fix/
+ignore/
 
 # Re-include maintained tests and tracked planning docs
 # !test/

@@ -5,3 +5,24 @@
 [submodule "paper/2025-10_foundation_model_0_metric"]
 	path = paper/2025-10_foundation_model_0_metric
 	url = git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git
+[submodule "paper/UXFD_paper/1D-2D_fusion_explainable"]
+	path = paper/UXFD_paper/1D-2D_fusion_explainable
+	url = https://github.com/liq22/1D-2D_fusion_explainable.git
+[submodule "paper/UXFD_paper/Explainable_FD_Toolkit"]
+	path = paper/UXFD_paper/Explainable_FD_Toolkit
+	url = https://github.com/liq22/Explainable_FD_Toolkit.git
+[submodule "paper/UXFD_paper/LLM_Explainable_FD_Toolkit"]
+	path = paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+	url = https://github.com/liq22/LLM_Explainable_FD_Toolkit.git
+[submodule "paper/UXFD_paper/MOE_explainable"]
+	path = paper/UXFD_paper/MOE_explainable
+	url = https://github.com/liq22/MOE_explainable.git
+[submodule "paper/UXFD_paper/Paper_fuzzy_XFD"]
+	path = paper/UXFD_paper/Paper_fuzzy_XFD
+	url = https://github.com/liq22/Paper_fuzzy_XFD.git
+[submodule "paper/UXFD_paper/Neuralsymbolic_theory"]
+	path = paper/UXFD_paper/Neuralsymbolic_theory
+	url = https://github.com/liq22/Neuralsymbolic_theory.git
+[submodule "paper/UXFD_paper/TII_operator_attention"]
+	path = paper/UXFD_paper/TII_operator_attention
+	url = git@github.com:liq22/TII_operator_attention.git
