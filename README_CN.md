@@ -191,6 +191,9 @@ data:
 - 配置文档与工具：`configs/README.md`
 - 变更/运行门禁：`AGENTS.md`（runbook）与 `CLAUDE.md`（change strategy gate）
 
+vibecoding（AI 辅助编码）更新遵循 KISS：避免过度工程化与不必要的防御性设计；遵循奥卡姆剃刀原则，立足第一性原理，
+渐进式开发与验证。
+
 离线冒烟（无需下载数据）：
 ```bash
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml
