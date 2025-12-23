@@ -74,6 +74,13 @@ class TrainerConfig(BaseModel):
 
     name: str = Field(..., description="Trainer implementation name under trainer_factory.")
     num_epochs: Optional[int] = Field(None, ge=1)
+    extensions: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Optional orchestration extensions (e.g., explain/report/collect/agent) "
+            "hanging under trainer.extensions.*; must be safe to ignore when unsupported."
+        ),
+    )
 
 
 class ExperimentConfig(BaseModel):
@@ -91,4 +98,3 @@ class ExperimentConfig(BaseModel):
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
         return self
-
