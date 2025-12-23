@@ -44,7 +44,20 @@ def resolve_batch_metadata(
 
     for row in rows:
         ds = row["Dataset_id"]
-        fs = row["Sample_rate"]
+        if isinstance(row, dict): # 大小写问题
+            fs = row.get("Sample_rate")
+            if fs is None:
+                # Backward/format compatibility: allow common variants used in metadata files.
+                fs = row.get("Sample_Rate", row.get("sample_rate", row.get("sample_rate_hz")))
+            if fs is None:
+                raise KeyError("Sample_rate")
+        else:
+            # pandas.Series / similar
+            fs = row.get("Sample_rate")
+            if fs is None:
+                fs = row.get("Sample_Rate", row.get("sample_rate", row.get("sample_rate_hz")))
+            if fs is None:
+                raise KeyError("Sample_rate")
 
         if isinstance(ds, pd.Series):
             ds = int(np.unique(ds)[0])

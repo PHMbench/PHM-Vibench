@@ -69,6 +69,10 @@ Current embedding modules (under `ISFM/embedding/`):
 
 > 实际 forward 会额外接收 `fs`（采样频率），用于归一化时间轴；该信息通常来自 `metadata` / DataFactory，而不是 `model` 配置中的字段。
 
+Metadata compatibility:
+- ISFM resolves per-sample sampling rate from metadata key `Sample_rate`.
+- For demo/legacy metadata files, `Sample_Rate` is also accepted as an alias.
+
 其它消融版本（如 `E_01_HSE_abalation`）会引入额外参数（`sampling_mode`、`apply_mixing`、`linear_config` 等），视你是否在实验中暴露为 config 字段，再逐步扩展本 README。
 
 ## 4. Backbone components (`model.backbone`)
