@@ -57,13 +57,13 @@ python -m pytest test/
    - `paper/UXFD_paper/README.md`：7 篇 paper 的索引页（只放链接与说明边界）
    - `paper/UXFD_paper/README_SUBMODULE.md`：submodule 初始化说明（参考 `paper/README_SUBMODULE.md` 的写法）
 3) 创建 7 个 submodule 目录名（先空目录也行，后续再 init submodule）：
-   - `paper/UXFD_paper/fusion_1d2d/`
-   - `paper/UXFD_paper/xfd_toolkit/`
-   - `paper/UXFD_paper/llm_xfd_toolkit/`
-   - `paper/UXFD_paper/moe_xfd/`
-   - `paper/UXFD_paper/fuzzy_xfd/`
-   - `paper/UXFD_paper/nesy_theory/`
-   - `paper/UXFD_paper/op_attention_tii/`
+   - `paper/UXFD_paper/1D-2D_fusion_explainable/`
+   - `paper/UXFD_paper/Explainable_FD_Toolkit/`
+   - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit/`
+   - `paper/UXFD_paper/MOE_explainable/`
+   - `paper/UXFD_paper/Paper_fuzzy_XFD/`
+   - `paper/UXFD_paper/Neuralsymbolic_theory/`
+   - `paper/UXFD_paper/TII_operator_attention/`
 
 ### PR0-2 映射文档位置（重要：放在各自 submodule 内，不污染主仓库 docs）
 

@@ -1,0 +1,35 @@
+# UXFD post-run check + plotting config (standalone; NOT the 5-block vibench config)
+
+input:
+  # Option A: auto-discover run dirs by scanning for manifests under a root dir.
+  mode: manifest_glob
+  root_dir: save
+  manifests_glob: "**/artifacts/manifest.json"
+
+  # Option B: explicit run dirs (takes precedence if mode=run_dirs)
+  run_dirs: []
+
+checks:
+  enable: true
+  fail_on_missing_required: true
+  required:
+    - "artifacts/manifest.json"
+    - "config_snapshot.yaml"
+  optional:
+    - "logs/**/metrics.csv"
+    - "test_result_*.csv"
+    - "figures"
+
+plots:
+  enable: true
+  out_dir: figures
+  save_formats: ["png"]
+  items:
+    - type: learning_curve
+      metrics_glob: "logs/**/metrics.csv"
+      # If empty, the script will auto-pick common columns like loss/acc.
+      series: []
+    - type: confusion_matrix
+      predictions_glob: "artifacts/predictions.npz"
+      normalize: true
+
