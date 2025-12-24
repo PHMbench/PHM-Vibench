@@ -13,8 +13,8 @@ import torch.nn as nn
 from einops import rearrange
 import torch.nn.functional as F
 from collections import OrderedDict
-from .Signal_processing import *
-from .Feature_extract import *
+from .utils.Signal_processing import *
+from .utils.Feature_extract import *
 
 class Model(nn.Module):
     """Transparent Signal Processing Network (TSPN).
@@ -39,6 +39,7 @@ class Model(nn.Module):
             metadata: 数据集元信息，可选。
         """
         super(Model, self).__init__()
+        self.metadata = metadata
         self.signal_processing_modules, self.feature_extractor_modules = self.config_network(args)
         self.layer_num = len(self.signal_processing_modules)
         self.args = args
@@ -100,7 +101,7 @@ class Model(nn.Module):
         print('# build classifier')
         self.clf = Classifier(self.channel_for_classifier, self.args.num_classes).to(self.args.device)
 
-    def forward(self, x, data_id = None,task_id = None):
+    def forward(self, x, data_id=None, task_id=None):
         """Compute logits for a batch.
 
         Parameters
@@ -122,7 +123,15 @@ class Model(nn.Module):
             x = layer(x)
         x = self.feature_extractor_layers(x)
 
-        x = self.clf(x)
+        dataset_id = None
+        if data_id is not None and self.metadata is not None:
+            try:
+                fid = int(data_id)
+                dataset_id = str(self.metadata[fid].get("Dataset_id"))
+            except Exception:
+                dataset_id = None
+
+        x = self.clf(x, dataset_id=dataset_id)
         return x
 
 class CustomBatchNorm(nn.Module):
@@ -208,8 +217,8 @@ class FeatureExtractorlayer(nn.Module):
         normed_x = self.pre_norm(x)
         normed_x = rearrange(normed_x, 'b c l -> b l c')
         
-        x = self.weight_connection(normed_x)
-        x = rearrange(x, 'b l c -> b c l')
+        # x = self.weight_connection(normed_x)
+        x = rearrange(normed_x, 'b l c -> b c l')
         outputs = []
         for module in self.feature_extractor_modules.values():
             outputs.append(module(x))
@@ -217,19 +226,33 @@ class FeatureExtractorlayer(nn.Module):
         return self.norm(res)
 
 class Classifier(nn.Module):
-    def __init__(self, in_channels, num_classes): # TODO logic
+    def __init__(self, in_channels, num_classes):  # TODO logic
         super(Classifier, self).__init__()
-        self.clf = nn.Sequential(
-            nn.Linear(in_channels, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
-            
+        if not isinstance(num_classes, dict):
+            raise TypeError("TSPN Classifier expects num_classes to be a dict keyed by dataset_id.")
+        self.heads = nn.ModuleDict(
+            {
+                str(data_name): nn.Sequential(
+                    nn.Linear(in_channels, 128),
+                    nn.ReLU(),
+                    nn.Linear(128, int(n_class)),
+                )
+                for data_name, n_class in num_classes.items()
+            }
         )
-        # self.clf = nn.Linear(in_channels, num_classes)
-        
-    def forward(self, x):
+
+    def forward(self, x, dataset_id=None):
         x = x.view(x.size(0), -1)
-        return self.clf(x)
+        if len(self.heads) == 1:
+            return next(iter(self.heads.values()))(x)
+
+        key = str(dataset_id) if dataset_id is not None else None
+        if key in self.heads:
+            return self.heads[key](x)
+
+        # Deterministic fallback to the first head.
+        first_key = sorted(self.heads.keys())[0]
+        return self.heads[first_key](x)
 
 def get_unique_module_name(existing_names, module_name):
     """

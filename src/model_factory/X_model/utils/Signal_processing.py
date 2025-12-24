@@ -136,14 +136,12 @@ class WaveFilters(SignalProcessingBase): # TII中的实现
         super(WaveFilters, self).__init__(args)
 
         self.name = "WF"
-        self.device = args.device
-        self.to(self.device)
         in_channels = args.scale # large enough to avoid setting
 
         
         # 初始化频率和带宽参数
-        self.f_c = nn.Parameter(torch.empty(1, 1,in_channels, device=self.device))
-        self.f_b = nn.Parameter(torch.empty(1, 1,in_channels, device=self.device))
+        self.f_c = nn.Parameter(torch.empty(1, 1,in_channels))
+        self.f_b = nn.Parameter(torch.empty(1, 1,in_channels))
         
         # 自定义参数初始化
         self.initialize_parameters()
@@ -157,19 +155,18 @@ class WaveFilters(SignalProcessingBase): # TII中的实现
 
     # TODO add other filter
         
-    def filter_generator(self, in_channels, freq_length): 
-        omega = torch.linspace(0, 0.5, freq_length, device=self.device).view(1, -1, 1)
-        
-        self.omega = omega # .reshape(1, freq_length, 1).repeat([1, 1, in_channels])
-        
-        filters = torch.exp(-((self.omega - self.f_c) / (2 * self.f_b)) ** 2)
+    def filter_generator(self, in_channels, freq_length, device): 
+        omega = torch.linspace(0, 0.5, freq_length, device=device).view(1, -1, 1)
+        f_c = self.f_c.to(device)
+        f_b = torch.clamp(self.f_b, min=1e-3).to(device)
+        filters = torch.exp(-((omega - f_c) / (2 * f_b)) ** 2)
         return filters
 
     def forward(self, x): 
         in_dim, in_channels = x.shape[-2],x.shape[-1] # B,L,C
         freq = torch.fft.rfft(x, dim=1, norm='ortho')
         
-        self.filters = self.filter_generator(in_channels, in_dim//2 + 1)
+        self.filters = self.filter_generator(in_channels, in_dim//2 + 1, device=x.device)
         # 应用滤波器到所有通道
         filtered_freq = freq * self.filters[:,:,:in_channels] # B,L//2,C * 1,L//2,c
         
@@ -445,7 +442,7 @@ class Laplace_neural_operator(SignalProcessingBase):
         alpha = torch.fft.fft(x)
         lambda0=torch.fft.fftfreq(t.shape[0], dt)*2*np.pi*1j
         lambda1=lambda0.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-        lambda1=lambda1.cuda()
+        lambda1=lambda1.to(x.device)
     
         # Obtain output poles and residues for transient part and steady-state part
         output_residue1,output_residue2= self.output_PR(lambda1, alpha, self.weights_pole, self.weights_residue)

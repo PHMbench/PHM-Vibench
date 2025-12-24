@@ -7,7 +7,7 @@ import os
 from typing import Any
 
 import torch
-from ..utils.utils import get_num_classes
+from ..utils.utils import get_num_classes, get_num_channels
 from ..utils.registry import Registry
 
 
@@ -36,6 +36,22 @@ def model_factory(args_model: Any, metadata: Any):
         Instantiated model ready for training.
     """
     args_model.num_classes = get_num_classes(metadata)
+
+    # TSPN family prefers inferring in_channels from metadata (Spec 12.14).
+    if getattr(args_model, "name", None) in {"TSPN", "TSPN_CL"}:
+        channels_map = get_num_channels(metadata)
+        if isinstance(channels_map, dict) and channels_map:
+            uniq = sorted({int(v) for v in channels_map.values()})
+            if len(uniq) == 1:
+                inferred = int(uniq[0])
+                if getattr(args_model, "in_channels", None) is not None and int(getattr(args_model, "in_channels")) != inferred:
+                    print(
+                        f"[WARN] model.in_channels={getattr(args_model, 'in_channels')} will be overridden by "
+                        f"inferred in_channels={inferred} from metadata."
+                    )
+                args_model.in_channels = inferred
+            elif len(uniq) > 1:
+                raise ValueError(f"Inconsistent in_channels across dataset_ids: {channels_map}")
     # key = f"{args_model.type}.{args_model.name}"
 
 
@@ -89,4 +105,3 @@ def load_ckpt(model, ckpt_path):
         for name, model_sz in skipped:
             print(f"  {name}: checkpoint vs model {model_sz}")
     print(f"已加载匹配的权重: {ckpt_path}")
-
