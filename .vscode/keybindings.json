@@ -1,0 +1,42 @@
+[
+  {
+    "key": "ctrl+alt+1",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: claude-1" }
+  },
+  {
+    "key": "ctrl+alt+2",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: claude-2" }
+  },
+  {
+    "key": "ctrl+alt+3",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: gemini-1" }
+  },
+  {
+    "key": "ctrl+alt+4",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: gemini-2" }
+  },
+  {
+    "key": "ctrl+alt+5",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: codex-1" }
+  },
+  {
+    "key": "ctrl+alt+shift+n",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: new claude" }
+  },
+  {
+    "key": "ctrl+alt+shift+m",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: new gemini" }
+  },
+  {
+    "key": "ctrl+alt+shift+x",
+    "command": "workbench.action.terminal.newWithProfile",
+    "args": { "profileName": "AI: new codex" }
+  }
+]
