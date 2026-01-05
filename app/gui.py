@@ -267,7 +267,7 @@ def step_run_experiment() -> None:
         elif not os.path.exists(st.session_state.data_dir):
             st.warning("\u8bf7\u6307\u5b9a\u6709\u6548\u7684 HDF5 \u76ee\u5f55")
         else:
-            start_pipeline("configs/demo/ID/id_demo.yaml")
+            start_pipeline("configs/v0.0.9/demo/ID/id_demo.yaml")
     if pause_col.button("Pause/Resume") and st.session_state.process:
         toggle_pause()
 

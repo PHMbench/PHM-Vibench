@@ -242,7 +242,7 @@ Add dataset information to metadata Excel file with:
 
 ### 4. Create Test Configuration
 ```yaml
-# In configs/demo/Single_DG/NewDataset.yaml
+# In configs/experiments/<dataset_name>/new_dataset.yaml
 data:
   target_system_id: [XXX]  # Your dataset ID
   # ... other configurations

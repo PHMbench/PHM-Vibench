@@ -535,7 +535,7 @@ class TwoStageTrainingController:
                 return {k: v.item() if hasattr(v, 'item') else v 
                        for k, v in logged_metrics.items() 
                        if k.startswith(prefix)}
-        except:
+        except Exception:
             return {"best_loss": 0.0}
     
     def _save_stage_config(self, config: Dict[str, Any], config_path: Path) -> None:

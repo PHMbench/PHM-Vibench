@@ -113,7 +113,7 @@ if __name__ == '__main__':
     import torch
     
     # 使用指定的配置文件
-    # config_path = os.path.join(project_root, 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml')
+    # config_path = os.path.join(project_root, 'configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml')
     config_path = os.path.join(project_root, 'script/LQ1/Pretraining/Pretraining_C+P.yaml')
     # config_path = os.path.join(project_root, 'script/LQ1/GFS/GFS_C+M.yaml')
     print(f"加载配置文件: {config_path}")
