@@ -92,7 +92,7 @@
 
 ### 6. 选取代表性 config 示例并对齐说明
 
-- 选 2–3 个重要配置文件（例如：`configs/demo/Single_DG/CWRU.yaml` 等）
+- 选 2–3 个重要配置文件（例如：`configs/demo/01_cross_domain/cwru_dg.yaml` 等）
 - 对这些配置文件中与 Task 相关的字段进行标注，并在文档中给出“示意性拆解”：
   - 指出：哪些字段共同决定了 Task
   - 这些字段对应 Task 索引表中的哪一行

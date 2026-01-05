@@ -372,12 +372,12 @@ class ConfigValidator:
         if expected_type == int:
             try:
                 return str(int(float(str(current_value))))
-            except:
+            except (TypeError, ValueError, OverflowError):
                 return "1"
         elif expected_type == float:
             try:
                 return str(float(current_value))
-            except:
+            except (TypeError, ValueError, OverflowError):
                 return "0.1"
         elif expected_type == bool:
             if str(current_value).lower() in ['true', '1', 'yes']:

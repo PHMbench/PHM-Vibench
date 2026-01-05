@@ -836,12 +836,12 @@ PRESETS = {
 ```python
 # 预设名称映射到实际YAML模板文件
 PRESET_TEMPLATES = {
-    'quickstart': 'configs/demo/Single_DG/CWRU.yaml',
-    'basic': 'configs/demo/Single_DG/THU.yaml', 
-    'isfm': 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-    'gfs': 'configs/demo/GFS/GFS_demo.yaml',
-    'pretrain': 'configs/demo/Pretraining/Pretraining_demo.yaml',
-    'id': 'configs/demo/ID/id_demo.yaml'
+    'quickstart': 'configs/v0.0.9/demo/Single_DG/CWRU.yaml',
+    'basic': 'configs/v0.0.9/demo/Single_DG/THU.yaml',
+    'isfm': 'configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+    'gfs': 'configs/v0.0.9/demo/GFS/GFS_demo.yaml',
+    'pretrain': 'configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml',
+    'id': 'configs/v0.0.9/demo/ID/id_demo.yaml',
 }
 ```
 

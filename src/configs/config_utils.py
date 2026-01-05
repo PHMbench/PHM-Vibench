@@ -700,19 +700,19 @@ if __name__ == "__main__":
         """测试所有16种配置加载和覆盖组合
         
         验证4种配置源 × 4种覆盖方式 = 16种组合的兼容性
-        基于configs/demo/Single_DG/CWRU.yaml进行测试
+        基于configs/v0.0.9/demo/Single_DG/CWRU.yaml进行测试
         
         Returns:
             bool: 所有测试是否通过
         """
         print("=== 配置系统v5.1完整性测试 ===")
         print("测试16种配置组合 (4×4)...")
-        print("基础文件: configs/demo/Single_DG/CWRU.yaml\n")
+        print("基础文件: configs/v0.0.9/demo/Single_DG/CWRU.yaml\n")
         
         # 4种配置源类型
         config_sources = {
             '1.预设': 'quickstart',  # PRESET_TEMPLATES中的预设
-            '2.文件': 'configs/demo/Single_DG/CWRU.yaml',  # 直接文件路径
+            '2.文件': 'configs/v0.0.9/demo/Single_DG/CWRU.yaml',  # 直接文件路径
             '3.字典': {  # Python字典
                 'data': {'data_dir': '/test/data', 'metadata_file': 'test.xlsx', 'batch_size': 32},
                 'model': {'name': 'TestModel', 'type': 'classification', 'd_model': 128},
@@ -735,7 +735,7 @@ if __name__ == "__main__":
         
         overrides = {
             'A.预设覆盖': 'basic',  # 用另一个预设覆盖
-            'B.文件覆盖': 'configs/demo/Single_DG/THU.yaml',  # 用文件覆盖
+            'B.文件覆盖': 'configs/v0.0.9/demo/Single_DG/THU.yaml',  # 用文件覆盖
             'C.字典覆盖': {  # 字典覆盖（包含点符号测试）
                 'model.dropout': test_dropout,  # 测试点符号展开
                 'task': {'lr': test_lr}         # 测试嵌套字典
@@ -859,8 +859,10 @@ if __name__ == "__main__":
             
             # 模式4: 配置组合
             print("\n4. 配置文件组合")
-            combined = load_config('configs/demo/Single_DG/CWRU.yaml', 
-                                'configs/demo/Single_DG/THU.yaml')
+            combined = load_config(
+                'configs/v0.0.9/demo/Single_DG/CWRU.yaml',
+                'configs/v0.0.9/demo/Single_DG/THU.yaml',
+            )
             print(f"   组合后模型: {combined.model.name}")
             
             print("\n✅ 所有使用模式演示成功！")

@@ -52,12 +52,13 @@ class ConfigWrapper(SimpleNamespace):
 
 ```python
 PRESET_TEMPLATES = {
-    'quickstart': 'configs/demo/Single_DG/CWRU.yaml',
-    'basic': 'configs/demo/Single_DG/THU.yaml',
-    'isfm': 'configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
-    'gfs': 'configs/demo/GFS/GFS_demo.yaml',
-    'pretrain': 'configs/demo/Pretraining/Pretraining_demo.yaml',
-    'id': 'configs/demo/ID/id_demo.yaml'
+    # Legacy v0.0.9 presets (kept for backward compatibility)
+    'quickstart': 'configs/v0.0.9/demo/Single_DG/CWRU.yaml',
+    'basic': 'configs/v0.0.9/demo/Single_DG/THU.yaml',
+    'isfm': 'configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml',
+    'gfs': 'configs/v0.0.9/demo/GFS/GFS_demo.yaml',
+    'pretrain': 'configs/v0.0.9/demo/Pretraining/Pretraining_demo.yaml',
+    'id': 'configs/v0.0.9/demo/ID/id_demo.yaml',
 }
 ```
 
@@ -113,7 +114,7 @@ config = load_config('id')             # ID-based processing
 #### From YAML Files
 ```python
 # Load any YAML configuration file
-config = load_config('configs/demo/Single_DG/CWRU.yaml')
+config = load_config('configs/v0.0.9/demo/Single_DG/CWRU.yaml')
 config = load_config('my_custom_config.yaml')
 config = load_config(Path('configs/experiments/exp_001.yaml'))
 ```
@@ -578,7 +579,7 @@ def profile_config_loading():
     # Profile different loading methods
     methods = [
         ('preset', lambda: load_config('quickstart')),
-        ('file', lambda: load_config('configs/demo/Single_DG/CWRU.yaml')),
+        ('file', lambda: load_config('configs/v0.0.9/demo/Single_DG/CWRU.yaml')),
         ('dict', lambda: load_config({'data': {...}})),
         ('override', lambda: load_config('quickstart', {'model': {'d_model': 512}}))
     ]

@@ -594,7 +594,7 @@ elif isinstance(source, dict):
 ### 🧪 配置系统完整性验证
 
 #### 16种配置组合测试 (4×4)
-基于 `configs/demo/Single_DG/CWRU.yaml` 进行的全面测试：
+基于 `configs/v0.0.9/demo/Single_DG/CWRU.yaml` 进行的全面测试：
 
 | 配置源类型 | 预设覆盖 | 文件覆盖 | 字典覆盖 | ConfigWrapper覆盖 |
 |-----------|---------|---------|---------|------------------|

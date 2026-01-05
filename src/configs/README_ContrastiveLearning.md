@@ -24,7 +24,7 @@ from src.configs.contrastive_config import get_contrastive_template, add_contras
 from src.configs import load_config
 
 # 加载基础配置
-base_config = load_config('configs/demo/Single_DG/CWRU.yaml')
+base_config = load_config('configs/v0.0.9/demo/Single_DG/CWRU.yaml')
 
 # 使用HSE集成模板 (InfoNCE + SupCon)
 contrastive_template = get_contrastive_template('hse_ensemble')

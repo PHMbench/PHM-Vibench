@@ -241,7 +241,7 @@ if __name__ == "__main__":
     print("=" * 40)
     
     # 示例配置路径（需要根据实际情况调整）
-    config_path = "configs/demo/Single_DG/CWRU.yaml"
+    config_path = "configs/v0.0.9/demo/Single_DG/CWRU.yaml"
     
     try:
         # 示例1: 单参数消融

@@ -10,7 +10,7 @@ PHM-Vibench配置系统使用示例
 - 📝 自动验证和错误提示
 
 运行方式:
-    cd /home/lq/LQcode/2_project/PHMBench/PHM-Vibench
+    cd /path/to/PHM-Vibench
     python examples/config_usage.py
 
 作者: PHM-Vibench Team
@@ -135,7 +135,7 @@ def main():
     print("-" * 30)
     
     # 尝试加载现有的YAML配置
-    yaml_config_path = project_root / "configs/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml"
+    yaml_config_path = project_root / "configs/v0.0.9/demo/Multiple_DG/CWRU_THU_using_ISFM.yaml"
     if yaml_config_path.exists():
         try:
             legacy_config = manager.load(yaml_config_path)
