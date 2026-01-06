@@ -15,7 +15,7 @@ Factories:
 - `src/trainer_factory/`
 
 UXFD merge:
-- Final plan: `paper/UXFD_paper/merge_uxfd/12_18temp/codex/final_plan.md`
+- Final plan: `paper/LQ_vibench_fix/merge_uxfd/12_18temp/codex/final_plan.md`
 
 Run artifacts (UXFD merge, best-effort):
 - `<run_dir>/config_snapshot.yaml` (fully resolved config snapshot)

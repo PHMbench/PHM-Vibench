@@ -29,3 +29,4 @@
 [submodule "paper/LQ_vibench_fix"]
 	path = paper/LQ_vibench_fix
 	url = git@github.com:liq22/LQ_vibench_fix.git
+	branch = lqfix_25-12
