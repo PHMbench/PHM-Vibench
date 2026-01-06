@@ -54,10 +54,10 @@ class Model(nn.Module):
 
 #### Loading Configuration Files
 ```python
-from src.utils.config_utils import load_config, save_config
+from src.configs import load_config, save_config
 
 # Load YAML configuration
-config = load_config("configs/demo/Single_DG/CWRU.yaml")
+config = load_config("configs/demo/00_smoke/dummy_dg.yaml")
 
 # Handle encoding issues automatically
 # Supports UTF-8 and GB18030 encodings

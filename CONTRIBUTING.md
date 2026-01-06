@@ -1,28 +1,57 @@
-# Contributing to PHM-Vibench Model Factory
+# Contributing to PHM-Vibench
 
-We welcome contributions to the PHM-Vibench Model Factory! This guide will help you understand how to contribute effectively to the project.
+<div align="center">
+  <p>
+    <a href="CONTRIBUTING.md"><strong>English</strong></a> |
+    <a href="CONTRIBUTING_CN.md">中文</a>
+  </p>
+</div>
 
-## 📋 Table of Contents
+We welcome contributions to PHM-Vibench! This guide will help you understand how to contribute effectively to the project.
+
+## Table of Contents
 
 1. [Getting Started](#getting-started)
 2. [Development Setup](#development-setup)
-3. [Contributing Guidelines](#contributing-guidelines)
-4. [Adding New Models](#adding-new-models)
-5. [Code Standards](#code-standards)
-6. [Testing](#testing)
-7. [Documentation](#documentation)
-8. [Pull Request Process](#pull-request-process)
+3. [Contribution Guidelines](#contribution-guidelines)
+4. [Adding Components](#adding-components)
+   - [New Datasets](#new-datasets)
+   - [New Models](#new-models)
+   - [New Tasks](#new-tasks)
+   - [New Pipelines](#new-pipelines)
+5. [Configuration System](#configuration-system)
+6. [Code Standards](#code-standards)
+7. [Testing](#testing)
+8. [Documentation](#documentation)
+9. [Pull Request Process](#pull-request-process)
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
 - Python 3.8+
-- PyTorch 1.9+
+- PyTorch 2.0+
 - Git
 - Basic understanding of deep learning and time-series analysis
 
-### Development Setup
+### Architecture Overview
+
+PHM-Vibench uses a **factory design pattern** for modular extension:
+
+```
+PHM-Vibench/
+├── src/
+│   ├── data_factory/      # Dataset loading and preprocessing
+│   ├── model_factory/     # Models (embeddings, backbones, heads)
+│   ├── task_factory/      # Training logic and metrics
+│   └── trainer_factory/   # PyTorch Lightning Trainer wiring
+├── configs/               # YAML configuration files
+└── docs/                  # Documentation
+```
+
+For detailed architecture, see [`CLAUDE.md`](CLAUDE.md).
+
+## Development Setup
 
 1. **Fork and Clone**
 ```bash
@@ -41,236 +70,139 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. **Run Tests (maintained suite)**
+4. **Run Tests**
 ```bash
 python -m pytest test/
 ```
 
-## 📝 Contributing Guidelines
+5. **Offline Smoke Test** (no downloads required)
+```bash
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+```
+
+## Contribution Guidelines
 
 ### Types of Contributions
 
 We welcome several types of contributions:
 
-1. **New Model Implementations**: SOTA models for time-series analysis
+1. **New Components**: Datasets, models, tasks, pipelines
 2. **Bug Fixes**: Fixing issues in existing code
 3. **Documentation**: Improving docs, examples, and tutorials
 4. **Performance Improvements**: Optimizations and efficiency gains
-5. **Feature Enhancements**: New functionality and utilities
+5. **Configuration**: New experiment configs and presets
 
 ### Before You Start
 
 1. **Check Existing Issues**: Look for related issues or discussions
 2. **Create an Issue**: For new features or significant changes
 3. **Discuss First**: For major changes, discuss with maintainers
-4. **Follow Standards**: Adhere to our coding and documentation standards
+4. **Read CLAUDE.md**: Understand project architecture and change strategy
 
-## 🏗️ Adding New Models
+### Key Design Principles
 
-### Model Implementation Template
+- **Configuration-First**: All experiments defined via YAML configs
+- **Factory Pattern**: Register components, don't hardcode imports
+- **Single Source of Truth**: Update registry → atlas → docs
+- **本科生能跑 + 博士生能改**: Keep it accessible yet extensible
 
-```python
-"""
-New Model Implementation for PHM-Vibench Model Factory
+## Adding Components
 
-Brief description of the model and its key features.
-"""
+### New Datasets
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from typing import Optional, Any
+See [`src/data_factory/contributing.md`](src/data_factory/contributing.md) for detailed guide.
 
+**Quick steps**:
+1. Create dataset class in `src/data_factory/dataset_task/`
+2. Register in `src/data_factory/dataset_task/__init__.py`
+3. Add metadata entry to `data/metadata.xlsx`
+4. Create config in `configs/base/data/`
 
-class Model(nn.Module):
-    """Model Name for time-series analysis.
-    
-    Detailed description of the model, its architecture,
-    and key innovations.
-    
-    Parameters
-    ----------
-    args : Namespace
-        Configuration object containing:
-        - input_dim : int, input feature dimension
-        - hidden_dim : int, hidden dimension (default: 256)
-        - num_layers : int, number of layers (default: 6)
-        - dropout : float, dropout probability (default: 0.1)
-        - num_classes : int, number of output classes (for classification)
-        - output_dim : int, output dimension (for regression)
-    metadata : Any, optional
-        Dataset metadata
-        
-    Input Shape
-    -----------
-    x : torch.Tensor
-        Input tensor of shape (batch_size, seq_len, input_dim)
-        
-    Output Shape
-    ------------
-    torch.Tensor
-        For classification: (batch_size, num_classes)
-        For regression: (batch_size, seq_len, output_dim)
-        
-    References
-    ----------
-    Author et al. "Paper Title" Conference/Journal Year.
-    Supporting references for key components.
-    Adapted for time-series industrial signals with specific modifications.
-    """
-    
-    def __init__(self, args, metadata=None):
-        super(Model, self).__init__()
-        
-        # Extract parameters with defaults
-        self.input_dim = args.input_dim
-        self.hidden_dim = getattr(args, 'hidden_dim', 256)
-        self.num_layers = getattr(args, 'num_layers', 6)
-        self.dropout = getattr(args, 'dropout', 0.1)
-        self.num_classes = getattr(args, 'num_classes', None)
-        self.output_dim = getattr(args, 'output_dim', self.input_dim)
-        
-        # Model architecture implementation
-        # ...
-        
-        # Task-specific heads
-        if self.num_classes is not None:
-            self.classifier = nn.Linear(self.hidden_dim, self.num_classes)
-            self.task_type = 'classification'
-        else:
-            self.regressor = nn.Linear(self.hidden_dim, self.output_dim)
-            self.task_type = 'regression'
-    
-    def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        """Forward pass.
-        
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor of shape (B, L, input_dim)
-        data_id : Any, optional
-            Data identifier (unused)
-        task_id : Any, optional
-            Task identifier (unused)
-            
-        Returns
-        -------
-        torch.Tensor
-            Output tensor shape depends on task type
-        """
-        # Implementation
-        # ...
-        
-        return output
+### New Models
 
+See [`src/model_factory/contributing.md`](src/model_factory/contributing.md) for detailed guide.
 
-if __name__ == "__main__":
-    # Test implementation
-    def test_model():
-        """Test model with different configurations."""
-        print("Testing Model...")
-        
-        # Test configuration
-        from argparse import Namespace
-        
-        args = Namespace(
-            input_dim=3,
-            hidden_dim=128,
-            num_layers=4,
-            dropout=0.1,
-            num_classes=5
-        )
-        
-        model = Model(args)
-        print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
-        
-        # Test data
-        batch_size = 4
-        seq_len = 64
-        x = torch.randn(batch_size, seq_len, args.input_dim)
-        
-        # Forward pass
-        with torch.no_grad():
-            output = model(x)
-        
-        print(f"Input: {x.shape}, Output: {output.shape}")
-        assert output.shape == (batch_size, args.num_classes)
-        
-        print("✅ Model tests passed!")
-        return True
-    
-    test_model()
+**Model components follow registry-style IDs**:
+- Embeddings: `E_**_*`
+- Backbones: `B_**_*`
+- Heads: `H_**_*`
+
+**Quick steps**:
+1. Create model class with NumPy-style docstrings
+2. Register in appropriate `__init__.py`
+3. Add config preset in `configs/demo/`
+
+### New Tasks
+
+**Task types** (selected by `task.type` + `task.name`):
+- `DG`: Domain Generalization
+- `CDDG`: Cross-Dataset Domain Generalization
+- `FS`/`GFS`: Few-shot / Generalized Few-shot
+- `ID`: ID-based ingestion
+- `MT`: Multi-task
+
+**Quick steps**:
+1. Create task in `src/task_factory/task/<TYPE>/`
+2. Inherit from base task class
+3. Register in `src/task_factory/task/<TYPE>/__init__.py`
+
+### New Pipelines
+
+Pipelines assemble factories in fixed order:
+1. Load config
+2. Build data
+3. Build model
+4. Build task
+5. Build trainer
+
+**Quick steps**:
+1. Create `src/Pipeline_<name>.py`
+2. Select via YAML: `pipeline: <name>`
+
+## Configuration System
+
+PHM-Vibench uses **v5.x 5-block config model**:
+- `environment` / `data` / `model` / `task` / `trainer`
+
+### Adding New Configs
+
+1. **Create config YAML** in `configs/demo/` or `configs/experiments/`
+2. **Add to registry**: Update `configs/config_registry.csv`
+3. **Regenerate atlas**: `python -m scripts.gen_config_atlas`
+4. **Validate**: `python -m scripts.validate_configs`
+
+### Config Composition Rules (low → high precedence)
+
+1. `base_configs.*` YAML files
+2. Demo YAML's own block overrides
+3. Optional local override `configs/local/local.yaml`
+4. CLI `--override key=value`
+
+### Inspection Tools
+
+```bash
+# View resolved config + sources + targets
+python -m scripts.config_inspect --config <yaml> --override key=value
+
+# Validate all configs
+python -m scripts.validate_configs
+
+# Generate CONFIG_ATLAS.md
+python -m scripts.gen_config_atlas
 ```
 
-### Model Registration
-
-Add your model to the appropriate category's `__init__.py`:
-
-```python
-# In src/model_factory/CategoryName/__init__.py
-from .YourModel import Model as YourModel
-
-__all__ = [
-    # ... existing models
-    "YourModel"
-]
-```
-
-### Model Documentation
-
-Create a README for your model category if it doesn't exist:
-
-```markdown
-# Your Model Category
-
-Brief description of the model category and its applications.
-
-## Available Models
-
-### YourModel
-**Paper**: Author et al. "Paper Title" Conference Year
-
-Brief description of the model and its key features.
-
-**Configuration**:
-```python
-args = Namespace(
-    model_name='YourModel',
-    input_dim=3,
-    hidden_dim=256,
-    # ... other parameters
-)
-```
-```
-
-## 📏 Code Standards
+## Code Standards
 
 ### Python Style Guide
 
-We follow PEP 8 with some modifications:
+We follow PEP 8 with modifications:
 
 1. **Line Length**: 100 characters maximum
 2. **Imports**: Group imports (standard, third-party, local)
-3. **Naming**: 
+3. **Naming**:
    - Classes: `PascalCase`
    - Functions/variables: `snake_case`
    - Constants: `UPPER_CASE`
-
-### Code Quality Tools
-
-```bash
-# Format code
-black src/ test/
-
-# Check style
-flake8 src/ test/
-
-# Type checking
-mypy src/
-
-# Sort imports
-isort src/ test/
-```
 
 ### Docstring Standards
 
@@ -278,28 +210,27 @@ Use NumPy-style docstrings:
 
 ```python
 def function_name(param1: int, param2: str = "default") -> bool:
-    """Brief description of the function.
-    
-    Longer description if needed, explaining the purpose,
-    behavior, and any important details.
-    
+    """Brief description.
+
+    Longer description explaining purpose and behavior.
+
     Parameters
     ----------
     param1 : int
         Description of param1
     param2 : str, optional
         Description of param2 (default: "default")
-        
+
     Returns
     -------
     bool
         Description of return value
-        
+
     Raises
     ------
     ValueError
         When param1 is negative
-        
+
     Examples
     --------
     >>> result = function_name(5, "test")
@@ -308,7 +239,7 @@ def function_name(param1: int, param2: str = "default") -> bool:
     """
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Test Structure
 
@@ -319,101 +250,86 @@ test/
 └── ...
 ```
 
-### Writing Tests
-
-```python
-import pytest
-import torch
-from argparse import Namespace
-from src.model_factory import build_model
-
-
-class TestYourModel:
-    """Test suite for YourModel."""
-    
-    @pytest.fixture
-    def model_args(self):
-        """Model configuration for testing."""
-        return Namespace(
-            model_name='YourModel',
-            input_dim=3,
-            hidden_dim=64,
-            num_layers=2,
-            num_classes=4
-        )
-    
-    @pytest.fixture
-    def sample_data(self):
-        """Sample data for testing."""
-        return torch.randn(8, 32, 3)  # (batch, seq_len, features)
-    
-    def test_model_creation(self, model_args):
-        """Test model can be created successfully."""
-        model = build_model(model_args)
-        assert model is not None
-        assert hasattr(model, 'forward')
-    
-    def test_forward_pass(self, model_args, sample_data):
-        """Test forward pass produces correct output shape."""
-        model = build_model(model_args)
-        output = model(sample_data)
-        
-        expected_shape = (8, 4)  # (batch_size, num_classes)
-        assert output.shape == expected_shape
-    
-    def test_parameter_count(self, model_args):
-        """Test model has reasonable parameter count."""
-        model = build_model(model_args)
-        param_count = sum(p.numel() for p in model.parameters())
-        
-        # Reasonable bounds for parameter count
-        assert 1000 < param_count < 10_000_000
-    
-    @pytest.mark.parametrize("batch_size", [1, 4, 16])
-    def test_different_batch_sizes(self, model_args, batch_size):
-        """Test model works with different batch sizes."""
-        model = build_model(model_args)
-        x = torch.randn(batch_size, 32, 3)
-        output = model(x)
-        
-        assert output.shape[0] == batch_size
-```
-
 ### Running Tests
 
 ```bash
 # Run all maintained tests
 python -m pytest test/
 
-# Run a specific test file
+# Run specific test file
 python -m pytest test/test_parameter_consistency.py
 
-# Legacy historical runner (optional; may require extra deps)
-python dev/test_history/run_tests.py --unit
+# Run with coverage
+python -m pytest test/ --cov=src --cov-report=html
 ```
 
-## 📚 Documentation
+### Writing Tests
+
+```python
+import pytest
+import torch
+from argparse import Namespace
+
+class TestYourComponent:
+    """Test suite for YourComponent."""
+
+    @pytest.fixture
+    def config(self):
+        """Configuration for testing."""
+        return Namespace(
+            param1="value1",
+            param2=42
+        )
+
+    def test_basic_functionality(self, config):
+        """Test basic functionality."""
+        # Arrange
+        component = YourComponent(config)
+
+        # Act
+        result = component.method()
+
+        # Assert
+        assert result is not None
+```
+
+## Documentation
 
 ### Documentation Requirements
 
-1. **Model Documentation**: Comprehensive docstrings
+1. **API Documentation**: NumPy-style docstrings
 2. **Usage Examples**: Working code examples
-3. **API Reference**: Parameter descriptions
-4. **Performance Benchmarks**: Speed and accuracy metrics
+3. **Config Documentation**: Update registry and atlas
+4. **Bilingual Support**: English and Chinese (`_CN.md` suffix)
 
-### Building Documentation
+### Documentation Structure
 
-Docs are maintained as Markdown under `docs/` and `configs/**/README.md`.
+```
+PHM-Vibench/
+├── README.md / README_CN.md           # Main project README
+├── CONTRIBUTING.md / CONTRIBUTING_CN.md  # This file
+├── CLAUDE.md                           # Architecture and change strategy
+├── AGENTS.md                           # Development runbook
+├── configs/README.md                   # Config system guide
+├── docs/
+│   ├── CONFIG_ATLAS.md                 # Generated config reference
+│   ├── developer_guide.md
+│   └── testing.md
+└── src/
+    ├── data_factory/README_CN.md
+    ├── model_factory/README_CN.md
+    └── task_factory/README_CN.md
+```
 
-## 🔄 Pull Request Process
+## Pull Request Process
 
 ### Before Submitting
 
 1. **Run Tests**: Ensure all tests pass
-2. **Check Style**: Run code quality tools
+2. **Check Style**: Follow code standards
 3. **Update Documentation**: Add/update relevant docs
 4. **Add Tests**: Include tests for new functionality
-5. **Benchmark Performance**: For new models, include benchmarks
+5. **Update Registry**: For new configs, update `config_registry.csv`
 
 ### PR Template
 
@@ -426,26 +342,26 @@ Brief description of changes and motivation.
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
+- [ ] Configuration addition
 
 ## Testing
 - [ ] Tests pass locally
 - [ ] Added tests for new functionality
-- [ ] Performance benchmarks included (for new models)
+- [ ] Configs validated (if applicable)
 
-## Checklist
+## Documentation
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
-- [ ] No breaking changes (or clearly documented)
+- [ ] Registry/atlas updated (if applicable)
 ```
 
 ### Review Process
 
-1. **Automated Checks**: CI/CD pipeline runs tests and checks
+1. **Automated Checks**: CI/CD pipeline runs tests and validations
 2. **Code Review**: Maintainers review code quality and design
-3. **Testing**: Reviewers test functionality
-4. **Documentation Review**: Check docs are complete and accurate
-5. **Approval**: At least one maintainer approval required
+3. **Documentation Review**: Check docs are complete and accurate
+4. **Approval**: At least one maintainer approval required
 
 ### After Approval
 
@@ -453,25 +369,12 @@ Brief description of changes and motivation.
 2. **Update Changelog**: Maintainers update the changelog
 3. **Release Notes**: Significant changes included in release notes
 
-## 🏷️ Release Process
+## Required Change Order
 
-### Versioning
+For config-related changes:
+1. Registry → 2. Atlas → 3. Inspect → 4. Schema validate → 5. README → 6. CI/tests
 
-We use Semantic Versioning (SemVer):
-- **MAJOR**: Breaking changes
-- **MINOR**: New features (backward compatible)
-- **PATCH**: Bug fixes (backward compatible)
-
-### Release Checklist
-
-1. Update version numbers
-2. Update changelog
-3. Run full test suite
-4. Build and test documentation
-5. Create release tag
-6. Publish to PyPI (if applicable)
-
-## 🤝 Community Guidelines
+## Community Guidelines
 
 ### Code of Conduct
 
@@ -484,12 +387,12 @@ We use Semantic Versioning (SemVer):
 
 - **GitHub Issues**: For bugs and feature requests
 - **Discussions**: For questions and general discussion
-- **Email**: For private matters or security issues
+- **CLAUDE.md**: For architecture and change strategy
+- **AGENTS.md**: For development commands
 
-## 📞 Contact
+## Contact
 
-- **Maintainers**: List of current maintainers
-- **Email**: phm-vibench@example.com
+- **Maintainers**: [Qi Li](https://github.com/liq22), [Xuan Li](https://github.com/Xuan423)
 - **GitHub**: [PHM-Vibench Repository](https://github.com/PHMbench/PHM-Vibench)
 
-Thank you for contributing to PHM-Vibench! 🎉
+Thank you for contributing to PHM-Vibench!

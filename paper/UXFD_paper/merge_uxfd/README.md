@@ -15,6 +15,7 @@
 - **[本次落地整理](12_22/README.md)**: 脚本/产物样例/失败分析（2025-12-22）
 - **[Final Plan 复盘+TODO](12_22/status_review_and_todos.md)**: 对照 final plan 的完成度与剩余任务
 - **[算子库补全计划](12_23/ops_library_completion_plan.md)**: 12/23 待确认的实现计划（确认后再改代码）
+- **[未完成工作整理（handoff）](12_27/README.md)**: 12/27 集中整理的未完成事项/下一步顺序/决策点
 
 ### 📋 技术文档
 - [模型对齐方案](12_21/codex/model_alignment_plan.md): TSPN_UXFD 设计

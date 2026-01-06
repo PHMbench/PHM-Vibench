@@ -114,12 +114,12 @@
   - 说明不同任务类型推荐的 model 组合：
 
 - 文本形式给出若干示例组合（具体表格可后续从 CSV 或 config 中导出），例如：
-  - 单数据 DG 分类：`model.type = ISFM`，`embedding = E_01_HSE`，`backbone = B_04_Dlinear`，`task_head = H_01_Linear_cla`，示例配置见 `configs/demo/Single_DG/CWRU.yaml`。
+  - 单数据 DG 分类：`model.type = ISFM`，`embedding = E_01_HSE`，`backbone = B_04_Dlinear`，`task_head = H_01_Linear_cla`，示例配置见 `configs/demo/01_cross_domain/cwru_dg.yaml`。
   - 预测任务：`model.type = Transformer`，`backbone = B_08_PatchTST`，`task_head = H_03_Linear_pred`，示例配置见 `configs/experiments/...`。
   - FewShot / GFS 任务：强调这是**训练/任务范式**，通常复用上述模型类型（例如 ISFM/Transformer），在任务和 trainer 侧做 few-shot 配置，而不是新增一个 `model.type = FewShot`。
   - 预训练 + 微调：说明如何在多阶段 pipeline 中复用相同 `model.type`/`backbone`，参考 `src/configs/CLAUDE.md` 中的多阶段配置示例。
 
-- 确保官方 demo 配置（例如 `configs/demo/Single_DG/CWRU.yaml`）：
+- 确保官方 demo 配置（例如 `configs/demo/01_cross_domain/cwru_dg.yaml`）：
   - 使用前面定义的标准 schema。
   - 能作为后续所有配置的参考模板。
 

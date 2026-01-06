@@ -120,7 +120,7 @@ class IDSelector:
                     if label not in stats[dataset_id]['labels']:
                         stats[dataset_id]['labels'][label] = 0
                     stats[dataset_id]['labels'][label] += 1
-            except:
+            except (KeyError, TypeError, ValueError):
                 # 处理ID不存在的情况
                 continue
                 
@@ -147,7 +147,7 @@ class IDSelector:
                         'Split': 'Train',
                         'Label': row['Label'] if 'Label' in row else 'Unknown'
                     })
-                except:
+                except (KeyError, TypeError, ValueError):
                     continue
             
             for id in self.test_ids:
@@ -159,7 +159,7 @@ class IDSelector:
                         'Split': 'Test',
                         'Label': row['Label'] if 'Label' in row else 'Unknown'
                     })
-                except:
+                except (KeyError, TypeError, ValueError):
                     continue
             
             if not data:

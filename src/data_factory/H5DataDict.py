@@ -37,7 +37,7 @@ class H5DataDict:
             if self.h5f is not None:
                 try:
                     self.h5f.close()
-                except:
+                except Exception:
                     pass  # 忽略关闭时的异常
             self.h5f = h5py.File(self.h5_file, 'r', libver='latest', swmr=True)
             self._keys = set(self.h5f.keys())
@@ -86,5 +86,5 @@ class H5DataDict:
         """析构函数，确保文件被关闭"""
         try:
             self.close()
-        except:
+        except Exception:
             pass  # 忽略析构时的异常

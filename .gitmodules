@@ -26,3 +26,6 @@
 [submodule "paper/UXFD_paper/TII_operator_attention"]
 	path = paper/UXFD_paper/TII_operator_attention
 	url = git@github.com:liq22/TII_operator_attention.git
+[submodule "paper/LQ_vibench_fix"]
+	path = paper/LQ_vibench_fix
+	url = git@github.com:liq22/LQ_vibench_fix.git

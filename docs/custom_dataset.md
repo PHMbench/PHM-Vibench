@@ -10,11 +10,10 @@ than by hard-coding paths in pipelines.
 - Implement a reader by inheriting `BaseReader` (see examples in `src/data_factory/reader/` such as
   `RM_*.py`).
 - Register the reader/factory entry in `src/data_factory/__init__.py`.
-- Validate with a small config under `configs/demo/` (start from `configs/demo/Single_DG/CWRU.yaml` or the
-  closest template in `configs/demo/`).
+- Validate with a small config under `configs/demo/` (start from
+  `configs/demo/01_cross_domain/cwru_dg.yaml`, or use `configs/demo/00_smoke/dummy_dg.yaml` for an offline smoke run).
 
 ## References
 
 - `src/data_factory/README.md`
 - `src/data_factory/contributing.md`
-

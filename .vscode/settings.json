@@ -1,0 +1,89 @@
+{
+  "//": "AI 工具 tmux 会话管理 - 需要安装 tmux-ai-cli",
+  "//": "安装: cd ../tmux-ai-cli && ./install.sh",
+
+  // 终端 Tabs 启用
+  "terminal.integrated.tabs.enabled": true,
+
+  // Tab 标题跟随终端发送的 title 序列（tmux 会发送）
+  "terminal.integrated.tabs.title": "${sequence}",
+
+  // 默认图标/颜色（fallback）
+  "terminal.integrated.tabs.defaultIcon": "terminal-tmux",
+  "terminal.integrated.tabs.defaultColor": "terminal.ansiBlue",
+
+  // AI 工具 terminal profiles（使用全局 ai 命令）
+  "terminal.integrated.profiles.linux": {
+    // === 常用实例（独立 session，多 Tab 可同时显示） ===
+
+    // "AI: claude-1": {
+    //   "path": "bash",
+    //   "args": ["-lc", "ai claude-1 || echo '未安装 tmux-ai-cli: cd ../tmux-ai-cli && ./install.sh'"],
+    //   "overrideName": true,
+    //   "icon": "sparkle",
+    //   "color": "terminal.ansiMagenta"
+    // },
+    // "AI: claude-2": {
+    //   "path": "bash",
+    //   "args": ["-lc", "ai claude-2 || echo '未安装 tmux-ai-cli'"],
+    //   "overrideName": true,
+    //   "icon": "sparkle",
+    //   "color": "terminal.ansiPurple"
+    // },
+    // "AI: gemini-1": {
+    //   "path": "bash",
+    //   "args": ["-lc", "ai gemini-1 || echo '未安装 tmux-ai-cli'"],
+    //   "overrideName": true,
+    //   "icon": "globe",
+    //   "color": "terminal.ansiCyan"
+    // },
+    // "AI: gemini-2": {
+    //   "path": "bash",
+    //   "args": ["-lc", "ai gemini-2 || echo '未安装 tmux-ai-cli'"],
+    //   "overrideName": true,
+    //   "icon": "globe",
+    //   "color": "terminal.ansiBlue"
+    // },
+    // "AI: codex-1": {
+    //   "path": "bash",
+    //   "args": ["-lc", "ai codex-1 || echo '未安装 tmux-ai-cli'"],
+    //   "overrideName": true,
+    //   "icon": "hubot",
+    //   "color": "terminal.ansiGreen"
+    // },
+
+    // === 统一视图模式（单终端内切换所有 AI） ===
+
+    // "AI: master (all)": {
+    //   "path": "bash",
+    //   "args": ["-lc", "ai master || echo '未安装 tmux-ai-cli'"],
+    //   "overrideName": true,
+    //   "icon": "layers",
+    //   "color": "terminal.ansiYellow"
+    // },
+
+    // === 快速创建新实例 ===
+
+    "AI: new claude": {
+      "path": "bash",
+      "args": ["-lc", "ai new claude || echo '未安装 tmux-ai-cli'"],
+      "overrideName": true,
+      "icon": "lightbulb-sparkle",
+      "color": "terminal.ansiMagenta"
+    },
+    "AI: new gemini": {
+      "path": "bash",
+      "args": ["-lc", "ai new gemini || echo '未安装 tmux-ai-cli'"],
+      "overrideName": true,
+      "icon": "hubot",
+      "color": "terminal.ansiCyan"
+    },
+    "AI: new codex": {
+      "path": "bash",
+      "args": ["-lc", "ai new codex || echo '未安装 tmux-ai-cli'"],
+      "overrideName": true,
+      "icon": "copilot",
+      "color": "terminal.ansiGreen"
+    }
+  }
+}
