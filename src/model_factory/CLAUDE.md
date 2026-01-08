@@ -1,6 +1,6 @@
 # Model Factory - CLAUDE.md
 
-This module provides guidance for working with the model factory system in PHM-Vibench, which handles neural network architectures, model instantiation, and the Industrial Signal Foundation Model (ISFM) framework.
+This module provides architecture guidance for the model factory system in PHM-Vibench. For configuration interface, directory layout, and workflow, see [@README.md].
 
 ## Architecture Overview
 

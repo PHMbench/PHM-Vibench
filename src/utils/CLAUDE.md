@@ -1,6 +1,6 @@
 # Utils - CLAUDE.md
 
-This module provides guidance for working with the utility system in PHM-Vibench, which contains helper functions, configuration management, registry patterns, and common utilities used throughout the framework.
+This module provides architecture guidance for the utility system in PHM-Vibench. For comprehensive API reference and usage documentation, see [README.md](README.md) (Chinese) or [readme.md](readme.md) (English API reference).
 
 ## Architecture Overview
 

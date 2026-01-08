@@ -1,6 +1,6 @@
 # Data Factory - CLAUDE.md
 
-This module provides guidance for working with the data factory system in PHM-Vibench, which handles dataset loading, processing, and integration.
+This module provides architecture guidance for the data factory system in PHM-Vibench. For module overview, structure, and workflow, see [@README.md].
 
 ## Architecture Overview
 
