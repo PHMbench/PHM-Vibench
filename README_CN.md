@@ -261,7 +261,7 @@ streamlit run streamlit_app.py
 
 ### 1. 配置文件详解 ⚙️
 
-PHM-Vibench 使用强大的配置系统 v5.0，支持灵活的实验管理：
+PHM-Vibench 使用强大的配置系统 v0.1.0，支持灵活的实验管理：
 
 #### 🚀 核心特性
 - **统一配置管理**: 基于ConfigWrapper，支持4×4种配置组合方式

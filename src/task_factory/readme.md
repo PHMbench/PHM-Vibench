@@ -2,7 +2,7 @@
 
 -----
 
-# Task Factory Module (Continue updating)
+# Task Factory Module
 
 ## 🎯 Purpose
 
