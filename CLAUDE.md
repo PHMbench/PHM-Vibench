@@ -142,36 +142,15 @@ python -m scripts.config_inspect --config <yaml> --dump targets --format yaml
 - Avoid hard-coded absolute paths in committed configs.
 - Put machine-specific paths into `configs/local/local.yaml` or pass `--override data.data_dir=/path/to/...`.
 
-## Common Development Commands (for contributors)
-```bash
-# Offline smoke run (no downloads)
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+## Common Development Commands
 
-# Run a demo quickly
-python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=1
+For practical runbook and copy-paste commands, see [@AGENTS.md - Quick Commands].
 
-# Validate configs
-python -m scripts.validate_configs
-
-# Inspect resolved config/sources/targets
-python -m scripts.config_inspect --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=1
-
-# Tests (maintained)
-python -m pytest test/
-```
-
-### Ad-hoc validation snippets (optional)
-```bash
-# YAML syntax check
-python -c "import yaml; yaml.safe_load(open('config.yaml'))"
-
-# Loader smoke (prints a ConfigWrapper/namespace object)
-python - <<'PY'
-from src.configs import load_config
-cfg = load_config('configs/demo/00_smoke/dummy_dg.yaml')
-print('loaded:', type(cfg), 'keys:', list(cfg.__dict__.keys()))
-PY
-```
+Key commands include:
+- Smoke test: `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
+- Config inspect: `python -m scripts.config_inspect --config <yaml>`
+- Validate: `python -m scripts.validate_configs`
+- Tests: `python -m pytest test/`
 
 ## Results and Output (where files go)
 - Default base directory is `save/`.
