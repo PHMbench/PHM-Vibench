@@ -57,14 +57,11 @@
 在提交PR前，请确保您的代码通过了以下测试：
 
 ```shell
-# 使用main_dummy.py测试特定模块
-python main_dummy.py --module <您修改的模块名称>
+# 运行维护的测试套件
+python -m pytest test/
 
-# 或使用全面测试
-python main_dummy.py --all_modules
-
-# 使用Jupyter Notebook进行交互式测试
-jupyter notebook test/test.ipynb
+# 快速smoke测试
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 ```
 
 ## 🔧 环境配置

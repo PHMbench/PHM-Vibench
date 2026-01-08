@@ -77,10 +77,6 @@ Note: The rest of this README contains background/roadmap material; for up-to-da
 
 ## ✨ Project Highlights
 
-<!-- <div align="center">
-  <img src="pic/features.png" alt="PHM-Vibench Features" width="700"/>
-</div> -->
-
 - 🧩 **Advanced Modular Design**: Employs factory design patterns to achieve high modularity of datasets, models, tasks, and trainers, providing a flexible architecture for future feature extensions
 - 🔄 **Diverse Task Support**: Built-in comprehensive support for various fault diagnosis-related tasks including fault classification, anomaly detection, and remaining useful life prediction
 - 📊 **Rich Industrial Dataset Integration**: Integrates 15+ classic and cutting-edge industrial equipment fault diagnosis datasets, covering bearings, gears, motors, and various other industrial components
@@ -161,14 +157,11 @@ Note: The rest of this README contains background/roadmap material; for up-to-da
 
 ### 📚 HSE Documentation
 
-Comprehensive documentation available in [`docs/hse-implementation/`](docs/hse-implementation/):
-
-- **[📋 Overview](docs/hse-implementation/README.md)**: Complete HSE system introduction
-- **[🔧 Core Components](docs/hse-implementation/core-components.md)**: Detailed component specifications
-- **[📖 Pipeline Guide](docs/hse-implementation/pipeline-guide.md)**: Step-by-step usage instructions
-- **[📊 Experiment Results](docs/hse-implementation/experiment-results.md)**: Comprehensive performance analysis
-- **[✅ Validation Reports](docs/hse-implementation/validation-reports/)**: Detailed verification results
-- **[🎯 Execution Plan](docs/hse-implementation/execution-plan.md)**: Complete deployment guide
+For HSE research experiments, see the paper submodule at `paper/2025-10_foundation_model_0_metric/`.
+Initialize the submodule with:
+```bash
+git submodule update --init --recursive paper/2025-10_foundation_model_0_metric
+```
 
 ### 🏆 Target: ICML/NeurIPS 2025
 
@@ -190,11 +183,6 @@ Industrial equipment fault diagnosis and predictive maintenance technologies hav
 2. 🔄 **Reproducibility Difficulties**: Lack of standardized experimental processes and complete implementation details
 3. ⚖️ **Fair Comparison Barriers**: Inconsistencies in data splitting, preprocessing, and evaluation standards make results difficult to compare directly
 
-<!-- <div align="center">
-  <img src="pic/motivation.png" alt="PHM-Vibench Motivation" width="600"/>
-  <p><em>Challenges in PHM Research</em></p>
-</div> -->
-
 PHM-Vibench, as a benchmarking platform in the PHMbench ecosystem focused on industrial equipment fault diagnosis, aims to provide a standardized, reproducible, and easy-to-use experimental environment to address these challenges.
 
 ### 🛠️ B. Core Functions and Features
@@ -203,11 +191,6 @@ PHM-Vibench, as a benchmarking platform in the PHMbench ecosystem focused on ind
 2. 🔄 **Reproducible Experimental Framework**: Configuration-based experiment management ensures research results can be precisely reproduced
 3. ⚖️ **Fair Comparison Environment**: Unified data splitting strategies and evaluation metrics ensure fair comparison between different methods
 4. 🚀 **Rapid Prototype Development Support**: Modular design enables researchers to efficiently implement and validate new ideas and methods
-
-<!-- <div align="center">
-  <img src="pic/workflow.png" alt="PHM-Vibench Workflow" width="700"/>
-  <p><em>PHM-Vibench Workflow</em></p>
-</div> -->
 
 ## 🔄 Supported Models and Datasets
 
@@ -250,10 +233,6 @@ data:
 ## 🚀 Quick Start
 
 Experience PHM-Vibench functionality through the following steps:
-
-<!-- <div align="center">
-  <img src="pic/quickstart.png" alt="PHM-Vibench Quick Start" width="650"/>
-</div> -->
 
 ```bash
 # 0. Offline smoke run (repo-shipped dummy data; no downloads required)
@@ -298,16 +277,11 @@ If Streamlit fails to start, treat it as a TODO and use the CLI demos under `con
 
 ### 📊 Performance Benchmark Examples
 
-<!-- <div align="center">
-  <img src="pic/benchmark_results.png" alt="Benchmark Results" width="700"/>
-  <p><em>Performance comparison of different models on CWRU dataset</em></p>
-</div> -->
-
 ## 📘 User Guide
 
 ### 1. Configuration File Details ⚙️
 
-PHM-Vibench uses the powerful configuration system v5.0, supporting flexible experiment management:
+PHM-Vibench uses the powerful configuration system v0.1.0, supporting flexible experiment management:
 
 #### 🚀 Core Features
 - **Unified Configuration Management**: Based on ConfigWrapper, supporting 4×4 configuration combination methods
@@ -925,11 +899,6 @@ save/
 - 🧠 **Model Level**: `Model_Transformer_Dummy` - Grouped by model architectures used
 - 🎯 **Experiment Level**: `Task_classification_Trainer_Default_trainer_20250602_212530` - Named by task type, trainer, and timestamp
 
-<!-- <div align="center">
-  <img src="pic/results_visualization.png" alt="Results Visualization" width="700"/>
-  <p><em>PHM-Vibench Result Visualization Example</em></p>
-</div> -->
-
 ### 4. Result Visualization 📈
 
 Plotting utilities live in `plot/` (typically consuming artifacts under `save/`).
@@ -961,11 +930,6 @@ PHM-Vibench/
 - 🧰 **dev/**: Development utilities and experimental scripts
 - 📈 **plot/**: Plotting and visualization utilities
 
-<!-- <div align="center">
-  <img src="pic/project_structure.png" alt="Project Structure" width="600"/>
-  <p><em>PHM-Vibench Project Structure Overview</em></p>
-</div> -->
-
 ## 🧑‍💻 Development Guide TODO
 
 PHM-Vibench adopts a modular design following factory patterns, facilitating extension and customization. If you wish to contribute code, please refer to the [Contributor Guide](./contributing.md).
@@ -990,36 +954,6 @@ Additionally, `task_factory.Components` introduces `PretrainHierarchicalLoss` fo
 ### wandb blocked issue
 
 export WANDB_BASE_URL=HTTP://api.bandw.top
-
-## ❓ Frequently Asked Questions
-
-<!-- <details>
-<summary><b>How to handle custom datasets?</b></summary>
-<p>
-Creating custom datasets requires inheriting the <code>BaseDataset</code> class and implementing required methods. For detailed steps, please refer to the <a href="#extending-datasets-">Extending Datasets</a> section or check our <a href="docs/custom_dataset.md">Custom Dataset Tutorial</a>.
-</p>
-</details>
-
-<details>
-<summary><b>What to do if experimental results are not reproducible?</b></summary>
-<p>
-Please ensure the same random seed is set and the same configuration file is used. If the problem persists, it may be due to hardware differences or different PyTorch versions. Using our provided Docker image can reduce environmental differences.
-</p>
-</details>
-
-<details>
-<summary><b>Does PHM-Vibench support distributed training?</b></summary>
-<p>
-Yes, PHM-Vibench supports distributed training based on PyTorch DDP. Start training with the <code>--distributed</code> parameter, for example: <code>python main.py --config your_config.yaml --distributed</code>
-</p>
-</details>
-
-<details>
-<summary><b>How to cite research results using PHM-Vibench?</b></summary>
-<p>
-Please use the citation format provided at the bottom of this page. Additionally, it is recommended to clearly state in the paper's methodology section that the PHM-Vibench platform was used for experiments, and specify the configuration files and version numbers used.
-</p>
-</details> -->
 
 ## 📃 Publications Using This Project
 
@@ -1051,15 +985,6 @@ We welcome all forms of contributions! Whether it's new feature development, doc
 ### Community Communication
 - Join our [Slack channel](https://phmbench.slack.com) to discuss issues and new ideas
 - Join our [Feishu group](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c9fh4f62-5d01-42ff-bb1c-520092457e2d) for latest updates
-<!-- - Follow our [WeChat Official Account](https://mp.weixin.qq.com/phmbench) for latest news
-- Participate in monthly [online seminars](https://phmbench.com/webinars) -->
-
-<!-- <div align="center">
-  <br>
-  <p>🌟 Welcome alpha testers to provide valuable feedback! 🌟</p>
-  <img src="pic/contact_qrcode.png" alt="Contact Information" width="150"/>
-  <p><em>Scan QR code to join alpha testing discussion group</em></p>
-</div> -->
 
 ## 🏛 License
 
@@ -1082,8 +1007,6 @@ This benchmark platform is licensed under the [Apache License (Version 2.0)](htt
 ---
 
 ## ⭐ Star History
-
-<!-- [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date) -->
 
 <iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
