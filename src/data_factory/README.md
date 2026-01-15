@@ -1,126 +1,82 @@
-# Data Factory Module (Continue updating)
+# Data Factory (`src/data_factory/`)
 
-## 🎯 Purpose
+The Data Factory builds datasets and `DataLoader`s from `config.data` + `config.task`.
 
-The **Data Factory** module serves as the centralized and unified entry point for all data-related operations within the Vibench framework. Its core responsibilities include:
+This README is the canonical “how to use” doc. For architecture/change guidance (extension rules, invariants), see
+[@CLAUDE.md].
 
-* **Dataset Creation**: Assembling datasets from various raw sources.
-* **Metadata Management**: Handling sample-level metadata for precise data selection and filtering.
-* **Data Loading**: Generating `DataLoader` instances for training, validation, and testing pipelines.
+## Purpose
 
-This module is designed to be highly extensible, allowing for the easy integration of new datasets and data processing tasks.
+- Select a dataset reader (`reader/`) based on metadata/config
+- Apply task-specific dataset wrappers (`dataset_task/`)
+- Create `DataLoader`s (optionally with custom samplers under `samplers/`)
 
----
+## Module Structure
 
-## 📂 Module Structure
+| File / Directory | Role |
+|---|---|
+| `__init__.py` | Public API (`build_data`, registry helpers) |
+| `data_factory.py` | Default factory implementation |
+| `id_data_factory.py` | ID-based (lazy/on-demand) factory implementation |
+| `H5DataDict.py` | H5-backed data access utilities |
+| `reader/` | Dataset readers (e.g. `RM_001_CWRU.py`) |
+| `dataset_task/` | Task-oriented dataset wrappers (DG/CDDG/FS/GFS/pretrain/ID/...) |
+| `samplers/` | Custom sampling strategies (e.g. episodic FS samplers) |
+| `ID/` | Utilities for querying/filtering sample IDs from metadata |
+| `data_utils.py` | Common preprocessing helpers |
+| `datainfo.py` | Helper to scan a raw directory and draft metadata |
 
-The module is organized into several key components, each with a specific role:
+## Configuration Interface
 
-| File / Directory | Description |
-| :--- | :--- |
-| `data_factory.py` | The main entry point of the module. It registers dataset readers and tasks and exposes the `data_factory(args)` function to build `DataLoaders`. |
-| `ID_data_factory.py` | A specialized data factory for the `ID_dataset`, which provides raw ID data on-demand. The training loop is only for ID loop and then the task module will process the data with specific Id accordingly. |
-| `datainfo.py` | Given a root directory, this script explores the directory structure to determine dataset names and file paths and generates a raw metadata with basic information. |
-| `reader/` | Contains dataset-specific reader scripts (e.g., `RM_001_CWRU.py`, `RM_002_XJTU.py`). Each reader parses raw data files and converts them into standardized tensor formats. |
-| `dataset_task/` | Includes task-oriented dataset wrappers that implement different data strategies, such as custom sampling, data augmentation, or specific data arrangements for tasks like Domain Generalization (`DG/`), Few-Shot Learning (`FS/`), or Pre-training (`Pretrain/`). |
-| `samplers/` | Provides custom mini-batch samplers (e.g., `FS_sampler.py`) that can be plugged into the `DataLoader` to control how batches are composed, which is especially useful for advanced training schemes. |
-| `ID/` | A set of utilities for querying and filtering sample IDs based on metadata criteria, enabling precise control over the data used in experiments. |
-| `utils/` | Contains utility functions for data processing, such as windowing, normalization, and other common operations. |
----
+The data factory is controlled by the `data` block in YAML.
 
-## 🌊 Workflow
+Key fields you will see across configs:
+- `data.factory_name`: `"default"` (eager) or `"id"` (lazy/on-demand)
+- `data.data_dir`: root data directory (often machine-local via `configs/local/local.yaml`)
+- `data.metadata_file`: metadata file name/path (Excel/CSV depending on dataset)
+- `data.batch_size`, `data.num_workers`, `data.pin_memory`: DataLoader settings
 
-The data loading process follows a sequential workflow, orchestrated by the `data_factory`.
+Minimal example:
 
+```yaml
+data:
+  factory_name: "default"
+  data_dir: "/path/to/PHM-Vibench_data"
+  metadata_file: "metadata.xlsx"
+  batch_size: 32
+  num_workers: 4
+```
 
+## Default vs ID-based Factory
 
-1.  **Configuration**: The process begins in the main configuration file (`.yaml`) from the main pipeline, where you define the dataset paths and specify the desired task (e.g., `DG`, `FS`).
+- `factory_name: "default"`: builds datasets up front (traditional eager loading)
+- `factory_name: "id"`: defers heavy work and can return ID-enriched batches for on-demand processing in tasks
 
-2.  **Metadata & Reader Selection**:
-    * Based on the dataset IDs specified in the configuration, the factory selects the appropriate dataset-specific `reader` (e.g., `RM_001_CWRU.py` for CWRU data).
+If you enable the ID-based path, ensure the corresponding task expects dictionary-style batches (e.g. `batch["x"]`,
+`batch["y"]`, and potentially `batch["file_id"]`).
 
-3.  **Data Wrapping & Labeling**:
-    * The selected `reader` processes the raw data into tensors.
-    * A `dataset_task` then wraps the reader's output, attaching essential information like labels, domain IDs, and other task-specific metadata.
+## Data Components (mental model)
 
-4.  **Batch Sampling**:
-    * If a custom `sampler` is specified in the configuration, it is attached to the `DataLoader`.
-    * The sampler controls how individual samples are grouped into mini-batches, which is critical for tasks like few-shot or contrastive learning.
+Most datasets in this benchmark can be thought of as:
 
-5.  **Output**: The `data_factory` returns the final objects required for the training pipeline.
+1. `metadata.xlsx` (or CSV): the sample index and labels; keyed by `Id`
+2. `*.h5`: signal cache keyed by `Id` (each item typically shaped `(L, C)`)
+3. (optional) `corpus.xlsx`: text annotations keyed by `Id`
 
-## Smoke demo note (`Dummy_Data`)
+## Smoke Demo Note (`Dummy_Data`)
 
 The repo-shipped smoke config `configs/demo/00_smoke/dummy_dg.yaml` uses `Name=Dummy_Data`.
-For offline runs, `src/data_factory/reader/Dummy_Data.py` will generate **synthetic data** when
-the raw CSV files are not present under `data/raw/Dummy_Data/`.
+For offline runs, `src/data_factory/reader/Dummy_Data.py` generates synthetic data if raw CSV files are not present
+under `data/raw/Dummy_Data/`.
 
-## metadata understanding
+## Adding a New Dataset (quick checklist)
 
+1. Add raw files under `data/raw/<dataset_name>/` (or document how to obtain them).
+2. Implement a reader in `src/data_factory/reader/` (see existing `RM_*.py`).
+3. Register the reader (follow the patterns in `src/data_factory/data_factory.py` and/or package init exports).
+4. Add/update a smoke-friendly demo config under `configs/demo/` and validate it:
 
-
----
-
-### **English Version (Optimized)**
-
-## Vbench Data Components Guide
-
-This guide provides a clear overview of the three core data files used in Vbench and how to access them.
-
-### Core Components
-
-The dataset is organized into three main files, linked by a common `Id`.
-
-1.  **`metadata.xlsx` (Excel File)**
-    * **Purpose**: The central index of the dataset. It contains all descriptive information, labels, and parameters for each data sample.
-    * **Primary Key**: The `Id` column uniquely identifies each sample and links the three files.
-
-2.  **HDF5 Signal Cache (`*.h5`)**
-    * **Purpose**: Stores the raw time-series signal data, usually as an aggregated cache file such as `cache.h5` generated from per-file `Name.h5`.
-    * **Access**: Data is retrieved using the `Id` from the metadata file as the key.
-    * **Shape**: The data for each `Id` is a 2D array of shape `(L, C)`, where `L` (Sample_lenth) and `C` (Channel) are specified in `metadata.xlsx`.
-
-3.  **`corpus.xlsx` (Excel File)**
-    * **Purpose**: Contains supplementary text descriptions and natural language annotations for each sample.
-    * **Access**: Text is retrieved using the corresponding `Id`.
-
-### `metadata.xlsx`: Column Descriptions
-
-The first row of the metadata file contains the following headers:
-
-* `Id`: **(Primary Key)** Unique identifier for the sample.
-* `Dataset_id`: Source dataset identifier.
-* `Name`: Human-readable name.
-* `Description`: Brief description of the sample.
-* `TYPE`: Type of data (e.g., vibration, acoustic).
-* `File`: Source file name.
-* `Visiable`: Visibility or usage flag.
-* `Label`: The primary fault class or label.
-* `Label_Description`: Textual description of the `Label`.
-* `Fault_level`: Severity or stage of the fault.
-* `RUL_label`: Remaining Useful Life value.
-* `RUL_label_description`: Description for the RUL value.
-* `Domain_id`: Identifier for the operational condition.
-* `Domain_description`: Textual description of the domain.
-* `Sample_rate`: Signal sampling rate (Hz).
-* `Sample_lenth (L)`: Number of data points in the sample.
-* `Channel (C)`: Number of channels in the sample.
-* `Fault_Diagnosis`: Flag for fault diagnosis task suitability.
-* `Anomaly_Detection`: Flag for anomaly detection task suitability.
-* `Remaining_Life`: Flag for RUL prediction task suitability.
-
-
----
-
-## 🎁 Returned Objects
-
-Upon successful execution, the `data_factory(args)` function have the following methods:
-
-* **get_dataset(mode)**: Returns the dataset for the specified mode (`train`, `val`, or `test`).
-* **get_dataloader(mode)**: Returns the dataloader for the specified mode (`train`, `val`, or `test`).
-* **get_metadata()**: Returns the metadata dictionary.
-* **get_data()**: Returns the data dictionary.
-
-
-* **DataLoaders**: A set of `DataLoader` objects for the training, validation, and test sets.
-* **Metadata Dictionary**: A comprehensive dictionary containing the loaded metadata, providing easy access to information about the datasets used in the experiment.
+```bash
+python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml
+python -m scripts.validate_configs
+```
