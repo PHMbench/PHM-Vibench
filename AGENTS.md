@@ -1,13 +1,12 @@
 # Repository Guidelines (AGENTS)
 
 This file is a practical runbook + double-check list for working in PHM-Vibench. For change strategy/constraints, see
-`CLAUDE.md`.
+`CLAUDE.md`. For the canonical project overview + onboarding path, see `README.md` (and `configs/README.md` for the
+config system).
 
-## Project Meaning (what to remember)
-- Config-first benchmark: experiments are defined by YAML configs (environment/data/model/task/trainer).
-- Modular wiring: factories under `src/*_factory/` assemble data/model/task/trainer from registries.
-- Single maintained entrypoint: `python main.py --config <yaml> [--override key=value ...]` (pipeline via YAML
-  `pipeline:`).
+## Scope (what this file is for)
+- Copy-paste commands and validation gates for day-to-day work.
+- “What changed, and how do I prove it works?” checklist items.
 
 ## Quick Commands (copy-paste)
 ```bash
@@ -23,25 +22,25 @@ python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --
 # Registry → Atlas (docs/CONFIG_ATLAS.md must stay in sync)
 python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
 
+# Validate documentation links / @README conventions
+python -m scripts.validate_docs
+
 # Maintained tests
 python -m pytest test/
 ```
 
-## Project Structure & Module Organization
-- `src/`: runnable pipelines + factories; extend via the matching factory to preserve modular wiring.
-- `configs/`: experiment YAMLs
-  - templates: `configs/demo/`
-  - local variants: `configs/experiments/<task_dataset_variant>/`
-  - legacy: `configs/reference/` (planned migration/removal; do not template from it)
-- Runtime assets: raw inputs in `data/`, results in `save/` or `environment.output_dir`, visuals in `pic/`, docs in
-  `docs/`.
-- Tests: maintained suite lives in `test/` (optional legacy runner: `dev/test_history/`).
+## Where to Work (quick map)
+- `configs/demo/`: maintained runnable templates (copy from here)
+- `configs/experiments/`: your local experiment variants
+- `configs/reference/`: legacy (do not template from here)
+- `src/*_factory/`: extension points (data/model/task/trainer wiring)
+- `docs/`: maintained documentation; `docs/CONFIG_ATLAS.md` is generated from the registry
 
-## Architecture Highlights
-- Factory pattern with registries for data, models, tasks, and trainers.
-- Pipelines: `Pipeline_01_default`, `Pipeline_02_pretrain_fewshot`, `Pipeline_03_multitask_pretrain_finetune`,
-  `Pipeline_ID`.
-- Config tooling: registry (`configs/config_registry.csv`) → atlas (`docs/CONFIG_ATLAS.md`) → inspect/validate scripts.
+## Config Traceability (SSOT)
+- Registry (authoritative index): `configs/config_registry.csv`
+- Generated atlas (human-readable): `docs/CONFIG_ATLAS.md` (regen: `python -m scripts.gen_config_atlas`)
+- Inspect: `python -m scripts.config_inspect` (resolved config + sources + instantiation targets)
+- Validate: `python -m scripts.validate_configs` (loader + schema)
 
 ## Configuration System (what to enforce)
 - Keep the 5-block model: `environment/data/model/task/trainer`.

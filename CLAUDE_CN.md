@@ -2,6 +2,7 @@
 
 **说明**：本文档用于描述 PHM-Vibench 的定位、架构与“修改门禁”（double-check gate）。
 运行/验证命令请优先参考 `AGENTS.md`（如需中文 runbook，可使用 `AGENTS_CN.md`）。
+项目概览与上手路径请优先参考 `README_CN.md`（配置体系细节见 `configs/README.md`）。
 
 ## 仓库概述
 

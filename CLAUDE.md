@@ -1,6 +1,9 @@
 # CLAUDE.md
 
-This file documents PHM-Vibench’s intent, architecture, and change strategy. For “how to run” commands, see `AGENTS.md`.
+This file documents PHM-Vibench’s intent, architecture, and change strategy.
+
+- Canonical onboarding + runnable path: `README.md` and `configs/README.md`
+- Copy-paste run/validate commands: `AGENTS.md`
 
 ## Repository Overview
 
@@ -32,7 +35,7 @@ Common pipelines:
 - `src/Pipeline_03_multitask_pretrain_finetune.py`: multi-task pretrain/fine-tune pipeline.
 - `src/Pipeline_ID.py`: ID-based ingestion variant.
 
-## Configuration System (v5.x)
+## Configuration System (maintained)
 
 ### Single supported entrypoint (contract)
 Run via:

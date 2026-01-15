@@ -16,7 +16,7 @@
     <img src="https://img.shields.io/badge/Status-Alpha-orange" alt="Status: Alpha"/>
     <img src="https://img.shields.io/badge/Version-0.2.0--alpha-blue" alt="Version"/>
     <img src="https://img.shields.io/badge/License-Apache%202.0-green" alt="License"/>
-    <img src="https://img.shields.io/badge/Datasets-15+-purple" alt="Datasets"/>
+    <img src="https://img.shields.io/badge/Datasets-20+-purple" alt="Datasets"/>
     <img src="https://img.shields.io/badge/Algorithms-30+-red" alt="Algorithms"/>
   </p>
 
@@ -52,10 +52,18 @@ Config tooling:
 python -m scripts.validate_configs
 python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
 python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+python -m scripts.validate_docs
 ```
 
-Note: The rest of this README contains background/roadmap material; for up-to-date runnable configs rely on
-`configs/README.md` + `docs/CONFIG_ATLAS.md`.
+### Documentation Map (Canonical)
+
+- Project overview + onboarding: `README.md`
+- Config system + runnable templates: `configs/README.md` and `configs/demo/*`
+- Config index (SSOT → rendered docs): `configs/config_registry.csv` → `docs/CONFIG_ATLAS.md`
+- Runbook (copy-paste commands + gates): `AGENTS.md`
+- Change strategy / constraints: `CLAUDE.md`
+- AI assistant context (minimal pointers): `GEMINI.md`
+
 
 ## 📖 Table of Contents
 - [✨ Project Highlights](#-project-highlights)
@@ -957,7 +965,8 @@ export WANDB_BASE_URL=HTTP://api.bandw.top
 
 ## 📃 Publications Using This Project
 
-1. Zhang San, Li Si. (2023). *Research on Early Bearing Fault Diagnosis Method Based on Deep Learning*. Journal of Mechanical Engineering, 59(3), 131-142.
+No publications are recorded here yet. If you publish with PHM-Vibench, please add a citation entry (paper + link) in
+this section.
 
 ## 🔮 Project Roadmap
 

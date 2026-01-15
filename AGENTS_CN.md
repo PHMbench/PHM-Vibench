@@ -1,6 +1,7 @@
 # AGENTS_CN.md（运行手册 + double-check）
 
-本文件用于“快速执行与复核”。修改策略/边界/顺序请看 `CLAUDE.md`。
+本文件用于“快速执行与复核”。修改策略/边界/顺序请看 `CLAUDE.md`；项目概览与上手路径请优先看
+`README_CN.md`（配置体系细节见 `configs/README.md`）。
 
 ## 1 分钟理解仓库
 - PHM-Vibench 是配置优先（config-first）的工业振动信号基准：实验由 YAML 配置定义（environment/data/model/task/trainer）。
@@ -20,6 +21,9 @@ python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --
 
 # Registry → Atlas（docs/CONFIG_ATLAS.md 必须保持同步）
 python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+
+# 校验文档链接 / @README 约定
+python -m scripts.validate_docs
 
 # 维护中的测试
 python -m pytest test/

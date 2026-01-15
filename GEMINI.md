@@ -1,103 +1,32 @@
 # PHM-Vibench Project Context (GEMINI)
 
-This file provides project context for AI assistants working on PHM-Vibench. For comprehensive documentation, see [@README.md]; for development commands, see [@AGENTS.md].
+This file is lightweight context for AI assistants working on PHM-Vibench.
 
-## Quick Overview
+- Canonical onboarding + runnable configs: [@README.md] and [@configs/README.md]
+- Copy-paste commands + validation gates: [@AGENTS.md]
+- Change strategy / constraints: [@CLAUDE.md]
 
-**PHM-Vibench** is a modular benchmark platform for industrial vibration signal fault diagnosis and predictive maintenance.
+## Project Invariants (keep stable)
 
-*   **Type:** Python / PyTorch Deep Learning Project
-*   **Goal:** Enable fair comparison and rapid prototyping of PHM algorithms
-*   **Core Philosophy:** Configuration-first, factory-based modular design
+- Single maintained entrypoint: `python main.py --config <yaml> [--override key=value ...]`
+- 5-block config model: `environment` / `data` / `model` / `task` / `trainer`
+- Factory + registry wiring (avoid hard-coded imports in pipelines):
+  - `src/data_factory/`, `src/model_factory/`, `src/task_factory/`, `src/trainer_factory/`
 
-For detailed project overview and features, see [@README.md - Project Overview].
+## “Single Source of Truth” (SSOT)
 
-## Key Context Points
+- Config index: `configs/config_registry.csv` → rendered to `docs/CONFIG_ATLAS.md`
+- Task registry: `src/task_factory/task_registry.csv`
+- Model registry: `src/model_factory/model_registry.csv`
 
-### Extensive Dataset Support
-The platform integrates loaders for 20+ industrial datasets via `src/data_factory/reader/`:
-*   **Classics:** CWRU, XJTU, IMS, FEMTO
-*   **University/Lab:** THU/THU24, Ottawa19/23, JNU, SEU, HUST23/24, HIT/HIT23, KAIST
-*   **Others:** MFPT, UNSW, DIRG, JUST, Pump data
+## Where to Look First
 
-### Algorithm Support
-*   **Backbones:** CNN (ResNet, VGG), RNN (LSTM, GRU), MLP, Transformers
-*   **Advanced Models:** ISFM, ISFM_Prompt
-*   **Extensible via:** `src/model_factory` and `model_registry.csv`
+- Config usage + examples: `configs/README.md` and `configs/demo/README.md`
+- Factory module docs (canonical per module): `src/*_factory/README.md`
+- Config resolution debugging: `python -m scripts.config_inspect --config <yaml> --dump targets`
 
-### 5-Block Configuration System
-Experiments defined by YAML: `environment | data | model | task | trainer`
-*   **Environment:** Global settings (seeds, paths, output dirs, logging)
-*   **Data:** Dataset selection, preprocessing, batch size
-*   **Model:** Network architecture hyperparameters
-*   **Task:** Learning objective, loss functions, optimizers, metrics
-*   **Trainer:** Training loop controls (epochs, GPUs, checkpointing)
+## Common Assistant Pitfalls
 
-See [@configs/README.md] for configuration system details.
-
-## Directory Structure
-
-```
-src/
-├── data_factory/    # Dataset readers, samplers, processing
-├── model_factory/   # Model architectures and registry
-├── task_factory/    # Task definitions (loss, metrics)
-└── trainer_factory/ # Training loops
-
-configs/
-├── demo/            # Start here - maintained templates
-├── base/            # Reusable config fragments
-├── experiments/     # User-specific local experiments
-└── config_registry.csv  # Index of maintained configurations
-```
-
-For complete directory structure, see [@README.md - Directory Structure].
-
-## Running Experiments
-
-The entry point is `main.py`. For detailed workflows, see [@README.md - Quick Start] and [@AGENTS.md - Quick Commands].
-
-```bash
-# Smoke test (no data download required)
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
-
-# Standard run
-python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=50
-```
-
-## Configuration Management
-
-```bash
-# Inspect config resolution
-python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml
-
-# Validate registry configs
-python -m scripts.validate_configs
-```
-
-## Development Guidelines
-
-For contribution guidelines:
-*   **Adding Datasets:** Create reader in `src/data_factory/reader/RM_XXX.py` and register
-*   **Adding Models:** Add class in `src/model_factory/` and update `model_registry.csv`
-*   **Configs:** Use `configs/experiments/` for local variants or `--override` for quick tests
-*   **Documentation:** Update `configs/config_registry.csv` and run `python -m scripts.gen_config_atlas`
-
-See [@README.md - Contributing] and [docs/developer_guide.md](docs/developer_guide.md) for more details.
-
-## Testing
-
-```bash
-# Run the test suite
-python -m pytest test/
-```
-
-## Cross-Reference
-
-| Topic | Reference |
-|-------|-----------|
-| Project overview | [@README.md] |
-| Quick commands | [@AGENTS.md] |
-| Configuration system | [@configs/README.md] |
-| Change strategy | [@CLAUDE.md] |
-| Developer guide | [docs/developer_guide.md](docs/developer_guide.md) |
+- Don’t assume values in YAML are final; always check `config_inspect` for resolved sources/targets.
+- Avoid breaking the public CLI or the 5-block keyspace without a compatibility layer + migration note.
+- Keep paper/submodule workflows out of core validation gates.

@@ -16,7 +16,7 @@
     <img src="https://img.shields.io/badge/状态-内测中-orange" alt="Status: Alpha"/>
     <img src="https://img.shields.io/badge/版本-0.2.0--alpha-blue" alt="Version"/>
     <img src="https://img.shields.io/badge/许可-Apache%202.0-green" alt="License"/>
-    <img src="https://img.shields.io/badge/数据集-15+-purple" alt="Datasets"/>
+    <img src="https://img.shields.io/badge/数据集-20+-purple" alt="Datasets"/>
     <img src="https://img.shields.io/badge/算法-30+-red" alt="Algorithms"/>
   </p>
 
@@ -204,6 +204,7 @@ python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 python -m scripts.validate_configs
 python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
 python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+python -m scripts.validate_docs
 ```
 
 说明：本文档后半部分包含背景/路线图等内容；以 `configs/README.md` + `docs/CONFIG_ATLAS.md` 作为“可运行配置”的
@@ -925,35 +926,19 @@ PHM-Vibench/
   <p><em>PHM-Vibench项目结构概览</em></p>
 </div> -->
 
-## 🧑‍💻 开发指南 TODO
+## 🧑‍💻 开发指南
 
-PHM-Vibench 采用模块化设计，遵循工厂模式，便于扩展和定制。如果您希望贡献代码，请参考[贡献者指南](./contributing.md)。
+PHM-Vibench 的扩展方式是“工厂 + 注册表”，避免在 pipeline 中硬编码 import。
 
-### 扩展数据集 📊 见[数据集贡献指南](src/data_factory/contributing.md)
+- 贡献指引（维护入口）：`CONTRIBUTING.md`（English）/ `CONTRIBUTING_CN.md`（中文）
+- 扩展指南：
+  - 数据集：`src/data_factory/contributing.md`
+  - 模型：`src/model_factory/contributing.md`
+  - 任务：`src/task_factory/contributing.md`
+  - 训练器：`src/trainer_factory/contributing.md`
+- 测试：`docs/testing.md` 与 `python -m pytest test/`
 
-### 添加新模型 🧠 见[模型贡献指南](src/model_factory/contributing.md)
-
-### 调试与测试 🐞 见[测试指南](docs/testing.md)
-
-### Streamlit 界面示例 🌐 见[Streamlit 应用提示词](docs/streamlit_prompt.md)
-
-### 按需数据处理
-
-自 `ID_dataset` 引入后，数据加载阶段不再执行窗口切分或归一化等步骤。原始数组将直接
-传递到任务模块，可选的 `ID_task` 会在 `training_step` 内根据配置调用工具函数完成窗
-口化与归一化，支持更灵活的预训练与自监督流程。配置 ``data.factory_name = 'id'``
-时将启用 `ID_data_factory` 与该数据集配合。
-
-此外，`task_factory.Components` 新增 `PretrainHierarchicalLoss`，
-用于结合域和数据集标签计算预训练目标::
-
-    loss_fn = PretrainHierarchicalLoss(cfg)
-    total_loss, stats = loss_fn(model, batch)
-
-
-### wandb blocked issue
-
-export WANDB_BASE_URL=HTTP://api.bandw.top
+实现级文档建议从 `src/*_factory/README.md` 与 `configs/README.md` 开始读（字段说明 + wiring 入口）。
 
 ## ❓ 常见问题
 
@@ -987,7 +972,7 @@ export WANDB_BASE_URL=HTTP://api.bandw.top
 
 ## 📃 用了该项目发表的文章
 
-1. 张三, 李四. (2023). *基于深度学习的轴承故障早期诊断方法研究*. 机械工程学报, 59(3), 131-142.
+此处暂未收录公开发表文章。若您使用 PHM-Vibench 发表论文，请在此补充引用信息（论文 + 链接）。
 
 ## 🔮 项目路线图
 
