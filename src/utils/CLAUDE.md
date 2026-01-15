@@ -1,6 +1,6 @@
 # Utils - CLAUDE.md
 
-This module provides architecture guidance for the utility system in PHM-Vibench. For comprehensive API reference and usage documentation, see [README.md](README.md) (Chinese) or [readme.md](readme.md) (English API reference).
+This module provides architecture guidance for the utility system in PHM-Vibench. For comprehensive documentation, see [README.md](README.md) (Chinese) or [API_REFERENCE.md](API_REFERENCE.md) (English API reference).
 
 ## Architecture Overview
 
