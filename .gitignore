@@ -198,6 +198,7 @@ dev/ross_demo/fault.ipynb
 plot/
 test/
 metrics_reports/
+
 cache/
 # .codex/
 dev/project/valve.ipynb
@@ -225,3 +226,29 @@ ignore/
 # !test/**/*.yml
 # !docs/LQ_fix/
 # !docs/LQ_fix/**
+
+# Machine-local overrides (keep untracked)
+configs/local/*.yaml
+configs/local/*.yml
+!configs/local/local.sample.yaml
+!configs/local/README.md
+
+# Allow documentation files in otherwise ignored directories (keep other untracked artifacts ignored)
+!dev/
+dev/*
+!dev/README.md
+!dev/test_history/
+dev/test_history/*
+!dev/test_history/README.md
+
+!plot/
+plot/*
+!plot/README.md
+
+!metrics_reports/
+metrics_reports/*
+!metrics_reports/README.md
+
+!results/
+results/*
+!results/README.md
