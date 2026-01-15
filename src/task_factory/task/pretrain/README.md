@@ -421,7 +421,7 @@ multi_task_deployment:
 
 ## References
 
-- [Task Factory Documentation](../CLAUDE.md)
+- [Task Factory Documentation](../../CLAUDE.md)
 - [Masked Autoencoders Paper](https://arxiv.org/abs/2111.06377)
 - [Foundation Models Survey](https://arxiv.org/abs/2108.07258)
 - [Configuration System](../../../configs/CLAUDE.md)

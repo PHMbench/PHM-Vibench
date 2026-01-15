@@ -272,7 +272,7 @@ Gradually increase domain adaptation weight:
 
 ## References
 
-- [Task Factory Documentation](../CLAUDE.md)
+- [Task Factory Documentation](../../CLAUDE.md)
 - [Configuration System](../../../configs/CLAUDE.md)
 - [Model Factory](../../../model_factory/CLAUDE.md)
 - [Domain Adaptation Literature](https://domain-adaptation.org/)
