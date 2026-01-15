@@ -1,6 +1,6 @@
 # Trainer Factory - CLAUDE.md
 
-This module provides architecture guidance for the trainer factory system in PHM-Vibench. For module overview, structure, configuration, and workflow, see [@readme.md].
+This module provides architecture guidance for the trainer factory system in PHM-Vibench. For module overview, structure, configuration, and workflow, see [@README.md].
 
 ## Architecture Overview
 
