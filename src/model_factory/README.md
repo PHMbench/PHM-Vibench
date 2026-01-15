@@ -73,9 +73,10 @@ model = model_module.Model(args_model, metadata)
 
 If `weights_path` is provided, the factory will load that checkpoint into the model.
 
-## 3. Recommended v0.1.0 demo configuration
+## 3. Recommended demo configuration (current)
 
-For v0.1.0 demos we recommend the following ISFM configuration (aligned with `configs/base/model/backbone_dlinear.yaml`):
+For maintained demos we recommend the following ISFM configuration (aligned with
+`configs/base/model/backbone_dlinear.yaml`):
 
 ```yaml
 model:
@@ -134,7 +135,7 @@ When adding a new model:
 
 - Place the implementation under the correct subdirectory (`ISFM/`, `Transformer/`, etc.).
 - Ensure the file exposes a `Model` class with constructor signature `Model(args_model, metadata)`.
-- Register its typical configuration in `docs/v0.1.0/codex/model_registry.csv`.
+- Register its typical configuration in `src/model_factory/model_registry.csv`.
 - Update or create the corresponding type-specific README (e.g. `ISFM/README.md`) with:
   - a minimal YAML example;
   - a table of supported `embedding` / `backbone` / `task_head` values and required arguments.
