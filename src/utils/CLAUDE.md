@@ -1,6 +1,6 @@
 # Utils - CLAUDE.md
 
-This module provides guidance for working with the utility system in PHM-Vibench, which contains helper functions, configuration management, registry patterns, and common utilities used throughout the framework.
+This module provides architecture guidance for the utility system in PHM-Vibench. For comprehensive documentation, see [README.md](README.md) (Chinese) or [API_REFERENCE.md](API_REFERENCE.md) (English API reference).
 
 ## Architecture Overview
 
@@ -54,10 +54,10 @@ class Model(nn.Module):
 
 #### Loading Configuration Files
 ```python
-from src.utils.config_utils import load_config, save_config
+from src.configs import load_config, save_config
 
 # Load YAML configuration
-config = load_config("configs/demo/Single_DG/CWRU.yaml")
+config = load_config("configs/demo/00_smoke/dummy_dg.yaml")
 
 # Handle encoding issues automatically
 # Supports UTF-8 and GB18030 encodings

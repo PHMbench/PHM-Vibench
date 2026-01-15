@@ -131,8 +131,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# VS Code settings
-.vscode/
+# VS Code settings (project-specific configs are tracked)
+# .vscode/  # Uncomment to ignore project VS Code settings
 
 # Data files
 # data/raw/
@@ -142,6 +142,9 @@ cython_debug/
 *.sqlite
 # *.csv
 *.json
+
+# Re-allow VS Code config files
+!.vscode/*.json
 
 # Model files / Checkpoints / Results
 models/
@@ -195,22 +198,24 @@ dev/ross_demo/fault.ipynb
 plot/
 test/
 metrics_reports/
+
 cache/
-.codex/
+# .codex/
 dev/project/valve.ipynb
 plot/
 test/
 metrics_reports/
-.codex/
+# .codex/
 .specify/
 script/unified_metric/existing_test_files/
 script/unified_metric/test_results/
 script/unified_metric/
 # paper/ (except 2025-10_foundation_model_0_metric which is a submodule)
-.claude/
-GEMINI.md
+# .claude/
+# GEMINI.md
 
 LQ_fix/
+ignore/
 
 # Re-include maintained tests and tracked planning docs
 # !test/
@@ -221,3 +226,29 @@ LQ_fix/
 # !test/**/*.yml
 # !docs/LQ_fix/
 # !docs/LQ_fix/**
+
+# Machine-local overrides (keep untracked)
+configs/local/*.yaml
+configs/local/*.yml
+!configs/local/local.sample.yaml
+!configs/local/README.md
+
+# Allow documentation files in otherwise ignored directories (keep other untracked artifacts ignored)
+!dev/
+dev/*
+!dev/README.md
+!dev/test_history/
+dev/test_history/*
+!dev/test_history/README.md
+
+!plot/
+plot/*
+!plot/README.md
+
+!metrics_reports/
+metrics_reports/*
+!metrics_reports/README.md
+
+!results/
+results/*
+!results/README.md

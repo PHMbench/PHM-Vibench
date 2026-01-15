@@ -121,22 +121,15 @@ def my_trainer(args_e, args_t, args_d, path):
 
 ### 4. 测试和调试
 
-我们提供了两种测试方法：
-
-1. **使用 main_dummy.py 进行命令行测试**：
+我们提供了测试方法：
 
 ```bash
-# 测试特定模块
-python main_dummy.py --module model_factory
+# 运行维护的测试套件
+python -m pytest test/
 
-# 测试所有模块
-python main_dummy.py --all_modules
+# 快速smoke测试
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 ```
-
-2. **使用 test/test.ipynb 进行交互式测试**：
-   - 打开 Jupyter Notebook: `jupyter notebook test/test.ipynb`
-   - 按部分运行测试单元格
-   - 观察数据和模型的可视化结果
 
 ## 代码风格和最佳实践
 

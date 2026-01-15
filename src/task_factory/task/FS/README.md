@@ -380,7 +380,7 @@ Few-shot learning with fault hierarchy:
 
 ## References
 
-- [Task Factory Documentation](../CLAUDE.md)
+- [Task Factory Documentation](../../CLAUDE.md)
 - [Few-Shot Learning Survey](https://arxiv.org/abs/1904.05046)
 - [Meta-Learning Literature](https://meta-learning.ml/)
 - [Configuration System](../../../configs/CLAUDE.md)

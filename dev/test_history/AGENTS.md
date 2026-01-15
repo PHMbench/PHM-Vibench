@@ -1,5 +1,8 @@
 # PHMbench Documentation Overview
 
+> Legacy note: this folder contains historical/optional test runners.
+> For maintained docs and commands, start from `README.md` and `AGENTS.md` at the repo root.
+
 ## § Project Overview
 
 PHMbench (Prognostics and Health Management Benchmark) 提供一个基准平台，用于在统一标准下评估故障诊断与剩余寿命预测等PHM算法。框架整合了常用的工业数据集和基准模型，并通过配置驱动的工作流支持实验的复现与结果对比。
@@ -88,7 +91,7 @@ phm-vibench/
 - 遵循 PEP 8 风格，保持代码整洁。
 - 新功能请附带相应测试和文档。
 - 提交PR前 不需要执行程序进行验证，提高效率。
-- [data_factory](./src/data_factory/contributing.md)、[model_factory](./src/model_factory/contributing.md)、[task_factory](./src/task_factory/contributing.md) 和 [trainer_factory](./src/trainer_factory/contributing.md) 的贡献请遵循各自的 `contributing.md` 文档。
+- [data_factory](../../src/data_factory/contributing.md)、[model_factory](../../src/model_factory/contributing.md)、[task_factory](../../src/task_factory/contributing.md) 和 [trainer_factory](../../src/trainer_factory/contributing.md) 的贡献请遵循各自的 `contributing.md` 文档。
 ## § Environment Setup
 
 <!-- ```bash

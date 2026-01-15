@@ -353,7 +353,7 @@ Handle multiple tasks with shared base classes:
 
 ## References
 
-- [Task Factory Documentation](../CLAUDE.md)
+- [Task Factory Documentation](../../CLAUDE.md)
 - [Generalized Few-Shot Learning Paper](https://arxiv.org/abs/1707.09482)
 - [Few-Shot Learning Module](../FS/README.md)
 - [Configuration System](../../../configs/CLAUDE.md)

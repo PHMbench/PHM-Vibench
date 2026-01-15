@@ -395,14 +395,14 @@ print(config)
 ## 📚 详细文档链接
 
 ### 核心文档
-- **[API参考手册 (English)](readme.md)** - 详细的函数签名和快速参考
-- **[架构指南 (English)](../../../CLAUDE.md)** - 英文架构文档和最佳实践
+- **[API参考手册 (English)](API_REFERENCE.md)** - 详细的函数签名和快速参考
+- **[架构指南 (English)](../../CLAUDE.md)** - 英文架构文档和最佳实践
 
 ### 相关模块文档
-- **[数据工厂文档](../../data_factory/CLAUDE.md)**
-- **[模型工厂文档](../../model_factory/CLAUDE.md)**
-- **[任务工厂文档](../../task_factory/CLAUDE.md)**
-- **[训练工厂文档](../../trainer_factory/CLAUDE.md)**
+- **[数据工厂文档](../data_factory/CLAUDE.md)**
+- **[模型工厂文档](../model_factory/CLAUDE.md)**
+- **[任务工厂文档](../task_factory/CLAUDE.md)**
+- **[训练工厂文档](../trainer_factory/CLAUDE.md)**
 
 ## 🤝 贡献指南
 

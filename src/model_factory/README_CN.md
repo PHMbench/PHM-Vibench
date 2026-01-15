@@ -74,9 +74,9 @@ model:
 4. 若配置了 `weights_path`，则加载对应 checkpoint 权重。
 5. 返回初始化好的 `torch.nn.Module` 实例，供任务/训练器使用。
 
-## 3. v0.1.0 推荐 demo 配置（ISFM）
+## 3. 推荐 demo 配置（ISFM，维护入口）
 
-在 v0.1.0 中，我们推荐所有 demo 统一使用以下 ISFM 组合（对应 `configs/base/model/backbone_dlinear.yaml`）：
+对于维护中的 demo，我们推荐统一使用以下 ISFM 组合（对应 `configs/base/model/backbone_dlinear.yaml`）：
 
 ```yaml
 model:
@@ -151,7 +151,7 @@ model:
 如果你要新增或修改模型，请尽量遵循：
 
 - 把新模型放在正确的 `model.type` 目录下，并提供 `Model(args_model, metadata)` 构造函数；
-- 在 `docs/v0.1.0/codex/model_registry.csv` 中增加一行，记录新的组合（type/name/embedding/backbone/task_head 等）；
+- 在 `src/model_factory/model_registry.csv` 中增加一行，记录新的组合（type/name/embedding/backbone/task_head 等）；
 - 在对应类型目录的 README 中：
   - 添加最小可运行的 YAML 片段；
   - 把新增的 embedding/backbone/task_head 及其专有参数完整列出；

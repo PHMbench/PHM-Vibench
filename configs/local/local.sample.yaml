@@ -1,0 +1,6 @@
+# Minimal machine-specific override. Copy to configs/local/local.yaml.
+
+data:
+  # Example:
+  # data_dir: "/abs/path/to/PHM-Vibench_data"
+  data_dir: "data"

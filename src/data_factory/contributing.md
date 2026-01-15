@@ -1,6 +1,6 @@
 # Contributing New Datasets
 
-This guide explains how to integrate additional datasets and readers into **PHMbench**. Following these steps helps maintain consistency across contributions.
+This guide explains how to integrate additional datasets and readers into **PHM-Vibench**. Following these steps helps maintain consistency across contributions.
 
 ## Workflow
 1. **Fork** the repository and create a feature branch, for example `feature/dataset-<name>`.
@@ -13,7 +13,7 @@ This guide explains how to integrate additional datasets and readers into **PHMb
 ## Directory Layout Example
 
 ```text
-phm-vibench/
+PHM-Vibench/
 ├── data/
 │   ├── raw/
 │   │   └── YOUR_DATASET_NAME/

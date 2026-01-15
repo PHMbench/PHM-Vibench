@@ -2,6 +2,7 @@
 
 **说明**：本文档用于描述 PHM-Vibench 的定位、架构与“修改门禁”（double-check gate）。
 运行/验证命令请优先参考 `AGENTS.md`（如需中文 runbook，可使用 `AGENTS_CN.md`）。
+项目概览与上手路径请优先参考 `README_CN.md`（配置体系细节见 `configs/README.md`）。
 
 ## 仓库概述
 
@@ -223,6 +224,8 @@ save/{metadata_file}/{model_name}/{task_type}_{trainer_name}_{timestamp}/
 - 结果按元数据文件、模型和时间戳自动组织
 - 框架支持传统ML方法和现代基础模型
 - 多任务和跨数据集能力是工业应用的核心功能
+- vibecoding（AI 辅助编码）更新默认选择“最简单可行”方案：避免过度工程化与不必要的防御性设计；遵循奥卡姆剃刀，
+  立足第一性原理，渐进式开发与验证。
 
 ## 模型与任务（高层地图）
 

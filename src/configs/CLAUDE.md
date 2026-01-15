@@ -1,6 +1,6 @@
 # Configuration System - CLAUDE.md
 
-This module provides guidance for working with PHM-Vibench's unified configuration system v5.0, which handles all experiment configuration with simplicity, flexibility, and performance.
+This module provides architecture guidance for PHM-Vibench's unified configuration system. For comprehensive usage guide, API reference, and examples, see [@README.md].
 
 ## Module Overview
 

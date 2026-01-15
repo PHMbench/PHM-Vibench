@@ -1,6 +1,9 @@
 # CLAUDE.md
 
-This file documents PHM-Vibench’s intent, architecture, and change strategy. For “how to run” commands, see `AGENTS.md`.
+This file documents PHM-Vibench’s intent, architecture, and change strategy.
+
+- Canonical onboarding + runnable path: `README.md` and `configs/README.md`
+- Copy-paste run/validate commands: `AGENTS.md`
 
 ## Repository Overview
 
@@ -32,7 +35,7 @@ Common pipelines:
 - `src/Pipeline_03_multitask_pretrain_finetune.py`: multi-task pretrain/fine-tune pipeline.
 - `src/Pipeline_ID.py`: ID-based ingestion variant.
 
-## Configuration System (v5.x)
+## Configuration System (maintained)
 
 ### Single supported entrypoint (contract)
 Run via:
@@ -142,36 +145,15 @@ python -m scripts.config_inspect --config <yaml> --dump targets --format yaml
 - Avoid hard-coded absolute paths in committed configs.
 - Put machine-specific paths into `configs/local/local.yaml` or pass `--override data.data_dir=/path/to/...`.
 
-## Common Development Commands (for contributors)
-```bash
-# Offline smoke run (no downloads)
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+## Common Development Commands
 
-# Run a demo quickly
-python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=1
+For practical runbook and copy-paste commands, see [@AGENTS.md - Quick Commands].
 
-# Validate configs
-python -m scripts.validate_configs
-
-# Inspect resolved config/sources/targets
-python -m scripts.config_inspect --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=1
-
-# Tests (maintained)
-python -m pytest test/
-```
-
-### Ad-hoc validation snippets (optional)
-```bash
-# YAML syntax check
-python -c "import yaml; yaml.safe_load(open('config.yaml'))"
-
-# Loader smoke (prints a ConfigWrapper/namespace object)
-python - <<'PY'
-from src.configs import load_config
-cfg = load_config('configs/demo/00_smoke/dummy_dg.yaml')
-print('loaded:', type(cfg), 'keys:', list(cfg.__dict__.keys()))
-PY
-```
+Key commands include:
+- Smoke test: `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
+- Config inspect: `python -m scripts.config_inspect --config <yaml>`
+- Validate: `python -m scripts.validate_configs`
+- Tests: `python -m pytest test/`
 
 ## Results and Output (where files go)
 - Default base directory is `save/`.
@@ -204,6 +186,8 @@ Typical artifacts depend on trainer/task, but usually include checkpoints, metri
 - Always register new components via the appropriate factory/registry instead of hardcoding imports in pipelines.
 - Keep demos runnable with minimal assumptions; prefer smoke-friendly defaults (e.g. `--override trainer.num_epochs=1`).
 - When changing config structure, update SSOT (registry/atlas) and add a migration note if any user-facing key changes.
+- Vibecoding (AI-assisted changes): default to the simplest viable implementation. Avoid over-engineering and
+  unnecessary defensive design; apply Occam’s razor; reason from first principles; iterate incrementally.
 
 ## Hard Constraints (Do Not Break)
 - Do not introduce breaking changes to `main.py` public CLI or core YAML keyspaces (`environment/data/model/task/trainer`)

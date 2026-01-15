@@ -6,6 +6,7 @@ import os
 import swanlab
 from swanlab.integration.pytorch_lightning import SwanLabLogger
 from src.trainer_factory import register_trainer
+from src.trainer_factory.extensions import ManifestWriterCallback
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -96,6 +97,27 @@ def call_backs(args, path):
     )
     
     callback_list = [checkpoint_callback]
+
+    # UXFD merge: always write an auditable manifest (safe no-op if not main process).
+    try:
+        extensions = getattr(args, "extensions", None)
+        report_cfg = getattr(extensions, "report", None) if extensions is not None else None
+        report_enable = getattr(report_cfg, "enable", True) if report_cfg is not None else True
+        manifest_enable = getattr(report_cfg, "manifest", True) if report_cfg is not None else True
+        enabled = bool(report_enable) and bool(manifest_enable)
+    except Exception:
+        enabled = True
+
+    callback_list.append(
+        ManifestWriterCallback(
+            run_dir=path,
+            paper_id=str(getattr(args, "paper_id", "") or ""),
+            preset_version=str(getattr(args, "preset_version", "") or ""),
+            run_id=str(getattr(args, "logger_name", "") or ""),
+            enabled=enabled,
+            is_main_process=is_main_process,
+        )
+    )
 
     # 模型修剪回调（根据需求添加）
     if getattr(args, "pruning", 0.0):
