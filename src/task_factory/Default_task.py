@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
+from pathlib import Path
 from src.task_factory import register_task
 from typing import Dict, List, Optional, Any, Tuple
 
@@ -62,6 +63,22 @@ class Default_task(pl.LightningModule):
         self.metadata = metadata # 存储 metadata
         self.args_trainer = args_trainer
         self.args_environment = args_environment
+
+        # Optional: predictions artifact writer (for post-run plots, e.g. confusion matrix).
+        self._predictions_enable = False
+        self._predictions_max_samples = 0
+        self._predictions_run_dir = str(getattr(args_trainer, "run_dir", "") or "")
+        self._predictions_y_true: List[int] = []
+        self._predictions_y_pred: List[int] = []
+        self._predictions_file_id: List[int] = []
+        try:
+            extensions = getattr(args_trainer, "extensions", None)
+            pred_cfg = getattr(extensions, "predictions", None) if extensions is not None else None
+            self._predictions_enable = bool(getattr(pred_cfg, "enable", False)) if pred_cfg is not None else False
+            self._predictions_max_samples = int(getattr(pred_cfg, "max_samples", 10000)) if pred_cfg is not None else 10000
+        except Exception:
+            self._predictions_enable = False
+            self._predictions_max_samples = 0
 
         # 使用组件配置损失和指标
         self.loss_fn = get_loss_fn(self.args_task.loss)
@@ -139,7 +156,8 @@ class Default_task(pl.LightningModule):
             # Ensure a default task identifier if not provided
             batch.setdefault('task_id', 'classification')
             # Convert tensor-based ID to a Python int for indexing metadata
-            file_id = batch['file_id'][0].item()
+            file_ids_raw = batch.get("file_id")
+            file_id = file_ids_raw[0].item() if hasattr(file_ids_raw, "__getitem__") else int(file_ids_raw)
             data_name = self.metadata[file_id]['Name']# .values
             # dataset_id = self.metadata[file_id]['Dataset_id'].item() 
             batch.update({'file_id': file_id})
@@ -153,6 +171,23 @@ class Default_task(pl.LightningModule):
         y = batch['y']
         loss = self._compute_loss(y_hat, y)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
+
+        if stage == "test" and self._predictions_enable and self._predictions_run_dir:
+            try:
+                remaining = self._predictions_max_samples - len(self._predictions_y_true)
+                if remaining > 0:
+                    y_true = y.detach().view(-1)[:remaining].to("cpu").tolist()
+                    y_pred = y_argmax.detach().view(-1)[:remaining].to("cpu").tolist()
+                    if file_ids_raw is None:
+                        file_ids = [int(batch["file_id"])] * len(y_true)
+                    else:
+                        file_ids_tensor = file_ids_raw.detach().view(-1) if hasattr(file_ids_raw, "detach") else file_ids_raw
+                        file_ids = [int(v) for v in file_ids_tensor[: len(y_true)].tolist()] if hasattr(file_ids_tensor, "tolist") else [int(v) for v in file_ids_tensor[: len(y_true)]]
+                    self._predictions_y_true.extend([int(v) for v in y_true])
+                    self._predictions_y_pred.extend([int(v) for v in y_pred])
+                    self._predictions_file_id.extend(file_ids)
+            except Exception:
+                pass
 
         # 3. 计算和记录指标
         step_metrics = {f"{stage}_loss": loss}
@@ -197,6 +232,34 @@ class Default_task(pl.LightningModule):
         
         self._log_metrics(metrics, "test")
         # test_step 通常不返回损失
+
+    def on_test_start(self) -> None:
+        if self._predictions_enable:
+            self._predictions_y_true = []
+            self._predictions_y_pred = []
+            self._predictions_file_id = []
+
+    def on_test_epoch_end(self) -> None:
+        if not self._predictions_enable or not self._predictions_run_dir:
+            return
+        try:
+            if self.trainer is not None and not bool(getattr(self.trainer, "is_global_zero", True)):
+                return
+        except Exception:
+            pass
+        try:
+            run_dir = Path(self._predictions_run_dir)
+            artifacts_dir = run_dir / "artifacts"
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+            out_path = artifacts_dir / "predictions.npz"
+            np.savez_compressed(
+                out_path,
+                y_true=np.asarray(self._predictions_y_true, dtype=np.int64),
+                y_pred=np.asarray(self._predictions_y_pred, dtype=np.int64),
+                file_id=np.asarray(self._predictions_file_id, dtype=np.int64),
+            )
+        except Exception:
+            return
 
     def _log_metrics(self, metrics: Dict[str, torch.Tensor], stage: str) -> None:
         """统一日志记录"""

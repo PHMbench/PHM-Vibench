@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 from pprint import pprint
 
 import numpy as np
@@ -12,7 +13,11 @@ import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.configs.config_utils import load_config, path_name, transfer_namespace, merge_with_local_override
+from src.configs.config_utils import load_config, path_name, save_config, transfer_namespace, merge_with_local_override
+from src.explain_factory.run_artifacts import (
+    write_data_metadata_snapshot_from_data_factory,
+    write_explain_eligibility,
+)
 from src.utils.config_utils import parse_overrides, apply_overrides_to_config
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
@@ -87,6 +92,13 @@ def pipeline(args):
         path, name = path_name(configs, it)
         # 把name 加到args_trainer中
         args_trainer.logger_name = name
+        args_trainer.run_dir = path
+
+        # UXFD merge: write fully resolved config snapshot (best-effort).
+        try:
+            save_config(configs, Path(path) / "config_snapshot.yaml")
+        except Exception as e:
+            print(f"[WARN] 保存 config_snapshot.yaml 失败: {e}")
         # 设置随机种子
         current_seed = args_environment.seed + it
         seed_everything(current_seed)
@@ -121,6 +133,31 @@ def pipeline(args):
             args_data,
             path
         )
+
+        # UXFD merge: always write data metadata snapshot (best-effort), and eligibility if enabled.
+        batch_meta, meta_source, degraded = write_data_metadata_snapshot_from_data_factory(
+            run_dir=Path(path),
+            data_factory=data_factory,
+        )
+        try:
+            extensions = getattr(args_trainer, "extensions", None)
+            explain_cfg = getattr(extensions, "explain", None) if extensions is not None else None
+            explain_enable = bool(getattr(explain_cfg, "enable", False)) if explain_cfg is not None else False
+            if explain_enable:
+                explainer_id = str(getattr(explain_cfg, "explainer", "") or "unknown")
+                required_meta_keys = []
+                if explainer_id in {"timefreq", "time_freq"}:
+                    required_meta_keys = ["sampling_rate"]
+                write_explain_eligibility(
+                    run_dir=Path(path),
+                    explainer_id=explainer_id,
+                    meta=batch_meta,
+                    meta_source=str(meta_source),
+                    degraded=bool(degraded),
+                    required_meta_keys=required_meta_keys,
+                )
+        except Exception:
+            pass
         
         # 执行训练
         print("[INFO] 开始训练...")
@@ -141,6 +178,31 @@ def pipeline(args):
         print("[INFO] 保存测试结果...")
         result_df = pd.DataFrame([result[0]])
         result_df.to_csv(os.path.join(path, f'test_result_{it}.csv'), index=False)
+
+        # UXFD merge: rewrite manifest after test_result/predictions exist (callback runs earlier).
+        try:
+            from src.trainer_factory.extensions import ManifestWriterCallback
+
+            is_main_process = True
+            if "LOCAL_RANK" in os.environ:
+                is_main_process = int(os.environ["LOCAL_RANK"]) == 0
+
+            extensions = getattr(args_trainer, "extensions", None)
+            report_cfg = getattr(extensions, "report", None) if extensions is not None else None
+            report_enable = getattr(report_cfg, "enable", True) if report_cfg is not None else True
+            manifest_enable = getattr(report_cfg, "manifest", True) if report_cfg is not None else True
+            enabled = bool(report_enable) and bool(manifest_enable)
+
+            ManifestWriterCallback(
+                run_dir=path,
+                paper_id=str(getattr(args_trainer, "paper_id", "") or ""),
+                preset_version=str(getattr(args_trainer, "preset_version", "") or ""),
+                run_id=str(getattr(args_trainer, "logger_name", "") or ""),
+                enabled=enabled,
+                is_main_process=is_main_process,
+            ).on_test_end(trainer, task)
+        except Exception as e:
+            print(f"[WARN] 更新 artifacts/manifest.json 失败: {e}")
 
         # 关闭wandb和swanlab
         close_lab()

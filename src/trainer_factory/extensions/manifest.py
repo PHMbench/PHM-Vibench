@@ -67,6 +67,12 @@ class ManifestWriterCallback(pl.Callback):
             config_snapshot = str((run_dir / "config_snapshot.yaml")) if (run_dir / "config_snapshot.yaml").exists() else ""
             logs_metrics = _find_first(run_dir / "logs", "**/metrics.csv")
             test_results = _find_first(run_dir, "test_result_*.csv")
+            predictions = (
+                _find_first(artifacts_dir, "predictions.npz")
+                or _find_first(run_dir, "predictions.npz")
+                or _find_first(artifacts_dir, "predictions.*")
+                or _find_first(run_dir, "predictions.*")
+            )
 
             figures_dir = str(run_dir / "figures") if (run_dir / "figures").exists() else ""
             explain_dir = str(artifacts_dir / "explain") if (artifacts_dir / "explain").exists() else ""
@@ -87,6 +93,7 @@ class ManifestWriterCallback(pl.Callback):
                 "metrics_path": test_results or logs_metrics,
                 "metrics_csv_logger": logs_metrics,
                 "figures_dir": figures_dir,
+                "predictions_path": str(predictions) if predictions else "",
                 "data_metadata_snapshot": data_metadata_snapshot,
                 "eligibility": eligibility,
                 "explain_dir": explain_dir,

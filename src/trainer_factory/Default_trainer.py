@@ -6,7 +6,7 @@ import os
 import swanlab
 from swanlab.integration.pytorch_lightning import SwanLabLogger
 from src.trainer_factory import register_trainer
-from src.trainer_factory.extensions import ManifestWriterCallback
+from src.trainer_factory.extensions import DistillWriterCallback, ManifestWriterCallback
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -98,6 +98,10 @@ def call_backs(args, path):
     
     callback_list = [checkpoint_callback]
 
+    # Ensure run_dir is available for extensions (e.g., predictions writer).
+    if not getattr(args, "run_dir", None):
+        setattr(args, "run_dir", path)
+
     # UXFD merge: always write an auditable manifest (safe no-op if not main process).
     try:
         extensions = getattr(args, "extensions", None)
@@ -118,6 +122,26 @@ def call_backs(args, path):
             is_main_process=is_main_process,
         )
     )
+
+    # UXFD merge: optional LLM-free distillation (writes artifacts/distilled/summary.json).
+    try:
+        extensions = getattr(args, "extensions", None)
+        agent_cfg = getattr(extensions, "agent", None) if extensions is not None else None
+        agent_enable = bool(getattr(agent_cfg, "enable", False)) if agent_cfg is not None else False
+    except Exception:
+        agent_enable = False
+
+    if agent_enable:
+        callback_list.append(
+            DistillWriterCallback(
+                run_dir=path,
+                paper_id=str(getattr(args, "paper_id", "") or ""),
+                preset_version=str(getattr(args, "preset_version", "") or ""),
+                run_id=str(getattr(args, "logger_name", "") or ""),
+                enabled=True,
+                is_main_process=is_main_process,
+            )
+        )
 
     # 模型修剪回调（根据需求添加）
     if getattr(args, "pruning", 0.0):

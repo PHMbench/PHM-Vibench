@@ -14,12 +14,16 @@ Implementation note:
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
 
-from .TSPN import Classifier, Model as _TSPNModel
+from .TSPN import Model as _TSPNModel
+from .UXFD.fusion import FusionConfig, build_fusion
+from .UXFD.fuzzy import FuzzyConfig, FuzzyReasoner
+from .UXFD.neurosymbolic import LogicConfig, LogicReasoner
+from .UXFD.operator_attention import OperatorAttention1D, OperatorAttentionConfig
 from .UXFD.signal_processing_2d import STFTTimeFrequency
 from .UXFD.signal_processing_2d.stft_tfr import STFTConfig
 
@@ -43,36 +47,109 @@ class Model(_TSPNModel):
     def __init__(self, args: Any, metadata: Any = None):
         super().__init__(args, metadata)
         self._uxfd_enable_sp2d = bool(_get_attr(args, "uxfd.enable_sp2d", False))
+        self._uxfd_enable_fuzzy = bool(_get_attr(args, "uxfd.fuzzy.enable", False))
+        self._uxfd_enable_operator_attention = bool(
+            _get_attr(args, "uxfd.operator_attention.enable", False)
+        )
+        self._uxfd_enable_logic = bool(_get_attr(args, "uxfd.logic.enable", False))
 
         self._uxfd_sp2d: Optional[nn.Module] = None
         self._uxfd_2d_proj: Optional[nn.Module] = None
-        self._uxfd_clf: Optional[nn.Module] = None
+        self._uxfd_fusion: Optional[nn.Module] = None
+        self._uxfd_fuzzy: Optional[nn.Module] = None
+        self._uxfd_fuzzy_scale: float = 1.0
+        self._uxfd_operator_attention: Optional[nn.Module] = None
+        self._uxfd_logic: Optional[nn.Module] = None
+        self._uxfd_logic_scale: float = 1.0
 
         if self._uxfd_enable_sp2d:
             cfg = _build_stft_cfg(args)
             self._uxfd_sp2d = STFTTimeFrequency(cfg)
             self._uxfd_2d_proj = nn.Linear(int(self.args.in_channels), int(self.channel_for_classifier))
-            self._uxfd_clf = Classifier(int(self.channel_for_classifier) * 2, int(self.args.num_classes))
+            fusion_cfg = _build_fusion_cfg(args)
+            self._uxfd_fusion = build_fusion(int(self.channel_for_classifier), cfg=fusion_cfg)
+
+        if self._uxfd_enable_fuzzy:
+            fuzzy_cfg = _build_fuzzy_cfg(args)
+            self._uxfd_fuzzy = FuzzyReasoner(
+                dim_in=int(self.channel_for_classifier),
+                num_classes=int(self.args.num_classes),
+                cfg=fuzzy_cfg,
+            ).to(self.args.device)
+            self._uxfd_fuzzy_scale = float(getattr(fuzzy_cfg, "logit_scale", 1.0))
+
+        if self._uxfd_enable_operator_attention:
+            op_cfg = _build_operator_attention_cfg(args)
+            self._uxfd_operator_attention = OperatorAttention1D(
+                in_channels=int(getattr(self.args, "in_channels", 1)),
+                cfg=op_cfg,
+            ).to(self.args.device)
+
+        if self._uxfd_enable_logic:
+            logic_cfg = _build_logic_cfg(args)
+            self._uxfd_logic = LogicReasoner(
+                dim_in=int(self.channel_for_classifier),
+                num_classes=int(self.args.num_classes),
+                cfg=logic_cfg,
+            ).to(self.args.device)
+            self._uxfd_logic_scale = float(getattr(logic_cfg, "logit_scale", 1.0))
 
     def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        features_1d = self._forward_1d_features(x)
-        if not self._uxfd_enable_sp2d:
-            return self.clf(features_1d)
+        features_1d = self._forward_1d_features(x)  # (B, D)
+        features = features_1d
 
-        assert self._uxfd_sp2d is not None
-        assert self._uxfd_2d_proj is not None
-        assert self._uxfd_clf is not None
+        if self._uxfd_enable_sp2d:
+            assert self._uxfd_sp2d is not None
+            assert self._uxfd_2d_proj is not None
+            assert self._uxfd_fusion is not None
 
-        x2d = self._uxfd_sp2d(x)  # (B, T, F, C) magnitude
-        pooled = x2d.mean(dim=(1, 2))  # (B, C)
-        proj = self._uxfd_2d_proj(pooled)  # (B, channel_for_classifier)
-        fused = torch.cat([features_1d, proj], dim=1)
-        return self._uxfd_clf(fused)
+            x2d = self._uxfd_sp2d(x)  # (B, T, F, C) magnitude
+            pooled = x2d.mean(dim=(1, 2))  # (B, C)
+            proj = self._uxfd_2d_proj(pooled)  # (B, D)
+            features = self._uxfd_fusion(features_1d, proj)  # (B, D)
+
+        base_logits = self.clf(features)
+        logits = base_logits
+        if self._uxfd_enable_fuzzy:
+            assert self._uxfd_fuzzy is not None
+            fuzzy_logits = self._uxfd_fuzzy(features)
+            logits = logits + self._uxfd_fuzzy_scale * fuzzy_logits
+        if self._uxfd_enable_logic:
+            assert self._uxfd_logic is not None
+            logic_logits = self._uxfd_logic(features)
+            logits = logits + self._uxfd_logic_scale * logic_logits
+        return logits
 
     def _forward_1d_features(self, x: torch.Tensor) -> torch.Tensor:
+        if self._uxfd_enable_operator_attention:
+            assert self._uxfd_operator_attention is not None
+            x, _weights = self._uxfd_operator_attention(x)
         for layer in self.signal_processing_layers:
             x = layer(x)
         return self.feature_extractor_layers(x)
+
+    def get_uxfd_debug_state(self) -> Dict[str, Any]:
+        state: Dict[str, Any] = {
+            "enable_sp2d": bool(self._uxfd_enable_sp2d),
+            "enable_fuzzy": bool(self._uxfd_enable_fuzzy),
+            "enable_operator_attention": bool(self._uxfd_enable_operator_attention),
+            "enable_logic": bool(self._uxfd_enable_logic),
+        }
+
+        try:
+            if self._uxfd_enable_operator_attention and self._uxfd_operator_attention is not None:
+                op_attn = self._uxfd_operator_attention
+                weights = getattr(op_attn, "last_attention_weights", None)
+                ops = getattr(op_attn, "operators", None)
+                if weights is not None and hasattr(weights, "mean"):
+                    mean_w = weights.mean(dim=0).detach().cpu().tolist()
+                else:
+                    mean_w = None
+                state["operator_attention"] = {"operators": ops, "attention_mean": mean_w}
+        except Exception:
+            pass
+
+        return state
 
 
 def _get_attr(obj: Any, dotted: str, default: Any) -> Any:
@@ -90,7 +167,7 @@ def _build_stft_cfg(args: Any) -> STFTConfig:
     default_n_fft = max(16, min(256, in_dim))
     default_hop = max(1, default_n_fft // 2)
 
-    sp2d_cfg = _get_attr(args, "uxfd.sp2d", None,)
+    sp2d_cfg = _get_attr(args, "uxfd.sp2d", None)
     if sp2d_cfg is None:
         return STFTConfig(n_fft=default_n_fft, hop_length=default_hop)
 
@@ -108,3 +185,73 @@ def _build_stft_cfg(args: Any) -> STFTConfig:
     if merged.get("win_length") is not None:
         merged["win_length"] = max(1, min(int(merged["win_length"]), merged["n_fft"]))
     return STFTConfig(**merged)
+
+
+def _build_fusion_cfg(args: Any) -> FusionConfig:
+    fusion_obj = _get_attr(args, "uxfd.fusion", None)
+    if fusion_obj is None:
+        return FusionConfig()
+
+    fusion_type = None
+    if hasattr(fusion_obj, "type"):
+        fusion_type = getattr(fusion_obj, "type")
+    elif isinstance(fusion_obj, dict):
+        fusion_type = fusion_obj.get("type")
+
+    if fusion_type is None:
+        return FusionConfig()
+
+    return FusionConfig(fusion_type=str(fusion_type))
+
+
+def _build_fuzzy_cfg(args: Any) -> FuzzyConfig:
+    fuzzy_obj = _get_attr(args, "uxfd.fuzzy", None)
+    if fuzzy_obj is None:
+        return FuzzyConfig()
+
+    cfg_dict = {}
+    if hasattr(fuzzy_obj, "__dict__"):
+        cfg_dict = dict(fuzzy_obj.__dict__)
+    elif isinstance(fuzzy_obj, dict):
+        cfg_dict = dict(fuzzy_obj)
+
+    base = FuzzyConfig()
+    allowed = set(base.__dict__.keys())
+    merged = {k: v for k, v in cfg_dict.items() if k in allowed and v is not None}
+    return FuzzyConfig(**{**base.__dict__, **merged})
+
+
+def _build_operator_attention_cfg(args: Any) -> OperatorAttentionConfig:
+    op_obj = _get_attr(args, "uxfd.operator_attention", None)
+    if op_obj is None:
+        return OperatorAttentionConfig()
+
+    cfg_dict = {}
+    if hasattr(op_obj, "__dict__"):
+        cfg_dict = dict(op_obj.__dict__)
+    elif isinstance(op_obj, dict):
+        cfg_dict = dict(op_obj)
+
+    base = OperatorAttentionConfig()
+    allowed = set(base.__dict__.keys())
+    merged = {k: v for k, v in cfg_dict.items() if k in allowed and v is not None}
+    if isinstance(merged.get("operators"), str):
+        merged["operators"] = [s.strip() for s in merged["operators"].split(",") if s.strip()]
+    return OperatorAttentionConfig(**{**base.__dict__, **merged})
+
+
+def _build_logic_cfg(args: Any) -> LogicConfig:
+    logic_obj = _get_attr(args, "uxfd.logic", None)
+    if logic_obj is None:
+        return LogicConfig()
+
+    cfg_dict = {}
+    if hasattr(logic_obj, "__dict__"):
+        cfg_dict = dict(logic_obj.__dict__)
+    elif isinstance(logic_obj, dict):
+        cfg_dict = dict(logic_obj)
+
+    base = LogicConfig()
+    allowed = set(base.__dict__.keys())
+    merged = {k: v for k, v in cfg_dict.items() if k in allowed and v is not None}
+    return LogicConfig(**{**base.__dict__, **merged})
