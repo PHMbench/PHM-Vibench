@@ -10,6 +10,73 @@ import torch
 from src.trainer_factory.extensions.manifest import ManifestWriterCallback
 
 
+def test_manifest_json_required_keys_and_optional_empty(tmp_path: Path) -> None:
+    run_dir = tmp_path / "results" / "run_0"
+    artifacts_dir = run_dir / "artifacts"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    (run_dir / "config_snapshot.yaml").write_text("dummy: true\n", encoding="utf-8")
+    (run_dir / "test_result_0.csv").write_text("metric,value\nacc,1.0\n", encoding="utf-8")
+
+    trainer = SimpleNamespace(callback_metrics={"test_loss": torch.tensor(0.1)})
+    cb = ManifestWriterCallback(
+        run_dir=str(run_dir),
+        paper_id="Paper_fuzzy_XFD",
+        preset_version="vibench-min-v1",
+        run_id="run_0",
+        enabled=True,
+        is_main_process=True,
+    )
+
+    cb.on_test_end(trainer, pl_module=None)
+    manifest_path = artifacts_dir / "manifest.json"
+    assert manifest_path.exists()
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    required_keys = [
+        "paper_id",
+        "preset_version",
+        "run_id",
+        "run_dir",
+        "stage",
+        "timestamp",
+        "config_snapshot",
+        "metrics_path",
+        "metrics_csv_logger",
+        "figures_dir",
+        "predictions_path",
+        "data_metadata_snapshot",
+        "eligibility",
+        "explain_dir",
+        "explain_summary",
+        "distilled_dir",
+    ]
+    for k in required_keys:
+        assert k in manifest
+
+    assert manifest["run_dir"] == str(run_dir)
+    assert manifest["run_id"] == "run_0"
+    assert manifest["stage"] == "test"
+    assert manifest["timestamp"]
+    assert manifest["config_snapshot"].endswith("config_snapshot.yaml")
+    assert manifest["metrics_path"].endswith("test_result_0.csv")
+
+    # Optional fields are present but may be empty when artifacts are disabled / absent.
+    optional_paths = [
+        "metrics_csv_logger",
+        "figures_dir",
+        "predictions_path",
+        "data_metadata_snapshot",
+        "eligibility",
+        "explain_dir",
+        "explain_summary",
+        "distilled_dir",
+    ]
+    for k in optional_paths:
+        assert manifest[k] == ""
+
+
 def test_manifest_json_schema_and_optional_fields(tmp_path: Path) -> None:
     run_dir = tmp_path / "results" / "run_0"
     artifacts_dir = run_dir / "artifacts"

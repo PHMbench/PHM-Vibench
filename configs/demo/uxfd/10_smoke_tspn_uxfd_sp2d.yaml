@@ -1,0 +1,51 @@
+# UXFD demo: enable SP2D + fusion and emit predictions for post-run plots
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/tspn_uxfd.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_uxfd_tspn_uxfd_sp2d"
+  seed: 0
+  output_dir: "results/demo/uxfd/tspn_uxfd_sp2d"
+  notes: "TSPN_UXFD with uxfd.enable_sp2d=true and fusion."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
+  paper_id: "uxfd_demo_sp2d"
+  preset_version: "demo-uxfd-v1"
+  extensions:
+    predictions:
+      enable: true
+
+model:
+  device: "cpu"
+  uxfd:
+    enable_sp2d: true
+    sp2d:
+      n_fft: 128
+      hop_length: 64
+    fusion:
+      type: "gated"
+

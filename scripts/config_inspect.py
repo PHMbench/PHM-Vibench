@@ -16,6 +16,7 @@ from src.utils.config_utils import apply_overrides_to_config, parse_overrides
 
 DumpMode = Literal["resolved", "sources", "targets", "all"]
 OutFormat = Literal["yaml", "json", "md"]
+FocusMode = Literal["all", "model"]
 
 
 def _namespace_to_dict(value: Any) -> Any:
@@ -374,6 +375,19 @@ def _render_md(result: InspectResult, dump: DumpMode) -> str:
         parts.append("")
     return "\n".join(parts).rstrip() + "\n"
 
+def _apply_focus(result: InspectResult, focus: FocusMode) -> InspectResult:
+    if focus == "all":
+        return result
+
+    resolved: Dict[str, Any] = {}
+    if isinstance(result.resolved.get("model"), dict):
+        resolved["model"] = result.resolved["model"]
+
+    sources = {k: v for k, v in result.sources.items() if k == "model" or k.startswith("model.")}
+    targets = {"model": result.targets.get("model", {})} if isinstance(result.targets, dict) else {}
+    sanity = [c for c in result.sanity if c.get("check") in {"has_model", "model_type_name"}]
+    return InspectResult(resolved=resolved, sources=sources, targets=targets, sanity=sanity)
+
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Inspect a config: resolved config + sources + targets + sanity")
@@ -382,9 +396,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--local_config", default=None, help="Optional machine-local override YAML")
     parser.add_argument("--dump", choices=["resolved", "sources", "targets", "all"], default="all")
     parser.add_argument("--format", choices=["yaml", "json", "md"], default="md")
+    parser.add_argument(
+        "--focus",
+        choices=["all", "model"],
+        default="all",
+        help="Optional output focus (e.g., `model` for NSN/UXFD debugging).",
+    )
     args = parser.parse_args(argv)
 
     result = inspect_config(args.config, overrides=args.override, local_config=args.local_config)
+    result = _apply_focus(result, focus=args.focus)
 
     if args.format == "json":
         payload: Dict[str, Any] = {}

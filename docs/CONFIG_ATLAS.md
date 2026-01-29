@@ -98,6 +98,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/README.md`
 - Status: `/`
 
+#### `base_model_tspn_uxfd`
+- Path: `configs/base/model/tspn_uxfd.yaml`
+- Description: TSPN_UXFD base model（UXFD core wrapper, dummy-data friendly）
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/model/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
+- Status: `/`
+
 ### base_task
 
 #### `base_task_cddg`
@@ -284,6 +295,108 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
 - Outputs: `results/demo/pretrain_hse_cddg/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/06_pretrain_cddg/README.md`
+- Status: `sanity_ok`
+
+#### `demo_nsn_00_smoke_nsn_min`
+- Path: `configs/demo/nsn/00_smoke_nsn_min.yaml`
+- Description: NSN smoke demo（no-presets; minimal NSN wrapper）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: ``
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/nsn/00_smoke_nsn_min.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/nsn/nsn_min/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/nsn/README.md`
+- Status: `sanity_ok`
+
+#### `demo_nsn_10_smoke_nsn_sp2d`
+- Path: `configs/demo/nsn/10_smoke_nsn_sp2d.yaml`
+- Description: NSN smoke demo（no-presets; SP2D enabled via mapping + predictions）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: ``
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/nsn/10_smoke_nsn_sp2d.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/nsn/nsn_sp2d/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/nsn/README.md`
+- Status: `sanity_ok`
+
+#### `demo_nsn_20_smoke_nsn_full`
+- Path: `configs/demo/nsn/20_smoke_nsn_full.yaml`
+- Description: NSN smoke demo（no-presets; sp2d + fusion + fuzzy + logic + operator-attention）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: ``
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/nsn/20_smoke_nsn_full.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/nsn/nsn_full/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/nsn/README.md`
+- Status: `sanity_ok`
+
+#### `demo_uxfd_00_smoke_tspn_uxfd`
+- Path: `configs/demo/uxfd/00_smoke_tspn_uxfd.yaml`
+- Description: UXFD smoke demo（TSPN_UXFD core contract, no UXFD modules）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/tspn_uxfd.yaml`
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/uxfd/tspn_uxfd_min/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
+- Status: `sanity_ok`
+
+#### `demo_uxfd_10_smoke_tspn_uxfd_sp2d`
+- Path: `configs/demo/uxfd/10_smoke_tspn_uxfd_sp2d.yaml`
+- Description: UXFD smoke demo（enable_sp2d + fusion, emits predictions）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/tspn_uxfd.yaml`
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/10_smoke_tspn_uxfd_sp2d.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/uxfd/tspn_uxfd_sp2d/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
+- Status: `sanity_ok`
+
+#### `demo_uxfd_20_smoke_tspn_uxfd_full`
+- Path: `configs/demo/uxfd/20_smoke_tspn_uxfd_full.yaml`
+- Description: UXFD smoke demo（sp2d + fusion + fuzzy + operator-attention + logic）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/tspn_uxfd.yaml`
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/20_smoke_tspn_uxfd_full.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/uxfd/tspn_uxfd_full/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
 - Status: `sanity_ok`
 
 

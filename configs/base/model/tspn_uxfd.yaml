@@ -1,0 +1,44 @@
+# Base model: TSPN_UXFD (UXFD-aligned TSPN wrapper)
+#
+# Notes:
+# - This base is intentionally "dummy-data friendly" (CPU, small dims).
+# - It is a *base*, so downstream demos/experiments should override as needed
+#   (e.g., `in_dim`, `in_channels`, `signal_processing_configs`, `uxfd.*`).
+
+model:
+  type: "X_model"
+  name: "TSPN_UXFD"
+  device: "cpu"
+
+  # Dummy_Data windows are (B, L=window_size, C=2) by default.
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+
+  # Minimal TSPN settings.
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+
+  # UXFD assembly toggles (disabled by default in base).
+  uxfd:
+    enable_sp2d: false
+    fusion:
+      type: "concat"
+    fuzzy:
+      enable: false
+      logit_scale: 1.0
+    operator_attention:
+      enable: false
+      operators: ["I", "HT", "FFT"]
+      hidden_dim: 128
+      temperature: 1.0
+    logic:
+      enable: false
+      hidden_dim: 128
+      logit_scale: 1.0
+
