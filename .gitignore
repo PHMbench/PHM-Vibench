@@ -253,3 +253,6 @@ metrics_reports/*
 results/*
 !results/README.md
 dev/plot/
+
+# Local thesis workspace (not a tracked submodule in this repo)
+paper/UXFD_paper/thu_liqi_phd_thesis/

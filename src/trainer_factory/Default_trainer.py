@@ -3,8 +3,14 @@ from pytorch_lightning.loggers import WandbLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, ModelPruning, EarlyStopping
 from torch.utils.tensorboard.writer import SummaryWriter
 import os
-import swanlab
-from swanlab.integration.pytorch_lightning import SwanLabLogger
+
+try:
+    import swanlab  # type: ignore
+    from swanlab.integration.pytorch_lightning import SwanLabLogger  # type: ignore
+except Exception:
+    swanlab = None  # type: ignore
+    SwanLabLogger = None  # type: ignore
+
 from src.trainer_factory import register_trainer
 from src.trainer_factory.extensions import DistillWriterCallback, ManifestWriterCallback
 
@@ -44,18 +50,24 @@ def trainer(args_e,args_t, args_d, path):
     # 根据 wandb_flag 确定日志记录器列表
     if use_wandb:
         # 配置 WandB 日志记录
-        wandb_logger = WandbLogger(project=args_e.project,
-                                   offline= not is_main_process,
-                                  )
-        log_list.append(wandb_logger)
+        try:
+            wandb_logger = WandbLogger(
+                project=args_e.project,
+                offline=not is_main_process,
+            )
+            log_list.append(wandb_logger)
+        except Exception:
+            print("[WARNING] wandb 未安装或不可用，已跳过 WandbLogger")
 
     if use_swanlab:
-        # swanlab
-        swanlab_logger = SwanLabLogger(
+        if SwanLabLogger is None:
+            print("[WARNING] swanlab 未安装或不可用，已跳过 SwanLabLogger")
+        else:
+            swanlab_logger = SwanLabLogger(
                 project = args_e.project,
                 # experiment_name=args_t.logger_name
             )
-        log_list.append(swanlab_logger)
+            log_list.append(swanlab_logger)
             
     # 设置设备类型：CPU 或自动选择
     accelerate_type = 'cpu' if args_t.device == 'cpu' else 'auto'
