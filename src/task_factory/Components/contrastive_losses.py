@@ -256,7 +256,7 @@ class SupConLoss(nn.Module):
         """
         Compute supervised contrastive loss.
         
-        Args:
+        Args: 
             features: Feature embeddings [batch_size, feature_dim] 
             labels: Ground truth labels [batch_size]
             mask: Optional mask for valid samples [batch_size, batch_size]
@@ -292,7 +292,7 @@ class SupConLoss(nn.Module):
         if mask is not None:
             mask_labels = mask_labels * mask
         
-        # Check if any positive pairs exist
+        # Check if any positive pairs exist 
         if mask_labels.sum() == 0:
             return torch.tensor(0.0, device=device, requires_grad=True)
         
