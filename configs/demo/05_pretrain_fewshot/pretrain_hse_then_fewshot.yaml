@@ -15,8 +15,8 @@ environment:
   output_dir: "results/demo/pretrain_hse_then_fewshot"
   notes: "Two-stage pretrain (HSE) + few-shot finetune demo."
 
-data: {}
-
+data: 
+  data_dir: "/home/xyc3090/data1/PHM-Vibench-base/data/dataset"
 # 模型配置全部由 base_configs.model (backbone_dlinear.yaml) 提供
 
 # 当前版本将此 demo 视作单阶段 HSE 对比预训练示例（后续可通过 stages 扩展为真正的两阶段：pretrain + few-shot）
