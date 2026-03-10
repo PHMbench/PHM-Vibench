@@ -130,54 +130,6 @@ python -m scripts.validate_docs
 </table>
 </details>
 
-## 🔥 HSE Industrial Contrastive Learning
-
-**HSE (Hierarchical Signal Embedding) Industrial Contrastive Learning** is a breakthrough approach for industrial fault diagnosis that employs a novel two-level prompt system to achieve exceptional cross-domain generalization.
-
-### 🎯 Key Innovations
-
-- **📊 Two-Level Prompt System**:
-  - **System-level**: Dataset_id + Domain_id for cross-system adaptation
-  - **Sample-level**: Sample_rate + sequence characteristics for fine-grained learning
-- **🚀 Unified Metric Learning**: Simultaneous training on 5 datasets (CWRU, XJTU, THU, Ottawa, JNU)
-- **⚡ 82% Efficiency Gain**: Reduces experiments from 150 to 30 through intelligent design
-- **🎯 Zero-shot Evaluation**: Linear probe assessment on frozen pretrained backbones
-
-### 📈 Performance Highlights
-
-| Metric | Target | Achieved | Status |
-|--------|--------|----------|--------|
-| **Accuracy Improvement** | > 10% | **+37.5%** | ✅ 3.75x Target |
-| **Memory Efficiency** | < 1GB | **0.045GB** | ✅ 22x Better |
-| **Processing Speed** | > 1000 s/s | **1456 s/s** | ✅ 45% Faster |
-| **Cross-domain Generalization** | Good | **+17.1%** | ✅ Excellent |
-
-### 🚀 Quick HSE Demo
-
-```bash
-# (Paper submodule) Run HSE synthetic demonstration
-# See paper/README_SUBMODULE.md to initialize the paper submodule first.
-# Then follow the README inside the submodule.
-
-# NOTE: HSE research scripts are intentionally kept out of the main repo workflow
-# to avoid confusing the core demos and entrypoints.
-```
-
-### 📚 HSE Documentation
-
-For HSE research experiments, see the paper submodule at `paper/2025-10_foundation_model_0_metric/`.
-Initialize the submodule with:
-```bash
-git submodule update --init --recursive paper/2025-10_foundation_model_0_metric
-```
-
-### 🏆 Target: ICML/NeurIPS 2025
-
-HSE Industrial Contrastive Learning is designed for top-tier conference submission with:
-- Novel two-level prompt architecture for industrial signals
-- Significant performance improvements across multiple benchmarks
-- Comprehensive ablation studies and theoretical analysis
-- Production-ready implementation with extensive validation
 
 ## 📝 Project Background and Introduction
 
