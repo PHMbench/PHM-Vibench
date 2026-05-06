@@ -454,7 +454,9 @@ class MixedPrecisionWrapper(nn.Module):
         Returns:
             Additional information from checkpoint
         """
-        checkpoint = torch.load(filepath, map_location='cpu')
+        from src.utils.utils import safe_torch_load
+
+        checkpoint = safe_torch_load(filepath, map_location='cpu')
         
         # Load model state
         self.model.load_state_dict(checkpoint['model_state_dict'], strict=strict)

@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.linear import Linear
-from layers.SelfAttention_Family import AttentionLayer, FullAttention
-from layers.Embed import DataEmbedding
+from .SelfAttention_Family import AttentionLayer, FullAttention
+from .Embed import DataEmbedding
 import math
 
 

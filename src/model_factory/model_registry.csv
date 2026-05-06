@@ -34,3 +34,5 @@ X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"input_dim, num_windows, ke
 X_model,TSPN,src/model_factory/X_model/TSPN.py,"input_dim, hidden_dim, num_prototypes, num_classes/output_dim","time-series prototype/explainability network","/"
 X_model,TSPN_UXFD,src/model_factory/X_model/TSPN_UXFD.py,"signal_processing_configs, feature_extractor_configs, in_channels, num_classes/output_dim","UXFD-aligned TSPN wrapper (stable name for paper submodules)","/"
 X_model,BASE_ExplainableCNN,src/model_factory/X_model/BASE_ExplainableCNN.py,"in_channels, width, dropout, num_classes/output_dim","torch-only 1D CNN baseline for UXFD comparisons","/"
+generative_model,phm_cfm_mlp1d,src/model_factory/generative_model/phm_cfm_mlp1d.py,"in_channels, hidden_dim, condition_dim, num_fault_classes, num_domains","V0 Conditional Flow Matching velocity model for PHM signals","/"
+generative_model,mamba1d_backbone,src/model_factory/generative_model/mamba1d_backbone.py,"in_channels, hidden_dim, condition_dim, num_fault_classes, num_domains","Stateless Mamba/SSM-style 1D adapter placeholder for future generative heads","/"

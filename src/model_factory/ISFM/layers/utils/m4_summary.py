@@ -20,9 +20,26 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-from data_provider.m4 import M4Dataset
-from data_provider.m4 import M4Meta
 import os
+
+try:
+    from data_provider.m4 import M4Dataset
+    from data_provider.m4 import M4Meta
+except ImportError as exc:  # pragma: no cover - optional external benchmark path
+    M4Dataset = None
+    M4Meta = None
+    _M4_IMPORT_ERROR = exc
+else:
+    _M4_IMPORT_ERROR = None
+
+
+def _require_m4_provider():
+    if M4Dataset is None or M4Meta is None:
+        raise ImportError(
+            "data_provider.m4 is required for M4Summary. "
+            "This benchmark helper is optional and is not part of the PHM factory runtime."
+        ) from _M4_IMPORT_ERROR
+    return M4Dataset, M4Meta
 
 
 def group_values(values, groups, group_name):
@@ -49,9 +66,10 @@ def mape(forecast, target):
 
 class M4Summary:
     def __init__(self, file_path, root_path):
+        m4_dataset, _ = _require_m4_provider()
         self.file_path = file_path
-        self.training_set = M4Dataset.load(training=True, dataset_file=root_path)
-        self.test_set = M4Dataset.load(training=False, dataset_file=root_path)
+        self.training_set = m4_dataset.load(training=True, dataset_file=root_path)
+        self.test_set = m4_dataset.load(training=False, dataset_file=root_path)
         self.naive_path = os.path.join(root_path, 'submission-Naive2.csv')
 
     def evaluate(self):
@@ -71,7 +89,8 @@ class M4Summary:
         naive2_mases = {}
         grouped_smapes = {}
         grouped_mapes = {}
-        for group_name in M4Meta.seasonal_patterns:
+        _, m4_meta = _require_m4_provider()
+        for group_name in m4_meta.seasonal_patterns:
             file_name = self.file_path + group_name + "_forecast.csv"
             if os.path.exists(file_name):
                 model_forecast = pd.read_csv(file_name).values

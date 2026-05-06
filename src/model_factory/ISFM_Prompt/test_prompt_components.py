@@ -28,8 +28,13 @@ if __name__ == "__main__":
         if str(p) not in sys.path:
             sys.path.append(str(p))
 
-# 为避免触发 ISFM 与 ISFM_Prompt 之间的循环导入，这里直接从组件目录导入
-from SimpleSystemPromptEncoder import SimpleSystemPromptEncoder
+try:
+    from src.model_factory.ISFM_Prompt.components.SimpleSystemPromptEncoder import (
+        SimpleSystemPromptEncoder,
+    )
+except ImportError:
+    # CLI fallback when this file is executed directly from its own directory.
+    from SimpleSystemPromptEncoder import SimpleSystemPromptEncoder
 
 
 def test_simple_prompt_encoder_basic(device: torch.device) -> None:

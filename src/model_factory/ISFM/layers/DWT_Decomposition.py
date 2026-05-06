@@ -9,10 +9,26 @@ https://github.com/Secure-and-Intelligent-Systems-Lab/WPMixer
 
 import torch
 import torch.nn as nn
-import pywt
 import numpy as np
 import torch.nn.functional as F
 from torch.autograd import Function
+
+try:
+    import pywt
+except ImportError as exc:  # pragma: no cover - optional dependency path
+    pywt = None
+    _PYWT_IMPORT_ERROR = exc
+else:
+    _PYWT_IMPORT_ERROR = None
+
+
+def _require_pywt():
+    if pywt is None:
+        raise ImportError(
+            "PyWavelets is required for DWT_Decomposition. "
+            "Install it with `uv pip install PyWavelets`."
+        ) from _PYWT_IMPORT_ERROR
+    return pywt
 
 
 class Decomposition(nn.Module):
@@ -150,10 +166,11 @@ class DWT1DForward(nn.Module):
 
     def __init__(self, J=1, wave='db1', mode='zero', use_amp=False):
         super().__init__()
+        pywt_mod = _require_pywt()
         self.use_amp = use_amp
         if isinstance(wave, str):
-            wave = pywt.Wavelet(wave)
-        if isinstance(wave, pywt.Wavelet):
+            wave = pywt_mod.Wavelet(wave)
+        if isinstance(wave, pywt_mod.Wavelet):
             h0, h1 = wave.dec_lo, wave.dec_hi
         else:
             assert len(wave) == 2
@@ -206,10 +223,11 @@ class DWT1DInverse(nn.Module):
 
     def __init__(self, wave='db1', mode='zero', use_amp=False):
         super().__init__()
+        pywt_mod = _require_pywt()
         self.use_amp = use_amp
         if isinstance(wave, str):
-            wave = pywt.Wavelet(wave)
-        if isinstance(wave, pywt.Wavelet):
+            wave = pywt_mod.Wavelet(wave)
+        if isinstance(wave, pywt_mod.Wavelet):
             g0, g1 = wave.rec_lo, wave.rec_hi
         else:
             assert len(wave) == 2
@@ -397,7 +415,7 @@ def afb1d(x, h0, h1, use_amp, mode='zero', dim=-1):
             lohi = lohi[:, :, :, :N2]
     else:
         # Calculate the pad size
-        outsize = pywt.dwt_coeff_len(N, L, mode=mode)
+        outsize = _require_pywt().dwt_coeff_len(N, L, mode=mode)
         p = 2 * (outsize - 1) - N + L
         if mode == 'zero':
             # Sadly, pytorch only allows for same padding before and after, if
@@ -839,8 +857,9 @@ def afb2d_nonsep(x, filts, mode='zero'):
         y = y[:, :, :Ny // 2, :Nx // 2]
     elif mode == 'zero' or mode == 'symmetric' or mode == 'reflect':
         # Calculate the pad size
-        out1 = pywt.dwt_coeff_len(Ny, Ly, mode=mode)
-        out2 = pywt.dwt_coeff_len(Nx, Lx, mode=mode)
+        pywt_mod = _require_pywt()
+        out1 = pywt_mod.dwt_coeff_len(Ny, Ly, mode=mode)
+        out2 = pywt_mod.dwt_coeff_len(Nx, Lx, mode=mode)
         p1 = 2 * (out1 - 1) - Ny + Ly
         p2 = 2 * (out2 - 1) - Nx + Lx
         if mode == 'zero':

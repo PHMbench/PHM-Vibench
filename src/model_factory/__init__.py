@@ -1,11 +1,17 @@
 """Public API for the model factory package."""
 
+from __future__ import annotations
+
+import importlib
 from typing import Any
 
-from .model_factory import (
-    model_factory,
-    resolve_model_module,
-)
+
+def _factory_module():
+    return importlib.import_module(f"{__name__}.model_factory")
+
+
+def resolve_model_module(args: Any) -> str:
+    return _factory_module().resolve_model_module(args)
 
 
 def build_model(args: Any, metadata: Any = None) -> Any:
@@ -24,7 +30,7 @@ def build_model(args: Any, metadata: Any = None) -> Any:
         Instantiated model object.
     """
 
-    return model_factory(args, metadata=metadata)
+    return _factory_module().model_factory(args, metadata=metadata)
 
 
 

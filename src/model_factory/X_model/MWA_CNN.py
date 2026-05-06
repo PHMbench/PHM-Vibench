@@ -1,8 +1,23 @@
 import torch
 import torch.nn as nn
-from pytorch_wavelets import DWT1DForward, DWT1DInverse  # or simply DWT1D, IDWT1D
-import ptwt
+try:
+    from pytorch_wavelets import DWT1DForward
+except ImportError as exc:  # pragma: no cover - optional dependency path
+    DWT1DForward = None
+    _PYTORCH_WAVELETS_IMPORT_ERROR = exc
+else:
+    _PYTORCH_WAVELETS_IMPORT_ERROR = None
 from einops import rearrange
+
+
+def _make_dwt():
+    if DWT1DForward is None:
+        raise ImportError(
+            "pytorch_wavelets is required for MWA_CNN. "
+            "Install it with `uv pip install pytorch_wavelets`."
+        ) from _PYTORCH_WAVELETS_IMPORT_ERROR
+    return DWT1DForward(J=1, wave='db16')
+
 
 class A_cSE(nn.Module):
     def __init__(self, in_ch):
@@ -72,20 +87,20 @@ class Model(nn.Module):
         super(Model, self).__init__()
     
         
-        self.DWT0= DWT1DForward(J=1, wave='db16').cuda()
+        self.DWT0 = _make_dwt()
         
         self.SConv1 = SConv_1D(args.in_channels*2, numf, 3, 0)
-        self.DWT1= DWT1DForward(J=1, wave='db16').cuda()
+        self.DWT1 = _make_dwt()
         self.dropout1 = nn.Dropout(p=0.1)
         self.cSE1 = A_cSE(numf*2)
         
         self.SConv2 = SConv_1D(numf*2, numf*2, 3, 0)
-        self.DWT2= DWT1DForward(J=1, wave='db16').cuda() 
+        self.DWT2 = _make_dwt()
         self.dropout2 = nn.Dropout(p=0.1)
         self.cSE2 = A_cSE(numf*4)
         
         self.SConv3 = SConv_1D(numf*4, numf*4, 3, 0)
-        self.DWT3= DWT1DForward(J=1, wave='db16').cuda()       
+        self.DWT3 = _make_dwt()
         self.dropout3 = nn.Dropout(p=0.1)
         self.cSE3 = A_cSE(numf*8)
         

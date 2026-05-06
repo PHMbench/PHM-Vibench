@@ -1,10 +1,8 @@
 import torch
-import sys
 from types import SimpleNamespace
-sys.path.append('/home/user/LQ/B_Signal/Signal_foundation_model/ISFM')
 
 # 导入HSE模型
-from src.models.embedding.E_01_HSE import E_01_HSE,E_01_HSE_abalation
+from src.model_factory.ISFM.embedding.E_01_HSE import E_01_HSE, E_01_HSE_abalation
 from einops import repeat
 
 def test_hse_model():
