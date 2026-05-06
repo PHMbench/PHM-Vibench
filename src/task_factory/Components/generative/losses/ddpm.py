@@ -45,6 +45,11 @@ class DDPMEpsilonPredictionLoss(nn.Module):
             raise ValueError(
                 f"pred_epsilon and x0 shape mismatch: {tuple(pred_epsilon.shape)} vs {tuple(x0.shape)}"
             )
+        if pred_epsilon.shape != epsilon.shape:
+            raise ValueError(
+                f"pred_epsilon and epsilon shape mismatch: "
+                f"{tuple(pred_epsilon.shape)} vs {tuple(epsilon.shape)}"
+            )
         _check_finite("pred_epsilon", pred_epsilon)
         _check_finite("x0", x0)
         _check_finite("epsilon", epsilon)
