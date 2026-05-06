@@ -5,6 +5,57 @@ from pathlib import Path
 import yaml
 
 
+ALLOWED_PIPELINES = {
+    "Pipeline_01_default",
+    "Pipeline_02_pretrain_fewshot",
+    "Pipeline_03_multitask_pretrain_finetune",
+    "Pipeline_04_unified_metric",
+    "Pipeline_05_default_w_explain",
+    "Pipeline_06_generative",
+    "Pipeline_ID",
+}
+
+
+def validate_pipeline_name(pipeline_name: str) -> str:
+    """Return a whitelisted pipeline module name or raise a clear error."""
+    name = str(pipeline_name or "").strip()
+    if name not in ALLOWED_PIPELINES:
+        allowed = ", ".join(sorted(ALLOWED_PIPELINES))
+        raise ValueError(f"Unsupported pipeline '{name}'. Allowed pipelines: {allowed}")
+    return name
+
+
+def resolve_pipeline_name(config_path: str) -> str:
+    """Resolve the top-level pipeline field without allowing arbitrary imports."""
+    pipeline_name = "Pipeline_01_default"
+    cfg_path = Path(config_path)
+
+    if cfg_path.exists():
+        try:
+            with cfg_path.open("r", encoding="utf-8") as f:
+                cfg_dict = yaml.safe_load(f) or {}
+            if isinstance(cfg_dict, dict):
+                yaml_pipeline = cfg_dict.get("pipeline")
+                if isinstance(yaml_pipeline, str) and yaml_pipeline.strip():
+                    pipeline_name = yaml_pipeline.strip()
+        except Exception:
+            # If the light YAML probe fails, let the selected pipeline do full validation.
+            pass
+    else:
+        # Preset names are resolved by the config loader, not by pathlib.
+        try:
+            from src.configs.config_utils import load_config
+
+            cfg = load_config(config_path)
+            yaml_pipeline = getattr(cfg, "pipeline", None)
+            if isinstance(yaml_pipeline, str) and yaml_pipeline.strip():
+                pipeline_name = yaml_pipeline.strip()
+        except Exception:
+            pass
+
+    return validate_pipeline_name(pipeline_name)
+
+
 def main():
     """
     Vbench 主入口，配置环境变量并调用实验流水线
@@ -40,7 +91,22 @@ def main():
         help="覆盖配置参数 (格式: key=value)，可多次使用",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "--local_config",
+        type=str,
+        default=None,
+        help="可选的本机覆盖配置 YAML",
+    )
+
+    args, unknown_args = parser.parse_known_args()
+    hydra_style_overrides = []
+    for item in unknown_args:
+        if item.startswith("--") or "=" not in item:
+            parser.error(f"unrecognized argument: {item}")
+        hydra_style_overrides.append(item)
+
+    if hydra_style_overrides:
+        args.override = (args.override or []) + hydra_style_overrides
 
     # 统一解析最终配置路径：优先使用 --config，其次回退到 --config_path，最后使用默认 demo
     if args.config is not None:
@@ -54,20 +120,8 @@ def main():
     # 为下游 Pipeline 保持向后兼容：填充 config_path 属性
     args.config_path = config_path
 
-    # 从 YAML 中读取 pipeline 名称（若存在），否则默认使用 Pipeline_01_default
-    pipeline_name = "Pipeline_01_default"
-    cfg_path = Path(config_path)
-    if cfg_path.exists():
-        try:
-            with cfg_path.open("r", encoding="utf-8") as f:
-                cfg_dict = yaml.safe_load(f) or {}
-            if isinstance(cfg_dict, dict):
-                yaml_pipeline = cfg_dict.get("pipeline")
-                if isinstance(yaml_pipeline, str) and yaml_pipeline.strip():
-                    pipeline_name = yaml_pipeline.strip()
-        except Exception:
-            # 若解析失败，则退回默认 Pipeline_01_default
-            pass
+    # 从 YAML/预设中读取 pipeline 名称，并做白名单验证，避免任意 import。
+    pipeline_name = resolve_pipeline_name(config_path)
 
     pipeline_module = importlib.import_module(f"src.{pipeline_name}")
     results = pipeline_module.pipeline(args)
