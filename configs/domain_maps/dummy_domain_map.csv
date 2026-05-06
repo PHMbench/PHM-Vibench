@@ -1,0 +1,3 @@
+domain_id,system_id,load,rpm,sampling_rate,description,dataset_name
+0,0,unspecified,unspecified,1000,Steady dummy domain,Dummy_Data
+1,0,unspecified,unspecified,2000,Variable dummy domain,Dummy_Data
