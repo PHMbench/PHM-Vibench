@@ -29,6 +29,8 @@ class DataConfig(BaseModel):
     metadata_file: str = Field(..., description="Metadata filename relative to data_dir (xlsx/csv).")
     batch_size: Optional[int] = Field(None, ge=1)
     num_workers: Optional[int] = Field(None, ge=0)
+    window_size: Optional[int] = Field(None, ge=1)
+    stride: Optional[int] = Field(None, ge=1)
 
 
 class ModelConfig(BaseModel):
@@ -50,7 +52,7 @@ class ModelConfig(BaseModel):
         return self
 
 
-TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task"]
+TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task", "generative"]
 
 
 class TaskConfig(BaseModel):
@@ -73,7 +75,11 @@ class TrainerConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     name: str = Field(..., description="Trainer implementation name under trainer_factory.")
-    num_epochs: Optional[int] = Field(None, ge=1)
+    monitor: str = Field("val_loss", description="Metric monitored by checkpoint/early stopping callbacks.")
+    device: str = Field("auto", description="Trainer device selector, e.g. cpu/cuda/auto.")
+    gpus: int = Field(1, ge=0, description="Device count consumed by Default_trainer.")
+    num_epochs: int = Field(1, ge=1)
+    log_every_n_steps: Optional[int] = Field(None, ge=1)
     extensions: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(

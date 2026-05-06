@@ -12,6 +12,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - [BASE](#base)
 - [Pipeline_01_default](#pipeline-01-default)
 - [Pipeline_02_pretrain_fewshot](#pipeline-02-pretrain-fewshot)
+- [Pipeline_06_generative](#pipeline-06-generative)
 
 ## BASE
 
@@ -87,6 +88,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 
 ### base_model
 
+#### `base_model_generative_cfm`
+- Path: `configs/base/model/generative_cfm.yaml`
+- Description: Generative PHM CFM velocity model base
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Common overrides: `model.hidden_dim=32`, `model.condition_dim=16`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/generative_model/README.md`
+- Status: `/`
+
 #### `base_model_isfm_hse`
 - Path: `configs/base/model/backbone_dlinear.yaml`
 - Description: M_01_ISFM + E_01_HSE + B_04_Dlinear + H_01_Linear_cla
@@ -153,6 +165,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `task.n_way=5`, `task.k_shot=5`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/FS/README.md`
+- Status: `/`
+
+#### `base_task_generative_cfm`
+- Path: `configs/base/task/generative_cfm.yaml`
+- Description: Generative PHM CFM task base with task.generative.*
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Common overrides: `task.generative.mode=train`, `task.lr=0.0001`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`
 - Status: `/`
 
 #### `base_task_pretrain`
@@ -306,4 +329,26 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
 - Outputs: `results/demo/pretrain_hse_then_fewshot/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/05_pretrain_fewshot/README.md`
+- Status: `sanity_ok`
+
+
+## Pipeline_06_generative
+
+### demo
+
+#### `demo_10_generative_cfm`
+- Path: `configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Description: Generative PHM CFM smoke demo（repo 内置 dummy 数据）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_cfm.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_cfm/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`
 - Status: `sanity_ok`

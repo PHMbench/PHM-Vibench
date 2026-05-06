@@ -26,7 +26,12 @@ PHM-Vibench配置系统
 from .config_utils import load_config, save_config, merge_with_local_override
 
 # 配置对象
-from .config_utils import ConfigWrapper, PRESET_TEMPLATES
+from .config_utils import (
+    ConfigWrapper,
+    HYDRA_AVAILABLE,
+    PRESET_TEMPLATES,
+    is_hydra_available,
+)
 
 # 工具函数
 from .config_utils import (
@@ -70,6 +75,8 @@ __all__ = [
     # 配置对象
     'ConfigWrapper',
     'PRESET_TEMPLATES',
+    'HYDRA_AVAILABLE',
+    'is_hydra_available',
 
     # 工具函数
     'dict_to_namespace',
