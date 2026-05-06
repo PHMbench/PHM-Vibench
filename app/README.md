@@ -1,22 +1,25 @@
 # App Module
 
-This package provides a Streamlit interface for PHM-Vibench.  The code is split
-into small modules:
+This package provides the Streamlit interface for running PHM-Vibench pipelines.
+The web UI guides users through metadata loading, parameter configuration, signal
+preview, experiment launch, and live process output.
 
-- `state.py` manages `st.session_state` defaults.
-- `layout.py` defines UI sections and data helpers.
-- `pipeline.py` launches the training subprocess and streams output.
-- `gui.py` assembles the above pieces into the final application.
+## Main app
 
-Launch the app with:
-This directory contains a Streamlit interface for running PHM-Vibench pipelines.
-The web UI guides users through loading metadata, configuring parameters and
-starting experiments. Terminal output is streamed in real time and the process
-can be paused or resumed.
+The maintained modular app is assembled from:
 
-Run the application with:
+- `state.py`: `st.session_state` defaults.
+- `layout.py`: UI sections and data helpers.
+- `pipeline.py`: training subprocess launch and output streaming.
+- `gui.py`: final Streamlit application.
+
+Launch it with:
 
 ```bash
 streamlit run app/gui.py
 ```
 
+## Refactored prototype
+
+`app/gui_refactored.py` is a larger prototype UI with additional workflow pages
+and design notes. See `app/README_GUI_Refactored.md` before changing it.

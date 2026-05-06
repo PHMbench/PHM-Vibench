@@ -1,3 +1,28 @@
+# HPC / Slurm Notes
+
+This is the maintained place for PHM-Vibench HPC notes. Older Grace snippets
+from `docs/grace.md` and `docs/past/grace.md` have been merged here to avoid
+parallel copies.
+
+## Grace local path snippets
+
+Known data roots used in previous Grace runs:
+
+```text
+/gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data
+/vast/palmer/scratch/lu_lu/ql334/PHM-Vibench/data
+```
+
+Minimal module setup:
+
+```bash
+module reset
+module load miniconda
+conda activate P
+module load VSCode
+vscode
+```
+
 下面是一份可直接落地的《YCRC（Grace & Bouchet）GPU 项目最佳实践：从代码到提交》手册。结构涵盖：目录组织→环境→调试→提交→队列与优先级→数组作业（dSQ）→参数传递→依赖编排→监控优化→常见故障→“什么时候提交更容易上机”。
 1) 项目目录基线（可直接套用）
 your-project/
@@ -396,4 +421,3 @@ sbatch --test-only job.sbatch
 # 3. 查看预估开始时间
 sbatch --test-only job.sbatch 2>&1 | grep "Estimated"
 ```
-

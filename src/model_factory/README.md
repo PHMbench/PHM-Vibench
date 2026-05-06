@@ -127,7 +127,7 @@ If a directory does not yet have its own README, refer to the model code directl
 4. **Load checkpoint (optional)**: `weights_path` is used to restore parameters.
 5. **Return**: an initialized `torch.nn.Module`, ready for use by the task/trainer.
 
-This workflow is described in more detail (with code snippets) in the previous `readme.md`; those explanations have now been merged here and into the Chinese `README_CN.md`.
+This workflow was previously duplicated in `readme.md`; those explanations have now been merged here and into the Chinese `README_CN.md`.
 
 ## 7. Notes for contributors
 

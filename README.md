@@ -249,7 +249,7 @@ PHM-Vibench uses the powerful configuration system v0.1.0, supporting flexible e
 - **Dot Notation Parameter Override**: Supports `{'model.d_model': 512}` for direct nested parameter override
 - **Multi-stage Pipeline**: Perfect support for pretraining→fine-tuning and other multi-stage configuration inheritance
 - **Ablation Experiment Tools**: Built-in dual-mode API grid search and parameter ablation
-- **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/readme.md` for details).
+- **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/README.md` for details).
 
 📖 **Start here**: [`configs/README.md`](configs/README.md) (30-second smoke run + override rules + config tools)
 
@@ -530,7 +530,7 @@ trainer:      # Trainer configuration
 
 Task selection in PHM-Vibench is driven by the combination of `task.type` and `task.name` in the config.  
 For example, `task.type: "DG"` + `task.name: "classification"` will load the single-dataset DG classification task from `src/task_factory/task/DG/classification.py`, while ID-based and multi-task variants live under `task/ID` and `task/MT`.  
-For a more detailed mapping table and examples, see `src/task_factory/readme.md`.
+For a more detailed mapping table and examples, see `src/task_factory/README.md`.
 
 <table>
   <tr>
@@ -892,7 +892,7 @@ PHM-Vibench/
 
 ## 🧑‍💻 Development Guide TODO
 
-PHM-Vibench adopts a modular design following factory patterns, facilitating extension and customization. If you wish to contribute code, please refer to the [Contributor Guide](./contributing.md).
+PHM-Vibench adopts a modular design following factory patterns, facilitating extension and customization. If you wish to contribute code, please refer to the [Contributor Guide](./CONTRIBUTING.md).
 
 ### Extending Datasets 📊 See [Dataset Contribution Guide](src/data_factory/contributing.md)
 
