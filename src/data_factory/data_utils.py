@@ -1,8 +1,22 @@
 import os
 import pandas as pd
+from pathlib import Path
 from typing import Union, Optional
 import subprocess
 import sys
+
+
+def _validate_dataset_filename(data_file: str) -> str:
+    """Validate a dataset-relative filename before passing it to download tools."""
+    filename = str(data_file or "").strip()
+    path = Path(filename)
+    if not filename:
+        raise ValueError("data_file must not be empty")
+    if "\x00" in filename or "\n" in filename or "\r" in filename:
+        raise ValueError(f"unsafe data_file contains control characters: {data_file!r}")
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError(f"data_file must be a dataset-relative path: {data_file!r}")
+    return filename
 
 
 def download_data(data_file: Optional[str] = "metadata.xlsx",
@@ -19,6 +33,8 @@ def download_data(data_file: Optional[str] = "metadata.xlsx",
         bool: 下载是否成功
     """
 
+    data_file = _validate_dataset_filename(data_file or "metadata.xlsx")
+
     # 创建保存目录
     os.makedirs(save_path, exist_ok=True)
     check_exists = os.path.exists(os.path.join(save_path, data_file))
@@ -32,8 +48,16 @@ def download_data(data_file: Optional[str] = "metadata.xlsx",
         print(f"[INFO] 检查缓存文件, 尝试从 ModelScope 下载 {data_file}...")
         try:
             # 使用 modelscope 下载
-            cmd = f"modelscope download --dataset PHMbench/PHM-Vibench {data_file} --local_dir {save_path}"
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+            cmd = [
+                "modelscope",
+                "download",
+                "--dataset",
+                "PHMbench/PHM-Vibench",
+                data_file,
+                "--local_dir",
+                str(save_path),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if result.returncode == 0:
                 print(f"[SUCCESS] 从 ModelScope 成功下载 {data_file}")
                 success = True
@@ -74,7 +98,7 @@ def download_data(data_file: Optional[str] = "metadata.xlsx",
 
 if __name__ == "__main__":
     # 测试下载功能
-    download_data(data_file=" 'RM_006_THU.h5'", save_path="./data/", source='auto')
+    download_data(data_file="RM_006_THU.h5", save_path="./data/", source='auto')
     print("测试完成")
 
 
@@ -236,4 +260,3 @@ class MetadataAccessor:
             查询结果DataFrame
         """
         return self.df.query(query_str)
-

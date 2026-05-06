@@ -2,7 +2,11 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import random_split
-from pytorch_lightning.utilities import CombinedLoader
+
+try:
+    from pytorch_lightning.utilities import CombinedLoader
+except ImportError:  # pragma: no cover - compatibility with Lightning 1.x/2.x layouts
+    CombinedLoader = None
 class Default_dataset(Dataset): # THU_006or018_basic
     def __init__(self, data, metadata, args_data, args_task, mode="train"):
         """

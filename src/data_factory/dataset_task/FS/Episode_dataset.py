@@ -1,66 +1,81 @@
-# src/data_factory/dataset_task/FewShot/classification_dataset.py
-
 import torch
+
 from ..Default_dataset import Default_dataset
+
 
 class set_dataset(Default_dataset):
     """
-    Dataset for Few-Shot classification tasks.
-    It takes a list of indices for a whole episode from the sampler
-    and returns a structured dictionary containing support and query sets.
+    Episode-style dataset for few-shot tasks.
+
+    The default data factory instantiates dataset_task classes with
+    (data, metadata, args_data, args_task, mode). This class keeps that
+    contract and also supports direct episode-index access for custom
+    episodic samplers.
     """
-    def __init__(self, config, h5_path, data_type, transform=None):
-        super().__init__(config, h5_path, data_type, transform)
-        
-        # Get few-shot parameters from config
-        self.n_way = config['data']['n_way']
-        self.k_shot_support = config['data']['k_shot_support']
-        self.k_shot_query = config['data']['k_shot_query']
-        
-        # The total number of samples per episode
+
+    def __init__(self, data, metadata, args_data, args_task, mode="train"):
+        super().__init__(data, metadata, args_data, args_task, mode)
+        self.n_way = int(getattr(args_task, "n_way", 1))
+        self.k_shot_support = int(
+            getattr(args_task, "k_shot_support", getattr(args_task, "k_shot", 1))
+        )
+        self.k_shot_query = int(
+            getattr(args_task, "k_shot_query", getattr(args_task, "q_query", 1))
+        )
         self.samples_per_episode = self.n_way * (self.k_shot_support + self.k_shot_query)
 
-    def __getitem__(self, episode_indices):
-        """
-        Args:
-            episode_indices (list of int): A list of indices for one full episode,
-                                           provided by the EpisodicSampler.
+    def __getitem__(self, index):
+        if isinstance(index, (int, torch.Tensor)):
+            if isinstance(index, torch.Tensor):
+                index = int(index.item())
+            return super().__getitem__(index)
 
-        Returns:
-            dict: A dictionary containing structured support and query sets.
-        """
+        episode_indices = list(index)
         if len(episode_indices) != self.samples_per_episode:
-             raise ValueError(f"Expected {self.samples_per_episode} indices for an episode, but got {len(episode_indices)}.")
+            raise ValueError(
+                f"Expected {self.samples_per_episode} indices for an episode, "
+                f"but got {len(episode_indices)}."
+            )
 
-        # Load all data and labels for the episode using the parent's logic
-        # super().__getitem__ handles loading a single sample, so we call it in a loop.
-        all_data = torch.stack([super().__getitem__(idx)[0] for idx in episode_indices])
-        all_labels = torch.tensor([super().__getitem__(idx)[1] for idx in episode_indices])
-        
-        # Reshape and split the data into support and query sets
-        # The shape will be (N, K+Q, Channels, Length)
-        all_data = all_data.view(self.n_way, self.k_shot_support + self.k_shot_query, *all_data.shape[1:])
-        all_labels = all_labels.view(self.n_way, self.k_shot_support + self.k_shot_query)
+        items = [Default_dataset.__getitem__(self, int(idx)) for idx in episode_indices]
+        all_data = torch.stack([torch.as_tensor(item["x"]) for item in items])
+        all_labels = torch.as_tensor([item["y"] for item in items], dtype=torch.long)
 
-        # Split into support and query
-        support_x = all_data[:, :self.k_shot_support]
-        query_x = all_data[:, self.k_shot_support:]
-        
-        support_y = all_labels[:, :self.k_shot_support]
-        query_y = all_labels[:, self.k_shot_support:]
+        per_class = self.k_shot_support + self.k_shot_query
+        all_data = all_data.view(self.n_way, per_class, *all_data.shape[1:])
+        all_labels = all_labels.view(self.n_way, per_class)
 
-        # Create a mapping from original labels to episode-local labels (0 to N-1)
-        # This simplifies the loss calculation in the training step.
-        unique_labels = torch.unique(support_y)
-        label_map = {original_label.item(): new_label for new_label, original_label in enumerate(unique_labels)}
-        
-        # Apply the mapping
-        support_y = torch.tensor([label_map[l.item()] for l in support_y.flatten()]).view(support_y.shape)
-        query_y = torch.tensor([label_map[l.item()] for l in query_y.flatten()]).view(query_y.shape)
+        support_x = all_data[:, : self.k_shot_support].reshape(
+            self.n_way * self.k_shot_support, *all_data.shape[2:]
+        )
+        query_x = all_data[:, self.k_shot_support :].reshape(
+            self.n_way * self.k_shot_query, *all_data.shape[2:]
+        )
+        support_y = all_labels[:, : self.k_shot_support]
+        query_y = all_labels[:, self.k_shot_support :]
+
+        unique_labels = torch.unique(support_y, sorted=True)
+        if len(unique_labels) != self.n_way:
+            raise ValueError(
+                f"Expected {self.n_way} unique support labels, got {len(unique_labels)}."
+            )
+        label_map = {int(label.item()): idx for idx, label in enumerate(unique_labels)}
+
+        support_y = torch.as_tensor(
+            [label_map[int(label.item())] for label in support_y.flatten()],
+            dtype=torch.long,
+        )
+        query_y = torch.as_tensor(
+            [label_map[int(label.item())] for label in query_y.flatten()],
+            dtype=torch.long,
+        )
 
         return {
             "support_x": support_x,
             "support_y": support_y,
             "query_x": query_x,
             "query_y": query_y,
+            "n_way": self.n_way,
+            "n_shot": self.k_shot_support,
+            "n_query": self.k_shot_query,
         }

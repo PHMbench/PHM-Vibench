@@ -18,8 +18,8 @@ def read(file_path,*args):
     data = data[:, [0, 1, 4]]
     # 将数据转换为浮点数
     data = data.astype(float)
-    if data.shape == 3:
-        data = data.reshape(-1, data.shape[-1])
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
     data = fix_byte_order(data)
     return data
 

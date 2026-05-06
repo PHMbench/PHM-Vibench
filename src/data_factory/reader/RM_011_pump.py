@@ -61,7 +61,7 @@ def read(file_path, *args):
         return None
     
     data = data[1:]
-    data =data.float()
+    data = data.astype(float)
     # 修复字节序问题
     data = fix_byte_order(data)
     if data.ndim == 1:

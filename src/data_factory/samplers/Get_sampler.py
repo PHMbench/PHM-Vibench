@@ -125,6 +125,13 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
         sampler = _get_pretrain_sampler(args_data, dataset, mode)  # Reuse pretrain sampler
     elif args_task.type == 'In_distribution':
         sampler = _get_pretrain_sampler(args_data, dataset, mode)
+    elif args_task.type == 'generative':
+        sampler = Same_system_Sampler(
+            dataset=dataset,
+            batch_size=args_data.batch_size,
+            shuffle=(mode == 'train'),
+            drop_last=True,
+        )
     else:
         raise ValueError(f"Unknown task type for sampler: {args_task.type}")
         
