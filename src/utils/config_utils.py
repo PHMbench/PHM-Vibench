@@ -38,6 +38,10 @@ def parse_overrides(override_list: Optional[List[str]]) -> Dict[str, Any]:
 
         key, value = override.split('=', 1)
         key = key.strip()
+        if key.startswith("+"):
+            key = key.lstrip("+")
+        if not key:
+            raise ValueError(f"Invalid override format: '{override}'. Empty key.")
         value = value.strip()
 
         # 尝试解析为YAML格式，支持多种数据类型

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import sys
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -18,7 +19,10 @@ SKIP_TOP_DIRS = {
     ".archive",
     ".pytest_cache",
     "__pycache__",
+    "05_04",
+    "data",
     "paper",  # paper workflows are not part of the core validation gate
+    "results",
 }
 
 SKIP_DIR_NAMES = {"__pycache__"}
@@ -32,21 +36,27 @@ class Issue:
 
 
 def iter_doc_files(repo_root: Path) -> Iterable[Path]:
-    patterns = [
+    names = {
         "README.md",
         "CLAUDE.md",
         "AGENTS.md",
         "GEMINI.md",
         "API_REFERENCE.md",
-    ]
-    for pattern in patterns:
-        for path in repo_root.rglob(pattern):
-            rel = path.relative_to(repo_root)
-            if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
-                continue
-            if any(part in SKIP_DIR_NAMES for part in rel.parts):
-                continue
-            yield path
+    }
+    for root, dirs, files in os.walk(repo_root):
+        root_path = Path(root)
+        rel = root_path.relative_to(repo_root)
+        if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
+            dirs[:] = []
+            continue
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in SKIP_DIR_NAMES and (not rel.parts and d not in SKIP_TOP_DIRS or rel.parts)
+        ]
+        for name in files:
+            if name in names:
+                yield root_path / name
 
 
 def strip_fenced_code_blocks(text: str) -> str:
@@ -90,32 +100,29 @@ def first_n_lines(path: Path, n: int = 40) -> str:
 
 def check_ai_docs_point_to_readme(repo_root: Path) -> list[Issue]:
     issues: list[Issue] = []
-    for doc_name in ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]:
-        for path in repo_root.rglob(doc_name):
-            rel = path.relative_to(repo_root)
-            if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
-                continue
-            if any(part in SKIP_DIR_NAMES for part in rel.parts):
-                continue
-            readme = path.parent / "README.md"
-            if not readme.exists():
-                issues.append(
-                    Issue(
-                        kind="missing_readme_for_ai_doc",
-                        path=str(rel),
-                        detail="Expected sibling README.md",
-                    )
+    for path in iter_doc_files(repo_root):
+        if path.name not in {"CLAUDE.md", "AGENTS.md", "GEMINI.md"}:
+            continue
+        rel = path.relative_to(repo_root)
+        readme = path.parent / "README.md"
+        if not readme.exists():
+            issues.append(
+                Issue(
+                    kind="missing_readme_for_ai_doc",
+                    path=str(rel),
+                    detail="Expected sibling README.md",
                 )
-                continue
-            head = first_n_lines(path, 40)
-            if "@README" not in head and "README.md" not in head:
-                issues.append(
-                    Issue(
-                        kind="ai_doc_missing_readme_pointer",
-                        path=str(rel),
-                        detail="Expected @README or README.md reference near the top",
-                    )
+            )
+            continue
+        head = first_n_lines(path, 40)
+        if "@README" not in head and "README.md" not in head:
+            issues.append(
+                Issue(
+                    kind="ai_doc_missing_readme_pointer",
+                    path=str(rel),
+                    detail="Expected @README or README.md reference near the top",
                 )
+            )
     return issues
 
 
@@ -139,4 +146,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

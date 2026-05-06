@@ -21,6 +21,14 @@ from typing import Any, Dict, Tuple, Union, Optional
 
 import yaml
 
+try:
+    from omegaconf import OmegaConf
+except ImportError:  # pragma: no cover - exercised in environments without hydra-core
+    OmegaConf = None
+
+
+HYDRA_AVAILABLE = OmegaConf is not None
+
 
 # ==================== 预设配置模板映射 ====================
 
@@ -126,6 +134,11 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
     Returns:
         ConfigWrapper: 统一的配置对象
     """
+    if HYDRA_AVAILABLE:
+        config = _load_config_with_omegaconf(config_source, overrides)
+        _validate_config_wrapper(config)
+        return config
+
     # 步骤0：支持 base_configs 的组合加载（仅针对 YAML / 预设）
     base_merged: Optional[ConfigWrapper] = None
 
@@ -178,6 +191,95 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
     _validate_config_wrapper(config)
 
     return config
+
+
+def is_hydra_available() -> bool:
+    """Return whether hydra-core/OmegaConf is available in the current environment."""
+    return HYDRA_AVAILABLE
+
+
+def _load_config_with_omegaconf(
+    config_source: Union[str, Path, Dict, SimpleNamespace],
+    overrides: Optional[Union[str, Path, Dict, SimpleNamespace]] = None,
+) -> ConfigWrapper:
+    """Load and merge configs through OmegaConf, preserving the public ConfigWrapper API."""
+    cfg = _to_omegaconf_config(config_source)
+    if overrides is not None:
+        cfg = OmegaConf.merge(cfg, _to_omegaconf_config(overrides))
+
+    resolved = OmegaConf.to_container(cfg, resolve=True)
+    if resolved is None:
+        resolved = {}
+    return dict_to_namespace(resolved)
+
+
+def _to_omegaconf_config(source: Union[str, Path, Dict, SimpleNamespace]):
+    """Convert any supported config source to an OmegaConf config."""
+    if OmegaConf is None:
+        raise RuntimeError("hydra-core/OmegaConf is not installed")
+
+    if isinstance(source, (ConfigWrapper, SimpleNamespace)):
+        return OmegaConf.create(_namespace_to_dict(source))
+
+    if isinstance(source, dict):
+        return OmegaConf.create(_expand_dot_keys(source))
+
+    if isinstance(source, (str, Path)):
+        source_str = str(source)
+        yaml_path: Optional[Path] = None
+
+        if source_str in PRESET_TEMPLATES:
+            yaml_path = Path(PRESET_TEMPLATES[source_str])
+        elif Path(source_str).exists():
+            yaml_path = Path(source_str)
+
+        if yaml_path is None:
+            raise FileNotFoundError(f"配置 {source_str} 不存在")
+        return _compose_yaml_with_omegaconf(yaml_path)
+
+    raise TypeError(f"不支持的类型: {type(source)}")
+
+
+def _compose_yaml_with_omegaconf(yaml_path: Path):
+    """Compose a YAML file and its ``base_configs`` through OmegaConf.merge."""
+    raw_cfg = OmegaConf.load(yaml_path)
+    raw_dict = OmegaConf.to_container(raw_cfg, resolve=False) or {}
+
+    if not isinstance(raw_dict, dict) or not raw_dict.get("base_configs"):
+        return raw_cfg
+
+    merged = OmegaConf.create({})
+    base_cfgs = raw_dict.get("base_configs") or {}
+    if isinstance(base_cfgs, dict):
+        for _, base_rel in base_cfgs.items():
+            base_path = _resolve_config_path(str(base_rel), yaml_path.parent)
+            merged = OmegaConf.merge(merged, _compose_yaml_with_omegaconf(base_path))
+
+    override_dict = {k: v for k, v in raw_dict.items() if k != "base_configs"}
+    return OmegaConf.merge(merged, OmegaConf.create(override_dict))
+
+
+def _resolve_config_path(path_str: str, relative_to: Path) -> Path:
+    """Resolve config paths using the existing base_configs path rules."""
+    if os.path.isabs(path_str) or path_str.startswith("configs/"):
+        return Path(path_str)
+    return relative_to / path_str
+
+
+def _expand_dot_keys(source: Dict[str, Any]) -> Dict[str, Any]:
+    """Expand dot-key dictionaries into nested dictionaries."""
+    expanded: Dict[str, Any] = {}
+    for key, value in source.items():
+        if "." not in str(key):
+            expanded[key] = _expand_dot_keys(value) if isinstance(value, dict) else value
+            continue
+
+        parts = str(key).split(".")
+        target = expanded
+        for part in parts[:-1]:
+            target = target.setdefault(part, {})
+        target[parts[-1]] = _expand_dot_keys(value) if isinstance(value, dict) else value
+    return expanded
 
 
 def _to_config_wrapper(source: Union[str, Path, Dict, SimpleNamespace]) -> ConfigWrapper:
@@ -503,27 +605,19 @@ def merge_with_local_override(
     base_config: Union[str, Path, Dict, SimpleNamespace, ConfigWrapper],
     local_config: Optional[Union[str, Path]] = None,
 ) -> ConfigWrapper:
-    """加载基础配置并与本机覆盖YAML合并（方案B）。
+    """加载基础配置，并在显式传入时合并本机覆盖 YAML。
 
-    优先顺序：
-    1. 显式 `local_config` 参数（若存在且可读）
-    2. `configs/local/local.yaml`（若存在）
-    3. 仅使用基础配置
-
-    注意：不使用 hostname 或环境变量。
+    本机覆盖会改变 demo 的数据路径和运行语义，因此必须 opt-in。
+    `configs/local/local.yaml` 仅作为用户可显式传入的约定路径保留，
+    不再自动套用到 repo-shipped smoke/demo configs。
     """
     base_cfg = load_config(base_config)
 
-    # 显式覆盖路径优先
     if local_config is not None:
         local_path = Path(str(local_config))
         if local_path.exists():
             return load_config(base_cfg, local_path)
-
-    # 约定的默认本地覆盖
-    default_local = Path("configs/local/local.yaml")
-    if default_local.exists():
-        return load_config(base_cfg, default_local)
+        raise FileNotFoundError(f"local_config does not exist: {local_path}")
 
     return base_cfg
 
@@ -685,7 +779,9 @@ __all__ = [
     
     # 配置相关
     "ConfigWrapper",
-    "PRESET_TEMPLATES"
+    "PRESET_TEMPLATES",
+    "HYDRA_AVAILABLE",
+    "is_hydra_available",
 ]
 
 
