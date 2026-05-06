@@ -67,6 +67,8 @@ def trainer(args_e,args_t, args_d, path):
     # 设置设备类型：CPU 或自动选择
     device = getattr(args_t, "device", "auto")
     accelerate_type = 'cpu' if device == 'cpu' else 'auto'
+    trainer_devices = 1 if accelerate_type == 'cpu' else args_t.gpus
+    multi_device = isinstance(trainer_devices, int) and trainer_devices > 1
 
     # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
     if not getattr(args_t, 'log_every_n_steps', None):
@@ -77,10 +79,10 @@ def trainer(args_e,args_t, args_d, path):
         callbacks=callback_list,
         accelerator=accelerate_type,
         max_epochs=args_t.num_epochs,
-        devices=args_t.gpus,
+        devices=trainer_devices,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-        strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else 'auto',
+        strategy="ddp_find_unused_parameters_true" if multi_device else 'auto',
     )
     return trainer
 
