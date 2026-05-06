@@ -36,6 +36,7 @@ import pytorch_lightning as pl
 
 # Import PHM-Vibench framework components
 from src.configs.config_utils import load_config, path_name, transfer_namespace # , merge_with_local_override
+from src.utils.config_utils import apply_overrides_to_config, parse_overrides
 from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
 from src.utils.config.pipeline_adapters import adapt_p03
 import socket
@@ -56,6 +57,49 @@ from src.utils.pipeline_config import (
 )
 
 
+_PRETRAINED_MULTITASK_PREFIX = "pretrained_multitask_"
+
+
+def _configured_pretraining_backbones(configs: Dict[str, Any]) -> List[str]:
+    training_config = configs.get("training", {})
+    pretraining_config = training_config.get("stage_1_pretraining", {})
+    return list(pretraining_config.get("backbones_to_compare", ["B_08_PatchTST"]))
+
+
+def _extract_pretrained_multitask_backbone(
+    filename: str,
+    expected_backbones: Optional[List[str]] = None,
+) -> Optional[str]:
+    """Extract the full backbone name from a pretrained multitask checkpoint."""
+    if not filename.endswith(".ckpt") or _PRETRAINED_MULTITASK_PREFIX not in filename:
+        return None
+
+    stem = Path(filename).stem
+    candidate = stem.split(_PRETRAINED_MULTITASK_PREFIX, 1)[1]
+
+    for backbone in sorted(expected_backbones or [], key=len, reverse=True):
+        if candidate == backbone or candidate.startswith(f"{backbone}_") or candidate.startswith(f"{backbone}-"):
+            return backbone
+
+    for marker in ("_epoch=", "-epoch=", "_step=", "-step=", "_val", "-val", "_loss", "-loss"):
+        if marker in candidate:
+            return candidate.split(marker, 1)[0]
+
+    return candidate
+
+
+def _discover_pretrained_checkpoint_paths(
+    checkpoint_dir: str,
+    expected_backbones: Optional[List[str]] = None,
+) -> Dict[str, str]:
+    checkpoint_paths: Dict[str, str] = {}
+    for file in os.listdir(checkpoint_dir):
+        backbone = _extract_pretrained_multitask_backbone(file, expected_backbones)
+        if backbone:
+            checkpoint_paths[backbone] = os.path.join(checkpoint_dir, file)
+    return checkpoint_paths
+
+
 
 
 
@@ -66,10 +110,17 @@ class MultiTaskPretrainFinetunePipeline:
     Implements pretraining followed by fine-tuning with backbone architecture comparison.
     """
     
-    def __init__(self, config_path: str, local_config: Optional[str] = None):
+    def __init__(
+        self,
+        config_path: str,
+        local_config: Optional[str] = None,
+        overrides: Optional[List[str]] = None,
+    ):
         """Initialize the pipeline with configuration."""
         self.config_path = config_path
         self.configs = load_config(config_path, local_config)
+        if overrides:
+            self.configs = apply_overrides_to_config(self.configs, parse_overrides(overrides))
         self.results = {}
         
         # Extract configuration sections
@@ -508,6 +559,44 @@ class MultiTaskPretrainFinetunePipeline:
         return generate_pipeline_summary(checkpoint_paths, finetuning_results)
 
 
+def pipeline(args):
+    """Module-level adapter used by main.py's pipeline(args) contract."""
+    config_path = getattr(args, "config_path", None) or getattr(args, "config", None)
+    if not config_path:
+        raise ValueError("Pipeline_03 requires args.config_path or args.config")
+
+    local_config = getattr(args, "local_config", None)
+    overrides = getattr(args, "override", None)
+
+    if getattr(args, "use_unified", False):
+        unified = adapt_p03(config_path, local_config=local_config)
+        orchestrator = TwoStageOrchestrator(unified)
+        return orchestrator.run_complete()
+
+    runner = MultiTaskPretrainFinetunePipeline(
+        config_path,
+        local_config=local_config,
+        overrides=overrides,
+    )
+    stage = getattr(args, "stage", "complete")
+    if stage == "pretraining":
+        return {"checkpoint_paths": runner.run_pretraining_stage()}
+    if stage == "finetuning":
+        checkpoint_dir = getattr(args, "checkpoint_dir", None)
+        if not checkpoint_dir:
+            raise ValueError("Pipeline_03 finetuning stage requires args.checkpoint_dir")
+        checkpoint_paths = _discover_pretrained_checkpoint_paths(
+            checkpoint_dir,
+            _configured_pretraining_backbones(runner.configs),
+        )
+        if not checkpoint_paths:
+            raise ValueError(f"No pretrained checkpoints found in {checkpoint_dir}")
+        return runner.run_finetuning_stage(checkpoint_paths)
+    if stage != "complete":
+        raise ValueError(f"Unsupported Pipeline_03 stage: {stage}")
+    return runner.run_complete_pipeline()
+
+
 def main():
     """Main function to run the pipeline."""
     parser = argparse.ArgumentParser(
@@ -578,12 +667,13 @@ def main():
                 sys.exit(1)
 
             # Load checkpoint paths from directory
-            checkpoint_paths = {}
             if os.path.exists(args.checkpoint_dir):
-                for file in os.listdir(args.checkpoint_dir):
-                    if file.endswith('.ckpt') and 'pretrained_multitask_' in file:
-                        backbone = file.split('pretrained_multitask_')[1].split('_')[0]
-                        checkpoint_paths[backbone] = os.path.join(args.checkpoint_dir, file)
+                checkpoint_paths = _discover_pretrained_checkpoint_paths(
+                    args.checkpoint_dir,
+                    _configured_pretraining_backbones(pipeline.configs),
+                )
+            else:
+                checkpoint_paths = {}
 
             if not checkpoint_paths:
                 print(f"❌ No pretrained checkpoints found in {args.checkpoint_dir}")

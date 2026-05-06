@@ -21,14 +21,13 @@ Date: 2025-09-16
 import argparse
 import os
 import sys
-import torch
 from typing import Dict, Any, Optional
 
 # PHM-Vibench framework imports
 from src.configs.config_utils import load_config, path_name, transfer_namespace
 from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
 from src.utils.config.pipeline_adapters import adapt_p04
-from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
+from src.utils.utils import close_lab, init_lab, load_best_model_checkpoint, safe_torch_load
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
@@ -182,7 +181,7 @@ def pipeline(args: argparse.Namespace) -> Dict[str, Any]:
                     # Load pretrained model
                     model_ft = build_model(args_model, metadata=data_factory_single.get_metadata())
                     if checkpoint_path and os.path.exists(checkpoint_path):
-                        checkpoint = torch.load(checkpoint_path)
+                        checkpoint = safe_torch_load(checkpoint_path, map_location="cpu")
                         model_ft.load_state_dict(checkpoint['state_dict'], strict=False)
 
                     # Build fine-tuning task
