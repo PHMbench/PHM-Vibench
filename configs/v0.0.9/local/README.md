@@ -3,7 +3,7 @@
 Place machine-specific minimal override YAMLs here to adapt paths like `data.data_dir` across devices without editing the main experiment YAMLs.
 
 > ⚠️ **Note (v0.1.0)**: This folder and README describe the legacy v0.0.9-style `local_config` mechanism.  
-> In v0.1.0, the recommended way to adapt paths is via `base_configs` in YAML (see `configs/readme.md`),  
+> In v0.1.0, the recommended way to adapt paths is via `base_configs` in YAML (see `configs/README.md` and `configs/README_CN.md`),
 > not via `--local_config` CLI flags.
 
 Legacy lookup order (v0.0.9):

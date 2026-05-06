@@ -383,6 +383,10 @@ For config-related changes:
 - Help newcomers learn and contribute
 - Maintain professional communication
 
+This summary replaces the older duplicate `contributing.md` copy of the
+Contributor Covenant text. For the full upstream text, see
+https://www.contributor-covenant.org/version/2/0/code_of_conduct.html.
+
 ### Getting Help
 
 - **GitHub Issues**: For bugs and feature requests
