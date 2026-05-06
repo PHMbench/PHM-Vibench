@@ -11,6 +11,7 @@ Date: 2025-08-18
 from typing import Dict
 import torch
 import os
+from src.utils.utils import safe_torch_load
 
 
 def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
@@ -40,7 +41,7 @@ def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -
     
     try:
         print(f"Loading pretrained weights from: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        checkpoint = safe_torch_load(checkpoint_path, map_location='cpu')
         
         # Extract backbone weights from checkpoint
         if 'state_dict' in checkpoint:

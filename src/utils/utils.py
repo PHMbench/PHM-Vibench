@@ -1,5 +1,8 @@
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+import os
+from pathlib import Path
+from typing import Iterable, Optional, Union
 import torch
 try: 
     import wandb
@@ -14,6 +17,64 @@ except ImportError:
     print("[WARNING] swanlab 未安装")
     swanlab = None
 import numpy as np
+
+
+def _path_is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def _trusted_checkpoint_roots(
+    extra_roots: Optional[Iterable[Union[str, Path]]] = None,
+) -> list[Path]:
+    roots = [Path.cwd()]
+    env_roots = os.environ.get("PHM_TRUSTED_CHECKPOINT_ROOTS", "")
+    if env_roots:
+        roots.extend(Path(item) for item in env_roots.split(os.pathsep) if item)
+    if extra_roots:
+        roots.extend(Path(item) for item in extra_roots)
+    return [root.expanduser().resolve() for root in roots]
+
+
+def resolve_trusted_checkpoint_path(
+    checkpoint_path: Union[str, Path],
+    trusted_roots: Optional[Iterable[Union[str, Path]]] = None,
+) -> Path:
+    """Resolve a checkpoint path and ensure it is under an allowed root."""
+    path = Path(checkpoint_path).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Checkpoint file does not exist: {path}")
+
+    roots = _trusted_checkpoint_roots(trusted_roots)
+    if not any(path == root or _path_is_relative_to(path, root) for root in roots):
+        allowed = ", ".join(str(root) for root in roots)
+        raise ValueError(
+            f"Refusing to load checkpoint outside trusted roots: {path}. "
+            f"Set PHM_TRUSTED_CHECKPOINT_ROOTS to opt in. Trusted roots: {allowed}"
+        )
+    return path
+
+
+def safe_torch_load(
+    checkpoint_path: Union[str, Path],
+    *,
+    map_location="cpu",
+    trusted_roots: Optional[Iterable[Union[str, Path]]] = None,
+):
+    """Load a trusted local torch file, preferring weights-only deserialization."""
+    path = resolve_trusted_checkpoint_path(checkpoint_path, trusted_roots)
+    try:
+        return torch.load(path, map_location=map_location, weights_only=True)
+    except TypeError:
+        # Older PyTorch versions do not support weights_only.
+        return torch.load(path, map_location=map_location)
+    except Exception:
+        # Lightning checkpoints can contain metadata unsupported by weights_only.
+        # The fallback is allowed only after trusted-root validation above.
+        return torch.load(path, map_location=map_location, weights_only=False)
 
 
 def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
@@ -56,7 +117,7 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
     # 	(1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.
     # 	(2) Alternatively, to load with `weights_only=True` please check the recommended steps in the following error message.
     # 	WeightsUnpickler error: Unsupported global: GLOBAL numpy._core.multiarray.scalar was not an allowed global by default. Please use `torch.serialization.add_safe_globals([scalar])` or the `torch.serialization.safe_globals([scalar])` context manager to allowlist this global if you trust this class/function.
-        state_dict = torch.load(best_model_path,weights_only =False)
+        state_dict = safe_torch_load(best_model_path, map_location="cpu")
         model.load_state_dict(state_dict['state_dict'])
     return model
 
