@@ -3,10 +3,15 @@ from pytorch_lightning.loggers import WandbLogger, CSVLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, ModelPruning, EarlyStopping
 from torch.utils.tensorboard.writer import SummaryWriter
 import os
-import swanlab
-from swanlab.integration.pytorch_lightning import SwanLabLogger
 from src.trainer_factory import register_trainer
 from src.trainer_factory.extensions import ManifestWriterCallback
+
+try:
+    import swanlab
+    from swanlab.integration.pytorch_lightning import SwanLabLogger
+except ImportError:  # pragma: no cover - optional experiment logger
+    swanlab = None
+    SwanLabLogger = None
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -51,6 +56,8 @@ def trainer(args_e,args_t, args_d, path):
 
     if use_swanlab:
         # swanlab
+        if SwanLabLogger is None:
+            raise ImportError("swanlab is enabled but the swanlab package is not installed")
         swanlab_logger = SwanLabLogger(
                 project = args_e.project,
                 # experiment_name=args_t.logger_name
@@ -58,7 +65,8 @@ def trainer(args_e,args_t, args_d, path):
         log_list.append(swanlab_logger)
             
     # 设置设备类型：CPU 或自动选择
-    accelerate_type = 'cpu' if args_t.device == 'cpu' else 'auto'
+    device = getattr(args_t, "device", "auto")
+    accelerate_type = 'cpu' if device == 'cpu' else 'auto'
 
     # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
     if not getattr(args_t, 'log_every_n_steps', None):
@@ -89,7 +97,7 @@ def call_backs(args, path):
     """
     # 检查点回调（保存最好的模型）
     checkpoint_callback = ModelCheckpoint(
-        monitor=args.monitor,
+        monitor=getattr(args, "monitor", "val_loss"),
         filename='model-{epoch:02d}-{val_loss:.4f}',
         save_top_k=getattr(args, 'save_top_k', 1),  # 从args中读取保存的模型数量
         mode='min',
@@ -170,7 +178,7 @@ def create_early_stopping_callback(args):
     """
     # 配置早期停止回调，监控验证集的损失
     early_stopping = EarlyStopping(
-        monitor=args.monitor, # TODO @liq22
+        monitor=getattr(args, "monitor", "val_loss"), # TODO @liq22
         min_delta=0.00,
         patience=getattr(args, "patience", 10),  # 从args中读取patience值，如缺失则使用默认值
         verbose=True,

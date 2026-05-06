@@ -1,21 +1,28 @@
 """Public API for the task factory package."""
 
+from __future__ import annotations
+
+import importlib
 from argparse import Namespace
 from typing import Any
 
-import torch.nn as nn
 
-from .task_factory import (
-    TASK_REGISTRY,
-    register_task,
-    resolve_task_module,
-    task_factory,
-)
+def _factory_module():
+    return importlib.import_module(f"{__name__}.task_factory")
+
+
+def register_task(task_type: str, name: str):
+    """Register a task implementation without importing the factory at package import time."""
+    return _factory_module().register_task(task_type, name)
+
+
+def resolve_task_module(args_task: Namespace) -> str:
+    return _factory_module().resolve_task_module(args_task)
 
 
 def build_task(
     args_task: Namespace,
-    network: nn.Module,
+    network: Any,
     args_data: Namespace,
     args_model: Namespace,
     args_trainer: Namespace,
@@ -46,7 +53,7 @@ def build_task(
     Any
         Instantiated LightningModule or ``None`` on failure.
     """
-    return task_factory(
+    return _factory_module().task_factory(
         args_task=args_task,
         network=network,
         args_data=args_data,
@@ -55,6 +62,13 @@ def build_task(
         args_environment=args_environment,
         metadata=metadata,
     )
+
+
+def __getattr__(name: str):
+    if name == "TASK_REGISTRY":
+        return _factory_module().TASK_REGISTRY
+    raise AttributeError(name)
+
 
 __all__ = [
     "build_task",

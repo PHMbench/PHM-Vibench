@@ -2,7 +2,7 @@
 
 # Task Factory 模块说明（简体中文）
 
-> 本文件与 `src/task_factory/readme.md` 对应，是 Task Factory 的中文简要版，重点说明：  
+> 本文件与 `src/task_factory/README.md` 对应，是 Task Factory 的中文简要版，重点说明：
 > 1）目录结构；2）`task.type` / `task.name` 配置方式；3）常用组合一览（CSV）。
 
 -----
@@ -105,4 +105,3 @@ task = build_task(
 - `src/task_factory/CLAUDE.md`
 
 -----
-
