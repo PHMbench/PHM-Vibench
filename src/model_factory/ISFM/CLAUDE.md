@@ -90,6 +90,6 @@ The ISFM framework integrates with:
 ## Related Documentation
 
 - [@README.md] - ISFM User Guide and Configuration
-- [readme.md](readme.md) - Detailed Component Documentation
+- [README.md](README.md) - Detailed Component Documentation
 - [@../../README.md] - Model Factory Overview
 - [@../Transformer/README.md] - Transformer Backbone Details

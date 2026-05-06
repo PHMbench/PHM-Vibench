@@ -1,10 +1,43 @@
 import pandas as pd
 import numpy as np
 import os
-from statsmodels.tsa.stattools import adfuller
-from arch.unitroot import ADF
+
+try:
+    from statsmodels.tsa.stattools import adfuller
+except ImportError as exc:  # pragma: no cover - optional dependency path
+    adfuller = None
+    _STATSMODELS_IMPORT_ERROR = exc
+else:
+    _STATSMODELS_IMPORT_ERROR = None
+
+try:
+    from arch.unitroot import ADF
+except ImportError as exc:  # pragma: no cover - optional dependency path
+    ADF = None
+    _ARCH_IMPORT_ERROR = exc
+else:
+    _ARCH_IMPORT_ERROR = None
+
+
+def _require_adfuller():
+    if adfuller is None:
+        raise ImportError(
+            "statsmodels is required for ADFtest.calculate_ADF. "
+            "Install it with `uv pip install statsmodels`."
+        ) from _STATSMODELS_IMPORT_ERROR
+    return adfuller
+
+
+def _require_arch_adf():
+    if ADF is None:
+        raise ImportError(
+            "arch is required for ADFtest.archADF. "
+            "Install it with `uv pip install arch`."
+        ) from _ARCH_IMPORT_ERROR
+    return ADF
 
 def calculate_ADF(root_path,data_path):
+    adfuller_fn = _require_adfuller()
     df_raw = pd.read_csv(os.path.join(root_path,data_path))
     cols = list(df_raw.columns)
     cols.remove('date')
@@ -12,12 +45,13 @@ def calculate_ADF(root_path,data_path):
     adf_list = []
     for i in cols:
         df_data = df_raw[i]
-        adf = adfuller(df_data, maxlag = 1)
+        adf = adfuller_fn(df_data, maxlag = 1)
         print(adf)
         adf_list.append(adf)
     return np.array(adf_list)
 
 def calculate_target_ADF(root_path,data_path,target='OT'):
+    adfuller_fn = _require_adfuller()
     df_raw = pd.read_csv(os.path.join(root_path,data_path))
     target_cols = target.split(',')
     # df_data = df_raw[target]
@@ -25,18 +59,19 @@ def calculate_target_ADF(root_path,data_path,target='OT'):
     adf_list = []
     for i in target_cols:
         df_data = df_raw[i]
-        adf = adfuller(df_data, maxlag = 1)
+        adf = adfuller_fn(df_data, maxlag = 1)
         # print(adf)
         adf_list.append(adf)
     return np.array(adf_list)
 
 def archADF(root_path, data_path):
+    adf_cls = _require_arch_adf()
     df = pd.read_csv(os.path.join(root_path,data_path))
     cols = df.columns[1:]
     stats = 0
     for target_col in cols:
         series = df[target_col].values
-        adf = ADF(series)
+        adf = adf_cls(series)
         stat = adf.stat
         stats += stat
     return stats/len(cols)

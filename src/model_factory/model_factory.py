@@ -6,8 +6,7 @@ import importlib
 import os
 from typing import Any
 
-import torch
-from ..utils.utils import get_num_classes
+from ..utils.utils import get_num_classes, safe_torch_load
 from ..utils.registry import Registry
 
 
@@ -72,7 +71,9 @@ def load_ckpt(model, ckpt_path):
     """
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")
-    state_dict = torch.load(ckpt_path, map_location='cpu', weights_only=False)
+    state_dict = safe_torch_load(ckpt_path, map_location='cpu')
+    if isinstance(state_dict, dict) and "state_dict" in state_dict:
+        state_dict = state_dict["state_dict"]
     model_dict = model.state_dict()
     matched_dict = {}
     skipped = []
@@ -89,4 +90,3 @@ def load_ckpt(model, ckpt_path):
         for name, model_sz in skipped:
             print(f"  {name}: checkpoint vs model {model_sz}")
     print(f"已加载匹配的权重: {ckpt_path}")
-

@@ -2,10 +2,8 @@ import torch
 import math
 import torch.nn as nn
 import torch.nn.functional as F
-from src.model_factory import register_model
 
 
-@register_model("Transformer", "Transformer_Dummy")
 class Model(nn.Module):
     """Simplified transformer encoder for sequence classification.
 
@@ -26,11 +24,17 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         input_dim = args.input_dim
-        hidden_dim= args.hidden_dim
-        num_heads= args.num_heads
-        num_layers= args.num_layers
-        num_classes= args.num_classes
-        dropout= args.dropout
+        hidden_dim = getattr(args, "hidden_dim", None)
+        if hidden_dim is None:
+            hidden_dim = getattr(args, "d_model")
+        num_heads = getattr(args, "num_heads", None)
+        if num_heads is None:
+            num_heads = getattr(args, "n_heads")
+        num_layers = args.num_layers
+        num_classes = getattr(args, "num_classes", None)
+        if num_classes is None:
+            num_classes = getattr(args, "output_dim")
+        dropout = args.dropout
         
         self.input_projection = nn.Linear(input_dim, hidden_dim) # shape [C, hidden_dim] wight 
         
@@ -43,7 +47,7 @@ class Model(nn.Module):
             nhead=num_heads,
             dim_feedforward=hidden_dim*4,
             dropout=dropout,
-            batch_first=False
+            batch_first=True
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers)
         
@@ -65,16 +69,22 @@ class Model(nn.Module):
         """
         # If input doesn't have batch dimension, add it
         if x.dim() == 2:
-            x = x.unsqueeze(2)  # [L, C] -> [L, 1, C]
+            x = x.unsqueeze(0)  # [L, C] -> [1, L, C]
             single_sample = True
         else:
             single_sample = False
-            # x = x.permute(1, 0, 2)  # [B, L, C] -> [L, B, C]
         x = x.float()  # Ensure input is float
         # Project input to hidden dimension
         
-        if x.shape[2] != self.input_projection.in_features: # Traditional expect the unique dimension of input
-            x = torch.nn.functional.pad(x, (0, self.input_projection.in_features - x.shape[2]), mode='constant', value=0)
+        if x.shape[2] < self.input_projection.in_features:
+            x = torch.nn.functional.pad(
+                x,
+                (0, self.input_projection.in_features - x.shape[2]),
+                mode='constant',
+                value=0,
+            )
+        elif x.shape[2] > self.input_projection.in_features:
+            x = x[:, :, : self.input_projection.in_features]
         
         x = self.input_projection(x)
         
@@ -89,7 +99,7 @@ class Model(nn.Module):
         
         # Remove batch dimension if input didn't have one
         if single_sample:
-            output = output.squeeze(1)
+            output = output.squeeze(0)
             
         return output
 
@@ -102,17 +112,17 @@ class PositionalEncoding(nn.Module):
         # Create positional encoding
         position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
-        pos_encoding = torch.zeros(max_len, 1, d_model)
-        pos_encoding[:, 0, 0::2] = torch.sin(position * div_term)
-        pos_encoding[:, 0, 1::2] = torch.cos(position * div_term)
+        pos_encoding = torch.zeros(1, max_len, d_model)
+        pos_encoding[0, :, 0::2] = torch.sin(position * div_term)
+        pos_encoding[0, :, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pos_encoding', pos_encoding)
         
     def forward(self, x):
         """
         Args:
-            x: Input tensor of shape [seq_len, batch_size, embedding_dim]
+            x: Input tensor of shape [batch_size, seq_len, embedding_dim]
         """
-        x = x + self.pos_encoding[:x.size(0), :]
+        x = x + self.pos_encoding[:, :x.size(1), :]
         return self.dropout(x)
 
 if __name__ == "__main__":
