@@ -141,7 +141,7 @@ def write_csv(path: Path, rows: List[Dict[str, str]], preferred_cols: List[str])
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Collect UXFD run manifests into CSV.")
     parser.add_argument("--input", type=str, default="save", help="Root directory to search manifests under.")
-    parser.add_argument("--out_dir", type=str, default="reports", help="Output directory for CSV files.")
+    parser.add_argument("--out_dir", type=str, default="docs/reports", help="Output directory for CSV files.")
     parser.add_argument("--runs_csv", type=str, default="uxfd_runs.csv", help="Filename for run-level CSV.")
     args = parser.parse_args(argv)
 
