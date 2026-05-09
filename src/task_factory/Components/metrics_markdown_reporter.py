@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Optional
 class MetricsMarkdownReporter:
     """生成Markdown格式的指标报告"""
     
-    def __init__(self, save_dir: str = "metrics_reports"):
+    def __init__(self, save_dir: str = "save/metrics_reports"):
         """初始化报告生成器
         
         Args:

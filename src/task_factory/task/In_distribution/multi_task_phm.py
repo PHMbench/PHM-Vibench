@@ -72,7 +72,10 @@ class task(pl.LightningModule):
         self.test_system_tracker = SystemMetricsTracker()
         
         # Initialize metrics reporter
-        reports_dir = os.path.join(getattr(args_trainer, 'default_root_dir', './'), 'metrics_reports')
+        reports_root = getattr(args_trainer, 'default_root_dir', None)
+        if reports_root in {None, ''}:
+            reports_root = getattr(args_environment, 'output_dir', 'save')
+        reports_dir = os.path.join(reports_root, 'metrics_reports')
         self.metrics_reporter = MetricsMarkdownReporter(save_dir=reports_dir)
         
         # Configuration for system metrics tracking
