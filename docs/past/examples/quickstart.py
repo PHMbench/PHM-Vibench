@@ -11,7 +11,7 @@ PHM-Vibench 快速开始示例
 - 最后查看 MODEL_INTERFACE.md 学习如何开发自定义模型
 
 运行方式：
-    python examples/quickstart.py
+    python docs/past/examples/quickstart.py
 
 作者: PHM-Vibench Team
 """
@@ -23,7 +23,7 @@ from pathlib import Path
 
 # 添加项目根目录到Python路径
 current_dir = Path(__file__).parent
-project_root = current_dir.parent
+project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
 from src.Pipeline_01_default import pipeline
@@ -241,13 +241,13 @@ def main():
         print("   1. 查看实验结果保存在: save/ 目录下")
         print("   2. 阅读 docs/QUICKSTART.md 了解更多配置选项")
         print("   3. 参考 docs/MODEL_INTERFACE.md 学习自定义模型开发")
-        print("   4. 运行其他示例: examples/basic_classification.py")
+        print("   4. 维护中的可运行示例在 configs/demo/")
         
     except FileNotFoundError as e:
         print(f"\n❌ 文件未找到: {e}")
         print("\n💡 解决方案:")
         print("   1. 确保在项目根目录运行: cd PHM-Vibench")
-        print("   2. 创建dummy数据: python examples/create_dummy_data.py")
+        print("   2. 使用仓库自带 dummy 数据和 configs/demo/00_smoke/")
         print("   3. 或使用真实数据集，修改配置中的 metadata_file")
         
     except ImportError as e:

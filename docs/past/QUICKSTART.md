@@ -20,8 +20,8 @@ cd PHM-Vibench
 # 2. 安装依赖
 pip install -r requirements.txt
 
-# 3. 运行快速示例
-python examples/quickstart.py
+# 3. 运行归档快速示例
+python docs/past/examples/quickstart.py
 ```
 
 就这么简单！该示例将运行两个实验：
@@ -237,7 +237,7 @@ ImportError: No module named 'src'
 **解决**：确保在项目根目录运行
 ```bash
 cd PHM-Vibench  # 确保在根目录
-python examples/quickstart.py
+python docs/past/examples/quickstart.py
 ```
 
 #### 2. 数据文件不存在
@@ -275,7 +275,7 @@ data:
 
 ```bash
 # 1. 数据探索
-python examples/data_exploration.py
+# 旧 examples 已归档到 docs/past/examples/；维护中的入口见 configs/demo/
 
 # 2. 基线实验
 python main.py --config configs/baseline.yaml
@@ -307,10 +307,8 @@ done
 3. **[TASK_GUIDE.md](TASK_GUIDE.md)** - 任务类型说明
 
 ### 示例代码
-- `examples/quickstart.py` - 快速开始
-- `examples/basic_classification.py` - 基础分类
-- `examples/custom_model.py` - 自定义模型
-- `examples/multi_dataset.py` - 多数据集实验
+- `docs/past/examples/quickstart.py` - 归档快速开始
+- 维护中的可运行实验模板见 `configs/demo/`
 
 ### 配置模板
 - `configs/template/minimal.yaml` - 最小配置

@@ -422,6 +422,6 @@ PHM-Vibench配置系统2.0实现了：
 
 ---
 
-**开始使用**: `python examples/config_usage.py`  
+**开始使用**: `python docs/past/examples/config_usage.py`  
 **详细文档**: [完整API文档](./API.md)  
 **问题反馈**: [GitHub Issues](https://github.com/PHM-Vibench/issues)
