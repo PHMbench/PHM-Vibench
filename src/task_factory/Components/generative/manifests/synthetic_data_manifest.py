@@ -8,6 +8,8 @@ from typing import Any
 
 import torch
 
+FORBIDDEN_SOURCE_SPLITS = {"val", "valid", "validation", "test", "target_test"}
+
 
 def _normalization_has_params(normalization: dict[str, Any]) -> bool:
     per_channel = normalization.get("per_channel")
@@ -40,13 +42,24 @@ def build_synthetic_data_manifest(
     seed: int,
     num_samples: int,
     shape: list[int] | tuple[int, ...],
+    config_path: str = "configs/demo/10_generative/dummy_generative_cfm.yaml",
+    protocol_path: str = "docs/schemas/generative_protocol.schema.json",
     protocol_hash: str = "unspecified",
     config_hash: str = "unspecified",
+    dependency_lock_hash: str = "unspecified",
     status: str = "exploratory",
     leakage_checks: dict[str, Any] | None = None,
+    condition_sampling_policy: str = "match_train_distribution",
+    condition_counts: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     if source_split is None:
         raise ValueError("source_split is required")
+    split_name = str(source_split).strip().lower()
+    if split_name in FORBIDDEN_SOURCE_SPLITS:
+        raise ValueError(
+            "synthetic_data_manifest.source_split cannot use validation/test data; "
+            f"got source_split={source_split!r}"
+        )
     if not domain_map_hash:
         raise ValueError("domain_map_hash is required")
     if status not in {"benchmark-valid", "exploratory", "docs-only"}:
@@ -84,11 +97,11 @@ def build_synthetic_data_manifest(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "protocol": {
             "protocol_id": "phmgen_cfm_v0_protocol",
-            "protocol_path": "schemas/generative_protocol.schema.json",
+            "protocol_path": protocol_path,
             "protocol_hash": protocol_hash,
         },
         "config": {
-            "config_path": "configs/demo/10_generative/dummy_generative_cfm.yaml",
+            "config_path": config_path,
             "config_hash": config_hash,
             "config_contract": "5-block environment/data/model/task/trainer with task.generative.*",
         },
@@ -96,7 +109,7 @@ def build_synthetic_data_manifest(
             "python": platform.python_version(),
             "torch": torch.__version__,
             "platform": platform.platform(),
-            "dependency_lock_hash": "unspecified",
+            "dependency_lock_hash": dependency_lock_hash,
         },
         "generator": {
             "model_type": model_type,
@@ -114,7 +127,8 @@ def build_synthetic_data_manifest(
         "normalization": normalization,
         "conditions": {
             "condition_keys": ["fault_label", "domain_id"],
-            "condition_sampling_policy": "match_train_distribution",
+            "condition_sampling_policy": condition_sampling_policy,
+            "condition_counts": condition_counts or {},
         },
         "sampling": {
             "sampler_id": sampler_id,

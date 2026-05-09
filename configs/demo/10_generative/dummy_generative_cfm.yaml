@@ -21,8 +21,8 @@ data:
   batch_size: 2
   num_workers: 0
   train_ratio: 0.8
-  val_ratio: 0.1
-  test_ratio: 0.1
+  val_ratio: 0.2
+  test_ratio: 0.0
   normalization: "standardization"
   window_size: 128
   stride: 16

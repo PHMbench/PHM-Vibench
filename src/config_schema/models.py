@@ -55,6 +55,41 @@ class ModelConfig(BaseModel):
 TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task", "generative"]
 
 
+class GenerativeRuntimeConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["train", "sample", "eval"] = "train"
+    source_split: str = "train"
+    eval_split: str = "train"
+    run_test_loss_after_train: bool = False
+    allow_test_reference_eval: bool = False
+    domain_map_path: Optional[str] = None
+    checkpoint_path: Optional[str] = None
+    generated_path: Optional[str] = None
+    num_steps: int = Field(8, ge=1)
+    num_samples: int = Field(2, ge=1)
+    length: Optional[int] = Field(None, ge=1)
+    validity_status: Literal["benchmark-valid", "exploratory", "docs-only"] = "exploratory"
+    allow_untrained_smoke: bool = False
+    leakage_duplicate_threshold: float = Field(1e-6, ge=0.0)
+    condition_sampling_policy: str = "first_metadata_repeated"
+    synthetic_dataset_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _check_mode_contract(self) -> "GenerativeRuntimeConfig":
+        split = str(self.source_split).lower()
+        if self.mode == "train" and split in {"val", "valid", "validation", "test", "target_test"}:
+            raise ValueError("task.generative.source_split must be train for generative train mode")
+        if self.mode == "sample" and not self.checkpoint_path and not self.allow_untrained_smoke:
+            raise ValueError("sample mode requires checkpoint_path unless allow_untrained_smoke=true")
+        if self.mode == "eval" and not self.generated_path:
+            raise ValueError("eval mode requires generated_path")
+        eval_split = str(self.eval_split).lower()
+        if eval_split in {"test", "target_test"} and not self.allow_test_reference_eval:
+            raise ValueError("test eval requires allow_test_reference_eval=true")
+        return self
+
+
 class TaskConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -62,12 +97,15 @@ class TaskConfig(BaseModel):
     name: str = Field(..., description="Task name under task.type.")
 
     target_system_id: Optional[List[int]] = None
+    generative: Optional[GenerativeRuntimeConfig] = None
 
     @model_validator(mode="after")
     def _check_target_system_id(self) -> "TaskConfig":
         if self.target_system_id is not None:
             if not self.target_system_id:
                 raise ValueError("task.target_system_id must not be empty when provided")
+        if self.type == "generative" and self.generative is None:
+            raise ValueError("task.type=generative requires task.generative")
         return self
 
 

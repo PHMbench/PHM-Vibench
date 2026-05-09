@@ -231,6 +231,14 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
         num_samples: int,
         shape: list[int] | tuple[int, ...],
         status: str = "exploratory",
+        config_path: str = "configs/demo/10_generative/dummy_generative_cfm.yaml",
+        config_hash: str = "unspecified",
+        protocol_path: str = "docs/schemas/generative_protocol.schema.json",
+        protocol_hash: str = "unspecified",
+        dependency_lock_hash: str = "unspecified",
+        leakage_checks: dict[str, Any] | None = None,
+        condition_sampling_policy: str = "match_train_distribution",
+        condition_counts: dict[str, int] | None = None,
     ) -> dict[str, Any]:
         normalization = {
             "method": str(getattr(self.args_data, "normalization", "standardization")),
@@ -259,6 +267,14 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             num_samples=num_samples,
             shape=shape,
             status=status,
+            config_path=config_path,
+            config_hash=config_hash,
+            protocol_path=protocol_path,
+            protocol_hash=protocol_hash,
+            dependency_lock_hash=dependency_lock_hash,
+            leakage_checks=leakage_checks,
+            condition_sampling_policy=condition_sampling_policy,
+            condition_counts=condition_counts,
         )
         write_synthetic_data_manifest(output_path, manifest)
         return manifest
