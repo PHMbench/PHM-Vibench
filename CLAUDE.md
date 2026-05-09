@@ -4,6 +4,7 @@ This file documents PHM-Vibench’s intent, architecture, and change strategy.
 
 - Canonical onboarding + runnable path: `README.md` and `configs/README.md`
 - Copy-paste run/validate commands: `AGENTS.md`
+- PHM generative benchmark constitution: `.specify/memory/constitution.md`
 
 ## Repository Overview
 
@@ -33,6 +34,7 @@ Common pipelines:
 - `src/Pipeline_01_default.py`: standard single-stage pipeline.
 - `src/Pipeline_02_pretrain_fewshot.py`: pretrain + few-shot pipeline.
 - `src/Pipeline_03_multitask_pretrain_finetune.py`: multi-task pretrain/fine-tune pipeline.
+- `src/Pipeline_06_generative.py`: generative train/sample/eval pipeline for PHM synthetic-signal experiments.
 - `src/Pipeline_ID.py`: ID-based ingestion variant.
 
 ## Configuration System (maintained)
@@ -203,3 +205,8 @@ Typical artifacts depend on trainer/task, but usually include checkpoints, metri
 - Change list: what changed and why (tight scope).
 - How to validate: copy-paste commands from `AGENTS.md`.
 - Expected outputs: generated files + output directory pattern.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

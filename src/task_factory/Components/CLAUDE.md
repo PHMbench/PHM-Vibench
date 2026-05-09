@@ -83,6 +83,12 @@ class CustomLoss(nn.Module):
 - **BYOL**: Bootstrap your own latent
 - **SupCon**: Supervised contrastive
 
+### Generative Components (`generative/`)
+- **Losses**: CFM, Rectified Flow, DDPM, and Score SDE loss/scaffold modules.
+- **Samplers**: Euler ODE and DDPM sampling helpers.
+- **Metrics**: eval-only temporal, spectral, distribution, diversity, leakage, and utility metrics.
+- **Manifests**: synthetic-data provenance and benchmark-validity evidence.
+
 ## Usage Example
 
 ```python
