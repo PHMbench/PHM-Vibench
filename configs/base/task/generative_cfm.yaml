@@ -9,10 +9,11 @@ task:
   generative:
     mode: "train"
     source_split: "train"
+    eval_split: "train"
+    run_test_loss_after_train: false
     domain_map_path: "configs/domain_maps/dummy_domain_map.csv"
     num_steps: 8
     num_samples: 2
     length: 128
     validity_status: "exploratory"
     allow_untrained_smoke: true
-
