@@ -7,6 +7,7 @@ config system).
 ## Scope (what this file is for)
 - Copy-paste commands and validation gates for day-to-day work.
 - “What changed, and how do I prove it works?” checklist items.
+- PHM generative benchmark work is governed by `.specify/memory/constitution.md`.
 
 ## Quick Commands (copy-paste)
 ```bash
@@ -79,3 +80,8 @@ python -m pytest test/
   - What changed + why
   - How to validate (commands above)
   - Expected outputs (e.g. `docs/CONFIG_ATLAS.md` updated, output directory pattern)
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

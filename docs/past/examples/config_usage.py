@@ -11,7 +11,7 @@ PHM-Vibench配置系统使用示例
 
 运行方式:
     cd /home/lq/LQcode/2_project/PHMBench/PHM-Vibench
-    python examples/config_usage.py
+    python docs/past/examples/config_usage.py
 
 作者: PHM-Vibench Team
 日期: 2024-12-20
@@ -22,7 +22,7 @@ import os
 from pathlib import Path
 
 # 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
 from src.configs import PHMConfig, load_config, create_config

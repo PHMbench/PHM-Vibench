@@ -144,7 +144,7 @@ cython_debug/
 *.json
 
 # Re-allow VS Code config files
-!.vscode/*.json
+
 
 # Model files / Checkpoints / Results
 models/
@@ -218,37 +218,28 @@ LQ_fix/
 ignore/
 
 # Re-include maintained tests and tracked planning docs
-# !test/
-# !test/**/*.py
-# !test/**/*.md
-# !test/**/*.txt
-# !test/**/*.yaml
-# !test/**/*.yml
+
 # !docs/LQ_fix/
 # !docs/LQ_fix/**
 
 # Machine-local overrides (keep untracked)
 configs/local/*.yaml
 configs/local/*.yml
-!configs/local/local.sample.yaml
-!configs/local/README.md
+
 
 # Allow documentation files in otherwise ignored directories (keep other untracked artifacts ignored)
-!dev/
+
 dev/*
-!dev/README.md
-!dev/test_history/
+
 dev/test_history/*
-!dev/test_history/README.md
 
-!plot/
+
+
 plot/*
-!plot/README.md
 
-!metrics_reports/
-metrics_reports/*
-!metrics_reports/README.md
 
-!results/
+
 results/*
-!results/README.md
+
+.agents/skills/specki*
+.claude/skills/specki*

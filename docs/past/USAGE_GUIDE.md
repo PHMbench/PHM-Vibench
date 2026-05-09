@@ -397,7 +397,7 @@ for epoch in range(num_epochs):
 ## 📚 Additional Resources
 
 - [Model Architecture Details](../src/model_factory/README.md)
-- [Example Scripts](../examples/)
+- [Archived Example Scripts](examples/)
 - [API Reference](API_REFERENCE.md)
 - [Performance Benchmarks](BENCHMARKS.md)
 - [Contributing Guide](../CONTRIBUTING.md)
