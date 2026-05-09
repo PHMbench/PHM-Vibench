@@ -247,7 +247,7 @@ class AutoConfigAdapter:
         calling_code = inspect.getframeinfo(frame).filename
         
         # 如果来自新代码，返回Pydantic配置
-        if any(marker in calling_code for marker in ['examples/', 'new_', 'v2_']):
+        if any(marker in calling_code for marker in ['docs/past/examples/', 'new_', 'v2_']):
             return load_config_new(config_source)
         
         # 否则返回字典格式（兼容旧代码）

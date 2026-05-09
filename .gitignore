@@ -207,6 +207,16 @@ test/
 metrics_reports/
 # .codex/
 .specify/
+!.specify/
+.specify/*
+!.specify/memory/
+!.specify/memory/constitution.md
+!.specify/templates/
+.specify/templates/*
+!.specify/templates/checklist-template.md
+!.specify/templates/plan-template.md
+!.specify/templates/spec-template.md
+!.specify/templates/tasks-template.md
 script/unified_metric/existing_test_files/
 script/unified_metric/test_results/
 script/unified_metric/
