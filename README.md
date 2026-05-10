@@ -38,6 +38,7 @@ The maintained workflow is configuration-first:
 - Template source: `configs/demo/` (copy into `configs/experiments/` for local variants)
 - Config docs + tools: `configs/README.md`
 - Change/run checklists: `AGENTS.md` (runbook) and `CLAUDE.md` (change strategy gate)
+- Generative benchmark constitution: `.specify/memory/constitution.md`
 
 Vibecoding (AI-assisted updates): keep it simple (KISS). Avoid over-engineering and unnecessary defensive design;
 apply Occam’s razor; work from first principles; develop incrementally.
