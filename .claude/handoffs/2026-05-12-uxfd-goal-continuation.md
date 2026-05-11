@@ -1469,3 +1469,792 @@ Results:
 ```text
 diff --cached --check clean for both ignore checkpoints
 ```
+
+## 2026-05-12 Update: Paper02 Planning Checkpoint Blocked By Git Index Approval
+
+Prepared a focused Paper02 planning update, but could not stage or commit it
+because the required elevated git-index write was rejected by the runtime usage
+limit. No workaround was attempted.
+
+**Paper02 files modified but uncommitted:**
+
+- `paper/UXFD_paper/1D-2D_fusion_explainable/plan/EXPERIMENT_PLAN_补充.md`
+  - replaced stale `Paper/...` commands and old GPU-hour assumptions with the
+    current parent-repo `python main.py --config ...` entrypoint.
+  - added explicit Q0 GPU preflight, accepted artifact metadata, 6-baseline,
+    7-ablation, TOP-Q2, 2x4090, and SOTA-gate boundaries.
+- `paper/UXFD_paper/1D-2D_fusion_explainable/program.md`
+  - replaced the stale `PHM-Vibench copy 2` execution root with the current
+    `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix` root.
+  - clarified that loops create candidate evidence only until the artifact gate
+    accepts `run_meta.yaml`, metrics, logs, config pointers, and GPU metadata.
+
+**Blocked command:**
+
+```bash
+git -C paper/UXFD_paper/1D-2D_fusion_explainable add -- plan/EXPERIMENT_PLAN_补充.md program.md
+```
+
+**Failure reason:**
+
+```text
+Automatic approval review failed: You've hit your usage limit.
+```
+
+**Validation passed after the document edit:**
+
+```bash
+python -m pytest -q test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py
+```
+
+Result:
+
+```text
+14 passed in 46.39s
+```
+
+**Resume steps:**
+
+1. Stage exactly the two Paper02 planning files above.
+2. Run `git -C paper/UXFD_paper/1D-2D_fusion_explainable diff --cached --check`.
+3. Commit in the Paper02 submodule, e.g. `docs: add fusion experiment supplement plan`.
+4. Update `paper/UXFD_paper/goal/99_submission_readiness_matrix.md` to the new
+   Paper02 submodule SHA and planning-checkpoint evidence.
+5. Regenerate objective/submission/readiness/dirty-triage reports and commit
+   the parent gitlink plus intentional parent docs.
+
+## 2026-05-12 Update: Audit Reports Refreshed Without Git Commit
+
+Because submodule git-index writes were blocked by the runtime usage limit, the
+next safe step was to refresh audit artifacts without staging or committing.
+These reports prove the current blocker state but do not satisfy the submodule
+commit requirement.
+
+**Reports refreshed:**
+
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+- `paper/UXFD_paper/results/submission_gate_current.json`
+- `paper/UXFD_paper/results/submission_gate_current.md`
+- `paper/UXFD_paper/results/readiness_backlog.md`
+- `paper/UXFD_paper/results/recent_work_gate_current.json`
+- `paper/UXFD_paper/results/recent_work_gate_current.md`
+- `paper/UXFD_paper/results/gpu_queue_live_preflight.json`
+- `paper/UXFD_paper/results/submodule_dirty_triage.md`
+
+**Current audit summary:**
+
+- objective achieved: `false`
+- objective counts: `met=50`, `not_met=11`, `blocked=1`
+- submission ready: `false`
+- queue executable: `false`
+- accepted artifact records: `0`
+- recent-work policy ready: `true`
+- recent-work evidence ready: `false`
+- low-tier source blocker count: `0`
+- dirty submodules: `Explainable_FD_Toolkit:30`,
+  `1D-2D_fusion_explainable:33`, `MOE_explainable:13`
+
+**GPU preflight remains blocked:**
+
+```text
+nvidia-smi failed because it could not communicate with the NVIDIA driver;
+PyTorch cuda_available=False, device_count=0.
+```
+
+**Validation passed after refreshing reports:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_gpu_queue.py test/test_uxfd_artifact_gate.py test/test_uxfd_low_tier_source_audit.py
+```
+
+Result:
+
+```text
+42 passed, 1 warning in 73.84s
+```
+
+## 2026-05-12 Update: Parent Matrix Marks Paper02 Planning As Pending Commit
+
+Updated `paper/UXFD_paper/goal/99_submission_readiness_matrix.md` so Paper02 no
+longer looks like its planning update was already committed or accepted.
+
+**Parent matrix change:**
+
+- Paper02 Run Evidence now records `plan/EXPERIMENT_PLAN_补充.md` and
+  `program.md` as a `pending uncommitted planning update`.
+- Paper02 Current Status says the planning update is prepared but still blocked
+  on the submodule commit.
+- Paper02 Next Milestone now starts with committing the pending Paper02 planning
+  checkpoint inside the submodule before running full evidence work.
+
+**Reports refreshed after the matrix update:**
+
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+- `paper/UXFD_paper/results/submission_gate_current.json`
+- `paper/UXFD_paper/results/submission_gate_current.md`
+- `paper/UXFD_paper/results/readiness_backlog.md`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_readiness_backlog.py
+git diff --check -- paper/UXFD_paper/goal/99_submission_readiness_matrix.md .claude/handoffs/2026-05-12-uxfd-goal-continuation.md paper/UXFD_paper/results/objective_audit_current.json paper/UXFD_paper/results/objective_audit_current.md paper/UXFD_paper/results/submission_gate_current.json paper/UXFD_paper/results/submission_gate_current.md paper/UXFD_paper/results/readiness_backlog.md
+```
+
+Results:
+
+```text
+17 passed in 57.26s
+diff --check clean
+```
+
+## 2026-05-12 Update: Goal Clarity Audit Added
+
+Added `paper/UXFD_paper/results/goal_clarity_audit_current.md` to document
+whether the goal package is clear enough to execute. This is a parent-level
+audit artifact only; it does not satisfy accepted evidence, GPU, or submodule
+commit gates.
+
+**Main findings:**
+
+- All named goal files exist, plus `09_gpu_execution_queue.yaml`.
+- Spec Kit paths and six xhigh subagent evidence are declared and discoverable.
+- Each paper goal has baseline, ablation, SOTA, TOP recent-work, compute,
+  strict-reviewer, and acceptance sections.
+- No stale `copy 2`, `Paper/1D`, `--config_dir`, or `config_dir` execution
+  command remains in `paper/UXFD_paper/goal`.
+- Low-tier venue names occur only in exclusion/source-hygiene contexts.
+- Paper02 pending planning update is explicitly marked as uncommitted in
+  `99_submission_readiness_matrix.md`.
+
+**Verdict recorded in the audit:**
+
+The goal package is clear enough for staged preparation and for GPU queue
+execution once preflight passes, but it is not clear to treat any paper as
+submission-ready.
+
+**Validation passed:**
+
+```bash
+git diff --check -- paper/UXFD_paper/results/goal_clarity_audit_current.md .claude/handoffs/2026-05-12-uxfd-goal-continuation.md paper/UXFD_paper/goal/99_submission_readiness_matrix.md
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_readiness_backlog.py
+```
+
+Results:
+
+```text
+diff --check clean
+17 passed in 60.03s
+```
+
+## 2026-05-12 Update: Queue Launch Plan Delta Verified
+
+Checked generated queue-file changes introduced by refreshing
+`gpu_queue_live_preflight.json`. The delta is expected and comes from the
+current Paper06 matrix, not from an ad hoc edit.
+
+**Generated files with meaningful delta:**
+
+- `paper/UXFD_paper/results/gpu_queue_live_preflight.json`
+- `paper/UXFD_paper/results/queue_launch_plan.sh`
+- `paper/UXFD_paper/results/queue_launch_shards/gpu0.sh`
+
+**Verified source:**
+
+- `paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml`
+  defines A06 as
+  `python code/validate_mapping.py && python scripts/build_source_backed_mapping.py`.
+- The generated launch plan and GPU0 shard now match that matrix source.
+- Paper02 A06 and Paper06 A07 status text also reflects the current matrix
+  blocker language; accepted evidence remains pending.
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_gpu_queue.py test/test_uxfd_submission_gate.py
+```
+
+Result:
+
+```text
+15 passed, 1 warning in 24.78s
+```
+
+## 2026-05-12 Update: Goal README Links Clarity Audit
+
+Updated `paper/UXFD_paper/goal/README.md` with a `Goal Clarity Audit` section
+so future sessions can find
+`paper/UXFD_paper/results/goal_clarity_audit_current.md` from the main goal
+index.
+
+**README clarification:**
+
+- The clarity audit checks whether the goal package has enough specificity to
+  proceed.
+- It is explicitly not a submission-readiness gate and not accepted experiment
+  evidence.
+- The current clarity audit says staged preparation can continue, but full
+  execution remains blocked by GPU preflight, accepted artifacts, TOP
+  representative evidence, dirty submodules, and submission gates.
+
+**Validation passed:**
+
+```bash
+git diff --check -- paper/UXFD_paper/goal/README.md paper/UXFD_paper/results/goal_clarity_audit_current.md .claude/handoffs/2026-05-12-uxfd-goal-continuation.md
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_readiness_backlog.py
+```
+
+Results:
+
+```text
+diff --check clean
+17 passed in 65.80s
+```
+
+## 2026-05-12 Update: Objective Audit Covers Goal Clarity Report
+
+Integrated `paper/UXFD_paper/results/goal_clarity_audit_current.md` into the
+formal objective audit checklist.
+
+**Code/test changes:**
+
+- `scripts/uxfd_objective_audit.py`
+  - adds `goal clarity audit report` to `EXECUTION_ARTIFACTS`.
+- `test/test_uxfd_objective_audit.py`
+  - asserts the new checklist item is present and `met`.
+
+**Reports regenerated:**
+
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+
+**Current objective audit summary after regeneration:**
+
+- achieved: `false`
+- met: `51`
+- not_met: `11`
+- blocked: `1`
+- new checklist item: `goal clarity audit report` -> `met`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py
+git diff --check -- scripts/uxfd_objective_audit.py test/test_uxfd_objective_audit.py paper/UXFD_paper/results/objective_audit_current.json paper/UXFD_paper/results/objective_audit_current.md
+```
+
+Results:
+
+```text
+9 passed in 25.75s
+diff --check clean
+```
+
+## 2026-05-12 Update: Submission Gate Covers Goal Clarity Report
+
+Integrated `paper/UXFD_paper/results/goal_clarity_audit_current.md` into the
+submission gate objective checklist as well.
+
+**Code/test changes:**
+
+- `scripts/uxfd_submission_gate.py`
+  - adds `GOAL_CLARITY_AUDIT`.
+  - adds `goal clarity audit report` to the objective checklist.
+- `test/test_uxfd_submission_gate.py`
+  - asserts the new checklist item is `met`.
+
+**Reports regenerated:**
+
+- `paper/UXFD_paper/results/submission_gate_current.json`
+- `paper/UXFD_paper/results/submission_gate_current.md`
+
+**Current submission gate summary after regeneration:**
+
+- ready: `false`
+- objective checklist entries: `24`
+- `goal clarity audit report`: `met`
+- `low-tier source hygiene`: `met`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py
+git diff --check -- scripts/uxfd_submission_gate.py test/test_uxfd_submission_gate.py paper/UXFD_paper/results/submission_gate_current.json paper/UXFD_paper/results/submission_gate_current.md
+```
+
+Results:
+
+```text
+14 passed in 46.76s
+diff --check clean
+```
+
+## 2026-05-12 Update: Goal Clarity Regression Tests Added
+
+Added `test/test_uxfd_goal_clarity.py` so the clarity audit is backed by
+repeatable tests instead of being only a one-off Markdown report.
+
+**New coverage:**
+
+- `paper/UXFD_paper/goal/README.md` exposes
+  `paper/UXFD_paper/results/goal_clarity_audit_current.md`.
+- The README states the clarity audit is not a submission-readiness gate and
+  not accepted experiment evidence.
+- `goal_clarity_audit_current.md` records the non-ready verdict and current
+  execution blockers.
+- Goal files do not contain stale execution markers such as `PHM-Vibench copy 2`,
+  `Paper/1D`, `--config_dir`, or `config_dir`.
+- Low-tier source names are allowed only in explicit exclusion/source-hygiene
+  context. The test deliberately does not treat `Industrial Electronics` as the
+  low-tier `Electronics` venue.
+
+**Validation note:**
+
+The first test run failed on two over-strict assertions: README text was wrapped
+across a newline, and the generic `Electronics` marker incorrectly matched
+`IEEE Transactions on Industrial Electronics`. The test was narrowed to the
+intended semantics; no goal content was changed for those failures.
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py
+git diff --check -- test/test_uxfd_goal_clarity.py
+```
+
+Results:
+
+```text
+18 passed in 46.10s
+diff --check clean
+```
+
+## 2026-05-12 Update: Parent Checkpoint Commit Blocked By Git Index Access
+
+Attempted to stage a focused parent checkpoint for the goal/audit/test guardrail
+updates, explicitly excluding Paper02 submodule gitlink changes, Paper02
+submodule internals, `paper/UXFD_paper/results/figures/`, and unrelated dirty
+work.
+
+**Intended parent staging scope:**
+
+- `.claude/handoffs/2026-05-12-uxfd-goal-continuation.md`
+- `paper/UXFD_paper/goal/README.md`
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+- `paper/UXFD_paper/results/gpu_queue_live_preflight.json`
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+- `paper/UXFD_paper/results/queue_launch_plan.sh`
+- `paper/UXFD_paper/results/queue_launch_shards/gpu0.sh`
+- `paper/UXFD_paper/results/submission_gate_current.json`
+- `paper/UXFD_paper/results/submission_gate_current.md`
+- `paper/UXFD_paper/results/goal_clarity_audit_current.md`
+- `paper/UXFD_paper/results/low_tier_source_audit.md`
+- `scripts/uxfd_objective_audit.py`
+- `scripts/uxfd_submission_gate.py`
+- `test/test_uxfd_objective_audit.py`
+- `test/test_uxfd_submission_gate.py`
+- `test/test_uxfd_goal_clarity.py`
+
+**Blocked commands:**
+
+```bash
+git add -- <the files listed above>
+```
+
+First attempt failed inside the sandbox:
+
+```text
+fatal: cannot create .git/index.lock: read-only file system
+```
+
+Escalated retry was rejected by the runtime approval system:
+
+```text
+Automatic approval review failed: You've hit your usage limit.
+```
+
+No workaround was attempted. Resume by staging exactly the intended parent scope
+above, running `git diff --cached --check`, and committing the parent checkpoint
+after git-index access is available.
+
+## 2026-05-12 Update: Objective Audit Covers Parent Checkpoint Blocker
+
+Added a formal objective-audit item for the parent-side UXFD goal/control
+checkpoint, so the current parent git-index blocker is no longer recorded only
+in this handoff.
+
+**Code/test changes:**
+
+- `scripts/uxfd_objective_audit.py`
+  - adds `PARENT_GOAL_CHECKPOINT_PATHS`.
+  - adds `_parent_goal_checkpoint_item()`.
+  - appends `parent UXFD goal-control checkpoint committed` to the objective
+    checklist.
+- `test/test_uxfd_objective_audit.py`
+  - accepts the new checklist item in the main prompt-to-artifact test.
+  - adds unit coverage for dirty and clean parent checkpoint states.
+
+**Reports regenerated:**
+
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+
+**Current objective audit summary after regeneration:**
+
+- achieved: `false`
+- met: `51`
+- not_met: `12`
+- blocked: `1`
+- new blocker: `parent UXFD goal-control checkpoint committed` ->
+  `dirty_parent_goal_control_paths=17`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py
+git diff --check -- scripts/uxfd_objective_audit.py test/test_uxfd_objective_audit.py paper/UXFD_paper/results/objective_audit_current.json paper/UXFD_paper/results/objective_audit_current.md
+```
+
+Results:
+
+```text
+20 passed in 45.95s
+diff --check clean
+```
+
+## 2026-05-12 Update: Clarity Test Command Linked From Docs
+
+Updated the clarity documentation so future sessions can discover the automated
+regression test, not only the manual `sed`/`rg` checks.
+
+**Files updated:**
+
+- `paper/UXFD_paper/goal/README.md`
+  - `Goal Clarity Audit` now lists
+    `python -m pytest -q test/test_uxfd_goal_clarity.py`.
+- `paper/UXFD_paper/results/goal_clarity_audit_current.md`
+  - `Verification Commands` now includes the same pytest command.
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py
+git diff --check -- paper/UXFD_paper/goal/README.md paper/UXFD_paper/results/goal_clarity_audit_current.md
+```
+
+Results:
+
+```text
+20 passed in 51.84s
+diff --check clean
+```
+
+## 2026-05-12 Update: Commit Recovery Plan Added
+
+Added `paper/UXFD_paper/results/commit_recovery_plan.md` as an executable
+recovery path for when git-index writes are available again.
+
+**What the recovery plan covers:**
+
+- Phase 1: commit exactly the two Paper02 planning files inside the Paper02
+  submodule.
+- Phase 2: update the parent readiness matrix to the new Paper02 SHA and
+  regenerate objective/submission/readiness/dirty-triage reports.
+- Phase 3: stage only the parent goal/control files plus the Paper02 submodule
+  gitlink, excluding `paper/UXFD_paper/results/figures/`, unrelated parent
+  edits, and unreviewed manuscript/result/script changes.
+
+**Docs/audit integration:**
+
+- `paper/UXFD_paper/goal/README.md` now links the commit recovery plan.
+- `scripts/uxfd_objective_audit.py` now checks `commit recovery plan`.
+- The parent checkpoint dirty-path check includes
+  `paper/UXFD_paper/results/commit_recovery_plan.md`.
+- `test/test_uxfd_objective_audit.py` asserts the recovery plan exists.
+
+**Current objective audit summary after regeneration:**
+
+- achieved: `false`
+- met: `52`
+- not_met: `12`
+- blocked: `1`
+- `commit recovery plan`: `met`
+- `parent UXFD goal-control checkpoint committed`:
+  `dirty_parent_goal_control_paths=18`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py
+git diff --check -- paper/UXFD_paper/results/commit_recovery_plan.md paper/UXFD_paper/goal/README.md scripts/uxfd_objective_audit.py test/test_uxfd_objective_audit.py
+```
+
+Results:
+
+```text
+20 passed in 47.82s
+diff --check clean
+```
+
+## 2026-05-12 Update: Objective Audit Self-Reference Fixed
+
+Found and fixed a self-reference risk in the parent checkpoint blocker. The
+parent dirty-path check originally included
+`paper/UXFD_paper/results/objective_audit_current.{json,md}`. Because those
+files contain the blocker status, regenerating them before a commit would make
+the report describe the pre-commit dirty state and become stale after the commit.
+
+**Fix:**
+
+- Removed `objective_audit_current.json` and `objective_audit_current.md` from
+  `PARENT_GOAL_CHECKPOINT_PATHS` in `scripts/uxfd_objective_audit.py`.
+- Added a regression test asserting those persisted objective-audit outputs are
+  excluded from `PARENT_GOAL_CHECKPOINT_PATHS`.
+- Updated `paper/UXFD_paper/results/commit_recovery_plan.md`:
+  - Phase 3 commits parent goal/control files without objective audit outputs.
+  - Phase 4 regenerates and commits `objective_audit_current.{json,md}` after
+    the parent checkpoint has landed.
+
+**Current objective audit summary after regeneration:**
+
+- achieved: `false`
+- met: `52`
+- not_met: `12`
+- blocked: `1`
+- `parent UXFD goal-control checkpoint committed`:
+  `dirty_parent_goal_control_paths=16`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py
+git diff --check -- scripts/uxfd_objective_audit.py test/test_uxfd_objective_audit.py paper/UXFD_paper/results/commit_recovery_plan.md
+```
+
+Results:
+
+```text
+21 passed in 46.71s
+diff --check clean
+```
+
+## 2026-05-12 Update: Recovery Plan Phase Separation Test Added
+
+Added a regression test to keep the commit recovery plan from reintroducing the
+objective-audit self-reference.
+
+**Test change:**
+
+- `test/test_uxfd_goal_clarity.py`
+  - verifies `paper/UXFD_paper/results/commit_recovery_plan.md` is discoverable
+    from `paper/UXFD_paper/goal/README.md`.
+  - verifies Phase 3 staging does not include
+    `objective_audit_current.{json,md}`.
+  - verifies Phase 4 explicitly regenerates and commits
+    `objective_audit_current.{json,md}` after the parent checkpoint lands.
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py
+git diff --check -- test/test_uxfd_goal_clarity.py
+```
+
+Results:
+
+```text
+22 passed in 45.49s
+diff --check clean
+```
+
+## 2026-05-12 Update: Submission Gate Covers Commit Recovery Plan
+
+Integrated `paper/UXFD_paper/results/commit_recovery_plan.md` into the
+submission gate objective checklist, so the submission gate can surface the
+current git-index recovery path alongside goal clarity and low-tier hygiene.
+
+**Code/test changes:**
+
+- `scripts/uxfd_submission_gate.py`
+  - adds `COMMIT_RECOVERY_PLAN`.
+  - adds `commit recovery plan` to the objective checklist.
+- `test/test_uxfd_submission_gate.py`
+  - asserts the new checklist item is `met`.
+
+**Reports regenerated:**
+
+- `paper/UXFD_paper/results/submission_gate_current.json`
+- `paper/UXFD_paper/results/submission_gate_current.md`
+
+**Current submission gate summary after regeneration:**
+
+- ready: `false`
+- objective checklist entries: `25`
+- `commit recovery plan`: `met`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py test/test_uxfd_goal_clarity.py
+git diff --check -- scripts/uxfd_submission_gate.py test/test_uxfd_submission_gate.py paper/UXFD_paper/results/submission_gate_current.json paper/UXFD_paper/results/submission_gate_current.md
+```
+
+Results:
+
+```text
+22 passed in 50.03s
+diff --check clean
+```
+
+## 2026-05-12 Update: Readiness Backlog Covers Commit Recovery
+
+Made the execution backlog reflect the same git-checkpoint blockers that the
+objective audit already reports. The previous backlog only exposed generic
+submodule dirty review; it did not directly tell the next executor to commit
+the targeted Paper02 planning update or recover the parent goal-control
+checkpoint.
+
+**Code/test changes:**
+
+- `scripts/uxfd_readiness_backlog.py`
+  - adds `Q0-PAPER02-PLANNING-COMMIT` when
+    `paper/UXFD_paper/1D-2D_fusion_explainable/plan/EXPERIMENT_PLAN_补充.md`
+    or `program.md` is edited but uncommitted inside the Paper02 submodule.
+  - adds `Q0-PARENT-GOAL-CHECKPOINT-COMMIT` when parent goal/control paths are
+    dirty.
+- `scripts/uxfd_objective_audit.py`
+  - adds `scripts/uxfd_readiness_backlog.py` and
+    `test/test_uxfd_readiness_backlog.py` to the parent checkpoint dirty-path
+    set.
+  - keeps self-updating persisted reports out of that dirty-path set so
+    regenerated reports do not create stale self-referential counts.
+- `test/test_uxfd_readiness_backlog.py`
+  - asserts both commit-recovery backlog items are present.
+- `test/test_uxfd_objective_audit.py`
+  - asserts self-updating reports remain excluded and readiness backlog
+    source/test files remain included.
+- `paper/UXFD_paper/results/commit_recovery_plan.md`
+  - Phase 3 staging/status commands now include the readiness backlog
+    source/test/report files.
+
+**Reports regenerated:**
+
+- `paper/UXFD_paper/results/readiness_backlog.md`
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+
+**Current readiness backlog summary:**
+
+- ready: `false`
+- open items: `46`
+- new explicit items:
+  - `Q0-PAPER02-PLANNING-COMMIT`: 2 targeted Paper02 planning files edited but
+    uncommitted.
+  - `Q0-PARENT-GOAL-CHECKPOINT-COMMIT`: 18 parent goal/control paths dirty.
+
+**Current objective audit summary:**
+
+- achieved: `false`
+- met: `52`
+- not_met: `12`
+- blocked: `1`
+- unverified: `0`
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py
+git diff --check -- scripts/uxfd_readiness_backlog.py scripts/uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py paper/UXFD_paper/results/readiness_backlog.md paper/UXFD_paper/results/objective_audit_current.md paper/UXFD_paper/results/objective_audit_current.json paper/UXFD_paper/results/commit_recovery_plan.md
+```
+
+Results:
+
+```text
+25 passed in 60.55s
+diff --check clean
+```
+
+**Still blocked:**
+
+- Do not mark the active goal complete.
+- Do not run accepted experiments until local GPUs `0,1` pass preflight.
+- Do not retry git staging/commit until git-index writes are available or the
+  user explicitly authorizes a new escalation.
+
+## 2026-05-12 Update: Paper07 Rejection-Recovery Gate Is Explicit
+
+Rechecked the live environment before doing more non-GPU work. `nvidia-smi -L`
+still cannot communicate with the NVIDIA driver, and PyTorch still reports
+`cuda_available=False` with `device_count=0`; accepted GPU evidence remains
+blocked.
+
+Paper07 already had rejection-recovery language in the goal and a submodule
+contract, but the cross-paper submission/objective gates did not expose this as
+a named audit item. Added a minimal explicit gate so the user's special Paper07
+requirement is visible in completion audits.
+
+**Code/test changes:**
+
+- `scripts/uxfd_submission_gate.py`
+  - adds `Paper07 rejection-recovery innovation contract` to the objective
+    checklist.
+  - blocks submission readiness if the Paper07 goal or rejection contract loses
+    the required rejection-recovery, DSOA v2, reviewer-trace, Q0-preflight, or
+    non-SOTA/non-ready stop-rule language.
+- `scripts/uxfd_objective_audit.py`
+  - adds the same Paper07 contract item to the prompt-to-artifact checklist.
+- `test/test_uxfd_submission_gate.py`
+  - asserts the Paper07 rejection-recovery contract item is `met`.
+- `test/test_uxfd_objective_audit.py`
+  - asserts the objective audit covers the Paper07 rejection-recovery item.
+
+**Reports regenerated:**
+
+- `paper/UXFD_paper/results/submission_gate_current.json`
+- `paper/UXFD_paper/results/submission_gate_current.md`
+- `paper/UXFD_paper/results/readiness_backlog.md`
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+
+**Current status after regeneration:**
+
+- objective audit: `achieved=false`, `met=53`, `not_met=12`, `blocked=1`.
+- submission gate: `ready=false`, `blocking findings=17`.
+- readiness backlog: `open items=46`.
+- Paper07 rejection-recovery innovation contract: `met`.
+
+**Validation passed:**
+
+```bash
+python -m pytest -q test/test_uxfd_paper_alignment_contract.py -k "operator_attention or rejection or readiness_matrix or top"
+python -m pytest -q test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py test/test_uxfd_paper_alignment_contract.py -k "submission_gate or objective_audit or operator_attention or rejection"
+python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py test/test_uxfd_paper_alignment_contract.py -k "readiness_backlog or objective_audit or goal_clarity or submission_gate or operator_attention or rejection"
+git diff --check -- scripts/uxfd_submission_gate.py scripts/uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py paper/UXFD_paper/results/submission_gate_current.json paper/UXFD_paper/results/submission_gate_current.md paper/UXFD_paper/results/objective_audit_current.json paper/UXFD_paper/results/objective_audit_current.md paper/UXFD_paper/results/readiness_backlog.md
+```
+
+Results:
+
+```text
+6 passed, 23 deselected in 0.49s
+20 passed, 26 deselected in 46.83s
+28 passed, 26 deselected in 63.43s
+diff --check clean
+```
+
+Full UXFD regression after the same changes:
+
+```bash
+python -m pytest -q test/test_uxfd_*.py test/test_collect_uxfd_runs.py
+```
+
+Result:
+
+```text
+96 passed, 1 warning in 90.21s
+```
+
+The warning is still the expected CUDA/NVML unavailability warning from the
+live GPU preflight test.

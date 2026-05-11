@@ -28,6 +28,9 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.recent_work_evidence_ready is False
     assert report.recent_work_matrix_rows == 7
     assert len(report.recent_work_blockers) == 7
+    assert report.low_tier_source_ready is True
+    assert report.low_tier_source_blocker_count == 0
+    assert report.low_tier_source_triage_count > 0
     assert len(report.papers) == 7
     assert report.queue_summary["total"] == 104
     assert all(paper.baselines >= 6 for paper in report.papers)
@@ -37,6 +40,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert any("gpu queue blocked" in item for item in report.blockers)
     assert any("artifact gate blocked" in item for item in report.blockers)
     assert any("recent-work evidence blocked" in item for item in report.blockers)
+    assert not any("low-tier source hygiene blocked" in item for item in report.blockers)
     assert len(report.next_actions) == 7
     assert {action["paper_id"] for action in report.next_actions} == {
         paper.paper_id for paper in report.papers
@@ -52,10 +56,14 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert checklist["Codex xhigh subagent launch log"]["status"] == "met"
     assert checklist["seven paper-local matrices"]["status"] == "met"
     assert checklist["6+ baselines and 6+ ablations per paper"]["status"] == "met"
+    assert checklist["goal clarity audit report"]["status"] == "met"
+    assert checklist["commit recovery plan"]["status"] == "met"
+    assert checklist["Paper07 rejection-recovery innovation contract"]["status"] == "met"
     assert (
         checklist["TOP recent-work policy and paper-local matrix coverage"]["status"]
         == "met"
     )
+    assert checklist["low-tier source hygiene"]["status"] == "met"
     assert checklist["TOP representative accepted artifacts"]["status"] == "not_met"
     assert checklist["accepted run artifact metadata"]["status"] == "not_met"
     assert checklist["submission readiness achieved"]["status"] == "not_met"
@@ -86,6 +94,9 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["recent_work_evidence_ready"] is False
     assert payload["recent_work_matrix_rows"] == 7
     assert len(payload["recent_work_blockers"]) == 7
+    assert payload["low_tier_source_ready"] is True
+    assert payload["low_tier_source_blocker_count"] == 0
+    assert payload["low_tier_source_triage_count"] > 0
     assert len(payload["papers"]) == 7
     assert len(payload["next_actions"]) == 7
     assert len(payload["objective_checklist"]) >= 15
@@ -98,6 +109,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "Artifact gate accepted: `False`" in text
     assert "Recent-work policy ready: `True`" in text
     assert "Recent-work evidence ready: `False`" in text
+    assert "Low-tier source hygiene ready: `True`" in text
     assert "## Blockers" in text
     assert "## Next Actions" in text
     assert "## Objective Checklist" in text

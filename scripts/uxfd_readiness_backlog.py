@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
+from scripts.uxfd_objective_audit import PARENT_GOAL_CHECKPOINT_PATHS
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
     DEFAULT_QUEUE,
@@ -15,6 +17,12 @@ from scripts.uxfd_submodule_dirty_triage import evaluate_dirty_triage
 
 
 DEFAULT_OUTPUT = Path("paper/UXFD_paper/results/readiness_backlog.md")
+COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
+PAPER02_SUBMODULE = Path("paper/UXFD_paper/1D-2D_fusion_explainable")
+PAPER02_PLANNING_FILES = (
+    Path("plan/EXPERIMENT_PLAN_补充.md"),
+    Path("program.md"),
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +45,37 @@ class ReadinessBacklogReport:
 
 def _paper_action_map(next_actions: Sequence[Mapping[str, str]]) -> Mapping[str, Mapping[str, str]]:
     return {str(item.get("paper_id", "")): item for item in next_actions}
+
+
+def _git_status_lines_for_paths(paths: Sequence[Path]) -> Tuple[str, ...]:
+    result = subprocess.run(
+        ["git", "status", "--porcelain", "--", *(str(path) for path in paths)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return tuple(line for line in result.stdout.splitlines() if line.strip())
+
+
+def _git_status_lines_for_submodule_paths(
+    submodule_path: Path,
+    paths: Sequence[Path],
+) -> Tuple[str, ...]:
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(submodule_path),
+            "status",
+            "--porcelain",
+            "--",
+            *(str(path) for path in paths),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return tuple(line for line in result.stdout.splitlines() if line.strip())
 
 
 def evaluate_readiness_backlog(
@@ -80,6 +119,85 @@ def evaluate_readiness_backlog(
                     "and configs under accepted_runs and rerun artifact gate with queue coverage."
                 ),
                 evidence=submission.artifact_gate_root,
+            )
+        )
+
+    try:
+        paper02_planning_status = _git_status_lines_for_submodule_paths(
+            PAPER02_SUBMODULE,
+            PAPER02_PLANNING_FILES,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        paper02_planning_status = (f"unverified:{exc.__class__.__name__}",)
+    if paper02_planning_status:
+        blocker = (
+            "targeted Paper02 planning status unverified: "
+            f"{paper02_planning_status[0].split(':', 1)[1]}"
+            if paper02_planning_status[0].startswith("unverified:")
+            else (
+                f"{len(paper02_planning_status)} targeted Paper02 planning files "
+                "are edited but uncommitted"
+            )
+        )
+        items.append(
+            BacklogItem(
+                item_id="Q0-PAPER02-PLANNING-COMMIT",
+                priority=3,
+                scope="1D-2D_fusion_explainable",
+                category="commit-recovery",
+                blocker=blocker,
+                next_action=(
+                    "Run commit recovery Phase 1: review and commit only "
+                    "`plan/EXPERIMENT_PLAN_补充.md` and `program.md` inside the "
+                    "Paper02 submodule."
+                ),
+                evidence=str(COMMIT_RECOVERY_PLAN),
+            )
+        )
+
+    try:
+        parent_checkpoint_status = _git_status_lines_for_paths(PARENT_GOAL_CHECKPOINT_PATHS)
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        parent_checkpoint_status = (f"unverified:{exc.__class__.__name__}",)
+    if parent_checkpoint_status:
+        blocker = (
+            "parent goal/control checkpoint status unverified: "
+            f"{parent_checkpoint_status[0].split(':', 1)[1]}"
+            if parent_checkpoint_status[0].startswith("unverified:")
+            else f"{len(parent_checkpoint_status)} parent goal/control paths are dirty"
+        )
+        items.append(
+            BacklogItem(
+                item_id="Q0-PARENT-GOAL-CHECKPOINT-COMMIT",
+                priority=4,
+                scope="cross-paper",
+                category="commit-recovery",
+                blocker=blocker,
+                next_action=(
+                    "Run commit recovery Phases 2-4: sync parent reports, commit the "
+                    "parent checkpoint, then regenerate objective audit outputs."
+                ),
+                evidence=str(COMMIT_RECOVERY_PLAN),
+            )
+        )
+
+    if not submission.low_tier_source_ready:
+        items.append(
+            BacklogItem(
+                item_id="Q0-SOURCE-HYGIENE",
+                priority=1,
+                scope="cross-paper",
+                category="low-tier-source-hygiene",
+                blocker=(
+                    f"{submission.low_tier_source_blocker_count} blocker references; "
+                    f"{submission.low_tier_source_triage_count} triage markers"
+                ),
+                next_action=(
+                    "Remove or replace blocker references in active manuscripts and bibliography "
+                    "entrypoints with TOP-journal or top-conference sources before any "
+                    "submission-ready claim."
+                ),
+                evidence="paper/UXFD_paper/results/low_tier_source_audit.md",
             )
         )
 

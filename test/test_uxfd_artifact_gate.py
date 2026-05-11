@@ -9,8 +9,15 @@ from scripts.uxfd_artifact_gate import (
     REQUIRED_RUN_META_FIELDS,
     evaluate_artifact_gate,
     main,
+    render_markdown,
 )
 from scripts.uxfd_gpu_queue import DEFAULT_QUEUE
+
+
+PERSISTED_ARTIFACT_GATE_QUEUE_COVERAGE = Path(
+    "paper/UXFD_paper/results/artifact_gate_queue_coverage.md"
+)
+DEFAULT_ACCEPTED_RUNS_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
 
 
 def _write_valid_artifact(run_dir: Path) -> None:
@@ -102,6 +109,18 @@ def test_artifact_gate_markdown_reports_queue_coverage_summary(tmp_path: Path) -
     assert "Queue coverage: `0/97`" in text
     assert "## Queue Coverage By Paper" in text
     assert "`TII_operator_attention`" in text
+
+
+def test_persisted_artifact_gate_queue_coverage_matches_current_gate() -> None:
+    report = evaluate_artifact_gate(
+        DEFAULT_ACCEPTED_RUNS_ROOT,
+        queue_path=DEFAULT_QUEUE,
+        require_queue_coverage=True,
+    )
+
+    assert PERSISTED_ARTIFACT_GATE_QUEUE_COVERAGE.read_text(
+        encoding="utf-8"
+    ) == render_markdown(report)
 
 
 def test_artifact_gate_blocks_missing_metadata_and_missing_root(tmp_path: Path) -> None:

@@ -1,7 +1,14 @@
 import json
 from pathlib import Path
 
-from scripts.uxfd_readiness_backlog import evaluate_readiness_backlog, main
+from scripts.uxfd_readiness_backlog import (
+    evaluate_readiness_backlog,
+    main,
+    render_markdown,
+)
+
+
+PERSISTED_READINESS_BACKLOG_MD = Path("paper/UXFD_paper/results/readiness_backlog.md")
 
 
 def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
@@ -12,7 +19,17 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert report.items[0].item_id == "Q0-GPU-PREFLIGHT"
     assert report.items[1].item_id == "Q0-ARTIFACT-COVERAGE"
     assert any(item.scope == "TII_operator_attention" for item in report.items[:10])
+    assert not any(item.item_id == "Q0-PAPER02-PLANNING-COMMIT" for item in report.items)
+    assert any(item.item_id == "Q0-PARENT-GOAL-CHECKPOINT-COMMIT" for item in report.items)
+    assert any(item.category == "commit-recovery" for item in report.items)
+    assert all(item.category != "low-tier-source-hygiene" for item in report.items)
     assert any(item.category == "submodule-dirty-review" for item in report.items)
+
+
+def test_persisted_readiness_backlog_matches_current_backlog() -> None:
+    report = evaluate_readiness_backlog()
+
+    assert PERSISTED_READINESS_BACKLOG_MD.read_text(encoding="utf-8") == render_markdown(report)
 
 
 def test_readiness_backlog_cli_writes_markdown_and_json(tmp_path: Path) -> None:

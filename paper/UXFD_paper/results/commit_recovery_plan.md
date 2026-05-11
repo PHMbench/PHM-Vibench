@@ -1,0 +1,141 @@
+# UXFD Commit Recovery Plan
+
+Date: 2026-05-12
+
+This file records the exact recovery path for the remaining parent checkpoint.
+It is not experiment evidence and does not make any paper submission-ready.
+
+## Current Blockers
+
+- Paper02 planning update is committed inside the submodule at `205aaea`:
+  - `paper/UXFD_paper/1D-2D_fusion_explainable/plan/EXPERIMENT_PLAN_补充.md`
+  - `paper/UXFD_paper/1D-2D_fusion_explainable/program.md`
+- Parent goal/control checkpoint is edited but uncommitted.
+- Parent `git add`/`git commit` still requires explicit index-write approval;
+  stage only the listed parent goal/control paths.
+
+## Phase 1: Paper02 Submodule Planning Checkpoint
+
+Status: completed at submodule SHA `205aaea`.
+
+Executed from the parent repository root:
+
+```bash
+git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- plan/EXPERIMENT_PLAN_补充.md program.md
+git -C paper/UXFD_paper/1D-2D_fusion_explainable diff -- plan/EXPERIMENT_PLAN_补充.md program.md
+git -C paper/UXFD_paper/1D-2D_fusion_explainable add -- plan/EXPERIMENT_PLAN_补充.md program.md
+git -C paper/UXFD_paper/1D-2D_fusion_explainable diff --cached --check
+git -C paper/UXFD_paper/1D-2D_fusion_explainable diff --cached --stat
+git -C paper/UXFD_paper/1D-2D_fusion_explainable commit -m "docs: add fusion experiment supplement plan"
+git -C paper/UXFD_paper/1D-2D_fusion_explainable rev-parse --short HEAD  # 205aaea
+```
+
+Do not stage Paper02 manuscript drafts, model weights, experiment outputs, or
+unreviewed scripts in this checkpoint.
+
+## Phase 2: Parent Matrix And Report Sync
+
+After Phase 1 recorded Paper02 submodule SHA `205aaea`:
+
+1. Update `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`:
+   - replace Paper02 submodule SHA `25725d8` with `205aaea`.
+   - replace the `pending uncommitted planning update` wording with the committed
+     planning checkpoint reference.
+   - keep accepted baseline, ablation, TOP representative, GPU metadata, and
+     SOTA gates blocked unless real accepted artifacts exist.
+2. Regenerate parent reports:
+
+```bash
+python -m scripts.uxfd_submission_gate --format json --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.json
+python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.md
+python -m scripts.uxfd_readiness_backlog --format markdown --allow-not-ready --output paper/UXFD_paper/results/readiness_backlog.md
+python -m scripts.uxfd_submodule_dirty_triage --format markdown --output paper/UXFD_paper/results/submodule_dirty_triage.md
+```
+
+`scripts.uxfd_submodule_dirty_triage` may exit non-zero while residual dirty
+submodule files remain; inspect the generated report instead of treating that as
+a script crash.
+
+## Phase 3: Parent Checkpoint Commit
+
+Stage only the parent goal/control files plus the Paper02 submodule gitlink:
+
+```bash
+git add -- \
+  .claude/handoffs/2026-05-12-uxfd-goal-continuation.md \
+  paper/UXFD_paper/1D-2D_fusion_explainable \
+  paper/UXFD_paper/goal/README.md \
+  paper/UXFD_paper/goal/99_submission_readiness_matrix.md \
+  paper/UXFD_paper/results/gpu_queue_live_preflight.json \
+  paper/UXFD_paper/results/queue_launch_plan.sh \
+  paper/UXFD_paper/results/queue_launch_shards/gpu0.sh \
+  paper/UXFD_paper/results/submission_gate_current.json \
+  paper/UXFD_paper/results/submission_gate_current.md \
+  paper/UXFD_paper/results/submodule_dirty_triage.md \
+  paper/UXFD_paper/results/goal_clarity_audit_current.md \
+  paper/UXFD_paper/results/low_tier_source_audit.md \
+  paper/UXFD_paper/results/low_tier_source_audit.json \
+  paper/UXFD_paper/results/commit_recovery_plan.md \
+  scripts/uxfd_low_tier_source_audit.py \
+  scripts/uxfd_objective_audit.py \
+  scripts/uxfd_readiness_backlog.py \
+  scripts/uxfd_submission_gate.py \
+  scripts/uxfd_submodule_dirty_triage.py \
+  test/test_uxfd_artifact_gate.py \
+  test/test_uxfd_low_tier_source_audit.py \
+  test/test_uxfd_gpu_queue.py \
+  test/test_uxfd_objective_audit.py \
+  test/test_uxfd_readiness_backlog.py \
+  test/test_uxfd_submission_gate.py \
+  test/test_uxfd_submodule_dirty_triage.py \
+  test/test_uxfd_goal_clarity.py
+```
+
+Do not stage:
+
+- `paper/UXFD_paper/results/figures/`
+- unrelated parent repository edits
+- unreviewed Paper01/Paper02/Paper04 generated results or manuscript drafts
+
+Validate and commit:
+
+```bash
+git diff --cached --check
+python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py
+git add -f -- paper/UXFD_paper/results/low_tier_source_audit.json
+git status --short -- paper/UXFD_paper/1D-2D_fusion_explainable paper/UXFD_paper/goal paper/UXFD_paper/results scripts/uxfd_low_tier_source_audit.py scripts/uxfd_objective_audit.py scripts/uxfd_readiness_backlog.py scripts/uxfd_submission_gate.py scripts/uxfd_submodule_dirty_triage.py test/test_uxfd_artifact_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py test/test_uxfd_submodule_dirty_triage.py
+git commit -m "chore: sync paper02 planning and UXFD goal audits"
+```
+
+Do not include `paper/UXFD_paper/results/objective_audit_current.json`,
+`paper/UXFD_paper/results/objective_audit_current.md`, or
+`paper/UXFD_paper/results/readiness_backlog.md` in this commit. Those reports
+include a parent-checkpoint cleanliness item, so they must be regenerated after
+this commit lands.
+
+## Phase 4: Objective Audit Refresh Commit
+
+After Phase 3 is committed:
+
+```bash
+python -m scripts.uxfd_objective_audit --format json --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.json
+python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.md
+python -m scripts.uxfd_readiness_backlog --format markdown --allow-not-ready --output paper/UXFD_paper/results/readiness_backlog.md
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py
+git add -- paper/UXFD_paper/results/objective_audit_current.json paper/UXFD_paper/results/objective_audit_current.md paper/UXFD_paper/results/readiness_backlog.md
+git diff --cached --check
+git commit -m "docs: refresh UXFD objective and readiness audits"
+```
+
+At this point, `parent UXFD goal-control checkpoint committed` should report
+`met` unless a new goal/control file was edited after Phase 3.
+
+## Completion Reminder
+
+Even after these commits, the active goal is not complete until:
+
+- local GPUs `0,1` pass preflight,
+- accepted experiment artifacts exist under `paper/UXFD_paper/results/accepted_runs`,
+- TOP representative evidence is accepted,
+- all seven paper matrices become `submission_ready: true`,
+- objective and submission gates pass without `--allow-*`.

@@ -328,7 +328,7 @@
       "entry_id": "A06",
       "label": "FFT-only signal layer",
       "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition fft_only_proxy --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0",
-      "status": "pending true FFT path rewrite or compatible no-skip Fusion1D2D run",
+      "status": "pending same-protocol real-data FFT-only ablation artifact package",
       "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
     {
@@ -867,8 +867,8 @@
       "phase": "ablations",
       "entry_id": "A06",
       "label": "cross-method mapping validation",
-      "command": "python code/validate_mapping.py",
-      "status": "pending source-backed mapping and explicit negative mappings",
+      "command": "python code/validate_mapping.py && python scripts/build_source_backed_mapping.py",
+      "status": "pending explicit negative mappings and accepted same-protocol mapping-impact artifacts",
       "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
     },
     {
@@ -878,7 +878,7 @@
       "entry_id": "A07",
       "label": "remove cross-method mapping module from training/evaluation",
       "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed 0",
-      "status": "pending source-backed sibling-submodule mapping and real train/eval impact artifacts",
+      "status": "source-backed sibling-submodule mapping exists; pending real train/eval impact artifacts",
       "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
     },
     {

@@ -251,7 +251,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_t
 (cd paper/UXFD_paper/Neuralsymbolic_theory && CUDA_VISIBLE_DEVICES=1 python simple_validation_demo.py)
 
 # Q6 Neuralsymbolic_theory ablations A06 device=0 workdir=paper/UXFD_paper/Neuralsymbolic_theory: cross-method mapping validation
-(cd paper/UXFD_paper/Neuralsymbolic_theory && CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py)
+(cd paper/UXFD_paper/Neuralsymbolic_theory && CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py && python scripts/build_source_backed_mapping.py)
 
 # Q6 Neuralsymbolic_theory ablations A07 device=1 workdir=.: remove cross-method mapping module from training/evaluation
 CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed 0

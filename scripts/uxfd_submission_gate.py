@@ -10,12 +10,31 @@ import yaml
 
 from scripts.uxfd_artifact_gate import ArtifactGateReport, evaluate_artifact_gate
 from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, summarize_rows, validate_queue, expand_queue
+from scripts.uxfd_low_tier_source_audit import (
+    LowTierSourceAuditReport,
+    evaluate_low_tier_source_audit,
+)
 from scripts.uxfd_recent_work_gate import RecentWorkGateReport, evaluate_recent_work_gate
 
 
 GOAL_DIR = Path("paper/UXFD_paper/goal")
 CLAUDE_TEAM_DIR = Path(".codex/claude-team-runs/20260511-uxfd-ieee-trans-review")
 DEFAULT_ARTIFACT_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
+GOAL_CLARITY_AUDIT = Path("paper/UXFD_paper/results/goal_clarity_audit_current.md")
+COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
+PAPER07_GOAL = GOAL_DIR / "07_tii_operator_attention.md"
+PAPER07_REJECTION_CONTRACT = Path(
+    "paper/UXFD_paper/TII_operator_attention/submission_prep/"
+    "rejection_recovery_contract.md"
+)
+PAPER07_REJECTION_NEEDLES = (
+    "Rejection-Recovery Focus",
+    "Dynamic Sparse Operator Attention v2",
+    "reviewer-response style trace",
+    "must not use SOTA",
+    "paper remains not submission-ready",
+    "Q0 preflight",
+)
 REQUIRED_GOAL_FILES = (
     "README.md",
     "00_overall_goal.md",
@@ -57,6 +76,11 @@ class SubmissionGateReport:
     recent_work_evidence_ready: bool
     recent_work_matrix_rows: int
     recent_work_blockers: Tuple[str, ...]
+    low_tier_source_ready: bool
+    low_tier_source_findings: int
+    low_tier_source_blocker_count: int
+    low_tier_source_triage_count: int
+    low_tier_source_blockers: Tuple[str, ...]
     queue_can_execute: bool
     queue_resource_reason: str
     queue_summary: Mapping[str, Any]
@@ -64,6 +88,23 @@ class SubmissionGateReport:
 
 def _load_yaml(path: Path) -> Mapping[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _file_contains_all(path: Path, needles: Sequence[str]) -> bool:
+    if not path.exists():
+        return False
+    text = path.read_text(encoding="utf-8")
+    return all(needle in text for needle in needles)
+
+
+def _paper07_rejection_recovery_ready() -> bool:
+    return _file_contains_all(
+        PAPER07_GOAL,
+        PAPER07_REJECTION_NEEDLES[:3],
+    ) and _file_contains_all(
+        PAPER07_REJECTION_CONTRACT,
+        PAPER07_REJECTION_NEEDLES[3:],
+    )
 
 
 def _matrix_paths(queue_path: Path) -> Tuple[Path, ...]:
@@ -95,6 +136,7 @@ def _objective_checklist(
     queue_path: Path,
     artifact_report: ArtifactGateReport,
     recent_report: RecentWorkGateReport,
+    low_tier_report: LowTierSourceAuditReport,
 ) -> Tuple[Mapping[str, str], ...]:
     items: List[Mapping[str, str]] = []
     for filename in REQUIRED_GOAL_FILES:
@@ -148,9 +190,29 @@ def _objective_checklist(
                 "status": "met" if queue_path.exists() else "missing",
             },
             {
+                "requirement": "goal clarity audit report",
+                "evidence": str(GOAL_CLARITY_AUDIT),
+                "status": "met" if GOAL_CLARITY_AUDIT.exists() else "missing",
+            },
+            {
+                "requirement": "commit recovery plan",
+                "evidence": str(COMMIT_RECOVERY_PLAN),
+                "status": "met" if COMMIT_RECOVERY_PLAN.exists() else "missing",
+            },
+            {
+                "requirement": "Paper07 rejection-recovery innovation contract",
+                "evidence": f"{PAPER07_GOAL},{PAPER07_REJECTION_CONTRACT}",
+                "status": "met" if _paper07_rejection_recovery_ready() else "not_met",
+            },
+            {
                 "requirement": "TOP recent-work policy and paper-local matrix coverage",
                 "evidence": "scripts.uxfd_recent_work_gate",
                 "status": "met" if recent_report.policy_ready else "not_met",
+            },
+            {
+                "requirement": "low-tier source hygiene",
+                "evidence": "paper/UXFD_paper/results/low_tier_source_audit.md",
+                "status": "met" if low_tier_report.ready else "not_met",
             },
             {
                 "requirement": "TOP representative accepted artifacts",
@@ -238,6 +300,15 @@ def evaluate_submission_gate(
             f"recent-work evidence blocked: {len(recent_report.evidence_blockers)} "
             "TOP representative blockers"
         )
+    low_tier_report = evaluate_low_tier_source_audit()
+    if not low_tier_report.ready:
+        blockers.append(
+            "low-tier source hygiene blocked: "
+            f"{low_tier_report.blocker_count} blocker references and "
+            f"{low_tier_report.triage_count} triage markers"
+        )
+    if not _paper07_rejection_recovery_ready():
+        blockers.append("Paper07 rejection-recovery innovation contract blocked")
 
     ready = not blockers and len(papers) == 7 and all(item.submission_ready for item in papers)
     return SubmissionGateReport(
@@ -250,6 +321,7 @@ def evaluate_submission_gate(
             queue_path,
             artifact_report,
             recent_report,
+            low_tier_report,
         ),
         artifact_gate_accepted=artifact_report.accepted,
         artifact_gate_root=artifact_report.artifact_root,
@@ -259,6 +331,11 @@ def evaluate_submission_gate(
         recent_work_evidence_ready=recent_report.evidence_ready,
         recent_work_matrix_rows=len(recent_report.matrix_coverage),
         recent_work_blockers=recent_report.blockers,
+        low_tier_source_ready=low_tier_report.ready,
+        low_tier_source_findings=len(low_tier_report.findings),
+        low_tier_source_blocker_count=low_tier_report.blocker_count,
+        low_tier_source_triage_count=low_tier_report.triage_count,
+        low_tier_source_blockers=low_tier_report.blockers,
         queue_can_execute=queue_validation.can_execute,
         queue_resource_reason=queue_validation.resource_reason,
         queue_summary=summarize_rows(queue_rows),
@@ -281,6 +358,9 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Recent-work policy ready: `{report.recent_work_policy_ready}`",
         f"- Recent-work evidence ready: `{report.recent_work_evidence_ready}`",
         f"- Recent-work matrix rows: `{report.recent_work_matrix_rows}`",
+        f"- Low-tier source hygiene ready: `{report.low_tier_source_ready}`",
+        f"- Low-tier source blockers: `{report.low_tier_source_blocker_count}`",
+        f"- Low-tier source triage markers: `{report.low_tier_source_triage_count}`",
         f"- Blocking findings: `{len(report.blockers)}`",
         f"- Queue dry-run entries: `{report.queue_summary['total']}`",
         "",

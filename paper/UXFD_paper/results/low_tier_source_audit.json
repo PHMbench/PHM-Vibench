@@ -1,0 +1,2113 @@
+{
+  "ready": true,
+  "root": "paper/UXFD_paper",
+  "findings": [
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 60,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "* \u7528 SHAP \u5206\u6790\u632f\u52a8\u7279\u5f81\u5bf9\u6545\u969c\u5206\u7c7b\u8d21\u732e\u5ea6\uff0c\u627e\u51fa\u5982\u504f\u5ea6\u3001\u6ce2\u5f62\u56e0\u5b50\u7b49\u5173\u952e\u7edf\u8ba1\u91cf\u3002([MDPI][9])"
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 145,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "* **Neural Additive Model (NAM)**\uff1a\u6bcf\u4e2a\u7279\u5f81\u4e00\u4e2a\u5b50\u7f51\u7edc (f_j(z_j))\uff0c\u603b\u8def\u7531 logit \u662f (\\sum_j f_j(z_j))\uff0c\u53ef\u4ee5\u753b\u66f2\u7ebf\u770b\u300c\u67d0\u4e2a\u7269\u7406\u7279\u5f81\u6539\u53d8\u5bf9\u8def\u7531\u6982\u7387\u7684\u5f71\u54cd\u300d\u3002([MDPI][9])"
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 224,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\u8fd9\u548c MoE-KAN/IME \u91cc\u5206\u6790 expert \u5bf9\u4e0d\u540c\u6a21\u5f0f\u5206\u5de5\u7684\u505a\u6cd5\u7c7b\u4f3c\u3002([MDPI][13])"
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 259,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\u501f\u9274\u73b0\u6709\u6545\u969c\u8bca\u65ad\u91cc\u7528 SHAP \u5206\u6790\u7279\u5f81\u8d21\u732e\u7684\u505a\u6cd5\uff1a([MDPI][9])"
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 277,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\u7ed3\u5408 KAN & \u53ef\u89e3\u91ca MoE \u7684\u601d\u8def\uff1a([MDPI][14])"
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 392,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "[9]: https://www.mdpi.com/2076-3417/13/4/2038?utm_source=chatgpt.com \"Explainable AI for Machine Fault Diagnosis: Understanding Features\u2019 Contribution in Machine Learning Models for Industrial Condition Monitoring\""
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 396,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "[13]: https://www.mdpi.com/2079-9292/13/20/4116?utm_source=chatgpt.com \"Interpretable Mixture of Experts for Decomposition Network on Server Performance Metrics Forecasting\""
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "path": "paper/UXFD_paper/MOE_explainable/doc/11-19/brainstorm.md",
+      "line": 397,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "[14]: https://www.mdpi.com/1099-4300/27/4/403?utm_source=chatgpt.com \"Explainable Fault Classification and Severity Diagnosis in Rotating Machinery Using Kolmogorov\u2013Arnold Networks\""
+    },
+    {
+      "paper_id": "Paper_fuzzy_XFD",
+      "path": "paper/UXFD_paper/Paper_fuzzy_XFD/plan/12_14/codex/plan_fuzzy_xfd_12_14.md",
+      "line": 410,
+      "marker": "IEEE TIM",
+      "severity": "triage",
+      "text": "- [ ] \u8bba\u6587\u521d\u7a3f\u5b8c\u6210\uff08\u76ee\u6807\u671f\u520a\uff1aIEEE TII/IEEE TIM\uff09"
+    },
+    {
+      "paper_id": "TII_operator_attention",
+      "path": "paper/UXFD_paper/TII_operator_attention/doc/\u4fee\u6539\u610f\u89c1\u4e0e\u8ba1\u5212_\u65e0\u65b0\u5b9e\u9a8c\u7248.md",
+      "line": 128,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "2. **IEEE Transactions on Instrumentation and Measurement**"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/prompt/\u6587\u732e\u7efc\u8ff0prompt.md",
+      "line": 25,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "1. **\u68c0\u7d22\u6570\u636e\u5e93/\u6765\u6e90\u4f18\u5148\u7ea7\uff08\u56fd\u9645\uff09**\uff1aIEEE Xplore\u3001Elsevier/ScienceDirect\u3001SpringerLink\u3001ASME Digital Collection\u3001Nature \u7cfb\u5217\u3001MDPI\uff08\u4ec5\u53d6\u9ad8\u5f15\u7528/\u9ad8\u8d28\u91cf\uff09\u3001Crossref/DOI \u6ce8\u518c\u4fe1\u606f\u3002"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u6a21\u578b\u9a71\u52a8\u7684\u6545\u969c\u8bca\u65ad\u65b9\u6cd5/references (1).bib",
+      "line": 89,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal   = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u6a21\u578b\u9a71\u52a8\u7684\u6545\u969c\u8bca\u65ad\u65b9\u6cd5/references (1).bib",
+      "line": 109,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal   = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 8,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal      = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 14,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher    = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 15,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1424-8220/25/9/2952},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 22,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal      = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 28,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher    = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 29,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2076-3417/14/2/898},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 36,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal      = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 91,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 92,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2227-9717/8/9/1123},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 94,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 116,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 117,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1996-1944/18/2/324},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 119,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 174,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 175,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2073-8994/9/5/69},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 177,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 198,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 199,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1099-4300/25/3/442},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 201,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 206,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 207,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2227-9717/13/1/48},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 209,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 237,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 238,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2227-7390/8/8/1308},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 240,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 253,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 254,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1424-8220/24/18/6021},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 256,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 342,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 343,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1996-1073/13/2/310},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 345,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 369,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher    = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 370,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1996-1073/15/15/5703},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 441,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 442,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1424-8220/25/13/3912},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 444,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 449,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 450,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2071-1050/16/23/10651},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 452,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 491,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 492,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2226-4310/11/9/773},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 494,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 529,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 530,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2076-3417/10/15/5298},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.bib",
+      "line": 532,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 651,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6, 2026\uff0c"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 652,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/1424-8220/25/9/2952}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 655,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Components, Trustworthiness, and Future Trends - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 656,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "6, 2026\uff0c \\url{https://www.mdpi.com/2076-3417/14/2/898}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 683,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Processes - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6, 2026\uff0c"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 684,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/2227-9717/8/9/1123}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 698,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Manufacturing - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6, 2026\uff0c"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 699,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/1996-1944/18/2/324}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 724,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Information - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6, 2026\uff0c"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 725,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/2073-8994/9/5/69}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 736,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Adaptive Nonlinear Membership Function - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 737,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "2026\uff0c \\url{https://www.mdpi.com/1099-4300/25/3/442}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 740,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "on Artificial Intelligence and Signal Processing: A Review - MDPI,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 742,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/2227-9717/13/1/48}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 758,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Hydraulic Engineering Investment Decisions - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 759,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "2026\uff0c \\url{https://www.mdpi.com/2227-7390/8/8/1308}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 766,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Reliability for Embedded Systems Based on SysML Models - MDPI,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 768,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/1424-8220/24/18/6021}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 808,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Using Population-Based Incremental Learning - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 809,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "2026\uff0c \\url{https://www.mdpi.com/1996-1073/13/2/310}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 815,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Fault Diagnosis Using Bond Graphs in an Expert System - MDPI,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 817,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/1996-1073/15/15/5703}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 855,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/1424-8220/25/13/3912}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 858,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Enhancing Reliability in Sustainable Systems - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 859,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "6, 2026\uff0c \\url{https://www.mdpi.com/2071-1050/16/23/10651}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 880,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "Diagnosis Based on Logic Diagram Model - MDPI, \u8bbf\u95ee\u65f6\u95f4\u4e3a \u4e00\u6708 6,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 881,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "2026\uff0c \\url{https://www.mdpi.com/2226-4310/11/9/773}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 899,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "An Ontological Metro Accident Case Retrieval Using CBR and NLP - MDPI,"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/1-\u5f15\u8a00/\u77e5\u8bc6\u9a71\u52a8\u7b26\u53f7\u9a71\u52a8\u6545\u969c\u65b9\u6cd5/knowledge_sym_method_research.tex",
+      "line": 901,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "\\url{https://www.mdpi.com/2076-3417/10/15/5298}\\\\"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 45,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 46,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url       = {https://www.mdpi.com/2226-4310/10/7/644},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 151,
+      "marker": "Electronics",
+      "severity": "triage",
+      "text": "journal = {Electronics},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 157,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/2079-9292/14/24/4809},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 373,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "title   = {Human-in-the-Loop XAI for Predictive Maintenance: A Systematic Review of Interactive Systems and Their Effectiveness in Maintenance Decision-Making - MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 374,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/2079-9292/14/17/3384},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 403,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "title   = {Understanding Physics-Informed Neural Networks: Techniques, Applications, Trends, and Challenges - MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/plan/reference/\u7406\u8bba\u90e8\u5206/2\u3001\u795e\u7ecf\u7b26\u53f7\u7f51\u7edc\u5b66\u4e60\u6280\u672f/neuro_symbolic_refs (1).bib",
+      "line": 404,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/2673-2688/5/3/74},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 185,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/2075-1702/11/7/692},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 254,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 276,
+      "marker": "Scientific Reports",
+      "severity": "triage",
+      "text": "journal = {Scientific Reports},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 517,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 894,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 935,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/2075-1702/11/5/519},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1032,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1077,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/2077-1312/12/12/2284}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1083,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1096,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1097,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/1424-8220/23/8/4007},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1428,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1437,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1446,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1517,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/1099-4300/21/11/1089},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1556,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1557,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/1424-8220/22/6/2192},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1837,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1843,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url     = {https://www.mdpi.com/1424-8220/19/7/1693}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 1850,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 2076,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 2101,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 2122,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 2187,
+      "marker": "Electronics",
+      "severity": "triage",
+      "text": "journal = {Electronics},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3263,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3280,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3449,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3490,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3508,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3533,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3541,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3594,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 3732,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4124,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal   = {Sensors},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4130,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4131,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url       = {https://www.mdpi.com/1424-8220/25/9/2952},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4138,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal   = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4144,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4145,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url       = {https://www.mdpi.com/2076-3417/14/2/898},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4152,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal   = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4207,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4208,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2227-9717/8/9/1123},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4210,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4232,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4233,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1996-1944/18/2/324},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4235,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4290,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4291,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2073-8994/9/5/69},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4293,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4314,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4315,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1099-4300/25/3/442},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4317,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4322,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4323,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2227-9717/13/1/48},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4325,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4353,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4354,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2227-7390/8/8/1308},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4356,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4369,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4370,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1424-8220/24/18/6021},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4372,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4458,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4459,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1996-1073/13/2/310},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4461,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4485,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4486,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url       = {https://www.mdpi.com/1996-1073/15/15/5703},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4557,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4558,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/1424-8220/25/13/3912},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4560,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4565,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4566,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2071-1050/16/23/10651},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4568,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4607,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4608,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2226-4310/11/9/773},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4610,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4645,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "organization = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4646,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url          = {https://www.mdpi.com/2076-3417/10/15/5298},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4648,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note         = {TODO:VERIFY authors/year/DOI from MDPI citation section}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4881,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "title = {Fault Diagnosis for Complex Equipment Based on Belief Rule Base with Adaptive Nonlinear Membership Function - MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4882,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url   = {https://www.mdpi.com/1099-4300/25/3/442}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4886,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "title = {Dynamic Fault Tree Generation and Quantitative Analysis of System Reliability for Embedded Systems Based on SysML Models - MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4887,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url   = {https://www.mdpi.com/1424-8220/24/18/6021}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4906,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "title = {Knowledge Graph Construction Method for Commercial Aircraft Fault Diagnosis Based on Logic Diagram Model - MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4907,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url   = {https://www.mdpi.com/2226-4310/11/9/773}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4960,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 4963,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note      = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 5024,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 5709,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url        = {https://www.mdpi.com/2076-3417/10/20/7302},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 5714,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal    = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 6220,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url       = {https://www.mdpi.com/2813-0324/2/1/19},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 6225,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 6526,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal    = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 7608,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal    = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 8459,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 8462,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 9298,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 9318,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 9475,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 9841,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 10212,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 10902,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 10905,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 11393,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url        = {https://www.mdpi.com/2504-4494/6/1/10},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 11468,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url        = {https://www.mdpi.com/2504-4494/6/1/10},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 11782,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 11786,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 13702,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 13705,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note       = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 15755,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 15758,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note       = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 16131,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 16134,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 17217,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 17220,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 18900,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 18903,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19263,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19266,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note      = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19287,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19290,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note     = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19451,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19454,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note      = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 19598,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 20183,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 20186,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "note      = {Conference Name: IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 20863,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url      = {http://www.mdpi.com/2076-3417/8/10/1786},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 20868,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal  = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21402,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21418,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21434,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21449,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21464,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21478,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21493,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21508,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21523,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21537,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21551,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21565,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21578,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21592,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21606,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21620,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 21635,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 23532,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal  = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 24476,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal  = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 24756,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal  = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 25308,
+      "marker": "Scientific Reports",
+      "severity": "triage",
+      "text": "journal  = {Scientific Reports},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 25319,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal  = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 25388,
+      "marker": "Scientific Reports",
+      "severity": "triage",
+      "text": "journal  = {Scientific Reports},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 25462,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal  = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 25482,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal  = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 25891,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26116,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note       = {Publisher: MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26128,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "note       = {Publisher: MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26136,
+      "marker": "IEEE Access",
+      "severity": "triage",
+      "text": "journal    = {IEEE Access},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26211,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal  = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26283,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26845,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 26863,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal   = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 27488,
+      "marker": "IEEE Transactions on Instrumentation and Measurement",
+      "severity": "triage",
+      "text": "journal    = {IEEE Transactions on Instrumentation and Measurement},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 27758,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 27759,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "url       = {https://www.mdpi.com/2226-4310/10/7/644},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 28019,
+      "marker": "Applied Sciences",
+      "severity": "triage",
+      "text": "journal   = {Applied Sciences},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 28025,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI}"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 28044,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 28079,
+      "marker": "MDPI",
+      "severity": "triage",
+      "text": "publisher = {MDPI},"
+    },
+    {
+      "paper_id": "thu_liqi_phd_thesis",
+      "path": "paper/UXFD_paper/thu_liqi_phd_thesis/ref/refs.bib",
+      "line": 28119,
+      "marker": "Sensors",
+      "severity": "triage",
+      "text": "journal = {Sensors},"
+    }
+  ],
+  "blockers": [],
+  "blocker_count": 0,
+  "triage_count": 263
+}

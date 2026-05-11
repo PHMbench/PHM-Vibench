@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 from scripts.uxfd_submodule_dirty_triage import (
@@ -7,8 +8,12 @@ from scripts.uxfd_submodule_dirty_triage import (
     DirtyEntry,
     _classify_path,
     _summarize_entries,
+    evaluate_dirty_triage,
     render_markdown,
 )
+
+
+PERSISTED_DIRTY_TRIAGE_MD = Path("paper/UXFD_paper/results/submodule_dirty_triage.md")
 
 
 def test_classify_dirty_paths_by_review_policy() -> None:
@@ -60,3 +65,9 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
 
     assert "not accepted experiment evidence" in text
     assert PROMOTE_ONLY_THROUGH_GATE in text
+
+
+def test_persisted_dirty_triage_report_matches_current_triage() -> None:
+    report = evaluate_dirty_triage()
+
+    assert PERSISTED_DIRTY_TRIAGE_MD.read_text(encoding="utf-8") == render_markdown(report)

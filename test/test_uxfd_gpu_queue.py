@@ -16,6 +16,7 @@ from scripts.uxfd_gpu_queue import (
 
 PERSISTED_LAUNCH_PLAN = Path("paper/UXFD_paper/results/queue_launch_plan.sh")
 PERSISTED_SHARD_DIR = Path("paper/UXFD_paper/results/queue_launch_shards")
+PERSISTED_LIVE_PREFLIGHT = Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")
 
 
 def test_gpu_queue_expands_all_paper_commands_and_top_bindings() -> None:
@@ -176,6 +177,25 @@ def test_persisted_launch_plan_and_shards_match_current_queue() -> None:
     assert "These scripts are launch plans, not accepted evidence." in readme
     assert "| `0` | `gpu0.sh` |" in readme
     assert "| `1` | `gpu1.sh` |" in readme
+
+
+def test_persisted_live_preflight_snapshot_matches_current_queue_shape() -> None:
+    rows = expand_queue(DEFAULT_QUEUE)
+    validation = validate_queue(DEFAULT_QUEUE)
+    payload = json.loads(PERSISTED_LIVE_PREFLIGHT.read_text(encoding="utf-8"))
+    expected_payload = json.loads(json.dumps(build_payload(rows, validation)))
+
+    assert payload["validation"] == expected_payload["validation"]
+    assert payload["summary"] == summarize_rows(rows)
+    assert len(payload["commands"]) == len(rows) == 104
+
+    live = payload["live_preflight"]
+    assert live["accepted"] is False
+    assert live["nvidia_smi_ok"] is False
+    assert live["torch_cuda_available"] is False
+    assert live["torch_cuda_device_count"] == 0
+    assert live["gpu_names"] == []
+    assert "blocked:" in live["reason"]
 
 
 def test_gpu_queue_live_preflight_is_reported_without_launching_experiments(

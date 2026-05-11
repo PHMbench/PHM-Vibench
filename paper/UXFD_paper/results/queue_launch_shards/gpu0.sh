@@ -131,7 +131,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_t
 CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q6 Neuralsymbolic_theory ablations A06 device=0 workdir=paper/UXFD_paper/Neuralsymbolic_theory: cross-method mapping validation
-(cd paper/UXFD_paper/Neuralsymbolic_theory && CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py)
+(cd paper/UXFD_paper/Neuralsymbolic_theory && CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py && python scripts/build_source_backed_mapping.py)
 
 # Q7 LLM_Explainable_FD_Toolkit proposed P00 device=0 workdir=.: PHM-Vibench NSN smoke with agent/distillation extension enabled
 CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0

@@ -75,6 +75,22 @@ queue, accepted artifacts, and cross-paper submission gate are satisfied. Use
 `--allow-not-achieved` only to export the current audit without treating it as
 complete.
 
+## Goal Clarity Audit
+
+Use the clarity audit when checking whether the goal package itself has enough
+specificity to proceed. This is a human-readable audit artifact, not a
+submission-readiness gate and not accepted experiment evidence:
+
+```bash
+sed -n '1,220p' paper/UXFD_paper/results/goal_clarity_audit_current.md
+python -m pytest -q test/test_uxfd_goal_clarity.py
+```
+
+The current audit records that the goal files are structurally clear enough for
+staged preparation, but still blocked for full execution by GPU preflight,
+accepted artifacts, TOP representative evidence, dirty submodules, and
+submission gates.
+
 ## Submission Gate
 
 Use the parent gate checker to prove the package is or is not ready for
@@ -133,3 +149,16 @@ metadata contract and artifact validator stay aligned.
 - Parent commits record only goal/spec updates and intentional submodule gitlink updates.
 - Each important milestone should be one reviewable submodule commit, not a mixed cross-paper batch.
 - Existing dirty submodule work is treated as user work until attributed.
+
+## Commit Recovery Plan
+
+If git-index writes are blocked, use the recovery plan to resume without
+restaging unrelated work:
+
+```bash
+sed -n '1,260p' paper/UXFD_paper/results/commit_recovery_plan.md
+```
+
+The plan stages Paper02 planning files first, then the parent goal-control
+checkpoint, and keeps generated figures, unreviewed manuscripts, model weights,
+and unrelated parent edits out of the checkpoint.

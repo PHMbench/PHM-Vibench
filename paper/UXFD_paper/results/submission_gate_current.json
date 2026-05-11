@@ -280,6 +280,21 @@
       "status": "met"
     },
     {
+      "requirement": "goal clarity audit report",
+      "evidence": "paper/UXFD_paper/results/goal_clarity_audit_current.md",
+      "status": "met"
+    },
+    {
+      "requirement": "commit recovery plan",
+      "evidence": "paper/UXFD_paper/results/commit_recovery_plan.md",
+      "status": "met"
+    },
+    {
+      "requirement": "Paper07 rejection-recovery innovation contract",
+      "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md",
+      "status": "met"
+    },
+    {
       "requirement": "TOP recent-work policy and paper-local matrix coverage",
       "evidence": "scripts.uxfd_recent_work_gate",
       "status": "met"

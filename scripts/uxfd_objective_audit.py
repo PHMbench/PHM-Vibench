@@ -12,6 +12,9 @@ from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
     DEFAULT_QUEUE,
     GOAL_DIR,
+    PAPER07_GOAL,
+    PAPER07_REJECTION_CONTRACT,
+    PAPER07_REJECTION_NEEDLES,
     REQUIRED_GOAL_FILES,
     evaluate_submission_gate,
 )
@@ -21,6 +24,9 @@ SPEC_DIR = Path("specs/006-uxfd-ieee-trans-submission-readiness")
 CLAUDE_TEAM_DIR = Path(".codex/claude-team-runs/20260511-uxfd-ieee-trans-review")
 HANDOFF_PATH = Path(
     ".claude/handoffs/2026-05-11-uxfd-ieee-trans-submission-readiness.md"
+)
+CONTINUATION_HANDOFF_PATH = Path(
+    ".claude/handoffs/2026-05-12-uxfd-goal-continuation.md"
 )
 
 REQUIRED_SPEC_FILES = (
@@ -65,6 +71,18 @@ EXECUTION_ARTIFACTS = (
         "readiness execution backlog",
         Path("paper/UXFD_paper/results/readiness_backlog.md"),
     ),
+    (
+        "goal clarity audit report",
+        Path("paper/UXFD_paper/results/goal_clarity_audit_current.md"),
+    ),
+    (
+        "commit recovery plan",
+        Path("paper/UXFD_paper/results/commit_recovery_plan.md"),
+    ),
+    (
+        "low-tier source audit report",
+        Path("paper/UXFD_paper/results/low_tier_source_audit.md"),
+    ),
 )
 
 PAPER_SUBMODULES = (
@@ -75,6 +93,35 @@ PAPER_SUBMODULES = (
     Path("paper/UXFD_paper/Paper_fuzzy_XFD"),
     Path("paper/UXFD_paper/Neuralsymbolic_theory"),
     Path("paper/UXFD_paper/TII_operator_attention"),
+)
+
+PARENT_GOAL_CHECKPOINT_PATHS = (
+    Path(".claude/handoffs/2026-05-12-uxfd-goal-continuation.md"),
+    Path("paper/UXFD_paper/goal/README.md"),
+    Path("paper/UXFD_paper/goal/99_submission_readiness_matrix.md"),
+    Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json"),
+    Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
+    Path("paper/UXFD_paper/results/submission_gate_current.json"),
+    Path("paper/UXFD_paper/results/submission_gate_current.md"),
+    Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
+    Path("paper/UXFD_paper/results/goal_clarity_audit_current.md"),
+    Path("paper/UXFD_paper/results/commit_recovery_plan.md"),
+    Path("paper/UXFD_paper/results/low_tier_source_audit.md"),
+    Path("paper/UXFD_paper/results/low_tier_source_audit.json"),
+    Path("scripts/uxfd_low_tier_source_audit.py"),
+    Path("scripts/uxfd_objective_audit.py"),
+    Path("scripts/uxfd_readiness_backlog.py"),
+    Path("scripts/uxfd_submission_gate.py"),
+    Path("scripts/uxfd_submodule_dirty_triage.py"),
+    Path("test/test_uxfd_low_tier_source_audit.py"),
+    Path("test/test_uxfd_artifact_gate.py"),
+    Path("test/test_uxfd_gpu_queue.py"),
+    Path("test/test_uxfd_objective_audit.py"),
+    Path("test/test_uxfd_readiness_backlog.py"),
+    Path("test/test_uxfd_submission_gate.py"),
+    Path("test/test_uxfd_submodule_dirty_triage.py"),
+    Path("test/test_uxfd_goal_clarity.py"),
 )
 
 
@@ -132,6 +179,16 @@ def _git_status_lines(path: Path) -> Tuple[str, ...]:
     return tuple(line for line in result.stdout.splitlines() if line.strip())
 
 
+def _git_status_lines_for_paths(paths: Sequence[Path]) -> Tuple[str, ...]:
+    result = subprocess.run(
+        ["git", "status", "--porcelain", "--", *(str(path) for path in paths)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return tuple(line for line in result.stdout.splitlines() if line.strip())
+
+
 def _paper_submodule_cleanliness_item(
     submodule_paths: Sequence[Path] = PAPER_SUBMODULES,
 ) -> ObjectiveAuditItem:
@@ -168,6 +225,35 @@ def _paper_submodule_cleanliness_item(
     )
 
 
+def _parent_goal_checkpoint_item(
+    paths: Sequence[Path] = PARENT_GOAL_CHECKPOINT_PATHS,
+) -> ObjectiveAuditItem:
+    try:
+        status_lines = _git_status_lines_for_paths(paths)
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        return _item(
+            requirement="parent UXFD goal-control checkpoint committed",
+            evidence="git status --porcelain -- <UXFD goal-control paths>",
+            status="unverified",
+            details=f"git status failed: {exc.__class__.__name__}",
+        )
+
+    if status_lines:
+        return _item(
+            requirement="parent UXFD goal-control checkpoint committed",
+            evidence="git status --porcelain -- <UXFD goal-control paths>",
+            status="not_met",
+            details=f"dirty_parent_goal_control_paths={len(status_lines)}",
+        )
+
+    return _item(
+        requirement="parent UXFD goal-control checkpoint committed",
+        evidence="git status --porcelain -- <UXFD goal-control paths>",
+        status="met",
+        details=f"{len(paths)} parent goal-control paths clean",
+    )
+
+
 def evaluate_objective_audit(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_root: Path = DEFAULT_ARTIFACT_ROOT,
@@ -186,6 +272,7 @@ def evaluate_objective_audit(
         items.append(_exists_item(f"Spec Kit artifact {filename}", SPEC_DIR / filename))
 
     items.append(_exists_item("handoff document", HANDOFF_PATH))
+    items.append(_exists_item("continuation handoff document", CONTINUATION_HANDOFF_PATH))
     items.append(_exists_item("Claude Team task spec", CLAUDE_TEAM_DIR / "TASK_SPEC.md"))
     items.append(_exists_item("Claude Team launch log", CLAUDE_TEAM_DIR / "LAUNCH_LOG.md"))
     items.append(
@@ -239,7 +326,32 @@ def evaluate_objective_audit(
     for requirement, path in EXECUTION_ARTIFACTS:
         items.append(_exists_item(requirement, path))
 
+    paper07_rejection_ready = _text_contains(
+        PAPER07_GOAL,
+        PAPER07_REJECTION_NEEDLES[0],
+    ) and all(
+        _text_contains(PAPER07_GOAL, needle)
+        for needle in PAPER07_REJECTION_NEEDLES[1:3]
+    ) and all(
+        _text_contains(PAPER07_REJECTION_CONTRACT, needle)
+        for needle in PAPER07_REJECTION_NEEDLES[3:]
+    )
+    items.append(
+        _item(
+            requirement="Paper07 rejection-recovery innovation contract",
+            evidence=f"{PAPER07_GOAL},{PAPER07_REJECTION_CONTRACT}",
+            status="met" if paper07_rejection_ready else "not_met",
+            details=(
+                "goal and submodule contract encode rejection recovery, DSOA v2, "
+                "reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules"
+                if paper07_rejection_ready
+                else "missing required Paper07 rejection-recovery goal or contract phrases"
+            ),
+        )
+    )
+
     items.append(_paper_submodule_cleanliness_item())
+    items.append(_parent_goal_checkpoint_item())
 
     submission = evaluate_submission_gate(queue_path=queue_path, artifact_root=artifact_root)
     recent = evaluate_recent_work_gate(queue_path=queue_path)
@@ -283,6 +395,18 @@ def evaluate_objective_audit(
                 f"accepted_pool_rows={recent.accepted_pool_rows}, "
                 f"2026_ids={len(recent.top_2026_ids)}, "
                 f"low_tier_violations={len(recent.low_tier_violations)}"
+            ),
+        )
+    )
+    items.append(
+        _item(
+            requirement="low-tier source hygiene",
+            evidence=Path("paper/UXFD_paper/results/low_tier_source_audit.md"),
+            status="met" if submission.low_tier_source_ready else "not_met",
+            details=(
+                f"findings={submission.low_tier_source_findings}, "
+                f"blockers={submission.low_tier_source_blocker_count}, "
+                f"triage={submission.low_tier_source_triage_count}"
             ),
         )
     )
