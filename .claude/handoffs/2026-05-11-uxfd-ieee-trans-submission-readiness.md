@@ -64,6 +64,7 @@ paper submodule and that each `VIBENCH.md` declares a local
 - `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`; follow-up commit `d548f11` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`; follow-up commit `9a5b141` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`; follow-up commit `6992839` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
+- `paper/UXFD_paper/MOE_explainable` - follow-up submodule commit `3dfc989` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records six command-bound PHM-Vibench baselines, partial expert-count ablation evidence, and five missing MoE ablation hooks.
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - submodule milestone commit `53e6d1b` adds a compilable evidence snapshot, updates `VIBENCH.md` and `configs/vibench/min.yaml`, adds `doc/T044_submission_readiness_evidence.md`, and fixes the NumPy bool serializer in `scripts/run_fuzzy_baseline.py`.
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - follow-up submodule commit `b82c05f` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records seven command-bound baselines, six supported fuzzy ablations, dummy-smoke metrics, and the remaining hard-threshold/safety/no-rule-output blockers.
 - `paper/UXFD_paper/Neuralsymbolic_theory` - submodule milestone commit `9139307` adds `report/T045_evidence_readiness.md`, updates `VIBENCH.md`, and fixes `simple_validation_demo.py` so failed P2 evidence is recorded as a boundary case; follow-up commit `e3e268d` tracks `configs/vibench/min.yaml`.
@@ -130,7 +131,10 @@ paper submodule and that each `VIBENCH.md` declares a local
 - Paper 04 `MOE_explainable` milestone:
   - Worker `jq` checks passed for seed stability, routing analysis, expert ablation, and CWRU/XJTU bridge artifacts.
   - `python scripts/bind_submission_ready_evidence.py --mode review-evidence --paper-root . --output-dir /tmp/moe_t043_review_evidence_validate` passed, but the new T043 gate records why the older local `ready: true` does not satisfy the strict IEEE gate.
-  - Remaining blockers: no six-baseline matrix, no full CWRU/XJTU multi-seed matrix, incomplete 2x4090 metadata, SOTA blocked.
+  - P00 and B01-B06 PHM-Vibench dummy smokes passed in `LQ_signal` with CPU fallback because GPU/NVML was unavailable. B06 ConvTransformer required `--override model.input_dim=2`.
+  - `submission_prep/baseline_ablation_matrix.yaml` records six command-bound baselines plus partial existing expert-count ablation evidence. The matrix explicitly blocks no-load-balance, no-sparsity, router-temperature, expert-family-removal, and uniform-router ablations until script/config hooks exist.
+  - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed after adding the MoE matrix contract test: `21 passed in 0.49s`.
+  - Remaining blockers: no full CWRU/XJTU multi-seed matrix, five MoE ablation hooks missing, incomplete 2x4090 metadata, no TOP representative artifacts, SOTA blocked.
 - Paper 05 `Paper_fuzzy_XFD` milestone:
   - `pdflatex` passed for `manuscript/final_tex/main.tex` and wrote `/tmp/fuzzy_xfd_tex/main.pdf`.
   - YAML parse and `py_compile` passed.

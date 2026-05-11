@@ -25,6 +25,10 @@ PAPER05_MATRIX = Path(
     "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER04_MATRIX = Path(
+    "paper/UXFD_paper/MOE_explainable/submission_prep/"
+    "baseline_ablation_matrix.yaml"
+)
 
 LOW_TIER_MARKERS = (
     "Scientific Reports",
@@ -341,6 +345,44 @@ def test_fuzzy_xfd_baseline_ablation_matrix_is_command_bound_not_ready() -> None
     blockers = "\n".join(matrix["strict_blockers"])
     assert "No accepted CWRU/XJTU or industrial multi-seed baseline table yet." in blockers
     assert "Hard-threshold, safety-fallback, and no-rule-output" in blockers
+    assert "No SOTA claim is allowed from this matrix alone." in blockers
+
+
+def test_moe_baseline_matrix_records_ablation_blockers_not_ready() -> None:
+    assert PAPER04_MATRIX.exists()
+    matrix = yaml.safe_load(PAPER04_MATRIX.read_text(encoding="utf-8"))
+
+    assert matrix["submission_ready"] is False
+    assert matrix["evidence_level"] == "baseline config-target validated; MoE ablation evidence partial"
+    assert len(matrix["local_moe_evidence"]) >= 4
+    assert len(matrix["baselines"]) >= 6
+    assert len(matrix["ablations"]) >= 6
+    assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
+    assert all(
+        "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+        for entry in matrix["baselines"]
+    )
+
+    for entry in matrix["baselines"]:
+        assert entry["config_target_validated"] is True
+        assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
+        assert "python main.py --config" in entry["command"]
+        assert "pending" in entry["accepted_evidence_status"]
+
+    bound_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is True
+    ]
+    blocked_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
+    ]
+    assert len(bound_ablations) == 1
+    assert len(blocked_ablations) >= 5
+    assert "run_expert_ablation_probe.py" in bound_ablations[0]["command"]
+    assert all(entry["command"].startswith("blocked:") for entry in blocked_ablations)
+
+    blockers = "\n".join(matrix["strict_blockers"])
+    assert "Only one MoE-specific ablation command is currently bound" in blockers
+    assert "No accepted TOP representative command/log/artifact mapping yet." in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
