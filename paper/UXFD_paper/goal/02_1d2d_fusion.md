@@ -12,9 +12,10 @@
 - Manuscript entrypoint: `paper_draft/NMI_Paper1_Fusion1D2D.tex` is the canonical IEEEtran checkpoint.
 - Non-canonical placeholder: `manuscript/final_tex/main.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current manuscript blocker: the canonical IEEEtran checkpoint compiles, but
-  unresolved citations/references and placeholder figure boxes must be replaced
-  with accepted artifacts before final submission.
+- Current manuscript status: the canonical IEEEtran checkpoint compiles with a
+  full BibTeX flow and no unresolved citation/reference warnings in the final
+  log. Accepted architecture and Grad-CAM figure artifacts still need to replace
+  the placeholder figure boxes before final submission.
 
 ## Required Evidence
 

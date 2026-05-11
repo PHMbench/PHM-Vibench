@@ -1076,3 +1076,42 @@ goal remains incomplete because Q0 GPU preflight is still blocked, accepted
 run metadata is absent, TOP representative artifacts are pending, all seven
 paper matrices remain `submission_ready: false`, and residual dirty submodule
 work still needs owner triage.
+
+## 2026-05-12 Update: Paper02 BibTeX Compile Status Sync
+
+Verified that Paper02's canonical IEEEtran checkpoint can clear citation and
+reference warnings when compiled with a full BibTeX flow. This update only
+removes a stale parent-goal blocker; Paper02 remains non-submission-ready
+because accepted architecture and Grad-CAM figure artifacts, CWRU/XJTU
+same-protocol baselines, true fusion ablations, TOP representatives, GPU
+metadata, and SOTA gates are still blocked.
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/02_1d2d_fusion.md`
+  - records that `paper_draft/NMI_Paper1_Fusion1D2D.tex` compiles with a full
+    BibTeX flow and no unresolved citation/reference warnings in the final log.
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - replaces the stale unresolved-citation blocker with the remaining accepted
+    figure-artifact blocker.
+- `test/test_uxfd_paper02_tex_gate.py`
+  - now asserts that the final latexmk log contains no undefined citation,
+    undefined reference, or citation-rerun warning.
+
+**Validation passed:**
+
+```bash
+env BIBINPUTS=/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/1D-2D_fusion_explainable// bibtex NMI_Paper1_Fusion1D2D
+pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/tmp/uxfd_paper02_tex paper_draft/NMI_Paper1_Fusion1D2D.tex
+pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/tmp/uxfd_paper02_tex paper_draft/NMI_Paper1_Fusion1D2D.tex
+python -m pytest -q test/test_uxfd_paper02_tex_gate.py
+python -m pytest -q test/test_uxfd_paper_alignment_contract.py::test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers test/test_uxfd_paper02_tex_gate.py
+```
+
+Results:
+
+```text
+Paper02 PDF: /tmp/uxfd_paper02_tex/NMI_Paper1_Fusion1D2D.pdf
+2 passed in 2.26s
+3 passed in 2.31s
+```
