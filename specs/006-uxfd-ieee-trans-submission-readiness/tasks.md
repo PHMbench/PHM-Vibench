@@ -111,6 +111,7 @@
 - [x] T075 [P] Normalize Paper 07 canonical TeX entrypoint to `manuscript/final_tex/main.tex`, compile it from the submodule root, and record remaining reference/bibliography cleanup as non-submission-ready.
 - [x] T076 [P] Fix Paper 07 empty-year BibTeX warnings and record the full `pdflatex`/`bibtex` compile flow as a TeX gate, not as submission readiness.
 - [x] T077 [P] Add Paper 07 command-bound seven-baseline and six-ablation matrix, with a parent contract test that keeps it marked non-submission-ready until industrial GPU artifacts exist.
+- [x] T078 [P] Run Paper 07 B01/A01 and B02 dummy smokes in `LQ_signal`, record CPU-fallback metrics, and keep industrial/GPU/SOTA gates blocked.
 
 ## Phase 8: Validation
 
