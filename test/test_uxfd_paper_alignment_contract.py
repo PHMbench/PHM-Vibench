@@ -277,6 +277,14 @@ def test_operator_attention_baseline_ablation_matrix_is_command_bound_not_ready(
         )
         >= 6
     )
+    assert (
+        sum(
+            "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+            or "same run as B01" in entry.get("dummy_smoke_status", "")
+            for entry in matrix["ablations"]
+        )
+        >= 6
+    )
 
     for entry in matrix["baselines"] + matrix["ablations"]:
         assert entry["config_target_validated"] is True
