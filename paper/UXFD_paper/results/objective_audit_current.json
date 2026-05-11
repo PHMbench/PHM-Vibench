@@ -225,6 +225,12 @@
       "details": "exists"
     },
     {
+      "requirement": "readiness execution backlog",
+      "evidence": "paper/UXFD_paper/results/readiness_backlog.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "paper submodule working trees clean before parent handoff",
       "evidence": "git -C <paper_submodule> status --porcelain",
       "status": "not_met",
@@ -365,7 +371,7 @@
     "accepted run artifact metadata: records=0, blockers=3",
     "cross-paper submission gate: ready=False, blockers=16"
   ],
-  "met": 46,
+  "met": 47,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0

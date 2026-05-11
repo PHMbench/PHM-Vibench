@@ -61,6 +61,10 @@ EXECUTION_ARTIFACTS = (
         "submodule dirty triage report",
         Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
     ),
+    (
+        "readiness execution backlog",
+        Path("paper/UXFD_paper/results/readiness_backlog.md"),
+    ),
 )
 
 PAPER_SUBMODULES = (

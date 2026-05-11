@@ -42,6 +42,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["accepted run artifact metadata"].status == "not_met"
     assert items["cross-paper submission gate"].status == "not_met"
     assert items["submodule dirty triage report"].status == "met"
+    assert items["readiness execution backlog"].status == "met"
     assert (
         items["paper submodule working trees clean before parent handoff"].status
         in {"met", "not_met", "unverified"}
