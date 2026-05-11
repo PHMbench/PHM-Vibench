@@ -1,0 +1,48 @@
+# Generative PHM smoke demo: DDPM epsilon prediction on repo-shipped dummy data.
+
+pipeline: "Pipeline_06_generative"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/generative_cfm.yaml"
+  task: "configs/base/task/generative_ddpm.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_dummy_generative_ddpm"
+  seed: 0
+  output_dir: "results/demo/dummy_generative_ddpm"
+  notes: "Generative PHM DDPM epsilon-prediction smoke test on dummy metadata."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 2
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.2
+  test_ratio: 0.0
+  normalization: "standardization"
+  window_size: 128
+  stride: 16
+  num_window: 4
+  dtype: "float32"
+
+model:
+  hidden_dim: 32
+
+task:
+  num_train_timesteps: 100
+  generative:
+    mode: "train"
+    synthetic_dataset_id: "dummy_generative_ddpm"
+
+trainer:
+  monitor: "val_loss"
+  num_epochs: 1
+  gpus: 0
+  device: "cpu"
+  early_stopping: false
+  log_every_n_steps: 1
+  save_top_k: 1

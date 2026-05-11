@@ -29,6 +29,29 @@ def sample_euler_ode(
                 f"velocity contains NaN/Inf at step={step}, t={t_value}, "
                 f"shape={tuple(velocity.shape)}, dtype={velocity.dtype}, device={velocity.device}"
             )
-        x = x + dt * velocity
+        expected_shape = x.shape
+        expected_dtype = x.dtype
+        expected_device = x.device
+        x_next = x + dt * velocity
+        if x_next.shape != expected_shape:
+            raise ValueError(
+                f"state shape mismatch after update at step={step}, t={t_value}: "
+                f"{tuple(x_next.shape)} vs {tuple(expected_shape)}"
+            )
+        if x_next.dtype != expected_dtype:
+            raise ValueError(
+                f"state dtype changed after update at step={step}, t={t_value}: "
+                f"{x_next.dtype} vs {expected_dtype}"
+            )
+        if x_next.device != expected_device:
+            raise ValueError(
+                f"state device changed after update at step={step}, t={t_value}: "
+                f"{x_next.device} vs {expected_device}"
+            )
+        if not torch.isfinite(x_next).all():
+            raise ValueError(
+                f"state contains NaN/Inf after update at step={step}, t={t_value}, "
+                f"shape={tuple(x_next.shape)}, dtype={x_next.dtype}, device={x_next.device}"
+            )
+        x = x_next
     return x
-
