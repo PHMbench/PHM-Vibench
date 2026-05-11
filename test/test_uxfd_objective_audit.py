@@ -221,6 +221,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "test/test_uxfd_artifact_gate.py" in paths
     assert "test/test_uxfd_gpu_queue.py" in paths
     assert "test/test_uxfd_paper02_runner_policy.py" in paths
+    assert "test/test_uxfd_paper04_runner_policy.py" in paths
     assert "test/test_uxfd_readiness_backlog.py" in paths
     assert "test/test_uxfd_submodule_dirty_triage.py" in paths
 
