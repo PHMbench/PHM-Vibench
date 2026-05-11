@@ -1349,6 +1349,47 @@ diff --cached --check clean
 Remaining Paper04 dirty content is limited to docs/manuscript/planning/results
 work that still requires owner review and is not committed in this code fix.
 
+## 2026-05-12 Update: Paper04 Workspace And Planning Checkpoints
+
+Committed two additional Paper04 non-evidence checkpoints after the MoE routing
+fix. These reduce local dirty status without promoting manuscript or result
+claims to accepted evidence.
+
+**Paper04 submodule commits:**
+
+- `882d888 chore: ignore agent runtime workspaces`
+- `4567aca docs: add moe experiment supplement plan`
+
+**Submodule files committed:**
+
+- `.gitignore`
+- `plan/EXPERIMENT_PLAN_补充.md`
+- `program.md`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - now records Paper04 submodule SHA `4567aca` and the planning checkpoint,
+    while keeping accepted MoE baseline, ablation, TOP representative, GPU
+    metadata, and SOTA gates blocked.
+
+**Validation passed:**
+
+```bash
+git -C paper/UXFD_paper/MOE_explainable diff --check -- .gitignore
+git -C paper/UXFD_paper/MOE_explainable diff --cached --check
+```
+
+Results:
+
+```text
+diff checks clean for both Paper04 checkpoint commits
+```
+
+Remaining Paper04 dirty content is limited to `CORE.md`, `README.md`,
+`paper_blueprint.md`, manuscript drafts, evidence-binding scripts, and
+untracked evidence/design documents that require owner review.
+
 ## 2026-05-12 Update: Paper01/Paper02 Runtime Workspace Ignore Checkpoints
 
 Committed focused `.gitignore` updates in Paper01 and Paper02 to keep local

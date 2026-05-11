@@ -3,7 +3,7 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `85`
+- Dirty entries: `78`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 |---|---:|---:|---:|---|
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | 33 | 24 | 9 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=5, project_document=4, source_or_experiment_script=15, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 32 | 19 | 13 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=4, unclassified=1 |
-| `paper/UXFD_paper/MOE_explainable` | 20 | 5 | 15 | agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=5 |
+| `paper/UXFD_paper/MOE_explainable` | 13 | 5 | 8 | manuscript_draft=3, planning_or_contract_draft=3, project_document=2, source_or_experiment_script=5 |
 
 ## Triage Rules
 
@@ -93,16 +93,9 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/MOE_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/draft_md/draft.md` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/final_tex/main.tex` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `paper_blueprint.md` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.agent/` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.claude/` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.codex/` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `EXPERIMENT_DESIGN.md` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `autoresearch/` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `innovation_contract.md` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `outputs/` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `program.md` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/bind_submission_ready_evidence.py` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_dataset_bridge_minimal.py` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_expert_ablation_probe.py` |
