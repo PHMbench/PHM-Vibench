@@ -1,0 +1,37 @@
+benchmark:
+  id: "real_phm_cwru_quality_utility_v1"
+  dataset: "CWRU_domain_shift"
+  output_dir: "results/paper/phm_generative/benchmark_effect"
+  baseline_method: "cfm_grid"
+  python: "python"
+  seeds: [0, 1]
+  data_check:
+    data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+    metadata_file: "metadata.xlsx"
+  overrides:
+    data.data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+    data.metadata_file: "metadata.xlsx"
+    data.batch_size: 64
+    data.num_workers: 0
+    data.window_size: 4096
+    data.num_window: 64
+    task.target_system_id: [1]
+    task.source_domain_id: [0, 1, 2]
+    task.target_domain_id: [3]
+    trainer.device: "cpu"
+
+methods:
+  - method: "cfm_grid"
+    label: "CFM + UNet1D grid conditions"
+    train_config: "configs/paper/phm_generative/cfm_train_grid_seed0.yaml"
+    condition_sampling_policy: "grid"
+
+  - method: "rectified_flow_grid"
+    label: "Rectified Flow + DiT1D grid conditions"
+    train_config: "configs/paper/phm_generative/rectified_flow_train_grid_seed0.yaml"
+    condition_sampling_policy: "grid"
+
+  - method: "ddpm_train_distribution"
+    label: "DDPM epsilon + SSM1D train-distribution conditions"
+    train_config: "configs/paper/phm_generative/ddpm_train_distribution_seed0.yaml"
+    condition_sampling_policy: "train_distribution"
