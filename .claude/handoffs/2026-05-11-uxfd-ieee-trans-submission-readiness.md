@@ -67,6 +67,7 @@ paper submodule and that each `VIBENCH.md` declares a local
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - submodule milestone commit `53e6d1b` adds a compilable evidence snapshot, updates `VIBENCH.md` and `configs/vibench/min.yaml`, adds `doc/T044_submission_readiness_evidence.md`, and fixes the NumPy bool serializer in `scripts/run_fuzzy_baseline.py`.
 - `paper/UXFD_paper/Neuralsymbolic_theory` - submodule milestone commit `9139307` adds `report/T045_evidence_readiness.md`, updates `VIBENCH.md`, and fixes `simple_validation_demo.py` so failed P2 evidence is recorded as a boundary case; follow-up commit `e3e268d` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/TII_operator_attention` - submodule milestone commit `10a3d16` adds/updates `VIBENCH.md`, `configs/vibench/min.yaml`, `code/synthetic_verification.py`, synthetic validation outputs, rejection-recovery notes, and `submission_prep/ieee_trans_readiness.md`; follow-up commit `e8f8994` expands synthetic validation to eight signal classes.
+- `paper/UXFD_paper/TII_operator_attention` - follow-up submodule commit `dd40adc` adds normalized canonical TeX entrypoint `manuscript/final_tex/main.tex`, updates `VIBENCH.md`, and records the compile gate in `submission_prep/ieee_trans_readiness.md`.
 
 **Validation:**
 
@@ -103,6 +104,7 @@ paper submodule and that each `VIBENCH.md` declares a local
   - `python code/synthetic_verification.py` from the submodule - passed and generated submodule-local figures, JSON, and report; current coverage is 8 signal classes, mean physics consistency `0.999`, mean explainability `0.261`.
   - `CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1` - failed in base env because `pytorch_lightning` is missing.
   - `eval "$(conda shell.bash hook)" && conda activate LQ_signal && CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1` - passed as dummy-data smoke; PyTorch reported GPU unavailable in this sandbox, so this is wiring evidence, not GPU industrial proof.
+  - `pdflatex -interaction=nonstopmode manuscript/final_tex/main.tex` from the submodule root - passed with exit code 0 and produced `main.pdf`; generated build artifacts were removed after the check. The compile still emits undefined citation/reference warnings, so this is a normalized-entrypoint gate only, not final TeX readiness.
 - Paper 01 `Explainable_FD_Toolkit` milestone:
   - Worker schema checks passed for benchmark, unified matrix, Captum, SHAP/LIME, and THU018 packs.
   - `pdflatex` failed on pre-existing Chinese Unicode/inputenc handling.
