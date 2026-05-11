@@ -109,6 +109,7 @@
 - [x] T072 [P] Ensure all seven paper submodule SHAs track both `VIBENCH.md` and `configs/vibench/min.yaml`.
 - [x] T073 [P] Add parent contract tests that reject untracked paper reproduction contracts and missing local GPU binding policy.
 - [x] T075 [P] Normalize Paper 07 canonical TeX entrypoint to `manuscript/final_tex/main.tex`, compile it from the submodule root, and record remaining reference/bibliography cleanup as non-submission-ready.
+- [x] T076 [P] Fix Paper 07 empty-year BibTeX warnings and record the full `pdflatex`/`bibtex` compile flow as a TeX gate, not as submission readiness.
 
 ## Phase 8: Validation
 
