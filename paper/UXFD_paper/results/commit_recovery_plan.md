@@ -20,6 +20,10 @@ It is not experiment evidence and does not make any paper submission-ready.
   - bounded dataset bridge and expert-count probe runner scripts.
   - parent static policy test blocks stale root, legacy GPU, and
     `main_com.py --config_dir` regressions.
+- Paper01 control-doc update is committed inside the submodule at `dff592b`:
+  - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
+  - executable commands use lowercase `paper/UXFD_paper/...` paths.
+  - `innovation_contract.md` is bound from README, CORE, and paper blueprint.
 - Parent goal/control checkpoint is edited but uncommitted.
 - Parent `git add`/`git commit` still requires explicit index-write approval;
   stage only the listed parent goal/control paths.
@@ -68,12 +72,15 @@ a script crash.
 
 ## Phase 3: Parent Checkpoint Commit
 
-Stage only the parent goal/control files plus the Paper02 submodule gitlink:
+Stage only the parent goal/control files plus the Paper01, Paper02, and Paper04
+submodule gitlinks:
 
 ```bash
 git add -- \
   .claude/handoffs/2026-05-12-uxfd-goal-continuation.md \
+  paper/UXFD_paper/Explainable_FD_Toolkit \
   paper/UXFD_paper/1D-2D_fusion_explainable \
+  paper/UXFD_paper/MOE_explainable \
   paper/UXFD_paper/goal/README.md \
   paper/UXFD_paper/goal/99_submission_readiness_matrix.md \
   paper/UXFD_paper/results/gpu_queue_live_preflight.json \
@@ -94,6 +101,7 @@ git add -- \
   test/test_uxfd_artifact_gate.py \
   test/test_uxfd_low_tier_source_audit.py \
   test/test_uxfd_gpu_queue.py \
+  test/test_uxfd_paper01_control_docs.py \
   test/test_uxfd_paper02_runner_policy.py \
   test/test_uxfd_paper04_runner_policy.py \
   test/test_uxfd_objective_audit.py \
@@ -113,9 +121,9 @@ Validate and commit:
 
 ```bash
 git diff --cached --check
-python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py
+python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_paper01_control_docs.py
 git add -f -- paper/UXFD_paper/results/low_tier_source_audit.json
-git status --short -- paper/UXFD_paper/1D-2D_fusion_explainable paper/UXFD_paper/MOE_explainable paper/UXFD_paper/goal paper/UXFD_paper/results scripts/uxfd_low_tier_source_audit.py scripts/uxfd_objective_audit.py scripts/uxfd_readiness_backlog.py scripts/uxfd_submission_gate.py scripts/uxfd_submodule_dirty_triage.py test/test_uxfd_artifact_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_paper02_runner_policy.py test/test_uxfd_paper04_runner_policy.py test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py test/test_uxfd_submodule_dirty_triage.py
+git status --short -- paper/UXFD_paper/Explainable_FD_Toolkit paper/UXFD_paper/1D-2D_fusion_explainable paper/UXFD_paper/MOE_explainable paper/UXFD_paper/goal paper/UXFD_paper/results scripts/uxfd_low_tier_source_audit.py scripts/uxfd_objective_audit.py scripts/uxfd_readiness_backlog.py scripts/uxfd_submission_gate.py scripts/uxfd_submodule_dirty_triage.py test/test_uxfd_artifact_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_paper01_control_docs.py test/test_uxfd_paper02_runner_policy.py test/test_uxfd_paper04_runner_policy.py test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py test/test_uxfd_submodule_dirty_triage.py
 git commit -m "chore: sync paper02 planning and UXFD goal audits"
 ```
 

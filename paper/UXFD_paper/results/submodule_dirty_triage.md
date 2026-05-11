@@ -3,14 +3,14 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `66`
+- Dirty entries: `62`
 
 ## Summary
 
 | Submodule | Total | Modified | Untracked | Categories |
 |---|---:|---:|---:|---|
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | 26 | 19 | 7 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=3, project_document=4, source_or_experiment_script=10, unclassified=1 |
-| `paper/UXFD_paper/Explainable_FD_Toolkit` | 30 | 19 | 11 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=3, project_document=2, source_or_experiment_script=4, unclassified=1 |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | 26 | 16 | 10 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=1, source_or_experiment_script=4, unclassified=1 |
 | `paper/UXFD_paper/MOE_explainable` | 10 | 5 | 5 | manuscript_draft=3, planning_or_contract_draft=3, project_document=2, source_or_experiment_script=2 |
 
 ## Triage Rules
@@ -23,8 +23,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 
 | Submodule | Status | Category | Action | Path |
 |---|---|---|---|---|
-| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `CORE.md` |
-| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `benchmark_results/benchmark_analysis_report.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `benchmark_results/explainability_benchmark_results.json` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `benchmark_results/explainability_benchmark_table.csv` |
@@ -35,7 +33,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `figures/core_interface_demo.png` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `figures/signal_analysis_demo.png` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `figures/simple_explanation_demo.png` |
-| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `paper_blueprint.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/final_demo_report.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/signals_demo.npy` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/simple_explanation_demo.json` |
@@ -45,7 +42,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `EXPERIMENT_DESIGN.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `unclassified` | `do_not_auto_commit_without_owner_review` | `doc/demo_explanation.txt` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `figures/explanation_demo.png` |
-| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `innovation_contract.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/PAPER_READY_SUMMARY.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/autoresearch_toolkit.log` |
