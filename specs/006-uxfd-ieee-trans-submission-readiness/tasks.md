@@ -120,6 +120,7 @@
 - [x] T084 [P] Add Paper 01 Toolkit command-bound six-baseline matrix, record one explain-extension ablation and five blocked Toolkit ablation hooks, and keep real-data/GPU/TOP/SOTA gates blocked.
 - [x] T085 [P] Add Paper 06 Neural-Symbolic command-bound six-baseline, proposition, mapping, and ablation matrix, run dummy/proposition hooks in `LQ_signal`, and keep P2/source-backed/GPU/TOP/SOTA gates blocked.
 - [x] T086 [P] Add Paper 02 1D-2D command-bound six-baseline matrix, local Fusion1D2D dummy demo, fusion sensitivity smokes, and FFT/legacy ablation blockers while keeping real-data/GPU/TOP/SOTA gates blocked.
+- [x] T087 [P] Add Paper 03 LLM command-bound PHM/standalone baseline matrix, record package import and evidence-package blockers, and keep TeX/GPU/TOP/SOTA gates blocked.
 
 ## Phase 8: Validation
 

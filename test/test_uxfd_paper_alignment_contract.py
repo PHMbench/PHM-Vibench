@@ -37,6 +37,10 @@ PAPER02_MATRIX = Path(
     "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER03_MATRIX = Path(
+    "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/"
+    "baseline_ablation_matrix.yaml"
+)
 PAPER06_MATRIX = Path(
     "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/"
     "baseline_ablation_matrix.yaml"
@@ -481,6 +485,56 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
     assert "Legacy ablation runner assumes GPU 2" in blockers
     assert "NatureMi" in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
+
+
+def test_llm_toolkit_matrix_records_import_and_evidence_package_blockers() -> None:
+    assert PAPER03_MATRIX.exists()
+    matrix = yaml.safe_load(PAPER03_MATRIX.read_text(encoding="utf-8"))
+
+    assert matrix["submission_ready"] is False
+    assert (
+        matrix["evidence_level"]
+        == "baseline config-target validated; LLM toolkit evidence mostly blocked"
+    )
+    assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
+    assert len(matrix["llm_demo_evidence"]) >= 4
+    assert len(matrix["baselines"]) >= 6
+    assert len(matrix["ablations"]) >= 6
+    assert any("standalone template LLM" in entry["label"] for entry in matrix["baselines"])
+    assert any("No module named 'llm'" in entry["status"] for entry in matrix["llm_demo_evidence"])
+
+    main_py_baselines = [
+        entry
+        for entry in matrix["baselines"]
+        if "python main.py --config" in entry["command"]
+    ]
+    assert len(main_py_baselines) >= 6
+    for entry in main_py_baselines:
+        assert entry["config_target_validated"] is True
+        assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
+        assert "pending" in entry["accepted_evidence_status"]
+
+    bound_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is True
+    ]
+    blocked_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
+    ]
+    assert len(bound_ablations) >= 2
+    assert len(blocked_ablations) >= 5
+    assert any("No module named 'llm'" in entry["evidence_status"] for entry in blocked_ablations)
+    assert all(
+        entry["command"].startswith("blocked:")
+        or "run_minimal_llm_demo.py" in entry["command"]
+        or "pytest" in entry["command"]
+        for entry in blocked_ablations
+    )
+
+    blockers = "\n".join(matrix["strict_blockers"])
+    assert "manuscript/ieee_tii/main.tex" in blockers
+    assert "run_meta.yaml,metrics.json" in blockers
+    assert "llm.llm_explainer is missing" in blockers
+    assert "No SOTA or human-centered decision-support claim" in blockers
 
 
 def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:

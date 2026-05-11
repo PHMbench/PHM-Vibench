@@ -8,7 +8,7 @@
 
 **Task:** Implement parent-level goal/spec workflow for seven UXFD IEEE Transactions paper submissions.
 **Phase:** planning-to-implementation setup
-**Progress:** parent control-plane artifacts created; Paper 01/02/04/05/06/07 have partial paper-local evidence checkpoints; Paper 03 remains the largest unbound paper-production gap.
+**Progress:** parent control-plane artifacts created; all seven papers now have partial paper-local evidence checkpoints and none is submission-ready.
 
 ## What We Did
 
@@ -65,6 +65,7 @@ paper submodule and that each `VIBENCH.md` declares a local
 - `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`; follow-up commit `d548f11` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/1D-2D_fusion_explainable` - follow-up submodule commit `f5c3cd3` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records six command-bound PHM-Vibench baselines, a paper-local Fusion1D2D dummy demo, STFT/fusion sensitivity smokes, and FFT/legacy ablation blockers.
 - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`; follow-up commit `9a5b141` tracks `configs/vibench/min.yaml`.
+- `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - follow-up submodule commit `cfb4321` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records PHM-Vibench baseline smokes, standalone template LLM demos, and package-level `llm.llm_explainer` import blockers.
 - `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`; follow-up commit `6992839` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/MOE_explainable` - follow-up submodule commit `3dfc989` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records six command-bound PHM-Vibench baselines, partial expert-count ablation evidence, and five missing MoE ablation hooks.
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - submodule milestone commit `53e6d1b` adds a compilable evidence snapshot, updates `VIBENCH.md` and `configs/vibench/min.yaml`, adds `doc/T044_submission_readiness_evidence.md`, and fixes the NumPy bool serializer in `scripts/run_fuzzy_baseline.py`.
@@ -138,7 +139,12 @@ paper submodule and that each `VIBENCH.md` declares a local
 - Paper 03 `LLM_Explainable_FD_Toolkit` milestone:
   - `CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode pipeline` passed.
   - `python -m pytest -q code/tests/test_basic_functionality.py` failed on `ModuleNotFoundError: No module named 'llm'`.
-  - Remaining blockers: no final IEEE TeX entrypoint, no accepted `results/llm_evidence/**` packages, no baseline/ablation/TOP/latency/anti-hallucination evidence.
+  - `CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode single --case 0` passed and emitted four template dialogue responses.
+  - `CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output /tmp/uxfd_paper03_template_llm_artifacts` failed on `ModuleNotFoundError: No module named 'llm'`.
+  - P00 PHM-Vibench agent-enabled smoke plus B01 no-agent, B03 ResNet, B04 SincNet, B05 TFN, B06 WKN, and B07 ConvTransformer dummy smokes passed in `LQ_signal` with CPU fallback because GPU/NVML was unavailable.
+  - `submission_prep/baseline_ablation_matrix.yaml` now contains seven baselines, seven ablation/demo/blocker rows, TOP recent-work blocker statuses, and strict blockers for missing IEEE TeX, `results/llm_evidence` packages, missing `llm.llm_explainer`, hallucination/retrieval/latency runners, TOP representatives, 2x4090 metadata, and SOTA.
+  - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed after adding the Paper 03 matrix contract test: `25 passed in 0.67s`.
+  - Remaining blockers: no final IEEE TeX entrypoint, no accepted `results/llm_evidence/**/{run_meta.yaml,metrics.json}` packages, package import path broken, no baseline/ablation/TOP/latency/anti-hallucination evidence, no accepted 2x4090 metadata, SOTA blocked.
 - Paper 04 `MOE_explainable` milestone:
   - Worker `jq` checks passed for seed stability, routing analysis, expert ablation, and CWRU/XJTU bridge artifacts.
   - `python scripts/bind_submission_ready_evidence.py --mode review-evidence --paper-root . --output-dir /tmp/moe_t043_review_evidence_validate` passed, but the new T043 gate records why the older local `ready: true` does not satisfy the strict IEEE gate.
