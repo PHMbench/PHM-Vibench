@@ -61,6 +61,7 @@ paper submodule and that each `VIBENCH.md` declares a local
 - `paper/UXFD_paper/goal/00_overall_goal.md` and all seven paper goal files - added compute budget and `resource-blocked` exact-reproduction policy.
 - `test/test_uxfd_paper_alignment_contract.py` - added regression tests for tracked submodule reproduction contracts and local GPU binding declarations.
 - `paper/UXFD_paper/Explainable_FD_Toolkit` - submodule milestone commit `b76b5d8` replaces the missing placeholder figure/table in `manuscript/final_tex/main.tex`, adds `manuscript/T040_EVIDENCE_README.md`, and updates `VIBENCH.md`; follow-up commit `39b6a06` tracks `configs/vibench/min.yaml`.
+- `paper/UXFD_paper/Explainable_FD_Toolkit` - follow-up submodule commit `40ea419` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, fixes the stale `VIBENCH.md` exec root, records six command-bound PHM-Vibench baselines, one explain-extension ablation, and five blocked Toolkit ablation hooks.
 - `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`; follow-up commit `d548f11` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`; follow-up commit `9a5b141` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`; follow-up commit `6992839` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
@@ -118,7 +119,10 @@ paper submodule and that each `VIBENCH.md` declares a local
   - Worker schema checks passed for benchmark, unified matrix, Captum, SHAP/LIME, and THU018 packs.
   - `pdflatex` failed on pre-existing Chinese Unicode/inputenc handling.
   - `xelatex` passed and produced `/tmp/uxfd_toolkit_texcheck/main.pdf`.
-  - Remaining blockers: only five same-protocol diagnostic models, no ablations, no TOP proxy mapping, incomplete compute metadata, SOTA blocked, broader manuscript placeholders remain.
+  - P00 and B01-B06 PHM-Vibench dummy smokes passed in `LQ_signal` with CPU fallback because GPU/NVML was unavailable. B06 ConvTransformer required `--override model.input_dim=2`.
+  - `submission_prep/baseline_ablation_matrix.yaml` records six command-bound baselines, one smoke-level ablation for disabling the PHM-Vibench explain extension, and five blocked Toolkit ablation hooks: schema removal, metric-family removal, standardized manifest off, fixed-seed/config-snapshot off, and post-hoc-only comparator mode.
+  - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed after adding the Toolkit matrix contract test: `22 passed in 0.55s`.
+  - Remaining blockers: no same-protocol CWRU/XJTU six-baseline result matrix, five Toolkit ablation hooks missing, no TOP proxy mapping, incomplete compute metadata, SOTA blocked, broader manuscript placeholders remain.
 - Paper 02 `1D-2D_fusion_explainable` milestone:
   - `git diff --check -- README_T041_SUBMISSION_READINESS.md` passed.
   - `python scripts/truth_audit.py --paper-root . --output-dir /tmp/uxfd_1d2d_t041_truth_audit` passed and reported 3 blocking issues.
