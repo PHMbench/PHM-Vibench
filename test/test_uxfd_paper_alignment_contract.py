@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import yaml
+
 from scripts.uxfd_paper_alignment import (
     audit_contracts,
     compile_gates,
@@ -15,6 +17,10 @@ from scripts.uxfd_paper_alignment import (
 
 
 GOAL_DIR = Path("paper/UXFD_paper/goal")
+PAPER07_MATRIX = Path(
+    "paper/UXFD_paper/TII_operator_attention/submission_prep/"
+    "baseline_ablation_matrix.yaml"
+)
 
 LOW_TIER_MARKERS = (
     "Scientific Reports",
@@ -254,6 +260,26 @@ def test_operator_attention_goal_has_rejection_recovery_requirements() -> None:
     assert "OAS" in text
     assert "OSS" in text
     assert "OCS" in text
+
+
+def test_operator_attention_baseline_ablation_matrix_is_command_bound_not_ready() -> None:
+    assert PAPER07_MATRIX.exists()
+    matrix = yaml.safe_load(PAPER07_MATRIX.read_text(encoding="utf-8"))
+
+    assert matrix["submission_ready"] is False
+    assert matrix["evidence_level"] == "config-target validated only"
+    assert len(matrix["baselines"]) >= 6
+    assert len(matrix["ablations"]) >= 6
+
+    for entry in matrix["baselines"] + matrix["ablations"]:
+        assert entry["config_target_validated"] is True
+        assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
+        assert "python main.py --config" in entry["command"]
+        assert "pending" in entry["accepted_evidence_status"]
+
+    blockers = "\n".join(matrix["strict_blockers"])
+    assert "No accepted industrial multi-seed baseline table yet." in blockers
+    assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
 def test_readiness_matrix_tracks_baseline_ablation_and_sota_status() -> None:
