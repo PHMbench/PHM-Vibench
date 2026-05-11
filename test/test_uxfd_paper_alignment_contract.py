@@ -33,6 +33,10 @@ PAPER01_MATRIX = Path(
     "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER02_MATRIX = Path(
+    "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/"
+    "baseline_ablation_matrix.yaml"
+)
 PAPER06_MATRIX = Path(
     "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/"
     "baseline_ablation_matrix.yaml"
@@ -434,6 +438,49 @@ def test_toolkit_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     assert "Only one Toolkit-specific ablation command is currently bound" in blockers
     assert "No accepted TOP representative command/log/artifact mapping yet." in blockers
     assert "No SOTA or submission-ready infrastructure claim" in blockers
+
+
+def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
+    assert PAPER02_MATRIX.exists()
+    matrix = yaml.safe_load(PAPER02_MATRIX.read_text(encoding="utf-8"))
+
+    assert matrix["submission_ready"] is False
+    assert matrix["evidence_level"] == "baseline config-target validated; fusion evidence partial"
+    assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
+    assert "test_accuracy=0.39" in matrix["paper_local_demo"]["dummy_smoke_metric"]
+    assert "Target 8 is out of bounds" in matrix["paper_local_demo"]["failed_sanity_check"]
+    assert len(matrix["baselines"]) >= 6
+    assert len(matrix["ablations"]) >= 6
+    assert all(
+        "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+        for entry in matrix["baselines"]
+    )
+
+    for entry in matrix["baselines"]:
+        assert entry["config_target_validated"] is True
+        assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
+        assert "python main.py --config" in entry["command"]
+        assert "pending" in entry["accepted_evidence_status"]
+
+    passing_ablations = [
+        entry
+        for entry in matrix["ablations"]
+        if "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+        or "same run as B01" in entry.get("dummy_smoke_status", "")
+    ]
+    blocked_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
+    ]
+    assert len(passing_ablations) >= 4
+    assert len(blocked_ablations) >= 2
+    assert any("FFT-only" in entry["label"] for entry in blocked_ablations)
+    assert any("GPU 2" in entry["command"] for entry in blocked_ablations)
+
+    blockers = "\n".join(matrix["strict_blockers"])
+    assert "FFT-only signal-layer ablation currently fails" in blockers
+    assert "Legacy ablation runner assumes GPU 2" in blockers
+    assert "NatureMi" in blockers
+    assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
 def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:

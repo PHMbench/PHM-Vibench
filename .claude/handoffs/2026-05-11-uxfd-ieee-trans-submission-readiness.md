@@ -8,7 +8,7 @@
 
 **Task:** Implement parent-level goal/spec workflow for seven UXFD IEEE Transactions paper submissions.
 **Phase:** planning-to-implementation setup
-**Progress:** parent control-plane artifacts created; Paper 01/04/05/06/07 have partial paper-local evidence checkpoints; Paper 02/03 remain the largest unbound paper-production gaps.
+**Progress:** parent control-plane artifacts created; Paper 01/02/04/05/06/07 have partial paper-local evidence checkpoints; Paper 03 remains the largest unbound paper-production gap.
 
 ## What We Did
 
@@ -63,6 +63,7 @@ paper submodule and that each `VIBENCH.md` declares a local
 - `paper/UXFD_paper/Explainable_FD_Toolkit` - submodule milestone commit `b76b5d8` replaces the missing placeholder figure/table in `manuscript/final_tex/main.tex`, adds `manuscript/T040_EVIDENCE_README.md`, and updates `VIBENCH.md`; follow-up commit `39b6a06` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/Explainable_FD_Toolkit` - follow-up submodule commit `40ea419` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, fixes the stale `VIBENCH.md` exec root, records six command-bound PHM-Vibench baselines, one explain-extension ablation, and five blocked Toolkit ablation hooks.
 - `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`; follow-up commit `d548f11` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
+- `paper/UXFD_paper/1D-2D_fusion_explainable` - follow-up submodule commit `f5c3cd3` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records six command-bound PHM-Vibench baselines, a paper-local Fusion1D2D dummy demo, STFT/fusion sensitivity smokes, and FFT/legacy ablation blockers.
 - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`; follow-up commit `9a5b141` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`; follow-up commit `6992839` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/MOE_explainable` - follow-up submodule commit `3dfc989` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records six command-bound PHM-Vibench baselines, partial expert-count ablation evidence, and five missing MoE ablation hooks.
@@ -128,7 +129,12 @@ paper submodule and that each `VIBENCH.md` declares a local
   - `git diff --check -- README_T041_SUBMISSION_READINESS.md` passed.
   - `python scripts/truth_audit.py --paper-root . --output-dir /tmp/uxfd_1d2d_t041_truth_audit` passed and reported 3 blocking issues.
   - `latexmk ... paper_draft/NMI_Paper1_Fusion1D2D.tex` failed because `NatureMi.cls` is missing.
-  - Remaining blockers: no accepted six-baseline matrix, no accepted fusion/alignment ablations, no local TOP representatives, TeX not compiling.
+  - `CUDA_VISIBLE_DEVICES=0 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=4 --output_root /tmp/uxfd_paper02_minimal_demo` failed with `IndexError: Target 8 is out of bounds`; rerunning with `--num_classes=10` passed and produced dummy `test_accuracy=0.39`, `test_f1_macro=0.23883535636476813`.
+  - P00 proposed PHM-Vibench proxy plus B01 no-2D proxy, B02 ResNet, B03 SincNet, B04 TFN, B05 WKN, and B06 ConvTransformer dummy smokes passed in `LQ_signal` with CPU fallback because GPU/NVML was unavailable.
+  - A02/A03 STFT sensitivity and A04 concat-fusion dummy smokes passed in `LQ_signal`; A06 FFT-only signal-layer stress failed with a skip-connection dimensionality mismatch.
+  - `submission_prep/baseline_ablation_matrix.yaml` now contains six command-bound baselines, seven ablation/demo/blocker rows, TOP recent-work blocker statuses, and strict blockers for real Fusion1D2D ablations, stale THU/GPU2 legacy runner assumptions, missing TOP representatives, missing 2x4090 metadata, TeX, and SOTA.
+  - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed after adding the Paper 02 matrix contract test: `24 passed in 0.62s`.
+  - Remaining blockers: no accepted CWRU/XJTU six-baseline matrix, no true 1D-only/2D-only/no-stat/no-alignment ablation package, no local TOP representatives, no accepted 2x4090 metadata, TeX not compiling, SOTA blocked.
 - Paper 03 `LLM_Explainable_FD_Toolkit` milestone:
   - `CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode pipeline` passed.
   - `python -m pytest -q code/tests/test_basic_functionality.py` failed on `ModuleNotFoundError: No module named 'llm'`.
