@@ -111,6 +111,7 @@ submission readiness.
 - `test/test_uxfd_paper_alignment_contract.py` - added TOP-source quota and low-tier exclusion checks.
 - `scripts/uxfd_recent_work_gate.py` and `test/test_uxfd_recent_work_gate.py` - added a non-executing TOP recent-work gate that separates citation-policy readiness from pending TOP representative artifact evidence.
 - `scripts/uxfd_objective_audit.py` and `test/test_uxfd_objective_audit.py` - added a non-executing prompt-to-artifact audit that maps the active objective to goal files, Spec Kit files, handoff, team evidence, paper matrices, TOP/GPU/artifact gates, and final readiness.
+- `test/test_uxfd_paper_alignment_contract.py` - now also requires the Paper 07 rejection-recovery evidence contract, 2024-2026 TOP quota coverage, Q0 preflight stop rule, accepted artifact root, and non-SOTA/non-submission-ready wording.
 - `specs/006-uxfd-ieee-trans-submission-readiness/` - updated spec, plan, data model, contract, checklist, quickstart, and tasks for TOP-source recent-work gates.
 - `paper/UXFD_paper/goal/00_overall_goal.md` and all seven paper goal files - added compute budget and `resource-blocked` exact-reproduction policy.
 - `test/test_uxfd_paper_alignment_contract.py` - added regression tests for tracked submodule reproduction contracts and local GPU binding declarations.
@@ -182,6 +183,7 @@ submission readiness.
   - A02 identity-only, A03 Hilbert-only, A04 FFT-only, A05 temperature 0.5, and A06 temperature 2.0 dummy smokes all passed in `LQ_signal` with CPU fallback; A01 shares the B01 run.
   - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py test/test_collect_uxfd_runs.py test/test_baseline_mapping_contract.py` - passed after adding the Paper 07 matrix contract test: `24 passed in 2.58s`.
   - After the Paper 07 rejection-recovery contract, `git diff --check` inside the submodule passed; `python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_recent_work_gate.py test/test_uxfd_submission_gate.py test/test_uxfd_paper_alignment_contract.py` passed with `42 passed in 8.55s`; `python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready` reported `policy_ready=true`, `evidence_ready=false`; `python -m scripts.uxfd_objective_audit --format json --allow-not-achieved` still reported `achieved=false`.
+  - After adding the parent Paper 07 rejection-recovery contract test, `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed with `29 passed in 1.00s`.
 - Paper 01 `Explainable_FD_Toolkit` milestone:
   - Worker schema checks passed for benchmark, unified matrix, Captum, SHAP/LIME, and THU018 packs.
   - `pdflatex` failed on pre-existing Chinese Unicode/inputenc handling.

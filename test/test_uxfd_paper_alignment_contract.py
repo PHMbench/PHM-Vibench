@@ -22,6 +22,10 @@ PAPER07_MATRIX = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER07_REJECTION_CONTRACT = Path(
+    "paper/UXFD_paper/TII_operator_attention/submission_prep/"
+    "rejection_recovery_contract.md"
+)
 PAPER05_MATRIX = Path(
     "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/"
     "baseline_ablation_matrix.yaml"
@@ -72,6 +76,17 @@ LOW_TIER_MARKERS = (
 REQUIRED_2026_TOP_IDS = (
     "RWTOP2026-TIMESEG",
     "RWTOP2026-TIMESLIVER",
+    "RWTOP2026-PGRFNET",
+    "RWTOP2026-GTM",
+    "RWTOP2026-CSLSTM",
+    "RWTOP2026-TSPULSE",
+)
+
+PAPER07_REQUIRED_TOP_IDS = (
+    "RWTOP2024-TIMEMIXER",
+    "RWTOP2024-SARAD",
+    "RWTOP2025-CATCH",
+    "RWTOP2025-DADA",
     "RWTOP2026-PGRFNET",
     "RWTOP2026-GTM",
     "RWTOP2026-CSLSTM",
@@ -470,6 +485,27 @@ def test_operator_attention_baseline_ablation_matrix_is_command_bound_not_ready(
     blockers = "\n".join(matrix["strict_blockers"])
     assert "No accepted industrial multi-seed baseline table yet." in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
+
+
+def test_operator_attention_rejection_recovery_contract_blocks_unproven_claims() -> None:
+    assert PAPER07_REJECTION_CONTRACT.exists()
+    text = PAPER07_REJECTION_CONTRACT.read_text(encoding="utf-8")
+    matrix = yaml.safe_load(PAPER07_MATRIX.read_text(encoding="utf-8"))
+
+    for phrase in (
+        "It is not accepted experiment evidence",
+        "must not use SOTA",
+        "paper remains not submission-ready",
+        "paper/UXFD_paper/results/accepted_runs/TII_operator_attention/",
+        "Q0 preflight",
+        "Stop SOTA wording",
+        "achieved=false",
+    ):
+        assert phrase in text
+
+    top_ids = {entry["id"] for entry in matrix["top_recent_work"]}
+    assert set(PAPER07_REQUIRED_TOP_IDS) <= top_ids
+    assert "2024-2026 TOP representative" in "\n".join(matrix["strict_blockers"])
 
 
 def test_fuzzy_xfd_baseline_ablation_matrix_is_command_bound_not_ready() -> None:
