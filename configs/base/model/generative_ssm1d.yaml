@@ -1,0 +1,9 @@
+model:
+  type: "generative_model"
+  name: "mamba1d_backbone"
+  in_channels: 2
+  hidden_dim: 32
+  condition_dim: 16
+  num_fault_classes: 2
+  num_domains: 2
+  use_true_mamba: false

@@ -1,0 +1,11 @@
+model:
+  type: "generative_model"
+  name: "phm_dit1d"
+  in_channels: 2
+  hidden_dim: 32
+  condition_dim: 32
+  patch_size: 8
+  num_layers: 1
+  num_heads: 4
+  num_fault_classes: 2
+  num_domains: 2
