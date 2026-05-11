@@ -50,6 +50,9 @@
 - RWTOP2025-CFCBM: `literature-only` concept/counterfactual comparator until fuzzy concepts are bound.
 - RWTOP2025-CBAE: `literature-only` post-hoc concept baseline until concept supervision exists.
 - RWTOP2025-IFCBM: `literature-only` top-journal concept-bottleneck comparator until task mapping is defined.
+- RWTOP2026-TIMESEG: `representative-runnable` segment-level explanation comparator for fuzzy-rule faithfulness.
+- RWTOP2026-TIMESLIVER: `representative-runnable` symbolic-linear comparator for rule attribution.
+- RWTOP2026-PROTOTS: `literature-only` hierarchical prototype comparator until diagnosis mapping exists.
 
 ## Compute Budget
 

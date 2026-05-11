@@ -51,6 +51,9 @@
 - RWTOP2024-MOMENT: `representative-runnable` foundation-model representation baseline for fused features.
 - RWTOP2025-CATCH: `representative-runnable` channel/frequency baseline for 2D time-frequency fusion.
 - RWTOP2025-DADA: `representative-runnable` bottleneck/anomaly baseline for robust fusion.
+- RWTOP2026-PGRFNET: `representative-runnable` prototype/relational diagnostic comparator for fusion evidence.
+- RWTOP2026-GTM: `representative-runnable` frequency-attention representation comparator for 1D-2D features.
+- RWTOP2026-CSLSTM: `representative-runnable` contextual/seasonal anomaly comparator for time-frequency robustness.
 
 ## Compute Budget
 

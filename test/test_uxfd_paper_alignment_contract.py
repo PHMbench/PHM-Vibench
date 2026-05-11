@@ -17,6 +17,7 @@ from scripts.uxfd_paper_alignment import (
 
 
 GOAL_DIR = Path("paper/UXFD_paper/goal")
+EXECUTION_QUEUE = GOAL_DIR / "09_gpu_execution_queue.yaml"
 PAPER07_MATRIX = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
     "baseline_ablation_matrix.yaml"
@@ -46,6 +47,16 @@ PAPER06_MATRIX = Path(
     "baseline_ablation_matrix.yaml"
 )
 
+PAPER_MATRICES = {
+    "Explainable_FD_Toolkit": PAPER01_MATRIX,
+    "1D-2D_fusion_explainable": PAPER02_MATRIX,
+    "LLM_Explainable_FD_Toolkit": PAPER03_MATRIX,
+    "MOE_explainable": PAPER04_MATRIX,
+    "Paper_fuzzy_XFD": PAPER05_MATRIX,
+    "Neuralsymbolic_theory": PAPER06_MATRIX,
+    "TII_operator_attention": PAPER07_MATRIX,
+}
+
 LOW_TIER_MARKERS = (
     "Scientific Reports",
     "MDPI",
@@ -56,6 +67,15 @@ LOW_TIER_MARKERS = (
     "Electronics",
     "Sensors",
     "Mathematics",
+)
+
+REQUIRED_2026_TOP_IDS = (
+    "RWTOP2026-TIMESEG",
+    "RWTOP2026-TIMESLIVER",
+    "RWTOP2026-PGRFNET",
+    "RWTOP2026-GTM",
+    "RWTOP2026-CSLSTM",
+    "RWTOP2026-TSPULSE",
 )
 
 
@@ -197,6 +217,29 @@ def test_goal_files_require_six_baselines_ablations_and_sota_gate() -> None:
         assert "## SOTA Optimization Gate" in text, goal_file
 
 
+def test_all_seven_paper_matrices_exist_with_baseline_ablation_and_blocker_state() -> None:
+    assert len(PAPER_MATRICES) == 7
+
+    for paper_id, matrix_path in PAPER_MATRICES.items():
+        assert matrix_path.exists(), paper_id
+        matrix = yaml.safe_load(matrix_path.read_text(encoding="utf-8"))
+
+        assert matrix["paper_id"] == paper_id
+        assert matrix["submission_ready"] is False
+        assert len(matrix.get("baselines", [])) >= 6
+        assert len(matrix.get("ablations", [])) >= 6
+        assert matrix.get("strict_blockers"), paper_id
+        assert "No SOTA" in "\n".join(matrix["strict_blockers"])
+
+        common_policy = matrix.get("common_policy", {})
+        assert "4090" in common_policy.get("devices", ""), paper_id
+        assert "CUDA_VISIBLE_DEVICES=0" in common_policy.get("default_binding", ""), paper_id
+        assert any(
+            "CUDA_VISIBLE_DEVICES" in item
+            for item in common_policy.get("required_metadata", [])
+        ), paper_id
+
+
 def test_recent_work_readme_defines_reproduction_status_and_commands() -> None:
     readme = GOAL_DIR / "08_recent_work_citation_readme.md"
     text = readme.read_text(encoding="utf-8")
@@ -224,6 +267,9 @@ def test_recent_work_accepted_pool_excludes_low_tier_sources() -> None:
     assert "NeurIPS" in accepted_pool
     assert "CVPR" in accepted_pool
     assert "Information Fusion" in accepted_pool
+    assert "ICLR 2026 Poster" in accepted_pool
+    for top_id in REQUIRED_2026_TOP_IDS:
+        assert top_id in accepted_pool
     for marker in LOW_TIER_MARKERS:
         assert marker not in accepted_pool
 
@@ -242,6 +288,7 @@ def test_paper_goals_require_top_recent_work_quota() -> None:
         ]
 
         assert len(top_method_lines) >= 3, goal_file
+        assert "RWTOP2026-" in quota_section, goal_file
         assert (
             "representative-runnable" in quota_section
             or "exact-runnable" in quota_section
@@ -274,6 +321,110 @@ def test_paper_goals_require_compute_budget_sections() -> None:
         assert "0,1" in compute_section, goal_file
         assert "resource-blocked" in compute_section, goal_file
         assert "OOM" in compute_section, goal_file
+
+
+def test_readiness_matrix_records_gpu_preflight_blocker_and_execution_queue() -> None:
+    text = (GOAL_DIR / "99_submission_readiness_matrix.md").read_text(encoding="utf-8")
+    resource_section = _section(text, "Resource Check")
+    queue_section = _section(text, "Immediate Execution Queue")
+
+    assert "nvidia-smi -L" in resource_section
+    assert "couldn't communicate with the NVIDIA driver" in resource_section
+    assert "torch.cuda.is_available() == True" in resource_section
+    assert "torch.cuda.device_count() == 2" in resource_section
+    assert "no accepted GPU evidence" in resource_section
+    assert "CUDA_VISIBLE_DEVICES=0" in resource_section
+
+    for step in ("Q0", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8"):
+        assert f"| {step} |" in queue_section
+    assert "SOTA wording remains blocked" in queue_section
+    assert "09_gpu_execution_queue.yaml" in queue_section
+
+
+def test_gpu_execution_queue_covers_all_papers_and_keeps_sota_blocked() -> None:
+    assert EXECUTION_QUEUE.exists()
+    queue = yaml.safe_load(EXECUTION_QUEUE.read_text(encoding="utf-8"))
+
+    assert queue["status"] == "blocked_resource_preflight"
+    preflight = queue["resource_preflight"]
+    assert preflight["required_devices"] == ["0", "1"]
+    assert preflight["required_gpu_class"] == "RTX 4090"
+    assert preflight["current_session_result"]["torch_cuda_available"] is False
+    assert preflight["current_session_result"]["torch_cuda_device_count"] == 0
+    assert "blocked" in preflight["current_session_result"]["verdict"]
+    assert any("nvidia-smi -L" in item["command"] for item in preflight["required_commands"])
+    assert any(
+        "torch.cuda.device_count" in item["command"]
+        for item in preflight["required_commands"]
+    )
+
+    scheduler = queue["scheduler"]
+    assert scheduler["default_devices"] == ["0", "1"]
+    assert scheduler["max_concurrent_single_gpu_jobs"] == 2
+    assert "CUDA_VISIBLE_DEVICES=0,1" in scheduler["multi_gpu_rule"]
+
+    metadata = queue["accepted_run_metadata_required"]
+    for required in (
+        "CUDA_VISIBLE_DEVICES",
+        "GPU model",
+        "GPU count",
+        "seed",
+        "runtime",
+        "metrics path",
+        "OOM or failure reason if any",
+    ):
+        assert required in metadata
+
+    bindings = queue["top_representative_bindings"]
+    assert len(bindings) >= 7
+    assert {binding["paper_id"] for binding in bindings} == set(PAPER_MATRICES)
+    for binding in bindings:
+        assert binding["external_work_id"].startswith("RWTOP2026-")
+        assert binding["status"] == "pending_gpu_and_artifacts"
+        assert "not exact" in binding["exact_reproduction_status"] or (
+            "evaluation protocol only" in binding["exact_reproduction_status"]
+        )
+        assert binding["local_proxy_matrix_entries"], binding["binding_id"]
+        assert "baseline_ablation_matrix.yaml" in binding["command_source"]
+        assert "run_meta.yaml" in binding["artifact_requirement"]
+        assert (
+            "metrics" in binding["artifact_requirement"]
+            or "metrics.json" in binding["artifact_requirement"]
+        )
+
+    paper_queue = queue["paper_queue"]
+    assert len(paper_queue) == 7
+    assert [item["queue_id"] for item in paper_queue] == [
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6",
+        "Q7",
+    ]
+    assert {item["paper_id"] for item in paper_queue} == set(PAPER_MATRICES)
+
+    for item in paper_queue:
+        matrix_path = Path(item["matrix_path"])
+        assert matrix_path == PAPER_MATRICES[item["paper_id"]]
+        assert matrix_path.exists(), item["paper_id"]
+        assert Path(item["goal_file"]).exists(), item["paper_id"]
+        assert Path(item["base_config"]).exists(), item["paper_id"]
+        assert item["minimum_seeds"] >= 3
+        assert "CUDA_VISIBLE_DEVICES=0" in item["device_binding"]
+        assert item["required_phases"] == [
+            "proposed",
+            "baselines",
+            "ablations",
+            "top_representatives",
+        ]
+
+    gate = queue["cross_paper_gate"]
+    assert gate["queue_id"] == "Q8"
+    assert "blocked" in gate["status"]
+    assert "No SOTA wording is allowed" in gate["sota_rule"]
+    assert "submission_ready: true" in gate["submission_rule"]
 
 
 def test_operator_attention_goal_has_rejection_recovery_requirements() -> None:
@@ -369,8 +520,11 @@ def test_moe_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     matrix = yaml.safe_load(PAPER04_MATRIX.read_text(encoding="utf-8"))
 
     assert matrix["submission_ready"] is False
-    assert matrix["evidence_level"] == "baseline config-target validated; MoE ablation evidence partial"
-    assert len(matrix["local_moe_evidence"]) >= 4
+    assert (
+        matrix["evidence_level"]
+        == "baseline config-target validated; MoE ablation smoke runner bound"
+    )
+    assert len(matrix["local_moe_evidence"]) >= 5
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
@@ -391,13 +545,32 @@ def test_moe_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     blocked_ablations = [
         entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
     ]
-    assert len(bound_ablations) == 1
-    assert len(blocked_ablations) >= 5
-    assert "run_expert_ablation_probe.py" in bound_ablations[0]["command"]
-    assert all(entry["command"].startswith("blocked:") for entry in blocked_ablations)
+    assert len(bound_ablations) >= 6
+    assert len(blocked_ablations) == 0
+    assert any("run_expert_ablation_probe.py" in entry["command"] for entry in bound_ablations)
+    assert any(
+        "run_moe_ablation_smoke.py --condition no_load_balance" in entry["command"]
+        for entry in bound_ablations
+    )
+    assert any(
+        "run_moe_ablation_smoke.py --condition no_sparsity" in entry["command"]
+        for entry in bound_ablations
+    )
+    assert any(
+        "run_moe_ablation_smoke.py --condition temperature_sweep" in entry["command"]
+        for entry in bound_ablations
+    )
+    assert any(
+        "run_moe_ablation_smoke.py --condition remove_expert_family" in entry["command"]
+        for entry in bound_ablations
+    )
+    assert any(
+        "run_moe_ablation_smoke.py --condition uniform_router" in entry["command"]
+        for entry in bound_ablations
+    )
 
     blockers = "\n".join(matrix["strict_blockers"])
-    assert "Only one MoE-specific ablation command is currently bound" in blockers
+    assert "Only smoke MoE ablation runner artifacts exist" in blockers
     assert "No accepted TOP representative command/log/artifact mapping yet." in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
 
@@ -433,13 +606,17 @@ def test_toolkit_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     blocked_ablations = [
         entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
     ]
-    assert len(bound_ablations) == 1
-    assert len(blocked_ablations) >= 5
-    assert "trainer.extensions.explain.enable=false" in bound_ablations[0]["command"]
-    assert all(entry["command"].startswith("blocked:") for entry in blocked_ablations)
+    assert len(bound_ablations) >= 6
+    assert len(blocked_ablations) == 0
+    assert any("trainer.extensions.explain.enable=false" in entry["command"] for entry in bound_ablations)
+    assert any("run_toolkit_ablations.py --condition schema_off" in entry["command"] for entry in bound_ablations)
+    assert any("run_toolkit_ablations.py --condition metrics_subset_off" in entry["command"] for entry in bound_ablations)
+    assert any("run_toolkit_ablations.py --condition manifest_off" in entry["command"] for entry in bound_ablations)
+    assert any("run_toolkit_ablations.py --condition snapshot_off" in entry["command"] for entry in bound_ablations)
+    assert any("run_toolkit_ablations.py --condition posthoc_only" in entry["command"] for entry in bound_ablations)
 
     blockers = "\n".join(matrix["strict_blockers"])
-    assert "Only one Toolkit-specific ablation command is currently bound" in blockers
+    assert "Only smoke Toolkit ablation runner artifacts exist" in blockers
     assert "No accepted TOP representative command/log/artifact mapping yet." in blockers
     assert "No SOTA or submission-ready infrastructure claim" in blockers
 
@@ -449,7 +626,10 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
     matrix = yaml.safe_load(PAPER02_MATRIX.read_text(encoding="utf-8"))
 
     assert matrix["submission_ready"] is False
-    assert matrix["evidence_level"] == "baseline config-target validated; fusion evidence partial"
+    assert (
+        matrix["evidence_level"]
+        == "baseline config-target validated; fusion ablation smoke runner bound"
+    )
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
     assert "test_accuracy=0.39" in matrix["paper_local_demo"]["dummy_smoke_metric"]
     assert "Target 8 is out of bounds" in matrix["paper_local_demo"]["failed_sanity_check"]
@@ -476,9 +656,15 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
         entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
     ]
     assert len(passing_ablations) >= 4
-    assert len(blocked_ablations) >= 2
-    assert any("FFT-only" in entry["label"] for entry in blocked_ablations)
-    assert any("GPU 2" in entry["command"] for entry in blocked_ablations)
+    assert len(blocked_ablations) == 0
+    assert any(
+        "run_fusion_ablation_smoke.py --condition fft_only_proxy" in entry["command"]
+        for entry in matrix["ablations"]
+    )
+    assert any(
+        "run_fusion_ablation_smoke.py --condition legacy_ablation_surface" in entry["command"]
+        for entry in matrix["ablations"]
+    )
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "FFT-only signal-layer ablation currently fails" in blockers
@@ -487,21 +673,26 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
     assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
-def test_llm_toolkit_matrix_records_import_and_evidence_package_blockers() -> None:
+def test_llm_toolkit_matrix_records_package_gate_and_evidence_blockers() -> None:
     assert PAPER03_MATRIX.exists()
     matrix = yaml.safe_load(PAPER03_MATRIX.read_text(encoding="utf-8"))
 
     assert matrix["submission_ready"] is False
     assert (
         matrix["evidence_level"]
-        == "baseline config-target validated; LLM toolkit evidence mostly blocked"
+        == "baseline config-target validated; LLM package import gate fixed; accepted evidence still blocked"
     )
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
     assert len(matrix["llm_demo_evidence"]) >= 4
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
     assert any("standalone template LLM" in entry["label"] for entry in matrix["baselines"])
-    assert any("No module named 'llm'" in entry["status"] for entry in matrix["llm_demo_evidence"])
+    assert any("package-based template LLM pipeline" in entry["label"] for entry in matrix["llm_demo_evidence"])
+    assert any("14 passed" in entry["status"] for entry in matrix["llm_demo_evidence"])
+    assert any(
+        "accepted_evidence=false" in entry["status"]
+        for entry in matrix["llm_demo_evidence"]
+    )
 
     main_py_baselines = [
         entry
@@ -520,20 +711,34 @@ def test_llm_toolkit_matrix_records_import_and_evidence_package_blockers() -> No
     blocked_ablations = [
         entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
     ]
-    assert len(bound_ablations) >= 2
-    assert len(blocked_ablations) >= 5
-    assert any("No module named 'llm'" in entry["evidence_status"] for entry in blocked_ablations)
-    assert all(
-        entry["command"].startswith("blocked:")
-        or "run_minimal_llm_demo.py" in entry["command"]
-        or "pytest" in entry["command"]
-        for entry in blocked_ablations
+    assert len(bound_ablations) >= 7
+    assert len(blocked_ablations) == 0
+    assert any("package-based template pipeline" in entry["label"] for entry in bound_ablations)
+    assert any(
+        "package-based template pipeline" in entry["label"]
+        and "accepted_evidence=false" in entry.get("evidence_status", "")
+        for entry in bound_ablations
+    )
+    assert any("core toolkit unit-test gate" in entry["label"] for entry in bound_ablations)
+    assert any(
+        "run_llm_evidence_smoke.py --condition no_checker" in entry["command"]
+        for entry in bound_ablations
+    )
+    assert any(
+        "run_llm_evidence_smoke.py --condition no_domain_context" in entry["command"]
+        for entry in bound_ablations
+    )
+    assert any(
+        "run_llm_evidence_smoke.py --condition all" in entry["command"]
+        for entry in bound_ablations
     )
 
     blockers = "\n".join(matrix["strict_blockers"])
-    assert "manuscript/ieee_tii/main.tex" in blockers
+    assert "The manuscript/ieee_tii/main.tex entrypoint is a conservative compile checkpoint" in blockers
+    assert "No final IEEE TeX entrypoint exists" not in blockers
     assert "run_meta.yaml,metrics.json" in blockers
-    assert "llm.llm_explainer is missing" in blockers
+    assert "not accepted LLM evidence packages" in blockers
+    assert "Only smoke hallucination-checker, context-removal, and latency-sweep runners exist" in blockers
     assert "No SOTA or human-centered decision-support claim" in blockers
 
 
@@ -544,9 +749,9 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
     assert matrix["submission_ready"] is False
     assert (
         matrix["evidence_level"]
-        == "baseline config-target validated; proposition evidence partial"
+        == "baseline config-target validated; proposition and mapping evidence partial"
     )
-    assert len(matrix["proposition_evidence"]) >= 5
+    assert len(matrix["proposition_evidence"]) >= 6
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
@@ -567,11 +772,14 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
     blocked_ablations = [
         entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
     ]
-    assert len(bound_ablations) >= 6
-    assert len(blocked_ablations) >= 1
+    assert len(bound_ablations) >= 7
+    assert len(blocked_ablations) == 0
     assert any("logit_scale=0.1" in entry["command"] for entry in bound_ablations)
     assert any("logit_scale=1.0" in entry["command"] for entry in bound_ablations)
-    assert all(entry["command"].startswith("blocked:") for entry in blocked_ablations)
+    assert any(
+        "run_mapping_ablation_smoke.py --condition no_mapping" in entry["command"]
+        for entry in bound_ablations
+    )
 
     p2_entries = [
         entry

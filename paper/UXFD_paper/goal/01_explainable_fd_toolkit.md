@@ -48,6 +48,9 @@
 - RWTOP2024-MOMENT: `representative-runnable` foundation-model representation baseline for explanation coverage.
 - RWTOP2025-DADA: `representative-runnable` bottleneck/anomaly baseline for general diagnostic explanation.
 - RWTOP2025-CFCBM: `literature-only` concept/counterfactual comparator until FD concepts are defined.
+- RWTOP2026-TIMESEG: `representative-runnable` segment-wise explanation comparator for temporal faithfulness.
+- RWTOP2026-TIMESLIVER: `representative-runnable` symbolic-linear attribution comparator for Toolkit reporting.
+- RWTOP2026-TSPULSE: `representative-runnable` compact pretrained representation comparator under the 2x4090 budget.
 
 ## Compute Budget
 

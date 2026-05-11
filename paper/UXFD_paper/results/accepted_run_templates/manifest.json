@@ -1,0 +1,972 @@
+[
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/proposed/P00__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "baselines",
+    "entry_id": "B07",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/baselines/B07__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.type=CNN --override model.name=AttentionCNN --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/ablations/A01__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/ablations/A02__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.operators='[\"I\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/ablations/A03__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.operators='[\"HT\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/ablations/A04__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.operators='[\"FFT\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/ablations/A05__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.temperature=0.5 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q1",
+    "paper_id": "TII_operator_attention",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/ablations/A06__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.temperature=2.0 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/proposed/P00__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/baselines/B01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/baselines/B02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/baselines/B03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/baselines/B04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/baselines/B05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/baselines/B06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.n_fft=64 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.hop_length=32 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.fusion.type=concat --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/1D-2D_fusion_explainable",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition fft_only_proxy --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q2",
+    "paper_id": "1D-2D_fusion_explainable",
+    "phase": "ablations",
+    "entry_id": "A07",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/ablations/A07__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition legacy_ablation_surface --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/proposed/P00__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/baselines/B01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=NSN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/baselines/B02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/baselines/B03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/baselines/B04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/baselines/B05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/baselines/B06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/ablations/A01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/ablations/A02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition schema_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/ablations/A03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python scripts/run_toolkit_ablations.py --condition metrics_subset_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/ablations/A04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition manifest_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/ablations/A05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python scripts/run_toolkit_ablations.py --condition snapshot_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q3",
+    "paper_id": "Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/ablations/A06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition posthoc_only --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/proposed/P00__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/baselines/B01__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/baselines/B02__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/baselines/B03__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/baselines/B04__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/baselines/B05__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/baselines/B06__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/ablations/A01__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_expert_ablation_probe.py --output-dir paper/UXFD_paper/MOE_explainable/results/t043/expert_ablation_probe --datasets CWRU --expert-counts 3 5 8 --epochs 1 --batch-size 16 --max-train-batches 4 --max-test-batches 4"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/ablations/A02__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_load_balance --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/ablations/A03__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_sparsity --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/ablations/A04__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition temperature_sweep --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/ablations/A05__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition remove_expert_family --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q4",
+    "paper_id": "MOE_explainable",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/ablations/A06__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition uniform_router --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/proposed/P00__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "baselines",
+    "entry_id": "B07",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/baselines/B07__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_fuzzy_baseline.py --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json --max_samples 20"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/ablations/A01__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/ablations/A02__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/ablations/A03__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=0.1 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/ablations/A04__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.num_rules=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/ablations/A05__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.num_membership_functions=1 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q5",
+    "paper_id": "Paper_fuzzy_XFD",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/ablations/A06__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.num_fuzzy_features=8 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/proposed/P00__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/baselines/B01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/baselines/B02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/baselines/B03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/baselines/B04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/baselines/B05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/baselines/B06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/Neuralsymbolic_theory",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python experiments/proposition2_simple.py"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=0.1 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/Neuralsymbolic_theory",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python simple_validation_demo.py"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/Neuralsymbolic_theory",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py"
+  },
+  {
+    "queue_id": "Q6",
+    "paper_id": "Neuralsymbolic_theory",
+    "phase": "ablations",
+    "entry_id": "A07",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A07__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "proposed",
+    "entry_id": "P00",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/proposed/P00__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B01",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B01__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B02",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B02__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode pipeline"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B03",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B03__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B04",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B04__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B05",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B05__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B06",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B06__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "baselines",
+    "entry_id": "B07",
+    "device": "1",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/baselines/B07__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A01",
+    "device": "0",
+    "workdir": ".",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A01__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A02",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A02__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode single --case 0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A03",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A03__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output /tmp/uxfd_paper03_template_llm_artifacts"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A04",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A04__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python -m pytest -q code/tests/test_basic_functionality.py"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A05",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A05__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition no_checker --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A06",
+    "device": "1",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A06__gpu1/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=1 python experiments/scripts/run_llm_evidence_smoke.py --condition no_domain_context --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0"
+  },
+  {
+    "queue_id": "Q7",
+    "paper_id": "LLM_Explainable_FD_Toolkit",
+    "phase": "ablations",
+    "entry_id": "A07",
+    "device": "0",
+    "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
+    "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A07__gpu0/run_meta.template.yaml",
+    "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition all --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0"
+  }
+]

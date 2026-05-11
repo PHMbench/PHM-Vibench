@@ -1,0 +1,1113 @@
+{
+  "validation": {
+    "can_execute": false,
+    "structural_issues": [],
+    "resource_reason": "blocked; no accepted GPU evidence can be generated in this session"
+  },
+  "summary": {
+    "total": 104,
+    "blocked": 0,
+    "main_py_commands": 71,
+    "top_representatives": 7,
+    "per_phase": {
+      "proposed": 7,
+      "baselines": 45,
+      "ablations": 45,
+      "top_representatives": 7
+    },
+    "per_paper": {
+      "TII_operator_attention": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "1D-2D_fusion_explainable": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 7,
+        "top_representatives": 1
+      },
+      "Explainable_FD_Toolkit": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "MOE_explainable": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "Paper_fuzzy_XFD": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "Neuralsymbolic_theory": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 7,
+        "top_representatives": 1
+      },
+      "LLM_Explainable_FD_Toolkit": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 7,
+        "top_representatives": 1
+      }
+    }
+  },
+  "commands": [
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "XOAN/DSOA operator attention",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "dummy smoke only; industrial GPU evidence pending",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "NSN/TSPN_UXFD without operator attention",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "ResNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "SincNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "TFN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "WKN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "ConvTransformer baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "baselines",
+      "entry_id": "B07",
+      "label": "Feature/self-attention CNN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.type=CNN --override model.name=AttentionCNN --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "remove operator attention",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "identity-only operator subset",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.operators='[\"I\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "Hilbert-only operator subset",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.operators='[\"HT\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "FFT-only operator subset",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.operators='[\"FFT\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "low temperature sensitivity",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.temperature=0.5 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "high temperature sensitivity",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.temperature=2.0 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol industrial run",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "PHM-Vibench NSN proxy with 1D-2D signal_processing_2d config",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU GPU run with real Fusion1D2D path",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "NSN/TSPN_UXFD with 2D signal path disabled",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "ResNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "SincNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "TFN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "WKN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "ConvTransformer baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "disable 2D signal-processing path",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending true Fusion1D2D 1D-only CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "smaller STFT window",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.n_fft=64 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol real-data sensitivity run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "smaller STFT hop length",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.hop_length=32 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol real-data sensitivity run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "concat fusion switch",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.fusion.type=concat --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending true fusion-operator ablation in Fusion1D2D",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "paper-local demo class-count sanity",
+      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo",
+      "status": "paper-local sanity only; pending real-data ablation package",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "FFT-only signal layer",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition fft_only_proxy --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0",
+      "status": "pending true FFT path rewrite or compatible no-skip Fusion1D2D run",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "ablations",
+      "entry_id": "A07",
+      "label": "legacy 1D-only / 2D-only / no-statistical configs",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition legacy_ablation_surface --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0",
+      "status": "pending current-root CWRU/XJTU rewrite for 1D-only, 2D-only, and no-statistical ablations",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "Toolkit NSN smoke with explain extension",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial GPU run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "NSN/TSPN_UXFD baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=NSN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "ResNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "SincNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "TFN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "WKN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "ConvTransformer baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "disable PHM-Vibench explain extension",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol Toolkit ablation artifact",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "schema removal",
+      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition schema_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "status": "pending accepted same-protocol Toolkit schema ablation artifacts",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "faithfulness/stability metric-family removal",
+      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition metrics_subset_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "status": "pending accepted same-protocol metric-family ablation artifacts",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "standardized manifest off",
+      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition manifest_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "status": "pending accepted same-protocol manifest ablation artifacts",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "fixed seed/config snapshot off",
+      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition snapshot_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "status": "pending accepted same-protocol reproducibility snapshot ablation artifacts",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "post-hoc comparator only",
+      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition posthoc_only --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "status": "pending accepted same-protocol SHAP/LIME/Captum comparator artifacts",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "PHM-Vibench UXFD route/MoE proxy smoke",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial GPU run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "NSN/TSPN_UXFD without operator-routing proxy",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "ResNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "SincNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "TFN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "WKN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "ConvTransformer baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "expert-count sweep 3/5/8",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_expert_ablation_probe.py --output-dir paper/UXFD_paper/MOE_explainable/results/t043/expert_ablation_probe --datasets CWRU --expert-counts 3 5 8 --epochs 1 --batch-size 16 --max-train-batches 4 --max-test-batches 4",
+      "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "remove load-balance regularization",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_load_balance --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "remove sparsity regularization",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_sparsity --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "router temperature sweep",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition temperature_sweep --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "expert family removal",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition remove_expert_family --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "uniform/equal-weight router",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition uniform_router --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "Fuzzy-XFD / NSN with fuzzy residual head",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial GPU run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "NSN/TSPN_UXFD without fuzzy rules",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "ResNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "SincNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "TFN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "WKN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "ConvTransformer baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "baselines",
+      "entry_id": "B07",
+      "label": "Classical fuzzy/rule baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_fuzzy_baseline.py --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json --max_samples 20",
+      "status": "pending real feature extraction, same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "remove fuzzy decision head",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "uncalibrated fuzzy residual scale",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "weak fuzzy residual scale",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=0.1 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "low rule-count fuzzy head",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.num_rules=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "single membership function",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.num_membership_functions=1 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "narrow fuzzy feature bottleneck",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.num_fuzzy_features=8 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU or industrial run",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "Constrained NSN/TSPN_UXFD logic-slot neural-symbolic model",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU GPU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "NSN/TSPN_UXFD without symbolic decision constraints",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "ResNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "SincNet baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "TFN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "WKN baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "ConvTransformer baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol CWRU/XJTU run",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "remove symbolic constraints",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending CWRU/XJTU reliability and consistency deltas",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "physical-informed robustness hook",
+      "command": "python experiments/proposition2_simple.py",
+      "status": "pending real-data noise/shift robustness protocol; simple_validation_demo still records a P2 failure",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "low symbolic residual strength",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=0.1 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol sweep over seeds and datasets",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "high symbolic residual strength",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol sweep over seeds and datasets",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "independent proposition validation",
+      "command": "python simple_validation_demo.py",
+      "status": "partial; P2 failure remains a strict blocker",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "cross-method mapping validation",
+      "command": "python code/validate_mapping.py",
+      "status": "pending source-backed mapping and explicit negative mappings",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "ablations",
+      "entry_id": "A07",
+      "label": "remove cross-method mapping module from training/evaluation",
+      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed 0",
+      "status": "pending source-backed sibling-submodule mapping and real train/eval impact artifacts",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "proposed",
+      "entry_id": "P00",
+      "label": "PHM-Vibench NSN smoke with agent/distillation extension enabled",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending results/llm_evidence run_meta.yaml and metrics.json under the main protocol",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B01",
+      "label": "PHM-Vibench structured output without agent extension",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol results/llm_evidence package",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B02",
+      "label": "standalone template LLM baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode pipeline",
+      "status": "pending run_meta.yaml, metrics.json, latency, hallucination, and prompt-set artifacts",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B03",
+      "label": "ResNet diagnostic baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol diagnostic-plus-explanation run",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B04",
+      "label": "SincNet diagnostic baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol diagnostic-plus-explanation run",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B05",
+      "label": "TFN diagnostic baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol diagnostic-plus-explanation run",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B06",
+      "label": "WKN diagnostic baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol diagnostic-plus-explanation run",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "baselines",
+      "entry_id": "B07",
+      "label": "ConvTransformer diagnostic baseline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol diagnostic-plus-explanation run",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A01",
+      "label": "disable PHM-Vibench agent/distillation extension",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
+      "status": "pending same-protocol explanation-output artifact comparison",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A02",
+      "label": "single-case dialogue instead of pipeline demo",
+      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode single --case 0",
+      "status": "pending prompt-set metrics, latency, and unsupported-claim rate",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A03",
+      "label": "package-based template pipeline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output /tmp/uxfd_paper03_template_llm_artifacts",
+      "status": "pending accepted main-protocol results/llm_evidence run_meta.yaml, metrics.json, latency, and unsupported-claim metrics",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A04",
+      "label": "core toolkit unit-test gate",
+      "command": "python -m pytest -q code/tests/test_basic_functionality.py",
+      "status": "package smoke gate passed; still pending accepted results/llm_evidence evidence package",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A05",
+      "label": "remove hallucination checker",
+      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition no_checker --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0",
+      "status": "pending accepted main-protocol hallucination checker and unsupported-claim metric collector",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A06",
+      "label": "remove retrieval/domain knowledge context",
+      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition no_domain_context --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0",
+      "status": "pending accepted main-protocol retrieval/domain-context runner and same prompt set",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "ablations",
+      "entry_id": "A07",
+      "label": "short/medium/long template latency sweep",
+      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition all --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0",
+      "status": "pending accepted main-protocol latency p50/p95 and failure-rate collector",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    },
+    {
+      "queue_id": "TOP-Q1-GTM",
+      "paper_id": "TII_operator_attention",
+      "phase": "top_representatives",
+      "entry_id": "B04,B05,A04",
+      "label": "RWTOP2026-GTM",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B04/B05/A04",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    },
+    {
+      "queue_id": "TOP-Q2-GTM",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "top_representatives",
+      "entry_id": "B04,B05,A06",
+      "label": "RWTOP2026-GTM",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B04/B05/A06",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    },
+    {
+      "queue_id": "TOP-Q3-TIMESEG",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "top_representatives",
+      "entry_id": "P00,A02,A03,A06",
+      "label": "RWTOP2026-TIMESEG",
+      "command": "paper-local baseline_ablation_matrix.yaml entries P00/A02/A03/A06",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    },
+    {
+      "queue_id": "TOP-Q4-TSPULSE",
+      "paper_id": "MOE_explainable",
+      "phase": "top_representatives",
+      "entry_id": "B06,A04,A06",
+      "label": "RWTOP2026-TSPULSE",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B06/A04/A06",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    },
+    {
+      "queue_id": "TOP-Q5-TIMESLIVER",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "top_representatives",
+      "entry_id": "B07,A01,A04,A05,A06",
+      "label": "RWTOP2026-TIMESLIVER",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B07/A01/A04/A05/A06",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    },
+    {
+      "queue_id": "TOP-Q6-TIMESLIVER",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "top_representatives",
+      "entry_id": "A01,A05,A06,A07",
+      "label": "RWTOP2026-TIMESLIVER",
+      "command": "paper-local baseline_ablation_matrix.yaml entries A01/A05/A06/A07",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    },
+    {
+      "queue_id": "TOP-Q7-TIMESEG",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "top_representatives",
+      "entry_id": "B02,A05,A07",
+      "label": "RWTOP2026-TIMESEG",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B02/A05/A07",
+      "status": "pending_gpu_and_artifacts",
+      "matrix_path": ""
+    }
+  ],
+  "live_preflight": {
+    "accepted": false,
+    "nvidia_smi_ok": false,
+    "torch_cuda_available": false,
+    "torch_cuda_device_count": 0,
+    "gpu_names": [],
+    "reason": "blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0"
+  }
+}

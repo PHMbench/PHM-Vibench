@@ -59,18 +59,26 @@ as exact reproduction.
 | RWTOP2025-CFCBM | 2025 | `top-conference` | Dominici et al., [Counterfactual Concept Bottleneck Models](https://research.ibm.com/publications/counterfactual-concept-bottleneck-models) | ICLR 2025 | Concept/counterfactual explanation baseline for Papers 1, 5, 6. | `literature-only` until concept labels are defined for FD datasets. | blocked; do not count as reproduced baseline. |
 | RWTOP2025-CBAE | 2025 | `top-conference` | Kulkarni et al., [Interpretable Generative Models through Post-hoc Concept Bottlenecks](https://cvpr.thecvf.com/virtual/2025/poster/32807) | CVPR 2025 | Post-hoc concept bottleneck baseline for Papers 1, 3, 5. | `literature-only` until image/concept protocol is adapted. | blocked; do not count as reproduced baseline. |
 | RWTOP2025-IFCBM | 2025 | `top-journal` | Interpretable prognostics with concept bottleneck models | Information Fusion 2025 | Concept-bottleneck prognostics/explainability comparator for Papers 1, 5, 6. | `literature-only` until dataset/task mapping is defined. | blocked; do not count as reproduced baseline. |
+| RWTOP2026-TIMESEG | 2026 | `top-conference` | Kim et al., [TimeSeg: An Information-Theoretic Segment-Wise Explainer for Time-Series Predictions](https://openreview.net/forum?id=alt9mSWULk) | ICLR 2026 Poster | Segment-wise time-series explanation baseline for Papers 1, 3, 5, 6. | `representative-runnable` | Toolkit segment attribution proxy; exact code/config must be integrated before exact reproduction. |
+| RWTOP2026-TIMESLIVER | 2026 | `top-conference` | Pandey et al., [TIMESLIVER: Symbolic-Linear Decomposition for Explainable Time Series Classification](https://openreview.net/forum?id=MDRp9XhGtS) | ICLR 2026 Poster | Symbolic attribution and explainable classification comparator for Papers 1, 5, 6. | `representative-runnable` | Fuzzy/rule and neural-symbolic decomposition proxy until exact protocol is integrated. |
+| RWTOP2026-PGRFNET | 2026 | `top-conference` | Jeong and Yoon, [PGRF-Net: A Prototype-Guided Relational Fusion Network for Diagnostic Multivariate Time-Series Anomaly Detection](https://openreview.net/forum?id=3hS7EtL4bV) | ICLR 2026 Poster | Prototype, relational, and diagnostic evidence baseline for Papers 2, 6, 7. | `representative-runnable` | `X_model.NSN` or channel/prototype evidence proxy with relational artifacts. |
+| RWTOP2026-GTM | 2026 | `top-conference` | He et al., [GTM: A General Time-series Model for Enhanced Representation Learning of Time-Series data](https://openreview.net/forum?id=PWM6FERWz9) | ICLR 2026 Poster | Frequency-domain attention and general TS representation baseline for Papers 2, 3, 7. | `representative-runnable` | `X_model.TFN`, `X_model.WKN`, or compact representation proxy under the FD split. |
+| RWTOP2026-CSLSTM | 2026 | `top-conference` | Zhang et al., [Contextual and Seasonal LSTMs for Time Series Anomaly Detection](https://openreview.net/forum?id=2VtveTkmzW) | ICLR 2026 Poster | Time/frequency anomaly-detection baseline for Papers 2 and 7. | `representative-runnable` | LSTM/time-frequency proxy or exact implementation once code/config is integrated. |
+| RWTOP2026-PROTOTS | 2026 | `top-conference` | Peng et al., [ProtoTS: Learning Hierarchical Prototypes for Explainable Time Series Forecasting](https://openreview.net/forum?id=IbcdVwzLrp) | ICLR 2026 Poster | Hierarchical prototype explanation comparator for Papers 1, 5, 6. | `literature-only` until forecasting-to-diagnosis mapping is defined. | blocked; do not count as reproduced baseline. |
+| RWTOP2026-CALTSFM | 2026 | `top-conference` | Adler et al., [Beyond Accuracy: Are Time Series Foundation Models Well-Calibrated?](https://openreview.net/forum?id=nGBN7UjHcy) | ICLR 2026 Poster | Calibration and confidence protocol for Papers 3 and 4. | `literature-only` for evaluation protocol until a local calibration artifact exists. | blocked; do not count as reproduced baseline. |
+| RWTOP2026-TSPULSE | 2026 | `top-conference` | Ekambaram et al., [TSPulse: Tiny Pre-Trained Models with Disentangled Representations for Rapid Time-Series Analysis](https://openreview.net/forum?id=Kw2mvnzCoc) | ICLR 2026 Poster | Resource-feasible pretrained representation comparator for Papers 1, 2, 4, 7. | `representative-runnable` | Compact pretrained-representation proxy; exact reproduction requires local code/config integration. |
 
 ## Per-Paper TOP-Source Minimums
 
 | Paper | Required TOP recent methods before submission | Runnable minimum |
 |---|---|---|
-| 1 Toolkit | RWTOP2024-TIMEXPP, RWTOP2024-MOMENT, RWTOP2025-DADA, RWTOP2025-CFCBM | At least one Toolkit explanation representative run. |
-| 2 1D-2D Fusion | RWTOP2024-TIMEMIXER, RWTOP2024-MOMENT, RWTOP2025-CATCH, RWTOP2025-DADA | At least one multiscale/frequency representative run. |
-| 3 LLM Toolkit | RWTOP2024-TIMELLM, RWTOP2024-MOMENT, RWTOP2025-TIMEMOE, RWTOP2025-CBAE | At least one evidence-grounded LLM or local proxy run. |
-| 4 MoE | RWTOP2025-TIMEMOE, RWTOP2025-MOIRAIMOE, RWTOP2024-MOMENT | At least one sparse-router representative run with route artifacts. |
-| 5 Fuzzy-XFD | RWTOP2024-TIMEXPP, RWTOP2025-CFCBM, RWTOP2025-CBAE, RWTOP2025-IFCBM | At least one concept/rule explanation representative run. |
-| 6 Neuralsymbolic | RWTOP2024-TIMEXPP, RWTOP2024-SARAD, RWTOP2025-CFCBM, RWTOP2025-IFCBM | At least one concept/constraint representative run. |
-| 7 Operator Attention | RWTOP2024-TIMEMIXER, RWTOP2024-SARAD, RWTOP2025-CATCH, RWTOP2025-DADA | At least one frequency/channel/operator representative run. |
+| 1 Toolkit | RWTOP2024-TIMEXPP, RWTOP2024-MOMENT, RWTOP2025-DADA, RWTOP2025-CFCBM, RWTOP2026-TIMESEG, RWTOP2026-TIMESLIVER, RWTOP2026-TSPULSE | At least one Toolkit explanation representative run. |
+| 2 1D-2D Fusion | RWTOP2024-TIMEMIXER, RWTOP2024-MOMENT, RWTOP2025-CATCH, RWTOP2025-DADA, RWTOP2026-PGRFNET, RWTOP2026-GTM, RWTOP2026-CSLSTM | At least one multiscale/frequency representative run. |
+| 3 LLM Toolkit | RWTOP2024-TIMELLM, RWTOP2024-MOMENT, RWTOP2025-TIMEMOE, RWTOP2025-CBAE, RWTOP2026-TIMESEG, RWTOP2026-GTM, RWTOP2026-CALTSFM | At least one evidence-grounded LLM or local proxy run. |
+| 4 MoE | RWTOP2025-TIMEMOE, RWTOP2025-MOIRAIMOE, RWTOP2024-MOMENT, RWTOP2026-GTM, RWTOP2026-CALTSFM, RWTOP2026-TSPULSE | At least one sparse-router representative run with route artifacts. |
+| 5 Fuzzy-XFD | RWTOP2024-TIMEXPP, RWTOP2025-CFCBM, RWTOP2025-CBAE, RWTOP2025-IFCBM, RWTOP2026-TIMESEG, RWTOP2026-TIMESLIVER, RWTOP2026-PROTOTS | At least one concept/rule explanation representative run. |
+| 6 Neuralsymbolic | RWTOP2024-TIMEXPP, RWTOP2024-SARAD, RWTOP2025-CFCBM, RWTOP2025-IFCBM, RWTOP2026-TIMESEG, RWTOP2026-TIMESLIVER, RWTOP2026-PGRFNET | At least one concept/constraint representative run. |
+| 7 Operator Attention | RWTOP2024-TIMEMIXER, RWTOP2024-SARAD, RWTOP2025-CATCH, RWTOP2025-DADA, RWTOP2026-PGRFNET, RWTOP2026-GTM, RWTOP2026-CSLSTM, RWTOP2026-TSPULSE | At least one frequency/channel/operator representative run. |
 
 ## 2x4090 Exact-Reproduction Feasibility
 
@@ -88,6 +96,14 @@ as exact reproduction.
 | RWTOP2025-CFCBM | `resource-blocked` until FD concepts and compute-feasible protocol exist | literature-only; do not count as reproduced baseline. |
 | RWTOP2025-CBAE | `resource-blocked` until concept/image protocol fits 2x4090 | literature-only; do not count as reproduced baseline. |
 | RWTOP2025-IFCBM | `resource-blocked` until task mapping and local concept protocol exist | literature-only; do not count as reproduced baseline. |
+| RWTOP2026-TIMESEG | feasible only after exact code/config is integrated | use segment-attribution representative runs until exact artifacts exist. |
+| RWTOP2026-TIMESLIVER | feasible only after exact code/config is integrated | use symbolic/rule representative runs until exact artifacts exist. |
+| RWTOP2026-PGRFNET | feasible only after exact code/config is integrated | use prototype/channel-relational representative runs until exact artifacts exist. |
+| RWTOP2026-GTM | `resource-blocked` for large pretraining; local adaptation may fit 2x4090 | use compact frequency-attention representative runs. |
+| RWTOP2026-CSLSTM | feasible only after exact code/config is integrated | use LSTM/time-frequency representative runs until exact artifacts exist. |
+| RWTOP2026-PROTOTS | blocked until forecasting-to-diagnosis mapping is defined | literature-only; do not count as reproduced baseline. |
+| RWTOP2026-CALTSFM | evaluation protocol only until local calibration artifacts exist | literature-only; do not count as reproduced baseline. |
+| RWTOP2026-TSPULSE | likely feasible on one RTX 4090 after code/config integration | use compact pretrained-representation proxy until exact artifacts exist. |
 
 ## Initial Local Reproduction Commands
 

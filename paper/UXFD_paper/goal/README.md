@@ -30,6 +30,7 @@ The current feature artifacts live in:
 | `06_neuralsymbolic_theory.md` | Paper 6 goal: neural-symbolic theory and proposition validation. |
 | `07_tii_operator_attention.md` | Paper 7 goal: operator-attention theory and signal-processing evidence. |
 | `08_recent_work_citation_readme.md` | TOP recent-work citation map and runnable reproduction policy. |
+| `09_gpu_execution_queue.yaml` | Machine-readable 2x4090 execution queue, resource preflight, metadata contract, and SOTA gate order. |
 | `99_submission_readiness_matrix.md` | Cross-paper status matrix and next milestones. |
 
 ## Status Legend
@@ -39,6 +40,92 @@ The current feature artifacts live in:
 - `evidence-ready`: all required artifacts exist and are mapped, but manuscript or compile work remains.
 - `compile-ready`: canonical TeX compiles without fatal errors.
 - `submission-ready`: evidence, manuscript, compile, and strict-reviewer gates pass.
+
+## Queue Dry Run
+
+Use the parent expander to inspect the blocked GPU queue without launching any
+experiment:
+
+```bash
+python -m scripts.uxfd_gpu_queue --format markdown
+python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight
+python -m scripts.uxfd_gpu_queue --format json --output paper/UXFD_paper/results/gpu_queue_dry_run.json
+```
+
+The command is intentionally dry-run only. Use `--require-preflight` to fail
+with a non-zero exit code until local GPUs `0,1` are visible and accepted.
+Use `--live-preflight` to check the current `nvidia-smi -L` and PyTorch CUDA
+state in the manifest before any experiment launch.
+The generated manifest includes validation status, summary counts by phase and
+paper, and the expanded command sources.
+
+## Objective Audit
+
+Use the objective audit before claiming that the active goal is achieved. It
+maps the user request to concrete filesystem and gate evidence:
+
+```bash
+python -m scripts.uxfd_objective_audit --format markdown
+python -m scripts.uxfd_objective_audit --format json --output paper/UXFD_paper/results/objective_audit.json
+```
+
+The command returns non-zero until every named goal file, Spec Kit artifact,
+handoff artifact, team/subagent evidence, seven paper matrices, TOP gate, GPU
+queue, accepted artifacts, and cross-paper submission gate are satisfied. Use
+`--allow-not-achieved` only to export the current audit without treating it as
+complete.
+
+## Submission Gate
+
+Use the parent gate checker to prove the package is or is not ready for
+submission without launching experiments:
+
+```bash
+python -m scripts.uxfd_submission_gate --format markdown
+python -m scripts.uxfd_submission_gate --format json --output paper/UXFD_paper/results/submission_gate.json
+python -m scripts.uxfd_submission_gate --artifact-root paper/UXFD_paper/results/accepted_runs --format markdown
+```
+
+The command returns non-zero while any paper remains non-ready. Use
+`--allow-not-ready` only for non-failing audit export.
+The report includes blocking findings plus one queue-derived next action per
+paper. It also includes an objective checklist mapping goal files, Claude Team
+artifacts, paper matrices, baseline/ablation counts, GPU queue status, and final
+submission readiness.
+The submission gate also runs the artifact metadata gate against
+`paper/UXFD_paper/results/accepted_runs` by default; use `--artifact-root` to
+point at a specific accepted evidence bundle.
+
+## Recent Work Gate
+
+Use the TOP recent-work gate to audit citation freshness, low-tier exclusion,
+per-paper TOP quotas, and the seven queued TOP representative bindings:
+
+```bash
+python -m scripts.uxfd_recent_work_gate --format markdown
+python -m scripts.uxfd_recent_work_gate --format json --output paper/UXFD_paper/results/recent_work_gate.json
+```
+
+The command returns non-zero while TOP representative artifacts remain pending.
+Use `--allow-not-ready` only for non-failing audit export. `policy_ready: true`
+means the accepted TOP pool, per-paper quotas, and queue bindings are coherent;
+`evidence_ready: false` means the queued representatives still lack accepted
+same-protocol logs, metrics, and `run_meta.yaml` evidence.
+
+## Artifact Gate
+
+Use the artifact gate after real runs finish to check accepted-run metadata
+without changing any result:
+
+```bash
+python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results --format markdown
+python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results --format json --output paper/UXFD_paper/results/artifact_gate.json
+```
+
+The gate requires `run_meta.yaml` plus local 4090 GPU metadata, config/log/metrics
+paths, seed, split, batch size, precision, runtime, and command provenance.
+Its field map is tested against `09_gpu_execution_queue.yaml` so the scheduler
+metadata contract and artifact validator stay aligned.
 
 ## Commit Policy
 

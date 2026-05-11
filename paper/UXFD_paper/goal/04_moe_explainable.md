@@ -50,6 +50,9 @@
 - RWTOP2025-MOIRAIMOE: `representative-runnable` token-level sparse expert baseline for automatic specialization.
 - RWTOP2024-MOMENT: `representative-runnable` dense/foundation representation comparator.
 - RWTOP2024-TIMEXPP: `representative-runnable` explanation-quality comparator for route interpretations.
+- RWTOP2026-GTM: `representative-runnable` frequency-attention representation comparator for expert routing.
+- RWTOP2026-CALTSFM: `literature-only` confidence/calibration protocol until route confidence artifacts exist.
+- RWTOP2026-TSPULSE: `representative-runnable` compact pretrained comparator for resource-feasible MoE positioning.
 
 ## Compute Budget
 

@@ -1,0 +1,27 @@
+accepted_evidence: false
+source_queue_id: Q5
+paper_id: Paper_fuzzy_XFD
+phase: ablations
+entry_id: A06
+label: narrow fuzzy feature bottleneck
+workdir: .
+cuda_visible_devices: '1'
+gpu_model: 'TODO: NVIDIA GeForce RTX 4090'
+gpu_count: 1
+seed: 'TODO: record seed'
+dataset_split: 'TODO: record dataset split'
+preprocessing_signature: 'TODO: record preprocessing signature'
+batch_size: 'TODO: record batch size'
+precision: 'TODO: record precision'
+runtime: 'TODO: record wall-clock runtime'
+command: CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
+  --override model.decision_configs.fuzzy.num_fuzzy_features=8 --override trainer.num_epochs=1
+  --override data.num_workers=0
+original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
+  --override model.decision_configs.fuzzy.num_fuzzy_features=8 --override trainer.num_epochs=1
+  --override data.num_workers=0
+git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+config_path: paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
+log_path: run.log
+metrics_path: metrics.json
+oom_or_failure_reason: ''

@@ -1,0 +1,25 @@
+accepted_evidence: false
+source_queue_id: Q2
+paper_id: 1D-2D_fusion_explainable
+phase: ablations
+entry_id: A05
+label: paper-local demo class-count sanity
+workdir: paper/UXFD_paper/1D-2D_fusion_explainable
+cuda_visible_devices: '1'
+gpu_model: 'TODO: NVIDIA GeForce RTX 4090'
+gpu_count: 1
+seed: 'TODO: record seed'
+dataset_split: 'TODO: record dataset split'
+preprocessing_signature: 'TODO: record preprocessing signature'
+batch_size: 'TODO: record batch size'
+precision: 'TODO: record precision'
+runtime: 'TODO: record wall-clock runtime'
+command: CUDA_VISIBLE_DEVICES=1 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1
+  --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo
+original_command: CUDA_VISIBLE_DEVICES=0 python scripts/run_minimal_demo.py --use_dummy
+  --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo
+git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+config_path: 'TODO: record config path'
+log_path: run.log
+metrics_path: metrics.json
+oom_or_failure_reason: ''

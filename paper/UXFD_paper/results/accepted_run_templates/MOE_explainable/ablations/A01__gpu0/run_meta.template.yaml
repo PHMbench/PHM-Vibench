@@ -1,0 +1,29 @@
+accepted_evidence: false
+source_queue_id: Q4
+paper_id: MOE_explainable
+phase: ablations
+entry_id: A01
+label: expert-count sweep 3/5/8
+workdir: .
+cuda_visible_devices: '0'
+gpu_model: 'TODO: NVIDIA GeForce RTX 4090'
+gpu_count: 1
+seed: 'TODO: record seed'
+dataset_split: 'TODO: record dataset split'
+preprocessing_signature: 'TODO: record preprocessing signature'
+batch_size: 'TODO: record batch size'
+precision: 'TODO: record precision'
+runtime: 'TODO: record wall-clock runtime'
+command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_expert_ablation_probe.py
+  --output-dir paper/UXFD_paper/MOE_explainable/results/t043/expert_ablation_probe
+  --datasets CWRU --expert-counts 3 5 8 --epochs 1 --batch-size 16 --max-train-batches
+  4 --max-test-batches 4
+original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_expert_ablation_probe.py
+  --output-dir paper/UXFD_paper/MOE_explainable/results/t043/expert_ablation_probe
+  --datasets CWRU --expert-counts 3 5 8 --epochs 1 --batch-size 16 --max-train-batches
+  4 --max-test-batches 4
+git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+config_path: 'TODO: record config path'
+log_path: run.log
+metrics_path: metrics.json
+oom_or_failure_reason: ''

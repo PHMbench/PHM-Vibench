@@ -1,0 +1,366 @@
+{
+  "achieved": false,
+  "objective": "Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff workflow, maintain TOP recent-work and 2x4090 constraints, and drive all seven papers toward IEEE Transactions submission readiness.",
+  "items": [
+    {
+      "requirement": "named goal file README.md",
+      "evidence": "paper/UXFD_paper/goal/README.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 00_overall_goal.md",
+      "evidence": "paper/UXFD_paper/goal/00_overall_goal.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 01_explainable_fd_toolkit.md",
+      "evidence": "paper/UXFD_paper/goal/01_explainable_fd_toolkit.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 02_1d2d_fusion.md",
+      "evidence": "paper/UXFD_paper/goal/02_1d2d_fusion.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 03_llm_explainable_fd_toolkit.md",
+      "evidence": "paper/UXFD_paper/goal/03_llm_explainable_fd_toolkit.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 04_moe_explainable.md",
+      "evidence": "paper/UXFD_paper/goal/04_moe_explainable.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 05_fuzzy_xfd.md",
+      "evidence": "paper/UXFD_paper/goal/05_fuzzy_xfd.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 06_neuralsymbolic_theory.md",
+      "evidence": "paper/UXFD_paper/goal/06_neuralsymbolic_theory.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 07_tii_operator_attention.md",
+      "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 08_recent_work_citation_readme.md",
+      "evidence": "paper/UXFD_paper/goal/08_recent_work_citation_readme.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 09_gpu_execution_queue.yaml",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "named goal file 99_submission_readiness_matrix.md",
+      "evidence": "paper/UXFD_paper/goal/99_submission_readiness_matrix.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact spec.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/spec.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact plan.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/plan.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact tasks.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/tasks.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact research.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/research.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact data-model.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/data-model.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact quickstart.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/quickstart.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact contracts/uxfd-ieee-trans-submission-readiness-contract.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/contracts/uxfd-ieee-trans-submission-readiness-contract.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact checklists/requirements.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/checklists/requirements.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Spec Kit artifact checklists/submission-readiness.md",
+      "evidence": "specs/006-uxfd-ieee-trans-submission-readiness/checklists/submission-readiness.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "handoff document",
+      "evidence": ".claude/handoffs/2026-05-11-uxfd-ieee-trans-submission-readiness.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Claude Team task spec",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Claude Team launch log",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/LAUNCH_LOG.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Codex xhigh subagent launch log",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/CODEX_SUBAGENT_LAUNCH.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "six xhigh/subagent or Claude Team execution evidence",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review",
+      "status": "met",
+      "details": "six local Codex xhigh subagents launched and deliverables exist"
+    },
+    {
+      "requirement": "Claude Team deliverable report.md",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/report.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Claude Team deliverable risks.md",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/risks.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "Claude Team deliverable test-log.md",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/test-log.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "GPU execution runbook",
+      "evidence": "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "live GPU preflight snapshot",
+      "evidence": "paper/UXFD_paper/results/gpu_queue_live_preflight.json",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "combined GPU launch plan",
+      "evidence": "paper/UXFD_paper/results/queue_launch_plan.sh",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "GPU0 launch shard",
+      "evidence": "paper/UXFD_paper/results/queue_launch_shards/gpu0.sh",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "GPU1 launch shard",
+      "evidence": "paper/UXFD_paper/results/queue_launch_shards/gpu1.sh",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "accepted-run template manifest",
+      "evidence": "paper/UXFD_paper/results/accepted_run_templates/manifest.json",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "artifact queue coverage report",
+      "evidence": "paper/UXFD_paper/results/artifact_gate_queue_coverage.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "paper submodule working trees clean before parent handoff",
+      "evidence": "git -C <paper_submodule> status --porcelain",
+      "status": "not_met",
+      "details": "dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1"
+    },
+    {
+      "requirement": "seven paper-local baseline/ablation matrices",
+      "evidence": "submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "7 matrices discovered by submission gate"
+    },
+    {
+      "requirement": "TII_operator_attention: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=7, ablations=6, submission_ready=False"
+    },
+    {
+      "requirement": "TII_operator_attention: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=5"
+    },
+    {
+      "requirement": "1D-2D_fusion_explainable: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=6, ablations=7, submission_ready=False"
+    },
+    {
+      "requirement": "1D-2D_fusion_explainable: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=9"
+    },
+    {
+      "requirement": "Explainable_FD_Toolkit: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=6, ablations=6, submission_ready=False"
+    },
+    {
+      "requirement": "Explainable_FD_Toolkit: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=5"
+    },
+    {
+      "requirement": "MOE_explainable: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=6, ablations=6, submission_ready=False"
+    },
+    {
+      "requirement": "MOE_explainable: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=5"
+    },
+    {
+      "requirement": "Paper_fuzzy_XFD: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=7, ablations=6, submission_ready=False"
+    },
+    {
+      "requirement": "Paper_fuzzy_XFD: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=7"
+    },
+    {
+      "requirement": "Neuralsymbolic_theory: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=6, ablations=7, submission_ready=False"
+    },
+    {
+      "requirement": "Neuralsymbolic_theory: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=7"
+    },
+    {
+      "requirement": "LLM_Explainable_FD_Toolkit: 6+ baselines and 6+ ablations",
+      "evidence": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met",
+      "details": "baselines=7, ablations=7, submission_ready=False"
+    },
+    {
+      "requirement": "LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready",
+      "evidence": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "not_met",
+      "details": "strict blockers remaining=8"
+    },
+    {
+      "requirement": "TOP recent-work policy",
+      "evidence": "paper/UXFD_paper/goal/08_recent_work_citation_readme.md",
+      "status": "met",
+      "details": "accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0"
+    },
+    {
+      "requirement": "TOP representative accepted artifacts",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "not_met",
+      "details": "pending_or_blocked_bindings=7"
+    },
+    {
+      "requirement": "2x4090 GPU queue executable",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "blocked",
+      "details": "blocked; no accepted GPU evidence can be generated in this session"
+    },
+    {
+      "requirement": "accepted run artifact metadata",
+      "evidence": "paper/UXFD_paper/results/accepted_runs",
+      "status": "not_met",
+      "details": "records=0, blockers=3"
+    },
+    {
+      "requirement": "cross-paper submission gate",
+      "evidence": "scripts.uxfd_submission_gate",
+      "status": "not_met",
+      "details": "ready=False, blockers=16"
+    }
+  ],
+  "blockers": [
+    "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1",
+    "TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5",
+    "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=9",
+    "Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5",
+    "MOE_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
+    "Paper_fuzzy_XFD: IEEE Transactions submission-ready: strict blockers remaining=7",
+    "Neuralsymbolic_theory: IEEE Transactions submission-ready: strict blockers remaining=7",
+    "LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=8",
+    "TOP representative accepted artifacts: pending_or_blocked_bindings=7",
+    "2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session",
+    "accepted run artifact metadata: records=0, blockers=3",
+    "cross-paper submission gate: ready=False, blockers=16"
+  ],
+  "met": 45,
+  "not_met": 11,
+  "blocked": 1,
+  "unverified": 0
+}

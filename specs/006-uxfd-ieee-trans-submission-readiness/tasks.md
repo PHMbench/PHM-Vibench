@@ -121,6 +121,41 @@
 - [x] T085 [P] Add Paper 06 Neural-Symbolic command-bound six-baseline, proposition, mapping, and ablation matrix, run dummy/proposition hooks in `LQ_signal`, and keep P2/source-backed/GPU/TOP/SOTA gates blocked.
 - [x] T086 [P] Add Paper 02 1D-2D command-bound six-baseline matrix, local Fusion1D2D dummy demo, fusion sensitivity smokes, and FFT/legacy ablation blockers while keeping real-data/GPU/TOP/SOTA gates blocked.
 - [x] T087 [P] Add Paper 03 LLM command-bound PHM/standalone baseline matrix, record package import and evidence-package blockers, and keep TeX/GPU/TOP/SOTA gates blocked.
+- [x] T088 [P] Add cross-paper completion audit and a parent contract test proving all seven matrices exist, each has 6+ baselines, 6+ ablations, strict blockers, and `submission_ready: false`.
+- [x] T089 [P] Add 2026 ICLR main-conference TOP-method addendum to the citation README and all seven paper TOP quotas, with a parent contract test requiring 2026 coverage while keeping exact reproduction blocked until command/log/artifact evidence exists.
+- [x] T090 [P] Record current-session GPU/NVML unavailability and add a blocked 2x4090 execution queue in `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`.
+- [x] T091 [P] Add machine-readable `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` with Q0-Q8 order, 2x4090 scheduler limits, accepted metadata contract, and references to all seven paper-local matrices.
+- [x] T092 [P] Add TOP representative binding entries to `09_gpu_execution_queue.yaml`, one per paper, mapping 2026 TOP works to local proxy matrix entries while keeping them `pending_gpu_and_artifacts`.
+- [x] T093 [P] Add `scripts/uxfd_gpu_queue.py` and focused tests to expand the blocked 2x4090 queue as a dry-run command manifest without launching experiments.
+- [x] T094 [P] Add `--output` support to `scripts/uxfd_gpu_queue.py` so dry-run markdown/json manifests can be written for handoff and execution tracking without shell redirection or experiment launch.
+- [x] T095 [P] Add per-paper and per-phase summary counts to the GPU queue dry-run payload so reviewers can inspect blocked, TOP representative, and command totals before execution.
+- [x] T096 [P] Add `--live-preflight` support to `scripts/uxfd_gpu_queue.py` so the dry-run manifest can record current `nvidia-smi -L` and PyTorch CUDA visibility before any experiment launch.
+- [x] T097 [P] Add `scripts/uxfd_submission_gate.py` and tests to emit a non-executing cross-paper submission gate report that fails while any paper remains `submission_ready: false` or the GPU queue is blocked.
+- [x] T098 [P] Add queue-derived `next_actions` to `scripts/uxfd_submission_gate.py` so every non-ready paper reports its next unblock condition in JSON and Markdown gate reports.
+- [x] T099 [P] Add an objective checklist to `scripts/uxfd_submission_gate.py` mapping the named goal files, Claude Team artifacts, seven paper matrices, baseline/ablation coverage, GPU queue, and final non-ready state to concrete evidence.
+- [x] T100 [P] Add `scripts/uxfd_artifact_gate.py` and tests to validate future accepted run artifacts for `run_meta.yaml`, local 4090 metadata, config/log/metrics paths, seed, split, batch size, precision, runtime, and command provenance.
+- [x] T101 [P] Integrate the artifact metadata gate into `scripts/uxfd_submission_gate.py` so final readiness also requires accepted `run_meta.yaml` evidence under the configured artifact root.
+- [x] T102 [P] Add and test a metadata field map between `09_gpu_execution_queue.yaml` and `scripts/uxfd_artifact_gate.py`, including conditional OOM/failure reason handling.
+- [x] T103 [P] Add `scripts/uxfd_recent_work_gate.py` and tests to audit TOP recent-work freshness, low-tier exclusion, per-paper TOP quotas, and pending TOP representative artifacts before any SOTA claim.
+- [x] T104 [P] Add `scripts/uxfd_objective_audit.py` and tests to map the active user objective to concrete goal/spec/handoff/team/gate/paper evidence before any completion claim.
+- [x] T105 [P] Fix Paper 03 `llm_explainable_toolkit` package import smoke gate with local template/knowledge fallback, run `code/tests/test_basic_functionality.py`, run package-based LLM demo, and keep accepted evidence/GPU/TOP/SOTA gates blocked.
+- [x] T106 [P] Add Paper 03 conservative IEEE `manuscript/ieee_tii/main.tex` checkpoint, compile it with BibTeX, and update readiness matrices so only evidence-bearing manuscript content remains blocked.
+- [x] T107 [P] Add Paper 03 package-demo smoke `run_meta.yaml`/`metrics.json` emission with `accepted_evidence=false`, validate the output, and keep main-protocol/GPU/SOTA evidence blocked.
+- [x] T108 [P] Add Paper 03 non-accepted hallucination/context/latency smoke runner, validate per-condition metadata/metrics output, and keep accepted ablation evidence blocked.
+- [x] T109 [P] Add Paper 01 non-accepted Toolkit ablation smoke runner for schema, metric-family, manifest, snapshot, and post-hoc comparator surfaces; validate metadata/metrics output and keep accepted ablation evidence blocked.
+- [x] T110 [P] Add Paper 04 non-accepted MoE ablation smoke runner for load-balance, sparsity, router-temperature, expert-family, and uniform-router surfaces; validate metadata/metrics output and keep accepted ablation evidence blocked.
+- [x] T111 [P] Add Paper 06 non-accepted mapping-ablation smoke runner for the remove-cross-method-mapping surface; validate metadata/metrics output and keep source-backed mapping/train-eval impact evidence blocked.
+- [x] T112 [P] Add Paper 02 non-accepted fusion-ablation smoke runner for FFT-only and legacy 1D-only/2D-only/no-statistical surfaces; validate metadata/metrics output and keep true Fusion1D2D accepted evidence blocked.
+- [x] T113 [P] Launch six Codex xhigh read-only subagents, record local launch evidence, and fix the Paper 03 TOP representative binding so literature-only CALTSFM is not counted as runnable representative evidence.
+- [x] T114 [P] Add a non-executing 2x4090 shell launch-plan renderer to `scripts/uxfd_gpu_queue.py`, bind launchable queue rows across devices 0/1, preserve paper-local workdirs, and generate `paper/UXFD_paper/results/queue_launch_plan.sh` with live preflight guards.
+- [x] T115 [P] Add per-GPU launch-shard generation to `scripts/uxfd_gpu_queue.py` and generate `paper/UXFD_paper/results/queue_launch_shards/gpu0.sh` plus `gpu1.sh` so the two local 4090s can be driven concurrently after preflight.
+- [x] T116 [P] Add accepted-run metadata scaffold generation via `scripts/uxfd_artifact_scaffold.py`, generate 97 `run_meta.template.yaml` files under `paper/UXFD_paper/results/accepted_run_templates`, and harden the artifact gate so TODO templates cannot pass as accepted evidence.
+- [x] T117 [P] Harden `scripts/uxfd_artifact_gate.py` and `scripts/uxfd_submission_gate.py` so accepted artifacts must cover all 97 queue launch rows, preventing a partial set of valid `run_meta.yaml` files from satisfying the final evidence gate.
+- [x] T118 [P] Add per-paper/phase queue coverage summaries to `scripts/uxfd_artifact_gate.py` and generate `paper/UXFD_paper/results/artifact_gate_queue_coverage.md` for post-run missing-evidence triage.
+- [x] T119 [P] Add `paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` to connect preflight, two-GPU shard launch, accepted-run template promotion, and strict gates into one reproducible execution procedure.
+- [x] T120 [P] Generate `paper/UXFD_paper/results/gpu_queue_live_preflight.json` with current `nvidia-smi -L` and PyTorch CUDA/NVML state, preserving the resource-blocked evidence without launching experiments.
+- [x] T121 [P] Add a paper-submodule cleanliness gate to `scripts/uxfd_objective_audit.py`, test dirty/clean status handling, and persist the current objective audit to `paper/UXFD_paper/results/objective_audit_current.{md,json}`.
+- [x] T122 [P] Commit the verified non-accepted smoke/evidence gate updates inside five owning paper submodules: Toolkit `b9c82e5`, 1D-2D `e6f9b58`, LLM `f40255f`, MoE `e85c246`, and Neural-symbolic `fb9b98d`, while leaving unrelated dirty submodule work untouched.
 
 ## Phase 8: Validation
 

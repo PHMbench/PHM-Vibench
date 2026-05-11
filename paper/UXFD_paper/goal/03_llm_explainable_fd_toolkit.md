@@ -50,6 +50,9 @@
 - RWTOP2024-MOMENT: `representative-runnable` foundation-model representation baseline for structured evidence inputs.
 - RWTOP2025-TIMEMOE: `representative-runnable` sparse foundation-model comparator for scalable time-series reasoning.
 - RWTOP2025-CBAE: `literature-only` concept-bottleneck generation comparator until FD concept supervision exists.
+- RWTOP2026-TIMESEG: `representative-runnable` segment-evidence source for grounded explanation reports.
+- RWTOP2026-GTM: `representative-runnable` frequency-attention evidence encoder comparator.
+- RWTOP2026-CALTSFM: `literature-only` calibration protocol until local confidence artifacts are generated.
 
 ## Compute Budget
 

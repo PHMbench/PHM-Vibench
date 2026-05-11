@@ -1,0 +1,203 @@
+status_date: "2026-05-11"
+status: "blocked_resource_preflight"
+purpose: >
+  Machine-readable execution queue for turning the seven paper-local
+  baseline_ablation_matrix.yaml files into accepted 2x4090 experiment evidence.
+  This file is a scheduler contract, not completed evidence.
+
+resource_preflight:
+  required_devices: ["0", "1"]
+  required_gpu_class: "RTX 4090"
+  current_session_result:
+    nvidia_smi: "failed: NVIDIA-SMI could not communicate with the NVIDIA driver"
+    torch_cuda_available: false
+    torch_cuda_device_count: 0
+    verdict: "blocked; no accepted GPU evidence can be generated in this session"
+  required_commands:
+    - id: "PREFLIGHT-NVIDIA-SMI"
+      command: "nvidia-smi -L"
+      accept_if: "lists the intended local GPUs 0 and 1 as RTX 4090-class devices"
+    - id: "PREFLIGHT-TORCH-CUDA"
+      command: "python -c \"import torch; print(torch.cuda.is_available()); print(torch.cuda.device_count())\""
+      accept_if: "prints True and 2"
+    - id: "PREFLIGHT-PAPER-SMOKE"
+      command_template: "CUDA_VISIBLE_DEVICES={device} python main.py --config {base_config} --override trainer.num_epochs=1 --override data.num_workers=0"
+      accept_if: "one paper-local min config runs and records GPU model, runtime, seed, batch size, precision, and artifact paths"
+
+scheduler:
+  default_binding: "one GPU per run"
+  default_devices: ["0", "1"]
+  max_concurrent_single_gpu_jobs: 2
+  multi_gpu_rule: "use CUDA_VISIBLE_DEVICES=0,1 only with an explicit reason recorded in run_meta.yaml"
+  stop_rules:
+    - "Stop before Q1 if resource_preflight is not accepted."
+    - "Stop a paper queue item if any accepted run lacks required metadata."
+    - "Stop SOTA wording if any declared baseline or TOP representative is missing same-protocol evidence."
+
+accepted_run_metadata_required:
+  - "CUDA_VISIBLE_DEVICES"
+  - "GPU model"
+  - "GPU count"
+  - "seed"
+  - "dataset split"
+  - "preprocessing signature"
+  - "batch size"
+  - "precision"
+  - "runtime"
+  - "command"
+  - "git SHA or submodule SHA"
+  - "config path"
+  - "log path"
+  - "metrics path"
+  - "OOM or failure reason if any"
+
+accepted_artifact_contract:
+  run_meta: "run_meta.yaml"
+  metrics: "metrics.json or metrics.csv"
+  logs: "stdout/stderr or trainer log"
+  result_table: "paper-local accepted table source"
+  failure_record: "required for OOM, dependency, data, or resource-blocked runs"
+  sota_input: "only accepted same-protocol artifacts may enter SOTA comparison"
+
+top_representative_bindings:
+  - binding_id: "TOP-Q1-GTM"
+    paper_id: "TII_operator_attention"
+    external_work_id: "RWTOP2026-GTM"
+    external_role: "frequency-domain attention and general time-series representation comparator"
+    local_proxy_matrix_entries: ["B04", "B05", "A04"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries B04/B05/A04"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "same-protocol TFN/WKN/FFT proxy logs with run_meta.yaml, metrics, operator/frequency metadata, and failure record if blocked"
+  - binding_id: "TOP-Q2-GTM"
+    paper_id: "1D-2D_fusion_explainable"
+    external_work_id: "RWTOP2026-GTM"
+    external_role: "frequency-attention representation comparator for 1D-2D features"
+    local_proxy_matrix_entries: ["B04", "B05", "A06"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries B04/B05/A06"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "same-protocol TFN/WKN/FFT proxy logs with fusion metrics, run_meta.yaml, and GPU metadata"
+  - binding_id: "TOP-Q3-TIMESEG"
+    paper_id: "Explainable_FD_Toolkit"
+    external_work_id: "RWTOP2026-TIMESEG"
+    external_role: "segment-wise time-series explanation comparator"
+    local_proxy_matrix_entries: ["P00", "A02", "A03", "A06"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries P00/A02/A03/A06"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "Toolkit segment-attribution proxy with faithfulness, stability, latency, run_meta.yaml, and metrics artifacts"
+  - binding_id: "TOP-Q4-TSPULSE"
+    paper_id: "MOE_explainable"
+    external_work_id: "RWTOP2026-TSPULSE"
+    external_role: "compact pretrained representation comparator under the 2x4090 budget"
+    local_proxy_matrix_entries: ["B06", "A04", "A06"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries B06/A04/A06"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "compact representation and router proxy logs with route entropy, expert activation, run_meta.yaml, and metrics artifacts"
+  - binding_id: "TOP-Q5-TIMESLIVER"
+    paper_id: "Paper_fuzzy_XFD"
+    external_work_id: "RWTOP2026-TIMESLIVER"
+    external_role: "symbolic-linear attribution comparator for fuzzy rule explanations"
+    local_proxy_matrix_entries: ["B07", "A01", "A04", "A05", "A06"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries B07/A01/A04/A05/A06"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "fuzzy/rule proxy logs with rule count, membership, faithfulness, run_meta.yaml, and metrics artifacts"
+  - binding_id: "TOP-Q6-TIMESLIVER"
+    paper_id: "Neuralsymbolic_theory"
+    external_work_id: "RWTOP2026-TIMESLIVER"
+    external_role: "symbolic-linear comparator for neural-symbolic alignment"
+    local_proxy_matrix_entries: ["A01", "A05", "A06", "A07"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries A01/A05/A06/A07"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "constraint/proposition proxy logs with proposition artifacts, source-backed mapping, run_meta.yaml, and metrics artifacts"
+  - binding_id: "TOP-Q7-TIMESEG"
+    paper_id: "LLM_Explainable_FD_Toolkit"
+    external_work_id: "RWTOP2026-TIMESEG"
+    external_role: "segment-wise time-series explanation comparator for evidence-grounded LLM reports"
+    local_proxy_matrix_entries: ["B02", "A05", "A07"]
+    command_source: "paper-local baseline_ablation_matrix.yaml entries B02/A05/A07"
+    status: "pending_gpu_and_artifacts"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+    artifact_requirement: "LLM evidence package with segment-grounded prompt/report metrics, hallucination checks, latency sweep, run_meta.yaml, and metrics.json"
+
+paper_queue:
+  - queue_id: "Q1"
+    paper_id: "TII_operator_attention"
+    priority_reason: "Paper 07 was previously rejected and has the most urgent rejection-recovery/SOTA gate."
+    goal_file: "paper/UXFD_paper/goal/07_tii_operator_attention.md"
+    matrix_path: "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted"
+  - queue_id: "Q2"
+    paper_id: "1D-2D_fusion_explainable"
+    priority_reason: "Fusion evidence and TeX blocker are high-impact for reviewer credibility."
+    goal_file: "paper/UXFD_paper/goal/02_1d2d_fusion.md"
+    matrix_path: "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "same-protocol CWRU/XJTU fusion matrix, true branch ablations, TOP proxies, and GPU metadata accepted"
+  - queue_id: "Q3"
+    paper_id: "Explainable_FD_Toolkit"
+    priority_reason: "Toolkit schema/report artifacts support several downstream papers."
+    goal_file: "paper/UXFD_paper/goal/01_explainable_fd_toolkit.md"
+    matrix_path: "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "schema, report, explanation baseline, ablation, TOP proxy, and GPU metadata artifacts accepted"
+  - queue_id: "Q4"
+    paper_id: "MOE_explainable"
+    priority_reason: "MoE route artifacts are needed before any route-level interpretability or SOTA claim."
+    goal_file: "paper/UXFD_paper/goal/04_moe_explainable.md"
+    matrix_path: "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "route entropy, expert activation, expert-count, baseline, TOP proxy, and GPU metadata artifacts accepted"
+  - queue_id: "Q5"
+    paper_id: "Paper_fuzzy_XFD"
+    priority_reason: "Rule metrics and safety cases must exist before fuzzy explanation claims are credible."
+    goal_file: "paper/UXFD_paper/goal/05_fuzzy_xfd.md"
+    matrix_path: "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "rule metrics, safety cases, fuzzy ablations, TOP proxies, and GPU metadata accepted"
+  - queue_id: "Q6"
+    paper_id: "Neuralsymbolic_theory"
+    priority_reason: "Theory paper needs proposition validation and source-backed mapping before manuscript claims."
+    goal_file: "paper/UXFD_paper/goal/06_neuralsymbolic_theory.md"
+    matrix_path: "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "proposition validation, source-backed mapping, baselines, ablations, TOP proxies, and GPU metadata accepted"
+  - queue_id: "Q7"
+    paper_id: "LLM_Explainable_FD_Toolkit"
+    priority_reason: "LLM evidence-package, hallucination, latency, and TOP blockers must be fixed before expensive runs."
+    goal_file: "paper/UXFD_paper/goal/03_llm_explainable_fd_toolkit.md"
+    matrix_path: "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
+    base_config: "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml"
+    required_phases: ["proposed", "baselines", "ablations", "top_representatives"]
+    minimum_seeds: 3
+    device_binding: "CUDA_VISIBLE_DEVICES=0 or CUDA_VISIBLE_DEVICES=1"
+    unblock_condition: "run_meta.yaml and metrics.json evidence packages emitted and accepted; hallucination, latency, and TOP representative artifacts accepted"
+
+cross_paper_gate:
+  queue_id: "Q8"
+  status: "blocked_until_all_paper_queue_items_have_accepted_artifacts"
+  sota_rule: "No SOTA wording is allowed unless proposed methods beat every declared baseline and runnable TOP representative under the same protocol."
+  submission_rule: "No paper may become submission_ready: true until evidence, manuscript, compile, TOP, compute, ablation, and SOTA gates pass."

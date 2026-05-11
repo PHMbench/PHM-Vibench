@@ -1,0 +1,27 @@
+accepted_evidence: false
+source_queue_id: Q3
+paper_id: Explainable_FD_Toolkit
+phase: baselines
+entry_id: B06
+label: ConvTransformer baseline
+workdir: .
+cuda_visible_devices: '0'
+gpu_model: 'TODO: NVIDIA GeForce RTX 4090'
+gpu_count: 1
+seed: 'TODO: record seed'
+dataset_split: 'TODO: record dataset split'
+preprocessing_signature: 'TODO: record preprocessing signature'
+batch_size: 'TODO: record batch size'
+precision: 'TODO: record precision'
+runtime: 'TODO: record wall-clock runtime'
+command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml
+  --override model.type=Transformer --override model.name=ConvTransformer --override
+  model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0
+original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml
+  --override model.type=Transformer --override model.name=ConvTransformer --override
+  model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0
+git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+config_path: paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml
+log_path: run.log
+metrics_path: metrics.json
+oom_or_failure_reason: ''

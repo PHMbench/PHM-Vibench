@@ -50,6 +50,9 @@
 - RWTOP2024-SARAD: `representative-runnable` association-based diagnosis baseline for symbolic mapping.
 - RWTOP2025-CFCBM: `literature-only` counterfactual concept baseline until symbolic concepts are defined.
 - RWTOP2025-IFCBM: `literature-only` concept-bottleneck comparator for theory positioning.
+- RWTOP2026-TIMESEG: `representative-runnable` segment-level explanation comparator for proposition validation.
+- RWTOP2026-TIMESLIVER: `representative-runnable` symbolic-linear comparator for neural-symbolic alignment.
+- RWTOP2026-PGRFNET: `representative-runnable` prototype/relational evidence comparator for diagnostic mapping.
 
 ## Compute Budget
 

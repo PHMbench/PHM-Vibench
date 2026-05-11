@@ -157,16 +157,22 @@ def audit_contracts(paths: Optional[Iterable[Path]] = None) -> Tuple[UXFDContrac
 def discover_latex_entrypoints(paths: Optional[Iterable[Path]] = None) -> Tuple[LatexEntrypoint, ...]:
     records: List[LatexEntrypoint] = []
     for submodule in paths or indexed_uxfd_submodules():
-        final_main = submodule / "manuscript" / "final_tex" / "main.tex"
-        if final_main.exists():
-            records.append(LatexEntrypoint(submodule, final_main, "selected"))
-            continue
-        candidates = sorted((submodule / "manuscript").rglob("*.tex")) if (submodule / "manuscript").exists() else []
-        candidates.extend(sorted((submodule / "paper_draft").rglob("*.tex")) if (submodule / "paper_draft").exists() else [])
-        if candidates:
-            records.append(LatexEntrypoint(submodule, candidates[0], "non-final", "no manuscript/final_tex/main.tex"))
+        selected_entrypoints = (
+            submodule / "manuscript" / "final_tex" / "main.tex",
+            submodule / "manuscript" / "ieee_tii" / "main.tex",
+        )
+        for final_main in selected_entrypoints:
+            if final_main.exists():
+                records.append(LatexEntrypoint(submodule, final_main, "selected"))
+                break
         else:
-            records.append(LatexEntrypoint(submodule, final_main, "missing", "no TeX entrypoint discovered"))
+            final_main = selected_entrypoints[0]
+            candidates = sorted((submodule / "manuscript").rglob("*.tex")) if (submodule / "manuscript").exists() else []
+            candidates.extend(sorted((submodule / "paper_draft").rglob("*.tex")) if (submodule / "paper_draft").exists() else [])
+            if candidates:
+                records.append(LatexEntrypoint(submodule, candidates[0], "non-final", "no manuscript/final_tex/main.tex or manuscript/ieee_tii/main.tex"))
+            else:
+                records.append(LatexEntrypoint(submodule, final_main, "missing", "no TeX entrypoint discovered"))
     return tuple(records)
 
 

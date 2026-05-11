@@ -60,6 +60,10 @@
 - RWTOP2024-SARAD: `representative-runnable` spatial/association diagnosis baseline for operator explanations.
 - RWTOP2025-CATCH: `representative-runnable` frequency/channel baseline for operator-attention comparison.
 - RWTOP2025-DADA: `representative-runnable` adaptive bottleneck anomaly baseline for rejection-recovery SOTA positioning.
+- RWTOP2026-PGRFNET: `representative-runnable` prototype/relational diagnostic comparator for operator evidence.
+- RWTOP2026-GTM: `representative-runnable` frequency-attention representation comparator for operator selection.
+- RWTOP2026-CSLSTM: `representative-runnable` contextual/seasonal anomaly comparator for signal behavior.
+- RWTOP2026-TSPULSE: `representative-runnable` compact pretrained comparator under the 2x4090 budget.
 
 ## Compute Budget
 
