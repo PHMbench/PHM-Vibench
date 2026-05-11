@@ -107,6 +107,7 @@
 - [ ] T046 [P] Normalize Operator Attention canonical entrypoint and run DSOA v2 baseline/ablation/SOTA gate in `paper/UXFD_paper/TII_operator_attention/`.
 - [x] T071 [P] Expand TII synthetic validation from six to eight signal classes and regenerate submodule-local JSON/report/figures.
 - [x] T072 [P] Ensure all seven paper submodule SHAs track both `VIBENCH.md` and `configs/vibench/min.yaml`.
+- [x] T073 [P] Add parent contract tests that reject untracked paper reproduction contracts and missing local GPU binding policy.
 
 ## Phase 8: Validation
 

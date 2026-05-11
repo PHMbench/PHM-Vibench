@@ -24,6 +24,9 @@ evidence and remaining blockers; none of these commits makes a paper
 submission-ready.
 Follow-up reproduction-contract commits ensured all seven paper submodule SHAs
 tracked both `VIBENCH.md` and `configs/vibench/min.yaml`.
+Parent contract tests now enforce that those two files are tracked inside each
+paper submodule and that each `VIBENCH.md` declares a local
+`CUDA_VISIBLE_DEVICES` binding.
 
 ## Decisions Made
 
@@ -56,6 +59,7 @@ tracked both `VIBENCH.md` and `configs/vibench/min.yaml`.
 - `test/test_uxfd_paper_alignment_contract.py` - added TOP-source quota and low-tier exclusion checks.
 - `specs/006-uxfd-ieee-trans-submission-readiness/` - updated spec, plan, data model, contract, checklist, quickstart, and tasks for TOP-source recent-work gates.
 - `paper/UXFD_paper/goal/00_overall_goal.md` and all seven paper goal files - added compute budget and `resource-blocked` exact-reproduction policy.
+- `test/test_uxfd_paper_alignment_contract.py` - added regression tests for tracked submodule reproduction contracts and local GPU binding declarations.
 - `paper/UXFD_paper/Explainable_FD_Toolkit` - submodule milestone commit `b76b5d8` replaces the missing placeholder figure/table in `manuscript/final_tex/main.tex`, adds `manuscript/T040_EVIDENCE_README.md`, and updates `VIBENCH.md`; follow-up commit `39b6a06` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`; follow-up commit `d548f11` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`; follow-up commit `9a5b141` tracks `configs/vibench/min.yaml`.
@@ -90,6 +94,8 @@ tracked both `VIBENCH.md` and `configs/vibench/min.yaml`.
   - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` - passed: `16 passed in 0.27s`.
   - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py test/test_collect_uxfd_runs.py test/test_baseline_mapping_contract.py` - passed: `21 passed in 2.22s`.
   - `git diff --check` on the touched goal/spec/test/handoff/doc paths - passed.
+- After tracked reproduction-contract tests:
+  - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py test/test_collect_uxfd_runs.py test/test_baseline_mapping_contract.py` - passed: `23 passed in 2.34s`.
 - Paper 07 `TII_operator_attention` milestone:
   - `python code/synthetic_verification.py` from the submodule - passed and generated submodule-local figures, JSON, and report; current coverage is 8 signal classes, mean physics consistency `0.999`, mean explainability `0.261`.
   - `CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1` - failed in base env because `pytorch_lightning` is missing.
