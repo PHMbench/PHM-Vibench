@@ -3,7 +3,7 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `90`
+- Dirty entries: `85`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 |---|---:|---:|---:|---|
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | 33 | 24 | 9 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=5, project_document=4, source_or_experiment_script=15, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 32 | 19 | 13 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=4, unclassified=1 |
-| `paper/UXFD_paper/MOE_explainable` | 25 | 10 | 15 | agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=10 |
+| `paper/UXFD_paper/MOE_explainable` | 20 | 5 | 15 | agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=5 |
 
 ## Triage Rules
 
@@ -90,14 +90,9 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/truth_audit.py` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `CORE.md` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README.md` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `code/moe_model.py` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `code/router/statistical_router.py` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/draft_md/draft.md` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/final_tex/main.tex` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `paper_blueprint.md` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/analyze_routing.py` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_minimal_moe_demo.py` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/test_physics_constrained_moe.py` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.agent/` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.claude/` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.codex/` |
