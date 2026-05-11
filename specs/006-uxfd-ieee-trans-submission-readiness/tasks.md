@@ -112,6 +112,7 @@
 - [x] T076 [P] Fix Paper 07 empty-year BibTeX warnings and record the full `pdflatex`/`bibtex` compile flow as a TeX gate, not as submission readiness.
 - [x] T077 [P] Add Paper 07 command-bound seven-baseline and six-ablation matrix, with a parent contract test that keeps it marked non-submission-ready until industrial GPU artifacts exist.
 - [x] T078 [P] Run Paper 07 B01/A01 and B02 dummy smokes in `LQ_signal`, record CPU-fallback metrics, and keep industrial/GPU/SOTA gates blocked.
+- [x] T079 [P] Run Paper 07 B03-B05 and B07 dummy smokes, record six total passing baseline smokes, and record B06 Transformer import blocker.
 
 ## Phase 8: Validation
 

@@ -270,12 +270,22 @@ def test_operator_attention_baseline_ablation_matrix_is_command_bound_not_ready(
     assert matrix["evidence_level"] == "config-target validated only"
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
+    assert (
+        sum(
+            "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+            for entry in matrix["baselines"]
+        )
+        >= 6
+    )
 
     for entry in matrix["baselines"] + matrix["ablations"]:
         assert entry["config_target_validated"] is True
         assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
         assert "python main.py --config" in entry["command"]
-        assert "pending" in entry["accepted_evidence_status"]
+        assert (
+            "pending" in entry["accepted_evidence_status"]
+            or "blocked" in entry["accepted_evidence_status"]
+        )
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "No accepted industrial multi-seed baseline table yet." in blockers
