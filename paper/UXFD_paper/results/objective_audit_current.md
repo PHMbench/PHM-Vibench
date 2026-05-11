@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `45`
+- Met: `46`
 - Not met: `11`
 - Blocked: `1`
 - Unverified: `0`
@@ -50,6 +50,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | GPU1 launch shard | `paper/UXFD_paper/results/queue_launch_shards/gpu1.sh` | exists |
 | `met` | accepted-run template manifest | `paper/UXFD_paper/results/accepted_run_templates/manifest.json` | exists |
 | `met` | artifact queue coverage report | `paper/UXFD_paper/results/artifact_gate_queue_coverage.md` | exists |
+| `met` | submodule dirty triage report | `paper/UXFD_paper/results/submodule_dirty_triage.md` | exists |
 | `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1 |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |

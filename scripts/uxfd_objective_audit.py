@@ -57,6 +57,10 @@ EXECUTION_ARTIFACTS = (
         "artifact queue coverage report",
         Path("paper/UXFD_paper/results/artifact_gate_queue_coverage.md"),
     ),
+    (
+        "submodule dirty triage report",
+        Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
+    ),
 )
 
 PAPER_SUBMODULES = (

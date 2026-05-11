@@ -156,6 +156,7 @@
 - [x] T120 [P] Generate `paper/UXFD_paper/results/gpu_queue_live_preflight.json` with current `nvidia-smi -L` and PyTorch CUDA/NVML state, preserving the resource-blocked evidence without launching experiments.
 - [x] T121 [P] Add a paper-submodule cleanliness gate to `scripts/uxfd_objective_audit.py`, test dirty/clean status handling, and persist the current objective audit to `paper/UXFD_paper/results/objective_audit_current.{md,json}`.
 - [x] T122 [P] Commit the verified non-accepted smoke/evidence gate updates inside five owning paper submodules: Toolkit `b9c82e5`, 1D-2D `e6f9b58`, LLM `f40255f`, MoE `e85c246`, and Neural-symbolic `fb9b98d`, while leaving unrelated dirty submodule work untouched.
+- [x] T123 [P] Add `scripts/uxfd_submodule_dirty_triage.py`, generate `paper/UXFD_paper/results/submodule_dirty_triage.md`, and map that report into the objective audit so residual dirty submodule work is actionable without auto-committing unrelated files.
 
 ## Phase 8: Validation
 

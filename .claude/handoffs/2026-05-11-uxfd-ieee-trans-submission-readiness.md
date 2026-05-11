@@ -260,7 +260,8 @@ with OOM/failure reason treated as conditional metadata.
   - `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` commit `f40255f` records the LLM evidence smoke gate and conservative IEEE TeX source checkpoint.
   - `paper/UXFD_paper/MOE_explainable` commit `e85c246` records the MoE ablation smoke gate.
   - `paper/UXFD_paper/Neuralsymbolic_theory` commit `fb9b98d` records the mapping ablation smoke gate.
-- `paper/UXFD_paper/results/objective_audit_current.md` and `.json` persist the latest prompt-to-artifact audit after the submodule commits. Current summary remains `achieved=false`, `met=45`, `not_met=11`, `blocked=1`; dirty submodule counts are now `Explainable_FD_Toolkit:38`, `1D-2D_fusion_explainable:28`, `LLM_Explainable_FD_Toolkit:2`, `MOE_explainable:25`, `Paper_fuzzy_XFD:1`, and `Neuralsymbolic_theory:1`.
+- `paper/UXFD_paper/results/objective_audit_current.md` and `.json` persist the latest prompt-to-artifact audit after the submodule commits and dirty-triage report. Current summary remains `achieved=false`, `met=46`, `not_met=11`, `blocked=1`; dirty submodule counts are now `Explainable_FD_Toolkit:38`, `1D-2D_fusion_explainable:28`, `LLM_Explainable_FD_Toolkit:2`, `MOE_explainable:25`, `Paper_fuzzy_XFD:1`, and `Neuralsymbolic_theory:1`.
+- `scripts/uxfd_submodule_dirty_triage.py` and `paper/UXFD_paper/results/submodule_dirty_triage.md` now classify the remaining 95 dirty submodule entries by review policy. The report is blocker triage only, not accepted experiment evidence; it marks result artifacts for promotion only through `scripts.uxfd_artifact_gate` and marks drafts/scripts/plans for owner review before any commit.
 - The broad PHM literature inventory may still contain low-tier sources; it is not sufficient for UXFD TOP submission positioning.
 - Exact reproduction of large TOP methods may be `resource-blocked` under 2x4090; use labelled representative runs instead of calling them exact baselines.
 - Claude Team launch is prepared but not run because the external-service launch was policy-blocked.
@@ -300,3 +301,4 @@ The new artifacts are a production system, not a claim that the seven papers are
 - `paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` - one-page execution procedure for the 2x4090 batch and evidence gates.
 - `paper/UXFD_paper/results/gpu_queue_live_preflight.json` - current live GPU preflight snapshot; not accepted experiment evidence.
 - `paper/UXFD_paper/results/objective_audit_current.md` - latest prompt-to-artifact audit, including the dirty-submodule gate.
+- `paper/UXFD_paper/results/submodule_dirty_triage.md` - current residual dirty-submodule inventory and recommended handling.

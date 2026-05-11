@@ -1,0 +1,62 @@
+from types import SimpleNamespace
+
+from scripts.uxfd_submodule_dirty_triage import (
+    DO_NOT_AUTO_COMMIT,
+    PRESERVE_SESSION,
+    PROMOTE_ONLY_THROUGH_GATE,
+    DirtyEntry,
+    _classify_path,
+    _summarize_entries,
+    render_markdown,
+)
+
+
+def test_classify_dirty_paths_by_review_policy() -> None:
+    assert _classify_path(".codex/state.json") == ("agent_workspace", PRESERVE_SESSION)
+    assert _classify_path("sessions/run.md") == ("session_workspace", PRESERVE_SESSION)
+    assert _classify_path("results/metrics.json") == (
+        "experiment_output",
+        PROMOTE_ONLY_THROUGH_GATE,
+    )
+    assert _classify_path("manuscript/final_tex/main.tex") == (
+        "manuscript_draft",
+        DO_NOT_AUTO_COMMIT,
+    )
+    assert _classify_path("scripts/run_probe.py") == (
+        "source_or_experiment_script",
+        DO_NOT_AUTO_COMMIT,
+    )
+
+
+def test_summarize_entries_counts_modified_and_untracked() -> None:
+    entries = (
+        DirtyEntry("paper/A", "M", "README.md", "project_document", DO_NOT_AUTO_COMMIT),
+        DirtyEntry("paper/A", "??", "outputs/run.log", "experiment_output", PROMOTE_ONLY_THROUGH_GATE),
+        DirtyEntry("paper/B", "??", "sessions/a.md", "session_workspace", PRESERVE_SESSION),
+    )
+
+    summaries = _summarize_entries(entries)
+
+    assert len(summaries) == 2
+    assert summaries[0].submodule == "paper/A"
+    assert summaries[0].total == 2
+    assert summaries[0].modified == 1
+    assert summaries[0].untracked == 1
+    assert summaries[1].categories == {"session_workspace": 1}
+
+
+def test_render_markdown_marks_report_as_non_evidence() -> None:
+    entries = (
+        DirtyEntry("paper/A", "??", "outputs/run.log", "experiment_output", PROMOTE_ONLY_THROUGH_GATE),
+    )
+
+    report = SimpleNamespace(
+        clean=False,
+        summaries=_summarize_entries(entries),
+        entries=entries,
+    )
+
+    text = render_markdown(report)
+
+    assert "not accepted experiment evidence" in text
+    assert PROMOTE_ONLY_THROUGH_GATE in text
