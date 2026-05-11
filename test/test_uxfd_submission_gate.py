@@ -1,7 +1,20 @@
 import json
 from pathlib import Path
 
-from scripts.uxfd_submission_gate import evaluate_submission_gate, main
+from scripts.uxfd_submission_gate import (
+    build_payload,
+    evaluate_submission_gate,
+    main,
+    render_markdown,
+)
+
+
+PERSISTED_SUBMISSION_GATE_JSON = Path(
+    "paper/UXFD_paper/results/submission_gate_current.json"
+)
+PERSISTED_SUBMISSION_GATE_MD = Path(
+    "paper/UXFD_paper/results/submission_gate_current.md"
+)
 
 
 def test_submission_gate_reports_all_papers_not_ready() -> None:
@@ -46,6 +59,16 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert checklist["TOP representative accepted artifacts"]["status"] == "not_met"
     assert checklist["accepted run artifact metadata"]["status"] == "not_met"
     assert checklist["submission readiness achieved"]["status"] == "not_met"
+
+
+def test_persisted_submission_gate_reports_match_current_gate() -> None:
+    report = evaluate_submission_gate()
+
+    expected_json = json.dumps(build_payload(report), indent=2) + "\n"
+    assert PERSISTED_SUBMISSION_GATE_JSON.read_text(encoding="utf-8") == expected_json
+    assert PERSISTED_SUBMISSION_GATE_MD.read_text(encoding="utf-8") == render_markdown(
+        report
+    )
 
 
 def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None:

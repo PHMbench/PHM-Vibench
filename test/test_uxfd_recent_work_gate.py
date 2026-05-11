@@ -3,8 +3,18 @@ from pathlib import Path
 
 from scripts.uxfd_recent_work_gate import (
     LOW_TIER_MARKERS,
+    build_payload,
     evaluate_recent_work_gate,
     main,
+    render_markdown,
+)
+
+
+PERSISTED_RECENT_WORK_GATE_JSON = Path(
+    "paper/UXFD_paper/results/recent_work_gate_current.json"
+)
+PERSISTED_RECENT_WORK_GATE_MD = Path(
+    "paper/UXFD_paper/results/recent_work_gate_current.md"
 )
 
 
@@ -46,6 +56,14 @@ def test_recent_work_gate_low_tier_markers_are_not_in_accepted_pool() -> None:
     assert "RWTOP2026-TIMESEG" in report.accepted_pool_ids
     assert "RWTOP2026-GTM" in report.accepted_pool_ids
     assert "RWTOP2026-TSPULSE" in report.accepted_pool_ids
+
+
+def test_persisted_recent_work_gate_reports_match_current_gate() -> None:
+    report = evaluate_recent_work_gate()
+
+    expected_json = json.dumps(build_payload(report), indent=2) + "\n"
+    assert PERSISTED_RECENT_WORK_GATE_JSON.read_text(encoding="utf-8") == expected_json
+    assert PERSISTED_RECENT_WORK_GATE_MD.read_text(encoding="utf-8") == render_markdown(report)
 
 
 def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) -> None:
