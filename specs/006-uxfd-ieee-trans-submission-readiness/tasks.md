@@ -164,6 +164,7 @@
 - [x] T128 [P] Extend `scripts/uxfd_recent_work_gate.py` and tests so recent-work policy also audits paper-local matrix TOP IDs against the accepted TOP pool, then export `paper/UXFD_paper/results/recent_work_gate_current.{md,json}` with policy ready and artifact evidence pending.
 - [x] T129 [P] Integrate the recent-work gate into `scripts/uxfd_submission_gate.py`, export `paper/UXFD_paper/results/submission_gate_current.{md,json}`, and keep final submission readiness blocked while TOP representative artifacts are pending.
 - [x] T130 [P] Add a persisted scaffold regression test proving `paper/UXFD_paper/results/accepted_run_templates/manifest.json` and the 97 `run_meta.template.yaml` files match the current launchable queue rows and remain non-accepted evidence.
+- [x] T131 [P] Add a persisted GPU launch-plan regression test proving `paper/UXFD_paper/results/queue_launch_plan.sh`, `gpu0.sh`, and `gpu1.sh` match the current launchable queue rows and remain launch plans, not accepted evidence.
 
 ## Phase 8: Validation
 

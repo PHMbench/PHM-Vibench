@@ -7,10 +7,15 @@ from scripts.uxfd_gpu_queue import (
     build_payload,
     expand_queue,
     main,
+    render_shell_plan,
     run_live_preflight,
     summarize_rows,
     validate_queue,
 )
+
+
+PERSISTED_LAUNCH_PLAN = Path("paper/UXFD_paper/results/queue_launch_plan.sh")
+PERSISTED_SHARD_DIR = Path("paper/UXFD_paper/results/queue_launch_shards")
 
 
 def test_gpu_queue_expands_all_paper_commands_and_top_bindings() -> None:
@@ -141,6 +146,34 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
     assert "CUDA_VISIBLE_DEVICES=1" not in gpu0
     assert "CUDA_VISIBLE_DEVICES=1" in gpu1
     assert "CUDA_VISIBLE_DEVICES=0" not in gpu1
+    assert "| `0` | `gpu0.sh` |" in readme
+    assert "| `1` | `gpu1.sh` |" in readme
+
+
+def test_persisted_launch_plan_and_shards_match_current_queue() -> None:
+    rows = expand_queue(DEFAULT_QUEUE)
+    validation = validate_queue(DEFAULT_QUEUE)
+    launch_rows = build_launch_plan(rows)
+
+    assert len(launch_rows) == 97
+    assert PERSISTED_LAUNCH_PLAN.exists()
+    assert PERSISTED_LAUNCH_PLAN.read_text(encoding="utf-8") == render_shell_plan(
+        rows,
+        validation,
+    )
+
+    expected_counts = {"0": 49, "1": 48}
+    for device, expected_count in expected_counts.items():
+        shard = PERSISTED_SHARD_DIR / f"gpu{device}.sh"
+        assert shard.exists()
+        text = shard.read_text(encoding="utf-8")
+        assert text == render_shell_plan(rows, validation, device_filter=device)
+        assert text.count(f"CUDA_VISIBLE_DEVICES={device}") == expected_count
+        other_device = "1" if device == "0" else "0"
+        assert f"CUDA_VISIBLE_DEVICES={other_device}" not in text
+
+    readme = (PERSISTED_SHARD_DIR / "README.md").read_text(encoding="utf-8")
+    assert "These scripts are launch plans, not accepted evidence." in readme
     assert "| `0` | `gpu0.sh` |" in readme
     assert "| `1` | `gpu1.sh` |" in readme
 
