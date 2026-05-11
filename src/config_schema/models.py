@@ -49,10 +49,36 @@ class ModelConfig(BaseModel):
             missing = [k for k in ["embedding", "backbone", "task_head"] if not getattr(self, k)]
             if missing:
                 raise ValueError(f"model.type=ISFM requires: {', '.join(missing)}")
+        if self.type == "generative_model" and self.backbone is not None:
+            raise ValueError("generative_model selects backbones through model.name; do not set model.backbone")
         return self
 
 
 TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task", "generative"]
+
+
+class ConditionGridConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    fault_label: List[int]
+    domain_id: List[int]
+    samples_per_condition: int = Field(1, ge=1)
+
+    @model_validator(mode="after")
+    def _check_non_empty(self) -> "ConditionGridConfig":
+        if not self.fault_label:
+            raise ValueError("condition_grid.fault_label must not be empty")
+        if not self.domain_id:
+            raise ValueError("condition_grid.domain_id must not be empty")
+        return self
+
+
+class ExplicitConditionConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    fault_label: int
+    domain_id: int
+    count: int = Field(1, ge=1)
 
 
 class GenerativeRuntimeConfig(BaseModel):
@@ -72,7 +98,20 @@ class GenerativeRuntimeConfig(BaseModel):
     validity_status: Literal["benchmark-valid", "exploratory", "docs-only"] = "exploratory"
     allow_untrained_smoke: bool = False
     leakage_duplicate_threshold: float = Field(1e-6, ge=0.0)
-    condition_sampling_policy: str = "first_metadata_repeated"
+    condition_sampling_policy: Literal[
+        "first_metadata_repeated",
+        "grid",
+        "train_distribution",
+        "explicit",
+    ] = "first_metadata_repeated"
+    condition_grid: Optional[ConditionGridConfig] = None
+    explicit_conditions: Optional[List[ExplicitConditionConfig]] = None
+    condition_seed: Optional[int] = None
+    stochastic_sampler: Optional[Literal["annealed_langevin"]] = None
+    sigma_min: Optional[float] = Field(None, gt=0.0)
+    sigma_max: Optional[float] = Field(None, gt=0.0)
+    stochastic_step_size: Optional[float] = Field(None, gt=0.0)
+    experimental: bool = False
     synthetic_dataset_id: Optional[str] = None
 
     @model_validator(mode="after")
@@ -87,6 +126,20 @@ class GenerativeRuntimeConfig(BaseModel):
         eval_split = str(self.eval_split).lower()
         if eval_split in {"test", "target_test"} and not self.allow_test_reference_eval:
             raise ValueError("test eval requires allow_test_reference_eval=true")
+        if self.condition_sampling_policy == "grid" and self.condition_grid is None:
+            raise ValueError("condition_sampling_policy=grid requires condition_grid")
+        if self.condition_sampling_policy == "explicit" and not self.explicit_conditions:
+            raise ValueError("condition_sampling_policy=explicit requires explicit_conditions")
+        stochastic_fields = [self.sigma_min, self.sigma_max, self.stochastic_step_size]
+        if self.stochastic_sampler is not None and any(value is None for value in stochastic_fields):
+            raise ValueError(
+                "stochastic_sampler requires sigma_min, sigma_max, and stochastic_step_size"
+            )
+        if self.sigma_min is not None and self.sigma_max is not None:
+            if self.sigma_max <= self.sigma_min:
+                raise ValueError("sigma_max must be greater than sigma_min")
+        if self.experimental and self.validity_status == "benchmark-valid":
+            raise ValueError("experimental generative methods cannot be benchmark-valid before promotion")
         return self
 
 
@@ -101,11 +154,26 @@ class TaskConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_target_system_id(self) -> "TaskConfig":
+        experimental_generative = {
+            "meanflow",
+            "drifting_flow",
+            "transition_flow_matching",
+            "ot_nfm",
+        }
         if self.target_system_id is not None:
             if not self.target_system_id:
                 raise ValueError("task.target_system_id must not be empty when provided")
         if self.type == "generative" and self.generative is None:
             raise ValueError("task.type=generative requires task.generative")
+        if self.type == "generative" and self.name in experimental_generative:
+            if self.generative is None:
+                raise ValueError("experimental generative tasks require task.generative")
+            if not self.generative.experimental:
+                raise ValueError(f"task.name={self.name} requires task.generative.experimental=true")
+            if self.generative.validity_status == "benchmark-valid":
+                raise ValueError(f"task.name={self.name} cannot be benchmark-valid before promotion")
+            if self.generative.num_steps != 1:
+                raise ValueError(f"task.name={self.name} requires task.generative.num_steps=1")
         return self
 
 

@@ -58,7 +58,9 @@ def distribution_metrics(real: torch.Tensor, fake: torch.Tensor) -> dict[str, fl
         real_flat, fake_flat = _flatten_pair(real, fake)
         return {
             "distribution_mean_distance": float(torch.norm(real_flat.mean(0) - fake_flat.mean(0)).cpu()),
-            "distribution_var_distance": float(torch.norm(real_flat.var(0) - fake_flat.var(0)).cpu()),
+            "distribution_var_distance": float(
+                torch.norm(real_flat.var(0, unbiased=False) - fake_flat.var(0, unbiased=False)).cpu()
+            ),
             "distribution_mmd_rbf": float(_mmd_rbf(real_flat, fake_flat).cpu()),
             "distribution_sliced_wasserstein": float(_sliced_wasserstein(real_flat, fake_flat).cpu()),
             "distribution_energy_distance": float(_energy_distance(real_flat, fake_flat).cpu()),

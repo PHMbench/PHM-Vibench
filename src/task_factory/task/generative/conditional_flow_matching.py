@@ -38,6 +38,8 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
         self.args_trainer = args_trainer
         self.args_environment = args_environment
         self.metadata = metadata
+        self.loss_id = "conditional_flow_matching"
+        self.sampler_id = "euler_ode"
         self.loss_fn = ConditionalFlowMatchingLoss(eps=float(getattr(args_task, "t_eps", 1e-3)))
         self.save_hyperparameters(
             {
@@ -184,6 +186,9 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             return torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=weight_decay)
         raise ValueError(f"Unsupported optimizer for generative task: {optimizer_name}")
 
+    def sampler_metadata(self) -> dict[str, Any]:
+        return {}
+
     @torch.no_grad()
     def sample(
         self,
@@ -239,10 +244,11 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
         leakage_checks: dict[str, Any] | None = None,
         condition_sampling_policy: str = "match_train_distribution",
         condition_counts: dict[str, int] | None = None,
+        sampler_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         normalization = {
             "method": str(getattr(self.args_data, "normalization", "standardization")),
-            "scope": "window",
+            "scope": str(getattr(self.args_data, "normalization_scope", "window")),
         }
         params_artifact = getattr(self.args_data, "normalization_params_path", None)
         params_hash = getattr(self.args_data, "normalization_params_hash", None)
@@ -254,7 +260,7 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             synthetic_dataset_id=synthetic_dataset_id,
             model_type=str(getattr(self.args_model, "type", "generative_model")),
             model_name=str(getattr(self.args_model, "name", "phm_cfm_mlp1d")),
-            loss_id="conditional_flow_matching",
+            loss_id=self.loss_id,
             checkpoint_path=checkpoint_path,
             generator_run_id=generator_run_id,
             source_split=source_split,
@@ -275,6 +281,7 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             leakage_checks=leakage_checks,
             condition_sampling_policy=condition_sampling_policy,
             condition_counts=condition_counts,
+            sampler_metadata=sampler_metadata,
         )
         write_synthetic_data_manifest(output_path, manifest)
         return manifest
