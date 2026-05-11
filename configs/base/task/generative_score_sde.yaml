@@ -1,0 +1,22 @@
+task:
+  type: "generative"
+  name: "score_sde"
+  target_system_id: null
+  lr: 0.0001
+  weight_decay: 0.0001
+  optimizer: "adamw"
+  generative:
+    mode: "train"
+    source_split: "train"
+    eval_split: "train"
+    run_test_loss_after_train: false
+    domain_map_path: "configs/domain_maps/dummy_domain_map.csv"
+    num_steps: 8
+    num_samples: 2
+    length: 128
+    validity_status: "exploratory"
+    allow_untrained_smoke: true
+    stochastic_sampler: "annealed_langevin"
+    sigma_min: 0.01
+    sigma_max: 1.0
+    stochastic_step_size: 0.001

@@ -26,7 +26,8 @@ def sample(
     timesteps = torch.linspace(max_step, 0, steps=num_steps, device=noise.device).long()
     for step, t_value in enumerate(timesteps):
         t = torch.full((x.shape[0],), int(t_value.item()), device=x.device, dtype=torch.long)
-        pred_epsilon = model(x, t.float(), condition)
+        model_t = t.float() / float(max(max_step, 1))
+        pred_epsilon = model(x, model_t, condition)
         if pred_epsilon.shape != x.shape:
             raise ValueError(
                 f"epsilon shape mismatch at step={step}, timestep={int(t_value)}: "
@@ -50,4 +51,3 @@ def sample(
         if not torch.isfinite(x).all():
             raise ValueError(f"sample contains NaN/Inf at step={step}, timestep={int(t_value)}")
     return x
-

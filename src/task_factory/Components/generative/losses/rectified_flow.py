@@ -27,6 +27,15 @@ class RectifiedFlowLoss(nn.Module):
     stateless velocity field contract as Conditional Flow Matching.
     """
 
+    def __init__(self, eps: float = 1e-3) -> None:
+        super().__init__()
+        if not 0.0 <= eps < 0.5:
+            raise ValueError(f"eps must be in [0, 0.5), got {eps}")
+        self.eps = float(eps)
+
+    def sample_t(self, batch_size: int, device: torch.device | str) -> torch.Tensor:
+        return torch.rand(batch_size, device=device) * (1.0 - 2.0 * self.eps) + self.eps
+
     def _view_t(self, t: torch.Tensor) -> torch.Tensor:
         if t.ndim == 1:
             return t.view(-1, 1, 1)
@@ -67,4 +76,3 @@ class RectifiedFlowLoss(nn.Module):
         loss = F.mse_loss(pred_velocity, target)
         _check_finite("loss", loss, t)
         return {"loss": loss, "mse_v": loss.detach()}
-

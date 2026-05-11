@@ -56,3 +56,13 @@ class DDPMEpsilonPredictionLoss(nn.Module):
         loss = F.mse_loss(pred_epsilon, epsilon)
         _check_finite("loss", loss)
         return {"loss": loss, "mse_epsilon": loss.detach()}
+
+
+def ddpm_sampler_metadata(scheduler: DDPMScheduler) -> dict[str, float | int | str]:
+    return {
+        "scheduler": "ddpm_linear_beta",
+        "num_train_timesteps": int(scheduler.num_train_timesteps),
+        "beta_start": float(scheduler.betas[0].detach().cpu()),
+        "beta_end": float(scheduler.betas[-1].detach().cpu()),
+        "prediction_type": "epsilon",
+    }
