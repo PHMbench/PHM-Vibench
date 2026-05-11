@@ -632,8 +632,12 @@ def test_toolkit_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     assert matrix["submission_ready"] is False
     assert (
         matrix["evidence_level"]
-        == "baseline config-target validated; Toolkit ablation evidence mostly blocked"
+        == "baseline config-target validated; Toolkit ablation smoke and manuscript checkpoint bound"
     )
+    assert matrix["manuscript"]["entrypoint"] == "manuscript/final_tex/main.tex"
+    assert "pdflatex" in matrix["manuscript"]["compile_command"]
+    assert "pass" in matrix["manuscript"]["compile_status"]
+    assert "evidence checkpoint only" in matrix["manuscript"]["evidence_status"]
     assert len(matrix["existing_toolkit_evidence"]) >= 4
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
@@ -669,6 +673,15 @@ def test_toolkit_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     assert "Only smoke Toolkit ablation runner artifacts exist" in blockers
     assert "No accepted TOP representative command/log/artifact mapping yet." in blockers
     assert "No SOTA or submission-ready infrastructure claim" in blockers
+
+    main_tex = PAPER01_MATRIX.parents[1] / "manuscript/final_tex/main.tex"
+    manuscript_text = main_tex.read_text(encoding="utf-8")
+    assert "\\documentclass[journal]{IEEEtran}" in manuscript_text
+    assert "../../figures/example.pdf" not in manuscript_text
+    assert "[论文标题]" not in manuscript_text
+    assert "[请在此处" not in manuscript_text
+    assert "overall_scores_comparison.png" in manuscript_text
+    assert "not a final submission-ready manuscript" in manuscript_text
 
 
 def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:

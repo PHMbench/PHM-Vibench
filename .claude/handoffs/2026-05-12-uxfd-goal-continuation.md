@@ -1014,3 +1014,65 @@ The warning in pytest remains the expected CUDA/NVML unavailability warning.
 Persisted objective, readiness backlog, and dirty-triage reports were
 regenerated after the Paper05 dirty-count changed. The goal remains active and
 incomplete.
+
+## 2026-05-12 Update: Paper01 Toolkit Manuscript Checkpoint Bound
+
+Replaced the remaining stale parent-goal blocker text for Paper01 Toolkit after
+binding its canonical manuscript entrypoint to a conservative IEEEtran evidence
+checkpoint. This is a checkpoint milestone only; Paper01 remains
+non-submission-ready.
+
+**Paper01 submodule commit:**
+
+- `0bc9435 chore: bind toolkit manuscript checkpoint`
+
+**Submodule files committed:**
+
+- `VIBENCH.md`
+- `manuscript/T040_EVIDENCE_README.md`
+- `manuscript/final_tex/main.tex`
+- `submission_prep/baseline_ablation_matrix.yaml`
+- `submission_prep/ieee_trans_readiness.md`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/01_explainable_fd_toolkit.md`
+  - now records that `manuscript/final_tex/main.tex` compiles as an
+    evidence-bound IEEEtran checkpoint and no longer contains generic title,
+    abstract, method, discussion, or conclusion placeholders.
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - records Paper01 submodule SHA `0bc9435` for the manuscript checkpoint and
+    keeps accepted six-baseline, Toolkit-ablation, TOP representative, GPU
+    metadata, final evidence-bearing text, and SOTA gates blocked.
+- `test/test_uxfd_paper_alignment_contract.py`
+  - now checks the Paper01 `manuscript` matrix block and verifies the canonical
+    TeX has IEEEtran, no old placeholder strings, and the bound benchmark
+    figure path.
+- `paper/UXFD_paper/results/objective_audit_current.{md,json}`,
+  `paper/UXFD_paper/results/submission_gate_current.{md,json}`,
+  `paper/UXFD_paper/results/readiness_backlog.md`, and
+  `paper/UXFD_paper/results/submodule_dirty_triage.md`
+  - regenerated after the Paper01 submodule commit.
+
+**Validation passed:**
+
+```bash
+pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/tmp/uxfd_paper01_tex manuscript/final_tex/main.tex
+pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/tmp/uxfd_paper01_tex manuscript/final_tex/main.tex
+python -m pytest -q test/test_uxfd_paper_alignment_contract.py::test_toolkit_baseline_matrix_records_ablation_blockers_not_ready
+python -m pytest -q test/test_uxfd_*.py test/test_collect_uxfd_runs.py
+```
+
+Results:
+
+```text
+Paper01 PDF: /tmp/uxfd_paper01_tex/main.pdf
+1 passed in 0.29s
+88 passed, 1 warning in 89.76s
+```
+
+The pytest warning is the expected CUDA/NVML unavailability warning. The active
+goal remains incomplete because Q0 GPU preflight is still blocked, accepted
+run metadata is absent, TOP representative artifacts are pending, all seven
+paper matrices remain `submission_ready: false`, and residual dirty submodule
+work still needs owner triage.

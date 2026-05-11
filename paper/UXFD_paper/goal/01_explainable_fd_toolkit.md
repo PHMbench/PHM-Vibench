@@ -11,10 +11,12 @@
 
 - Manuscript entrypoint: `manuscript/final_tex/main.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current manuscript blocker: the old missing `../../figures/example.pdf`
-  path and first benchmark table are patched in the T040 evidence checkpoint,
-  but `manuscript/final_tex/main.tex` still contains generic title, abstract,
-  method, discussion, and conclusion placeholders.
+- Current manuscript status: `manuscript/final_tex/main.tex` compiles as an
+  evidence-bound IEEEtran checkpoint and no longer contains generic title,
+  abstract, method, discussion, or conclusion placeholders. Final
+  evidence-bearing IEEE text remains blocked until accepted six-baseline,
+  Toolkit-ablation, TOP representative, GPU metadata, and SOTA-safe wording
+  gates pass.
 
 ## Required Evidence
 
