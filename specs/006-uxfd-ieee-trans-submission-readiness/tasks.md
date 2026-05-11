@@ -106,6 +106,7 @@
 - [ ] T045 [P] Bind Neuralsymbolic propositions to runnable validation artifacts in `paper/UXFD_paper/Neuralsymbolic_theory/`.
 - [ ] T046 [P] Normalize Operator Attention canonical entrypoint and run DSOA v2 baseline/ablation/SOTA gate in `paper/UXFD_paper/TII_operator_attention/`.
 - [x] T071 [P] Expand TII synthetic validation from six to eight signal classes and regenerate submodule-local JSON/report/figures.
+- [x] T072 [P] Ensure all seven paper submodule SHAs track both `VIBENCH.md` and `configs/vibench/min.yaml`.
 
 ## Phase 8: Validation
 

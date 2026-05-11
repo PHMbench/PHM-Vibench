@@ -22,6 +22,8 @@ Then six parallel xhigh workers produced paper-local readiness checkpoints for
 Papers 01-06. Each checkpoint is a narrow submodule commit that records
 evidence and remaining blockers; none of these commits makes a paper
 submission-ready.
+Follow-up reproduction-contract commits ensured all seven paper submodule SHAs
+tracked both `VIBENCH.md` and `configs/vibench/min.yaml`.
 
 ## Decisions Made
 
@@ -54,12 +56,12 @@ submission-ready.
 - `test/test_uxfd_paper_alignment_contract.py` - added TOP-source quota and low-tier exclusion checks.
 - `specs/006-uxfd-ieee-trans-submission-readiness/` - updated spec, plan, data model, contract, checklist, quickstart, and tasks for TOP-source recent-work gates.
 - `paper/UXFD_paper/goal/00_overall_goal.md` and all seven paper goal files - added compute budget and `resource-blocked` exact-reproduction policy.
-- `paper/UXFD_paper/Explainable_FD_Toolkit` - submodule milestone commit `b76b5d8` replaces the missing placeholder figure/table in `manuscript/final_tex/main.tex`, adds `manuscript/T040_EVIDENCE_README.md`, and updates `VIBENCH.md`.
-- `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`.
-- `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`.
-- `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`.
+- `paper/UXFD_paper/Explainable_FD_Toolkit` - submodule milestone commit `b76b5d8` replaces the missing placeholder figure/table in `manuscript/final_tex/main.tex`, adds `manuscript/T040_EVIDENCE_README.md`, and updates `VIBENCH.md`; follow-up commit `39b6a06` tracks `configs/vibench/min.yaml`.
+- `paper/UXFD_paper/1D-2D_fusion_explainable` - submodule milestone commit `ecdae0a` adds `README_T041_SUBMISSION_READINESS.md`; follow-up commit `d548f11` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
+- `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` - submodule milestone commit `dc014de` adds `SUBMISSION_READINESS.md` and updates `VIBENCH.md`; follow-up commit `9a5b141` tracks `configs/vibench/min.yaml`.
+- `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`; follow-up commit `6992839` tracks `VIBENCH.md` and `configs/vibench/min.yaml` with the current repo root.
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - submodule milestone commit `53e6d1b` adds a compilable evidence snapshot, updates `VIBENCH.md` and `configs/vibench/min.yaml`, adds `doc/T044_submission_readiness_evidence.md`, and fixes the NumPy bool serializer in `scripts/run_fuzzy_baseline.py`.
-- `paper/UXFD_paper/Neuralsymbolic_theory` - submodule milestone commit `9139307` adds `report/T045_evidence_readiness.md`, updates `VIBENCH.md`, and fixes `simple_validation_demo.py` so failed P2 evidence is recorded as a boundary case.
+- `paper/UXFD_paper/Neuralsymbolic_theory` - submodule milestone commit `9139307` adds `report/T045_evidence_readiness.md`, updates `VIBENCH.md`, and fixes `simple_validation_demo.py` so failed P2 evidence is recorded as a boundary case; follow-up commit `e3e268d` tracks `configs/vibench/min.yaml`.
 - `paper/UXFD_paper/TII_operator_attention` - submodule milestone commit `10a3d16` adds/updates `VIBENCH.md`, `configs/vibench/min.yaml`, `code/synthetic_verification.py`, synthetic validation outputs, rejection-recovery notes, and `submission_prep/ieee_trans_readiness.md`; follow-up commit `e8f8994` expands synthetic validation to eight signal classes.
 
 **Validation:**
