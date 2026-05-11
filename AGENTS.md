@@ -82,6 +82,6 @@ python -m pytest test/
   - Expected outputs (e.g. `docs/CONFIG_ATLAS.md` updated, output directory pattern)
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+For tracked PHM-GenBench governance and goal context, read:
+`.specify/memory/constitution.md` and `.specify/goals/`.
 <!-- SPECKIT END -->
