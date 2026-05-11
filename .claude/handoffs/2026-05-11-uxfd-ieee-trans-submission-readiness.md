@@ -96,6 +96,9 @@ paper submodule and that each `VIBENCH.md` declares a local
   - `git diff --check` on the touched goal/spec/test/handoff/doc paths - passed.
 - After tracked reproduction-contract tests:
   - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py test/test_collect_uxfd_runs.py test/test_baseline_mapping_contract.py` - passed: `23 passed in 2.34s`.
+- Seven-paper minimal VIBENCH entrypoint check:
+  - `eval "$(conda shell.bash hook)" && conda activate LQ_signal && for cfg in paper/UXFD_paper/*/configs/vibench/min.yaml; do CUDA_VISIBLE_DEVICES=0 python main.py --config "$cfg" --override trainer.num_epochs=1 --override data.num_workers=0; done` - all seven tracked paper configs completed as one-epoch dummy-data smoke runs.
+  - PyTorch reported `GPU available: False` / NVML unavailable in the current sandbox, so this check is entrypoint/wiring evidence only, not accepted GPU feasibility or SOTA evidence.
 - Paper 07 `TII_operator_attention` milestone:
   - `python code/synthetic_verification.py` from the submodule - passed and generated submodule-local figures, JSON, and report; current coverage is 8 signal classes, mean physics consistency `0.999`, mean explainability `0.261`.
   - `CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1` - failed in base env because `pytorch_lightning` is missing.

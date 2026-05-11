@@ -123,6 +123,7 @@
 - [x] T062 Re-run `python -m scripts.validate_docs` after TOP-source edits.
 - [x] T063 Re-run focused UXFD/literature/baseline contract tests after TOP-source edits.
 - [x] T070 Re-run validation after 2x4090 compute-gate edits.
+- [x] T074 Run all seven tracked `configs/vibench/min.yaml` entrypoints in `LQ_signal` as one-epoch dummy-data smoke checks and record that the current sandbox did not expose GPU/NVML.
 
 ## Dependencies & Execution Order
 

@@ -13,6 +13,15 @@ minimal root gates passing is not the same as submission readiness.
 | Neuralsymbolic Theory | `06_neuralsymbolic_theory.md` | placeholder TeX remains; missing figure reference | declared; per-baseline configs missing | TOP quota declared | representative required | 2x4090 declared | local demos only; parent smoke blocked in base env | proposition demos partial; P2 currently fails | blocked until proposition/evidence matrix | `08_recent_work_citation_readme.md` | submodule `e3e268d`, `report/T045_evidence_readiness.md` | partial evidence with P2 boundary case | Replace placeholder TeX, create validation scripts/configs, run real-data baselines/ablations, and keep failed P2 boundary explicit. |
 | TII Operator Attention | `07_tii_operator_attention.md` | candidate TeX selected: `bare_jrnl_new_sample4.tex` | declared | TOP quota declared | representative required | 2x4090 declared | smoke proof only; GPU industrial proof pending | 8-signal synthetic gate passed; accepted ablations blocked | blocked until rejection-recovery baseline/ablation evidence | `08_recent_work_citation_readme.md` | submodule `e8f8994`, `submission_prep/ieee_trans_readiness.md` | partial evidence | Bind 6+ baselines, ablations, TOP representatives, industrial GPU proof, and SOTA gate. |
 
+## Execution Check
+
+As of 2026-05-11, all seven tracked `configs/vibench/min.yaml` entrypoints were
+run from the parent repository in the `LQ_signal` environment with
+`trainer.num_epochs=1` and `data.num_workers=0`; each completed as a
+dummy-data smoke run. PyTorch reported GPU unavailable in the current sandbox,
+so this is wiring evidence only. It does not satisfy the GPU-feasibility,
+baseline, ablation, TOP representative, or SOTA gates.
+
 ## Cross-Paper Gates
 
 - `VIBENCH.md`: required for every paper.
