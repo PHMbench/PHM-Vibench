@@ -3,13 +3,13 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `58`
+- Dirty entries: `54`
 
 ## Summary
 
 | Submodule | Total | Modified | Untracked | Categories |
 |---|---:|---:|---:|---|
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | 26 | 19 | 7 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=3, project_document=4, source_or_experiment_script=10, unclassified=1 |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | 22 | 16 | 6 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=1, project_document=2, source_or_experiment_script=10, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 26 | 16 | 10 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=1, source_or_experiment_script=4, unclassified=1 |
 | `paper/UXFD_paper/MOE_explainable` | 6 | 2 | 4 | manuscript_draft=3, planning_or_contract_draft=1, source_or_experiment_script=2 |
 
@@ -49,15 +49,12 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/direct_run_toolkit.log` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `results/toolkit_benchmark.log` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_shap_lime_analysis.py` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `CORE.md` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README_T041_SUBMISSION_READINESS.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `best_model.pth` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/experiments.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/final_tex/main.tex` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/paper.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/references.bib` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `paper_blueprint.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `paper_draft/NMI_Paper1_Fusion1D2D.tex` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `paper_draft/references.bib` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_moe.py` |
@@ -69,7 +66,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `submission_prep/baseline_ablation_matrix.yaml` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `submission_prep/ieee_trans_readiness.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `EXPERIMENT_DESIGN.md` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `innovation_contract.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/bind_submission_ready_evidence.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_quantitative_explainability.py` |

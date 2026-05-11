@@ -118,6 +118,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("test/test_uxfd_artifact_gate.py"),
     Path("test/test_uxfd_gpu_queue.py"),
     Path("test/test_uxfd_paper01_control_docs.py"),
+    Path("test/test_uxfd_paper02_control_docs.py"),
     Path("test/test_uxfd_paper02_runner_policy.py"),
     Path("test/test_uxfd_paper04_control_docs.py"),
     Path("test/test_uxfd_paper04_runner_policy.py"),

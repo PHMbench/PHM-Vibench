@@ -14,6 +14,10 @@ It is not experiment evidence and does not make any paper submission-ready.
   - current-root `python main.py --config ...` runner policy.
   - local GPU `0,1` only policy.
   - local HDF5 dataset loader support for Paper02 dry-run validation.
+- Paper02 control-doc update is committed inside the submodule at `18fec7c`:
+  - current-root `PHM-Vibench_fix` normalization for README/CORE.
+  - maintained `main.py --config ...` commands for VIBENCH and paper-local configs.
+  - `innovation_contract.md` is bound from README, CORE, and paper blueprint.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.
