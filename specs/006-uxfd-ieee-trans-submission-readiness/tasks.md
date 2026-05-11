@@ -115,6 +115,7 @@
 - [x] T079 [P] Run Paper 07 B03-B05 and B07 dummy smokes, record six total passing baseline smokes, and record B06 Transformer import blocker.
 - [x] T080 [P] Run Paper 07 A02-A06 dummy smokes, record all six ablation smokes passing, and keep industrial/GPU/SOTA gates blocked.
 - [x] T081 [P] Restore legacy `register_model` compatibility, run Paper 07 B06 ConvTransformer dummy smoke with `model.input_dim=2`, and record seven total passing baseline smokes while keeping industrial/GPU/SOTA gates blocked.
+- [x] T082 [P] Add Paper 05 Fuzzy-XFD command-bound seven-baseline and six-ablation matrix, run dummy smokes in `LQ_signal`, and keep real-data/GPU/rule/TOP/SOTA gates blocked.
 
 ## Phase 8: Validation
 

@@ -21,6 +21,10 @@ PAPER07_MATRIX = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER05_MATRIX = Path(
+    "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/"
+    "baseline_ablation_matrix.yaml"
+)
 
 LOW_TIER_MARKERS = (
     "Scientific Reports",
@@ -294,6 +298,49 @@ def test_operator_attention_baseline_ablation_matrix_is_command_bound_not_ready(
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "No accepted industrial multi-seed baseline table yet." in blockers
+    assert "No SOTA claim is allowed from this matrix alone." in blockers
+
+
+def test_fuzzy_xfd_baseline_ablation_matrix_is_command_bound_not_ready() -> None:
+    assert PAPER05_MATRIX.exists()
+    matrix = yaml.safe_load(PAPER05_MATRIX.read_text(encoding="utf-8"))
+
+    assert matrix["submission_ready"] is False
+    assert matrix["evidence_level"] == "config-target validated only"
+    assert len(matrix["baselines"]) >= 6
+    assert len(matrix["ablations"]) >= 6
+    assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
+    assert (
+        sum("pass in LQ_signal" in entry.get("dummy_smoke_status", "") for entry in matrix["baselines"])
+        >= 6
+    )
+    assert (
+        sum(
+            "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+            or "same run as B01" in entry.get("dummy_smoke_status", "")
+            for entry in matrix["ablations"]
+        )
+        >= 6
+    )
+
+    main_py_baselines = [
+        entry
+        for entry in matrix["baselines"]
+        if "python main.py --config" in entry["command"]
+    ]
+    assert len(main_py_baselines) >= 6
+
+    for entry in matrix["baselines"] + matrix["ablations"]:
+        assert entry["config_target_validated"] is True
+        assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
+        assert (
+            "pending" in entry["accepted_evidence_status"]
+            or "blocked" in entry["accepted_evidence_status"]
+        )
+
+    blockers = "\n".join(matrix["strict_blockers"])
+    assert "No accepted CWRU/XJTU or industrial multi-seed baseline table yet." in blockers
+    assert "Hard-threshold, safety-fallback, and no-rule-output" in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
