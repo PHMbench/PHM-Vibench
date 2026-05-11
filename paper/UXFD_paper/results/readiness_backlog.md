@@ -3,7 +3,7 @@
 Status: execution backlog only. This file is not accepted experiment evidence.
 
 - Ready: `False`
-- Open items: `47`
+- Open items: `45`
 
 | Priority | Item | Scope | Category | Blocker | Next action | Evidence |
 |---:|---|---|---|---|---|---|
@@ -52,5 +52,3 @@ Status: execution backlog only. This file is not accepted experiment evidence.
 | 90 | `DIRTY-Explainable_FD_Toolkit` | `paper/UXFD_paper/Explainable_FD_Toolkit` | `submodule-dirty-review` | 38 dirty entries (19 modified, 19 untracked): agent_workspace=3, experiment_output=18, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=4, unclassified=1 | Review with the owning paper owner. Commit only intentional source/docs; promote result artifacts only through the accepted artifact gate. | `paper/UXFD_paper/results/submodule_dirty_triage.md` |
 | 90 | `DIRTY-LLM_Explainable_FD_Toolkit` | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `submodule-dirty-review` | 2 dirty entries (0 modified, 2 untracked): planning_or_contract_draft=1, session_workspace=1 | Review with the owning paper owner. Commit only intentional source/docs; promote result artifacts only through the accepted artifact gate. | `paper/UXFD_paper/results/submodule_dirty_triage.md` |
 | 90 | `DIRTY-MOE_explainable` | `paper/UXFD_paper/MOE_explainable` | `submodule-dirty-review` | 25 dirty entries (10 modified, 15 untracked): agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=10 | Review with the owning paper owner. Commit only intentional source/docs; promote result artifacts only through the accepted artifact gate. | `paper/UXFD_paper/results/submodule_dirty_triage.md` |
-| 90 | `DIRTY-Neuralsymbolic_theory` | `paper/UXFD_paper/Neuralsymbolic_theory` | `submodule-dirty-review` | 1 dirty entries (0 modified, 1 untracked): planning_or_contract_draft=1 | Review with the owning paper owner. Commit only intentional source/docs; promote result artifacts only through the accepted artifact gate. | `paper/UXFD_paper/results/submodule_dirty_triage.md` |
-| 90 | `DIRTY-Paper_fuzzy_XFD` | `paper/UXFD_paper/Paper_fuzzy_XFD` | `submodule-dirty-review` | 1 dirty entries (0 modified, 1 untracked): planning_or_contract_draft=1 | Review with the owning paper owner. Commit only intentional source/docs; promote result artifacts only through the accepted artifact gate. | `paper/UXFD_paper/results/submodule_dirty_triage.md` |

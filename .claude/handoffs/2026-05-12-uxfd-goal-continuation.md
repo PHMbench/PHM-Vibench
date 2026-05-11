@@ -1198,3 +1198,42 @@ no low-tier draft marker matches
 diff --check clean
 3 passed in 12.68s
 ```
+
+## 2026-05-12 Update: Paper05/Paper06 Planning Checkpoints Committed
+
+Committed the only remaining untracked planning files in the Paper05 and
+Paper06 submodules. These files are planning checkpoints only and must not be
+treated as accepted experimental evidence.
+
+**Paper05 submodule commit:**
+
+- `bdbbeef docs: add fuzzy experiment supplement plan`
+
+**Paper06 submodule commit:**
+
+- `88dc7c6 docs: add neuralsymbolic experiment supplement plan`
+
+**Submodule files committed:**
+
+- `paper/UXFD_paper/Paper_fuzzy_XFD/plan/EXPERIMENT_PLAN_补充.md`
+- `paper/UXFD_paper/Neuralsymbolic_theory/plan/EXPERIMENT_PLAN_补充.md`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - now records Paper05 submodule SHA `bdbbeef` and Paper06 submodule SHA
+    `88dc7c6`, while keeping accepted artifact, GPU metadata, TOP
+    representative, and SOTA gates blocked.
+
+**Validation passed:**
+
+```bash
+git -C paper/UXFD_paper/Paper_fuzzy_XFD diff --cached --check
+git -C paper/UXFD_paper/Neuralsymbolic_theory diff --cached --check
+```
+
+Results:
+
+```text
+diff --cached --check clean for both planning checkpoints
+```
