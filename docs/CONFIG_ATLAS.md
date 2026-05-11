@@ -99,6 +99,39 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `/`
 
+#### `base_model_generative_dit1d`
+- Path: `configs/base/model/generative_dit1d.yaml`
+- Description: Generative PHM DiT1D backbone base
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml --override base_configs.model=configs/base/model/generative_dit1d.yaml`
+- Common overrides: `model.hidden_dim=32`, `model.patch_size=8`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/generative_model/README.md`
+- Status: `/`
+
+#### `base_model_generative_ssm1d`
+- Path: `configs/base/model/generative_ssm1d.yaml`
+- Description: Generative PHM stateless SSM/Mamba-placeholder backbone base
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml --override base_configs.model=configs/base/model/generative_ssm1d.yaml`
+- Common overrides: `model.hidden_dim=32`, `model.use_true_mamba=false`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/generative_model/README.md`
+- Status: `/`
+
+#### `base_model_generative_unet1d`
+- Path: `configs/base/model/generative_unet1d.yaml`
+- Description: Generative PHM UNet1D backbone base
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml --override base_configs.model=configs/base/model/generative_unet1d.yaml`
+- Common overrides: `model.hidden_dim=32`, `model.condition_dim=16`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/generative_model/README.md`
+- Status: `/`
+
 #### `base_model_isfm_hse`
 - Path: `configs/base/model/backbone_dlinear.yaml`
 - Description: M_01_ISFM + E_01_HSE + B_04_Dlinear + H_01_Linear_cla
@@ -176,6 +209,83 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `task.generative.mode=train`, `task.lr=0.0001`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `/`
+
+#### `base_task_generative_ddpm`
+- Path: `configs/base/task/generative_ddpm.yaml`
+- Description: Generative PHM DDPM epsilon task base with task.generative.*
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_ddpm.yaml`
+- Common overrides: `task.generative.mode=train`, `task.num_train_timesteps=100`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `/`
+
+#### `base_task_generative_drifting_flow`
+- Path: `configs/base/task/generative_drifting_flow.yaml`
+- Description: Experimental PHM Drifting Flow one-step task base
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_drifting_flow.yaml`
+- Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `/`
+
+#### `base_task_generative_meanflow`
+- Path: `configs/base/task/generative_meanflow.yaml`
+- Description: Experimental PHM MeanFlow/iMF one-step task base
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_meanflow.yaml`
+- Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `/`
+
+#### `base_task_generative_ot_nfm`
+- Path: `configs/base/task/generative_ot_nfm.yaml`
+- Description: Experimental PHM OT-NFM one-step task base
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_ot_nfm.yaml`
+- Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `/`
+
+#### `base_task_generative_rectified_flow`
+- Path: `configs/base/task/generative_rectified_flow.yaml`
+- Description: Generative PHM Rectified Flow task base with task.generative.*
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_rectified_flow.yaml`
+- Common overrides: `task.generative.mode=train`, `task.lr=0.0001`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `/`
+
+#### `base_task_generative_score_sde`
+- Path: `configs/base/task/generative_score_sde.yaml`
+- Description: Generative PHM Score-SDE task base with stochastic task.generative.*
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_score_sde.yaml`
+- Common overrides: `task.generative.mode=train`, `task.generative.stochastic_sampler=annealed_langevin`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `/`
+
+#### `base_task_generative_transition_flow_matching`
+- Path: `configs/base/task/generative_transition_flow_matching.yaml`
+- Description: Experimental PHM Transition Flow Matching one-step task base
+- Owner code: `src/task_factory/__init__.py:build_task`
+- Keyspace: `task.*`, `task.generative.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_transition_flow_matching.yaml`
+- Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
 - Status: `/`
 
 #### `base_task_pretrain`
@@ -352,3 +462,201 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Outputs: `results/demo/dummy_generative_cfm/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`
 - Status: `sanity_ok`
+
+#### `demo_10_generative_ddpm`
+- Path: `configs/demo/10_generative/dummy_generative_ddpm.yaml`
+- Description: Generative PHM DDPM epsilon smoke demo（repo 内置 dummy 数据）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_ddpm.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_ddpm.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_ddpm/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `sanity_ok`
+
+#### `demo_10_generative_drifting_flow`
+- Path: `configs/demo/10_generative/dummy_generative_drifting_flow.yaml`
+- Description: Experimental PHM Drifting Flow one-step smoke demo
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_drifting_flow.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_drifting_flow.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_drifting_flow/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `sanity_ok`
+
+#### `demo_10_generative_meanflow`
+- Path: `configs/demo/10_generative/dummy_generative_meanflow.yaml`
+- Description: Experimental PHM MeanFlow/iMF one-step smoke demo
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_meanflow.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_meanflow.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_meanflow/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `sanity_ok`
+
+#### `demo_10_generative_ot_nfm`
+- Path: `configs/demo/10_generative/dummy_generative_ot_nfm.yaml`
+- Description: Experimental PHM OT-NFM one-step smoke demo
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_ot_nfm.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_ot_nfm.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_ot_nfm/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `sanity_ok`
+
+#### `demo_10_generative_rectified_flow`
+- Path: `configs/demo/10_generative/dummy_generative_rectified_flow.yaml`
+- Description: Generative PHM Rectified Flow smoke demo（repo 内置 dummy 数据）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_rectified_flow.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_rectified_flow.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_rectified_flow/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `sanity_ok`
+
+#### `demo_10_generative_score_sde`
+- Path: `configs/demo/10_generative/dummy_generative_score_sde.yaml`
+- Description: Generative PHM Score-SDE smoke demo（repo 内置 dummy 数据）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_score_sde.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_score_sde.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_score_sde/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`
+- Status: `sanity_ok`
+
+#### `demo_10_generative_transition_flow_matching`
+- Path: `configs/demo/10_generative/dummy_generative_transition_flow_matching.yaml`
+- Description: Experimental PHM Transition Flow Matching one-step smoke demo
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_transition_flow_matching.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_transition_flow_matching.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_transition_flow_matching/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Status: `sanity_ok`
+
+### paper
+
+#### `paper_phm_gen_cfm_ablation_first_metadata`
+- Path: `configs/paper/phm_generative/cfm_ablation_first_metadata_seed0.yaml`
+- Description: Paper PHM generative CFM condition ablation first-metadata seed 0
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/cfm_ablation_first_metadata_seed0.yaml`
+- Common overrides: `task.generative.condition_sampling_policy=first_metadata_repeated`
+- Outputs: `results/paper/phm_generative/cfm_ablation_first_metadata_seed0/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`
+
+#### `paper_phm_gen_cfm_eval_seed0`
+- Path: `configs/paper/phm_generative/cfm_eval_train_reference_seed0.yaml`
+- Description: Paper PHM generative CFM eval train-reference seed 0
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/cfm_eval_train_reference_seed0.yaml`
+- Common overrides: `task.generative.mode=eval`, `task.generative.eval_split=train`
+- Outputs: `results/paper/phm_generative/cfm_eval_train_reference_seed0/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`
+
+#### `paper_phm_gen_cfm_sample_grid_seed0`
+- Path: `configs/paper/phm_generative/cfm_sample_grid_seed0.yaml`
+- Description: Paper PHM generative CFM sample grid seed 0
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/cfm_sample_grid_seed0.yaml`
+- Common overrides: `task.generative.mode=sample`, `task.generative.num_steps=32`
+- Outputs: `results/paper/phm_generative/cfm_sample_grid_seed0/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`
+
+#### `paper_phm_gen_cfm_train_grid_seed0`
+- Path: `configs/paper/phm_generative/cfm_train_grid_seed0.yaml`
+- Description: Paper PHM generative CFM train grid seed 0
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/cfm_train_grid_seed0.yaml`
+- Common overrides: `trainer.num_epochs=50`, `task.generative.condition_sampling_policy=grid`
+- Outputs: `results/paper/phm_generative/cfm_grid_seed0/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`
+
+#### `paper_phm_gen_cfm_train_grid_seed1`
+- Path: `configs/paper/phm_generative/cfm_train_grid_seed1.yaml`
+- Description: Paper PHM generative CFM train grid seed 1
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/cfm_train_grid_seed1.yaml`
+- Common overrides: `trainer.num_epochs=50`, `environment.seed=1`
+- Outputs: `results/paper/phm_generative/cfm_grid_seed1/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`
+
+#### `paper_phm_gen_ddpm_train_seed0`
+- Path: `configs/paper/phm_generative/ddpm_train_distribution_seed0.yaml`
+- Description: Paper PHM generative DDPM train distribution seed 0
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/ddpm_train_distribution_seed0.yaml`
+- Common overrides: `trainer.num_epochs=50`, `task.generative.condition_sampling_policy=train_distribution`
+- Outputs: `results/paper/phm_generative/ddpm_distribution_seed0/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`
+
+#### `paper_phm_gen_rectified_flow_train_seed0`
+- Path: `configs/paper/phm_generative/rectified_flow_train_grid_seed0.yaml`
+- Description: Paper PHM generative Rectified Flow train grid seed 0
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.generative.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/paper/phm_generative/rectified_flow_train_grid_seed0.yaml`
+- Common overrides: `trainer.num_epochs=50`, `model.name=phm_dit1d`
+- Outputs: `results/paper/phm_generative/rectified_flow_seed0/{experiment_name}/iter_{i}/`
+- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Status: `paper_ready`

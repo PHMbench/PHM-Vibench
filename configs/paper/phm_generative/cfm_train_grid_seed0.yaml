@@ -1,0 +1,47 @@
+pipeline: "Pipeline_06_generative"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/generative_unet1d.yaml"
+  task: "configs/base/task/generative_cfm.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "paper_phm_gen_cfm_grid_seed0"
+  seed: 0
+  output_dir: "results/paper/phm_generative/cfm_grid_seed0"
+  notes: "Paper matrix CFM train with UNet1D and grid conditions."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 2
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.2
+  test_ratio: 0.0
+  normalization: "standardization"
+  window_size: 128
+  stride: 16
+  num_window: 4
+  dtype: "float32"
+
+task:
+  generative:
+    mode: "train"
+    synthetic_dataset_id: "paper_cfm_grid_seed0"
+    condition_sampling_policy: "grid"
+    condition_grid:
+      fault_label: [0, 1]
+      domain_id: [0, 1]
+      samples_per_condition: 64
+
+trainer:
+  monitor: "val_loss"
+  num_epochs: 50
+  gpus: 0
+  device: "cpu"
+  early_stopping: true
+  log_every_n_steps: 1
+  save_top_k: 1
