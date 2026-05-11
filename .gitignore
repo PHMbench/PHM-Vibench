@@ -200,15 +200,29 @@ test/
 metrics_reports/
 
 cache/
-# .codex/
 dev/project/valve.ipynb
 plot/
 test/
 metrics_reports/
-# .codex/
-.specify/
+
+# Local agent/editor/workspace metadata
+.claude/
+.codex/
+.github/
+.vscode/
+specs/
 
 .specify/*
+!.specify/
+!.specify/feature.json
+!.specify/goals/
+!.specify/goals/*.md
+!.specify/memory/
+!.specify/memory/constitution.md
+
+# Keep maintained tests trackable even though generated test artifacts are ignored.
+!test/
+!test/**/*.py
 
 
 script/unified_metric/existing_test_files/
@@ -248,3 +262,6 @@ results/*
 .agents/skills/specki*
 .claude/skills/specki*
 
+# Specify / Spec Kit generated files
+.agents/
+.claude/skills/speckit-*/
