@@ -1,0 +1,388 @@
+{
+  "ready": false,
+  "papers": [
+    {
+      "paper_id": "TII_operator_attention",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 7,
+      "ablations": 6,
+      "strict_blockers": [
+        "No accepted industrial multi-seed baseline table yet.",
+        "No accepted ablation artifact table yet.",
+        "No complete 2024-2026 TOP representative command/log/artifact mapping yet.",
+        "No GPU model/runtime metadata from local GPUs 0,1 yet.",
+        "No SOTA claim is allowed from this matrix alone."
+      ]
+    },
+    {
+      "paper_id": "1D-2D_fusion_explainable",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 6,
+      "ablations": 7,
+      "strict_blockers": [
+        "No accepted CWRU/XJTU multi-seed six-baseline table yet.",
+        "No true Fusion1D2D same-protocol 1D-only, 2D-only, no-statistical, no-alignment, late-fusion, or no-explainability ablation package yet.",
+        "Paper-local demo falls back from real dataset import because THU_006or018_basic is unavailable via the current import path.",
+        "FFT-only signal-layer ablation currently fails with a skip-connection dimensionality mismatch.",
+        "Legacy ablation runner assumes GPU 2 and stale THU_018/unified_baseline paths, violating the 2x4090 goal.",
+        "No accepted TOP representative command/log/artifact mapping yet.",
+        "No GPU model/runtime metadata from local GPUs 0,1 yet.",
+        "Canonical TeX still depends on a missing NatureMi class and is not an IEEE Transactions compile gate.",
+        "No SOTA claim is allowed from this matrix alone."
+      ]
+    },
+    {
+      "paper_id": "Explainable_FD_Toolkit",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 6,
+      "ablations": 6,
+      "strict_blockers": [
+        "No accepted CWRU/XJTU or industrial multi-seed six-baseline table yet.",
+        "Only smoke Toolkit ablation runner artifacts exist; no accepted same-protocol Toolkit ablation artifacts exist yet.",
+        "No accepted TOP representative command/log/artifact mapping yet.",
+        "Existing schema-valid packs lack complete local 2x4090 metadata.",
+        "No SOTA or submission-ready infrastructure claim is allowed from this matrix alone."
+      ]
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 6,
+      "ablations": 6,
+      "strict_blockers": [
+        "No accepted CWRU/XJTU or industrial multi-seed baseline table yet.",
+        "Only smoke MoE ablation runner artifacts exist for load-balance, sparsity, temperature, expert-family, and uniform-router surfaces; no accepted same-protocol MoE ablation artifacts exist yet.",
+        "No accepted TOP representative command/log/artifact mapping yet.",
+        "No GPU model/runtime metadata from local GPUs 0,1 yet.",
+        "No SOTA claim is allowed from this matrix alone."
+      ]
+    },
+    {
+      "paper_id": "Paper_fuzzy_XFD",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 7,
+      "ablations": 6,
+      "strict_blockers": [
+        "No accepted CWRU/XJTU or industrial multi-seed baseline table yet.",
+        "No accepted rule-metric artifact table yet.",
+        "No accepted safety-case package with sample IDs, membership values, and decision paths yet.",
+        "No local TOP representative command/log/artifact mapping yet.",
+        "No GPU model/runtime metadata from local GPUs 0,1 yet.",
+        "Hard-threshold, safety-fallback, and no-rule-output reviewer ablations remain implementation blockers.",
+        "No SOTA claim is allowed from this matrix alone."
+      ]
+    },
+    {
+      "paper_id": "Neuralsymbolic_theory",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 6,
+      "ablations": 7,
+      "strict_blockers": [
+        "No accepted CWRU/XJTU multi-seed baseline table yet.",
+        "No accepted GPU model/runtime metadata from local GPUs 0,1 yet.",
+        "P2 is internally inconsistent across synthetic hooks and simple_validation_demo currently records P2 as failed.",
+        "Cross-method mapping report is scripted and not yet source-backed against sibling submodules.",
+        "No accepted TOP representative command/log/artifact mapping yet.",
+        "Manuscript entrypoint remains placeholder-heavy and still references a missing example figure.",
+        "No SOTA claim is allowed from this matrix alone."
+      ]
+    },
+    {
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "submission_ready": false,
+      "baselines": 7,
+      "ablations": 7,
+      "strict_blockers": [
+        "The manuscript/ieee_tii/main.tex entrypoint is a conservative compile checkpoint; it is not final evidence-bearing text.",
+        "Only smoke run_meta.yaml/metrics.json are emitted; no accepted results/llm_evidence/**/{run_meta.yaml,metrics.json} package exists for the main protocol.",
+        "No accepted six-condition LLM baseline table with matching prompts, seeds, metrics, latency, and unsupported-claim rate exists.",
+        "Standalone and package-based template demos pass only as smoke checks; they are not accepted LLM evidence packages.",
+        "Only smoke hallucination-checker, context-removal, and latency-sweep runners exist; no accepted main-protocol ablation artifacts exist yet.",
+        "No accepted TOP representative command/log/artifact mapping yet.",
+        "No GPU model/runtime metadata from local GPUs 0,1 yet.",
+        "No SOTA or human-centered decision-support claim is allowed from this matrix alone."
+      ]
+    }
+  ],
+  "blockers": [
+    "TII_operator_attention: submission_ready is false",
+    "TII_operator_attention: 5 strict blockers remain",
+    "1D-2D_fusion_explainable: submission_ready is false",
+    "1D-2D_fusion_explainable: 9 strict blockers remain",
+    "Explainable_FD_Toolkit: submission_ready is false",
+    "Explainable_FD_Toolkit: 5 strict blockers remain",
+    "MOE_explainable: submission_ready is false",
+    "MOE_explainable: 5 strict blockers remain",
+    "Paper_fuzzy_XFD: submission_ready is false",
+    "Paper_fuzzy_XFD: 7 strict blockers remain",
+    "Neuralsymbolic_theory: submission_ready is false",
+    "Neuralsymbolic_theory: 7 strict blockers remain",
+    "LLM_Explainable_FD_Toolkit: submission_ready is false",
+    "LLM_Explainable_FD_Toolkit: 8 strict blockers remain",
+    "gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session",
+    "artifact gate blocked: 3 blockers under paper/UXFD_paper/results/accepted_runs",
+    "recent-work evidence blocked: 7 TOP representative blockers"
+  ],
+  "next_actions": [
+    {
+      "queue_id": "Q1",
+      "paper_id": "TII_operator_attention",
+      "goal_file": "paper/UXFD_paper/goal/07_tii_operator_attention.md",
+      "matrix_path": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml",
+      "priority_reason": "Paper 07 was previously rejected and has the most urgent rejection-recovery/SOTA gate.",
+      "unblock_condition": "industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted"
+    },
+    {
+      "queue_id": "Q2",
+      "paper_id": "1D-2D_fusion_explainable",
+      "goal_file": "paper/UXFD_paper/goal/02_1d2d_fusion.md",
+      "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml",
+      "priority_reason": "Fusion evidence and TeX blocker are high-impact for reviewer credibility.",
+      "unblock_condition": "same-protocol CWRU/XJTU fusion matrix, true branch ablations, TOP proxies, and GPU metadata accepted"
+    },
+    {
+      "queue_id": "Q3",
+      "paper_id": "Explainable_FD_Toolkit",
+      "goal_file": "paper/UXFD_paper/goal/01_explainable_fd_toolkit.md",
+      "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml",
+      "priority_reason": "Toolkit schema/report artifacts support several downstream papers.",
+      "unblock_condition": "schema, report, explanation baseline, ablation, TOP proxy, and GPU metadata artifacts accepted"
+    },
+    {
+      "queue_id": "Q4",
+      "paper_id": "MOE_explainable",
+      "goal_file": "paper/UXFD_paper/goal/04_moe_explainable.md",
+      "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml",
+      "priority_reason": "MoE route artifacts are needed before any route-level interpretability or SOTA claim.",
+      "unblock_condition": "route entropy, expert activation, expert-count, baseline, TOP proxy, and GPU metadata artifacts accepted"
+    },
+    {
+      "queue_id": "Q5",
+      "paper_id": "Paper_fuzzy_XFD",
+      "goal_file": "paper/UXFD_paper/goal/05_fuzzy_xfd.md",
+      "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml",
+      "priority_reason": "Rule metrics and safety cases must exist before fuzzy explanation claims are credible.",
+      "unblock_condition": "rule metrics, safety cases, fuzzy ablations, TOP proxies, and GPU metadata accepted"
+    },
+    {
+      "queue_id": "Q6",
+      "paper_id": "Neuralsymbolic_theory",
+      "goal_file": "paper/UXFD_paper/goal/06_neuralsymbolic_theory.md",
+      "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml",
+      "priority_reason": "Theory paper needs proposition validation and source-backed mapping before manuscript claims.",
+      "unblock_condition": "proposition validation, source-backed mapping, baselines, ablations, TOP proxies, and GPU metadata accepted"
+    },
+    {
+      "queue_id": "Q7",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "goal_file": "paper/UXFD_paper/goal/03_llm_explainable_fd_toolkit.md",
+      "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "base_config": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml",
+      "priority_reason": "LLM evidence-package, hallucination, latency, and TOP blockers must be fixed before expensive runs.",
+      "unblock_condition": "run_meta.yaml and metrics.json evidence packages emitted and accepted; hallucination, latency, and TOP representative artifacts accepted"
+    }
+  ],
+  "objective_checklist": [
+    {
+      "requirement": "goal file README.md",
+      "evidence": "paper/UXFD_paper/goal/README.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 00_overall_goal.md",
+      "evidence": "paper/UXFD_paper/goal/00_overall_goal.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 01_explainable_fd_toolkit.md",
+      "evidence": "paper/UXFD_paper/goal/01_explainable_fd_toolkit.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 02_1d2d_fusion.md",
+      "evidence": "paper/UXFD_paper/goal/02_1d2d_fusion.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 03_llm_explainable_fd_toolkit.md",
+      "evidence": "paper/UXFD_paper/goal/03_llm_explainable_fd_toolkit.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 04_moe_explainable.md",
+      "evidence": "paper/UXFD_paper/goal/04_moe_explainable.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 05_fuzzy_xfd.md",
+      "evidence": "paper/UXFD_paper/goal/05_fuzzy_xfd.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 06_neuralsymbolic_theory.md",
+      "evidence": "paper/UXFD_paper/goal/06_neuralsymbolic_theory.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 07_tii_operator_attention.md",
+      "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 08_recent_work_citation_readme.md",
+      "evidence": "paper/UXFD_paper/goal/08_recent_work_citation_readme.md",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 09_gpu_execution_queue.yaml",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "met"
+    },
+    {
+      "requirement": "goal file 99_submission_readiness_matrix.md",
+      "evidence": "paper/UXFD_paper/goal/99_submission_readiness_matrix.md",
+      "status": "met"
+    },
+    {
+      "requirement": "Claude Code Team task spec",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md",
+      "status": "met"
+    },
+    {
+      "requirement": "Claude Code Team launch/block log",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/LAUNCH_LOG.md",
+      "status": "met"
+    },
+    {
+      "requirement": "Codex xhigh subagent launch log",
+      "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/CODEX_SUBAGENT_LAUNCH.md",
+      "status": "met"
+    },
+    {
+      "requirement": "seven paper-local matrices",
+      "evidence": "paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml,paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml,paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml,paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml,paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml,paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml,paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met"
+    },
+    {
+      "requirement": "6+ baselines and 6+ ablations per paper",
+      "evidence": "submission_prep/baseline_ablation_matrix.yaml",
+      "status": "met"
+    },
+    {
+      "requirement": "machine-readable GPU queue",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "met"
+    },
+    {
+      "requirement": "TOP recent-work policy and paper-local matrix coverage",
+      "evidence": "scripts.uxfd_recent_work_gate",
+      "status": "met"
+    },
+    {
+      "requirement": "TOP representative accepted artifacts",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "not_met"
+    },
+    {
+      "requirement": "accepted run artifact metadata",
+      "evidence": "paper/UXFD_paper/results/accepted_runs",
+      "status": "not_met"
+    },
+    {
+      "requirement": "submission readiness achieved",
+      "evidence": "all paper matrices submission_ready",
+      "status": "not_met"
+    }
+  ],
+  "artifact_gate_accepted": false,
+  "artifact_gate_root": "paper/UXFD_paper/results/accepted_runs",
+  "artifact_gate_records": 0,
+  "artifact_gate_blockers": [
+    "artifact root does not exist: paper/UXFD_paper/results/accepted_runs",
+    "no run_meta.yaml files found under paper/UXFD_paper/results/accepted_runs",
+    "queue coverage incomplete: 97 launch rows missing accepted run_meta.yaml"
+  ],
+  "recent_work_policy_ready": true,
+  "recent_work_evidence_ready": false,
+  "recent_work_matrix_rows": 7,
+  "recent_work_blockers": [
+    "TOP-Q1-GTM: TOP representative artifacts are still pending_gpu_and_artifacts",
+    "TOP-Q2-GTM: TOP representative artifacts are still pending_gpu_and_artifacts",
+    "TOP-Q3-TIMESEG: TOP representative artifacts are still pending_gpu_and_artifacts",
+    "TOP-Q4-TSPULSE: TOP representative artifacts are still pending_gpu_and_artifacts",
+    "TOP-Q5-TIMESLIVER: TOP representative artifacts are still pending_gpu_and_artifacts",
+    "TOP-Q6-TIMESLIVER: TOP representative artifacts are still pending_gpu_and_artifacts",
+    "TOP-Q7-TIMESEG: TOP representative artifacts are still pending_gpu_and_artifacts"
+  ],
+  "queue_can_execute": false,
+  "queue_resource_reason": "blocked; no accepted GPU evidence can be generated in this session",
+  "queue_summary": {
+    "total": 104,
+    "blocked": 0,
+    "main_py_commands": 71,
+    "top_representatives": 7,
+    "per_phase": {
+      "proposed": 7,
+      "baselines": 45,
+      "ablations": 45,
+      "top_representatives": 7
+    },
+    "per_paper": {
+      "TII_operator_attention": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "1D-2D_fusion_explainable": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 7,
+        "top_representatives": 1
+      },
+      "Explainable_FD_Toolkit": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "MOE_explainable": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "Paper_fuzzy_XFD": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "Neuralsymbolic_theory": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 7,
+        "top_representatives": 1
+      },
+      "LLM_Explainable_FD_Toolkit": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 7,
+        "top_representatives": 1
+      }
+    }
+  }
+}

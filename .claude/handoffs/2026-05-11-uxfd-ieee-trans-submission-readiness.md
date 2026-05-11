@@ -59,8 +59,9 @@ records current `nvidia-smi -L` and PyTorch CUDA visibility and can be combined
 with `--require-preflight` to fail before experiments if GPUs `0,1` are still
 not accepted.
 `python -m scripts.uxfd_submission_gate` emits a cross-paper submission gate
-report and returns non-zero while any matrix is `submission_ready: false` or the
-GPU queue remains blocked; use `--allow-not-ready` only for audit export.
+report and returns non-zero while any matrix is `submission_ready: false`, the
+GPU queue remains blocked, accepted artifacts are missing, or TOP representative
+artifacts remain pending; use `--allow-not-ready` only for audit export.
 The gate report includes queue-derived `next_actions` so each paper has a
 visible unblock condition tied back to `09_gpu_execution_queue.yaml`.
 It also includes an `objective_checklist` that maps named goal files, Claude
@@ -190,6 +191,7 @@ exist.
   - After the Paper 07 rejection-recovery contract, `git diff --check` inside the submodule passed; `python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_recent_work_gate.py test/test_uxfd_submission_gate.py test/test_uxfd_paper_alignment_contract.py` passed with `42 passed in 8.55s`; `python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready` reported `policy_ready=true`, `evidence_ready=false`; `python -m scripts.uxfd_objective_audit --format json --allow-not-achieved` still reported `achieved=false`.
   - After adding the parent Paper 07 rejection-recovery contract test, `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed with `29 passed in 1.00s`.
   - After syncing 2026 TOP entries into all paper-local matrices, `python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready` reported `policy_ready=true`, `evidence_ready=false`, and `matrix_coverage` rows for all seven papers; `python -m pytest -q test/test_uxfd_recent_work_gate.py test/test_uxfd_paper_alignment_contract.py` passed with `33 passed in 2.01s`.
+  - After integrating recent-work into the submission gate, `python -m scripts.uxfd_submission_gate --format json --allow-not-ready` reported `recent_work_policy_ready=true`, `recent_work_evidence_ready=false`, `recent_work_matrix_rows=7`, and `17` blocking findings; `python -m pytest -q test/test_uxfd_submission_gate.py test/test_uxfd_recent_work_gate.py test/test_uxfd_objective_audit.py` passed with `14 passed in 10.60s`.
 - Paper 01 `Explainable_FD_Toolkit` milestone:
   - Worker schema checks passed for benchmark, unified matrix, Captum, SHAP/LIME, and THU018 packs.
   - `pdflatex` failed on pre-existing Chinese Unicode/inputenc handling.
@@ -263,7 +265,7 @@ exist.
 - `scripts/uxfd_objective_audit.py` currently fails the active-objective completion audit because the TOP/GPU/artifact gates are not accepted, all seven papers remain non-submission-ready, and six paper submodules still have dirty working trees. The audit treats dirty paper submodules as a blocker before parent handoff; local Codex xhigh subagent launch evidence and synthesized `report.md`/`risks.md`/`test-log.md` are present.
 - `scripts/uxfd_gpu_queue.py --format shell --output paper/UXFD_paper/results/queue_launch_plan.sh --shard-dir paper/UXFD_paper/results/queue_launch_shards` now generates a non-executing 2x4090 launch plan with live preflight guards, device 0/1 round-robin binding, paper-local workdir wrappers for submodule-relative commands, and per-device shard scripts. The combined script has 97 launchable commands; `gpu0.sh` has 49 and `gpu1.sh` has 48. These scripts must not be treated as accepted evidence until the preflight passes and accepted run metadata is collected.
 - `scripts/uxfd_artifact_scaffold.py --output-root paper/UXFD_paper/results/accepted_run_templates` now generates 97 `run_meta.template.yaml` files plus a manifest for post-run metadata collection. The template root intentionally contains zero `run_meta.yaml` files, and `scripts/uxfd_artifact_gate.py` now rejects `accepted_evidence: false` and `TODO` placeholder values if a template is accidentally promoted without being filled.
-- `scripts/uxfd_artifact_gate.py --require-queue-coverage` now requires accepted `run_meta.yaml` files to cover every launchable queue row. `scripts/uxfd_submission_gate.py` uses that mode, so a partial artifact set cannot satisfy the final evidence gate.
+- `scripts/uxfd_artifact_gate.py --require-queue-coverage` now requires accepted `run_meta.yaml` files to cover every launchable queue row. `scripts/uxfd_submission_gate.py` uses that mode and now also consumes `scripts.uxfd_recent_work_gate`, so partial accepted artifacts or pending TOP representative artifacts cannot satisfy the final evidence gate.
 - `paper/UXFD_paper/results/artifact_gate_queue_coverage.md` records the current per-paper queue coverage summary. It currently shows `0/97` accepted queue rows covered because `paper/UXFD_paper/results/accepted_runs` does not exist yet.
 - `paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` now gives the concrete GPU execution order: live preflight, regenerate launch shards/templates, run `gpu0.sh`/`gpu1.sh`, promote filled metadata into `accepted_runs`, and run artifact/recent-work/submission/objective gates.
 - `paper/UXFD_paper/results/gpu_queue_live_preflight.json` records the current live preflight result: `accepted=false`, `nvidia_smi_ok=false`, `torch_cuda_available=false`, and `torch_cuda_device_count=0`.

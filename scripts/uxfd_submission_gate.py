@@ -10,6 +10,7 @@ import yaml
 
 from scripts.uxfd_artifact_gate import ArtifactGateReport, evaluate_artifact_gate
 from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, summarize_rows, validate_queue, expand_queue
+from scripts.uxfd_recent_work_gate import RecentWorkGateReport, evaluate_recent_work_gate
 
 
 GOAL_DIR = Path("paper/UXFD_paper/goal")
@@ -52,6 +53,10 @@ class SubmissionGateReport:
     artifact_gate_root: str
     artifact_gate_records: int
     artifact_gate_blockers: Tuple[str, ...]
+    recent_work_policy_ready: bool
+    recent_work_evidence_ready: bool
+    recent_work_matrix_rows: int
+    recent_work_blockers: Tuple[str, ...]
     queue_can_execute: bool
     queue_resource_reason: str
     queue_summary: Mapping[str, Any]
@@ -89,6 +94,7 @@ def _objective_checklist(
     papers: Sequence[PaperSubmissionGate],
     queue_path: Path,
     artifact_report: ArtifactGateReport,
+    recent_report: RecentWorkGateReport,
 ) -> Tuple[Mapping[str, str], ...]:
     items: List[Mapping[str, str]] = []
     for filename in REQUIRED_GOAL_FILES:
@@ -140,6 +146,16 @@ def _objective_checklist(
                 "requirement": "machine-readable GPU queue",
                 "evidence": str(queue_path),
                 "status": "met" if queue_path.exists() else "missing",
+            },
+            {
+                "requirement": "TOP recent-work policy and paper-local matrix coverage",
+                "evidence": "scripts.uxfd_recent_work_gate",
+                "status": "met" if recent_report.policy_ready else "not_met",
+            },
+            {
+                "requirement": "TOP representative accepted artifacts",
+                "evidence": str(GOAL_DIR / "09_gpu_execution_queue.yaml"),
+                "status": "met" if recent_report.evidence_ready else "not_met",
             },
             {
                 "requirement": "accepted run artifact metadata",
@@ -212,6 +228,16 @@ def evaluate_submission_gate(
             f"artifact gate blocked: {len(artifact_report.blockers)} blockers under "
             f"{artifact_report.artifact_root}"
         )
+    recent_report = evaluate_recent_work_gate(queue_path=queue_path)
+    if not recent_report.policy_ready:
+        blockers.append(
+            f"recent-work policy blocked: {len(recent_report.policy_blockers)} blockers"
+        )
+    if not recent_report.evidence_ready:
+        blockers.append(
+            f"recent-work evidence blocked: {len(recent_report.evidence_blockers)} "
+            "TOP representative blockers"
+        )
 
     ready = not blockers and len(papers) == 7 and all(item.submission_ready for item in papers)
     return SubmissionGateReport(
@@ -219,11 +245,20 @@ def evaluate_submission_gate(
         papers=tuple(papers),
         blockers=tuple(blockers),
         next_actions=_next_actions(queue_path),
-        objective_checklist=_objective_checklist(papers, queue_path, artifact_report),
+        objective_checklist=_objective_checklist(
+            papers,
+            queue_path,
+            artifact_report,
+            recent_report,
+        ),
         artifact_gate_accepted=artifact_report.accepted,
         artifact_gate_root=artifact_report.artifact_root,
         artifact_gate_records=len(artifact_report.records),
         artifact_gate_blockers=artifact_report.blockers,
+        recent_work_policy_ready=recent_report.policy_ready,
+        recent_work_evidence_ready=recent_report.evidence_ready,
+        recent_work_matrix_rows=len(recent_report.matrix_coverage),
+        recent_work_blockers=recent_report.blockers,
         queue_can_execute=queue_validation.can_execute,
         queue_resource_reason=queue_validation.resource_reason,
         queue_summary=summarize_rows(queue_rows),
@@ -243,6 +278,9 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Queue resource reason: {report.queue_resource_reason}",
         f"- Artifact gate accepted: `{report.artifact_gate_accepted}`",
         f"- Artifact gate records: `{report.artifact_gate_records}`",
+        f"- Recent-work policy ready: `{report.recent_work_policy_ready}`",
+        f"- Recent-work evidence ready: `{report.recent_work_evidence_ready}`",
+        f"- Recent-work matrix rows: `{report.recent_work_matrix_rows}`",
         f"- Blocking findings: `{len(report.blockers)}`",
         f"- Queue dry-run entries: `{report.queue_summary['total']}`",
         "",
