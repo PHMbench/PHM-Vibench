@@ -33,6 +33,10 @@ PAPER01_MATRIX = Path(
     "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER06_MATRIX = Path(
+    "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/"
+    "baseline_ablation_matrix.yaml"
+)
 
 LOW_TIER_MARKERS = (
     "Scientific Reports",
@@ -430,6 +434,57 @@ def test_toolkit_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     assert "Only one Toolkit-specific ablation command is currently bound" in blockers
     assert "No accepted TOP representative command/log/artifact mapping yet." in blockers
     assert "No SOTA or submission-ready infrastructure claim" in blockers
+
+
+def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
+    assert PAPER06_MATRIX.exists()
+    matrix = yaml.safe_load(PAPER06_MATRIX.read_text(encoding="utf-8"))
+
+    assert matrix["submission_ready"] is False
+    assert (
+        matrix["evidence_level"]
+        == "baseline config-target validated; proposition evidence partial"
+    )
+    assert len(matrix["proposition_evidence"]) >= 5
+    assert len(matrix["baselines"]) >= 6
+    assert len(matrix["ablations"]) >= 6
+    assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
+    assert all(
+        "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+        for entry in matrix["baselines"]
+    )
+
+    for entry in matrix["baselines"]:
+        assert entry["config_target_validated"] is True
+        assert "CUDA_VISIBLE_DEVICES=0" in entry["command"]
+        assert "python main.py --config" in entry["command"]
+        assert "pending" in entry["accepted_evidence_status"]
+
+    bound_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is True
+    ]
+    blocked_ablations = [
+        entry for entry in matrix["ablations"] if entry["config_target_validated"] is False
+    ]
+    assert len(bound_ablations) >= 6
+    assert len(blocked_ablations) >= 1
+    assert any("logit_scale=0.1" in entry["command"] for entry in bound_ablations)
+    assert any("logit_scale=1.0" in entry["command"] for entry in bound_ablations)
+    assert all(entry["command"].startswith("blocked:") for entry in blocked_ablations)
+
+    p2_entries = [
+        entry
+        for entry in matrix["proposition_evidence"]
+        if entry["id"].startswith("P2")
+    ]
+    assert len(p2_entries) >= 2
+    assert any("proposition_2_verified=false" in entry["current_result"] for entry in p2_entries)
+    assert any("does not override" in entry["accepted_evidence_status"] for entry in p2_entries)
+
+    blockers = "\n".join(matrix["strict_blockers"])
+    assert "P2 is internally inconsistent" in blockers
+    assert "Cross-method mapping report is scripted" in blockers
+    assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
 def test_readiness_matrix_tracks_baseline_ablation_and_sota_status() -> None:

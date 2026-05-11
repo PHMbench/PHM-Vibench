@@ -118,6 +118,7 @@
 - [x] T082 [P] Add Paper 05 Fuzzy-XFD command-bound seven-baseline and six-ablation matrix, run dummy smokes in `LQ_signal`, and keep real-data/GPU/rule/TOP/SOTA gates blocked.
 - [x] T083 [P] Add Paper 04 MoE command-bound six-baseline matrix, record partial expert-count ablation evidence and five blocked ablation hooks, and keep real-data/GPU/TOP/SOTA gates blocked.
 - [x] T084 [P] Add Paper 01 Toolkit command-bound six-baseline matrix, record one explain-extension ablation and five blocked Toolkit ablation hooks, and keep real-data/GPU/TOP/SOTA gates blocked.
+- [x] T085 [P] Add Paper 06 Neural-Symbolic command-bound six-baseline, proposition, mapping, and ablation matrix, run dummy/proposition hooks in `LQ_signal`, and keep P2/source-backed/GPU/TOP/SOTA gates blocked.
 
 ## Phase 8: Validation
 

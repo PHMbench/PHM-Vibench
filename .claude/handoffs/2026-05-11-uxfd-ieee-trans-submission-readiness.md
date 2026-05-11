@@ -8,7 +8,7 @@
 
 **Task:** Implement parent-level goal/spec workflow for seven UXFD IEEE Transactions paper submissions.
 **Phase:** planning-to-implementation setup
-**Progress:** parent control-plane artifacts created; paper-local manuscript/evidence work not started.
+**Progress:** parent control-plane artifacts created; Paper 01/04/05/06/07 have partial paper-local evidence checkpoints; Paper 02/03 remain the largest unbound paper-production gaps.
 
 ## What We Did
 
@@ -69,6 +69,7 @@ paper submodule and that each `VIBENCH.md` declares a local
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - submodule milestone commit `53e6d1b` adds a compilable evidence snapshot, updates `VIBENCH.md` and `configs/vibench/min.yaml`, adds `doc/T044_submission_readiness_evidence.md`, and fixes the NumPy bool serializer in `scripts/run_fuzzy_baseline.py`.
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - follow-up submodule commit `b82c05f` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records seven command-bound baselines, six supported fuzzy ablations, dummy-smoke metrics, and the remaining hard-threshold/safety/no-rule-output blockers.
 - `paper/UXFD_paper/Neuralsymbolic_theory` - submodule milestone commit `9139307` adds `report/T045_evidence_readiness.md`, updates `VIBENCH.md`, and fixes `simple_validation_demo.py` so failed P2 evidence is recorded as a boundary case; follow-up commit `e3e268d` tracks `configs/vibench/min.yaml`.
+- `paper/UXFD_paper/Neuralsymbolic_theory` - follow-up submodule commit `bea8a4a` adds `submission_prep/baseline_ablation_matrix.yaml` and `submission_prep/ieee_trans_readiness.md`, records six command-bound PHM-Vibench baselines, P1/P2/P3 proposition hooks, a scripted mapping hook, logic-strength sensitivity ablations, and the remaining P2/source-backed/GPU/TOP/SOTA blockers.
 - `paper/UXFD_paper/TII_operator_attention` - submodule milestone commit `10a3d16` adds/updates `VIBENCH.md`, `configs/vibench/min.yaml`, `code/synthetic_verification.py`, synthetic validation outputs, rejection-recovery notes, and `submission_prep/ieee_trans_readiness.md`; follow-up commit `e8f8994` expands synthetic validation to eight signal classes.
 - `paper/UXFD_paper/TII_operator_attention` - follow-up submodule commit `dd40adc` adds normalized canonical TeX entrypoint `manuscript/final_tex/main.tex`, updates `VIBENCH.md`, and records the compile gate in `submission_prep/ieee_trans_readiness.md`; follow-up commit `4315617` records the full `pdflatex`/`bibtex`/`pdflatex`/`pdflatex` compile flow; follow-up commit `e106fe8` fixes the five empty-year BibTeX warnings; follow-up commit `23990c0` binds a seven-baseline and six-ablation command matrix in `submission_prep/baseline_ablation_matrix.yaml`; follow-up commit `c5e960b` records dummy-smoke pass notes for B01/A01 and B02; follow-up commit `f306832` records B03-B05/B07 dummy-smoke pass notes and B06 Transformer import blocker; follow-up commit `0e037d9` records A02-A06 dummy-smoke pass notes so all six local ablation commands have dummy executable evidence; follow-up commit `2cae464` records B06 ConvTransformer dummy-smoke pass after restoring legacy model registration compatibility in the parent repo.
 
@@ -151,7 +152,13 @@ paper submodule and that each `VIBENCH.md` declares a local
   - `python -m py_compile simple_validation_demo.py experiments/proposition2_simple.py code/validate_mapping.py` passed.
   - `python simple_validation_demo.py` passed and correctly records P1 pass, P2 fail, P3 pass, `overall_theory_supported=false`.
   - `python -m scripts.config_inspect --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override trainer.num_epochs=1` resolved config/data paths but failed importing the pipeline because `pytorch_lightning` is missing.
-  - Remaining blockers: placeholder TeX, missing validation scripts/configs, no accepted CWRU/XJTU multi-seed baseline/ablation artifacts, source-backed mapping evidence missing.
+  - P00 proposed constrained NSN/TSPN_UXFD plus B01 no-symbolic NSN/TSPN_UXFD, B02 ResNet, B03 SincNet, B04 TFN, B05 WKN, and B06 ConvTransformer dummy smokes passed in `LQ_signal` with CPU fallback because GPU/NVML was unavailable.
+  - A03/A04 logic `logit_scale=0.1` and `logit_scale=1.0` dummy smokes passed in `LQ_signal` with CPU fallback.
+  - `python experiments/proposition2_simple.py` passed and rewrote `experiments/results/proposition2_12_14/simple_results.json` with a synthetic lower physics-informed sensitivity artifact; this does not override the failed P2 aggregate validation demo.
+  - `python code/validate_mapping.py` passed and generated `report/mapping_validation_report.json` plus `manuscript/figures/mapping_validation.png`; the matrix records this as scripted mapping only, not source-backed evidence.
+  - `submission_prep/baseline_ablation_matrix.yaml` now contains six command-bound baselines, seven ablation/proposition/mapping rows, TOP recent-work blocker statuses, and strict blockers for P2, source-backed mapping, GPU metadata, TOP representatives, manuscript placeholders, and SOTA.
+  - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed after adding the Paper 06 matrix contract test: `23 passed in 0.62s`.
+  - Remaining blockers: placeholder TeX, no accepted CWRU/XJTU multi-seed baseline/ablation artifacts, failed/inconsistent P2 support, source-backed mapping evidence missing, no TOP representative artifacts, no accepted 2x4090 metadata, SOTA blocked.
 
 ## Open Questions
 
