@@ -22,6 +22,14 @@ class Model(nn.Module):
 
     def __init__(self, args_model: Any, metadata: Any = None) -> None:
         super().__init__()
+        if bool(getattr(args_model, "use_true_mamba", False)):
+            try:
+                import mamba_ssm  # noqa: F401
+            except ImportError as exc:
+                raise ImportError(
+                    "use_true_mamba=true requires optional dependency mamba_ssm; "
+                    "the default mamba1d_backbone remains a stateless SSM placeholder"
+                ) from exc
         channels = int(getattr(args_model, "in_channels", getattr(args_model, "channels", 2)))
         hidden_dim = int(getattr(args_model, "hidden_dim", 64))
         condition_dim = int(getattr(args_model, "condition_dim", 32))
@@ -58,4 +66,3 @@ class Model(nn.Module):
         h = h + self.depthwise(h)
         h = self.film(h, cond)
         return self.out_proj(h)
-
