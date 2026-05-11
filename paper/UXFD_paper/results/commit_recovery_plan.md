@@ -20,6 +20,10 @@ It is not experiment evidence and does not make any paper submission-ready.
   - bounded dataset bridge and expert-count probe runner scripts.
   - parent static policy test blocks stale root, legacy GPU, and
     `main_com.py --config_dir` regressions.
+- Paper04 control-doc update is committed inside the submodule at `90ed3fe`:
+  - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
+  - maintained `main.py --config ...` and bounded expert-ablation probe commands.
+  - `innovation_contract.md` is bound from README, CORE, and paper blueprint.
 - Paper01 control-doc update is committed inside the submodule at `dff592b`:
   - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
   - executable commands use lowercase `paper/UXFD_paper/...` paths.
