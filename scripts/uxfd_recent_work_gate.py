@@ -12,6 +12,7 @@ import yaml
 
 DEFAULT_RECENT_WORK_README = Path("paper/UXFD_paper/goal/08_recent_work_citation_readme.md")
 DEFAULT_QUEUE = Path("paper/UXFD_paper/goal/09_gpu_execution_queue.yaml")
+DEFAULT_MATRIX_ROOT = Path("paper/UXFD_paper")
 
 LOW_TIER_MARKERS = (
     "Scientific Reports",
@@ -56,6 +57,17 @@ class PaperRecentWorkCoverage:
 
 
 @dataclass(frozen=True)
+class MatrixRecentWorkCoverage:
+    paper_id: str
+    matrix_path: str
+    top_ids: Tuple[str, ...]
+    top_count: int
+    has_2026: bool
+    unknown_ids: Tuple[str, ...]
+    policy_ready: bool
+
+
+@dataclass(frozen=True)
 class TopRepresentativeBinding:
     binding_id: str
     paper_id: str
@@ -77,6 +89,7 @@ class RecentWorkGateReport:
     top_2026_ids: Tuple[str, ...]
     low_tier_violations: Tuple[str, ...]
     per_paper_coverage: Tuple[PaperRecentWorkCoverage, ...]
+    matrix_coverage: Tuple[MatrixRecentWorkCoverage, ...]
     bindings: Tuple[TopRepresentativeBinding, ...]
     policy_blockers: Tuple[str, ...]
     evidence_blockers: Tuple[str, ...]
@@ -176,9 +189,39 @@ def _top_bindings(queue_path: Path) -> Tuple[TopRepresentativeBinding, ...]:
     return tuple(bindings)
 
 
+def _matrix_recent_work_coverage(
+    matrix_root: Path,
+    accepted_ids: Sequence[str],
+) -> Tuple[MatrixRecentWorkCoverage, ...]:
+    accepted_id_set = set(accepted_ids)
+    coverages: List[MatrixRecentWorkCoverage] = []
+    for matrix_path in sorted(matrix_root.glob("*/submission_prep/baseline_ablation_matrix.yaml")):
+        matrix = _load_yaml(matrix_path)
+        top_ids = tuple(
+            str(item.get("id", ""))
+            for item in matrix.get("top_recent_work", [])
+            if item.get("id")
+        )
+        unknown_ids = tuple(top_id for top_id in top_ids if top_id not in accepted_id_set)
+        has_2026 = any(top_id.startswith("RWTOP2026-") for top_id in top_ids)
+        coverages.append(
+            MatrixRecentWorkCoverage(
+                paper_id=str(matrix.get("paper_id", matrix_path.parent.parent.name)),
+                matrix_path=str(matrix_path),
+                top_ids=top_ids,
+                top_count=len(top_ids),
+                has_2026=has_2026,
+                unknown_ids=unknown_ids,
+                policy_ready=len(top_ids) >= 3 and has_2026 and not unknown_ids,
+            )
+        )
+    return tuple(coverages)
+
+
 def evaluate_recent_work_gate(
     recent_work_readme: Path = DEFAULT_RECENT_WORK_README,
     queue_path: Path = DEFAULT_QUEUE,
+    matrix_root: Path = DEFAULT_MATRIX_ROOT,
 ) -> RecentWorkGateReport:
     text = recent_work_readme.read_text(encoding="utf-8")
     accepted_pool_section = _section(text, "Accepted TOP Method Pool")
@@ -192,6 +235,7 @@ def evaluate_recent_work_gate(
         marker for marker in LOW_TIER_MARKERS if marker in accepted_pool_section
     )
     per_paper = _per_paper_coverage(text)
+    matrix_coverage = _matrix_recent_work_coverage(matrix_root, accepted_ids)
     bindings = _top_bindings(queue_path)
 
     policy_blockers: List[str] = []
@@ -218,6 +262,22 @@ def evaluate_recent_work_gate(
             policy_blockers.append(f"{coverage.paper}: missing 2026 TOP method")
         if not coverage.runnable_minimum:
             policy_blockers.append(f"{coverage.paper}: missing runnable minimum")
+    if len(matrix_coverage) != 7:
+        policy_blockers.append(
+            f"paper-local baseline/ablation matrices with TOP coverage: {len(matrix_coverage)}, not 7"
+        )
+    for coverage in matrix_coverage:
+        if coverage.top_count < 3:
+            policy_blockers.append(
+                f"{coverage.paper_id}: matrix has fewer than three TOP recent methods"
+            )
+        if not coverage.has_2026:
+            policy_blockers.append(f"{coverage.paper_id}: matrix missing 2026 TOP method")
+        if coverage.unknown_ids:
+            policy_blockers.append(
+                f"{coverage.paper_id}: matrix IDs absent from accepted TOP pool: "
+                + ", ".join(coverage.unknown_ids)
+            )
 
     queue_paper_ids = {
         str(item.get("paper_id", ""))
@@ -276,6 +336,7 @@ def evaluate_recent_work_gate(
         top_2026_ids=top_2026_ids,
         low_tier_violations=low_tier_violations,
         per_paper_coverage=per_paper,
+        matrix_coverage=matrix_coverage,
         bindings=bindings,
         policy_blockers=tuple(policy_blockers),
         evidence_blockers=evidence_blockers,
@@ -297,6 +358,7 @@ def render_markdown(report: RecentWorkGateReport) -> str:
         f"- Accepted TOP method rows: `{report.accepted_pool_rows}`",
         f"- 2026 TOP IDs: `{len(report.top_2026_ids)}`",
         f"- Low-tier violations: `{len(report.low_tier_violations)}`",
+        f"- Paper-local matrix coverage rows: `{len(report.matrix_coverage)}`",
         f"- TOP representative bindings: `{len(report.bindings)}`",
         "",
         "| Paper | TOP Methods | Has 2026 | Runnable Minimum | Policy Ready |",
@@ -307,6 +369,21 @@ def render_markdown(report: RecentWorkGateReport) -> str:
         lines.append(
             f"| `{coverage.paper}` | {coverage.top_count} | `{coverage.has_2026}` | "
             f"{runnable_minimum} | `{coverage.policy_ready}` |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Paper-Local Matrix Coverage",
+            "",
+            "| Paper ID | TOP Methods | Has 2026 | Unknown IDs | Policy Ready |",
+            "|---|---:|---:|---|---:|",
+        ]
+    )
+    for coverage in report.matrix_coverage:
+        unknown_ids = ", ".join(coverage.unknown_ids) if coverage.unknown_ids else "-"
+        lines.append(
+            f"| `{coverage.paper_id}` | {coverage.top_count} | `{coverage.has_2026}` | "
+            f"{unknown_ids} | `{coverage.policy_ready}` |"
         )
     lines.extend(
         [
@@ -332,12 +409,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate UXFD TOP recent-work readiness")
     parser.add_argument("--recent-work-readme", type=Path, default=DEFAULT_RECENT_WORK_README)
     parser.add_argument("--queue", type=Path, default=DEFAULT_QUEUE)
+    parser.add_argument("--matrix-root", type=Path, default=DEFAULT_MATRIX_ROOT)
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--allow-not-ready", action="store_true")
     args = parser.parse_args(argv)
 
-    report = evaluate_recent_work_gate(args.recent_work_readme, args.queue)
+    report = evaluate_recent_work_gate(args.recent_work_readme, args.queue, args.matrix_root)
     if args.format == "json":
         output = json.dumps(build_payload(report), indent=2) + "\n"
     else:

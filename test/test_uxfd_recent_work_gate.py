@@ -21,6 +21,11 @@ def test_recent_work_gate_policy_ready_but_artifact_evidence_pending() -> None:
     assert all(item.top_count >= 3 for item in report.per_paper_coverage)
     assert all(item.has_2026 for item in report.per_paper_coverage)
     assert all(item.policy_ready for item in report.per_paper_coverage)
+    assert len(report.matrix_coverage) == 7
+    assert all(item.top_count >= 3 for item in report.matrix_coverage)
+    assert all(item.has_2026 for item in report.matrix_coverage)
+    assert all(not item.unknown_ids for item in report.matrix_coverage)
+    assert all(item.policy_ready for item in report.matrix_coverage)
     assert len(report.bindings) == 7
     assert all(binding.external_work_id.startswith("RWTOP2026-") for binding in report.bindings)
     assert "RWTOP2026-CALTSFM" not in {
@@ -54,6 +59,7 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert payload["evidence_ready"] is False
     assert payload["accepted_pool_rows"] >= 10
     assert len(payload["per_paper_coverage"]) == 7
+    assert len(payload["matrix_coverage"]) == 7
     assert len(payload["bindings"]) == 7
     assert len(payload["evidence_blockers"]) == 7
 
@@ -63,6 +69,7 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert "Ready: `False`" in text
     assert "Policy ready: `True`" in text
     assert "Evidence ready: `False`" in text
+    assert "## Paper-Local Matrix Coverage" in text
     assert "## TOP Representative Bindings" in text
     assert "## Blockers" in text
 

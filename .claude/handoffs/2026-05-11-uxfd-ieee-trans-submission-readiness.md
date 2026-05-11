@@ -79,6 +79,10 @@ Paper 07 now has a submodule-local rejection-recovery evidence contract that
 turns prior rejection risks into accepted-artifact gates and aligns the matrix
 with the 2024-2026 TOP quota; this is control evidence only, not SOTA or
 submission readiness.
+All seven paper-local matrices now include 2026 TOP IDs from the accepted pool;
+the recent-work gate audits both the parent goal quota and the submodule matrix
+quota, but final evidence remains pending until TOP representative artifacts
+exist.
 
 ## Decisions Made
 
@@ -109,7 +113,7 @@ submission readiness.
 - `.specify/feature.json` - active feature pointer set to `specs/006-uxfd-ieee-trans-submission-readiness`.
 - `AGENTS.md` - current Spec Kit plan pointer updated to the new feature plan.
 - `test/test_uxfd_paper_alignment_contract.py` - added TOP-source quota and low-tier exclusion checks.
-- `scripts/uxfd_recent_work_gate.py` and `test/test_uxfd_recent_work_gate.py` - added a non-executing TOP recent-work gate that separates citation-policy readiness from pending TOP representative artifact evidence.
+- `scripts/uxfd_recent_work_gate.py` and `test/test_uxfd_recent_work_gate.py` - added a non-executing TOP recent-work gate that separates citation-policy readiness from pending TOP representative artifact evidence, and now rejects paper-local matrix TOP IDs that are missing from the accepted TOP pool or lack 2026 coverage.
 - `scripts/uxfd_objective_audit.py` and `test/test_uxfd_objective_audit.py` - added a non-executing prompt-to-artifact audit that maps the active objective to goal files, Spec Kit files, handoff, team evidence, paper matrices, TOP/GPU/artifact gates, and final readiness.
 - `test/test_uxfd_paper_alignment_contract.py` - now also requires the Paper 07 rejection-recovery evidence contract, 2024-2026 TOP quota coverage, Q0 preflight stop rule, accepted artifact root, and non-SOTA/non-submission-ready wording.
 - `specs/006-uxfd-ieee-trans-submission-readiness/` - updated spec, plan, data model, contract, checklist, quickstart, and tasks for TOP-source recent-work gates.
@@ -134,6 +138,7 @@ submission readiness.
 - `paper/UXFD_paper/Neuralsymbolic_theory` - current uncommitted follow-up adds `scripts/run_mapping_ablation_smoke.py` and `scripts/test_mapping_ablation_smoke.py`, converting the remove-cross-method-mapping ablation blocker into a non-accepted smoke runner while keeping source-backed mapping and real train/eval impact evidence blocked.
 - `paper/UXFD_paper/TII_operator_attention` - submodule milestone commit `10a3d16` adds/updates `VIBENCH.md`, `configs/vibench/min.yaml`, `code/synthetic_verification.py`, synthetic validation outputs, rejection-recovery notes, and `submission_prep/ieee_trans_readiness.md`; follow-up commit `e8f8994` expands synthetic validation to eight signal classes.
 - `paper/UXFD_paper/TII_operator_attention` - follow-up submodule commit `dd40adc` adds normalized canonical TeX entrypoint `manuscript/final_tex/main.tex`, updates `VIBENCH.md`, and records the compile gate in `submission_prep/ieee_trans_readiness.md`; follow-up commit `4315617` records the full `pdflatex`/`bibtex`/`pdflatex`/`pdflatex` compile flow; follow-up commit `e106fe8` fixes the five empty-year BibTeX warnings; follow-up commit `23990c0` binds a seven-baseline and six-ablation command matrix in `submission_prep/baseline_ablation_matrix.yaml`; follow-up commit `c5e960b` records dummy-smoke pass notes for B01/A01 and B02; follow-up commit `f306832` records B03-B05/B07 dummy-smoke pass notes and B06 Transformer import blocker; follow-up commit `0e037d9` records A02-A06 dummy-smoke pass notes so all six local ablation commands have dummy executable evidence; follow-up commit `2cae464` records B06 ConvTransformer dummy-smoke pass after restoring legacy model registration compatibility in the parent repo; follow-up commit `b186622` adds `submission_prep/rejection_recovery_contract.md`, aligns the matrix with TimeMixer/SARAD/CATCH/DADA/PGRFNet/GTM/CSLSTM/TSPulse TOP quotas, and keeps all SOTA/submission claims blocked until accepted artifacts exist.
+- Six additional submodule commits align paper-local matrices with 2026 TOP quota entries from the accepted pool: Toolkit `08d682f`, 1D-2D `8f06a95`, LLM `f943354`, MoE `dd190e6`, Fuzzy-XFD `86310fe`, and Neural-symbolic `1f0db4d`. These are citation/control updates only; TOP artifacts are still pending.
 - `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/CODEX_SUBAGENT_LAUNCH.md` - records six Codex xhigh read-only subagents after the external Claude Team launch path was policy-blocked.
 - `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` - current uncommitted follow-up changes Paper03 TOP representative binding from literature-only `RWTOP2026-CALTSFM` to representative-runnable `RWTOP2026-TIMESEG`; `scripts/uxfd_recent_work_gate.py` now rejects literature-only IDs in TOP representative bindings.
 
@@ -184,6 +189,7 @@ submission readiness.
   - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py test/test_collect_uxfd_runs.py test/test_baseline_mapping_contract.py` - passed after adding the Paper 07 matrix contract test: `24 passed in 2.58s`.
   - After the Paper 07 rejection-recovery contract, `git diff --check` inside the submodule passed; `python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_recent_work_gate.py test/test_uxfd_submission_gate.py test/test_uxfd_paper_alignment_contract.py` passed with `42 passed in 8.55s`; `python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready` reported `policy_ready=true`, `evidence_ready=false`; `python -m scripts.uxfd_objective_audit --format json --allow-not-achieved` still reported `achieved=false`.
   - After adding the parent Paper 07 rejection-recovery contract test, `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed with `29 passed in 1.00s`.
+  - After syncing 2026 TOP entries into all paper-local matrices, `python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready` reported `policy_ready=true`, `evidence_ready=false`, and `matrix_coverage` rows for all seven papers; `python -m pytest -q test/test_uxfd_recent_work_gate.py test/test_uxfd_paper_alignment_contract.py` passed with `33 passed in 2.01s`.
 - Paper 01 `Explainable_FD_Toolkit` milestone:
   - Worker schema checks passed for benchmark, unified matrix, Captum, SHAP/LIME, and THU018 packs.
   - `pdflatex` failed on pre-existing Chinese Unicode/inputenc handling.

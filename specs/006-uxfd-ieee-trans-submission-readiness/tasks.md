@@ -160,6 +160,8 @@
 - [x] T124 [P] Add `scripts/uxfd_readiness_backlog.py`, generate `paper/UXFD_paper/results/readiness_backlog.md`, and map GPU, artifact, Paper07-first, per-paper, and dirty-review blockers into a single prioritized execution backlog.
 - [x] T125 [P] Add Paper 07 rejection-recovery evidence contract in submodule commit `b186622`, align the Paper 07 matrix with the 2024-2026 TOP quota, and keep SOTA/submission gates blocked until accepted industrial artifacts exist.
 - [x] T126 [P] Add a parent contract test that requires the Paper 07 rejection-recovery contract, 2024-2026 TOP quota coverage, Q0 preflight stop rule, accepted artifact root, and explicit non-SOTA/non-submission-ready wording.
+- [x] T127 [P] Align the other six paper-local matrices with their 2026 TOP quotas in submodule commits: Toolkit `08d682f`, 1D-2D `8f06a95`, LLM `f943354`, MoE `dd190e6`, Fuzzy-XFD `86310fe`, and Neural-symbolic `1f0db4d`.
+- [x] T128 [P] Extend `scripts/uxfd_recent_work_gate.py` and tests so recent-work policy also audits paper-local matrix TOP IDs against the accepted TOP pool, then export `paper/UXFD_paper/results/recent_work_gate_current.{md,json}` with policy ready and artifact evidence pending.
 
 ## Phase 8: Validation
 
