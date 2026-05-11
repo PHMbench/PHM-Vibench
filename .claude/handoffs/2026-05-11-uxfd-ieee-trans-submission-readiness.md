@@ -117,6 +117,7 @@ exist.
 - `scripts/uxfd_recent_work_gate.py` and `test/test_uxfd_recent_work_gate.py` - added a non-executing TOP recent-work gate that separates citation-policy readiness from pending TOP representative artifact evidence, and now rejects paper-local matrix TOP IDs that are missing from the accepted TOP pool or lack 2026 coverage.
 - `scripts/uxfd_objective_audit.py` and `test/test_uxfd_objective_audit.py` - added a non-executing prompt-to-artifact audit that maps the active objective to goal files, Spec Kit files, handoff, team evidence, paper matrices, TOP/GPU/artifact gates, and final readiness.
 - `test/test_uxfd_paper_alignment_contract.py` - now also requires the Paper 07 rejection-recovery evidence contract, 2024-2026 TOP quota coverage, Q0 preflight stop rule, accepted artifact root, and non-SOTA/non-submission-ready wording.
+- `test/test_uxfd_artifact_scaffold.py` - now also verifies the committed `accepted_run_templates` manifest and all 97 `run_meta.template.yaml` files match the current launchable queue rows and remain non-accepted templates.
 - `specs/006-uxfd-ieee-trans-submission-readiness/` - updated spec, plan, data model, contract, checklist, quickstart, and tasks for TOP-source recent-work gates.
 - `paper/UXFD_paper/goal/00_overall_goal.md` and all seven paper goal files - added compute budget and `resource-blocked` exact-reproduction policy.
 - `test/test_uxfd_paper_alignment_contract.py` - added regression tests for tracked submodule reproduction contracts and local GPU binding declarations.
@@ -192,6 +193,7 @@ exist.
   - After adding the parent Paper 07 rejection-recovery contract test, `python -m pytest -q test/test_uxfd_paper_alignment_contract.py` passed with `29 passed in 1.00s`.
   - After syncing 2026 TOP entries into all paper-local matrices, `python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready` reported `policy_ready=true`, `evidence_ready=false`, and `matrix_coverage` rows for all seven papers; `python -m pytest -q test/test_uxfd_recent_work_gate.py test/test_uxfd_paper_alignment_contract.py` passed with `33 passed in 2.01s`.
   - After integrating recent-work into the submission gate, `python -m scripts.uxfd_submission_gate --format json --allow-not-ready` reported `recent_work_policy_ready=true`, `recent_work_evidence_ready=false`, `recent_work_matrix_rows=7`, and `17` blocking findings; `python -m pytest -q test/test_uxfd_submission_gate.py test/test_uxfd_recent_work_gate.py test/test_uxfd_objective_audit.py` passed with `14 passed in 10.60s`.
+  - After adding the persisted artifact-template regression, `python -m pytest -q test/test_uxfd_artifact_scaffold.py test/test_uxfd_artifact_gate.py test/test_uxfd_submission_gate.py` passed with `14 passed in 5.42s`.
 - Paper 01 `Explainable_FD_Toolkit` milestone:
   - Worker schema checks passed for benchmark, unified matrix, Captum, SHAP/LIME, and THU018 packs.
   - `pdflatex` failed on pre-existing Chinese Unicode/inputenc handling.

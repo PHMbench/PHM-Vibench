@@ -163,6 +163,7 @@
 - [x] T127 [P] Align the other six paper-local matrices with their 2026 TOP quotas in submodule commits: Toolkit `08d682f`, 1D-2D `8f06a95`, LLM `f943354`, MoE `dd190e6`, Fuzzy-XFD `86310fe`, and Neural-symbolic `1f0db4d`.
 - [x] T128 [P] Extend `scripts/uxfd_recent_work_gate.py` and tests so recent-work policy also audits paper-local matrix TOP IDs against the accepted TOP pool, then export `paper/UXFD_paper/results/recent_work_gate_current.{md,json}` with policy ready and artifact evidence pending.
 - [x] T129 [P] Integrate the recent-work gate into `scripts/uxfd_submission_gate.py`, export `paper/UXFD_paper/results/submission_gate_current.{md,json}`, and keep final submission readiness blocked while TOP representative artifacts are pending.
+- [x] T130 [P] Add a persisted scaffold regression test proving `paper/UXFD_paper/results/accepted_run_templates/manifest.json` and the 97 `run_meta.template.yaml` files match the current launchable queue rows and remain non-accepted evidence.
 
 ## Phase 8: Validation
 
