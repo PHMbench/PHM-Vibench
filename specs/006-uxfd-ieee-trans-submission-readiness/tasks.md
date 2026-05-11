@@ -114,6 +114,7 @@
 - [x] T078 [P] Run Paper 07 B01/A01 and B02 dummy smokes in `LQ_signal`, record CPU-fallback metrics, and keep industrial/GPU/SOTA gates blocked.
 - [x] T079 [P] Run Paper 07 B03-B05 and B07 dummy smokes, record six total passing baseline smokes, and record B06 Transformer import blocker.
 - [x] T080 [P] Run Paper 07 A02-A06 dummy smokes, record all six ablation smokes passing, and keep industrial/GPU/SOTA gates blocked.
+- [x] T081 [P] Restore legacy `register_model` compatibility, run Paper 07 B06 ConvTransformer dummy smoke with `model.input_dim=2`, and record seven total passing baseline smokes while keeping industrial/GPU/SOTA gates blocked.
 
 ## Phase 8: Validation
 

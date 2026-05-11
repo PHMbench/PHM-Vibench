@@ -270,12 +270,9 @@ def test_operator_attention_baseline_ablation_matrix_is_command_bound_not_ready(
     assert matrix["evidence_level"] == "config-target validated only"
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
-    assert (
-        sum(
-            "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
-            for entry in matrix["baselines"]
-        )
-        >= 6
+    assert all(
+        "pass in LQ_signal" in entry.get("dummy_smoke_status", "")
+        for entry in matrix["baselines"]
     )
     assert (
         sum(
