@@ -1160,3 +1160,41 @@ current environment exposes no CUDA devices, accepted run metadata is absent,
 seven TOP representative artifacts are still pending, every paper matrix
 remains `submission_ready: false`, and several paper submodules still contain
 unreviewed dirty work outside this Paper07 source-hygiene checkpoint.
+
+## 2026-05-12 Update: Paper03 Low-Tier Draft-Reference Commit
+
+Committed the Paper03 draft-reference portion of the low-tier cleanup into the
+`LLM_Explainable_FD_Toolkit` submodule. This is a source-hygiene checkpoint
+only; it does not satisfy the accepted LLM evidence-package, latency,
+hallucination, TOP representative, GPU metadata, or SOTA gates.
+
+**Paper03 submodule commit:**
+
+- `9966af6 chore: remove low-tier draft references`
+
+**Submodule files committed:**
+
+- `manuscript/drafts/paper.md`
+- `manuscript/drafts/references.bib`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - now records Paper03 submodule SHA `9966af6` and the draft
+    source-hygiene checkpoint files.
+
+**Validation passed:**
+
+```bash
+rg -n "IEEE Access|journal=\{Electronics\}|journal=\{Scientific Reports\}|Scientific Reports|MDPI|10\.1109/ACCESS|10\.3390|10\.1038/s41598" paper/UXFD_paper/LLM_Explainable_FD_Toolkit/manuscript/drafts/paper.md paper/UXFD_paper/LLM_Explainable_FD_Toolkit/manuscript/drafts/references.bib
+git -C paper/UXFD_paper/LLM_Explainable_FD_Toolkit diff --check -- manuscript/drafts/paper.md manuscript/drafts/references.bib
+python -m pytest -q test/test_uxfd_low_tier_source_audit.py
+```
+
+Results:
+
+```text
+no low-tier draft marker matches
+diff --check clean
+3 passed in 12.68s
+```
