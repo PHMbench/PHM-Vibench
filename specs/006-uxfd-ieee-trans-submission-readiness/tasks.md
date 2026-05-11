@@ -105,6 +105,7 @@
 - [ ] T044 [P] Replace Fuzzy-XFD placeholders and bind rule-level artifacts in `paper/UXFD_paper/Paper_fuzzy_XFD/`.
 - [ ] T045 [P] Bind Neuralsymbolic propositions to runnable validation artifacts in `paper/UXFD_paper/Neuralsymbolic_theory/`.
 - [ ] T046 [P] Normalize Operator Attention canonical entrypoint and run DSOA v2 baseline/ablation/SOTA gate in `paper/UXFD_paper/TII_operator_attention/`.
+- [x] T071 [P] Expand TII synthetic validation from six to eight signal classes and regenerate submodule-local JSON/report/figures.
 
 ## Phase 8: Validation
 

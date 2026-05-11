@@ -60,7 +60,7 @@ submission-ready.
 - `paper/UXFD_paper/MOE_explainable` - submodule milestone commit `c2adc5a` adds `T043_SUBMISSION_READINESS_EVIDENCE.md`.
 - `paper/UXFD_paper/Paper_fuzzy_XFD` - submodule milestone commit `53e6d1b` adds a compilable evidence snapshot, updates `VIBENCH.md` and `configs/vibench/min.yaml`, adds `doc/T044_submission_readiness_evidence.md`, and fixes the NumPy bool serializer in `scripts/run_fuzzy_baseline.py`.
 - `paper/UXFD_paper/Neuralsymbolic_theory` - submodule milestone commit `9139307` adds `report/T045_evidence_readiness.md`, updates `VIBENCH.md`, and fixes `simple_validation_demo.py` so failed P2 evidence is recorded as a boundary case.
-- `paper/UXFD_paper/TII_operator_attention` - submodule milestone commit `10a3d16` adds/updates `VIBENCH.md`, `configs/vibench/min.yaml`, `code/synthetic_verification.py`, synthetic validation outputs, rejection-recovery notes, and `submission_prep/ieee_trans_readiness.md`.
+- `paper/UXFD_paper/TII_operator_attention` - submodule milestone commit `10a3d16` adds/updates `VIBENCH.md`, `configs/vibench/min.yaml`, `code/synthetic_verification.py`, synthetic validation outputs, rejection-recovery notes, and `submission_prep/ieee_trans_readiness.md`; follow-up commit `e8f8994` expands synthetic validation to eight signal classes.
 
 **Validation:**
 
@@ -89,7 +89,7 @@ submission-ready.
   - `python -m pytest -q test/test_uxfd_paper_alignment_contract.py test/test_collect_uxfd_runs.py test/test_baseline_mapping_contract.py` - passed: `21 passed in 2.22s`.
   - `git diff --check` on the touched goal/spec/test/handoff/doc paths - passed.
 - Paper 07 `TII_operator_attention` milestone:
-  - `python code/synthetic_verification.py` from the submodule - passed and generated submodule-local figures, JSON, and report; current coverage is 6 signal classes, mean physics consistency `0.999`, mean explainability `0.299`.
+  - `python code/synthetic_verification.py` from the submodule - passed and generated submodule-local figures, JSON, and report; current coverage is 8 signal classes, mean physics consistency `0.999`, mean explainability `0.261`.
   - `CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1` - failed in base env because `pytorch_lightning` is missing.
   - `eval "$(conda shell.bash hook)" && conda activate LQ_signal && CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1` - passed as dummy-data smoke; PyTorch reported GPU unavailable in this sandbox, so this is wiring evidence, not GPU industrial proof.
 - Paper 01 `Explainable_FD_Toolkit` milestone:
@@ -137,7 +137,7 @@ submission-ready.
 - The broad PHM literature inventory may still contain low-tier sources; it is not sufficient for UXFD TOP submission positioning.
 - Exact reproduction of large TOP methods may be `resource-blocked` under 2x4090; use labelled representative runs instead of calling them exact baselines.
 - Claude Team launch is prepared but not run because the external-service launch was policy-blocked.
-- Paper 07 remains partial, not submission-ready: only 6 synthetic signal classes are covered, no accepted 6+ same-protocol baseline matrix exists yet, ablation evidence is not command-bound, TOP representatives are not mapped to local runs, and SOTA wording is still blocked.
+- Paper 07 remains partial, not submission-ready: the 8-signal synthetic gate is now passed, but no accepted 6+ same-protocol baseline matrix exists yet, ablation evidence is not command-bound, TOP representatives are not mapped to local runs, industrial GPU proof is missing, and SOTA wording is still blocked.
 - Papers 01-06 also remain partial or blocked. The new submodule commits are
   evidence-gate checkpoints, not final paper-package commits.
 
