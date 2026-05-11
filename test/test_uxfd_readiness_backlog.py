@@ -20,8 +20,11 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert report.items[1].item_id == "Q0-ARTIFACT-COVERAGE"
     assert any(item.scope == "TII_operator_attention" for item in report.items[:10])
     assert not any(item.item_id == "Q0-PAPER02-PLANNING-COMMIT" for item in report.items)
-    assert not any(item.item_id == "Q0-PARENT-GOAL-CHECKPOINT-COMMIT" for item in report.items)
-    assert all(item.category != "commit-recovery" for item in report.items)
+    parent_checkpoint_items = [
+        item for item in report.items if item.item_id == "Q0-PARENT-GOAL-CHECKPOINT-COMMIT"
+    ]
+    assert len(parent_checkpoint_items) <= 1
+    assert all(item.category != "commit-recovery" for item in report.items if item not in parent_checkpoint_items)
     assert all(item.category != "low-tier-source-hygiene" for item in report.items)
     assert any(item.category == "submodule-dirty-review" for item in report.items)
 

@@ -10,6 +10,10 @@ It is not experiment evidence and does not make any paper submission-ready.
 - Paper02 planning update is committed inside the submodule at `205aaea`:
   - `paper/UXFD_paper/1D-2D_fusion_explainable/plan/EXPERIMENT_PLAN_补充.md`
   - `paper/UXFD_paper/1D-2D_fusion_explainable/program.md`
+- Paper02 runner-policy update is committed inside the submodule at `e3325fe`:
+  - current-root `python main.py --config ...` runner policy.
+  - local GPU `0,1` only policy.
+  - local HDF5 dataset loader support for Paper02 dry-run validation.
 - Parent goal/control checkpoint is edited but uncommitted.
 - Parent `git add`/`git commit` still requires explicit index-write approval;
   stage only the listed parent goal/control paths.
@@ -84,6 +88,7 @@ git add -- \
   test/test_uxfd_artifact_gate.py \
   test/test_uxfd_low_tier_source_audit.py \
   test/test_uxfd_gpu_queue.py \
+  test/test_uxfd_paper02_runner_policy.py \
   test/test_uxfd_objective_audit.py \
   test/test_uxfd_readiness_backlog.py \
   test/test_uxfd_submission_gate.py \
@@ -103,7 +108,7 @@ Validate and commit:
 git diff --cached --check
 python -m pytest -q test/test_uxfd_goal_clarity.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py
 git add -f -- paper/UXFD_paper/results/low_tier_source_audit.json
-git status --short -- paper/UXFD_paper/1D-2D_fusion_explainable paper/UXFD_paper/goal paper/UXFD_paper/results scripts/uxfd_low_tier_source_audit.py scripts/uxfd_objective_audit.py scripts/uxfd_readiness_backlog.py scripts/uxfd_submission_gate.py scripts/uxfd_submodule_dirty_triage.py test/test_uxfd_artifact_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py test/test_uxfd_submodule_dirty_triage.py
+git status --short -- paper/UXFD_paper/1D-2D_fusion_explainable paper/UXFD_paper/goal paper/UXFD_paper/results scripts/uxfd_low_tier_source_audit.py scripts/uxfd_objective_audit.py scripts/uxfd_readiness_backlog.py scripts/uxfd_submission_gate.py scripts/uxfd_submodule_dirty_triage.py test/test_uxfd_artifact_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_gpu_queue.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_paper02_runner_policy.py test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py test/test_uxfd_submodule_dirty_triage.py
 git commit -m "chore: sync paper02 planning and UXFD goal audits"
 ```
 
