@@ -1390,6 +1390,44 @@ Remaining Paper04 dirty content is limited to `CORE.md`, `README.md`,
 `paper_blueprint.md`, manuscript drafts, evidence-binding scripts, and
 untracked evidence/design documents that require owner review.
 
+## 2026-05-12 Update: Paper01 Planning Checkpoint
+
+Committed the Paper01 Toolkit planning checkpoint. This reduces local dirty
+state without promoting benchmark outputs or generated figures to accepted
+submission evidence.
+
+**Paper01 submodule commit:**
+
+- `cfdd7ec docs: add toolkit experiment supplement plan`
+
+**Submodule files committed:**
+
+- `plan/EXPERIMENT_PLAN_补充.md`
+- `program.md`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - now records Paper01 submodule SHA `cfdd7ec` and the planning checkpoint,
+    while keeping accepted Toolkit baselines, ablations, TOP representative,
+    GPU metadata, and SOTA gates blocked.
+
+**Validation passed:**
+
+```bash
+git -C paper/UXFD_paper/Explainable_FD_Toolkit diff --cached --check
+```
+
+Result:
+
+```text
+diff --cached --check clean
+```
+
+Remaining Paper01 dirty content includes benchmark outputs, figures,
+manuscript/evidence documents, and scripts that require owner review before any
+submodule commit.
+
 ## 2026-05-12 Update: Paper01/Paper02 Runtime Workspace Ignore Checkpoints
 
 Committed focused `.gitignore` updates in Paper01 and Paper02 to keep local

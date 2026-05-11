@@ -54,7 +54,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | submodule dirty triage report | `paper/UXFD_paper/results/submodule_dirty_triage.md` | exists |
 | `met` | readiness execution backlog | `paper/UXFD_paper/results/readiness_backlog.md` | exists |
 | `met` | low-tier source audit report | `paper/UXFD_paper/results/low_tier_source_audit.md` | exists |
-| `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:32, 1D-2D_fusion_explainable:33, MOE_explainable:13 |
+| `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:30, 1D-2D_fusion_explainable:33, MOE_explainable:13 |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
 | `not_met` | TII_operator_attention: IEEE Transactions submission-ready | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
@@ -79,7 +79,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 
 ## Blockers
 
-- paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:32, 1D-2D_fusion_explainable:33, MOE_explainable:13
+- paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:30, 1D-2D_fusion_explainable:33, MOE_explainable:13
 - TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5
 - 1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5
 - Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5
