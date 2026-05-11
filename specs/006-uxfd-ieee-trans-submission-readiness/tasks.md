@@ -158,6 +158,7 @@
 - [x] T122 [P] Commit the verified non-accepted smoke/evidence gate updates inside five owning paper submodules: Toolkit `b9c82e5`, 1D-2D `e6f9b58`, LLM `f40255f`, MoE `e85c246`, and Neural-symbolic `fb9b98d`, while leaving unrelated dirty submodule work untouched.
 - [x] T123 [P] Add `scripts/uxfd_submodule_dirty_triage.py`, generate `paper/UXFD_paper/results/submodule_dirty_triage.md`, and map that report into the objective audit so residual dirty submodule work is actionable without auto-committing unrelated files.
 - [x] T124 [P] Add `scripts/uxfd_readiness_backlog.py`, generate `paper/UXFD_paper/results/readiness_backlog.md`, and map GPU, artifact, Paper07-first, per-paper, and dirty-review blockers into a single prioritized execution backlog.
+- [x] T125 [P] Add Paper 07 rejection-recovery evidence contract in submodule commit `b186622`, align the Paper 07 matrix with the 2024-2026 TOP quota, and keep SOTA/submission gates blocked until accepted industrial artifacts exist.
 
 ## Phase 8: Validation
 
