@@ -513,9 +513,17 @@ def test_fuzzy_xfd_baseline_ablation_matrix_is_command_bound_not_ready() -> None
     matrix = yaml.safe_load(PAPER05_MATRIX.read_text(encoding="utf-8"))
 
     assert matrix["submission_ready"] is False
-    assert matrix["evidence_level"] == "config-target validated only"
+    assert (
+        matrix["evidence_level"]
+        == "config-target validated; reviewer-ablation smoke runner and manuscript checkpoint bound"
+    )
+    assert matrix["manuscript"]["entrypoint"] == "manuscript/final_tex/main.tex"
+    assert "pdflatex" in matrix["manuscript"]["compile_command"]
+    assert "pass" in matrix["manuscript"]["compile_status"]
+    assert "evidence-snapshot only" in matrix["manuscript"]["evidence_status"]
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
+    assert len(matrix["reviewer_requested_ablations"]) == 3
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
     assert (
         sum("pass in LQ_signal" in entry.get("dummy_smoke_status", "") for entry in matrix["baselines"])
@@ -545,9 +553,15 @@ def test_fuzzy_xfd_baseline_ablation_matrix_is_command_bound_not_ready() -> None
             or "blocked" in entry["accepted_evidence_status"]
         )
 
+    for entry in matrix["reviewer_requested_ablations"]:
+        assert entry["config_target_validated"] is True
+        assert "run_reviewer_ablation_smoke.py" in entry["command"]
+        assert "accepted_evidence=false" in entry["evidence_status"]
+        assert "pending same-protocol" in entry["accepted_evidence_status"]
+
     blockers = "\n".join(matrix["strict_blockers"])
     assert "No accepted CWRU/XJTU or industrial multi-seed baseline table yet." in blockers
-    assert "Hard-threshold, safety-fallback, and no-rule-output" in blockers
+    assert "Hard-threshold, safety-fallback, and no-rule-output" not in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
@@ -668,6 +682,7 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
     )
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
     assert "test_accuracy=0.39" in matrix["paper_local_demo"]["dummy_smoke_metric"]
+    assert "PHM-Vibench HDF5" in matrix["paper_local_demo"]["real_h5_smoke_status"]
     assert "Target 8 is out of bounds" in matrix["paper_local_demo"]["failed_sanity_check"]
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
@@ -698,14 +713,19 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
         for entry in matrix["ablations"]
     )
     assert any(
+        "FFT-only forward now passes" in entry.get("evidence_status", "")
+        for entry in matrix["ablations"]
+    )
+    assert any(
         "run_fusion_ablation_smoke.py --condition legacy_ablation_surface" in entry["command"]
         for entry in matrix["ablations"]
     )
 
     blockers = "\n".join(matrix["strict_blockers"])
-    assert "FFT-only signal-layer ablation currently fails" in blockers
-    assert "Legacy ablation runner assumes GPU 2" in blockers
-    assert "NatureMi" in blockers
+    assert "FFT-only signal-layer ablation currently fails" not in blockers
+    assert "Legacy ablation runner assumes GPU 2" not in blockers
+    assert "Paper-local demo falls back" not in blockers
+    assert "NatureMi" not in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
 
 
@@ -785,9 +805,13 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
     assert matrix["submission_ready"] is False
     assert (
         matrix["evidence_level"]
-        == "baseline config-target validated; proposition and mapping evidence partial"
+        == "baseline config-target validated; proposition evidence partial; source-backed mapping and manuscript checkpoint bound"
     )
-    assert len(matrix["proposition_evidence"]) >= 6
+    assert matrix["manuscript"]["entrypoint"] == "manuscript/final_tex/main.tex"
+    assert "pdflatex" in matrix["manuscript"]["compile_command"]
+    assert "pass" in matrix["manuscript"]["compile_status"]
+    assert "not final submission-ready text" in matrix["manuscript"]["evidence_status"]
+    assert len(matrix["proposition_evidence"]) >= 7
     assert len(matrix["baselines"]) >= 6
     assert len(matrix["ablations"]) >= 6
     assert "pass in LQ_signal" in matrix["proposed"]["dummy_smoke_status"]
@@ -816,6 +840,18 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
         "run_mapping_ablation_smoke.py --condition no_mapping" in entry["command"]
         for entry in bound_ablations
     )
+    assert any(
+        entry["id"] == "MAP-SRC"
+        and entry["artifact"] == "report/source_backed_mapping_report.json"
+        and "accepted_evidence=false" in entry["current_result"]
+        for entry in matrix["proposition_evidence"]
+    )
+    assert any(
+        entry["id"] == "A06"
+        and "build_source_backed_mapping.py" in entry["command"]
+        and "source_backed=true" in entry["evidence_status"]
+        for entry in bound_ablations
+    )
 
     p2_entries = [
         entry
@@ -828,8 +864,17 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "P2 is internally inconsistent" in blockers
-    assert "Cross-method mapping report is scripted" in blockers
+    assert "Cross-method mapping report is scripted" not in blockers
+    assert "Manuscript entrypoint remains placeholder-heavy" not in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
+
+    main_tex = PAPER06_MATRIX.parents[1] / "manuscript/final_tex/main.tex"
+    manuscript_text = main_tex.read_text(encoding="utf-8")
+    assert "\\documentclass[journal]{IEEEtran}" in manuscript_text
+    assert "../../figures/example.pdf" not in manuscript_text
+    assert "[论文标题]" not in manuscript_text
+    assert "[请在此处" not in manuscript_text
+    assert "mapping_validation.png" in manuscript_text
 
 
 def test_readiness_matrix_tracks_baseline_ablation_and_sota_status() -> None:

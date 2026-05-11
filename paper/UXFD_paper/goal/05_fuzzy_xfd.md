@@ -11,7 +11,9 @@
 
 - Manuscript entrypoint: `manuscript/final_tex/main.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current compile blocker: placeholder TeX content and missing `../../figures/example.pdf`.
+- Current manuscript status: evidence-snapshot TeX compiles after binding
+  local fuzzy-rule figures; final IEEE TFS text, accepted rule metrics, safety
+  cases, and same-protocol results remain blocked.
 
 ## Required Evidence
 

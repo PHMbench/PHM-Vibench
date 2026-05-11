@@ -9,10 +9,12 @@
 
 ## Canonical Package
 
-- Manuscript entrypoint: `paper_draft/NMI_Paper1_Fusion1D2D.tex` is currently named as canonical by the placeholder TeX note.
+- Manuscript entrypoint: `paper_draft/NMI_Paper1_Fusion1D2D.tex` is the canonical IEEEtran checkpoint.
 - Non-canonical placeholder: `manuscript/final_tex/main.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current compile blocker: placeholder/final entrypoint mismatch and TeX path text with underscores.
+- Current manuscript blocker: the canonical IEEEtran checkpoint compiles, but
+  unresolved citations/references and placeholder figure boxes must be replaced
+  with accepted artifacts before final submission.
 
 ## Required Evidence
 

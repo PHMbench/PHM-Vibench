@@ -9,10 +9,12 @@
 
 ## Canonical Package
 
-- Current candidate: `bare_jrnl_new_sample4.tex`
-- Missing convention: no `manuscript/final_tex/main.tex` was discovered in the prior Slice 4 audit.
+- Canonical manuscript entrypoint: `manuscript/final_tex/main.tex`
+- Source manuscript consumed by canonical entrypoint: `bare_jrnl_new_sample4.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current compile blocker: canonical final entrypoint is not normalized.
+- Current manuscript status: normalized IEEE entrypoint compiles; final
+  evidence-table updates, accepted industrial artifacts, TOP representative
+  evidence, GPU metadata, and SOTA gate remain blocked.
 
 ## Required Evidence
 

@@ -11,7 +11,10 @@
 
 - Manuscript entrypoint: `manuscript/final_tex/main.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current compile blocker: placeholder TeX content and missing `../../figures/example.pdf`.
+- Current manuscript status: IEEEtran checkpoint compiles and no longer
+  references the old missing `../../figures/example.pdf`; final
+  evidence-bearing text remains blocked until accepted proposition, mapping,
+  baseline, TOP, and GPU artifacts exist.
 
 ## Required Evidence
 

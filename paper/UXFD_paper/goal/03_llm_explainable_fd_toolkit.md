@@ -9,9 +9,11 @@
 
 ## Canonical Package
 
-- Manuscript entrypoint: blocked; no final manuscript entrypoint discovered in the prior Slice 4 audit.
+- Manuscript entrypoint: `manuscript/ieee_tii/main.tex` is the conservative IEEE compile checkpoint.
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current compile blocker: missing canonical final TeX package.
+- Current manuscript blocker: the compile checkpoint exists, but final
+  evidence-bearing text, accepted LLM evidence packages, resolved
+  citations/references, and latency/hallucination tables remain blocked.
 
 ## Required Evidence
 

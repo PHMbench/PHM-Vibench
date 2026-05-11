@@ -135,6 +135,12 @@
       "details": "exists"
     },
     {
+      "requirement": "continuation handoff document",
+      "evidence": ".claude/handoffs/2026-05-12-uxfd-goal-continuation.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "Claude Team task spec",
       "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md",
       "status": "met",
@@ -231,10 +237,16 @@
       "details": "exists"
     },
     {
+      "requirement": "low-tier source audit report",
+      "evidence": "paper/UXFD_paper/results/low_tier_source_audit.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "paper submodule working trees clean before parent handoff",
       "evidence": "git -C <paper_submodule> status --porcelain",
       "status": "not_met",
-      "details": "dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1"
+      "details": "dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1, TII_operator_attention:2"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -264,7 +276,7 @@
       "requirement": "1D-2D_fusion_explainable: IEEE Transactions submission-ready",
       "evidence": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml",
       "status": "not_met",
-      "details": "strict blockers remaining=9"
+      "details": "strict blockers remaining=5"
     },
     {
       "requirement": "Explainable_FD_Toolkit: 6+ baselines and 6+ ablations",
@@ -300,7 +312,7 @@
       "requirement": "Paper_fuzzy_XFD: IEEE Transactions submission-ready",
       "evidence": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml",
       "status": "not_met",
-      "details": "strict blockers remaining=7"
+      "details": "strict blockers remaining=6"
     },
     {
       "requirement": "Neuralsymbolic_theory: 6+ baselines and 6+ ablations",
@@ -312,7 +324,7 @@
       "requirement": "Neuralsymbolic_theory: IEEE Transactions submission-ready",
       "evidence": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml",
       "status": "not_met",
-      "details": "strict blockers remaining=7"
+      "details": "strict blockers remaining=5"
     },
     {
       "requirement": "LLM_Explainable_FD_Toolkit: 6+ baselines and 6+ ablations",
@@ -331,6 +343,12 @@
       "evidence": "paper/UXFD_paper/goal/08_recent_work_citation_readme.md",
       "status": "met",
       "details": "accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0"
+    },
+    {
+      "requirement": "low-tier source hygiene",
+      "evidence": "paper/UXFD_paper/results/low_tier_source_audit.md",
+      "status": "met",
+      "details": "findings=263, blockers=0, triage=263"
     },
     {
       "requirement": "TOP representative accepted artifacts",
@@ -358,20 +376,20 @@
     }
   ],
   "blockers": [
-    "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1",
+    "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1, TII_operator_attention:2",
     "TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5",
-    "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=9",
+    "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
     "Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5",
     "MOE_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
-    "Paper_fuzzy_XFD: IEEE Transactions submission-ready: strict blockers remaining=7",
-    "Neuralsymbolic_theory: IEEE Transactions submission-ready: strict blockers remaining=7",
+    "Paper_fuzzy_XFD: IEEE Transactions submission-ready: strict blockers remaining=6",
+    "Neuralsymbolic_theory: IEEE Transactions submission-ready: strict blockers remaining=5",
     "LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=8",
     "TOP representative accepted artifacts: pending_or_blocked_bindings=7",
     "2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session",
     "accepted run artifact metadata: records=0, blockers=3",
     "cross-paper submission gate: ready=False, blockers=17"
   ],
-  "met": 47,
+  "met": 50,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0

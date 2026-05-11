@@ -24,12 +24,8 @@
       "strict_blockers": [
         "No accepted CWRU/XJTU multi-seed six-baseline table yet.",
         "No true Fusion1D2D same-protocol 1D-only, 2D-only, no-statistical, no-alignment, late-fusion, or no-explainability ablation package yet.",
-        "Paper-local demo falls back from real dataset import because THU_006or018_basic is unavailable via the current import path.",
-        "FFT-only signal-layer ablation currently fails with a skip-connection dimensionality mismatch.",
-        "Legacy ablation runner assumes GPU 2 and stale THU_018/unified_baseline paths, violating the 2x4090 goal.",
         "No accepted TOP representative command/log/artifact mapping yet.",
         "No GPU model/runtime metadata from local GPUs 0,1 yet.",
-        "Canonical TeX still depends on a missing NatureMi class and is not an IEEE Transactions compile gate.",
         "No SOTA claim is allowed from this matrix alone."
       ]
     },
@@ -73,7 +69,6 @@
         "No accepted safety-case package with sample IDs, membership values, and decision paths yet.",
         "No local TOP representative command/log/artifact mapping yet.",
         "No GPU model/runtime metadata from local GPUs 0,1 yet.",
-        "Hard-threshold, safety-fallback, and no-rule-output reviewer ablations remain implementation blockers.",
         "No SOTA claim is allowed from this matrix alone."
       ]
     },
@@ -87,9 +82,7 @@
         "No accepted CWRU/XJTU multi-seed baseline table yet.",
         "No accepted GPU model/runtime metadata from local GPUs 0,1 yet.",
         "P2 is internally inconsistent across synthetic hooks and simple_validation_demo currently records P2 as failed.",
-        "Cross-method mapping report is scripted and not yet source-backed against sibling submodules.",
         "No accepted TOP representative command/log/artifact mapping yet.",
-        "Manuscript entrypoint remains placeholder-heavy and still references a missing example figure.",
         "No SOTA claim is allowed from this matrix alone."
       ]
     },
@@ -115,15 +108,15 @@
     "TII_operator_attention: submission_ready is false",
     "TII_operator_attention: 5 strict blockers remain",
     "1D-2D_fusion_explainable: submission_ready is false",
-    "1D-2D_fusion_explainable: 9 strict blockers remain",
+    "1D-2D_fusion_explainable: 5 strict blockers remain",
     "Explainable_FD_Toolkit: submission_ready is false",
     "Explainable_FD_Toolkit: 5 strict blockers remain",
     "MOE_explainable: submission_ready is false",
     "MOE_explainable: 5 strict blockers remain",
     "Paper_fuzzy_XFD: submission_ready is false",
-    "Paper_fuzzy_XFD: 7 strict blockers remain",
+    "Paper_fuzzy_XFD: 6 strict blockers remain",
     "Neuralsymbolic_theory: submission_ready is false",
-    "Neuralsymbolic_theory: 7 strict blockers remain",
+    "Neuralsymbolic_theory: 5 strict blockers remain",
     "LLM_Explainable_FD_Toolkit: submission_ready is false",
     "LLM_Explainable_FD_Toolkit: 8 strict blockers remain",
     "gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session",
@@ -292,6 +285,11 @@
       "status": "met"
     },
     {
+      "requirement": "low-tier source hygiene",
+      "evidence": "paper/UXFD_paper/results/low_tier_source_audit.md",
+      "status": "met"
+    },
+    {
       "requirement": "TOP representative accepted artifacts",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
       "status": "not_met"
@@ -327,6 +325,11 @@
     "TOP-Q6-TIMESLIVER: TOP representative artifacts are still pending_gpu_and_artifacts",
     "TOP-Q7-TIMESEG: TOP representative artifacts are still pending_gpu_and_artifacts"
   ],
+  "low_tier_source_ready": true,
+  "low_tier_source_findings": 263,
+  "low_tier_source_blocker_count": 0,
+  "low_tier_source_triage_count": 263,
+  "low_tier_source_blockers": [],
   "queue_can_execute": false,
   "queue_resource_reason": "blocked; no accepted GPU evidence can be generated in this session",
   "queue_summary": {

@@ -8,17 +8,20 @@
 - Recent-work policy ready: `True`
 - Recent-work evidence ready: `False`
 - Recent-work matrix rows: `7`
+- Low-tier source hygiene ready: `True`
+- Low-tier source blockers: `0`
+- Low-tier source triage markers: `263`
 - Blocking findings: `17`
 - Queue dry-run entries: `104`
 
 | Paper | Ready | Baselines | Ablations | Strict blockers |
 |---|---:|---:|---:|---:|
 | `TII_operator_attention` | `False` | 7 | 6 | 5 |
-| `1D-2D_fusion_explainable` | `False` | 6 | 7 | 9 |
+| `1D-2D_fusion_explainable` | `False` | 6 | 7 | 5 |
 | `Explainable_FD_Toolkit` | `False` | 6 | 6 | 5 |
 | `MOE_explainable` | `False` | 6 | 6 | 5 |
-| `Paper_fuzzy_XFD` | `False` | 7 | 6 | 7 |
-| `Neuralsymbolic_theory` | `False` | 6 | 7 | 7 |
+| `Paper_fuzzy_XFD` | `False` | 7 | 6 | 6 |
+| `Neuralsymbolic_theory` | `False` | 6 | 7 | 5 |
 | `LLM_Explainable_FD_Toolkit` | `False` | 7 | 7 | 8 |
 
 ## Blockers
@@ -26,15 +29,15 @@
 - TII_operator_attention: submission_ready is false
 - TII_operator_attention: 5 strict blockers remain
 - 1D-2D_fusion_explainable: submission_ready is false
-- 1D-2D_fusion_explainable: 9 strict blockers remain
+- 1D-2D_fusion_explainable: 5 strict blockers remain
 - Explainable_FD_Toolkit: submission_ready is false
 - Explainable_FD_Toolkit: 5 strict blockers remain
 - MOE_explainable: submission_ready is false
 - MOE_explainable: 5 strict blockers remain
 - Paper_fuzzy_XFD: submission_ready is false
-- Paper_fuzzy_XFD: 7 strict blockers remain
+- Paper_fuzzy_XFD: 6 strict blockers remain
 - Neuralsymbolic_theory: submission_ready is false
-- Neuralsymbolic_theory: 7 strict blockers remain
+- Neuralsymbolic_theory: 5 strict blockers remain
 - LLM_Explainable_FD_Toolkit: submission_ready is false
 - LLM_Explainable_FD_Toolkit: 8 strict blockers remain
 - gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session
@@ -72,6 +75,7 @@
 - `met` 6+ baselines and 6+ ablations per paper: submission_prep/baseline_ablation_matrix.yaml
 - `met` machine-readable GPU queue: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `met` TOP recent-work policy and paper-local matrix coverage: scripts.uxfd_recent_work_gate
+- `met` low-tier source hygiene: paper/UXFD_paper/results/low_tier_source_audit.md
 - `not_met` TOP representative accepted artifacts: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `not_met` accepted run artifact metadata: paper/UXFD_paper/results/accepted_runs
 - `not_met` submission readiness achieved: all paper matrices submission_ready

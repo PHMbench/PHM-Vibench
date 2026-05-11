@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `47`
+- Met: `50`
 - Not met: `11`
 - Blocked: `1`
 - Unverified: `0`
@@ -36,6 +36,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | Spec Kit artifact checklists/requirements.md | `specs/006-uxfd-ieee-trans-submission-readiness/checklists/requirements.md` | exists |
 | `met` | Spec Kit artifact checklists/submission-readiness.md | `specs/006-uxfd-ieee-trans-submission-readiness/checklists/submission-readiness.md` | exists |
 | `met` | handoff document | `.claude/handoffs/2026-05-11-uxfd-ieee-trans-submission-readiness.md` | exists |
+| `met` | continuation handoff document | `.claude/handoffs/2026-05-12-uxfd-goal-continuation.md` | exists |
 | `met` | Claude Team task spec | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md` | exists |
 | `met` | Claude Team launch log | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/LAUNCH_LOG.md` | exists |
 | `met` | Codex xhigh subagent launch log | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/CODEX_SUBAGENT_LAUNCH.md` | exists |
@@ -52,23 +53,25 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | artifact queue coverage report | `paper/UXFD_paper/results/artifact_gate_queue_coverage.md` | exists |
 | `met` | submodule dirty triage report | `paper/UXFD_paper/results/submodule_dirty_triage.md` | exists |
 | `met` | readiness execution backlog | `paper/UXFD_paper/results/readiness_backlog.md` | exists |
-| `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1 |
+| `met` | low-tier source audit report | `paper/UXFD_paper/results/low_tier_source_audit.md` | exists |
+| `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1, TII_operator_attention:2 |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
 | `not_met` | TII_operator_attention: IEEE Transactions submission-ready | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
 | `met` | 1D-2D_fusion_explainable: 6+ baselines and 6+ ablations | `paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml` | baselines=6, ablations=7, submission_ready=False |
-| `not_met` | 1D-2D_fusion_explainable: IEEE Transactions submission-ready | `paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=9 |
+| `not_met` | 1D-2D_fusion_explainable: IEEE Transactions submission-ready | `paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
 | `met` | Explainable_FD_Toolkit: 6+ baselines and 6+ ablations | `paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml` | baselines=6, ablations=6, submission_ready=False |
 | `not_met` | Explainable_FD_Toolkit: IEEE Transactions submission-ready | `paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
 | `met` | MOE_explainable: 6+ baselines and 6+ ablations | `paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml` | baselines=6, ablations=6, submission_ready=False |
 | `not_met` | MOE_explainable: IEEE Transactions submission-ready | `paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
 | `met` | Paper_fuzzy_XFD: 6+ baselines and 6+ ablations | `paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
-| `not_met` | Paper_fuzzy_XFD: IEEE Transactions submission-ready | `paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=7 |
+| `not_met` | Paper_fuzzy_XFD: IEEE Transactions submission-ready | `paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=6 |
 | `met` | Neuralsymbolic_theory: 6+ baselines and 6+ ablations | `paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml` | baselines=6, ablations=7, submission_ready=False |
-| `not_met` | Neuralsymbolic_theory: IEEE Transactions submission-ready | `paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=7 |
+| `not_met` | Neuralsymbolic_theory: IEEE Transactions submission-ready | `paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
 | `met` | LLM_Explainable_FD_Toolkit: 6+ baselines and 6+ ablations | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=7, submission_ready=False |
 | `not_met` | LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=8 |
 | `met` | TOP recent-work policy | `paper/UXFD_paper/goal/08_recent_work_citation_readme.md` | accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0 |
+| `met` | low-tier source hygiene | `paper/UXFD_paper/results/low_tier_source_audit.md` | findings=263, blockers=0, triage=263 |
 | `not_met` | TOP representative accepted artifacts | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | pending_or_blocked_bindings=7 |
 | `blocked` | 2x4090 GPU queue executable | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | blocked; no accepted GPU evidence can be generated in this session |
 | `not_met` | accepted run artifact metadata | `paper/UXFD_paper/results/accepted_runs` | records=0, blockers=3 |
@@ -76,13 +79,13 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 
 ## Blockers
 
-- paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:28, LLM_Explainable_FD_Toolkit:2, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1
+- paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1, TII_operator_attention:2
 - TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5
-- 1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=9
+- 1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5
 - Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5
 - MOE_explainable: IEEE Transactions submission-ready: strict blockers remaining=5
-- Paper_fuzzy_XFD: IEEE Transactions submission-ready: strict blockers remaining=7
-- Neuralsymbolic_theory: IEEE Transactions submission-ready: strict blockers remaining=7
+- Paper_fuzzy_XFD: IEEE Transactions submission-ready: strict blockers remaining=6
+- Neuralsymbolic_theory: IEEE Transactions submission-ready: strict blockers remaining=5
 - LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=8
 - TOP representative accepted artifacts: pending_or_blocked_bindings=7
 - 2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session

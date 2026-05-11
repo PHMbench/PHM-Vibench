@@ -3,18 +3,19 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `95`
+- Dirty entries: `109`
 
 ## Summary
 
 | Submodule | Total | Modified | Untracked | Categories |
 |---|---:|---:|---:|---|
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | 28 | 14 | 14 | agent_workspace=3, experiment_output=2, generated_or_result_artifact=1, manuscript_draft=5, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=10 |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | 38 | 24 | 14 | agent_workspace=3, experiment_output=2, generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=5, project_document=4, source_or_experiment_script=15, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 38 | 19 | 19 | agent_workspace=3, experiment_output=18, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=4, unclassified=1 |
-| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | 2 | 0 | 2 | planning_or_contract_draft=1, session_workspace=1 |
+| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | 4 | 2 | 2 | manuscript_draft=2, planning_or_contract_draft=1, session_workspace=1 |
 | `paper/UXFD_paper/MOE_explainable` | 25 | 10 | 15 | agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=10 |
 | `paper/UXFD_paper/Neuralsymbolic_theory` | 1 | 0 | 1 | planning_or_contract_draft=1 |
 | `paper/UXFD_paper/Paper_fuzzy_XFD` | 1 | 0 | 1 | planning_or_contract_draft=1 |
+| `paper/UXFD_paper/TII_operator_attention` | 2 | 2 | 0 | unclassified=2 |
 
 ## Triage Rules
 
@@ -66,18 +67,28 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_shap_lime_analysis.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `CORE.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README.md` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README_T041_SUBMISSION_READINESS.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `best_model.pth` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `code/utils/datasets.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/experiments.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/final_tex/main.tex` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/paper.md` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/references.bib` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `paper_blueprint.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `paper_draft/NMI_Paper1_Fusion1D2D.tex` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `paper_draft/references.bib` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_moe.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_operator_attention.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_tspn.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_3seed_stability_test.py` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_ablation_studies.sh` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_ablation_study.py` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_fusion_ablation_smoke.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_minimal_demo.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_multi_dataset_validation.py` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/test_fusion_ablation_smoke.py` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `submission_prep/baseline_ablation_matrix.yaml` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `submission_prep/ieee_trans_readiness.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.agent/` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.claude/` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `agent_workspace` | `preserve_or_ignore_session_workspace` | `.codex/` |
@@ -92,6 +103,8 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_quantitative_explainability.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/sync_truth_first_manuscript.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/truth_audit.py` |
+| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/drafts/paper.md` |
+| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/drafts/references.bib` |
 | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
 | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `??` | `session_workspace` | `preserve_or_ignore_session_workspace` | `sessions/` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `CORE.md` |
@@ -121,3 +134,5 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/sync_truth_first_manuscript.py` |
 | `paper/UXFD_paper/Paper_fuzzy_XFD` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
 | `paper/UXFD_paper/Neuralsymbolic_theory` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
+| `paper/UXFD_paper/TII_operator_attention` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `bare_jrnl_new_sample4.tex` |
+| `paper/UXFD_paper/TII_operator_attention` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `ref.bib` |

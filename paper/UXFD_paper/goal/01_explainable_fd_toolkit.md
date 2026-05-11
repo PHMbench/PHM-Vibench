@@ -11,7 +11,10 @@
 
 - Manuscript entrypoint: `manuscript/final_tex/main.tex`
 - Reproduction contract: `VIBENCH.md` and `configs/vibench/min.yaml`
-- Current compile blocker: `../../figures/example.pdf` placeholder path in the final TeX entrypoint.
+- Current manuscript blocker: the old missing `../../figures/example.pdf`
+  path and first benchmark table are patched in the T040 evidence checkpoint,
+  but `manuscript/final_tex/main.tex` still contains generic title, abstract,
+  method, discussion, and conclusion placeholders.
 
 ## Required Evidence
 
