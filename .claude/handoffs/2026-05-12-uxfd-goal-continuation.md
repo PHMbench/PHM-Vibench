@@ -1237,3 +1237,39 @@ Results:
 ```text
 diff --cached --check clean for both planning checkpoints
 ```
+
+## 2026-05-12 Update: Paper03 Planning Checkpoint Committed
+
+Committed the remaining Paper03 planning file and ignored the local `sessions/`
+workspace directory. The session JSON files are preserved locally but are not
+accepted evidence and are not tracked.
+
+**Paper03 submodule commit:**
+
+- `c7cc3ad docs: add llm experiment supplement plan`
+
+**Submodule files committed:**
+
+- `.gitignore`
+- `plan/EXPERIMENT_PLAN_补充.md`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - now records Paper03 submodule SHA `c7cc3ad` and the planning checkpoint,
+    while keeping accepted LLM evidence-package, TOP representative, GPU
+    metadata, latency, hallucination, and SOTA gates blocked.
+
+**Validation passed:**
+
+```bash
+rg -n "accepted|submission_ready|SOTA|state-of-the-art|Scientific Reports|MDPI|IEEE Access|journal=\{Electronics\}|10\.1109/ACCESS|10\.3390|10\.1038/s41598" paper/UXFD_paper/LLM_Explainable_FD_Toolkit/plan/EXPERIMENT_PLAN_补充.md
+git -C paper/UXFD_paper/LLM_Explainable_FD_Toolkit diff --cached --check
+```
+
+Results:
+
+```text
+no prohibited claim or low-tier marker matches in the planning checkpoint
+diff --cached --check clean
+```

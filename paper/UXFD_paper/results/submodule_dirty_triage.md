@@ -3,7 +3,7 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `103`
+- Dirty entries: `101`
 
 ## Summary
 
@@ -11,7 +11,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 |---|---:|---:|---:|---|
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | 38 | 24 | 14 | agent_workspace=3, experiment_output=2, generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=5, project_document=4, source_or_experiment_script=15, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 38 | 19 | 19 | agent_workspace=3, experiment_output=18, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=4, unclassified=1 |
-| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | 2 | 0 | 2 | planning_or_contract_draft=1, session_workspace=1 |
 | `paper/UXFD_paper/MOE_explainable` | 25 | 10 | 15 | agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=10 |
 
 ## Triage Rules
@@ -100,8 +99,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_quantitative_explainability.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/sync_truth_first_manuscript.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/truth_audit.py` |
-| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
-| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `??` | `session_workspace` | `preserve_or_ignore_session_workspace` | `sessions/` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `CORE.md` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `README.md` |
 | `paper/UXFD_paper/MOE_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `code/moe_model.py` |
