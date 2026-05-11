@@ -3,7 +3,7 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `109`
+- Dirty entries: `107`
 
 ## Summary
 
@@ -15,7 +15,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/MOE_explainable` | 25 | 10 | 15 | agent_workspace=3, experiment_output=2, manuscript_draft=3, planning_or_contract_draft=5, project_document=2, source_or_experiment_script=10 |
 | `paper/UXFD_paper/Neuralsymbolic_theory` | 1 | 0 | 1 | planning_or_contract_draft=1 |
 | `paper/UXFD_paper/Paper_fuzzy_XFD` | 1 | 0 | 1 | planning_or_contract_draft=1 |
-| `paper/UXFD_paper/TII_operator_attention` | 2 | 2 | 0 | unclassified=2 |
 
 ## Triage Rules
 
@@ -134,5 +133,3 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/sync_truth_first_manuscript.py` |
 | `paper/UXFD_paper/Paper_fuzzy_XFD` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
 | `paper/UXFD_paper/Neuralsymbolic_theory` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `plan/EXPERIMENT_PLAN_补充.md` |
-| `paper/UXFD_paper/TII_operator_attention` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `bare_jrnl_new_sample4.tex` |
-| `paper/UXFD_paper/TII_operator_attention` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `ref.bib` |

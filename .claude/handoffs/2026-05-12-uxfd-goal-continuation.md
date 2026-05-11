@@ -213,10 +213,10 @@ blocked=1
 cross-paper submission gate blockers=18
 ```
 
-**New explicit blocker:**
+**New explicit blocker at that checkpoint:**
 
 - `low-tier source hygiene`: `findings=278`, `blockers=15`, `triage=263`.
-- Current blocker examples include IEEE Access in `1D-2D_fusion_explainable` and `LLM_Explainable_FD_Toolkit` manuscript/reference files, Electronics in `LLM_Explainable_FD_Toolkit/manuscript/drafts/references.bib`, and IEEE Transactions on Instrumentation and Measurement entries in `TII_operator_attention/ref.bib`.
+- Blocker examples included IEEE Access in `1D-2D_fusion_explainable` and `LLM_Explainable_FD_Toolkit` manuscript/reference files, Electronics in `LLM_Explainable_FD_Toolkit/manuscript/drafts/references.bib`, and IEEE Transactions on Instrumentation and Measurement entries in `TII_operator_attention/ref.bib`.
 
 **Immediate next step added:**
 
@@ -1115,3 +1115,48 @@ Paper02 PDF: /tmp/uxfd_paper02_tex/NMI_Paper1_Fusion1D2D.pdf
 2 passed in 2.26s
 3 passed in 2.31s
 ```
+
+## 2026-05-12 Update: Paper07 Low-Tier Source-Hygiene Commit
+
+Committed the Paper07 source-hygiene portion of the low-tier cleanup into the
+`TII_operator_attention` submodule. This removes the remaining active IEEE TIM
+dependencies from the paper source checkpoint without claiming accepted
+industrial evidence.
+
+**Paper07 submodule commit:**
+
+- `6478584 chore: remove low-tier TIM references`
+
+**Submodule files committed:**
+
+- `bare_jrnl_new_sample4.tex`
+- `ref.bib`
+- `bare_jrnl_new_sample4.bbl`
+
+**Parent files updated:**
+
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`
+  - now records Paper07 submodule SHA `6478584` and the source-hygiene
+    checkpoint files.
+
+**Validation passed:**
+
+```bash
+rg -n "Huo_2020_entropy|chen_feature_2023|chen_knowledge-informed_2024|IEEE Transactions on Instrumentation and Measurement|Instrumentation and Measurement|Hu2022|Tang2022|liu_sinc-based_2023|an_interpretable_2022|mao_interpretable_2022|10\.1109/TIM" paper/UXFD_paper/TII_operator_attention/bare_jrnl_new_sample4.tex paper/UXFD_paper/TII_operator_attention/ref.bib paper/UXFD_paper/TII_operator_attention/bare_jrnl_new_sample4.bbl
+git -C paper/UXFD_paper/TII_operator_attention diff --check -- bare_jrnl_new_sample4.tex ref.bib bare_jrnl_new_sample4.bbl
+python -m pytest -q test/test_uxfd_low_tier_source_audit.py
+```
+
+Results:
+
+```text
+no low-tier TIM marker matches
+diff --check clean
+3 passed in 12.24s
+```
+
+The active goal remains incomplete: Q0 GPU preflight is blocked because the
+current environment exposes no CUDA devices, accepted run metadata is absent,
+seven TOP representative artifacts are still pending, every paper matrix
+remains `submission_ready: false`, and several paper submodules still contain
+unreviewed dirty work outside this Paper07 source-hygiene checkpoint.

@@ -246,7 +246,7 @@
       "requirement": "paper submodule working trees clean before parent handoff",
       "evidence": "git -C <paper_submodule> status --porcelain",
       "status": "not_met",
-      "details": "dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1, TII_operator_attention:2"
+      "details": "dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -376,7 +376,7 @@
     }
   ],
   "blockers": [
-    "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1, TII_operator_attention:2",
+    "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:38, 1D-2D_fusion_explainable:38, LLM_Explainable_FD_Toolkit:4, MOE_explainable:25, Paper_fuzzy_XFD:1, Neuralsymbolic_theory:1",
     "TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5",
     "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
     "Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5",
