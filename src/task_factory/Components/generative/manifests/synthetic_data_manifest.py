@@ -20,6 +20,13 @@ def _normalization_has_params(normalization: dict[str, Any]) -> bool:
     return bool(params_artifact and params_hash)
 
 
+def _has_evidence_value(value: Any) -> bool:
+    if value is None:
+        return False
+    text = str(value).strip().lower()
+    return bool(text) and text not in {"unspecified", "missing", "none", "null"}
+
+
 def _leakage_checks_passed(leakage_checks: dict[str, Any]) -> bool:
     nearest = str(leakage_checks.get("nearest_neighbor_check", "")).lower()
     return bool(leakage_checks.get("split_guard_passed")) and nearest in {"passed", "pass", "ok"}
@@ -51,6 +58,8 @@ def build_synthetic_data_manifest(
     leakage_checks: dict[str, Any] | None = None,
     condition_sampling_policy: str = "match_train_distribution",
     condition_counts: dict[str, int] | None = None,
+    metric_status_reason_recorded: bool = False,
+    sampler_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if source_split is None:
         raise ValueError("source_split is required")
@@ -78,18 +87,37 @@ def build_synthetic_data_manifest(
             "nearest_neighbor_check": "not_run",
         }
     )
+    counts = condition_counts or {}
+    evidence = {
+        "protocol_hash": _has_evidence_value(protocol_hash),
+        "config_hash": _has_evidence_value(config_hash),
+        "dependency_lock_hash": _has_evidence_value(dependency_lock_hash),
+        "normalization_params": normalization["params_recorded"],
+        "leakage_checks": _leakage_checks_passed(checks),
+        "condition_sampling_policy": _has_evidence_value(condition_sampling_policy),
+        "condition_counts": bool(counts),
+        "metric_status_reason_recorded": bool(metric_status_reason_recorded),
+    }
     benchmark_ready = (
-        protocol_hash != "unspecified"
-        and config_hash != "unspecified"
-        and normalization["params_recorded"]
-        and _leakage_checks_passed(checks)
+        evidence["protocol_hash"]
+        and evidence["config_hash"]
+        and evidence["dependency_lock_hash"]
+        and evidence["normalization_params"]
+        and evidence["leakage_checks"]
+        and evidence["condition_sampling_policy"]
+        and evidence["condition_counts"]
+        and evidence["metric_status_reason_recorded"]
     )
-    reason = "requires protocol manifest, normalization params, and leakage checks"
+    missing_evidence = [key for key, ok in evidence.items() if not ok]
+    reason = "requires complete benchmark evidence"
     if status == "benchmark-valid" and not benchmark_ready:
         status = "exploratory"
-        reason = "benchmark-valid requested but downgraded because evidence is incomplete"
+        reason = (
+            "benchmark-valid requested but downgraded because evidence is incomplete: "
+            + ", ".join(missing_evidence)
+        )
     elif status == "benchmark-valid":
-        reason = "protocol, normalization, and leakage evidence passed"
+        reason = "all benchmark evidence passed"
 
     return {
         "schema_version": "0.1.0",
@@ -128,7 +156,7 @@ def build_synthetic_data_manifest(
         "conditions": {
             "condition_keys": ["fault_label", "domain_id"],
             "condition_sampling_policy": condition_sampling_policy,
-            "condition_counts": condition_counts or {},
+            "condition_counts": counts,
         },
         "sampling": {
             "sampler_id": sampler_id,
@@ -136,12 +164,15 @@ def build_synthetic_data_manifest(
             "seed": int(seed),
             "num_samples": int(num_samples),
             "shape": list(shape),
+            "sampler_metadata": dict(sampler_metadata or {}),
         },
         "validity": {
             "status": status,
             "allowed_status": ["benchmark-valid", "exploratory", "docs-only"],
             "benchmark_valid": status == "benchmark-valid",
             "reason": reason,
+            "evidence": evidence,
+            "missing_evidence": missing_evidence,
             "leakage_checks": checks,
         },
     }

@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 import pandas as pd
 from pathlib import Path
@@ -17,6 +19,41 @@ def _validate_dataset_filename(data_file: str) -> str:
     if path.is_absolute() or ".." in path.parts:
         raise ValueError(f"data_file must be a dataset-relative path: {data_file!r}")
     return filename
+
+
+def resolve_normalization_method(normalization) -> str:
+    """Return the strict generative normalization method name."""
+    if normalization is True:
+        return "standardization"
+    method = str(normalization or "standardization").strip().lower()
+    aliases = {
+        "standard": "standardization",
+        "zscore": "standardization",
+        "z_score": "standardization",
+        "robust": "robust_scaler",
+        "robust-scaler": "robust_scaler",
+    }
+    method = aliases.get(method, method)
+    if method not in {"standardization", "robust_scaler"}:
+        raise ValueError(
+            "generative normalization evidence supports only "
+            "standardization or robust_scaler; got "
+            f"{normalization!r}"
+        )
+    return method
+
+
+def write_normalization_params_artifact(params: dict, output_dir: Union[str, Path]) -> tuple[str, str, str]:
+    """Write canonical normalization params and a sidecar sha256 digest."""
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    params_path = out_dir / "normalization_params.json"
+    sha_path = out_dir / "normalization_params.sha256"
+    payload = json.dumps(params, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    params_path.write_text(payload, encoding="utf-8")
+    digest = hashlib.sha256(params_path.read_bytes()).hexdigest()
+    sha_path.write_text(f"{digest}  {params_path.name}\n", encoding="utf-8")
+    return str(params_path), digest, str(sha_path)
 
 
 def download_data(data_file: Optional[str] = "metadata.xlsx",

@@ -9,13 +9,16 @@ import torch
 
 from src.configs.config_utils import merge_with_local_override, path_name, transfer_namespace
 from src.data_factory import build_data
+from src.data_factory.data_utils import (
+    resolve_normalization_method,
+    write_normalization_params_artifact,
+)
 from src.data_factory.ID.domain_map import hash_file
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.task_factory.task.generative.generative_eval import evaluate_generated_windows
 from src.task_factory.Components.generative.metrics.leakage import leakage_metrics
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
-from src.utils.utils import safe_torch_load
 
 
 PROTOCOL_SCHEMA_PATH = "docs/schemas/generative_protocol.schema.json"
@@ -75,6 +78,110 @@ def _first_condition_from_metadata(metadata, device):
     }
 
 
+def _get_cfg_attr(cfg, key: str, default=None):
+    if isinstance(cfg, dict):
+        return cfg.get(key, default)
+    return getattr(cfg, key, default)
+
+
+def _as_int_list(value, field_name: str) -> list[int]:
+    if value is None:
+        raise ValueError(f"{field_name} is required")
+    if torch.is_tensor(value):
+        values = value.detach().cpu().view(-1).tolist()
+    elif isinstance(value, (list, tuple)):
+        values = list(value)
+    else:
+        values = [value]
+    if not values:
+        raise ValueError(f"{field_name} must not be empty")
+    return [int(item) for item in values]
+
+
+def _condition_from_pairs(pairs: list[tuple[int, int]], device) -> dict[str, torch.Tensor]:
+    if not pairs:
+        raise ValueError("condition sampling produced no fault/domain pairs")
+    labels = torch.tensor([label for label, _ in pairs], dtype=torch.long, device=device)
+    domains = torch.tensor([domain for _, domain in pairs], dtype=torch.long, device=device)
+    return {"fault_label": labels, "domain_id": domains}
+
+
+def _metadata_condition_pairs(metadata, split: str | None = None) -> list[tuple[int, int]]:
+    pairs: list[tuple[int, int]] = []
+    split_name = str(split).lower() if split else None
+    for row in metadata.values():
+        if split_name:
+            row_split = (
+                row.get("split")
+                or row.get("Split")
+                or row.get("source_split")
+                or row.get("Source_split")
+            )
+            if row_split is not None and str(row_split).lower() != split_name:
+                continue
+        pairs.append((int(row["Label"]), int(row["Domain_id"])))
+    if not pairs:
+        raise ValueError("metadata does not contain any usable fault/domain condition pairs")
+    return pairs
+
+
+def _condition_from_grid(gen_cfg, device) -> dict[str, torch.Tensor]:
+    grid = _get_cfg_attr(gen_cfg, "condition_grid")
+    if grid is None:
+        raise ValueError("condition_sampling_policy=grid requires task.generative.condition_grid")
+    labels = _as_int_list(_get_cfg_attr(grid, "fault_label"), "condition_grid.fault_label")
+    domains = _as_int_list(_get_cfg_attr(grid, "domain_id"), "condition_grid.domain_id")
+    samples_per_condition = int(_get_cfg_attr(grid, "samples_per_condition", 1))
+    if samples_per_condition <= 0:
+        raise ValueError("condition_grid.samples_per_condition must be positive")
+    pairs = [
+        (label, domain)
+        for label in labels
+        for domain in domains
+        for _ in range(samples_per_condition)
+    ]
+    return _condition_from_pairs(pairs, device)
+
+
+def _condition_from_explicit(gen_cfg, device) -> dict[str, torch.Tensor]:
+    rows = _get_cfg_attr(gen_cfg, "explicit_conditions")
+    if not rows:
+        raise ValueError("condition_sampling_policy=explicit requires explicit_conditions")
+    pairs: list[tuple[int, int]] = []
+    for row in rows:
+        label = int(_get_cfg_attr(row, "fault_label"))
+        domain = int(_get_cfg_attr(row, "domain_id"))
+        count = int(_get_cfg_attr(row, "count", 1))
+        if count <= 0:
+            raise ValueError("explicit_conditions.count must be positive")
+        pairs.extend((label, domain) for _ in range(count))
+    return _condition_from_pairs(pairs, device)
+
+
+def _condition_from_train_distribution(metadata, num_samples: int, seed: int, device):
+    pairs = _metadata_condition_pairs(metadata, split="train")
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(int(seed))
+    indices = torch.randint(len(pairs), (int(num_samples),), generator=generator).tolist()
+    sampled = [pairs[index] for index in indices]
+    return _condition_from_pairs(sampled, device)
+
+
+def _select_condition(gen_cfg, metadata, num_samples: int, seed: int, device):
+    policy = str(_get_cfg_attr(gen_cfg, "condition_sampling_policy", "first_metadata_repeated"))
+    condition_seed = int(_get_cfg_attr(gen_cfg, "condition_seed", seed) or seed)
+    if policy == "first_metadata_repeated":
+        condition = _first_condition_from_metadata(metadata, device)
+        return _expand_condition(condition, int(num_samples), device)
+    if policy == "grid":
+        return _condition_from_grid(gen_cfg, device)
+    if policy == "train_distribution":
+        return _condition_from_train_distribution(metadata, int(num_samples), condition_seed, device)
+    if policy == "explicit":
+        return _condition_from_explicit(gen_cfg, device)
+    raise ValueError(f"Unsupported condition_sampling_policy: {policy}")
+
+
 def _hash_path_or_value(path_or_value: str) -> str:
     path = Path(path_or_value)
     if path.exists() and path.is_file():
@@ -87,6 +194,72 @@ def _dependency_lock_hash() -> str:
         if Path(candidate).exists():
             return hash_file(candidate)
     return "missing"
+
+
+def _build_normalization_params(data_factory, args_data, channels: int, max_batches: int = 32) -> dict:
+    method = resolve_normalization_method(getattr(args_data, "normalization", "standardization"))
+    chunks: list[torch.Tensor] = []
+    for batch_idx, batch in enumerate(data_factory.get_dataloader("train")):
+        if "x" not in batch:
+            raise ValueError("train batch is missing x; cannot record normalization params")
+        chunks.append(_to_ncl(batch["x"], channels).detach().cpu().float())
+        if batch_idx + 1 >= max_batches:
+            break
+    if not chunks:
+        raise ValueError("train split produced no batches; cannot record normalization params")
+
+    windows = torch.cat(chunks, dim=0)
+    if not torch.isfinite(windows).all():
+        raise ValueError("train split contains NaN/Inf; cannot record normalization params")
+    flat = windows.permute(1, 0, 2).reshape(windows.shape[1], -1)
+    channel_stats: dict[str, dict[str, float]] = {}
+    if method == "standardization":
+        mean = flat.mean(dim=1)
+        std = flat.std(dim=1, unbiased=False)
+        for idx in range(flat.shape[0]):
+            channel_stats[str(idx)] = {
+                "mean": float(mean[idx].item()),
+                "std": float(std[idx].item()),
+                "epsilon": 1e-8,
+            }
+    elif method == "robust_scaler":
+        median = flat.median(dim=1).values
+        q1 = torch.quantile(flat, 0.25, dim=1)
+        q3 = torch.quantile(flat, 0.75, dim=1)
+        iqr = q3 - q1
+        for idx in range(flat.shape[0]):
+            channel_stats[str(idx)] = {
+                "median": float(median[idx].item()),
+                "q1": float(q1[idx].item()),
+                "q3": float(q3[idx].item()),
+                "iqr": float(iqr[idx].item()),
+                "epsilon": 1e-8,
+            }
+    else:  # pragma: no cover - resolve_normalization_method guards this.
+        raise ValueError(f"unsupported normalization method: {method}")
+
+    return {
+        "method": method,
+        "scope": "per_channel",
+        "source_split": "train",
+        "source": "train_dataloader_processed_windows",
+        "num_windows": int(windows.shape[0]),
+        "num_values_per_channel": int(flat.shape[1]),
+        "channels": channel_stats,
+    }
+
+
+def _attach_normalization_artifacts(run_path: str | Path, data_factory, args_data, task, channels: int) -> tuple[str, str]:
+    params = _build_normalization_params(data_factory, args_data, channels)
+    params_path, params_hash, sha_path = write_normalization_params_artifact(params, run_path)
+    for obj in (args_data, getattr(task, "args_data", None)):
+        if obj is None:
+            continue
+        setattr(obj, "normalization_params_path", params_path)
+        setattr(obj, "normalization_params_hash", params_hash)
+        setattr(obj, "normalization_params_sha256_path", sha_path)
+        setattr(obj, "normalization_scope", "per_channel")
+    return params_path, params_hash
 
 
 def _count_parameters(module) -> int:
@@ -183,6 +356,8 @@ def _to_ncl(x: torch.Tensor, channels: int) -> torch.Tensor:
 
 
 def _load_sample_payload(path: str | Path) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+    from src.utils.utils import safe_torch_load
+
     payload = safe_torch_load(str(path), map_location="cpu")
     if isinstance(payload, dict):
         if "samples" not in payload:
@@ -235,6 +410,8 @@ def _train_one_iteration(args, configs, iteration):
     data_factory, _, task = _build_stack(
         args_data, args_model, args_task, args_trainer, args_environment
     )
+    channels = int(getattr(args_model, "in_channels", getattr(args_model, "channels", 1)))
+    _attach_normalization_artifacts(path, data_factory, args_data, task, channels)
     trainer = build_trainer(args_environment, args_trainer, args_data, path)
     if trainer is None:
         raise RuntimeError("failed to build trainer")
@@ -275,8 +452,12 @@ def _sample_once(args, configs, iteration):
     data_factory, _, task = _build_stack(
         args_data, args_model, args_task, args_trainer, args_environment
     )
+    channels = int(getattr(args_model, "in_channels", getattr(args_model, "channels", 2)))
+    _attach_normalization_artifacts(path, data_factory, args_data, task, channels)
     checkpoint_path = str(getattr(gen_cfg, "checkpoint_path", "") or "")
     if checkpoint_path:
+        from src.utils.utils import safe_torch_load
+
         state = safe_torch_load(checkpoint_path, map_location="cpu")
         task.load_state_dict(state.get("state_dict", state), strict=False)
     elif not bool(getattr(gen_cfg, "allow_untrained_smoke", False)):
@@ -285,9 +466,14 @@ def _sample_once(args, configs, iteration):
     num_samples = int(getattr(gen_cfg, "num_samples", 2))
     num_steps = int(getattr(gen_cfg, "num_steps", 8))
     length = int(getattr(gen_cfg, "length", getattr(args_data, "window_size", 128)))
-    channels = int(getattr(args_model, "in_channels", getattr(args_model, "channels", 2)))
-    condition = _first_condition_from_metadata(data_factory.get_metadata(), task.device)
-    expanded_condition = _expand_condition(condition, num_samples, task.device)
+    expanded_condition = _select_condition(
+        gen_cfg,
+        data_factory.get_metadata(),
+        num_samples,
+        seed,
+        task.device,
+    )
+    num_samples = int(expanded_condition["fault_label"].numel())
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
     sample_start = time.perf_counter()
@@ -309,8 +495,10 @@ def _sample_once(args, configs, iteration):
         "fault_label": expanded_condition["fault_label"].detach().cpu(),
         "domain_id": expanded_condition["domain_id"].detach().cpu(),
         "condition_policy": str(getattr(gen_cfg, "condition_sampling_policy", "first_metadata_repeated")),
+        "condition_counts": _condition_counts(expanded_condition),
         "num_steps": num_steps,
-        "sampler_id": "euler_ode",
+        "sampler_id": str(getattr(task, "sampler_id", "euler_ode")),
+        "sampler_metadata": dict(getattr(task, "sampler_metadata", lambda: {})()),
     }
     torch.save(payload, tensor_path)
 
@@ -326,7 +514,7 @@ def _sample_once(args, configs, iteration):
         source_split=str(getattr(gen_cfg, "source_split", "train")),
         domain_map_path=domain_map_path,
         domain_map_hash=hash_file(domain_map_path),
-        sampler_id="euler_ode",
+        sampler_id=str(getattr(task, "sampler_id", "euler_ode")),
         num_steps=num_steps,
         seed=seed,
         num_samples=num_samples,
@@ -340,6 +528,7 @@ def _sample_once(args, configs, iteration):
         leakage_checks=leakage_checks,
         condition_sampling_policy=str(getattr(gen_cfg, "condition_sampling_policy", "first_metadata_repeated")),
         condition_counts=_condition_counts(expanded_condition),
+        sampler_metadata=dict(getattr(task, "sampler_metadata", lambda: {})()),
     )
     data_factory.data.close()
     return {
