@@ -33,6 +33,14 @@ It is not experiment evidence and does not make any paper submission-ready.
     claim-evidence binding.
   - forces external `submission_ready` to remain `False` until the parent UXFD
     accepted-run, 2x4090, and cross-paper gates pass.
+- Paper02 truth-first audit/sync tooling is committed inside the submodule at
+  `c17a823`:
+  - adds `scripts/run_quantitative_explainability.py` for paper-local
+    quantitative explainability summaries.
+  - adds `scripts/sync_truth_first_manuscript.py` to replace unsupported
+    manuscript claims with parent-gated paper-local evidence wording.
+  - adds `scripts/truth_audit.py` to report unsupported claim drift without
+    promoting local evidence to external submission-ready status.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.
