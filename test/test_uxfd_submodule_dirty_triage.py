@@ -8,6 +8,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     DirtyEntry,
     _classify_path,
     _content_risk_markers,
+    _path_risk_markers,
     _summarize_entries,
     evaluate_dirty_triage,
     render_markdown,
@@ -80,6 +81,22 @@ def test_content_risk_markers_flag_stale_claims_and_gpu_bindings(tmp_path: Path)
         "stale_exec_root",
         "historical_accepted_claim",
         "nonlocal_gpu_binding",
+    )
+
+
+def test_path_risk_markers_flag_tracked_generated_artifacts() -> None:
+    assert _path_risk_markers(
+        " M",
+        "benchmark_results/method_comparison_radar.png",
+        "experiment_output",
+    ) == (
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact",
+    )
+    assert _path_risk_markers("??", "results/demo.log", "experiment_output") == ()
+    assert _path_risk_markers(" M", "best_model.pth", "generated_or_result_artifact") == (
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact",
     )
 
 

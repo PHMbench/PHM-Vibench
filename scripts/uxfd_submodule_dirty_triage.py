@@ -36,6 +36,7 @@ TEXT_SUFFIXES = {
     ".yaml",
     ".yml",
 }
+BINARY_OR_LARGE_SUFFIXES = {".npy", ".npz", ".pth", ".png", ".pdf"}
 
 
 @dataclass(frozen=True)
@@ -116,6 +117,20 @@ def _content_risk_markers(submodule: Path, relative_path: str) -> Tuple[str, ...
     return tuple(markers)
 
 
+def _path_risk_markers(status: str, relative_path: str, category: str) -> Tuple[str, ...]:
+    markers: List[str] = []
+    suffix = Path(relative_path).suffix.lower()
+
+    if status.strip() != "??" and category in {
+        "experiment_output",
+        "generated_or_result_artifact",
+    }:
+        markers.append("tracked_generated_artifact_dirty")
+    if suffix in BINARY_OR_LARGE_SUFFIXES:
+        markers.append("binary_or_large_artifact")
+    return tuple(markers)
+
+
 def _git_status_entries(submodule: Path) -> Tuple[DirtyEntry, ...]:
     result = subprocess.run(
         ["git", "-C", str(submodule), "status", "--porcelain=v1", "-z"],
@@ -130,7 +145,10 @@ def _git_status_entries(submodule: Path) -> Tuple[DirtyEntry, ...]:
         status = raw[:2]
         path = raw[3:] if len(raw) > 3 else ""
         category, action = _classify_path(path)
-        risk_markers = _content_risk_markers(submodule, path)
+        risk_markers = _path_risk_markers(status, path, category) + _content_risk_markers(
+            submodule,
+            path,
+        )
         entries.append(
             DirtyEntry(
                 submodule=str(submodule),
