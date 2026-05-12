@@ -2435,3 +2435,46 @@ all_targets_synced=True
 2. [ ] Commit the parent goal-control checkpoint, including the Paper02 gitlink.
 3. [ ] Re-run objective audit; do not mark the active goal complete while GPU
        accepted artifacts and all seven submission-ready gates remain blocked.
+
+## 2026-05-12 Update: Paper02 Readiness-Control Text Checkpoint
+
+Current continuation point as of 12:10 CST.
+
+**What changed:**
+
+- Paper02 submodule commit `df3e579` records reviewed readiness-control text and
+  citation-hygiene updates.
+- The parent matrix now points Paper02 to submodule SHA `df3e579`.
+- The residual Paper02 uncommitted set should now be limited to generated/model
+  output or drafts unless future edits add new files.
+
+**Validation before the Paper02 commit:**
+
+```bash
+git -C paper/UXFD_paper/1D-2D_fusion_explainable diff --check -- \
+  README_T041_SUBMISSION_READINESS.md \
+  manuscript/references.bib \
+  paper_draft/references.bib \
+  submission_prep/baseline_ablation_matrix.yaml \
+  submission_prep/ieee_trans_readiness.md
+python -m pytest -q test/test_uxfd_paper02_control_docs.py test/test_uxfd_paper02_runner_policy.py test/test_uxfd_low_tier_source_audit.py
+```
+
+Result:
+
+```text
+9 passed in 12.65s
+```
+
+**Files intentionally not committed in Paper02:**
+
+- `best_model.pth`
+- `EXPERIMENT_DESIGN.md`
+- `manuscript/AUTORESEARCH_EVIDENCE.md`
+
+**Next actions:**
+
+1. [ ] Regenerate submission/objective/readiness/dirty-triage reports again.
+2. [ ] Commit the parent checkpoint for Paper02 gitlink SHA `df3e579`.
+3. [ ] Keep accepted artifact and SOTA gates blocked until real GPU evidence
+       exists under `paper/UXFD_paper/results/accepted_runs`.

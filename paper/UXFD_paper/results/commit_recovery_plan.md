@@ -60,6 +60,15 @@ It is not experiment evidence and does not make any paper submission-ready.
     `blocking_issue_count=0` under `/tmp/uxfd_paper02_truth_*_current`.
   - do not stage `best_model.pth`, untracked `EXPERIMENT_DESIGN.md`, or
     untracked `manuscript/AUTORESEARCH_EVIDENCE.md` in this checkpoint.
+- Paper02 readiness-control text sync is committed inside the submodule at
+  `df3e579`:
+  - `README_T041_SUBMISSION_READINESS.md`
+  - `manuscript/references.bib`
+  - `paper_draft/references.bib`
+  - `submission_prep/baseline_ablation_matrix.yaml`
+  - `submission_prep/ieee_trans_readiness.md`
+  - validation passed with `9 passed` for Paper02 control docs, runner policy,
+    and low-tier source audit tests.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.
@@ -137,7 +146,7 @@ git -C paper/UXFD_paper/1D-2D_fusion_explainable commit -m "docs: clean paper02 
 git -C paper/UXFD_paper/1D-2D_fusion_explainable rev-parse --short HEAD  # da9f3b9
 ```
 
-Sync the parent matrix and reports against Paper02 submodule SHA `da9f3b9`.
+Sync the parent matrix and reports against Paper02 submodule SHA `df3e579`.
 Keep accepted baseline, ablation, TOP representative, GPU metadata, and SOTA
 gates blocked unless real accepted artifacts exist.
 
