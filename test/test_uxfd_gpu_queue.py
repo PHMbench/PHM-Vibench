@@ -2,6 +2,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import yaml
+
 from scripts.uxfd_gpu_queue import (
     DEFAULT_QUEUE,
     build_launch_plan,
@@ -208,6 +210,23 @@ def test_persisted_live_preflight_snapshot_matches_current_queue_shape() -> None
     assert live["torch_cuda_device_count"] == 0
     assert live["gpu_names"] == []
     assert "blocked:" in live["reason"]
+
+
+def test_static_resource_preflight_matches_live_snapshot() -> None:
+    queue = yaml.safe_load(DEFAULT_QUEUE.read_text(encoding="utf-8"))
+    payload = json.loads(PERSISTED_LIVE_PREFLIGHT.read_text(encoding="utf-8"))
+
+    current = queue["resource_preflight"]["current_session_result"]
+    live = payload["live_preflight"]
+
+    assert queue["status"] == "blocked_resource_preflight"
+    assert queue["resource_preflight"]["required_devices"] == ["0", "1"]
+    assert current["torch_cuda_available"] is False
+    assert current["torch_cuda_device_count"] == 0
+    assert current["verdict"] == payload["validation"]["resource_reason"]
+    assert live["accepted"] is False
+    assert live["torch_cuda_available"] == current["torch_cuda_available"]
+    assert live["torch_cuda_device_count"] == current["torch_cuda_device_count"]
 
 
 def test_gpu_queue_live_preflight_is_reported_without_launching_experiments(
