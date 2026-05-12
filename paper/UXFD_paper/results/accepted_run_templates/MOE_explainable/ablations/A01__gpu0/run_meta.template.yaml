@@ -22,8 +22,9 @@ original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable
   --output-dir paper/UXFD_paper/MOE_explainable/results/t043/expert_ablation_probe
   --datasets CWRU --expert-counts 3 5 8 --epochs 1 --batch-size 16 --max-train-batches
   4 --max-test-batches 4
+queue_config_path: 'TODO: record config path'
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
-config_path: 'TODO: record config path'
+config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json
 oom_or_failure_reason: ''

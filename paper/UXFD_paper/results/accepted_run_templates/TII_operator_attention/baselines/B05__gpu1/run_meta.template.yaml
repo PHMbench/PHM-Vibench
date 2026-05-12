@@ -18,8 +18,9 @@ command: CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_ope
   --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0
 original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml
   --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0
+queue_config_path: paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
-config_path: paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml
+config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json
 oom_or_failure_reason: ''

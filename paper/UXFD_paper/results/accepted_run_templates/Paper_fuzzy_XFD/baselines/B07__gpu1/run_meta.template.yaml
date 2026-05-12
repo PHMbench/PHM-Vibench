@@ -22,8 +22,9 @@ original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Paper_fuzzy_XFD
   --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz
   --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json
   --max_samples 20
+queue_config_path: 'TODO: record config path'
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
-config_path: 'TODO: record config path'
+config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json
 oom_or_failure_reason: ''

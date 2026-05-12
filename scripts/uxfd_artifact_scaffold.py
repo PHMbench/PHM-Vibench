@@ -69,6 +69,7 @@ def _template_dir(root: Path, row: QueueLaunchCommand) -> Path:
 
 
 def _run_meta_template(row: QueueLaunchCommand) -> Mapping[str, Any]:
+    queue_config_path = _extract_config_path(row.command)
     return {
         "accepted_evidence": False,
         "source_queue_id": row.queue_id,
@@ -88,8 +89,9 @@ def _run_meta_template(row: QueueLaunchCommand) -> Mapping[str, Any]:
         "runtime": "TODO: record wall-clock runtime",
         "command": row.command,
         "original_command": row.original_command,
+        "queue_config_path": queue_config_path,
         "git_sha_or_submodule_sha": "TODO: record parent git SHA and paper submodule SHA",
-        "config_path": _extract_config_path(row.command),
+        "config_path": "config.yaml",
         "log_path": "run.log",
         "metrics_path": "metrics.json",
         "oom_or_failure_reason": "",

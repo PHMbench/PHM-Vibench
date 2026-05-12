@@ -29,6 +29,8 @@ def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -
     assert data["accepted_evidence"] is False
     assert data["cuda_visible_devices"] in {"0", "1"}
     assert data["command"].startswith("CUDA_VISIBLE_DEVICES=")
+    assert data["config_path"] == "config.yaml"
+    assert data["queue_config_path"].startswith("paper/UXFD_paper/")
 
     top_records = [record for record in report.records if record.phase == "top_representatives"]
     assert len(top_records) == 7
@@ -107,3 +109,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
         assert data["phase"] == record["phase"]
         assert data["entry_id"] == record["entry_id"]
         assert data["cuda_visible_devices"] == record["device"]
+        assert data["config_path"] == "config.yaml"
+        assert "queue_config_path" in data
+        if "python main.py --config" in record["command"]:
+            assert data["queue_config_path"].startswith("paper/UXFD_paper/")

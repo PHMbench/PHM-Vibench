@@ -18,8 +18,9 @@ command: CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condit
   schema_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0
 original_command: CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition
   schema_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0
+queue_config_path: 'TODO: record config path'
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
-config_path: 'TODO: record config path'
+config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json
 oom_or_failure_reason: ''
