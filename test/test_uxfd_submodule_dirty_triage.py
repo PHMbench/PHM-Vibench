@@ -27,6 +27,14 @@ def test_classify_dirty_paths_by_review_policy() -> None:
         "manuscript_draft",
         DO_NOT_AUTO_COMMIT,
     )
+    assert _classify_path("manuscript/AUTORESEARCH_EVIDENCE.md") == (
+        "historical_autoresearch_evidence_draft",
+        DO_NOT_AUTO_COMMIT,
+    )
+    assert _classify_path("doc/demo_explanation.txt") == (
+        "generated_or_result_artifact",
+        PROMOTE_ONLY_THROUGH_GATE,
+    )
     assert _classify_path("scripts/run_probe.py") == (
         "source_or_experiment_script",
         DO_NOT_AUTO_COMMIT,

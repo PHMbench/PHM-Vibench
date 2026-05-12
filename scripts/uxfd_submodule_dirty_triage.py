@@ -54,6 +54,10 @@ def _classify_path(path: str) -> Tuple[str, str]:
         return "agent_workspace", PRESERVE_SESSION
     if path.startswith("sessions/"):
         return "session_workspace", PRESERVE_SESSION
+    if path.endswith("AUTORESEARCH_EVIDENCE.md"):
+        return "historical_autoresearch_evidence_draft", DO_NOT_AUTO_COMMIT
+    if path == "doc/demo_explanation.txt":
+        return "generated_or_result_artifact", PROMOTE_ONLY_THROUGH_GATE
     if path.startswith(("outputs/", "results/", "benchmark_results/", "autoresearch/")):
         return "experiment_output", PROMOTE_ONLY_THROUGH_GATE
     if path.endswith((".log", ".npy", ".npz", ".pth", ".png", ".pdf", ".csv", ".json")):
