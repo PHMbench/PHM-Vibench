@@ -57,7 +57,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | commit recovery plan | `paper/UXFD_paper/results/commit_recovery_plan.md` | exists |
 | `met` | low-tier source audit report | `paper/UXFD_paper/results/low_tier_source_audit.md` | exists |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules |
-| `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:26, 1D-2D_fusion_explainable:22, MOE_explainable:2 |
+| `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:22, MOE_explainable:2 |
 | `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 32 parent goal-control paths clean |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
@@ -83,7 +83,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 
 ## Blockers
 
-- paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:26, 1D-2D_fusion_explainable:22, MOE_explainable:2
+- paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:22, MOE_explainable:2
 - TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5
 - 1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5
 - Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5
