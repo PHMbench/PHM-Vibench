@@ -62,6 +62,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["accepted run artifact metadata"].status == "not_met"
     assert items["cross-paper submission gate"].status == "not_met"
     assert items["submodule dirty triage report"].status == "met"
+    assert items["parent result artifact triage report"].status == "met"
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"
@@ -214,12 +215,15 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/readiness_backlog.md" not in paths
     assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
+    assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
     assert "paper/UXFD_paper/results/low_tier_source_audit.json" in paths
     assert "scripts/uxfd_goal_status.py" in paths
     assert "scripts/uxfd_low_tier_source_audit.py" in paths
+    assert "scripts/uxfd_parent_result_artifact_triage.py" in paths
     assert "scripts/uxfd_readiness_backlog.py" in paths
     assert "scripts/uxfd_submodule_dirty_triage.py" in paths
     assert "test/test_uxfd_low_tier_source_audit.py" in paths
+    assert "test/test_uxfd_parent_result_artifact_triage.py" in paths
     assert "test/test_uxfd_paper01_control_docs.py" in paths
     assert "test/test_uxfd_artifact_gate.py" in paths
     assert "test/test_uxfd_gpu_queue.py" in paths
