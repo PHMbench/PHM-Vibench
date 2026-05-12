@@ -7,6 +7,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     PROMOTE_ONLY_THROUGH_GATE,
     DirtyEntry,
     _classify_path,
+    _content_risk_markers,
     _summarize_entries,
     evaluate_dirty_triage,
     render_markdown,
@@ -58,6 +59,30 @@ def test_summarize_entries_counts_modified_and_untracked() -> None:
     assert summaries[1].categories == {"session_workspace": 1}
 
 
+def test_content_risk_markers_flag_stale_claims_and_gpu_bindings(tmp_path: Path) -> None:
+    submodule = tmp_path / "paper"
+    evidence = submodule / "manuscript" / "AUTORESEARCH_EVIDENCE.md"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text(
+        "\n".join(
+            [
+                "- accepted: `True`",
+                "- exec_root: `/tmp/PHM-Vibench copy 2`",
+                "- command: `CUDA_VISIBLE_DEVICES=5 python run.py`",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    markers = _content_risk_markers(submodule, "manuscript/AUTORESEARCH_EVIDENCE.md")
+
+    assert markers == (
+        "stale_exec_root",
+        "historical_accepted_claim",
+        "nonlocal_gpu_binding",
+    )
+
+
 def test_render_markdown_marks_report_as_non_evidence() -> None:
     entries = (
         DirtyEntry("paper/A", "??", "outputs/run.log", "experiment_output", PROMOTE_ONLY_THROUGH_GATE),
@@ -73,6 +98,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
 
     assert "not accepted experiment evidence" in text
     assert PROMOTE_ONLY_THROUGH_GATE in text
+    assert "Risk Markers" in text
 
 
 def test_persisted_dirty_triage_report_matches_current_triage() -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
@@ -22,6 +23,19 @@ PAPER_SUBMODULES = (
 DO_NOT_AUTO_COMMIT = "do_not_auto_commit_without_owner_review"
 PRESERVE_SESSION = "preserve_or_ignore_session_workspace"
 PROMOTE_ONLY_THROUGH_GATE = "promote_only_through_accepted_artifact_gate"
+TEXT_SUFFIXES = {
+    ".bib",
+    ".csv",
+    ".json",
+    ".log",
+    ".md",
+    ".py",
+    ".sh",
+    ".tex",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
 
 
 @dataclass(frozen=True)
@@ -31,6 +45,7 @@ class DirtyEntry:
     path: str
     category: str
     recommended_action: str
+    risk_markers: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,6 +93,29 @@ def _classify_path(path: str) -> Tuple[str, str]:
     return "unclassified", DO_NOT_AUTO_COMMIT
 
 
+def _content_risk_markers(submodule: Path, relative_path: str) -> Tuple[str, ...]:
+    path = submodule / relative_path
+    if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
+        return ()
+
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ("unreadable_text_artifact",)
+
+    markers: List[str] = []
+    if "PHM-Vibench copy 2" in text:
+        markers.append("stale_exec_root")
+    if "accepted: `True`" in text or "accepted: True" in text:
+        markers.append("historical_accepted_claim")
+    for match in re.finditer(r"CUDA_VISIBLE_DEVICES=([0-9,]+)", text):
+        devices = {device.strip() for device in match.group(1).split(",") if device.strip()}
+        if devices and not devices.issubset({"0", "1"}):
+            markers.append("nonlocal_gpu_binding")
+            break
+    return tuple(markers)
+
+
 def _git_status_entries(submodule: Path) -> Tuple[DirtyEntry, ...]:
     result = subprocess.run(
         ["git", "-C", str(submodule), "status", "--porcelain=v1", "-z"],
@@ -92,6 +130,7 @@ def _git_status_entries(submodule: Path) -> Tuple[DirtyEntry, ...]:
         status = raw[:2]
         path = raw[3:] if len(raw) > 3 else ""
         category, action = _classify_path(path)
+        risk_markers = _content_risk_markers(submodule, path)
         entries.append(
             DirtyEntry(
                 submodule=str(submodule),
@@ -99,6 +138,7 @@ def _git_status_entries(submodule: Path) -> Tuple[DirtyEntry, ...]:
                 path=path,
                 category=category,
                 recommended_action=action,
+                risk_markers=risk_markers,
             )
         )
     return tuple(entries)
@@ -172,17 +212,19 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"- `{PRESERVE_SESSION}`: preserve or ignore until the owning paper owner decides.",
             f"- `{PROMOTE_ONLY_THROUGH_GATE}`: do not commit as accepted evidence; promote only through `scripts.uxfd_artifact_gate` after real runs.",
             f"- `{DO_NOT_AUTO_COMMIT}`: inspect with the paper owner before staging.",
+            "- Risk markers flag stale paths, historical accepted-claim wording, or GPU bindings outside `0,1`.",
             "",
             "## Entries",
             "",
-            "| Submodule | Status | Category | Action | Path |",
-            "|---|---|---|---|---|",
+            "| Submodule | Status | Category | Action | Risk Markers | Path |",
+            "|---|---|---|---|---|---|",
         ]
     )
     for entry in report.entries:
+        markers = ", ".join(entry.risk_markers) if entry.risk_markers else "-"
         lines.append(
             f"| `{entry.submodule}` | `{entry.status}` | `{entry.category}` | "
-            f"`{entry.recommended_action}` | `{entry.path}` |"
+            f"`{entry.recommended_action}` | `{markers}` | `{entry.path}` |"
         )
     return "\n".join(lines) + "\n"
 
