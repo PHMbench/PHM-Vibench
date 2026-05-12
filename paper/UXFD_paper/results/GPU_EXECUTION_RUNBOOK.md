@@ -51,6 +51,9 @@ Current shard sizes:
 - `gpu0.sh`: 49 launchable rows.
 - `gpu1.sh`: 48 launchable rows.
 - Total launchable rows: 97.
+- Accepted artifact coverage rows: 104, consisting of the 97 launchable rows
+  plus 7 TOP representative binding records that summarize accepted local
+  proxy evidence with `cuda_visible_devices: 0,1`.
 
 ## 4. Promote Run Artifacts
 
@@ -89,7 +92,7 @@ submission, and objective gates all pass without override flags.
 As of the last local check:
 
 - Accepted artifact root: `paper/UXFD_paper/results/accepted_runs`
-- Queue coverage: `0/97`
+- Queue coverage: `0/104`
 - GPU queue resource state: blocked in this session because NVIDIA driver/NVML is
   unavailable.
 - Submission gate: not ready.

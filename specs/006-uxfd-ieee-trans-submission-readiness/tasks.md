@@ -60,8 +60,8 @@
 
 - [x] T024 [US3] Create Claude Team run directory in `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/`.
 - [x] T025 [US3] Create Claude Team task spec in `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md`.
-- [ ] T026 [US3] Launch read-only Claude Code Team after explicit approval and record `report.md`, `risks.md`, and `test-log.md` (blocked in this session by external-service policy).
-- [ ] T027 [US3] Codex-verify Claude findings before updating `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`.
+- [x] T026 [US3] Record external Claude Code Team policy block, launch six local Codex xhigh read-only subagents instead, and record `report.md`, `risks.md`, and `test-log.md`.
+- [x] T027 [US3] Codex-verify local subagent findings through the objective/recent-work/submission gates before accepting them as execution evidence; keep `paper/UXFD_paper/goal/99_submission_readiness_matrix.md` non-ready.
 
 ## Phase 6: User Story 4 - Preserve Continuity With Handoffs (Priority: P2)
 

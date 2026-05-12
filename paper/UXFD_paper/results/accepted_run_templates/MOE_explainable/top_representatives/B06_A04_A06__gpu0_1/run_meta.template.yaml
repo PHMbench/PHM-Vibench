@@ -1,21 +1,21 @@
 accepted_evidence: false
-source_queue_id: Q6
-paper_id: Neuralsymbolic_theory
-phase: ablations
-entry_id: A06
-label: cross-method mapping validation
-workdir: paper/UXFD_paper/Neuralsymbolic_theory
-cuda_visible_devices: '0'
+source_queue_id: TOP-Q4-TSPULSE
+paper_id: MOE_explainable
+phase: top_representatives
+entry_id: B06,A04,A06
+label: RWTOP2026-TSPULSE
+workdir: .
+cuda_visible_devices: 0,1
 gpu_model: 'TODO: NVIDIA GeForce RTX 4090'
-gpu_count: 1
+gpu_count: 2
 seed: 'TODO: record seed'
 dataset_split: 'TODO: record dataset split'
 preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
-command: CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py && python scripts/build_source_backed_mapping.py
-original_command: python code/validate_mapping.py && python scripts/build_source_backed_mapping.py
+command: paper-local baseline_ablation_matrix.yaml entries B06/A04/A06
+original_command: paper-local baseline_ablation_matrix.yaml entries B06/A04/A06
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
 config_path: 'TODO: record config path'
 log_path: run.log

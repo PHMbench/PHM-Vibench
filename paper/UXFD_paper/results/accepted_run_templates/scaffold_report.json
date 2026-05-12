@@ -809,7 +809,7 @@
       "device": "0",
       "workdir": "paper/UXFD_paper/Neuralsymbolic_theory",
       "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/ablations/A06__gpu0/run_meta.template.yaml",
-      "command": "CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py"
+      "command": "CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py && python scripts/build_source_backed_mapping.py"
     },
     {
       "queue_id": "Q6",
@@ -970,6 +970,76 @@
       "workdir": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit",
       "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A07__gpu0/run_meta.template.yaml",
       "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition all --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0"
+    },
+    {
+      "queue_id": "TOP-Q1-GTM",
+      "paper_id": "TII_operator_attention",
+      "phase": "top_representatives",
+      "entry_id": "B04,B05,A04",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/top_representatives/B04_B05_A04__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B04/B05/A04"
+    },
+    {
+      "queue_id": "TOP-Q2-GTM",
+      "paper_id": "1D-2D_fusion_explainable",
+      "phase": "top_representatives",
+      "entry_id": "B04,B05,A06",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/top_representatives/B04_B05_A06__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B04/B05/A06"
+    },
+    {
+      "queue_id": "TOP-Q3-TIMESEG",
+      "paper_id": "Explainable_FD_Toolkit",
+      "phase": "top_representatives",
+      "entry_id": "P00,A02,A03,A06",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/top_representatives/P00_A02_A03_A06__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries P00/A02/A03/A06"
+    },
+    {
+      "queue_id": "TOP-Q4-TSPULSE",
+      "paper_id": "MOE_explainable",
+      "phase": "top_representatives",
+      "entry_id": "B06,A04,A06",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/top_representatives/B06_A04_A06__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B06/A04/A06"
+    },
+    {
+      "queue_id": "TOP-Q5-TIMESLIVER",
+      "paper_id": "Paper_fuzzy_XFD",
+      "phase": "top_representatives",
+      "entry_id": "B07,A01,A04,A05,A06",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/top_representatives/B07_A01_A04_A05_A06__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B07/A01/A04/A05/A06"
+    },
+    {
+      "queue_id": "TOP-Q6-TIMESLIVER",
+      "paper_id": "Neuralsymbolic_theory",
+      "phase": "top_representatives",
+      "entry_id": "A01,A05,A06,A07",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/top_representatives/A01_A05_A06_A07__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries A01/A05/A06/A07"
+    },
+    {
+      "queue_id": "TOP-Q7-TIMESEG",
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "phase": "top_representatives",
+      "entry_id": "B02,A05,A07",
+      "device": "0,1",
+      "workdir": ".",
+      "template_path": "paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/top_representatives/B02_A05_A07__gpu0_1/run_meta.template.yaml",
+      "command": "paper-local baseline_ablation_matrix.yaml entries B02/A05/A07"
     }
   ],
   "validation_can_execute": false,

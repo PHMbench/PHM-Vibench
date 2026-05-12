@@ -79,7 +79,7 @@ def _run_meta_template(row: QueueLaunchCommand) -> Mapping[str, Any]:
         "workdir": row.workdir,
         "cuda_visible_devices": row.device,
         "gpu_model": "TODO: NVIDIA GeForce RTX 4090",
-        "gpu_count": 1,
+        "gpu_count": 2 if row.device == "0,1" else 1,
         "seed": "TODO: record seed",
         "dataset_split": "TODO: record dataset split",
         "preprocessing_signature": "TODO: record preprocessing signature",
@@ -100,7 +100,24 @@ def create_scaffold(
     output_root: Path = DEFAULT_TEMPLATE_ROOT,
     queue_path: Path = DEFAULT_QUEUE,
 ) -> ArtifactScaffoldReport:
-    rows = build_launch_plan(expand_queue(queue_path))
+    queue_rows = expand_queue(queue_path)
+    rows = list(build_launch_plan(queue_rows))
+    rows.extend(
+        QueueLaunchCommand(
+            queue_id=row.queue_id,
+            paper_id=row.paper_id,
+            phase=row.phase,
+            entry_id=row.entry_id,
+            label=row.label,
+            device="0,1",
+            workdir=".",
+            command=row.command,
+            original_command=row.command,
+            status=row.status,
+        )
+        for row in queue_rows
+        if row.phase == "top_representatives"
+    )
     validation = validate_queue(queue_path)
     records: List[ArtifactTemplateRecord] = []
     output_root.mkdir(parents=True, exist_ok=True)

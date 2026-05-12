@@ -1,7 +1,7 @@
 # UXFD Accepted Run Artifact Templates
 
 - Template root: `paper/UXFD_paper/results/accepted_run_templates`
-- Templates: `97`
+- Templates: `104`
 - Status: templates only; not accepted evidence.
 
 | Queue | Paper | Phase | Entry | GPU | Template |
@@ -103,3 +103,10 @@
 | `Q7` | `LLM_Explainable_FD_Toolkit` | `ablations` | `A05` | `0` | `paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A05__gpu0/run_meta.template.yaml` |
 | `Q7` | `LLM_Explainable_FD_Toolkit` | `ablations` | `A06` | `1` | `paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A06__gpu1/run_meta.template.yaml` |
 | `Q7` | `LLM_Explainable_FD_Toolkit` | `ablations` | `A07` | `0` | `paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/ablations/A07__gpu0/run_meta.template.yaml` |
+| `TOP-Q1-GTM` | `TII_operator_attention` | `top_representatives` | `B04,B05,A04` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/TII_operator_attention/top_representatives/B04_B05_A04__gpu0_1/run_meta.template.yaml` |
+| `TOP-Q2-GTM` | `1D-2D_fusion_explainable` | `top_representatives` | `B04,B05,A06` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/1D-2D_fusion_explainable/top_representatives/B04_B05_A06__gpu0_1/run_meta.template.yaml` |
+| `TOP-Q3-TIMESEG` | `Explainable_FD_Toolkit` | `top_representatives` | `P00,A02,A03,A06` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/Explainable_FD_Toolkit/top_representatives/P00_A02_A03_A06__gpu0_1/run_meta.template.yaml` |
+| `TOP-Q4-TSPULSE` | `MOE_explainable` | `top_representatives` | `B06,A04,A06` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/MOE_explainable/top_representatives/B06_A04_A06__gpu0_1/run_meta.template.yaml` |
+| `TOP-Q5-TIMESLIVER` | `Paper_fuzzy_XFD` | `top_representatives` | `B07,A01,A04,A05,A06` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/Paper_fuzzy_XFD/top_representatives/B07_A01_A04_A05_A06__gpu0_1/run_meta.template.yaml` |
+| `TOP-Q6-TIMESLIVER` | `Neuralsymbolic_theory` | `top_representatives` | `A01,A05,A06,A07` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/Neuralsymbolic_theory/top_representatives/A01_A05_A06_A07__gpu0_1/run_meta.template.yaml` |
+| `TOP-Q7-TIMESEG` | `LLM_Explainable_FD_Toolkit` | `top_representatives` | `B02,A05,A07` | `0,1` | `paper/UXFD_paper/results/accepted_run_templates/LLM_Explainable_FD_Toolkit/top_representatives/B02_A05_A07__gpu0_1/run_meta.template.yaml` |
