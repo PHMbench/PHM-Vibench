@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 from scripts.uxfd_parent_result_artifact_triage import (
@@ -27,3 +28,11 @@ def test_persisted_parent_result_artifact_triage_matches_current_report() -> Non
     report = evaluate_parent_artifact_triage()
 
     assert DEFAULT_OUTPUT.read_text(encoding="utf-8") == render_markdown(report)
+
+
+def test_parent_generated_figures_are_gitignored_but_still_triaged() -> None:
+    ignored_path = "paper/UXFD_paper/results/figures/training_history.png"
+
+    subprocess.run(["git", "check-ignore", "-q", ignored_path], check=True)
+    report = evaluate_parent_artifact_triage()
+    assert any(entry.path == ignored_path for entry in report.entries)
