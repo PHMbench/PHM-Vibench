@@ -41,6 +41,13 @@ It is not experiment evidence and does not make any paper submission-ready.
     manuscript claims with parent-gated paper-local evidence wording.
   - adds `scripts/truth_audit.py` to report unsupported claim drift without
     promoting local evidence to external submission-ready status.
+- Paper02 comparison collectors are committed inside the submodule at
+  `78b6cbb`:
+  - replaces heavyweight local comparison scripts with paper-local collector
+    packs for MoE, TSPN, and Operator Attention.
+  - adds dry-run and explicit output-dir paths so validation does not create
+    result artifacts in the submodule working tree.
+  - keeps all comparison outputs explicitly outside accepted UXFD run evidence.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.

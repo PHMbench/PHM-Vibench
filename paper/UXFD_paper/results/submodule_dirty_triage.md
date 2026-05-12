@@ -3,13 +3,13 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `39`
+- Dirty entries: `36`
 
 ## Summary
 
 | Submodule | Total | Modified | Untracked | Categories |
 |---|---:|---:|---:|---|
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | 15 | 13 | 2 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=1, project_document=2, source_or_experiment_script=3, unclassified=1 |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | 12 | 10 | 2 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=1, project_document=2, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 22 | 13 | 9 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=1, unclassified=1 |
 | `paper/UXFD_paper/MOE_explainable` | 2 | 0 | 2 | manuscript_draft=1, planning_or_contract_draft=1 |
 
@@ -53,9 +53,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/references.bib` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `paper_draft/NMI_Paper1_Fusion1D2D.tex` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `paper_draft/references.bib` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_moe.py` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_operator_attention.py` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/compare_with_tspn.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `unclassified` | `do_not_auto_commit_without_owner_review` | `submission_prep/baseline_ablation_matrix.yaml` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `project_document` | `do_not_auto_commit_without_owner_review` | `submission_prep/ieee_trans_readiness.md` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `EXPERIMENT_DESIGN.md` |
