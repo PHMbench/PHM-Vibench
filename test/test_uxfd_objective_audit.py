@@ -212,8 +212,10 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert str(PERSISTED_OBJECTIVE_AUDIT_JSON) not in paths
     assert str(PERSISTED_OBJECTIVE_AUDIT_MD) not in paths
     assert "paper/UXFD_paper/results/readiness_backlog.md" not in paths
+    assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
     assert "paper/UXFD_paper/results/low_tier_source_audit.json" in paths
+    assert "scripts/uxfd_goal_status.py" in paths
     assert "scripts/uxfd_low_tier_source_audit.py" in paths
     assert "scripts/uxfd_readiness_backlog.py" in paths
     assert "scripts/uxfd_submodule_dirty_triage.py" in paths
@@ -228,6 +230,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "test/test_uxfd_paper04_truth_manuscript.py" in paths
     assert "test/test_uxfd_readiness_backlog.py" in paths
     assert "test/test_uxfd_submodule_dirty_triage.py" in paths
+    assert "test/test_uxfd_goal_status.py" in paths
 
 
 def test_objective_audit_cli_can_be_used_as_non_failing_audit(tmp_path: Path) -> None:
