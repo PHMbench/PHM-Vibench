@@ -45,6 +45,14 @@ It is not experiment evidence and does not make any paper submission-ready.
   - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
   - executable commands use lowercase `paper/UXFD_paper/...` paths.
   - `innovation_contract.md` is bound from README, CORE, and paper blueprint.
+- Paper01 smoke-runner hardening is committed inside the submodule at
+  `23fa1e0`:
+  - `scripts/demo.py` and `scripts/run_benchmark_standalone.py` run in
+    headless environments.
+  - `scripts/run_unified_explain_eval.py` no longer requires optional
+    `tabulate` for Markdown table generation.
+  - `scripts/run_shap_lime_analysis.py` creates only a non-accepted synthetic
+    SHAP/LIME smoke bundle and explicitly blocks SOTA/submission-ready claims.
 - Parent goal/control checkpoint is edited but uncommitted.
 - Parent `git add`/`git commit` still requires explicit index-write approval;
   stage only the listed parent goal/control paths.
