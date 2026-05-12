@@ -6,9 +6,11 @@ from scripts.uxfd_submodule_dirty_triage import (
     PRESERVE_SESSION,
     PROMOTE_ONLY_THROUGH_GATE,
     DirtyEntry,
+    _action_counts,
     _classify_path,
     _content_risk_markers,
     _path_risk_markers,
+    _risk_marker_counts,
     _summarize_entries,
     evaluate_dirty_triage,
     render_markdown,
@@ -100,6 +102,45 @@ def test_path_risk_markers_flag_tracked_generated_artifacts() -> None:
     )
 
 
+def test_action_and_risk_counts_summarize_commit_blockers() -> None:
+    entries = (
+        DirtyEntry(
+            "paper/A",
+            "M",
+            "results/metrics.json",
+            "experiment_output",
+            PROMOTE_ONLY_THROUGH_GATE,
+            ("tracked_generated_artifact_dirty",),
+        ),
+        DirtyEntry(
+            "paper/A",
+            "??",
+            "manuscript/AUTORESEARCH_EVIDENCE.md",
+            "historical_autoresearch_evidence_draft",
+            DO_NOT_AUTO_COMMIT,
+            ("stale_exec_root", "historical_accepted_claim"),
+        ),
+        DirtyEntry(
+            "paper/B",
+            "??",
+            "sessions/run.md",
+            "session_workspace",
+            PRESERVE_SESSION,
+        ),
+    )
+
+    assert _action_counts(entries) == {
+        DO_NOT_AUTO_COMMIT: 1,
+        PRESERVE_SESSION: 1,
+        PROMOTE_ONLY_THROUGH_GATE: 1,
+    }
+    assert _risk_marker_counts(entries) == {
+        "historical_accepted_claim": 1,
+        "stale_exec_root": 1,
+        "tracked_generated_artifact_dirty": 1,
+    }
+
+
 def test_render_markdown_marks_report_as_non_evidence() -> None:
     entries = (
         DirtyEntry("paper/A", "??", "outputs/run.log", "experiment_output", PROMOTE_ONLY_THROUGH_GATE),
@@ -114,6 +155,8 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     text = render_markdown(report)
 
     assert "not accepted experiment evidence" in text
+    assert "Commit-Blocking Verdict" in text
+    assert "Auto-commit safe entries: `0`" in text
     assert PROMOTE_ONLY_THROUGH_GATE in text
     assert "Risk Markers" in text
 

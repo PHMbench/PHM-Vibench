@@ -183,6 +183,17 @@ def _summarize_entries(entries: Iterable[DirtyEntry]) -> Tuple[DirtySubmoduleSum
     return tuple(summaries)
 
 
+def _action_counts(entries: Iterable[DirtyEntry]) -> Mapping[str, int]:
+    return dict(sorted(Counter(entry.recommended_action for entry in entries).items()))
+
+
+def _risk_marker_counts(entries: Iterable[DirtyEntry]) -> Mapping[str, int]:
+    counter: Counter[str] = Counter()
+    for entry in entries:
+        counter.update(entry.risk_markers)
+    return dict(sorted(counter.items()))
+
+
 def evaluate_dirty_triage(
     submodules: Sequence[Path] = PAPER_SUBMODULES,
 ) -> DirtyTriageReport:
@@ -202,6 +213,14 @@ def build_payload(report: DirtyTriageReport) -> Mapping[str, Any]:
 
 
 def render_markdown(report: DirtyTriageReport) -> str:
+    action_counts = _action_counts(report.entries)
+    risk_counts = _risk_marker_counts(report.entries)
+    auto_commit_safe = sum(
+        1
+        for entry in report.entries
+        if entry.recommended_action
+        not in {DO_NOT_AUTO_COMMIT, PRESERVE_SESSION, PROMOTE_ONLY_THROUGH_GATE}
+    )
     lines = [
         "# UXFD Submodule Dirty Triage",
         "",
@@ -222,8 +241,17 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"{summary.untracked} | {categories} |"
         )
 
+    action_summary = ", ".join(f"{name}={count}" for name, count in action_counts.items())
+    risk_summary = ", ".join(f"{name}={count}" for name, count in risk_counts.items())
     lines.extend(
         [
+            "",
+            "## Commit-Blocking Verdict",
+            "",
+            f"- Auto-commit safe entries: `{auto_commit_safe}`",
+            f"- Action counts: `{action_summary or '-'}`",
+            f"- Risk marker counts: `{risk_summary or '-'}`",
+            "- Verdict: do not auto-commit these dirty submodule entries. Commit only owner-reviewed source/docs, and promote result artifacts only through the accepted artifact gate.",
             "",
             "## Triage Rules",
             "",
