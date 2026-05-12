@@ -18,6 +18,15 @@ It is not experiment evidence and does not make any paper submission-ready.
   - current-root `PHM-Vibench_fix` normalization for README/CORE.
   - maintained `main.py --config ...` commands for VIBENCH and paper-local configs.
   - `innovation_contract.md` is bound from README, CORE, and paper blueprint.
+- Paper02 short-input smoke-runner update is committed inside the submodule at
+  `e959965`:
+  - `code/models/two_d_branch.py` supports short smoke inputs by bounding STFT
+    window sizes to the actual signal length.
+  - `scripts/run_minimal_demo.py` writes model, figure, and metrics outputs
+    under an explicit output root.
+  - `scripts/run_fusion_ablation_smoke.py` and
+    `scripts/test_fusion_ablation_smoke.py` record the current-root rewrite
+    proxy without promoting it to accepted evidence.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.
