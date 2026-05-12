@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -12,6 +13,10 @@ from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, build_launch_plan, expand_queu
 
 
 REQUIRED_RUN_META_FIELDS = (
+    "source_queue_id",
+    "paper_id",
+    "phase",
+    "entry_id",
     "cuda_visible_devices",
     "gpu_model",
     "gpu_count",
@@ -92,6 +97,29 @@ def _launch_queue_key(row: Any) -> str:
     )
 
 
+def _top_representative_queue_key(row: Any) -> str:
+    return "|".join((row.queue_id, row.paper_id, row.phase, row.entry_id, "0,1"))
+
+
+def _expected_queue_commands(queue_path: Path) -> Mapping[str, str]:
+    rows = expand_queue(queue_path)
+    expected: Dict[str, str] = {
+        _launch_queue_key(row): row.command for row in build_launch_plan(rows)
+    }
+    expected.update(
+        {
+            _top_representative_queue_key(row): row.command
+            for row in rows
+            if row.phase == "top_representatives"
+        }
+    )
+    return expected
+
+
+def _expected_queue_keys(queue_path: Path) -> Tuple[str, ...]:
+    return tuple(sorted(_expected_queue_commands(queue_path)))
+
+
 def _coverage_summary(
     expected_keys: Sequence[str],
     missing_keys: Sequence[str],
@@ -118,6 +146,42 @@ def _coverage_summary(
     return summary
 
 
+def _validate_metrics_file(path: Path) -> Tuple[str, ...]:
+    issues: List[str] = []
+    if path.suffix == ".json":
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            return (f"metrics_path JSON is not parseable: {exc.msg}",)
+        if payload in ({}, [], None):
+            issues.append("metrics_path JSON must contain at least one metric")
+    elif path.suffix == ".csv":
+        rows = list(csv.reader(path.read_text(encoding="utf-8").splitlines()))
+        nonempty_rows = [row for row in rows if any(cell.strip() for cell in row)]
+        if len(nonempty_rows) < 2:
+            issues.append("metrics_path CSV must contain a header and at least one data row")
+    else:
+        issues.append("metrics_path must point to .json or .csv")
+    return tuple(issues)
+
+
+def _resolve_referenced_artifact_path(
+    run_meta_path: Path,
+    field: str,
+    value: Any,
+) -> Tuple[Optional[Path], Tuple[str, ...]]:
+    issues: List[str] = []
+    reference = Path(str(value))
+    if reference.is_absolute():
+        return None, (f"{field} must be relative to the run_meta.yaml directory",)
+
+    run_dir = run_meta_path.parent.resolve()
+    candidate = (run_meta_path.parent / reference).resolve()
+    if not candidate.is_relative_to(run_dir):
+        return None, (f"{field} must stay inside the run_meta.yaml directory",)
+    return candidate, tuple(issues)
+
+
 def _validate_run_meta(path: Path) -> ArtifactRecord:
     issues: List[str] = []
     data = _load_yaml(path)
@@ -128,12 +192,23 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
         if isinstance(data[field], str) and data[field].strip().upper().startswith("TODO"):
             issues.append(f"{field} still contains TODO")
 
-    if data.get("accepted_evidence") is False:
-        issues.append("accepted_evidence is false")
+    if data.get("accepted_evidence") is not True:
+        issues.append("accepted_evidence must be true")
 
     cuda_visible_devices = str(data.get("cuda_visible_devices", ""))
     if cuda_visible_devices not in {"0", "1", "0,1"}:
         issues.append("cuda_visible_devices must be one of 0, 1, or 0,1")
+
+    try:
+        gpu_count = int(data.get("gpu_count", 0))
+    except (TypeError, ValueError):
+        issues.append("gpu_count must be an integer")
+    else:
+        expected_gpu_count = 2 if cuda_visible_devices == "0,1" else 1
+        if cuda_visible_devices in {"0", "1", "0,1"} and gpu_count != expected_gpu_count:
+            issues.append(
+                f"gpu_count must be {expected_gpu_count} for cuda_visible_devices={cuda_visible_devices}"
+            )
 
     gpu_model = str(data.get("gpu_model", ""))
     if gpu_model and "4090" not in gpu_model:
@@ -143,11 +218,15 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
         value = data.get(path_field)
         if not value:
             continue
-        candidate = Path(str(value))
-        if not candidate.is_absolute():
-            candidate = path.parent / candidate
+        candidate, path_issues = _resolve_referenced_artifact_path(path, path_field, value)
+        issues.extend(path_issues)
+        if candidate is None:
+            continue
         if not candidate.exists():
             issues.append(f"{path_field} does not exist: {value}")
+            continue
+        if path_field == "metrics_path":
+            issues.extend(_validate_metrics_file(candidate))
 
     return ArtifactRecord(
         run_meta_path=str(path),
@@ -180,26 +259,53 @@ def evaluate_artifact_gate(
         if queue_path is None:
             blockers.append("queue coverage was required but no queue path was provided")
         else:
-            expected_queue_runs = tuple(
-                sorted(_launch_queue_key(row) for row in build_launch_plan(expand_queue(queue_path)))
-            )
-            covered = {
+            expected_commands = _expected_queue_commands(queue_path)
+            expected_queue_runs = tuple(sorted(expected_commands))
+            expected = set(expected_queue_runs)
+            accepted_keys = [
                 record.queue_key
                 for record in records
                 if record.accepted and record.queue_key
+            ]
+            covered = {
+                record.queue_key
+                for record in records
+                if record.accepted and record.queue_key in expected
             }
             missing_queue_runs = tuple(
                 key for key in expected_queue_runs if key not in covered
             )
+            unknown_keys = tuple(sorted(key for key in accepted_keys if key not in expected))
+            seen: Dict[str, int] = {}
+            for key in accepted_keys:
+                seen[key] = seen.get(key, 0) + 1
+            duplicate_keys = tuple(sorted(key for key, count in seen.items() if count > 1))
             for record in records:
                 if record.accepted and not record.queue_key:
                     blockers.append(
                         f"{record.run_meta_path}: missing queue coverage identifiers"
                     )
+                if record.accepted and record.queue_key in expected:
+                    command = str(_load_yaml(Path(record.run_meta_path)).get("command", ""))
+                    expected_command = expected_commands[record.queue_key]
+                    if command != expected_command:
+                        blockers.append(
+                            f"{record.run_meta_path}: command does not match queue command"
+                        )
+            if unknown_keys:
+                blockers.append(
+                    "queue coverage contains unknown accepted run_meta.yaml keys: "
+                    f"{len(unknown_keys)}"
+                )
+            if duplicate_keys:
+                blockers.append(
+                    "queue coverage contains duplicate accepted run_meta.yaml keys: "
+                    f"{len(duplicate_keys)}"
+                )
             if missing_queue_runs:
                 blockers.append(
                     "queue coverage incomplete: "
-                    f"{len(missing_queue_runs)} launch rows missing accepted run_meta.yaml"
+                    f"{len(missing_queue_runs)} queue coverage rows missing accepted run_meta.yaml"
                 )
 
     return ArtifactGateReport(

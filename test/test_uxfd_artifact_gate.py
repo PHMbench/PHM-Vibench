@@ -28,6 +28,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
     (run_dir / "run_meta.yaml").write_text(
         "\n".join(
             [
+                "accepted_evidence: true",
                 "cuda_visible_devices: '0'",
                 "source_queue_id: 'Q1'",
                 "paper_id: 'TII_operator_attention'",
@@ -41,7 +42,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
                 "batch_size: 16",
                 "precision: 'fp32'",
                 "runtime: '00:01:00'",
-                "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config demo.yaml'",
+                "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0'",
                 "git_sha_or_submodule_sha: 'abc123'",
                 "config_path: 'config.yaml'",
                 "log_path: 'run.log'",
@@ -78,13 +79,64 @@ def test_artifact_gate_blocks_incomplete_queue_coverage(tmp_path: Path) -> None:
 
     assert report.accepted is False
     assert report.records[0].accepted is True
-    assert report.expected_queue_runs == 97
+    assert report.expected_queue_runs == 104
     assert report.covered_queue_runs == 1
-    assert len(report.missing_queue_runs) == 96
+    assert len(report.missing_queue_runs) == 103
     assert any("queue coverage incomplete" in item for item in report.blockers)
     assert report.queue_coverage_by_paper["TII_operator_attention"]["covered"] == 1
-    assert report.queue_coverage_by_paper["TII_operator_attention"]["missing"] == 13
-    assert report.queue_coverage_by_paper["TII_operator_attention"]["expected"] == 14
+    assert report.queue_coverage_by_paper["TII_operator_attention"]["missing"] == 14
+    assert report.queue_coverage_by_paper["TII_operator_attention"]["expected"] == 15
+
+
+def test_artifact_gate_rejects_unknown_queue_coverage_key(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["source_queue_id"] = "UNKNOWN-Q"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(
+        tmp_path,
+        queue_path=DEFAULT_QUEUE,
+        require_queue_coverage=True,
+    )
+
+    assert report.records[0].accepted is True
+    assert report.covered_queue_runs == 0
+    assert any("unknown accepted run_meta.yaml keys" in item for item in report.blockers)
+
+
+def test_artifact_gate_rejects_duplicate_queue_coverage_key(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    _write_valid_artifact(tmp_path / "paper07" / "run1")
+
+    report = evaluate_artifact_gate(
+        tmp_path,
+        queue_path=DEFAULT_QUEUE,
+        require_queue_coverage=True,
+    )
+
+    assert all(record.accepted for record in report.records)
+    assert report.covered_queue_runs == 1
+    assert any("duplicate accepted run_meta.yaml keys" in item for item in report.blockers)
+
+
+def test_artifact_gate_rejects_command_mismatch_for_queue_key(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["command"] = "CUDA_VISIBLE_DEVICES=0 python main.py --config wrong.yaml"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(
+        tmp_path,
+        queue_path=DEFAULT_QUEUE,
+        require_queue_coverage=True,
+    )
+
+    assert report.records[0].accepted is True
+    assert report.covered_queue_runs == 1
+    assert any("command does not match queue command" in item for item in report.blockers)
 
 
 def test_artifact_gate_markdown_reports_queue_coverage_summary(tmp_path: Path) -> None:
@@ -106,7 +158,7 @@ def test_artifact_gate_markdown_reports_queue_coverage_summary(tmp_path: Path) -
     )
 
     text = output.read_text(encoding="utf-8")
-    assert "Queue coverage: `0/97`" in text
+    assert "Queue coverage: `0/104`" in text
     assert "## Queue Coverage By Paper" in text
     assert "`TII_operator_attention`" in text
 
@@ -172,8 +224,122 @@ def test_artifact_gate_rejects_template_placeholders(tmp_path: Path) -> None:
 
     assert report.accepted is False
     assert report.records[0].accepted is False
-    assert any("accepted_evidence is false" in item for item in report.records[0].issues)
+    assert any("accepted_evidence must be true" in item for item in report.records[0].issues)
     assert any("TODO" in item for item in report.records[0].issues)
+
+
+def test_artifact_gate_requires_explicit_accepted_evidence_true(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data.pop("accepted_evidence")
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "accepted_evidence must be true" in report.records[0].issues
+
+
+def test_artifact_gate_requires_queue_identity_fields(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data.pop("source_queue_id")
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "missing source_queue_id" in report.records[0].issues
+
+
+def test_artifact_gate_checks_gpu_count_against_visible_devices(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "top" / "run0")
+    run_meta = tmp_path / "top" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["source_queue_id"] = "TOP-Q1-GTM"
+    data["phase"] = "top_representatives"
+    data["entry_id"] = "B04,B05,A04"
+    data["cuda_visible_devices"] = "0,1"
+    data["gpu_count"] = 1
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "gpu_count must be 2 for cuda_visible_devices=0,1"
+        in report.records[0].issues
+    )
+
+
+def test_artifact_gate_rejects_empty_metrics_json(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    (tmp_path / "paper07" / "run0" / "metrics.json").write_text(
+        "{}\n", encoding="utf-8"
+    )
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "metrics_path JSON must contain at least one metric" in report.records[0].issues
+
+
+def test_artifact_gate_accepts_metrics_csv_with_data_row(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_dir = tmp_path / "paper07" / "run0"
+    (run_dir / "metrics.csv").write_text("metric,value\naccuracy,1.0\n", encoding="utf-8")
+    run_meta = run_dir / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["metrics_path"] = "metrics.csv"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is True
+    assert report.records[0].issues == ()
+
+
+def test_artifact_gate_rejects_absolute_referenced_paths(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_dir = tmp_path / "paper07" / "run0"
+    run_meta = run_dir / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["metrics_path"] = str((run_dir / "metrics.json").resolve())
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path must be relative to the run_meta.yaml directory"
+        in report.records[0].issues
+    )
+
+
+def test_artifact_gate_rejects_referenced_paths_outside_run_dir(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    shared_metrics = tmp_path / "paper07" / "metrics.json"
+    shared_metrics.write_text('{"accuracy": 1.0}\n', encoding="utf-8")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["metrics_path"] = "../metrics.json"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path must stay inside the run_meta.yaml directory"
+        in report.records[0].issues
+    )
 
 
 def test_artifact_gate_cli_writes_json_and_preserves_blocked_exit(tmp_path: Path) -> None:
@@ -213,3 +379,4 @@ def test_artifact_gate_metadata_contract_matches_gpu_queue() -> None:
     artifact_fields = set(REQUIRED_RUN_META_FIELDS) | set(CONDITIONAL_RUN_META_FIELDS)
     assert set(QUEUE_METADATA_TO_RUN_META.values()) <= artifact_fields
     assert "oom_or_failure_reason" in CONDITIONAL_RUN_META_FIELDS
+    assert {"source_queue_id", "paper_id", "phase", "entry_id"} <= artifact_fields
