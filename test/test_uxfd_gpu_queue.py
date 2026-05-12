@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from scripts.uxfd_gpu_queue import (
@@ -177,6 +178,17 @@ def test_persisted_launch_plan_and_shards_match_current_queue() -> None:
     assert "These scripts are launch plans, not accepted evidence." in readme
     assert "| `0` | `gpu0.sh` |" in readme
     assert "| `1` | `gpu1.sh` |" in readme
+
+
+def test_persisted_launch_plan_and_shards_are_shell_syntax_valid() -> None:
+    scripts = (
+        PERSISTED_LAUNCH_PLAN,
+        PERSISTED_SHARD_DIR / "gpu0.sh",
+        PERSISTED_SHARD_DIR / "gpu1.sh",
+    )
+
+    for script in scripts:
+        subprocess.run(["bash", "-n", str(script)], check=True)
 
 
 def test_persisted_live_preflight_snapshot_matches_current_queue_shape() -> None:
