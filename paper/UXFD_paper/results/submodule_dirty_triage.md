@@ -3,7 +3,7 @@
 Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Clean: `False`
-- Dirty entries: `54`
+- Dirty entries: `51`
 
 ## Summary
 
@@ -11,7 +11,7 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 |---|---:|---:|---:|---|
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | 22 | 16 | 6 | generated_or_result_artifact=1, manuscript_draft=7, planning_or_contract_draft=1, project_document=2, source_or_experiment_script=10, unclassified=1 |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 26 | 16 | 10 | experiment_output=15, generated_or_result_artifact=4, manuscript_draft=1, planning_or_contract_draft=1, source_or_experiment_script=4, unclassified=1 |
-| `paper/UXFD_paper/MOE_explainable` | 6 | 2 | 4 | manuscript_draft=3, planning_or_contract_draft=1, source_or_experiment_script=2 |
+| `paper/UXFD_paper/MOE_explainable` | 3 | 0 | 3 | manuscript_draft=1, planning_or_contract_draft=1, source_or_experiment_script=1 |
 
 ## Triage Rules
 
@@ -71,9 +71,6 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/run_quantitative_explainability.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/sync_truth_first_manuscript.py` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/truth_audit.py` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/draft_md/draft.md` |
-| `paper/UXFD_paper/MOE_explainable` | `M` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/final_tex/main.tex` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `EXPERIMENT_DESIGN.md` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `manuscript_draft` | `do_not_auto_commit_without_owner_review` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/bind_submission_ready_evidence.py` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `source_or_experiment_script` | `do_not_auto_commit_without_owner_review` | `scripts/sync_truth_first_manuscript.py` |

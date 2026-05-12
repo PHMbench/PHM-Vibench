@@ -28,6 +28,13 @@ It is not experiment evidence and does not make any paper submission-ready.
   - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
   - maintained `main.py --config ...` and bounded expert-ablation probe commands.
   - `innovation_contract.md` is bound from README, CORE, and paper blueprint.
+- Paper04 truth-first manuscript sync is committed inside the submodule at
+  `c832060`:
+  - removes appended Markdown run logs from `manuscript/final_tex/main.tex`.
+  - keeps the draft explicitly non-submission-ready under the parent UXFD
+    submission gate.
+  - adds `scripts/sync_truth_first_manuscript.py` as the reproducible sync
+    surface for the internal evidence checkpoint.
 - Paper01 control-doc update is committed inside the submodule at `dff592b`:
   - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
   - executable commands use lowercase `paper/UXFD_paper/...` paths.

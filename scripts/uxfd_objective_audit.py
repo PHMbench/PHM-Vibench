@@ -122,6 +122,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("test/test_uxfd_paper02_runner_policy.py"),
     Path("test/test_uxfd_paper04_control_docs.py"),
     Path("test/test_uxfd_paper04_runner_policy.py"),
+    Path("test/test_uxfd_paper04_truth_manuscript.py"),
     Path("test/test_uxfd_objective_audit.py"),
     Path("test/test_uxfd_readiness_backlog.py"),
     Path("test/test_uxfd_submission_gate.py"),
