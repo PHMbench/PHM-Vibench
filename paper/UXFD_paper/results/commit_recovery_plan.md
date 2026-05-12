@@ -27,6 +27,12 @@ It is not experiment evidence and does not make any paper submission-ready.
   - `scripts/run_fusion_ablation_smoke.py` and
     `scripts/test_fusion_ablation_smoke.py` record the current-root rewrite
     proxy without promoting it to accepted evidence.
+- Paper02 truth-first evidence binder is committed inside the submodule at
+  `6aff2ff`:
+  - adds `scripts/bind_submission_ready_evidence.py` for paper-local
+    claim-evidence binding.
+  - forces external `submission_ready` to remain `False` until the parent UXFD
+    accepted-run, 2x4090, and cross-paper gates pass.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.
