@@ -35,6 +35,12 @@ It is not experiment evidence and does not make any paper submission-ready.
     submission gate.
   - adds `scripts/sync_truth_first_manuscript.py` as the reproducible sync
     surface for the internal evidence checkpoint.
+- Paper04 truth-first evidence binder is committed inside the submodule at
+  `2faa58d`:
+  - adds `scripts/bind_submission_ready_evidence.py` for internal
+    claim-evidence binding.
+  - forces external `submission_ready` to remain `False` until parent UXFD
+    accepted-run, 2x4090, and cross-paper gates pass.
 - Paper01 control-doc update is committed inside the submodule at `dff592b`:
   - current-root `PHM-Vibench_fix` normalization for README/CORE/program.
   - executable commands use lowercase `paper/UXFD_paper/...` paths.
