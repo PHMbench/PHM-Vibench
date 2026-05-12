@@ -2478,3 +2478,92 @@ Result:
 2. [ ] Commit the parent checkpoint for Paper02 gitlink SHA `df3e579`.
 3. [ ] Keep accepted artifact and SOTA gates blocked until real GPU evidence
        exists under `paper/UXFD_paper/results/accepted_runs`.
+
+## 2026-05-12 Update: Parent Artifact And Dirty-Risk Triage Checkpoint
+
+Current continuation point after commits `cefeee3`, `2c67045`, `ee58fbb`, and
+`38aee8e`. This section supersedes earlier notes that said parent git commits
+were blocked; the current parent goal-control checkpoint is committed and clean.
+
+**What changed:**
+
+- Parent commit `cefeee3` added
+  `scripts/uxfd_parent_result_artifact_triage.py`,
+  `test/test_uxfd_parent_result_artifact_triage.py`, and
+  `paper/UXFD_paper/results/parent_result_artifact_triage.md`.
+- Parent commit `2c67045` refreshed the persisted objective/backlog/status
+  reports after the parent artifact triage checkpoint.
+- Parent commit `ee58fbb` extended
+  `scripts/uxfd_submodule_dirty_triage.py` with risk markers for
+  `stale_exec_root`, `historical_accepted_claim`, and `nonlocal_gpu_binding`.
+- Parent commit `38aee8e` refreshed persisted objective/backlog/status reports
+  after the dirty-risk triage checkpoint.
+
+**Important current triage findings:**
+
+- `paper/UXFD_paper/results/figures/training_history.png` remains untracked and
+  is explicitly classified as a generated/result artifact, not accepted
+  evidence.
+- `Explainable_FD_Toolkit/manuscript/AUTORESEARCH_EVIDENCE.md` is marked with
+  `stale_exec_root` and `historical_accepted_claim`.
+- `1D-2D_fusion_explainable/manuscript/AUTORESEARCH_EVIDENCE.md` is marked with
+  `stale_exec_root` and `historical_accepted_claim`.
+- `MOE_explainable/EXPERIMENT_DESIGN.md` is marked with
+  `nonlocal_gpu_binding`.
+- `MOE_explainable/manuscript/AUTORESEARCH_EVIDENCE.md` is marked with
+  `stale_exec_root`, `historical_accepted_claim`, and `nonlocal_gpu_binding`.
+
+**Validation after the latest checkpoints:**
+
+```bash
+python -m pytest -q \
+  test/test_uxfd_parent_result_artifact_triage.py \
+  test/test_uxfd_submodule_dirty_triage.py \
+  test/test_uxfd_objective_audit.py \
+  test/test_uxfd_readiness_backlog.py \
+  test/test_uxfd_goal_status.py \
+  test/test_uxfd_submission_gate.py \
+  test/test_uxfd_gpu_queue.py
+```
+
+Result:
+
+```text
+39 passed, 1 warning in 73.70s
+```
+
+The warning is the expected CUDA/NVML unavailable warning.
+
+**Current objective/submission state:**
+
+- Objective audit: `achieved=false`, `met=55`, `not_met=11`, `blocked=1`.
+- Parent UXFD goal-control checkpoint: `met`, with `38 parent goal-control paths clean`.
+- Submission gate: `ready=false`, `blocking findings=17`.
+- Accepted run artifact records: `0`.
+- GPU queue: still blocked; `nvidia-smi -L` cannot communicate with the NVIDIA
+  driver and no accepted GPU evidence can be generated in this session.
+
+**Remaining dirty work to protect:**
+
+- `paper/UXFD_paper/Explainable_FD_Toolkit`: 22 dirty entries, mostly
+  experiment outputs/generated figures plus owner-review drafts.
+- `paper/UXFD_paper/1D-2D_fusion_explainable`: 3 dirty entries:
+  `best_model.pth`, `EXPERIMENT_DESIGN.md`, and
+  `manuscript/AUTORESEARCH_EVIDENCE.md`.
+- `paper/UXFD_paper/MOE_explainable`: 2 untracked owner-review drafts.
+- Do not stage these dirty files as accepted evidence. Commit only after owner
+  review, and promote result artifacts only through `scripts.uxfd_artifact_gate`.
+
+**Immediate next actions:**
+
+1. [ ] If the user wants another non-GPU checkpoint, review the three dirty
+       owner-review draft groups and either rewrite them as explicit
+       non-evidence notes or leave them unstaged.
+2. [ ] Re-run Q0 GPU preflight with `nvidia-smi -L` and PyTorch CUDA checks
+       before launching any experiment.
+3. [ ] Once GPUs `0,1` are visible, start Q1 Paper07 from
+       `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` and populate
+       accepted `run_meta.yaml`, metrics, logs, configs, GPU metadata, and SHA
+       provenance.
+4. [ ] Re-run artifact, recent-work, submission, objective, and goal-status
+       gates after any accepted evidence batch.
