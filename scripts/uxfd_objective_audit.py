@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -48,6 +49,9 @@ CLAUDE_TEAM_OUTPUTS = (
 )
 
 CODEX_SUBAGENT_LAUNCH = "CODEX_SUBAGENT_LAUNCH.md"
+SUBAGENT_ID_PATTERN = re.compile(
+    r"`([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`"
+)
 
 EXECUTION_ARTIFACTS = (
     ("GPU execution runbook", Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md")),
@@ -270,6 +274,49 @@ def _parent_goal_checkpoint_item(
     )
 
 
+def _subagent_execution_item(
+    team_dir: Path = CLAUDE_TEAM_DIR,
+    launch_blocked: bool = False,
+) -> ObjectiveAuditItem:
+    launch_path = team_dir / CODEX_SUBAGENT_LAUNCH
+    output_paths = tuple(team_dir / filename for filename in CLAUDE_TEAM_OUTPUTS)
+    outputs_ready = all(path.exists() for path in output_paths)
+    if not launch_path.exists():
+        return _item(
+            requirement="six xhigh/subagent or Claude Team execution evidence",
+            evidence=team_dir,
+            status="blocked" if launch_blocked else "unverified",
+            details=(
+                "local subagent launch log missing; launch log records policy block"
+                if launch_blocked
+                else "local subagent launch log missing"
+            ),
+        )
+
+    text = launch_path.read_text(encoding="utf-8")
+    subagent_ids = set(SUBAGENT_ID_PATTERN.findall(text))
+    has_xhigh_marker = "reasoning_effort=xhigh" in text
+    evidence_ready = len(subagent_ids) == 6 and has_xhigh_marker and outputs_ready
+    if evidence_ready:
+        return _item(
+            requirement="six xhigh/subagent or Claude Team execution evidence",
+            evidence=team_dir,
+            status="met",
+            details="subagents=6, xhigh=True, deliverables=3",
+        )
+
+    missing_outputs = [path.name for path in output_paths if not path.exists()]
+    return _item(
+        requirement="six xhigh/subagent or Claude Team execution evidence",
+        evidence=team_dir,
+        status="blocked" if launch_blocked else "unverified",
+        details=(
+            f"subagents={len(subagent_ids)}, xhigh={has_xhigh_marker}, "
+            f"missing_deliverables={','.join(missing_outputs) or 'none'}"
+        ),
+    )
+
+
 def evaluate_objective_audit(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_root: Path = DEFAULT_ARTIFACT_ROOT,
@@ -302,28 +349,7 @@ def evaluate_objective_audit(
     launch_blocked = _text_contains(launch_log, "Prepared but not launched") or _text_contains(
         launch_log, "rejected by policy"
     )
-    subagent_launch = CLAUDE_TEAM_DIR / CODEX_SUBAGENT_LAUNCH
-    subagent_outputs_ready = subagent_launch.exists() and all(
-        (CLAUDE_TEAM_DIR / filename).exists() for filename in CLAUDE_TEAM_OUTPUTS
-    )
-    items.append(
-        _item(
-            requirement="six xhigh/subagent or Claude Team execution evidence",
-            evidence=CLAUDE_TEAM_DIR,
-            status=(
-                "met"
-                if subagent_outputs_ready
-                else "blocked" if launch_blocked else "unverified"
-            ),
-            details=(
-                "six local Codex xhigh subagents launched and deliverables exist"
-                if subagent_outputs_ready
-                else "local Claude Team reports are absent; launch log records policy block"
-                if launch_blocked
-                else "no local report proving team execution"
-            ),
-        )
-    )
+    items.append(_subagent_execution_item(launch_blocked=launch_blocked))
     for filename in CLAUDE_TEAM_OUTPUTS:
         path = CLAUDE_TEAM_DIR / filename
         items.append(

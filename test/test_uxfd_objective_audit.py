@@ -50,6 +50,10 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
         items["six xhigh/subagent or Claude Team execution evidence"].status
         == "met"
     )
+    assert (
+        items["six xhigh/subagent or Claude Team execution evidence"].details
+        == "subagents=6, xhigh=True, deliverables=3"
+    )
     assert items["Claude Team deliverable report.md"].status == "met"
     assert items["Claude Team deliverable risks.md"].status == "met"
     assert items["Claude Team deliverable test-log.md"].status == "met"
@@ -102,6 +106,9 @@ def test_objective_audit_records_each_paper_matrix_as_covered_but_not_ready() ->
 
 def test_spec_tasks_match_local_xhigh_subagent_evidence() -> None:
     text = SPEC_TASKS.read_text(encoding="utf-8")
+    launch_text = (CLAUDE_TEAM_DIR / "CODEX_SUBAGENT_LAUNCH.md").read_text(
+        encoding="utf-8"
+    )
 
     assert "- [x] T026 [US3]" in text
     assert "- [x] T027 [US3]" in text
@@ -115,6 +122,10 @@ def test_spec_tasks_match_local_xhigh_subagent_evidence() -> None:
         "test-log.md",
     ):
         assert (CLAUDE_TEAM_DIR / filename).exists()
+
+    assert "reasoning_effort=xhigh" in launch_text
+    assert launch_text.count("read-only audit") == 6
+    assert launch_text.count("019e1769-") == 6
 
 
 def test_objective_audit_covers_latest_continuation_handoff() -> None:

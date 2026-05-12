@@ -1,8 +1,8 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `55`
-- Not met: `11`
+- Met: `54`
+- Not met: `12`
 - Blocked: `1`
 - Unverified: `0`
 
@@ -40,7 +40,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | Claude Team task spec | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md` | exists |
 | `met` | Claude Team launch log | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/LAUNCH_LOG.md` | exists |
 | `met` | Codex xhigh subagent launch log | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/CODEX_SUBAGENT_LAUNCH.md` | exists |
-| `met` | six xhigh/subagent or Claude Team execution evidence | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review` | six local Codex xhigh subagents launched and deliverables exist |
+| `met` | six xhigh/subagent or Claude Team execution evidence | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review` | subagents=6, xhigh=True, deliverables=3 |
 | `met` | Claude Team deliverable report.md | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/report.md` | exists |
 | `met` | Claude Team deliverable risks.md | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/risks.md` | exists |
 | `met` | Claude Team deliverable test-log.md | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/test-log.md` | exists |
@@ -59,7 +59,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | low-tier source audit report | `paper/UXFD_paper/results/low_tier_source_audit.md` | exists |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules |
 | `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2 |
-| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 38 parent goal-control paths clean |
+| `not_met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | dirty_parent_goal_control_paths=3 |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
 | `not_met` | TII_operator_attention: IEEE Transactions submission-ready | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
@@ -85,6 +85,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 ## Blockers
 
 - paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2
+- parent UXFD goal-control checkpoint committed: dirty_parent_goal_control_paths=3
 - TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5
 - 1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5
 - Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5
