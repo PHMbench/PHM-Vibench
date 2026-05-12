@@ -326,7 +326,7 @@
   "artifact_gate_blockers": [
     "artifact root does not exist: paper/UXFD_paper/results/accepted_runs",
     "no run_meta.yaml files found under paper/UXFD_paper/results/accepted_runs",
-    "queue coverage incomplete: 97 launch rows missing accepted run_meta.yaml"
+    "queue coverage incomplete: 104 queue coverage rows missing accepted run_meta.yaml"
   ],
   "recent_work_policy_ready": true,
   "recent_work_evidence_ready": false,

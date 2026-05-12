@@ -48,6 +48,18 @@ It is not experiment evidence and does not make any paper submission-ready.
   - adds dry-run and explicit output-dir paths so validation does not create
     result artifacts in the submodule working tree.
   - keeps all comparison outputs explicitly outside accepted UXFD run evidence.
+- Paper02 truth-first manuscript cleanup is committed inside the submodule at
+  `da9f3b9`:
+  - `scripts/sync_truth_first_manuscript.py`
+  - `scripts/truth_audit.py`
+  - `manuscript/final_tex/main.tex`
+  - `manuscript/paper.md`
+  - `paper_draft/NMI_Paper1_Fusion1D2D.tex`
+  - `manuscript/experiments.md`
+  - validation passed with `unsupported_claims_remaining=0` and
+    `blocking_issue_count=0` under `/tmp/uxfd_paper02_truth_*_current`.
+  - do not stage `best_model.pth`, untracked `EXPERIMENT_DESIGN.md`, or
+    untracked `manuscript/AUTORESEARCH_EVIDENCE.md` in this checkpoint.
 - Paper04 bounded probe runner update is committed inside the submodule at
   `b1f4084`:
   - current-root path policy for `run_real_dataset_probe.py`.
@@ -108,12 +120,34 @@ unreviewed scripts in this checkpoint.
 
 ## Phase 2: Parent Matrix And Report Sync
 
-After Phase 1 recorded Paper02 submodule SHA `205aaea`:
+Paper02 truth-first cleanup has now been committed as a separate submodule
+checkpoint:
+
+```bash
+git -C paper/UXFD_paper/1D-2D_fusion_explainable add -- \
+  scripts/sync_truth_first_manuscript.py \
+  scripts/truth_audit.py \
+  manuscript/final_tex/main.tex \
+  manuscript/paper.md \
+  paper_draft/NMI_Paper1_Fusion1D2D.tex \
+  manuscript/experiments.md
+git -C paper/UXFD_paper/1D-2D_fusion_explainable diff --cached --check
+git -C paper/UXFD_paper/1D-2D_fusion_explainable diff --cached --name-status
+git -C paper/UXFD_paper/1D-2D_fusion_explainable commit -m "docs: clean paper02 truth-first manuscript surfaces"
+git -C paper/UXFD_paper/1D-2D_fusion_explainable rev-parse --short HEAD  # da9f3b9
+```
+
+Sync the parent matrix and reports against Paper02 submodule SHA `da9f3b9`.
+Keep accepted baseline, ablation, TOP representative, GPU metadata, and SOTA
+gates blocked unless real accepted artifacts exist.
+
+Historical note: Phase 1 recorded Paper02 submodule SHA `205aaea`; later
+Paper02 checkpoints have advanced the submodule beyond that planning-only SHA.
 
 1. Update `paper/UXFD_paper/goal/99_submission_readiness_matrix.md`:
-   - replace Paper02 submodule SHA `25725d8` with `205aaea`.
-   - replace the `pending uncommitted planning update` wording with the committed
-     planning checkpoint reference.
+   - replace stale Paper02 submodule SHA references with the latest committed
+     Paper02 cleanup checkpoint SHA.
+   - reference the truth-first manuscript cleanup as a committed checkpoint.
    - keep accepted baseline, ablation, TOP representative, GPU metadata, and
      SOTA gates blocked unless real accepted artifacts exist.
 2. Regenerate parent reports:
@@ -143,6 +177,9 @@ git add -- \
   paper/UXFD_paper/goal/README.md \
   paper/UXFD_paper/goal/99_submission_readiness_matrix.md \
   paper/UXFD_paper/results/gpu_queue_live_preflight.json \
+  paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md \
+  paper/UXFD_paper/results/accepted_run_templates \
+  paper/UXFD_paper/results/artifact_gate_queue_coverage.md \
   paper/UXFD_paper/results/queue_launch_plan.sh \
   paper/UXFD_paper/results/queue_launch_shards/gpu0.sh \
   paper/UXFD_paper/results/submission_gate_current.json \
@@ -152,12 +189,16 @@ git add -- \
   paper/UXFD_paper/results/low_tier_source_audit.md \
   paper/UXFD_paper/results/low_tier_source_audit.json \
   paper/UXFD_paper/results/commit_recovery_plan.md \
+  specs/006-uxfd-ieee-trans-submission-readiness/tasks.md \
+  scripts/uxfd_artifact_gate.py \
+  scripts/uxfd_artifact_scaffold.py \
   scripts/uxfd_low_tier_source_audit.py \
   scripts/uxfd_objective_audit.py \
   scripts/uxfd_readiness_backlog.py \
   scripts/uxfd_submission_gate.py \
   scripts/uxfd_submodule_dirty_triage.py \
   test/test_uxfd_artifact_gate.py \
+  test/test_uxfd_artifact_scaffold.py \
   test/test_uxfd_low_tier_source_audit.py \
   test/test_uxfd_gpu_queue.py \
   test/test_uxfd_paper01_control_docs.py \

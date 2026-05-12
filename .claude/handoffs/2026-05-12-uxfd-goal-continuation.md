@@ -2258,3 +2258,180 @@ Result:
 
 The warning is still the expected CUDA/NVML unavailability warning from the
 live GPU preflight test.
+
+## 2026-05-12 Update: Current Recovery Checkpoint
+
+This is the current continuation point as of 09:06 CST. The earlier sections
+above are useful history, but some counts and dirty-submodule lists there are
+stale.
+
+**Current state:**
+
+- Objective audit: `achieved=false`, `met=53`, `not_met=12`, `blocked=1`.
+- Submission gate: `ready=false`, `queue_can_execute=false`, accepted artifact
+  records `0`, blocking findings `17`.
+- GPU preflight: blocked. `nvidia-smi -L` cannot communicate with the NVIDIA
+  driver, and PyTorch reports `cuda_available=False`, `device_count=0`.
+- Dirty submodules reported by the current objective audit:
+  - `Explainable_FD_Toolkit:22`
+  - `1D-2D_fusion_explainable:14`
+  - `MOE_explainable:2`
+- Parent goal-control checkpoint is still not committed. At this checkpoint the
+  goal-control dirty count is expected to increase when this handoff update is
+  regenerated into the persisted objective/backlog reports.
+
+**Current uncommitted parent files to treat as goal-control work:**
+
+- `.claude/handoffs/2026-05-12-uxfd-goal-continuation.md`
+- `paper/UXFD_paper/results/commit_recovery_plan.md`
+- `paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md`
+- `paper/UXFD_paper/results/accepted_run_templates/`
+- `paper/UXFD_paper/results/artifact_gate_queue_coverage.md`
+- `paper/UXFD_paper/results/objective_audit_current.json`
+- `paper/UXFD_paper/results/objective_audit_current.md`
+- `paper/UXFD_paper/results/readiness_backlog.md`
+- `paper/UXFD_paper/results/submodule_dirty_triage.md`
+- `scripts/uxfd_artifact_gate.py`
+- `scripts/uxfd_artifact_scaffold.py`
+- `specs/006-uxfd-ieee-trans-submission-readiness/tasks.md`
+- `test/test_uxfd_artifact_gate.py`
+- `test/test_uxfd_artifact_scaffold.py`
+
+**Paper02 verified-but-uncommitted cleanup:**
+
+The next submodule commit should stage only these Paper02 files:
+
+```bash
+git -C paper/UXFD_paper/1D-2D_fusion_explainable add -- \
+  scripts/sync_truth_first_manuscript.py \
+  scripts/truth_audit.py \
+  manuscript/final_tex/main.tex \
+  manuscript/paper.md \
+  paper_draft/NMI_Paper1_Fusion1D2D.tex \
+  manuscript/experiments.md
+```
+
+Do not stage `best_model.pth`, `EXPERIMENT_DESIGN.md`, or
+`manuscript/AUTORESEARCH_EVIDENCE.md` in that checkpoint.
+
+**Validation at this checkpoint:**
+
+```bash
+python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py test/test_uxfd_gpu_queue.py test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_recent_work_gate.py
+```
+
+Result:
+
+```text
+39 passed, 1 warning in 62.92s
+```
+
+The warning is expected while CUDA/NVML remains unavailable.
+
+**Accepted-artifact gate hardening after this checkpoint:**
+
+- `scripts/uxfd_artifact_gate.py` now requires each accepted `run_meta.yaml` to
+  contain explicit boolean `accepted_evidence: true`; missing or false values
+  are rejected.
+- `run_meta.yaml` must include queue identity fields even when queue coverage is
+  not requested: `source_queue_id`, `paper_id`, `phase`, and `entry_id`.
+- `gpu_count` must match `cuda_visible_devices`: single-GPU records require
+  `gpu_count: 1`; TOP representative summary records using
+  `cuda_visible_devices: 0,1` require `gpu_count: 2`.
+- With `--require-queue-coverage`, the artifact gate rejects unknown accepted
+  queue keys and duplicate accepted queue keys instead of counting them as
+  coverage.
+- `metrics_path` must point to a parseable non-empty `.json` or a `.csv` with a
+  header and at least one data row.
+- `test/test_uxfd_artifact_gate.py` now includes a regression for missing
+  `accepted_evidence`, missing queue identity, GPU-count mismatch,
+  unknown/duplicate queue keys, empty JSON metrics, and CSV metrics with data.
+- Latest validation passed: `python -m pytest -q test/test_uxfd_artifact_gate.py`
+  returned `15 passed in 1.39s`; full UXFD regression returned
+  `113 passed, 1 warning in 83.80s`.
+
+**TOP representative artifact coverage hardening after this checkpoint:**
+
+- Artifact queue coverage now requires 104 accepted records: 97 launchable
+  proposed/baseline/ablation records plus 7 TOP representative binding summary
+  records.
+- `scripts/uxfd_artifact_scaffold.py` now emits 7
+  `top_representatives/.../run_meta.template.yaml` files with
+  `cuda_visible_devices: 0,1` and `gpu_count: 2`.
+- `paper/UXFD_paper/results/artifact_gate_queue_coverage.md` now reports
+  `Queue coverage: 0/104`.
+- `GPU_EXECUTION_RUNBOOK.md` now distinguishes 97 launchable rows from 104
+  accepted artifact coverage rows.
+
+**Next actions:**
+
+1. [ ] Wait until git-index writes are available; do not work around the current
+       escalation/usage-limit blocker.
+2. [ ] Commit the verified Paper02 truth-first cleanup as a submodule checkpoint.
+3. [ ] Update the parent matrix/reports to reference the new Paper02 SHA and
+       commit the parent goal-control checkpoint.
+4. [ ] Regenerate `objective_audit_current.*` and `readiness_backlog.md` after
+       the parent checkpoint commit, then commit that refresh separately.
+5. [ ] Only after local GPUs `0,1` pass Q0 preflight, run Q1-Q7 accepted
+       evidence queues.
+
+## 2026-05-12 Update: Artifact Gate And Paper02 Commit Checkpoint
+
+Current continuation point as of 11:55 CST.
+
+**What changed:**
+
+- Parent commit `cf2bbfa` records the stricter UXFD artifact gate and its tests.
+- Paper02 submodule commit `da9f3b9` records the verified truth-first manuscript
+  cleanup for the six intended files only.
+- `paper/UXFD_paper/goal/99_submission_readiness_matrix.md` now points Paper02
+  to submodule SHA `da9f3b9`.
+- `paper/UXFD_paper/results/commit_recovery_plan.md` now treats the Paper02
+  truth-first cleanup as committed, not pending.
+
+**Validation run after the artifact gate change:**
+
+```bash
+python -m pytest -q test/test_uxfd_artifact_gate.py
+python -m pytest -q test/test_uxfd_*.py test/test_collect_uxfd_runs.py
+```
+
+Results:
+
+```text
+18 passed in 1.24s
+116 passed, 1 warning in 82.69s
+```
+
+The warning is the expected CUDA/NVML unavailable warning.
+
+**Paper02 validation before submodule commit:**
+
+```bash
+python scripts/truth_audit.py --output-dir /tmp/uxfd_paper02_truth_audit_current
+python scripts/sync_truth_first_manuscript.py --output-dir /tmp/uxfd_paper02_truth_sync_current
+```
+
+Results:
+
+```text
+blocking_issue_count=0
+unsupported_claims_remaining=0
+all_targets_synced=True
+```
+
+**Remaining blockers:**
+
+- Local GPUs remain unavailable; accepted artifact coverage is still `0/104`.
+- Paper02 submodule still has residual dirty files intentionally left unstaged:
+  docs/status files, bibliography edits, `best_model.pth`, baseline/readiness
+  matrix edits, and two untracked drafts.
+- Other dirty submodules remain `Explainable_FD_Toolkit` and `MOE_explainable`.
+
+**Next actions:**
+
+1. [ ] Regenerate submission/objective/readiness/dirty-triage reports after the
+       Paper02 SHA sync.
+2. [ ] Commit the parent goal-control checkpoint, including the Paper02 gitlink.
+3. [ ] Re-run objective audit; do not mark the active goal complete while GPU
+       accepted artifacts and all seven submission-ready gates remain blocked.
