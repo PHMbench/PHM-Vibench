@@ -367,5 +367,19 @@
       "reviewer": "TODO",
       "notes": "TODO"
     }
+  ],
+  "owner_resolution_gates": [
+    {
+      "decision": "commit_after_review",
+      "required_gate": "owner confirms the file is intentional source/docs and removes or justifies stale exec roots, deprecated config dispatch, nonlocal GPU bindings, readiness claims, and historical accepted-claim wording"
+    },
+    {
+      "decision": "rewrite_then_commit",
+      "required_gate": "owner rewrites the file, reruns dirty triage, and records why any remaining risk marker is acceptable before staging"
+    },
+    {
+      "decision": "discard_from_submodule",
+      "required_gate": "owner explicitly marks the untracked draft or generated change as discardable; do not delete it automatically from this triage"
+    }
   ]
 }

@@ -65,6 +65,16 @@ The default `pending_owner_review` value is intentionally not commit-safe.
 | `paper/UXFD_paper/MOE_explainable` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `TODO` | `TODO` |
 | `paper/UXFD_paper/MOE_explainable` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `TODO` | `TODO` |
 
+## Owner Resolution Gates
+
+These gates define when an owner-review entry may stop blocking the parent handoff.
+
+| Decision | Required gate before staging or cleanup |
+|---|---|
+| `commit_after_review` | owner confirms the file is intentional source/docs and removes or justifies stale exec roots, deprecated config dispatch, nonlocal GPU bindings, readiness claims, and historical accepted-claim wording |
+| `rewrite_then_commit` | owner rewrites the file, reruns dirty triage, and records why any remaining risk marker is acceptable before staging |
+| `discard_from_submodule` | owner explicitly marks the untracked draft or generated change as discardable; do not delete it automatically from this triage |
+
 ## Artifact-Gate Promotion Checklist
 
 These entries must not be committed as accepted evidence. Recreate or promote them only through `paper/UXFD_paper/results/accepted_runs` after real Q0-passed runs.

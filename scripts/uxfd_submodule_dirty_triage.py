@@ -237,6 +237,33 @@ def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str
     )
 
 
+def _owner_resolution_gates() -> Tuple[Mapping[str, str], ...]:
+    return (
+        {
+            "decision": "commit_after_review",
+            "required_gate": (
+                "owner confirms the file is intentional source/docs and removes or "
+                "justifies stale exec roots, deprecated config dispatch, nonlocal GPU "
+                "bindings, readiness claims, and historical accepted-claim wording"
+            ),
+        },
+        {
+            "decision": "rewrite_then_commit",
+            "required_gate": (
+                "owner rewrites the file, reruns dirty triage, and records why any "
+                "remaining risk marker is acceptable before staging"
+            ),
+        },
+        {
+            "decision": "discard_from_submodule",
+            "required_gate": (
+                "owner explicitly marks the untracked draft or generated change as "
+                "discardable; do not delete it automatically from this triage"
+            ),
+        },
+    )
+
+
 def evaluate_dirty_triage(
     submodules: Sequence[Path] = PAPER_SUBMODULES,
 ) -> DirtyTriageReport:
@@ -256,6 +283,7 @@ def build_payload(report: DirtyTriageReport) -> Mapping[str, Any]:
     payload["action_counts"] = _action_counts(report.entries)
     payload["risk_marker_counts"] = _risk_marker_counts(report.entries)
     payload["owner_decision_template"] = _owner_decision_template(report.entries)
+    payload["owner_resolution_gates"] = _owner_resolution_gates()
     return json.loads(json.dumps(payload))
 
 
@@ -368,6 +396,22 @@ def render_markdown(report: DirtyTriageReport) -> str:
         lines.append(
             f"| `{entry.submodule}` | `{entry.path}` | `pending_owner_review` | "
             "`TODO` | `TODO` |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Owner Resolution Gates",
+            "",
+            "These gates define when an owner-review entry may stop blocking the parent handoff.",
+            "",
+            "| Decision | Required gate before staging or cleanup |",
+            "|---|---|",
+        ]
+    )
+    for gate in _owner_resolution_gates():
+        lines.append(
+            f"| `{gate['decision']}` | {gate['required_gate']} |"
         )
 
     lines.extend(

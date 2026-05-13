@@ -12,6 +12,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     _classify_path,
     _content_risk_markers,
     _owner_decision_template,
+    _owner_resolution_gates,
     _path_risk_markers,
     _risk_marker_counts,
     _review_command,
@@ -191,6 +192,19 @@ def test_owner_decision_template_keeps_owner_review_entries_pending() -> None:
     )
 
 
+def test_owner_resolution_gates_define_commit_cleanup_decisions() -> None:
+    gates = {row["decision"]: row["required_gate"] for row in _owner_resolution_gates()}
+
+    assert set(gates) == {
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule",
+    }
+    assert "readiness claims" in gates["commit_after_review"]
+    assert "reruns dirty triage" in gates["rewrite_then_commit"]
+    assert "do not delete it automatically" in gates["discard_from_submodule"]
+
+
 def test_review_command_is_non_destructive() -> None:
     modified = DirtyEntry(
         "paper/A",
@@ -247,7 +261,9 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Owner Review Queue" in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
+    assert "Owner Resolution Gates" in text
     assert "pending_owner_review" in text
+    assert "commit_after_review" in text
     assert "Artifact-Gate Promotion Checklist" in text
     assert "`git -C paper/A status --short`" in text
     assert "Auto-commit safe entries: `0`" in text
