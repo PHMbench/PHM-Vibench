@@ -16,6 +16,8 @@ The recent continuation tightened the evidence gates so accepted artifacts and S
 
 The latest update made the readiness backlog say the same thing explicitly: `Q0-ARTIFACT-COVERAGE` now requires at least the paper-specific `minimum_seeds` distinct accepted seeds for each covered queue item before artifact and SOTA gates are rerun with queue coverage.
 
+A follow-up source check updated the recent-work README with a 2026-05-14 live verification table for 2024-2026 TOP methods using primary venue, proceedings, publisher, and official project pages. This verifies citation identity and venue status only; it does not make any TOP representative evidence-ready.
+
 ## Decisions Made
 
 - **Do not mark the active objective complete.** `scripts.uxfd_objective_audit` still reports `Achieved=False`.
@@ -39,12 +41,15 @@ The latest update made the readiness backlog say the same thing explicitly: `Q0-
   - Artifact gate requires covered queue rows to reach the owning paper's `minimum_seeds` distinct accepted seeds.
 - `b92a3d9 docs: require minimum seed coverage in UXFD backlog`
   - Readiness backlog now explicitly carries the same minimum-seed requirement.
+- `672b086 docs: add UXFD recent work source verification`
+  - `08_recent_work_citation_readme.md` now records a live primary-source check for the accepted 2024-2026 TOP method pool.
 
 **Files most recently modified:**
 
 - `scripts/uxfd_readiness_backlog.py` - Q0 artifact action now requires paper-specific `minimum_seeds` distinct accepted seeds.
 - `test/test_uxfd_readiness_backlog.py` - regression assertion for the minimum-seed backlog wording.
 - `paper/UXFD_paper/results/readiness_backlog.md` - persisted backlog updated from the generator.
+- `paper/UXFD_paper/goal/08_recent_work_citation_readme.md` - live source verification section added without changing accepted-pool gate counts.
 
 ## Verification
 
@@ -57,6 +62,8 @@ The latest update made the readiness backlog say the same thing explicitly: `Q0-
   - `Ready=False`, `Queue can execute=False`, `Artifact gate records=0`, `SOTA gate ready=False`, `Blocking findings=19`.
 - `python -m scripts.uxfd_sota_gate --format markdown --allow-not-ready`
   - `Ready=False`, accepted papers `0/7`, blockers `8`.
+- `python -m pytest -q test/test_uxfd_recent_work_gate.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_objective_audit.py`
+  - Result: `24 passed in 44.26s`.
 
 ## Open Questions
 
