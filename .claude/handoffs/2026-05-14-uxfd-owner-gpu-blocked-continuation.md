@@ -22,6 +22,8 @@ the pre-launch decision gate without re-deriving them.
 
 Recent parent commits:
 
+- `e6aeb2c docs: refresh UXFD GPU preflight audit`
+- `f3d3774 docs: add UXFD GPU preflight action packet`
 - `d87d2ec docs: refresh UXFD owner packet backlog`
 - `3dde575 docs: refresh UXFD submission owner packet gate`
 - `9b9bbbc test: surface UXFD owner action packet in gates`
@@ -84,6 +86,10 @@ Recent Paper03 submodule commit:
   `submission_gate_current.*` and `readiness_backlog.md` surface
   `submodule_owner_review_action_packet.md` so owner review can start from the
   compact response form rather than only the JSON template.
+- **GPU preflight now has a short resource response packet** -
+  `paper/UXFD_paper/results/gpu_preflight_action_packet.md` summarizes the
+  current NVIDIA driver/PyTorch CUDA blocker, required local RTX 4090 devices
+  `0,1`, and the exact preflight commands. It is not accepted evidence.
 
 ## Code Changes
 
@@ -147,6 +153,15 @@ Recent Paper03 submodule commit:
   `paper/UXFD_paper/results/submission_gate_current.md`, and
   `paper/UXFD_paper/results/readiness_backlog.md` - refreshed persisted reports
   with owner action packet references.
+- `paper/UXFD_paper/results/gpu_preflight_action_packet.md` - compact resource
+  response packet for Q0 GPU preflight.
+- `scripts/uxfd_readiness_backlog.py`, `scripts/uxfd_objective_audit.py`,
+  `test/test_uxfd_readiness_backlog.py`, and `test/test_uxfd_objective_audit.py`
+  - surface and test the GPU preflight action packet in backlog/objective audit.
+- `paper/UXFD_paper/results/objective_audit_current.json`,
+  `paper/UXFD_paper/results/objective_audit_current.md`, and
+  `paper/UXFD_paper/results/readiness_backlog.md` - refreshed persisted reports
+  with GPU preflight action packet references.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -181,6 +196,10 @@ Latest relevant tests passed:
   - result after refreshing objective audit snapshot: `15 passed`
 - `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py`
   - result after refreshing submission/backlog owner packet outputs: `10 passed`
+- `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py -k "prioritizes_gpu or prompt_to_artifact or parent_goal_checkpoint_paths"`
+  - result after adding the GPU preflight packet: `2 passed, 16 deselected`
+- `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py`
+  - result after refreshing GPU preflight reports: `18 passed`
 
 Latest gate state:
 
@@ -196,7 +215,7 @@ Latest gate state:
   - 7 paper matrices still `submission_ready: false`
 - `python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved`
   - `Achieved: False`
-  - `Met: 79`, `Not met: 13`, `Blocked: 1`
+  - `Met: 80`, `Not met: 13`, `Blocked: 1`
 - `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
   - result: exit `2`
   - reason: NVIDIA driver/CUDA not visible; PyTorch reports
@@ -276,6 +295,9 @@ Latest gate state:
 
 - `paper/UXFD_paper/results/readiness_backlog.md` - current action queue and
   owner-review recommendation summaries.
+- `paper/UXFD_paper/results/gpu_preflight_action_packet.md` - short resource
+  response form for restoring local GPU `0,1` RTX 4090 visibility; decision
+  support only, not accepted evidence.
 - `paper/UXFD_paper/results/submodule_dirty_triage.json` - machine-readable
   dirty-submodule packets and recommended decisions.
 - `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` - short
