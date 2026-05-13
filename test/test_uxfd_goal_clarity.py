@@ -133,11 +133,15 @@ def test_low_tier_sources_are_only_documented_as_excluded_context() -> None:
 
 def test_commit_recovery_plan_keeps_objective_audit_refresh_separate() -> None:
     text = COMMIT_RECOVERY_PLAN.read_text(encoding="utf-8")
+    current_status = _section(text, "Current Checkpoint Status")
     phase3 = _section(text, "Phase 3: Parent Checkpoint Commit")
     phase4 = _section(text, "Phase 4: Objective Audit Refresh Commit")
     phase3_staging_command = phase3.split("Do not stage:")[0]
 
     assert str(COMMIT_RECOVERY_PLAN) in GOAL_README.read_text(encoding="utf-8")
+    assert "1163a88 docs: refresh UXFD audit latest handoff evidence" in current_status
+    assert "9076423 docs: refresh UXFD backlog owner decision hints" in current_status
+    assert "submodule_owner_review_decisions.json" in current_status
     assert "objective_audit_current.json" not in phase3_staging_command
     assert "objective_audit_current.md" not in phase3_staging_command
     assert "objective_audit_current.json" in phase4

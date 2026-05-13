@@ -14,11 +14,15 @@ The recovery sequence below is now historical. As of 2026-05-14:
 - The current objective audit reports `parent UXFD goal-control checkpoint committed`
   as `met`.
 - The latest parent UXFD control commits include:
-  - `a366356 fix: surface UXFD source verification in aggregate gates`
-  - `b208a39 test: require source verification in UXFD recent work gate`
-  - `672b086 docs: add UXFD recent work source verification`
-  - `b92a3d9 docs: require minimum seed coverage in UXFD backlog`
+  - `1163a88 docs: refresh UXFD audit latest handoff evidence`
+  - `659b22e docs: point UXFD audit to latest handoff`
+  - `f12981c docs: add UXFD owner GPU blocked handoff`
+  - `9076423 docs: refresh UXFD backlog owner decision hints`
+  - `c55f165 docs: surface owner recommendations in UXFD backlog`
+  - `31906a9 docs: enrich UXFD owner review triage metadata`
 - The active blockers are no longer parent checkpoint recovery. They are:
+  - missing real
+    `paper/UXFD_paper/results/submodule_owner_review_decisions.json`,
   - dirty paper submodules requiring owner review,
   - unavailable local 2x4090 CUDA preflight,
   - missing accepted run artifacts under `paper/UXFD_paper/results/accepted_runs`,
