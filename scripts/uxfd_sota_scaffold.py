@@ -67,7 +67,21 @@ def _statistics_template() -> Mapping[str, str]:
     }
 
 
-def _comparison_template(entry_id: str, label: str, role: str, minimum_seeds: int) -> Mapping[str, Any]:
+def _accepted_run_ref_template(paper_id: str, entry_id: str, minimum_seeds: int) -> List[str]:
+    safe_entry = entry_id or "ENTRY_ID"
+    return [
+        f"TODO: {paper_id}/{safe_entry}/seed_{seed_index}/run_meta.yaml"
+        for seed_index in range(minimum_seeds)
+    ]
+
+
+def _comparison_template(
+    paper_id: str,
+    entry_id: str,
+    label: str,
+    role: str,
+    minimum_seeds: int,
+) -> Mapping[str, Any]:
     return {
         "entry_id": entry_id,
         "label": label,
@@ -79,7 +93,7 @@ def _comparison_template(entry_id: str, label: str, role: str, minimum_seeds: in
             "name": "TODO: e.g. paired_t_test or wilcoxon",
             "p_value": "TODO: numeric p-value",
         },
-        "accepted_run_refs": "TODO: accepted_runs relative paths for all seeds",
+        "accepted_run_refs": _accepted_run_ref_template(paper_id, entry_id, minimum_seeds),
     }
 
 
@@ -113,10 +127,15 @@ def _template_payload(
             "label": proposed_label,
             "seed_values": f"TODO: list at least {minimum_seeds} matched integer seeds",
             "statistics": _statistics_template(),
-            "accepted_run_refs": "TODO: accepted_runs relative paths for all seeds",
+            "accepted_run_refs": _accepted_run_ref_template(
+                paper_id,
+                proposed_id,
+                minimum_seeds,
+            ),
         },
         "comparators": [
             _comparison_template(
+                paper_id,
                 str(entry.get("id", "")),
                 str(entry.get("label", "")),
                 "baseline",
@@ -137,7 +156,11 @@ def _template_payload(
                     "name": "TODO: e.g. paired_t_test or wilcoxon",
                     "p_value": "TODO: numeric p-value",
                 },
-                "accepted_run_refs": "TODO: accepted_runs or exact external artifact refs",
+                "accepted_run_refs": _accepted_run_ref_template(
+                    paper_id,
+                    str(binding.get("binding_id", "")),
+                    minimum_seeds,
+                ),
             }
             for binding in top_bindings
         ],
@@ -184,6 +207,8 @@ def create_scaffold(
                     "After accepted run coverage exists, fill the template and copy it",
                     "to `paper/UXFD_paper/results/sota_aggregates/<paper_id>/sota_aggregate.yaml`.",
                     "Then run `python -m scripts.uxfd_sota_gate`.",
+                    "Each `accepted_run_refs` item must point to an existing relative",
+                    "`run_meta.yaml` under `paper/UXFD_paper/results/accepted_runs`.",
                     "",
                     f"- Paper: `{paper_id}`",
                     f"- Minimum seeds: `{int(queue_item.get('minimum_seeds', 3))}`",
@@ -228,6 +253,7 @@ def render_markdown(records: Sequence[SotaTemplateRecord], root: Path) -> str:
         "- Status: templates only; not accepted SOTA evidence.",
         "- Fill one `sota_aggregate.yaml` per paper only after accepted run coverage exists.",
         "- Required statistics: per-seed values, mean, std, 95% CI, and effect size or paired test.",
+        "- Required run refs: every proposed, baseline, and TOP entry lists existing relative `run_meta.yaml` paths under accepted_runs.",
         "",
         "| Queue | Paper | Minimum Seeds | Baselines | TOP Bindings | Template |",
         "|---|---|---:|---:|---:|---|",

@@ -12,10 +12,12 @@ from scripts.uxfd_gpu_queue import DEFAULT_QUEUE
 
 
 DEFAULT_SOTA_ROOT = Path("paper/UXFD_paper/results/sota_aggregates")
+DEFAULT_ACCEPTED_RUN_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
 AGGREGATE_FILENAME = "sota_aggregate.yaml"
 ACCEPTED_CLAIM_SCOPES = ("exact_sota", "representative_only", "bounded_non_sota")
 ACCEPTED_TOP_SCOPES = ("exact", "representative")
 STATISTIC_FIELDS = ("mean", "std", "ci95_low", "ci95_high")
+DISALLOWED_REF_MARKERS = ("todo", "template", "smoke", "demo", "dummy", "pending")
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,7 @@ class SotaPaperRecord:
 class SotaGateReport:
     ready: bool
     aggregate_root: str
+    accepted_run_root: str
     records: Tuple[SotaPaperRecord, ...]
     blockers: Tuple[str, ...]
     expected_papers: int
@@ -109,10 +112,56 @@ def _has_effect_or_test(payload: Mapping[str, Any]) -> bool:
     )
 
 
+def _validate_accepted_run_refs(
+    prefix: str,
+    payload: Mapping[str, Any],
+    proposed_seeds: Tuple[int, ...],
+    accepted_run_root: Path,
+) -> Tuple[str, ...]:
+    refs = payload.get("accepted_run_refs")
+    if not isinstance(refs, Sequence) or isinstance(refs, (str, bytes)) or not refs:
+        return (f"{prefix}.accepted_run_refs must be a non-empty list",)
+
+    issues: List[str] = []
+    if len(refs) < len(proposed_seeds):
+        issues.append(
+            f"{prefix}.accepted_run_refs must cover every matched seed"
+        )
+    root = accepted_run_root.resolve()
+    for index, ref in enumerate(refs):
+        if not isinstance(ref, str) or not ref.strip():
+            issues.append(f"{prefix}.accepted_run_refs[{index}] must be a non-empty string")
+            continue
+        lowered = ref.lower()
+        marker = next((item for item in DISALLOWED_REF_MARKERS if item in lowered), "")
+        if marker:
+            issues.append(f"{prefix}.accepted_run_refs[{index}] must not reference {marker}")
+        ref_path = Path(ref)
+        if ref_path.is_absolute():
+            issues.append(f"{prefix}.accepted_run_refs[{index}] must be relative")
+            continue
+        candidate = (accepted_run_root / ref_path).resolve()
+        if not candidate.is_relative_to(root):
+            issues.append(f"{prefix}.accepted_run_refs[{index}] must stay inside accepted_run_root")
+            continue
+        if not candidate.exists():
+            issues.append(f"{prefix}.accepted_run_refs[{index}] does not exist")
+            continue
+        if candidate.is_dir():
+            if not (candidate / "run_meta.yaml").exists():
+                issues.append(
+                    f"{prefix}.accepted_run_refs[{index}] directory lacks run_meta.yaml"
+                )
+        elif candidate.name != "run_meta.yaml":
+            issues.append(f"{prefix}.accepted_run_refs[{index}] must reference run_meta.yaml")
+    return tuple(issues)
+
+
 def _validate_comparison_entry(
     prefix: str,
     payload: Mapping[str, Any],
     proposed_seeds: Tuple[int, ...],
+    accepted_run_root: Path,
 ) -> Tuple[str, ...]:
     issues: List[str] = []
     seed_values = _coerce_seed_set(payload.get("seed_values"))
@@ -123,10 +172,17 @@ def _validate_comparison_entry(
         issues.append(
             f"{prefix} must include numeric effect_size_vs_proposed or paired_test.p_value"
         )
+    issues.extend(
+        _validate_accepted_run_refs(prefix, payload, proposed_seeds, accepted_run_root)
+    )
     return tuple(issues)
 
 
-def _validate_aggregate(path: Path, requirement: Mapping[str, Any]) -> SotaPaperRecord:
+def _validate_aggregate(
+    path: Path,
+    requirement: Mapping[str, Any],
+    accepted_run_root: Path,
+) -> SotaPaperRecord:
     paper_id = str(requirement["paper_id"])
     if not path.exists():
         return SotaPaperRecord(
@@ -161,6 +217,14 @@ def _validate_aggregate(path: Path, requirement: Mapping[str, Any]) -> SotaPaper
     elif len(proposed_seeds) < minimum_seeds:
         issues.append(f"proposed.seed_values must include at least {minimum_seeds} seeds")
     issues.extend(_validate_statistics("proposed", proposed))
+    issues.extend(
+        _validate_accepted_run_refs(
+            "proposed",
+            proposed,
+            proposed_seeds,
+            accepted_run_root,
+        )
+    )
 
     comparators = data.get("comparators", ())
     if not isinstance(comparators, Sequence) or isinstance(comparators, (str, bytes)):
@@ -187,6 +251,7 @@ def _validate_aggregate(path: Path, requirement: Mapping[str, Any]) -> SotaPaper
                 f"comparators[{entry_id or '?'}]",
                 entry,
                 proposed_seeds,
+                accepted_run_root,
             )
         )
 
@@ -220,6 +285,7 @@ def _validate_aggregate(path: Path, requirement: Mapping[str, Any]) -> SotaPaper
                 f"top_representatives[{binding_id or '?'}]",
                 entry,
                 proposed_seeds,
+                accepted_run_root,
             )
         )
 
@@ -234,6 +300,7 @@ def _validate_aggregate(path: Path, requirement: Mapping[str, Any]) -> SotaPaper
 def evaluate_sota_gate(
     aggregate_root: Path = DEFAULT_SOTA_ROOT,
     queue_path: Path = DEFAULT_QUEUE,
+    accepted_run_root: Path = DEFAULT_ACCEPTED_RUN_ROOT,
 ) -> SotaGateReport:
     blockers: List[str] = []
     if not aggregate_root.exists():
@@ -243,7 +310,7 @@ def evaluate_sota_gate(
     for requirement in _paper_requirements(queue_path):
         paper_id = str(requirement["paper_id"])
         aggregate_path = aggregate_root / paper_id / AGGREGATE_FILENAME
-        record = _validate_aggregate(aggregate_path, requirement)
+        record = _validate_aggregate(aggregate_path, requirement, accepted_run_root)
         records.append(record)
         if not record.accepted:
             blockers.append(f"{record.aggregate_path}: {len(record.issues)} issues")
@@ -251,6 +318,7 @@ def evaluate_sota_gate(
     return SotaGateReport(
         ready=not blockers and bool(records),
         aggregate_root=str(aggregate_root),
+        accepted_run_root=str(accepted_run_root),
         records=tuple(records),
         blockers=tuple(blockers),
         expected_papers=len(records),
@@ -264,6 +332,7 @@ def render_markdown(report: SotaGateReport) -> str:
         "",
         f"- Ready: `{report.ready}`",
         f"- Aggregate root: `{report.aggregate_root}`",
+        f"- Accepted run root: `{report.accepted_run_root}`",
         f"- Accepted papers: `{report.accepted_papers}/{report.expected_papers}`",
         f"- Blockers: `{len(report.blockers)}`",
         "",
@@ -289,12 +358,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Validate UXFD SOTA aggregate evidence")
     parser.add_argument("--aggregate-root", type=Path, default=DEFAULT_SOTA_ROOT)
     parser.add_argument("--queue", type=Path, default=DEFAULT_QUEUE)
+    parser.add_argument("--accepted-run-root", type=Path, default=DEFAULT_ACCEPTED_RUN_ROOT)
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--allow-not-ready", action="store_true")
     args = parser.parse_args(argv)
 
-    report = evaluate_sota_gate(args.aggregate_root, queue_path=args.queue)
+    report = evaluate_sota_gate(
+        args.aggregate_root,
+        queue_path=args.queue,
+        accepted_run_root=args.accepted_run_root,
+    )
     output = (
         json.dumps(build_payload(report), indent=2) + "\n"
         if args.format == "json"

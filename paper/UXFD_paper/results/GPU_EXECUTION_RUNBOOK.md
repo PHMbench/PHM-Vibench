@@ -99,6 +99,10 @@ comparison table must include per-seed values plus mean, standard deviation, a
 95% confidence interval, and an effect size or paired significance test. Failed,
 OOM, dependency-blocked, or resource-blocked rows need explicit failure records;
 they cannot be silently removed to improve the proposed method's rank.
+Each SOTA aggregate entry must list `accepted_run_refs` pointing to existing
+relative `run_meta.yaml` paths under
+`paper/UXFD_paper/results/accepted_runs`; smoke, demo, dummy, template, pending,
+absolute, missing, or out-of-root references are not accepted evidence.
 
 ## 5. Gates
 

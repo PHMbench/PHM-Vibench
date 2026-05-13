@@ -1,6 +1,7 @@
 {
   "ready": false,
   "aggregate_root": "paper/UXFD_paper/results/sota_aggregates",
+  "accepted_run_root": "paper/UXFD_paper/results/accepted_runs",
   "records": [
     {
       "paper_id": "TII_operator_attention",

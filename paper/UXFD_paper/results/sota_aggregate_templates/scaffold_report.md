@@ -5,6 +5,7 @@
 - Status: templates only; not accepted SOTA evidence.
 - Fill one `sota_aggregate.yaml` per paper only after accepted run coverage exists.
 - Required statistics: per-seed values, mean, std, 95% CI, and effect size or paired test.
+- Required run refs: every proposed, baseline, and TOP entry lists existing relative `run_meta.yaml` paths under accepted_runs.
 
 | Queue | Paper | Minimum Seeds | Baselines | TOP Bindings | Template |
 |---|---|---:|---:|---:|---|

@@ -2,6 +2,7 @@
 
 - Ready: `False`
 - Aggregate root: `paper/UXFD_paper/results/sota_aggregates`
+- Accepted run root: `paper/UXFD_paper/results/accepted_runs`
 - Accepted papers: `0/7`
 - Blockers: `8`
 

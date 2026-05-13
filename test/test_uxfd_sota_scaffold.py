@@ -29,8 +29,12 @@ def test_sota_scaffold_creates_one_template_per_paper(tmp_path: Path) -> None:
     assert data["top_representatives"]
     assert "mean" in data["proposed"]["statistics"]
     assert "ci95_high" in data["proposed"]["statistics"]
+    assert isinstance(data["proposed"]["accepted_run_refs"], list)
+    assert len(data["proposed"]["accepted_run_refs"]) == 3
     assert "effect_size_vs_proposed" in data["comparators"][0]
     assert "paired_test" in data["comparators"][0]
+    assert isinstance(data["comparators"][0]["accepted_run_refs"], list)
+    assert isinstance(data["top_representatives"][0]["accepted_run_refs"], list)
 
 
 def test_sota_scaffold_cli_writes_manifest_and_keeps_gate_blocked(tmp_path: Path) -> None:
@@ -61,6 +65,7 @@ def test_sota_scaffold_cli_writes_manifest_and_keeps_gate_blocked(tmp_path: Path
     assert len(manifest) == 7
     assert "not accepted SOTA evidence" in readme
     assert "mean, std, 95% CI" in readme
+    assert "existing relative `run_meta.yaml` paths" in readme
     assert gate.ready is False
     assert all("missing sota_aggregate.yaml" in record.issues for record in gate.records)
 
@@ -102,3 +107,8 @@ def test_persisted_sota_templates_match_current_queue(tmp_path: Path) -> None:
         assert data["accepted_sota_evidence"] is False
         assert len(data["comparators"]) == item["baselines"]
         assert len(data["top_representatives"]) == item["top_representatives"]
+        assert isinstance(data["proposed"]["accepted_run_refs"], list)
+        assert all(
+            isinstance(entry["accepted_run_refs"], list)
+            for entry in data["comparators"]
+        )

@@ -166,7 +166,10 @@ The scaffold command writes non-evidence templates under
 `paper/UXFD_paper/results/sota_aggregates/<paper_id>/`. Each aggregate must
 cover the proposed method, all declared baselines, and runnable TOP
 representative bindings with matched seeds, mean/std/95% CI, and effect-size or
-paired-test evidence.
+paired-test evidence. Every proposed, baseline, and TOP aggregate entry must
+also list `accepted_run_refs`: relative paths to existing `run_meta.yaml` files
+under `paper/UXFD_paper/results/accepted_runs`. Template, smoke, demo, dummy,
+pending, absolute, missing, or out-of-root references are rejected.
 
 ## Commit Policy
 

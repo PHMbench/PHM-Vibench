@@ -19,7 +19,10 @@ proposed:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/P00/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/P00/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/P00/seed_2/run_meta.yaml'
 comparators:
 - entry_id: B01
   label: NSN/TSPN_UXFD without operator attention
@@ -34,7 +37,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B01/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B01/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B01/seed_2/run_meta.yaml'
 - entry_id: B02
   label: ResNet baseline
   role: baseline
@@ -48,7 +54,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B02/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B02/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B02/seed_2/run_meta.yaml'
 - entry_id: B03
   label: SincNet baseline
   role: baseline
@@ -62,7 +71,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B03/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B03/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B03/seed_2/run_meta.yaml'
 - entry_id: B04
   label: TFN baseline
   role: baseline
@@ -76,7 +88,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B04/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B04/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B04/seed_2/run_meta.yaml'
 - entry_id: B05
   label: WKN baseline
   role: baseline
@@ -90,7 +105,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B05/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B05/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B05/seed_2/run_meta.yaml'
 - entry_id: B06
   label: ConvTransformer baseline
   role: baseline
@@ -104,7 +122,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B06/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B06/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B06/seed_2/run_meta.yaml'
 - entry_id: B07
   label: Feature/self-attention CNN baseline
   role: baseline
@@ -118,7 +139,10 @@ comparators:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/B07/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B07/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/B07/seed_2/run_meta.yaml'
 top_representatives:
 - binding_id: TOP-Q1-GTM
   external_work_id: RWTOP2026-GTM
@@ -133,6 +157,9 @@ top_representatives:
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
     p_value: 'TODO: numeric p-value'
-  accepted_run_refs: 'TODO: accepted_runs or exact external artifact refs'
+  accepted_run_refs:
+  - 'TODO: TII_operator_attention/TOP-Q1-GTM/seed_0/run_meta.yaml'
+  - 'TODO: TII_operator_attention/TOP-Q1-GTM/seed_1/run_meta.yaml'
+  - 'TODO: TII_operator_attention/TOP-Q1-GTM/seed_2/run_meta.yaml'
 claim_output: 'TODO: if proposed does not beat every accepted comparator, write bounded
   contribution wording and keep SOTA wording blocked'
