@@ -27,6 +27,9 @@ from scripts.uxfd_submodule_dirty_triage import (
 
 DEFAULT_OUTPUT = Path("paper/UXFD_paper/results/readiness_backlog.md")
 COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
+GPU_PREFLIGHT_ACTION_PACKET = Path("paper/UXFD_paper/results/gpu_preflight_action_packet.md")
+GPU_EXECUTION_RUNBOOK = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md")
+GPU_LIVE_PREFLIGHT = Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")
 PAPER02_SUBMODULE = Path("paper/UXFD_paper/1D-2D_fusion_explainable")
 PAPER02_PLANNING_FILES = (
     Path("plan/EXPERIMENT_PLAN_补充.md"),
@@ -128,10 +131,14 @@ def evaluate_readiness_backlog(
                 category="gpu-preflight",
                 blocker=submission.queue_resource_reason,
                 next_action=(
-                    "Restore local GPU visibility, then require `nvidia-smi -L` and "
-                    "PyTorch CUDA to show RTX 4090 devices 0 and 1 before launching shards."
+                    f"Use `{GPU_PREFLIGHT_ACTION_PACKET}` to restore local GPU visibility, "
+                    "then require `nvidia-smi -L` and PyTorch CUDA to show RTX 4090 "
+                    "devices 0 and 1 before launching shards."
                 ),
-                evidence=str(queue_path),
+                evidence=(
+                    f"{queue_path},{GPU_PREFLIGHT_ACTION_PACKET},"
+                    f"{GPU_EXECUTION_RUNBOOK},{GPU_LIVE_PREFLIGHT}"
+                ),
             )
         )
 

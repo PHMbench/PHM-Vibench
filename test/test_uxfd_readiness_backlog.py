@@ -2,6 +2,9 @@ import json
 from pathlib import Path
 
 from scripts.uxfd_readiness_backlog import (
+    GPU_EXECUTION_RUNBOOK,
+    GPU_LIVE_PREFLIGHT,
+    GPU_PREFLIGHT_ACTION_PACKET,
     evaluate_readiness_backlog,
     main,
     render_markdown,
@@ -25,6 +28,10 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert report.items[0].item_id == "Q0-GPU-PREFLIGHT"
     assert report.items[1].item_id == "Q0-ARTIFACT-COVERAGE"
     assert report.items[2].item_id == "Q0-SOTA-AGGREGATE"
+    assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[0].next_action
+    assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[0].evidence
+    assert str(GPU_EXECUTION_RUNBOOK) in report.items[0].evidence
+    assert str(GPU_LIVE_PREFLIGHT) in report.items[0].evidence
     assert "integer seed/batch_size" in report.items[1].next_action
     assert "positive runtime" in report.items[1].next_action
     assert "enumerated precision" in report.items[1].next_action

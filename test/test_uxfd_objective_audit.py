@@ -78,6 +78,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["2x4090 GPU queue executable"].status == "blocked"
     assert items["accepted run artifact metadata"].status == "not_met"
     assert items["cross-paper submission gate"].status == "not_met"
+    assert items["GPU preflight action packet"].status == "met"
     assert items["submodule dirty triage report"].status == "met"
     assert items["submodule dirty triage JSON report"].status == "met"
     assert items["submodule owner-review recommendations"].status == "met"
@@ -374,6 +375,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml" in paths
     assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md" in paths
+    assert "paper/UXFD_paper/results/gpu_preflight_action_packet.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.json" in paths
     assert "paper/UXFD_paper/results/submodule_owner_review_recommendations.md" in paths

@@ -66,6 +66,10 @@ SUBAGENT_ID_PATTERN = re.compile(
 
 EXECUTION_ARTIFACTS = (
     ("GPU execution runbook", Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md")),
+    (
+        "GPU preflight action packet",
+        Path("paper/UXFD_paper/results/gpu_preflight_action_packet.md"),
+    ),
     ("live GPU preflight snapshot", Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")),
     ("combined GPU launch plan", Path("paper/UXFD_paper/results/queue_launch_plan.sh")),
     ("GPU0 launch shard", Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh")),
@@ -249,6 +253,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/goal/99_submission_readiness_matrix.md"),
     Path("paper/UXFD_paper/goal/status"),
     Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md"),
+    Path("paper/UXFD_paper/results/gpu_preflight_action_packet.md"),
     Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json"),
     Path("paper/UXFD_paper/results/.gitignore"),
     Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
