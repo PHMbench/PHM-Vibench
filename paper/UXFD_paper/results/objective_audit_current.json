@@ -147,6 +147,12 @@
       "details": "exists"
     },
     {
+      "requirement": "latest continuation handoff document",
+      "evidence": ".claude/handoffs/2026-05-14-uxfd-minimum-seed-gate-continuation.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "Claude Team task spec",
       "evidence": ".codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md",
       "status": "met",
@@ -372,7 +378,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "61 parent goal-control paths clean"
+      "details": "62 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -515,7 +521,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=19"
   ],
-  "met": 71,
+  "met": 72,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0
