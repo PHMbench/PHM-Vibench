@@ -26,6 +26,10 @@ PAPER07_REJECTION_CONTRACT = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
     "rejection_recovery_contract.md"
 )
+PAPER07_REVIEWER_TRACE = Path(
+    "paper/UXFD_paper/TII_operator_attention/submission_prep/"
+    "reviewer_traceability_matrix.md"
+)
 PAPER05_MATRIX = Path(
     "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/"
     "baseline_ablation_matrix.yaml"
@@ -520,6 +524,36 @@ def test_operator_attention_rejection_recovery_contract_blocks_unproven_claims()
     top_ids = {entry["id"] for entry in matrix["top_recent_work"]}
     assert set(PAPER07_REQUIRED_TOP_IDS) <= top_ids
     assert "2024-2026 TOP representative" in "\n".join(matrix["strict_blockers"])
+
+
+def test_operator_attention_reviewer_traceability_matrix_blocks_overclaims() -> None:
+    assert PAPER07_REVIEWER_TRACE.exists()
+    text = PAPER07_REVIEWER_TRACE.read_text(encoding="utf-8")
+    contract_text = PAPER07_REJECTION_CONTRACT.read_text(encoding="utf-8")
+    readiness_text = (
+        PAPER07_MATRIX.parents[1] / "submission_prep/ieee_trans_readiness.md"
+    ).read_text(encoding="utf-8")
+    parent_matrix_text = (GOAL_DIR / "99_submission_readiness_matrix.md").read_text(
+        encoding="utf-8"
+    )
+
+    for phrase in (
+        "not accepted experiment evidence",
+        "Weak industrial performance",
+        "Theory-experiment mismatch",
+        "Unclear innovation",
+        "Insufficient recent/SOTA baselines",
+        "DSOA v2",
+        "OAS, OSS, and OCS",
+        "must not claim",
+        "parent objective audit is not achieved",
+        "accepted_runs/TII_operator_attention",
+    ):
+        assert phrase in text
+
+    assert "reviewer_traceability_matrix.md" in contract_text
+    assert "reviewer_traceability_matrix.md" in readiness_text
+    assert "reviewer_traceability_matrix.md" in parent_matrix_text
 
 
 def test_fuzzy_xfd_baseline_ablation_matrix_is_command_bound_not_ready() -> None:
