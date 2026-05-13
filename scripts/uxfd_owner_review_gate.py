@@ -22,6 +22,8 @@ ALLOWED_DECISIONS = frozenset(
     }
 )
 PENDING_DECISION = "pending_owner_review"
+APPROVED_DECISION_STATUS = "owner_review_decisions"
+TEMPLATE_STATUS = "template_only_not_owner_approved"
 
 
 @dataclass(frozen=True)
@@ -163,8 +165,11 @@ def evaluate_owner_review_gate(
     allowed = set(_string_list(payload.get("allowed_decisions")))
     if allowed != ALLOWED_DECISIONS:
         blockers.append("allowed_decisions does not match owner-review policy")
-    if source_is_template and payload.get("status") != "template_only_not_owner_approved":
+    payload_status = str(payload.get("status", "")).strip()
+    if source_is_template and payload_status != TEMPLATE_STATUS:
         blockers.append("template source must be marked template_only_not_owner_approved")
+    if not source_is_template and payload_status != APPROVED_DECISION_STATUS:
+        blockers.append("owner decision file must be marked owner_review_decisions")
 
     records = _records_from_payload(payload)
     expected_keys = set(_owner_review_entries())
