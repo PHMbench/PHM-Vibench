@@ -22,6 +22,9 @@ the pre-launch decision gate without re-deriving them.
 
 Recent parent commits:
 
+- `d87d2ec docs: refresh UXFD owner packet backlog`
+- `3dde575 docs: refresh UXFD submission owner packet gate`
+- `9b9bbbc test: surface UXFD owner action packet in gates`
 - `63dbc68 docs: refresh UXFD owner action audit`
 - `4a66130 test: audit UXFD owner action packet`
 - `e990b93 docs: add UXFD owner review action packet`
@@ -77,6 +80,10 @@ Recent Paper03 submodule commit:
 - **Objective audit now tracks the owner action packet** - the prompt-to-artifact
   checklist includes `submodule owner-review action packet`; the latest
   persisted audit reports `Met: 79`, `Not met: 13`, `Blocked: 1`.
+- **Submission gate and backlog now point to the short owner packet** -
+  `submission_gate_current.*` and `readiness_backlog.md` surface
+  `submodule_owner_review_action_packet.md` so owner review can start from the
+  compact response form rather than only the JSON template.
 
 ## Code Changes
 
@@ -132,6 +139,14 @@ Recent Paper03 submodule commit:
 - `paper/UXFD_paper/results/objective_audit_current.json` and
   `paper/UXFD_paper/results/objective_audit_current.md` - refreshed objective
   audit snapshots after adding owner action packet coverage.
+- `scripts/uxfd_submission_gate.py`, `scripts/uxfd_readiness_backlog.py`,
+  `test/test_uxfd_submission_gate.py`, and `test/test_uxfd_readiness_backlog.py`
+  - surface and test owner action packet references in submission/backlog
+  outputs.
+- `paper/UXFD_paper/results/submission_gate_current.json`,
+  `paper/UXFD_paper/results/submission_gate_current.md`, and
+  `paper/UXFD_paper/results/readiness_backlog.md` - refreshed persisted reports
+  with owner action packet references.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -164,6 +179,8 @@ Latest relevant tests passed:
   - result after objective-audit coverage update: `1 passed, 14 deselected`
 - `python -m pytest -q test/test_uxfd_objective_audit.py`
   - result after refreshing objective audit snapshot: `15 passed`
+- `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_submission_gate.py`
+  - result after refreshing submission/backlog owner packet outputs: `10 passed`
 
 Latest gate state:
 
