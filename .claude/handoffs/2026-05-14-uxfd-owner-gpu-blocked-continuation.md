@@ -28,6 +28,7 @@ Recent parent commits:
 - `584f22f docs: add Paper03 LLM evidence package contract`
 - `5104f96 docs: add UXFD pre-launch decision gate`
 - `73f2fd6 test: validate UXFD artifact config and logs`
+- `b9756c1 test: require finite UXFD accepted metrics`
 
 Recent Paper03 submodule commit:
 
@@ -54,6 +55,9 @@ Recent Paper03 submodule commit:
 - **Accepted config/log evidence must be content-valid** - accepted run
   metadata may not point to empty logs, TODO logs, empty configs, TODO configs,
   or unparseable YAML configs.
+- **Accepted metrics must be finite and final** - metrics files must contain at
+  least one finite numeric value and must not contain TODO, NaN, or infinite
+  payloads.
 
 ## Code Changes
 
@@ -90,6 +94,12 @@ Recent Paper03 submodule commit:
   and TODO placeholder config/log evidence.
 - `paper/UXFD_paper/results/accepted_runs/README.md` - documents the stricter
   accepted config/log requirements.
+- `scripts/uxfd_artifact_gate.py` - rejects TODO metrics and non-finite
+  JSON/CSV numeric metrics.
+- `test/test_uxfd_artifact_gate.py` - covers TODO metrics and NaN/Inf metrics
+  rejection for JSON and CSV.
+- `paper/UXFD_paper/goal/status/status_09_gpu_execution.md` - documents the
+  finite-metric requirement in the generated GPU execution status.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -110,6 +120,8 @@ Latest relevant tests passed:
   - result: `17 passed`
 - `python -m pytest -q test/test_uxfd_artifact_gate.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
   - result: `62 passed`
+- `python -m pytest -q test/test_uxfd_artifact_gate.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
+  - result after finite-metric gate update: `65 passed`
 
 Latest gate state:
 
