@@ -599,25 +599,11 @@ def test_moe_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     assert len(blocked_ablations) == 0
     assert any("run_expert_ablation_probe.py" in entry["command"] for entry in bound_ablations)
     assert any(
-        "run_moe_ablation_smoke.py --condition no_load_balance" in entry["command"]
-        for entry in bound_ablations
+        entry["artifact"] == "scripts/run_moe_ablation_smoke.py"
+        and "non-accepted smoke runner" in entry["status"]
+        for entry in matrix["local_moe_evidence"]
     )
-    assert any(
-        "run_moe_ablation_smoke.py --condition no_sparsity" in entry["command"]
-        for entry in bound_ablations
-    )
-    assert any(
-        "run_moe_ablation_smoke.py --condition temperature_sweep" in entry["command"]
-        for entry in bound_ablations
-    )
-    assert any(
-        "run_moe_ablation_smoke.py --condition remove_expert_family" in entry["command"]
-        for entry in bound_ablations
-    )
-    assert any(
-        "run_moe_ablation_smoke.py --condition uniform_router" in entry["command"]
-        for entry in bound_ablations
-    )
+    assert not any("run_moe_ablation_smoke.py" in entry["command"] for entry in bound_ablations)
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "Only smoke MoE ablation runner artifacts exist" in blockers
@@ -663,11 +649,14 @@ def test_toolkit_baseline_matrix_records_ablation_blockers_not_ready() -> None:
     assert len(bound_ablations) >= 6
     assert len(blocked_ablations) == 0
     assert any("trainer.extensions.explain.enable=false" in entry["command"] for entry in bound_ablations)
-    assert any("run_toolkit_ablations.py --condition schema_off" in entry["command"] for entry in bound_ablations)
-    assert any("run_toolkit_ablations.py --condition metrics_subset_off" in entry["command"] for entry in bound_ablations)
-    assert any("run_toolkit_ablations.py --condition manifest_off" in entry["command"] for entry in bound_ablations)
-    assert any("run_toolkit_ablations.py --condition snapshot_off" in entry["command"] for entry in bound_ablations)
-    assert any("run_toolkit_ablations.py --condition posthoc_only" in entry["command"] for entry in bound_ablations)
+    assert not any("run_toolkit_ablations.py" in entry["command"] for entry in bound_ablations)
+
+    readiness_text = (
+        PAPER01_MATRIX.parents[1] / "submission_prep/ieee_trans_readiness.md"
+    ).read_text(encoding="utf-8")
+    assert "run_toolkit_ablations.py --condition all" in readiness_text
+    assert "per-condition `run_meta.yaml` and `metrics.json`" in readiness_text
+    assert "accepted_evidence: false" in readiness_text
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "Only smoke Toolkit ablation runner artifacts exist" in blockers
@@ -722,17 +711,17 @@ def test_1d2d_fusion_matrix_records_dummy_only_and_ablation_blockers() -> None:
     assert len(passing_ablations) >= 4
     assert len(blocked_ablations) == 0
     assert any(
-        "run_fusion_ablation_smoke.py --condition fft_only_proxy" in entry["command"]
-        for entry in matrix["ablations"]
-    )
-    assert any(
         "FFT-only forward now passes" in entry.get("evidence_status", "")
         for entry in matrix["ablations"]
     )
-    assert any(
-        "run_fusion_ablation_smoke.py --condition legacy_ablation_surface" in entry["command"]
+    assert not any(
+        "run_fusion_ablation_smoke.py" in entry["command"]
         for entry in matrix["ablations"]
     )
+    readiness_text = (
+        PAPER02_MATRIX.parents[1] / "submission_prep/ieee_trans_readiness.md"
+    ).read_text(encoding="utf-8")
+    assert "scripts/run_fusion_ablation_smoke.py" in readiness_text
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "FFT-only signal-layer ablation currently fails" not in blockers
@@ -789,18 +778,15 @@ def test_llm_toolkit_matrix_records_package_gate_and_evidence_blockers() -> None
         for entry in bound_ablations
     )
     assert any("core toolkit unit-test gate" in entry["label"] for entry in bound_ablations)
-    assert any(
-        "run_llm_evidence_smoke.py --condition no_checker" in entry["command"]
+    assert not any(
+        "run_llm_evidence_smoke.py" in entry["command"]
         for entry in bound_ablations
     )
-    assert any(
-        "run_llm_evidence_smoke.py --condition no_domain_context" in entry["command"]
-        for entry in bound_ablations
-    )
-    assert any(
-        "run_llm_evidence_smoke.py --condition all" in entry["command"]
-        for entry in bound_ablations
-    )
+    readiness_text = (
+        PAPER03_MATRIX.parents[1] / "submission_prep/ieee_trans_readiness.md"
+    ).read_text(encoding="utf-8")
+    assert "run_llm_evidence_smoke.py --condition all" in readiness_text
+    assert "no-checker" in readiness_text
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "The manuscript/ieee_tii/main.tex entrypoint is a conservative compile checkpoint" in blockers
