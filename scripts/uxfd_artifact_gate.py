@@ -53,6 +53,21 @@ QUEUE_METADATA_TO_RUN_META = {
 }
 
 CONDITIONAL_RUN_META_FIELDS = ("oom_or_failure_reason",)
+DISALLOWED_ACCEPTED_EVIDENCE_MARKERS = (
+    "smoke",
+    "demo",
+    "dummy",
+    "template",
+    "pending",
+)
+PROTOCOL_EVIDENCE_FIELDS = (
+    "dataset_split",
+    "preprocessing_signature",
+    "command",
+    "config_path",
+    "log_path",
+    "metrics_path",
+)
 
 
 @dataclass(frozen=True)
@@ -231,6 +246,16 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     gpu_model = str(data.get("gpu_model", ""))
     if gpu_model and "RTX 4090" not in gpu_model:
         issues.append("gpu_model must record RTX 4090-class hardware")
+
+    for field in PROTOCOL_EVIDENCE_FIELDS:
+        value = str(data.get(field, ""))
+        lowered = value.lower()
+        marker = next(
+            (item for item in DISALLOWED_ACCEPTED_EVIDENCE_MARKERS if item in lowered),
+            "",
+        )
+        if marker:
+            issues.append(f"{field} must not reference {marker} evidence")
 
     for path_field in ("metrics_path", "log_path", "config_path"):
         value = data.get(path_field)

@@ -39,7 +39,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
                 "gpu_count: 1",
                 "seed: 0",
                 "dataset_split: 'cwru_seed0'",
-                "preprocessing_signature: 'sha256:demo'",
+                "preprocessing_signature: 'sha256:accepted-protocol'",
                 "batch_size: 16",
                 "precision: 'fp32'",
                 "runtime: '00:01:00'",
@@ -290,6 +290,29 @@ def test_artifact_gate_requires_explicit_rtx_4090_gpu_model(tmp_path: Path) -> N
     assert report.accepted is False
     assert report.records[0].accepted is False
     assert "gpu_model must record RTX 4090-class hardware" in report.records[0].issues
+
+
+def test_artifact_gate_rejects_smoke_demo_or_pending_protocol_markers(
+    tmp_path: Path,
+) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["dataset_split"] = "cwru_demo_seed0"
+    data["preprocessing_signature"] = "pending-preprocess"
+    data["command"] = "CUDA_VISIBLE_DEVICES=0 python scripts/run_smoke.py"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "dataset_split must not reference demo evidence" in report.records[0].issues
+    assert (
+        "preprocessing_signature must not reference pending evidence"
+        in report.records[0].issues
+    )
+    assert "command must not reference smoke evidence" in report.records[0].issues
 
 
 def test_command_cuda_visible_devices_parser() -> None:
