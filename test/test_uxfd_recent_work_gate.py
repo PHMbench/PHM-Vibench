@@ -45,6 +45,12 @@ def test_recent_work_gate_policy_ready_but_artifact_evidence_pending() -> None:
     assert all(binding.status == "pending_gpu_and_artifacts" for binding in report.bindings)
     assert all(binding.representative_only for binding in report.bindings)
     assert all(not binding.evidence_ready for binding in report.bindings)
+    assert all(binding.local_proxy_matrix_entries for binding in report.bindings)
+    assert any(
+        binding.binding_id == "TOP-Q7-TIMESEG"
+        and binding.local_proxy_matrix_entries == ("B02", "A05", "A07")
+        for binding in report.bindings
+    )
     assert not report.policy_blockers
     assert len(report.evidence_blockers) == 7
 
@@ -116,6 +122,9 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert "Evidence ready: `False`" in text
     assert "## Paper-Local Matrix Coverage" in text
     assert "## TOP Representative Bindings" in text
+    assert "Local Proxy Entries" in text
+    assert "`B02, A05, A07`" in text
+    assert "representative only" in text
     assert "## Blockers" in text
 
 

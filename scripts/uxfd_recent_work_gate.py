@@ -427,14 +427,17 @@ def render_markdown(report: RecentWorkGateReport) -> str:
             "",
             "## TOP Representative Bindings",
             "",
-            "| Binding | Paper | Work | Status | Evidence Ready |",
-            "|---|---|---|---|---:|",
+            "| Binding | Paper | Work | Local Proxy Entries | Exact Reproduction Status | Status | Evidence Ready |",
+            "|---|---|---|---|---|---|---:|",
         ]
     )
     for binding in report.bindings:
+        proxy_entries = ", ".join(binding.local_proxy_matrix_entries)
+        exact_status = binding.exact_reproduction_status.replace("|", "\\|")
         lines.append(
             f"| `{binding.binding_id}` | `{binding.paper_id}` | `{binding.external_work_id}` | "
-            f"`{binding.status}` | `{binding.evidence_ready}` |"
+            f"`{proxy_entries}` | {exact_status} | `{binding.status}` | "
+            f"`{binding.evidence_ready}` |"
         )
     lines.extend(["", "## Blockers", ""])
     for blocker in report.blockers:
