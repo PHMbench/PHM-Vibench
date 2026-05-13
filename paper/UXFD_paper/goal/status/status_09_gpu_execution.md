@@ -22,6 +22,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - `nvidia-smi -L` must show local RTX 4090 GPUs 0 and 1.
 - PyTorch must report CUDA available with at least two devices.
 - Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs with no TODO placeholders.
+- `seed` must be a non-negative integer and `batch_size` must be a positive integer.
 - `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 - `git_sha_or_submodule_sha` must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers.
 

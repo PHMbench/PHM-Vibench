@@ -285,6 +285,12 @@
       "details": "queue contract, artifact gate, and templates require source_tree_status clean"
     },
     {
+      "requirement": "accepted artifacts require numeric run controls",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
+      "status": "met",
+      "details": "queue contract, artifact gate, and templates require integer seed and batch_size"
+    },
+    {
       "requirement": "accepted artifacts require clean SHA provenance",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
       "status": "met",
@@ -449,7 +455,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=18"
   ],
-  "met": 60,
+  "met": 61,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0
