@@ -20,6 +20,9 @@ PERSISTED_OBJECTIVE_AUDIT_MD = Path(
 SPEC_TASKS = Path("specs/006-uxfd-ieee-trans-submission-readiness/tasks.md")
 CLAUDE_TEAM_DIR = Path(".codex/claude-team-runs/20260511-uxfd-ieee-trans-review")
 CONTINUATION_HANDOFF = Path(".claude/handoffs/2026-05-12-uxfd-goal-continuation.md")
+EXECUTION_GATE_HANDOFF = Path(
+    ".claude/handoffs/2026-05-13-uxfd-execution-gate-check.md"
+)
 
 
 def _items_by_requirement(report):
@@ -43,6 +46,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["Spec Kit artifact tasks.md"].status == "met"
     assert items["handoff document"].status == "met"
     assert items["continuation handoff document"].status == "met"
+    assert items["execution gate handoff document"].status == "met"
     assert items["Claude Team task spec"].status == "met"
     assert items["Claude Team launch log"].status == "met"
     assert items["Codex xhigh subagent launch log"].status == "met"
@@ -137,6 +141,15 @@ def test_objective_audit_covers_latest_continuation_handoff() -> None:
     assert items["continuation handoff document"].status == "met"
 
 
+def test_objective_audit_covers_latest_execution_gate_handoff() -> None:
+    report = evaluate_objective_audit()
+    items = _items_by_requirement(report)
+
+    assert EXECUTION_GATE_HANDOFF.exists()
+    assert items["execution gate handoff document"].evidence == str(EXECUTION_GATE_HANDOFF)
+    assert items["execution gate handoff document"].status == "met"
+
+
 def test_persisted_objective_audit_reports_match_current_audit() -> None:
     report = evaluate_objective_audit()
 
@@ -224,6 +237,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert str(PERSISTED_OBJECTIVE_AUDIT_JSON) not in paths
     assert str(PERSISTED_OBJECTIVE_AUDIT_MD) not in paths
     assert "paper/UXFD_paper/results/readiness_backlog.md" not in paths
+    assert str(EXECUTION_GATE_HANDOFF) in paths
     assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
     assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
