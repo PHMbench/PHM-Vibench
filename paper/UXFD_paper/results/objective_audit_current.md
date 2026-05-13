@@ -2,7 +2,7 @@
 
 - Achieved: `False`
 - Met: `78`
-- Not met: `12`
+- Not met: `13`
 - Blocked: `1`
 - Unverified: `0`
 
@@ -61,6 +61,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | submodule dirty triage JSON report | `paper/UXFD_paper/results/submodule_dirty_triage.json` | exists |
 | `met` | submodule owner-review recommendations | `paper/UXFD_paper/results/submodule_owner_review_recommendations.md` | exists |
 | `met` | submodule owner-review decision template | `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` | exists |
+| `not_met` | submodule owner-review decision file | `paper/UXFD_paper/results/submodule_owner_review_decisions.json` | missing |
 | `met` | submodule owner-review gate JSON report | `paper/UXFD_paper/results/submodule_owner_review_gate_current.json` | exists |
 | `met` | submodule owner-review gate markdown report | `paper/UXFD_paper/results/submodule_owner_review_gate_current.md` | exists |
 | `met` | parent result artifact triage report | `paper/UXFD_paper/results/parent_result_artifact_triage.md` | exists |
@@ -108,6 +109,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 
 ## Blockers
 
+- submodule owner-review decision file: missing
 - submodule owner-review decision gate: ready=False, pending_records=6, blockers=4
 - paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2
 - TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5
