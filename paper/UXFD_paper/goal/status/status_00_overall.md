@@ -8,7 +8,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 ## Current Verdict
 
 - Achieved: `False`
-- Objective audit: `met=77`, `not_met=13`, `blocked=1`
+- Objective audit: `met=78`, `not_met=12`, `blocked=1`
 - Submission gate ready: `False`
 - Queue can execute: `False`
 - Artifact coverage: `0/104`
