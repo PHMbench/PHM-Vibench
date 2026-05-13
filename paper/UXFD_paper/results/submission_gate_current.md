@@ -78,6 +78,7 @@
 - `met` 6+ baselines and 6+ ablations per paper: submission_prep/baseline_ablation_matrix.yaml
 - `met` machine-readable GPU queue: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `met` GPU launch scripts enforce static queue gate: paper/UXFD_paper/results/queue_launch_plan.sh,paper/UXFD_paper/results/queue_launch_shards/gpu0.sh,paper/UXFD_paper/results/queue_launch_shards/gpu1.sh
+- `met` SOTA comparison contract blocks single-run claims: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `met` goal clarity audit report: paper/UXFD_paper/results/goal_clarity_audit_current.md
 - `met` commit recovery plan: paper/UXFD_paper/results/commit_recovery_plan.md
 - `met` Paper07 rejection-recovery innovation contract: paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md

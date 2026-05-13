@@ -63,6 +63,10 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert checklist["seven paper-local matrices"]["status"] == "met"
     assert checklist["6+ baselines and 6+ ablations per paper"]["status"] == "met"
     assert checklist["GPU launch scripts enforce static queue gate"]["status"] == "met"
+    assert (
+        checklist["SOTA comparison contract blocks single-run claims"]["status"]
+        == "met"
+    )
     assert checklist["goal clarity audit report"]["status"] == "met"
     assert checklist["commit recovery plan"]["status"] == "met"
     assert checklist["Paper07 rejection-recovery innovation contract"]["status"] == "met"
@@ -129,6 +133,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "## Next Actions" in text
     assert "## Objective Checklist" in text
     assert "GPU launch scripts enforce static queue gate" in text
+    assert "SOTA comparison contract blocks single-run claims" in text
 
 
 def test_submission_gate_cli_can_be_used_as_non_failing_audit(tmp_path: Path) -> None:

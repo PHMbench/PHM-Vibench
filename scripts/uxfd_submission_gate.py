@@ -66,6 +66,24 @@ LAUNCH_SCRIPT_STATIC_GATE_NEEDLES = (
     "Blocked: static queue validation can_execute=False",
     "exit 2",
 )
+SOTA_COMPARISON_CONTRACT_FIELDS = (
+    "single_run_rule",
+    "same_protocol_population",
+    "seed_protocol",
+    "aggregate_statistics",
+    "top_scope",
+    "claim_output",
+)
+SOTA_COMPARISON_CONTRACT_NEEDLES = (
+    "single run",
+    "matched seed",
+    "minimum_seeds",
+    "95% confidence interval",
+    "effect size",
+    "failure_record",
+    "representative top proxy",
+    "exact external",
+)
 
 
 @dataclass(frozen=True)
@@ -132,6 +150,27 @@ def _launch_scripts_static_gate_ready() -> bool:
         if not _file_contains_all(path, LAUNCH_SCRIPT_STATIC_GATE_NEEDLES):
             return False
     return True
+
+
+def _sota_comparison_contract_ready(queue_path: Path) -> bool:
+    if not queue_path.exists():
+        return False
+    queue = _load_yaml(queue_path) or {}
+    contract = queue.get("sota_comparison_contract", {})
+    if not isinstance(contract, Mapping):
+        return False
+    if any(
+        not str(contract.get(field, "")).strip()
+        for field in SOTA_COMPARISON_CONTRACT_FIELDS
+    ):
+        return False
+    contract_text = " ".join(str(value) for value in contract.values()).lower()
+    cross_gate = queue.get("cross_paper_gate", {})
+    cross_gate_text = str(cross_gate.get("sota_rule", "")).lower()
+    combined_text = f"{contract_text} {cross_gate_text}"
+    return "multi-seed" in cross_gate_text and all(
+        needle.lower() in combined_text for needle in SOTA_COMPARISON_CONTRACT_NEEDLES
+    )
 
 
 def _matrix_paths(queue_path: Path) -> Tuple[Path, ...]:
@@ -237,6 +276,13 @@ def _objective_checklist(
                 "requirement": "GPU launch scripts enforce static queue gate",
                 "evidence": ",".join(str(path) for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS),
                 "status": "met" if _launch_scripts_static_gate_ready() else "not_met",
+            },
+            {
+                "requirement": "SOTA comparison contract blocks single-run claims",
+                "evidence": str(queue_path),
+                "status": (
+                    "met" if _sota_comparison_contract_ready(queue_path) else "not_met"
+                ),
             },
             {
                 "requirement": "goal clarity audit report",

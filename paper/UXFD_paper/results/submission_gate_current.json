@@ -286,6 +286,11 @@
       "status": "met"
     },
     {
+      "requirement": "SOTA comparison contract blocks single-run claims",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
+      "status": "met"
+    },
+    {
       "requirement": "goal clarity audit report",
       "evidence": "paper/UXFD_paper/results/goal_clarity_audit_current.md",
       "status": "met"
