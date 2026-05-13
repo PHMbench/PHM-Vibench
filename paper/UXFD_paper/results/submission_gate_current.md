@@ -6,6 +6,7 @@
 - Artifact gate accepted: `False`
 - Artifact gate records: `0`
 - SOTA gate ready: `False`
+- SOTA accepted run root: `paper/UXFD_paper/results/accepted_runs`
 - SOTA gate records: `7`
 - Recent-work policy ready: `True`
 - Recent-work evidence ready: `False`

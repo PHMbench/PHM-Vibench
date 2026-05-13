@@ -113,6 +113,7 @@ class SubmissionGateReport:
     artifact_gate_blockers: Tuple[str, ...]
     sota_gate_ready: bool
     sota_gate_root: str
+    sota_gate_accepted_run_root: str
     sota_gate_records: int
     sota_gate_blockers: Tuple[str, ...]
     recent_work_policy_ready: bool
@@ -412,7 +413,11 @@ def evaluate_submission_gate(
             f"artifact gate blocked: {len(artifact_report.blockers)} blockers under "
             f"{artifact_report.artifact_root}"
         )
-    sota_report = evaluate_sota_gate(sota_root, queue_path=queue_path)
+    sota_report = evaluate_sota_gate(
+        sota_root,
+        queue_path=queue_path,
+        accepted_run_root=artifact_root,
+    )
     if not sota_report.ready:
         blockers.append(
             f"sota gate blocked: {len(sota_report.blockers)} blockers under "
@@ -466,6 +471,7 @@ def evaluate_submission_gate(
         artifact_gate_blockers=artifact_report.blockers,
         sota_gate_ready=sota_report.ready,
         sota_gate_root=sota_report.aggregate_root,
+        sota_gate_accepted_run_root=sota_report.accepted_run_root,
         sota_gate_records=len(sota_report.records),
         sota_gate_blockers=sota_report.blockers,
         recent_work_policy_ready=recent_report.policy_ready,
@@ -500,6 +506,7 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Artifact gate accepted: `{report.artifact_gate_accepted}`",
         f"- Artifact gate records: `{report.artifact_gate_records}`",
         f"- SOTA gate ready: `{report.sota_gate_ready}`",
+        f"- SOTA accepted run root: `{report.sota_gate_accepted_run_root}`",
         f"- SOTA gate records: `{report.sota_gate_records}`",
         f"- Recent-work policy ready: `{report.recent_work_policy_ready}`",
         f"- Recent-work evidence ready: `{report.recent_work_evidence_ready}`",

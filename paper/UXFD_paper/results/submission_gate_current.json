@@ -351,6 +351,7 @@
   ],
   "sota_gate_ready": false,
   "sota_gate_root": "paper/UXFD_paper/results/sota_aggregates",
+  "sota_gate_accepted_run_root": "paper/UXFD_paper/results/accepted_runs",
   "sota_gate_records": 7,
   "sota_gate_blockers": [
     "sota aggregate root does not exist: paper/UXFD_paper/results/sota_aggregates",

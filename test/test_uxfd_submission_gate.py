@@ -27,6 +27,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.artifact_gate_accepted is False
     assert report.artifact_gate_records == 0
     assert report.sota_gate_ready is False
+    assert report.sota_gate_accepted_run_root == report.artifact_gate_root
     assert report.sota_gate_records == 7
     assert report.recent_work_policy_ready is True
     assert report.recent_work_evidence_ready is False
@@ -93,6 +94,15 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert checklist["submission readiness achieved"]["status"] == "not_met"
 
 
+def test_submission_gate_uses_artifact_root_for_sota_run_refs(tmp_path: Path) -> None:
+    artifact_root = tmp_path / "accepted_runs"
+
+    report = evaluate_submission_gate(artifact_root=artifact_root)
+
+    assert report.artifact_gate_root == str(artifact_root)
+    assert report.sota_gate_accepted_run_root == str(artifact_root)
+
+
 def test_persisted_submission_gate_reports_match_current_gate() -> None:
     report = evaluate_submission_gate()
 
@@ -115,6 +125,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["artifact_gate_records"] == 0
     assert payload["artifact_gate_blockers"]
     assert payload["sota_gate_ready"] is False
+    assert payload["sota_gate_accepted_run_root"] == payload["artifact_gate_root"]
     assert payload["sota_gate_records"] == 7
     assert payload["sota_gate_blockers"]
     assert payload["recent_work_policy_ready"] is True
@@ -138,6 +149,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "Ready: `False`" in text
     assert "Artifact gate accepted: `False`" in text
     assert "SOTA gate ready: `False`" in text
+    assert "SOTA accepted run root:" in text
     assert "Recent-work policy ready: `True`" in text
     assert "Recent-work evidence ready: `False`" in text
     assert "Low-tier source hygiene ready: `True`" in text
