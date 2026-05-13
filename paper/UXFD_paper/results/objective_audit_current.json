@@ -275,8 +275,8 @@
     {
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
-      "status": "met",
-      "details": "43 parent goal-control paths clean"
+      "status": "not_met",
+      "details": "dirty_parent_goal_control_paths=1"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -396,7 +396,7 @@
       "requirement": "accepted run artifact metadata",
       "evidence": "paper/UXFD_paper/results/accepted_runs",
       "status": "not_met",
-      "details": "records=0, blockers=3"
+      "details": "records=0, blockers=2"
     },
     {
       "requirement": "cross-paper submission gate",
@@ -407,6 +407,7 @@
   ],
   "blockers": [
     "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2",
+    "parent UXFD goal-control checkpoint committed: dirty_parent_goal_control_paths=1",
     "TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5",
     "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
     "Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5",
@@ -416,11 +417,11 @@
     "LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=8",
     "TOP representative accepted artifacts: pending_or_blocked_bindings=7",
     "2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session",
-    "accepted run artifact metadata: records=0, blockers=3",
+    "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=17"
   ],
-  "met": 55,
-  "not_met": 11,
+  "met": 54,
+  "not_met": 12,
   "blocked": 1,
   "unverified": 0
 }

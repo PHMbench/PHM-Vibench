@@ -4,14 +4,13 @@
 - Artifact root: `paper/UXFD_paper/results/accepted_runs`
 - Run metadata files: `0`
 - Queue coverage: `0/104`
-- Blockers: `3`
+- Blockers: `2`
 
 | run_meta.yaml | Accepted | Issues |
 |---|---:|---:|
 
 ## Blockers
 
-- artifact root does not exist: paper/UXFD_paper/results/accepted_runs
 - no run_meta.yaml files found under paper/UXFD_paper/results/accepted_runs
 - queue coverage incomplete: 104 queue coverage rows missing accepted run_meta.yaml
 

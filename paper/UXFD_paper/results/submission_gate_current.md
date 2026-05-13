@@ -41,7 +41,7 @@
 - LLM_Explainable_FD_Toolkit: submission_ready is false
 - LLM_Explainable_FD_Toolkit: 8 strict blockers remain
 - gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session
-- artifact gate blocked: 3 blockers under paper/UXFD_paper/results/accepted_runs
+- artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs
 - recent-work evidence blocked: 7 TOP representative blockers
 
 ## Next Actions
