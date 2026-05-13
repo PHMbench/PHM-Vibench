@@ -112,6 +112,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/.gitignore"),
     Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
     Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
+    Path("paper/UXFD_paper/results/accepted_runs"),
     Path("paper/UXFD_paper/results/accepted_run_templates"),
     Path("paper/UXFD_paper/results/submission_gate_current.json"),
     Path("paper/UXFD_paper/results/submission_gate_current.md"),
