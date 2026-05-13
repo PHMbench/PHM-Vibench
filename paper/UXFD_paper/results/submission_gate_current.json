@@ -81,7 +81,7 @@
       "strict_blockers": [
         "No accepted CWRU/XJTU multi-seed baseline table yet.",
         "No accepted GPU model/runtime metadata from local GPUs 0,1 yet.",
-        "P2 is internally inconsistent across synthetic hooks and simple_validation_demo currently records P2 as failed.",
+        "P2 has only scope-limited synthetic hooks (P2A boundary/failure and P2B positive synthetic sensitivity); no accepted real-data robustness protocol supports final P2 yet.",
         "No accepted TOP representative command/log/artifact mapping yet.",
         "No SOTA claim is allowed from this matrix alone."
       ]

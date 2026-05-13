@@ -850,8 +850,9 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
     assert any("logit_scale=0.1" in entry["command"] for entry in bound_ablations)
     assert any("logit_scale=1.0" in entry["command"] for entry in bound_ablations)
     assert any(
-        "run_mapping_ablation_smoke.py --condition no_mapping" in entry["command"]
-        for entry in bound_ablations
+        entry["id"] == "MAP-ABL"
+        and "run_mapping_ablation_smoke.py --condition no_mapping" in entry["command"]
+        for entry in matrix["proposition_evidence"]
     )
     assert any(
         entry["id"] == "MAP-SRC"
