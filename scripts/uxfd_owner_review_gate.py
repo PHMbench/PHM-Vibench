@@ -82,6 +82,14 @@ def _string_list(value: Any) -> Tuple[str, ...]:
     return tuple(str(item) for item in value)
 
 
+def _expected_supporting_files() -> Mapping[str, str]:
+    return {
+        "action_packet": str(OWNER_REVIEW_ACTION_PACKET),
+        "recommendations": str(OWNER_REVIEW_RECOMMENDATIONS),
+        "evidence_index": str(OWNER_REVIEW_EVIDENCE_INDEX),
+    }
+
+
 def _record_issues(
     record: Mapping[str, Any],
     current_meta: Optional[Mapping[str, Any]] = None,
@@ -214,6 +222,8 @@ def evaluate_owner_review_gate(
     allowed = set(_string_list(payload.get("allowed_decisions")))
     if allowed != ALLOWED_DECISIONS:
         blockers.append("allowed_decisions does not match owner-review policy")
+    if payload.get("supporting_files") != _expected_supporting_files():
+        blockers.append("supporting_files does not match owner-review support policy")
     payload_status = str(payload.get("status", "")).strip()
     if source_is_template and payload_status != TEMPLATE_STATUS:
         blockers.append("template source must be marked template_only_not_owner_approved")

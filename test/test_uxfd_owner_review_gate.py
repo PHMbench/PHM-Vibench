@@ -95,6 +95,18 @@ def test_owner_review_gate_rejects_decision_file_with_template_status(
     assert "owner decision file must be marked owner_review_decisions" in report.blockers
 
 
+def test_owner_review_gate_rejects_missing_supporting_files(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    del payload["supporting_files"]
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert "supporting_files does not match owner-review support policy" in report.blockers
+
+
 def test_owner_review_gate_rejects_placeholder_reviewer(tmp_path: Path) -> None:
     decision_file = _approved_decisions_file(tmp_path)
     payload = json.loads(decision_file.read_text(encoding="utf-8"))
