@@ -23,6 +23,7 @@ from scripts.uxfd_gpu_queue import (
 PERSISTED_LAUNCH_PLAN = Path("paper/UXFD_paper/results/queue_launch_plan.sh")
 PERSISTED_SHARD_DIR = Path("paper/UXFD_paper/results/queue_launch_shards")
 PERSISTED_LIVE_PREFLIGHT = Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")
+PERSISTED_GPU_RUNBOOK = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md")
 
 
 def _write_minimal_queue(tmp_path: Path, gpu_names: list[str]) -> Path:
@@ -307,6 +308,20 @@ def test_static_resource_preflight_matches_live_snapshot() -> None:
     assert live["accepted"] is False
     assert live["torch_cuda_available"] == current["torch_cuda_available"]
     assert live["torch_cuda_device_count"] == current["torch_cuda_device_count"]
+
+
+def test_gpu_execution_runbook_records_current_live_preflight_blocker() -> None:
+    payload = json.loads(PERSISTED_LIVE_PREFLIGHT.read_text(encoding="utf-8"))
+    live = payload["live_preflight"]
+    text = PERSISTED_GPU_RUNBOOK.read_text(encoding="utf-8")
+
+    assert "Status: execution plan only. This document is not accepted evidence." in text
+    assert f"- Live preflight accepted: `{live['accepted']}`" in text
+    assert f"- `nvidia_smi_ok`: `{live['nvidia_smi_ok']}`" in text
+    assert f"- `torch_cuda_available`: `{live['torch_cuda_available']}`" in text
+    assert f"- `torch_cuda_device_count`: `{live['torch_cuda_device_count']}`" in text
+    assert "- `gpu_names`: `[]`" in text
+    assert "Do not run `queue_launch_plan.sh`, `gpu0.sh`, or `gpu1.sh`" in text
 
 
 def test_gpu_queue_live_preflight_is_reported_without_launching_experiments(

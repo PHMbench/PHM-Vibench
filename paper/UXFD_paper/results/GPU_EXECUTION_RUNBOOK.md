@@ -89,11 +89,21 @@ submission, and objective gates all pass without override flags.
 
 ## 6. Current State
 
-As of the last local check:
+As of the latest local live preflight snapshot
+(`paper/UXFD_paper/results/gpu_queue_live_preflight.json`):
 
 - Accepted artifact root: `paper/UXFD_paper/results/accepted_runs`
 - Queue coverage: `0/104`
-- GPU queue resource state: blocked in this session because NVIDIA driver/NVML is
-  unavailable.
+- Live preflight accepted: `False`
+- `nvidia_smi_ok`: `False`
+- `torch_cuda_available`: `False`
+- `torch_cuda_device_count`: `0`
+- `gpu_names`: `[]`
+- GPU queue resource state: blocked in this session because NVIDIA driver/NVML
+  is unavailable and PyTorch reports no CUDA devices.
 - Submission gate: not ready.
 - Objective audit: not achieved.
+
+Do not run `queue_launch_plan.sh`, `gpu0.sh`, or `gpu1.sh` until a refreshed
+live preflight records `accepted: true` with exactly local devices `0` and `1`
+as RTX 4090-class GPUs.

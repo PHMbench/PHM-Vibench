@@ -239,6 +239,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/readiness_backlog.md" not in paths
     assert str(EXECUTION_GATE_HANDOFF) in paths
     assert "paper/UXFD_paper/goal/status" in paths
+    assert "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
     assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
     assert "paper/UXFD_paper/results/accepted_runs" in paths
