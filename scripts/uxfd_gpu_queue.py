@@ -326,6 +326,23 @@ def _shell_command(command: str, workdir: str) -> str:
     return f"(cd {shlex.quote(workdir)} && {command})"
 
 
+def _static_validation_guard(validation: QueueValidation) -> Tuple[str, ...]:
+    if validation.can_execute:
+        return ()
+    lines = [
+        "# Static queue validation failed at generation time.",
+        "# Regenerate this launch plan only after the queue and resource gates pass.",
+        "printf '%s\\n' 'Blocked: static queue validation can_execute=False'",
+        f"printf '%s\\n' {shlex.quote('Resource reason: ' + validation.resource_reason)}",
+        f"printf '%s\\n' {shlex.quote('Structural issues: ' + str(len(validation.structural_issues)))}",
+    ]
+    if validation.structural_issues:
+        joined = "; ".join(validation.structural_issues)
+        lines.append(f"printf '%s\\n' {shlex.quote('Structural issue detail: ' + joined)}")
+    lines.append("exit 2")
+    return tuple(lines)
+
+
 def build_launch_plan(
     rows: Sequence[QueueCommand],
     devices: Sequence[str] = ("0", "1"),
@@ -391,6 +408,10 @@ def render_shell_plan(
         f"# Launchable commands: {len(launch_rows)}",
         "",
     ]
+    guard_lines = _static_validation_guard(validation)
+    if guard_lines:
+        lines.extend(guard_lines)
+        lines.append("")
     for row in launch_rows:
         lines.extend(
             [

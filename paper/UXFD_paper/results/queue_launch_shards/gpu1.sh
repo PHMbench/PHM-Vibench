@@ -10,6 +10,13 @@ python -c "import torch; assert torch.cuda.is_available(); assert torch.cuda.dev
 # Queue validation resource reason: blocked; no accepted GPU evidence can be generated in this session
 # Launchable commands: 48
 
+# Static queue validation failed at generation time.
+# Regenerate this launch plan only after the queue and resource gates pass.
+printf '%s\n' 'Blocked: static queue validation can_execute=False'
+printf '%s\n' 'Resource reason: blocked; no accepted GPU evidence can be generated in this session'
+printf '%s\n' 'Structural issues: 0'
+exit 2
+
 # Q1 TII_operator_attention baselines B01 device=1 workdir=.: NSN/TSPN_UXFD without operator attention
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0
 

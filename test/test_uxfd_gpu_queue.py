@@ -205,6 +205,8 @@ def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Pat
     assert "nvidia-smi -L" in text
     assert "torch.cuda.device_count() == 2" in text
     assert "assert all('RTX 4090' in name for name in names)" in text
+    assert "Blocked: static queue validation can_execute=False" in text
+    assert "exit 2" in text
     assert "CUDA_VISIBLE_DEVICES=0" in text
     assert "CUDA_VISIBLE_DEVICES=1" in text
     assert "run_toolkit_ablations.py" not in text
@@ -226,6 +228,8 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
 
     assert "Launch shard for CUDA device 0" in gpu0
     assert "Launch shard for CUDA device 1" in gpu1
+    assert "Blocked: static queue validation can_execute=False" in gpu0
+    assert "Blocked: static queue validation can_execute=False" in gpu1
     assert "CUDA_VISIBLE_DEVICES=0" in gpu0
     assert "CUDA_VISIBLE_DEVICES=1" not in gpu0
     assert "CUDA_VISIBLE_DEVICES=1" in gpu1
