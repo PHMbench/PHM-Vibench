@@ -19,6 +19,7 @@ PERSISTED_ARTIFACT_GATE_QUEUE_COVERAGE = Path(
     "paper/UXFD_paper/results/artifact_gate_queue_coverage.md"
 )
 DEFAULT_ACCEPTED_RUNS_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
+VALID_PREPROCESSING_SIGNATURE = "sha256:" + "0123456789abcdef" * 4
 
 
 def _write_valid_artifact(run_dir: Path) -> None:
@@ -39,7 +40,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
                 "gpu_count: 1",
                 "seed: 0",
                 "dataset_split: 'cwru_seed0'",
-                "preprocessing_signature: 'sha256:accepted-protocol'",
+                f"preprocessing_signature: '{VALID_PREPROCESSING_SIGNATURE}'",
                 "batch_size: 16",
                 "precision: 'fp32'",
                 "runtime: '00:01:00'",
@@ -368,6 +369,23 @@ def test_artifact_gate_rejects_smoke_demo_or_pending_protocol_markers(
         in report.records[0].issues
     )
     assert "command must not reference smoke evidence" in report.records[0].issues
+
+
+def test_artifact_gate_requires_sha256_preprocessing_signature(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["preprocessing_signature"] = "sha256:accepted-protocol"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "preprocessing_signature must match sha256:<64 lowercase hex>"
+        in report.records[0].issues
+    )
 
 
 def test_command_cuda_visible_devices_parser() -> None:

@@ -83,6 +83,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "integer seed and batch_size" in items[
         "accepted artifacts require numeric run controls"
     ].details
+    assert (
+        items["accepted artifacts require hashed preprocessing signatures"].status
+        == "met"
+    )
+    assert "sha256 preprocessing_signature" in items[
+        "accepted artifacts require hashed preprocessing signatures"
+    ].details
     assert items["accepted artifacts require clean SHA provenance"].status == "met"
     assert "dirty SHA provenance" in items[
         "accepted artifacts require clean SHA provenance"

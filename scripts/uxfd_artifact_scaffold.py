@@ -202,6 +202,10 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
             "`batch_size` must be a positive integer."
         ),
         (
+            "- Protocol-signature rule: `preprocessing_signature` must match "
+            "`sha256:<64 lowercase hex>`."
+        ),
+        (
             "- Provenance rule: `git_sha_or_submodule_sha` must be a concrete SHA "
             "record without dirty, modified, unknown, or uncommitted markers."
         ),

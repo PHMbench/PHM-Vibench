@@ -68,6 +68,7 @@ DISALLOWED_SHA_PROVENANCE_MARKERS = (
     "unknown",
     "uncommitted",
 )
+PREPROCESSING_SIGNATURE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 PROTOCOL_EVIDENCE_FIELDS = (
     "dataset_split",
     "preprocessing_signature",
@@ -316,6 +317,12 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     )
     if sha_marker:
         issues.append(f"git_sha_or_submodule_sha must not contain {sha_marker}")
+
+    preprocessing_signature = str(data.get("preprocessing_signature", "")).strip()
+    if preprocessing_signature and not PREPROCESSING_SIGNATURE_PATTERN.fullmatch(
+        preprocessing_signature
+    ):
+        issues.append("preprocessing_signature must match sha256:<64 lowercase hex>")
 
     for field in PROTOCOL_EVIDENCE_FIELDS:
         value = str(data.get(field, ""))

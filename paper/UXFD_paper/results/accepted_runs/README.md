@@ -24,6 +24,8 @@ config path, log path, metrics path, git or submodule SHA provenance, and
 `source_tree_status: clean`.
 The seed must be a non-negative integer, and `batch_size` must be a positive
 integer.
+The preprocessing signature must match `sha256:<64 lowercase hex>` so
+same-protocol preprocessing can be traced without relying on prose.
 The SHA provenance must be a concrete clean revision and must not contain
 dirty, modified, unknown, or uncommitted markers.
 Status-only metric payloads are rejected because they cannot support IEEE

@@ -58,6 +58,7 @@ accepted_artifact_contract:
   metrics: "metrics.json or metrics.csv with at least one numeric metric"
   numeric_metrics_required: true
   run_controls: "seed must be a non-negative integer; batch size must be a positive integer"
+  preprocessing_signature: "must match sha256:<64 lowercase hex> for same-protocol traceability"
   sha_provenance: "git_sha_or_submodule_sha must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers"
   logs: "stdout/stderr or trainer log"
   result_table: "paper-local accepted table source"

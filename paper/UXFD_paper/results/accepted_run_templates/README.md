@@ -6,6 +6,7 @@
 - Accepted metrics rule: `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 - Source-tree rule: accepted runs must set `source_tree_status: clean`.
 - Run-control rule: `seed` must be a non-negative integer and `batch_size` must be a positive integer.
+- Protocol-signature rule: `preprocessing_signature` must match `sha256:<64 lowercase hex>`.
 - Provenance rule: `git_sha_or_submodule_sha` must be a concrete SHA record without dirty, modified, unknown, or uncommitted markers.
 
 | Queue | Paper | Phase | Entry | GPU | Template |
