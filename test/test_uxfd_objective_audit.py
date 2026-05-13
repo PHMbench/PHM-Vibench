@@ -3,6 +3,7 @@ from pathlib import Path
 
 import scripts.uxfd_objective_audit as audit
 from scripts.uxfd_objective_audit import (
+    ACCEPTED_RUN_ROOT_README,
     PARENT_GOAL_CHECKPOINT_PATHS,
     build_payload,
     evaluate_objective_audit,
@@ -127,6 +128,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
         "accepted artifacts require clean SHA provenance"
     ].details
     assert (
+        items["accepted-run evidence root requires GPU and queue preflight"].status
+        == "met"
+    )
+    assert "live GPU preflight" in items[
+        "accepted-run evidence root requires GPU and queue preflight"
+    ].details
+    assert (
         items[
             "SOTA comparison requires multi-seed same-protocol aggregate evidence"
         ].status
@@ -236,6 +244,17 @@ def test_persisted_objective_audit_reports_match_current_audit() -> None:
     assert PERSISTED_OBJECTIVE_AUDIT_MD.read_text(encoding="utf-8") == render_markdown(
         report
     )
+
+
+def test_objective_audit_covers_accepted_run_root_activation_gate() -> None:
+    report = evaluate_objective_audit()
+    items = _items_by_requirement(report)
+    item = items["accepted-run evidence root requires GPU and queue preflight"]
+
+    assert ACCEPTED_RUN_ROOT_README.exists()
+    assert str(ACCEPTED_RUN_ROOT_README) in item.evidence
+    assert item.status == "met"
+    assert "artifact gate queue coverage" in item.details
 
 
 def test_objective_audit_cli_writes_blocking_json_and_markdown(tmp_path: Path) -> None:

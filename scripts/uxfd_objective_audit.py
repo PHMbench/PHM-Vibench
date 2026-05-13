@@ -162,6 +162,12 @@ SHA_PROVENANCE_NEEDLES = (
     "DISALLOWED_SHA_PROVENANCE_MARKERS",
     "git_sha_or_submodule_sha must not contain",
 )
+ACCEPTED_RUN_ROOT_README = Path("paper/UXFD_paper/results/accepted_runs/README.md")
+ACCEPTED_RUN_ROOT_GATE_NEEDLES = (
+    "uxfd_gpu_queue --live-preflight --require-preflight",
+    "Blocked: static queue validation can_execute=False",
+    "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage",
+)
 SOTA_COMPARISON_CONTRACT_FIELDS = (
     "single_run_rule",
     "same_protocol_population",
@@ -818,6 +824,58 @@ def _sha_provenance_contract_item(
     )
 
 
+def _accepted_run_root_activation_gate_item(
+    accepted_run_root_readme: Path = ACCEPTED_RUN_ROOT_README,
+    gpu_queue_path: Path = Path("scripts/uxfd_gpu_queue.py"),
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+    artifact_scaffold_path: Path = Path("scripts/uxfd_artifact_scaffold.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    for path, needles in (
+        (accepted_run_root_readme, ACCEPTED_RUN_ROOT_GATE_NEEDLES),
+        (artifact_scaffold_path, ACCEPTED_RUN_ROOT_GATE_NEEDLES),
+        (
+            gpu_queue_path,
+            (
+                "--require-preflight",
+                "Blocked: static queue validation can_execute=False",
+            ),
+        ),
+        (artifact_gate_path, ("require_queue_coverage", "queue coverage incomplete")),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="accepted-run evidence root requires GPU and queue preflight",
+            evidence=(
+                f"{accepted_run_root_readme},{gpu_queue_path},"
+                f"{artifact_gate_path},{artifact_scaffold_path}"
+            ),
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="accepted-run evidence root requires GPU and queue preflight",
+        evidence=(
+            f"{accepted_run_root_readme},{gpu_queue_path},"
+            f"{artifact_gate_path},{artifact_scaffold_path}"
+        ),
+        status="met",
+        details=(
+            "accepted_runs root and templates require live GPU preflight, static "
+            "queue gate clearance, and artifact gate queue coverage before promotion"
+        ),
+    )
+
+
 def _sota_comparison_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     runbook_path: Path = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md"),
@@ -990,6 +1048,7 @@ def evaluate_objective_audit(
     items.append(_evidence_level_contract_item(queue_path=queue_path))
     items.append(_preprocessing_signature_contract_item(queue_path=queue_path))
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
+    items.append(_accepted_run_root_activation_gate_item())
     items.append(_sota_comparison_contract_item(queue_path=queue_path))
 
     paper07_rejection_ready = _text_contains(
