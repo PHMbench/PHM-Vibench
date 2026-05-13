@@ -412,9 +412,9 @@
     },
     {
       "requirement": "Paper07 rejection-recovery innovation contract",
-      "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md",
+      "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md,paper/UXFD_paper/TII_operator_attention/submission_prep/reviewer_traceability_matrix.md",
       "status": "met",
-      "details": "goal and submodule contract encode rejection recovery, DSOA v2, reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules"
+      "details": "goal and submodule contract encode rejection recovery, DSOA v2, reviewer traceability, Q0 preflight, and non-SOTA/non-ready stop rules"
     },
     {
       "requirement": "paper submodule working trees clean before parent handoff",

@@ -91,7 +91,7 @@
 - `met` SOTA comparison contract blocks single-run claims: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `met` goal clarity audit report: paper/UXFD_paper/results/goal_clarity_audit_current.md
 - `met` commit recovery plan: paper/UXFD_paper/results/commit_recovery_plan.md
-- `met` Paper07 rejection-recovery innovation contract: paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md
+- `met` Paper07 rejection-recovery innovation contract: paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md,paper/UXFD_paper/TII_operator_attention/submission_prep/reviewer_traceability_matrix.md
 - `met` TOP recent-work policy and paper-local matrix coverage: scripts.uxfd_recent_work_gate
 - `met` low-tier source hygiene: paper/UXFD_paper/results/low_tier_source_audit.md
 - `not_met` submodule owner-review decision gate: paper/UXFD_paper/results/submodule_owner_review_decisions.template.json
