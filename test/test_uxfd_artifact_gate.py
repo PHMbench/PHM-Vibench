@@ -320,6 +320,23 @@ def test_artifact_gate_requires_positive_runtime_format(tmp_path: Path) -> None:
     assert "runtime must be positive HH:MM:SS" in report.records[0].issues
 
 
+def test_artifact_gate_rejects_unknown_precision(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["precision"] = "mixed precision"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "precision must be one of fp32, tf32, fp16, bf16, amp"
+        in report.records[0].issues
+    )
+
+
 def test_artifact_gate_requires_explicit_rtx_4090_gpu_model(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
     run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"

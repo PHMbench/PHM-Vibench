@@ -70,6 +70,7 @@ DISALLOWED_SHA_PROVENANCE_MARKERS = (
 )
 PREPROCESSING_SIGNATURE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 RUNTIME_PATTERN = re.compile(r"^(\d+):([0-5]\d):([0-5]\d)$")
+ACCEPTED_PRECISION_VALUES = ("fp32", "tf32", "fp16", "bf16", "amp")
 PROTOCOL_EVIDENCE_FIELDS = (
     "dataset_split",
     "preprocessing_signature",
@@ -303,6 +304,10 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     runtime_seconds = _runtime_seconds(data.get("runtime"))
     if runtime_seconds is None or runtime_seconds <= 0:
         issues.append("runtime must be positive HH:MM:SS")
+
+    precision = str(data.get("precision", "")).strip().lower()
+    if precision and precision not in ACCEPTED_PRECISION_VALUES:
+        issues.append("precision must be one of fp32, tf32, fp16, bf16, amp")
 
     gpu_count = _coerce_integer(data.get("gpu_count"))
     if gpu_count is None:

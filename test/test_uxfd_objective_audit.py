@@ -88,6 +88,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
         "accepted artifacts require positive runtime metadata"
     ].details
     assert (
+        items["accepted artifacts require enumerated precision metadata"].status
+        == "met"
+    )
+    assert "precision enum" in items[
+        "accepted artifacts require enumerated precision metadata"
+    ].details
+    assert (
         items["accepted artifacts require hashed preprocessing signatures"].status
         == "met"
     )

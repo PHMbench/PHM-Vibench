@@ -202,6 +202,7 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
             "`batch_size` must be a positive integer."
         ),
         "- Runtime rule: `runtime` must be a positive `HH:MM:SS` duration.",
+        "- Precision rule: `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.",
         (
             "- Protocol-signature rule: `preprocessing_signature` must match "
             "`sha256:<64 lowercase hex>`."

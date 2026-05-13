@@ -123,6 +123,10 @@ RUNTIME_NEEDLES = (
     "runtime must be positive HH:MM:SS",
     "RUNTIME_PATTERN",
 )
+PRECISION_NEEDLES = (
+    "precision must be one of fp32, tf32, fp16, bf16, amp",
+    "ACCEPTED_PRECISION_VALUES",
+)
 PREPROCESSING_SIGNATURE_NEEDLES = (
     "preprocessing_signature must match sha256:<64 lowercase hex>",
     "PREPROCESSING_SIGNATURE_PATTERN",
@@ -540,6 +544,52 @@ def _runtime_contract_item(
     )
 
 
+def _precision_contract_item(
+    queue_path: Path = DEFAULT_QUEUE,
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+    artifact_scaffold_path: Path = Path("scripts/uxfd_artifact_scaffold.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    if not queue_path.exists():
+        missing.append(str(queue_path))
+        queue_contract: Mapping[str, Any] = {}
+    else:
+        queue = yaml.safe_load(queue_path.read_text(encoding="utf-8"))
+        queue_contract = queue.get("accepted_artifact_contract", {})
+
+    precision_text = str(queue_contract.get("precision", "")).lower()
+    for needle in ("fp32", "tf32", "fp16", "bf16", "amp"):
+        if needle not in precision_text:
+            missing.append(f"accepted_artifact_contract.precision.{needle}")
+
+    for path, needles in (
+        (artifact_gate_path, PRECISION_NEEDLES),
+        (artifact_scaffold_path, ("Precision rule", "precision")),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="accepted artifacts require enumerated precision metadata",
+            evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="accepted artifacts require enumerated precision metadata",
+        evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+        status="met",
+        details="queue contract, artifact gate, and templates require precision enum",
+    )
+
+
 def _preprocessing_signature_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
@@ -731,6 +781,7 @@ def evaluate_objective_audit(
     items.append(_source_tree_status_contract_item(queue_path=queue_path))
     items.append(_run_control_contract_item(queue_path=queue_path))
     items.append(_runtime_contract_item(queue_path=queue_path))
+    items.append(_precision_contract_item(queue_path=queue_path))
     items.append(_preprocessing_signature_contract_item(queue_path=queue_path))
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
 

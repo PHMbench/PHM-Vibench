@@ -59,6 +59,7 @@ accepted_artifact_contract:
   numeric_metrics_required: true
   run_controls: "seed must be a non-negative integer; batch size must be a positive integer"
   runtime: "must be a positive HH:MM:SS duration"
+  precision: "must be one of fp32, tf32, fp16, bf16, amp"
   preprocessing_signature: "must match sha256:<64 lowercase hex> for same-protocol traceability"
   sha_provenance: "git_sha_or_submodule_sha must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers"
   logs: "stdout/stderr or trainer log"

@@ -74,7 +74,8 @@ For each completed launch row:
    metadata, seed, split, runtime, command, SHA provenance, and
    `source_tree_status: clean` are present. The seed must be a non-negative
    integer, `batch_size` must be a positive integer, `runtime` must be a
-   positive `HH:MM:SS` duration, and `preprocessing_signature` must match
+   positive `HH:MM:SS` duration, `precision` must be one of `fp32`, `tf32`,
+   `fp16`, `bf16`, or `amp`, and `preprocessing_signature` must match
    `sha256:<64 lowercase hex>`.
 5. Place `metrics.json` or `metrics.csv`, `run.log`, and the referenced config
    evidence beside `run_meta.yaml`. The metrics file must contain at least one
@@ -84,9 +85,9 @@ The artifact gate rejects `accepted_evidence: false`, `TODO` placeholders,
 missing files, non-4090 GPU metadata, invalid CUDA device IDs, and incomplete
 queue coverage. It also rejects JSON or CSV metric files that contain no numeric
 metric, non-numeric seed or batch-size controls, malformed runtime values,
-non-hashed preprocessing signatures, run metadata from dirty source trees, and
-SHA provenance fields that contain dirty, modified, unknown, or uncommitted
-markers.
+unknown precision values, non-hashed preprocessing signatures, run metadata from
+dirty source trees, and SHA provenance fields that contain dirty, modified,
+unknown, or uncommitted markers.
 
 ## 5. Gates
 

@@ -25,6 +25,7 @@ config path, log path, metrics path, git or submodule SHA provenance, and
 The seed must be a non-negative integer, and `batch_size` must be a positive
 integer.
 The runtime must be a positive `HH:MM:SS` duration.
+The precision must be one of `fp32`, `tf32`, `fp16`, `bf16`, or `amp`.
 The preprocessing signature must match `sha256:<64 lowercase hex>` so
 same-protocol preprocessing can be traced without relying on prose.
 The SHA provenance must be a concrete clean revision and must not contain

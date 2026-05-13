@@ -94,6 +94,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     assert "source_tree_status: clean" in readme
     assert "`batch_size` must be a positive integer" in readme
     assert "`runtime` must be a positive `HH:MM:SS` duration" in readme
+    assert "`precision` must be one of" in readme
     assert "`sha256:<64 lowercase hex>`" in readme
     assert "dirty, modified, unknown, or uncommitted" in readme
     assert gate.accepted is False
@@ -110,6 +111,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     assert "source_tree_status: clean" in readme
     assert "`batch_size` must be a positive integer" in readme
     assert "`runtime` must be a positive `HH:MM:SS` duration" in readme
+    assert "`precision` must be one of" in readme
     assert "`sha256:<64 lowercase hex>`" in readme
     assert "dirty, modified, unknown, or uncommitted" in readme
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

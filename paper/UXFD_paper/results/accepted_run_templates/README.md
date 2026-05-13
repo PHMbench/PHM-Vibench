@@ -7,6 +7,7 @@
 - Source-tree rule: accepted runs must set `source_tree_status: clean`.
 - Run-control rule: `seed` must be a non-negative integer and `batch_size` must be a positive integer.
 - Runtime rule: `runtime` must be a positive `HH:MM:SS` duration.
+- Precision rule: `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.
 - Protocol-signature rule: `preprocessing_signature` must match `sha256:<64 lowercase hex>`.
 - Provenance rule: `git_sha_or_submodule_sha` must be a concrete SHA record without dirty, modified, unknown, or uncommitted markers.
 
