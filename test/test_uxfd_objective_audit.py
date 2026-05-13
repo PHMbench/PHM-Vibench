@@ -243,6 +243,8 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
+    assert "paper/UXFD_paper/results/recent_work_gate_current.json" in paths
+    assert "paper/UXFD_paper/results/recent_work_gate_current.md" in paths
     assert "paper/UXFD_paper/results/queue_launch_shards/gpu0.sh" in paths
     assert "paper/UXFD_paper/results/queue_launch_shards/gpu1.sh" in paths
     assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
@@ -257,6 +259,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "scripts/uxfd_low_tier_source_audit.py" in paths
     assert "scripts/uxfd_parent_result_artifact_triage.py" in paths
     assert "scripts/uxfd_readiness_backlog.py" in paths
+    assert "scripts/uxfd_recent_work_gate.py" in paths
     assert "scripts/uxfd_submodule_dirty_triage.py" in paths
     assert "test/test_uxfd_low_tier_source_audit.py" in paths
     assert "test/test_uxfd_parent_result_artifact_triage.py" in paths
@@ -270,6 +273,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "test/test_uxfd_paper04_runner_policy.py" in paths
     assert "test/test_uxfd_paper04_truth_manuscript.py" in paths
     assert "test/test_uxfd_readiness_backlog.py" in paths
+    assert "test/test_uxfd_recent_work_gate.py" in paths
     assert "test/test_uxfd_submodule_dirty_triage.py" in paths
     assert "test/test_uxfd_goal_status.py" in paths
 
