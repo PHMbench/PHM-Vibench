@@ -78,10 +78,13 @@ queue coverage.
 Run the gates after every execution batch:
 
 ```bash
-python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage --format markdown --output paper/UXFD_paper/results/artifact_gate_queue_coverage.md
-python -m scripts.uxfd_recent_work_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate.md
-python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/submission_gate.md
-python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved --output paper/UXFD_paper/results/objective_audit.md
+python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage --format markdown --allow-not-ready --output paper/UXFD_paper/results/artifact_gate_queue_coverage.md
+python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate_current.json
+python -m scripts.uxfd_recent_work_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate_current.md
+python -m scripts.uxfd_submission_gate --format json --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.json
+python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.md
+python -m scripts.uxfd_objective_audit --format json --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.json
+python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.md
 ```
 
 No SOTA or submission-ready claim is allowed until artifact, recent-work,
