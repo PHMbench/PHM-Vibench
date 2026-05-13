@@ -57,6 +57,15 @@ MATRIX_ACCEPTED_EVIDENCE_STATUSES = frozenset(
         "accepted_representative_artifacts",
     }
 )
+LAUNCH_SCRIPT_STATIC_GATE_PATHS = (
+    Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu1.sh"),
+)
+LAUNCH_SCRIPT_STATIC_GATE_NEEDLES = (
+    "Blocked: static queue validation can_execute=False",
+    "exit 2",
+)
 
 
 @dataclass(frozen=True)
@@ -116,6 +125,13 @@ def _paper07_rejection_recovery_ready() -> bool:
         PAPER07_REJECTION_CONTRACT,
         PAPER07_REJECTION_NEEDLES[3:],
     )
+
+
+def _launch_scripts_static_gate_ready() -> bool:
+    for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS:
+        if not _file_contains_all(path, LAUNCH_SCRIPT_STATIC_GATE_NEEDLES):
+            return False
+    return True
 
 
 def _matrix_paths(queue_path: Path) -> Tuple[Path, ...]:
@@ -216,6 +232,11 @@ def _objective_checklist(
                 "requirement": "machine-readable GPU queue",
                 "evidence": str(queue_path),
                 "status": "met" if queue_path.exists() else "missing",
+            },
+            {
+                "requirement": "GPU launch scripts enforce static queue gate",
+                "evidence": ",".join(str(path) for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS),
+                "status": "met" if _launch_scripts_static_gate_ready() else "not_met",
             },
             {
                 "requirement": "goal clarity audit report",

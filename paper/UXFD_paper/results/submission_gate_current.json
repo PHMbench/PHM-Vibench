@@ -281,6 +281,11 @@
       "status": "met"
     },
     {
+      "requirement": "GPU launch scripts enforce static queue gate",
+      "evidence": "paper/UXFD_paper/results/queue_launch_plan.sh,paper/UXFD_paper/results/queue_launch_shards/gpu0.sh,paper/UXFD_paper/results/queue_launch_shards/gpu1.sh",
+      "status": "met"
+    },
+    {
       "requirement": "goal clarity audit report",
       "evidence": "paper/UXFD_paper/results/goal_clarity_audit_current.md",
       "status": "met"

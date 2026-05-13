@@ -19,6 +19,15 @@ from scripts.uxfd_submodule_dirty_triage import (
 
 
 DEFAULT_STATUS_DIR = Path("paper/UXFD_paper/goal/status")
+LAUNCH_SCRIPT_STATIC_GATE_PATHS = (
+    Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu1.sh"),
+)
+LAUNCH_SCRIPT_STATIC_GATE_NEEDLES = (
+    "Blocked: static queue validation can_execute=False",
+    "exit 2",
+)
 
 PAPER_STATUS_FILES: Mapping[str, Tuple[str, str, str]] = {
     "Explainable_FD_Toolkit": (
@@ -118,6 +127,16 @@ def _first_blockers(blockers: Sequence[str], limit: int = 8) -> Iterable[str]:
         yield blocker
     if len(blockers) > limit:
         yield f"... {len(blockers) - limit} additional blockers omitted; see gate reports."
+
+
+def _launch_static_gate_ready() -> bool:
+    for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS:
+        if not path.exists():
+            return False
+        text = path.read_text(encoding="utf-8")
+        if any(needle not in text for needle in LAUNCH_SCRIPT_STATIC_GATE_NEEDLES):
+            return False
+    return True
 
 
 def _render_overall(
@@ -310,6 +329,7 @@ def _render_gpu_execution(
             f"- Artifact coverage: `{artifact_report.covered_queue_runs}/"
             f"{artifact_report.expected_queue_runs}`",
             f"- Submission gate ready: `{submission_report.ready}`",
+            f"- Static launch gate enabled: `{_launch_static_gate_ready()}`",
             "",
             "## Required Before Q1",
             "",

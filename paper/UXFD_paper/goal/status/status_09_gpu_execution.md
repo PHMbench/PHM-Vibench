@@ -15,6 +15,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - TOP representative entries: `7`
 - Artifact coverage: `0/104`
 - Submission gate ready: `False`
+- Static launch gate enabled: `True`
 
 ## Required Before Q1
 

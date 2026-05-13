@@ -21,6 +21,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "Do not auto-commit these entries" in overall
     assert "| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 |" in overall
     assert "Queue dry-run entries: `104`" in gpu
+    assert "Static launch gate enabled: `True`" in gpu
     assert "## TOP Representative Execution Bindings" in gpu
     assert "`TOP-Q7-TIMESEG`" in gpu
     assert "`B02, A05, A07`" in gpu
