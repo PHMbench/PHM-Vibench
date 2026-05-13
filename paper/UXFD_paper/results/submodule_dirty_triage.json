@@ -368,6 +368,115 @@
       "notes": "TODO"
     }
   ],
+  "owner_review_packets": [
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "path": "EXPERIMENT_DESIGN.md",
+      "status": "??",
+      "category": "planning_or_contract_draft",
+      "risk_markers": [],
+      "review_command": "git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- EXPERIMENT_DESIGN.md",
+      "decision_state": "pending_owner_review",
+      "allowed_decisions": [
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "status": "??",
+      "category": "historical_autoresearch_evidence_draft",
+      "risk_markers": [
+        "stale_exec_root",
+        "historical_accepted_claim"
+      ],
+      "review_command": "git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision_state": "pending_owner_review",
+      "allowed_decisions": [
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "path": "EXPERIMENT_DESIGN.md",
+      "status": "??",
+      "category": "planning_or_contract_draft",
+      "risk_markers": [
+        "deprecated_config_dir_dispatch"
+      ],
+      "review_command": "git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- EXPERIMENT_DESIGN.md",
+      "decision_state": "pending_owner_review",
+      "allowed_decisions": [
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "status": "??",
+      "category": "historical_autoresearch_evidence_draft",
+      "risk_markers": [
+        "stale_exec_root",
+        "unaccepted_readiness_claim",
+        "historical_accepted_claim"
+      ],
+      "review_command": "git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision_state": "pending_owner_review",
+      "allowed_decisions": [
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "path": "EXPERIMENT_DESIGN.md",
+      "status": "??",
+      "category": "planning_or_contract_draft",
+      "risk_markers": [
+        "deprecated_config_dir_dispatch",
+        "nonlocal_gpu_binding"
+      ],
+      "review_command": "git -C paper/UXFD_paper/MOE_explainable status --short -- EXPERIMENT_DESIGN.md",
+      "decision_state": "pending_owner_review",
+      "allowed_decisions": [
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "status": "??",
+      "category": "historical_autoresearch_evidence_draft",
+      "risk_markers": [
+        "stale_exec_root",
+        "unaccepted_readiness_claim",
+        "historical_accepted_claim",
+        "nonlocal_gpu_binding"
+      ],
+      "review_command": "git -C paper/UXFD_paper/MOE_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision_state": "pending_owner_review",
+      "allowed_decisions": [
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
+    }
+  ],
   "owner_resolution_gates": [
     {
       "decision": "commit_after_review",

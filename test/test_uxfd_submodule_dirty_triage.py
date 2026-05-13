@@ -12,6 +12,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     _classify_path,
     _content_risk_markers,
     _owner_decision_template,
+    _owner_review_packets,
     _owner_resolution_gates,
     _path_risk_markers,
     _risk_marker_counts,
@@ -205,6 +206,43 @@ def test_owner_resolution_gates_define_commit_cleanup_decisions() -> None:
     assert "do not delete it automatically" in gates["discard_from_submodule"]
 
 
+def test_owner_review_packets_include_machine_readable_review_steps() -> None:
+    entries = (
+        DirtyEntry("paper/A", "M", "results/a.json", "experiment_output", PROMOTE_ONLY_THROUGH_GATE),
+        DirtyEntry(
+            "paper/A",
+            "??",
+            "EXPERIMENT_DESIGN.md",
+            "planning_or_contract_draft",
+            DO_NOT_AUTO_COMMIT,
+            ("deprecated_config_dir_dispatch",),
+        ),
+    )
+
+    packets = _owner_review_packets(entries)
+
+    assert packets == (
+        {
+            "submodule": "paper/A",
+            "path": "EXPERIMENT_DESIGN.md",
+            "status": "??",
+            "category": "planning_or_contract_draft",
+            "risk_markers": ["deprecated_config_dir_dispatch"],
+            "review_command": "git -C paper/A status --short -- EXPERIMENT_DESIGN.md",
+            "decision_state": "pending_owner_review",
+            "allowed_decisions": [
+                "commit_after_review",
+                "rewrite_then_commit",
+                "discard_from_submodule",
+            ],
+            "default_next_action": (
+                "paper owner must choose an allowed decision before this entry is "
+                "staged, rewritten, or cleaned up"
+            ),
+        },
+    )
+
+
 def test_review_command_is_non_destructive() -> None:
     modified = DirtyEntry(
         "paper/A",
@@ -261,6 +299,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Owner Review Queue" in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
+    assert "Owner Review Packets" in text
     assert "Owner Resolution Gates" in text
     assert "pending_owner_review" in text
     assert "commit_after_review" in text

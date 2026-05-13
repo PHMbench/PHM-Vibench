@@ -237,6 +237,31 @@ def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str
     )
 
 
+def _owner_review_packets(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, Any], ...]:
+    return tuple(
+        {
+            "submodule": entry.submodule,
+            "path": entry.path,
+            "status": entry.status,
+            "category": entry.category,
+            "risk_markers": list(entry.risk_markers),
+            "review_command": _review_command(entry),
+            "decision_state": "pending_owner_review",
+            "allowed_decisions": [
+                "commit_after_review",
+                "rewrite_then_commit",
+                "discard_from_submodule",
+            ],
+            "default_next_action": (
+                "paper owner must choose an allowed decision before this entry is "
+                "staged, rewritten, or cleaned up"
+            ),
+        }
+        for entry in entries
+        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+    )
+
+
 def _owner_resolution_gates() -> Tuple[Mapping[str, str], ...]:
     return (
         {
@@ -283,6 +308,7 @@ def build_payload(report: DirtyTriageReport) -> Mapping[str, Any]:
     payload["action_counts"] = _action_counts(report.entries)
     payload["risk_marker_counts"] = _risk_marker_counts(report.entries)
     payload["owner_decision_template"] = _owner_decision_template(report.entries)
+    payload["owner_review_packets"] = _owner_review_packets(report.entries)
     payload["owner_resolution_gates"] = _owner_resolution_gates()
     return json.loads(json.dumps(payload))
 
@@ -396,6 +422,25 @@ def render_markdown(report: DirtyTriageReport) -> str:
         lines.append(
             f"| `{entry.submodule}` | `{entry.path}` | `pending_owner_review` | "
             "`TODO` | `TODO` |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Owner Review Packets",
+            "",
+            "Each packet is also emitted in `submodule_dirty_triage.json` for automation.",
+            "",
+            "| Submodule | Path | Decision State | Risk Markers | Review Command | Default next action |",
+            "|---|---|---|---|---|---|",
+        ]
+    )
+    for packet in _owner_review_packets(report.entries):
+        markers = ", ".join(packet["risk_markers"]) if packet["risk_markers"] else "-"
+        lines.append(
+            f"| `{packet['submodule']}` | `{packet['path']}` | "
+            f"`{packet['decision_state']}` | `{markers}` | "
+            f"`{packet['review_command']}` | {packet['default_next_action']} |"
         )
 
     lines.extend(

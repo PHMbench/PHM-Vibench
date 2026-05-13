@@ -65,6 +65,19 @@ The default `pending_owner_review` value is intentionally not commit-safe.
 | `paper/UXFD_paper/MOE_explainable` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `TODO` | `TODO` |
 | `paper/UXFD_paper/MOE_explainable` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `TODO` | `TODO` |
 
+## Owner Review Packets
+
+Each packet is also emitted in `submodule_dirty_triage.json` for automation.
+
+| Submodule | Path | Decision State | Risk Markers | Review Command | Default next action |
+|---|---|---|---|---|---|
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- EXPERIMENT_DESIGN.md` | paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `stale_exec_root, historical_accepted_claim` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `deprecated_config_dir_dispatch` | `git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- EXPERIMENT_DESIGN.md` | paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim` | `git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up |
+| `paper/UXFD_paper/MOE_explainable` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `deprecated_config_dir_dispatch, nonlocal_gpu_binding` | `git -C paper/UXFD_paper/MOE_explainable status --short -- EXPERIMENT_DESIGN.md` | paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up |
+| `paper/UXFD_paper/MOE_explainable` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim, nonlocal_gpu_binding` | `git -C paper/UXFD_paper/MOE_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up |
+
 ## Owner Resolution Gates
 
 These gates define when an owner-review entry may stop blocking the parent handoff.
