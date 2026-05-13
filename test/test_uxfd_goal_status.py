@@ -29,6 +29,14 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 |" in overall
     assert "Queue dry-run entries: `104`" in gpu
     assert "Static launch gate enabled: `True`" in gpu
+    assert "## Pre-Launch Decision" in gpu
+    assert "Do not launch `queue_launch_plan.sh`" in gpu
+    assert "python -m scripts.uxfd_owner_review_gate --format markdown" in gpu
+    assert (
+        "python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight"
+        in gpu
+    )
+    assert "must not copy the template into an approved decision file" in gpu
     assert "`batch_size` must be a positive integer" in gpu
     assert "`runtime` must be a positive `HH:MM:SS` duration" in gpu
     assert "`precision` must be one of" in gpu

@@ -392,6 +392,23 @@ def _render_gpu_execution(
             f"- Submission gate ready: `{submission_report.ready}`",
             f"- Static launch gate enabled: `{_launch_static_gate_ready()}`",
             "",
+            "## Pre-Launch Decision",
+            "",
+            "Do not launch `queue_launch_plan.sh` or either per-GPU shard until all "
+            "of the following commands pass without `--allow-not-*` overrides:",
+            "",
+            "```bash",
+            "python -m scripts.uxfd_objective_audit --format markdown",
+            "python -m scripts.uxfd_owner_review_gate --format markdown",
+            "python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight",
+            "python -m scripts.uxfd_submission_gate --format markdown",
+            "```",
+            "",
+            "The current launch scripts are execution plans only. A paper owner must "
+            "first resolve the owner-review decision file; an agent must not copy "
+            "the template into an approved decision file or invent reviewer/date "
+            "metadata.",
+            "",
             "## Required Before Q1",
             "",
             "- `nvidia-smi -L` must show local RTX 4090 GPUs 0 and 1.",
