@@ -66,6 +66,8 @@ def test_sota_scaffold_cli_writes_manifest_and_keeps_gate_blocked(tmp_path: Path
     assert "not accepted SOTA evidence" in readme
     assert "mean, std, 95% CI" in readme
     assert "existing relative `run_meta.yaml` paths" in readme
+    assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs" in readme
+    assert "must pass before creating `paper/UXFD_paper/results/sota_aggregates`" in readme
     assert gate.ready is False
     assert all("missing sota_aggregate.yaml" in record.issues for record in gate.records)
 
@@ -78,6 +80,8 @@ def test_persisted_sota_templates_match_current_queue(tmp_path: Path) -> None:
     assert len(expected.records) == 7
     assert len(manifest) == 7
     assert "not accepted SOTA evidence" in readme
+    assert "Activation preflight" in readme
+    assert "incomplete queue coverage" in readme
     assert "effect size or paired test" in readme
     assert {
         (

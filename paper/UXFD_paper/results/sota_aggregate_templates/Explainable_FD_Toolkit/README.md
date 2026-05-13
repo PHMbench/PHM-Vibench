@@ -1,6 +1,10 @@
 # UXFD SOTA Aggregate Template
 
 This directory is a scaffold, not accepted SOTA evidence.
+Do not create `paper/UXFD_paper/results/sota_aggregates/<paper_id>`
+until the accepted-run artifact gate passes with queue coverage.
+Required preflight:
+`python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage`.
 After accepted run coverage exists, fill the template and copy it
 to `paper/UXFD_paper/results/sota_aggregates/<paper_id>/sota_aggregate.yaml`.
 Then run `python -m scripts.uxfd_sota_gate`.
