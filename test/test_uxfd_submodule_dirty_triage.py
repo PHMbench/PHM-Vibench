@@ -71,6 +71,7 @@ def test_content_risk_markers_flag_stale_claims_and_gpu_bindings(tmp_path: Path)
             [
                 "- accepted: `True`",
                 "- exec_root: `/tmp/PHM-Vibench copy 2`",
+                "- command: `python main.py --config_dir configs/old.yaml`",
                 "- command: `CUDA_VISIBLE_DEVICES=5 python run.py`",
             ]
         ),
@@ -81,6 +82,7 @@ def test_content_risk_markers_flag_stale_claims_and_gpu_bindings(tmp_path: Path)
 
     assert markers == (
         "stale_exec_root",
+        "deprecated_config_dir_dispatch",
         "historical_accepted_claim",
         "nonlocal_gpu_binding",
     )
@@ -118,7 +120,11 @@ def test_action_and_risk_counts_summarize_commit_blockers() -> None:
             "manuscript/AUTORESEARCH_EVIDENCE.md",
             "historical_autoresearch_evidence_draft",
             DO_NOT_AUTO_COMMIT,
-            ("stale_exec_root", "historical_accepted_claim"),
+            (
+                "stale_exec_root",
+                "deprecated_config_dir_dispatch",
+                "historical_accepted_claim",
+            ),
         ),
         DirtyEntry(
             "paper/B",
@@ -135,6 +141,7 @@ def test_action_and_risk_counts_summarize_commit_blockers() -> None:
         PROMOTE_ONLY_THROUGH_GATE: 1,
     }
     assert _risk_marker_counts(entries) == {
+        "deprecated_config_dir_dispatch": 1,
         "historical_accepted_claim": 1,
         "stale_exec_root": 1,
         "tracked_generated_artifact_dirty": 1,

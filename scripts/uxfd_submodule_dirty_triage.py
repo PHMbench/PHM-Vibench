@@ -107,6 +107,8 @@ def _content_risk_markers(submodule: Path, relative_path: str) -> Tuple[str, ...
     markers: List[str] = []
     if "PHM-Vibench copy 2" in text:
         markers.append("stale_exec_root")
+    if "--config_dir" in text or "config_dir:" in text:
+        markers.append("deprecated_config_dir_dispatch")
     if "accepted: `True`" in text or "accepted: True" in text:
         markers.append("historical_accepted_claim")
     for match in re.finditer(r"CUDA_VISIBLE_DEVICES=([0-9,]+)", text):
@@ -258,7 +260,7 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"- `{PRESERVE_SESSION}`: preserve or ignore until the owning paper owner decides.",
             f"- `{PROMOTE_ONLY_THROUGH_GATE}`: do not commit as accepted evidence; promote only through `scripts.uxfd_artifact_gate` after real runs.",
             f"- `{DO_NOT_AUTO_COMMIT}`: inspect with the paper owner before staging.",
-            "- Risk markers flag stale paths, historical accepted-claim wording, or GPU bindings outside `0,1`.",
+            "- Risk markers flag stale paths, deprecated config dispatch, historical accepted-claim wording, or GPU bindings outside `0,1`.",
             "",
             "## Entries",
             "",
