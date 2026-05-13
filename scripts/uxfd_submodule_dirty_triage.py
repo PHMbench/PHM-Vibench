@@ -223,6 +223,20 @@ def _review_command(entry: DirtyEntry) -> str:
     return f"{base} diff -- {path}"
 
 
+def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, str], ...]:
+    return tuple(
+        {
+            "submodule": entry.submodule,
+            "path": entry.path,
+            "decision": "pending_owner_review",
+            "reviewer": "TODO",
+            "notes": "TODO",
+        }
+        for entry in entries
+        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+    )
+
+
 def evaluate_dirty_triage(
     submodules: Sequence[Path] = PAPER_SUBMODULES,
 ) -> DirtyTriageReport:
@@ -238,7 +252,11 @@ def evaluate_dirty_triage(
 
 
 def build_payload(report: DirtyTriageReport) -> Mapping[str, Any]:
-    return asdict(report)
+    payload = dict(asdict(report))
+    payload["action_counts"] = _action_counts(report.entries)
+    payload["risk_marker_counts"] = _risk_marker_counts(report.entries)
+    payload["owner_decision_template"] = _owner_decision_template(report.entries)
+    return json.loads(json.dumps(payload))
 
 
 def render_markdown(report: DirtyTriageReport) -> str:

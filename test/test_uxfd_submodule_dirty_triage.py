@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,16 +11,19 @@ from scripts.uxfd_submodule_dirty_triage import (
     _action_counts_by_submodule,
     _classify_path,
     _content_risk_markers,
+    _owner_decision_template,
     _path_risk_markers,
     _risk_marker_counts,
     _review_command,
     _summarize_entries,
+    build_payload,
     evaluate_dirty_triage,
     render_markdown,
 )
 
 
 PERSISTED_DIRTY_TRIAGE_MD = Path("paper/UXFD_paper/results/submodule_dirty_triage.md")
+PERSISTED_DIRTY_TRIAGE_JSON = Path("paper/UXFD_paper/results/submodule_dirty_triage.json")
 
 
 def test_classify_dirty_paths_by_review_policy() -> None:
@@ -170,6 +174,23 @@ def test_action_counts_by_submodule_builds_owner_review_queue() -> None:
     }
 
 
+def test_owner_decision_template_keeps_owner_review_entries_pending() -> None:
+    entries = (
+        DirtyEntry("paper/A", "M", "results/a.json", "experiment_output", PROMOTE_ONLY_THROUGH_GATE),
+        DirtyEntry("paper/A", "??", "EXPERIMENT_DESIGN.md", "planning_or_contract_draft", DO_NOT_AUTO_COMMIT),
+    )
+
+    assert _owner_decision_template(entries) == (
+        {
+            "submodule": "paper/A",
+            "path": "EXPERIMENT_DESIGN.md",
+            "decision": "pending_owner_review",
+            "reviewer": "TODO",
+            "notes": "TODO",
+        },
+    )
+
+
 def test_review_command_is_non_destructive() -> None:
     modified = DirtyEntry(
         "paper/A",
@@ -238,3 +259,9 @@ def test_persisted_dirty_triage_report_matches_current_triage() -> None:
     report = evaluate_dirty_triage()
 
     assert PERSISTED_DIRTY_TRIAGE_MD.read_text(encoding="utf-8") == render_markdown(report)
+
+
+def test_persisted_dirty_triage_json_matches_current_triage() -> None:
+    report = evaluate_dirty_triage()
+
+    assert json.loads(PERSISTED_DIRTY_TRIAGE_JSON.read_text(encoding="utf-8")) == build_payload(report)

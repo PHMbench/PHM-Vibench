@@ -1,0 +1,371 @@
+{
+  "clean": false,
+  "summaries": [
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "total": 3,
+      "modified": 1,
+      "untracked": 2,
+      "categories": {
+        "generated_or_result_artifact": 1,
+        "historical_autoresearch_evidence_draft": 1,
+        "planning_or_contract_draft": 1
+      }
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "total": 22,
+      "modified": 13,
+      "untracked": 9,
+      "categories": {
+        "experiment_output": 15,
+        "generated_or_result_artifact": 5,
+        "historical_autoresearch_evidence_draft": 1,
+        "planning_or_contract_draft": 1
+      }
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "total": 2,
+      "modified": 0,
+      "untracked": 2,
+      "categories": {
+        "historical_autoresearch_evidence_draft": 1,
+        "planning_or_contract_draft": 1
+      }
+    }
+  ],
+  "entries": [
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/benchmark_analysis_report.md",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/explainability_benchmark_results.json",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/explainability_benchmark_table.csv",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/method_comparison_radar.png",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/metrics_heatmap.png",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/overall_scores_comparison.png",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "benchmark_results/scale_vs_explainability.png",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "figures/core_interface_demo.png",
+      "category": "generated_or_result_artifact",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "figures/signal_analysis_demo.png",
+      "category": "generated_or_result_artifact",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "figures/simple_explanation_demo.png",
+      "category": "generated_or_result_artifact",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "results/final_demo_report.md",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "results/signals_demo.npy",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "M",
+      "path": "results/simple_explanation_demo.json",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "EXPERIMENT_DESIGN.md",
+      "category": "planning_or_contract_draft",
+      "recommended_action": "do_not_auto_commit_without_owner_review",
+      "risk_markers": []
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "doc/demo_explanation.txt",
+      "category": "generated_or_result_artifact",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": []
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "figures/explanation_demo.png",
+      "category": "generated_or_result_artifact",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "category": "historical_autoresearch_evidence_draft",
+      "recommended_action": "do_not_auto_commit_without_owner_review",
+      "risk_markers": [
+        "stale_exec_root",
+        "historical_accepted_claim"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "results/PAPER_READY_SUMMARY.md",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "unaccepted_readiness_claim"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "results/autoresearch_toolkit.log",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": []
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "results/demo_full.log",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": []
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "results/direct_run_toolkit.log",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": []
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "status": "??",
+      "path": "results/toolkit_benchmark.log",
+      "category": "experiment_output",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": []
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "status": "M",
+      "path": "best_model.pth",
+      "category": "generated_or_result_artifact",
+      "recommended_action": "promote_only_through_accepted_artifact_gate",
+      "risk_markers": [
+        "tracked_generated_artifact_dirty",
+        "binary_or_large_artifact"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "status": "??",
+      "path": "EXPERIMENT_DESIGN.md",
+      "category": "planning_or_contract_draft",
+      "recommended_action": "do_not_auto_commit_without_owner_review",
+      "risk_markers": [
+        "deprecated_config_dir_dispatch"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "status": "??",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "category": "historical_autoresearch_evidence_draft",
+      "recommended_action": "do_not_auto_commit_without_owner_review",
+      "risk_markers": [
+        "stale_exec_root",
+        "unaccepted_readiness_claim",
+        "historical_accepted_claim"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "status": "??",
+      "path": "EXPERIMENT_DESIGN.md",
+      "category": "planning_or_contract_draft",
+      "recommended_action": "do_not_auto_commit_without_owner_review",
+      "risk_markers": [
+        "deprecated_config_dir_dispatch",
+        "nonlocal_gpu_binding"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "status": "??",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "category": "historical_autoresearch_evidence_draft",
+      "recommended_action": "do_not_auto_commit_without_owner_review",
+      "risk_markers": [
+        "stale_exec_root",
+        "unaccepted_readiness_claim",
+        "historical_accepted_claim",
+        "nonlocal_gpu_binding"
+      ]
+    }
+  ],
+  "action_counts": {
+    "do_not_auto_commit_without_owner_review": 6,
+    "promote_only_through_accepted_artifact_gate": 21
+  },
+  "risk_marker_counts": {
+    "binary_or_large_artifact": 10,
+    "deprecated_config_dir_dispatch": 2,
+    "historical_accepted_claim": 3,
+    "nonlocal_gpu_binding": 2,
+    "stale_exec_root": 3,
+    "tracked_generated_artifact_dirty": 14,
+    "unaccepted_readiness_claim": 3
+  },
+  "owner_decision_template": [
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "path": "EXPERIMENT_DESIGN.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "notes": "TODO"
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "notes": "TODO"
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "path": "EXPERIMENT_DESIGN.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "notes": "TODO"
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "notes": "TODO"
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "path": "EXPERIMENT_DESIGN.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "notes": "TODO"
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "notes": "TODO"
+    }
+  ]
+}
