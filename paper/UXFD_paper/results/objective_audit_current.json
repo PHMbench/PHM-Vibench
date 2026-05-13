@@ -273,6 +273,12 @@
       "details": "queue_launch_plan.sh,gpu0.sh,gpu1.sh print blocked reason and exit 2"
     },
     {
+      "requirement": "accepted metrics contain numeric values",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py",
+      "status": "met",
+      "details": "queue contract and artifact gate require at least one numeric metric"
+    },
+    {
       "requirement": "Paper07 rejection-recovery innovation contract",
       "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md",
       "status": "met",
@@ -288,7 +294,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "52 parent goal-control paths clean"
+      "details": "53 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -431,7 +437,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=18"
   ],
-  "met": 57,
+  "met": 58,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0
