@@ -69,6 +69,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["SOTA aggregate gate markdown report"].status == "met"
     assert items["SOTA aggregate template manifest"].status == "met"
     assert items["SOTA aggregate scaffold report"].status == "met"
+    assert items["accepted-run artifact action packet"].status == "met"
     assert items["seven paper-local baseline/ablation matrices"].status == "met"
     assert items["TOP recent-work policy"].status == "met"
     assert "source_verification_ready=True" in items["TOP recent-work policy"].details
@@ -391,6 +392,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/queue_launch_shards/gpu1.sh" in paths
     assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
     assert "paper/UXFD_paper/results/accepted_runs" in paths
+    assert "paper/UXFD_paper/results/accepted_run_artifact_action_packet.md" in paths
     assert "paper/UXFD_paper/results/accepted_run_templates" in paths
     assert "paper/UXFD_paper/results/sota_aggregate_templates" in paths
     assert "paper/UXFD_paper/results/.gitignore" in paths

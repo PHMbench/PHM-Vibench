@@ -19,6 +19,9 @@ PERSISTED_ARTIFACT_GATE_QUEUE_COVERAGE = Path(
     "paper/UXFD_paper/results/artifact_gate_queue_coverage.md"
 )
 DEFAULT_ACCEPTED_RUNS_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
+ACCEPTED_RUN_ARTIFACT_ACTION_PACKET = Path(
+    "paper/UXFD_paper/results/accepted_run_artifact_action_packet.md"
+)
 VALID_PREPROCESSING_SIGNATURE = "sha256:" + "0123456789abcdef" * 4
 VALID_QUEUE_COMMAND = (
     "CUDA_VISIBLE_DEVICES=0 python main.py --config "
@@ -322,6 +325,7 @@ def test_persisted_artifact_gate_queue_coverage_matches_current_gate() -> None:
 def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
     text = (DEFAULT_ACCEPTED_RUNS_ROOT / "README.md").read_text(encoding="utf-8")
 
+    assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in text
     assert "uxfd_gpu_queue --live-preflight --require-preflight" in text
     assert "Blocked: static queue validation can_execute=False" in text
     assert (
@@ -333,6 +337,22 @@ def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
     assert "Status-only, TODO, NaN, or infinite metric payloads are rejected" in text
     assert "non-empty `run.log` with no TODO placeholders" in text
     assert "parseable, non-empty YAML config evidence" in text
+
+
+def test_accepted_run_artifact_action_packet_is_non_evidence_checklist() -> None:
+    text = ACCEPTED_RUN_ARTIFACT_ACTION_PACKET.read_text(encoding="utf-8")
+    normalized = " ".join(text.split())
+
+    assert "not accepted experiment evidence" in normalized
+    assert "accepted_evidence: true" in text
+    assert "accepted_same_protocol" in text
+    assert "sha256:<64 lowercase hex>" in text
+    assert "source_tree_status" in text
+    assert "clean" in text
+    assert "finite numeric metric" in text
+    assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage" in text
+    for field in REQUIRED_RUN_META_FIELDS:
+        assert field in text
 
 
 def test_artifact_gate_blocks_missing_metadata_and_missing_root(tmp_path: Path) -> None:

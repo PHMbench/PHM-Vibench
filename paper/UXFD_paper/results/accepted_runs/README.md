@@ -3,6 +3,9 @@
 Status: empty evidence root. This directory is reserved for accepted experiment
 artifacts promoted from real Q0-passed GPU runs.
 
+For the short promotion checklist, read
+`paper/UXFD_paper/results/accepted_run_artifact_action_packet.md`.
+
 Do not place smoke outputs, templates, failed preflight logs, or unreviewed
 submodule result files here. A run may be added only when its directory contains
 all required artifacts and the GPU/queue preflight passes:

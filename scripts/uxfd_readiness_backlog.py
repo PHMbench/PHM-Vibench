@@ -30,6 +30,9 @@ COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
 GPU_PREFLIGHT_ACTION_PACKET = Path("paper/UXFD_paper/results/gpu_preflight_action_packet.md")
 GPU_EXECUTION_RUNBOOK = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md")
 GPU_LIVE_PREFLIGHT = Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")
+ACCEPTED_RUN_ARTIFACT_ACTION_PACKET = Path(
+    "paper/UXFD_paper/results/accepted_run_artifact_action_packet.md"
+)
 PAPER02_SUBMODULE = Path("paper/UXFD_paper/1D-2D_fusion_explainable")
 PAPER02_PLANNING_FILES = (
     Path("plan/EXPERIMENT_PLAN_补充.md"),
@@ -154,8 +157,9 @@ def evaluate_readiness_backlog(
                     f"records={submission.artifact_gate_records}"
                 ),
                 next_action=(
-                    "After real runs finish, promote filled `run_meta.yaml`, logs, metrics, "
-                    "and configs under accepted_runs. Require integer seed/batch_size, "
+                    f"After real runs finish, use `{ACCEPTED_RUN_ARTIFACT_ACTION_PACKET}` "
+                    "to promote filled `run_meta.yaml`, logs, metrics, and configs under "
+                    "accepted_runs. Require integer seed/batch_size, "
                     "positive runtime, enumerated precision, accepted_same_protocol "
                     "evidence_level, hashed "
                     "preprocessing_signature, numeric metrics, `source_tree_status: clean`, "
@@ -164,7 +168,7 @@ def evaluate_readiness_backlog(
                     "aggregate statistics before rerunning artifact and SOTA gates with "
                     "queue coverage."
                 ),
-                evidence=submission.artifact_gate_root,
+                evidence=f"{submission.artifact_gate_root},{ACCEPTED_RUN_ARTIFACT_ACTION_PACKET}",
             )
         )
 

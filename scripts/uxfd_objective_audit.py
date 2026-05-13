@@ -91,6 +91,10 @@ EXECUTION_ARTIFACTS = (
         Path("paper/UXFD_paper/results/artifact_gate_queue_coverage.md"),
     ),
     (
+        "accepted-run artifact action packet",
+        Path("paper/UXFD_paper/results/accepted_run_artifact_action_packet.md"),
+    ),
+    (
         "SOTA aggregate gate JSON report",
         Path("paper/UXFD_paper/results/sota_gate_current.json"),
     ),
@@ -260,6 +264,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
     Path("paper/UXFD_paper/results/queue_launch_shards/gpu1.sh"),
     Path("paper/UXFD_paper/results/accepted_runs"),
+    Path("paper/UXFD_paper/results/accepted_run_artifact_action_packet.md"),
     Path("paper/UXFD_paper/results/accepted_run_templates"),
     Path("paper/UXFD_paper/results/sota_aggregate_templates"),
     Path("paper/UXFD_paper/results/submission_gate_current.json"),
