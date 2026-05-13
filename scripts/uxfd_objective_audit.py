@@ -160,6 +160,7 @@ SOTA_COMPARISON_CONTRACT_FIELDS = (
     "same_protocol_population",
     "seed_protocol",
     "aggregate_statistics",
+    "accepted_run_ref_binding",
     "ablation_dependency",
     "top_scope",
     "claim_output",
@@ -170,6 +171,8 @@ SOTA_COMPARISON_CONTRACT_NEEDLES = (
     "minimum_seeds",
     "95% confidence interval",
     "effect size",
+    "accepted_run_refs",
+    "run_meta.yaml",
     "failure_record",
     "representative top proxy",
     "exact external",
@@ -813,6 +816,8 @@ def _sota_comparison_contract_item(
         runbook_text = runbook_path.read_text(encoding="utf-8").lower()
         for needle in (
             "single accepted run is only a run artifact",
+            "accepted_run_refs",
+            "run_meta.yaml",
             "matched seed set",
             "95% confidence interval",
             "effect size",
@@ -835,7 +840,8 @@ def _sota_comparison_contract_item(
         status="met",
         details=(
             "queue/runbook block single-run SOTA and require matched seeds, "
-            "aggregate statistics, failure records, and exact-vs-representative TOP scope"
+            "accepted run refs, aggregate statistics, failure records, and "
+            "exact-vs-representative TOP scope"
         ),
     )
 

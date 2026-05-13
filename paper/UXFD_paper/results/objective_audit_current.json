@@ -348,7 +348,7 @@
       "requirement": "SOTA comparison requires multi-seed same-protocol aggregate evidence",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md",
       "status": "met",
-      "details": "queue/runbook block single-run SOTA and require matched seeds, aggregate statistics, failure records, and exact-vs-representative TOP scope"
+      "details": "queue/runbook block single-run SOTA and require matched seeds, accepted run refs, aggregate statistics, failure records, and exact-vs-representative TOP scope"
     },
     {
       "requirement": "Paper07 rejection-recovery innovation contract",

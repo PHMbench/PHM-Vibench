@@ -72,6 +72,7 @@ SOTA_COMPARISON_CONTRACT_FIELDS = (
     "same_protocol_population",
     "seed_protocol",
     "aggregate_statistics",
+    "accepted_run_ref_binding",
     "top_scope",
     "claim_output",
 )
@@ -81,6 +82,8 @@ SOTA_COMPARISON_CONTRACT_NEEDLES = (
     "minimum_seeds",
     "95% confidence interval",
     "effect size",
+    "accepted_run_refs",
+    "run_meta.yaml",
     "failure_record",
     "representative top proxy",
     "exact external",

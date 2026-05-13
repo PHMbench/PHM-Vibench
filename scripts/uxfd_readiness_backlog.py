@@ -144,7 +144,9 @@ def evaluate_readiness_backlog(
                     "After accepted run coverage exists, build one "
                     "`sota_aggregate.yaml` per paper with matched seed sets, "
                     "six baseline comparators, runnable TOP representative scope, "
-                    "mean/std/95% CI, and effect size or paired-test evidence."
+                    "mean/std/95% CI, effect size or paired-test evidence, and "
+                    "`accepted_run_refs` pointing to existing accepted_runs "
+                    "`run_meta.yaml` files."
                 ),
                 evidence=submission.sota_gate_root,
             )

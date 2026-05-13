@@ -70,6 +70,11 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
         checklist["SOTA comparison contract blocks single-run claims"]["status"]
         == "met"
     )
+    queue_contract_text = Path(
+        "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml"
+    ).read_text(encoding="utf-8")
+    assert "accepted_run_ref_binding" in queue_contract_text
+    assert "accepted_run_refs" in queue_contract_text
     assert checklist["goal clarity audit report"]["status"] == "met"
     assert checklist["commit recovery plan"]["status"] == "met"
     assert checklist["Paper07 rejection-recovery innovation contract"]["status"] == "met"

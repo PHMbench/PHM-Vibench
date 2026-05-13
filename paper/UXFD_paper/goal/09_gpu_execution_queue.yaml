@@ -75,6 +75,7 @@ sota_comparison_contract:
   same_protocol_population: "SOTA input must include the proposed method, every declared baseline, and every runnable TOP representative under the same dataset split, preprocessing signature, metric definition, and evidence_level."
   seed_protocol: "Each comparison group must use a matched seed set with at least the paper_queue minimum_seeds value; missing seeds require failure_record evidence and block SOTA instead of being cherry-picked away."
   aggregate_statistics: "Report the per-seed table plus mean, standard deviation, 95% confidence interval, and effect size or paired significance test for every primary metric."
+  accepted_run_ref_binding: "Every proposed, baseline, ablation-dependent comparator, and TOP representative aggregate entry must list accepted_run_refs that resolve to existing accepted_runs/**/run_meta.yaml evidence from the matched seed set."
   ablation_dependency: "Contribution-specific SOTA wording is blocked until required ablations are accepted under the same protocol."
   top_scope: "A representative TOP proxy supports only representative comparison; exact external-method SOTA requires exact external code/config, command, log, and artifact evidence."
   claim_output: "If the proposed method does not beat every accepted comparator under this contract, report the bounded contribution axis and do not claim SOTA."

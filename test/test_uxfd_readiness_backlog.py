@@ -30,6 +30,8 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert "matched-seed aggregate statistics" in report.items[1].next_action
     assert "sota_aggregate.yaml" in report.items[2].next_action
     assert "mean/std/95% CI" in report.items[2].next_action
+    assert "`accepted_run_refs`" in report.items[2].next_action
+    assert "`run_meta.yaml`" in report.items[2].next_action
     assert any(item.scope == "TII_operator_attention" for item in report.items[:10])
     assert not any(item.item_id == "Q0-PAPER02-PLANNING-COMMIT" for item in report.items)
     parent_checkpoint_items = [

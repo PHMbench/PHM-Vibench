@@ -125,6 +125,9 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "block single-run SOTA" in items[
         "SOTA comparison requires multi-seed same-protocol aggregate evidence"
     ].details
+    assert "accepted run refs" in items[
+        "SOTA comparison requires multi-seed same-protocol aggregate evidence"
+    ].details
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"
