@@ -20,10 +20,19 @@ evidence. It tightened the non-GPU control plane so the next executor can see
 exact owner-review recommendations, Paper03 evidence-package requirements, and
 the pre-launch decision gate without re-deriving them. The latest checkpoint
 also adds an owner-review evidence index and surfaces that index in the
-objective/submission gates.
+objective/submission gates. The newest checkpoint requires real owner decision
+files to preserve the three support-file links: action packet, recommendations,
+and evidence index.
 
 Recent parent commits:
 
+- `4412865 test: require UXFD owner review support files`
+- `fd7a483 docs: add UXFD owner template support files`
+- `96bc71a docs: surface UXFD owner evidence index in dirty triage`
+- `c2d19b9 test: surface UXFD owner evidence index in owner gate`
+- `4254816 docs: refresh UXFD owner backlog evidence`
+- `ade1c71 test: surface UXFD owner evidence index in backlog`
+- `3a86068 docs: refresh UXFD execution readiness handoff`
 - `35d263b test: surface UXFD owner evidence index in submission gate`
 - `1263171 docs: refresh UXFD owner evidence audit`
 - `601f9fc docs: add UXFD owner evidence index`
@@ -111,6 +120,10 @@ Recent Paper03 submodule commit:
   six owner-review rows to line-level evidence and risks, but it is not owner
   approval and does not replace
   `paper/UXFD_paper/results/submodule_owner_review_decisions.json`.
+- **Owner decision files must keep support-file provenance** - the owner-review
+  gate now rejects real decision files that omit or alter the required
+  `supporting_files` mapping for the action packet, recommendations, and
+  evidence index.
 - **Objective audit now tracks all three response packets plus owner evidence
   index** - owner decisions, GPU preflight, accepted-run artifact promotion,
   and the owner evidence index are prompt-to-artifact checklist items. The
@@ -216,6 +229,24 @@ Recent Paper03 submodule commit:
   `paper/UXFD_paper/results/submission_gate_current.json`, and
   `paper/UXFD_paper/results/submission_gate_current.md` - refreshed persisted
   reports after the owner evidence index checkpoint.
+- `scripts/uxfd_readiness_backlog.py`,
+  `test/test_uxfd_readiness_backlog.py`, and
+  `paper/UXFD_paper/results/readiness_backlog.md` - surface the owner evidence
+  index in dirty-submodule backlog rows.
+- `scripts/uxfd_owner_review_gate.py`,
+  `test/test_uxfd_owner_review_gate.py`, and
+  `paper/UXFD_paper/results/submodule_owner_review_gate_current.md` - owner
+  workflow now points to action packet, recommendations, and evidence index.
+- `scripts/uxfd_submodule_dirty_triage.py`,
+  `test/test_uxfd_submodule_dirty_triage.py`, and
+  `paper/UXFD_paper/results/submodule_dirty_triage.md`/`.json` - dirty triage
+  owner recommendations include the owner evidence index.
+- `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` -
+  includes a top-level `supporting_files` mapping for action packet,
+  recommendations, and evidence index.
+- `scripts/uxfd_owner_review_gate.py` and
+  `test/test_uxfd_owner_review_gate.py` - gate rejects decision payloads whose
+  `supporting_files` mapping does not match owner-review support policy.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -260,6 +291,10 @@ Latest relevant tests passed:
   - result after refreshing accepted-run artifact audit reports: `60 passed`
 - `python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py`
   - result after owner evidence index and status refresh: `24 passed`
+- `python -m pytest -q test/test_uxfd_owner_review_gate.py`
+  - result after requiring owner support files: `13 passed`
+- `python -m pytest -q test/test_uxfd_owner_review_gate.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py test/test_uxfd_submodule_dirty_triage.py`
+  - result after committing the support-file gate: `54 passed`
 
 Latest gate state:
 
@@ -267,6 +302,8 @@ Latest gate state:
   - `Ready: False`
   - missing real `paper/UXFD_paper/results/submodule_owner_review_decisions.json`
   - 6 pending owner-review records
+  - current blockers remain exactly owner decision file missing, 6 pending
+    decisions, 6 record issues, and template is not approval
 - `python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready`
   - `Ready: False`
   - GPU queue blocked
