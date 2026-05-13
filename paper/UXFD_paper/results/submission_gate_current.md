@@ -15,10 +15,13 @@
 - Low-tier source hygiene ready: `True`
 - Low-tier source blockers: `0`
 - Low-tier source triage markers: `263`
+- Owner-review gate ready: `False`
+- Owner-review gate source: `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json`
+- Owner-review gate pending records: `6`
 - Submodule dirty clean: `False`
 - Submodule dirty entries: `27`
 - Submodule owner-review pending: `6`
-- Blocking findings: `19`
+- Blocking findings: `20`
 - Queue dry-run entries: `104`
 
 | Paper | Ready | Baselines | Ablations | Strict blockers |
@@ -51,6 +54,7 @@
 - artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs
 - sota gate blocked: 8 blockers under paper/UXFD_paper/results/sota_aggregates
 - recent-work evidence blocked: 7 TOP representative blockers
+- owner-review decision gate blocked: 4 blockers; pending_records=6
 - submodule dirty triage blocked: 27 dirty entries across 3 paper submodules; 6 owner-review decisions pending
 
 ## Next Actions
@@ -90,6 +94,7 @@
 - `met` Paper07 rejection-recovery innovation contract: paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md
 - `met` TOP recent-work policy and paper-local matrix coverage: scripts.uxfd_recent_work_gate
 - `met` low-tier source hygiene: paper/UXFD_paper/results/low_tier_source_audit.md
+- `not_met` submodule owner-review decision gate: paper/UXFD_paper/results/submodule_owner_review_decisions.template.json
 - `not_met` paper submodule working trees clean before handoff: paper/UXFD_paper/results/submodule_dirty_triage.md
 - `not_met` TOP representative accepted artifacts: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `not_met` accepted run artifact metadata: paper/UXFD_paper/results/accepted_runs

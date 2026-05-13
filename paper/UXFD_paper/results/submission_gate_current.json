@@ -123,6 +123,7 @@
     "artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs",
     "sota gate blocked: 8 blockers under paper/UXFD_paper/results/sota_aggregates",
     "recent-work evidence blocked: 7 TOP representative blockers",
+    "owner-review decision gate blocked: 4 blockers; pending_records=6",
     "submodule dirty triage blocked: 27 dirty entries across 3 paper submodules; 6 owner-review decisions pending"
   ],
   "next_actions": [
@@ -317,6 +318,11 @@
       "status": "met"
     },
     {
+      "requirement": "submodule owner-review decision gate",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+      "status": "not_met"
+    },
+    {
       "requirement": "paper submodule working trees clean before handoff",
       "evidence": "paper/UXFD_paper/results/submodule_dirty_triage.md",
       "status": "not_met"
@@ -381,6 +387,15 @@
   "low_tier_source_blocker_count": 0,
   "low_tier_source_triage_count": 263,
   "low_tier_source_blockers": [],
+  "owner_review_gate_ready": false,
+  "owner_review_gate_source_path": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+  "owner_review_gate_pending_records": 6,
+  "owner_review_gate_blockers": [
+    "owner decision file missing: paper/UXFD_paper/results/submodule_owner_review_decisions.json",
+    "6 owner-review decisions are still pending",
+    "6 owner-review record issues remain",
+    "template file is not owner approval"
+  ],
   "submodule_dirty_clean": false,
   "submodule_dirty_entries": 27,
   "submodule_dirty_submodules": 3,
