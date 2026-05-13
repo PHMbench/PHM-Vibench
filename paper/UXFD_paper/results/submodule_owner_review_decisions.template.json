@@ -6,8 +6,14 @@
     "rewrite_then_commit",
     "discard_from_submodule"
   ],
+  "supporting_files": {
+    "action_packet": "paper/UXFD_paper/results/submodule_owner_review_action_packet.md",
+    "recommendations": "paper/UXFD_paper/results/submodule_owner_review_recommendations.md",
+    "evidence_index": "paper/UXFD_paper/results/submodule_owner_review_evidence_index.md"
+  },
   "instructions": [
     "Copy this file to submodule_owner_review_decisions.json only after paper owners are ready to record decisions.",
+    "Review supporting_files.action_packet, supporting_files.recommendations, and supporting_files.evidence_index before changing any pending decision.",
     "After copying, change top-level status to owner_review_decisions; the template_only_not_owner_approved status is rejected for real decision files.",
     "Keep decision as pending_owner_review until the paper owner has explicitly reviewed the file.",
     "Do not stage, delete, or rewrite submodule files from this template alone.",

@@ -13,6 +13,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     OWNER_REVIEW_ACTION_PACKET,
     OWNER_REVIEW_DECISION_TEMPLATE,
     OWNER_REVIEW_EVIDENCE_INDEX,
+    OWNER_REVIEW_RECOMMENDATIONS,
 )
 
 
@@ -57,6 +58,12 @@ def test_owner_review_template_instructs_status_change_for_real_decisions() -> N
     instructions = " ".join(payload["instructions"])
 
     assert payload["status"] == "template_only_not_owner_approved"
+    assert payload["supporting_files"] == {
+        "action_packet": str(OWNER_REVIEW_ACTION_PACKET),
+        "recommendations": str(OWNER_REVIEW_RECOMMENDATIONS),
+        "evidence_index": str(OWNER_REVIEW_EVIDENCE_INDEX),
+    }
+    assert "supporting_files.evidence_index" in instructions
     assert "status to owner_review_decisions" in instructions
     assert "template_only_not_owner_approved status is rejected" in instructions
 
