@@ -415,6 +415,9 @@ def _render_gpu_execution(
             "- PyTorch must report CUDA available with at least two devices.",
             "- Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs "
             "with no TODO placeholders.",
+            "- `log_path` must point to a non-empty log file with no TODO placeholders.",
+            "- `config_path` must point to parseable, non-empty YAML config evidence "
+            "with no TODO placeholders.",
             "- `seed` must be a non-negative integer and `batch_size` must be a "
             "positive integer.",
             "- `runtime` must be a positive `HH:MM:SS` duration.",

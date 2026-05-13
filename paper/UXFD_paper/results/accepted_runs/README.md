@@ -23,8 +23,8 @@ Required per-run files:
 
 - `run_meta.yaml`
 - `metrics.json` or `metrics.csv` with at least one numeric metric
-- `run.log`
-- referenced config evidence
+- non-empty `run.log` with no TODO placeholders
+- parseable, non-empty YAML config evidence with no TODO placeholders
 
 Every `run_meta.yaml` must record the queue identifiers, local GPU binding,
 RTX 4090 metadata, seed, split, preprocessing signature, runtime, command,

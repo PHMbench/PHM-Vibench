@@ -35,6 +35,8 @@ The current launch scripts are execution plans only. A paper owner must first re
 - `nvidia-smi -L` must show local RTX 4090 GPUs 0 and 1.
 - PyTorch must report CUDA available with at least two devices.
 - Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs with no TODO placeholders.
+- `log_path` must point to a non-empty log file with no TODO placeholders.
+- `config_path` must point to parseable, non-empty YAML config evidence with no TODO placeholders.
 - `seed` must be a non-negative integer and `batch_size` must be a positive integer.
 - `runtime` must be a positive `HH:MM:SS` duration.
 - `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.

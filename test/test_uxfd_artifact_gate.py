@@ -118,6 +118,42 @@ def test_artifact_gate_accepts_complete_run_meta(tmp_path: Path) -> None:
     assert report.queue_coverage_by_paper == {}
 
 
+def test_artifact_gate_rejects_empty_log_and_unparseable_config(
+    tmp_path: Path,
+) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_dir = tmp_path / "paper07" / "run0"
+    (run_dir / "run.log").write_text("", encoding="utf-8")
+    (run_dir / "config.yaml").write_text("trainer: [\n", encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "log_path must not be empty" in report.records[0].issues
+    assert any(
+        issue.startswith("config_path YAML is not parseable")
+        for issue in report.records[0].issues
+    )
+
+
+def test_artifact_gate_rejects_placeholder_config_and_log(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_dir = tmp_path / "paper07" / "run0"
+    (run_dir / "run.log").write_text(
+        "TODO: rerun after GPU preflight\n",
+        encoding="utf-8",
+    )
+    (run_dir / "config.yaml").write_text("trainer: TODO\n", encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "log_path must not contain TODO placeholders" in report.records[0].issues
+    assert "config_path must not contain TODO placeholders" in report.records[0].issues
+
+
 def test_artifact_gate_blocks_incomplete_queue_coverage(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
 
@@ -293,6 +329,8 @@ def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
         in text
     )
     assert "Do not place smoke outputs, templates" in text
+    assert "non-empty `run.log` with no TODO placeholders" in text
+    assert "parseable, non-empty YAML config evidence" in text
 
 
 def test_artifact_gate_blocks_missing_metadata_and_missing_root(tmp_path: Path) -> None:

@@ -234,6 +234,30 @@ def _validate_metrics_file(path: Path) -> Tuple[str, ...]:
     return tuple(issues)
 
 
+def _validate_config_file(path: Path) -> Tuple[str, ...]:
+    text = path.read_text(encoding="utf-8")
+    if not text.strip():
+        return ("config_path must not be empty",)
+    if "TODO" in text.upper():
+        return ("config_path must not contain TODO placeholders",)
+    try:
+        payload = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        return (f"config_path YAML is not parseable: {exc.__class__.__name__}",)
+    if not isinstance(payload, Mapping) or not payload:
+        return ("config_path YAML must contain a non-empty mapping",)
+    return ()
+
+
+def _validate_log_file(path: Path) -> Tuple[str, ...]:
+    text = path.read_text(encoding="utf-8")
+    if not text.strip():
+        return ("log_path must not be empty",)
+    if "TODO" in text.upper():
+        return ("log_path must not contain TODO placeholders",)
+    return ()
+
+
 def _contains_numeric_value(payload: Any) -> bool:
     if isinstance(payload, bool):
         return False
@@ -414,6 +438,10 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
             continue
         if path_field == "metrics_path":
             issues.extend(_validate_metrics_file(candidate))
+        elif path_field == "config_path":
+            issues.extend(_validate_config_file(candidate))
+        elif path_field == "log_path":
+            issues.extend(_validate_log_file(candidate))
 
     return ArtifactRecord(
         run_meta_path=str(path),

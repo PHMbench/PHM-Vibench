@@ -37,6 +37,8 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
         in gpu
     )
     assert "must not copy the template into an approved decision file" in gpu
+    assert "`log_path` must point to a non-empty log file" in gpu
+    assert "`config_path` must point to parseable, non-empty YAML" in gpu
     assert "`batch_size` must be a positive integer" in gpu
     assert "`runtime` must be a positive `HH:MM:SS` duration" in gpu
     assert "`precision` must be one of" in gpu
