@@ -58,14 +58,20 @@ def _load_json(path: Path) -> Mapping[str, Any]:
 
 
 def _owner_review_entries() -> Tuple[Tuple[str, str], ...]:
+    return tuple(sorted(_owner_review_meta()))
+
+
+def _owner_review_meta() -> Mapping[Tuple[str, str], Mapping[str, Any]]:
     dirty = evaluate_dirty_triage()
-    return tuple(
-        sorted(
-            (entry.submodule, entry.path)
-            for entry in dirty.entries
-            if entry.recommended_action == DO_NOT_AUTO_COMMIT
-        )
-    )
+    return {
+        (entry.submodule, entry.path): {
+            "current_status": entry.status,
+            "category": entry.category,
+            "risk_markers": tuple(entry.risk_markers),
+        }
+        for entry in dirty.entries
+        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+    }
 
 
 def _string_list(value: Any) -> Tuple[str, ...]:
@@ -74,13 +80,36 @@ def _string_list(value: Any) -> Tuple[str, ...]:
     return tuple(str(item) for item in value)
 
 
-def _record_issues(record: Mapping[str, Any]) -> Tuple[str, ...]:
+def _record_issues(
+    record: Mapping[str, Any],
+    current_meta: Optional[Mapping[str, Any]] = None,
+) -> Tuple[str, ...]:
     issues: List[str] = []
     decision = str(record.get("decision", "")).strip()
     reviewer = str(record.get("reviewer", "")).strip()
     review_date = str(record.get("review_date", "")).strip()
     recommended = set(_string_list(record.get("recommended_decisions")))
     risk_markers = _string_list(record.get("risk_markers"))
+    if current_meta is not None:
+        current_status = str(record.get("current_status", "")).strip()
+        expected_status = str(current_meta.get("current_status", "")).strip()
+        if current_status != expected_status:
+            issues.append(
+                "current_status does not match current dirty triage: "
+                f"{current_status or '<missing>'} != {expected_status or '<missing>'}"
+            )
+        category = str(record.get("category", "")).strip()
+        expected_category = str(current_meta.get("category", "")).strip()
+        if category != expected_category:
+            issues.append(
+                "category does not match current dirty triage: "
+                f"{category or '<missing>'} != {expected_category or '<missing>'}"
+            )
+        expected_risk_markers = tuple(
+            str(item) for item in current_meta.get("risk_markers", ())
+        )
+        if risk_markers != expected_risk_markers:
+            issues.append("risk_markers do not match current dirty triage")
 
     if decision == PENDING_DECISION:
         issues.append("decision is still pending_owner_review")
@@ -102,7 +131,10 @@ def _record_issues(record: Mapping[str, Any]) -> Tuple[str, ...]:
     return tuple(issues)
 
 
-def _records_from_payload(payload: Mapping[str, Any]) -> Tuple[OwnerReviewRecord, ...]:
+def _records_from_payload(
+    payload: Mapping[str, Any],
+    current_meta_by_key: Optional[Mapping[Tuple[str, str], Mapping[str, Any]]] = None,
+) -> Tuple[OwnerReviewRecord, ...]:
     raw_records = payload.get("records", ())
     if not isinstance(raw_records, list):
         return ()
@@ -110,6 +142,12 @@ def _records_from_payload(payload: Mapping[str, Any]) -> Tuple[OwnerReviewRecord
     for raw in raw_records:
         if not isinstance(raw, Mapping):
             continue
+        key = (str(raw.get("submodule", "")), str(raw.get("path", "")))
+        current_meta = (
+            current_meta_by_key.get(key)
+            if current_meta_by_key is not None
+            else None
+        )
         records.append(
             OwnerReviewRecord(
                 submodule=str(raw.get("submodule", "")),
@@ -117,7 +155,7 @@ def _records_from_payload(payload: Mapping[str, Any]) -> Tuple[OwnerReviewRecord
                 decision=str(raw.get("decision", "")),
                 reviewer=str(raw.get("reviewer", "")),
                 review_date=str(raw.get("review_date", "")),
-                issues=_record_issues(raw),
+                issues=_record_issues(raw, current_meta=current_meta),
             )
         )
     return tuple(records)
@@ -177,8 +215,9 @@ def evaluate_owner_review_gate(
     if not source_is_template and payload_status != APPROVED_DECISION_STATUS:
         blockers.append("owner decision file must be marked owner_review_decisions")
 
-    records = _records_from_payload(payload)
-    expected_keys = set(_owner_review_entries())
+    expected_meta = _owner_review_meta()
+    records = _records_from_payload(payload, current_meta_by_key=expected_meta)
+    expected_keys = set(expected_meta)
     record_keys = {(record.submodule, record.path) for record in records}
     missing = sorted(expected_keys - record_keys)
     extra = sorted(record_keys - expected_keys)

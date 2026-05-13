@@ -120,6 +120,28 @@ def test_owner_review_gate_rejects_missing_current_owner_entry(tmp_path: Path) -
     assert any("decision records missing current owner-review entries" in item for item in report.blockers)
 
 
+def test_owner_review_gate_rejects_stale_dirty_triage_metadata(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    payload["records"][0]["current_status"] = "M"
+    payload["records"][0]["category"] = "experiment_output"
+    payload["records"][0]["risk_markers"] = ["stale_exec_root"]
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert (
+        "current_status does not match current dirty triage"
+        in report.records[0].issues[0]
+    )
+    assert any(
+        "category does not match current dirty triage" in issue
+        for issue in report.records[0].issues
+    )
+    assert "risk_markers do not match current dirty triage" in report.records[0].issues
+
+
 def test_owner_review_gate_cli_writes_reports(tmp_path: Path) -> None:
     markdown = tmp_path / "owner_review_gate.md"
     json_path = tmp_path / "owner_review_gate.json"
