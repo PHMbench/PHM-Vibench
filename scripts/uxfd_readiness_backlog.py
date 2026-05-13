@@ -14,7 +14,7 @@ from scripts.uxfd_submission_gate import (
     DEFAULT_QUEUE,
     evaluate_submission_gate,
 )
-from scripts.uxfd_submodule_dirty_triage import evaluate_dirty_triage
+from scripts.uxfd_submodule_dirty_triage import DO_NOT_AUTO_COMMIT, evaluate_dirty_triage
 
 
 DEFAULT_OUTPUT = Path("paper/UXFD_paper/results/readiness_backlog.md")
@@ -280,6 +280,12 @@ def evaluate_readiness_backlog(
         categories = ", ".join(
             f"{name}={count}" for name, count in sorted(summary.categories.items())
         )
+        owner_review_pending = sum(
+            1
+            for entry in dirty.entries
+            if entry.submodule == summary.submodule
+            and entry.recommended_action == DO_NOT_AUTO_COMMIT
+        )
         items.append(
             BacklogItem(
                 item_id=f"DIRTY-{Path(summary.submodule).name}",
@@ -288,13 +294,19 @@ def evaluate_readiness_backlog(
                 category="submodule-dirty-review",
                 blocker=(
                     f"{summary.total} dirty entries "
-                    f"({summary.modified} modified, {summary.untracked} untracked): {categories}"
+                    f"({summary.modified} modified, {summary.untracked} untracked): "
+                    f"{categories}; owner_review_pending={owner_review_pending}"
                 ),
                 next_action=(
-                    "Review with the owning paper owner. Commit only intentional source/docs; "
-                    "promote result artifacts only through the accepted artifact gate."
+                    "Resolve the `pending_owner_review` rows in "
+                    "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
+                    "paper owner. Commit only intentional source/docs; promote result artifacts "
+                    "only through the accepted artifact gate."
                 ),
-                evidence="paper/UXFD_paper/results/submodule_dirty_triage.md",
+                evidence=(
+                    "paper/UXFD_paper/results/submodule_dirty_triage.md,"
+                    "paper/UXFD_paper/results/submodule_dirty_triage.json"
+                ),
             )
         )
 

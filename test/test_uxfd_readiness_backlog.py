@@ -42,6 +42,11 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert all(item.category != "commit-recovery" for item in report.items if item not in parent_checkpoint_items)
     assert all(item.category != "low-tier-source-hygiene" for item in report.items)
     assert any(item.category == "submodule-dirty-review" for item in report.items)
+    dirty_items = [item for item in report.items if item.category == "submodule-dirty-review"]
+    assert dirty_items
+    assert all("owner_review_pending=" in item.blocker for item in dirty_items)
+    assert all("pending_owner_review" in item.next_action for item in dirty_items)
+    assert all("submodule_dirty_triage.json" in item.evidence for item in dirty_items)
     top_items = [item for item in report.items if item.category == "top-representative-evidence"]
     assert len(top_items) == 7
     assert any(item.item_id == "TOP-Q7-TIMESEG" for item in top_items)
