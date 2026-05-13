@@ -8,6 +8,7 @@ from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 from scripts.uxfd_artifact_gate import evaluate_artifact_gate
 from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, expand_queue, summarize_rows, validate_queue
 from scripts.uxfd_objective_audit import evaluate_objective_audit
+from scripts.uxfd_owner_review_gate import evaluate_owner_review_gate
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import DEFAULT_ARTIFACT_ROOT, evaluate_submission_gate
 from scripts.uxfd_submodule_dirty_triage import (
@@ -145,6 +146,7 @@ def _render_overall(
     submission_report: object,
     artifact_report: object,
     dirty_report: object,
+    owner_review_report: object,
 ) -> str:
     lines = _header(
         "UXFD Overall Cross-Paper Progress",
@@ -165,10 +167,13 @@ def _render_overall(
             f"- Artifact records: `{len(artifact_report.records)}`",
             f"- SOTA gate ready: `{submission_report.sota_gate_ready}`",
             f"- SOTA aggregate records: `{submission_report.sota_gate_records}`",
+            f"- Owner-review gate ready: `{owner_review_report.ready}`",
+            f"- Owner-review pending records: `{owner_review_report.pending_records}`",
             f"- Dirty submodule entries: `{len(dirty_report.entries)}`",
             "",
             "The project is ready for controlled execution only after local GPUs 0 and 1 "
-            "are visible and the accepted artifact gate can be populated with real runs.",
+            "are visible, owner decisions are recorded, and the accepted artifact gate "
+            "can be populated with real runs.",
             "",
             "## Paper Matrix",
             "",
@@ -184,6 +189,24 @@ def _render_overall(
     lines.extend(["", "## Blocking Findings", ""])
     for blocker in _first_blockers(submission_report.blockers):
         lines.append(f"- {blocker}")
+    lines.extend(
+        [
+            "",
+            "## Owner-Review Decision Gate",
+            "",
+            f"- Ready: `{owner_review_report.ready}`",
+            f"- Source: `{owner_review_report.source_path}`",
+            f"- Source is template: `{owner_review_report.source_is_template}`",
+            f"- Pending records: `{owner_review_report.pending_records}`",
+            "",
+        ]
+    )
+    if owner_review_report.blockers:
+        lines.append("Blockers:")
+        for blocker in _first_blockers(owner_review_report.blockers):
+            lines.append(f"- {blocker}")
+    else:
+        lines.append("Blockers: none")
     dirty_actions = _dirty_actions_by_submodule(dirty_report)
     lines.extend(
         [
@@ -403,6 +426,7 @@ def generate_status_reports(
     )
     recent_report = evaluate_recent_work_gate()
     dirty_report = evaluate_dirty_triage()
+    owner_review_report = evaluate_owner_review_gate()
     dirty_counts = _dirty_by_paper(dirty_report)
     paper_reports = {paper.paper_id: paper for paper in submission_report.papers}
 
@@ -413,6 +437,7 @@ def generate_status_reports(
             submission_report,
             artifact_report,
             dirty_report,
+            owner_review_report,
         ),
         "status_08_citation_readiness.md": _render_recent_work(generated, recent_report),
         "status_09_gpu_execution.md": _render_gpu_execution(

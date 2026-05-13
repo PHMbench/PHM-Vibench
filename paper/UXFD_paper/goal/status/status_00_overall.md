@@ -8,16 +8,18 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 ## Current Verdict
 
 - Achieved: `False`
-- Objective audit: `met=70`, `not_met=11`, `blocked=1`
+- Objective audit: `met=77`, `not_met=13`, `blocked=1`
 - Submission gate ready: `False`
 - Queue can execute: `False`
 - Artifact coverage: `0/104`
 - Artifact records: `0`
 - SOTA gate ready: `False`
 - SOTA aggregate records: `7`
+- Owner-review gate ready: `False`
+- Owner-review pending records: `6`
 - Dirty submodule entries: `27`
 
-The project is ready for controlled execution only after local GPUs 0 and 1 are visible and the accepted artifact gate can be populated with real runs.
+The project is ready for controlled execution only after local GPUs 0 and 1 are visible, owner decisions are recorded, and the accepted artifact gate can be populated with real runs.
 
 ## Paper Matrix
 
@@ -41,7 +43,20 @@ The project is ready for controlled execution only after local GPUs 0 and 1 are 
 - Explainable_FD_Toolkit: 5 strict blockers remain
 - MOE_explainable: submission_ready is false
 - MOE_explainable: 5 strict blockers remain
-- ... 11 additional blockers omitted; see gate reports.
+- ... 12 additional blockers omitted; see gate reports.
+
+## Owner-Review Decision Gate
+
+- Ready: `False`
+- Source: `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json`
+- Source is template: `True`
+- Pending records: `6`
+
+Blockers:
+- owner decision file missing: paper/UXFD_paper/results/submodule_owner_review_decisions.json
+- 6 owner-review decisions are still pending
+- 6 owner-review record issues remain
+- template file is not owner approval
 
 ## Dirty Submodule Owner Review Queue
 
