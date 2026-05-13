@@ -204,6 +204,16 @@ def _risk_marker_counts(entries: Iterable[DirtyEntry]) -> Mapping[str, int]:
     return dict(sorted(counter.items()))
 
 
+def _action_counts_by_submodule(entries: Iterable[DirtyEntry]) -> Mapping[str, Mapping[str, int]]:
+    grouped: DefaultDict[str, Counter[str]] = defaultdict(Counter)
+    for entry in entries:
+        grouped[entry.submodule].update((entry.recommended_action,))
+    return {
+        submodule: dict(sorted(counter.items()))
+        for submodule, counter in sorted(grouped.items())
+    }
+
+
 def evaluate_dirty_triage(
     submodules: Sequence[Path] = PAPER_SUBMODULES,
 ) -> DirtyTriageReport:
@@ -224,6 +234,7 @@ def build_payload(report: DirtyTriageReport) -> Mapping[str, Any]:
 
 def render_markdown(report: DirtyTriageReport) -> str:
     action_counts = _action_counts(report.entries)
+    action_counts_by_submodule = _action_counts_by_submodule(report.entries)
     risk_counts = _risk_marker_counts(report.entries)
     auto_commit_safe = sum(
         1
@@ -269,6 +280,26 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"- `{PROMOTE_ONLY_THROUGH_GATE}`: do not commit as accepted evidence; promote only through `scripts.uxfd_artifact_gate` after real runs.",
             f"- `{DO_NOT_AUTO_COMMIT}`: inspect with the paper owner before staging.",
             "- Risk markers flag stale paths, deprecated config dispatch, unaccepted readiness claims, historical accepted-claim wording, or GPU bindings outside `0,1`.",
+            "",
+            "## Owner Review Queue",
+            "",
+            "Use this queue to resolve the dirty-submodule blocker without promoting generated artifacts as accepted evidence.",
+            "",
+            "| Submodule | Owner-review entries | Artifact-gate-only entries | Preserve/ignore entries | First non-destructive check |",
+            "|---|---:|---:|---:|---|",
+        ]
+    )
+    for summary in report.summaries:
+        counts = action_counts_by_submodule.get(summary.submodule, {})
+        lines.append(
+            f"| `{summary.submodule}` | {counts.get(DO_NOT_AUTO_COMMIT, 0)} | "
+            f"{counts.get(PROMOTE_ONLY_THROUGH_GATE, 0)} | "
+            f"{counts.get(PRESERVE_SESSION, 0)} | "
+            f"`git -C {summary.submodule} status --short` |"
+        )
+
+    lines.extend(
+        [
             "",
             "## Entries",
             "",
