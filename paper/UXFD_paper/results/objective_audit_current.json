@@ -275,8 +275,8 @@
     {
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
-      "status": "not_met",
-      "details": "dirty_parent_goal_control_paths=1"
+      "status": "met",
+      "details": "43 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -407,7 +407,6 @@
   ],
   "blockers": [
     "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2",
-    "parent UXFD goal-control checkpoint committed: dirty_parent_goal_control_paths=1",
     "TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5",
     "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
     "Explainable_FD_Toolkit: IEEE Transactions submission-ready: strict blockers remaining=5",
@@ -420,8 +419,8 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=17"
   ],
-  "met": 54,
-  "not_met": 12,
+  "met": 55,
+  "not_met": 11,
   "blocked": 1,
   "unverified": 0
 }
