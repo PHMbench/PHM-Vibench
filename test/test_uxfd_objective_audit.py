@@ -5,6 +5,7 @@ import scripts.uxfd_objective_audit as audit
 from scripts.uxfd_objective_audit import (
     ACCEPTED_RUN_ROOT_README,
     PARENT_GOAL_CHECKPOINT_PATHS,
+    SOTA_AGGREGATE_TEMPLATE_README,
     build_payload,
     evaluate_objective_audit,
     LATEST_CONTINUATION_HANDOFF_PATH,
@@ -135,6 +136,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
         "accepted-run evidence root requires GPU and queue preflight"
     ].details
     assert (
+        items["SOTA aggregate activation requires accepted run coverage"].status
+        == "met"
+    )
+    assert "accepted run_meta refs" in items[
+        "SOTA aggregate activation requires accepted run coverage"
+    ].details
+    assert (
         items[
             "SOTA comparison requires multi-seed same-protocol aggregate evidence"
         ].status
@@ -253,6 +261,17 @@ def test_objective_audit_covers_accepted_run_root_activation_gate() -> None:
 
     assert ACCEPTED_RUN_ROOT_README.exists()
     assert str(ACCEPTED_RUN_ROOT_README) in item.evidence
+    assert item.status == "met"
+    assert "artifact gate queue coverage" in item.details
+
+
+def test_objective_audit_covers_sota_aggregate_activation_gate() -> None:
+    report = evaluate_objective_audit()
+    items = _items_by_requirement(report)
+    item = items["SOTA aggregate activation requires accepted run coverage"]
+
+    assert SOTA_AGGREGATE_TEMPLATE_README.exists()
+    assert str(SOTA_AGGREGATE_TEMPLATE_README) in item.evidence
     assert item.status == "met"
     assert "artifact gate queue coverage" in item.details
 

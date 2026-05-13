@@ -168,6 +168,15 @@ ACCEPTED_RUN_ROOT_GATE_NEEDLES = (
     "Blocked: static queue validation can_execute=False",
     "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage",
 )
+SOTA_AGGREGATE_TEMPLATE_README = Path(
+    "paper/UXFD_paper/results/sota_aggregate_templates/README.md"
+)
+SOTA_AGGREGATE_ACTIVATION_NEEDLES = (
+    "Activation preflight",
+    "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage",
+    "must pass before creating `paper/UXFD_paper/results/sota_aggregates`",
+    "Do not commit template-derived `sota_aggregate.yaml`",
+)
 SOTA_COMPARISON_CONTRACT_FIELDS = (
     "single_run_rule",
     "same_protocol_population",
@@ -876,6 +885,60 @@ def _accepted_run_root_activation_gate_item(
     )
 
 
+def _sota_aggregate_activation_gate_item(
+    template_readme: Path = SOTA_AGGREGATE_TEMPLATE_README,
+    sota_scaffold_path: Path = Path("scripts/uxfd_sota_scaffold.py"),
+    sota_gate_path: Path = Path("scripts/uxfd_sota_gate.py"),
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    for path, needles in (
+        (template_readme, SOTA_AGGREGATE_ACTIVATION_NEEDLES),
+        (sota_scaffold_path, SOTA_AGGREGATE_ACTIVATION_NEEDLES),
+        (
+            sota_gate_path,
+            (
+                "accepted_run_refs",
+                "does not exist",
+                "run_meta.yaml",
+                "accepted_run_root",
+            ),
+        ),
+        (artifact_gate_path, ("require_queue_coverage", "queue coverage incomplete")),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="SOTA aggregate activation requires accepted run coverage",
+            evidence=(
+                f"{template_readme},{sota_scaffold_path},"
+                f"{sota_gate_path},{artifact_gate_path}"
+            ),
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="SOTA aggregate activation requires accepted run coverage",
+        evidence=(
+            f"{template_readme},{sota_scaffold_path},"
+            f"{sota_gate_path},{artifact_gate_path}"
+        ),
+        status="met",
+        details=(
+            "SOTA templates require artifact gate queue coverage before aggregate "
+            "creation, and SOTA gate requires existing accepted run_meta refs"
+        ),
+    )
+
+
 def _sota_comparison_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     runbook_path: Path = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md"),
@@ -1049,6 +1112,7 @@ def evaluate_objective_audit(
     items.append(_preprocessing_signature_contract_item(queue_path=queue_path))
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
     items.append(_accepted_run_root_activation_gate_item())
+    items.append(_sota_aggregate_activation_gate_item())
     items.append(_sota_comparison_contract_item(queue_path=queue_path))
 
     paper07_rejection_ready = _text_contains(
