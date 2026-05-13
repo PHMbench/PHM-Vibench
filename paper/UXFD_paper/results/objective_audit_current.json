@@ -279,6 +279,12 @@
       "details": "exists"
     },
     {
+      "requirement": "submodule owner-review action packet",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_action_packet.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "submodule owner-review decision template",
       "evidence": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
       "status": "met",
@@ -426,7 +432,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "68 parent goal-control paths clean"
+      "details": "69 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -571,7 +577,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=20"
   ],
-  "met": 78,
+  "met": 79,
   "not_met": 13,
   "blocked": 1,
   "unverified": 0
