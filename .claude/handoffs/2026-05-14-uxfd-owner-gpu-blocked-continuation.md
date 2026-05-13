@@ -22,6 +22,8 @@ the pre-launch decision gate without re-deriving them.
 
 Recent parent commits:
 
+- `63dbc68 docs: refresh UXFD owner action audit`
+- `4a66130 test: audit UXFD owner action packet`
 - `e990b93 docs: add UXFD owner review action packet`
 - `30286fb docs: refresh UXFD objective metrics audit`
 - `cbcc662 test: audit finite UXFD accepted metrics`
@@ -72,6 +74,9 @@ Recent Paper03 submodule commit:
   `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` is the
   owner-facing fill-in form for the 6 pending decisions. It is not approval and
   does not replace `submodule_owner_review_decisions.json`.
+- **Objective audit now tracks the owner action packet** - the prompt-to-artifact
+  checklist includes `submodule owner-review action packet`; the latest
+  persisted audit reports `Met: 79`, `Not met: 13`, `Blocked: 1`.
 
 ## Code Changes
 
@@ -121,6 +126,12 @@ Recent Paper03 submodule commit:
   `test/test_uxfd_owner_review_gate.py`, and
   `test/test_uxfd_goal_clarity.py` - surface and test the owner action packet
   without treating it as approval.
+- `scripts/uxfd_objective_audit.py` and `test/test_uxfd_objective_audit.py` -
+  include the owner action packet in the objective audit artifact list and
+  committed checkpoint paths.
+- `paper/UXFD_paper/results/objective_audit_current.json` and
+  `paper/UXFD_paper/results/objective_audit_current.md` - refreshed objective
+  audit snapshots after adding owner action packet coverage.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -149,6 +160,10 @@ Latest relevant tests passed:
   - result after adding the owner action packet: `45 passed`
 - `python -m pytest -q test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_owner_review_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
   - result after committing the owner action packet: `60 passed`
+- `python -m pytest -q test/test_uxfd_objective_audit.py -k "prompt_to_artifact or parent_goal_checkpoint_paths"`
+  - result after objective-audit coverage update: `1 passed, 14 deselected`
+- `python -m pytest -q test/test_uxfd_objective_audit.py`
+  - result after refreshing objective audit snapshot: `15 passed`
 
 Latest gate state:
 
@@ -164,7 +179,7 @@ Latest gate state:
   - 7 paper matrices still `submission_ready: false`
 - `python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved`
   - `Achieved: False`
-  - `Met: 78`, `Not met: 13`, `Blocked: 1`
+  - `Met: 79`, `Not met: 13`, `Blocked: 1`
 - `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
   - result: exit `2`
   - reason: NVIDIA driver/CUDA not visible; PyTorch reports
