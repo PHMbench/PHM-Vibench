@@ -23,6 +23,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - PyTorch must report CUDA available with at least two devices.
 - Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs with no TODO placeholders.
 - `seed` must be a non-negative integer and `batch_size` must be a positive integer.
+- `preprocessing_signature` must match `sha256:<64 lowercase hex>`.
 - `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 - `git_sha_or_submodule_sha` must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers.
 
