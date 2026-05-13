@@ -12,6 +12,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     _content_risk_markers,
     _path_risk_markers,
     _risk_marker_counts,
+    _review_command,
     _summarize_entries,
     evaluate_dirty_triage,
     render_markdown,
@@ -169,6 +170,29 @@ def test_action_counts_by_submodule_builds_owner_review_queue() -> None:
     }
 
 
+def test_review_command_is_non_destructive() -> None:
+    modified = DirtyEntry(
+        "paper/A",
+        "M",
+        "results/a.json",
+        "experiment_output",
+        PROMOTE_ONLY_THROUGH_GATE,
+    )
+    untracked = DirtyEntry(
+        "paper/A",
+        "??",
+        "EXPERIMENT_DESIGN.md",
+        "planning_or_contract_draft",
+        DO_NOT_AUTO_COMMIT,
+    )
+
+    assert _review_command(modified) == "git -C paper/A diff -- results/a.json"
+    assert (
+        _review_command(untracked)
+        == "git -C paper/A status --short -- EXPERIMENT_DESIGN.md"
+    )
+
+
 def test_content_risk_markers_flag_chinese_readiness_claim(tmp_path: Path) -> None:
     submodule = tmp_path / "paper"
     summary = submodule / "results" / "PAPER_READY_SUMMARY.md"
@@ -200,6 +224,8 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "not accepted experiment evidence" in text
     assert "Commit-Blocking Verdict" in text
     assert "Owner Review Queue" in text
+    assert "Owner-Review Entry Checklist" in text
+    assert "Artifact-Gate Promotion Checklist" in text
     assert "`git -C paper/A status --short`" in text
     assert "Auto-commit safe entries: `0`" in text
     assert PROMOTE_ONLY_THROUGH_GATE in text

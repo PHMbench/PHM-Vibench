@@ -37,6 +37,48 @@ Use this queue to resolve the dirty-submodule blocker without promoting generate
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short` |
 | `paper/UXFD_paper/MOE_explainable` | 2 | 0 | 0 | `git -C paper/UXFD_paper/MOE_explainable status --short` |
 
+## Owner-Review Entry Checklist
+
+These entries require an explicit paper-owner decision before any staging.
+Allowed decisions: `commit_after_review`, `rewrite_then_commit`, or `discard_from_submodule`.
+
+| Submodule | Status | Category | Risk Markers | Review Command | Path |
+|---|---|---|---|---|---|
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `planning_or_contract_draft` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- EXPERIMENT_DESIGN.md` | `EXPERIMENT_DESIGN.md` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `historical_autoresearch_evidence_draft` | `stale_exec_root, historical_accepted_claim` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `planning_or_contract_draft` | `deprecated_config_dir_dispatch` | `git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- EXPERIMENT_DESIGN.md` | `EXPERIMENT_DESIGN.md` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `historical_autoresearch_evidence_draft` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim` | `git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
+| `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `deprecated_config_dir_dispatch, nonlocal_gpu_binding` | `git -C paper/UXFD_paper/MOE_explainable status --short -- EXPERIMENT_DESIGN.md` | `EXPERIMENT_DESIGN.md` |
+| `paper/UXFD_paper/MOE_explainable` | `??` | `historical_autoresearch_evidence_draft` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim, nonlocal_gpu_binding` | `git -C paper/UXFD_paper/MOE_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
+
+## Artifact-Gate Promotion Checklist
+
+These entries must not be committed as accepted evidence. Recreate or promote them only through `paper/UXFD_paper/results/accepted_runs` after real Q0-passed runs.
+
+| Submodule | Status | Category | Risk Markers | Review Command | Path |
+|---|---|---|---|---|---|
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/benchmark_analysis_report.md` | `benchmark_results/benchmark_analysis_report.md` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/explainability_benchmark_results.json` | `benchmark_results/explainability_benchmark_results.json` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/explainability_benchmark_table.csv` | `benchmark_results/explainability_benchmark_table.csv` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/method_comparison_radar.png` | `benchmark_results/method_comparison_radar.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/metrics_heatmap.png` | `benchmark_results/metrics_heatmap.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/overall_scores_comparison.png` | `benchmark_results/overall_scores_comparison.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- benchmark_results/scale_vs_explainability.png` | `benchmark_results/scale_vs_explainability.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `generated_or_result_artifact` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- figures/core_interface_demo.png` | `figures/core_interface_demo.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `generated_or_result_artifact` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- figures/signal_analysis_demo.png` | `figures/signal_analysis_demo.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `generated_or_result_artifact` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- figures/simple_explanation_demo.png` | `figures/simple_explanation_demo.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- results/final_demo_report.md` | `results/final_demo_report.md` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- results/signals_demo.npy` | `results/signals_demo.npy` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `M` | `experiment_output` | `tracked_generated_artifact_dirty` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit diff -- results/simple_explanation_demo.json` | `results/simple_explanation_demo.json` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `generated_or_result_artifact` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- doc/demo_explanation.txt` | `doc/demo_explanation.txt` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `generated_or_result_artifact` | `binary_or_large_artifact` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- figures/explanation_demo.png` | `figures/explanation_demo.png` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `unaccepted_readiness_claim` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- results/PAPER_READY_SUMMARY.md` | `results/PAPER_READY_SUMMARY.md` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- results/autoresearch_toolkit.log` | `results/autoresearch_toolkit.log` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- results/demo_full.log` | `results/demo_full.log` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- results/direct_run_toolkit.log` | `results/direct_run_toolkit.log` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `-` | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short -- results/toolkit_benchmark.log` | `results/toolkit_benchmark.log` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `generated_or_result_artifact` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `git -C paper/UXFD_paper/1D-2D_fusion_explainable diff -- best_model.pth` | `best_model.pth` |
+
 ## Entries
 
 | Submodule | Status | Category | Action | Risk Markers | Path |

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import subprocess
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
@@ -214,6 +215,14 @@ def _action_counts_by_submodule(entries: Iterable[DirtyEntry]) -> Mapping[str, M
     }
 
 
+def _review_command(entry: DirtyEntry) -> str:
+    base = f"git -C {shlex.quote(entry.submodule)}"
+    path = shlex.quote(entry.path)
+    if entry.status == "??":
+        return f"{base} status --short -- {path}"
+    return f"{base} diff -- {path}"
+
+
 def evaluate_dirty_triage(
     submodules: Sequence[Path] = PAPER_SUBMODULES,
 ) -> DirtyTriageReport:
@@ -296,6 +305,51 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"{counts.get(PROMOTE_ONLY_THROUGH_GATE, 0)} | "
             f"{counts.get(PRESERVE_SESSION, 0)} | "
             f"`git -C {summary.submodule} status --short` |"
+        )
+
+    owner_entries = [
+        entry for entry in report.entries if entry.recommended_action == DO_NOT_AUTO_COMMIT
+    ]
+    artifact_entries = [
+        entry
+        for entry in report.entries
+        if entry.recommended_action == PROMOTE_ONLY_THROUGH_GATE
+    ]
+    lines.extend(
+        [
+            "",
+            "## Owner-Review Entry Checklist",
+            "",
+            "These entries require an explicit paper-owner decision before any staging.",
+            "Allowed decisions: `commit_after_review`, `rewrite_then_commit`, or `discard_from_submodule`.",
+            "",
+            "| Submodule | Status | Category | Risk Markers | Review Command | Path |",
+            "|---|---|---|---|---|---|",
+        ]
+    )
+    for entry in owner_entries:
+        markers = ", ".join(entry.risk_markers) if entry.risk_markers else "-"
+        lines.append(
+            f"| `{entry.submodule}` | `{entry.status}` | `{entry.category}` | "
+            f"`{markers}` | `{_review_command(entry)}` | `{entry.path}` |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Artifact-Gate Promotion Checklist",
+            "",
+            "These entries must not be committed as accepted evidence. Recreate or promote them only through `paper/UXFD_paper/results/accepted_runs` after real Q0-passed runs.",
+            "",
+            "| Submodule | Status | Category | Risk Markers | Review Command | Path |",
+            "|---|---|---|---|---|---|",
+        ]
+    )
+    for entry in artifact_entries:
+        markers = ", ".join(entry.risk_markers) if entry.risk_markers else "-"
+        lines.append(
+            f"| `{entry.submodule}` | `{entry.status}` | `{entry.category}` | "
+            f"`{markers}` | `{_review_command(entry)}` | `{entry.path}` |"
         )
 
     lines.extend(
