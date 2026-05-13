@@ -10,6 +10,7 @@ from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 import yaml
 
+from scripts.uxfd_owner_review_gate import evaluate_owner_review_gate
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
@@ -98,6 +99,22 @@ EXECUTION_ARTIFACTS = (
     (
         "submodule dirty triage JSON report",
         Path("paper/UXFD_paper/results/submodule_dirty_triage.json"),
+    ),
+    (
+        "submodule owner-review recommendations",
+        Path("paper/UXFD_paper/results/submodule_owner_review_recommendations.md"),
+    ),
+    (
+        "submodule owner-review decision template",
+        Path("paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"),
+    ),
+    (
+        "submodule owner-review gate JSON report",
+        Path("paper/UXFD_paper/results/submodule_owner_review_gate_current.json"),
+    ),
+    (
+        "submodule owner-review gate markdown report",
+        Path("paper/UXFD_paper/results/submodule_owner_review_gate_current.md"),
     ),
     (
         "parent result artifact triage report",
@@ -235,6 +252,10 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/sota_gate_current.md"),
     Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
     Path("paper/UXFD_paper/results/submodule_dirty_triage.json"),
+    Path("paper/UXFD_paper/results/submodule_owner_review_recommendations.md"),
+    Path("paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"),
+    Path("paper/UXFD_paper/results/submodule_owner_review_gate_current.json"),
+    Path("paper/UXFD_paper/results/submodule_owner_review_gate_current.md"),
     Path("paper/UXFD_paper/results/parent_result_artifact_triage.md"),
     Path("paper/UXFD_paper/results/goal_clarity_audit_current.md"),
     Path("paper/UXFD_paper/results/commit_recovery_plan.md"),
@@ -253,6 +274,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("scripts/uxfd_sota_gate.py"),
     Path("scripts/uxfd_submission_gate.py"),
     Path("scripts/uxfd_submodule_dirty_triage.py"),
+    Path("scripts/uxfd_owner_review_gate.py"),
     Path("test/test_uxfd_low_tier_source_audit.py"),
     Path("test/test_uxfd_goal_status.py"),
     Path("test/test_uxfd_parent_result_artifact_triage.py"),
@@ -272,6 +294,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("test/test_uxfd_sota_gate.py"),
     Path("test/test_uxfd_submission_gate.py"),
     Path("test/test_uxfd_submodule_dirty_triage.py"),
+    Path("test/test_uxfd_owner_review_gate.py"),
     Path("test/test_uxfd_goal_clarity.py"),
 )
 
@@ -1005,6 +1028,19 @@ def _sota_comparison_contract_item(
     )
 
 
+def _owner_review_decision_gate_item() -> ObjectiveAuditItem:
+    report = evaluate_owner_review_gate()
+    return _item(
+        requirement="submodule owner-review decision gate",
+        evidence=report.source_path,
+        status="met" if report.ready else "not_met",
+        details=(
+            f"ready={report.ready}, pending_records={report.pending_records}, "
+            f"blockers={len(report.blockers)}"
+        ),
+    )
+
+
 def _subagent_execution_item(
     team_dir: Path = CLAUDE_TEAM_DIR,
     launch_blocked: bool = False,
@@ -1114,6 +1150,7 @@ def evaluate_objective_audit(
     items.append(_accepted_run_root_activation_gate_item())
     items.append(_sota_aggregate_activation_gate_item())
     items.append(_sota_comparison_contract_item(queue_path=queue_path))
+    items.append(_owner_review_decision_gate_item())
 
     paper07_rejection_ready = _text_contains(
         PAPER07_GOAL,

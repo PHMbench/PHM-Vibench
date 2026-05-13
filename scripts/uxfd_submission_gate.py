@@ -14,6 +14,10 @@ from scripts.uxfd_low_tier_source_audit import (
     LowTierSourceAuditReport,
     evaluate_low_tier_source_audit,
 )
+from scripts.uxfd_owner_review_gate import (
+    OwnerReviewGateReport,
+    evaluate_owner_review_gate,
+)
 from scripts.uxfd_recent_work_gate import RecentWorkGateReport, evaluate_recent_work_gate
 from scripts.uxfd_sota_gate import DEFAULT_SOTA_ROOT, SotaGateReport, evaluate_sota_gate
 from scripts.uxfd_submodule_dirty_triage import (
@@ -130,6 +134,10 @@ class SubmissionGateReport:
     low_tier_source_blocker_count: int
     low_tier_source_triage_count: int
     low_tier_source_blockers: Tuple[str, ...]
+    owner_review_gate_ready: bool
+    owner_review_gate_source_path: str
+    owner_review_gate_pending_records: int
+    owner_review_gate_blockers: Tuple[str, ...]
     submodule_dirty_clean: bool
     submodule_dirty_entries: int
     submodule_dirty_submodules: int
@@ -235,6 +243,7 @@ def _objective_checklist(
     sota_report: SotaGateReport,
     recent_report: RecentWorkGateReport,
     low_tier_report: LowTierSourceAuditReport,
+    owner_review_report: OwnerReviewGateReport,
     dirty_report: DirtyTriageReport,
 ) -> Tuple[Mapping[str, str], ...]:
     items: List[Mapping[str, str]] = []
@@ -324,6 +333,11 @@ def _objective_checklist(
                 "requirement": "low-tier source hygiene",
                 "evidence": "paper/UXFD_paper/results/low_tier_source_audit.md",
                 "status": "met" if low_tier_report.ready else "not_met",
+            },
+            {
+                "requirement": "submodule owner-review decision gate",
+                "evidence": owner_review_report.source_path,
+                "status": "met" if owner_review_report.ready else "not_met",
             },
             {
                 "requirement": "paper submodule working trees clean before handoff",
@@ -446,6 +460,13 @@ def evaluate_submission_gate(
             f"{low_tier_report.blocker_count} blocker references and "
             f"{low_tier_report.triage_count} triage markers"
         )
+    owner_review_report = evaluate_owner_review_gate()
+    if not owner_review_report.ready:
+        blockers.append(
+            "owner-review decision gate blocked: "
+            f"{len(owner_review_report.blockers)} blockers; "
+            f"pending_records={owner_review_report.pending_records}"
+        )
     dirty_report = evaluate_dirty_triage()
     owner_review_pending = sum(
         1 for entry in dirty_report.entries if entry.recommended_action == DO_NOT_AUTO_COMMIT
@@ -473,6 +494,7 @@ def evaluate_submission_gate(
             sota_report,
             recent_report,
             low_tier_report,
+            owner_review_report,
             dirty_report,
         ),
         artifact_gate_accepted=artifact_report.accepted,
@@ -494,6 +516,10 @@ def evaluate_submission_gate(
         low_tier_source_blocker_count=low_tier_report.blocker_count,
         low_tier_source_triage_count=low_tier_report.triage_count,
         low_tier_source_blockers=low_tier_report.blockers,
+        owner_review_gate_ready=owner_review_report.ready,
+        owner_review_gate_source_path=owner_review_report.source_path,
+        owner_review_gate_pending_records=owner_review_report.pending_records,
+        owner_review_gate_blockers=owner_review_report.blockers,
         submodule_dirty_clean=dirty_report.clean,
         submodule_dirty_entries=len(dirty_report.entries),
         submodule_dirty_submodules=len(dirty_report.summaries),
@@ -530,6 +556,9 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Low-tier source hygiene ready: `{report.low_tier_source_ready}`",
         f"- Low-tier source blockers: `{report.low_tier_source_blocker_count}`",
         f"- Low-tier source triage markers: `{report.low_tier_source_triage_count}`",
+        f"- Owner-review gate ready: `{report.owner_review_gate_ready}`",
+        f"- Owner-review gate source: `{report.owner_review_gate_source_path}`",
+        f"- Owner-review gate pending records: `{report.owner_review_gate_pending_records}`",
         f"- Submodule dirty clean: `{report.submodule_dirty_clean}`",
         f"- Submodule dirty entries: `{report.submodule_dirty_entries}`",
         f"- Submodule owner-review pending: `{report.submodule_owner_review_pending}`",

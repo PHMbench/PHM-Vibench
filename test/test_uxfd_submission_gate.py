@@ -37,6 +37,9 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.low_tier_source_ready is True
     assert report.low_tier_source_blocker_count == 0
     assert report.low_tier_source_triage_count > 0
+    assert report.owner_review_gate_ready is False
+    assert report.owner_review_gate_pending_records == 6
+    assert len(report.owner_review_gate_blockers) == 4
     assert report.submodule_dirty_clean is False
     assert report.submodule_dirty_entries > 0
     assert report.submodule_dirty_submodules == 3
@@ -51,6 +54,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert any("artifact gate blocked" in item for item in report.blockers)
     assert any("sota gate blocked" in item for item in report.blockers)
     assert any("recent-work evidence blocked" in item for item in report.blockers)
+    assert any("owner-review decision gate blocked" in item for item in report.blockers)
     assert any("submodule dirty triage blocked" in item for item in report.blockers)
     assert not any("low-tier source hygiene blocked" in item for item in report.blockers)
     assert len(report.next_actions) == 7
@@ -86,6 +90,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
         == "met"
     )
     assert checklist["low-tier source hygiene"]["status"] == "met"
+    assert checklist["submodule owner-review decision gate"]["status"] == "not_met"
     assert (
         checklist["paper submodule working trees clean before handoff"]["status"]
         == "not_met"
@@ -138,6 +143,9 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["low_tier_source_ready"] is True
     assert payload["low_tier_source_blocker_count"] == 0
     assert payload["low_tier_source_triage_count"] > 0
+    assert payload["owner_review_gate_ready"] is False
+    assert payload["owner_review_gate_pending_records"] == 6
+    assert len(payload["owner_review_gate_blockers"]) == 4
     assert payload["submodule_dirty_clean"] is False
     assert payload["submodule_dirty_entries"] > 0
     assert payload["submodule_dirty_submodules"] == 3
@@ -158,6 +166,8 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "Recent-work evidence ready: `False`" in text
     assert "Recent-work source verification ready: `True`" in text
     assert "Low-tier source hygiene ready: `True`" in text
+    assert "Owner-review gate ready: `False`" in text
+    assert "Owner-review gate pending records: `6`" in text
     assert "Submodule dirty clean: `False`" in text
     assert "Submodule owner-review pending: `6`" in text
     assert "## Blockers" in text

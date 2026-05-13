@@ -80,6 +80,10 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["cross-paper submission gate"].status == "not_met"
     assert items["submodule dirty triage report"].status == "met"
     assert items["submodule dirty triage JSON report"].status == "met"
+    assert items["submodule owner-review recommendations"].status == "met"
+    assert items["submodule owner-review decision template"].status == "met"
+    assert items["submodule owner-review gate JSON report"].status == "met"
+    assert items["submodule owner-review gate markdown report"].status == "met"
     assert items["parent result artifact triage report"].status == "met"
     assert items["GPU launch scripts enforce static queue gate"].status == "met"
     assert "exit 2" in items["GPU launch scripts enforce static queue gate"].details
@@ -154,6 +158,8 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "accepted run refs" in items[
         "SOTA comparison requires multi-seed same-protocol aggregate evidence"
     ].details
+    assert items["submodule owner-review decision gate"].status == "not_met"
+    assert "pending_records=6" in items["submodule owner-review decision gate"].details
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"
@@ -360,6 +366,10 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.json" in paths
+    assert "paper/UXFD_paper/results/submodule_owner_review_recommendations.md" in paths
+    assert "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json" in paths
+    assert "paper/UXFD_paper/results/submodule_owner_review_gate_current.json" in paths
+    assert "paper/UXFD_paper/results/submodule_owner_review_gate_current.md" in paths
     assert "paper/UXFD_paper/results/recent_work_gate_current.json" in paths
     assert "paper/UXFD_paper/results/recent_work_gate_current.md" in paths
     assert "paper/UXFD_paper/results/sota_gate_current.json" in paths
@@ -383,6 +393,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "scripts/uxfd_recent_work_gate.py" in paths
     assert "scripts/uxfd_sota_gate.py" in paths
     assert "scripts/uxfd_submodule_dirty_triage.py" in paths
+    assert "scripts/uxfd_owner_review_gate.py" in paths
     assert "test/test_uxfd_low_tier_source_audit.py" in paths
     assert "test/test_uxfd_parent_result_artifact_triage.py" in paths
     assert "test/test_uxfd_paper01_control_docs.py" in paths
@@ -399,6 +410,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "test/test_uxfd_recent_work_gate.py" in paths
     assert "test/test_uxfd_sota_gate.py" in paths
     assert "test/test_uxfd_submodule_dirty_triage.py" in paths
+    assert "test/test_uxfd_owner_review_gate.py" in paths
     assert "test/test_uxfd_goal_status.py" in paths
 
 
