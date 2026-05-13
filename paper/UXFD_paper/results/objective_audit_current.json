@@ -339,10 +339,10 @@
       "details": "queue_launch_plan.sh,gpu0.sh,gpu1.sh print blocked reason and exit 2"
     },
     {
-      "requirement": "accepted metrics contain numeric values",
+      "requirement": "accepted metrics contain finite values",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py",
       "status": "met",
-      "details": "queue contract and artifact gate require at least one numeric metric"
+      "details": "queue contract and artifact gate require at least one finite numeric metric and reject TODO, NaN, and infinite metric payloads"
     },
     {
       "requirement": "accepted artifacts require clean source trees",
