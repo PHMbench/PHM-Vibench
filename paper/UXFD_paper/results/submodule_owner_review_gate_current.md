@@ -17,6 +17,17 @@ Status: owner-decision validation only. This report is not accepted experiment e
 - 6 owner-review record issues remain
 - template file is not owner approval
 
+## Owner Decision Workflow
+
+This gate cannot approve the template by itself. Paper owners must:
+
+1. Read `paper/UXFD_paper/results/submodule_owner_review_recommendations.md` and inspect each dirty file before changing decisions.
+2. Copy `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` to `paper/UXFD_paper/results/submodule_owner_review_decisions.json` only after owner review is ready to record.
+3. Change top-level `status` to `owner_review_decisions`.
+4. Replace every `pending_owner_review` with one allowed decision: `commit_after_review`, `discard_from_submodule`, `rewrite_then_commit`.
+5. Use a real reviewer name and ISO `YYYY-MM-DD` review date for every approved decision.
+6. Rerun `python -m scripts.uxfd_owner_review_gate`; do not stage, delete, or promote submodule files from the template alone.
+
 ## Records
 
 | Submodule | Path | Decision | Reviewer | Review date | Issues |

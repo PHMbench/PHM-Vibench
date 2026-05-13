@@ -142,6 +142,15 @@ def test_owner_review_gate_markdown_contains_record_table() -> None:
     report = evaluate_owner_review_gate()
     text = render_markdown(report)
 
+    assert "## Owner Decision Workflow" in text
+    assert "This gate cannot approve the template by itself" in text
+    assert "submodule_owner_review_recommendations.md" in text
+    assert str(DEFAULT_DECISION_FILE) in text
+    assert "owner_review_decisions" in text
+    assert "commit_after_review" in text
+    assert "rewrite_then_commit" in text
+    assert "discard_from_submodule" in text
+    assert "YYYY-MM-DD" in text
     assert "## Records" in text
     assert "| Submodule | Path | Decision | Reviewer | Review date | Issues |" in text
     assert "pending_owner_review" in text
