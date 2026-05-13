@@ -84,7 +84,8 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
 
     assert payload["template_root"] == str(output_root)
     assert len(manifest) == len(payload["records"])
-    assert (output_root / "README.md").exists()
+    readme = (output_root / "README.md").read_text(encoding="utf-8")
+    assert "at least one numeric metric" in readme
     assert gate.accepted is False
     assert any("no run_meta.yaml" in blocker for blocker in gate.blockers)
 
@@ -92,8 +93,10 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
 def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     queue_rows = expand_queue(DEFAULT_QUEUE)
     manifest_path = PERSISTED_TEMPLATE_ROOT / "manifest.json"
+    readme = (PERSISTED_TEMPLATE_ROOT / "README.md").read_text(encoding="utf-8")
 
     assert manifest_path.exists()
+    assert "at least one numeric metric" in readme
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert len(build_launch_plan(queue_rows)) == 97
     assert len(manifest) == len(queue_rows) == 104

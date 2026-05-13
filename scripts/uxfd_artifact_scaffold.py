@@ -189,6 +189,10 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         f"- Template root: `{root}`",
         f"- Templates: `{len(records)}`",
         "- Status: templates only; not accepted evidence.",
+        (
+            "- Accepted metrics rule: `metrics.json` or `metrics.csv` must include "
+            "at least one numeric metric; status-only payloads are rejected."
+        ),
         "",
         "| Queue | Paper | Phase | Entry | GPU | Template |",
         "|---|---|---|---|---:|---|",

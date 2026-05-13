@@ -3,6 +3,7 @@
 - Template root: `paper/UXFD_paper/results/accepted_run_templates`
 - Templates: `104`
 - Status: templates only; not accepted evidence.
+- Accepted metrics rule: `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 
 | Queue | Paper | Phase | Entry | GPU | Template |
 |---|---|---|---|---:|---|
