@@ -14,7 +14,11 @@ from scripts.uxfd_submission_gate import (
     DEFAULT_QUEUE,
     evaluate_submission_gate,
 )
-from scripts.uxfd_submodule_dirty_triage import DO_NOT_AUTO_COMMIT, evaluate_dirty_triage
+from scripts.uxfd_submodule_dirty_triage import (
+    DO_NOT_AUTO_COMMIT,
+    OWNER_REVIEW_RECOMMENDATIONS,
+    evaluate_dirty_triage,
+)
 
 
 DEFAULT_OUTPUT = Path("paper/UXFD_paper/results/readiness_backlog.md")
@@ -300,12 +304,14 @@ def evaluate_readiness_backlog(
                 next_action=(
                     "Resolve the `pending_owner_review` rows in "
                     "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
-                    "paper owner. Commit only intentional source/docs; promote result artifacts "
-                    "only through the accepted artifact gate."
+                    "paper owner after reading "
+                    f"`{OWNER_REVIEW_RECOMMENDATIONS}`. Commit only intentional source/docs; "
+                    "promote result artifacts only through the accepted artifact gate."
                 ),
                 evidence=(
                     "paper/UXFD_paper/results/submodule_dirty_triage.md,"
-                    "paper/UXFD_paper/results/submodule_dirty_triage.json"
+                    "paper/UXFD_paper/results/submodule_dirty_triage.json,"
+                    f"{OWNER_REVIEW_RECOMMENDATIONS}"
                 ),
             )
         )
