@@ -1108,6 +1108,6 @@
     "torch_cuda_available": false,
     "torch_cuda_device_count": 0,
     "gpu_names": [],
-    "reason": "blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0"
+    "reason": "blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0; required_gpu_class=RTX 4090 not satisfied by gpu_names=()"
   }
 }

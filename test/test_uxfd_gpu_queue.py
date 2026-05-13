@@ -1,9 +1,12 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import yaml
 
+import scripts.uxfd_gpu_queue as gpu_queue
 from scripts.uxfd_gpu_queue import (
     DEFAULT_QUEUE,
     build_launch_plan,
@@ -247,3 +250,46 @@ def test_gpu_queue_live_preflight_is_reported_without_launching_experiments(
 
     direct = run_live_preflight()
     assert isinstance(direct.accepted, bool)
+
+
+def test_live_preflight_requires_two_rtx_4090_class_devices(monkeypatch) -> None:
+    def fake_nvidia_smi(*args, **kwargs):
+        return SimpleNamespace(
+            returncode=0,
+            stdout="GPU 0: NVIDIA GeForce RTX 4090\nGPU 1: NVIDIA GeForce RTX 4090\n",
+            stderr="",
+        )
+
+    def fake_torch_with_names(names):
+        return SimpleNamespace(
+            cuda=SimpleNamespace(
+                is_available=lambda: True,
+                device_count=lambda: len(names),
+                get_device_name=lambda index: names[index],
+            )
+        )
+
+    monkeypatch.setattr(gpu_queue.subprocess, "run", fake_nvidia_smi)
+    monkeypatch.setitem(
+        sys.modules,
+        "torch",
+        fake_torch_with_names(
+            ("NVIDIA GeForce RTX 4090", "NVIDIA GeForce RTX 4090")
+        ),
+    )
+
+    accepted = gpu_queue.run_live_preflight()
+
+    assert accepted.accepted is True
+    assert "RTX 4090-class" in accepted.reason
+
+    monkeypatch.setitem(
+        sys.modules,
+        "torch",
+        fake_torch_with_names(("NVIDIA A100-SXM4-80GB", "NVIDIA A100-SXM4-80GB")),
+    )
+
+    blocked = gpu_queue.run_live_preflight()
+
+    assert blocked.accepted is False
+    assert "required_gpu_class=RTX 4090" in blocked.reason

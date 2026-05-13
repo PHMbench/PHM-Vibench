@@ -127,6 +127,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("scripts/uxfd_goal_status.py"),
     Path("scripts/uxfd_objective_audit.py"),
     Path("scripts/uxfd_artifact_scaffold.py"),
+    Path("scripts/uxfd_gpu_queue.py"),
     Path("scripts/uxfd_parent_result_artifact_triage.py"),
     Path("scripts/uxfd_readiness_backlog.py"),
     Path("scripts/uxfd_submission_gate.py"),

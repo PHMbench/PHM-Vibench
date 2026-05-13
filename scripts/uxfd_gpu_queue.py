@@ -213,11 +213,20 @@ def run_live_preflight() -> LivePreflight:
             f"torch cuda_available={cuda_available}, device_count={device_count}"
         )
 
-    accepted = nvidia_ok and cuda_available and device_count == 2
+    gpu_class_ok = device_count == 2 and all("4090" in name for name in gpu_names)
+    accepted = nvidia_ok and cuda_available and gpu_class_ok
     if accepted:
-        reason = "accepted: nvidia-smi and PyTorch expose exactly two CUDA devices"
+        reason = (
+            "accepted: nvidia-smi and PyTorch expose exactly two "
+            "RTX 4090-class CUDA devices"
+        )
     else:
-        reason = f"blocked: {nvidia_reason}; {torch_reason}"
+        class_reason = (
+            ""
+            if gpu_class_ok
+            else f"; required_gpu_class=RTX 4090 not satisfied by gpu_names={gpu_names}"
+        )
+        reason = f"blocked: {nvidia_reason}; {torch_reason}{class_reason}"
     return LivePreflight(
         accepted=accepted,
         nvidia_smi_ok=nvidia_ok,
