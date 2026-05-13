@@ -48,8 +48,8 @@ by current state:
   `paper/UXFD_paper/results/accepted_runs` has zero accepted records.
 - TOP representative artifacts remain pending for all seven queue bindings.
 - Submodule working trees are not clean:
-  `Explainable_FD_Toolkit:30`, `1D-2D_fusion_explainable:33`,
-  `MOE_explainable:13`.
+  `Explainable_FD_Toolkit:22`, `1D-2D_fusion_explainable:3`,
+  `MOE_explainable:2` (27 dirty entries total).
 - All seven paper matrices remain `submission_ready: false`.
 
 ## Verification Commands
