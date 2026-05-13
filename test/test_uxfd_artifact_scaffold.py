@@ -5,10 +5,26 @@ import yaml
 
 from scripts.uxfd_artifact_gate import evaluate_artifact_gate
 from scripts.uxfd_artifact_scaffold import create_scaffold, main
-from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, build_launch_plan, expand_queue
+from scripts.uxfd_gpu_queue import (
+    DEFAULT_QUEUE,
+    DISALLOWED_LAUNCH_COMMAND_MARKERS,
+    build_launch_plan,
+    expand_queue,
+)
 
 
 PERSISTED_TEMPLATE_ROOT = Path("paper/UXFD_paper/results/accepted_run_templates")
+
+
+def _assert_no_disallowed_command_markers(data: dict, template_path: Path) -> None:
+    for field in ("command", "original_command", "queue_config_path"):
+        value = str(data.get(field, ""))
+        lowered = value.lower()
+        marker = next(
+            (item for item in DISALLOWED_LAUNCH_COMMAND_MARKERS if item in lowered),
+            "",
+        )
+        assert marker == "", f"{template_path}:{field} contains {marker}: {value}"
 
 
 def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -> None:
@@ -31,12 +47,15 @@ def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -
     assert data["command"].startswith("CUDA_VISIBLE_DEVICES=")
     assert data["config_path"] == "config.yaml"
     assert data["queue_config_path"].startswith("paper/UXFD_paper/")
+    _assert_no_disallowed_command_markers(data, first)
 
     top_records = [record for record in report.records if record.phase == "top_representatives"]
     assert len(top_records) == 7
-    top_data = yaml.safe_load(Path(top_records[0].template_path).read_text(encoding="utf-8"))
+    top_template = Path(top_records[0].template_path)
+    top_data = yaml.safe_load(top_template.read_text(encoding="utf-8"))
     assert top_data["cuda_visible_devices"] == "0,1"
     assert top_data["gpu_count"] == 2
+    _assert_no_disallowed_command_markers(top_data, top_template)
 
 
 def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
@@ -111,5 +130,6 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
         assert data["cuda_visible_devices"] == record["device"]
         assert data["config_path"] == "config.yaml"
         assert "queue_config_path" in data
+        _assert_no_disallowed_command_markers(data, template_path)
         if "python main.py --config" in record["command"]:
             assert data["queue_config_path"].startswith("paper/UXFD_paper/")
