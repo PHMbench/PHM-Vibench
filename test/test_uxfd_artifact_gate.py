@@ -283,6 +283,18 @@ def test_persisted_artifact_gate_queue_coverage_matches_current_gate() -> None:
     ) == render_markdown(report)
 
 
+def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
+    text = (DEFAULT_ACCEPTED_RUNS_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "uxfd_gpu_queue --live-preflight --require-preflight" in text
+    assert "Blocked: static queue validation can_execute=False" in text
+    assert (
+        "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage"
+        in text
+    )
+    assert "Do not place smoke outputs, templates" in text
+
+
 def test_artifact_gate_blocks_missing_metadata_and_missing_root(tmp_path: Path) -> None:
     missing = evaluate_artifact_gate(tmp_path / "missing")
     assert missing.accepted is False

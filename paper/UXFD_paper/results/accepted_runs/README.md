@@ -5,7 +5,15 @@ artifacts promoted from real Q0-passed GPU runs.
 
 Do not place smoke outputs, templates, failed preflight logs, or unreviewed
 submodule result files here. A run may be added only when its directory contains
-all required artifacts and passes:
+all required artifacts and the GPU/queue preflight passes:
+
+```bash
+python -m scripts.uxfd_gpu_queue --live-preflight --require-preflight
+```
+
+Do not promote any `run_meta.yaml` while the launch scripts exit via
+`Blocked: static queue validation can_execute=False`.
+After promotion, the accepted-run gate must pass with queue coverage:
 
 ```bash
 python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage
