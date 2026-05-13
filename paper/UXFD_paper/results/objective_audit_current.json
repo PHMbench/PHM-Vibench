@@ -285,6 +285,12 @@
       "details": "queue contract, artifact gate, and templates require source_tree_status clean"
     },
     {
+      "requirement": "accepted artifacts require clean SHA provenance",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
+      "status": "met",
+      "details": "queue contract, artifact gate, and templates reject dirty SHA provenance markers"
+    },
+    {
       "requirement": "Paper07 rejection-recovery innovation contract",
       "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md",
       "status": "met",
@@ -443,7 +449,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=18"
   ],
-  "met": 59,
+  "met": 60,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0
