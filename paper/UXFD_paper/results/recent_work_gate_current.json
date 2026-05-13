@@ -2,6 +2,7 @@
   "ready": false,
   "policy_ready": true,
   "evidence_ready": false,
+  "source_verification_ready": true,
   "accepted_pool_rows": 20,
   "accepted_pool_ids": [
     "RWTOP2024-TIMEXPP",

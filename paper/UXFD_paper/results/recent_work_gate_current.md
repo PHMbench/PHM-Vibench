@@ -3,6 +3,7 @@
 - Ready: `False`
 - Policy ready: `True`
 - Evidence ready: `False`
+- Source verification ready: `True`
 - Accepted TOP method rows: `20`
 - 2026 TOP IDs: `8`
 - Low-tier violations: `0`

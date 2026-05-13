@@ -37,6 +37,17 @@ REQUIRED_2026_TOP_IDS = (
     "RWTOP2026-TSPULSE",
 )
 
+REQUIRED_2026_SOURCE_URLS = {
+    "RWTOP2026-TIMESEG": "https://openreview.net/forum?id=alt9mSWULk",
+    "RWTOP2026-TIMESLIVER": "https://openreview.net/forum?id=MDRp9XhGtS",
+    "RWTOP2026-PGRFNET": "https://openreview.net/forum?id=3hS7EtL4bV",
+    "RWTOP2026-GTM": "https://openreview.net/forum?id=PWM6FERWz9",
+    "RWTOP2026-CSLSTM": "https://openreview.net/forum?id=2VtveTkmzW",
+    "RWTOP2026-PROTOTS": "https://openreview.net/forum?id=IbcdVwzLrp",
+    "RWTOP2026-CALTSFM": "https://openreview.net/forum?id=nGBN7UjHcy",
+    "RWTOP2026-TSPULSE": "https://openreview.net/forum?id=Kw2mvnzCoc",
+}
+
 EVIDENCE_READY_STATUSES = frozenset(
     {
         "accepted_gpu_and_artifacts",
@@ -97,6 +108,7 @@ class RecentWorkGateReport:
     ready: bool
     policy_ready: bool
     evidence_ready: bool
+    source_verification_ready: bool
     accepted_pool_rows: int
     accepted_pool_ids: Tuple[str, ...]
     top_2026_ids: Tuple[str, ...]
@@ -279,6 +291,10 @@ def evaluate_recent_work_gate(
 ) -> RecentWorkGateReport:
     text = recent_work_readme.read_text(encoding="utf-8")
     accepted_pool_section = _section(text, "Accepted TOP Method Pool")
+    try:
+        source_verification_section = _section(text, "Live Source Verification")
+    except ValueError:
+        source_verification_section = ""
     accepted_rows = _accepted_pool(text)
     accepted_ids = tuple(row[0] for row in accepted_rows)
     accepted_status_by_id = {
@@ -293,6 +309,28 @@ def evaluate_recent_work_gate(
     bindings = _top_bindings(queue_path)
 
     policy_blockers: List[str] = []
+    source_verification_blockers: List[str] = []
+    if not source_verification_section:
+        source_verification_blockers.append("missing Live Source Verification section")
+    else:
+        if "2026-05-14" not in source_verification_section:
+            source_verification_blockers.append(
+                "Live Source Verification section lacks check date 2026-05-14"
+            )
+        if (
+            "does not make any TOP representative `evidence_ready`"
+            not in source_verification_section
+        ):
+            source_verification_blockers.append(
+                "Live Source Verification section must state source checks do not make "
+                "TOP representatives evidence_ready"
+            )
+        for top_id, url in REQUIRED_2026_SOURCE_URLS.items():
+            if url not in source_verification_section:
+                source_verification_blockers.append(
+                    f"Live Source Verification missing primary URL for {top_id}: {url}"
+                )
+    policy_blockers.extend(source_verification_blockers)
     if len(accepted_rows) < 10:
         policy_blockers.append("accepted TOP method pool has fewer than 10 entries")
     for row in accepted_rows:
@@ -416,6 +454,7 @@ def evaluate_recent_work_gate(
         ready=ready,
         policy_ready=policy_ready,
         evidence_ready=evidence_ready,
+        source_verification_ready=not source_verification_blockers,
         accepted_pool_rows=len(accepted_rows),
         accepted_pool_ids=accepted_ids,
         top_2026_ids=top_2026_ids,
@@ -440,6 +479,7 @@ def render_markdown(report: RecentWorkGateReport) -> str:
         f"- Ready: `{report.ready}`",
         f"- Policy ready: `{report.policy_ready}`",
         f"- Evidence ready: `{report.evidence_ready}`",
+        f"- Source verification ready: `{report.source_verification_ready}`",
         f"- Accepted TOP method rows: `{report.accepted_pool_rows}`",
         f"- 2026 TOP IDs: `{len(report.top_2026_ids)}`",
         f"- Low-tier violations: `{len(report.low_tier_violations)}`",

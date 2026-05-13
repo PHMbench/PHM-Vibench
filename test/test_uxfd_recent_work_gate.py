@@ -4,6 +4,7 @@ from pathlib import Path
 from scripts.uxfd_recent_work_gate import (
     DEFAULT_RECENT_WORK_README,
     LOW_TIER_MARKERS,
+    REQUIRED_2026_SOURCE_URLS,
     build_payload,
     evaluate_recent_work_gate,
     main,
@@ -25,6 +26,7 @@ def test_recent_work_gate_policy_ready_but_artifact_evidence_pending() -> None:
     assert report.ready is False
     assert report.policy_ready is True
     assert report.evidence_ready is False
+    assert report.source_verification_ready is True
     assert report.accepted_pool_rows >= 10
     assert len(report.top_2026_ids) >= 6
     assert not report.low_tier_violations
@@ -55,6 +57,29 @@ def test_recent_work_gate_policy_ready_but_artifact_evidence_pending() -> None:
     )
     assert not report.policy_blockers
     assert len(report.evidence_blockers) == 7
+
+
+def test_recent_work_gate_requires_live_source_verification_for_2026_ids(
+    tmp_path: Path,
+) -> None:
+    readme = tmp_path / "recent_work.md"
+    text = DEFAULT_RECENT_WORK_README.read_text(encoding="utf-8")
+    readme.write_text(
+        text.replace(
+            REQUIRED_2026_SOURCE_URLS["RWTOP2026-GTM"],
+            "https://example.invalid/gtm",
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate_recent_work_gate(recent_work_readme=readme)
+
+    assert report.policy_ready is False
+    assert report.source_verification_ready is False
+    assert any(
+        "Live Source Verification missing primary URL for RWTOP2026-GTM" in blocker
+        for blocker in report.policy_blockers
+    )
 
 
 def test_recent_work_gate_low_tier_markers_are_not_in_accepted_pool() -> None:
@@ -140,6 +165,7 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert payload["ready"] is False
     assert payload["policy_ready"] is True
     assert payload["evidence_ready"] is False
+    assert payload["source_verification_ready"] is True
     assert payload["accepted_pool_rows"] >= 10
     assert len(payload["per_paper_coverage"]) == 7
     assert len(payload["matrix_coverage"]) == 7
@@ -152,6 +178,7 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert "Ready: `False`" in text
     assert "Policy ready: `True`" in text
     assert "Evidence ready: `False`" in text
+    assert "Source verification ready: `True`" in text
     assert "## Paper-Local Matrix Coverage" in text
     assert "Exact Status Issues" in text
     assert "## TOP Representative Bindings" in text
