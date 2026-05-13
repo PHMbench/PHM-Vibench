@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 from scripts.uxfd_objective_audit import PARENT_GOAL_CHECKPOINT_PATHS
+from scripts.uxfd_owner_review_gate import APPROVED_DECISION_STATUS, DEFAULT_DECISION_FILE
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
@@ -306,8 +307,12 @@ def evaluate_readiness_backlog(
                     "Resolve the `pending_owner_review` rows in "
                     "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
                     "paper owner after reading "
-                    f"`{OWNER_REVIEW_RECOMMENDATIONS}` and filling "
-                    f"`{OWNER_REVIEW_DECISION_TEMPLATE}`. Validate decisions with "
+                    f"`{OWNER_REVIEW_RECOMMENDATIONS}`. Copy "
+                    f"`{OWNER_REVIEW_DECISION_TEMPLATE}` to "
+                    f"`{DEFAULT_DECISION_FILE}`, change top-level `status` to "
+                    f"`{APPROVED_DECISION_STATUS}`, replace every pending decision with an "
+                    "allowed owner decision, and use a non-placeholder reviewer plus ISO "
+                    "`YYYY-MM-DD` review date. Validate decisions with "
                     "`python -m scripts.uxfd_owner_review_gate`. Commit only intentional "
                     "source/docs; promote result artifacts only through the accepted "
                     "artifact gate."
@@ -316,7 +321,8 @@ def evaluate_readiness_backlog(
                     "paper/UXFD_paper/results/submodule_dirty_triage.md,"
                     "paper/UXFD_paper/results/submodule_dirty_triage.json,"
                     f"{OWNER_REVIEW_RECOMMENDATIONS},"
-                    f"{OWNER_REVIEW_DECISION_TEMPLATE}"
+                    f"{OWNER_REVIEW_DECISION_TEMPLATE},"
+                    f"{DEFAULT_DECISION_FILE}"
                 ),
             )
         )

@@ -6,6 +6,7 @@ from scripts.uxfd_readiness_backlog import (
     main,
     render_markdown,
 )
+from scripts.uxfd_owner_review_gate import APPROVED_DECISION_STATUS, DEFAULT_DECISION_FILE
 from scripts.uxfd_submodule_dirty_triage import (
     OWNER_REVIEW_DECISION_TEMPLATE,
     OWNER_REVIEW_RECOMMENDATIONS,
@@ -52,10 +53,15 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert all("pending_owner_review" in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.next_action for item in dirty_items)
+    assert all(str(DEFAULT_DECISION_FILE) in item.next_action for item in dirty_items)
+    assert all(f"`{APPROVED_DECISION_STATUS}`" in item.next_action for item in dirty_items)
+    assert all("non-placeholder reviewer" in item.next_action for item in dirty_items)
+    assert all("`YYYY-MM-DD` review date" in item.next_action for item in dirty_items)
     assert all("python -m scripts.uxfd_owner_review_gate" in item.next_action for item in dirty_items)
     assert all("submodule_dirty_triage.json" in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.evidence for item in dirty_items)
+    assert all(str(DEFAULT_DECISION_FILE) in item.evidence for item in dirty_items)
     top_items = [item for item in report.items if item.category == "top-representative-evidence"]
     assert len(top_items) == 7
     assert any(item.item_id == "TOP-Q7-TIMESEG" for item in top_items)
