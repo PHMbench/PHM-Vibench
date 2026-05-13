@@ -12,6 +12,7 @@ from scripts.uxfd_owner_review_gate import (
 from scripts.uxfd_submodule_dirty_triage import (
     OWNER_REVIEW_ACTION_PACKET,
     OWNER_REVIEW_DECISION_TEMPLATE,
+    OWNER_REVIEW_EVIDENCE_INDEX,
 )
 
 
@@ -183,6 +184,7 @@ def test_owner_review_gate_markdown_contains_record_table() -> None:
     assert "This gate cannot approve the template by itself" in text
     assert str(OWNER_REVIEW_ACTION_PACKET) in text
     assert "submodule_owner_review_recommendations.md" in text
+    assert str(OWNER_REVIEW_EVIDENCE_INDEX) in text
     assert str(DEFAULT_DECISION_FILE) in text
     assert "owner_review_decisions" in text
     assert "commit_after_review" in text

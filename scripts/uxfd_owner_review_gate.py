@@ -11,6 +11,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
     OWNER_REVIEW_ACTION_PACKET,
     OWNER_REVIEW_DECISION_TEMPLATE,
+    OWNER_REVIEW_EVIDENCE_INDEX,
     OWNER_REVIEW_RECOMMENDATIONS,
     evaluate_dirty_triage,
 )
@@ -295,7 +296,7 @@ def render_markdown(report: OwnerReviewGateReport) -> str:
             "",
             "This gate cannot approve the template by itself. Paper owners must:",
             "",
-            f"1. Read `{OWNER_REVIEW_ACTION_PACKET}` and `{OWNER_REVIEW_RECOMMENDATIONS}`, then inspect each dirty file before changing decisions.",
+            f"1. Read `{OWNER_REVIEW_ACTION_PACKET}`, `{OWNER_REVIEW_RECOMMENDATIONS}`, and `{OWNER_REVIEW_EVIDENCE_INDEX}`, then inspect each dirty file before changing decisions.",
             f"2. Copy `{report.template_file}` to `{report.decision_file}` only after owner review is ready to record.",
             f"3. Change top-level `status` to `{APPROVED_DECISION_STATUS}`.",
             f"4. Replace every `{PENDING_DECISION}` with one allowed decision: "

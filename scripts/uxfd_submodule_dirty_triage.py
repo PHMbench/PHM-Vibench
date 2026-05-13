@@ -44,6 +44,9 @@ OWNER_REVIEW_RECOMMENDATIONS = Path(
 OWNER_REVIEW_ACTION_PACKET = Path(
     "paper/UXFD_paper/results/submodule_owner_review_action_packet.md"
 )
+OWNER_REVIEW_EVIDENCE_INDEX = Path(
+    "paper/UXFD_paper/results/submodule_owner_review_evidence_index.md"
+)
 OWNER_REVIEW_DECISION_TEMPLATE = Path(
     "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"
 )
