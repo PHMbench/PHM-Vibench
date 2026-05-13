@@ -33,6 +33,9 @@ CLAUDE_TEAM_DIR = Path(".codex/claude-team-runs/20260511-uxfd-ieee-trans-review"
 DEFAULT_ARTIFACT_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
 GOAL_CLARITY_AUDIT = Path("paper/UXFD_paper/results/goal_clarity_audit_current.md")
 COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
+OWNER_REVIEW_EVIDENCE_INDEX = Path(
+    "paper/UXFD_paper/results/submodule_owner_review_evidence_index.md"
+)
 PAPER07_GOAL = GOAL_DIR / "07_tii_operator_attention.md"
 PAPER07_REJECTION_CONTRACT = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
@@ -358,6 +361,11 @@ def _objective_checklist(
                 "requirement": "submodule owner-review action packet",
                 "evidence": str(OWNER_REVIEW_ACTION_PACKET),
                 "status": "met" if OWNER_REVIEW_ACTION_PACKET.exists() else "missing",
+            },
+            {
+                "requirement": "submodule owner-review evidence index",
+                "evidence": str(OWNER_REVIEW_EVIDENCE_INDEX),
+                "status": "met" if OWNER_REVIEW_EVIDENCE_INDEX.exists() else "missing",
             },
             {
                 "requirement": "submodule owner-review decision gate",

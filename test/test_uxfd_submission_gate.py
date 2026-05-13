@@ -5,6 +5,7 @@ import yaml
 
 from scripts.uxfd_submodule_dirty_triage import OWNER_REVIEW_ACTION_PACKET
 from scripts.uxfd_submission_gate import (
+    OWNER_REVIEW_EVIDENCE_INDEX,
     build_payload,
     evaluate_submission_gate,
     main,
@@ -98,6 +99,11 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert (
         checklist["submodule owner-review action packet"]["evidence"]
         == str(OWNER_REVIEW_ACTION_PACKET)
+    )
+    assert checklist["submodule owner-review evidence index"]["status"] == "met"
+    assert (
+        checklist["submodule owner-review evidence index"]["evidence"]
+        == str(OWNER_REVIEW_EVIDENCE_INDEX)
     )
     assert checklist["submodule owner-review decision gate"]["status"] == "not_met"
     assert (

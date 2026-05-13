@@ -323,6 +323,11 @@
       "status": "met"
     },
     {
+      "requirement": "submodule owner-review evidence index",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_evidence_index.md",
+      "status": "met"
+    },
+    {
       "requirement": "submodule owner-review decision gate",
       "evidence": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
       "status": "not_met"

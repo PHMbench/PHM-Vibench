@@ -96,6 +96,7 @@
 - `met` TOP recent-work policy and paper-local matrix coverage: scripts.uxfd_recent_work_gate
 - `met` low-tier source hygiene: paper/UXFD_paper/results/low_tier_source_audit.md
 - `met` submodule owner-review action packet: paper/UXFD_paper/results/submodule_owner_review_action_packet.md
+- `met` submodule owner-review evidence index: paper/UXFD_paper/results/submodule_owner_review_evidence_index.md
 - `not_met` submodule owner-review decision gate: paper/UXFD_paper/results/submodule_owner_review_decisions.template.json
 - `not_met` paper submodule working trees clean before handoff: paper/UXFD_paper/results/submodule_dirty_triage.md
 - `not_met` TOP representative accepted artifacts: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
