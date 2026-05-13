@@ -27,6 +27,7 @@ queue before a new execution batch:
 ```bash
 python -m scripts.uxfd_gpu_queue --format shell --output paper/UXFD_paper/results/queue_launch_plan.sh --shard-dir paper/UXFD_paper/results/queue_launch_shards
 python -m scripts.uxfd_artifact_scaffold --output-root paper/UXFD_paper/results/accepted_run_templates --format json --output paper/UXFD_paper/results/accepted_run_templates/scaffold_report.json
+python -m scripts.uxfd_sota_scaffold --output-root paper/UXFD_paper/results/sota_aggregate_templates --format markdown --output paper/UXFD_paper/results/sota_aggregate_templates/scaffold_report.md
 ```
 
 Check the generated shell syntax without launching experiments:

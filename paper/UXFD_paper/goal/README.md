@@ -154,12 +154,15 @@ Use the SOTA aggregate gate after artifact coverage exists to check that SOTA
 wording is based on matched-seed aggregate evidence, not single runs:
 
 ```bash
+python -m scripts.uxfd_sota_scaffold --output-root paper/UXFD_paper/results/sota_aggregate_templates --format markdown --output paper/UXFD_paper/results/sota_aggregate_templates/scaffold_report.md
 python -m scripts.uxfd_sota_gate --format markdown
 python -m scripts.uxfd_sota_gate --format json --allow-not-ready --output paper/UXFD_paper/results/sota_gate_current.json
 python -m scripts.uxfd_sota_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/sota_gate_current.md
 ```
 
-The gate expects one `sota_aggregate.yaml` per paper under
+The scaffold command writes non-evidence templates under
+`paper/UXFD_paper/results/sota_aggregate_templates/`. The gate expects one
+`sota_aggregate.yaml` per paper under
 `paper/UXFD_paper/results/sota_aggregates/<paper_id>/`. Each aggregate must
 cover the proposed method, all declared baselines, and runnable TOP
 representative bindings with matched seeds, mean/std/95% CI, and effect-size or

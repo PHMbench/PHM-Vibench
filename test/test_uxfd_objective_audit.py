@@ -63,6 +63,8 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["Claude Team deliverable test-log.md"].status == "met"
     assert items["SOTA aggregate gate JSON report"].status == "met"
     assert items["SOTA aggregate gate markdown report"].status == "met"
+    assert items["SOTA aggregate template manifest"].status == "met"
+    assert items["SOTA aggregate scaffold report"].status == "met"
     assert items["seven paper-local baseline/ablation matrices"].status == "met"
     assert items["TOP recent-work policy"].status == "met"
     assert items["low-tier source audit report"].status == "met"
@@ -303,10 +305,12 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
     assert "paper/UXFD_paper/results/accepted_runs" in paths
     assert "paper/UXFD_paper/results/accepted_run_templates" in paths
+    assert "paper/UXFD_paper/results/sota_aggregate_templates" in paths
     assert "paper/UXFD_paper/results/.gitignore" in paths
     assert "paper/UXFD_paper/results/low_tier_source_audit.json" in paths
     assert "scripts/uxfd_artifact_gate.py" in paths
     assert "scripts/uxfd_artifact_scaffold.py" in paths
+    assert "scripts/uxfd_sota_scaffold.py" in paths
     assert "scripts/uxfd_goal_status.py" in paths
     assert "scripts/uxfd_gpu_queue.py" in paths
     assert "scripts/uxfd_low_tier_source_audit.py" in paths
@@ -320,6 +324,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "test/test_uxfd_paper01_control_docs.py" in paths
     assert "test/test_uxfd_artifact_gate.py" in paths
     assert "test/test_uxfd_artifact_scaffold.py" in paths
+    assert "test/test_uxfd_sota_scaffold.py" in paths
     assert "test/test_uxfd_gpu_queue.py" in paths
     assert "test/test_uxfd_paper02_control_docs.py" in paths
     assert "test/test_uxfd_paper02_runner_policy.py" in paths

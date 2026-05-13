@@ -1,0 +1,138 @@
+template_only: true
+accepted_sota_evidence: false
+paper_id: Paper_fuzzy_XFD
+source_queue_id: Q5
+claim_scope: 'TODO: exact_sota, representative_only, or bounded_non_sota'
+primary_metric: 'TODO: primary metric name'
+protocol:
+  minimum_seeds: 3
+  dataset_split: 'TODO: same dataset split used by accepted runs'
+  preprocessing_signature: 'TODO: sha256:<64 lowercase hex>'
+  evidence_level: 'TODO: accepted_same_protocol'
+  source_tree_status: 'TODO: clean'
+proposed:
+  entry_id: P00
+  label: Fuzzy-XFD / NSN with fuzzy residual head
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+comparators:
+- entry_id: B01
+  label: NSN/TSPN_UXFD without fuzzy rules
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+- entry_id: B02
+  label: ResNet baseline
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+- entry_id: B03
+  label: SincNet baseline
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+- entry_id: B04
+  label: TFN baseline
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+- entry_id: B05
+  label: WKN baseline
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+- entry_id: B06
+  label: ConvTransformer baseline
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+- entry_id: B07
+  label: Classical fuzzy/rule baseline
+  role: baseline
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs relative paths for all seeds'
+top_representatives:
+- binding_id: TOP-Q5-TIMESLIVER
+  external_work_id: RWTOP2026-TIMESLIVER
+  scope: 'TODO: exact or representative'
+  seed_values: 'TODO: list at least 3 matched integer seeds'
+  statistics:
+    mean: 'TODO: numeric mean'
+    std: 'TODO: numeric standard deviation'
+    ci95_low: 'TODO: numeric 95% CI low'
+    ci95_high: 'TODO: numeric 95% CI high'
+  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  paired_test:
+    name: 'TODO: e.g. paired_t_test or wilcoxon'
+    p_value: 'TODO: numeric p-value'
+  accepted_run_refs: 'TODO: accepted_runs or exact external artifact refs'
+claim_output: 'TODO: if proposed does not beat every accepted comparator, write bounded
+  contribution wording and keep SOTA wording blocked'

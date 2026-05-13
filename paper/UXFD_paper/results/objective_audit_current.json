@@ -225,6 +225,18 @@
       "details": "exists"
     },
     {
+      "requirement": "SOTA aggregate template manifest",
+      "evidence": "paper/UXFD_paper/results/sota_aggregate_templates/manifest.yaml",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "SOTA aggregate scaffold report",
+      "evidence": "paper/UXFD_paper/results/sota_aggregate_templates/scaffold_report.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "artifact queue coverage report",
       "evidence": "paper/UXFD_paper/results/artifact_gate_queue_coverage.md",
       "status": "met",
@@ -354,7 +366,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "57 parent goal-control paths clean"
+      "details": "60 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -497,7 +509,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=19"
   ],
-  "met": 68,
+  "met": 70,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0

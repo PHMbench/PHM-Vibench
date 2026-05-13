@@ -69,6 +69,14 @@ EXECUTION_ARTIFACTS = (
         Path("paper/UXFD_paper/results/accepted_run_templates/manifest.json"),
     ),
     (
+        "SOTA aggregate template manifest",
+        Path("paper/UXFD_paper/results/sota_aggregate_templates/manifest.yaml"),
+    ),
+    (
+        "SOTA aggregate scaffold report",
+        Path("paper/UXFD_paper/results/sota_aggregate_templates/scaffold_report.md"),
+    ),
+    (
         "artifact queue coverage report",
         Path("paper/UXFD_paper/results/artifact_gate_queue_coverage.md"),
     ),
@@ -192,6 +200,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/queue_launch_shards/gpu1.sh"),
     Path("paper/UXFD_paper/results/accepted_runs"),
     Path("paper/UXFD_paper/results/accepted_run_templates"),
+    Path("paper/UXFD_paper/results/sota_aggregate_templates"),
     Path("paper/UXFD_paper/results/submission_gate_current.json"),
     Path("paper/UXFD_paper/results/submission_gate_current.md"),
     Path("paper/UXFD_paper/results/recent_work_gate_current.json"),
@@ -209,6 +218,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("scripts/uxfd_goal_status.py"),
     Path("scripts/uxfd_objective_audit.py"),
     Path("scripts/uxfd_artifact_scaffold.py"),
+    Path("scripts/uxfd_sota_scaffold.py"),
     Path("scripts/uxfd_gpu_queue.py"),
     Path("scripts/uxfd_parent_result_artifact_triage.py"),
     Path("scripts/uxfd_readiness_backlog.py"),
@@ -221,6 +231,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("test/test_uxfd_parent_result_artifact_triage.py"),
     Path("test/test_uxfd_artifact_gate.py"),
     Path("test/test_uxfd_artifact_scaffold.py"),
+    Path("test/test_uxfd_sota_scaffold.py"),
     Path("test/test_uxfd_gpu_queue.py"),
     Path("test/test_uxfd_paper01_control_docs.py"),
     Path("test/test_uxfd_paper02_control_docs.py"),
