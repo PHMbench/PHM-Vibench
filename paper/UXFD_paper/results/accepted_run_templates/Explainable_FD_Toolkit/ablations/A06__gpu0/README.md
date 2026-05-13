@@ -10,4 +10,4 @@ place the referenced log/metrics/config files beside it, and run
 - Phase: `ablations`
 - Entry: `A06`
 - Device: `0`
-- Workdir: `paper/UXFD_paper/Explainable_FD_Toolkit`
+- Workdir: `.`

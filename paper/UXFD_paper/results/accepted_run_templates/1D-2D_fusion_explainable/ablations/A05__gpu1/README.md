@@ -10,4 +10,4 @@ place the referenced log/metrics/config files beside it, and run
 - Phase: `ablations`
 - Entry: `A05`
 - Device: `1`
-- Workdir: `paper/UXFD_paper/1D-2D_fusion_explainable`
+- Workdir: `.`

@@ -14,13 +14,13 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
-command: CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py
-  --condition no_load_balance --output /tmp/uxfd_paper04_moe_ablation_smoke --seed
-  0
-original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py
-  --condition no_load_balance --output /tmp/uxfd_paper04_moe_ablation_smoke --seed
-  0
-queue_config_path: 'TODO: record config path'
+command: CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml
+  --override model.uxfd.operator_attention.load_balance_weight=0.0 --override trainer.num_epochs=1
+  --override data.num_workers=0
+original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml
+  --override model.uxfd.operator_attention.load_balance_weight=0.0 --override trainer.num_epochs=1
+  --override data.num_workers=0
+queue_config_path: paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
 config_path: config.yaml
 log_path: run.log

@@ -14,15 +14,13 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
-command: CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_fuzzy_baseline.py
-  --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz
-  --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json
-  --max_samples 20
-original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_fuzzy_baseline.py
-  --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz
-  --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json
-  --max_samples 20
-queue_config_path: 'TODO: record config path'
+command: CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
+  --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1
+  --override data.num_workers=0
+original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
+  --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1
+  --override data.num_workers=0
+queue_config_path: paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
 config_path: config.yaml
 log_path: run.log

@@ -14,13 +14,13 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
-command: CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py
-  --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed
-  0
-original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py
-  --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed
-  0
-queue_config_path: 'TODO: record config path'
+command: CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml
+  --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override
+  data.num_workers=0
+original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml
+  --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override
+  data.num_workers=0
+queue_config_path: paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
 config_path: config.yaml
 log_path: run.log

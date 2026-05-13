@@ -4,7 +4,7 @@ paper_id: LLM_Explainable_FD_Toolkit
 phase: baselines
 entry_id: B02
 label: standalone template LLM baseline
-workdir: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+workdir: .
 cuda_visible_devices: '0'
 gpu_model: 'TODO: NVIDIA GeForce RTX 4090'
 gpu_count: 1
@@ -14,11 +14,13 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
-command: CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py
-  --mode pipeline
-original_command: CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py
-  --mode pipeline
-queue_config_path: 'TODO: record config path'
+command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml
+  --override trainer.extensions.agent.enable=false --override trainer.extensions.agent.mode=standalone
+  --override trainer.num_epochs=1 --override data.num_workers=0
+original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml
+  --override trainer.extensions.agent.enable=false --override trainer.extensions.agent.mode=standalone
+  --override trainer.num_epochs=1 --override data.num_workers=0
+queue_config_path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
 config_path: config.yaml
 log_path: run.log
