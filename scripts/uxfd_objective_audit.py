@@ -153,9 +153,12 @@ LAUNCH_SCRIPT_STATIC_GATE_NEEDLES = (
     "Blocked: static queue validation can_execute=False",
     "exit 2",
 )
-ARTIFACT_GATE_NUMERIC_METRIC_NEEDLES = (
+ARTIFACT_GATE_FINITE_METRIC_NEEDLES = (
     "metrics_path JSON must contain at least one numeric metric",
     "metrics_path CSV must contain at least one numeric metric",
+    "metrics_path must not contain TODO placeholders",
+    "metrics_path JSON numeric metrics must be finite",
+    "metrics_path CSV numeric metrics must be finite",
 )
 SOURCE_TREE_STATUS_NEEDLES = (
     "source_tree_status must be clean",
@@ -469,7 +472,7 @@ def _launch_scripts_static_gate_item(
     )
 
 
-def _numeric_metrics_contract_item(
+def _finite_metrics_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
 ) -> ObjectiveAuditItem:
@@ -486,28 +489,38 @@ def _numeric_metrics_contract_item(
         missing.append("accepted_artifact_contract.numeric_metrics_required")
     if "numeric metric" not in metrics_text:
         missing.append("accepted_artifact_contract.metrics numeric metric wording")
+    if "finite" not in metrics_text:
+        missing.append("accepted_artifact_contract.metrics finite metric wording")
+    for disallowed_marker in ("todo", "nan", "infinite"):
+        if disallowed_marker not in metrics_text:
+            missing.append(
+                f"accepted_artifact_contract.metrics missing {disallowed_marker} rejection"
+            )
 
     if not artifact_gate_path.exists():
         missing.append(str(artifact_gate_path))
     else:
         gate_text = artifact_gate_path.read_text(encoding="utf-8")
-        for needle in ARTIFACT_GATE_NUMERIC_METRIC_NEEDLES:
+        for needle in ARTIFACT_GATE_FINITE_METRIC_NEEDLES:
             if needle not in gate_text:
                 missing.append(f"{artifact_gate_path}:{needle}")
 
     if missing:
         return _item(
-            requirement="accepted metrics contain numeric values",
+            requirement="accepted metrics contain finite values",
             evidence=f"{queue_path},{artifact_gate_path}",
             status="not_met",
             details="missing=" + ",".join(missing),
         )
 
     return _item(
-        requirement="accepted metrics contain numeric values",
+        requirement="accepted metrics contain finite values",
         evidence=f"{queue_path},{artifact_gate_path}",
         status="met",
-        details="queue contract and artifact gate require at least one numeric metric",
+        details=(
+            "queue contract and artifact gate require at least one finite numeric "
+            "metric and reject TODO, NaN, and infinite metric payloads"
+        ),
     )
 
 
@@ -1145,7 +1158,7 @@ def evaluate_objective_audit(
     for requirement, path in EXECUTION_ARTIFACTS:
         items.append(_exists_item(requirement, path))
     items.append(_launch_scripts_static_gate_item())
-    items.append(_numeric_metrics_contract_item(queue_path=queue_path))
+    items.append(_finite_metrics_contract_item(queue_path=queue_path))
     items.append(_source_tree_status_contract_item(queue_path=queue_path))
     items.append(_run_control_contract_item(queue_path=queue_path))
     items.append(_runtime_contract_item(queue_path=queue_path))

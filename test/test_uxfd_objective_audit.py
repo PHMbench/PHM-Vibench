@@ -88,8 +88,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["parent result artifact triage report"].status == "met"
     assert items["GPU launch scripts enforce static queue gate"].status == "met"
     assert "exit 2" in items["GPU launch scripts enforce static queue gate"].details
-    assert items["accepted metrics contain numeric values"].status == "met"
-    assert "numeric metric" in items["accepted metrics contain numeric values"].details
+    assert items["accepted metrics contain finite values"].status == "met"
+    assert "finite numeric metric" in items[
+        "accepted metrics contain finite values"
+    ].details
+    assert "reject TODO, NaN, and infinite" in items[
+        "accepted metrics contain finite values"
+    ].details
     assert items["accepted artifacts require clean source trees"].status == "met"
     assert "source_tree_status clean" in items[
         "accepted artifacts require clean source trees"
