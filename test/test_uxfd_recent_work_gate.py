@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from scripts.uxfd_recent_work_gate import (
+    DEFAULT_RECENT_WORK_README,
     LOW_TIER_MARKERS,
     build_payload,
     evaluate_recent_work_gate,
@@ -56,6 +57,32 @@ def test_recent_work_gate_low_tier_markers_are_not_in_accepted_pool() -> None:
     assert "RWTOP2026-TIMESEG" in report.accepted_pool_ids
     assert "RWTOP2026-GTM" in report.accepted_pool_ids
     assert "RWTOP2026-TSPULSE" in report.accepted_pool_ids
+
+
+def test_recent_work_gate_rejects_accepted_pool_rows_outside_2024_2026(
+    tmp_path: Path,
+) -> None:
+    readme = tmp_path / "recent_work.md"
+    text = DEFAULT_RECENT_WORK_README.read_text(encoding="utf-8")
+    readme.write_text(text.replace("| RWTOP2024-TIMEXPP | 2024 |", "| RWTOP2024-TIMEXPP | 2023 |"), encoding="utf-8")
+
+    report = evaluate_recent_work_gate(recent_work_readme=readme)
+
+    assert report.policy_ready is False
+    assert any("outside 2024-2026" in blocker for blocker in report.policy_blockers)
+
+
+def test_recent_work_gate_rejects_non_top_accepted_pool_venue_tier(
+    tmp_path: Path,
+) -> None:
+    readme = tmp_path / "recent_work.md"
+    text = DEFAULT_RECENT_WORK_README.read_text(encoding="utf-8")
+    readme.write_text(text.replace("| RWTOP2024-TIMEXPP | 2024 | `top-conference` |", "| RWTOP2024-TIMEXPP | 2024 | `application-only` |"), encoding="utf-8")
+
+    report = evaluate_recent_work_gate(recent_work_readme=readme)
+
+    assert report.policy_ready is False
+    assert any("venue tier" in blocker for blocker in report.policy_blockers)
 
 
 def test_persisted_recent_work_gate_reports_match_current_gate() -> None:

@@ -44,6 +44,17 @@ EVIDENCE_READY_STATUSES = frozenset(
         "accepted_representative_artifacts",
     }
 )
+ALLOWED_ACCEPTED_POOL_YEARS = frozenset({"2024", "2025", "2026"})
+ALLOWED_ACCEPTED_POOL_VENUE_TIERS = frozenset({"top-conference", "top-journal"})
+ALLOWED_ACCEPTED_POOL_STATUSES = frozenset(
+    {
+        "exact-runnable",
+        "representative-runnable",
+        "literature-only",
+        "resource-blocked",
+        "blocked",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -128,6 +139,13 @@ def _markdown_table_rows(section: str) -> Tuple[Tuple[str, ...], ...]:
 
 def _extract_top_ids(text: str) -> Tuple[str, ...]:
     return tuple(re.findall(r"RWTOP20\d{2}-[A-Z0-9]+", text))
+
+
+def _coded_status(cell: str) -> str:
+    match = re.search(r"`([^`]+)`", cell)
+    if match:
+        return match.group(1).strip()
+    return cell.strip()
 
 
 def _load_yaml(path: Path) -> Mapping[str, Any]:
@@ -228,7 +246,7 @@ def evaluate_recent_work_gate(
     accepted_rows = _accepted_pool(text)
     accepted_ids = tuple(row[0] for row in accepted_rows)
     accepted_status_by_id = {
-        row[0]: row[6].strip("` ") for row in accepted_rows if len(row) > 6
+        row[0]: _coded_status(row[6]) for row in accepted_rows if len(row) > 6
     }
     top_2026_ids = tuple(top_id for top_id in accepted_ids if top_id.startswith("RWTOP2026-"))
     low_tier_violations = tuple(
@@ -241,6 +259,25 @@ def evaluate_recent_work_gate(
     policy_blockers: List[str] = []
     if len(accepted_rows) < 10:
         policy_blockers.append("accepted TOP method pool has fewer than 10 entries")
+    for row in accepted_rows:
+        if len(row) < 7:
+            policy_blockers.append(f"{row[0]}: accepted TOP pool row is incomplete")
+            continue
+        year = row[1].strip()
+        venue_tier = row[2].strip("` ")
+        initial_status = _coded_status(row[6])
+        if year not in ALLOWED_ACCEPTED_POOL_YEARS:
+            policy_blockers.append(
+                f"{row[0]}: accepted TOP pool year {year!r} is outside 2024-2026"
+            )
+        if venue_tier not in ALLOWED_ACCEPTED_POOL_VENUE_TIERS:
+            policy_blockers.append(
+                f"{row[0]}: accepted TOP pool venue tier {venue_tier!r} is not top-tier"
+            )
+        if initial_status not in ALLOWED_ACCEPTED_POOL_STATUSES:
+            policy_blockers.append(
+                f"{row[0]}: unsupported reproduction status {initial_status!r}"
+            )
     if low_tier_violations:
         policy_blockers.append(
             "accepted TOP method pool contains rejected low-tier markers: "
