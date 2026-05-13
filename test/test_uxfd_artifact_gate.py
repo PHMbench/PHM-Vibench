@@ -329,6 +329,8 @@ def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
         in text
     )
     assert "Do not place smoke outputs, templates" in text
+    assert "at least one finite numeric metric" in text
+    assert "Status-only, TODO, NaN, or infinite metric payloads are rejected" in text
     assert "non-empty `run.log` with no TODO placeholders" in text
     assert "parseable, non-empty YAML config evidence" in text
 
@@ -690,6 +692,48 @@ def test_artifact_gate_rejects_json_without_numeric_metrics(tmp_path: Path) -> N
     )
 
 
+def test_artifact_gate_rejects_metrics_json_with_todo_placeholder(
+    tmp_path: Path,
+) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    (tmp_path / "paper07" / "run0" / "metrics.json").write_text(
+        '{"accuracy": 1.0, "notes": "TODO: replace with final run"}\n',
+        encoding="utf-8",
+    )
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path must not contain TODO placeholders"
+        in report.records[0].issues
+    )
+
+
+def test_artifact_gate_rejects_metrics_json_with_nonfinite_values(
+    tmp_path: Path,
+) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    (tmp_path / "paper07" / "run0" / "metrics.json").write_text(
+        '{"accuracy": NaN, "loss": Infinity}\n',
+        encoding="utf-8",
+    )
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path JSON numeric metrics must be finite"
+        in report.records[0].issues
+    )
+    assert (
+        "metrics_path JSON must contain at least one numeric metric"
+        in report.records[0].issues
+    )
+
+
 def test_artifact_gate_accepts_metrics_csv_with_data_row(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
     run_dir = tmp_path / "paper07" / "run0"
@@ -720,6 +764,34 @@ def test_artifact_gate_rejects_csv_without_numeric_metrics(tmp_path: Path) -> No
 
     assert report.accepted is False
     assert report.records[0].accepted is False
+    assert (
+        "metrics_path CSV must contain at least one numeric metric"
+        in report.records[0].issues
+    )
+
+
+def test_artifact_gate_rejects_metrics_csv_with_nonfinite_values(
+    tmp_path: Path,
+) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_dir = tmp_path / "paper07" / "run0"
+    (run_dir / "metrics.csv").write_text(
+        "metric,value\naccuracy,nan\nloss,inf\n",
+        encoding="utf-8",
+    )
+    run_meta = run_dir / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["metrics_path"] = "metrics.csv"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path CSV numeric metrics must be finite"
+        in report.records[0].issues
+    )
     assert (
         "metrics_path CSV must contain at least one numeric metric"
         in report.records[0].issues

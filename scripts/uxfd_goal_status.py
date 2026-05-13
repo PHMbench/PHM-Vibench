@@ -424,8 +424,8 @@ def _render_gpu_execution(
             "- `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.",
             "- `evidence_level` must be `accepted_same_protocol`.",
             "- `preprocessing_signature` must match `sha256:<64 lowercase hex>`.",
-            "- `metrics.json` or `metrics.csv` must include at least one numeric metric; "
-            "status-only payloads are rejected.",
+            "- `metrics.json` or `metrics.csv` must include at least one finite "
+            "numeric metric; status-only, TODO, NaN, and infinite payloads are rejected.",
             "- `git_sha_or_submodule_sha` must be a concrete clean revision without "
             "dirty, modified, unknown, or uncommitted markers.",
             "- SOTA wording requires matched-seed aggregate evidence across the proposed "

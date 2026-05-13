@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -209,26 +210,37 @@ def _coverage_summary(
 
 def _validate_metrics_file(path: Path) -> Tuple[str, ...]:
     issues: List[str] = []
+    text = path.read_text(encoding="utf-8")
+    if "TODO" in text.upper():
+        issues.append("metrics_path must not contain TODO placeholders")
     if path.suffix == ".json":
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload = json.loads(text)
         except json.JSONDecodeError as exc:
             return (f"metrics_path JSON is not parseable: {exc.msg}",)
         if payload in ({}, [], None):
             issues.append("metrics_path JSON must contain at least one metric")
-        elif not _contains_numeric_value(payload):
+        elif not _contains_finite_numeric_value(payload):
             issues.append("metrics_path JSON must contain at least one numeric metric")
+        if _contains_nonfinite_numeric_value(payload):
+            issues.append("metrics_path JSON numeric metrics must be finite")
     elif path.suffix == ".csv":
-        rows = list(csv.reader(path.read_text(encoding="utf-8").splitlines()))
+        rows = list(csv.reader(text.splitlines()))
         nonempty_rows = [row for row in rows if any(cell.strip() for cell in row)]
         if len(nonempty_rows) < 2:
             issues.append(
                 "metrics_path CSV must contain a header and at least one data row"
             )
         elif not any(
-            _is_numeric_cell(cell) for row in nonempty_rows[1:] for cell in row
+            _is_finite_numeric_cell(cell) for row in nonempty_rows[1:] for cell in row
         ):
             issues.append("metrics_path CSV must contain at least one numeric metric")
+        if any(
+            _is_nonfinite_numeric_cell(cell)
+            for row in nonempty_rows[1:]
+            for cell in row
+        ):
+            issues.append("metrics_path CSV numeric metrics must be finite")
     else:
         issues.append("metrics_path must point to .json or .csv")
     return tuple(issues)
@@ -258,24 +270,49 @@ def _validate_log_file(path: Path) -> Tuple[str, ...]:
     return ()
 
 
-def _contains_numeric_value(payload: Any) -> bool:
+def _contains_finite_numeric_value(payload: Any) -> bool:
     if isinstance(payload, bool):
         return False
     if isinstance(payload, (int, float)):
-        return True
+        return math.isfinite(payload)
     if isinstance(payload, Mapping):
-        return any(_contains_numeric_value(value) for value in payload.values())
+        return any(_contains_finite_numeric_value(value) for value in payload.values())
     if isinstance(payload, list):
-        return any(_contains_numeric_value(value) for value in payload)
+        return any(_contains_finite_numeric_value(value) for value in payload)
     return False
 
 
-def _is_numeric_cell(value: str) -> bool:
-    try:
-        float(value)
-    except ValueError:
+def _contains_nonfinite_numeric_value(payload: Any) -> bool:
+    if isinstance(payload, bool):
         return False
-    return True
+    if isinstance(payload, (int, float)):
+        return not math.isfinite(payload)
+    if isinstance(payload, Mapping):
+        return any(
+            _contains_nonfinite_numeric_value(value) for value in payload.values()
+        )
+    if isinstance(payload, list):
+        return any(_contains_nonfinite_numeric_value(value) for value in payload)
+    return False
+
+
+def _parse_numeric_cell(value: str) -> Optional[float]:
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _is_finite_numeric_cell(value: str) -> bool:
+    number = _parse_numeric_cell(value)
+    return number is not None and math.isfinite(number)
+
+
+def _is_nonfinite_numeric_cell(value: str) -> bool:
+    number = _parse_numeric_cell(value)
+    if number is None:
+        return False
+    return not math.isfinite(number)
 
 
 def _coerce_integer(value: Any) -> Optional[int]:

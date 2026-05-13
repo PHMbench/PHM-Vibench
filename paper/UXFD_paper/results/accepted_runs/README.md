@@ -22,7 +22,8 @@ python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --re
 Required per-run files:
 
 - `run_meta.yaml`
-- `metrics.json` or `metrics.csv` with at least one numeric metric
+- `metrics.json` or `metrics.csv` with at least one finite numeric metric and
+  no TODO placeholders
 - non-empty `run.log` with no TODO placeholders
 - parseable, non-empty YAML config evidence with no TODO placeholders
 
@@ -38,5 +39,5 @@ The preprocessing signature must match `sha256:<64 lowercase hex>` so
 same-protocol preprocessing can be traced without relying on prose.
 The SHA provenance must be a concrete clean revision and must not contain
 dirty, modified, unknown, or uncommitted markers.
-Status-only metric payloads are rejected because they cannot support IEEE
-Transactions result, ablation, or SOTA claims.
+Status-only, TODO, NaN, or infinite metric payloads are rejected because they
+cannot support IEEE Transactions result, ablation, or SOTA claims.
