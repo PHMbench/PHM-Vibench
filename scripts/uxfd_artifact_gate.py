@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -182,6 +183,11 @@ def _resolve_referenced_artifact_path(
     return candidate, tuple(issues)
 
 
+def _command_cuda_visible_devices(command: str) -> str:
+    match = re.search(r"(?:^|\s)CUDA_VISIBLE_DEVICES=([0-9,]+)(?:\s|$)", command)
+    return match.group(1) if match else ""
+
+
 def _validate_run_meta(path: Path) -> ArtifactRecord:
     issues: List[str] = []
     data = _load_yaml(path)
@@ -198,6 +204,18 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     cuda_visible_devices = str(data.get("cuda_visible_devices", ""))
     if cuda_visible_devices not in {"0", "1", "0,1"}:
         issues.append("cuda_visible_devices must be one of 0, 1, or 0,1")
+
+    phase = str(data.get("phase", ""))
+    command = str(data.get("command", ""))
+    command_devices = _command_cuda_visible_devices(command)
+    if phase != "top_representatives" and cuda_visible_devices in {"0", "1", "0,1"}:
+        if not command_devices:
+            issues.append("command must include CUDA_VISIBLE_DEVICES for non-top run")
+        elif command_devices != cuda_visible_devices:
+            issues.append(
+                "command CUDA_VISIBLE_DEVICES="
+                f"{command_devices} does not match cuda_visible_devices={cuda_visible_devices}"
+            )
 
     try:
         gpu_count = int(data.get("gpu_count", 0))

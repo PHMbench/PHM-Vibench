@@ -7,6 +7,7 @@ from scripts.uxfd_artifact_gate import (
     CONDITIONAL_RUN_META_FIELDS,
     QUEUE_METADATA_TO_RUN_META,
     REQUIRED_RUN_META_FIELDS,
+    _command_cuda_visible_devices,
     evaluate_artifact_gate,
     main,
     render_markdown,
@@ -275,6 +276,49 @@ def test_artifact_gate_checks_gpu_count_against_visible_devices(tmp_path: Path) 
         "gpu_count must be 2 for cuda_visible_devices=0,1"
         in report.records[0].issues
     )
+
+
+def test_command_cuda_visible_devices_parser() -> None:
+    assert _command_cuda_visible_devices("CUDA_VISIBLE_DEVICES=0 python run.py") == "0"
+    assert _command_cuda_visible_devices("cd run && CUDA_VISIBLE_DEVICES=0,1 python run.py") == "0,1"
+    assert _command_cuda_visible_devices("python run.py") == ""
+
+
+def test_artifact_gate_rejects_command_device_mismatch(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["command"] = data["command"].replace("CUDA_VISIBLE_DEVICES=0", "CUDA_VISIBLE_DEVICES=1")
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "command CUDA_VISIBLE_DEVICES=1 does not match cuda_visible_devices=0"
+        in report.records[0].issues
+    )
+
+
+def test_artifact_gate_allows_top_representative_command_source_without_cuda_prefix(
+    tmp_path: Path,
+) -> None:
+    _write_valid_artifact(tmp_path / "top" / "run0")
+    run_meta = tmp_path / "top" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["source_queue_id"] = "TOP-Q1-GTM"
+    data["phase"] = "top_representatives"
+    data["entry_id"] = "B04,B05,A04"
+    data["cuda_visible_devices"] = "0,1"
+    data["gpu_count"] = 2
+    data["command"] = "paper-local baseline_ablation_matrix.yaml entries B04/B05/A04"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is True
+    assert report.records[0].issues == ()
 
 
 def test_artifact_gate_rejects_empty_metrics_json(tmp_path: Path) -> None:

@@ -122,6 +122,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/low_tier_source_audit.md"),
     Path("paper/UXFD_paper/results/low_tier_source_audit.json"),
     Path("scripts/uxfd_low_tier_source_audit.py"),
+    Path("scripts/uxfd_artifact_gate.py"),
     Path("scripts/uxfd_goal_status.py"),
     Path("scripts/uxfd_objective_audit.py"),
     Path("scripts/uxfd_artifact_scaffold.py"),

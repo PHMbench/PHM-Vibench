@@ -230,6 +230,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/accepted_run_templates" in paths
     assert "paper/UXFD_paper/results/.gitignore" in paths
     assert "paper/UXFD_paper/results/low_tier_source_audit.json" in paths
+    assert "scripts/uxfd_artifact_gate.py" in paths
     assert "scripts/uxfd_artifact_scaffold.py" in paths
     assert "scripts/uxfd_goal_status.py" in paths
     assert "scripts/uxfd_low_tier_source_audit.py" in paths
