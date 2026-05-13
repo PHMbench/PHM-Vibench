@@ -52,6 +52,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert all("pending_owner_review" in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.next_action for item in dirty_items)
+    assert all("python -m scripts.uxfd_owner_review_gate" in item.next_action for item in dirty_items)
     assert all("submodule_dirty_triage.json" in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.evidence for item in dirty_items)

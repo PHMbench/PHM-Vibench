@@ -307,8 +307,10 @@ def evaluate_readiness_backlog(
                     "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
                     "paper owner after reading "
                     f"`{OWNER_REVIEW_RECOMMENDATIONS}` and filling "
-                    f"`{OWNER_REVIEW_DECISION_TEMPLATE}`. Commit only intentional source/docs; "
-                    "promote result artifacts only through the accepted artifact gate."
+                    f"`{OWNER_REVIEW_DECISION_TEMPLATE}`. Validate decisions with "
+                    "`python -m scripts.uxfd_owner_review_gate`. Commit only intentional "
+                    "source/docs; promote result artifacts only through the accepted "
+                    "artifact gate."
                 ),
                 evidence=(
                     "paper/UXFD_paper/results/submodule_dirty_triage.md,"
