@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 from scripts.uxfd_objective_audit import PARENT_GOAL_CHECKPOINT_PATHS
+from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
     DEFAULT_QUEUE,
@@ -83,6 +84,7 @@ def evaluate_readiness_backlog(
     artifact_root: Path = DEFAULT_ARTIFACT_ROOT,
 ) -> ReadinessBacklogReport:
     submission = evaluate_submission_gate(queue_path=queue_path, artifact_root=artifact_root)
+    recent_work = evaluate_recent_work_gate(queue_path=queue_path)
     dirty = evaluate_dirty_triage()
     paper_actions = _paper_action_map(submission.next_actions)
     items: List[BacklogItem] = []
@@ -198,6 +200,30 @@ def evaluate_readiness_backlog(
                     "submission-ready claim."
                 ),
                 evidence="paper/UXFD_paper/results/low_tier_source_audit.md",
+            )
+        )
+
+    for binding in recent_work.bindings:
+        if binding.evidence_ready:
+            continue
+        proxy_entries = ", ".join(binding.local_proxy_matrix_entries)
+        items.append(
+            BacklogItem(
+                item_id=binding.binding_id,
+                priority=5,
+                scope=binding.paper_id,
+                category="top-representative-evidence",
+                blocker=(
+                    f"{binding.external_work_id} binding is {binding.status}; "
+                    f"local proxy entries={proxy_entries}; "
+                    f"exact_status={binding.exact_reproduction_status}"
+                ),
+                next_action=(
+                    "After Q0 GPU preflight passes, run and promote accepted artifacts for "
+                    "the listed local proxy matrix entries. Keep the claim representative-only "
+                    "unless exact external code/config evidence is integrated."
+                ),
+                evidence="paper/UXFD_paper/results/recent_work_gate_current.md",
             )
         )
 
