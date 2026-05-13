@@ -185,6 +185,13 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert "Local Proxy Entries" in text
     assert "`B02, A05, A07`" in text
     assert "representative only" in text
+    assert "## Evidence Activation Workflow" in text
+    assert "Policy and source verification are literature hygiene only" in text
+    assert "`paper/UXFD_paper/results/accepted_runs`" in text
+    assert "external exact code/config is integrated" in text
+    assert "`python -m scripts.uxfd_artifact_gate`" in text
+    assert "`python -m scripts.uxfd_sota_gate`" in text
+    assert "`python -m scripts.uxfd_recent_work_gate`" in text
     assert "## Blockers" in text
 
 

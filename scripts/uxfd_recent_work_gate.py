@@ -533,7 +533,26 @@ def render_markdown(report: RecentWorkGateReport) -> str:
             f"`{proxy_entries}` | {exact_status} | `{binding.status}` | "
             f"`{binding.evidence_ready}` |"
         )
-    lines.extend(["", "## Blockers", ""])
+    lines.extend(
+        [
+            "",
+            "## Evidence Activation Workflow",
+            "",
+            "- Policy and source verification are literature hygiene only; they do not make any "
+            "TOP representative `evidence_ready`.",
+            "- A TOP representative binding stays representative-only until accepted "
+            "`run_meta.yaml` and `metrics.json` artifacts exist under "
+            "`paper/UXFD_paper/results/accepted_runs`.",
+            "- Local proxy entries can support only representative claims unless external exact "
+            "code/config is integrated and accepted exact artifacts are present.",
+            "- After GPU runs finish, rerun `python -m scripts.uxfd_artifact_gate`, "
+            "`python -m scripts.uxfd_sota_gate`, and "
+            "`python -m scripts.uxfd_recent_work_gate` before changing any binding status.",
+            "",
+            "## Blockers",
+            "",
+        ]
+    )
     for blocker in report.blockers:
         lines.append(f"- {blocker}")
     return "\n".join(lines) + "\n"

@@ -44,6 +44,13 @@
 | `TOP-Q6-TIMESLIVER` | `Neuralsymbolic_theory` | `RWTOP2026-TIMESLIVER` | `A01, A05, A06, A07` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
 | `TOP-Q7-TIMESEG` | `LLM_Explainable_FD_Toolkit` | `RWTOP2026-TIMESEG` | `B02, A05, A07` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
 
+## Evidence Activation Workflow
+
+- Policy and source verification are literature hygiene only; they do not make any TOP representative `evidence_ready`.
+- A TOP representative binding stays representative-only until accepted `run_meta.yaml` and `metrics.json` artifacts exist under `paper/UXFD_paper/results/accepted_runs`.
+- Local proxy entries can support only representative claims unless external exact code/config is integrated and accepted exact artifacts are present.
+- After GPU runs finish, rerun `python -m scripts.uxfd_artifact_gate`, `python -m scripts.uxfd_sota_gate`, and `python -m scripts.uxfd_recent_work_gate` before changing any binding status.
+
 ## Blockers
 
 - TOP-Q1-GTM: TOP representative artifacts are still pending_gpu_and_artifacts
