@@ -27,6 +27,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert "numeric metrics" in report.items[1].next_action
     assert "`source_tree_status: clean`" in report.items[1].next_action
     assert "clean SHA provenance" in report.items[1].next_action
+    assert "paper-specific `minimum_seeds` distinct accepted seeds" in report.items[1].next_action
     assert "matched-seed aggregate statistics" in report.items[1].next_action
     assert "sota_aggregate.yaml" in report.items[2].next_action
     assert "mean/std/95% CI" in report.items[2].next_action
