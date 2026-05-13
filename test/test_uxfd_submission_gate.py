@@ -33,6 +33,9 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.low_tier_source_ready is True
     assert report.low_tier_source_blocker_count == 0
     assert report.low_tier_source_triage_count > 0
+    assert report.submodule_dirty_clean is False
+    assert report.submodule_dirty_entries > 0
+    assert report.submodule_dirty_submodules == 3
     assert len(report.papers) == 7
     assert report.queue_summary["total"] == 104
     assert all(paper.baselines >= 6 for paper in report.papers)
@@ -42,6 +45,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert any("gpu queue blocked" in item for item in report.blockers)
     assert any("artifact gate blocked" in item for item in report.blockers)
     assert any("recent-work evidence blocked" in item for item in report.blockers)
+    assert any("submodule dirty triage blocked" in item for item in report.blockers)
     assert not any("low-tier source hygiene blocked" in item for item in report.blockers)
     assert len(report.next_actions) == 7
     assert {action["paper_id"] for action in report.next_actions} == {
@@ -66,6 +70,10 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
         == "met"
     )
     assert checklist["low-tier source hygiene"]["status"] == "met"
+    assert (
+        checklist["paper submodule working trees clean before handoff"]["status"]
+        == "not_met"
+    )
     assert checklist["TOP representative accepted artifacts"]["status"] == "not_met"
     assert checklist["accepted run artifact metadata"]["status"] == "not_met"
     assert checklist["submission readiness achieved"]["status"] == "not_met"
@@ -99,6 +107,9 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["low_tier_source_ready"] is True
     assert payload["low_tier_source_blocker_count"] == 0
     assert payload["low_tier_source_triage_count"] > 0
+    assert payload["submodule_dirty_clean"] is False
+    assert payload["submodule_dirty_entries"] > 0
+    assert payload["submodule_dirty_submodules"] == 3
     assert len(payload["papers"]) == 7
     assert len(payload["next_actions"]) == 7
     assert len(payload["objective_checklist"]) >= 15
@@ -112,6 +123,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "Recent-work policy ready: `True`" in text
     assert "Recent-work evidence ready: `False`" in text
     assert "Low-tier source hygiene ready: `True`" in text
+    assert "Submodule dirty clean: `False`" in text
     assert "## Blockers" in text
     assert "## Next Actions" in text
     assert "## Objective Checklist" in text

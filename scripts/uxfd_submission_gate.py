@@ -15,6 +15,7 @@ from scripts.uxfd_low_tier_source_audit import (
     evaluate_low_tier_source_audit,
 )
 from scripts.uxfd_recent_work_gate import RecentWorkGateReport, evaluate_recent_work_gate
+from scripts.uxfd_submodule_dirty_triage import DirtyTriageReport, evaluate_dirty_triage
 
 
 GOAL_DIR = Path("paper/UXFD_paper/goal")
@@ -88,6 +89,9 @@ class SubmissionGateReport:
     low_tier_source_blocker_count: int
     low_tier_source_triage_count: int
     low_tier_source_blockers: Tuple[str, ...]
+    submodule_dirty_clean: bool
+    submodule_dirty_entries: int
+    submodule_dirty_submodules: int
     queue_can_execute: bool
     queue_resource_reason: str
     queue_summary: Mapping[str, Any]
@@ -160,6 +164,7 @@ def _objective_checklist(
     artifact_report: ArtifactGateReport,
     recent_report: RecentWorkGateReport,
     low_tier_report: LowTierSourceAuditReport,
+    dirty_report: DirtyTriageReport,
 ) -> Tuple[Mapping[str, str], ...]:
     items: List[Mapping[str, str]] = []
     for filename in REQUIRED_GOAL_FILES:
@@ -236,6 +241,11 @@ def _objective_checklist(
                 "requirement": "low-tier source hygiene",
                 "evidence": "paper/UXFD_paper/results/low_tier_source_audit.md",
                 "status": "met" if low_tier_report.ready else "not_met",
+            },
+            {
+                "requirement": "paper submodule working trees clean before handoff",
+                "evidence": "paper/UXFD_paper/results/submodule_dirty_triage.md",
+                "status": "met" if dirty_report.clean else "not_met",
             },
             {
                 "requirement": "TOP representative accepted artifacts",
@@ -337,6 +347,13 @@ def evaluate_submission_gate(
             f"{low_tier_report.blocker_count} blocker references and "
             f"{low_tier_report.triage_count} triage markers"
         )
+    dirty_report = evaluate_dirty_triage()
+    if not dirty_report.clean:
+        blockers.append(
+            "submodule dirty triage blocked: "
+            f"{len(dirty_report.entries)} dirty entries across "
+            f"{len(dirty_report.summaries)} paper submodules"
+        )
     if not _paper07_rejection_recovery_ready():
         blockers.append("Paper07 rejection-recovery innovation contract blocked")
 
@@ -352,6 +369,7 @@ def evaluate_submission_gate(
             artifact_report,
             recent_report,
             low_tier_report,
+            dirty_report,
         ),
         artifact_gate_accepted=artifact_report.accepted,
         artifact_gate_root=artifact_report.artifact_root,
@@ -366,6 +384,9 @@ def evaluate_submission_gate(
         low_tier_source_blocker_count=low_tier_report.blocker_count,
         low_tier_source_triage_count=low_tier_report.triage_count,
         low_tier_source_blockers=low_tier_report.blockers,
+        submodule_dirty_clean=dirty_report.clean,
+        submodule_dirty_entries=len(dirty_report.entries),
+        submodule_dirty_submodules=len(dirty_report.summaries),
         queue_can_execute=queue_validation.can_execute,
         queue_resource_reason=queue_validation.resource_reason,
         queue_summary=summarize_rows(queue_rows),
@@ -391,6 +412,8 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Low-tier source hygiene ready: `{report.low_tier_source_ready}`",
         f"- Low-tier source blockers: `{report.low_tier_source_blocker_count}`",
         f"- Low-tier source triage markers: `{report.low_tier_source_triage_count}`",
+        f"- Submodule dirty clean: `{report.submodule_dirty_clean}`",
+        f"- Submodule dirty entries: `{report.submodule_dirty_entries}`",
         f"- Blocking findings: `{len(report.blockers)}`",
         f"- Queue dry-run entries: `{report.queue_summary['total']}`",
         "",
