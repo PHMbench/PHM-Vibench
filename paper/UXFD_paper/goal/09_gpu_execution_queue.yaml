@@ -57,6 +57,7 @@ accepted_artifact_contract:
   run_meta: "run_meta.yaml"
   metrics: "metrics.json or metrics.csv with at least one numeric metric"
   numeric_metrics_required: true
+  sha_provenance: "git_sha_or_submodule_sha must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers"
   logs: "stdout/stderr or trainer log"
   result_table: "paper-local accepted table source"
   failure_record: "required for OOM, dependency, data, or resource-blocked runs"

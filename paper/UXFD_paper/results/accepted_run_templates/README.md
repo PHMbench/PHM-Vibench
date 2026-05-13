@@ -5,6 +5,7 @@
 - Status: templates only; not accepted evidence.
 - Accepted metrics rule: `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 - Source-tree rule: accepted runs must set `source_tree_status: clean`.
+- Provenance rule: `git_sha_or_submodule_sha` must be a concrete SHA record without dirty, modified, unknown, or uncommitted markers.
 
 | Queue | Paper | Phase | Entry | GPU | Template |
 |---|---|---|---|---:|---|

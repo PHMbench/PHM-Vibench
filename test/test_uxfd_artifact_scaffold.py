@@ -28,7 +28,9 @@ def _assert_no_disallowed_command_markers(data: dict, template_path: Path) -> No
 
 
 def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -> None:
-    report = create_scaffold(output_root=tmp_path / "templates", queue_path=DEFAULT_QUEUE)
+    report = create_scaffold(
+        output_root=tmp_path / "templates", queue_path=DEFAULT_QUEUE
+    )
     queue_rows = expand_queue(DEFAULT_QUEUE)
 
     assert len(build_launch_plan(queue_rows)) == 97
@@ -50,7 +52,9 @@ def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -
     assert str(data["source_tree_status"]).startswith("TODO")
     _assert_no_disallowed_command_markers(data, first)
 
-    top_records = [record for record in report.records if record.phase == "top_representatives"]
+    top_records = [
+        record for record in report.records if record.phase == "top_representatives"
+    ]
     assert len(top_records) == 7
     top_template = Path(top_records[0].template_path)
     top_data = yaml.safe_load(top_template.read_text(encoding="utf-8"))
@@ -88,6 +92,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     readme = (output_root / "README.md").read_text(encoding="utf-8")
     assert "at least one numeric metric" in readme
     assert "source_tree_status: clean" in readme
+    assert "dirty, modified, unknown, or uncommitted" in readme
     assert gate.accepted is False
     assert any("no run_meta.yaml" in blocker for blocker in gate.blockers)
 
@@ -100,6 +105,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     assert manifest_path.exists()
     assert "at least one numeric metric" in readme
     assert "source_tree_status: clean" in readme
+    assert "dirty, modified, unknown, or uncommitted" in readme
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert len(build_launch_plan(queue_rows)) == 97
     assert len(manifest) == len(queue_rows) == 104
@@ -116,7 +122,9 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     }
     queue_keys = set()
     for row in build_launch_plan(queue_rows):
-        queue_keys.add((row.queue_id, row.paper_id, row.phase, row.entry_id, row.device))
+        queue_keys.add(
+            (row.queue_id, row.paper_id, row.phase, row.entry_id, row.device)
+        )
     for row in queue_rows:
         if row.phase == "top_representatives":
             queue_keys.add((row.queue_id, row.paper_id, row.phase, row.entry_id, "0,1"))

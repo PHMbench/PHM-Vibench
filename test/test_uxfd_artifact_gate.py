@@ -105,7 +105,9 @@ def test_artifact_gate_rejects_unknown_queue_coverage_key(tmp_path: Path) -> Non
 
     assert report.records[0].accepted is True
     assert report.covered_queue_runs == 0
-    assert any("unknown accepted run_meta.yaml keys" in item for item in report.blockers)
+    assert any(
+        "unknown accepted run_meta.yaml keys" in item for item in report.blockers
+    )
 
 
 def test_artifact_gate_rejects_duplicate_queue_coverage_key(tmp_path: Path) -> None:
@@ -120,7 +122,9 @@ def test_artifact_gate_rejects_duplicate_queue_coverage_key(tmp_path: Path) -> N
 
     assert all(record.accepted for record in report.records)
     assert report.covered_queue_runs == 1
-    assert any("duplicate accepted run_meta.yaml keys" in item for item in report.blockers)
+    assert any(
+        "duplicate accepted run_meta.yaml keys" in item for item in report.blockers
+    )
 
 
 def test_artifact_gate_rejects_command_mismatch_for_queue_key(tmp_path: Path) -> None:
@@ -138,7 +142,9 @@ def test_artifact_gate_rejects_command_mismatch_for_queue_key(tmp_path: Path) ->
 
     assert report.records[0].accepted is True
     assert report.covered_queue_runs == 1
-    assert any("command does not match queue command" in item for item in report.blockers)
+    assert any(
+        "command does not match queue command" in item for item in report.blockers
+    )
 
 
 def test_artifact_gate_markdown_reports_queue_coverage_summary(tmp_path: Path) -> None:
@@ -184,7 +190,9 @@ def test_artifact_gate_blocks_missing_metadata_and_missing_root(tmp_path: Path) 
 
     run_dir = tmp_path / "bad" / "run0"
     run_dir.mkdir(parents=True)
-    (run_dir / "run_meta.yaml").write_text("cuda_visible_devices: '2'\n", encoding="utf-8")
+    (run_dir / "run_meta.yaml").write_text(
+        "cuda_visible_devices: '2'\n", encoding="utf-8"
+    )
 
     report = evaluate_artifact_gate(tmp_path / "bad")
     assert report.accepted is False
@@ -227,7 +235,9 @@ def test_artifact_gate_rejects_template_placeholders(tmp_path: Path) -> None:
 
     assert report.accepted is False
     assert report.records[0].accepted is False
-    assert any("accepted_evidence must be true" in item for item in report.records[0].issues)
+    assert any(
+        "accepted_evidence must be true" in item for item in report.records[0].issues
+    )
     assert any("TODO" in item for item in report.records[0].issues)
 
 
@@ -275,8 +285,7 @@ def test_artifact_gate_checks_gpu_count_against_visible_devices(tmp_path: Path) 
     assert report.accepted is False
     assert report.records[0].accepted is False
     assert (
-        "gpu_count must be 2 for cuda_visible_devices=0,1"
-        in report.records[0].issues
+        "gpu_count must be 2 for cuda_visible_devices=0,1" in report.records[0].issues
     )
 
 
@@ -308,6 +317,20 @@ def test_artifact_gate_rejects_dirty_source_tree_status(tmp_path: Path) -> None:
     assert "source_tree_status must be clean" in report.records[0].issues
 
 
+def test_artifact_gate_rejects_dirty_sha_provenance_markers(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["git_sha_or_submodule_sha"] = "abc123-dirty"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "git_sha_or_submodule_sha must not contain dirty" in report.records[0].issues
+
+
 def test_artifact_gate_rejects_smoke_demo_or_pending_protocol_markers(
     tmp_path: Path,
 ) -> None:
@@ -333,7 +356,12 @@ def test_artifact_gate_rejects_smoke_demo_or_pending_protocol_markers(
 
 def test_command_cuda_visible_devices_parser() -> None:
     assert _command_cuda_visible_devices("CUDA_VISIBLE_DEVICES=0 python run.py") == "0"
-    assert _command_cuda_visible_devices("cd run && CUDA_VISIBLE_DEVICES=0,1 python run.py") == "0,1"
+    assert (
+        _command_cuda_visible_devices(
+            "cd run && CUDA_VISIBLE_DEVICES=0,1 python run.py"
+        )
+        == "0,1"
+    )
     assert _command_cuda_visible_devices("python run.py") == ""
 
 
@@ -341,7 +369,9 @@ def test_artifact_gate_rejects_command_device_mismatch(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
     run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
     data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
-    data["command"] = data["command"].replace("CUDA_VISIBLE_DEVICES=0", "CUDA_VISIBLE_DEVICES=1")
+    data["command"] = data["command"].replace(
+        "CUDA_VISIBLE_DEVICES=0", "CUDA_VISIBLE_DEVICES=1"
+    )
     run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
     report = evaluate_artifact_gate(tmp_path)
@@ -384,7 +414,9 @@ def test_artifact_gate_rejects_empty_metrics_json(tmp_path: Path) -> None:
 
     assert report.accepted is False
     assert report.records[0].accepted is False
-    assert "metrics_path JSON must contain at least one metric" in report.records[0].issues
+    assert (
+        "metrics_path JSON must contain at least one metric" in report.records[0].issues
+    )
 
 
 def test_artifact_gate_rejects_json_without_numeric_metrics(tmp_path: Path) -> None:
@@ -407,7 +439,9 @@ def test_artifact_gate_rejects_json_without_numeric_metrics(tmp_path: Path) -> N
 def test_artifact_gate_accepts_metrics_csv_with_data_row(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
     run_dir = tmp_path / "paper07" / "run0"
-    (run_dir / "metrics.csv").write_text("metric,value\naccuracy,1.0\n", encoding="utf-8")
+    (run_dir / "metrics.csv").write_text(
+        "metric,value\naccuracy,1.0\n", encoding="utf-8"
+    )
     run_meta = run_dir / "run_meta.yaml"
     data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
     data["metrics_path"] = "metrics.csv"
@@ -475,10 +509,15 @@ def test_artifact_gate_rejects_referenced_paths_outside_run_dir(tmp_path: Path) 
     )
 
 
-def test_artifact_gate_cli_writes_json_and_preserves_blocked_exit(tmp_path: Path) -> None:
+def test_artifact_gate_cli_writes_json_and_preserves_blocked_exit(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "gate" / "artifact_gate.json"
 
-    assert main([str(tmp_path / "empty"), "--format", "json", "--output", str(output)]) == 2
+    assert (
+        main([str(tmp_path / "empty"), "--format", "json", "--output", str(output)])
+        == 2
+    )
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["accepted"] is False

@@ -79,6 +79,10 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "source_tree_status clean" in items[
         "accepted artifacts require clean source trees"
     ].details
+    assert items["accepted artifacts require clean SHA provenance"].status == "met"
+    assert "dirty SHA provenance" in items[
+        "accepted artifacts require clean SHA provenance"
+    ].details
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"

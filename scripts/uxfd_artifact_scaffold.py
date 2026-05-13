@@ -172,7 +172,9 @@ def create_scaffold(
         json.dumps([asdict(record) for record in records], indent=2) + "\n",
         encoding="utf-8",
     )
-    (output_root / "README.md").write_text(render_markdown(records, output_root), encoding="utf-8")
+    (output_root / "README.md").write_text(
+        render_markdown(records, output_root), encoding="utf-8"
+    )
 
     return ArtifactScaffoldReport(
         template_root=str(output_root),
@@ -191,10 +193,14 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         f"- Templates: `{len(records)}`",
         "- Status: templates only; not accepted evidence.",
         (
-        "- Accepted metrics rule: `metrics.json` or `metrics.csv` must include "
-        "at least one numeric metric; status-only payloads are rejected."
+            "- Accepted metrics rule: `metrics.json` or `metrics.csv` must include "
+            "at least one numeric metric; status-only payloads are rejected."
         ),
         "- Source-tree rule: accepted runs must set `source_tree_status: clean`.",
+        (
+            "- Provenance rule: `git_sha_or_submodule_sha` must be a concrete SHA "
+            "record without dirty, modified, unknown, or uncommitted markers."
+        ),
         "",
         "| Queue | Paper | Phase | Entry | GPU | Template |",
         "|---|---|---|---|---:|---|",
@@ -212,7 +218,9 @@ def build_payload(report: ArtifactScaffoldReport) -> Mapping[str, Any]:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Create UXFD accepted-run metadata templates")
+    parser = argparse.ArgumentParser(
+        description="Create UXFD accepted-run metadata templates"
+    )
     parser.add_argument("--queue", type=Path, default=DEFAULT_QUEUE)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_TEMPLATE_ROOT)
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")

@@ -80,7 +80,8 @@ For each completed launch row:
 The artifact gate rejects `accepted_evidence: false`, `TODO` placeholders,
 missing files, non-4090 GPU metadata, invalid CUDA device IDs, and incomplete
 queue coverage. It also rejects JSON or CSV metric files that contain no numeric
-metric, and it rejects run metadata from dirty source trees.
+metric, run metadata from dirty source trees, and SHA provenance fields that
+contain dirty, modified, unknown, or uncommitted markers.
 
 ## 5. Gates
 
