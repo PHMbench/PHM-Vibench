@@ -300,6 +300,10 @@ def test_static_resource_preflight_matches_live_snapshot() -> None:
     queue = yaml.safe_load(DEFAULT_QUEUE.read_text(encoding="utf-8"))
     payload = json.loads(PERSISTED_LIVE_PREFLIGHT.read_text(encoding="utf-8"))
 
+    artifact_contract = queue["accepted_artifact_contract"]
+    assert artifact_contract["numeric_metrics_required"] is True
+    assert "at least one numeric metric" in artifact_contract["metrics"]
+
     current = queue["resource_preflight"]["current_session_result"]
     live = payload["live_preflight"]
 

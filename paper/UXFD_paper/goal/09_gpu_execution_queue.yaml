@@ -54,7 +54,8 @@ accepted_run_metadata_required:
 
 accepted_artifact_contract:
   run_meta: "run_meta.yaml"
-  metrics: "metrics.json or metrics.csv"
+  metrics: "metrics.json or metrics.csv with at least one numeric metric"
+  numeric_metrics_required: true
   logs: "stdout/stderr or trainer log"
   result_table: "paper-local accepted table source"
   failure_record: "required for OOM, dependency, data, or resource-blocked runs"
