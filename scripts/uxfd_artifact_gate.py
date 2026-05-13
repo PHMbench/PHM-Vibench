@@ -171,14 +171,38 @@ def _validate_metrics_file(path: Path) -> Tuple[str, ...]:
             return (f"metrics_path JSON is not parseable: {exc.msg}",)
         if payload in ({}, [], None):
             issues.append("metrics_path JSON must contain at least one metric")
+        elif not _contains_numeric_value(payload):
+            issues.append("metrics_path JSON must contain at least one numeric metric")
     elif path.suffix == ".csv":
         rows = list(csv.reader(path.read_text(encoding="utf-8").splitlines()))
         nonempty_rows = [row for row in rows if any(cell.strip() for cell in row)]
         if len(nonempty_rows) < 2:
             issues.append("metrics_path CSV must contain a header and at least one data row")
+        elif not any(_is_numeric_cell(cell) for row in nonempty_rows[1:] for cell in row):
+            issues.append("metrics_path CSV must contain at least one numeric metric")
     else:
         issues.append("metrics_path must point to .json or .csv")
     return tuple(issues)
+
+
+def _contains_numeric_value(payload: Any) -> bool:
+    if isinstance(payload, bool):
+        return False
+    if isinstance(payload, (int, float)):
+        return True
+    if isinstance(payload, Mapping):
+        return any(_contains_numeric_value(value) for value in payload.values())
+    if isinstance(payload, list):
+        return any(_contains_numeric_value(value) for value in payload)
+    return False
+
+
+def _is_numeric_cell(value: str) -> bool:
+    try:
+        float(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _resolve_referenced_artifact_path(

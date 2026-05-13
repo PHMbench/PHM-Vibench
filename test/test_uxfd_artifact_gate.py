@@ -371,6 +371,23 @@ def test_artifact_gate_rejects_empty_metrics_json(tmp_path: Path) -> None:
     assert "metrics_path JSON must contain at least one metric" in report.records[0].issues
 
 
+def test_artifact_gate_rejects_json_without_numeric_metrics(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    (tmp_path / "paper07" / "run0" / "metrics.json").write_text(
+        '{"status": "ok", "notes": ["accepted protocol"]}\n',
+        encoding="utf-8",
+    )
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path JSON must contain at least one numeric metric"
+        in report.records[0].issues
+    )
+
+
 def test_artifact_gate_accepts_metrics_csv_with_data_row(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
     run_dir = tmp_path / "paper07" / "run0"
@@ -384,6 +401,25 @@ def test_artifact_gate_accepts_metrics_csv_with_data_row(tmp_path: Path) -> None
 
     assert report.accepted is True
     assert report.records[0].issues == ()
+
+
+def test_artifact_gate_rejects_csv_without_numeric_metrics(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_dir = tmp_path / "paper07" / "run0"
+    (run_dir / "metrics.csv").write_text("metric,value\nstatus,ok\n", encoding="utf-8")
+    run_meta = run_dir / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["metrics_path"] = "metrics.csv"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "metrics_path CSV must contain at least one numeric metric"
+        in report.records[0].issues
+    )
 
 
 def test_artifact_gate_rejects_absolute_referenced_paths(tmp_path: Path) -> None:
