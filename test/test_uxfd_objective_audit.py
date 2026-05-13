@@ -82,6 +82,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["submodule dirty triage JSON report"].status == "met"
     assert items["submodule owner-review recommendations"].status == "met"
     assert items["submodule owner-review decision template"].status == "met"
+    assert items["submodule owner-review decision file"].status == "not_met"
     assert items["submodule owner-review gate JSON report"].status == "met"
     assert items["submodule owner-review gate markdown report"].status == "met"
     assert items["parent result artifact triage report"].status == "met"

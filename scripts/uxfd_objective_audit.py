@@ -10,7 +10,7 @@ from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 import yaml
 
-from scripts.uxfd_owner_review_gate import evaluate_owner_review_gate
+from scripts.uxfd_owner_review_gate import DEFAULT_DECISION_FILE, evaluate_owner_review_gate
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
@@ -107,6 +107,10 @@ EXECUTION_ARTIFACTS = (
     (
         "submodule owner-review decision template",
         Path("paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"),
+    ),
+    (
+        "submodule owner-review decision file",
+        DEFAULT_DECISION_FILE,
     ),
     (
         "submodule owner-review gate JSON report",
