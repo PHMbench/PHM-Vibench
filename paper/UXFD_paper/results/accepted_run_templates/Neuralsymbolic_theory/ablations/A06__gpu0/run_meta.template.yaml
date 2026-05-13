@@ -18,6 +18,7 @@ command: CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py && python script
 original_command: python code/validate_mapping.py && python scripts/build_source_backed_mapping.py
 queue_config_path: 'TODO: record config path'
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+source_tree_status: 'TODO: clean after git status --porcelain'
 config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json

@@ -24,6 +24,7 @@ original_command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable
   4 --max-test-batches 4
 queue_config_path: 'TODO: record config path'
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+source_tree_status: 'TODO: clean after git status --porcelain'
 config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json

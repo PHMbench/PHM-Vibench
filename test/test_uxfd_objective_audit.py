@@ -75,6 +75,10 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "exit 2" in items["GPU launch scripts enforce static queue gate"].details
     assert items["accepted metrics contain numeric values"].status == "met"
     assert "numeric metric" in items["accepted metrics contain numeric values"].details
+    assert items["accepted artifacts require clean source trees"].status == "met"
+    assert "source_tree_status clean" in items[
+        "accepted artifacts require clean source trees"
+    ].details
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"

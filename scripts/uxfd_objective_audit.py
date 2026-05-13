@@ -111,6 +111,10 @@ ARTIFACT_GATE_NUMERIC_METRIC_NEEDLES = (
     "metrics_path JSON must contain at least one numeric metric",
     "metrics_path CSV must contain at least one numeric metric",
 )
+SOURCE_TREE_STATUS_NEEDLES = (
+    "source_tree_status must be clean",
+    "source_tree_status",
+)
 
 PAPER_SUBMODULES = (
     Path("paper/UXFD_paper/Explainable_FD_Toolkit"),
@@ -385,6 +389,49 @@ def _numeric_metrics_contract_item(
     )
 
 
+def _source_tree_status_contract_item(
+    queue_path: Path = DEFAULT_QUEUE,
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+    artifact_scaffold_path: Path = Path("scripts/uxfd_artifact_scaffold.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    if not queue_path.exists():
+        missing.append(str(queue_path))
+        queue: Mapping[str, Any] = {}
+    else:
+        queue = yaml.safe_load(queue_path.read_text(encoding="utf-8"))
+
+    if "source tree status" not in queue.get("accepted_run_metadata_required", []):
+        missing.append("accepted_run_metadata_required.source tree status")
+
+    for path, needles in (
+        (artifact_gate_path, SOURCE_TREE_STATUS_NEEDLES),
+        (artifact_scaffold_path, ("source_tree_status",)),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="accepted artifacts require clean source trees",
+            evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="accepted artifacts require clean source trees",
+        evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+        status="met",
+        details="queue contract, artifact gate, and templates require source_tree_status clean",
+    )
+
+
 def _subagent_execution_item(
     team_dir: Path = CLAUDE_TEAM_DIR,
     launch_blocked: bool = False,
@@ -481,6 +528,7 @@ def evaluate_objective_audit(
         items.append(_exists_item(requirement, path))
     items.append(_launch_scripts_static_gate_item())
     items.append(_numeric_metrics_contract_item(queue_path=queue_path))
+    items.append(_source_tree_status_contract_item(queue_path=queue_path))
 
     paper07_rejection_ready = _text_contains(
         PAPER07_GOAL,

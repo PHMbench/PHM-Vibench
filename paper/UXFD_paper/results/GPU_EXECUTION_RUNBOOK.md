@@ -71,7 +71,8 @@ For each completed launch row:
    `run_meta.yaml`.
 3. Fill every `TODO` value.
 4. Set `accepted_evidence: true` only after metrics, logs, config evidence, GPU
-   metadata, seed, split, runtime, command, and SHA provenance are present.
+   metadata, seed, split, runtime, command, SHA provenance, and
+   `source_tree_status: clean` are present.
 5. Place `metrics.json` or `metrics.csv`, `run.log`, and the referenced config
    evidence beside `run_meta.yaml`. The metrics file must contain at least one
    numeric metric; status-only payloads are rejected.
@@ -79,7 +80,7 @@ For each completed launch row:
 The artifact gate rejects `accepted_evidence: false`, `TODO` placeholders,
 missing files, non-4090 GPU metadata, invalid CUDA device IDs, and incomplete
 queue coverage. It also rejects JSON or CSV metric files that contain no numeric
-metric.
+metric, and it rejects run metadata from dirty source trees.
 
 ## 5. Gates
 

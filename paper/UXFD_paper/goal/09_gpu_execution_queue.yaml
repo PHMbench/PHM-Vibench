@@ -47,6 +47,7 @@ accepted_run_metadata_required:
   - "runtime"
   - "command"
   - "git SHA or submodule SHA"
+  - "source tree status"
   - "config path"
   - "log path"
   - "metrics path"

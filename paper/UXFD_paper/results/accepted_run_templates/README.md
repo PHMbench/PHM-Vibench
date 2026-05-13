@@ -4,6 +4,7 @@
 - Templates: `104`
 - Status: templates only; not accepted evidence.
 - Accepted metrics rule: `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
+- Source-tree rule: accepted runs must set `source_tree_status: clean`.
 
 | Queue | Paper | Phase | Entry | GPU | Template |
 |---|---|---|---|---:|---|

@@ -45,6 +45,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
                 "runtime: '00:01:00'",
                 "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0'",
                 "git_sha_or_submodule_sha: 'abc123'",
+                "source_tree_status: 'clean'",
                 "config_path: 'config.yaml'",
                 "log_path: 'run.log'",
                 "metrics_path: 'metrics.json'",
@@ -212,6 +213,7 @@ def test_artifact_gate_rejects_template_placeholders(tmp_path: Path) -> None:
                 "runtime: 'TODO'",
                 "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config demo.yaml'",
                 "git_sha_or_submodule_sha: 'TODO'",
+                "source_tree_status: 'TODO'",
                 "config_path: 'config.yaml'",
                 "log_path: 'run.log'",
                 "metrics_path: 'metrics.json'",
@@ -290,6 +292,20 @@ def test_artifact_gate_requires_explicit_rtx_4090_gpu_model(tmp_path: Path) -> N
     assert report.accepted is False
     assert report.records[0].accepted is False
     assert "gpu_model must record RTX 4090-class hardware" in report.records[0].issues
+
+
+def test_artifact_gate_rejects_dirty_source_tree_status(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["source_tree_status"] = "dirty"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "source_tree_status must be clean" in report.records[0].issues
 
 
 def test_artifact_gate_rejects_smoke_demo_or_pending_protocol_markers(

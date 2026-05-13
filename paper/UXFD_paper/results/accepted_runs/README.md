@@ -20,6 +20,7 @@ Required per-run files:
 
 Every `run_meta.yaml` must record the queue identifiers, local GPU binding,
 RTX 4090 metadata, seed, split, preprocessing signature, runtime, command,
-config path, log path, metrics path, and git or submodule SHA provenance.
+config path, log path, metrics path, git or submodule SHA provenance, and
+`source_tree_status: clean`.
 Status-only metric payloads are rejected because they cannot support IEEE
 Transactions result, ablation, or SOTA claims.

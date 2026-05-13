@@ -47,6 +47,7 @@ def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -
     assert data["command"].startswith("CUDA_VISIBLE_DEVICES=")
     assert data["config_path"] == "config.yaml"
     assert data["queue_config_path"].startswith("paper/UXFD_paper/")
+    assert str(data["source_tree_status"]).startswith("TODO")
     _assert_no_disallowed_command_markers(data, first)
 
     top_records = [record for record in report.records if record.phase == "top_representatives"]
@@ -86,6 +87,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     assert len(manifest) == len(payload["records"])
     readme = (output_root / "README.md").read_text(encoding="utf-8")
     assert "at least one numeric metric" in readme
+    assert "source_tree_status: clean" in readme
     assert gate.accepted is False
     assert any("no run_meta.yaml" in blocker for blocker in gate.blockers)
 
@@ -97,6 +99,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
 
     assert manifest_path.exists()
     assert "at least one numeric metric" in readme
+    assert "source_tree_status: clean" in readme
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert len(build_launch_plan(queue_rows)) == 97
     assert len(manifest) == len(queue_rows) == 104
@@ -132,6 +135,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
         assert data["entry_id"] == record["entry_id"]
         assert data["cuda_visible_devices"] == record["device"]
         assert data["config_path"] == "config.yaml"
+        assert "source_tree_status" in data
         assert "queue_config_path" in data
         _assert_no_disallowed_command_markers(data, template_path)
         if "python main.py --config" in record["command"]:

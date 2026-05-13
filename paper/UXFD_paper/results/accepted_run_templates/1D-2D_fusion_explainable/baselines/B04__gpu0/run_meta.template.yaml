@@ -20,6 +20,7 @@ original_command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_pape
   --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0
 queue_config_path: paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml
 git_sha_or_submodule_sha: 'TODO: record parent git SHA and paper submodule SHA'
+source_tree_status: 'TODO: clean after git status --porcelain'
 config_path: config.yaml
 log_path: run.log
 metrics_path: metrics.json

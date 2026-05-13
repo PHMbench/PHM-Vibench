@@ -29,6 +29,7 @@ REQUIRED_RUN_META_FIELDS = (
     "runtime",
     "command",
     "git_sha_or_submodule_sha",
+    "source_tree_status",
     "config_path",
     "log_path",
     "metrics_path",
@@ -46,6 +47,7 @@ QUEUE_METADATA_TO_RUN_META = {
     "runtime": "runtime",
     "command": "command",
     "git SHA or submodule SHA": "git_sha_or_submodule_sha",
+    "source tree status": "source_tree_status",
     "config path": "config_path",
     "log path": "log_path",
     "metrics path": "metrics_path",
@@ -270,6 +272,10 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     gpu_model = str(data.get("gpu_model", ""))
     if gpu_model and "RTX 4090" not in gpu_model:
         issues.append("gpu_model must record RTX 4090-class hardware")
+
+    source_tree_status = str(data.get("source_tree_status", "")).strip().lower()
+    if source_tree_status and source_tree_status != "clean":
+        issues.append("source_tree_status must be clean")
 
     for field in PROTOCOL_EVIDENCE_FIELDS:
         value = str(data.get(field, ""))

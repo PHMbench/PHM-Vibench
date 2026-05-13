@@ -91,6 +91,7 @@ def _run_meta_template(row: QueueLaunchCommand) -> Mapping[str, Any]:
         "original_command": row.original_command,
         "queue_config_path": queue_config_path,
         "git_sha_or_submodule_sha": "TODO: record parent git SHA and paper submodule SHA",
+        "source_tree_status": "TODO: clean after git status --porcelain",
         "config_path": "config.yaml",
         "log_path": "run.log",
         "metrics_path": "metrics.json",
@@ -190,9 +191,10 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         f"- Templates: `{len(records)}`",
         "- Status: templates only; not accepted evidence.",
         (
-            "- Accepted metrics rule: `metrics.json` or `metrics.csv` must include "
-            "at least one numeric metric; status-only payloads are rejected."
+        "- Accepted metrics rule: `metrics.json` or `metrics.csv` must include "
+        "at least one numeric metric; status-only payloads are rejected."
         ),
+        "- Source-tree rule: accepted runs must set `source_tree_status: clean`.",
         "",
         "| Queue | Paper | Phase | Entry | GPU | Template |",
         "|---|---|---|---|---:|---|",
