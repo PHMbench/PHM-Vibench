@@ -23,6 +23,11 @@ owner-decision template to the dirty submodule triage report. This does not make
 the dirty submodules clean; it makes the remaining owner-review step explicit
 and non-commit-safe by default.
 
+The final continuation in this pass persisted the dirty-submodule triage as JSON
+and surfaced the six pending owner-review decisions directly in the submission
+gate. The objective audit now treats both Markdown and JSON triage reports as
+tracked goal-control evidence.
+
 ## Decisions Made
 
 - **Do not mark the active objective complete.** `scripts.uxfd_objective_audit` still reports `Achieved=False`.
@@ -57,6 +62,15 @@ and non-commit-safe by default.
 - `3873b38 docs: add UXFD submodule owner decision template`
   - `submodule_dirty_triage.md` now includes explicit `pending_owner_review`
     rows for the six owner-review entries across three dirty submodules.
+- `9a63092 test: persist UXFD dirty triage JSON`
+  - Adds `paper/UXFD_paper/results/submodule_dirty_triage.json` with
+    `action_counts`, `risk_marker_counts`, and `owner_decision_template`.
+- `0f38d95 fix: surface UXFD submodule owner review in gates`
+  - Submission gate now reports `Submodule owner-review pending: 6` and carries
+    that value in JSON payloads.
+- `b78eaae docs: refresh UXFD objective audit for triage JSON`
+  - Objective audit now lists the submodule dirty triage JSON report and the
+    clean parent goal-control set has 61 paths.
 
 **Files most recently modified:**
 
@@ -72,6 +86,16 @@ and non-commit-safe by default.
   decision template.
 - `paper/UXFD_paper/results/submodule_dirty_triage.md` - persisted triage report
   regenerated with owner decision rows.
+- `paper/UXFD_paper/results/submodule_dirty_triage.json` - machine-readable
+  dirty triage payload for automation and owner-review handoff.
+- `scripts/uxfd_submission_gate.py` - exposes pending owner-review decision
+  count in submission gate Markdown/JSON.
+- `scripts/uxfd_objective_audit.py` - includes triage JSON in the execution
+  artifact and parent goal-control path sets.
+- `paper/UXFD_paper/results/submission_gate_current.{json,md}` - persisted gate
+  reports refreshed with owner-review pending count.
+- `paper/UXFD_paper/results/objective_audit_current.{json,md}` - persisted audit
+  reports refreshed after the gate changes landed.
 
 ## Verification
 
@@ -95,6 +119,13 @@ and non-commit-safe by default.
     `Blocking findings=19`.
   - UXFD goal/results/control paths are clean; dirty state remains only in the
     three paper submodules listed below.
+- Latest gates after commit `b78eaae`:
+  - Objective audit: `Achieved=False`, `Met=71`, `Not met=11`, `Blocked=1`.
+  - Submission gate: `Ready=False`, `Submodule owner-review pending=6`,
+    `Artifact gate records=0`, `SOTA gate ready=False`,
+    `Blocking findings=19`.
+- `python -m pytest -q test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py`
+  - Result: `32 passed in 61.23s`.
 
 ## Open Questions
 
@@ -137,6 +168,8 @@ and non-commit-safe by default.
 - `paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` - launch and artifact promotion sequence.
 - `paper/UXFD_paper/results/readiness_backlog.md` - current prioritized execution blockers.
 - `paper/UXFD_paper/results/submodule_dirty_triage.md` - owner-review rules for dirty submodule entries.
+- `paper/UXFD_paper/results/submodule_dirty_triage.json` - machine-readable
+  owner-review and artifact-gate-only dirty entry queue.
 - `paper/UXFD_paper/results/commit_recovery_plan.md` - historical parent checkpoint recovery notes; do not replay old staging commands.
 - `scripts/uxfd_artifact_gate.py` - accepted-run metadata and minimum-seed queue coverage checks.
 - `scripts/uxfd_sota_gate.py` - matched-seed aggregate and `accepted_run_refs` validation.
