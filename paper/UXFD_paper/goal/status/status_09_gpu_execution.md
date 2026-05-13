@@ -9,7 +9,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 
 - Can execute now: `False`
 - Resource reason: blocked; no accepted GPU evidence can be generated in this session
-- Structural issues: `0`
+- Structural issues: `6`
 - Queue dry-run entries: `104`
 - Launchable entries: `97`
 - TOP representative entries: `7`

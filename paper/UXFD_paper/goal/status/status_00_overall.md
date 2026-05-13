@@ -39,4 +39,4 @@ The project is ready for controlled execution only after local GPUs 0 and 1 are 
 - Explainable_FD_Toolkit: 5 strict blockers remain
 - MOE_explainable: submission_ready is false
 - MOE_explainable: 5 strict blockers remain
-- ... 10 additional blockers omitted; see gate reports.
+- ... 16 additional blockers omitted; see gate reports.
