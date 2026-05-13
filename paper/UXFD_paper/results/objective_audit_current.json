@@ -303,6 +303,12 @@
       "details": "queue contract, artifact gate, and templates require precision enum"
     },
     {
+      "requirement": "accepted artifacts require accepted_same_protocol evidence level",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
+      "status": "met",
+      "details": "queue contract, artifact gate, and templates reject non-accepted smoke/demo/dummy/template/pending evidence levels"
+    },
+    {
       "requirement": "accepted artifacts require hashed preprocessing signatures",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
       "status": "met",
@@ -473,7 +479,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=18"
   ],
-  "met": 64,
+  "met": 65,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0

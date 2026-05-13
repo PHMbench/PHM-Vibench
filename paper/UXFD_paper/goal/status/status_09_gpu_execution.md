@@ -25,6 +25,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - `seed` must be a non-negative integer and `batch_size` must be a positive integer.
 - `runtime` must be a positive `HH:MM:SS` duration.
 - `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.
+- `evidence_level` must be `accepted_same_protocol`.
 - `preprocessing_signature` must match `sha256:<64 lowercase hex>`.
 - `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 - `git_sha_or_submodule_sha` must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers.
