@@ -206,11 +206,19 @@ def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Pat
     assert "torch.cuda.device_count() == 2" in text
     assert "assert all('RTX 4090' in name for name in names)" in text
     assert "Blocked: static queue validation can_execute=False" in text
+    assert text.index("Blocked: static queue validation can_execute=False") < text.index(
+        "nvidia-smi -L"
+    )
     assert "exit 2" in text
     assert "CUDA_VISIBLE_DEVICES=0" in text
     assert "CUDA_VISIBLE_DEVICES=1" in text
     assert "run_toolkit_ablations.py" not in text
     assert "paper-local baseline_ablation_matrix.yaml" not in text
+
+    blocked = subprocess.run(["bash", str(output)], capture_output=True, text=True)
+    assert blocked.returncode == 2
+    assert "Blocked: static queue validation can_execute=False" in blocked.stdout
+    assert "Resource reason: blocked; no accepted GPU evidence" in blocked.stdout
 
 
 def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:

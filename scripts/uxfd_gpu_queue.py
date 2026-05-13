@@ -394,15 +394,6 @@ def render_shell_plan(
         "",
         title,
         "# Run only on the local 2x4090 machine after this preflight passes.",
-        "nvidia-smi -L",
-        (
-            "python -c \"import torch; assert torch.cuda.is_available(); "
-            "assert torch.cuda.device_count() == 2; "
-            "names=[torch.cuda.get_device_name(i) for i in range(2)]; "
-            "assert all('RTX 4090' in name for name in names), names; "
-            "print(names[0]); print(names[1])\""
-        ),
-        "",
         f"# Queue validation can_execute at generation time: {validation.can_execute}",
         f"# Queue validation resource reason: {validation.resource_reason}",
         f"# Launchable commands: {len(launch_rows)}",
@@ -412,6 +403,19 @@ def render_shell_plan(
     if guard_lines:
         lines.extend(guard_lines)
         lines.append("")
+    lines.extend(
+        [
+            "nvidia-smi -L",
+            (
+                "python -c \"import torch; assert torch.cuda.is_available(); "
+                "assert torch.cuda.device_count() == 2; "
+                "names=[torch.cuda.get_device_name(i) for i in range(2)]; "
+                "assert all('RTX 4090' in name for name in names), names; "
+                "print(names[0]); print(names[1])\""
+            ),
+            "",
+        ]
+    )
     for row in launch_rows:
         lines.extend(
             [

@@ -3,9 +3,6 @@ set -euo pipefail
 
 # Launch shard for CUDA device 1
 # Run only on the local 2x4090 machine after this preflight passes.
-nvidia-smi -L
-python -c "import torch; assert torch.cuda.is_available(); assert torch.cuda.device_count() == 2; names=[torch.cuda.get_device_name(i) for i in range(2)]; assert all('RTX 4090' in name for name in names), names; print(names[0]); print(names[1])"
-
 # Queue validation can_execute at generation time: False
 # Queue validation resource reason: blocked; no accepted GPU evidence can be generated in this session
 # Launchable commands: 48
@@ -16,6 +13,9 @@ printf '%s\n' 'Blocked: static queue validation can_execute=False'
 printf '%s\n' 'Resource reason: blocked; no accepted GPU evidence can be generated in this session'
 printf '%s\n' 'Structural issues: 0'
 exit 2
+
+nvidia-smi -L
+python -c "import torch; assert torch.cuda.is_available(); assert torch.cuda.device_count() == 2; names=[torch.cuda.get_device_name(i) for i in range(2)]; assert all('RTX 4090' in name for name in names), names; print(names[0]); print(names[1])"
 
 # Q1 TII_operator_attention baselines B01 device=1 workdir=.: NSN/TSPN_UXFD without operator attention
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override model.name=NSN --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0
