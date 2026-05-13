@@ -229,7 +229,7 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
             )
 
     gpu_model = str(data.get("gpu_model", ""))
-    if gpu_model and "4090" not in gpu_model:
+    if gpu_model and "RTX 4090" not in gpu_model:
         issues.append("gpu_model must record RTX 4090-class hardware")
 
     for path_field in ("metrics_path", "log_path", "config_path"):

@@ -278,6 +278,20 @@ def test_artifact_gate_checks_gpu_count_against_visible_devices(tmp_path: Path) 
     )
 
 
+def test_artifact_gate_requires_explicit_rtx_4090_gpu_model(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["gpu_model"] = "NVIDIA 4090"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "gpu_model must record RTX 4090-class hardware" in report.records[0].issues
+
+
 def test_command_cuda_visible_devices_parser() -> None:
     assert _command_cuda_visible_devices("CUDA_VISIBLE_DEVICES=0 python run.py") == "0"
     assert _command_cuda_visible_devices("cd run && CUDA_VISIBLE_DEVICES=0,1 python run.py") == "0,1"
