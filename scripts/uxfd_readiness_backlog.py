@@ -19,6 +19,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
     OWNER_REVIEW_DECISION_TEMPLATE,
     OWNER_REVIEW_RECOMMENDATIONS,
+    build_payload as build_dirty_triage_payload,
     evaluate_dirty_triage,
 )
 
@@ -85,6 +86,27 @@ def _git_status_lines_for_submodule_paths(
     return tuple(line for line in result.stdout.splitlines() if line.strip())
 
 
+def _owner_recommendation_summary(
+    dirty_payload: Mapping[str, Any],
+    submodule: str,
+) -> str:
+    records = [
+        record
+        for record in dirty_payload.get("owner_decision_template", ())
+        if record.get("submodule") == submodule
+    ]
+    if not records:
+        return "Owner-review recommendation summary: none."
+
+    fragments = []
+    for record in records:
+        decisions = "/".join(str(item) for item in record.get("recommended_decisions", ()))
+        markers = ", ".join(str(item) for item in record.get("risk_markers", ()))
+        marker_text = f" [{markers}]" if markers else ""
+        fragments.append(f"{record.get('path')}->{decisions}{marker_text}")
+    return "Owner-review recommendation summary: " + "; ".join(fragments) + "."
+
+
 def evaluate_readiness_backlog(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_root: Path = DEFAULT_ARTIFACT_ROOT,
@@ -92,6 +114,7 @@ def evaluate_readiness_backlog(
     submission = evaluate_submission_gate(queue_path=queue_path, artifact_root=artifact_root)
     recent_work = evaluate_recent_work_gate(queue_path=queue_path)
     dirty = evaluate_dirty_triage()
+    dirty_payload = build_dirty_triage_payload(dirty)
     paper_actions = _paper_action_map(submission.next_actions)
     items: List[BacklogItem] = []
 
@@ -292,6 +315,10 @@ def evaluate_readiness_backlog(
             if entry.submodule == summary.submodule
             and entry.recommended_action == DO_NOT_AUTO_COMMIT
         )
+        owner_recommendations = _owner_recommendation_summary(
+            dirty_payload,
+            summary.submodule,
+        )
         items.append(
             BacklogItem(
                 item_id=f"DIRTY-{Path(summary.submodule).name}",
@@ -304,6 +331,7 @@ def evaluate_readiness_backlog(
                     f"{categories}; owner_review_pending={owner_review_pending}"
                 ),
                 next_action=(
+                    f"{owner_recommendations} "
                     "Resolve the `pending_owner_review` rows in "
                     "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
                     "paper owner after reading "

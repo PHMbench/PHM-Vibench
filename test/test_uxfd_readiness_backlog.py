@@ -50,6 +50,9 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     dirty_items = [item for item in report.items if item.category == "submodule-dirty-review"]
     assert dirty_items
     assert all("owner_review_pending=" in item.blocker for item in dirty_items)
+    assert all("Owner-review recommendation summary:" in item.next_action for item in dirty_items)
+    assert all("rewrite_then_commit" in item.next_action for item in dirty_items)
+    assert all("discard_from_submodule" in item.next_action for item in dirty_items)
     assert all("pending_owner_review" in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.next_action for item in dirty_items)
