@@ -318,6 +318,11 @@
       "status": "met"
     },
     {
+      "requirement": "submodule owner-review action packet",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_action_packet.md",
+      "status": "met"
+    },
+    {
       "requirement": "submodule owner-review decision gate",
       "evidence": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
       "status": "not_met"

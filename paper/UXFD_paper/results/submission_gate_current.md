@@ -16,6 +16,7 @@
 - Low-tier source blockers: `0`
 - Low-tier source triage markers: `263`
 - Owner-review gate ready: `False`
+- Owner-review action packet: `paper/UXFD_paper/results/submodule_owner_review_action_packet.md`
 - Owner-review gate source: `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json`
 - Owner-review gate pending records: `6`
 - Submodule dirty clean: `False`
@@ -94,6 +95,7 @@
 - `met` Paper07 rejection-recovery innovation contract: paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md,paper/UXFD_paper/TII_operator_attention/submission_prep/reviewer_traceability_matrix.md
 - `met` TOP recent-work policy and paper-local matrix coverage: scripts.uxfd_recent_work_gate
 - `met` low-tier source hygiene: paper/UXFD_paper/results/low_tier_source_audit.md
+- `met` submodule owner-review action packet: paper/UXFD_paper/results/submodule_owner_review_action_packet.md
 - `not_met` submodule owner-review decision gate: paper/UXFD_paper/results/submodule_owner_review_decisions.template.json
 - `not_met` paper submodule working trees clean before handoff: paper/UXFD_paper/results/submodule_dirty_triage.md
 - `not_met` TOP representative accepted artifacts: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
