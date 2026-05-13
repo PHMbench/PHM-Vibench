@@ -96,6 +96,16 @@ EXECUTION_ARTIFACTS = (
     ),
 )
 
+LAUNCH_SCRIPT_STATIC_GATE_PATHS = (
+    Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu1.sh"),
+)
+LAUNCH_SCRIPT_STATIC_GATE_NEEDLES = (
+    "Blocked: static queue validation can_execute=False",
+    "exit 2",
+)
+
 PAPER_SUBMODULES = (
     Path("paper/UXFD_paper/Explainable_FD_Toolkit"),
     Path("paper/UXFD_paper/1D-2D_fusion_explainable"),
@@ -117,6 +127,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/.gitignore"),
     Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
     Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
+    Path("paper/UXFD_paper/results/queue_launch_shards/gpu1.sh"),
     Path("paper/UXFD_paper/results/accepted_runs"),
     Path("paper/UXFD_paper/results/accepted_run_templates"),
     Path("paper/UXFD_paper/results/submission_gate_current.json"),
@@ -286,6 +297,41 @@ def _parent_goal_checkpoint_item(
     )
 
 
+def _launch_scripts_static_gate_item(
+    paths: Sequence[Path] = LAUNCH_SCRIPT_STATIC_GATE_PATHS,
+) -> ObjectiveAuditItem:
+    missing_paths = [str(path) for path in paths if not path.exists()]
+    if missing_paths:
+        return _item(
+            requirement="GPU launch scripts enforce static queue gate",
+            evidence=",".join(str(path) for path in paths),
+            status="not_met",
+            details="missing_paths=" + ",".join(missing_paths),
+        )
+
+    missing_needles: List[str] = []
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        for needle in LAUNCH_SCRIPT_STATIC_GATE_NEEDLES:
+            if needle not in text:
+                missing_needles.append(f"{path}:{needle}")
+
+    if missing_needles:
+        return _item(
+            requirement="GPU launch scripts enforce static queue gate",
+            evidence=",".join(str(path) for path in paths),
+            status="not_met",
+            details="missing_guard_markers=" + ",".join(missing_needles),
+        )
+
+    return _item(
+        requirement="GPU launch scripts enforce static queue gate",
+        evidence=",".join(str(path) for path in paths),
+        status="met",
+        details="queue_launch_plan.sh,gpu0.sh,gpu1.sh print blocked reason and exit 2",
+    )
+
+
 def _subagent_execution_item(
     team_dir: Path = CLAUDE_TEAM_DIR,
     launch_blocked: bool = False,
@@ -380,6 +426,7 @@ def evaluate_objective_audit(
 
     for requirement, path in EXECUTION_ARTIFACTS:
         items.append(_exists_item(requirement, path))
+    items.append(_launch_scripts_static_gate_item())
 
     paper07_rejection_ready = _text_contains(
         PAPER07_GOAL,

@@ -71,6 +71,8 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["cross-paper submission gate"].status == "not_met"
     assert items["submodule dirty triage report"].status == "met"
     assert items["parent result artifact triage report"].status == "met"
+    assert items["GPU launch scripts enforce static queue gate"].status == "met"
+    assert "exit 2" in items["GPU launch scripts enforce static queue gate"].details
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"
@@ -241,6 +243,8 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
+    assert "paper/UXFD_paper/results/queue_launch_shards/gpu0.sh" in paths
+    assert "paper/UXFD_paper/results/queue_launch_shards/gpu1.sh" in paths
     assert "paper/UXFD_paper/results/parent_result_artifact_triage.md" in paths
     assert "paper/UXFD_paper/results/accepted_runs" in paths
     assert "paper/UXFD_paper/results/accepted_run_templates" in paths
