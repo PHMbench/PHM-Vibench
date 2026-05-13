@@ -234,6 +234,13 @@ def _review_command(entry: DirtyEntry) -> str:
     return f"{base} diff -- {path}"
 
 
+def _content_review_command(entry: DirtyEntry) -> str:
+    if entry.status != "??" or Path(entry.path).suffix.lower() not in TEXT_SUFFIXES:
+        return _review_command(entry)
+    path = shlex.quote(str(Path(entry.submodule) / entry.path))
+    return f"sed -n '1,220p' -- {path}"
+
+
 def _recommended_owner_decisions(entry: DirtyEntry) -> Tuple[str, ...]:
     if entry.category == "historical_autoresearch_evidence_draft":
         return ("discard_from_submodule", "rewrite_then_commit")
@@ -296,6 +303,7 @@ def _owner_review_packets(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, A
             "category": entry.category,
             "risk_markers": list(entry.risk_markers),
             "review_command": _review_command(entry),
+            "content_review_command": _content_review_command(entry),
             "decision_state": "pending_owner_review",
             "allowed_decisions": list(OWNER_ALLOWED_DECISIONS),
             "recommended_decisions": list(_recommended_owner_decisions(entry)),
@@ -511,8 +519,8 @@ def render_markdown(report: DirtyTriageReport) -> str:
             "",
             "Each packet is also emitted in `submodule_dirty_triage.json` for automation.",
             "",
-            "| Submodule | Path | Decision State | Risk Markers | Review Command | Default next action |",
-            "|---|---|---|---|---|---|",
+            "| Submodule | Path | Decision State | Risk Markers | Status Command | Content Review Command | Default next action |",
+            "|---|---|---|---|---|---|---|",
         ]
     )
     for packet in _owner_review_packets(report.entries):
@@ -520,7 +528,8 @@ def render_markdown(report: DirtyTriageReport) -> str:
         lines.append(
             f"| `{packet['submodule']}` | `{packet['path']}` | "
             f"`{packet['decision_state']}` | `{markers}` | "
-            f"`{packet['review_command']}` | {packet['default_next_action']} |"
+            f"`{packet['review_command']}` | "
+            f"`{packet['content_review_command']}` | {packet['default_next_action']} |"
         )
 
     lines.extend(

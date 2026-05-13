@@ -13,6 +13,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     _action_counts,
     _action_counts_by_submodule,
     _classify_path,
+    _content_review_command,
     _content_risk_markers,
     _owner_decision_template,
     _owner_review_packets,
@@ -241,6 +242,7 @@ def test_owner_review_packets_include_machine_readable_review_steps() -> None:
             "category": "planning_or_contract_draft",
             "risk_markers": ["deprecated_config_dir_dispatch"],
             "review_command": "git -C paper/A status --short -- EXPERIMENT_DESIGN.md",
+            "content_review_command": "sed -n '1,220p' -- paper/A/EXPERIMENT_DESIGN.md",
             "decision_state": "pending_owner_review",
             "allowed_decisions": [
                 "commit_after_review",
@@ -327,6 +329,11 @@ def test_review_command_is_non_destructive() -> None:
         _review_command(untracked)
         == "git -C paper/A status --short -- EXPERIMENT_DESIGN.md"
     )
+    assert _content_review_command(modified) == "git -C paper/A diff -- results/a.json"
+    assert (
+        _content_review_command(untracked)
+        == "sed -n '1,220p' -- paper/A/EXPERIMENT_DESIGN.md"
+    )
 
 
 def test_content_risk_markers_flag_chinese_readiness_claim(tmp_path: Path) -> None:
@@ -368,6 +375,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Recommended Decisions" in text
     assert "Review Date" in text
     assert "Owner Review Packets" in text
+    assert "Content Review Command" in text
     assert "Owner Resolution Gates" in text
     assert "pending_owner_review" in text
     assert "commit_after_review" in text
