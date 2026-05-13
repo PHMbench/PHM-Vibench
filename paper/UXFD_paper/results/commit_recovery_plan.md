@@ -1,11 +1,34 @@
 # UXFD Commit Recovery Plan
 
-Date: 2026-05-12
+Created: 2026-05-12
+Updated: 2026-05-14
 
-This file records the exact recovery path for the remaining parent checkpoint.
+This file records the exact recovery path used for the parent checkpoint.
 It is not experiment evidence and does not make any paper submission-ready.
 
-## Current Blockers
+## Current Checkpoint Status
+
+The recovery sequence below is now historical. As of 2026-05-14:
+
+- The parent UXFD goal-control checkpoint is clean.
+- The current objective audit reports `parent UXFD goal-control checkpoint committed`
+  as `met`.
+- The latest parent UXFD control commits include:
+  - `a366356 fix: surface UXFD source verification in aggregate gates`
+  - `b208a39 test: require source verification in UXFD recent work gate`
+  - `672b086 docs: add UXFD recent work source verification`
+  - `b92a3d9 docs: require minimum seed coverage in UXFD backlog`
+- The active blockers are no longer parent checkpoint recovery. They are:
+  - dirty paper submodules requiring owner review,
+  - unavailable local 2x4090 CUDA preflight,
+  - missing accepted run artifacts under `paper/UXFD_paper/results/accepted_runs`,
+  - missing SOTA aggregates under `paper/UXFD_paper/results/sota_aggregates`,
+  - seven paper matrices still marked `submission_ready: false`.
+
+Do not replay the historical `git add` commands below wholesale. Stage only the
+specific file currently being changed, after checking the current dirty tree.
+
+## Historical Recovery Notes
 
 - Paper02 planning update is committed inside the submodule at `205aaea`:
   - `paper/UXFD_paper/1D-2D_fusion_explainable/plan/EXPERIMENT_PLAN_补充.md`
@@ -104,9 +127,9 @@ It is not experiment evidence and does not make any paper submission-ready.
     `tabulate` for Markdown table generation.
   - `scripts/run_shap_lime_analysis.py` creates only a non-accepted synthetic
     SHAP/LIME smoke bundle and explicitly blocks SOTA/submission-ready claims.
-- Parent goal/control checkpoint is edited but uncommitted.
-- Parent `git add`/`git commit` still requires explicit index-write approval;
-  stage only the listed parent goal/control paths.
+- Parent goal/control checkpoint recovery was completed by later commits.
+- The staging recipe below is retained only to document how that recovery was
+  performed.
 
 ## Phase 1: Paper02 Submodule Planning Checkpoint
 
@@ -174,8 +197,11 @@ a script crash.
 
 ## Phase 3: Parent Checkpoint Commit
 
-Stage only the parent goal/control files plus the Paper01, Paper02, and Paper04
-submodule gitlinks:
+Status: historical/completed.
+
+The following staging set was used during recovery for the parent goal/control
+files plus the Paper01, Paper02, and Paper04 submodule gitlinks. Do not rerun it
+without rechecking the current dirty tree:
 
 ```bash
 git add -- \
@@ -244,7 +270,9 @@ this commit lands.
 
 ## Phase 4: Objective Audit Refresh Commit
 
-After Phase 3 is committed:
+Status: historical/completed.
+
+The following commands describe the audit refresh sequence after Phase 3:
 
 ```bash
 python -m scripts.uxfd_objective_audit --format json --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.json
