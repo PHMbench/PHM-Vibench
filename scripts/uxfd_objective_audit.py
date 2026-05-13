@@ -8,6 +8,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
+import yaml
+
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
@@ -105,6 +107,10 @@ LAUNCH_SCRIPT_STATIC_GATE_NEEDLES = (
     "Blocked: static queue validation can_execute=False",
     "exit 2",
 )
+ARTIFACT_GATE_NUMERIC_METRIC_NEEDLES = (
+    "metrics_path JSON must contain at least one numeric metric",
+    "metrics_path CSV must contain at least one numeric metric",
+)
 
 PAPER_SUBMODULES = (
     Path("paper/UXFD_paper/Explainable_FD_Toolkit"),
@@ -120,6 +126,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path(".claude/handoffs/2026-05-12-uxfd-goal-continuation.md"),
     EXECUTION_GATE_HANDOFF_PATH,
     Path("paper/UXFD_paper/goal/README.md"),
+    Path("paper/UXFD_paper/goal/09_gpu_execution_queue.yaml"),
     Path("paper/UXFD_paper/goal/99_submission_readiness_matrix.md"),
     Path("paper/UXFD_paper/goal/status"),
     Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md"),
@@ -336,6 +343,48 @@ def _launch_scripts_static_gate_item(
     )
 
 
+def _numeric_metrics_contract_item(
+    queue_path: Path = DEFAULT_QUEUE,
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    if not queue_path.exists():
+        missing.append(str(queue_path))
+        queue_contract: Mapping[str, Any] = {}
+    else:
+        queue = yaml.safe_load(queue_path.read_text(encoding="utf-8"))
+        queue_contract = queue.get("accepted_artifact_contract", {})
+
+    metrics_text = str(queue_contract.get("metrics", "")).lower()
+    if queue_contract.get("numeric_metrics_required") is not True:
+        missing.append("accepted_artifact_contract.numeric_metrics_required")
+    if "numeric metric" not in metrics_text:
+        missing.append("accepted_artifact_contract.metrics numeric metric wording")
+
+    if not artifact_gate_path.exists():
+        missing.append(str(artifact_gate_path))
+    else:
+        gate_text = artifact_gate_path.read_text(encoding="utf-8")
+        for needle in ARTIFACT_GATE_NUMERIC_METRIC_NEEDLES:
+            if needle not in gate_text:
+                missing.append(f"{artifact_gate_path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="accepted metrics contain numeric values",
+            evidence=f"{queue_path},{artifact_gate_path}",
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="accepted metrics contain numeric values",
+        evidence=f"{queue_path},{artifact_gate_path}",
+        status="met",
+        details="queue contract and artifact gate require at least one numeric metric",
+    )
+
+
 def _subagent_execution_item(
     team_dir: Path = CLAUDE_TEAM_DIR,
     launch_blocked: bool = False,
@@ -431,6 +480,7 @@ def evaluate_objective_audit(
     for requirement, path in EXECUTION_ARTIFACTS:
         items.append(_exists_item(requirement, path))
     items.append(_launch_scripts_static_gate_item())
+    items.append(_numeric_metrics_contract_item(queue_path=queue_path))
 
     paper07_rejection_ready = _text_contains(
         PAPER07_GOAL,
