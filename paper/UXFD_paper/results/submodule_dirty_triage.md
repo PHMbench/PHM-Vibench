@@ -17,7 +17,7 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 
 - Auto-commit safe entries: `0`
 - Action counts: `do_not_auto_commit_without_owner_review=6, promote_only_through_accepted_artifact_gate=21`
-- Risk marker counts: `binary_or_large_artifact=10, deprecated_config_dir_dispatch=2, historical_accepted_claim=3, nonlocal_gpu_binding=2, stale_exec_root=3, tracked_generated_artifact_dirty=14`
+- Risk marker counts: `binary_or_large_artifact=10, deprecated_config_dir_dispatch=2, historical_accepted_claim=3, nonlocal_gpu_binding=2, stale_exec_root=3, tracked_generated_artifact_dirty=14, unaccepted_readiness_claim=3`
 - Verdict: do not auto-commit these dirty submodule entries. Commit only owner-reviewed source/docs, and promote result artifacts only through the accepted artifact gate.
 
 ## Triage Rules
@@ -25,7 +25,7 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 - `preserve_or_ignore_session_workspace`: preserve or ignore until the owning paper owner decides.
 - `promote_only_through_accepted_artifact_gate`: do not commit as accepted evidence; promote only through `scripts.uxfd_artifact_gate` after real runs.
 - `do_not_auto_commit_without_owner_review`: inspect with the paper owner before staging.
-- Risk markers flag stale paths, deprecated config dispatch, historical accepted-claim wording, or GPU bindings outside `0,1`.
+- Risk markers flag stale paths, deprecated config dispatch, unaccepted readiness claims, historical accepted-claim wording, or GPU bindings outside `0,1`.
 
 ## Entries
 
@@ -48,13 +48,13 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `-` | `doc/demo_explanation.txt` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `binary_or_large_artifact` | `figures/explanation_demo.png` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `historical_autoresearch_evidence_draft` | `do_not_auto_commit_without_owner_review` | `stale_exec_root, historical_accepted_claim` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
-| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `-` | `results/PAPER_READY_SUMMARY.md` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `unaccepted_readiness_claim` | `results/PAPER_READY_SUMMARY.md` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `-` | `results/autoresearch_toolkit.log` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `-` | `results/demo_full.log` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `-` | `results/direct_run_toolkit.log` |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `??` | `experiment_output` | `promote_only_through_accepted_artifact_gate` | `-` | `results/toolkit_benchmark.log` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `M` | `generated_or_result_artifact` | `promote_only_through_accepted_artifact_gate` | `tracked_generated_artifact_dirty, binary_or_large_artifact` | `best_model.pth` |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `deprecated_config_dir_dispatch` | `EXPERIMENT_DESIGN.md` |
-| `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `historical_autoresearch_evidence_draft` | `do_not_auto_commit_without_owner_review` | `stale_exec_root, historical_accepted_claim` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `??` | `historical_autoresearch_evidence_draft` | `do_not_auto_commit_without_owner_review` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `do_not_auto_commit_without_owner_review` | `deprecated_config_dir_dispatch, nonlocal_gpu_binding` | `EXPERIMENT_DESIGN.md` |
-| `paper/UXFD_paper/MOE_explainable` | `??` | `historical_autoresearch_evidence_draft` | `do_not_auto_commit_without_owner_review` | `stale_exec_root, historical_accepted_claim, nonlocal_gpu_binding` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
+| `paper/UXFD_paper/MOE_explainable` | `??` | `historical_autoresearch_evidence_draft` | `do_not_auto_commit_without_owner_review` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim, nonlocal_gpu_binding` | `manuscript/AUTORESEARCH_EVIDENCE.md` |

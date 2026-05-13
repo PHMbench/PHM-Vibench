@@ -109,6 +109,14 @@ def _content_risk_markers(submodule: Path, relative_path: str) -> Tuple[str, ...
         markers.append("stale_exec_root")
     if "--config_dir" in text or "config_dir:" in text:
         markers.append("deprecated_config_dir_dispatch")
+    if (
+        "Submission-Ready Binding Snapshot" in text
+        or re.search(r"status:\s*`?ready`?", text, re.IGNORECASE)
+        or "论文就绪" in text
+        or "投稿状态" in text
+        or "可直接用于论文" in text
+    ):
+        markers.append("unaccepted_readiness_claim")
     if "accepted: `True`" in text or "accepted: True" in text:
         markers.append("historical_accepted_claim")
     for match in re.finditer(r"CUDA_VISIBLE_DEVICES=([0-9,]+)", text):
@@ -260,7 +268,7 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"- `{PRESERVE_SESSION}`: preserve or ignore until the owning paper owner decides.",
             f"- `{PROMOTE_ONLY_THROUGH_GATE}`: do not commit as accepted evidence; promote only through `scripts.uxfd_artifact_gate` after real runs.",
             f"- `{DO_NOT_AUTO_COMMIT}`: inspect with the paper owner before staging.",
-            "- Risk markers flag stale paths, deprecated config dispatch, historical accepted-claim wording, or GPU bindings outside `0,1`.",
+            "- Risk markers flag stale paths, deprecated config dispatch, unaccepted readiness claims, historical accepted-claim wording, or GPU bindings outside `0,1`.",
             "",
             "## Entries",
             "",

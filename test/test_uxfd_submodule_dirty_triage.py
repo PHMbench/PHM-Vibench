@@ -71,6 +71,7 @@ def test_content_risk_markers_flag_stale_claims_and_gpu_bindings(tmp_path: Path)
             [
                 "- accepted: `True`",
                 "- exec_root: `/tmp/PHM-Vibench copy 2`",
+                "- status: `ready`",
                 "- command: `python main.py --config_dir configs/old.yaml`",
                 "- command: `CUDA_VISIBLE_DEVICES=5 python run.py`",
             ]
@@ -83,6 +84,7 @@ def test_content_risk_markers_flag_stale_claims_and_gpu_bindings(tmp_path: Path)
     assert markers == (
         "stale_exec_root",
         "deprecated_config_dir_dispatch",
+        "unaccepted_readiness_claim",
         "historical_accepted_claim",
         "nonlocal_gpu_binding",
     )
@@ -123,6 +125,7 @@ def test_action_and_risk_counts_summarize_commit_blockers() -> None:
             (
                 "stale_exec_root",
                 "deprecated_config_dir_dispatch",
+                "unaccepted_readiness_claim",
                 "historical_accepted_claim",
             ),
         ),
@@ -145,7 +148,23 @@ def test_action_and_risk_counts_summarize_commit_blockers() -> None:
         "historical_accepted_claim": 1,
         "stale_exec_root": 1,
         "tracked_generated_artifact_dirty": 1,
+        "unaccepted_readiness_claim": 1,
     }
+
+
+def test_content_risk_markers_flag_chinese_readiness_claim(tmp_path: Path) -> None:
+    submodule = tmp_path / "paper"
+    summary = submodule / "results" / "PAPER_READY_SUMMARY.md"
+    summary.parent.mkdir(parents=True)
+    summary.write_text(
+        "# 论文就绪结果汇总\n\n## 投稿状态评估\n\n表格模板可直接用于论文。\n",
+        encoding="utf-8",
+    )
+
+    assert _content_risk_markers(
+        submodule,
+        "results/PAPER_READY_SUMMARY.md",
+    ) == ("unaccepted_readiness_claim",)
 
 
 def test_render_markdown_marks_report_as_non_evidence() -> None:
