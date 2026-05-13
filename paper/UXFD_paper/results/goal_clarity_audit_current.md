@@ -1,6 +1,6 @@
 # UXFD Goal Clarity Audit
 
-Date: 2026-05-12
+Date: 2026-05-14
 
 This report checks whether the goal package is clear enough to execute from the
 current repository state. It does not claim IEEE Transactions submission
@@ -44,12 +44,19 @@ by current state:
 
 - GPU queue cannot execute: current preflight reports `nvidia-smi` driver
   failure and PyTorch `cuda_available=False`, `device_count=0`.
+- Owner-review gate cannot pass: real
+  `paper/UXFD_paper/results/submodule_owner_review_decisions.json` is missing,
+  and 6 dirty-submodule review records remain pending.
 - No accepted experiment evidence exists yet:
   `paper/UXFD_paper/results/accepted_runs` has zero accepted records.
+- SOTA aggregate evidence cannot be accepted until accepted run references
+  exist for the seven queue bindings.
 - TOP representative artifacts remain pending for all seven queue bindings.
 - Submodule working trees are not clean:
   `Explainable_FD_Toolkit:22`, `1D-2D_fusion_explainable:3`,
   `MOE_explainable:2` (27 dirty entries total).
+- Recent-work policy is clear and source-hygiene checked, but representative
+  TOP evidence is still blocked by missing GPU/artifact records.
 - All seven paper matrices remain `submission_ready: false`.
 
 ## Verification Commands
@@ -67,5 +74,6 @@ python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready
 The goal package is clear enough to continue staged preparation and, after GPU
 preflight passes, to execute the queue in `09_gpu_execution_queue.yaml`. It is
 not clear to treat any paper as submission-ready, because accepted artifacts,
-TOP representative evidence, GPU metadata, clean submodule state, and final
-cross-paper submission gates are still missing.
+TOP representative evidence, GPU metadata, real owner decisions, clean
+submodule state, SOTA aggregates, and final cross-paper submission gates are
+still missing.

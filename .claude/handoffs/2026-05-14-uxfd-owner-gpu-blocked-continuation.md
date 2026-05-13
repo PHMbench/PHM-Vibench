@@ -18,10 +18,18 @@ accepted artifacts, SOTA aggregates, and paper submission-ready gates.
 This continuation did not try to fabricate owner approval or accepted GPU
 evidence. It tightened the non-GPU control plane so the next executor can see
 exact owner-review recommendations, Paper03 evidence-package requirements, and
-the pre-launch decision gate without re-deriving them.
+the pre-launch decision gate without re-deriving them. The latest checkpoint
+also adds an owner-review evidence index and surfaces that index in the
+objective/submission gates.
 
 Recent parent commits:
 
+- `35d263b test: surface UXFD owner evidence index in submission gate`
+- `1263171 docs: refresh UXFD owner evidence audit`
+- `601f9fc docs: add UXFD owner evidence index`
+- `f470376 docs: fix UXFD handoff audit count`
+- `d841ab9 docs: refresh UXFD goal status reports`
+- `30800be docs: update UXFD accepted-run packet handoff`
 - `8275809 docs: refresh UXFD accepted-run artifact audit`
 - `74e1d01 docs: add UXFD accepted-run artifact packet`
 - `e125c0d docs: update UXFD GPU preflight packet handoff`
@@ -98,10 +106,16 @@ Recent Paper03 submodule commit:
   required `run_meta.yaml`, metric, log, config, provenance, seed, precision,
   runtime, clean-tree, and finite-metric checks for converting real Q0-passed
   runs into accepted evidence. It is a checklist only, not evidence.
-- **Objective audit now tracks all three response packets** - owner decisions,
-  GPU preflight, and accepted-run artifact promotion are all prompt-to-artifact
-  checklist items. The latest persisted audit reports `Met: 81`, `Not met: 13`,
-  `Blocked: 1`, and `Achieved: False`.
+- **Owner evidence index is decision support only** -
+  `paper/UXFD_paper/results/submodule_owner_review_evidence_index.md` maps the
+  six owner-review rows to line-level evidence and risks, but it is not owner
+  approval and does not replace
+  `paper/UXFD_paper/results/submodule_owner_review_decisions.json`.
+- **Objective audit now tracks all three response packets plus owner evidence
+  index** - owner decisions, GPU preflight, accepted-run artifact promotion,
+  and the owner evidence index are prompt-to-artifact checklist items. The
+  latest persisted audit reports `Met: 82`, `Not met: 13`, `Blocked: 1`, and
+  `Achieved: False`.
 
 ## Code Changes
 
@@ -188,6 +202,20 @@ Recent Paper03 submodule commit:
   `paper/UXFD_paper/results/objective_audit_current.md`, and
   `paper/UXFD_paper/results/readiness_backlog.md` - refreshed persisted reports
   with accepted-run artifact packet references.
+- `paper/UXFD_paper/results/submodule_owner_review_evidence_index.md` -
+  line-level decision-support index for the 6 pending owner-review rows.
+- `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` and
+  `paper/UXFD_paper/results/submodule_owner_review_recommendations.md` - link
+  to the owner evidence index.
+- `scripts/uxfd_objective_audit.py`, `scripts/uxfd_submission_gate.py`,
+  `test/test_uxfd_objective_audit.py`, and
+  `test/test_uxfd_submission_gate.py` - track and surface the owner evidence
+  index without treating it as approval.
+- `paper/UXFD_paper/results/objective_audit_current.json`,
+  `paper/UXFD_paper/results/objective_audit_current.md`,
+  `paper/UXFD_paper/results/submission_gate_current.json`, and
+  `paper/UXFD_paper/results/submission_gate_current.md` - refreshed persisted
+  reports after the owner evidence index checkpoint.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -230,6 +258,8 @@ Latest relevant tests passed:
   - result after adding the accepted-run artifact packet: `4 passed, 56 deselected`
 - `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py test/test_uxfd_artifact_gate.py`
   - result after refreshing accepted-run artifact audit reports: `60 passed`
+- `python -m pytest -q test/test_uxfd_objective_audit.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py`
+  - result after owner evidence index and status refresh: `24 passed`
 
 Latest gate state:
 
@@ -245,7 +275,7 @@ Latest gate state:
   - 7 paper matrices still `submission_ready: false`
 - `python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved`
   - `Achieved: False`
-  - `Met: 81`, `Not met: 13`, `Blocked: 1`
+  - `Met: 82`, `Not met: 13`, `Blocked: 1`
 - `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
   - result: exit `2`
   - reason: NVIDIA driver/CUDA not visible; PyTorch reports
@@ -335,6 +365,9 @@ Latest gate state:
   dirty-submodule packets and recommended decisions.
 - `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` - short
   fill-in response form for the 6 owner-review decisions; decision support only.
+- `paper/UXFD_paper/results/submodule_owner_review_evidence_index.md` -
+  line-level evidence and risk index for the 6 pending owner-review decisions;
+  decision support only, not approval.
 - `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` -
   template only, not approval.
 - `scripts/uxfd_owner_review_gate.py` - exact owner decision validation rules.
