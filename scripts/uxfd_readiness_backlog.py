@@ -119,7 +119,8 @@ def evaluate_readiness_backlog(
                 next_action=(
                     "After real runs finish, promote filled `run_meta.yaml`, logs, metrics, "
                     "and configs under accepted_runs. Require integer seed/batch_size, "
-                    "positive runtime, enumerated precision, hashed "
+                    "positive runtime, enumerated precision, accepted_same_protocol "
+                    "evidence_level, hashed "
                     "preprocessing_signature, numeric metrics, `source_tree_status: clean`, "
                     "and clean SHA provenance before rerunning artifact gate with queue coverage."
                 ),

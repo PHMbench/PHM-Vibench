@@ -357,6 +357,7 @@ def _render_gpu_execution(
             "positive integer.",
             "- `runtime` must be a positive `HH:MM:SS` duration.",
             "- `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.",
+            "- `evidence_level` must be `accepted_same_protocol`.",
             "- `preprocessing_signature` must match `sha256:<64 lowercase hex>`.",
             "- `metrics.json` or `metrics.csv` must include at least one numeric metric; "
             "status-only payloads are rejected.",

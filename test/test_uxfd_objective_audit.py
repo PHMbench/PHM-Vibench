@@ -95,6 +95,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
         "accepted artifacts require enumerated precision metadata"
     ].details
     assert (
+        items["accepted artifacts require accepted_same_protocol evidence level"].status
+        == "met"
+    )
+    assert "smoke/demo/dummy/template/pending" in items[
+        "accepted artifacts require accepted_same_protocol evidence level"
+    ].details
+    assert (
         items["accepted artifacts require hashed preprocessing signatures"].status
         == "met"
     )

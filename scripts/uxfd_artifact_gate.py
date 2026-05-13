@@ -27,6 +27,7 @@ REQUIRED_RUN_META_FIELDS = (
     "batch_size",
     "precision",
     "runtime",
+    "evidence_level",
     "command",
     "git_sha_or_submodule_sha",
     "source_tree_status",
@@ -45,6 +46,7 @@ QUEUE_METADATA_TO_RUN_META = {
     "batch size": "batch_size",
     "precision": "precision",
     "runtime": "runtime",
+    "evidence level": "evidence_level",
     "command": "command",
     "git SHA or submodule SHA": "git_sha_or_submodule_sha",
     "source tree status": "source_tree_status",
@@ -71,9 +73,11 @@ DISALLOWED_SHA_PROVENANCE_MARKERS = (
 PREPROCESSING_SIGNATURE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 RUNTIME_PATTERN = re.compile(r"^(\d+):([0-5]\d):([0-5]\d)$")
 ACCEPTED_PRECISION_VALUES = ("fp32", "tf32", "fp16", "bf16", "amp")
+ACCEPTED_EVIDENCE_LEVEL_VALUES = ("accepted_same_protocol",)
 PROTOCOL_EVIDENCE_FIELDS = (
     "dataset_split",
     "preprocessing_signature",
+    "evidence_level",
     "command",
     "config_path",
     "log_path",
@@ -308,6 +312,10 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     precision = str(data.get("precision", "")).strip().lower()
     if precision and precision not in ACCEPTED_PRECISION_VALUES:
         issues.append("precision must be one of fp32, tf32, fp16, bf16, amp")
+
+    evidence_level = str(data.get("evidence_level", "")).strip().lower()
+    if evidence_level and evidence_level not in ACCEPTED_EVIDENCE_LEVEL_VALUES:
+        issues.append("evidence_level must be accepted_same_protocol")
 
     gpu_count = _coerce_integer(data.get("gpu_count"))
     if gpu_count is None:

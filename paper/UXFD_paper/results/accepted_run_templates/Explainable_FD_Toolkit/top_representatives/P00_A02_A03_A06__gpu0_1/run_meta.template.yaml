@@ -14,6 +14,7 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
+evidence_level: 'TODO: set accepted_same_protocol after artifact gate review'
 command: paper-local baseline_ablation_matrix.yaml entries P00/A02/A03/A06
 original_command: paper-local baseline_ablation_matrix.yaml entries P00/A02/A03/A06
 queue_config_path: 'TODO: record config path'

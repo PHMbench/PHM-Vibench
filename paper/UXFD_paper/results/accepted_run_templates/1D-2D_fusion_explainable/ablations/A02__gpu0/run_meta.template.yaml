@@ -14,6 +14,7 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
+evidence_level: 'TODO: set accepted_same_protocol after artifact gate review'
 command: CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml
   --override model.signal_processing_2d.stft.n_fft=64 --override trainer.num_epochs=1
   --override data.num_workers=0

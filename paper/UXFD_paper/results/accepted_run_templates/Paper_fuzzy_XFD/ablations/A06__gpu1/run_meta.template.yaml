@@ -14,6 +14,7 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
+evidence_level: 'TODO: set accepted_same_protocol after artifact gate review'
 command: CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml
   --override model.decision_configs.fuzzy.num_fuzzy_features=8 --override trainer.num_epochs=1
   --override data.num_workers=0

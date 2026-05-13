@@ -44,6 +44,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
                 "batch_size: 16",
                 "precision: 'fp32'",
                 "runtime: '00:01:00'",
+                "evidence_level: 'accepted_same_protocol'",
                 "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0'",
                 "git_sha_or_submodule_sha: 'abc123'",
                 "source_tree_status: 'clean'",
@@ -220,6 +221,7 @@ def test_artifact_gate_rejects_template_placeholders(tmp_path: Path) -> None:
                 "batch_size: 16",
                 "precision: 'fp32'",
                 "runtime: 'TODO'",
+                "evidence_level: 'TODO'",
                 "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config demo.yaml'",
                 "git_sha_or_submodule_sha: 'TODO'",
                 "source_tree_status: 'TODO'",
@@ -333,6 +335,24 @@ def test_artifact_gate_rejects_unknown_precision(tmp_path: Path) -> None:
     assert report.records[0].accepted is False
     assert (
         "precision must be one of fp32, tf32, fp16, bf16, amp"
+        in report.records[0].issues
+    )
+
+
+def test_artifact_gate_rejects_nonaccepted_evidence_level(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["evidence_level"] = "smoke"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert "evidence_level must be accepted_same_protocol" in report.records[0].issues
+    assert (
+        "evidence_level must not reference smoke evidence"
         in report.records[0].issues
     )
 

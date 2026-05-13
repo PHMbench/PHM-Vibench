@@ -14,6 +14,7 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
+evidence_level: 'TODO: set accepted_same_protocol after artifact gate review'
 command: CUDA_VISIBLE_DEVICES=0 python code/validate_mapping.py && python scripts/build_source_backed_mapping.py
 original_command: python code/validate_mapping.py && python scripts/build_source_backed_mapping.py
 queue_config_path: 'TODO: record config path'

@@ -25,6 +25,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "`batch_size` must be a positive integer" in gpu
     assert "`runtime` must be a positive `HH:MM:SS` duration" in gpu
     assert "`precision` must be one of" in gpu
+    assert "`evidence_level` must be `accepted_same_protocol`" in gpu
     assert "`sha256:<64 lowercase hex>`" in gpu
     assert "at least one numeric metric" in gpu
     assert "dirty, modified, unknown, or uncommitted" in gpu

@@ -87,6 +87,7 @@ def _run_meta_template(row: QueueLaunchCommand) -> Mapping[str, Any]:
         "batch_size": "TODO: record batch size",
         "precision": "TODO: record precision",
         "runtime": "TODO: record wall-clock runtime",
+        "evidence_level": "TODO: set accepted_same_protocol after artifact gate review",
         "command": row.command,
         "original_command": row.original_command,
         "queue_config_path": queue_config_path,
@@ -203,6 +204,7 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         ),
         "- Runtime rule: `runtime` must be a positive `HH:MM:SS` duration.",
         "- Precision rule: `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.",
+        "- Evidence-level rule: `evidence_level` must be `accepted_same_protocol`.",
         (
             "- Protocol-signature rule: `preprocessing_signature` must match "
             "`sha256:<64 lowercase hex>`."

@@ -21,6 +21,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert "integer seed/batch_size" in report.items[1].next_action
     assert "positive runtime" in report.items[1].next_action
     assert "enumerated precision" in report.items[1].next_action
+    assert "accepted_same_protocol evidence_level" in report.items[1].next_action
     assert "hashed preprocessing_signature" in report.items[1].next_action
     assert "numeric metrics" in report.items[1].next_action
     assert "`source_tree_status: clean`" in report.items[1].next_action

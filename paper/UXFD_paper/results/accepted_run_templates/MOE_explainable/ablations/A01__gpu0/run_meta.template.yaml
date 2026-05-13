@@ -14,6 +14,7 @@ preprocessing_signature: 'TODO: record preprocessing signature'
 batch_size: 'TODO: record batch size'
 precision: 'TODO: record precision'
 runtime: 'TODO: record wall-clock runtime'
+evidence_level: 'TODO: set accepted_same_protocol after artifact gate review'
 command: CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_expert_ablation_probe.py
   --output-dir paper/UXFD_paper/MOE_explainable/results/t043/expert_ablation_probe
   --datasets CWRU --expert-counts 3 5 8 --epochs 1 --batch-size 16 --max-train-batches

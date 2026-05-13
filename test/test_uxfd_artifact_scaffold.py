@@ -50,6 +50,7 @@ def test_artifact_scaffold_creates_one_template_per_launch_row(tmp_path: Path) -
     assert data["config_path"] == "config.yaml"
     assert data["queue_config_path"].startswith("paper/UXFD_paper/")
     assert str(data["source_tree_status"]).startswith("TODO")
+    assert str(data["evidence_level"]).startswith("TODO")
     _assert_no_disallowed_command_markers(data, first)
 
     top_records = [
@@ -95,6 +96,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     assert "`batch_size` must be a positive integer" in readme
     assert "`runtime` must be a positive `HH:MM:SS` duration" in readme
     assert "`precision` must be one of" in readme
+    assert "`evidence_level` must be `accepted_same_protocol`" in readme
     assert "`sha256:<64 lowercase hex>`" in readme
     assert "dirty, modified, unknown, or uncommitted" in readme
     assert gate.accepted is False
@@ -112,6 +114,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     assert "`batch_size` must be a positive integer" in readme
     assert "`runtime` must be a positive `HH:MM:SS` duration" in readme
     assert "`precision` must be one of" in readme
+    assert "`evidence_level` must be `accepted_same_protocol`" in readme
     assert "`sha256:<64 lowercase hex>`" in readme
     assert "dirty, modified, unknown, or uncommitted" in readme
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -152,6 +155,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
         assert data["cuda_visible_devices"] == record["device"]
         assert data["config_path"] == "config.yaml"
         assert "source_tree_status" in data
+        assert "evidence_level" in data
         assert "queue_config_path" in data
         _assert_no_disallowed_command_markers(data, template_path)
         if "python main.py --config" in record["command"]:
