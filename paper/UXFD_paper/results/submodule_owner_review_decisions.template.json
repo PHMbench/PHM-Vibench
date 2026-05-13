@@ -8,6 +8,7 @@
   ],
   "instructions": [
     "Copy this file to submodule_owner_review_decisions.json only after paper owners are ready to record decisions.",
+    "After copying, change top-level status to owner_review_decisions; the template_only_not_owner_approved status is rejected for real decision files.",
     "Keep decision as pending_owner_review until the paper owner has explicitly reviewed the file.",
     "Do not stage, delete, or rewrite submodule files from this template alone.",
     "Generated artifacts must still be promoted only through paper/UXFD_paper/results/accepted_runs and scripts.uxfd_artifact_gate."

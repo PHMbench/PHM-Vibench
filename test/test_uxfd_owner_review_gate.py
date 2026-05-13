@@ -48,6 +48,15 @@ def test_owner_review_gate_blocks_template_as_approval() -> None:
     assert "template file is not owner approval" in report.blockers
 
 
+def test_owner_review_template_instructs_status_change_for_real_decisions() -> None:
+    payload = json.loads(OWNER_REVIEW_DECISION_TEMPLATE.read_text(encoding="utf-8"))
+    instructions = " ".join(payload["instructions"])
+
+    assert payload["status"] == "template_only_not_owner_approved"
+    assert "status to owner_review_decisions" in instructions
+    assert "template_only_not_owner_approved status is rejected" in instructions
+
+
 def test_owner_review_gate_accepts_complete_owner_decisions(tmp_path: Path) -> None:
     decision_file = _approved_decisions_file(tmp_path)
 
