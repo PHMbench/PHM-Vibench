@@ -50,6 +50,10 @@ PAPER03_MATRIX = Path(
     "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/"
     "baseline_ablation_matrix.yaml"
 )
+PAPER03_LLM_EVIDENCE_CONTRACT = Path(
+    "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/"
+    "llm_evidence_package_contract.md"
+)
 PAPER06_MATRIX = Path(
     "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/"
     "baseline_ablation_matrix.yaml"
@@ -835,6 +839,29 @@ def test_llm_toolkit_matrix_records_package_gate_and_evidence_blockers() -> None
     ).read_text(encoding="utf-8")
     assert "run_llm_evidence_smoke.py --condition all" in readiness_text
     assert "no-checker" in readiness_text
+    assert "llm_evidence_package_contract.md" in readiness_text
+
+    assert PAPER03_LLM_EVIDENCE_CONTRACT.exists()
+    contract_text = PAPER03_LLM_EVIDENCE_CONTRACT.read_text(encoding="utf-8")
+    for phrase in (
+        "not accepted experiment evidence",
+        "accepted_same_protocol",
+        "unsupported-claim rate",
+        "latency p50 and p95",
+        "prompt_set.json",
+        "responses.jsonl",
+        "accepted_evidence=false",
+        "TOP-Q7-TIMESEG",
+        "No SOTA claim is allowed",
+    ):
+        assert phrase in contract_text
+
+    parent_matrix_text = (GOAL_DIR / "99_submission_readiness_matrix.md").read_text(
+        encoding="utf-8"
+    )
+    assert "LLM Explainable FD Toolkit" in parent_matrix_text
+    assert "submission_prep/llm_evidence_package_contract.md" in parent_matrix_text
+    assert "LLM evidence package contract checkpoint" in parent_matrix_text
 
     blockers = "\n".join(matrix["strict_blockers"])
     assert "The manuscript/ieee_tii/main.tex entrypoint is a conservative compile checkpoint" in blockers
