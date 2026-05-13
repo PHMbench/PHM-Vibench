@@ -16,7 +16,11 @@ from scripts.uxfd_low_tier_source_audit import (
 )
 from scripts.uxfd_recent_work_gate import RecentWorkGateReport, evaluate_recent_work_gate
 from scripts.uxfd_sota_gate import DEFAULT_SOTA_ROOT, SotaGateReport, evaluate_sota_gate
-from scripts.uxfd_submodule_dirty_triage import DirtyTriageReport, evaluate_dirty_triage
+from scripts.uxfd_submodule_dirty_triage import (
+    DO_NOT_AUTO_COMMIT,
+    DirtyTriageReport,
+    evaluate_dirty_triage,
+)
 
 
 GOAL_DIR = Path("paper/UXFD_paper/goal")
@@ -129,6 +133,7 @@ class SubmissionGateReport:
     submodule_dirty_clean: bool
     submodule_dirty_entries: int
     submodule_dirty_submodules: int
+    submodule_owner_review_pending: int
     queue_can_execute: bool
     queue_resource_reason: str
     queue_summary: Mapping[str, Any]
@@ -442,11 +447,15 @@ def evaluate_submission_gate(
             f"{low_tier_report.triage_count} triage markers"
         )
     dirty_report = evaluate_dirty_triage()
+    owner_review_pending = sum(
+        1 for entry in dirty_report.entries if entry.recommended_action == DO_NOT_AUTO_COMMIT
+    )
     if not dirty_report.clean:
         blockers.append(
             "submodule dirty triage blocked: "
             f"{len(dirty_report.entries)} dirty entries across "
-            f"{len(dirty_report.summaries)} paper submodules"
+            f"{len(dirty_report.summaries)} paper submodules; "
+            f"{owner_review_pending} owner-review decisions pending"
         )
     if not _paper07_rejection_recovery_ready():
         blockers.append("Paper07 rejection-recovery innovation contract blocked")
@@ -488,6 +497,7 @@ def evaluate_submission_gate(
         submodule_dirty_clean=dirty_report.clean,
         submodule_dirty_entries=len(dirty_report.entries),
         submodule_dirty_submodules=len(dirty_report.summaries),
+        submodule_owner_review_pending=owner_review_pending,
         queue_can_execute=queue_validation.can_execute,
         queue_resource_reason=queue_validation.resource_reason,
         queue_summary=summarize_rows(queue_rows),
@@ -522,6 +532,7 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Low-tier source triage markers: `{report.low_tier_source_triage_count}`",
         f"- Submodule dirty clean: `{report.submodule_dirty_clean}`",
         f"- Submodule dirty entries: `{report.submodule_dirty_entries}`",
+        f"- Submodule owner-review pending: `{report.submodule_owner_review_pending}`",
         f"- Blocking findings: `{len(report.blockers)}`",
         f"- Queue dry-run entries: `{report.queue_summary['total']}`",
         "",

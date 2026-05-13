@@ -17,6 +17,7 @@
 - Low-tier source triage markers: `263`
 - Submodule dirty clean: `False`
 - Submodule dirty entries: `27`
+- Submodule owner-review pending: `6`
 - Blocking findings: `19`
 - Queue dry-run entries: `104`
 
@@ -50,7 +51,7 @@
 - artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs
 - sota gate blocked: 8 blockers under paper/UXFD_paper/results/sota_aggregates
 - recent-work evidence blocked: 7 TOP representative blockers
-- submodule dirty triage blocked: 27 dirty entries across 3 paper submodules
+- submodule dirty triage blocked: 27 dirty entries across 3 paper submodules; 6 owner-review decisions pending
 
 ## Next Actions
 

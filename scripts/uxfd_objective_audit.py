@@ -93,6 +93,10 @@ EXECUTION_ARTIFACTS = (
         Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
     ),
     (
+        "submodule dirty triage JSON report",
+        Path("paper/UXFD_paper/results/submodule_dirty_triage.json"),
+    ),
+    (
         "parent result artifact triage report",
         Path("paper/UXFD_paper/results/parent_result_artifact_triage.md"),
     ),
@@ -211,6 +215,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/sota_gate_current.json"),
     Path("paper/UXFD_paper/results/sota_gate_current.md"),
     Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
+    Path("paper/UXFD_paper/results/submodule_dirty_triage.json"),
     Path("paper/UXFD_paper/results/parent_result_artifact_triage.md"),
     Path("paper/UXFD_paper/results/goal_clarity_audit_current.md"),
     Path("paper/UXFD_paper/results/commit_recovery_plan.md"),

@@ -123,7 +123,7 @@
     "artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs",
     "sota gate blocked: 8 blockers under paper/UXFD_paper/results/sota_aggregates",
     "recent-work evidence blocked: 7 TOP representative blockers",
-    "submodule dirty triage blocked: 27 dirty entries across 3 paper submodules"
+    "submodule dirty triage blocked: 27 dirty entries across 3 paper submodules; 6 owner-review decisions pending"
   ],
   "next_actions": [
     {
@@ -384,6 +384,7 @@
   "submodule_dirty_clean": false,
   "submodule_dirty_entries": 27,
   "submodule_dirty_submodules": 3,
+  "submodule_owner_review_pending": 6,
   "queue_can_execute": false,
   "queue_resource_reason": "blocked; no accepted GPU evidence can be generated in this session",
   "queue_summary": {

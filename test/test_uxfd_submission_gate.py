@@ -40,6 +40,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.submodule_dirty_clean is False
     assert report.submodule_dirty_entries > 0
     assert report.submodule_dirty_submodules == 3
+    assert report.submodule_owner_review_pending == 6
     assert len(report.papers) == 7
     assert report.queue_summary["total"] == 104
     assert all(paper.baselines >= 6 for paper in report.papers)
@@ -140,6 +141,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["submodule_dirty_clean"] is False
     assert payload["submodule_dirty_entries"] > 0
     assert payload["submodule_dirty_submodules"] == 3
+    assert payload["submodule_owner_review_pending"] == 6
     assert len(payload["papers"]) == 7
     assert len(payload["next_actions"]) == 7
     assert len(payload["objective_checklist"]) >= 15
@@ -157,6 +159,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "Recent-work source verification ready: `True`" in text
     assert "Low-tier source hygiene ready: `True`" in text
     assert "Submodule dirty clean: `False`" in text
+    assert "Submodule owner-review pending: `6`" in text
     assert "## Blockers" in text
     assert "## Next Actions" in text
     assert "## Objective Checklist" in text
