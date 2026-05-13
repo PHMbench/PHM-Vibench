@@ -148,7 +148,7 @@
     },
     {
       "requirement": "latest continuation handoff document",
-      "evidence": ".claude/handoffs/2026-05-14-uxfd-minimum-seed-gate-continuation.md",
+      "evidence": ".claude/handoffs/2026-05-14-uxfd-owner-gpu-blocked-continuation.md",
       "status": "met",
       "details": "exists"
     },

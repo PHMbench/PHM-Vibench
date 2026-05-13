@@ -38,7 +38,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | handoff document | `.claude/handoffs/2026-05-11-uxfd-ieee-trans-submission-readiness.md` | exists |
 | `met` | continuation handoff document | `.claude/handoffs/2026-05-12-uxfd-goal-continuation.md` | exists |
 | `met` | execution gate handoff document | `.claude/handoffs/2026-05-13-uxfd-execution-gate-check.md` | exists |
-| `met` | latest continuation handoff document | `.claude/handoffs/2026-05-14-uxfd-minimum-seed-gate-continuation.md` | exists |
+| `met` | latest continuation handoff document | `.claude/handoffs/2026-05-14-uxfd-owner-gpu-blocked-continuation.md` | exists |
 | `met` | Claude Team task spec | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/TASK_SPEC.md` | exists |
 | `met` | Claude Team launch log | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/LAUNCH_LOG.md` | exists |
 | `met` | Codex xhigh subagent launch log | `.codex/claude-team-runs/20260511-uxfd-ieee-trans-review/CODEX_SUBAGENT_LAUNCH.md` | exists |
