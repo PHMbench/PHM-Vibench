@@ -49,6 +49,13 @@ REQUIRED_GOAL_FILES = (
     "09_gpu_execution_queue.yaml",
     "99_submission_readiness_matrix.md",
 )
+MATRIX_ACCEPTED_EVIDENCE_STATUSES = frozenset(
+    {
+        "accepted_gpu_and_artifacts",
+        "accepted_exact_artifacts",
+        "accepted_representative_artifacts",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -129,6 +136,22 @@ def _next_actions(queue_path: Path) -> Tuple[Mapping[str, str], ...]:
             }
         )
     return tuple(actions)
+
+
+def _matrix_unaccepted_evidence_entries(matrix: Mapping[str, Any]) -> int:
+    entries: List[Mapping[str, Any]] = []
+    proposed = matrix.get("proposed")
+    if isinstance(proposed, Mapping):
+        entries.append(proposed)
+    for phase in ("baselines", "ablations"):
+        entries.extend(
+            item for item in matrix.get(phase, ()) if isinstance(item, Mapping)
+        )
+    return sum(
+        str(entry.get("accepted_evidence_status", ""))
+        not in MATRIX_ACCEPTED_EVIDENCE_STATUSES
+        for entry in entries
+    )
 
 
 def _objective_checklist(
@@ -271,6 +294,13 @@ def evaluate_submission_gate(
             blockers.append(f"{paper_id}: fewer than six ablations")
         if not submission_ready:
             blockers.append(f"{paper_id}: submission_ready is false")
+        else:
+            unaccepted_entries = _matrix_unaccepted_evidence_entries(matrix)
+            if unaccepted_entries:
+                blockers.append(
+                    f"{paper_id}: submission_ready true but {unaccepted_entries} "
+                    "proposed/baseline/ablation evidence entries are not accepted"
+                )
         if strict_blockers:
             blockers.append(f"{paper_id}: {len(strict_blockers)} strict blockers remain")
 

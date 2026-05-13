@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import yaml
+
 from scripts.uxfd_submission_gate import (
     build_payload,
     evaluate_submission_gate,
@@ -166,3 +168,84 @@ def test_submission_gate_blocks_artifact_root_without_full_queue_coverage(tmp_pa
     assert report.artifact_gate_records == 1
     assert any("artifact gate blocked" in item for item in report.blockers)
     assert any("queue coverage incomplete" in item for item in report.artifact_gate_blockers)
+
+
+def test_submission_gate_blocks_ready_matrix_with_pending_evidence_statuses(
+    tmp_path: Path,
+) -> None:
+    matrix_path = tmp_path / "paper" / "submission_prep" / "baseline_ablation_matrix.yaml"
+    matrix_path.parent.mkdir(parents=True)
+    matrix = {
+        "paper_id": "ExamplePaper",
+        "submission_ready": True,
+        "strict_blockers": [],
+        "proposed": {
+            "id": "P00",
+            "label": "proposed",
+            "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config demo.yaml",
+            "accepted_evidence_status": "pending same-protocol GPU run",
+        },
+        "baselines": [
+            {
+                "id": f"B{index:02d}",
+                "label": f"baseline {index}",
+                "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config demo.yaml",
+                "accepted_evidence_status": "accepted_gpu_and_artifacts",
+            }
+            for index in range(1, 7)
+        ],
+        "ablations": [
+            {
+                "id": f"A{index:02d}",
+                "label": f"ablation {index}",
+                "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config demo.yaml",
+                "accepted_evidence_status": "accepted_gpu_and_artifacts",
+            }
+            for index in range(1, 7)
+        ],
+    }
+    matrix_path.write_text(yaml.safe_dump(matrix, sort_keys=False), encoding="utf-8")
+    queue_path = tmp_path / "queue.yaml"
+    queue_path.write_text(
+        yaml.safe_dump(
+            {
+                "status": "blocked_resource_preflight",
+                "resource_preflight": {
+                    "required_devices": ["0", "1"],
+                    "required_gpu_class": "RTX 4090",
+                    "current_session_result": {
+                        "torch_cuda_available": False,
+                        "torch_cuda_device_count": 0,
+                        "gpu_names": [],
+                        "verdict": "blocked in test",
+                    },
+                },
+                "scheduler": {"default_devices": ["0", "1"]},
+                "paper_queue": [
+                    {
+                        "queue_id": "QX",
+                        "paper_id": "ExamplePaper",
+                        "goal_file": "goal.md",
+                        "matrix_path": str(matrix_path),
+                        "base_config": "demo.yaml",
+                        "priority_reason": "test",
+                        "unblock_condition": "test",
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate_submission_gate(
+        queue_path=queue_path,
+        artifact_root=tmp_path / "accepted_runs",
+    )
+
+    assert report.ready is False
+    assert any(
+        "submission_ready true but 1 proposed/baseline/ablation evidence entries"
+        in blocker
+        for blocker in report.blockers
+    )
