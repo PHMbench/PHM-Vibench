@@ -13,6 +13,13 @@ import yaml
 
 
 DEFAULT_QUEUE = Path("paper/UXFD_paper/goal/09_gpu_execution_queue.yaml")
+DISALLOWED_LAUNCH_COMMAND_MARKERS = (
+    "smoke",
+    "demo",
+    "dummy",
+    "template",
+    "pending",
+)
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,14 @@ def _entry_map(matrix: Mapping[str, Any]) -> Dict[str, Mapping[str, Any]]:
         for item in matrix.get(phase, []):
             entries[str(item["id"])] = item
     return entries
+
+
+def _launch_command_disallowed_marker(command: str) -> str:
+    lowered = command.lower()
+    return next(
+        (marker for marker in DISALLOWED_LAUNCH_COMMAND_MARKERS if marker in lowered),
+        "",
+    )
 
 
 def _iter_matrix_commands(
@@ -165,6 +180,17 @@ def validate_queue(path: Path = DEFAULT_QUEUE) -> QueueValidation:
         if matrix.get("paper_id") != paper_id:
             issues.append(f"{paper_id}: matrix paper_id mismatch")
         matrix_entries[paper_id] = _entry_map(matrix)
+        rejected_commands = [
+            f"{row.phase}:{row.entry_id}:{_launch_command_disallowed_marker(row.command)}"
+            for row in _iter_matrix_commands(queue_item, matrix)
+            if _launch_command_disallowed_marker(row.command)
+        ]
+        if rejected_commands:
+            issues.append(
+                f"{paper_id}: {len(rejected_commands)} launch commands reference "
+                "smoke/demo/dummy/template/pending evidence: "
+                + ", ".join(rejected_commands[:6])
+            )
 
     for binding in queue.get("top_representative_bindings", []):
         paper_id = str(binding.get("paper_id", ""))

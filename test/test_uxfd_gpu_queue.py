@@ -25,6 +25,57 @@ PERSISTED_SHARD_DIR = Path("paper/UXFD_paper/results/queue_launch_shards")
 PERSISTED_LIVE_PREFLIGHT = Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")
 
 
+def _write_minimal_queue(tmp_path: Path, gpu_names: list[str]) -> Path:
+    matrix_path = tmp_path / "paper" / "submission_prep" / "baseline_ablation_matrix.yaml"
+    matrix_path.parent.mkdir(parents=True, exist_ok=True)
+    matrix_path.write_text(
+        yaml.safe_dump(
+            {
+                "paper_id": "MiniPaper",
+                "proposed": {
+                    "id": "P00",
+                    "label": "proposed",
+                    "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config real.yaml",
+                    "accepted_evidence_status": "pending accepted run",
+                },
+                "baselines": [],
+                "ablations": [],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    queue_path = tmp_path / "queue.yaml"
+    queue_path.write_text(
+        yaml.safe_dump(
+            {
+                "status": "ready",
+                "resource_preflight": {
+                    "required_devices": ["0", "1"],
+                    "required_gpu_class": "RTX 4090",
+                    "current_session_result": {
+                        "torch_cuda_available": True,
+                        "torch_cuda_device_count": len(gpu_names),
+                        "gpu_names": gpu_names,
+                        "verdict": "accepted",
+                    },
+                },
+                "scheduler": {"default_devices": ["0", "1"]},
+                "paper_queue": [
+                    {
+                        "queue_id": "QX",
+                        "paper_id": "MiniPaper",
+                        "matrix_path": str(matrix_path),
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return queue_path
+
+
 def test_gpu_queue_expands_all_paper_commands_and_top_bindings() -> None:
     rows = expand_queue(DEFAULT_QUEUE)
 
@@ -64,32 +115,27 @@ def test_gpu_queue_expands_all_paper_commands_and_top_bindings() -> None:
 def test_gpu_queue_validation_blocks_execution_until_preflight_passes() -> None:
     validation = validate_queue(DEFAULT_QUEUE)
 
-    assert validation.structural_issues == ()
+    assert len(validation.structural_issues) == 6
+    assert any("smoke/demo/dummy/template/pending" in item for item in validation.structural_issues)
     assert validation.can_execute is False
     assert "blocked" in validation.resource_reason
 
 
 def test_gpu_queue_static_validation_requires_exact_two_rtx_4090_devices(tmp_path: Path) -> None:
-    queue_path = tmp_path / "queue.yaml"
-    queue = yaml.safe_load(DEFAULT_QUEUE.read_text(encoding="utf-8"))
-    current = queue["resource_preflight"]["current_session_result"]
-    queue["status"] = "ready"
-    current["torch_cuda_available"] = True
-    current["torch_cuda_device_count"] = 2
-    current["gpu_names"] = ["NVIDIA A100-SXM4-80GB", "NVIDIA A100-SXM4-80GB"]
-    current["verdict"] = "accepted"
-    queue_path.write_text(yaml.safe_dump(queue, sort_keys=False), encoding="utf-8")
+    queue_path = _write_minimal_queue(
+        tmp_path,
+        ["NVIDIA A100-SXM4-80GB", "NVIDIA A100-SXM4-80GB"],
+    )
 
     validation = validate_queue(queue_path)
 
     assert validation.structural_issues == ()
     assert validation.can_execute is False
 
-    current["gpu_names"] = [
-        "NVIDIA GeForce RTX 4090",
-        "NVIDIA GeForce RTX 4090",
-    ]
-    queue_path.write_text(yaml.safe_dump(queue, sort_keys=False), encoding="utf-8")
+    queue_path = _write_minimal_queue(
+        tmp_path,
+        ["NVIDIA GeForce RTX 4090", "NVIDIA GeForce RTX 4090"],
+    )
 
     validation = validate_queue(queue_path)
 
@@ -100,11 +146,11 @@ def test_gpu_queue_static_validation_requires_exact_two_rtx_4090_devices(tmp_pat
 def test_gpu_queue_cli_writes_json_manifest_without_preflight_execution(tmp_path: Path) -> None:
     output = tmp_path / "queue" / "dry_run.json"
 
-    assert main(["--format", "json", "--output", str(output)]) == 0
+    assert main(["--format", "json", "--output", str(output)]) == 1
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["validation"]["can_execute"] is False
-    assert payload["validation"]["structural_issues"] == []
+    assert len(payload["validation"]["structural_issues"]) == 6
     assert len(payload["commands"]) == len(expand_queue(DEFAULT_QUEUE))
     assert payload["summary"]["total"] == len(payload["commands"])
     assert payload["summary"]["top_representatives"] == 7
@@ -112,7 +158,7 @@ def test_gpu_queue_cli_writes_json_manifest_without_preflight_execution(tmp_path
     blocked_output = tmp_path / "queue" / "blocked.md"
     assert (
         main(["--format", "markdown", "--output", str(blocked_output), "--require-preflight"])
-        == 2
+        == 1
     )
     text = blocked_output.read_text(encoding="utf-8")
     assert "Can execute now: `False`" in text
@@ -150,7 +196,7 @@ def test_gpu_queue_builds_two_device_launch_plan_without_top_bindings() -> None:
 def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Path) -> None:
     output = tmp_path / "queue" / "launch_plan.sh"
 
-    assert main(["--format", "shell", "--output", str(output)]) == 0
+    assert main(["--format", "shell", "--output", str(output)]) == 1
 
     text = output.read_text(encoding="utf-8")
     assert text.startswith("#!/usr/bin/env bash")
@@ -169,7 +215,7 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
 
     assert (
         main(["--format", "shell", "--output", str(output), "--shard-dir", str(shard_dir)])
-        == 0
+        == 1
     )
 
     gpu0 = (shard_dir / "gpu0.sh").read_text(encoding="utf-8")
@@ -267,7 +313,7 @@ def test_gpu_queue_live_preflight_is_reported_without_launching_experiments(
 ) -> None:
     output = tmp_path / "queue" / "live_preflight.json"
 
-    assert main(["--format", "json", "--live-preflight", "--output", str(output)]) == 0
+    assert main(["--format", "json", "--live-preflight", "--output", str(output)]) == 1
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     live = payload["live_preflight"]
