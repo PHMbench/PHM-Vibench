@@ -48,7 +48,9 @@ Promotion rule:
 ## Owner Checklist
 
 Before clearing this blocker, each paper owner should record one decision per
-row:
+row. Use the machine-readable template at
+`paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` as the
+starting point for owner decisions.
 
 | Submodule | Path | Decision | Reviewer | Notes |
 |---|---|---|---|---|

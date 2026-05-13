@@ -6,7 +6,10 @@ from scripts.uxfd_readiness_backlog import (
     main,
     render_markdown,
 )
-from scripts.uxfd_submodule_dirty_triage import OWNER_REVIEW_RECOMMENDATIONS
+from scripts.uxfd_submodule_dirty_triage import (
+    OWNER_REVIEW_DECISION_TEMPLATE,
+    OWNER_REVIEW_RECOMMENDATIONS,
+)
 
 
 PERSISTED_READINESS_BACKLOG_MD = Path("paper/UXFD_paper/results/readiness_backlog.md")
@@ -48,8 +51,10 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert all("owner_review_pending=" in item.blocker for item in dirty_items)
     assert all("pending_owner_review" in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.next_action for item in dirty_items)
+    assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.next_action for item in dirty_items)
     assert all("submodule_dirty_triage.json" in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.evidence for item in dirty_items)
+    assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.evidence for item in dirty_items)
     top_items = [item for item in report.items if item.category == "top-representative-evidence"]
     assert len(top_items) == 7
     assert any(item.item_id == "TOP-Q7-TIMESEG" for item in top_items)

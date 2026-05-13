@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
+    OWNER_REVIEW_DECISION_TEMPLATE,
     OWNER_REVIEW_RECOMMENDATIONS,
     PRESERVE_SESSION,
     PROMOTE_ONLY_THROUGH_GATE,
@@ -257,6 +258,8 @@ def test_build_payload_exposes_owner_review_recommendations() -> None:
     assert payload["owner_review_recommendations"] == {
         "path": str(OWNER_REVIEW_RECOMMENDATIONS),
         "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
+        "decision_template_path": str(OWNER_REVIEW_DECISION_TEMPLATE),
+        "decision_template_exists": OWNER_REVIEW_DECISION_TEMPLATE.is_file(),
         "status": "decision_support_only",
         "required_use": (
             "paper owners should read this note before choosing commit_after_review, "
@@ -321,6 +324,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Owner Review Queue" in text
     assert "Owner Review Recommendations" in text
     assert str(OWNER_REVIEW_RECOMMENDATIONS) in text
+    assert str(OWNER_REVIEW_DECISION_TEMPLATE) in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
     assert "Owner Review Packets" in text
@@ -344,3 +348,32 @@ def test_persisted_dirty_triage_json_matches_current_triage() -> None:
     report = evaluate_dirty_triage()
 
     assert json.loads(PERSISTED_DIRTY_TRIAGE_JSON.read_text(encoding="utf-8")) == build_payload(report)
+
+
+def test_owner_review_decision_template_is_machine_readable() -> None:
+    template = json.loads(OWNER_REVIEW_DECISION_TEMPLATE.read_text(encoding="utf-8"))
+
+    assert template["status"] == "template_only_not_owner_approved"
+    assert set(template["allowed_decisions"]) == {
+        "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule",
+    }
+    assert len(template["records"]) == 6
+    assert all(record["decision"] == "pending_owner_review" for record in template["records"])
+    assert {
+        (record["submodule"], record["path"]) for record in template["records"]
+    } == {
+        ("paper/UXFD_paper/Explainable_FD_Toolkit", "EXPERIMENT_DESIGN.md"),
+        (
+            "paper/UXFD_paper/Explainable_FD_Toolkit",
+            "manuscript/AUTORESEARCH_EVIDENCE.md",
+        ),
+        ("paper/UXFD_paper/1D-2D_fusion_explainable", "EXPERIMENT_DESIGN.md"),
+        (
+            "paper/UXFD_paper/1D-2D_fusion_explainable",
+            "manuscript/AUTORESEARCH_EVIDENCE.md",
+        ),
+        ("paper/UXFD_paper/MOE_explainable", "EXPERIMENT_DESIGN.md"),
+        ("paper/UXFD_paper/MOE_explainable", "manuscript/AUTORESEARCH_EVIDENCE.md"),
+    }
