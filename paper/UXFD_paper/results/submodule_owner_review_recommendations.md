@@ -19,6 +19,9 @@ For the shortest owner-facing response form, use
 is still decision support only; it is not approval and it must not be copied into
 `submodule_owner_review_decisions.json` without real owner review.
 
+For concrete line-level evidence behind each `OR-*` row, use
+`paper/UXFD_paper/results/submodule_owner_review_evidence_index.md`.
+
 Allowed owner decisions remain:
 
 - `commit_after_review`

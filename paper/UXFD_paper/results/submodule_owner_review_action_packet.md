@@ -10,6 +10,8 @@ listed file from this packet alone.
 ## Response Rules
 
 1. Inspect the listed file in the corresponding submodule.
+   Use `paper/UXFD_paper/results/submodule_owner_review_evidence_index.md`
+   for concrete line-level risk evidence.
 2. Choose exactly one allowed decision:
    `commit_after_review`, `rewrite_then_commit`, or `discard_from_submodule`.
 3. Record a real reviewer and ISO `YYYY-MM-DD` review date.

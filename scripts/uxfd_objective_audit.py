@@ -115,6 +115,10 @@ EXECUTION_ARTIFACTS = (
         Path("paper/UXFD_paper/results/submodule_owner_review_recommendations.md"),
     ),
     (
+        "submodule owner-review evidence index",
+        Path("paper/UXFD_paper/results/submodule_owner_review_evidence_index.md"),
+    ),
+    (
         "submodule owner-review action packet",
         Path("paper/UXFD_paper/results/submodule_owner_review_action_packet.md"),
     ),
@@ -276,6 +280,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("paper/UXFD_paper/results/submodule_dirty_triage.md"),
     Path("paper/UXFD_paper/results/submodule_dirty_triage.json"),
     Path("paper/UXFD_paper/results/submodule_owner_review_recommendations.md"),
+    Path("paper/UXFD_paper/results/submodule_owner_review_evidence_index.md"),
     Path("paper/UXFD_paper/results/submodule_owner_review_action_packet.md"),
     Path("paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"),
     Path("paper/UXFD_paper/results/submodule_owner_review_gate_current.json"),
