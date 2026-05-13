@@ -189,9 +189,17 @@ def test_owner_decision_template_keeps_owner_review_entries_pending() -> None:
         {
             "submodule": "paper/A",
             "path": "EXPERIMENT_DESIGN.md",
+            "current_status": "??",
+            "category": "planning_or_contract_draft",
+            "risk_markers": [],
+            "recommended_decisions": [
+                "rewrite_then_commit",
+                "discard_from_submodule",
+            ],
             "decision": "pending_owner_review",
             "reviewer": "TODO",
-            "notes": "TODO",
+            "review_date": "TODO",
+            "notes": "Useful planning draft only after current-root, parent-gated rewrite.",
         },
     )
 
@@ -235,6 +243,10 @@ def test_owner_review_packets_include_machine_readable_review_steps() -> None:
             "decision_state": "pending_owner_review",
             "allowed_decisions": [
                 "commit_after_review",
+                "rewrite_then_commit",
+                "discard_from_submodule",
+            ],
+            "recommended_decisions": [
                 "rewrite_then_commit",
                 "discard_from_submodule",
             ],
@@ -327,6 +339,8 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert str(OWNER_REVIEW_DECISION_TEMPLATE) in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
+    assert "Recommended Decisions" in text
+    assert "Review Date" in text
     assert "Owner Review Packets" in text
     assert "Owner Resolution Gates" in text
     assert "pending_owner_review" in text

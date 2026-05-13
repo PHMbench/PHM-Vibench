@@ -44,6 +44,11 @@ OWNER_REVIEW_RECOMMENDATIONS = Path(
 OWNER_REVIEW_DECISION_TEMPLATE = Path(
     "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"
 )
+OWNER_ALLOWED_DECISIONS = (
+    "commit_after_review",
+    "rewrite_then_commit",
+    "discard_from_submodule",
+)
 
 
 @dataclass(frozen=True)
@@ -229,14 +234,43 @@ def _review_command(entry: DirtyEntry) -> str:
     return f"{base} diff -- {path}"
 
 
-def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, str], ...]:
+def _recommended_owner_decisions(entry: DirtyEntry) -> Tuple[str, ...]:
+    if entry.category == "historical_autoresearch_evidence_draft":
+        return ("discard_from_submodule", "rewrite_then_commit")
+    if entry.category == "planning_or_contract_draft" or entry.risk_markers:
+        return ("rewrite_then_commit", "discard_from_submodule")
+    return OWNER_ALLOWED_DECISIONS
+
+
+def _owner_review_note(entry: DirtyEntry) -> str:
+    markers = set(entry.risk_markers)
+    if "nonlocal_gpu_binding" in markers:
+        return "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
+    if "unaccepted_readiness_claim" in markers or "historical_accepted_claim" in markers:
+        return (
+            "Historical readiness or accepted-evidence wording conflicts with current "
+            "accepted_runs=0 and submission_ready=false gates."
+        )
+    if "deprecated_config_dir_dispatch" in markers:
+        return "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
+    if entry.category == "planning_or_contract_draft":
+        return "Useful planning draft only after current-root, parent-gated rewrite."
+    return "TODO"
+
+
+def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, Any], ...]:
     return tuple(
         {
             "submodule": entry.submodule,
             "path": entry.path,
+            "current_status": entry.status,
+            "category": entry.category,
+            "risk_markers": list(entry.risk_markers),
+            "recommended_decisions": list(_recommended_owner_decisions(entry)),
             "decision": "pending_owner_review",
             "reviewer": "TODO",
-            "notes": "TODO",
+            "review_date": "TODO",
+            "notes": _owner_review_note(entry),
         }
         for entry in entries
         if entry.recommended_action == DO_NOT_AUTO_COMMIT
@@ -253,11 +287,8 @@ def _owner_review_packets(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, A
             "risk_markers": list(entry.risk_markers),
             "review_command": _review_command(entry),
             "decision_state": "pending_owner_review",
-            "allowed_decisions": [
-                "commit_after_review",
-                "rewrite_then_commit",
-                "discard_from_submodule",
-            ],
+            "allowed_decisions": list(OWNER_ALLOWED_DECISIONS),
+            "recommended_decisions": list(_recommended_owner_decisions(entry)),
             "default_next_action": (
                 "paper owner must choose an allowed decision before this entry is "
                 "staged, rewritten, or cleaned up"
@@ -450,14 +481,17 @@ def render_markdown(report: DirtyTriageReport) -> str:
             "Copy these rows into a paper-owner review note before staging any owner-review entry.",
             "The default `pending_owner_review` value is intentionally not commit-safe.",
             "",
-            "| Submodule | Path | Decision | Reviewer | Notes |",
-            "|---|---|---|---|---|",
+            "| Submodule | Path | Current Status | Category | Risk Markers | Recommended Decisions | Decision | Reviewer | Review Date | Notes |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
     )
     for entry in owner_entries:
+        markers = ", ".join(entry.risk_markers) if entry.risk_markers else "-"
+        recommended = ", ".join(_recommended_owner_decisions(entry))
         lines.append(
-            f"| `{entry.submodule}` | `{entry.path}` | `pending_owner_review` | "
-            "`TODO` | `TODO` |"
+            f"| `{entry.submodule}` | `{entry.path}` | `{entry.status}` | "
+            f"`{entry.category}` | `{markers}` | `{recommended}` | "
+            f"`pending_owner_review` | `TODO` | `TODO` | {_owner_review_note(entry)} |"
         )
 
     lines.extend(

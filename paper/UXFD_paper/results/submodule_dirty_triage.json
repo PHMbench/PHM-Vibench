@@ -328,44 +328,109 @@
     {
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "EXPERIMENT_DESIGN.md",
+      "current_status": "??",
+      "category": "planning_or_contract_draft",
+      "risk_markers": [],
+      "recommended_decisions": [
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
       "decision": "pending_owner_review",
       "reviewer": "TODO",
-      "notes": "TODO"
+      "review_date": "TODO",
+      "notes": "Useful planning draft only after current-root, parent-gated rewrite."
     },
     {
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "current_status": "??",
+      "category": "historical_autoresearch_evidence_draft",
+      "risk_markers": [
+        "stale_exec_root",
+        "historical_accepted_claim"
+      ],
+      "recommended_decisions": [
+        "discard_from_submodule",
+        "rewrite_then_commit"
+      ],
       "decision": "pending_owner_review",
       "reviewer": "TODO",
-      "notes": "TODO"
+      "review_date": "TODO",
+      "notes": "Historical readiness or accepted-evidence wording conflicts with current accepted_runs=0 and submission_ready=false gates."
     },
     {
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "EXPERIMENT_DESIGN.md",
+      "current_status": "??",
+      "category": "planning_or_contract_draft",
+      "risk_markers": [
+        "deprecated_config_dir_dispatch"
+      ],
+      "recommended_decisions": [
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
       "decision": "pending_owner_review",
       "reviewer": "TODO",
-      "notes": "TODO"
+      "review_date": "TODO",
+      "notes": "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "current_status": "??",
+      "category": "historical_autoresearch_evidence_draft",
+      "risk_markers": [
+        "stale_exec_root",
+        "unaccepted_readiness_claim",
+        "historical_accepted_claim"
+      ],
+      "recommended_decisions": [
+        "discard_from_submodule",
+        "rewrite_then_commit"
+      ],
       "decision": "pending_owner_review",
       "reviewer": "TODO",
-      "notes": "TODO"
+      "review_date": "TODO",
+      "notes": "Historical readiness or accepted-evidence wording conflicts with current accepted_runs=0 and submission_ready=false gates."
     },
     {
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "EXPERIMENT_DESIGN.md",
+      "current_status": "??",
+      "category": "planning_or_contract_draft",
+      "risk_markers": [
+        "deprecated_config_dir_dispatch",
+        "nonlocal_gpu_binding"
+      ],
+      "recommended_decisions": [
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
       "decision": "pending_owner_review",
       "reviewer": "TODO",
-      "notes": "TODO"
+      "review_date": "TODO",
+      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
     },
     {
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "current_status": "??",
+      "category": "historical_autoresearch_evidence_draft",
+      "risk_markers": [
+        "stale_exec_root",
+        "unaccepted_readiness_claim",
+        "historical_accepted_claim",
+        "nonlocal_gpu_binding"
+      ],
+      "recommended_decisions": [
+        "discard_from_submodule",
+        "rewrite_then_commit"
+      ],
       "decision": "pending_owner_review",
       "reviewer": "TODO",
-      "notes": "TODO"
+      "review_date": "TODO",
+      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
     }
   ],
   "owner_review_packets": [
@@ -379,6 +444,10 @@
       "decision_state": "pending_owner_review",
       "allowed_decisions": [
         "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "recommended_decisions": [
         "rewrite_then_commit",
         "discard_from_submodule"
       ],
@@ -400,6 +469,10 @@
         "rewrite_then_commit",
         "discard_from_submodule"
       ],
+      "recommended_decisions": [
+        "discard_from_submodule",
+        "rewrite_then_commit"
+      ],
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
@@ -414,6 +487,10 @@
       "decision_state": "pending_owner_review",
       "allowed_decisions": [
         "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "recommended_decisions": [
         "rewrite_then_commit",
         "discard_from_submodule"
       ],
@@ -436,6 +513,10 @@
         "rewrite_then_commit",
         "discard_from_submodule"
       ],
+      "recommended_decisions": [
+        "discard_from_submodule",
+        "rewrite_then_commit"
+      ],
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
@@ -451,6 +532,10 @@
       "decision_state": "pending_owner_review",
       "allowed_decisions": [
         "commit_after_review",
+        "rewrite_then_commit",
+        "discard_from_submodule"
+      ],
+      "recommended_decisions": [
         "rewrite_then_commit",
         "discard_from_submodule"
       ],
@@ -473,6 +558,10 @@
         "commit_after_review",
         "rewrite_then_commit",
         "discard_from_submodule"
+      ],
+      "recommended_decisions": [
+        "discard_from_submodule",
+        "rewrite_then_commit"
       ],
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     }
