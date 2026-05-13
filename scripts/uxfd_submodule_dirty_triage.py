@@ -41,6 +41,9 @@ BINARY_OR_LARGE_SUFFIXES = {".npy", ".npz", ".pth", ".png", ".pdf"}
 OWNER_REVIEW_RECOMMENDATIONS = Path(
     "paper/UXFD_paper/results/submodule_owner_review_recommendations.md"
 )
+OWNER_REVIEW_ACTION_PACKET = Path(
+    "paper/UXFD_paper/results/submodule_owner_review_action_packet.md"
+)
 OWNER_REVIEW_DECISION_TEMPLATE = Path(
     "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json"
 )
@@ -348,12 +351,14 @@ def _owner_recommendations_payload() -> Mapping[str, Any]:
     return {
         "path": str(OWNER_REVIEW_RECOMMENDATIONS),
         "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
+        "action_packet_path": str(OWNER_REVIEW_ACTION_PACKET),
+        "action_packet_exists": OWNER_REVIEW_ACTION_PACKET.is_file(),
         "decision_template_path": str(OWNER_REVIEW_DECISION_TEMPLATE),
         "decision_template_exists": OWNER_REVIEW_DECISION_TEMPLATE.is_file(),
         "status": "decision_support_only",
         "required_use": (
-            "paper owners should read this note before choosing commit_after_review, "
-            "rewrite_then_commit, or discard_from_submodule"
+            "paper owners should read the action packet and recommendation note before "
+            "choosing commit_after_review, rewrite_then_commit, or discard_from_submodule"
         ),
     }
 
@@ -457,6 +462,8 @@ def render_markdown(report: DirtyTriageReport) -> str:
             "",
             f"- Decision-support report: `{recommendations['path']}`",
             f"- Exists: `{recommendations['exists']}`",
+            f"- Owner action packet: `{recommendations['action_packet_path']}`",
+            f"- Action packet exists: `{recommendations['action_packet_exists']}`",
             f"- Machine-readable decision template: `{recommendations['decision_template_path']}`",
             f"- Template exists: `{recommendations['decision_template_exists']}`",
             f"- Status: `{recommendations['status']}`",

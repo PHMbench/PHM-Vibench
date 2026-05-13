@@ -9,7 +9,10 @@ from scripts.uxfd_owner_review_gate import (
     main,
     render_markdown,
 )
-from scripts.uxfd_submodule_dirty_triage import OWNER_REVIEW_DECISION_TEMPLATE
+from scripts.uxfd_submodule_dirty_triage import (
+    OWNER_REVIEW_ACTION_PACKET,
+    OWNER_REVIEW_DECISION_TEMPLATE,
+)
 
 
 PERSISTED_OWNER_REVIEW_GATE_JSON = Path(
@@ -178,6 +181,7 @@ def test_owner_review_gate_markdown_contains_record_table() -> None:
 
     assert "## Owner Decision Workflow" in text
     assert "This gate cannot approve the template by itself" in text
+    assert str(OWNER_REVIEW_ACTION_PACKET) in text
     assert "submodule_owner_review_recommendations.md" in text
     assert str(DEFAULT_DECISION_FILE) in text
     assert "owner_review_decisions" in text

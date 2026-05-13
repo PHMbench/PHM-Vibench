@@ -106,6 +106,8 @@ python -m scripts.uxfd_owner_review_gate --format markdown --allow-not-ready --o
 The gate returns non-zero until
 `paper/UXFD_paper/results/submodule_owner_review_decisions.json` exists, covers
 all current owner-review packets, and has no `pending_owner_review` records.
+Use `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` as the
+short owner-facing response form, but do not treat it as approval.
 Use
 `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` only
 as the starting point for real paper-owner decisions.

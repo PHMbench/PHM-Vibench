@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
+    OWNER_REVIEW_ACTION_PACKET,
     OWNER_REVIEW_DECISION_TEMPLATE,
     OWNER_REVIEW_RECOMMENDATIONS,
     PRESERVE_SESSION,
@@ -298,12 +299,14 @@ def test_build_payload_exposes_owner_review_recommendations() -> None:
     assert payload["owner_review_recommendations"] == {
         "path": str(OWNER_REVIEW_RECOMMENDATIONS),
         "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
+        "action_packet_path": str(OWNER_REVIEW_ACTION_PACKET),
+        "action_packet_exists": OWNER_REVIEW_ACTION_PACKET.is_file(),
         "decision_template_path": str(OWNER_REVIEW_DECISION_TEMPLATE),
         "decision_template_exists": OWNER_REVIEW_DECISION_TEMPLATE.is_file(),
         "status": "decision_support_only",
         "required_use": (
-            "paper owners should read this note before choosing commit_after_review, "
-            "rewrite_then_commit, or discard_from_submodule"
+            "paper owners should read the action packet and recommendation note before "
+            "choosing commit_after_review, rewrite_then_commit, or discard_from_submodule"
         ),
     }
 
@@ -369,6 +372,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Owner Review Queue" in text
     assert "Owner Review Recommendations" in text
     assert str(OWNER_REVIEW_RECOMMENDATIONS) in text
+    assert str(OWNER_REVIEW_ACTION_PACKET) in text
     assert str(OWNER_REVIEW_DECISION_TEMPLATE) in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
@@ -425,6 +429,22 @@ def test_owner_review_decision_template_is_machine_readable() -> None:
         ("paper/UXFD_paper/MOE_explainable", "EXPERIMENT_DESIGN.md"),
         ("paper/UXFD_paper/MOE_explainable", "manuscript/AUTORESEARCH_EVIDENCE.md"),
     }
+
+
+def test_owner_review_action_packet_is_non_approval_response_form() -> None:
+    template = json.loads(OWNER_REVIEW_DECISION_TEMPLATE.read_text(encoding="utf-8"))
+    text = OWNER_REVIEW_ACTION_PACKET.read_text(encoding="utf-8")
+    normalized = " ".join(text.split())
+
+    assert "not owner approval" in text
+    assert "not accepted experiment evidence" in normalized
+    assert "submodule_owner_review_decisions.json" in text
+    assert "python -m scripts.uxfd_owner_review_gate --format markdown" in text
+    assert "template_only_not_owner_approved" in text
+    assert "pending_owner_review" in text
+    for record in template["records"]:
+        assert record["submodule"] in text
+        assert record["path"] in text
 
 
 def test_owner_review_decision_template_matches_current_dirty_triage() -> None:

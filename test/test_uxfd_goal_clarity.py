@@ -83,6 +83,7 @@ def test_goal_readme_exposes_owner_review_gate_as_pre_execution_gate() -> None:
 
     assert "## Owner Review Gate" in text
     assert "python -m scripts.uxfd_owner_review_gate --format markdown" in text
+    assert "submodule_owner_review_action_packet.md" in text
     assert "submodule_owner_review_decisions.json" in text
     assert "submodule_owner_review_decisions.template.json" in text
     assert "template is decision support only" in normalized

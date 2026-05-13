@@ -14,6 +14,11 @@ It does not stage, delete, or promote any submodule file. Paper owners must make
 the final decision before the parent handoff can stop treating these entries as
 dirty-submodule blockers.
 
+For the shortest owner-facing response form, use
+`paper/UXFD_paper/results/submodule_owner_review_action_packet.md`. That packet
+is still decision support only; it is not approval and it must not be copied into
+`submodule_owner_review_decisions.json` without real owner review.
+
 Allowed owner decisions remain:
 
 - `commit_after_review`
