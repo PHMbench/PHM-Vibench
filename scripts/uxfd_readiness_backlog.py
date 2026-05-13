@@ -129,6 +129,27 @@ def evaluate_readiness_backlog(
             )
         )
 
+    if not submission.sota_gate_ready:
+        items.append(
+            BacklogItem(
+                item_id="Q0-SOTA-AGGREGATE",
+                priority=2,
+                scope="cross-paper",
+                category="sota-aggregate-evidence",
+                blocker=(
+                    f"{len(submission.sota_gate_blockers)} SOTA blockers; "
+                    f"records={submission.sota_gate_records}"
+                ),
+                next_action=(
+                    "After accepted run coverage exists, build one "
+                    "`sota_aggregate.yaml` per paper with matched seed sets, "
+                    "six baseline comparators, runnable TOP representative scope, "
+                    "mean/std/95% CI, and effect size or paired-test evidence."
+                ),
+                evidence=submission.sota_gate_root,
+            )
+        )
+
     try:
         paper02_planning_status = _git_status_lines_for_submodule_paths(
             PAPER02_SUBMODULE,

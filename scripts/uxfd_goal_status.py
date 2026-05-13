@@ -163,6 +163,8 @@ def _render_overall(
             f"- Artifact coverage: `{artifact_report.covered_queue_runs}/"
             f"{artifact_report.expected_queue_runs}`",
             f"- Artifact records: `{len(artifact_report.records)}`",
+            f"- SOTA gate ready: `{submission_report.sota_gate_ready}`",
+            f"- SOTA aggregate records: `{submission_report.sota_gate_records}`",
             f"- Dirty submodule entries: `{len(dirty_report.entries)}`",
             "",
             "The project is ready for controlled execution only after local GPUs 0 and 1 "

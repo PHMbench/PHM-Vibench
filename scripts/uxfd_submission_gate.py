@@ -15,6 +15,7 @@ from scripts.uxfd_low_tier_source_audit import (
     evaluate_low_tier_source_audit,
 )
 from scripts.uxfd_recent_work_gate import RecentWorkGateReport, evaluate_recent_work_gate
+from scripts.uxfd_sota_gate import DEFAULT_SOTA_ROOT, SotaGateReport, evaluate_sota_gate
 from scripts.uxfd_submodule_dirty_triage import DirtyTriageReport, evaluate_dirty_triage
 
 
@@ -107,6 +108,10 @@ class SubmissionGateReport:
     artifact_gate_root: str
     artifact_gate_records: int
     artifact_gate_blockers: Tuple[str, ...]
+    sota_gate_ready: bool
+    sota_gate_root: str
+    sota_gate_records: int
+    sota_gate_blockers: Tuple[str, ...]
     recent_work_policy_ready: bool
     recent_work_evidence_ready: bool
     recent_work_matrix_rows: int
@@ -217,6 +222,7 @@ def _objective_checklist(
     papers: Sequence[PaperSubmissionGate],
     queue_path: Path,
     artifact_report: ArtifactGateReport,
+    sota_report: SotaGateReport,
     recent_report: RecentWorkGateReport,
     low_tier_report: LowTierSourceAuditReport,
     dirty_report: DirtyTriageReport,
@@ -325,6 +331,11 @@ def _objective_checklist(
                 "status": "met" if artifact_report.accepted else "not_met",
             },
             {
+                "requirement": "SOTA aggregate evidence gate",
+                "evidence": sota_report.aggregate_root,
+                "status": "met" if sota_report.ready else "not_met",
+            },
+            {
                 "requirement": "submission readiness achieved",
                 "evidence": "all paper matrices submission_ready",
                 "status": (
@@ -341,6 +352,7 @@ def _objective_checklist(
 def evaluate_submission_gate(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_root: Path = DEFAULT_ARTIFACT_ROOT,
+    sota_root: Path = DEFAULT_SOTA_ROOT,
 ) -> SubmissionGateReport:
     papers: List[PaperSubmissionGate] = []
     blockers: List[str] = []
@@ -397,6 +409,12 @@ def evaluate_submission_gate(
             f"artifact gate blocked: {len(artifact_report.blockers)} blockers under "
             f"{artifact_report.artifact_root}"
         )
+    sota_report = evaluate_sota_gate(sota_root, queue_path=queue_path)
+    if not sota_report.ready:
+        blockers.append(
+            f"sota gate blocked: {len(sota_report.blockers)} blockers under "
+            f"{sota_report.aggregate_root}"
+        )
     recent_report = evaluate_recent_work_gate(queue_path=queue_path)
     if not recent_report.policy_ready:
         blockers.append(
@@ -434,6 +452,7 @@ def evaluate_submission_gate(
             papers,
             queue_path,
             artifact_report,
+            sota_report,
             recent_report,
             low_tier_report,
             dirty_report,
@@ -442,6 +461,10 @@ def evaluate_submission_gate(
         artifact_gate_root=artifact_report.artifact_root,
         artifact_gate_records=len(artifact_report.records),
         artifact_gate_blockers=artifact_report.blockers,
+        sota_gate_ready=sota_report.ready,
+        sota_gate_root=sota_report.aggregate_root,
+        sota_gate_records=len(sota_report.records),
+        sota_gate_blockers=sota_report.blockers,
         recent_work_policy_ready=recent_report.policy_ready,
         recent_work_evidence_ready=recent_report.evidence_ready,
         recent_work_matrix_rows=len(recent_report.matrix_coverage),
@@ -473,6 +496,8 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Queue resource reason: {report.queue_resource_reason}",
         f"- Artifact gate accepted: `{report.artifact_gate_accepted}`",
         f"- Artifact gate records: `{report.artifact_gate_records}`",
+        f"- SOTA gate ready: `{report.sota_gate_ready}`",
+        f"- SOTA gate records: `{report.sota_gate_records}`",
         f"- Recent-work policy ready: `{report.recent_work_policy_ready}`",
         f"- Recent-work evidence ready: `{report.recent_work_evidence_ready}`",
         f"- Recent-work matrix rows: `{report.recent_work_matrix_rows}`",
@@ -511,12 +536,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate UXFD submission readiness gate")
     parser.add_argument("--queue", type=Path, default=DEFAULT_QUEUE)
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
+    parser.add_argument("--sota-root", type=Path, default=DEFAULT_SOTA_ROOT)
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--allow-not-ready", action="store_true")
     args = parser.parse_args(argv)
 
-    report = evaluate_submission_gate(args.queue, args.artifact_root)
+    report = evaluate_submission_gate(args.queue, args.artifact_root, args.sota_root)
     if args.format == "json":
         output = json.dumps(build_payload(report), indent=2) + "\n"
     else:

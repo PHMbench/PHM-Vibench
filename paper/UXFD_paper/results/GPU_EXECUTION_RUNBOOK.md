@@ -105,6 +105,8 @@ Run the gates after every execution batch:
 
 ```bash
 python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage --format markdown --allow-not-ready --output paper/UXFD_paper/results/artifact_gate_queue_coverage.md
+python -m scripts.uxfd_sota_gate --format json --allow-not-ready --output paper/UXFD_paper/results/sota_gate_current.json
+python -m scripts.uxfd_sota_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/sota_gate_current.md
 python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate_current.json
 python -m scripts.uxfd_recent_work_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate_current.md
 python -m scripts.uxfd_submission_gate --format json --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.json

@@ -26,6 +26,8 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.queue_can_execute is False
     assert report.artifact_gate_accepted is False
     assert report.artifact_gate_records == 0
+    assert report.sota_gate_ready is False
+    assert report.sota_gate_records == 7
     assert report.recent_work_policy_ready is True
     assert report.recent_work_evidence_ready is False
     assert report.recent_work_matrix_rows == 7
@@ -44,6 +46,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert any("submission_ready is false" in item for item in report.blockers)
     assert any("gpu queue blocked" in item for item in report.blockers)
     assert any("artifact gate blocked" in item for item in report.blockers)
+    assert any("sota gate blocked" in item for item in report.blockers)
     assert any("recent-work evidence blocked" in item for item in report.blockers)
     assert any("submodule dirty triage blocked" in item for item in report.blockers)
     assert not any("low-tier source hygiene blocked" in item for item in report.blockers)
@@ -81,6 +84,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     )
     assert checklist["TOP representative accepted artifacts"]["status"] == "not_met"
     assert checklist["accepted run artifact metadata"]["status"] == "not_met"
+    assert checklist["SOTA aggregate evidence gate"]["status"] == "not_met"
     assert checklist["submission readiness achieved"]["status"] == "not_met"
 
 
@@ -105,6 +109,9 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["artifact_gate_accepted"] is False
     assert payload["artifact_gate_records"] == 0
     assert payload["artifact_gate_blockers"]
+    assert payload["sota_gate_ready"] is False
+    assert payload["sota_gate_records"] == 7
+    assert payload["sota_gate_blockers"]
     assert payload["recent_work_policy_ready"] is True
     assert payload["recent_work_evidence_ready"] is False
     assert payload["recent_work_matrix_rows"] == 7
@@ -125,6 +132,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     text = markdown.read_text(encoding="utf-8")
     assert "Ready: `False`" in text
     assert "Artifact gate accepted: `False`" in text
+    assert "SOTA gate ready: `False`" in text
     assert "Recent-work policy ready: `True`" in text
     assert "Recent-work evidence ready: `False`" in text
     assert "Low-tier source hygiene ready: `True`" in text

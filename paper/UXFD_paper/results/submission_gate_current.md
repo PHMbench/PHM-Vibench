@@ -5,6 +5,8 @@
 - Queue resource reason: blocked; no accepted GPU evidence can be generated in this session
 - Artifact gate accepted: `False`
 - Artifact gate records: `0`
+- SOTA gate ready: `False`
+- SOTA gate records: `7`
 - Recent-work policy ready: `True`
 - Recent-work evidence ready: `False`
 - Recent-work matrix rows: `7`
@@ -13,7 +15,7 @@
 - Low-tier source triage markers: `263`
 - Submodule dirty clean: `False`
 - Submodule dirty entries: `27`
-- Blocking findings: `18`
+- Blocking findings: `19`
 - Queue dry-run entries: `104`
 
 | Paper | Ready | Baselines | Ablations | Strict blockers |
@@ -44,6 +46,7 @@
 - LLM_Explainable_FD_Toolkit: 8 strict blockers remain
 - gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session
 - artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs
+- sota gate blocked: 8 blockers under paper/UXFD_paper/results/sota_aggregates
 - recent-work evidence blocked: 7 TOP representative blockers
 - submodule dirty triage blocked: 27 dirty entries across 3 paper submodules
 
@@ -87,4 +90,5 @@
 - `not_met` paper submodule working trees clean before handoff: paper/UXFD_paper/results/submodule_dirty_triage.md
 - `not_met` TOP representative accepted artifacts: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `not_met` accepted run artifact metadata: paper/UXFD_paper/results/accepted_runs
+- `not_met` SOTA aggregate evidence gate: paper/UXFD_paper/results/sota_aggregates
 - `not_met` submission readiness achieved: all paper matrices submission_ready

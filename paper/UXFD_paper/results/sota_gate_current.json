@@ -1,0 +1,74 @@
+{
+  "ready": false,
+  "aggregate_root": "paper/UXFD_paper/results/sota_aggregates",
+  "records": [
+    {
+      "paper_id": "TII_operator_attention",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/TII_operator_attention/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    },
+    {
+      "paper_id": "1D-2D_fusion_explainable",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/1D-2D_fusion_explainable/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    },
+    {
+      "paper_id": "Explainable_FD_Toolkit",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/Explainable_FD_Toolkit/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/MOE_explainable/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    },
+    {
+      "paper_id": "Paper_fuzzy_XFD",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/Paper_fuzzy_XFD/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    },
+    {
+      "paper_id": "Neuralsymbolic_theory",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/Neuralsymbolic_theory/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    },
+    {
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "aggregate_path": "paper/UXFD_paper/results/sota_aggregates/LLM_Explainable_FD_Toolkit/sota_aggregate.yaml",
+      "accepted": false,
+      "issues": [
+        "missing sota_aggregate.yaml"
+      ]
+    }
+  ],
+  "blockers": [
+    "sota aggregate root does not exist: paper/UXFD_paper/results/sota_aggregates",
+    "paper/UXFD_paper/results/sota_aggregates/TII_operator_attention/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/1D-2D_fusion_explainable/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/Explainable_FD_Toolkit/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/MOE_explainable/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/Paper_fuzzy_XFD/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/Neuralsymbolic_theory/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/LLM_Explainable_FD_Toolkit/sota_aggregate.yaml: 1 issues"
+  ],
+  "expected_papers": 7,
+  "accepted_papers": 0
+}

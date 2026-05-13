@@ -18,6 +18,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert report.open_items > 10
     assert report.items[0].item_id == "Q0-GPU-PREFLIGHT"
     assert report.items[1].item_id == "Q0-ARTIFACT-COVERAGE"
+    assert report.items[2].item_id == "Q0-SOTA-AGGREGATE"
     assert "integer seed/batch_size" in report.items[1].next_action
     assert "positive runtime" in report.items[1].next_action
     assert "enumerated precision" in report.items[1].next_action
@@ -27,6 +28,8 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert "`source_tree_status: clean`" in report.items[1].next_action
     assert "clean SHA provenance" in report.items[1].next_action
     assert "matched-seed aggregate statistics" in report.items[1].next_action
+    assert "sota_aggregate.yaml" in report.items[2].next_action
+    assert "mean/std/95% CI" in report.items[2].next_action
     assert any(item.scope == "TII_operator_attention" for item in report.items[:10])
     assert not any(item.item_id == "Q0-PAPER02-PLANNING-COMMIT" for item in report.items)
     parent_checkpoint_items = [

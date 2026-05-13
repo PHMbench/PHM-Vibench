@@ -8,11 +8,13 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 ## Current Verdict
 
 - Achieved: `False`
-- Objective audit: `met=66`, `not_met=11`, `blocked=1`
+- Objective audit: `met=68`, `not_met=11`, `blocked=1`
 - Submission gate ready: `False`
 - Queue can execute: `False`
 - Artifact coverage: `0/104`
 - Artifact records: `0`
+- SOTA gate ready: `False`
+- SOTA aggregate records: `7`
 - Dirty submodule entries: `27`
 
 The project is ready for controlled execution only after local GPUs 0 and 1 are visible and the accepted artifact gate can be populated with real runs.
@@ -39,7 +41,7 @@ The project is ready for controlled execution only after local GPUs 0 and 1 are 
 - Explainable_FD_Toolkit: 5 strict blockers remain
 - MOE_explainable: submission_ready is false
 - MOE_explainable: 5 strict blockers remain
-- ... 10 additional blockers omitted; see gate reports.
+- ... 11 additional blockers omitted; see gate reports.
 
 ## Dirty Submodule Owner Review Queue
 

@@ -3,12 +3,13 @@
 Status: execution backlog only. This file is not accepted experiment evidence.
 
 - Ready: `False`
-- Open items: `51`
+- Open items: `52`
 
 | Priority | Item | Scope | Category | Blocker | Next action | Evidence |
 |---:|---|---|---|---|---|---|
 | 0 | `Q0-GPU-PREFLIGHT` | `cross-paper` | `gpu-preflight` | blocked; no accepted GPU evidence can be generated in this session | Restore local GPU visibility, then require `nvidia-smi -L` and PyTorch CUDA to show RTX 4090 devices 0 and 1 before launching shards. | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` |
 | 1 | `Q0-ARTIFACT-COVERAGE` | `cross-paper` | `accepted-artifacts` | 2 artifact blockers; records=0 | After real runs finish, promote filled `run_meta.yaml`, logs, metrics, and configs under accepted_runs. Require integer seed/batch_size, positive runtime, enumerated precision, accepted_same_protocol evidence_level, hashed preprocessing_signature, numeric metrics, `source_tree_status: clean`, clean SHA provenance, and matched-seed aggregate statistics before rerunning artifact and SOTA gates with queue coverage. | `paper/UXFD_paper/results/accepted_runs` |
+| 2 | `Q0-SOTA-AGGREGATE` | `cross-paper` | `sota-aggregate-evidence` | 8 SOTA blockers; records=7 | After accepted run coverage exists, build one `sota_aggregate.yaml` per paper with matched seed sets, six baseline comparators, runnable TOP representative scope, mean/std/95% CI, and effect size or paired-test evidence. | `paper/UXFD_paper/results/sota_aggregates` |
 | 2 | `TII_operator_attention-B01` | `TII_operator_attention` | `paper-strict-blocker` | No accepted industrial multi-seed baseline table yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
 | 2 | `TII_operator_attention-B02` | `TII_operator_attention` | `paper-strict-blocker` | No accepted ablation artifact table yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
 | 2 | `TII_operator_attention-B03` | `TII_operator_attention` | `paper-strict-blocker` | No complete 2024-2026 TOP representative command/log/artifact mapping yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |

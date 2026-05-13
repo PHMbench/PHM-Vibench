@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `66`
+- Met: `68`
 - Not met: `11`
 - Blocked: `1`
 - Unverified: `0`
@@ -52,6 +52,8 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | GPU1 launch shard | `paper/UXFD_paper/results/queue_launch_shards/gpu1.sh` | exists |
 | `met` | accepted-run template manifest | `paper/UXFD_paper/results/accepted_run_templates/manifest.json` | exists |
 | `met` | artifact queue coverage report | `paper/UXFD_paper/results/artifact_gate_queue_coverage.md` | exists |
+| `met` | SOTA aggregate gate JSON report | `paper/UXFD_paper/results/sota_gate_current.json` | exists |
+| `met` | SOTA aggregate gate markdown report | `paper/UXFD_paper/results/sota_gate_current.md` | exists |
 | `met` | submodule dirty triage report | `paper/UXFD_paper/results/submodule_dirty_triage.md` | exists |
 | `met` | parent result artifact triage report | `paper/UXFD_paper/results/parent_result_artifact_triage.md` | exists |
 | `met` | readiness execution backlog | `paper/UXFD_paper/results/readiness_backlog.md` | exists |
@@ -70,7 +72,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | SOTA comparison requires multi-seed same-protocol aggregate evidence | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` | queue/runbook block single-run SOTA and require matched seeds, aggregate statistics, failure records, and exact-vs-representative TOP scope |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules |
 | `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2 |
-| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 53 parent goal-control paths clean |
+| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 57 parent goal-control paths clean |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
 | `not_met` | TII_operator_attention: IEEE Transactions submission-ready | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
@@ -91,7 +93,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `not_met` | TOP representative accepted artifacts | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | pending_or_blocked_bindings=7 |
 | `blocked` | 2x4090 GPU queue executable | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | blocked; no accepted GPU evidence can be generated in this session |
 | `not_met` | accepted run artifact metadata | `paper/UXFD_paper/results/accepted_runs` | records=0, blockers=2 |
-| `not_met` | cross-paper submission gate | `scripts.uxfd_submission_gate` | ready=False, blockers=18 |
+| `not_met` | cross-paper submission gate | `scripts.uxfd_submission_gate` | ready=False, blockers=19 |
 
 ## Blockers
 
@@ -106,4 +108,4 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 - TOP representative accepted artifacts: pending_or_blocked_bindings=7
 - 2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session
 - accepted run artifact metadata: records=0, blockers=2
-- cross-paper submission gate: ready=False, blockers=18
+- cross-paper submission gate: ready=False, blockers=19

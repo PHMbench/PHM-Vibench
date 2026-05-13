@@ -231,6 +231,18 @@
       "details": "exists"
     },
     {
+      "requirement": "SOTA aggregate gate JSON report",
+      "evidence": "paper/UXFD_paper/results/sota_gate_current.json",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "SOTA aggregate gate markdown report",
+      "evidence": "paper/UXFD_paper/results/sota_gate_current.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "submodule dirty triage report",
       "evidence": "paper/UXFD_paper/results/submodule_dirty_triage.md",
       "status": "met",
@@ -342,7 +354,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "53 parent goal-control paths clean"
+      "details": "57 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -468,7 +480,7 @@
       "requirement": "cross-paper submission gate",
       "evidence": "scripts.uxfd_submission_gate",
       "status": "not_met",
-      "details": "ready=False, blockers=18"
+      "details": "ready=False, blockers=19"
     }
   ],
   "blockers": [
@@ -483,9 +495,9 @@
     "TOP representative accepted artifacts: pending_or_blocked_bindings=7",
     "2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session",
     "accepted run artifact metadata: records=0, blockers=2",
-    "cross-paper submission gate: ready=False, blockers=18"
+    "cross-paper submission gate: ready=False, blockers=19"
   ],
-  "met": 66,
+  "met": 68,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0

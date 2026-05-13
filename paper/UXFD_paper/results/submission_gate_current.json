@@ -121,6 +121,7 @@
     "LLM_Explainable_FD_Toolkit: 8 strict blockers remain",
     "gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session",
     "artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs",
+    "sota gate blocked: 8 blockers under paper/UXFD_paper/results/sota_aggregates",
     "recent-work evidence blocked: 7 TOP representative blockers",
     "submodule dirty triage blocked: 27 dirty entries across 3 paper submodules"
   ],
@@ -331,6 +332,11 @@
       "status": "not_met"
     },
     {
+      "requirement": "SOTA aggregate evidence gate",
+      "evidence": "paper/UXFD_paper/results/sota_aggregates",
+      "status": "not_met"
+    },
+    {
       "requirement": "submission readiness achieved",
       "evidence": "all paper matrices submission_ready",
       "status": "not_met"
@@ -342,6 +348,19 @@
   "artifact_gate_blockers": [
     "no run_meta.yaml files found under paper/UXFD_paper/results/accepted_runs",
     "queue coverage incomplete: 104 queue coverage rows missing accepted run_meta.yaml"
+  ],
+  "sota_gate_ready": false,
+  "sota_gate_root": "paper/UXFD_paper/results/sota_aggregates",
+  "sota_gate_records": 7,
+  "sota_gate_blockers": [
+    "sota aggregate root does not exist: paper/UXFD_paper/results/sota_aggregates",
+    "paper/UXFD_paper/results/sota_aggregates/TII_operator_attention/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/1D-2D_fusion_explainable/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/Explainable_FD_Toolkit/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/MOE_explainable/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/Paper_fuzzy_XFD/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/Neuralsymbolic_theory/sota_aggregate.yaml: 1 issues",
+    "paper/UXFD_paper/results/sota_aggregates/LLM_Explainable_FD_Toolkit/sota_aggregate.yaml: 1 issues"
   ],
   "recent_work_policy_ready": true,
   "recent_work_evidence_ready": false,
