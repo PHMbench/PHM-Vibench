@@ -198,6 +198,10 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         ),
         "- Source-tree rule: accepted runs must set `source_tree_status: clean`.",
         (
+            "- Run-control rule: `seed` must be a non-negative integer and "
+            "`batch_size` must be a positive integer."
+        ),
+        (
             "- Provenance rule: `git_sha_or_submodule_sha` must be a concrete SHA "
             "record without dirty, modified, unknown, or uncommitted markers."
         ),

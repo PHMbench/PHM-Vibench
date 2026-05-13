@@ -217,6 +217,16 @@ def _is_numeric_cell(value: str) -> bool:
     return True
 
 
+def _coerce_integer(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and re.fullmatch(r"[+-]?\d+", value.strip()):
+        return int(value)
+    return None
+
+
 def _resolve_referenced_artifact_path(
     run_meta_path: Path,
     field: str,
@@ -270,9 +280,16 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
                 f"{command_devices} does not match cuda_visible_devices={cuda_visible_devices}"
             )
 
-    try:
-        gpu_count = int(data.get("gpu_count", 0))
-    except (TypeError, ValueError):
+    seed = _coerce_integer(data.get("seed"))
+    if seed is None or seed < 0:
+        issues.append("seed must be a non-negative integer")
+
+    batch_size = _coerce_integer(data.get("batch_size"))
+    if batch_size is None or batch_size <= 0:
+        issues.append("batch_size must be a positive integer")
+
+    gpu_count = _coerce_integer(data.get("gpu_count"))
+    if gpu_count is None:
         issues.append("gpu_count must be an integer")
     else:
         expected_gpu_count = 2 if cuda_visible_devices == "0,1" else 1

@@ -115,6 +115,10 @@ SOURCE_TREE_STATUS_NEEDLES = (
     "source_tree_status must be clean",
     "source_tree_status",
 )
+RUN_CONTROL_NEEDLES = (
+    "seed must be a non-negative integer",
+    "batch_size must be a positive integer",
+)
 SHA_PROVENANCE_NEEDLES = (
     "DISALLOWED_SHA_PROVENANCE_MARKERS",
     "git_sha_or_submodule_sha must not contain",
@@ -436,6 +440,52 @@ def _source_tree_status_contract_item(
     )
 
 
+def _run_control_contract_item(
+    queue_path: Path = DEFAULT_QUEUE,
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+    artifact_scaffold_path: Path = Path("scripts/uxfd_artifact_scaffold.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    if not queue_path.exists():
+        missing.append(str(queue_path))
+        queue_contract: Mapping[str, Any] = {}
+    else:
+        queue = yaml.safe_load(queue_path.read_text(encoding="utf-8"))
+        queue_contract = queue.get("accepted_artifact_contract", {})
+
+    run_controls = str(queue_contract.get("run_controls", "")).lower()
+    for needle in ("seed", "non-negative integer", "batch size", "positive integer"):
+        if needle not in run_controls:
+            missing.append(f"accepted_artifact_contract.run_controls.{needle}")
+
+    for path, needles in (
+        (artifact_gate_path, RUN_CONTROL_NEEDLES),
+        (artifact_scaffold_path, ("Run-control rule", "batch_size")),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="accepted artifacts require numeric run controls",
+            evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="accepted artifacts require numeric run controls",
+        evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+        status="met",
+        details="queue contract, artifact gate, and templates require integer seed and batch_size",
+    )
+
+
 def _sha_provenance_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
@@ -579,6 +629,7 @@ def evaluate_objective_audit(
     items.append(_launch_scripts_static_gate_item())
     items.append(_numeric_metrics_contract_item(queue_path=queue_path))
     items.append(_source_tree_status_contract_item(queue_path=queue_path))
+    items.append(_run_control_contract_item(queue_path=queue_path))
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
 
     paper07_rejection_ready = _text_contains(

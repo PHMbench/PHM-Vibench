@@ -22,6 +22,8 @@ Every `run_meta.yaml` must record the queue identifiers, local GPU binding,
 RTX 4090 metadata, seed, split, preprocessing signature, runtime, command,
 config path, log path, metrics path, git or submodule SHA provenance, and
 `source_tree_status: clean`.
+The seed must be a non-negative integer, and `batch_size` must be a positive
+integer.
 The SHA provenance must be a concrete clean revision and must not contain
 dirty, modified, unknown, or uncommitted markers.
 Status-only metric payloads are rejected because they cannot support IEEE

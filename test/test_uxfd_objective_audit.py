@@ -79,6 +79,10 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "source_tree_status clean" in items[
         "accepted artifacts require clean source trees"
     ].details
+    assert items["accepted artifacts require numeric run controls"].status == "met"
+    assert "integer seed and batch_size" in items[
+        "accepted artifacts require numeric run controls"
+    ].details
     assert items["accepted artifacts require clean SHA provenance"].status == "met"
     assert "dirty SHA provenance" in items[
         "accepted artifacts require clean SHA provenance"

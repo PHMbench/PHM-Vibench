@@ -92,6 +92,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     readme = (output_root / "README.md").read_text(encoding="utf-8")
     assert "at least one numeric metric" in readme
     assert "source_tree_status: clean" in readme
+    assert "`batch_size` must be a positive integer" in readme
     assert "dirty, modified, unknown, or uncommitted" in readme
     assert gate.accepted is False
     assert any("no run_meta.yaml" in blocker for blocker in gate.blockers)
@@ -105,6 +106,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     assert manifest_path.exists()
     assert "at least one numeric metric" in readme
     assert "source_tree_status: clean" in readme
+    assert "`batch_size` must be a positive integer" in readme
     assert "dirty, modified, unknown, or uncommitted" in readme
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert len(build_launch_plan(queue_rows)) == 97
