@@ -326,6 +326,8 @@ def test_gpu_execution_runbook_records_current_live_preflight_blocker() -> None:
     assert f"- `torch_cuda_device_count`: `{live['torch_cuda_device_count']}`" in text
     assert "- `gpu_names`: `[]`" in text
     assert "Do not run `queue_launch_plan.sh`, `gpu0.sh`, or `gpu1.sh`" in text
+    assert "Blocked: static queue validation can_execute=False" in text
+    assert "code `2`" in text
     assert "paper/UXFD_paper/results/recent_work_gate_current.json" in text
     assert "paper/UXFD_paper/results/recent_work_gate_current.md" in text
     assert "paper/UXFD_paper/results/submission_gate_current.json" in text

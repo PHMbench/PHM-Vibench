@@ -37,6 +37,12 @@ bash -n paper/UXFD_paper/results/queue_launch_shards/gpu0.sh
 bash -n paper/UXFD_paper/results/queue_launch_shards/gpu1.sh
 ```
 
+The generated launch scripts also enforce the static queue gate. If
+`scripts.uxfd_gpu_queue` records `validation.can_execute: false`, each launch
+script prints `Blocked: static queue validation can_execute=False` and exits
+with code `2` before any queued experiment command can run. Refresh the live
+preflight, update the queue state, and regenerate these scripts before launch.
+
 ## 3. Launch
 
 Launch the two GPU shards in separate terminals after preflight passes:
