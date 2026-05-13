@@ -117,6 +117,7 @@ def _validate_accepted_run_refs(
     payload: Mapping[str, Any],
     proposed_seeds: Tuple[int, ...],
     accepted_run_root: Path,
+    paper_id: str,
 ) -> Tuple[str, ...]:
     refs = payload.get("accepted_run_refs")
     if not isinstance(refs, Sequence) or isinstance(refs, (str, bytes)) or not refs:
@@ -127,6 +128,8 @@ def _validate_accepted_run_refs(
         issues.append(
             f"{prefix}.accepted_run_refs must cover every matched seed"
         )
+    expected_entry_id = str(payload.get("entry_id") or payload.get("binding_id") or "")
+    referenced_seeds: set[int] = set()
     root = accepted_run_root.resolve()
     for index, ref in enumerate(refs):
         if not isinstance(ref, str) or not ref.strip():
@@ -152,8 +155,42 @@ def _validate_accepted_run_refs(
                 issues.append(
                     f"{prefix}.accepted_run_refs[{index}] directory lacks run_meta.yaml"
                 )
+                continue
+            run_meta_path = candidate / "run_meta.yaml"
         elif candidate.name != "run_meta.yaml":
             issues.append(f"{prefix}.accepted_run_refs[{index}] must reference run_meta.yaml")
+            continue
+        else:
+            run_meta_path = candidate
+
+        run_meta = _load_yaml(run_meta_path)
+        if str(run_meta.get("paper_id", "")) != paper_id:
+            issues.append(f"{prefix}.accepted_run_refs[{index}] paper_id mismatch")
+        if (
+            expected_entry_id
+            and str(run_meta.get("entry_id", "")) != expected_entry_id
+        ):
+            issues.append(f"{prefix}.accepted_run_refs[{index}] entry_id mismatch")
+        seed = run_meta.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            issues.append(f"{prefix}.accepted_run_refs[{index}] seed must be an integer")
+        elif seed not in proposed_seeds:
+            issues.append(
+                f"{prefix}.accepted_run_refs[{index}] seed is not in matched seed set"
+            )
+        else:
+            referenced_seeds.add(seed)
+        if str(run_meta.get("evidence_level", "")).strip() != "accepted_same_protocol":
+            issues.append(
+                f"{prefix}.accepted_run_refs[{index}] evidence_level must be "
+                "accepted_same_protocol"
+            )
+    missing_seeds = sorted(set(proposed_seeds) - referenced_seeds)
+    if missing_seeds:
+        issues.append(
+            f"{prefix}.accepted_run_refs must cover matched run_meta seeds: "
+            + ",".join(str(seed) for seed in missing_seeds)
+        )
     return tuple(issues)
 
 
@@ -162,6 +199,7 @@ def _validate_comparison_entry(
     payload: Mapping[str, Any],
     proposed_seeds: Tuple[int, ...],
     accepted_run_root: Path,
+    paper_id: str,
 ) -> Tuple[str, ...]:
     issues: List[str] = []
     seed_values = _coerce_seed_set(payload.get("seed_values"))
@@ -173,7 +211,9 @@ def _validate_comparison_entry(
             f"{prefix} must include numeric effect_size_vs_proposed or paired_test.p_value"
         )
     issues.extend(
-        _validate_accepted_run_refs(prefix, payload, proposed_seeds, accepted_run_root)
+        _validate_accepted_run_refs(
+            prefix, payload, proposed_seeds, accepted_run_root, paper_id
+        )
     )
     return tuple(issues)
 
@@ -223,6 +263,7 @@ def _validate_aggregate(
             proposed,
             proposed_seeds,
             accepted_run_root,
+            paper_id,
         )
     )
 
@@ -252,6 +293,7 @@ def _validate_aggregate(
                 entry,
                 proposed_seeds,
                 accepted_run_root,
+                paper_id,
             )
         )
 
@@ -286,6 +328,7 @@ def _validate_aggregate(
                 entry,
                 proposed_seeds,
                 accepted_run_root,
+                paper_id,
             )
         )
 

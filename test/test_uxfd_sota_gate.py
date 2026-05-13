@@ -230,6 +230,41 @@ def test_sota_gate_rejects_missing_or_template_run_refs(tmp_path: Path) -> None:
     assert "top_representatives[TOP-QX].accepted_run_refs[0] must not reference template" in issues
 
 
+def test_sota_gate_rejects_mismatched_run_ref_metadata(tmp_path: Path) -> None:
+    queue_path, _ = _write_minimal_queue(tmp_path)
+    aggregate_root = tmp_path / "sota_aggregates"
+    accepted_run_root = tmp_path / "accepted_runs"
+    aggregate_path = _write_valid_aggregate(aggregate_root, accepted_run_root)
+    data = yaml.safe_load(aggregate_path.read_text(encoding="utf-8"))
+    run_meta_path = accepted_run_root / data["proposed"]["accepted_run_refs"][0]
+    run_meta = yaml.safe_load(run_meta_path.read_text(encoding="utf-8"))
+    run_meta["paper_id"] = "OtherPaper"
+    run_meta["entry_id"] = "B01"
+    run_meta["seed"] = 99
+    run_meta["evidence_level"] = "smoke"
+    run_meta_path.write_text(
+        yaml.safe_dump(run_meta, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    report = evaluate_sota_gate(
+        aggregate_root,
+        queue_path=queue_path,
+        accepted_run_root=accepted_run_root,
+    )
+
+    assert report.ready is False
+    issues = "\n".join(report.records[0].issues)
+    assert "proposed.accepted_run_refs[0] paper_id mismatch" in issues
+    assert "proposed.accepted_run_refs[0] entry_id mismatch" in issues
+    assert "proposed.accepted_run_refs[0] seed is not in matched seed set" in issues
+    assert (
+        "proposed.accepted_run_refs[0] evidence_level must be accepted_same_protocol"
+        in issues
+    )
+    assert "proposed.accepted_run_refs must cover matched run_meta seeds: 0" in issues
+
+
 def test_persisted_sota_gate_reports_match_current_gate() -> None:
     report = evaluate_sota_gate()
 
