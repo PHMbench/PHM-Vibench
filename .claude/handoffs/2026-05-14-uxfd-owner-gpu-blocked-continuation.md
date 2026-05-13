@@ -22,6 +22,7 @@ the pre-launch decision gate without re-deriving them.
 
 Recent parent commits:
 
+- `e990b93 docs: add UXFD owner review action packet`
 - `30286fb docs: refresh UXFD objective metrics audit`
 - `cbcc662 test: audit finite UXFD accepted metrics`
 - `3fa10e1 docs: update UXFD metrics gate handoff`
@@ -67,6 +68,10 @@ Recent Paper03 submodule commit:
   clear enough to execute pre-launch unblock work, but the formal GPU queue is
   blocked until owner decisions, clean submodules, accepted artifact coverage,
   SOTA aggregates, and live local RTX 4090 GPU preflight all pass.
+- **Owner decisions now have a short response packet** -
+  `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` is the
+  owner-facing fill-in form for the 6 pending decisions. It is not approval and
+  does not replace `submodule_owner_review_decisions.json`.
 
 ## Code Changes
 
@@ -109,6 +114,13 @@ Recent Paper03 submodule commit:
   rejection for JSON and CSV.
 - `paper/UXFD_paper/goal/status/status_09_gpu_execution.md` - documents the
   finite-metric requirement in the generated GPU execution status.
+- `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` - compact
+  owner response packet for the 6 dirty-submodule owner decisions.
+- `scripts/uxfd_submodule_dirty_triage.py`,
+  `scripts/uxfd_owner_review_gate.py`, `test/test_uxfd_submodule_dirty_triage.py`,
+  `test/test_uxfd_owner_review_gate.py`, and
+  `test/test_uxfd_goal_clarity.py` - surface and test the owner action packet
+  without treating it as approval.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -133,6 +145,10 @@ Latest relevant tests passed:
   - result after finite-metric gate update: `65 passed`
 - `python -m pytest -q test/test_uxfd_artifact_gate.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
   - result after the objective audit wording refresh: `65 passed`
+- `python -m pytest -q test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_owner_review_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py`
+  - result after adding the owner action packet: `45 passed`
+- `python -m pytest -q test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_owner_review_gate.py test/test_uxfd_goal_clarity.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
+  - result after committing the owner action packet: `60 passed`
 
 Latest gate state:
 
@@ -230,6 +246,8 @@ Latest gate state:
   owner-review recommendation summaries.
 - `paper/UXFD_paper/results/submodule_dirty_triage.json` - machine-readable
   dirty-submodule packets and recommended decisions.
+- `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` - short
+  fill-in response form for the 6 owner-review decisions; decision support only.
 - `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` -
   template only, not approval.
 - `scripts/uxfd_owner_review_gate.py` - exact owner decision validation rules.
