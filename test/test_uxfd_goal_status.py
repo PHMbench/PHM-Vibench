@@ -6,7 +6,7 @@ from scripts.uxfd_goal_status import DEFAULT_STATUS_DIR, generate_status_reports
 def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Path) -> None:
     output_dir = tmp_path / "status"
 
-    written = generate_status_reports(output_dir, generated_on="2026-05-12")
+    written = generate_status_reports(output_dir, generated_on="2026-05-14")
 
     assert len(written) == 10
     overall = (output_dir / "status_00_overall.md").read_text(encoding="utf-8")
@@ -16,6 +16,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     )
 
     assert "not accepted experiment evidence" in overall
+    assert "Objective audit: `met=81`, `not_met=13`, `blocked=1`" in overall
     assert "Artifact coverage: `0/104`" in overall
     assert "SOTA gate ready: `False`" in overall
     assert "SOTA aggregate records: `7`" in overall
@@ -71,7 +72,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
 def test_persisted_goal_status_reports_match_generator(tmp_path: Path) -> None:
     output_dir = tmp_path / "status"
 
-    generated = generate_status_reports(output_dir, generated_on="2026-05-12")
+    generated = generate_status_reports(output_dir, generated_on="2026-05-14")
 
     for generated_path in generated:
         persisted_path = DEFAULT_STATUS_DIR / generated_path.name

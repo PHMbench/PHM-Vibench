@@ -2,7 +2,7 @@
 
 Status reports are generated control-plane summaries, not accepted experiment evidence.
 
-- Generated: `2026-05-12`
+- Generated: `2026-05-14`
 - Goal file: `paper/UXFD_paper/goal/08_recent_work_citation_readme.md`
 
 ## Current Verdict
