@@ -282,7 +282,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "46 parent goal-control paths clean"
+      "details": "47 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
