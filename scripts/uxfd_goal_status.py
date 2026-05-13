@@ -307,6 +307,7 @@ def _render_recent_work(generated_on: str, recent_report: object) -> str:
             f"- Ready: `{recent_report.ready}`",
             f"- Policy ready: `{recent_report.policy_ready}`",
             f"- Evidence ready: `{recent_report.evidence_ready}`",
+            f"- Source verification ready: `{recent_report.source_verification_ready}`",
             f"- Accepted TOP method rows: `{recent_report.accepted_pool_rows}`",
             f"- 2026 TOP IDs: `{len(recent_report.top_2026_ids)}`",
             f"- Low-tier violations in TOP pool: `{len(recent_report.low_tier_violations)}`",
@@ -340,6 +341,25 @@ def _render_recent_work(generated_on: str, recent_report: object) -> str:
             f"`{binding.external_work_id}` | `{binding.status}` | "
             f"`{binding.evidence_ready}` |"
         )
+    lines.extend(
+        [
+            "",
+            "## Evidence Activation Workflow",
+            "",
+            "- Policy and source verification are literature hygiene only; they do not "
+            "make any TOP representative `evidence_ready`.",
+            "- A TOP representative binding stays representative-only until accepted "
+            "`run_meta.yaml` and `metrics.json` artifacts exist under "
+            "`paper/UXFD_paper/results/accepted_runs`.",
+            "- Local proxy entries can support only representative claims unless "
+            "external exact code/config is integrated and accepted exact artifacts "
+            "are present.",
+            "- After GPU runs finish, rerun `python -m scripts.uxfd_artifact_gate`, "
+            "`python -m scripts.uxfd_sota_gate`, and "
+            "`python -m scripts.uxfd_recent_work_gate` before changing any binding "
+            "status.",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 

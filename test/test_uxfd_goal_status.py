@@ -44,9 +44,17 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "representative-only" in gpu
     assert "`pending_gpu_and_artifacts`" in gpu
     assert "Evidence ready: `False`" in citation
+    assert "Source verification ready: `True`" in citation
     assert "## Paper-Local Exact-Status Scope" in citation
     assert "Unscoped Exact Claims" in citation
     assert "| `LLM_Explainable_FD_Toolkit` | 7 | 0 | 0 | `True` |" in citation
+    assert "## Evidence Activation Workflow" in citation
+    assert "Policy and source verification are literature hygiene only" in citation
+    assert "`paper/UXFD_paper/results/accepted_runs`" in citation
+    assert "external exact code/config is integrated" in citation
+    assert "`python -m scripts.uxfd_artifact_gate`" in citation
+    assert "`python -m scripts.uxfd_sota_gate`" in citation
+    assert "`python -m scripts.uxfd_recent_work_gate`" in citation
 
 
 def test_persisted_goal_status_reports_match_generator(tmp_path: Path) -> None:
