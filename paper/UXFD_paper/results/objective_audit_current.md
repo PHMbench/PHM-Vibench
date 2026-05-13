@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `81`
+- Met: `82`
 - Not met: `13`
 - Blocked: `1`
 - Unverified: `0`
@@ -62,6 +62,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | submodule dirty triage report | `paper/UXFD_paper/results/submodule_dirty_triage.md` | exists |
 | `met` | submodule dirty triage JSON report | `paper/UXFD_paper/results/submodule_dirty_triage.json` | exists |
 | `met` | submodule owner-review recommendations | `paper/UXFD_paper/results/submodule_owner_review_recommendations.md` | exists |
+| `met` | submodule owner-review evidence index | `paper/UXFD_paper/results/submodule_owner_review_evidence_index.md` | exists |
 | `met` | submodule owner-review action packet | `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` | exists |
 | `met` | submodule owner-review decision template | `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` | exists |
 | `not_met` | submodule owner-review decision file | `paper/UXFD_paper/results/submodule_owner_review_decisions.json` | missing |
@@ -87,7 +88,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `not_met` | submodule owner-review decision gate | `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` | ready=False, pending_records=6, blockers=4 |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md,paper/UXFD_paper/TII_operator_attention/submission_prep/reviewer_traceability_matrix.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer traceability, Q0 preflight, and non-SOTA/non-ready stop rules |
 | `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2 |
-| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 71 parent goal-control paths clean |
+| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 72 parent goal-control paths clean |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
 | `not_met` | TII_operator_attention: IEEE Transactions submission-ready | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
