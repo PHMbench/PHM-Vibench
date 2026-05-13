@@ -1,0 +1,78 @@
+{
+  "ready": false,
+  "decision_file": "paper/UXFD_paper/results/submodule_owner_review_decisions.json",
+  "template_file": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+  "source_path": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+  "source_is_template": true,
+  "expected_records": 6,
+  "records": [
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "path": "EXPERIMENT_DESIGN.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "review_date": "TODO",
+      "issues": [
+        "decision is still pending_owner_review"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "review_date": "TODO",
+      "issues": [
+        "decision is still pending_owner_review"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "path": "EXPERIMENT_DESIGN.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "review_date": "TODO",
+      "issues": [
+        "decision is still pending_owner_review"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "review_date": "TODO",
+      "issues": [
+        "decision is still pending_owner_review"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "path": "EXPERIMENT_DESIGN.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "review_date": "TODO",
+      "issues": [
+        "decision is still pending_owner_review"
+      ]
+    },
+    {
+      "submodule": "paper/UXFD_paper/MOE_explainable",
+      "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
+      "decision": "pending_owner_review",
+      "reviewer": "TODO",
+      "review_date": "TODO",
+      "issues": [
+        "decision is still pending_owner_review"
+      ]
+    }
+  ],
+  "pending_records": 6,
+  "approved_records": 0,
+  "blockers": [
+    "owner decision file missing: paper/UXFD_paper/results/submodule_owner_review_decisions.json",
+    "6 owner-review decisions are still pending",
+    "6 owner-review record issues remain",
+    "template file is not owner approval"
+  ]
+}
