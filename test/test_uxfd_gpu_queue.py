@@ -156,7 +156,7 @@ def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Pat
     assert text.startswith("#!/usr/bin/env bash")
     assert "nvidia-smi -L" in text
     assert "torch.cuda.device_count() == 2" in text
-    assert "assert all('4090' in name for name in names)" in text
+    assert "assert all('RTX 4090' in name for name in names)" in text
     assert "CUDA_VISIBLE_DEVICES=0" in text
     assert "CUDA_VISIBLE_DEVICES=1" in text
     assert "(cd paper/UXFD_paper/Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=" in text
