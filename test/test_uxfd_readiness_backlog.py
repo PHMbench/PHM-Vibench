@@ -6,6 +6,7 @@ from scripts.uxfd_readiness_backlog import (
     GPU_EXECUTION_RUNBOOK,
     GPU_LIVE_PREFLIGHT,
     GPU_PREFLIGHT_ACTION_PACKET,
+    OWNER_REVIEW_EVIDENCE_INDEX,
     evaluate_readiness_backlog,
     main,
     render_markdown,
@@ -67,6 +68,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert all("pending_owner_review" in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_ACTION_PACKET) in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.next_action for item in dirty_items)
+    assert all(str(OWNER_REVIEW_EVIDENCE_INDEX) in item.next_action for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.next_action for item in dirty_items)
     assert all(str(DEFAULT_DECISION_FILE) in item.next_action for item in dirty_items)
     assert all(f"`{APPROVED_DECISION_STATUS}`" in item.next_action for item in dirty_items)
@@ -76,6 +78,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert all("submodule_dirty_triage.json" in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_ACTION_PACKET) in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_RECOMMENDATIONS) in item.evidence for item in dirty_items)
+    assert all(str(OWNER_REVIEW_EVIDENCE_INDEX) in item.evidence for item in dirty_items)
     assert all(str(OWNER_REVIEW_DECISION_TEMPLATE) in item.evidence for item in dirty_items)
     assert all(str(DEFAULT_DECISION_FILE) in item.evidence for item in dirty_items)
     top_items = [item for item in report.items if item.category == "top-representative-evidence"]

@@ -13,6 +13,7 @@ from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
     DEFAULT_QUEUE,
+    OWNER_REVIEW_EVIDENCE_INDEX,
     evaluate_submission_gate,
 )
 from scripts.uxfd_submodule_dirty_triage import (
@@ -348,7 +349,8 @@ def evaluate_readiness_backlog(
                     "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
                     "paper owner after reading the short action packet "
                     f"`{OWNER_REVIEW_ACTION_PACKET}` and recommendation note "
-                    f"`{OWNER_REVIEW_RECOMMENDATIONS}`. Copy "
+                    f"`{OWNER_REVIEW_RECOMMENDATIONS}` plus line-level evidence index "
+                    f"`{OWNER_REVIEW_EVIDENCE_INDEX}`. Copy "
                     f"`{OWNER_REVIEW_DECISION_TEMPLATE}` to "
                     f"`{DEFAULT_DECISION_FILE}`, change top-level `status` to "
                     f"`{APPROVED_DECISION_STATUS}`, replace every pending decision with an "
@@ -363,6 +365,7 @@ def evaluate_readiness_backlog(
                     "paper/UXFD_paper/results/submodule_dirty_triage.json,"
                     f"{OWNER_REVIEW_ACTION_PACKET},"
                     f"{OWNER_REVIEW_RECOMMENDATIONS},"
+                    f"{OWNER_REVIEW_EVIDENCE_INDEX},"
                     f"{OWNER_REVIEW_DECISION_TEMPLATE},"
                     f"{DEFAULT_DECISION_FILE}"
                 ),
