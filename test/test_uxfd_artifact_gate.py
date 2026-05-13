@@ -481,6 +481,27 @@ def test_artifact_gate_requires_explicit_rtx_4090_gpu_model(tmp_path: Path) -> N
     assert "gpu_model must record RTX 4090-class hardware" in report.records[0].issues
 
 
+def test_artifact_gate_rejects_nonlocal_gpu_model_markers(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "run0")
+    run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["gpu_model"] = "NVIDIA GeForce RTX 4090 + A100 cloud fallback"
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is False
+    assert report.records[0].accepted is False
+    assert (
+        "gpu_model must not reference nonlocal accelerator A100"
+        in report.records[0].issues
+    )
+    assert (
+        "gpu_model must not reference nonlocal accelerator CLOUD"
+        in report.records[0].issues
+    )
+
+
 def test_artifact_gate_rejects_dirty_source_tree_status(tmp_path: Path) -> None:
     _write_valid_artifact(tmp_path / "paper07" / "run0")
     run_meta = tmp_path / "paper07" / "run0" / "run_meta.yaml"

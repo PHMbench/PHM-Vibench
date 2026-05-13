@@ -70,6 +70,14 @@ DISALLOWED_SHA_PROVENANCE_MARKERS = (
     "unknown",
     "uncommitted",
 )
+DISALLOWED_GPU_MODEL_MARKERS = (
+    "A100",
+    "H100",
+    "V100",
+    "L40",
+    "CLOUD",
+    "MULTI-NODE",
+)
 PREPROCESSING_SIGNATURE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 RUNTIME_PATTERN = re.compile(r"^(\d+):([0-5]\d):([0-5]\d)$")
 ACCEPTED_PRECISION_VALUES = ("fp32", "tf32", "fp16", "bf16", "amp")
@@ -355,6 +363,13 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     gpu_model = str(data.get("gpu_model", ""))
     if gpu_model and "RTX 4090" not in gpu_model:
         issues.append("gpu_model must record RTX 4090-class hardware")
+    gpu_model_upper = gpu_model.upper()
+    for disallowed_gpu_marker in DISALLOWED_GPU_MODEL_MARKERS:
+        if disallowed_gpu_marker not in gpu_model_upper:
+            continue
+        issues.append(
+            f"gpu_model must not reference nonlocal accelerator {disallowed_gpu_marker}"
+        )
 
     source_tree_status = str(data.get("source_tree_status", "")).strip().lower()
     if source_tree_status and source_tree_status != "clean":
