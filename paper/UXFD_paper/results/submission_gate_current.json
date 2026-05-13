@@ -121,7 +121,8 @@
     "LLM_Explainable_FD_Toolkit: 8 strict blockers remain",
     "gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session",
     "artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs",
-    "recent-work evidence blocked: 7 TOP representative blockers"
+    "recent-work evidence blocked: 7 TOP representative blockers",
+    "submodule dirty triage blocked: 27 dirty entries across 3 paper submodules"
   ],
   "next_actions": [
     {
@@ -305,6 +306,11 @@
       "status": "met"
     },
     {
+      "requirement": "paper submodule working trees clean before handoff",
+      "evidence": "paper/UXFD_paper/results/submodule_dirty_triage.md",
+      "status": "not_met"
+    },
+    {
       "requirement": "TOP representative accepted artifacts",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
       "status": "not_met"
@@ -344,6 +350,9 @@
   "low_tier_source_blocker_count": 0,
   "low_tier_source_triage_count": 263,
   "low_tier_source_blockers": [],
+  "submodule_dirty_clean": false,
+  "submodule_dirty_entries": 27,
+  "submodule_dirty_submodules": 3,
   "queue_can_execute": false,
   "queue_resource_reason": "blocked; no accepted GPU evidence can be generated in this session",
   "queue_summary": {

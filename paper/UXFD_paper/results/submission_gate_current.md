@@ -11,7 +11,9 @@
 - Low-tier source hygiene ready: `True`
 - Low-tier source blockers: `0`
 - Low-tier source triage markers: `263`
-- Blocking findings: `17`
+- Submodule dirty clean: `False`
+- Submodule dirty entries: `27`
+- Blocking findings: `18`
 - Queue dry-run entries: `104`
 
 | Paper | Ready | Baselines | Ablations | Strict blockers |
@@ -43,6 +45,7 @@
 - gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session
 - artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs
 - recent-work evidence blocked: 7 TOP representative blockers
+- submodule dirty triage blocked: 27 dirty entries across 3 paper submodules
 
 ## Next Actions
 
@@ -79,6 +82,7 @@
 - `met` Paper07 rejection-recovery innovation contract: paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md
 - `met` TOP recent-work policy and paper-local matrix coverage: scripts.uxfd_recent_work_gate
 - `met` low-tier source hygiene: paper/UXFD_paper/results/low_tier_source_audit.md
+- `not_met` paper submodule working trees clean before handoff: paper/UXFD_paper/results/submodule_dirty_triage.md
 - `not_met` TOP representative accepted artifacts: paper/UXFD_paper/goal/09_gpu_execution_queue.yaml
 - `not_met` accepted run artifact metadata: paper/UXFD_paper/results/accepted_runs
 - `not_met` submission readiness achieved: all paper matrices submission_ready
