@@ -83,8 +83,8 @@ Recent Paper03 submodule commit:
   owner-facing fill-in form for the 6 pending decisions. It is not approval and
   does not replace `submodule_owner_review_decisions.json`.
 - **Objective audit now tracks the owner action packet** - the prompt-to-artifact
-  checklist includes `submodule owner-review action packet`; the latest
-  persisted audit reports `Met: 79`, `Not met: 13`, `Blocked: 1`.
+  checklist includes `submodule owner-review action packet`; the current
+  persisted audit is superseded by the later all-packet checkpoint below.
 - **Submission gate and backlog now point to the short owner packet** -
   `submission_gate_current.*` and `readiness_backlog.md` surface
   `submodule_owner_review_action_packet.md` so owner review can start from the
