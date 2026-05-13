@@ -85,6 +85,9 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert checklist["goal clarity audit report"]["status"] == "met"
     assert checklist["commit recovery plan"]["status"] == "met"
     assert checklist["Paper07 rejection-recovery innovation contract"]["status"] == "met"
+    assert "reviewer_traceability_matrix.md" in checklist[
+        "Paper07 rejection-recovery innovation contract"
+    ]["evidence"]
     assert (
         checklist["TOP recent-work policy and paper-local matrix coverage"]["status"]
         == "met"

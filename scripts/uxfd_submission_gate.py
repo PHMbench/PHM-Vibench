@@ -37,6 +37,10 @@ PAPER07_REJECTION_CONTRACT = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
     "rejection_recovery_contract.md"
 )
+PAPER07_REVIEWER_TRACE = Path(
+    "paper/UXFD_paper/TII_operator_attention/submission_prep/"
+    "reviewer_traceability_matrix.md"
+)
 PAPER07_REJECTION_NEEDLES = (
     "Rejection-Recovery Focus",
     "Dynamic Sparse Operator Attention v2",
@@ -44,6 +48,18 @@ PAPER07_REJECTION_NEEDLES = (
     "must not use SOTA",
     "paper remains not submission-ready",
     "Q0 preflight",
+)
+PAPER07_REVIEWER_TRACE_NEEDLES = (
+    "not accepted experiment evidence",
+    "Weak industrial performance",
+    "Theory-experiment mismatch",
+    "Unclear innovation",
+    "Insufficient recent/SOTA baselines",
+    "DSOA v2",
+    "OAS, OSS, and OCS",
+    "must not claim",
+    "parent objective audit is not achieved",
+    "accepted_runs/TII_operator_attention",
 )
 REQUIRED_GOAL_FILES = (
     "README.md",
@@ -165,6 +181,9 @@ def _paper07_rejection_recovery_ready() -> bool:
     ) and _file_contains_all(
         PAPER07_REJECTION_CONTRACT,
         PAPER07_REJECTION_NEEDLES[3:],
+    ) and _file_contains_all(
+        PAPER07_REVIEWER_TRACE,
+        PAPER07_REVIEWER_TRACE_NEEDLES,
     )
 
 
@@ -321,7 +340,7 @@ def _objective_checklist(
             },
             {
                 "requirement": "Paper07 rejection-recovery innovation contract",
-                "evidence": f"{PAPER07_GOAL},{PAPER07_REJECTION_CONTRACT}",
+                "evidence": f"{PAPER07_GOAL},{PAPER07_REJECTION_CONTRACT},{PAPER07_REVIEWER_TRACE}",
                 "status": "met" if _paper07_rejection_recovery_ready() else "not_met",
             },
             {

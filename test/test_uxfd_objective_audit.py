@@ -165,6 +165,9 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"
     assert items["Paper07 rejection-recovery innovation contract"].status == "met"
+    assert "reviewer_traceability_matrix.md" in items[
+        "Paper07 rejection-recovery innovation contract"
+    ].evidence
     assert (
         items["paper submodule working trees clean before parent handoff"].status
         in {"met", "not_met", "unverified"}

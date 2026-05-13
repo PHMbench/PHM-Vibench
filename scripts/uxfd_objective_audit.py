@@ -19,6 +19,8 @@ from scripts.uxfd_submission_gate import (
     PAPER07_GOAL,
     PAPER07_REJECTION_CONTRACT,
     PAPER07_REJECTION_NEEDLES,
+    PAPER07_REVIEWER_TRACE,
+    PAPER07_REVIEWER_TRACE_NEEDLES,
     REQUIRED_GOAL_FILES,
     evaluate_submission_gate,
 )
@@ -1165,15 +1167,18 @@ def evaluate_objective_audit(
     ) and all(
         _text_contains(PAPER07_REJECTION_CONTRACT, needle)
         for needle in PAPER07_REJECTION_NEEDLES[3:]
+    ) and all(
+        _text_contains(PAPER07_REVIEWER_TRACE, needle)
+        for needle in PAPER07_REVIEWER_TRACE_NEEDLES
     )
     items.append(
         _item(
             requirement="Paper07 rejection-recovery innovation contract",
-            evidence=f"{PAPER07_GOAL},{PAPER07_REJECTION_CONTRACT}",
+            evidence=f"{PAPER07_GOAL},{PAPER07_REJECTION_CONTRACT},{PAPER07_REVIEWER_TRACE}",
             status="met" if paper07_rejection_ready else "not_met",
             details=(
                 "goal and submodule contract encode rejection recovery, DSOA v2, "
-                "reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules"
+                "reviewer traceability, Q0 preflight, and non-SOTA/non-ready stop rules"
                 if paper07_rejection_ready
                 else "missing required Paper07 rejection-recovery goal or contract phrases"
             ),
