@@ -201,6 +201,12 @@
       "details": "exists"
     },
     {
+      "requirement": "GPU preflight action packet",
+      "evidence": "paper/UXFD_paper/results/gpu_preflight_action_packet.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "live GPU preflight snapshot",
       "evidence": "paper/UXFD_paper/results/gpu_queue_live_preflight.json",
       "status": "met",
@@ -432,7 +438,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "69 parent goal-control paths clean"
+      "details": "70 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -577,7 +583,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=20"
   ],
-  "met": 79,
+  "met": 80,
   "not_met": 13,
   "blocked": 1,
   "unverified": 0
