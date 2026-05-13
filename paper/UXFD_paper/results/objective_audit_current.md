@@ -80,7 +80,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `not_met` | TOP representative accepted artifacts | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | pending_or_blocked_bindings=7 |
 | `blocked` | 2x4090 GPU queue executable | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | blocked; no accepted GPU evidence can be generated in this session |
 | `not_met` | accepted run artifact metadata | `paper/UXFD_paper/results/accepted_runs` | records=0, blockers=2 |
-| `not_met` | cross-paper submission gate | `scripts.uxfd_submission_gate` | ready=False, blockers=24 |
+| `not_met` | cross-paper submission gate | `scripts.uxfd_submission_gate` | ready=False, blockers=18 |
 
 ## Blockers
 
@@ -95,4 +95,4 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 - TOP representative accepted artifacts: pending_or_blocked_bindings=7
 - 2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session
 - accepted run artifact metadata: records=0, blockers=2
-- cross-paper submission gate: ready=False, blockers=24
+- cross-paper submission gate: ready=False, blockers=18

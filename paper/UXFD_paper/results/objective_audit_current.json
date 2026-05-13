@@ -402,7 +402,7 @@
       "requirement": "cross-paper submission gate",
       "evidence": "scripts.uxfd_submission_gate",
       "status": "not_met",
-      "details": "ready=False, blockers=24"
+      "details": "ready=False, blockers=18"
     }
   ],
   "blockers": [
@@ -417,7 +417,7 @@
     "TOP representative accepted artifacts: pending_or_blocked_bindings=7",
     "2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session",
     "accepted run artifact metadata: records=0, blockers=2",
-    "cross-paper submission gate: ready=False, blockers=24"
+    "cross-paper submission gate: ready=False, blockers=18"
   ],
   "met": 55,
   "not_met": 11,
