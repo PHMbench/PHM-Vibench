@@ -64,6 +64,8 @@ def test_goal_readme_uses_persisted_current_gate_outputs() -> None:
 
     assert "paper/UXFD_paper/results/objective_audit_current.json" in text
     assert "paper/UXFD_paper/results/objective_audit_current.md" in text
+    assert "paper/UXFD_paper/results/submodule_owner_review_gate_current.json" in text
+    assert "paper/UXFD_paper/results/submodule_owner_review_gate_current.md" in text
     assert "paper/UXFD_paper/results/submission_gate_current.json" in text
     assert "paper/UXFD_paper/results/submission_gate_current.md" in text
     assert "paper/UXFD_paper/results/recent_work_gate_current.json" in text
@@ -73,6 +75,19 @@ def test_goal_readme_uses_persisted_current_gate_outputs() -> None:
 
     stale = [path for path in STALE_PERSISTED_GATE_OUTPUTS if path in text]
     assert not stale
+
+
+def test_goal_readme_exposes_owner_review_gate_as_pre_execution_gate() -> None:
+    text = GOAL_README.read_text(encoding="utf-8")
+    normalized = " ".join(text.split())
+
+    assert "## Owner Review Gate" in text
+    assert "python -m scripts.uxfd_owner_review_gate --format markdown" in text
+    assert "submodule_owner_review_decisions.json" in text
+    assert "submodule_owner_review_decisions.template.json" in text
+    assert "template is decision support only" in normalized
+    assert "it is not paper-owner approval" in normalized
+    assert "pending_owner_review" in text
 
 
 def test_goal_clarity_audit_exists_and_records_non_ready_verdict() -> None:

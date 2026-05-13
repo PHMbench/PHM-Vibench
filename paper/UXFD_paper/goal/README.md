@@ -92,6 +92,24 @@ staged preparation, but still blocked for full execution by GPU preflight,
 accepted artifacts, TOP representative evidence, dirty submodules, and
 submission gates.
 
+## Owner Review Gate
+
+Use the owner-review gate before staging or committing dirty paper-submodule
+work. The template is decision support only; it is not paper-owner approval:
+
+```bash
+python -m scripts.uxfd_owner_review_gate --format markdown
+python -m scripts.uxfd_owner_review_gate --format json --allow-not-ready --output paper/UXFD_paper/results/submodule_owner_review_gate_current.json
+python -m scripts.uxfd_owner_review_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/submodule_owner_review_gate_current.md
+```
+
+The gate returns non-zero until
+`paper/UXFD_paper/results/submodule_owner_review_decisions.json` exists, covers
+all current owner-review packets, and has no `pending_owner_review` records.
+Use
+`paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` only
+as the starting point for real paper-owner decisions.
+
 ## Submission Gate
 
 Use the parent gate checker to prove the package is or is not ready for
