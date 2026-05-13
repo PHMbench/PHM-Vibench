@@ -244,15 +244,25 @@ def _recommended_owner_decisions(entry: DirtyEntry) -> Tuple[str, ...]:
 
 def _owner_review_note(entry: DirtyEntry) -> str:
     markers = set(entry.risk_markers)
+    notes: List[str] = []
     if "nonlocal_gpu_binding" in markers:
-        return "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
-    if "unaccepted_readiness_claim" in markers or "historical_accepted_claim" in markers:
-        return (
-            "Historical readiness or accepted-evidence wording conflicts with current "
-            "accepted_runs=0 and submission_ready=false gates."
-        )
+        notes.append("Rewrite nonlocal GPU references to local GPU 0,1 policy.")
     if "deprecated_config_dir_dispatch" in markers:
-        return "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
+        notes.append(
+            "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
+        )
+    if (
+        "unaccepted_readiness_claim" in markers
+        or "historical_accepted_claim" in markers
+    ):
+        notes.append(
+            "Remove or relabel historical readiness/accepted-evidence wording because "
+            "current accepted_runs=0 and submission_ready=false gates still block the paper."
+        )
+    if "stale_exec_root" in markers:
+        notes.append("Remove stale execution-root references before any commit.")
+    if notes:
+        return " ".join(notes)
     if entry.category == "planning_or_contract_draft":
         return "Useful planning draft only after current-root, parent-gated rewrite."
     return "TODO"

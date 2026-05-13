@@ -3,7 +3,7 @@
 Status: execution backlog only. This file is not accepted experiment evidence.
 
 - Ready: `False`
-- Open items: `52`
+- Open items: `53`
 
 | Priority | Item | Scope | Category | Blocker | Next action | Evidence |
 |---:|---|---|---|---|---|---|
@@ -15,6 +15,7 @@ Status: execution backlog only. This file is not accepted experiment evidence.
 | 2 | `TII_operator_attention-B03` | `TII_operator_attention` | `paper-strict-blocker` | No complete 2024-2026 TOP representative command/log/artifact mapping yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
 | 2 | `TII_operator_attention-B04` | `TII_operator_attention` | `paper-strict-blocker` | No GPU model/runtime metadata from local GPUs 0,1 yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
 | 2 | `TII_operator_attention-B05` | `TII_operator_attention` | `paper-strict-blocker` | No SOTA claim is allowed from this matrix alone. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
+| 4 | `Q0-PARENT-GOAL-CHECKPOINT-COMMIT` | `cross-paper` | `commit-recovery` | 5 parent goal/control paths are dirty | Run commit recovery Phases 2-4: sync parent reports, commit the parent checkpoint, then regenerate objective audit outputs. | `paper/UXFD_paper/results/commit_recovery_plan.md` |
 | 5 | `TOP-Q1-GTM` | `TII_operator_attention` | `top-representative-evidence` | RWTOP2026-GTM binding is pending_gpu_and_artifacts; local proxy entries=B04, B05, A04; exact_status=not exact; representative only until external code/config is integrated | After Q0 GPU preflight passes, run and promote accepted artifacts for the listed local proxy matrix entries. Keep the claim representative-only unless exact external code/config evidence is integrated. | `paper/UXFD_paper/results/recent_work_gate_current.md` |
 | 5 | `TOP-Q2-GTM` | `1D-2D_fusion_explainable` | `top-representative-evidence` | RWTOP2026-GTM binding is pending_gpu_and_artifacts; local proxy entries=B04, B05, A06; exact_status=not exact; representative only until external code/config is integrated | After Q0 GPU preflight passes, run and promote accepted artifacts for the listed local proxy matrix entries. Keep the claim representative-only unless exact external code/config evidence is integrated. | `paper/UXFD_paper/results/recent_work_gate_current.md` |
 | 5 | `TOP-Q3-TIMESEG` | `Explainable_FD_Toolkit` | `top-representative-evidence` | RWTOP2026-TIMESEG binding is pending_gpu_and_artifacts; local proxy entries=P00, A02, A03, A06; exact_status=not exact; representative only until external code/config is integrated | After Q0 GPU preflight passes, run and promote accepted artifacts for the listed local proxy matrix entries. Keep the claim representative-only unless exact external code/config evidence is integrated. | `paper/UXFD_paper/results/recent_work_gate_current.md` |

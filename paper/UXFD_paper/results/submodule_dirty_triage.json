@@ -356,7 +356,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Historical readiness or accepted-evidence wording conflicts with current accepted_runs=0 and submission_ready=false gates."
+      "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
@@ -392,7 +392,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Historical readiness or accepted-evidence wording conflicts with current accepted_runs=0 and submission_ready=false gates."
+      "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
       "submodule": "paper/UXFD_paper/MOE_explainable",
@@ -410,7 +410,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
+      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy. Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
       "submodule": "paper/UXFD_paper/MOE_explainable",
@@ -430,7 +430,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
+      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy. Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     }
   ],
   "owner_review_packets": [

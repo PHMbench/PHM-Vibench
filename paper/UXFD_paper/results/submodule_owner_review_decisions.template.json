@@ -45,7 +45,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Historical accepted wording conflicts with current accepted_runs=0 gate."
+      "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
@@ -62,7 +62,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Rewrite to maintained python main.py --config flow before any commit."
+      "notes": "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
@@ -81,7 +81,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Historical readiness snapshot conflicts with current submission_ready=false gate."
+      "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
       "submodule": "paper/UXFD_paper/MOE_explainable",
@@ -99,7 +99,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy before any commit."
+      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy. Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
       "submodule": "paper/UXFD_paper/MOE_explainable",
@@ -119,7 +119,7 @@
       "decision": "pending_owner_review",
       "reviewer": "TODO",
       "review_date": "TODO",
-      "notes": "Historical evidence and nonlocal GPU bindings cannot satisfy current parent gates."
+      "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy. Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     }
   ]
 }

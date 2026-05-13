@@ -16,6 +16,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     _content_risk_markers,
     _owner_decision_template,
     _owner_review_packets,
+    _owner_review_note,
     _owner_resolution_gates,
     _path_risk_markers,
     _risk_marker_counts,
@@ -258,6 +259,31 @@ def test_owner_review_packets_include_machine_readable_review_steps() -> None:
     )
 
 
+def test_owner_review_note_preserves_all_risk_categories() -> None:
+    entry = DirtyEntry(
+        "paper/A",
+        "??",
+        "manuscript/AUTORESEARCH_EVIDENCE.md",
+        "historical_autoresearch_evidence_draft",
+        DO_NOT_AUTO_COMMIT,
+        (
+            "stale_exec_root",
+            "deprecated_config_dir_dispatch",
+            "unaccepted_readiness_claim",
+            "historical_accepted_claim",
+            "nonlocal_gpu_binding",
+        ),
+    )
+
+    note = _owner_review_note(entry)
+
+    assert "local GPU 0,1 policy" in note
+    assert "python main.py --config" in note
+    assert "accepted_runs=0" in note
+    assert "submission_ready=false" in note
+    assert "stale execution-root" in note
+
+
 def test_build_payload_exposes_owner_review_recommendations() -> None:
     report = DirtyTriageReport(
         clean=False,
@@ -391,3 +417,10 @@ def test_owner_review_decision_template_is_machine_readable() -> None:
         ("paper/UXFD_paper/MOE_explainable", "EXPERIMENT_DESIGN.md"),
         ("paper/UXFD_paper/MOE_explainable", "manuscript/AUTORESEARCH_EVIDENCE.md"),
     }
+
+
+def test_owner_review_decision_template_matches_current_dirty_triage() -> None:
+    template = json.loads(OWNER_REVIEW_DECISION_TEMPLATE.read_text(encoding="utf-8"))
+    report = evaluate_dirty_triage()
+
+    assert template["records"] == list(_owner_decision_template(report.entries))
