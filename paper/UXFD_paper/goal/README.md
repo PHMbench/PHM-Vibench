@@ -66,7 +66,8 @@ maps the user request to concrete filesystem and gate evidence:
 
 ```bash
 python -m scripts.uxfd_objective_audit --format markdown
-python -m scripts.uxfd_objective_audit --format json --output paper/UXFD_paper/results/objective_audit.json
+python -m scripts.uxfd_objective_audit --format json --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.json
+python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved --output paper/UXFD_paper/results/objective_audit_current.md
 ```
 
 The command returns non-zero until every named goal file, Spec Kit artifact,
@@ -98,8 +99,9 @@ submission without launching experiments:
 
 ```bash
 python -m scripts.uxfd_submission_gate --format markdown
-python -m scripts.uxfd_submission_gate --format json --output paper/UXFD_paper/results/submission_gate.json
-python -m scripts.uxfd_submission_gate --artifact-root paper/UXFD_paper/results/accepted_runs --format markdown
+python -m scripts.uxfd_submission_gate --format json --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.json
+python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/submission_gate_current.md
+python -m scripts.uxfd_submission_gate --artifact-root paper/UXFD_paper/results/accepted_runs --format markdown --allow-not-ready
 ```
 
 The command returns non-zero while any paper remains non-ready. Use
@@ -119,7 +121,8 @@ per-paper TOP quotas, and the seven queued TOP representative bindings:
 
 ```bash
 python -m scripts.uxfd_recent_work_gate --format markdown
-python -m scripts.uxfd_recent_work_gate --format json --output paper/UXFD_paper/results/recent_work_gate.json
+python -m scripts.uxfd_recent_work_gate --format json --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate_current.json
+python -m scripts.uxfd_recent_work_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/recent_work_gate_current.md
 ```
 
 The command returns non-zero while TOP representative artifacts remain pending.
@@ -134,8 +137,7 @@ Use the artifact gate after real runs finish to check accepted-run metadata
 without changing any result:
 
 ```bash
-python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results --format markdown
-python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results --format json --output paper/UXFD_paper/results/artifact_gate.json
+python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage --format markdown --allow-not-ready --output paper/UXFD_paper/results/artifact_gate_queue_coverage.md
 ```
 
 The gate requires `run_meta.yaml` plus local 4090 GPU metadata, config/log/metrics

@@ -6,6 +6,16 @@ GOAL_README = GOAL_DIR / "README.md"
 CLARITY_AUDIT = Path("paper/UXFD_paper/results/goal_clarity_audit_current.md")
 COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
 
+STALE_PERSISTED_GATE_OUTPUTS = (
+    "paper/UXFD_paper/results/objective_audit.json",
+    "paper/UXFD_paper/results/objective_audit.md",
+    "paper/UXFD_paper/results/submission_gate.json",
+    "paper/UXFD_paper/results/submission_gate.md",
+    "paper/UXFD_paper/results/recent_work_gate.json",
+    "paper/UXFD_paper/results/recent_work_gate.md",
+    "paper/UXFD_paper/results/artifact_gate.json",
+)
+
 STALE_EXECUTION_MARKERS = (
     "PHM-Vibench copy 2",
     "Paper/1D",
@@ -47,6 +57,22 @@ def test_goal_readme_exposes_clarity_audit_without_treating_it_as_evidence() -> 
     assert str(CLARITY_AUDIT) in text
     assert "not a submission-readiness gate" in normalized
     assert "not accepted experiment evidence" in normalized
+
+
+def test_goal_readme_uses_persisted_current_gate_outputs() -> None:
+    text = GOAL_README.read_text(encoding="utf-8")
+
+    assert "paper/UXFD_paper/results/objective_audit_current.json" in text
+    assert "paper/UXFD_paper/results/objective_audit_current.md" in text
+    assert "paper/UXFD_paper/results/submission_gate_current.json" in text
+    assert "paper/UXFD_paper/results/submission_gate_current.md" in text
+    assert "paper/UXFD_paper/results/recent_work_gate_current.json" in text
+    assert "paper/UXFD_paper/results/recent_work_gate_current.md" in text
+    assert "paper/UXFD_paper/results/artifact_gate_queue_coverage.md" in text
+    assert "paper/UXFD_paper/results/accepted_runs" in text
+
+    stale = [path for path in STALE_PERSISTED_GATE_OUTPUTS if path in text]
+    assert not stale
 
 
 def test_goal_clarity_audit_exists_and_records_non_ready_verdict() -> None:
