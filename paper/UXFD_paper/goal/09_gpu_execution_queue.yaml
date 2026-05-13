@@ -59,6 +59,7 @@ accepted_artifact_contract:
   metrics: "metrics.json or metrics.csv with at least one numeric metric"
   numeric_metrics_required: true
   run_controls: "seed must be a non-negative integer; batch size must be a positive integer"
+  seed_uniqueness: "multiple accepted seeds may share one queue entry, but the same source_queue_id, paper_id, phase, entry_id, CUDA_VISIBLE_DEVICES, and seed tuple must not be duplicated"
   runtime: "must be a positive HH:MM:SS duration"
   precision: "must be one of fp32, tf32, fp16, bf16, amp"
   evidence_level: "must be accepted_same_protocol; smoke, demo, dummy, template, or pending evidence is never accepted"

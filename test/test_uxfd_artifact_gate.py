@@ -125,8 +125,25 @@ def test_artifact_gate_rejects_duplicate_queue_coverage_key(tmp_path: Path) -> N
     assert all(record.accepted for record in report.records)
     assert report.covered_queue_runs == 1
     assert any(
-        "duplicate accepted run_meta.yaml keys" in item for item in report.blockers
+        "duplicate accepted run_meta.yaml queue+seed keys" in item
+        for item in report.blockers
     )
+
+
+def test_artifact_gate_allows_same_queue_entry_with_distinct_seeds(tmp_path: Path) -> None:
+    _write_valid_artifact(tmp_path / "paper07" / "seed0")
+    _write_valid_artifact(tmp_path / "paper07" / "seed1")
+    run_meta = tmp_path / "paper07" / "seed1" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["seed"] = 1
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_artifact_gate(tmp_path)
+
+    assert report.accepted is True
+    assert len(report.records) == 2
+    assert len({record.queue_key for record in report.records}) == 1
+    assert len({record.queue_seed_key for record in report.records}) == 2
 
 
 def test_artifact_gate_rejects_command_mismatch_for_queue_key(tmp_path: Path) -> None:

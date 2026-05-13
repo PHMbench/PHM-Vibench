@@ -518,10 +518,18 @@ def _run_control_contract_item(
     for needle in ("seed", "non-negative integer", "batch size", "positive integer"):
         if needle not in run_controls:
             missing.append(f"accepted_artifact_contract.run_controls.{needle}")
+    seed_uniqueness = str(queue_contract.get("seed_uniqueness", "")).lower()
+    for needle in ("source_queue_id", "entry_id", "seed", "duplicated"):
+        if needle not in seed_uniqueness:
+            missing.append(f"accepted_artifact_contract.seed_uniqueness.{needle}")
 
     for path, needles in (
-        (artifact_gate_path, RUN_CONTROL_NEEDLES),
-        (artifact_scaffold_path, ("Run-control rule", "batch_size")),
+        (
+            artifact_gate_path,
+            RUN_CONTROL_NEEDLES
+            + ("queue_seed_key", "duplicate accepted run_meta.yaml queue+seed keys"),
+        ),
+        (artifact_scaffold_path, ("Run-control rule", "batch_size", "Seed-uniqueness rule")),
     ):
         if not path.exists():
             missing.append(str(path))
@@ -543,7 +551,10 @@ def _run_control_contract_item(
         requirement="accepted artifacts require numeric run controls",
         evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
         status="met",
-        details="queue contract, artifact gate, and templates require integer seed and batch_size",
+        details=(
+            "queue contract, artifact gate, and templates require integer seed "
+            "and batch_size plus unique queue+seed keys"
+        ),
     )
 
 

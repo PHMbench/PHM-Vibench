@@ -91,6 +91,7 @@ class ArtifactRecord:
     accepted: bool
     issues: Tuple[str, ...]
     queue_key: str
+    queue_seed_key: str
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,14 @@ def _metadata_queue_key(data: Mapping[str, Any]) -> str:
     if any(data.get(field) in ("", None) for field in fields):
         return ""
     return "|".join(str(data[field]) for field in fields)
+
+
+def _metadata_queue_seed_key(data: Mapping[str, Any]) -> str:
+    queue_key = _metadata_queue_key(data)
+    seed = _coerce_integer(data.get("seed"))
+    if not queue_key or seed is None:
+        return ""
+    return f"{queue_key}|seed={seed}"
 
 
 def _launch_queue_key(row: Any) -> str:
@@ -383,6 +392,7 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
         accepted=not issues,
         issues=tuple(issues),
         queue_key=_metadata_queue_key(data),
+        queue_seed_key=_metadata_queue_seed_key(data),
     )
 
 
@@ -430,8 +440,13 @@ def evaluate_artifact_gate(
             unknown_keys = tuple(
                 sorted(key for key in accepted_keys if key not in expected)
             )
+            accepted_seed_keys = [
+                record.queue_seed_key
+                for record in records
+                if record.accepted and record.queue_seed_key
+            ]
             seen: Dict[str, int] = {}
-            for key in accepted_keys:
+            for key in accepted_seed_keys:
                 seen[key] = seen.get(key, 0) + 1
             duplicate_keys = tuple(
                 sorted(key for key, count in seen.items() if count > 1)
@@ -457,7 +472,7 @@ def evaluate_artifact_gate(
                 )
             if duplicate_keys:
                 blockers.append(
-                    "queue coverage contains duplicate accepted run_meta.yaml keys: "
+                    "queue coverage contains duplicate accepted run_meta.yaml queue+seed keys: "
                     f"{len(duplicate_keys)}"
                 )
             if missing_queue_runs:

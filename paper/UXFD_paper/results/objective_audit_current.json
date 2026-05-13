@@ -312,7 +312,7 @@
       "requirement": "accepted artifacts require numeric run controls",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
       "status": "met",
-      "details": "queue contract, artifact gate, and templates require integer seed and batch_size"
+      "details": "queue contract, artifact gate, and templates require integer seed and batch_size plus unique queue+seed keys"
     },
     {
       "requirement": "accepted artifacts require positive runtime metadata",

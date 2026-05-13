@@ -143,6 +143,8 @@ def create_scaffold(
                     "After a real run, fill the template, rename it to `run_meta.yaml`,",
                     "place the referenced log/metrics/config files beside it, and run",
                     "`python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs`.",
+                    "Copy this template once per accepted seed; do not reuse the same",
+                    "`source_queue_id`/paper/phase/entry/device/seed tuple for two runs.",
                     "",
                     f"- Queue: `{row.queue_id}`",
                     f"- Paper: `{row.paper_id}`",
@@ -201,6 +203,10 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         (
             "- Run-control rule: `seed` must be a non-negative integer and "
             "`batch_size` must be a positive integer."
+        ),
+        (
+            "- Seed-uniqueness rule: multiple accepted seeds may share one queue entry, "
+            "but duplicate `source_queue_id`/paper/phase/entry/device/seed tuples are rejected."
         ),
         "- Runtime rule: `runtime` must be a positive `HH:MM:SS` duration.",
         "- Precision rule: `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.",
