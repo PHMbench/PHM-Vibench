@@ -118,7 +118,9 @@ def evaluate_readiness_backlog(
                 ),
                 next_action=(
                     "After real runs finish, promote filled `run_meta.yaml`, logs, metrics, "
-                    "and configs under accepted_runs and rerun artifact gate with queue coverage."
+                    "and configs under accepted_runs. Require numeric metrics, "
+                    "`source_tree_status: clean`, and clean SHA provenance before "
+                    "rerunning artifact gate with queue coverage."
                 ),
                 evidence=submission.artifact_gate_root,
             )
