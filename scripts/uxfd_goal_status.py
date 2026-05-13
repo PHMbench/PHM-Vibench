@@ -394,8 +394,15 @@ def _render_gpu_execution(
             "",
             "## Pre-Launch Decision",
             "",
-            "Do not launch `queue_launch_plan.sh` or either per-GPU shard until all "
-            "of the following commands pass without `--allow-not-*` overrides:",
+            "Do not launch `queue_launch_plan.sh` or either per-GPU shard until the "
+            "aggregate pre-launch gate passes without `--allow-not-ready`:",
+            "",
+            "```bash",
+            "python -m scripts.uxfd_prelaunch_gate --format markdown",
+            "```",
+            "",
+            "The aggregate gate mirrors the following required commands, which must "
+            "also pass without `--allow-not-*` overrides:",
             "",
             "```bash",
             "python -m scripts.uxfd_objective_audit --format markdown",

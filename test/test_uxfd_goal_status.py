@@ -32,6 +32,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "Static launch gate enabled: `True`" in gpu
     assert "## Pre-Launch Decision" in gpu
     assert "Do not launch `queue_launch_plan.sh`" in gpu
+    assert "python -m scripts.uxfd_prelaunch_gate --format markdown" in gpu
     assert "python -m scripts.uxfd_owner_review_gate --format markdown" in gpu
     assert (
         "python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight"
