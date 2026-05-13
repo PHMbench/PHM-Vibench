@@ -518,18 +518,36 @@ def _run_control_contract_item(
     for needle in ("seed", "non-negative integer", "batch size", "positive integer"):
         if needle not in run_controls:
             missing.append(f"accepted_artifact_contract.run_controls.{needle}")
-    seed_uniqueness = str(queue_contract.get("seed_uniqueness", "")).lower()
-    for needle in ("source_queue_id", "entry_id", "seed", "duplicated"):
-        if needle not in seed_uniqueness:
-            missing.append(f"accepted_artifact_contract.seed_uniqueness.{needle}")
+    seed_contracts = {
+        "seed_uniqueness": ("source_queue_id", "entry_id", "seed", "duplicated"),
+        "minimum_seed_coverage": ("minimum_seeds", "distinct", "accepted seed"),
+    }
+    for field, needles in seed_contracts.items():
+        text = str(queue_contract.get(field, "")).lower()
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"accepted_artifact_contract.{field}.{needle}")
 
     for path, needles in (
         (
             artifact_gate_path,
             RUN_CONTROL_NEEDLES
-            + ("queue_seed_key", "duplicate accepted run_meta.yaml queue+seed keys"),
+            + (
+                "queue_seed_key",
+                "duplicate accepted run_meta.yaml queue+seed keys",
+                "queue seed coverage incomplete",
+                "minimum_seeds",
+            ),
         ),
-        (artifact_scaffold_path, ("Run-control rule", "batch_size", "Seed-uniqueness rule")),
+        (
+            artifact_scaffold_path,
+            (
+                "Run-control rule",
+                "batch_size",
+                "Seed-uniqueness rule",
+                "Minimum-seed rule",
+            ),
+        ),
     ):
         if not path.exists():
             missing.append(str(path))
@@ -553,7 +571,7 @@ def _run_control_contract_item(
         status="met",
         details=(
             "queue contract, artifact gate, and templates require integer seed "
-            "and batch_size plus unique queue+seed keys"
+            "and batch_size, unique queue+seed keys, and minimum_seeds coverage"
         ),
     )
 

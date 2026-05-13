@@ -60,6 +60,7 @@ accepted_artifact_contract:
   numeric_metrics_required: true
   run_controls: "seed must be a non-negative integer; batch size must be a positive integer"
   seed_uniqueness: "multiple accepted seeds may share one queue entry, but the same source_queue_id, paper_id, phase, entry_id, CUDA_VISIBLE_DEVICES, and seed tuple must not be duplicated"
+  minimum_seed_coverage: "when queue coverage is required, each covered queue entry must include at least the owning paper_queue minimum_seeds distinct accepted seed values before SOTA or submission-ready gates can pass"
   runtime: "must be a positive HH:MM:SS duration"
   precision: "must be one of fp32, tf32, fp16, bf16, amp"
   evidence_level: "must be accepted_same_protocol; smoke, demo, dummy, template, or pending evidence is never accepted"

@@ -154,6 +154,19 @@ def _expected_queue_commands(queue_path: Path) -> Mapping[str, str]:
     return expected
 
 
+def _minimum_seeds_by_queue_key(queue_path: Path) -> Mapping[str, int]:
+    queue = _load_yaml(queue_path)
+    paper_minimums = {
+        str(item.get("paper_id", "")): int(item.get("minimum_seeds", 1))
+        for item in queue.get("paper_queue", ())
+        if isinstance(item, Mapping)
+    }
+    return {
+        key: max(1, paper_minimums.get(key.split("|")[1], 1))
+        for key in _expected_queue_commands(queue_path)
+    }
+
+
 def _expected_queue_keys(queue_path: Path) -> Tuple[str, ...]:
     return tuple(sorted(_expected_queue_commands(queue_path)))
 
@@ -422,6 +435,7 @@ def evaluate_artifact_gate(
             )
         else:
             expected_commands = _expected_queue_commands(queue_path)
+            minimum_seeds_by_key = _minimum_seeds_by_queue_key(queue_path)
             expected_queue_runs = tuple(sorted(expected_commands))
             expected = set(expected_queue_runs)
             accepted_keys = [
@@ -451,20 +465,29 @@ def evaluate_artifact_gate(
             duplicate_keys = tuple(
                 sorted(key for key, count in seen.items() if count > 1)
             )
+            seeds_by_key: Dict[str, set[int]] = {}
             for record in records:
                 if record.accepted and not record.queue_key:
                     blockers.append(
                         f"{record.run_meta_path}: missing queue coverage identifiers"
                     )
                 if record.accepted and record.queue_key in expected:
-                    command = str(
-                        _load_yaml(Path(record.run_meta_path)).get("command", "")
-                    )
+                    run_meta = _load_yaml(Path(record.run_meta_path))
+                    command = str(run_meta.get("command", ""))
                     expected_command = expected_commands[record.queue_key]
                     if command != expected_command:
                         blockers.append(
                             f"{record.run_meta_path}: command does not match queue command"
                         )
+                    seed = _coerce_integer(run_meta.get("seed"))
+                    if seed is not None:
+                        seeds_by_key.setdefault(record.queue_key, set()).add(seed)
+            seed_shortfall_keys = tuple(
+                key
+                for key in expected_queue_runs
+                if key in covered
+                and len(seeds_by_key.get(key, set())) < minimum_seeds_by_key[key]
+            )
             if unknown_keys:
                 blockers.append(
                     "queue coverage contains unknown accepted run_meta.yaml keys: "
@@ -474,6 +497,11 @@ def evaluate_artifact_gate(
                 blockers.append(
                     "queue coverage contains duplicate accepted run_meta.yaml queue+seed keys: "
                     f"{len(duplicate_keys)}"
+                )
+            if seed_shortfall_keys:
+                blockers.append(
+                    "queue seed coverage incomplete: "
+                    f"{len(seed_shortfall_keys)} queue coverage rows below minimum_seeds"
                 )
             if missing_queue_runs:
                 blockers.append(

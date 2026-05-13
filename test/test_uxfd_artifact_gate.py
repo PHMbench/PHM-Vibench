@@ -20,6 +20,11 @@ PERSISTED_ARTIFACT_GATE_QUEUE_COVERAGE = Path(
 )
 DEFAULT_ACCEPTED_RUNS_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
 VALID_PREPROCESSING_SIGNATURE = "sha256:" + "0123456789abcdef" * 4
+VALID_QUEUE_COMMAND = (
+    "CUDA_VISIBLE_DEVICES=0 python main.py --config "
+    "paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml "
+    "--override trainer.num_epochs=1 --override data.num_workers=0"
+)
 
 
 def _write_valid_artifact(run_dir: Path) -> None:
@@ -45,7 +50,7 @@ def _write_valid_artifact(run_dir: Path) -> None:
                 "precision: 'fp32'",
                 "runtime: '00:01:00'",
                 "evidence_level: 'accepted_same_protocol'",
-                "command: 'CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/TII_operator_attention/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0'",
+                f"command: '{VALID_QUEUE_COMMAND}'",
                 "git_sha_or_submodule_sha: 'abc123'",
                 "source_tree_status: 'clean'",
                 "config_path: 'config.yaml'",
@@ -56,6 +61,47 @@ def _write_valid_artifact(run_dir: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
+
+
+def _write_single_entry_queue(tmp_path: Path, minimum_seeds: int = 2) -> Path:
+    matrix_path = tmp_path / "paper" / "submission_prep" / "baseline_ablation_matrix.yaml"
+    matrix_path.parent.mkdir(parents=True, exist_ok=True)
+    matrix_path.write_text(
+        yaml.safe_dump(
+            {
+                "paper_id": "TII_operator_attention",
+                "proposed": {
+                    "id": "P00",
+                    "label": "proposed",
+                    "command": VALID_QUEUE_COMMAND,
+                    "accepted_evidence_status": "pending accepted run",
+                },
+                "baselines": [],
+                "ablations": [],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    queue_path = tmp_path / "queue.yaml"
+    queue_path.write_text(
+        yaml.safe_dump(
+            {
+                "paper_queue": [
+                    {
+                        "queue_id": "Q1",
+                        "paper_id": "TII_operator_attention",
+                        "matrix_path": str(matrix_path),
+                        "minimum_seeds": minimum_seeds,
+                    }
+                ],
+                "top_representative_bindings": [],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return queue_path
 
 
 def test_artifact_gate_accepts_complete_run_meta(tmp_path: Path) -> None:
@@ -87,6 +133,7 @@ def test_artifact_gate_blocks_incomplete_queue_coverage(tmp_path: Path) -> None:
     assert report.covered_queue_runs == 1
     assert len(report.missing_queue_runs) == 103
     assert any("queue coverage incomplete" in item for item in report.blockers)
+    assert any("queue seed coverage incomplete" in item for item in report.blockers)
     assert report.queue_coverage_by_paper["TII_operator_attention"]["covered"] == 1
     assert report.queue_coverage_by_paper["TII_operator_attention"]["missing"] == 14
     assert report.queue_coverage_by_paper["TII_operator_attention"]["expected"] == 15
@@ -144,6 +191,40 @@ def test_artifact_gate_allows_same_queue_entry_with_distinct_seeds(tmp_path: Pat
     assert len(report.records) == 2
     assert len({record.queue_key for record in report.records}) == 1
     assert len({record.queue_seed_key for record in report.records}) == 2
+
+
+def test_artifact_gate_requires_minimum_distinct_seeds_for_covered_queue(
+    tmp_path: Path,
+) -> None:
+    queue_path = _write_single_entry_queue(tmp_path, minimum_seeds=2)
+    artifact_root = tmp_path / "accepted"
+    _write_valid_artifact(artifact_root / "paper07" / "seed0")
+
+    shortfall = evaluate_artifact_gate(
+        artifact_root,
+        queue_path=queue_path,
+        require_queue_coverage=True,
+    )
+
+    assert shortfall.covered_queue_runs == 1
+    assert shortfall.missing_queue_runs == ()
+    assert any("queue seed coverage incomplete" in item for item in shortfall.blockers)
+
+    _write_valid_artifact(artifact_root / "paper07" / "seed1")
+    run_meta = artifact_root / "paper07" / "seed1" / "run_meta.yaml"
+    data = yaml.safe_load(run_meta.read_text(encoding="utf-8"))
+    data["seed"] = 1
+    run_meta.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    accepted = evaluate_artifact_gate(
+        artifact_root,
+        queue_path=queue_path,
+        require_queue_coverage=True,
+    )
+
+    assert accepted.accepted is True
+    assert accepted.covered_queue_runs == 1
+    assert accepted.blockers == ()
 
 
 def test_artifact_gate_rejects_command_mismatch_for_queue_key(tmp_path: Path) -> None:

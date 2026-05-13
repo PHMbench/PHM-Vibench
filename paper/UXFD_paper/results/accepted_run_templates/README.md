@@ -7,6 +7,7 @@
 - Source-tree rule: accepted runs must set `source_tree_status: clean`.
 - Run-control rule: `seed` must be a non-negative integer and `batch_size` must be a positive integer.
 - Seed-uniqueness rule: multiple accepted seeds may share one queue entry, but duplicate `source_queue_id`/paper/phase/entry/device/seed tuples are rejected.
+- Minimum-seed rule: queue-covered entries must reach their paper-specific `minimum_seeds` distinct accepted seeds.
 - Runtime rule: `runtime` must be a positive `HH:MM:SS` duration.
 - Precision rule: `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.
 - Evidence-level rule: `evidence_level` must be `accepted_same_protocol`.

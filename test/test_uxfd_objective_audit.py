@@ -90,6 +90,9 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "unique queue+seed keys" in items[
         "accepted artifacts require numeric run controls"
     ].details
+    assert "minimum_seeds coverage" in items[
+        "accepted artifacts require numeric run controls"
+    ].details
     assert items["accepted artifacts require positive runtime metadata"].status == "met"
     assert "positive HH:MM:SS runtime" in items[
         "accepted artifacts require positive runtime metadata"

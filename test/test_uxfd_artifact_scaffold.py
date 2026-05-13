@@ -95,6 +95,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     assert "source_tree_status: clean" in readme
     assert "`batch_size` must be a positive integer" in readme
     assert "duplicate `source_queue_id`/paper/phase/entry/device/seed" in readme
+    assert "`minimum_seeds` distinct accepted seeds" in readme
     assert "`runtime` must be a positive `HH:MM:SS` duration" in readme
     assert "`precision` must be one of" in readme
     assert "`evidence_level` must be `accepted_same_protocol`" in readme
@@ -114,6 +115,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     assert "source_tree_status: clean" in readme
     assert "`batch_size` must be a positive integer" in readme
     assert "duplicate `source_queue_id`/paper/phase/entry/device/seed" in readme
+    assert "`minimum_seeds` distinct accepted seeds" in readme
     assert "`runtime` must be a positive `HH:MM:SS` duration" in readme
     assert "`precision` must be one of" in readme
     assert "`evidence_level` must be `accepted_same_protocol`" in readme

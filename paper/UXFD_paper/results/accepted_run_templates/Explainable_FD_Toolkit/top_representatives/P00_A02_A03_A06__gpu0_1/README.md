@@ -6,6 +6,8 @@ place the referenced log/metrics/config files beside it, and run
 `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs`.
 Copy this template once per accepted seed; do not reuse the same
 `source_queue_id`/paper/phase/entry/device/seed tuple for two runs.
+Queue coverage is not complete until each covered entry has the
+paper-specific `minimum_seeds` distinct accepted seeds.
 
 - Queue: `TOP-Q3-TIMESEG`
 - Paper: `Explainable_FD_Toolkit`

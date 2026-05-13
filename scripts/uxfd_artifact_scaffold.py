@@ -145,6 +145,8 @@ def create_scaffold(
                     "`python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs`.",
                     "Copy this template once per accepted seed; do not reuse the same",
                     "`source_queue_id`/paper/phase/entry/device/seed tuple for two runs.",
+                    "Queue coverage is not complete until each covered entry has the",
+                    "paper-specific `minimum_seeds` distinct accepted seeds.",
                     "",
                     f"- Queue: `{row.queue_id}`",
                     f"- Paper: `{row.paper_id}`",
@@ -207,6 +209,10 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         (
             "- Seed-uniqueness rule: multiple accepted seeds may share one queue entry, "
             "but duplicate `source_queue_id`/paper/phase/entry/device/seed tuples are rejected."
+        ),
+        (
+            "- Minimum-seed rule: queue-covered entries must reach their paper-specific "
+            "`minimum_seeds` distinct accepted seeds."
         ),
         "- Runtime rule: `runtime` must be a positive `HH:MM:SS` duration.",
         "- Precision rule: `precision` must be one of `fp32`, `tf32`, `fp16`, `bf16`, `amp`.",
