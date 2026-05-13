@@ -4,9 +4,11 @@ from types import SimpleNamespace
 
 from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
+    OWNER_REVIEW_RECOMMENDATIONS,
     PRESERVE_SESSION,
     PROMOTE_ONLY_THROUGH_GATE,
     DirtyEntry,
+    DirtyTriageReport,
     _action_counts,
     _action_counts_by_submodule,
     _classify_path,
@@ -243,6 +245,26 @@ def test_owner_review_packets_include_machine_readable_review_steps() -> None:
     )
 
 
+def test_build_payload_exposes_owner_review_recommendations() -> None:
+    report = DirtyTriageReport(
+        clean=False,
+        summaries=(),
+        entries=(),
+    )
+
+    payload = build_payload(report)
+
+    assert payload["owner_review_recommendations"] == {
+        "path": str(OWNER_REVIEW_RECOMMENDATIONS),
+        "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
+        "status": "decision_support_only",
+        "required_use": (
+            "paper owners should read this note before choosing commit_after_review, "
+            "rewrite_then_commit, or discard_from_submodule"
+        ),
+    }
+
+
 def test_review_command_is_non_destructive() -> None:
     modified = DirtyEntry(
         "paper/A",
@@ -297,6 +319,8 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "not accepted experiment evidence" in text
     assert "Commit-Blocking Verdict" in text
     assert "Owner Review Queue" in text
+    assert "Owner Review Recommendations" in text
+    assert str(OWNER_REVIEW_RECOMMENDATIONS) in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
     assert "Owner Review Packets" in text

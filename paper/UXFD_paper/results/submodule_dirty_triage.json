@@ -490,5 +490,11 @@
       "decision": "discard_from_submodule",
       "required_gate": "owner explicitly marks the untracked draft or generated change as discardable; do not delete it automatically from this triage"
     }
-  ]
+  ],
+  "owner_review_recommendations": {
+    "path": "paper/UXFD_paper/results/submodule_owner_review_recommendations.md",
+    "exists": true,
+    "status": "decision_support_only",
+    "required_use": "paper owners should read this note before choosing commit_after_review, rewrite_then_commit, or discard_from_submodule"
+  }
 }

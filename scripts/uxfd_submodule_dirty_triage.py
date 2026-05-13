@@ -38,6 +38,9 @@ TEXT_SUFFIXES = {
     ".yml",
 }
 BINARY_OR_LARGE_SUFFIXES = {".npy", ".npz", ".pth", ".png", ".pdf"}
+OWNER_REVIEW_RECOMMENDATIONS = Path(
+    "paper/UXFD_paper/results/submodule_owner_review_recommendations.md"
+)
 
 
 @dataclass(frozen=True)
@@ -289,6 +292,18 @@ def _owner_resolution_gates() -> Tuple[Mapping[str, str], ...]:
     )
 
 
+def _owner_recommendations_payload() -> Mapping[str, Any]:
+    return {
+        "path": str(OWNER_REVIEW_RECOMMENDATIONS),
+        "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
+        "status": "decision_support_only",
+        "required_use": (
+            "paper owners should read this note before choosing commit_after_review, "
+            "rewrite_then_commit, or discard_from_submodule"
+        ),
+    }
+
+
 def evaluate_dirty_triage(
     submodules: Sequence[Path] = PAPER_SUBMODULES,
 ) -> DirtyTriageReport:
@@ -310,6 +325,7 @@ def build_payload(report: DirtyTriageReport) -> Mapping[str, Any]:
     payload["owner_decision_template"] = _owner_decision_template(report.entries)
     payload["owner_review_packets"] = _owner_review_packets(report.entries)
     payload["owner_resolution_gates"] = _owner_resolution_gates()
+    payload["owner_review_recommendations"] = _owner_recommendations_payload()
     return json.loads(json.dumps(payload))
 
 
@@ -378,6 +394,19 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"{counts.get(PRESERVE_SESSION, 0)} | "
             f"`git -C {summary.submodule} status --short` |"
         )
+
+    recommendations = _owner_recommendations_payload()
+    lines.extend(
+        [
+            "",
+            "## Owner Review Recommendations",
+            "",
+            f"- Decision-support report: `{recommendations['path']}`",
+            f"- Exists: `{recommendations['exists']}`",
+            f"- Status: `{recommendations['status']}`",
+            f"- Required use: {recommendations['required_use']}.",
+        ]
+    )
 
     owner_entries = [
         entry for entry in report.entries if entry.recommended_action == DO_NOT_AUTO_COMMIT

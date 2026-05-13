@@ -37,6 +37,13 @@ Use this queue to resolve the dirty-submodule blocker without promoting generate
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short` |
 | `paper/UXFD_paper/MOE_explainable` | 2 | 0 | 0 | `git -C paper/UXFD_paper/MOE_explainable status --short` |
 
+## Owner Review Recommendations
+
+- Decision-support report: `paper/UXFD_paper/results/submodule_owner_review_recommendations.md`
+- Exists: `True`
+- Status: `decision_support_only`
+- Required use: paper owners should read this note before choosing commit_after_review, rewrite_then_commit, or discard_from_submodule.
+
 ## Owner-Review Entry Checklist
 
 These entries require an explicit paper-owner decision before any staging.
