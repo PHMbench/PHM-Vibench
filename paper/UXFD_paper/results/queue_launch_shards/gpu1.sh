@@ -46,11 +46,11 @@ CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_exp
 # Q2 1D-2D_fusion_explainable ablations A03 device=1 workdir=.: smaller STFT hop length
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.hop_length=32 --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Q2 1D-2D_fusion_explainable ablations A05 device=1 workdir=paper/UXFD_paper/1D-2D_fusion_explainable: paper-local demo class-count sanity
-(cd paper/UXFD_paper/1D-2D_fusion_explainable && CUDA_VISIBLE_DEVICES=1 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo)
+# Q2 1D-2D_fusion_explainable ablations A05 device=1 workdir=.: paper-local demo class-count sanity
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.out_channels=10 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q2 1D-2D_fusion_explainable ablations A07 device=1 workdir=.: legacy 1D-only / 2D-only / no-statistical configs
-CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition legacy_ablation_surface --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.feature_extractor_configs='["Mean"]' --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q3 Explainable_FD_Toolkit baselines B01 device=1 workdir=.: NSN/TSPN_UXFD baseline
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=NSN --override trainer.num_epochs=1 --override data.num_workers=0
@@ -64,11 +64,11 @@ CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_T
 # Q3 Explainable_FD_Toolkit ablations A01 device=1 workdir=.: disable PHM-Vibench explain extension
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.enable=false --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Q3 Explainable_FD_Toolkit ablations A03 device=1 workdir=paper/UXFD_paper/Explainable_FD_Toolkit: faithfulness/stability metric-family removal
-(cd paper/UXFD_paper/Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=1 python scripts/run_toolkit_ablations.py --condition metrics_subset_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0)
+# Q3 Explainable_FD_Toolkit ablations A03 device=1 workdir=.: faithfulness/stability metric-family removal
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.metric_families='["latency"]' --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Q3 Explainable_FD_Toolkit ablations A05 device=1 workdir=paper/UXFD_paper/Explainable_FD_Toolkit: fixed seed/config snapshot off
-(cd paper/UXFD_paper/Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=1 python scripts/run_toolkit_ablations.py --condition snapshot_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0)
+# Q3 Explainable_FD_Toolkit ablations A05 device=1 workdir=.: fixed seed/config snapshot off
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.predictions.save_config_snapshot=false --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q4 MOE_explainable proposed P00 device=1 workdir=.: PHM-Vibench UXFD route/MoE proxy smoke
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0
@@ -83,13 +83,13 @@ CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q4 MOE_explainable ablations A02 device=1 workdir=.: remove load-balance regularization
-CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_load_balance --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.load_balance_weight=0.0 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q4 MOE_explainable ablations A04 device=1 workdir=.: router temperature sweep
-CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition temperature_sweep --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.temperature=0.5 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q4 MOE_explainable ablations A06 device=1 workdir=.: uniform/equal-weight router
-CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition uniform_router --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q5 Paper_fuzzy_XFD baselines B01 device=1 workdir=.: NSN/TSPN_UXFD without fuzzy rules
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0
@@ -101,7 +101,7 @@ CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q5 Paper_fuzzy_XFD baselines B07 device=1 workdir=.: Classical fuzzy/rule baseline
-CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_fuzzy_baseline.py --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json --max_samples 20
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q5 Paper_fuzzy_XFD ablations A02 device=1 workdir=.: uncalibrated fuzzy residual scale
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0
@@ -127,11 +127,11 @@ CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_t
 # Q6 Neuralsymbolic_theory ablations A03 device=1 workdir=.: low symbolic residual strength
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=0.1 --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Q6 Neuralsymbolic_theory ablations A05 device=1 workdir=paper/UXFD_paper/Neuralsymbolic_theory: independent proposition validation
-(cd paper/UXFD_paper/Neuralsymbolic_theory && CUDA_VISIBLE_DEVICES=1 python simple_validation_demo.py)
+# Q6 Neuralsymbolic_theory ablations A05 device=1 workdir=.: independent proposition validation
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=0.5 --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q6 Neuralsymbolic_theory ablations A07 device=1 workdir=.: remove cross-method mapping module from training/evaluation
-CUDA_VISIBLE_DEVICES=1 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed 0
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q7 LLM_Explainable_FD_Toolkit baselines B01 device=1 workdir=.: PHM-Vibench structured output without agent extension
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0
@@ -145,11 +145,11 @@ CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_
 # Q7 LLM_Explainable_FD_Toolkit baselines B07 device=1 workdir=.: ConvTransformer diagnostic baseline
 CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0
 
-# Q7 LLM_Explainable_FD_Toolkit ablations A02 device=1 workdir=paper/UXFD_paper/LLM_Explainable_FD_Toolkit: single-case dialogue instead of pipeline demo
-(cd paper/UXFD_paper/LLM_Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=1 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode single --case 0)
+# Q7 LLM_Explainable_FD_Toolkit ablations A02 device=1 workdir=.: single-case dialogue instead of pipeline demo
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.mode=single_case --override trainer.num_epochs=1 --override data.num_workers=0
 
 # Q7 LLM_Explainable_FD_Toolkit ablations A04 device=1 workdir=paper/UXFD_paper/LLM_Explainable_FD_Toolkit: core toolkit unit-test gate
 (cd paper/UXFD_paper/LLM_Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=1 python -m pytest -q code/tests/test_basic_functionality.py)
 
-# Q7 LLM_Explainable_FD_Toolkit ablations A06 device=1 workdir=paper/UXFD_paper/LLM_Explainable_FD_Toolkit: remove retrieval/domain knowledge context
-(cd paper/UXFD_paper/LLM_Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=1 python experiments/scripts/run_llm_evidence_smoke.py --condition no_domain_context --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0)
+# Q7 LLM_Explainable_FD_Toolkit ablations A06 device=1 workdir=.: remove retrieval/domain knowledge context
+CUDA_VISIBLE_DEVICES=1 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.domain_context.enable=false --override trainer.num_epochs=1 --override data.num_workers=0

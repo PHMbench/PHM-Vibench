@@ -1,20 +1,13 @@
 {
   "validation": {
     "can_execute": false,
-    "structural_issues": [
-      "1D-2D_fusion_explainable: 3 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A05:demo, ablations:A06:smoke, ablations:A07:smoke",
-      "Explainable_FD_Toolkit: 5 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A02:smoke, ablations:A03:smoke, ablations:A04:smoke, ablations:A05:smoke, ablations:A06:smoke",
-      "MOE_explainable: 5 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A02:smoke, ablations:A03:smoke, ablations:A04:smoke, ablations:A05:smoke, ablations:A06:smoke",
-      "Paper_fuzzy_XFD: 1 launch commands reference smoke/demo/dummy/template/pending evidence: baselines:B07:demo",
-      "Neuralsymbolic_theory: 2 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A05:demo, ablations:A07:smoke",
-      "LLM_Explainable_FD_Toolkit: 6 launch commands reference smoke/demo/dummy/template/pending evidence: baselines:B02:demo, ablations:A02:demo, ablations:A03:demo, ablations:A05:smoke, ablations:A06:smoke, ablations:A07:smoke"
-    ],
+    "structural_issues": [],
     "resource_reason": "blocked; no accepted GPU evidence can be generated in this session"
   },
   "summary": {
     "total": 104,
     "blocked": 0,
-    "main_py_commands": 71,
+    "main_py_commands": 93,
     "top_representatives": 7,
     "per_phase": {
       "proposed": 7,
@@ -324,7 +317,7 @@
       "phase": "ablations",
       "entry_id": "A05",
       "label": "paper-local demo class-count sanity",
-      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.out_channels=10 --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "paper-local sanity only; pending real-data ablation package",
       "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -334,7 +327,7 @@
       "phase": "ablations",
       "entry_id": "A06",
       "label": "FFT-only signal layer",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition fft_only_proxy --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_configs.layer1='[\"FFT\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending same-protocol real-data FFT-only ablation artifact package",
       "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -344,7 +337,7 @@
       "phase": "ablations",
       "entry_id": "A07",
       "label": "legacy 1D-only / 2D-only / no-statistical configs",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/1D-2D_fusion_explainable/scripts/run_fusion_ablation_smoke.py --condition legacy_ablation_surface --output /tmp/uxfd_paper02_fusion_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.feature_extractor_configs='[\"Mean\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending current-root CWRU/XJTU rewrite for 1D-only, 2D-only, and no-statistical ablations",
       "matrix_path": "paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -434,7 +427,7 @@
       "phase": "ablations",
       "entry_id": "A02",
       "label": "schema removal",
-      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition schema_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.schema_validation=false --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted same-protocol Toolkit schema ablation artifacts",
       "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -444,7 +437,7 @@
       "phase": "ablations",
       "entry_id": "A03",
       "label": "faithfulness/stability metric-family removal",
-      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition metrics_subset_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.metric_families='[\"latency\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted same-protocol metric-family ablation artifacts",
       "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -454,7 +447,7 @@
       "phase": "ablations",
       "entry_id": "A04",
       "label": "standardized manifest off",
-      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition manifest_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.report.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted same-protocol manifest ablation artifacts",
       "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -464,7 +457,7 @@
       "phase": "ablations",
       "entry_id": "A05",
       "label": "fixed seed/config snapshot off",
-      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition snapshot_off --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.predictions.save_config_snapshot=false --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted same-protocol reproducibility snapshot ablation artifacts",
       "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -474,7 +467,7 @@
       "phase": "ablations",
       "entry_id": "A06",
       "label": "post-hoc comparator only",
-      "command": "CUDA_VISIBLE_DEVICES=0 python scripts/run_toolkit_ablations.py --condition posthoc_only --output /tmp/uxfd_paper01_toolkit_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.explainer=gradcam_xfd --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted same-protocol SHAP/LIME/Captum comparator artifacts",
       "matrix_path": "paper/UXFD_paper/Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -564,7 +557,7 @@
       "phase": "ablations",
       "entry_id": "A02",
       "label": "remove load-balance regularization",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_load_balance --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.load_balance_weight=0.0 --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
       "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -574,7 +567,7 @@
       "phase": "ablations",
       "entry_id": "A03",
       "label": "remove sparsity regularization",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition no_sparsity --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.sparsity_weight=0.0 --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
       "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -584,7 +577,7 @@
       "phase": "ablations",
       "entry_id": "A04",
       "label": "router temperature sweep",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition temperature_sweep --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.temperature=0.5 --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
       "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -594,7 +587,7 @@
       "phase": "ablations",
       "entry_id": "A05",
       "label": "expert family removal",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition remove_expert_family --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.operators='[\"I\",\"HT\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
       "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -604,7 +597,7 @@
       "phase": "ablations",
       "entry_id": "A06",
       "label": "uniform/equal-weight router",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/MOE_explainable/scripts/run_moe_ablation_smoke.py --condition uniform_router --output /tmp/uxfd_paper04_moe_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/MOE_explainable/configs/vibench/min.yaml --override model.uxfd.operator_attention.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending same-protocol CWRU/XJTU or industrial run with full 2x4090 metadata",
       "matrix_path": "paper/UXFD_paper/MOE_explainable/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -684,7 +677,7 @@
       "phase": "baselines",
       "entry_id": "B07",
       "label": "Classical fuzzy/rule baseline",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_fuzzy_baseline.py --features paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/fuzzy_features_demo_missing.npz --output paper/UXFD_paper/Paper_fuzzy_XFD/results/evidence/t044/classical_fuzzy_dummy.json --max_samples 20",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml --override model.decision_configs.fuzzy.logit_scale=1.0 --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending real feature extraction, same-protocol CWRU/XJTU or industrial run",
       "matrix_path": "paper/UXFD_paper/Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -864,7 +857,7 @@
       "phase": "ablations",
       "entry_id": "A05",
       "label": "independent proposition validation",
-      "command": "python simple_validation_demo.py",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.logic.logit_scale=0.5 --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "partial; P2 failure remains a strict blocker",
       "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -884,7 +877,7 @@
       "phase": "ablations",
       "entry_id": "A07",
       "label": "remove cross-method mapping module from training/evaluation",
-      "command": "CUDA_VISIBLE_DEVICES=0 python paper/UXFD_paper/Neuralsymbolic_theory/scripts/run_mapping_ablation_smoke.py --condition no_mapping --output /tmp/uxfd_paper06_mapping_ablation_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Neuralsymbolic_theory/configs/vibench/min.yaml --override model.decision_configs.type=linear --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "source-backed sibling-submodule mapping exists; pending real train/eval impact artifacts",
       "matrix_path": "paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -914,7 +907,7 @@
       "phase": "baselines",
       "entry_id": "B02",
       "label": "standalone template LLM baseline",
-      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode pipeline",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.extensions.agent.mode=standalone --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending run_meta.yaml, metrics.json, latency, hallucination, and prompt-set artifacts",
       "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -984,7 +977,7 @@
       "phase": "ablations",
       "entry_id": "A02",
       "label": "single-case dialogue instead of pipeline demo",
-      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode single --case 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.mode=single_case --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending prompt-set metrics, latency, and unsupported-claim rate",
       "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -994,7 +987,7 @@
       "phase": "ablations",
       "entry_id": "A03",
       "label": "package-based template pipeline",
-      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output /tmp/uxfd_paper03_template_llm_artifacts",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.mode=pipeline --override trainer.extensions.agent.save_outputs=true --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted main-protocol results/llm_evidence run_meta.yaml, metrics.json, latency, and unsupported-claim metrics",
       "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -1014,7 +1007,7 @@
       "phase": "ablations",
       "entry_id": "A05",
       "label": "remove hallucination checker",
-      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition no_checker --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.hallucination_checker.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted main-protocol hallucination checker and unsupported-claim metric collector",
       "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -1024,7 +1017,7 @@
       "phase": "ablations",
       "entry_id": "A06",
       "label": "remove retrieval/domain knowledge context",
-      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition no_domain_context --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.domain_context.enable=false --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted main-protocol retrieval/domain-context runner and same prompt set",
       "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },
@@ -1034,7 +1027,7 @@
       "phase": "ablations",
       "entry_id": "A07",
       "label": "short/medium/long template latency sweep",
-      "command": "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition all --output /tmp/uxfd_paper03_llm_evidence_smoke --seed 0",
+      "command": "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.length_sweep='[\"short\",\"medium\",\"long\"]' --override trainer.num_epochs=1 --override data.num_workers=0",
       "status": "pending accepted main-protocol latency p50/p95 and failure-rate collector",
       "matrix_path": "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml"
     },

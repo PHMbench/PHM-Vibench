@@ -13,7 +13,7 @@
 - Low-tier source triage markers: `263`
 - Submodule dirty clean: `False`
 - Submodule dirty entries: `27`
-- Blocking findings: `24`
+- Blocking findings: `18`
 - Queue dry-run entries: `104`
 
 | Paper | Ready | Baselines | Ablations | Strict blockers |
@@ -43,12 +43,6 @@
 - LLM_Explainable_FD_Toolkit: submission_ready is false
 - LLM_Explainable_FD_Toolkit: 8 strict blockers remain
 - gpu queue blocked: blocked; no accepted GPU evidence can be generated in this session
-- 1D-2D_fusion_explainable: 3 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A05:demo, ablations:A06:smoke, ablations:A07:smoke
-- Explainable_FD_Toolkit: 5 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A02:smoke, ablations:A03:smoke, ablations:A04:smoke, ablations:A05:smoke, ablations:A06:smoke
-- MOE_explainable: 5 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A02:smoke, ablations:A03:smoke, ablations:A04:smoke, ablations:A05:smoke, ablations:A06:smoke
-- Paper_fuzzy_XFD: 1 launch commands reference smoke/demo/dummy/template/pending evidence: baselines:B07:demo
-- Neuralsymbolic_theory: 2 launch commands reference smoke/demo/dummy/template/pending evidence: ablations:A05:demo, ablations:A07:smoke
-- LLM_Explainable_FD_Toolkit: 6 launch commands reference smoke/demo/dummy/template/pending evidence: baselines:B02:demo, ablations:A02:demo, ablations:A03:demo, ablations:A05:smoke, ablations:A06:smoke, ablations:A07:smoke
 - artifact gate blocked: 2 blockers under paper/UXFD_paper/results/accepted_runs
 - recent-work evidence blocked: 7 TOP representative blockers
 - submodule dirty triage blocked: 27 dirty entries across 3 paper submodules

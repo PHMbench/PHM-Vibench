@@ -8,7 +8,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 ## Current Verdict
 
 - Achieved: `False`
-- Objective audit: `met=55`, `not_met=11`, `blocked=1`
+- Objective audit: `met=54`, `not_met=12`, `blocked=1`
 - Submission gate ready: `False`
 - Queue can execute: `False`
 - Artifact coverage: `0/104`
@@ -39,4 +39,4 @@ The project is ready for controlled execution only after local GPUs 0 and 1 are 
 - Explainable_FD_Toolkit: 5 strict blockers remain
 - MOE_explainable: submission_ready is false
 - MOE_explainable: 5 strict blockers remain
-- ... 16 additional blockers omitted; see gate reports.
+- ... 10 additional blockers omitted; see gate reports.

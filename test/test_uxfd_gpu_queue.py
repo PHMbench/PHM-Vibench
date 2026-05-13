@@ -102,6 +102,13 @@ def test_gpu_queue_expands_all_paper_commands_and_top_bindings() -> None:
     assert blocked_rows == []
     assert all("CUDA_VISIBLE_DEVICES=0" in row.command for row in main_py_rows)
     assert all(Path(row.matrix_path).exists() for row in matrix_rows)
+    assert all(
+        not any(
+            marker in row.command.lower()
+            for marker in ("smoke", "demo", "dummy", "template", "pending")
+        )
+        for row in matrix_rows
+    )
 
     summary = summarize_rows(rows)
     assert summary["total"] == len(rows)
@@ -115,8 +122,7 @@ def test_gpu_queue_expands_all_paper_commands_and_top_bindings() -> None:
 def test_gpu_queue_validation_blocks_execution_until_preflight_passes() -> None:
     validation = validate_queue(DEFAULT_QUEUE)
 
-    assert len(validation.structural_issues) == 6
-    assert any("smoke/demo/dummy/template/pending" in item for item in validation.structural_issues)
+    assert validation.structural_issues == ()
     assert validation.can_execute is False
     assert "blocked" in validation.resource_reason
 
@@ -146,11 +152,11 @@ def test_gpu_queue_static_validation_requires_exact_two_rtx_4090_devices(tmp_pat
 def test_gpu_queue_cli_writes_json_manifest_without_preflight_execution(tmp_path: Path) -> None:
     output = tmp_path / "queue" / "dry_run.json"
 
-    assert main(["--format", "json", "--output", str(output)]) == 1
+    assert main(["--format", "json", "--output", str(output)]) == 0
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["validation"]["can_execute"] is False
-    assert len(payload["validation"]["structural_issues"]) == 6
+    assert payload["validation"]["structural_issues"] == []
     assert len(payload["commands"]) == len(expand_queue(DEFAULT_QUEUE))
     assert payload["summary"]["total"] == len(payload["commands"])
     assert payload["summary"]["top_representatives"] == 7
@@ -158,7 +164,7 @@ def test_gpu_queue_cli_writes_json_manifest_without_preflight_execution(tmp_path
     blocked_output = tmp_path / "queue" / "blocked.md"
     assert (
         main(["--format", "markdown", "--output", str(blocked_output), "--require-preflight"])
-        == 1
+        == 2
     )
     text = blocked_output.read_text(encoding="utf-8")
     assert "Can execute now: `False`" in text
@@ -185,18 +191,13 @@ def test_gpu_queue_builds_two_device_launch_plan_without_top_bindings() -> None:
     assert all(row.command.startswith("CUDA_VISIBLE_DEVICES=") for row in launch_rows)
     assert all("paper-local baseline_ablation_matrix.yaml" not in row.command for row in launch_rows)
     assert any(row.command.startswith("CUDA_VISIBLE_DEVICES=1 ") for row in launch_rows)
-    assert any(
-        row.workdir == "paper/UXFD_paper/Explainable_FD_Toolkit"
-        and row.command.startswith("CUDA_VISIBLE_DEVICES=")
-        and "python scripts/run_toolkit_ablations.py" in row.command
-        for row in launch_rows
-    )
+    assert all("run_toolkit_ablations.py" not in row.command for row in launch_rows)
 
 
 def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Path) -> None:
     output = tmp_path / "queue" / "launch_plan.sh"
 
-    assert main(["--format", "shell", "--output", str(output)]) == 1
+    assert main(["--format", "shell", "--output", str(output)]) == 0
 
     text = output.read_text(encoding="utf-8")
     assert text.startswith("#!/usr/bin/env bash")
@@ -205,7 +206,7 @@ def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Pat
     assert "assert all('RTX 4090' in name for name in names)" in text
     assert "CUDA_VISIBLE_DEVICES=0" in text
     assert "CUDA_VISIBLE_DEVICES=1" in text
-    assert "(cd paper/UXFD_paper/Explainable_FD_Toolkit && CUDA_VISIBLE_DEVICES=" in text
+    assert "run_toolkit_ablations.py" not in text
     assert "paper-local baseline_ablation_matrix.yaml" not in text
 
 
@@ -215,7 +216,7 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
 
     assert (
         main(["--format", "shell", "--output", str(output), "--shard-dir", str(shard_dir)])
-        == 1
+        == 0
     )
 
     gpu0 = (shard_dir / "gpu0.sh").read_text(encoding="utf-8")
@@ -313,7 +314,7 @@ def test_gpu_queue_live_preflight_is_reported_without_launching_experiments(
 ) -> None:
     output = tmp_path / "queue" / "live_preflight.json"
 
-    assert main(["--format", "json", "--live-preflight", "--output", str(output)]) == 1
+    assert main(["--format", "json", "--live-preflight", "--output", str(output)]) == 0
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     live = payload["live_preflight"]
