@@ -81,6 +81,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["submodule dirty triage report"].status == "met"
     assert items["submodule dirty triage JSON report"].status == "met"
     assert items["submodule owner-review recommendations"].status == "met"
+    assert items["submodule owner-review action packet"].status == "met"
     assert items["submodule owner-review decision template"].status == "met"
     assert items["submodule owner-review decision file"].status == "not_met"
     assert items["submodule owner-review gate JSON report"].status == "met"
@@ -376,6 +377,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "paper/UXFD_paper/results/submodule_dirty_triage.md" in paths
     assert "paper/UXFD_paper/results/submodule_dirty_triage.json" in paths
     assert "paper/UXFD_paper/results/submodule_owner_review_recommendations.md" in paths
+    assert "paper/UXFD_paper/results/submodule_owner_review_action_packet.md" in paths
     assert "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json" in paths
     assert "paper/UXFD_paper/results/submodule_owner_review_gate_current.json" in paths
     assert "paper/UXFD_paper/results/submodule_owner_review_gate_current.md" in paths
