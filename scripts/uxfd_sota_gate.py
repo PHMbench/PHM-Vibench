@@ -16,6 +16,7 @@ DEFAULT_ACCEPTED_RUN_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
 AGGREGATE_FILENAME = "sota_aggregate.yaml"
 ACCEPTED_CLAIM_SCOPES = ("exact_sota", "representative_only", "bounded_non_sota")
 ACCEPTED_TOP_SCOPES = ("exact", "representative")
+ACCEPTED_METRIC_DIRECTIONS = ("higher_is_better", "lower_is_better")
 STATISTIC_FIELDS = ("mean", "std", "ci95_low", "ci95_high")
 DISALLOWED_REF_MARKERS = ("todo", "template", "smoke", "demo", "dummy", "pending")
 
@@ -99,6 +100,16 @@ def _validate_statistics(prefix: str, payload: Mapping[str, Any]) -> Tuple[str, 
         if not _is_number(statistics.get(field)):
             issues.append(f"{prefix}.statistics.{field} must be numeric")
     return tuple(issues)
+
+
+def _mean_value(payload: Mapping[str, Any]) -> Optional[float]:
+    statistics = payload.get("statistics", {})
+    if not isinstance(statistics, Mapping):
+        return None
+    mean = statistics.get("mean")
+    if not _is_number(mean):
+        return None
+    return float(mean)
 
 
 def _has_effect_or_test(payload: Mapping[str, Any]) -> bool:
@@ -244,6 +255,15 @@ def _validate_aggregate(
         issues.append(
             "claim_scope must be one of exact_sota, representative_only, bounded_non_sota"
         )
+    metric_direction = str(data.get("metric_direction", "")).strip()
+    if (
+        claim_scope == "exact_sota"
+        and metric_direction not in ACCEPTED_METRIC_DIRECTIONS
+    ):
+        issues.append(
+            "metric_direction must be higher_is_better or lower_is_better for "
+            "exact_sota"
+        )
 
     proposed = data.get("proposed", {})
     if not isinstance(proposed, Mapping):
@@ -331,6 +351,38 @@ def _validate_aggregate(
                 paper_id,
             )
         )
+
+    if claim_scope == "exact_sota" and metric_direction in ACCEPTED_METRIC_DIRECTIONS:
+        proposed_mean = _mean_value(proposed)
+        if proposed_mean is not None:
+            comparison_entries = tuple(
+                entry
+                for entry in tuple(comparators) + tuple(top_entries)
+                if isinstance(entry, Mapping)
+            )
+            for entry in comparison_entries:
+                entry_mean = _mean_value(entry)
+                if entry_mean is None:
+                    continue
+                entry_label = str(
+                    entry.get("entry_id") or entry.get("binding_id") or "?"
+                )
+                if (
+                    metric_direction == "higher_is_better"
+                    and proposed_mean <= entry_mean
+                ):
+                    issues.append(
+                        "exact_sota proposed mean must exceed "
+                        f"{entry_label}.statistics.mean"
+                    )
+                if (
+                    metric_direction == "lower_is_better"
+                    and proposed_mean >= entry_mean
+                ):
+                    issues.append(
+                        "exact_sota proposed mean must be below "
+                        f"{entry_label}.statistics.mean"
+                    )
 
     return SotaPaperRecord(
         paper_id=paper_id,

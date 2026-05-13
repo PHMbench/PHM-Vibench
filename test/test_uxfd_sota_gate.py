@@ -265,6 +265,31 @@ def test_sota_gate_rejects_mismatched_run_ref_metadata(tmp_path: Path) -> None:
     assert "proposed.accepted_run_refs must cover matched run_meta seeds: 0" in issues
 
 
+def test_sota_gate_rejects_exact_sota_without_metric_superiority(tmp_path: Path) -> None:
+    queue_path, _ = _write_minimal_queue(tmp_path)
+    aggregate_root = tmp_path / "sota_aggregates"
+    accepted_run_root = tmp_path / "accepted_runs"
+    aggregate_path = _write_valid_aggregate(aggregate_root, accepted_run_root)
+    data = yaml.safe_load(aggregate_path.read_text(encoding="utf-8"))
+    data["claim_scope"] = "exact_sota"
+    data["metric_direction"] = "higher_is_better"
+    data["comparators"][0]["statistics"]["mean"] = 0.97
+    data["top_representatives"][0]["scope"] = "exact"
+    data["top_representatives"][0]["statistics"]["mean"] = 0.96
+    aggregate_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_sota_gate(
+        aggregate_root,
+        queue_path=queue_path,
+        accepted_run_root=accepted_run_root,
+    )
+
+    assert report.ready is False
+    issues = "\n".join(report.records[0].issues)
+    assert "exact_sota proposed mean must exceed B01.statistics.mean" in issues
+    assert "exact_sota proposed mean must exceed TOP-QX.statistics.mean" in issues
+
+
 def test_persisted_sota_gate_reports_match_current_gate() -> None:
     report = evaluate_sota_gate()
 
