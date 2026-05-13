@@ -38,7 +38,7 @@ EXECUTION_GATE_HANDOFF_PATH = Path(
     ".claude/handoffs/2026-05-13-uxfd-execution-gate-check.md"
 )
 LATEST_CONTINUATION_HANDOFF_PATH = Path(
-    ".claude/handoffs/2026-05-14-uxfd-minimum-seed-gate-continuation.md"
+    ".claude/handoffs/2026-05-14-uxfd-owner-gpu-blocked-continuation.md"
 )
 
 REQUIRED_SPEC_FILES = (
