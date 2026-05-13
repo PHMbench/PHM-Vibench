@@ -21,15 +21,15 @@
 
 ## Paper-Local Matrix Coverage
 
-| Paper ID | TOP Methods | Has 2026 | Unknown IDs | Policy Ready |
-|---|---:|---:|---|---:|
-| `1D-2D_fusion_explainable` | 7 | `True` | - | `True` |
-| `Explainable_FD_Toolkit` | 7 | `True` | - | `True` |
-| `LLM_Explainable_FD_Toolkit` | 7 | `True` | - | `True` |
-| `MOE_explainable` | 7 | `True` | - | `True` |
-| `Neuralsymbolic_theory` | 7 | `True` | - | `True` |
-| `Paper_fuzzy_XFD` | 7 | `True` | - | `True` |
-| `TII_operator_attention` | 8 | `True` | - | `True` |
+| Paper ID | TOP Methods | Has 2026 | Unknown IDs | Exact Status Issues | Policy Ready |
+|---|---:|---:|---|---|---:|
+| `1D-2D_fusion_explainable` | 7 | `True` | - | - | `True` |
+| `Explainable_FD_Toolkit` | 7 | `True` | - | - | `True` |
+| `LLM_Explainable_FD_Toolkit` | 7 | `True` | - | - | `True` |
+| `MOE_explainable` | 7 | `True` | - | - | `True` |
+| `Neuralsymbolic_theory` | 7 | `True` | - | - | `True` |
+| `Paper_fuzzy_XFD` | 7 | `True` | - | - | `True` |
+| `TII_operator_attention` | 8 | `True` | - | - | `True` |
 
 ## TOP Representative Bindings
 

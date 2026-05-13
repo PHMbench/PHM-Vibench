@@ -75,6 +75,8 @@ class MatrixRecentWorkCoverage:
     top_count: int
     has_2026: bool
     unknown_ids: Tuple[str, ...]
+    missing_exact_status_ids: Tuple[str, ...]
+    unscoped_exact_claim_ids: Tuple[str, ...]
     policy_ready: bool
 
 
@@ -215,13 +217,39 @@ def _matrix_recent_work_coverage(
     coverages: List[MatrixRecentWorkCoverage] = []
     for matrix_path in sorted(matrix_root.glob("*/submission_prep/baseline_ablation_matrix.yaml")):
         matrix = _load_yaml(matrix_path)
-        top_ids = tuple(
-            str(item.get("id", ""))
+        top_items = tuple(
+            item
             for item in matrix.get("top_recent_work", [])
-            if item.get("id")
+            if isinstance(item, Mapping) and item.get("id")
         )
+        top_ids = tuple(str(item.get("id", "")) for item in top_items)
         unknown_ids = tuple(top_id for top_id in top_ids if top_id not in accepted_id_set)
         has_2026 = any(top_id.startswith("RWTOP2026-") for top_id in top_ids)
+        missing_exact_status_ids: List[str] = []
+        unscoped_exact_claim_ids: List[str] = []
+        for item in top_items:
+            top_id = str(item.get("id", ""))
+            exact_status = str(item.get("exact_reproduction_status", "")).strip()
+            exact_status_lower = exact_status.lower()
+            if not exact_status:
+                missing_exact_status_ids.append(top_id)
+                continue
+            has_exact_claim = "exact" in exact_status_lower
+            accepted_exact = "accepted" in exact_status_lower and "exact" in exact_status_lower
+            scoped_as_non_exact = any(
+                marker in exact_status_lower
+                for marker in (
+                    "not exact",
+                    "representative",
+                    "pending",
+                    "resource-blocked",
+                    "blocked",
+                    "feasibility",
+                    "until",
+                )
+            )
+            if has_exact_claim and not accepted_exact and not scoped_as_non_exact:
+                unscoped_exact_claim_ids.append(top_id)
         coverages.append(
             MatrixRecentWorkCoverage(
                 paper_id=str(matrix.get("paper_id", matrix_path.parent.parent.name)),
@@ -230,7 +258,15 @@ def _matrix_recent_work_coverage(
                 top_count=len(top_ids),
                 has_2026=has_2026,
                 unknown_ids=unknown_ids,
-                policy_ready=len(top_ids) >= 3 and has_2026 and not unknown_ids,
+                missing_exact_status_ids=tuple(missing_exact_status_ids),
+                unscoped_exact_claim_ids=tuple(unscoped_exact_claim_ids),
+                policy_ready=(
+                    len(top_ids) >= 3
+                    and has_2026
+                    and not unknown_ids
+                    and not missing_exact_status_ids
+                    and not unscoped_exact_claim_ids
+                ),
             )
         )
     return tuple(coverages)
@@ -314,6 +350,18 @@ def evaluate_recent_work_gate(
             policy_blockers.append(
                 f"{coverage.paper_id}: matrix IDs absent from accepted TOP pool: "
                 + ", ".join(coverage.unknown_ids)
+            )
+        if coverage.missing_exact_status_ids:
+            policy_blockers.append(
+                f"{coverage.paper_id}: matrix TOP entries missing "
+                "exact_reproduction_status: "
+                + ", ".join(coverage.missing_exact_status_ids)
+            )
+        if coverage.unscoped_exact_claim_ids:
+            policy_blockers.append(
+                f"{coverage.paper_id}: matrix TOP entries claim exact reproduction "
+                "without accepted exact artifacts or representative/resource scope: "
+                + ", ".join(coverage.unscoped_exact_claim_ids)
             )
 
     queue_paper_ids = {
@@ -412,15 +460,21 @@ def render_markdown(report: RecentWorkGateReport) -> str:
             "",
             "## Paper-Local Matrix Coverage",
             "",
-            "| Paper ID | TOP Methods | Has 2026 | Unknown IDs | Policy Ready |",
-            "|---|---:|---:|---|---:|",
+            "| Paper ID | TOP Methods | Has 2026 | Unknown IDs | Exact Status Issues | Policy Ready |",
+            "|---|---:|---:|---|---|---:|",
         ]
     )
     for coverage in report.matrix_coverage:
         unknown_ids = ", ".join(coverage.unknown_ids) if coverage.unknown_ids else "-"
+        exact_issues = []
+        if coverage.missing_exact_status_ids:
+            exact_issues.append("missing=" + ",".join(coverage.missing_exact_status_ids))
+        if coverage.unscoped_exact_claim_ids:
+            exact_issues.append("unscoped=" + ",".join(coverage.unscoped_exact_claim_ids))
+        exact_issue_text = "; ".join(exact_issues) if exact_issues else "-"
         lines.append(
             f"| `{coverage.paper_id}` | {coverage.top_count} | `{coverage.has_2026}` | "
-            f"{unknown_ids} | `{coverage.policy_ready}` |"
+            f"{unknown_ids} | {exact_issue_text} | `{coverage.policy_ready}` |"
         )
     lines.extend(
         [

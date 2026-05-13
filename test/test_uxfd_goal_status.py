@@ -28,6 +28,9 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "representative-only" in gpu
     assert "`pending_gpu_and_artifacts`" in gpu
     assert "Evidence ready: `False`" in citation
+    assert "## Paper-Local Exact-Status Scope" in citation
+    assert "Unscoped Exact Claims" in citation
+    assert "| `LLM_Explainable_FD_Toolkit` | 7 | 0 | 0 | `True` |" in citation
 
 
 def test_persisted_goal_status_reports_match_generator(tmp_path: Path) -> None:

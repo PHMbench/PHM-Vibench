@@ -15,6 +15,18 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Low-tier violations in TOP pool: `0`
 - Evidence blockers: `7`
 
+## Paper-Local Exact-Status Scope
+
+| Paper | TOP Methods | Missing Exact Status | Unscoped Exact Claims | Policy Ready |
+|---|---:|---:|---:|---:|
+| `1D-2D_fusion_explainable` | 7 | 0 | 0 | `True` |
+| `Explainable_FD_Toolkit` | 7 | 0 | 0 | `True` |
+| `LLM_Explainable_FD_Toolkit` | 7 | 0 | 0 | `True` |
+| `MOE_explainable` | 7 | 0 | 0 | `True` |
+| `Neuralsymbolic_theory` | 7 | 0 | 0 | `True` |
+| `Paper_fuzzy_XFD` | 7 | 0 | 0 | `True` |
+| `TII_operator_attention` | 8 | 0 | 0 | `True` |
+
 ## TOP Representative Bindings
 
 | Binding | Paper | External Work | Status | Evidence Ready |

@@ -287,6 +287,22 @@ def _render_recent_work(generated_on: str, recent_report: object) -> str:
             f"- Low-tier violations in TOP pool: `{len(recent_report.low_tier_violations)}`",
             f"- Evidence blockers: `{len(recent_report.evidence_blockers)}`",
             "",
+            "## Paper-Local Exact-Status Scope",
+            "",
+            "| Paper | TOP Methods | Missing Exact Status | Unscoped Exact Claims | Policy Ready |",
+            "|---|---:|---:|---:|---:|",
+        ]
+    )
+    for coverage in recent_report.matrix_coverage:
+        lines.append(
+            f"| `{coverage.paper_id}` | {coverage.top_count} | "
+            f"{len(coverage.missing_exact_status_ids)} | "
+            f"{len(coverage.unscoped_exact_claim_ids)} | "
+            f"`{coverage.policy_ready}` |"
+        )
+    lines.extend(
+        [
+            "",
             "## TOP Representative Bindings",
             "",
             "| Binding | Paper | External Work | Status | Evidence Ready |",

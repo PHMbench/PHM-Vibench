@@ -36,6 +36,8 @@ def test_recent_work_gate_policy_ready_but_artifact_evidence_pending() -> None:
     assert all(item.top_count >= 3 for item in report.matrix_coverage)
     assert all(item.has_2026 for item in report.matrix_coverage)
     assert all(not item.unknown_ids for item in report.matrix_coverage)
+    assert all(not item.missing_exact_status_ids for item in report.matrix_coverage)
+    assert all(not item.unscoped_exact_claim_ids for item in report.matrix_coverage)
     assert all(item.policy_ready for item in report.matrix_coverage)
     assert len(report.bindings) == 7
     assert all(binding.external_work_id.startswith("RWTOP2026-") for binding in report.bindings)
@@ -91,6 +93,36 @@ def test_recent_work_gate_rejects_non_top_accepted_pool_venue_tier(
     assert any("venue tier" in blocker for blocker in report.policy_blockers)
 
 
+def test_recent_work_gate_rejects_unscoped_exact_matrix_claim(tmp_path: Path) -> None:
+    matrix_path = tmp_path / "MiniPaper" / "submission_prep" / "baseline_ablation_matrix.yaml"
+    matrix_path.parent.mkdir(parents=True, exist_ok=True)
+    matrix_path.write_text(
+        "\n".join(
+            [
+                "paper_id: MiniPaper",
+                "top_recent_work:",
+                "  - id: RWTOP2026-GTM",
+                "    exact_reproduction_status: exact reproduction",
+                "  - id: RWTOP2026-TIMESEG",
+                "    exact_reproduction_status: not exact; representative only",
+                "  - id: RWTOP2026-TSPULSE",
+                "    exact_reproduction_status: pending 2x4090 feasibility check",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = evaluate_recent_work_gate(matrix_root=tmp_path)
+
+    assert report.policy_ready is False
+    assert any(
+        "claim exact reproduction without accepted exact artifacts" in blocker
+        for blocker in report.policy_blockers
+    )
+    assert report.matrix_coverage[0].unscoped_exact_claim_ids == ("RWTOP2026-GTM",)
+
+
 def test_persisted_recent_work_gate_reports_match_current_gate() -> None:
     report = evaluate_recent_work_gate()
 
@@ -121,6 +153,7 @@ def test_recent_work_gate_cli_writes_blocking_json_and_markdown(tmp_path: Path) 
     assert "Policy ready: `True`" in text
     assert "Evidence ready: `False`" in text
     assert "## Paper-Local Matrix Coverage" in text
+    assert "Exact Status Issues" in text
     assert "## TOP Representative Bindings" in text
     assert "Local Proxy Entries" in text
     assert "`B02, A05, A07`" in text
