@@ -3,6 +3,7 @@ from pathlib import Path
 
 import yaml
 
+from scripts.uxfd_submodule_dirty_triage import OWNER_REVIEW_ACTION_PACKET
 from scripts.uxfd_submission_gate import (
     build_payload,
     evaluate_submission_gate,
@@ -93,6 +94,11 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
         == "met"
     )
     assert checklist["low-tier source hygiene"]["status"] == "met"
+    assert checklist["submodule owner-review action packet"]["status"] == "met"
+    assert (
+        checklist["submodule owner-review action packet"]["evidence"]
+        == str(OWNER_REVIEW_ACTION_PACKET)
+    )
     assert checklist["submodule owner-review decision gate"]["status"] == "not_met"
     assert (
         checklist["paper submodule working trees clean before handoff"]["status"]
@@ -170,6 +176,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "Recent-work source verification ready: `True`" in text
     assert "Low-tier source hygiene ready: `True`" in text
     assert "Owner-review gate ready: `False`" in text
+    assert f"Owner-review action packet: `{OWNER_REVIEW_ACTION_PACKET}`" in text
     assert "Owner-review gate pending records: `6`" in text
     assert "Submodule dirty clean: `False`" in text
     assert "Submodule owner-review pending: `6`" in text

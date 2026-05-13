@@ -23,6 +23,7 @@ from scripts.uxfd_sota_gate import DEFAULT_SOTA_ROOT, SotaGateReport, evaluate_s
 from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
     DirtyTriageReport,
+    OWNER_REVIEW_ACTION_PACKET,
     evaluate_dirty_triage,
 )
 
@@ -354,6 +355,11 @@ def _objective_checklist(
                 "status": "met" if low_tier_report.ready else "not_met",
             },
             {
+                "requirement": "submodule owner-review action packet",
+                "evidence": str(OWNER_REVIEW_ACTION_PACKET),
+                "status": "met" if OWNER_REVIEW_ACTION_PACKET.exists() else "missing",
+            },
+            {
                 "requirement": "submodule owner-review decision gate",
                 "evidence": owner_review_report.source_path,
                 "status": "met" if owner_review_report.ready else "not_met",
@@ -576,6 +582,7 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- Low-tier source blockers: `{report.low_tier_source_blocker_count}`",
         f"- Low-tier source triage markers: `{report.low_tier_source_triage_count}`",
         f"- Owner-review gate ready: `{report.owner_review_gate_ready}`",
+        f"- Owner-review action packet: `{OWNER_REVIEW_ACTION_PACKET}`",
         f"- Owner-review gate source: `{report.owner_review_gate_source_path}`",
         f"- Owner-review gate pending records: `{report.owner_review_gate_pending_records}`",
         f"- Submodule dirty clean: `{report.submodule_dirty_clean}`",

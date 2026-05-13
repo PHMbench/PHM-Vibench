@@ -17,6 +17,7 @@ from scripts.uxfd_submission_gate import (
 )
 from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
+    OWNER_REVIEW_ACTION_PACKET,
     OWNER_REVIEW_DECISION_TEMPLATE,
     OWNER_REVIEW_RECOMMENDATIONS,
     build_payload as build_dirty_triage_payload,
@@ -334,7 +335,8 @@ def evaluate_readiness_backlog(
                     f"{owner_recommendations} "
                     "Resolve the `pending_owner_review` rows in "
                     "`paper/UXFD_paper/results/submodule_dirty_triage.json` with the owning "
-                    "paper owner after reading "
+                    "paper owner after reading the short action packet "
+                    f"`{OWNER_REVIEW_ACTION_PACKET}` and recommendation note "
                     f"`{OWNER_REVIEW_RECOMMENDATIONS}`. Copy "
                     f"`{OWNER_REVIEW_DECISION_TEMPLATE}` to "
                     f"`{DEFAULT_DECISION_FILE}`, change top-level `status` to "
@@ -348,6 +350,7 @@ def evaluate_readiness_backlog(
                 evidence=(
                     "paper/UXFD_paper/results/submodule_dirty_triage.md,"
                     "paper/UXFD_paper/results/submodule_dirty_triage.json,"
+                    f"{OWNER_REVIEW_ACTION_PACKET},"
                     f"{OWNER_REVIEW_RECOMMENDATIONS},"
                     f"{OWNER_REVIEW_DECISION_TEMPLATE},"
                     f"{DEFAULT_DECISION_FILE}"
