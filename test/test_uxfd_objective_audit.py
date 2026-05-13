@@ -6,6 +6,7 @@ from scripts.uxfd_objective_audit import (
     PARENT_GOAL_CHECKPOINT_PATHS,
     build_payload,
     evaluate_objective_audit,
+    LATEST_CONTINUATION_HANDOFF_PATH,
     main,
     render_markdown,
 )
@@ -47,6 +48,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["handoff document"].status == "met"
     assert items["continuation handoff document"].status == "met"
     assert items["execution gate handoff document"].status == "met"
+    assert items["latest continuation handoff document"].status == "met"
     assert items["Claude Team task spec"].status == "met"
     assert items["Claude Team launch log"].status == "met"
     assert items["Codex xhigh subagent launch log"].status == "met"
@@ -215,6 +217,17 @@ def test_objective_audit_covers_latest_execution_gate_handoff() -> None:
     assert items["execution gate handoff document"].status == "met"
 
 
+def test_objective_audit_covers_latest_continuation_handoff() -> None:
+    report = evaluate_objective_audit()
+    items = _items_by_requirement(report)
+
+    assert LATEST_CONTINUATION_HANDOFF_PATH.exists()
+    assert items["latest continuation handoff document"].evidence == str(
+        LATEST_CONTINUATION_HANDOFF_PATH
+    )
+    assert items["latest continuation handoff document"].status == "met"
+
+
 def test_persisted_objective_audit_reports_match_current_audit() -> None:
     report = evaluate_objective_audit()
 
@@ -303,6 +316,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert str(PERSISTED_OBJECTIVE_AUDIT_MD) not in paths
     assert "paper/UXFD_paper/results/readiness_backlog.md" not in paths
     assert str(EXECUTION_GATE_HANDOFF) in paths
+    assert str(LATEST_CONTINUATION_HANDOFF_PATH) in paths
     assert "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml" in paths
     assert "paper/UXFD_paper/goal/status" in paths
     assert "paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md" in paths

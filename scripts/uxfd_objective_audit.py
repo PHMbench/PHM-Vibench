@@ -34,6 +34,9 @@ CONTINUATION_HANDOFF_PATH = Path(
 EXECUTION_GATE_HANDOFF_PATH = Path(
     ".claude/handoffs/2026-05-13-uxfd-execution-gate-check.md"
 )
+LATEST_CONTINUATION_HANDOFF_PATH = Path(
+    ".claude/handoffs/2026-05-14-uxfd-minimum-seed-gate-continuation.md"
+)
 
 REQUIRED_SPEC_FILES = (
     "spec.md",
@@ -195,6 +198,7 @@ PAPER_SUBMODULES = (
 PARENT_GOAL_CHECKPOINT_PATHS = (
     Path(".claude/handoffs/2026-05-12-uxfd-goal-continuation.md"),
     EXECUTION_GATE_HANDOFF_PATH,
+    LATEST_CONTINUATION_HANDOFF_PATH,
     Path("paper/UXFD_paper/goal/README.md"),
     Path("paper/UXFD_paper/goal/09_gpu_execution_queue.yaml"),
     Path("paper/UXFD_paper/goal/99_submission_readiness_matrix.md"),
@@ -943,6 +947,9 @@ def evaluate_objective_audit(
     items.append(_exists_item("handoff document", HANDOFF_PATH))
     items.append(_exists_item("continuation handoff document", CONTINUATION_HANDOFF_PATH))
     items.append(_exists_item("execution gate handoff document", EXECUTION_GATE_HANDOFF_PATH))
+    items.append(
+        _exists_item("latest continuation handoff document", LATEST_CONTINUATION_HANDOFF_PATH)
+    )
     items.append(_exists_item("Claude Team task spec", CLAUDE_TEAM_DIR / "TASK_SPEC.md"))
     items.append(_exists_item("Claude Team launch log", CLAUDE_TEAM_DIR / "LAUNCH_LOG.md"))
     items.append(
