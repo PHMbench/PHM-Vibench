@@ -3,7 +3,7 @@
 Status: execution backlog only. This file is not accepted experiment evidence.
 
 - Ready: `False`
-- Open items: `44`
+- Open items: `45`
 
 | Priority | Item | Scope | Category | Blocker | Next action | Evidence |
 |---:|---|---|---|---|---|---|
@@ -14,6 +14,7 @@ Status: execution backlog only. This file is not accepted experiment evidence.
 | 2 | `TII_operator_attention-B03` | `TII_operator_attention` | `paper-strict-blocker` | No complete 2024-2026 TOP representative command/log/artifact mapping yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
 | 2 | `TII_operator_attention-B04` | `TII_operator_attention` | `paper-strict-blocker` | No GPU model/runtime metadata from local GPUs 0,1 yet. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
 | 2 | `TII_operator_attention-B05` | `TII_operator_attention` | `paper-strict-blocker` | No SOTA claim is allowed from this matrix alone. | industrial same-protocol baseline, ablation, TOP representative, and GPU metadata artifacts accepted | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` |
+| 4 | `Q0-PARENT-GOAL-CHECKPOINT-COMMIT` | `cross-paper` | `commit-recovery` | 5 parent goal/control paths are dirty | Run commit recovery Phases 2-4: sync parent reports, commit the parent checkpoint, then regenerate objective audit outputs. | `paper/UXFD_paper/results/commit_recovery_plan.md` |
 | 12 | `1D-2D_fusion_explainable-B01` | `1D-2D_fusion_explainable` | `paper-strict-blocker` | No accepted CWRU/XJTU multi-seed six-baseline table yet. | same-protocol CWRU/XJTU fusion matrix, true branch ablations, TOP proxies, and GPU metadata accepted | `paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml` |
 | 12 | `1D-2D_fusion_explainable-B02` | `1D-2D_fusion_explainable` | `paper-strict-blocker` | No true Fusion1D2D same-protocol 1D-only, 2D-only, no-statistical, no-alignment, late-fusion, or no-explainability ablation package yet. | same-protocol CWRU/XJTU fusion matrix, true branch ablations, TOP proxies, and GPU metadata accepted | `paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml` |
 | 12 | `1D-2D_fusion_explainable-B03` | `1D-2D_fusion_explainable` | `paper-strict-blocker` | No accepted TOP representative command/log/artifact mapping yet. | same-protocol CWRU/XJTU fusion matrix, true branch ablations, TOP proxies, and GPU metadata accepted | `paper/UXFD_paper/1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml` |

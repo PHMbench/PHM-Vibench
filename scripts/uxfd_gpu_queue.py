@@ -335,9 +335,10 @@ def render_shell_plan(
         "nvidia-smi -L",
         (
             "python -c \"import torch; assert torch.cuda.is_available(); "
-            "assert torch.cuda.device_count() >= 2; "
-            "print(torch.cuda.get_device_name(0)); "
-            "print(torch.cuda.get_device_name(1))\""
+            "assert torch.cuda.device_count() == 2; "
+            "names=[torch.cuda.get_device_name(i) for i in range(2)]; "
+            "assert all('4090' in name for name in names), names; "
+            "print(names[0]); print(names[1])\""
         ),
         "",
         f"# Queue validation can_execute at generation time: {validation.can_execute}",
