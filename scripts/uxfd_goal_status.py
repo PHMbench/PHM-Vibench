@@ -353,6 +353,8 @@ def _render_gpu_execution(
             "- PyTorch must report CUDA available with at least two devices.",
             "- Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs "
             "with no TODO placeholders.",
+            "- `metrics.json` or `metrics.csv` must include at least one numeric metric; "
+            "status-only payloads are rejected.",
             "",
             "## TOP Representative Execution Bindings",
             "",
