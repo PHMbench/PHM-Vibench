@@ -67,6 +67,7 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert items["SOTA aggregate scaffold report"].status == "met"
     assert items["seven paper-local baseline/ablation matrices"].status == "met"
     assert items["TOP recent-work policy"].status == "met"
+    assert "source_verification_ready=True" in items["TOP recent-work policy"].details
     assert items["low-tier source audit report"].status == "met"
     assert items["low-tier source hygiene"].status == "met"
     assert items["TOP representative accepted artifacts"].status == "not_met"

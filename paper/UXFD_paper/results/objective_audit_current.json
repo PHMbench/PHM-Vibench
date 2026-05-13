@@ -462,7 +462,7 @@
       "requirement": "TOP recent-work policy",
       "evidence": "paper/UXFD_paper/goal/08_recent_work_citation_readme.md",
       "status": "met",
-      "details": "accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0"
+      "details": "accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0, source_verification_ready=True"
     },
     {
       "requirement": "low-tier source hygiene",

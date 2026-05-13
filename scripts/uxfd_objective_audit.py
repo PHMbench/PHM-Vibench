@@ -1048,7 +1048,8 @@ def evaluate_objective_audit(
             details=(
                 f"accepted_pool_rows={recent.accepted_pool_rows}, "
                 f"2026_ids={len(recent.top_2026_ids)}, "
-                f"low_tier_violations={len(recent.low_tier_violations)}"
+                f"low_tier_violations={len(recent.low_tier_violations)}, "
+                f"source_verification_ready={recent.source_verification_ready}"
             ),
         )
     )

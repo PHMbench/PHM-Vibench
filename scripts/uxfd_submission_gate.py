@@ -118,6 +118,7 @@ class SubmissionGateReport:
     sota_gate_blockers: Tuple[str, ...]
     recent_work_policy_ready: bool
     recent_work_evidence_ready: bool
+    recent_work_source_verification_ready: bool
     recent_work_matrix_rows: int
     recent_work_blockers: Tuple[str, ...]
     low_tier_source_ready: bool
@@ -476,6 +477,7 @@ def evaluate_submission_gate(
         sota_gate_blockers=sota_report.blockers,
         recent_work_policy_ready=recent_report.policy_ready,
         recent_work_evidence_ready=recent_report.evidence_ready,
+        recent_work_source_verification_ready=recent_report.source_verification_ready,
         recent_work_matrix_rows=len(recent_report.matrix_coverage),
         recent_work_blockers=recent_report.blockers,
         low_tier_source_ready=low_tier_report.ready,
@@ -510,6 +512,10 @@ def render_markdown(report: SubmissionGateReport) -> str:
         f"- SOTA gate records: `{report.sota_gate_records}`",
         f"- Recent-work policy ready: `{report.recent_work_policy_ready}`",
         f"- Recent-work evidence ready: `{report.recent_work_evidence_ready}`",
+        (
+            "- Recent-work source verification ready: "
+            f"`{report.recent_work_source_verification_ready}`"
+        ),
         f"- Recent-work matrix rows: `{report.recent_work_matrix_rows}`",
         f"- Low-tier source hygiene ready: `{report.low_tier_source_ready}`",
         f"- Low-tier source blockers: `{report.low_tier_source_blocker_count}`",

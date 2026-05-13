@@ -90,7 +90,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `not_met` | Neuralsymbolic_theory: IEEE Transactions submission-ready | `paper/UXFD_paper/Neuralsymbolic_theory/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |
 | `met` | LLM_Explainable_FD_Toolkit: 6+ baselines and 6+ ablations | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=7, submission_ready=False |
 | `not_met` | LLM_Explainable_FD_Toolkit: IEEE Transactions submission-ready | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=8 |
-| `met` | TOP recent-work policy | `paper/UXFD_paper/goal/08_recent_work_citation_readme.md` | accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0 |
+| `met` | TOP recent-work policy | `paper/UXFD_paper/goal/08_recent_work_citation_readme.md` | accepted_pool_rows=20, 2026_ids=8, low_tier_violations=0, source_verification_ready=True |
 | `met` | low-tier source hygiene | `paper/UXFD_paper/results/low_tier_source_audit.md` | findings=263, blockers=0, triage=263 |
 | `not_met` | TOP representative accepted artifacts | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | pending_or_blocked_bindings=7 |
 | `blocked` | 2x4090 GPU queue executable | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` | blocked; no accepted GPU evidence can be generated in this session |

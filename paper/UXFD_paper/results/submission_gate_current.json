@@ -365,6 +365,7 @@
   ],
   "recent_work_policy_ready": true,
   "recent_work_evidence_ready": false,
+  "recent_work_source_verification_ready": true,
   "recent_work_matrix_rows": 7,
   "recent_work_blockers": [
     "TOP-Q1-GTM: TOP representative artifacts are still pending_gpu_and_artifacts",

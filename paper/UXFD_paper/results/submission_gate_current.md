@@ -10,6 +10,7 @@
 - SOTA gate records: `7`
 - Recent-work policy ready: `True`
 - Recent-work evidence ready: `False`
+- Recent-work source verification ready: `True`
 - Recent-work matrix rows: `7`
 - Low-tier source hygiene ready: `True`
 - Low-tier source blockers: `0`

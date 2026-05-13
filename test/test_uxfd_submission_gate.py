@@ -31,6 +31,7 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert report.sota_gate_records == 7
     assert report.recent_work_policy_ready is True
     assert report.recent_work_evidence_ready is False
+    assert report.recent_work_source_verification_ready is True
     assert report.recent_work_matrix_rows == 7
     assert len(report.recent_work_blockers) == 7
     assert report.low_tier_source_ready is True
@@ -130,6 +131,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert payload["sota_gate_blockers"]
     assert payload["recent_work_policy_ready"] is True
     assert payload["recent_work_evidence_ready"] is False
+    assert payload["recent_work_source_verification_ready"] is True
     assert payload["recent_work_matrix_rows"] == 7
     assert len(payload["recent_work_blockers"]) == 7
     assert payload["low_tier_source_ready"] is True
@@ -152,6 +154,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "SOTA accepted run root:" in text
     assert "Recent-work policy ready: `True`" in text
     assert "Recent-work evidence ready: `False`" in text
+    assert "Recent-work source verification ready: `True`" in text
     assert "Low-tier source hygiene ready: `True`" in text
     assert "Submodule dirty clean: `False`" in text
     assert "## Blockers" in text
