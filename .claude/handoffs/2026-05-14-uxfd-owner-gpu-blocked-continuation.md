@@ -22,13 +22,18 @@ the pre-launch decision gate without re-deriving them.
 
 Recent parent commits:
 
+- `30286fb docs: refresh UXFD objective metrics audit`
+- `cbcc662 test: audit finite UXFD accepted metrics`
+- `3fa10e1 docs: update UXFD metrics gate handoff`
+- `207d97a docs: update UXFD artifact gate handoff`
+- `73f2fd6 test: validate UXFD artifact config and logs`
+- `f23c841 docs: update UXFD blocked handoff`
+- `5104f96 docs: add UXFD pre-launch decision gate`
+- `b9756c1 test: require finite UXFD accepted metrics`
 - `9076423 docs: refresh UXFD backlog owner decision hints`
 - `c55f165 docs: surface owner recommendations in UXFD backlog`
 - `31906a9 docs: enrich UXFD owner review triage metadata`
 - `584f22f docs: add Paper03 LLM evidence package contract`
-- `5104f96 docs: add UXFD pre-launch decision gate`
-- `73f2fd6 test: validate UXFD artifact config and logs`
-- `b9756c1 test: require finite UXFD accepted metrics`
 
 Recent Paper03 submodule commit:
 
@@ -58,6 +63,10 @@ Recent Paper03 submodule commit:
 - **Accepted metrics must be finite and final** - metrics files must contain at
   least one finite numeric value and must not contain TODO, NaN, or infinite
   payloads.
+- **Current answer to "can this goal execute?" is no** - the goal package is
+  clear enough to execute pre-launch unblock work, but the formal GPU queue is
+  blocked until owner decisions, clean submodules, accepted artifact coverage,
+  SOTA aggregates, and live local RTX 4090 GPU preflight all pass.
 
 ## Code Changes
 
@@ -122,6 +131,8 @@ Latest relevant tests passed:
   - result: `62 passed`
 - `python -m pytest -q test/test_uxfd_artifact_gate.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
   - result after finite-metric gate update: `65 passed`
+- `python -m pytest -q test/test_uxfd_artifact_gate.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
+  - result after the objective audit wording refresh: `65 passed`
 
 Latest gate state:
 
@@ -142,6 +153,11 @@ Latest gate state:
   - result: exit `2`
   - reason: NVIDIA driver/CUDA not visible; PyTorch reports
     `cuda_available=False`, `device_count=0`
+- `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
+  - result on the explicit execution-readiness recheck: exit `2`
+  - reason: `nvidia-smi` cannot communicate with the NVIDIA driver; PyTorch
+    reports `cuda_available=False`, `device_count=0`; required local RTX 4090
+    devices `0,1` are not visible.
 - `python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready`
   - `Ready: False`
   - `Queue can execute: False`
