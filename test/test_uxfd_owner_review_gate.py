@@ -25,7 +25,7 @@ def _approved_decisions_file(tmp_path: Path) -> Path:
     payload["status"] = "owner_review_decisions"
     for record in payload["records"]:
         record["decision"] = record["recommended_decisions"][0]
-        record["reviewer"] = "paper-owner"
+        record["reviewer"] = "Liqi Thu"
         record["review_date"] = "2026-05-14"
     path = tmp_path / "submodule_owner_review_decisions.json"
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -82,6 +82,30 @@ def test_owner_review_gate_rejects_decision_file_with_template_status(
 
     assert report.ready is False
     assert "owner decision file must be marked owner_review_decisions" in report.blockers
+
+
+def test_owner_review_gate_rejects_placeholder_reviewer(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    payload["records"][0]["reviewer"] = "paper-owner"
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert "approved decision requires a non-TODO reviewer" in report.records[0].issues
+
+
+def test_owner_review_gate_rejects_non_iso_review_date(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    payload["records"][0]["review_date"] = "2026/05/14"
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert "approved decision requires an ISO YYYY-MM-DD review_date" in report.records[0].issues
 
 
 def test_owner_review_gate_rejects_missing_current_owner_entry(tmp_path: Path) -> None:

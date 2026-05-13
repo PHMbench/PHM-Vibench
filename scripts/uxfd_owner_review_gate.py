@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict, dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -24,6 +25,7 @@ ALLOWED_DECISIONS = frozenset(
 PENDING_DECISION = "pending_owner_review"
 APPROVED_DECISION_STATUS = "owner_review_decisions"
 TEMPLATE_STATUS = "template_only_not_owner_approved"
+PLACEHOLDER_REVIEWERS = frozenset({"todo", "paper-owner", "owner", "reviewer"})
 
 
 @dataclass(frozen=True)
@@ -86,10 +88,13 @@ def _record_issues(record: Mapping[str, Any]) -> Tuple[str, ...]:
     if recommended and not recommended.issubset(ALLOWED_DECISIONS):
         issues.append("recommended_decisions contains values outside the allowed set")
     if decision in ALLOWED_DECISIONS:
-        if not reviewer or reviewer == "TODO":
+        reviewer_key = reviewer.strip().lower()
+        if not reviewer or reviewer_key in PLACEHOLDER_REVIEWERS:
             issues.append("approved decision requires a non-TODO reviewer")
-        if not review_date or review_date == "TODO":
-            issues.append("approved decision requires a non-TODO review_date")
+        try:
+            date.fromisoformat(review_date)
+        except ValueError:
+            issues.append("approved decision requires an ISO YYYY-MM-DD review_date")
         notes = str(record.get("notes", "")).strip()
         if decision == "commit_after_review" and risk_markers and (not notes or notes == "TODO"):
             issues.append("commit_after_review with risk markers requires notes")
