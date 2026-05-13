@@ -69,6 +69,34 @@ def test_gpu_queue_validation_blocks_execution_until_preflight_passes() -> None:
     assert "blocked" in validation.resource_reason
 
 
+def test_gpu_queue_static_validation_requires_exact_two_rtx_4090_devices(tmp_path: Path) -> None:
+    queue_path = tmp_path / "queue.yaml"
+    queue = yaml.safe_load(DEFAULT_QUEUE.read_text(encoding="utf-8"))
+    current = queue["resource_preflight"]["current_session_result"]
+    queue["status"] = "ready"
+    current["torch_cuda_available"] = True
+    current["torch_cuda_device_count"] = 2
+    current["gpu_names"] = ["NVIDIA A100-SXM4-80GB", "NVIDIA A100-SXM4-80GB"]
+    current["verdict"] = "accepted"
+    queue_path.write_text(yaml.safe_dump(queue, sort_keys=False), encoding="utf-8")
+
+    validation = validate_queue(queue_path)
+
+    assert validation.structural_issues == ()
+    assert validation.can_execute is False
+
+    current["gpu_names"] = [
+        "NVIDIA GeForce RTX 4090",
+        "NVIDIA GeForce RTX 4090",
+    ]
+    queue_path.write_text(yaml.safe_dump(queue, sort_keys=False), encoding="utf-8")
+
+    validation = validate_queue(queue_path)
+
+    assert validation.structural_issues == ()
+    assert validation.can_execute is True
+
+
 def test_gpu_queue_cli_writes_json_manifest_without_preflight_execution(tmp_path: Path) -> None:
     output = tmp_path / "queue" / "dry_run.json"
 
@@ -227,6 +255,7 @@ def test_static_resource_preflight_matches_live_snapshot() -> None:
     assert queue["resource_preflight"]["required_devices"] == ["0", "1"]
     assert current["torch_cuda_available"] is False
     assert current["torch_cuda_device_count"] == 0
+    assert current["gpu_names"] == payload["live_preflight"]["gpu_names"]
     assert current["verdict"] == payload["validation"]["resource_reason"]
     assert live["accepted"] is False
     assert live["torch_cuda_available"] == current["torch_cuda_available"]

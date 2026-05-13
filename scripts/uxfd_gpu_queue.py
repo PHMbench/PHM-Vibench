@@ -147,6 +147,14 @@ def validate_queue(path: Path = DEFAULT_QUEUE) -> QueueValidation:
     issues: List[str] = []
     matrix_entries: Dict[str, Dict[str, Mapping[str, Any]]] = {}
 
+    resource_preflight = queue.get("resource_preflight", {})
+    required_devices = [str(device) for device in resource_preflight.get("required_devices", [])]
+    scheduler_devices = [str(device) for device in queue.get("scheduler", {}).get("default_devices", [])]
+    if required_devices != ["0", "1"]:
+        issues.append("resource_preflight: required_devices must be ['0', '1']")
+    if scheduler_devices and scheduler_devices != required_devices:
+        issues.append("scheduler: default_devices must match resource_preflight.required_devices")
+
     for queue_item in queue.get("paper_queue", []):
         paper_id = str(queue_item.get("paper_id", ""))
         matrix_path = Path(str(queue_item.get("matrix_path", "")))
@@ -167,11 +175,22 @@ def validate_queue(path: Path = DEFAULT_QUEUE) -> QueueValidation:
         if binding.get("status") != "pending_gpu_and_artifacts":
             issues.append(f"{paper_id}: TOP binding is not pending")
 
-    current = queue.get("resource_preflight", {}).get("current_session_result", {})
+    current = resource_preflight.get("current_session_result", {})
+    required_count = len(required_devices)
+    required_gpu_class = str(resource_preflight.get("required_gpu_class", ""))
+    device_count = int(current.get("torch_cuda_device_count", 0))
+    gpu_names = tuple(str(name) for name in current.get("gpu_names", []) or [])
+    device_count_ok = required_count > 0 and device_count == required_count
+    gpu_class_ok = (
+        required_gpu_class != ""
+        and len(gpu_names) == required_count
+        and all(required_gpu_class in name for name in gpu_names)
+    )
     can_execute = (
         queue.get("status") != "blocked_resource_preflight"
         and bool(current.get("torch_cuda_available"))
-        and int(current.get("torch_cuda_device_count", 0)) >= 2
+        and device_count_ok
+        and gpu_class_ok
         and not issues
     )
     resource_reason = str(current.get("verdict", "resource preflight not recorded"))

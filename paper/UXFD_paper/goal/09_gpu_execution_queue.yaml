@@ -12,14 +12,15 @@ resource_preflight:
     nvidia_smi: "failed: NVIDIA-SMI could not communicate with the NVIDIA driver"
     torch_cuda_available: false
     torch_cuda_device_count: 0
+    gpu_names: []
     verdict: "blocked; no accepted GPU evidence can be generated in this session"
   required_commands:
     - id: "PREFLIGHT-NVIDIA-SMI"
       command: "nvidia-smi -L"
       accept_if: "lists the intended local GPUs 0 and 1 as RTX 4090-class devices"
     - id: "PREFLIGHT-TORCH-CUDA"
-      command: "python -c \"import torch; print(torch.cuda.is_available()); print(torch.cuda.device_count())\""
-      accept_if: "prints True and 2"
+      command: "python -c \"import torch; assert torch.cuda.is_available(); assert torch.cuda.device_count() == 2; names=[torch.cuda.get_device_name(i) for i in range(2)]; assert all('RTX 4090' in name for name in names), names; print(names[0]); print(names[1])\""
+      accept_if: "assertions pass and print the two local RTX 4090 device names"
     - id: "PREFLIGHT-PAPER-SMOKE"
       command_template: "CUDA_VISIBLE_DEVICES={device} python main.py --config {base_config} --override trainer.num_epochs=1 --override data.num_workers=0"
       accept_if: "one paper-local min config runs and records GPU model, runtime, seed, batch size, precision, and artifact paths"
