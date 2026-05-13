@@ -43,6 +43,19 @@ multi-node execution, or cloud-only hardware must be labelled
 `representative-runnable` PHM-Vibench proxy, but the proxy must not be described
 as exact reproduction.
 
+## Live Source Verification
+
+Checked on 2026-05-14 against primary venue, proceedings, publisher, or
+official project pages. This check verifies citation identity and venue status
+only; it does not make any TOP representative `evidence_ready` and does not
+replace accepted `run_meta.yaml`, logs, metrics, configs, or SOTA aggregates.
+
+| Scope | Primary sources checked | Verification result |
+|---|---|---|
+| 2024 explanation/foundation/diagnosis methods | [TimeX++ ICML 2024](https://www.microsoft.com/en-us/research/publication/timex-learning-time-series-explanations-with-information-bottleneck/), [Time-LLM ICLR 2024](https://openreview.net/forum?id=Unb5CVPtae), [TimeMixer ICLR 2024](https://openreview.net/forum?id=7oLshfEIC2), [MOMENT ICML 2024](https://icml.cc/virtual/2024/poster/34530), [SARAD NeurIPS 2024](https://proceedings.neurips.cc/paper_files/paper/2024/hash/56ad264ac7448239145606cf4106042f-Abstract-Conference.html) | Source identity and TOP venue labels are current; local reproduction remains representative unless exact code/config/log artifacts are integrated. |
+| 2025 MoE, anomaly, and concept-bottleneck methods | [Time-MoE ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/hash/558d48c1f08675daa636e09bfe94a89e-Abstract-Conference.html), [Moirai-MoE ICML 2025](https://proceedings.mlr.press/v267/liu25an.html), [CATCH ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/hash/2b25c39788e5cf11d3541de433ebf4c0-Abstract-Conference.html), [DADA ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/hash/ca7998666c2e53cc1e882b7268414d8a-Abstract-Conference.html), [Counterfactual Concept Bottleneck Models ICLR 2025](https://research.ibm.com/publications/counterfactual-concept-bottleneck-models), [Post-hoc Concept Bottlenecks CVPR 2025](https://openaccess.thecvf.com/content/CVPR2025/html/Kulkarni_Interpretable_Generative_Models_through_Post-hoc_Concept_Bottlenecks_CVPR_2025_paper.html), [Interpretable prognostics with concept bottleneck models, Information Fusion 2025](https://www.sciencedirect.com/science/article/pii/S1566253525005007) | Source identity and TOP venue labels are current; billion-scale or concept-supervised variants stay `resource-blocked` or `literature-only` until local protocols exist. |
+| 2026 ICLR time-series explanation, prototype, calibration, and compact foundation methods | [TimeSeg](https://openreview.net/forum?id=alt9mSWULk), [TimeSliver](https://openreview.net/forum?id=MDRp9XhGtS), [PGRF-Net](https://openreview.net/forum?id=3hS7EtL4bV), [GTM](https://openreview.net/forum?id=PWM6FERWz9), [CS-LSTMs](https://openreview.net/forum?id=2VtveTkmzW), [ProtoTS](https://openreview.net/forum?id=IbcdVwzLrp), [calibrated TSFMs](https://openreview.net/forum?id=nGBN7UjHcy), [TSPulse](https://openreview.net/forum?id=Kw2mvnzCoc) | Source identity and ICLR 2026 status are current; all seven queued bindings remain `pending_gpu_and_artifacts` until accepted local proxy or exact reproduction artifacts exist. |
+
 ## Accepted TOP Method Pool
 
 | ID | Year | Venue tier | Work | Venue | UXFD relevance | Initial status | PHM-Vibench representative run |
