@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `70`
+- Met: `71`
 - Not met: `11`
 - Blocked: `1`
 - Unverified: `0`
@@ -57,6 +57,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | SOTA aggregate gate JSON report | `paper/UXFD_paper/results/sota_gate_current.json` | exists |
 | `met` | SOTA aggregate gate markdown report | `paper/UXFD_paper/results/sota_gate_current.md` | exists |
 | `met` | submodule dirty triage report | `paper/UXFD_paper/results/submodule_dirty_triage.md` | exists |
+| `met` | submodule dirty triage JSON report | `paper/UXFD_paper/results/submodule_dirty_triage.json` | exists |
 | `met` | parent result artifact triage report | `paper/UXFD_paper/results/parent_result_artifact_triage.md` | exists |
 | `met` | readiness execution backlog | `paper/UXFD_paper/results/readiness_backlog.md` | exists |
 | `met` | goal clarity audit report | `paper/UXFD_paper/results/goal_clarity_audit_current.md` | exists |
@@ -74,7 +75,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | SOTA comparison requires multi-seed same-protocol aggregate evidence | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` | queue/runbook block single-run SOTA and require matched seeds, accepted run refs, aggregate statistics, failure records, and exact-vs-representative TOP scope |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules |
 | `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2 |
-| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 60 parent goal-control paths clean |
+| `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 61 parent goal-control paths clean |
 | `met` | seven paper-local baseline/ablation matrices | `submission_prep/baseline_ablation_matrix.yaml` | 7 matrices discovered by submission gate |
 | `met` | TII_operator_attention: 6+ baselines and 6+ ablations | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | baselines=7, ablations=6, submission_ready=False |
 | `not_met` | TII_operator_attention: IEEE Transactions submission-ready | `paper/UXFD_paper/TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml` | strict blockers remaining=5 |

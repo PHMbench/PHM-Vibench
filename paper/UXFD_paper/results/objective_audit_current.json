@@ -261,6 +261,12 @@
       "details": "exists"
     },
     {
+      "requirement": "submodule dirty triage JSON report",
+      "evidence": "paper/UXFD_paper/results/submodule_dirty_triage.json",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "parent result artifact triage report",
       "evidence": "paper/UXFD_paper/results/parent_result_artifact_triage.md",
       "status": "met",
@@ -366,7 +372,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "60 parent goal-control paths clean"
+      "details": "61 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -509,7 +515,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=19"
   ],
-  "met": 70,
+  "met": 71,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0
