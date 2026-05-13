@@ -273,6 +273,30 @@
       "details": "exists"
     },
     {
+      "requirement": "submodule owner-review recommendations",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_recommendations.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "submodule owner-review decision template",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "submodule owner-review gate JSON report",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_gate_current.json",
+      "status": "met",
+      "details": "exists"
+    },
+    {
+      "requirement": "submodule owner-review gate markdown report",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_gate_current.md",
+      "status": "met",
+      "details": "exists"
+    },
+    {
       "requirement": "parent result artifact triage report",
       "evidence": "paper/UXFD_paper/results/parent_result_artifact_triage.md",
       "status": "met",
@@ -375,6 +399,12 @@
       "details": "queue/runbook block single-run SOTA and require matched seeds, accepted run refs, aggregate statistics, failure records, and exact-vs-representative TOP scope"
     },
     {
+      "requirement": "submodule owner-review decision gate",
+      "evidence": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+      "status": "not_met",
+      "details": "ready=False, pending_records=6, blockers=4"
+    },
+    {
       "requirement": "Paper07 rejection-recovery innovation contract",
       "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md",
       "status": "met",
@@ -390,7 +420,7 @@
       "requirement": "parent UXFD goal-control checkpoint committed",
       "evidence": "git status --porcelain -- <UXFD goal-control paths>",
       "status": "met",
-      "details": "62 parent goal-control paths clean"
+      "details": "68 parent goal-control paths clean"
     },
     {
       "requirement": "seven paper-local baseline/ablation matrices",
@@ -516,10 +546,11 @@
       "requirement": "cross-paper submission gate",
       "evidence": "scripts.uxfd_submission_gate",
       "status": "not_met",
-      "details": "ready=False, blockers=19"
+      "details": "ready=False, blockers=20"
     }
   ],
   "blockers": [
+    "submodule owner-review decision gate: ready=False, pending_records=6, blockers=4",
     "paper submodule working trees clean before parent handoff: dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2",
     "TII_operator_attention: IEEE Transactions submission-ready: strict blockers remaining=5",
     "1D-2D_fusion_explainable: IEEE Transactions submission-ready: strict blockers remaining=5",
@@ -531,10 +562,10 @@
     "TOP representative accepted artifacts: pending_or_blocked_bindings=7",
     "2x4090 GPU queue executable: blocked; no accepted GPU evidence can be generated in this session",
     "accepted run artifact metadata: records=0, blockers=2",
-    "cross-paper submission gate: ready=False, blockers=19"
+    "cross-paper submission gate: ready=False, blockers=20"
   ],
-  "met": 74,
-  "not_met": 11,
+  "met": 78,
+  "not_met": 12,
   "blocked": 1,
   "unverified": 0
 }
