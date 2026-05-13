@@ -27,6 +27,16 @@ Status: blocker triage only. This report is not accepted experiment evidence.
 - `do_not_auto_commit_without_owner_review`: inspect with the paper owner before staging.
 - Risk markers flag stale paths, deprecated config dispatch, unaccepted readiness claims, historical accepted-claim wording, or GPU bindings outside `0,1`.
 
+## Owner Review Queue
+
+Use this queue to resolve the dirty-submodule blocker without promoting generated artifacts as accepted evidence.
+
+| Submodule | Owner-review entries | Artifact-gate-only entries | Preserve/ignore entries | First non-destructive check |
+|---|---:|---:|---:|---|
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | 2 | 1 | 0 | `git -C paper/UXFD_paper/1D-2D_fusion_explainable status --short` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 | `git -C paper/UXFD_paper/Explainable_FD_Toolkit status --short` |
+| `paper/UXFD_paper/MOE_explainable` | 2 | 0 | 0 | `git -C paper/UXFD_paper/MOE_explainable status --short` |
+
 ## Entries
 
 | Submodule | Status | Category | Action | Risk Markers | Path |
