@@ -27,6 +27,7 @@ Recent parent commits:
 - `31906a9 docs: enrich UXFD owner review triage metadata`
 - `584f22f docs: add Paper03 LLM evidence package contract`
 - `5104f96 docs: add UXFD pre-launch decision gate`
+- `73f2fd6 test: validate UXFD artifact config and logs`
 
 Recent Paper03 submodule commit:
 
@@ -50,6 +51,9 @@ Recent Paper03 submodule commit:
   `queue_launch_shards/gpu1.sh` are execution plans only. The latest GPU status
   report now requires objective audit, owner-review gate, live GPU preflight,
   and submission gate to pass without `--allow-not-*` overrides before launch.
+- **Accepted config/log evidence must be content-valid** - accepted run
+  metadata may not point to empty logs, TODO logs, empty configs, TODO configs,
+  or unparseable YAML configs.
 
 ## Code Changes
 
@@ -79,6 +83,13 @@ Recent Paper03 submodule commit:
   until the required gates pass without override flags.
 - `paper/UXFD_paper/goal/status/status_09_gpu_execution.md` - regenerated
   status report with the pre-launch gate and explicit no-template-approval rule.
+- `scripts/uxfd_artifact_gate.py` - validates `config_path` as parseable,
+  non-empty YAML with no TODO placeholders and validates `log_path` as
+  non-empty text with no TODO placeholders.
+- `test/test_uxfd_artifact_gate.py` - covers empty logs, unparseable configs,
+  and TODO placeholder config/log evidence.
+- `paper/UXFD_paper/results/accepted_runs/README.md` - documents the stricter
+  accepted config/log requirements.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -97,6 +108,8 @@ Latest relevant tests passed:
   - result: `52 passed`
 - `python -m pytest -q test/test_uxfd_goal_status.py test/test_uxfd_objective_audit.py`
   - result: `17 passed`
+- `python -m pytest -q test/test_uxfd_artifact_gate.py test/test_uxfd_goal_status.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
+  - result: `62 passed`
 
 Latest gate state:
 
