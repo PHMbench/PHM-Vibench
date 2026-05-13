@@ -40,3 +40,13 @@ The project is ready for controlled execution only after local GPUs 0 and 1 are 
 - MOE_explainable: submission_ready is false
 - MOE_explainable: 5 strict blockers remain
 - ... 10 additional blockers omitted; see gate reports.
+
+## Dirty Submodule Owner Review Queue
+
+Do not auto-commit these entries. Commit only owner-reviewed source/docs; promote generated or result artifacts only through the accepted artifact gate.
+
+| Submodule | Owner Review | Artifact Gate Only | Preserve/Ignore |
+|---|---:|---:|---:|
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | 2 | 1 | 0 |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 |
+| `paper/UXFD_paper/MOE_explainable` | 2 | 0 | 0 |

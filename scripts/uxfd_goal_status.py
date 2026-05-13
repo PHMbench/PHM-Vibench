@@ -10,7 +10,12 @@ from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, expand_queue, summarize_rows, 
 from scripts.uxfd_objective_audit import evaluate_objective_audit
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import DEFAULT_ARTIFACT_ROOT, evaluate_submission_gate
-from scripts.uxfd_submodule_dirty_triage import evaluate_dirty_triage
+from scripts.uxfd_submodule_dirty_triage import (
+    DO_NOT_AUTO_COMMIT,
+    PRESERVE_SESSION,
+    PROMOTE_ONLY_THROUGH_GATE,
+    evaluate_dirty_triage,
+)
 
 
 DEFAULT_STATUS_DIR = Path("paper/UXFD_paper/goal/status")
@@ -83,6 +88,23 @@ def _dirty_by_paper(dirty_report: object) -> Dict[str, int]:
     return counts
 
 
+def _dirty_actions_by_submodule(dirty_report: object) -> Dict[str, Dict[str, int]]:
+    counts: Dict[str, Dict[str, int]] = {}
+    for entry in dirty_report.entries:
+        submodule_counts = counts.setdefault(
+            entry.submodule,
+            {
+                DO_NOT_AUTO_COMMIT: 0,
+                PROMOTE_ONLY_THROUGH_GATE: 0,
+                PRESERVE_SESSION: 0,
+            },
+        )
+        if entry.recommended_action not in submodule_counts:
+            submodule_counts[entry.recommended_action] = 0
+        submodule_counts[entry.recommended_action] += 1
+    return counts
+
+
 def _binding_by_paper(recent_report: object) -> Dict[str, object]:
     return {binding.paper_id: binding for binding in recent_report.bindings}
 
@@ -141,6 +163,26 @@ def _render_overall(
     lines.extend(["", "## Blocking Findings", ""])
     for blocker in _first_blockers(submission_report.blockers):
         lines.append(f"- {blocker}")
+    dirty_actions = _dirty_actions_by_submodule(dirty_report)
+    lines.extend(
+        [
+            "",
+            "## Dirty Submodule Owner Review Queue",
+            "",
+            "Do not auto-commit these entries. Commit only owner-reviewed source/docs; "
+            "promote generated or result artifacts only through the accepted artifact gate.",
+            "",
+            "| Submodule | Owner Review | Artifact Gate Only | Preserve/Ignore |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+    for summary in dirty_report.summaries:
+        counts = dirty_actions.get(summary.submodule, {})
+        lines.append(
+            f"| `{summary.submodule}` | {counts.get(DO_NOT_AUTO_COMMIT, 0)} | "
+            f"{counts.get(PROMOTE_ONLY_THROUGH_GATE, 0)} | "
+            f"{counts.get(PRESERVE_SESSION, 0)} |"
+        )
     return "\n".join(lines) + "\n"
 
 
