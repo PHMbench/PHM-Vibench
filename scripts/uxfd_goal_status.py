@@ -355,6 +355,7 @@ def _render_gpu_execution(
             "with no TODO placeholders.",
             "- `seed` must be a non-negative integer and `batch_size` must be a "
             "positive integer.",
+            "- `runtime` must be a positive `HH:MM:SS` duration.",
             "- `preprocessing_signature` must match `sha256:<64 lowercase hex>`.",
             "- `metrics.json` or `metrics.csv` must include at least one numeric metric; "
             "status-only payloads are rejected.",

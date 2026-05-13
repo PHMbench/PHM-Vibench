@@ -73,8 +73,9 @@ For each completed launch row:
 4. Set `accepted_evidence: true` only after metrics, logs, config evidence, GPU
    metadata, seed, split, runtime, command, SHA provenance, and
    `source_tree_status: clean` are present. The seed must be a non-negative
-   integer, `batch_size` must be a positive integer, and
-   `preprocessing_signature` must match `sha256:<64 lowercase hex>`.
+   integer, `batch_size` must be a positive integer, `runtime` must be a
+   positive `HH:MM:SS` duration, and `preprocessing_signature` must match
+   `sha256:<64 lowercase hex>`.
 5. Place `metrics.json` or `metrics.csv`, `run.log`, and the referenced config
    evidence beside `run_meta.yaml`. The metrics file must contain at least one
    numeric metric; status-only payloads are rejected.
@@ -82,9 +83,10 @@ For each completed launch row:
 The artifact gate rejects `accepted_evidence: false`, `TODO` placeholders,
 missing files, non-4090 GPU metadata, invalid CUDA device IDs, and incomplete
 queue coverage. It also rejects JSON or CSV metric files that contain no numeric
-metric, non-numeric seed or batch-size controls, non-hashed preprocessing
-signatures, run metadata from dirty source trees, and SHA provenance fields that
-contain dirty, modified, unknown, or uncommitted markers.
+metric, non-numeric seed or batch-size controls, malformed runtime values,
+non-hashed preprocessing signatures, run metadata from dirty source trees, and
+SHA provenance fields that contain dirty, modified, unknown, or uncommitted
+markers.
 
 ## 5. Gates
 

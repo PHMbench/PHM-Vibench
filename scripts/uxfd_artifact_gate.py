@@ -69,6 +69,7 @@ DISALLOWED_SHA_PROVENANCE_MARKERS = (
     "uncommitted",
 )
 PREPROCESSING_SIGNATURE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+RUNTIME_PATTERN = re.compile(r"^(\d+):([0-5]\d):([0-5]\d)$")
 PROTOCOL_EVIDENCE_FIELDS = (
     "dataset_split",
     "preprocessing_signature",
@@ -228,6 +229,16 @@ def _coerce_integer(value: Any) -> Optional[int]:
     return None
 
 
+def _runtime_seconds(value: Any) -> Optional[int]:
+    if not isinstance(value, str):
+        return None
+    match = RUNTIME_PATTERN.fullmatch(value.strip())
+    if not match:
+        return None
+    hours, minutes, seconds = (int(part) for part in match.groups())
+    return hours * 3600 + minutes * 60 + seconds
+
+
 def _resolve_referenced_artifact_path(
     run_meta_path: Path,
     field: str,
@@ -288,6 +299,10 @@ def _validate_run_meta(path: Path) -> ArtifactRecord:
     batch_size = _coerce_integer(data.get("batch_size"))
     if batch_size is None or batch_size <= 0:
         issues.append("batch_size must be a positive integer")
+
+    runtime_seconds = _runtime_seconds(data.get("runtime"))
+    if runtime_seconds is None or runtime_seconds <= 0:
+        issues.append("runtime must be positive HH:MM:SS")
 
     gpu_count = _coerce_integer(data.get("gpu_count"))
     if gpu_count is None:

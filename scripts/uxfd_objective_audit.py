@@ -119,6 +119,10 @@ RUN_CONTROL_NEEDLES = (
     "seed must be a non-negative integer",
     "batch_size must be a positive integer",
 )
+RUNTIME_NEEDLES = (
+    "runtime must be positive HH:MM:SS",
+    "RUNTIME_PATTERN",
+)
 PREPROCESSING_SIGNATURE_NEEDLES = (
     "preprocessing_signature must match sha256:<64 lowercase hex>",
     "PREPROCESSING_SIGNATURE_PATTERN",
@@ -490,6 +494,52 @@ def _run_control_contract_item(
     )
 
 
+def _runtime_contract_item(
+    queue_path: Path = DEFAULT_QUEUE,
+    artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
+    artifact_scaffold_path: Path = Path("scripts/uxfd_artifact_scaffold.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    if not queue_path.exists():
+        missing.append(str(queue_path))
+        queue_contract: Mapping[str, Any] = {}
+    else:
+        queue = yaml.safe_load(queue_path.read_text(encoding="utf-8"))
+        queue_contract = queue.get("accepted_artifact_contract", {})
+
+    runtime_text = str(queue_contract.get("runtime", "")).lower()
+    for needle in ("positive", "hh:mm:ss"):
+        if needle not in runtime_text:
+            missing.append(f"accepted_artifact_contract.runtime.{needle}")
+
+    for path, needles in (
+        (artifact_gate_path, RUNTIME_NEEDLES),
+        (artifact_scaffold_path, ("Runtime rule", "HH:MM:SS")),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="accepted artifacts require positive runtime metadata",
+            evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="accepted artifacts require positive runtime metadata",
+        evidence=f"{queue_path},{artifact_gate_path},{artifact_scaffold_path}",
+        status="met",
+        details="queue contract, artifact gate, and templates require positive HH:MM:SS runtime",
+    )
+
+
 def _preprocessing_signature_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     artifact_gate_path: Path = Path("scripts/uxfd_artifact_gate.py"),
@@ -680,6 +730,7 @@ def evaluate_objective_audit(
     items.append(_numeric_metrics_contract_item(queue_path=queue_path))
     items.append(_source_tree_status_contract_item(queue_path=queue_path))
     items.append(_run_control_contract_item(queue_path=queue_path))
+    items.append(_runtime_contract_item(queue_path=queue_path))
     items.append(_preprocessing_signature_contract_item(queue_path=queue_path))
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
 

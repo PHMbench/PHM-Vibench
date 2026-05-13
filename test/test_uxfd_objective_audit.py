@@ -83,6 +83,10 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "integer seed and batch_size" in items[
         "accepted artifacts require numeric run controls"
     ].details
+    assert items["accepted artifacts require positive runtime metadata"].status == "met"
+    assert "positive HH:MM:SS runtime" in items[
+        "accepted artifacts require positive runtime metadata"
+    ].details
     assert (
         items["accepted artifacts require hashed preprocessing signatures"].status
         == "met"
