@@ -108,6 +108,18 @@ def test_owner_review_gate_rejects_non_iso_review_date(tmp_path: Path) -> None:
     assert "approved decision requires an ISO YYYY-MM-DD review_date" in report.records[0].issues
 
 
+def test_owner_review_gate_rejects_future_review_date(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    payload["records"][0]["review_date"] = "2999-01-01"
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert "approved decision review_date cannot be in the future" in report.records[0].issues
+
+
 def test_owner_review_gate_rejects_missing_current_owner_entry(tmp_path: Path) -> None:
     decision_file = _approved_decisions_file(tmp_path)
     payload = json.loads(decision_file.read_text(encoding="utf-8"))

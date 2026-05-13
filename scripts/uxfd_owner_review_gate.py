@@ -122,9 +122,12 @@ def _record_issues(
         if not reviewer or reviewer_key in PLACEHOLDER_REVIEWERS:
             issues.append("approved decision requires a non-TODO reviewer")
         try:
-            date.fromisoformat(review_date)
+            parsed_review_date = date.fromisoformat(review_date)
         except ValueError:
             issues.append("approved decision requires an ISO YYYY-MM-DD review_date")
+        else:
+            if parsed_review_date > date.today():
+                issues.append("approved decision review_date cannot be in the future")
         notes = str(record.get("notes", "")).strip()
         if decision == "commit_after_review" and risk_markers and (not notes or notes == "TODO"):
             issues.append("commit_after_review with risk markers requires notes")
