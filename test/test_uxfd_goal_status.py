@@ -18,6 +18,11 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "not accepted experiment evidence" in overall
     assert "Artifact coverage: `0/104`" in overall
     assert "Queue dry-run entries: `104`" in gpu
+    assert "## TOP Representative Execution Bindings" in gpu
+    assert "`TOP-Q7-TIMESEG`" in gpu
+    assert "`B02, A05, A07`" in gpu
+    assert "representative-only" in gpu
+    assert "`pending_gpu_and_artifacts`" in gpu
     assert "Evidence ready: `False`" in citation
 
 

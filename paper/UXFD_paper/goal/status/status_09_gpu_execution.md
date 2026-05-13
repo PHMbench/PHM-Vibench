@@ -21,3 +21,17 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - `nvidia-smi -L` must show local RTX 4090 GPUs 0 and 1.
 - PyTorch must report CUDA available with at least two devices.
 - Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs with no TODO placeholders.
+
+## TOP Representative Execution Bindings
+
+These rows are queue bindings, not accepted evidence. Keep claims representative-only until exact external code/config evidence is integrated.
+
+| Binding | Paper | Work | Local Proxy Entries | Exact Status | Status | Evidence Ready |
+|---|---|---|---|---|---|---:|
+| `TOP-Q1-GTM` | `TII_operator_attention` | `RWTOP2026-GTM` | `B04, B05, A04` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
+| `TOP-Q2-GTM` | `1D-2D_fusion_explainable` | `RWTOP2026-GTM` | `B04, B05, A06` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
+| `TOP-Q3-TIMESEG` | `Explainable_FD_Toolkit` | `RWTOP2026-TIMESEG` | `P00, A02, A03, A06` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
+| `TOP-Q4-TSPULSE` | `MOE_explainable` | `RWTOP2026-TSPULSE` | `B06, A04, A06` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
+| `TOP-Q5-TIMESLIVER` | `Paper_fuzzy_XFD` | `RWTOP2026-TIMESLIVER` | `B07, A01, A04, A05, A06` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
+| `TOP-Q6-TIMESLIVER` | `Neuralsymbolic_theory` | `RWTOP2026-TIMESLIVER` | `A01, A05, A06, A07` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |
+| `TOP-Q7-TIMESEG` | `LLM_Explainable_FD_Toolkit` | `RWTOP2026-TIMESEG` | `B02, A05, A07` | not exact; representative only until external code/config is integrated | `pending_gpu_and_artifacts` | `False` |

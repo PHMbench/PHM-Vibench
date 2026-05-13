@@ -245,6 +245,7 @@ def _render_gpu_execution(
     generated_on: str,
     submission_report: object,
     artifact_report: object,
+    recent_report: object,
 ) -> str:
     rows = expand_queue(DEFAULT_QUEUE)
     queue_summary = summarize_rows(rows)
@@ -274,8 +275,24 @@ def _render_gpu_execution(
             "- PyTorch must report CUDA available with at least two devices.",
             "- Accepted artifacts must fill `run_meta.yaml`, logs, metrics, and configs "
             "with no TODO placeholders.",
+            "",
+            "## TOP Representative Execution Bindings",
+            "",
+            "These rows are queue bindings, not accepted evidence. Keep claims "
+            "representative-only until exact external code/config evidence is integrated.",
+            "",
+            "| Binding | Paper | Work | Local Proxy Entries | Exact Status | Status | Evidence Ready |",
+            "|---|---|---|---|---|---|---:|",
         ]
     )
+    for binding in recent_report.bindings:
+        proxy_entries = ", ".join(binding.local_proxy_matrix_entries)
+        exact_status = binding.exact_reproduction_status.replace("|", "\\|")
+        lines.append(
+            f"| `{binding.binding_id}` | `{binding.paper_id}` | "
+            f"`{binding.external_work_id}` | `{proxy_entries}` | "
+            f"{exact_status} | `{binding.status}` | `{binding.evidence_ready}` |"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -309,6 +326,7 @@ def generate_status_reports(
             generated,
             submission_report,
             artifact_report,
+            recent_report,
         ),
     }
     for paper_id in PAPER_ORDER:
