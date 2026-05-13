@@ -90,6 +90,15 @@ unknown precision values, non-accepted evidence levels, non-hashed
 preprocessing signatures, run metadata from dirty source trees, and SHA
 provenance fields that contain dirty, modified, unknown, or uncommitted markers.
 
+A single accepted run is only a run artifact. It is not SOTA evidence by itself.
+SOTA input requires the proposed method, every declared baseline, and every
+runnable TOP representative to have accepted same-protocol artifacts over a
+matched seed set with at least the paper-specific `minimum_seeds` value. The
+comparison table must include per-seed values plus mean, standard deviation, a
+95% confidence interval, and an effect size or paired significance test. Failed,
+OOM, dependency-blocked, or resource-blocked rows need explicit failure records;
+they cannot be silently removed to improve the proposed method's rank.
+
 ## 5. Gates
 
 Run the gates after every execution batch:
@@ -105,7 +114,8 @@ python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved --
 ```
 
 No SOTA or submission-ready claim is allowed until artifact, recent-work,
-submission, and objective gates all pass without override flags.
+submission, objective, and SOTA comparison gates all pass without override
+flags.
 
 ## 6. Current State
 

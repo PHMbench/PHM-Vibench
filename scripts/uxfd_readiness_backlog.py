@@ -122,7 +122,8 @@ def evaluate_readiness_backlog(
                     "positive runtime, enumerated precision, accepted_same_protocol "
                     "evidence_level, hashed "
                     "preprocessing_signature, numeric metrics, `source_tree_status: clean`, "
-                    "and clean SHA provenance before rerunning artifact gate with queue coverage."
+                    "clean SHA provenance, and matched-seed aggregate statistics before "
+                    "rerunning artifact and SOTA gates with queue coverage."
                 ),
                 evidence=submission.artifact_gate_root,
             )

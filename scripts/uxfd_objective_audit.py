@@ -139,6 +139,25 @@ SHA_PROVENANCE_NEEDLES = (
     "DISALLOWED_SHA_PROVENANCE_MARKERS",
     "git_sha_or_submodule_sha must not contain",
 )
+SOTA_COMPARISON_CONTRACT_FIELDS = (
+    "single_run_rule",
+    "same_protocol_population",
+    "seed_protocol",
+    "aggregate_statistics",
+    "ablation_dependency",
+    "top_scope",
+    "claim_output",
+)
+SOTA_COMPARISON_CONTRACT_NEEDLES = (
+    "single run",
+    "matched seed",
+    "minimum_seeds",
+    "95% confidence interval",
+    "effect size",
+    "failure_record",
+    "representative top proxy",
+    "exact external",
+)
 
 PAPER_SUBMODULES = (
     Path("paper/UXFD_paper/Explainable_FD_Toolkit"),
@@ -735,6 +754,69 @@ def _sha_provenance_contract_item(
     )
 
 
+def _sota_comparison_contract_item(
+    queue_path: Path = DEFAULT_QUEUE,
+    runbook_path: Path = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    if not queue_path.exists():
+        missing.append(str(queue_path))
+        queue: Mapping[str, Any] = {}
+    else:
+        queue = yaml.safe_load(queue_path.read_text(encoding="utf-8")) or {}
+
+    contract = queue.get("sota_comparison_contract", {})
+    if not isinstance(contract, Mapping):
+        missing.append("sota_comparison_contract")
+        contract = {}
+
+    for field in SOTA_COMPARISON_CONTRACT_FIELDS:
+        if not str(contract.get(field, "")).strip():
+            missing.append(f"sota_comparison_contract.{field}")
+
+    contract_text = " ".join(str(value) for value in contract.values()).lower()
+    cross_gate = queue.get("cross_paper_gate", {})
+    cross_gate_text = str(cross_gate.get("sota_rule", "")).lower()
+    combined_text = f"{contract_text} {cross_gate_text}"
+    for needle in SOTA_COMPARISON_CONTRACT_NEEDLES:
+        if needle.lower() not in combined_text:
+            missing.append(f"sota_comparison_contract.{needle}")
+    if "multi-seed" not in cross_gate_text:
+        missing.append("cross_paper_gate.sota_rule.multi-seed")
+
+    if not runbook_path.exists():
+        missing.append(str(runbook_path))
+    else:
+        runbook_text = runbook_path.read_text(encoding="utf-8").lower()
+        for needle in (
+            "single accepted run is only a run artifact",
+            "matched seed set",
+            "95% confidence interval",
+            "effect size",
+            "cannot be silently removed",
+        ):
+            if needle not in runbook_text:
+                missing.append(f"{runbook_path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="SOTA comparison requires multi-seed same-protocol aggregate evidence",
+            evidence=f"{queue_path},{runbook_path}",
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="SOTA comparison requires multi-seed same-protocol aggregate evidence",
+        evidence=f"{queue_path},{runbook_path}",
+        status="met",
+        details=(
+            "queue/runbook block single-run SOTA and require matched seeds, "
+            "aggregate statistics, failure records, and exact-vs-representative TOP scope"
+        ),
+    )
+
+
 def _subagent_execution_item(
     team_dir: Path = CLAUDE_TEAM_DIR,
     launch_blocked: bool = False,
@@ -838,6 +920,7 @@ def evaluate_objective_audit(
     items.append(_evidence_level_contract_item(queue_path=queue_path))
     items.append(_preprocessing_signature_contract_item(queue_path=queue_path))
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
+    items.append(_sota_comparison_contract_item(queue_path=queue_path))
 
     paper07_rejection_ready = _text_contains(
         PAPER07_GOAL,

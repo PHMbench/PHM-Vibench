@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `65`
+- Met: `66`
 - Not met: `11`
 - Blocked: `1`
 - Unverified: `0`
@@ -67,6 +67,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | accepted artifacts require accepted_same_protocol evidence level | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py` | queue contract, artifact gate, and templates reject non-accepted smoke/demo/dummy/template/pending evidence levels |
 | `met` | accepted artifacts require hashed preprocessing signatures | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py` | queue contract, artifact gate, and templates require sha256 preprocessing_signature |
 | `met` | accepted artifacts require clean SHA provenance | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py` | queue contract, artifact gate, and templates reject dirty SHA provenance markers |
+| `met` | SOTA comparison requires multi-seed same-protocol aggregate evidence | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` | queue/runbook block single-run SOTA and require matched seeds, aggregate statistics, failure records, and exact-vs-representative TOP scope |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer trace, Q0 preflight, and non-SOTA/non-ready stop rules |
 | `not_met` | paper submodule working trees clean before parent handoff | `git -C <paper_submodule> status --porcelain` | dirty_submodules=Explainable_FD_Toolkit:22, 1D-2D_fusion_explainable:3, MOE_explainable:2 |
 | `met` | parent UXFD goal-control checkpoint committed | `git status --porcelain -- <UXFD goal-control paths>` | 53 parent goal-control paths clean |

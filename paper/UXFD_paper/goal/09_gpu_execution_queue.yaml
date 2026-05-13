@@ -69,6 +69,16 @@ accepted_artifact_contract:
   failure_record: "required for OOM, dependency, data, or resource-blocked runs"
   sota_input: "only accepted same-protocol artifacts may enter SOTA comparison"
 
+sota_comparison_contract:
+  status: "blocked_until_full_accepted_aggregate_evidence"
+  single_run_rule: "A single run, single seed, smoke run, demo run, or template artifact is never sufficient for SOTA wording."
+  same_protocol_population: "SOTA input must include the proposed method, every declared baseline, and every runnable TOP representative under the same dataset split, preprocessing signature, metric definition, and evidence_level."
+  seed_protocol: "Each comparison group must use a matched seed set with at least the paper_queue minimum_seeds value; missing seeds require failure_record evidence and block SOTA instead of being cherry-picked away."
+  aggregate_statistics: "Report the per-seed table plus mean, standard deviation, 95% confidence interval, and effect size or paired significance test for every primary metric."
+  ablation_dependency: "Contribution-specific SOTA wording is blocked until required ablations are accepted under the same protocol."
+  top_scope: "A representative TOP proxy supports only representative comparison; exact external-method SOTA requires exact external code/config, command, log, and artifact evidence."
+  claim_output: "If the proposed method does not beat every accepted comparator under this contract, report the bounded contribution axis and do not claim SOTA."
+
 top_representative_bindings:
   - binding_id: "TOP-Q1-GTM"
     paper_id: "TII_operator_attention"
@@ -209,5 +219,5 @@ paper_queue:
 cross_paper_gate:
   queue_id: "Q8"
   status: "blocked_until_all_paper_queue_items_have_accepted_artifacts"
-  sota_rule: "No SOTA wording is allowed unless proposed methods beat every declared baseline and runnable TOP representative under the same protocol."
+  sota_rule: "No SOTA wording is allowed unless proposed methods beat every declared baseline and runnable TOP representative with multi-seed aggregate evidence under the same protocol."
   submission_rule: "No paper may become submission_ready: true until evidence, manuscript, compile, TOP, compute, ablation, and SOTA gates pass."

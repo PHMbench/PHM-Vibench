@@ -29,6 +29,7 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - `preprocessing_signature` must match `sha256:<64 lowercase hex>`.
 - `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.
 - `git_sha_or_submodule_sha` must be a concrete clean revision without dirty, modified, unknown, or uncommitted markers.
+- SOTA wording requires matched-seed aggregate evidence across the proposed method, every declared baseline, and every runnable TOP representative; a single accepted run is not SOTA evidence.
 
 ## TOP Representative Execution Bindings
 

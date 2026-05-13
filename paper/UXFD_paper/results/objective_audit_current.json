@@ -321,6 +321,12 @@
       "details": "queue contract, artifact gate, and templates reject dirty SHA provenance markers"
     },
     {
+      "requirement": "SOTA comparison requires multi-seed same-protocol aggregate evidence",
+      "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md",
+      "status": "met",
+      "details": "queue/runbook block single-run SOTA and require matched seeds, aggregate statistics, failure records, and exact-vs-representative TOP scope"
+    },
+    {
       "requirement": "Paper07 rejection-recovery innovation contract",
       "evidence": "paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md",
       "status": "met",
@@ -479,7 +485,7 @@
     "accepted run artifact metadata: records=0, blockers=2",
     "cross-paper submission gate: ready=False, blockers=18"
   ],
-  "met": 65,
+  "met": 66,
   "not_met": 11,
   "blocked": 1,
   "unverified": 0

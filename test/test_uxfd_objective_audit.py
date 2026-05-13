@@ -112,6 +112,15 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "dirty SHA provenance" in items[
         "accepted artifacts require clean SHA provenance"
     ].details
+    assert (
+        items[
+            "SOTA comparison requires multi-seed same-protocol aggregate evidence"
+        ].status
+        == "met"
+    )
+    assert "block single-run SOTA" in items[
+        "SOTA comparison requires multi-seed same-protocol aggregate evidence"
+    ].details
     assert items["readiness execution backlog"].status == "met"
     assert items["goal clarity audit report"].status == "met"
     assert items["commit recovery plan"].status == "met"

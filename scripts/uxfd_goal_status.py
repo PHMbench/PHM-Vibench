@@ -363,6 +363,9 @@ def _render_gpu_execution(
             "status-only payloads are rejected.",
             "- `git_sha_or_submodule_sha` must be a concrete clean revision without "
             "dirty, modified, unknown, or uncommitted markers.",
+            "- SOTA wording requires matched-seed aggregate evidence across the proposed "
+            "method, every declared baseline, and every runnable TOP representative; "
+            "a single accepted run is not SOTA evidence.",
             "",
             "## TOP Representative Execution Bindings",
             "",

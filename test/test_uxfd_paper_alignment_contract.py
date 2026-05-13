@@ -407,6 +407,19 @@ def test_gpu_execution_queue_covers_all_papers_and_keeps_sota_blocked() -> None:
             or "metrics.json" in binding["artifact_requirement"]
         )
 
+    sota_contract = queue["sota_comparison_contract"]
+    assert "single run" in sota_contract["single_run_rule"]
+    assert "proposed method" in sota_contract["same_protocol_population"]
+    assert "every declared baseline" in sota_contract["same_protocol_population"]
+    assert "runnable TOP representative" in sota_contract["same_protocol_population"]
+    assert "matched seed set" in sota_contract["seed_protocol"]
+    assert "minimum_seeds" in sota_contract["seed_protocol"]
+    assert "95% confidence interval" in sota_contract["aggregate_statistics"]
+    assert "effect size" in sota_contract["aggregate_statistics"]
+    assert "failure_record" in sota_contract["seed_protocol"]
+    assert "representative TOP proxy" in sota_contract["top_scope"]
+    assert "exact external-method SOTA" in sota_contract["top_scope"]
+
     paper_queue = queue["paper_queue"]
     assert len(paper_queue) == 7
     assert [item["queue_id"] for item in paper_queue] == [
@@ -439,6 +452,7 @@ def test_gpu_execution_queue_covers_all_papers_and_keeps_sota_blocked() -> None:
     assert gate["queue_id"] == "Q8"
     assert "blocked" in gate["status"]
     assert "No SOTA wording is allowed" in gate["sota_rule"]
+    assert "multi-seed aggregate evidence" in gate["sota_rule"]
     assert "submission_ready: true" in gate["submission_rule"]
 
 
