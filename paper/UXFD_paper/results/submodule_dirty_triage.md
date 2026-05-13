@@ -43,10 +43,12 @@ Use this queue to resolve the dirty-submodule blocker without promoting generate
 - Exists: `True`
 - Owner action packet: `paper/UXFD_paper/results/submodule_owner_review_action_packet.md`
 - Action packet exists: `True`
+- Evidence index: `paper/UXFD_paper/results/submodule_owner_review_evidence_index.md`
+- Evidence index exists: `True`
 - Machine-readable decision template: `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json`
 - Template exists: `True`
 - Status: `decision_support_only`
-- Required use: paper owners should read the action packet and recommendation note before choosing commit_after_review, rewrite_then_commit, or discard_from_submodule.
+- Required use: paper owners should read the action packet, recommendation note, and line-level evidence index before choosing commit_after_review, rewrite_then_commit, or discard_from_submodule.
 
 ## Owner-Review Entry Checklist
 

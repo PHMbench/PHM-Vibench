@@ -356,11 +356,14 @@ def _owner_recommendations_payload() -> Mapping[str, Any]:
         "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
         "action_packet_path": str(OWNER_REVIEW_ACTION_PACKET),
         "action_packet_exists": OWNER_REVIEW_ACTION_PACKET.is_file(),
+        "evidence_index_path": str(OWNER_REVIEW_EVIDENCE_INDEX),
+        "evidence_index_exists": OWNER_REVIEW_EVIDENCE_INDEX.is_file(),
         "decision_template_path": str(OWNER_REVIEW_DECISION_TEMPLATE),
         "decision_template_exists": OWNER_REVIEW_DECISION_TEMPLATE.is_file(),
         "status": "decision_support_only",
         "required_use": (
-            "paper owners should read the action packet and recommendation note before "
+            "paper owners should read the action packet, recommendation note, and "
+            "line-level evidence index before "
             "choosing commit_after_review, rewrite_then_commit, or discard_from_submodule"
         ),
     }
@@ -467,6 +470,8 @@ def render_markdown(report: DirtyTriageReport) -> str:
             f"- Exists: `{recommendations['exists']}`",
             f"- Owner action packet: `{recommendations['action_packet_path']}`",
             f"- Action packet exists: `{recommendations['action_packet_exists']}`",
+            f"- Evidence index: `{recommendations['evidence_index_path']}`",
+            f"- Evidence index exists: `{recommendations['evidence_index_exists']}`",
             f"- Machine-readable decision template: `{recommendations['decision_template_path']}`",
             f"- Template exists: `{recommendations['decision_template_exists']}`",
             f"- Status: `{recommendations['status']}`",

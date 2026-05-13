@@ -6,6 +6,7 @@ from scripts.uxfd_submodule_dirty_triage import (
     DO_NOT_AUTO_COMMIT,
     OWNER_REVIEW_ACTION_PACKET,
     OWNER_REVIEW_DECISION_TEMPLATE,
+    OWNER_REVIEW_EVIDENCE_INDEX,
     OWNER_REVIEW_RECOMMENDATIONS,
     PRESERVE_SESSION,
     PROMOTE_ONLY_THROUGH_GATE,
@@ -301,11 +302,14 @@ def test_build_payload_exposes_owner_review_recommendations() -> None:
         "exists": OWNER_REVIEW_RECOMMENDATIONS.is_file(),
         "action_packet_path": str(OWNER_REVIEW_ACTION_PACKET),
         "action_packet_exists": OWNER_REVIEW_ACTION_PACKET.is_file(),
+        "evidence_index_path": str(OWNER_REVIEW_EVIDENCE_INDEX),
+        "evidence_index_exists": OWNER_REVIEW_EVIDENCE_INDEX.is_file(),
         "decision_template_path": str(OWNER_REVIEW_DECISION_TEMPLATE),
         "decision_template_exists": OWNER_REVIEW_DECISION_TEMPLATE.is_file(),
         "status": "decision_support_only",
         "required_use": (
-            "paper owners should read the action packet and recommendation note before "
+            "paper owners should read the action packet, recommendation note, and "
+            "line-level evidence index before "
             "choosing commit_after_review, rewrite_then_commit, or discard_from_submodule"
         ),
     }
@@ -373,6 +377,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Owner Review Recommendations" in text
     assert str(OWNER_REVIEW_RECOMMENDATIONS) in text
     assert str(OWNER_REVIEW_ACTION_PACKET) in text
+    assert str(OWNER_REVIEW_EVIDENCE_INDEX) in text
     assert str(OWNER_REVIEW_DECISION_TEMPLATE) in text
     assert "Owner-Review Entry Checklist" in text
     assert "Owner Decision Template" in text
