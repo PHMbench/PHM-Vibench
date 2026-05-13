@@ -337,6 +337,24 @@ def render_markdown(report: DirtyTriageReport) -> str:
     lines.extend(
         [
             "",
+            "## Owner Decision Template",
+            "",
+            "Copy these rows into a paper-owner review note before staging any owner-review entry.",
+            "The default `pending_owner_review` value is intentionally not commit-safe.",
+            "",
+            "| Submodule | Path | Decision | Reviewer | Notes |",
+            "|---|---|---|---|---|",
+        ]
+    )
+    for entry in owner_entries:
+        lines.append(
+            f"| `{entry.submodule}` | `{entry.path}` | `pending_owner_review` | "
+            "`TODO` | `TODO` |"
+        )
+
+    lines.extend(
+        [
+            "",
             "## Artifact-Gate Promotion Checklist",
             "",
             "These entries must not be committed as accepted evidence. Recreate or promote them only through `paper/UXFD_paper/results/accepted_runs` after real Q0-passed runs.",

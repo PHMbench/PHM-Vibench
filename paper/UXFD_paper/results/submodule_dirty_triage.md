@@ -51,6 +51,20 @@ Allowed decisions: `commit_after_review`, `rewrite_then_commit`, or `discard_fro
 | `paper/UXFD_paper/MOE_explainable` | `??` | `planning_or_contract_draft` | `deprecated_config_dir_dispatch, nonlocal_gpu_binding` | `git -C paper/UXFD_paper/MOE_explainable status --short -- EXPERIMENT_DESIGN.md` | `EXPERIMENT_DESIGN.md` |
 | `paper/UXFD_paper/MOE_explainable` | `??` | `historical_autoresearch_evidence_draft` | `stale_exec_root, unaccepted_readiness_claim, historical_accepted_claim, nonlocal_gpu_binding` | `git -C paper/UXFD_paper/MOE_explainable status --short -- manuscript/AUTORESEARCH_EVIDENCE.md` | `manuscript/AUTORESEARCH_EVIDENCE.md` |
 
+## Owner Decision Template
+
+Copy these rows into a paper-owner review note before staging any owner-review entry.
+The default `pending_owner_review` value is intentionally not commit-safe.
+
+| Submodule | Path | Decision | Reviewer | Notes |
+|---|---|---|---|---|
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `TODO` | `TODO` |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `TODO` | `TODO` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `TODO` | `TODO` |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `TODO` | `TODO` |
+| `paper/UXFD_paper/MOE_explainable` | `EXPERIMENT_DESIGN.md` | `pending_owner_review` | `TODO` | `TODO` |
+| `paper/UXFD_paper/MOE_explainable` | `manuscript/AUTORESEARCH_EVIDENCE.md` | `pending_owner_review` | `TODO` | `TODO` |
+
 ## Artifact-Gate Promotion Checklist
 
 These entries must not be committed as accepted evidence. Recreate or promote them only through `paper/UXFD_paper/results/accepted_runs` after real Q0-passed runs.

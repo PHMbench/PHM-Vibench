@@ -225,6 +225,8 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Commit-Blocking Verdict" in text
     assert "Owner Review Queue" in text
     assert "Owner-Review Entry Checklist" in text
+    assert "Owner Decision Template" in text
+    assert "pending_owner_review" in text
     assert "Artifact-Gate Promotion Checklist" in text
     assert "`git -C paper/A status --short`" in text
     assert "Auto-commit safe entries: `0`" in text
