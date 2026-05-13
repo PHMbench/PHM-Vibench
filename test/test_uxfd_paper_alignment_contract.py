@@ -874,9 +874,14 @@ def test_neuralsymbolic_matrix_records_proposition_blockers_not_ready() -> None:
     assert len(p2_entries) >= 2
     assert any("proposition_2_verified=false" in entry["current_result"] for entry in p2_entries)
     assert any("does not override" in entry["accepted_evidence_status"] for entry in p2_entries)
+    assert any(
+        "p2_evidence_contract.md" in entry["accepted_evidence_status"]
+        for entry in p2_entries
+    )
 
     blockers = "\n".join(matrix["strict_blockers"])
-    assert "P2 is internally inconsistent" in blockers
+    assert "P2 has only scope-limited synthetic hooks" in blockers
+    assert "no accepted real-data robustness protocol supports final P2 yet" in blockers
     assert "Cross-method mapping report is scripted" not in blockers
     assert "Manuscript entrypoint remains placeholder-heavy" not in blockers
     assert "No SOTA claim is allowed from this matrix alone." in blockers
