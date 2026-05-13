@@ -22,6 +22,9 @@ the pre-launch decision gate without re-deriving them.
 
 Recent parent commits:
 
+- `8275809 docs: refresh UXFD accepted-run artifact audit`
+- `74e1d01 docs: add UXFD accepted-run artifact packet`
+- `e125c0d docs: update UXFD GPU preflight packet handoff`
 - `e6aeb2c docs: refresh UXFD GPU preflight audit`
 - `f3d3774 docs: add UXFD GPU preflight action packet`
 - `d87d2ec docs: refresh UXFD owner packet backlog`
@@ -90,6 +93,15 @@ Recent Paper03 submodule commit:
   `paper/UXFD_paper/results/gpu_preflight_action_packet.md` summarizes the
   current NVIDIA driver/PyTorch CUDA blocker, required local RTX 4090 devices
   `0,1`, and the exact preflight commands. It is not accepted evidence.
+- **Accepted-run promotion now has a short artifact packet** -
+  `paper/UXFD_paper/results/accepted_run_artifact_action_packet.md` records the
+  required `run_meta.yaml`, metric, log, config, provenance, seed, precision,
+  runtime, clean-tree, and finite-metric checks for converting real Q0-passed
+  runs into accepted evidence. It is a checklist only, not evidence.
+- **Objective audit now tracks all three response packets** - owner decisions,
+  GPU preflight, and accepted-run artifact promotion are all prompt-to-artifact
+  checklist items. The latest persisted audit reports `Met: 81`, `Not met: 13`,
+  `Blocked: 1`, and `Achieved: False`.
 
 ## Code Changes
 
@@ -162,6 +174,20 @@ Recent Paper03 submodule commit:
   `paper/UXFD_paper/results/objective_audit_current.md`, and
   `paper/UXFD_paper/results/readiness_backlog.md` - refreshed persisted reports
   with GPU preflight action packet references.
+- `paper/UXFD_paper/results/accepted_run_artifact_action_packet.md` - compact
+  artifact-promotion checklist for creating accepted run evidence after GPU
+  preflight passes.
+- `paper/UXFD_paper/results/accepted_runs/README.md` - points future executors
+  to the accepted-run artifact packet and keeps the non-evidence boundary
+  explicit.
+- `scripts/uxfd_readiness_backlog.py`, `scripts/uxfd_objective_audit.py`,
+  `test/test_uxfd_readiness_backlog.py`, `test/test_uxfd_objective_audit.py`,
+  and `test/test_uxfd_artifact_gate.py` - surface and test the accepted-run
+  artifact packet in backlog/objective audit and artifact-gate coverage.
+- `paper/UXFD_paper/results/objective_audit_current.json`,
+  `paper/UXFD_paper/results/objective_audit_current.md`, and
+  `paper/UXFD_paper/results/readiness_backlog.md` - refreshed persisted reports
+  with accepted-run artifact packet references.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -200,6 +226,10 @@ Latest relevant tests passed:
   - result after adding the GPU preflight packet: `2 passed, 16 deselected`
 - `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py`
   - result after refreshing GPU preflight reports: `18 passed`
+- `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py test/test_uxfd_artifact_gate.py -k "prioritizes_gpu or prompt_to_artifact or parent_goal_checkpoint_paths or accepted_run_artifact_action_packet or accepted_runs_readme"`
+  - result after adding the accepted-run artifact packet: `4 passed, 56 deselected`
+- `python -m pytest -q test/test_uxfd_readiness_backlog.py test/test_uxfd_objective_audit.py test/test_uxfd_artifact_gate.py`
+  - result after refreshing accepted-run artifact audit reports: `60 passed`
 
 Latest gate state:
 
@@ -215,7 +245,7 @@ Latest gate state:
   - 7 paper matrices still `submission_ready: false`
 - `python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved`
   - `Achieved: False`
-  - `Met: 80`, `Not met: 13`, `Blocked: 1`
+  - `Met: 81`, `Not met: 13`, `Blocked: 1`
 - `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
   - result: exit `2`
   - reason: NVIDIA driver/CUDA not visible; PyTorch reports
@@ -298,6 +328,9 @@ Latest gate state:
 - `paper/UXFD_paper/results/gpu_preflight_action_packet.md` - short resource
   response form for restoring local GPU `0,1` RTX 4090 visibility; decision
   support only, not accepted evidence.
+- `paper/UXFD_paper/results/accepted_run_artifact_action_packet.md` - short
+  artifact-promotion checklist for turning real Q0-passed queue runs into
+  accepted evidence; decision support only, not accepted evidence.
 - `paper/UXFD_paper/results/submodule_dirty_triage.json` - machine-readable
   dirty-submodule packets and recommended decisions.
 - `paper/UXFD_paper/results/submodule_owner_review_action_packet.md` - short
