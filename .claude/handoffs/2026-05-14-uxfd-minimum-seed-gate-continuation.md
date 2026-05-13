@@ -18,12 +18,20 @@ The latest update made the readiness backlog say the same thing explicitly: `Q0-
 
 A follow-up source check updated the recent-work README with a 2026-05-14 live verification table for 2024-2026 TOP methods using primary venue, proceedings, publisher, and official project pages. This verifies citation identity and venue status only; it does not make any TOP representative evidence-ready.
 
+The latest continuation refreshed stale checkpoint documentation and added an
+owner-decision template to the dirty submodule triage report. This does not make
+the dirty submodules clean; it makes the remaining owner-review step explicit
+and non-commit-safe by default.
+
 ## Decisions Made
 
 - **Do not mark the active objective complete.** `scripts.uxfd_objective_audit` still reports `Achieved=False`.
 - **Do not generate fake accepted runs or SOTA aggregates.** `paper/UXFD_paper/results/accepted_runs` has zero accepted records and `paper/UXFD_paper/results/sota_aggregates` is absent.
 - **Do not auto-commit dirty paper submodules.** The dirty entries remain owner-review or accepted-artifact-gate material, not parent-level cleanup.
 - **Treat SOTA claims as blocked until matched-seed aggregate evidence exists.** A single accepted run is only a run artifact, not SOTA evidence.
+- **Treat `pending_owner_review` as non-commit-safe.** Owner-review entries need a
+  paper-owner decision of `commit_after_review`, `rewrite_then_commit`, or
+  `discard_from_submodule` before any staging.
 
 ## Code Changes
 
@@ -43,6 +51,12 @@ A follow-up source check updated the recent-work README with a 2026-05-14 live v
   - Readiness backlog now explicitly carries the same minimum-seed requirement.
 - `672b086 docs: add UXFD recent work source verification`
   - `08_recent_work_citation_readme.md` now records a live primary-source check for the accepted 2024-2026 TOP method pool.
+- `de0aeb9 docs: refresh UXFD recovery checkpoint status`
+  - `commit_recovery_plan.md` now marks the old parent checkpoint recovery steps
+    as historical/completed and warns not to replay stale staging commands.
+- `3873b38 docs: add UXFD submodule owner decision template`
+  - `submodule_dirty_triage.md` now includes explicit `pending_owner_review`
+    rows for the six owner-review entries across three dirty submodules.
 
 **Files most recently modified:**
 
@@ -50,6 +64,14 @@ A follow-up source check updated the recent-work README with a 2026-05-14 live v
 - `test/test_uxfd_readiness_backlog.py` - regression assertion for the minimum-seed backlog wording.
 - `paper/UXFD_paper/results/readiness_backlog.md` - persisted backlog updated from the generator.
 - `paper/UXFD_paper/goal/08_recent_work_citation_readme.md` - live source verification section added without changing accepted-pool gate counts.
+- `paper/UXFD_paper/results/commit_recovery_plan.md` - stale recovery status
+  updated to current checkpoint status.
+- `scripts/uxfd_submodule_dirty_triage.py` - renders an owner decision template
+  for non-auto-commit submodule entries.
+- `test/test_uxfd_submodule_dirty_triage.py` - regression coverage for the
+  decision template.
+- `paper/UXFD_paper/results/submodule_dirty_triage.md` - persisted triage report
+  regenerated with owner decision rows.
 
 ## Verification
 
@@ -64,6 +86,15 @@ A follow-up source check updated the recent-work README with a 2026-05-14 live v
   - `Ready=False`, accepted papers `0/7`, blockers `8`.
 - `python -m pytest -q test/test_uxfd_recent_work_gate.py test/test_uxfd_low_tier_source_audit.py test/test_uxfd_objective_audit.py`
   - Result: `24 passed in 44.26s`.
+- `python -m pytest -q test/test_uxfd_submodule_dirty_triage.py test/test_uxfd_objective_audit.py test/test_uxfd_submission_gate.py`
+  - Result: `30 passed in 62.15s`.
+- Latest gates after commit `3873b38`:
+  - Objective audit: `Achieved=False`, `Met=70`, `Not met=11`, `Blocked=1`.
+  - Submission gate: `Ready=False`, `Queue can execute=False`,
+    `Artifact gate records=0`, `SOTA gate ready=False`,
+    `Blocking findings=19`.
+  - UXFD goal/results/control paths are clean; dirty state remains only in the
+    three paper submodules listed below.
 
 ## Open Questions
 
@@ -106,6 +137,7 @@ A follow-up source check updated the recent-work README with a 2026-05-14 live v
 - `paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` - launch and artifact promotion sequence.
 - `paper/UXFD_paper/results/readiness_backlog.md` - current prioritized execution blockers.
 - `paper/UXFD_paper/results/submodule_dirty_triage.md` - owner-review rules for dirty submodule entries.
+- `paper/UXFD_paper/results/commit_recovery_plan.md` - historical parent checkpoint recovery notes; do not replay old staging commands.
 - `scripts/uxfd_artifact_gate.py` - accepted-run metadata and minimum-seed queue coverage checks.
 - `scripts/uxfd_sota_gate.py` - matched-seed aggregate and `accepted_run_refs` validation.
 - `scripts/uxfd_submission_gate.py` - cross-paper readiness aggregation.
