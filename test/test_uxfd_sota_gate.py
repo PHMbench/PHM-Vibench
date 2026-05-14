@@ -200,8 +200,38 @@ def test_sota_gate_rejects_single_seed_or_missing_statistics(tmp_path: Path) -> 
     assert report.ready is False
     issues = "\n".join(report.records[0].issues)
     assert "proposed.seed_values must include at least 3 seeds" in issues
-    assert "comparators[B01].statistics.ci95_high must be numeric" in issues
-    assert "comparators[B02] must include numeric effect_size_vs_proposed" in issues
+    assert "comparators[B01].statistics.ci95_high must be finite numeric" in issues
+    assert "comparators[B02] must include finite effect_size_vs_proposed" in issues
+
+
+def test_sota_gate_rejects_non_finite_statistics_and_invalid_p_value(
+    tmp_path: Path,
+) -> None:
+    queue_path, _ = _write_minimal_queue(tmp_path)
+    aggregate_root = tmp_path / "sota_aggregates"
+    accepted_run_root = tmp_path / "accepted_runs"
+    aggregate_path = _write_valid_aggregate(aggregate_root, accepted_run_root)
+    data = yaml.safe_load(aggregate_path.read_text(encoding="utf-8"))
+    data["proposed"]["statistics"]["mean"] = float("nan")
+    data["comparators"][0]["statistics"]["ci95_high"] = float("inf")
+    data["comparators"][1]["effect_size_vs_proposed"] = float("-inf")
+    data["comparators"][1]["paired_test"] = {"name": "wilcoxon", "p_value": 1.5}
+    aggregate_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_sota_gate(
+        aggregate_root,
+        queue_path=queue_path,
+        accepted_run_root=accepted_run_root,
+    )
+
+    assert report.ready is False
+    issues = "\n".join(report.records[0].issues)
+    assert "proposed.statistics.mean must be finite numeric" in issues
+    assert "comparators[B01].statistics.ci95_high must be finite numeric" in issues
+    assert (
+        "comparators[B02] must include finite effect_size_vs_proposed or "
+        "paired_test.p_value between 0 and 1"
+    ) in issues
 
 
 def test_sota_gate_rejects_missing_or_template_run_refs(tmp_path: Path) -> None:

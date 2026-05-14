@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -44,8 +45,12 @@ def _load_yaml(path: Path) -> Mapping[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def _is_number(value: Any) -> bool:
-    return not isinstance(value, bool) and isinstance(value, (int, float))
+def _is_finite_number(value: Any) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(value)
+    )
 
 
 def _coerce_seed_set(value: Any) -> Optional[Tuple[int, ...]]:
@@ -97,8 +102,8 @@ def _validate_statistics(prefix: str, payload: Mapping[str, Any]) -> Tuple[str, 
     if not isinstance(statistics, Mapping):
         return (f"{prefix}.statistics must be a mapping",)
     for field in STATISTIC_FIELDS:
-        if not _is_number(statistics.get(field)):
-            issues.append(f"{prefix}.statistics.{field} must be numeric")
+        if not _is_finite_number(statistics.get(field)):
+            issues.append(f"{prefix}.statistics.{field} must be finite numeric")
     return tuple(issues)
 
 
@@ -107,19 +112,21 @@ def _mean_value(payload: Mapping[str, Any]) -> Optional[float]:
     if not isinstance(statistics, Mapping):
         return None
     mean = statistics.get("mean")
-    if not _is_number(mean):
+    if not _is_finite_number(mean):
         return None
     return float(mean)
 
 
 def _has_effect_or_test(payload: Mapping[str, Any]) -> bool:
-    if _is_number(payload.get("effect_size_vs_proposed")):
+    if _is_finite_number(payload.get("effect_size_vs_proposed")):
         return True
     paired_test = payload.get("paired_test", {})
+    p_value = paired_test.get("p_value") if isinstance(paired_test, Mapping) else None
     return (
         isinstance(paired_test, Mapping)
         and bool(str(paired_test.get("name", "")).strip())
-        and _is_number(paired_test.get("p_value"))
+        and _is_finite_number(p_value)
+        and 0.0 <= float(p_value) <= 1.0
     )
 
 
@@ -219,7 +226,8 @@ def _validate_comparison_entry(
     issues.extend(_validate_statistics(prefix, payload))
     if not _has_effect_or_test(payload):
         issues.append(
-            f"{prefix} must include numeric effect_size_vs_proposed or paired_test.p_value"
+            f"{prefix} must include finite effect_size_vs_proposed or "
+            "paired_test.p_value between 0 and 1"
         )
     issues.extend(
         _validate_accepted_run_refs(

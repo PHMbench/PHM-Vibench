@@ -88,10 +88,12 @@ def _comparison_template(
         "role": role,
         "seed_values": f"TODO: list at least {minimum_seeds} matched integer seeds",
         "statistics": _statistics_template(),
-        "effect_size_vs_proposed": "TODO: numeric effect size or omit if paired_test is filled",
+        "effect_size_vs_proposed": (
+            "TODO: finite effect size or omit if paired_test is filled"
+        ),
         "paired_test": {
             "name": "TODO: e.g. paired_t_test or wilcoxon",
-            "p_value": "TODO: numeric p-value",
+            "p_value": "TODO: finite p-value in [0, 1]",
         },
         "accepted_run_refs": _accepted_run_ref_template(paper_id, entry_id, minimum_seeds),
     }
@@ -151,10 +153,12 @@ def _template_payload(
                 "scope": "TODO: exact or representative",
                 "seed_values": f"TODO: list at least {minimum_seeds} matched integer seeds",
                 "statistics": _statistics_template(),
-                "effect_size_vs_proposed": "TODO: numeric effect size or omit if paired_test is filled",
+                "effect_size_vs_proposed": (
+                    "TODO: finite effect size or omit if paired_test is filled"
+                ),
                 "paired_test": {
                     "name": "TODO: e.g. paired_t_test or wilcoxon",
-                    "p_value": "TODO: numeric p-value",
+                    "p_value": "TODO: finite p-value in [0, 1]",
                 },
                 "accepted_run_refs": _accepted_run_ref_template(
                     paper_id,
@@ -258,7 +262,10 @@ def render_markdown(records: Sequence[SotaTemplateRecord], root: Path) -> str:
         "- Fill one `sota_aggregate.yaml` per paper only after accepted run coverage exists.",
         "- Activation preflight: `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage` must pass before creating `paper/UXFD_paper/results/sota_aggregates`.",
         "- Do not commit template-derived `sota_aggregate.yaml` files while `accepted_runs` has zero accepted records or incomplete queue coverage.",
-        "- Required statistics: per-seed values, mean, std, 95% CI, and effect size or paired test.",
+        (
+            "- Required statistics: per-seed values, finite mean/std/95% CI, "
+            "and finite effect size or paired test p-value in [0, 1]."
+        ),
         "- Required run refs: every proposed, baseline, and TOP entry lists existing relative `run_meta.yaml` paths under accepted_runs.",
         "",
         "| Queue | Paper | Minimum Seeds | Baselines | TOP Bindings | Template |",

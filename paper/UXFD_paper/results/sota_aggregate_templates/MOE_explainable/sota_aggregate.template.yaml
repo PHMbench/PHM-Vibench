@@ -33,10 +33,10 @@ comparators:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/B01/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/B01/seed_1/run_meta.yaml'
@@ -50,10 +50,10 @@ comparators:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/B02/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/B02/seed_1/run_meta.yaml'
@@ -67,10 +67,10 @@ comparators:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/B03/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/B03/seed_1/run_meta.yaml'
@@ -84,10 +84,10 @@ comparators:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/B04/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/B04/seed_1/run_meta.yaml'
@@ -101,10 +101,10 @@ comparators:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/B05/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/B05/seed_1/run_meta.yaml'
@@ -118,10 +118,10 @@ comparators:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/B06/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/B06/seed_1/run_meta.yaml'
@@ -136,10 +136,10 @@ top_representatives:
     std: 'TODO: numeric standard deviation'
     ci95_low: 'TODO: numeric 95% CI low'
     ci95_high: 'TODO: numeric 95% CI high'
-  effect_size_vs_proposed: 'TODO: numeric effect size or omit if paired_test is filled'
+  effect_size_vs_proposed: 'TODO: finite effect size or omit if paired_test is filled'
   paired_test:
     name: 'TODO: e.g. paired_t_test or wilcoxon'
-    p_value: 'TODO: numeric p-value'
+    p_value: 'TODO: finite p-value in [0, 1]'
   accepted_run_refs:
   - 'TODO: MOE_explainable/TOP-Q4-TSPULSE/seed_0/run_meta.yaml'
   - 'TODO: MOE_explainable/TOP-Q4-TSPULSE/seed_1/run_meta.yaml'

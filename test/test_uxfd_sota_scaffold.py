@@ -64,7 +64,7 @@ def test_sota_scaffold_cli_writes_manifest_and_keeps_gate_blocked(tmp_path: Path
     assert len(payload["records"]) == 7
     assert len(manifest) == 7
     assert "not accepted SOTA evidence" in readme
-    assert "mean, std, 95% CI" in readme
+    assert "finite mean/std/95% CI" in readme
     assert "existing relative `run_meta.yaml` paths" in readme
     assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs" in readme
     assert "must pass before creating `paper/UXFD_paper/results/sota_aggregates`" in readme
