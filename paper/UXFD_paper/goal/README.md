@@ -100,6 +100,7 @@ per-GPU shard:
 ```bash
 python -m scripts.uxfd_prelaunch_gate --format markdown
 python -m scripts.uxfd_prelaunch_gate --format json --allow-not-ready --output paper/UXFD_paper/results/prelaunch_gate_current.json
+python -m scripts.uxfd_prelaunch_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/prelaunch_gate_current.md
 ```
 
 The command returns non-zero until the objective audit, owner-review gate, live

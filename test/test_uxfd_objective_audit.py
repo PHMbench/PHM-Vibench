@@ -273,6 +273,22 @@ def test_persisted_objective_audit_reports_match_current_audit() -> None:
     )
 
 
+def test_objective_audit_covers_prelaunch_gate_reports() -> None:
+    report = evaluate_objective_audit()
+    items = _items_by_requirement(report)
+
+    assert items["pre-launch gate JSON report"].status == "met"
+    assert items["pre-launch gate markdown report"].status == "met"
+    assert (
+        items["pre-launch gate JSON report"].evidence
+        == "paper/UXFD_paper/results/prelaunch_gate_current.json"
+    )
+    assert (
+        items["pre-launch gate markdown report"].evidence
+        == "paper/UXFD_paper/results/prelaunch_gate_current.md"
+    )
+
+
 def test_objective_audit_covers_accepted_run_root_activation_gate() -> None:
     report = evaluate_objective_audit()
     items = _items_by_requirement(report)
@@ -371,6 +387,8 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
 
     assert str(PERSISTED_OBJECTIVE_AUDIT_JSON) not in paths
     assert str(PERSISTED_OBJECTIVE_AUDIT_MD) not in paths
+    assert "paper/UXFD_paper/results/prelaunch_gate_current.json" not in paths
+    assert "paper/UXFD_paper/results/prelaunch_gate_current.md" not in paths
     assert "paper/UXFD_paper/results/readiness_backlog.md" not in paths
     assert str(EXECUTION_GATE_HANDOFF) in paths
     assert str(LATEST_CONTINUATION_HANDOFF_PATH) in paths
@@ -403,6 +421,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "scripts/uxfd_artifact_scaffold.py" in paths
     assert "scripts/uxfd_sota_scaffold.py" in paths
     assert "scripts/uxfd_goal_status.py" in paths
+    assert "scripts/uxfd_prelaunch_gate.py" in paths
     assert "scripts/uxfd_gpu_queue.py" in paths
     assert "scripts/uxfd_low_tier_source_audit.py" in paths
     assert "scripts/uxfd_parent_result_artifact_triage.py" in paths
@@ -418,6 +437,7 @@ def test_parent_goal_checkpoint_paths_exclude_self_updating_outputs() -> None:
     assert "test/test_uxfd_artifact_scaffold.py" in paths
     assert "test/test_uxfd_sota_scaffold.py" in paths
     assert "test/test_uxfd_gpu_queue.py" in paths
+    assert "test/test_uxfd_prelaunch_gate.py" in paths
     assert "test/test_uxfd_paper02_control_docs.py" in paths
     assert "test/test_uxfd_paper02_runner_policy.py" in paths
     assert "test/test_uxfd_paper04_control_docs.py" in paths
