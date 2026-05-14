@@ -7,6 +7,8 @@ from scripts.uxfd_readiness_backlog import (
     GPU_LIVE_PREFLIGHT,
     GPU_PREFLIGHT_ACTION_PACKET,
     OWNER_REVIEW_EVIDENCE_INDEX,
+    PRELAUNCH_GATE_JSON,
+    PRELAUNCH_GATE_MARKDOWN,
     evaluate_readiness_backlog,
     main,
     render_markdown,
@@ -27,29 +29,34 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
 
     assert report.ready is False
     assert report.open_items > 10
-    assert report.items[0].item_id == "Q0-GPU-PREFLIGHT"
-    assert report.items[1].item_id == "Q0-ARTIFACT-COVERAGE"
-    assert report.items[2].item_id == "Q0-SOTA-AGGREGATE"
-    assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[0].next_action
-    assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[0].evidence
-    assert str(GPU_EXECUTION_RUNBOOK) in report.items[0].evidence
-    assert str(GPU_LIVE_PREFLIGHT) in report.items[0].evidence
-    assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in report.items[1].next_action
-    assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in report.items[1].evidence
-    assert "integer seed/batch_size" in report.items[1].next_action
-    assert "positive runtime" in report.items[1].next_action
-    assert "enumerated precision" in report.items[1].next_action
-    assert "accepted_same_protocol evidence_level" in report.items[1].next_action
-    assert "hashed preprocessing_signature" in report.items[1].next_action
-    assert "numeric metrics" in report.items[1].next_action
-    assert "`source_tree_status: clean`" in report.items[1].next_action
-    assert "clean SHA provenance" in report.items[1].next_action
-    assert "paper-specific `minimum_seeds` distinct accepted seeds" in report.items[1].next_action
-    assert "matched-seed aggregate statistics" in report.items[1].next_action
-    assert "sota_aggregate.yaml" in report.items[2].next_action
-    assert "mean/std/95% CI" in report.items[2].next_action
-    assert "`accepted_run_refs`" in report.items[2].next_action
-    assert "`run_meta.yaml`" in report.items[2].next_action
+    assert report.items[0].item_id == "Q0-PRELAUNCH-GATE"
+    assert report.items[0].category == "prelaunch-gate"
+    assert "python -m scripts.uxfd_prelaunch_gate --format markdown" in report.items[0].next_action
+    assert str(PRELAUNCH_GATE_MARKDOWN) in report.items[0].evidence
+    assert str(PRELAUNCH_GATE_JSON) in report.items[0].evidence
+    assert report.items[1].item_id == "Q0-GPU-PREFLIGHT"
+    assert report.items[2].item_id == "Q0-ARTIFACT-COVERAGE"
+    assert report.items[3].item_id == "Q0-SOTA-AGGREGATE"
+    assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[1].next_action
+    assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[1].evidence
+    assert str(GPU_EXECUTION_RUNBOOK) in report.items[1].evidence
+    assert str(GPU_LIVE_PREFLIGHT) in report.items[1].evidence
+    assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in report.items[2].next_action
+    assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in report.items[2].evidence
+    assert "integer seed/batch_size" in report.items[2].next_action
+    assert "positive runtime" in report.items[2].next_action
+    assert "enumerated precision" in report.items[2].next_action
+    assert "accepted_same_protocol evidence_level" in report.items[2].next_action
+    assert "hashed preprocessing_signature" in report.items[2].next_action
+    assert "numeric metrics" in report.items[2].next_action
+    assert "`source_tree_status: clean`" in report.items[2].next_action
+    assert "clean SHA provenance" in report.items[2].next_action
+    assert "paper-specific `minimum_seeds` distinct accepted seeds" in report.items[2].next_action
+    assert "matched-seed aggregate statistics" in report.items[2].next_action
+    assert "sota_aggregate.yaml" in report.items[3].next_action
+    assert "mean/std/95% CI" in report.items[3].next_action
+    assert "`accepted_run_refs`" in report.items[3].next_action
+    assert "`run_meta.yaml`" in report.items[3].next_action
     assert any(item.scope == "TII_operator_attention" for item in report.items[:10])
     assert not any(item.item_id == "Q0-PAPER02-PLANNING-COMMIT" for item in report.items)
     parent_checkpoint_items = [
@@ -102,6 +109,7 @@ def test_readiness_backlog_cli_writes_markdown_and_json(tmp_path: Path) -> None:
     text = markdown.read_text(encoding="utf-8")
     assert "UXFD Readiness Backlog" in text
     assert "not accepted experiment evidence" in text
+    assert "Q0-PRELAUNCH-GATE" in text
     assert "Q0-GPU-PREFLIGHT" in text
 
     assert (

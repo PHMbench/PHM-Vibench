@@ -9,6 +9,7 @@ from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 from scripts.uxfd_objective_audit import PARENT_GOAL_CHECKPOINT_PATHS
 from scripts.uxfd_owner_review_gate import APPROVED_DECISION_STATUS, DEFAULT_DECISION_FILE
+from scripts.uxfd_prelaunch_gate import evaluate_prelaunch_gate
 from scripts.uxfd_recent_work_gate import evaluate_recent_work_gate
 from scripts.uxfd_submission_gate import (
     DEFAULT_ARTIFACT_ROOT,
@@ -34,6 +35,8 @@ GPU_LIVE_PREFLIGHT = Path("paper/UXFD_paper/results/gpu_queue_live_preflight.jso
 ACCEPTED_RUN_ARTIFACT_ACTION_PACKET = Path(
     "paper/UXFD_paper/results/accepted_run_artifact_action_packet.md"
 )
+PRELAUNCH_GATE_MARKDOWN = Path("paper/UXFD_paper/results/prelaunch_gate_current.md")
+PRELAUNCH_GATE_JSON = Path("paper/UXFD_paper/results/prelaunch_gate_current.json")
 PAPER02_SUBMODULE = Path("paper/UXFD_paper/1D-2D_fusion_explainable")
 PAPER02_PLANNING_FILES = (
     Path("plan/EXPERIMENT_PLAN_补充.md"),
@@ -125,6 +128,34 @@ def evaluate_readiness_backlog(
     dirty_payload = build_dirty_triage_payload(dirty)
     paper_actions = _paper_action_map(submission.next_actions)
     items: List[BacklogItem] = []
+    prelaunch = evaluate_prelaunch_gate(
+        queue_path=queue_path,
+        artifact_root=artifact_root,
+        require_live_preflight=False,
+    )
+
+    if not prelaunch.ready:
+        items.append(
+            BacklogItem(
+                item_id="Q0-PRELAUNCH-GATE",
+                priority=-1,
+                scope="cross-paper",
+                category="prelaunch-gate",
+                blocker=f"{len(prelaunch.blockers)} aggregate blockers; ready={prelaunch.ready}",
+                next_action=(
+                    "Before launching any queue script, run "
+                    "`python -m scripts.uxfd_prelaunch_gate --format markdown`. "
+                    "Resolve the listed child gates without override flags: objective "
+                    "audit, owner-review gate, live 2x4090 GPU preflight, and "
+                    "submission gate."
+                ),
+                evidence=(
+                    "scripts/uxfd_prelaunch_gate.py,"
+                    f"{PRELAUNCH_GATE_MARKDOWN},"
+                    f"{PRELAUNCH_GATE_JSON}"
+                ),
+            )
+        )
 
     if not submission.queue_can_execute:
         items.append(
