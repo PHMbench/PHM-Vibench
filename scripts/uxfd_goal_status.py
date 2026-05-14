@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from scripts.uxfd_artifact_gate import evaluate_artifact_gate
+from scripts.uxfd_experiment_launch_gate import evaluate_experiment_launch_gate
 from scripts.uxfd_gpu_queue import DEFAULT_QUEUE, expand_queue, summarize_rows, validate_queue
 from scripts.uxfd_objective_audit import evaluate_objective_audit
 from scripts.uxfd_owner_review_gate import evaluate_owner_review_gate
@@ -147,6 +148,7 @@ def _render_overall(
     artifact_report: object,
     dirty_report: object,
     owner_review_report: object,
+    launch_report: object,
 ) -> str:
     lines = _header(
         "UXFD Overall Cross-Paper Progress",
@@ -161,6 +163,9 @@ def _render_overall(
             f"- Objective audit: `met={objective_report.met}`, "
             f"`not_met={objective_report.not_met}`, `blocked={objective_report.blocked}`",
             f"- Submission gate ready: `{submission_report.ready}`",
+            f"- Experiment launch gate ready: `{launch_report.ready}`",
+            f"- Experiment launch blockers: `{len(launch_report.blockers)}`",
+            f"- Live launch preflight accepted: `{launch_report.live_preflight_accepted}`",
             f"- Queue can execute: `{submission_report.queue_can_execute}`",
             f"- Artifact coverage: `{artifact_report.covered_queue_runs}/"
             f"{artifact_report.expected_queue_runs}`",
@@ -170,6 +175,10 @@ def _render_overall(
             f"- Owner-review gate ready: `{owner_review_report.ready}`",
             f"- Owner-review pending records: `{owner_review_report.pending_records}`",
             f"- Dirty submodule entries: `{len(dirty_report.entries)}`",
+            "",
+            "The experiment launch gate is the only authority for starting "
+            "`queue_launch_plan.sh` or either per-GPU shard. If it is `False`, "
+            "the queue is a plan only.",
             "",
             "The project is ready for controlled execution only after local GPUs 0 and 1 "
             "are visible, owner decisions are recorded, and the accepted artifact gate "
@@ -475,6 +484,7 @@ def generate_status_reports(
     recent_report = evaluate_recent_work_gate()
     dirty_report = evaluate_dirty_triage()
     owner_review_report = evaluate_owner_review_gate()
+    launch_report = evaluate_experiment_launch_gate()
     dirty_counts = _dirty_by_paper(dirty_report)
     paper_reports = {paper.paper_id: paper for paper in submission_report.papers}
 
@@ -486,6 +496,7 @@ def generate_status_reports(
             artifact_report,
             dirty_report,
             owner_review_report,
+            launch_report,
         ),
         "status_08_citation_readiness.md": _render_recent_work(generated, recent_report),
         "status_09_gpu_execution.md": _render_gpu_execution(

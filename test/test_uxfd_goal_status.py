@@ -17,6 +17,10 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
 
     assert "not accepted experiment evidence" in overall
     assert "Objective audit: `met=86`, `not_met=13`, `blocked=1`" in overall
+    assert "Experiment launch gate ready: `False`" in overall
+    assert "Experiment launch blockers: `3`" in overall
+    assert "Live launch preflight accepted: `False`" in overall
+    assert "The experiment launch gate is the only authority" in overall
     assert "Artifact coverage: `0/104`" in overall
     assert "SOTA gate ready: `False`" in overall
     assert "SOTA aggregate records: `7`" in overall
