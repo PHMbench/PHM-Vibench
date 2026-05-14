@@ -18,8 +18,10 @@ listed file from this packet alone.
 4. Copy `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json`
    to `paper/UXFD_paper/results/submodule_owner_review_decisions.json` only
    after the owner decisions are ready to record.
-5. Change top-level `status` to `owner_review_decisions`.
-6. Rerun `python -m scripts.uxfd_owner_review_gate --format markdown`.
+5. Keep every `decision_id` unchanged so `OR-01` through `OR-06` remain bound
+   to the current dirty-triage owner-review queue.
+6. Change top-level `status` to `owner_review_decisions`.
+7. Rerun `python -m scripts.uxfd_owner_review_gate --format markdown`.
 
 The template status `template_only_not_owner_approved` and every
 `pending_owner_review` value are intentionally rejected by the gate.

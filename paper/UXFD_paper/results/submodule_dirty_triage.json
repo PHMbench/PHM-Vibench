@@ -326,6 +326,7 @@
   },
   "owner_decision_template": [
     {
+      "decision_id": "OR-01",
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "EXPERIMENT_DESIGN.md",
       "current_status": "??",
@@ -341,6 +342,7 @@
       "notes": "Useful planning draft only after current-root, parent-gated rewrite."
     },
     {
+      "decision_id": "OR-02",
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "current_status": "??",
@@ -359,6 +361,7 @@
       "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
+      "decision_id": "OR-03",
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "EXPERIMENT_DESIGN.md",
       "current_status": "??",
@@ -376,6 +379,7 @@
       "notes": "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
+      "decision_id": "OR-04",
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "current_status": "??",
@@ -395,6 +399,7 @@
       "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
+      "decision_id": "OR-05",
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "EXPERIMENT_DESIGN.md",
       "current_status": "??",
@@ -413,6 +418,7 @@
       "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy. Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
+      "decision_id": "OR-06",
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "current_status": "??",
@@ -435,6 +441,7 @@
   ],
   "owner_review_packets": [
     {
+      "decision_id": "OR-01",
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "EXPERIMENT_DESIGN.md",
       "status": "??",
@@ -455,6 +462,7 @@
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
+      "decision_id": "OR-02",
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "status": "??",
@@ -478,6 +486,7 @@
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
+      "decision_id": "OR-03",
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "EXPERIMENT_DESIGN.md",
       "status": "??",
@@ -500,6 +509,7 @@
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
+      "decision_id": "OR-04",
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "status": "??",
@@ -524,6 +534,7 @@
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
+      "decision_id": "OR-05",
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "EXPERIMENT_DESIGN.md",
       "status": "??",
@@ -547,6 +558,7 @@
       "default_next_action": "paper owner must choose an allowed decision before this entry is staged, rewritten, or cleaned up"
     },
     {
+      "decision_id": "OR-06",
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "status": "??",

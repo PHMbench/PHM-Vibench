@@ -64,6 +64,7 @@ def test_owner_review_template_instructs_status_change_for_real_decisions() -> N
         "evidence_index": str(OWNER_REVIEW_EVIDENCE_INDEX),
     }
     assert "supporting_files.evidence_index" in instructions
+    assert "decision_id unchanged" in instructions
     assert "status to owner_review_decisions" in instructions
     assert "template_only_not_owner_approved status is rejected" in instructions
 
@@ -177,6 +178,36 @@ def test_owner_review_gate_rejects_stale_dirty_triage_metadata(tmp_path: Path) -
     assert "risk_markers do not match current dirty triage" in report.records[0].issues
 
 
+def test_owner_review_gate_rejects_stale_decision_id(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    payload["records"][0]["decision_id"] = "OR-99"
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert (
+        "decision_id does not match current owner-review queue"
+        in report.records[0].issues[0]
+    )
+
+
+def test_owner_review_gate_rejects_duplicate_decision_id(tmp_path: Path) -> None:
+    decision_file = _approved_decisions_file(tmp_path)
+    payload = json.loads(decision_file.read_text(encoding="utf-8"))
+    payload["records"][1]["decision_id"] = payload["records"][0]["decision_id"]
+    decision_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    report = evaluate_owner_review_gate(decision_file=decision_file)
+
+    assert report.ready is False
+    assert any(
+        "decision records contain duplicate decision_id values" in item
+        for item in report.blockers
+    )
+
+
 def test_owner_review_gate_cli_writes_reports(tmp_path: Path) -> None:
     markdown = tmp_path / "owner_review_gate.md"
     json_path = tmp_path / "owner_review_gate.json"
@@ -211,7 +242,7 @@ def test_owner_review_gate_markdown_contains_record_table() -> None:
     assert "discard_from_submodule" in text
     assert "YYYY-MM-DD" in text
     assert "## Records" in text
-    assert "| Submodule | Path | Decision | Reviewer | Review date | Issues |" in text
+    assert "| ID | Submodule | Path | Decision | Reviewer | Review date | Issues |" in text
     assert "pending_owner_review" in text
 
 

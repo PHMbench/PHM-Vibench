@@ -33,6 +33,7 @@ PLACEHOLDER_REVIEWERS = frozenset({"todo", "paper-owner", "owner", "reviewer"})
 
 @dataclass(frozen=True)
 class OwnerReviewRecord:
+    decision_id: str
     submodule: str
     path: str
     decision: str
@@ -65,14 +66,19 @@ def _owner_review_entries() -> Tuple[Tuple[str, str], ...]:
 
 def _owner_review_meta() -> Mapping[Tuple[str, str], Mapping[str, Any]]:
     dirty = evaluate_dirty_triage()
+    owner_entries = [
+        entry
+        for entry in dirty.entries
+        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+    ]
     return {
         (entry.submodule, entry.path): {
+            "decision_id": f"OR-{index:02d}",
             "current_status": entry.status,
             "category": entry.category,
             "risk_markers": tuple(entry.risk_markers),
         }
-        for entry in dirty.entries
-        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+        for index, entry in enumerate(owner_entries, start=1)
     }
 
 
@@ -101,6 +107,13 @@ def _record_issues(
     recommended = set(_string_list(record.get("recommended_decisions")))
     risk_markers = _string_list(record.get("risk_markers"))
     if current_meta is not None:
+        decision_id = str(record.get("decision_id", "")).strip()
+        expected_decision_id = str(current_meta.get("decision_id", "")).strip()
+        if decision_id != expected_decision_id:
+            issues.append(
+                "decision_id does not match current owner-review queue: "
+                f"{decision_id or '<missing>'} != {expected_decision_id or '<missing>'}"
+            )
         current_status = str(record.get("current_status", "")).strip()
         expected_status = str(current_meta.get("current_status", "")).strip()
         if current_status != expected_status:
@@ -163,6 +176,7 @@ def _records_from_payload(
         )
         records.append(
             OwnerReviewRecord(
+                decision_id=str(raw.get("decision_id", "")),
                 submodule=str(raw.get("submodule", "")),
                 path=str(raw.get("path", "")),
                 decision=str(raw.get("decision", "")),
@@ -182,6 +196,16 @@ def _duplicate_keys(records: Iterable[OwnerReviewRecord]) -> Tuple[str, ...]:
         if key in seen:
             duplicates.append("|".join(key))
         seen.add(key)
+    return tuple(sorted(duplicates))
+
+
+def _duplicate_decision_ids(records: Iterable[OwnerReviewRecord]) -> Tuple[str, ...]:
+    seen = set()
+    duplicates: List[str] = []
+    for record in records:
+        if record.decision_id in seen:
+            duplicates.append(record.decision_id or "<missing>")
+        seen.add(record.decision_id)
     return tuple(sorted(duplicates))
 
 
@@ -237,6 +261,7 @@ def evaluate_owner_review_gate(
     missing = sorted(expected_keys - record_keys)
     extra = sorted(record_keys - expected_keys)
     duplicates = _duplicate_keys(records)
+    duplicate_ids = _duplicate_decision_ids(records)
     if missing:
         blockers.append(
             "decision records missing current owner-review entries: "
@@ -249,6 +274,11 @@ def evaluate_owner_review_gate(
         )
     if duplicates:
         blockers.append("decision records contain duplicates: " + ",".join(duplicates))
+    if duplicate_ids:
+        blockers.append(
+            "decision records contain duplicate decision_id values: "
+            + ",".join(duplicate_ids)
+        )
 
     pending_records = sum(record.decision == PENDING_DECISION for record in records)
     approved_records = sum(record.decision in ALLOWED_DECISIONS for record in records)
@@ -308,12 +338,16 @@ def render_markdown(report: OwnerReviewGateReport) -> str:
             "",
             f"1. Read `{OWNER_REVIEW_ACTION_PACKET}`, `{OWNER_REVIEW_RECOMMENDATIONS}`, and `{OWNER_REVIEW_EVIDENCE_INDEX}`, then inspect each dirty file before changing decisions.",
             f"2. Copy `{report.template_file}` to `{report.decision_file}` only after owner review is ready to record.",
-            f"3. Change top-level `status` to `{APPROVED_DECISION_STATUS}`.",
-            f"4. Replace every `{PENDING_DECISION}` with one allowed decision: "
+            (
+                "3. Keep every `decision_id` unchanged so `OR-01` through "
+                "`OR-06` remain bound to the current dirty-triage owner-review queue."
+            ),
+            f"4. Change top-level `status` to `{APPROVED_DECISION_STATUS}`.",
+            f"5. Replace every `{PENDING_DECISION}` with one allowed decision: "
             + ", ".join(f"`{decision}`" for decision in sorted(ALLOWED_DECISIONS))
             + ".",
-            "5. Use a real reviewer name and ISO `YYYY-MM-DD` review date for every approved decision.",
-            "6. Rerun `python -m scripts.uxfd_owner_review_gate`; do not stage, delete, or promote submodule files from the template alone.",
+            "6. Use a real reviewer name and ISO `YYYY-MM-DD` review date for every approved decision.",
+            "7. Rerun `python -m scripts.uxfd_owner_review_gate`; do not stage, delete, or promote submodule files from the template alone.",
         ]
     )
     lines.extend(
@@ -321,14 +355,15 @@ def render_markdown(report: OwnerReviewGateReport) -> str:
             "",
             "## Records",
             "",
-            "| Submodule | Path | Decision | Reviewer | Review date | Issues |",
-            "|---|---|---|---|---|---|",
+            "| ID | Submodule | Path | Decision | Reviewer | Review date | Issues |",
+            "|---|---|---|---|---|---|---|",
         ]
     )
     for record in report.records:
         issues = ", ".join(record.issues) if record.issues else "-"
         lines.append(
-            f"| `{record.submodule}` | `{record.path}` | `{record.decision}` | "
+            f"| `{record.decision_id}` | `{record.submodule}` | `{record.path}` | "
+            f"`{record.decision}` | "
             f"`{record.reviewer}` | `{record.review_date}` | {issues} |"
         )
     return "\n".join(lines) + "\n"

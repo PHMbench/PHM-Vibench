@@ -191,6 +191,7 @@ def test_owner_decision_template_keeps_owner_review_entries_pending() -> None:
 
     assert _owner_decision_template(entries) == (
         {
+            "decision_id": "OR-01",
             "submodule": "paper/A",
             "path": "EXPERIMENT_DESIGN.md",
             "current_status": "??",
@@ -238,6 +239,7 @@ def test_owner_review_packets_include_machine_readable_review_steps() -> None:
 
     assert packets == (
         {
+            "decision_id": "OR-01",
             "submodule": "paper/A",
             "path": "EXPERIMENT_DESIGN.md",
             "status": "??",
@@ -384,6 +386,7 @@ def test_render_markdown_marks_report_as_non_evidence() -> None:
     assert "Recommended Decisions" in text
     assert "Review Date" in text
     assert "Owner Review Packets" in text
+    assert "Decision ID" in text
     assert "Content Review Command" in text
     assert "Owner Resolution Gates" in text
     assert "pending_owner_review" in text
@@ -417,6 +420,14 @@ def test_owner_review_decision_template_is_machine_readable() -> None:
         "discard_from_submodule",
     }
     assert len(template["records"]) == 6
+    assert [record["decision_id"] for record in template["records"]] == [
+        "OR-01",
+        "OR-02",
+        "OR-03",
+        "OR-04",
+        "OR-05",
+        "OR-06",
+    ]
     assert all(record["decision"] == "pending_owner_review" for record in template["records"])
     assert {
         (record["submodule"], record["path"]) for record in template["records"]
@@ -444,6 +455,8 @@ def test_owner_review_action_packet_is_non_approval_response_form() -> None:
     assert "not owner approval" in text
     assert "not accepted experiment evidence" in normalized
     assert "submodule_owner_review_decisions.json" in text
+    assert "OR-01" in text
+    assert "OR-06" in text
     assert "python -m scripts.uxfd_owner_review_gate --format markdown" in text
     assert "template_only_not_owner_approved" in text
     assert "pending_owner_review" in text

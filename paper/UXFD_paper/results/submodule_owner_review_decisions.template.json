@@ -15,12 +15,14 @@
     "Copy this file to submodule_owner_review_decisions.json only after paper owners are ready to record decisions.",
     "Review supporting_files.action_packet, supporting_files.recommendations, and supporting_files.evidence_index before changing any pending decision.",
     "After copying, change top-level status to owner_review_decisions; the template_only_not_owner_approved status is rejected for real decision files.",
+    "Keep every decision_id unchanged; the gate binds OR-01..OR-06 to the current dirty-triage owner-review queue.",
     "Keep decision as pending_owner_review until the paper owner has explicitly reviewed the file.",
     "Do not stage, delete, or rewrite submodule files from this template alone.",
     "Generated artifacts must still be promoted only through paper/UXFD_paper/results/accepted_runs and scripts.uxfd_artifact_gate."
   ],
   "records": [
     {
+      "decision_id": "OR-01",
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "EXPERIMENT_DESIGN.md",
       "current_status": "??",
@@ -36,6 +38,7 @@
       "notes": "Useful planning draft only after current-root, parent-gated rewrite."
     },
     {
+      "decision_id": "OR-02",
       "submodule": "paper/UXFD_paper/Explainable_FD_Toolkit",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "current_status": "??",
@@ -54,6 +57,7 @@
       "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
+      "decision_id": "OR-03",
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "EXPERIMENT_DESIGN.md",
       "current_status": "??",
@@ -71,6 +75,7 @@
       "notes": "Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
+      "decision_id": "OR-04",
       "submodule": "paper/UXFD_paper/1D-2D_fusion_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "current_status": "??",
@@ -90,6 +95,7 @@
       "notes": "Remove or relabel historical readiness/accepted-evidence wording because current accepted_runs=0 and submission_ready=false gates still block the paper. Remove stale execution-root references before any commit."
     },
     {
+      "decision_id": "OR-05",
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "EXPERIMENT_DESIGN.md",
       "current_status": "??",
@@ -108,6 +114,7 @@
       "notes": "Rewrite nonlocal GPU references to local GPU 0,1 policy. Rewrite deprecated config_dir dispatch to maintained python main.py --config flow."
     },
     {
+      "decision_id": "OR-06",
       "submodule": "paper/UXFD_paper/MOE_explainable",
       "path": "manuscript/AUTORESEARCH_EVIDENCE.md",
       "current_status": "??",

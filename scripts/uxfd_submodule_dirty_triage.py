@@ -255,6 +255,14 @@ def _recommended_owner_decisions(entry: DirtyEntry) -> Tuple[str, ...]:
     return OWNER_ALLOWED_DECISIONS
 
 
+def _owner_review_entries(entries: Iterable[DirtyEntry]) -> Tuple[DirtyEntry, ...]:
+    return tuple(entry for entry in entries if entry.recommended_action == DO_NOT_AUTO_COMMIT)
+
+
+def _owner_review_decision_id(index: int) -> str:
+    return f"OR-{index:02d}"
+
+
 def _owner_review_note(entry: DirtyEntry) -> str:
     markers = set(entry.risk_markers)
     notes: List[str] = []
@@ -284,6 +292,7 @@ def _owner_review_note(entry: DirtyEntry) -> str:
 def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, Any], ...]:
     return tuple(
         {
+            "decision_id": _owner_review_decision_id(index),
             "submodule": entry.submodule,
             "path": entry.path,
             "current_status": entry.status,
@@ -295,14 +304,14 @@ def _owner_decision_template(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str
             "review_date": "TODO",
             "notes": _owner_review_note(entry),
         }
-        for entry in entries
-        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+        for index, entry in enumerate(_owner_review_entries(entries), start=1)
     )
 
 
 def _owner_review_packets(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, Any], ...]:
     return tuple(
         {
+            "decision_id": _owner_review_decision_id(index),
             "submodule": entry.submodule,
             "path": entry.path,
             "status": entry.status,
@@ -318,8 +327,7 @@ def _owner_review_packets(entries: Iterable[DirtyEntry]) -> Tuple[Mapping[str, A
                 "staged, rewritten, or cleaned up"
             ),
         }
-        for entry in entries
-        if entry.recommended_action == DO_NOT_AUTO_COMMIT
+        for index, entry in enumerate(_owner_review_entries(entries), start=1)
     )
 
 
@@ -479,9 +487,7 @@ def render_markdown(report: DirtyTriageReport) -> str:
         ]
     )
 
-    owner_entries = [
-        entry for entry in report.entries if entry.recommended_action == DO_NOT_AUTO_COMMIT
-    ]
+    owner_entries = _owner_review_entries(report.entries)
     artifact_entries = [
         entry
         for entry in report.entries
@@ -495,14 +501,15 @@ def render_markdown(report: DirtyTriageReport) -> str:
             "These entries require an explicit paper-owner decision before any staging.",
             "Allowed decisions: `commit_after_review`, `rewrite_then_commit`, or `discard_from_submodule`.",
             "",
-            "| Submodule | Status | Category | Risk Markers | Review Command | Path |",
-            "|---|---|---|---|---|---|",
+            "| Decision ID | Submodule | Status | Category | Risk Markers | Review Command | Path |",
+            "|---|---|---|---|---|---|---|",
         ]
     )
-    for entry in owner_entries:
+    for index, entry in enumerate(owner_entries, start=1):
         markers = ", ".join(entry.risk_markers) if entry.risk_markers else "-"
         lines.append(
-            f"| `{entry.submodule}` | `{entry.status}` | `{entry.category}` | "
+            f"| `{_owner_review_decision_id(index)}` | `{entry.submodule}` | "
+            f"`{entry.status}` | `{entry.category}` | "
             f"`{markers}` | `{_review_command(entry)}` | `{entry.path}` |"
         )
 
@@ -514,15 +521,16 @@ def render_markdown(report: DirtyTriageReport) -> str:
             "Copy these rows into a paper-owner review note before staging any owner-review entry.",
             "The default `pending_owner_review` value is intentionally not commit-safe.",
             "",
-            "| Submodule | Path | Current Status | Category | Risk Markers | Recommended Decisions | Decision | Reviewer | Review Date | Notes |",
-            "|---|---|---|---|---|---|---|---|---|---|",
+            "| Decision ID | Submodule | Path | Current Status | Category | Risk Markers | Recommended Decisions | Decision | Reviewer | Review Date | Notes |",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
         ]
     )
-    for entry in owner_entries:
+    for index, entry in enumerate(owner_entries, start=1):
         markers = ", ".join(entry.risk_markers) if entry.risk_markers else "-"
         recommended = ", ".join(_recommended_owner_decisions(entry))
         lines.append(
-            f"| `{entry.submodule}` | `{entry.path}` | `{entry.status}` | "
+            f"| `{_owner_review_decision_id(index)}` | `{entry.submodule}` | "
+            f"`{entry.path}` | `{entry.status}` | "
             f"`{entry.category}` | `{markers}` | `{recommended}` | "
             f"`pending_owner_review` | `TODO` | `TODO` | {_owner_review_note(entry)} |"
         )
@@ -534,14 +542,14 @@ def render_markdown(report: DirtyTriageReport) -> str:
             "",
             "Each packet is also emitted in `submodule_dirty_triage.json` for automation.",
             "",
-            "| Submodule | Path | Decision State | Risk Markers | Status Command | Content Review Command | Default next action |",
-            "|---|---|---|---|---|---|---|",
+            "| Decision ID | Submodule | Path | Decision State | Risk Markers | Status Command | Content Review Command | Default next action |",
+            "|---|---|---|---|---|---|---|---|",
         ]
     )
     for packet in _owner_review_packets(report.entries):
         markers = ", ".join(packet["risk_markers"]) if packet["risk_markers"] else "-"
         lines.append(
-            f"| `{packet['submodule']}` | `{packet['path']}` | "
+            f"| `{packet['decision_id']}` | `{packet['submodule']}` | `{packet['path']}` | "
             f"`{packet['decision_state']}` | `{markers}` | "
             f"`{packet['review_command']}` | "
             f"`{packet['content_review_command']}` | {packet['default_next_action']} |"
