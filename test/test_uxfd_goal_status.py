@@ -21,6 +21,11 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "Experiment launch blockers: `3`" in overall
     assert "Live launch preflight accepted: `False`" in overall
     assert "The experiment launch gate is the only authority" in overall
+    assert (
+        "only after the experiment launch gate passes without override flags"
+        in overall
+    )
+    assert "recorded owner decisions" in overall
     assert "Artifact coverage: `0/104`" in overall
     assert "SOTA gate ready: `False`" in overall
     assert "SOTA aggregate records: `7`" in overall

@@ -180,9 +180,10 @@ def _render_overall(
             "`queue_launch_plan.sh` or either per-GPU shard. If it is `False`, "
             "the queue is a plan only.",
             "",
-            "The project is ready for controlled execution only after local GPUs 0 and 1 "
-            "are visible, owner decisions are recorded, and the accepted artifact gate "
-            "can be populated with real runs.",
+            "The project is ready for controlled execution only after the experiment "
+            "launch gate passes without override flags; that gate requires visible "
+            "local GPU devices 0 and 1, recorded owner decisions, and a static queue "
+            "state that can populate the accepted artifact gate with real runs.",
             "",
             "## Paper Matrix",
             "",
