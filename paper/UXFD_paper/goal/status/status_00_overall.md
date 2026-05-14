@@ -10,6 +10,9 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Achieved: `False`
 - Objective audit: `met=86`, `not_met=13`, `blocked=1`
 - Submission gate ready: `False`
+- Experiment launch gate ready: `False`
+- Experiment launch blockers: `3`
+- Live launch preflight accepted: `False`
 - Queue can execute: `False`
 - Artifact coverage: `0/104`
 - Artifact records: `0`
@@ -18,6 +21,8 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Owner-review gate ready: `False`
 - Owner-review pending records: `6`
 - Dirty submodule entries: `27`
+
+The experiment launch gate is the only authority for starting `queue_launch_plan.sh` or either per-GPU shard. If it is `False`, the queue is a plan only.
 
 The project is ready for controlled execution only after local GPUs 0 and 1 are visible, owner decisions are recorded, and the accepted artifact gate can be populated with real runs.
 
