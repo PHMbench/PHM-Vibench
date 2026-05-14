@@ -56,7 +56,7 @@ accepted_run_metadata_required:
 
 accepted_artifact_contract:
   run_meta: "run_meta.yaml"
-  metrics: "metrics.json or metrics.csv with at least one finite numeric metric and no TODO, NaN, or infinite payloads"
+  metrics: "metrics.json or metrics.csv with at least one numeric metric; every numeric metric must be finite, with no TODO, NaN, or infinite payloads"
   numeric_metrics_required: true
   run_controls: "seed must be a non-negative integer; batch size must be a positive integer"
   seed_uniqueness: "multiple accepted seeds may share one queue entry, but the same source_queue_id, paper_id, phase, entry_id, CUDA_VISIBLE_DEVICES, and seed tuple must not be duplicated"
