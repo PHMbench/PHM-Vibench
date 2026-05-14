@@ -222,6 +222,7 @@ SHA_PROVENANCE_NEEDLES = (
 )
 ACCEPTED_RUN_ROOT_README = Path("paper/UXFD_paper/results/accepted_runs/README.md")
 ACCEPTED_RUN_ROOT_GATE_NEEDLES = (
+    "uxfd_experiment_launch_gate --format markdown",
     "uxfd_gpu_queue --live-preflight --require-preflight",
     "Blocked: static queue validation can_execute=False",
     "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage",
@@ -944,7 +945,10 @@ def _accepted_run_root_activation_gate_item(
 
     if missing:
         return _item(
-            requirement="accepted-run evidence root requires GPU and queue preflight",
+            requirement=(
+                "accepted-run evidence root requires experiment launch, GPU, "
+                "and queue preflight"
+            ),
             evidence=(
                 f"{accepted_run_root_readme},{gpu_queue_path},"
                 f"{artifact_gate_path},{artifact_scaffold_path}"
@@ -954,15 +958,19 @@ def _accepted_run_root_activation_gate_item(
         )
 
     return _item(
-        requirement="accepted-run evidence root requires GPU and queue preflight",
+        requirement=(
+            "accepted-run evidence root requires experiment launch, GPU, "
+            "and queue preflight"
+        ),
         evidence=(
             f"{accepted_run_root_readme},{gpu_queue_path},"
             f"{artifact_gate_path},{artifact_scaffold_path}"
         ),
         status="met",
         details=(
-            "accepted_runs root and templates require live GPU preflight, static "
-            "queue gate clearance, and artifact gate queue coverage before promotion"
+            "accepted_runs root and templates require experiment launch gate, "
+            "live GPU preflight, static queue gate clearance, and artifact gate "
+            "queue coverage before promotion"
         ),
     )
 

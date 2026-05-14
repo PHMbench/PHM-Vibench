@@ -144,12 +144,13 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     assert "dirty SHA provenance" in items[
         "accepted artifacts require clean SHA provenance"
     ].details
-    assert (
-        items["accepted-run evidence root requires GPU and queue preflight"].status
-        == "met"
+    accepted_run_gate = (
+        "accepted-run evidence root requires experiment launch, GPU, and queue preflight"
     )
+    assert items[accepted_run_gate].status == "met"
+    assert "experiment launch gate" in items[accepted_run_gate].details
     assert "live GPU preflight" in items[
-        "accepted-run evidence root requires GPU and queue preflight"
+        accepted_run_gate
     ].details
     assert (
         items["SOTA aggregate activation requires accepted run coverage"].status
@@ -294,7 +295,9 @@ def test_objective_audit_covers_prelaunch_gate_reports() -> None:
 def test_objective_audit_covers_accepted_run_root_activation_gate() -> None:
     report = evaluate_objective_audit()
     items = _items_by_requirement(report)
-    item = items["accepted-run evidence root requires GPU and queue preflight"]
+    item = items[
+        "accepted-run evidence root requires experiment launch, GPU, and queue preflight"
+    ]
 
     assert ACCEPTED_RUN_ROOT_README.exists()
     assert str(ACCEPTED_RUN_ROOT_README) in item.evidence

@@ -8,9 +8,11 @@ For the short promotion checklist, read
 
 Do not place smoke outputs, templates, failed preflight logs, or unreviewed
 submodule result files here. A run may be added only when its directory contains
-all required artifacts and the GPU/queue preflight passes:
+all required artifacts, the experiment launch gate, and the GPU/queue preflight
+pass:
 
 ```bash
+python -m scripts.uxfd_experiment_launch_gate --format markdown
 python -m scripts.uxfd_gpu_queue --live-preflight --require-preflight
 ```
 

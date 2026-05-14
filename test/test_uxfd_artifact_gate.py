@@ -326,6 +326,7 @@ def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
     text = (DEFAULT_ACCEPTED_RUNS_ROOT / "README.md").read_text(encoding="utf-8")
 
     assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in text
+    assert "uxfd_experiment_launch_gate --format markdown" in text
     assert "uxfd_gpu_queue --live-preflight --require-preflight" in text
     assert "Blocked: static queue validation can_execute=False" in text
     assert (
