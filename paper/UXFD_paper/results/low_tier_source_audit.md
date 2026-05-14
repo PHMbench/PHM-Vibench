@@ -7,6 +7,9 @@ Status: source-hygiene triage only. This report is not citation replacement evid
 - Findings: `263`
 - Blockers: `0`
 - Triage-only findings: `263`
+- Active-source blocker locations: `manuscript/`, `paper_draft/`, `ref.bib`, `references.bib`, and `.bbl` files.
+- Disallowed active-source markers: `Scientific Reports`, `MDPI`, `IEEE TIM`, `IEEE Transactions on Instrumentation and Measurement`, `IEEE Access`.
+- Disallowed exact BibTeX journal fields: `Applied Sciences`, `Electronics`, `Sensors`, `Mathematics`.
 
 | Severity | Paper | Marker | Location | Text |
 |---|---|---|---|---|

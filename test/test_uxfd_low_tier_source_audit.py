@@ -23,6 +23,56 @@ def test_low_tier_source_audit_has_no_active_manuscript_or_bib_blockers() -> Non
     assert all(finding.severity != "blocker" for finding in report.findings)
 
 
+def test_low_tier_source_audit_blocks_user_named_low_quality_sources(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "UXFD_paper"
+    manuscript = root / "PaperA" / "manuscript"
+    manuscript.mkdir(parents=True)
+    (manuscript / "draft.md").write_text(
+        "\n".join(
+            [
+                "Scientific Reports baseline is not allowed in an active draft.",
+                "MDPI source is not allowed in an active draft.",
+                "IEEE TIM target venue is not allowed in an active draft.",
+                (
+                    "IEEE Transactions on Instrumentation and Measurement is not "
+                    "allowed in an active draft."
+                ),
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (root / "PaperA" / "ref.bib").write_text(
+        "\n".join(
+            [
+                "@article{bad_applied,",
+                "  journal = {Applied Sciences},",
+                "}",
+                "@article{bad_sensors,",
+                "  journal = {Sensors},",
+                "}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate_low_tier_source_audit(root)
+    markers = {finding.marker for finding in report.findings}
+
+    assert report.ready is False
+    assert report.blocker_count == len(report.findings) == 6
+    assert markers == {
+        "Scientific Reports",
+        "MDPI",
+        "IEEE TIM",
+        "IEEE Transactions on Instrumentation and Measurement",
+        "Applied Sciences",
+        "Sensors",
+    }
+    assert all(finding.severity == "blocker" for finding in report.findings)
+
+
 def test_low_tier_source_audit_cli_writes_reports(tmp_path: Path) -> None:
     output = tmp_path / "low_tier" / "audit.json"
 
@@ -48,6 +98,11 @@ def test_low_tier_source_audit_cli_writes_reports(tmp_path: Path) -> None:
     )
     text = markdown.read_text(encoding="utf-8")
     assert "UXFD Low-Tier Source Audit" in text
+    assert "Disallowed active-source markers" in text
+    assert "`Scientific Reports`" in text
+    assert "`MDPI`" in text
+    assert "`IEEE TIM`" in text
+    assert "Disallowed exact BibTeX journal fields" in text
     assert "## Blockers" in text
 
 

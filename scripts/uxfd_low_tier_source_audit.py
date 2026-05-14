@@ -163,6 +163,14 @@ def render_markdown(report: LowTierSourceAuditReport) -> str:
         f"- Findings: `{len(report.findings)}`",
         f"- Blockers: `{report.blocker_count}`",
         f"- Triage-only findings: `{report.triage_count}`",
+        "- Active-source blocker locations: `manuscript/`, `paper_draft/`, "
+        "`ref.bib`, `references.bib`, and `.bbl` files.",
+        "- Disallowed active-source markers: "
+        + ", ".join(f"`{marker}`" for marker in DIRECT_MARKERS)
+        + ".",
+        "- Disallowed exact BibTeX journal fields: "
+        + ", ".join(f"`{marker}`" for marker in EXACT_JOURNAL_MARKERS)
+        + ".",
         "",
         "| Severity | Paper | Marker | Location | Text |",
         "|---|---|---|---|---|",
