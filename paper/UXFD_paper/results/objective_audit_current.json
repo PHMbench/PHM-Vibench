@@ -435,10 +435,10 @@
       "details": "queue contract, artifact gate, and templates reject dirty SHA provenance markers"
     },
     {
-      "requirement": "accepted-run evidence root requires GPU and queue preflight",
+      "requirement": "accepted-run evidence root requires experiment launch, GPU, and queue preflight",
       "evidence": "paper/UXFD_paper/results/accepted_runs/README.md,scripts/uxfd_gpu_queue.py,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py",
       "status": "met",
-      "details": "accepted_runs root and templates require live GPU preflight, static queue gate clearance, and artifact gate queue coverage before promotion"
+      "details": "accepted_runs root and templates require experiment launch gate, live GPU preflight, static queue gate clearance, and artifact gate queue coverage before promotion"
     },
     {
       "requirement": "SOTA aggregate activation requires accepted run coverage",
