@@ -76,6 +76,13 @@ def test_submission_gate_reports_all_papers_not_ready() -> None:
     assert checklist["6+ baselines and 6+ ablations per paper"]["status"] == "met"
     assert checklist["GPU launch scripts enforce static queue gate"]["status"] == "met"
     assert (
+        checklist["experiment launch gate wired before queue execution"]["status"]
+        == "met"
+    )
+    assert "scripts/uxfd_experiment_launch_gate.py" in checklist[
+        "experiment launch gate wired before queue execution"
+    ]["evidence"]
+    assert (
         checklist["SOTA comparison contract blocks single-run claims"]["status"]
         == "met"
     )
@@ -190,6 +197,7 @@ def test_submission_gate_cli_writes_blocking_json_report(tmp_path: Path) -> None
     assert "## Next Actions" in text
     assert "## Objective Checklist" in text
     assert "GPU launch scripts enforce static queue gate" in text
+    assert "experiment launch gate wired before queue execution" in text
     assert "SOTA comparison contract blocks single-run claims" in text
 
 

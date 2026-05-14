@@ -288,6 +288,11 @@
       "status": "met"
     },
     {
+      "requirement": "experiment launch gate wired before queue execution",
+      "evidence": "scripts/uxfd_experiment_launch_gate.py,paper/UXFD_paper/results/queue_launch_plan.sh,paper/UXFD_paper/results/queue_launch_shards/gpu0.sh,paper/UXFD_paper/results/queue_launch_shards/gpu1.sh,paper/UXFD_paper/results/accepted_runs/README.md,paper/UXFD_paper/results/accepted_run_templates/README.md",
+      "status": "met"
+    },
+    {
       "requirement": "SOTA comparison contract blocks single-run claims",
       "evidence": "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
       "status": "met"

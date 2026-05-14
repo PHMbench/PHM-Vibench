@@ -32,8 +32,16 @@ from scripts.uxfd_submodule_dirty_triage import (
 GOAL_DIR = Path("paper/UXFD_paper/goal")
 CLAUDE_TEAM_DIR = Path(".codex/claude-team-runs/20260511-uxfd-ieee-trans-review")
 DEFAULT_ARTIFACT_ROOT = Path("paper/UXFD_paper/results/accepted_runs")
+ACCEPTED_RUN_ROOT_README = DEFAULT_ARTIFACT_ROOT / "README.md"
+ACCEPTED_RUN_TEMPLATE_README = Path(
+    "paper/UXFD_paper/results/accepted_run_templates/README.md"
+)
 GOAL_CLARITY_AUDIT = Path("paper/UXFD_paper/results/goal_clarity_audit_current.md")
 COMMIT_RECOVERY_PLAN = Path("paper/UXFD_paper/results/commit_recovery_plan.md")
+EXPERIMENT_LAUNCH_GATE = Path("scripts/uxfd_experiment_launch_gate.py")
+EXPERIMENT_LAUNCH_GATE_COMMAND = (
+    "python -m scripts.uxfd_experiment_launch_gate --format markdown"
+)
 PAPER07_GOAL = GOAL_DIR / "07_tii_operator_attention.md"
 PAPER07_REJECTION_CONTRACT = Path(
     "paper/UXFD_paper/TII_operator_attention/submission_prep/"
@@ -196,6 +204,24 @@ def _launch_scripts_static_gate_ready() -> bool:
     return True
 
 
+def _experiment_launch_gate_wired() -> bool:
+    if not _file_contains_all(
+        EXPERIMENT_LAUNCH_GATE,
+        ("evaluate_experiment_launch_gate", "live GPU preflight"),
+    ):
+        return False
+    for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS:
+        if not _file_contains_all(path, (EXPERIMENT_LAUNCH_GATE_COMMAND,)):
+            return False
+    for path in (ACCEPTED_RUN_ROOT_README, ACCEPTED_RUN_TEMPLATE_README):
+        if not _file_contains_all(
+            path,
+            ("uxfd_experiment_launch_gate --format markdown",),
+        ):
+            return False
+    return True
+
+
 def _sota_comparison_contract_ready(queue_path: Path) -> bool:
     if not queue_path.exists():
         return False
@@ -322,6 +348,15 @@ def _objective_checklist(
                 "requirement": "GPU launch scripts enforce static queue gate",
                 "evidence": ",".join(str(path) for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS),
                 "status": "met" if _launch_scripts_static_gate_ready() else "not_met",
+            },
+            {
+                "requirement": "experiment launch gate wired before queue execution",
+                "evidence": (
+                    f"{EXPERIMENT_LAUNCH_GATE},"
+                    + ",".join(str(path) for path in LAUNCH_SCRIPT_STATIC_GATE_PATHS)
+                    + f",{ACCEPTED_RUN_ROOT_README},{ACCEPTED_RUN_TEMPLATE_README}"
+                ),
+                "status": "met" if _experiment_launch_gate_wired() else "not_met",
             },
             {
                 "requirement": "SOTA comparison contract blocks single-run claims",
