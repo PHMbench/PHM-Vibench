@@ -237,6 +237,16 @@ SOTA_AGGREGATE_ACTIVATION_NEEDLES = (
     "must pass before creating `paper/UXFD_paper/results/sota_aggregates`",
     "Do not commit template-derived `sota_aggregate.yaml`",
 )
+SOTA_FINITE_STATISTICS_NEEDLES = (
+    "_is_finite_number",
+    "must be finite numeric",
+    "paired_test.p_value between 0 and 1",
+)
+SOTA_FINITE_TEMPLATE_NEEDLES = (
+    "finite mean/std/95% CI",
+    "finite effect size",
+    "finite p-value in [0, 1]",
+)
 SOTA_COMPARISON_CONTRACT_FIELDS = (
     "single_run_rule",
     "same_protocol_population",
@@ -1030,6 +1040,59 @@ def _sota_aggregate_activation_gate_item(
     )
 
 
+def _sota_finite_statistics_gate_item(
+    template_readme: Path = SOTA_AGGREGATE_TEMPLATE_README,
+    sota_scaffold_path: Path = Path("scripts/uxfd_sota_scaffold.py"),
+    sota_gate_path: Path = Path("scripts/uxfd_sota_gate.py"),
+    sota_gate_test_path: Path = Path("test/test_uxfd_sota_gate.py"),
+) -> ObjectiveAuditItem:
+    missing: List[str] = []
+    for path, needles in (
+        (template_readme, SOTA_FINITE_TEMPLATE_NEEDLES),
+        (sota_scaffold_path, SOTA_FINITE_TEMPLATE_NEEDLES),
+        (sota_gate_path, SOTA_FINITE_STATISTICS_NEEDLES),
+        (
+            sota_gate_test_path,
+            (
+                "test_sota_gate_rejects_non_finite_statistics_and_invalid_p_value",
+                "float(\"nan\")",
+                "p_value\": 1.5",
+            ),
+        ),
+    ):
+        if not path.exists():
+            missing.append(str(path))
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{path}:{needle}")
+
+    if missing:
+        return _item(
+            requirement="SOTA aggregate statistics require finite values and valid p-values",
+            evidence=(
+                f"{template_readme},{sota_scaffold_path},"
+                f"{sota_gate_path},{sota_gate_test_path}"
+            ),
+            status="not_met",
+            details="missing=" + ",".join(missing),
+        )
+
+    return _item(
+        requirement="SOTA aggregate statistics require finite values and valid p-values",
+        evidence=(
+            f"{template_readme},{sota_scaffold_path},"
+            f"{sota_gate_path},{sota_gate_test_path}"
+        ),
+        status="met",
+        details=(
+            "SOTA gate rejects NaN/inf aggregate statistics and requires finite "
+            "effect sizes or paired-test p-values in [0, 1]"
+        ),
+    )
+
+
 def _sota_comparison_contract_item(
     queue_path: Path = DEFAULT_QUEUE,
     runbook_path: Path = Path("paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md"),
@@ -1217,6 +1280,7 @@ def evaluate_objective_audit(
     items.append(_sha_provenance_contract_item(queue_path=queue_path))
     items.append(_accepted_run_root_activation_gate_item())
     items.append(_sota_aggregate_activation_gate_item())
+    items.append(_sota_finite_statistics_gate_item())
     items.append(_sota_comparison_contract_item(queue_path=queue_path))
     items.append(_owner_review_decision_gate_item())
 

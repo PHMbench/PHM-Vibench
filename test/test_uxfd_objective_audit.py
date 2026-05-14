@@ -161,6 +161,15 @@ def test_objective_audit_maps_prompt_requirements_to_artifacts() -> None:
     ].details
     assert (
         items[
+            "SOTA aggregate statistics require finite values and valid p-values"
+        ].status
+        == "met"
+    )
+    assert "NaN/inf aggregate statistics" in items[
+        "SOTA aggregate statistics require finite values and valid p-values"
+    ].details
+    assert (
+        items[
             "SOTA comparison requires multi-seed same-protocol aggregate evidence"
         ].status
         == "met"
@@ -314,6 +323,18 @@ def test_objective_audit_covers_sota_aggregate_activation_gate() -> None:
     assert str(SOTA_AGGREGATE_TEMPLATE_README) in item.evidence
     assert item.status == "met"
     assert "artifact gate queue coverage" in item.details
+
+
+def test_objective_audit_covers_sota_finite_statistics_gate() -> None:
+    report = evaluate_objective_audit()
+    items = _items_by_requirement(report)
+    item = items["SOTA aggregate statistics require finite values and valid p-values"]
+
+    assert SOTA_AGGREGATE_TEMPLATE_README.exists()
+    assert str(SOTA_AGGREGATE_TEMPLATE_README) in item.evidence
+    assert "scripts/uxfd_sota_gate.py" in item.evidence
+    assert item.status == "met"
+    assert "p-values in [0, 1]" in item.details
 
 
 def test_objective_audit_cli_writes_blocking_json_and_markdown(tmp_path: Path) -> None:
