@@ -17,22 +17,22 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Submission gate ready: `False`
 - Static launch gate enabled: `True`
 
-## Pre-Launch Decision
+## Experiment Launch Decision
 
-Do not launch `queue_launch_plan.sh` or either per-GPU shard until the aggregate pre-launch gate passes without `--allow-not-ready`:
+Do not launch `queue_launch_plan.sh` or either per-GPU shard until the experiment launch gate passes without `--allow-not-ready`:
 
 ```bash
-python -m scripts.uxfd_prelaunch_gate --format markdown
+python -m scripts.uxfd_experiment_launch_gate --format markdown
 ```
 
-The aggregate gate mirrors the following required commands, which must also pass without `--allow-not-*` overrides:
+The experiment launch gate mirrors the following required commands, which must also pass without `--allow-not-*` overrides:
 
 ```bash
-python -m scripts.uxfd_objective_audit --format markdown
 python -m scripts.uxfd_owner_review_gate --format markdown
 python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight
-python -m scripts.uxfd_submission_gate --format markdown
 ```
+
+The final submission gate remains separate because accepted run artifacts and SOTA aggregates are produced after queue execution.
 
 The current launch scripts are execution plans only. A paper owner must first resolve the owner-review decision file; an agent must not copy the template into an approved decision file or invent reviewer/date metadata.
 
