@@ -15,7 +15,18 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - TOP representative entries: `7`
 - Artifact coverage: `0/104`
 - Submission gate ready: `False`
+- Experiment launch gate ready: `False`
+- Experiment launch blockers: `3`
+- Owner-review gate ready: `False`
+- Owner-review pending records: `6`
+- Live preflight accepted: `False`
 - Static launch gate enabled: `True`
+
+## Current Launch Gate Blockers
+
+- owner-review gate not ready: pending_records=6, blockers=4
+- gpu queue static gate not executable: blocked; no accepted GPU evidence can be generated in this session
+- live GPU preflight not accepted: blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0; required_gpu_class=RTX 4090 not satisfied by gpu_names=()
 
 ## Experiment Launch Decision
 
