@@ -33,6 +33,15 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "Do not auto-commit these entries" in overall
     assert "| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 |" in overall
     assert "Queue dry-run entries: `104`" in gpu
+    assert "Experiment launch gate ready: `False`" in gpu
+    assert "Experiment launch blockers: `3`" in gpu
+    assert "Owner-review gate ready: `False`" in gpu
+    assert "Owner-review pending records: `6`" in gpu
+    assert "Live preflight accepted: `False`" in gpu
+    assert "## Current Launch Gate Blockers" in gpu
+    assert "owner-review gate not ready" in gpu
+    assert "gpu queue static gate not executable" in gpu
+    assert "live GPU preflight not accepted" in gpu
     assert "Static launch gate enabled: `True`" in gpu
     assert "## Experiment Launch Decision" in gpu
     assert "Do not launch `queue_launch_plan.sh`" in gpu

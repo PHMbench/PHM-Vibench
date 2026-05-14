@@ -377,6 +377,7 @@ def _render_gpu_execution(
     submission_report: object,
     artifact_report: object,
     recent_report: object,
+    launch_report: object,
 ) -> str:
     rows = expand_queue(DEFAULT_QUEUE)
     queue_summary = summarize_rows(rows)
@@ -399,7 +400,23 @@ def _render_gpu_execution(
             f"- Artifact coverage: `{artifact_report.covered_queue_runs}/"
             f"{artifact_report.expected_queue_runs}`",
             f"- Submission gate ready: `{submission_report.ready}`",
+            f"- Experiment launch gate ready: `{launch_report.ready}`",
+            f"- Experiment launch blockers: `{len(launch_report.blockers)}`",
+            f"- Owner-review gate ready: `{launch_report.owner_review_ready}`",
+            f"- Owner-review pending records: `{launch_report.owner_review_pending_records}`",
+            f"- Live preflight accepted: `{launch_report.live_preflight_accepted}`",
             f"- Static launch gate enabled: `{_launch_static_gate_ready()}`",
+            "",
+            "## Current Launch Gate Blockers",
+            "",
+        ]
+    )
+    if launch_report.blockers:
+        lines.extend(f"- {blocker}" for blocker in launch_report.blockers)
+    else:
+        lines.append("- none")
+    lines.extend(
+        [
             "",
             "## Experiment Launch Decision",
             "",
@@ -504,6 +521,7 @@ def generate_status_reports(
             submission_report,
             artifact_report,
             recent_report,
+            launch_report,
         ),
     }
     for paper_id in PAPER_ORDER:
