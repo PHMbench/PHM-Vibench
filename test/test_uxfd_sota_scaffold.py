@@ -82,7 +82,7 @@ def test_persisted_sota_templates_match_current_queue(tmp_path: Path) -> None:
     assert "not accepted SOTA evidence" in readme
     assert "Activation preflight" in readme
     assert "incomplete queue coverage" in readme
-    assert "effect size or paired test" in readme
+    assert "effect size or paired-test finite p-value" in readme
     assert {
         (
             record.queue_id,

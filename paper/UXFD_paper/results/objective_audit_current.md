@@ -1,7 +1,7 @@
 # UXFD Objective Audit
 
 - Achieved: `False`
-- Met: `86`
+- Met: `87`
 - Not met: `13`
 - Blocked: `1`
 - Unverified: `0`
@@ -88,6 +88,7 @@ Execute the UXFD seven-paper goal package, use Spec Kit/Claude Team/handoff work
 | `met` | accepted artifacts require clean SHA provenance | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py` | queue contract, artifact gate, and templates reject dirty SHA provenance markers |
 | `met` | accepted-run evidence root requires experiment launch, GPU, and queue preflight | `paper/UXFD_paper/results/accepted_runs/README.md,scripts/uxfd_gpu_queue.py,scripts/uxfd_artifact_gate.py,scripts/uxfd_artifact_scaffold.py` | accepted_runs root and templates require experiment launch gate, live GPU preflight, static queue gate clearance, and artifact gate queue coverage before promotion |
 | `met` | SOTA aggregate activation requires accepted run coverage | `paper/UXFD_paper/results/sota_aggregate_templates/README.md,scripts/uxfd_sota_scaffold.py,scripts/uxfd_sota_gate.py,scripts/uxfd_artifact_gate.py` | SOTA templates require artifact gate queue coverage before aggregate creation, and SOTA gate requires existing accepted run_meta refs |
+| `met` | SOTA aggregate statistics require finite values and valid p-values | `paper/UXFD_paper/results/sota_aggregate_templates/README.md,scripts/uxfd_sota_scaffold.py,scripts/uxfd_sota_gate.py,test/test_uxfd_sota_gate.py` | SOTA gate rejects NaN/inf aggregate statistics and requires finite effect sizes or paired-test p-values in [0, 1] |
 | `met` | SOTA comparison requires multi-seed same-protocol aggregate evidence | `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml,paper/UXFD_paper/results/GPU_EXECUTION_RUNBOOK.md` | queue/runbook block single-run SOTA and require matched seeds, accepted run refs, aggregate statistics, failure records, and exact-vs-representative TOP scope |
 | `not_met` | submodule owner-review decision gate | `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json` | ready=False, pending_records=6, blockers=4 |
 | `met` | Paper07 rejection-recovery innovation contract | `paper/UXFD_paper/goal/07_tii_operator_attention.md,paper/UXFD_paper/TII_operator_attention/submission_prep/rejection_recovery_contract.md,paper/UXFD_paper/TII_operator_attention/submission_prep/reviewer_traceability_matrix.md` | goal and submodule contract encode rejection recovery, DSOA v2, reviewer traceability, Q0 preflight, and non-SOTA/non-ready stop rules |
