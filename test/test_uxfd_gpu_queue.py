@@ -222,6 +222,12 @@ def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Pat
     assert blocked.returncode == 2
     assert "Blocked: static queue validation can_execute=False" in blocked.stdout
     assert "Resource reason: blocked; no accepted GPU evidence" in blocked.stdout
+    assert (
+        "Experiment launch gate: "
+        "python -m scripts.uxfd_experiment_launch_gate --format markdown"
+        in blocked.stdout
+    )
+    assert "without --allow-not-ready" in blocked.stdout
 
 
 def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
@@ -242,6 +248,8 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
     assert "Launch shard for CUDA device 1" in gpu1
     assert "Blocked: static queue validation can_execute=False" in gpu0
     assert "Blocked: static queue validation can_execute=False" in gpu1
+    assert "without --allow-not-ready" in gpu0
+    assert "without --allow-not-ready" in gpu1
     assert experiment_launch_gate in gpu0
     assert experiment_launch_gate in gpu1
     assert "CUDA_VISIBLE_DEVICES=0" in gpu0

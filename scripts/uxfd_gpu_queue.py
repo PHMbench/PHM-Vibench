@@ -331,10 +331,21 @@ def _static_validation_guard(validation: QueueValidation) -> Tuple[str, ...]:
         return ()
     lines = [
         "# Static queue validation failed at generation time.",
-        "# Regenerate this launch plan only after the queue and resource gates pass.",
+        (
+            "# Regenerate this launch plan only after queue, owner-review, "
+            "and resource gates pass."
+        ),
         "printf '%s\\n' 'Blocked: static queue validation can_execute=False'",
         f"printf '%s\\n' {shlex.quote('Resource reason: ' + validation.resource_reason)}",
         f"printf '%s\\n' {shlex.quote('Structural issues: ' + str(len(validation.structural_issues)))}",
+        (
+            "printf '%s\\n' 'Experiment launch gate: "
+            "python -m scripts.uxfd_experiment_launch_gate --format markdown'"
+        ),
+        (
+            "printf '%s\\n' 'Do not launch queue scripts until the experiment "
+            "launch gate passes without --allow-not-ready.'"
+        ),
     ]
     if validation.structural_issues:
         joined = "; ".join(validation.structural_issues)

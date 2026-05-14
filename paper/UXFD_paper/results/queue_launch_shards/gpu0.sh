@@ -8,10 +8,12 @@ set -euo pipefail
 # Launchable commands: 49
 
 # Static queue validation failed at generation time.
-# Regenerate this launch plan only after the queue and resource gates pass.
+# Regenerate this launch plan only after queue, owner-review, and resource gates pass.
 printf '%s\n' 'Blocked: static queue validation can_execute=False'
 printf '%s\n' 'Resource reason: blocked; no accepted GPU evidence can be generated in this session'
 printf '%s\n' 'Structural issues: 0'
+printf '%s\n' 'Experiment launch gate: python -m scripts.uxfd_experiment_launch_gate --format markdown'
+printf '%s\n' 'Do not launch queue scripts until the experiment launch gate passes without --allow-not-ready.'
 exit 2
 
 python -m scripts.uxfd_experiment_launch_gate --format markdown
