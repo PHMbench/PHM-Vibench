@@ -93,11 +93,17 @@ def test_goal_readme_exposes_owner_review_gate_as_pre_execution_gate() -> None:
 
 def test_goal_clarity_audit_exists_and_records_non_ready_verdict() -> None:
     text = CLARITY_AUDIT.read_text(encoding="utf-8")
+    normalized = " ".join(text.split())
 
     assert "The goal package is clear enough" in text
     assert "not clear to treat any paper as submission-ready" in text
+    assert "Experiment launch gate is not ready" in text
+    assert "3 launch blockers" in text
     assert "GPU queue cannot execute" in text
+    assert "owner-review, static queue execution, and live 2x4090 preflight" in text
     assert "zero accepted records" in text
+    assert "python -m scripts.uxfd_experiment_launch_gate --format markdown" in text
+    assert "after the experiment launch gate passes without override flags" in normalized
 
 
 def test_goal_files_do_not_use_stale_execution_paths() -> None:

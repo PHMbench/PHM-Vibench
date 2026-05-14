@@ -42,6 +42,8 @@ Checked files:
 The goal package is clear enough for staged execution, but execution is blocked
 by current state:
 
+- Experiment launch gate is not ready: it reports 3 launch blockers covering
+  owner-review, static queue execution, and live 2x4090 preflight.
 - GPU queue cannot execute: current preflight reports `nvidia-smi` driver
   failure and PyTorch `cuda_available=False`, `device_count=0`.
 - Owner-review gate cannot pass: real
@@ -65,15 +67,18 @@ by current state:
 rg -n "TODO|TBD|待定|未定|不清楚|copy 2|Paper/1D|config_dir|--config_dir" paper/UXFD_paper/goal
 rg -n "Scientific Reports|MDPI|IEEE Transactions on Instrumentation and Measurement|IEEE TIM|IEEE Access|Applied Sciences|Electronics|Sensors|Mathematics" paper/UXFD_paper/goal/00_overall_goal.md paper/UXFD_paper/goal/08_recent_work_citation_readme.md paper/UXFD_paper/goal/99_submission_readiness_matrix.md
 python -m pytest -q test/test_uxfd_goal_clarity.py
+python -m scripts.uxfd_experiment_launch_gate --format markdown
 python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved
 python -m scripts.uxfd_submission_gate --format markdown --allow-not-ready
 ```
 
 ## Verdict
 
-The goal package is clear enough to continue staged preparation and, after GPU
-preflight passes, to execute the queue in `09_gpu_execution_queue.yaml`. It is
-not clear to treat any paper as submission-ready, because accepted artifacts,
-TOP representative evidence, GPU metadata, real owner decisions, clean
-submodule state, SOTA aggregates, and final cross-paper submission gates are
-still missing.
+The goal package is clear enough to continue staged preparation and, after the
+experiment launch gate passes without override flags, to execute the queue in
+`09_gpu_execution_queue.yaml`. That launch gate must clear real owner
+decisions, static queue execution, and live local GPU `0,1` RTX 4090 preflight.
+It is not clear to treat any paper as submission-ready, because accepted
+artifacts, TOP representative evidence, GPU metadata, real owner decisions,
+clean submodule state, SOTA aggregates, and final cross-paper submission gates
+are still missing.
