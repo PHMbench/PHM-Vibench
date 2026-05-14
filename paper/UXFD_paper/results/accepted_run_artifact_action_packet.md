@@ -16,12 +16,13 @@ as a substitute.
 
 ## Promotion Preconditions
 
-1. `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
+1. `python -m scripts.uxfd_experiment_launch_gate --format markdown`
+2. `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
    exits with code `0`.
-2. The launched queue row is from `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml`.
-3. The source tree and relevant paper submodule are clean before the run is
+3. The launched queue row is from `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml`.
+4. The source tree and relevant paper submodule are clean before the run is
    recorded as accepted evidence.
-4. The run uses local RTX 4090 device `0`, device `1`, or documented `0,1`
+5. The run uses local RTX 4090 device `0`, device `1`, or documented `0,1`
    binding according to the queue command.
 
 ## Required Per-Run Files

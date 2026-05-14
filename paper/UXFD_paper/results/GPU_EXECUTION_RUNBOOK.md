@@ -145,5 +145,13 @@ As of the latest local live preflight snapshot
 - Objective audit: not achieved.
 
 Do not run `queue_launch_plan.sh`, `gpu0.sh`, or `gpu1.sh` until a refreshed
-live preflight records `accepted: true` with exactly local devices `0` and `1`
-as RTX 4090-class GPUs.
+experiment launch gate passes without `--allow-not-ready`. That gate requires
+owner-review approval plus a refreshed live preflight with exactly local devices
+`0` and `1` as RTX 4090-class GPUs:
+
+```bash
+python -m scripts.uxfd_experiment_launch_gate --format markdown
+```
+
+The final `uxfd_prelaunch_gate`/submission gate remains separate because
+accepted run artifacts and SOTA aggregates are produced after queue execution.

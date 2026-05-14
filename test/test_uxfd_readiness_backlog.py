@@ -3,12 +3,12 @@ from pathlib import Path
 
 from scripts.uxfd_readiness_backlog import (
     ACCEPTED_RUN_ARTIFACT_ACTION_PACKET,
+    EXPERIMENT_LAUNCH_GATE_JSON,
+    EXPERIMENT_LAUNCH_GATE_MARKDOWN,
     GPU_EXECUTION_RUNBOOK,
     GPU_LIVE_PREFLIGHT,
     GPU_PREFLIGHT_ACTION_PACKET,
     OWNER_REVIEW_EVIDENCE_INDEX,
-    PRELAUNCH_GATE_JSON,
-    PRELAUNCH_GATE_MARKDOWN,
     evaluate_readiness_backlog,
     main,
     render_markdown,
@@ -29,11 +29,14 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
 
     assert report.ready is False
     assert report.open_items > 10
-    assert report.items[0].item_id == "Q0-PRELAUNCH-GATE"
-    assert report.items[0].category == "prelaunch-gate"
-    assert "python -m scripts.uxfd_prelaunch_gate --format markdown" in report.items[0].next_action
-    assert str(PRELAUNCH_GATE_MARKDOWN) in report.items[0].evidence
-    assert str(PRELAUNCH_GATE_JSON) in report.items[0].evidence
+    assert report.items[0].item_id == "Q0-EXPERIMENT-LAUNCH-GATE"
+    assert report.items[0].category == "experiment-launch-gate"
+    assert (
+        "python -m scripts.uxfd_experiment_launch_gate --format markdown"
+        in report.items[0].next_action
+    )
+    assert str(EXPERIMENT_LAUNCH_GATE_MARKDOWN) in report.items[0].evidence
+    assert str(EXPERIMENT_LAUNCH_GATE_JSON) in report.items[0].evidence
     assert report.items[1].item_id == "Q0-GPU-PREFLIGHT"
     assert report.items[2].item_id == "Q0-ARTIFACT-COVERAGE"
     assert report.items[3].item_id == "Q0-SOTA-AGGREGATE"
@@ -109,7 +112,7 @@ def test_readiness_backlog_cli_writes_markdown_and_json(tmp_path: Path) -> None:
     text = markdown.read_text(encoding="utf-8")
     assert "UXFD Readiness Backlog" in text
     assert "not accepted experiment evidence" in text
-    assert "Q0-PRELAUNCH-GATE" in text
+    assert "Q0-EXPERIMENT-LAUNCH-GATE" in text
     assert "Q0-GPU-PREFLIGHT" in text
 
     assert (

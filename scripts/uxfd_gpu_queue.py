@@ -405,6 +405,8 @@ def render_shell_plan(
         lines.append("")
     lines.extend(
         [
+            "python -m scripts.uxfd_experiment_launch_gate --format markdown",
+            "",
             "nvidia-smi -L",
             (
                 "python -c \"import torch; assert torch.cuda.is_available(); "

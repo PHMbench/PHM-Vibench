@@ -201,14 +201,17 @@ def test_gpu_queue_cli_writes_shell_launch_plan_without_running_it(tmp_path: Pat
     assert main(["--format", "shell", "--output", str(output)]) == 0
 
     text = output.read_text(encoding="utf-8")
+    experiment_launch_gate = "python -m scripts.uxfd_experiment_launch_gate --format markdown"
     assert text.startswith("#!/usr/bin/env bash")
+    assert experiment_launch_gate in text
     assert "nvidia-smi -L" in text
     assert "torch.cuda.device_count() == 2" in text
     assert "assert all('RTX 4090' in name for name in names)" in text
     assert "Blocked: static queue validation can_execute=False" in text
     assert text.index("Blocked: static queue validation can_execute=False") < text.index(
-        "nvidia-smi -L"
+        experiment_launch_gate
     )
+    assert text.index(experiment_launch_gate) < text.index("nvidia-smi -L")
     assert "exit 2" in text
     assert "CUDA_VISIBLE_DEVICES=0" in text
     assert "CUDA_VISIBLE_DEVICES=1" in text
@@ -233,11 +236,14 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
     gpu0 = (shard_dir / "gpu0.sh").read_text(encoding="utf-8")
     gpu1 = (shard_dir / "gpu1.sh").read_text(encoding="utf-8")
     readme = (shard_dir / "README.md").read_text(encoding="utf-8")
+    experiment_launch_gate = "python -m scripts.uxfd_experiment_launch_gate --format markdown"
 
     assert "Launch shard for CUDA device 0" in gpu0
     assert "Launch shard for CUDA device 1" in gpu1
     assert "Blocked: static queue validation can_execute=False" in gpu0
     assert "Blocked: static queue validation can_execute=False" in gpu1
+    assert experiment_launch_gate in gpu0
+    assert experiment_launch_gate in gpu1
     assert "CUDA_VISIBLE_DEVICES=0" in gpu0
     assert "CUDA_VISIBLE_DEVICES=1" not in gpu0
     assert "CUDA_VISIBLE_DEVICES=1" in gpu1

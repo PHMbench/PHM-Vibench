@@ -1,0 +1,73 @@
+{
+  "ready": false,
+  "owner_review_ready": false,
+  "owner_review_source_path": "paper/UXFD_paper/results/submodule_owner_review_decisions.template.json",
+  "owner_review_pending_records": 6,
+  "queue_static_can_execute": false,
+  "queue_resource_reason": "blocked; no accepted GPU evidence can be generated in this session",
+  "queue_structural_issues": [],
+  "queue_summary": {
+    "total": 104,
+    "blocked": 0,
+    "main_py_commands": 93,
+    "top_representatives": 7,
+    "per_phase": {
+      "proposed": 7,
+      "baselines": 45,
+      "ablations": 45,
+      "top_representatives": 7
+    },
+    "per_paper": {
+      "TII_operator_attention": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "1D-2D_fusion_explainable": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 7,
+        "top_representatives": 1
+      },
+      "Explainable_FD_Toolkit": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "MOE_explainable": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "Paper_fuzzy_XFD": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 6,
+        "top_representatives": 1
+      },
+      "Neuralsymbolic_theory": {
+        "proposed": 1,
+        "baselines": 6,
+        "ablations": 7,
+        "top_representatives": 1
+      },
+      "LLM_Explainable_FD_Toolkit": {
+        "proposed": 1,
+        "baselines": 7,
+        "ablations": 7,
+        "top_representatives": 1
+      }
+    }
+  },
+  "live_preflight_required": true,
+  "live_preflight_accepted": false,
+  "live_preflight_reason": "blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0; required_gpu_class=RTX 4090 not satisfied by gpu_names=()",
+  "blockers": [
+    "owner-review gate not ready: pending_records=6, blockers=4",
+    "gpu queue static gate not executable: blocked; no accepted GPU evidence can be generated in this session",
+    "live GPU preflight not accepted: blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0; required_gpu_class=RTX 4090 not satisfied by gpu_names=()"
+  ]
+}

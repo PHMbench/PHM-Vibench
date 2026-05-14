@@ -92,10 +92,24 @@ staged preparation, but still blocked for full execution by GPU preflight,
 accepted artifacts, TOP representative evidence, dirty submodules, and
 submission gates.
 
-## Pre-Launch Gate
+## Experiment Launch Gate
 
-Use the aggregate pre-launch gate before running `queue_launch_plan.sh` or either
-per-GPU shard:
+Use the experiment launch gate before running `queue_launch_plan.sh` or either
+per-GPU shard. This gate checks owner review plus the local 2x4090 queue
+preflight; it intentionally does not require accepted artifacts or final
+submission readiness because those are produced after successful queue
+execution:
+
+```bash
+python -m scripts.uxfd_experiment_launch_gate --format markdown
+python -m scripts.uxfd_experiment_launch_gate --format json --allow-not-ready --output paper/UXFD_paper/results/experiment_launch_gate_current.json
+python -m scripts.uxfd_experiment_launch_gate --format markdown --allow-not-ready --output paper/UXFD_paper/results/experiment_launch_gate_current.md
+```
+
+## Submission Pre-Launch Gate
+
+Use the aggregate pre-launch gate only for final submission-readiness
+authorization after accepted run artifacts and SOTA aggregates exist:
 
 ```bash
 python -m scripts.uxfd_prelaunch_gate --format markdown
@@ -105,7 +119,7 @@ python -m scripts.uxfd_prelaunch_gate --format markdown --allow-not-ready --outp
 
 The command returns non-zero until the objective audit, owner-review gate, live
 2x4090 GPU preflight, and submission gate all pass without override flags. It is
-a launch-authorization gate only; it is not accepted experiment evidence.
+a submission-authorization gate only; it is not accepted experiment evidence.
 
 ## Owner Review Gate
 

@@ -14,6 +14,8 @@ printf '%s\n' 'Resource reason: blocked; no accepted GPU evidence can be generat
 printf '%s\n' 'Structural issues: 0'
 exit 2
 
+python -m scripts.uxfd_experiment_launch_gate --format markdown
+
 nvidia-smi -L
 python -c "import torch; assert torch.cuda.is_available(); assert torch.cuda.device_count() == 2; names=[torch.cuda.get_device_name(i) for i in range(2)]; assert all('RTX 4090' in name for name in names), names; print(names[0]); print(names[1])"
 

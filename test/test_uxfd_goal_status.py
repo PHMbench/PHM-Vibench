@@ -16,7 +16,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     )
 
     assert "not accepted experiment evidence" in overall
-    assert "Objective audit: `met=84`, `not_met=13`, `blocked=1`" in overall
+    assert "Objective audit: `met=86`, `not_met=13`, `blocked=1`" in overall
     assert "Artifact coverage: `0/104`" in overall
     assert "SOTA gate ready: `False`" in overall
     assert "SOTA aggregate records: `7`" in overall
@@ -30,9 +30,9 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 |" in overall
     assert "Queue dry-run entries: `104`" in gpu
     assert "Static launch gate enabled: `True`" in gpu
-    assert "## Pre-Launch Decision" in gpu
+    assert "## Experiment Launch Decision" in gpu
     assert "Do not launch `queue_launch_plan.sh`" in gpu
-    assert "python -m scripts.uxfd_prelaunch_gate --format markdown" in gpu
+    assert "python -m scripts.uxfd_experiment_launch_gate --format markdown" in gpu
     assert "python -m scripts.uxfd_owner_review_gate --format markdown" in gpu
     assert (
         "python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight"

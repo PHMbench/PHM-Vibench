@@ -72,6 +72,14 @@ EXECUTION_ARTIFACTS = (
     ),
     ("live GPU preflight snapshot", Path("paper/UXFD_paper/results/gpu_queue_live_preflight.json")),
     (
+        "experiment launch gate JSON report",
+        Path("paper/UXFD_paper/results/experiment_launch_gate_current.json"),
+    ),
+    (
+        "experiment launch gate markdown report",
+        Path("paper/UXFD_paper/results/experiment_launch_gate_current.md"),
+    ),
+    (
         "pre-launch gate JSON report",
         Path("paper/UXFD_paper/results/prelaunch_gate_current.json"),
     ),
@@ -305,6 +313,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("scripts/uxfd_objective_audit.py"),
     Path("scripts/uxfd_artifact_scaffold.py"),
     Path("scripts/uxfd_sota_scaffold.py"),
+    Path("scripts/uxfd_experiment_launch_gate.py"),
     Path("scripts/uxfd_gpu_queue.py"),
     Path("scripts/uxfd_parent_result_artifact_triage.py"),
     Path("scripts/uxfd_readiness_backlog.py"),
@@ -319,6 +328,7 @@ PARENT_GOAL_CHECKPOINT_PATHS = (
     Path("test/test_uxfd_artifact_gate.py"),
     Path("test/test_uxfd_artifact_scaffold.py"),
     Path("test/test_uxfd_sota_scaffold.py"),
+    Path("test/test_uxfd_experiment_launch_gate.py"),
     Path("test/test_uxfd_gpu_queue.py"),
     Path("test/test_uxfd_paper01_control_docs.py"),
     Path("test/test_uxfd_paper02_control_docs.py"),
