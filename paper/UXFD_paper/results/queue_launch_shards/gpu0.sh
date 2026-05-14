@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Launch shard for CUDA device 0
-# Run only on the local 2x4090 machine after this preflight passes.
+# Run only after the experiment launch gate passes without --allow-not-ready.
 # Queue validation can_execute at generation time: False
 # Queue validation resource reason: blocked; no accepted GPU evidence can be generated in this session
 # Launchable commands: 49

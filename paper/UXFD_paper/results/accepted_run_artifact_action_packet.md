@@ -4,8 +4,8 @@ Status: artifact-promotion response packet only. This file is not accepted
 experiment evidence and not a submission-readiness gate.
 
 Purpose: describe the minimum package needed to promote a real Q0-passed run
-into `paper/UXFD_paper/results/accepted_runs` after local RTX 4090 GPU
-preflight passes.
+into `paper/UXFD_paper/results/accepted_runs` after the experiment launch gate
+passes on local RTX 4090 GPUs.
 
 ## Current Blocker
 

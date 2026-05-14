@@ -2,7 +2,7 @@
 
 Generated from `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml`.
 These scripts are launch plans, not accepted evidence.
-Run them only after the embedded preflight passes.
+Run them only after the experiment launch gate passes without `--allow-not-ready`.
 
 | Device | Script |
 |---|---|

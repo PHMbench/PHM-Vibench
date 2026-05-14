@@ -246,6 +246,8 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
 
     assert "Launch shard for CUDA device 0" in gpu0
     assert "Launch shard for CUDA device 1" in gpu1
+    assert "Run only after the experiment launch gate passes without --allow-not-ready." in gpu0
+    assert "Run only after the experiment launch gate passes without --allow-not-ready." in gpu1
     assert "Blocked: static queue validation can_execute=False" in gpu0
     assert "Blocked: static queue validation can_execute=False" in gpu1
     assert "without --allow-not-ready" in gpu0
@@ -256,6 +258,10 @@ def test_gpu_queue_cli_writes_per_gpu_shell_shards(tmp_path: Path) -> None:
     assert "CUDA_VISIBLE_DEVICES=1" not in gpu0
     assert "CUDA_VISIBLE_DEVICES=1" in gpu1
     assert "CUDA_VISIBLE_DEVICES=0" not in gpu1
+    assert (
+        "Run them only after the experiment launch gate passes without `--allow-not-ready`."
+        in readme
+    )
     assert "| `0` | `gpu0.sh` |" in readme
     assert "| `1` | `gpu1.sh` |" in readme
 
@@ -284,6 +290,7 @@ def test_persisted_launch_plan_and_shards_match_current_queue() -> None:
 
     readme = (PERSISTED_SHARD_DIR / "README.md").read_text(encoding="utf-8")
     assert "These scripts are launch plans, not accepted evidence." in readme
+    assert "experiment launch gate passes without `--allow-not-ready`" in readme
     assert "| `0` | `gpu0.sh` |" in readme
     assert "| `1` | `gpu1.sh` |" in readme
 
@@ -352,6 +359,7 @@ def test_gpu_execution_runbook_records_current_live_preflight_blocker() -> None:
     assert f"- `torch_cuda_device_count`: `{live['torch_cuda_device_count']}`" in text
     assert "- `gpu_names`: `[]`" in text
     assert "python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight" in text
+    assert "after the experiment launch\ngate passes without `--allow-not-ready`" in text
     assert "must exit with\ncode `0`" in text
     assert "exit\ncode `2` means the queue is still resource-blocked" in text
     assert "Do not run `queue_launch_plan.sh`, `gpu0.sh`, or `gpu1.sh`" in text

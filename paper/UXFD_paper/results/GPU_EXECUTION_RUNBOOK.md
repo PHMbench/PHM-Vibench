@@ -49,7 +49,8 @@ preflight, update the queue state, and regenerate these scripts before launch.
 
 ## 3. Launch
 
-Launch the two GPU shards in separate terminals after preflight passes:
+Launch the two GPU shards in separate terminals after the experiment launch
+gate passes without `--allow-not-ready`:
 
 ```bash
 bash paper/UXFD_paper/results/queue_launch_shards/gpu0.sh

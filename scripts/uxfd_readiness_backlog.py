@@ -176,7 +176,8 @@ def evaluate_readiness_backlog(
                 next_action=(
                     f"Use `{GPU_PREFLIGHT_ACTION_PACKET}` to restore local GPU visibility, "
                     "then require `nvidia-smi -L` and PyTorch CUDA to show RTX 4090 "
-                    "devices 0 and 1 before launching shards."
+                    "devices 0 and 1 before rerunning the experiment launch gate and "
+                    "launching shards."
                 ),
                 evidence=(
                     f"{queue_path},{GPU_PREFLIGHT_ACTION_PACKET},"
@@ -330,9 +331,10 @@ def evaluate_readiness_backlog(
                     f"exact_status={binding.exact_reproduction_status}"
                 ),
                 next_action=(
-                    "After Q0 GPU preflight passes, run and promote accepted artifacts for "
-                    "the listed local proxy matrix entries. Keep the claim representative-only "
-                    "unless exact external code/config evidence is integrated."
+                    "After the experiment launch gate passes without override flags, run and "
+                    "promote accepted artifacts for the listed local proxy matrix entries. "
+                    "Keep the claim representative-only unless exact external code/config "
+                    "evidence is integrated."
                 ),
                 evidence="paper/UXFD_paper/results/recent_work_gate_current.md",
             )

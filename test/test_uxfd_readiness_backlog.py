@@ -42,6 +42,9 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert report.items[2].item_id == "Q0-ARTIFACT-COVERAGE"
     assert report.items[3].item_id == "Q0-SOTA-AGGREGATE"
     assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[1].next_action
+    assert "before rerunning the experiment launch gate and launching shards" in (
+        report.items[1].next_action
+    )
     assert str(GPU_PREFLIGHT_ACTION_PACKET) in report.items[1].evidence
     assert str(GPU_EXECUTION_RUNBOOK) in report.items[1].evidence
     assert str(GPU_LIVE_PREFLIGHT) in report.items[1].evidence
@@ -96,6 +99,10 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert len(top_items) == 7
     assert any(item.item_id == "TOP-Q7-TIMESEG" for item in top_items)
     assert any("local proxy entries=B02, A05, A07" in item.blocker for item in top_items)
+    assert all(
+        "After the experiment launch gate passes without override flags" in item.next_action
+        for item in top_items
+    )
     assert all("representative-only" in item.next_action for item in top_items)
 
 
