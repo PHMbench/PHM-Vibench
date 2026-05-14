@@ -141,8 +141,10 @@ def create_scaffold(
                     "",
                     "This directory is a scaffold, not accepted evidence.",
                     "Do not copy this template into `accepted_runs` until",
+                    "`python -m scripts.uxfd_experiment_launch_gate --format markdown`",
+                    "passes, then",
                     "`python -m scripts.uxfd_gpu_queue --live-preflight --require-preflight`",
-                    "passes and the generated launch script no longer exits via",
+                    "passes, and the generated launch script no longer exits via",
                     "`Blocked: static queue validation can_execute=False`.",
                     "After a real run, fill the template, rename it to `run_meta.yaml`,",
                     "place the referenced log/metrics/config files beside it, and run",
@@ -202,8 +204,13 @@ def render_markdown(records: Sequence[ArtifactTemplateRecord], root: Path) -> st
         f"- Templates: `{len(records)}`",
         "- Status: templates only; not accepted evidence.",
         (
-            "- Activation preflight: `python -m scripts.uxfd_gpu_queue "
-            "--live-preflight --require-preflight` must pass before templates "
+            "- Experiment launch gate: `python -m scripts.uxfd_experiment_launch_gate "
+            "--format markdown` must pass before templates are copied into "
+            "`accepted_runs`."
+        ),
+        (
+            "- GPU activation preflight: `python -m scripts.uxfd_gpu_queue "
+            "--live-preflight --require-preflight` must also pass before templates "
             "are copied into `accepted_runs`."
         ),
         (

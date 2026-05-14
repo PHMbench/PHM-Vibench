@@ -91,6 +91,7 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     assert payload["template_root"] == str(output_root)
     assert len(manifest) == len(payload["records"])
     readme = (output_root / "README.md").read_text(encoding="utf-8")
+    assert "uxfd_experiment_launch_gate --format markdown" in readme
     assert "uxfd_gpu_queue --live-preflight --require-preflight" in readme
     assert "Blocked: static queue validation can_execute=False" in readme
     assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage" in readme
@@ -114,6 +115,7 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
     readme = (PERSISTED_TEMPLATE_ROOT / "README.md").read_text(encoding="utf-8")
 
     assert manifest_path.exists()
+    assert "uxfd_experiment_launch_gate --format markdown" in readme
     assert "uxfd_gpu_queue --live-preflight --require-preflight" in readme
     assert "Blocked: static queue validation can_execute=False" in readme
     assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage" in readme
@@ -156,6 +158,11 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
         assert template_path.exists(), template_path
         assert template_path.name == "run_meta.template.yaml"
         assert not (template_path.parent / "run_meta.yaml").exists()
+        template_readme = (template_path.parent / "README.md").read_text(
+            encoding="utf-8"
+        )
+        assert "uxfd_experiment_launch_gate --format markdown" in template_readme
+        assert "uxfd_gpu_queue --live-preflight --require-preflight" in template_readme
         data = yaml.safe_load(template_path.read_text(encoding="utf-8"))
         assert data["accepted_evidence"] is False
         assert data["source_queue_id"] == record["queue_id"]
