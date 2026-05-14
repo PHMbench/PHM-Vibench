@@ -223,7 +223,8 @@ SHA_PROVENANCE_NEEDLES = (
 ACCEPTED_RUN_ROOT_README = Path("paper/UXFD_paper/results/accepted_runs/README.md")
 ACCEPTED_RUN_ROOT_GATE_NEEDLES = (
     "uxfd_experiment_launch_gate --format markdown",
-    "uxfd_gpu_queue --live-preflight --require-preflight",
+    "--allow-not-ready",
+    "uxfd_gpu_queue --format markdown --live-preflight --require-preflight",
     "Blocked: static queue validation can_execute=False",
     "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage",
 )

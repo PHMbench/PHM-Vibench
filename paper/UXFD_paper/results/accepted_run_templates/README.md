@@ -3,8 +3,8 @@
 - Template root: `paper/UXFD_paper/results/accepted_run_templates`
 - Templates: `104`
 - Status: templates only; not accepted evidence.
-- Experiment launch gate: `python -m scripts.uxfd_experiment_launch_gate --format markdown` must pass before templates are copied into `accepted_runs`.
-- GPU activation preflight: `python -m scripts.uxfd_gpu_queue --live-preflight --require-preflight` must also pass before templates are copied into `accepted_runs`.
+- Experiment launch gate: `python -m scripts.uxfd_experiment_launch_gate --format markdown` must pass without `--allow-not-ready` before templates are copied into `accepted_runs`.
+- GPU activation preflight: `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight` must also pass before templates are copied into `accepted_runs`.
 - Static queue rule: do not promote template-derived `run_meta.yaml` while launch scripts exit via `Blocked: static queue validation can_execute=False`.
 - Promotion gate: `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage` must pass before SOTA aggregates are activated.
 - Accepted metrics rule: `metrics.json` or `metrics.csv` must include at least one numeric metric; status-only payloads are rejected.

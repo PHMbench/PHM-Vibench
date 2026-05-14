@@ -327,7 +327,9 @@ def test_accepted_runs_readme_requires_gpu_and_queue_preflight() -> None:
 
     assert str(ACCEPTED_RUN_ARTIFACT_ACTION_PACKET) in text
     assert "uxfd_experiment_launch_gate --format markdown" in text
-    assert "uxfd_gpu_queue --live-preflight --require-preflight" in text
+    assert "passes without\n`--allow-not-ready`" in text
+    assert "owner-review decision gate, static\nqueue gate" in text
+    assert "uxfd_gpu_queue --format markdown --live-preflight --require-preflight" in text
     assert "Blocked: static queue validation can_execute=False" in text
     assert (
         "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage"
@@ -345,6 +347,10 @@ def test_accepted_run_artifact_action_packet_is_non_evidence_checklist() -> None
     normalized = " ".join(text.split())
 
     assert "not accepted experiment evidence" in normalized
+    assert (
+        "python -m scripts.uxfd_experiment_launch_gate --format markdown` "
+        "exits with code `0` without `--allow-not-ready`"
+    ) in normalized
     assert "accepted_evidence: true" in text
     assert "accepted_same_protocol" in text
     assert "sha256:<64 lowercase hex>" in text

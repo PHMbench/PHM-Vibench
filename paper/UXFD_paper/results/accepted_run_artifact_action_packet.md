@@ -16,7 +16,8 @@ as a substitute.
 
 ## Promotion Preconditions
 
-1. `python -m scripts.uxfd_experiment_launch_gate --format markdown`
+1. `python -m scripts.uxfd_experiment_launch_gate --format markdown` exits
+   with code `0` without `--allow-not-ready`.
 2. `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
    exits with code `0`.
 3. The launched queue row is from `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml`.

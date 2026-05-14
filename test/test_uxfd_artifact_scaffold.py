@@ -92,7 +92,8 @@ def test_artifact_scaffold_cli_writes_manifest_and_keeps_gate_blocked(
     assert len(manifest) == len(payload["records"])
     readme = (output_root / "README.md").read_text(encoding="utf-8")
     assert "uxfd_experiment_launch_gate --format markdown" in readme
-    assert "uxfd_gpu_queue --live-preflight --require-preflight" in readme
+    assert "without `--allow-not-ready`" in readme
+    assert "uxfd_gpu_queue --format markdown --live-preflight --require-preflight" in readme
     assert "Blocked: static queue validation can_execute=False" in readme
     assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage" in readme
     assert "at least one numeric metric" in readme
@@ -116,7 +117,8 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
 
     assert manifest_path.exists()
     assert "uxfd_experiment_launch_gate --format markdown" in readme
-    assert "uxfd_gpu_queue --live-preflight --require-preflight" in readme
+    assert "without `--allow-not-ready`" in readme
+    assert "uxfd_gpu_queue --format markdown --live-preflight --require-preflight" in readme
     assert "Blocked: static queue validation can_execute=False" in readme
     assert "uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage" in readme
     assert "at least one numeric metric" in readme
@@ -162,7 +164,11 @@ def test_persisted_artifact_templates_match_current_launch_plan() -> None:
             encoding="utf-8"
         )
         assert "uxfd_experiment_launch_gate --format markdown" in template_readme
-        assert "uxfd_gpu_queue --live-preflight --require-preflight" in template_readme
+        assert "without `--allow-not-ready`" in template_readme
+        assert (
+            "uxfd_gpu_queue --format markdown --live-preflight --require-preflight"
+            in template_readme
+        )
         data = yaml.safe_load(template_path.read_text(encoding="utf-8"))
         assert data["accepted_evidence"] is False
         assert data["source_queue_id"] == record["queue_id"]
