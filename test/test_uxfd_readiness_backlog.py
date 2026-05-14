@@ -31,6 +31,7 @@ def test_readiness_backlog_prioritizes_gpu_and_paper07() -> None:
     assert report.open_items > 10
     assert report.items[0].item_id == "Q0-EXPERIMENT-LAUNCH-GATE"
     assert report.items[0].category == "experiment-launch-gate"
+    assert report.items[0].blocker == "3 launch blockers; ready=False"
     assert (
         "python -m scripts.uxfd_experiment_launch_gate --format markdown"
         in report.items[0].next_action

@@ -136,7 +136,7 @@ def evaluate_readiness_backlog(
     items: List[BacklogItem] = []
     experiment_launch = evaluate_experiment_launch_gate(
         queue_path=queue_path,
-        require_live_preflight=False,
+        require_live_preflight=True,
     )
 
     if not experiment_launch.ready:
