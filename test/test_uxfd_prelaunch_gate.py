@@ -1,7 +1,16 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
 from scripts import uxfd_prelaunch_gate as gate
+
+
+PERSISTED_PRELAUNCH_GATE_JSON = Path(
+    "paper/UXFD_paper/results/prelaunch_gate_current.json"
+)
+PERSISTED_PRELAUNCH_GATE_MD = Path(
+    "paper/UXFD_paper/results/prelaunch_gate_current.md"
+)
 
 
 def test_prelaunch_gate_blocks_current_non_ready_state_without_live_preflight() -> None:
@@ -173,3 +182,13 @@ def test_prelaunch_gate_cli_writes_json(tmp_path: Path) -> None:
         ]
     ) == 0
     assert '"ready": false' in json_path.read_text(encoding="utf-8")
+
+
+def test_persisted_prelaunch_gate_reports_match_current_gate() -> None:
+    report = gate.evaluate_prelaunch_gate()
+
+    expected_json = json.dumps(gate.build_payload(report), indent=2) + "\n"
+    assert PERSISTED_PRELAUNCH_GATE_JSON.read_text(encoding="utf-8") == expected_json
+    assert PERSISTED_PRELAUNCH_GATE_MD.read_text(encoding="utf-8") == gate.render_markdown(
+        report
+    )
