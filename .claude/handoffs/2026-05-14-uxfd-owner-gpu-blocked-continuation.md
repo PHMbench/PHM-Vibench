@@ -22,10 +22,18 @@ the pre-launch decision gate without re-deriving them. The latest checkpoint
 also adds an owner-review evidence index and surfaces that index in the
 objective/submission gates. The newest checkpoint requires real owner decision
 files to preserve the three support-file links: action packet, recommendations,
-and evidence index.
+and evidence index. A later checkpoint adds an executable aggregate pre-launch
+gate plus persisted `prelaunch_gate_current.{json,md}` snapshots so future
+sessions can check launch authorization with one command.
 
 Recent parent commits:
 
+- `2ea7264 docs: refresh UXFD prelaunch gate snapshots`
+- `ae3386d test: verify UXFD prelaunch gate snapshots`
+- `7675285 test: track UXFD prelaunch gate artifacts`
+- `e1e4093 docs: clarify UXFD numeric metric contract`
+- `d35ca14 test: add UXFD prelaunch gate`
+- `c66994a docs: refresh UXFD owner support handoff`
 - `4412865 test: require UXFD owner review support files`
 - `fd7a483 docs: add UXFD owner template support files`
 - `96bc71a docs: surface UXFD owner evidence index in dirty triage`
@@ -127,8 +135,14 @@ Recent Paper03 submodule commit:
 - **Objective audit now tracks all three response packets plus owner evidence
   index** - owner decisions, GPU preflight, accepted-run artifact promotion,
   and the owner evidence index are prompt-to-artifact checklist items. The
-  latest persisted audit reports `Met: 82`, `Not met: 13`, `Blocked: 1`, and
+  latest persisted audit reports `Met: 84`, `Not met: 13`, `Blocked: 1`, and
   `Achieved: False`.
+- **Pre-launch authorization is now executable** -
+  `python -m scripts.uxfd_prelaunch_gate --format markdown` aggregates the
+  objective audit, owner-review gate, GPU static/live preflight, and submission
+  gate. It returns non-zero until every required gate passes without override
+  flags. The persisted snapshots are decision support only, not accepted
+  experiment evidence.
 
 ## Code Changes
 
@@ -247,6 +261,27 @@ Recent Paper03 submodule commit:
 - `scripts/uxfd_owner_review_gate.py` and
   `test/test_uxfd_owner_review_gate.py` - gate rejects decision payloads whose
   `supporting_files` mapping does not match owner-review support policy.
+- `scripts/uxfd_prelaunch_gate.py` and `test/test_uxfd_prelaunch_gate.py` -
+  aggregate launch authorization across objective, owner-review, GPU
+  static/live preflight, and submission gates; persisted snapshots are checked
+  against the current evaluator.
+- `paper/UXFD_paper/goal/README.md`,
+  `scripts/uxfd_goal_status.py`,
+  `test/test_uxfd_goal_status.py`, and
+  `paper/UXFD_paper/goal/status/status_09_gpu_execution.md` - document the
+  aggregate pre-launch gate as the command to run before queue launch.
+- `scripts/uxfd_objective_audit.py`,
+  `test/test_uxfd_objective_audit.py`,
+  `paper/UXFD_paper/results/objective_audit_current.json`,
+  `paper/UXFD_paper/results/objective_audit_current.md`,
+  `paper/UXFD_paper/results/prelaunch_gate_current.json`,
+  `paper/UXFD_paper/results/prelaunch_gate_current.md`, and
+  `paper/UXFD_paper/goal/status/status_00_overall.md` - objective audit now
+  tracks the pre-launch snapshots and reports `Met: 84`, `Not met: 13`,
+  `Blocked: 1`, `Achieved: False`.
+- `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml` - metrics contract wording
+  now explicitly includes "at least one numeric metric" and requires every
+  numeric metric to be finite.
 
 **Paper03 submodule files committed at `7a07a84`:**
 
@@ -295,9 +330,21 @@ Latest relevant tests passed:
   - result after requiring owner support files: `13 passed`
 - `python -m pytest -q test/test_uxfd_owner_review_gate.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py test/test_uxfd_submodule_dirty_triage.py`
   - result after committing the support-file gate: `54 passed`
+- `python -m pytest -q test/test_uxfd_prelaunch_gate.py test/test_uxfd_goal_status.py`
+  - result after adding the aggregate pre-launch gate: `6 passed`
+- `python -m pytest -q test/test_uxfd_prelaunch_gate.py test/test_uxfd_goal_status.py test/test_uxfd_gpu_queue.py test/test_uxfd_owner_review_gate.py test/test_uxfd_submission_gate.py test/test_uxfd_objective_audit.py`
+  - result after clarifying the numeric-metric contract: `56 passed, 1 warning`
+- `python -m pytest -q test/test_uxfd_prelaunch_gate.py test/test_uxfd_objective_audit.py test/test_uxfd_goal_status.py`
+  - result after tracking and refreshing pre-launch snapshots: `23 passed, 1 warning`
 
 Latest gate state:
 
+- `python -m scripts.uxfd_prelaunch_gate --format markdown`
+  - `Ready: False`
+  - objective counts: `met=84`, `not_met=13`, `blocked=1`, `unverified=0`
+  - blockers: objective audit not achieved, owner-review gate not ready, GPU
+    static gate not executable, live GPU preflight not accepted, and submission
+    gate not ready.
 - `python -m scripts.uxfd_owner_review_gate --format markdown --allow-not-ready`
   - `Ready: False`
   - missing real `paper/UXFD_paper/results/submodule_owner_review_decisions.json`
@@ -312,7 +359,7 @@ Latest gate state:
   - 7 paper matrices still `submission_ready: false`
 - `python -m scripts.uxfd_objective_audit --format markdown --allow-not-achieved`
   - `Achieved: False`
-  - `Met: 82`, `Not met: 13`, `Blocked: 1`
+  - `Met: 84`, `Not met: 13`, `Blocked: 1`
 - `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`
   - result: exit `2`
   - reason: NVIDIA driver/CUDA not visible; PyTorch reports
@@ -382,7 +429,10 @@ Latest gate state:
        preflight before launching queue shards.
 6. [ ] Populate accepted runs and rerun artifact, recent-work evidence, SOTA,
        submission, and objective gates.
-7. [ ] Before any queue launch, confirm these pass without override flags:
+7. [ ] Before any queue launch, confirm the aggregate gate passes without
+       override flags:
+       `python -m scripts.uxfd_prelaunch_gate --format markdown`. If it fails,
+       inspect the listed child gates:
        `python -m scripts.uxfd_objective_audit --format markdown`,
        `python -m scripts.uxfd_owner_review_gate --format markdown`,
        `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight`,
@@ -392,6 +442,11 @@ Latest gate state:
 
 - `paper/UXFD_paper/results/readiness_backlog.md` - current action queue and
   owner-review recommendation summaries.
+- `scripts/uxfd_prelaunch_gate.py` - single launch-authorization gate that
+  aggregates objective, owner-review, GPU, and submission gates.
+- `paper/UXFD_paper/results/prelaunch_gate_current.md` and
+  `paper/UXFD_paper/results/prelaunch_gate_current.json` - current persisted
+  not-ready pre-launch snapshots; decision support only, not accepted evidence.
 - `paper/UXFD_paper/results/gpu_preflight_action_packet.md` - short resource
   response form for restoring local GPU `0,1` RTX 4090 visibility; decision
   support only, not accepted evidence.
