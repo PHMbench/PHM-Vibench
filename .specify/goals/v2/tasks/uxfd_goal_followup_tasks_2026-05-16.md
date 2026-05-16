@@ -8,13 +8,14 @@ evidence, not SOTA evidence, and not IEEE Transactions submission readiness.
 Current gate baseline:
 
 ```text
-objective_audit: Achieved=False, Met=86, Not met=14, Blocked=1
+objective_audit: Achieved=False, Met=87, Not met=13, Blocked=1
 experiment_launch_gate: Ready=False
 submission_gate: Ready=False, Blocking findings=20
 accepted_runs: records=0
 sota_aggregates: missing
 owner_review: pending_records=6
 gpu_preflight: CUDA/RTX 4090 unavailable in this session
+parent_goal_control: clean, 76 paths
 ```
 
 ## Execution Policy
@@ -33,7 +34,7 @@ gpu_preflight: CUDA/RTX 4090 unavailable in this session
 | ID | Task | Depends on | Done when | Verification |
 |---|---|---|---|---|
 | `T00` | Freeze current task baseline | none | This task file is committed under `.specify/goals/v2/tasks/` | `git log -1 --oneline` |
-| `T01` | Resolve parent goal-status dirty files | `T00` | The 10 dirty `paper/UXFD_paper/goal/status/*.md` files are reviewed and either committed or intentionally left outside the UXFD goal-control checkpoint | `python -m scripts.uxfd_objective_audit --format markdown` no longer reports `dirty_parent_goal_control_paths=10` unless intentionally documented |
+| `T01` | Resolve parent goal-status dirty files | `T00` | Done: generated status reports and prelaunch gate reports are committed; Stage-2 status content is generator-owned | `python -m scripts.uxfd_objective_audit --format markdown` reports `76 parent goal-control paths clean` |
 | `T02` | Produce real owner-review decisions | `T00` | `submodule_owner_review_decisions.json` exists, keeps `OR-01..OR-06`, uses status `owner_review_decisions`, real reviewer names, ISO dates, and no pending decisions | `python -m scripts.uxfd_owner_review_gate --format markdown` |
 | `T03` | Clean or commit dirty paper submodules | `T02` | Dirty files in `Explainable_FD_Toolkit`, `1D-2D_fusion_explainable`, and `MOE_explainable` are resolved according to owner decisions | `python -m scripts.uxfd_submodule_dirty_triage --format markdown` reports clean or no parent-blocking dirty entries |
 | `T04` | Restore local GPU visibility | `T00` | GPUs `0,1` are visible as RTX 4090 devices and CUDA is available to torch | `python -m scripts.uxfd_gpu_queue --format markdown --live-preflight --require-preflight` |

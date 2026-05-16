@@ -25,29 +25,29 @@ Do not mark the active goal complete. Do not call `update_goal`.
 Latest inspected branch head:
 
 ```text
-b95ebad docs: bind UXFD owner decisions to review ids
+925af6a docs: make UXFD stage2 status generator-owned
 ```
 
 Recent high-impact commits:
 
 ```text
+925af6a docs: make UXFD stage2 status generator-owned
+0dc804d test: refresh UXFD prelaunch gate report
+73e8daf test: refresh UXFD generated status reports
+a110135 docs: align UXFD goals with stage tasks
+d4835ca docs: add UXFD stage2 blocked handoff
 b95ebad docs: bind UXFD owner decisions to review ids
 aef1652 docs: refresh UXFD objective audit finite SOTA evidence
 495a9ee docs: audit finite UXFD SOTA statistics
 511502f test: enforce finite UXFD SOTA statistics
 550104e docs: require launch gate for accepted run promotion
-44f43ce test: enforce UXFD low-tier source blockers
-ece3cad docs: clarify UXFD goal status launch gate
-e083b0f docs: add UXFD launch gate continuation handoff
-ec074a7 docs: refresh UXFD readiness launch gate wording
-a96b7d2 docs: require launch gate before UXFD queue execution
 ```
 
 Gate snapshot from 2026-05-16:
 
 ```text
 python -m scripts.uxfd_objective_audit --format markdown
-Achieved=False, Met=86, Not met=14, Blocked=1, Unverified=0
+Achieved=False, Met=87, Not met=13, Blocked=1, Unverified=0
 
 python -m scripts.uxfd_experiment_launch_gate --format markdown
 Ready=False
@@ -115,9 +115,8 @@ Primary blockers:
 - TOP representative accepted artifacts are pending or blocked for all seven
   TOP bindings.
 - All seven paper matrices still have `submission_ready=False`.
-- Parent UXFD goal-control checkpoint is currently not clean:
-  `dirty_parent_goal_control_paths=10`, all under
-  `paper/UXFD_paper/goal/status/`.
+- Parent UXFD goal-control checkpoint is clean after the generated status
+  refreshes: `76 parent goal-control paths clean`.
 
 Per-paper strict blockers:
 
