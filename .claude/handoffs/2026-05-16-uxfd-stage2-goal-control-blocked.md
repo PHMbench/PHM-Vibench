@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-16
 **Project:** `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`
-**Session Duration:** active goal tracker reported about 3043 seconds at the latest continuation checkpoint.
+**Session Duration:** active goal tracker reported about 4167 seconds at the latest continuation checkpoint.
 
 ## Current State
 
@@ -30,13 +30,15 @@ a110135 docs: align UXFD goals with stage tasks
 Follow-up commits made the generated status reports testable again, made the
 Stage-2 status sections generator-owned, refreshed the prelaunch report, and
 updated the `.specify/goals/v2` Stage-2 source docs to the current control
-baseline:
+baseline, then refreshed the handoff and stage-report head metadata:
 
 ```text
 73e8daf test: refresh UXFD generated status reports
 0dc804d test: refresh UXFD prelaunch gate report
 925af6a docs: make UXFD stage2 status generator-owned
 5fbf6d4 docs: refresh UXFD stage2 control baseline
+30a2f82 docs: refresh UXFD stage2 handoff
+eeb6323 docs: refresh UXFD stage report head metadata
 ```
 
 Latest audits confirm the parent goal-control checkpoint is clean
@@ -95,6 +97,9 @@ incomplete.
 - `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md` - marked
   `T01` done and updated the current gate baseline to `Met=87`, `Not met=13`,
   `Blocked=1`.
+- `.claude/handoffs/2026-05-16-uxfd-stage2-goal-control-blocked.md` -
+  refreshed the continuation handoff with the latest blocked control-plane
+  commits.
 
 **Validation performed after these commits:**
 
