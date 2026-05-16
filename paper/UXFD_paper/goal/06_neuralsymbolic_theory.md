@@ -78,3 +78,19 @@
 - At least six baselines and the neural-symbolic ablations above are present in accepted artifacts.
 - Any SOTA trustworthiness or constrained-diagnosis claim satisfies the SOTA optimization gate.
 - Submodule-local commit records the accepted paper package milestone.
+
+## Stage-2 Follow-up Task Binding
+
+- Evidence task: `P06-A`.
+- Queue step: `Q6`.
+- Dependencies: `T02`, `T03`, `T04`, `T05`, and `T07`.
+- Accepted evidence required: neural-symbolic proposed-method artifacts, at
+  least six accepted baselines, at least seven accepted ablations, proposition
+  validation, real-data robustness support for final P2, TOP-Q6-TIMESLIVER
+  representative evidence, and complete local 2x4090 metadata.
+- Verification:
+  `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage`
+  and `python -m scripts.uxfd_sota_gate --format markdown`.
+
+Failed propositions must remain explicit boundary conditions. They must not be
+hidden or rewritten as positive evidence.

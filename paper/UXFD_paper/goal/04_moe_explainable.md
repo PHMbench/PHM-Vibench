@@ -75,3 +75,19 @@
 - At least six baselines and the MoE ablations above are present in accepted artifacts.
 - Any SOTA MoE claim satisfies the SOTA optimization gate.
 - Submodule-local commit records the accepted paper package milestone.
+
+## Stage-2 Follow-up Task Binding
+
+- Evidence task: `P04-A`.
+- Queue step: `Q4`.
+- Dependencies: `T02`, `T03`, `T04`, `T05`, and `T07`.
+- Accepted evidence required: MoE proposed-method artifacts, at least six
+  accepted baselines, at least six accepted ablations, route entropy, expert
+  activation, expert-count surfaces, TOP-Q4-TSPULSE representative evidence,
+  and complete local 2x4090 metadata.
+- Verification:
+  `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage`
+  and `python -m scripts.uxfd_sota_gate --format markdown`.
+
+SOTA or stable-explainable-MoE wording is blocked if routing stability is not
+accepted together with diagnostic performance.

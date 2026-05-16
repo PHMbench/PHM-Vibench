@@ -88,3 +88,22 @@
 - Industrial performance claims satisfy the SOTA optimization gate or are scoped conservatively.
 - At least six baselines, all required ablations, and the rejection-recovery trace are present in accepted artifacts.
 - Submodule-local commit records the accepted paper package milestone.
+
+## Stage-2 Follow-up Task Binding
+
+- Evidence task: `P07-A`.
+- Queue step: `Q1`; this remains the first paper queue because it is the
+  rejected-paper recovery target.
+- Dependencies: `T02`, `T03`, `T04`, `T05`, and `T06`.
+- Accepted evidence required: industrial same-protocol proposed model results,
+  at least seven accepted baselines, at least six accepted ablations,
+  TOP-Q1-GTM representative evidence, local 2x4090 metadata, and
+  reviewer-traceable rejection-recovery artifacts.
+- Verification:
+  `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage`
+  and `python -m scripts.uxfd_sota_gate --format markdown`.
+
+Paper07 may be optimized toward SOTA, but SOTA wording is allowed only after
+matched-seed accepted aggregate evidence beats every declared baseline and
+runnable TOP representative. Otherwise the contribution must be reframed as a
+bounded operator-attention or interpretability improvement.

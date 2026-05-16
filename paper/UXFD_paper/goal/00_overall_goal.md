@@ -122,3 +122,37 @@ Every milestone handoff must record:
 Current handoff:
 
 - `.claude/handoffs/2026-05-11-uxfd-ieee-trans-submission-readiness.md`
+
+## Stage-2 Execution Baseline
+
+The next executable baseline is defined by:
+
+- `.specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md`
+- `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md`
+
+Current status:
+
+- control-plane readiness: strong progress
+- evidence-plane readiness: blocked
+- submission readiness: not achieved
+
+Required task order:
+
+| ID | Required outcome |
+|---|---|
+| `T00` | Current task baseline is frozen and committed. |
+| `T01` | The 10 dirty parent `goal/status/*.md` paths are reviewed and committed or intentionally documented. |
+| `T02` | Real owner-review decisions exist for `OR-01` through `OR-06`; template records are not approval. |
+| `T03` | Dirty paper submodules are cleaned or committed according to owner decisions. |
+| `T04` | Local GPUs `0,1` are visible as RTX 4090 devices to `nvidia-smi` and PyTorch. |
+| `T05` | `scripts.uxfd_experiment_launch_gate` passes without `--allow-not-ready`. |
+| `T06` | Paper07 Q0/Q1 proposed, baseline, ablation, and TOP artifacts are accepted. |
+| `T07` | Q2-Q7 accepted artifacts cover all seven papers, baselines, ablations, and TOP bindings. |
+| `T08` | Seven SOTA aggregates exist and reference only accepted same-protocol run metadata. |
+| `T09` | Paper matrices become submission-ready only where accepted evidence supports that status. |
+| `T10` | Final objective audit shows the active goal achieved. |
+
+The baseline and ablation counts in this package are planning coverage until
+accepted artifacts exist under `paper/UXFD_paper/results/accepted_runs`.
+SOTA language remains blocked until `scripts.uxfd_sota_gate` accepts the
+matched-seed aggregate evidence.

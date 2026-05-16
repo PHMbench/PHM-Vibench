@@ -91,3 +91,24 @@ submission readiness.
 - Ablation suite: required before any innovation claim is accepted.
 - SOTA gate: required before any SOTA wording is accepted.
 - Submodule-local commit: required before parent gitlink update is intentional.
+
+## Stage-2 Readiness Binding
+
+Current Stage-2 status from 2026-05-16:
+
+- control-plane readiness: strong progress
+- evidence-plane readiness: blocked
+- submission readiness: not achieved
+
+Final readiness depends on `T07` through `T10`:
+
+| Task | Matrix effect |
+|---|---|
+| `T07` | All seven papers have accepted proposed, baseline, ablation, TOP, and GPU metadata artifacts. |
+| `T08` | Seven SOTA aggregates exist and pass the aggregate gate. |
+| `T09` | Paper-local matrices may change `submission_ready` only where accepted evidence supports it. |
+| `T10` | Parent objective audit can mark the active goal achieved only after all final gates pass. |
+
+Until then, every paper remains `submission_ready=False`. Baseline and ablation
+counts document required coverage only; they are not accepted evidence without
+artifact-gate promotion and SOTA aggregate validation.

@@ -77,3 +77,19 @@
 - At least six baselines and the fuzzy-rule ablations above are present in accepted artifacts.
 - Any SOTA fuzzy/safety claim satisfies the SOTA optimization gate.
 - Submodule-local commit records the accepted paper package milestone.
+
+## Stage-2 Follow-up Task Binding
+
+- Evidence task: `P05-A`.
+- Queue step: `Q5`.
+- Dependencies: `T02`, `T03`, `T04`, `T05`, and `T07`.
+- Accepted evidence required: fuzzy proposed-method artifacts, at least seven
+  accepted baselines, at least six accepted ablations, rule metrics,
+  safety-case package, TOP-Q5-TIMESLIVER representative evidence, and complete
+  local 2x4090 metadata.
+- Verification:
+  `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage`
+  and `python -m scripts.uxfd_submission_gate --format markdown`.
+
+Safety or rule-transparency claims require accepted failure-case artifacts;
+placeholder tables or smoke outputs remain non-evidence.

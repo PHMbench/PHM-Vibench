@@ -78,3 +78,19 @@
 - Any SOTA infrastructure claim satisfies the SOTA optimization gate.
 - All API, metric, and report-generation claims map to runnable examples or blockers.
 - Submodule-local commit records the accepted paper package milestone.
+
+## Stage-2 Follow-up Task Binding
+
+- Evidence task: `P01-A`.
+- Queue step: `Q3`.
+- Dependencies: `T02`, `T03`, `T04`, `T05`, and `T07`.
+- Accepted evidence required: proposed Toolkit artifacts, at least six accepted
+  baseline artifacts, at least six accepted ablation artifacts, TOP-Q3-TIMESEG
+  representative evidence, and complete local 2x4090 runtime metadata.
+- Verification:
+  `python -m scripts.uxfd_artifact_gate paper/UXFD_paper/results/accepted_runs --require-queue-coverage`
+  and `python -m scripts.uxfd_sota_gate --format markdown`.
+
+The six-baseline and six-ablation suites above are required coverage, not
+accepted evidence. They become claim-supporting evidence only after promotion
+through the accepted-run artifact gate.

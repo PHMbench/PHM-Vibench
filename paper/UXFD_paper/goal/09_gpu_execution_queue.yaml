@@ -1,9 +1,17 @@
-status_date: "2026-05-11"
+status_date: "2026-05-16"
 status: "blocked_resource_preflight"
 purpose: >
   Machine-readable execution queue for turning the seven paper-local
   baseline_ablation_matrix.yaml files into accepted 2x4090 experiment evidence.
   This file is a scheduler contract, not completed evidence.
+
+stage2_task_binding:
+  source_status: ".specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md"
+  source_tasks: ".specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md"
+  launch_prerequisites: ["T02", "T03", "T04", "T05"]
+  accepted_artifact_tasks: ["T06", "T07"]
+  sota_and_submission_tasks: ["T08", "T09", "T10"]
+  non_claim_boundary: "This queue is not accepted experiment evidence; no SOTA or submission-ready wording is allowed before artifact, SOTA, submission, and objective gates pass."
 
 resource_preflight:
   required_devices: ["0", "1"]

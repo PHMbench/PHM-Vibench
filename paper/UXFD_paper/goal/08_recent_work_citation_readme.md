@@ -132,3 +132,23 @@ python -m pytest -q test/test_model_registry_contract.py test/test_x_model_smoke
 For paper-specific baselines, the next milestone must bind each selected TOP
 work to an exact command/log/artifact inside the owning submodule before it is
 counted in a SOTA comparison.
+
+## Stage-2 Citation Readiness Binding
+
+The TOP recent-work policy is currently ready as policy but not ready as
+evidence. The accepted pool, 2024-2026 freshness, and low-tier exclusion rules
+are coherent, but the queued TOP representatives still lack accepted
+same-protocol logs, metrics, and `run_meta.yaml` records.
+
+Task binding:
+
+- `M-04`: refresh recent-work README and paper citations.
+- `SOTA-03`: create accepted-run refs for all TOP representative bindings.
+- `P01-A` through `P07-A`: attach one accepted TOP representative artifact to
+  each paper before submission-ready wording is allowed.
+
+Low-tier boundary: Scientific Reports, publisher-level MDPI journals, IEEE
+Transactions on Instrumentation and Measurement, IEEE Access, Applied Sciences,
+Electronics, Sensors, Mathematics, and similar venues must not support novelty,
+baseline strength, or SOTA positioning. They may appear only as rejected
+context outside the accepted method pool.

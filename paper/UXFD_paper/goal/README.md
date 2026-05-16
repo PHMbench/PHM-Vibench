@@ -239,3 +239,28 @@ sed -n '1,260p' paper/UXFD_paper/results/commit_recovery_plan.md
 The plan stages Paper02 planning files first, then the parent goal-control
 checkpoint, and keeps generated figures, unreviewed manuscripts, model weights,
 and unrelated parent edits out of the checkpoint.
+
+## Stage-2 Control Baseline
+
+Source of truth for the next execution phase:
+
+- `.specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md`
+- `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md`
+
+Current phase labels:
+
+- control-plane readiness: strong progress
+- evidence-plane readiness: blocked
+- submission readiness: not achieved
+
+The Stage-2 backlog is ordered by `T00` through `T10`: freeze the baseline,
+resolve goal-status dirtiness, produce real owner-review decisions, clean or
+commit paper submodules, restore GPU visibility, pass the experiment launch
+gate, execute Q0/Q1 for Paper07, execute Q2-Q7 for the remaining papers, build
+SOTA aggregates, update matrices only from accepted evidence, and run the final
+objective audit.
+
+Hard boundary: do not call `update_goal`, do not claim SOTA, and do not mark
+any paper submission-ready until the owner-review gate, dirty-triage gate,
+live 2x4090 preflight, experiment launch gate, artifact gate, SOTA gate,
+submission gate, and objective audit all pass without override flags.
