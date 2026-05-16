@@ -4,7 +4,7 @@ Status: launch authorization only. This report is not accepted experiment eviden
 
 - Ready: `False`
 - Objective audit achieved: `False`
-- Objective counts: `met=86`, `not_met=13`, `blocked=1`, `unverified=0`
+- Objective counts: `met=87`, `not_met=13`, `blocked=1`, `unverified=0`
 - Owner-review gate ready: `False`
 - Owner-review source: `paper/UXFD_paper/results/submodule_owner_review_decisions.template.json`
 - Owner-review pending records: `6`
@@ -23,7 +23,7 @@ Status: launch authorization only. This report is not accepted experiment eviden
 
 ## Blockers
 
-- objective audit not achieved: met=86, not_met=13, blocked=1, unverified=0
+- objective audit not achieved: met=87, not_met=13, blocked=1, unverified=0
 - owner-review gate not ready: pending_records=6, blockers=4
 - gpu queue static gate not executable: blocked; no accepted GPU evidence can be generated in this session
 - live GPU preflight not accepted: blocked: NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.; torch cuda_available=False, device_count=0; required_gpu_class=RTX 4090 not satisfied by gpu_names=()
