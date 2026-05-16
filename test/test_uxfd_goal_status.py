@@ -16,7 +16,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     )
 
     assert "not accepted experiment evidence" in overall
-    assert "Objective audit: `met=86`, `not_met=13`, `blocked=1`" in overall
+    assert "Objective audit: `met=87`, `not_met=13`, `blocked=1`" in overall
     assert "Experiment launch gate ready: `False`" in overall
     assert "Experiment launch blockers: `3`" in overall
     assert "Live launch preflight accepted: `False`" in overall
