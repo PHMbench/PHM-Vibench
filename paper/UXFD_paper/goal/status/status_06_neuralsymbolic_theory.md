@@ -5,6 +5,24 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Generated: `2026-05-14`
 - Goal file: `paper/UXFD_paper/goal/06_neuralsymbolic_theory.md`
 
+## 2026-05-16 Stage-2 Task Binding
+
+Source artifacts:
+
+- `.specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md`
+- `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md`
+
+Current stage labels:
+
+- control-plane readiness: strong progress
+- evidence-plane readiness: blocked
+- submission readiness: not achieved
+
+- Bound evidence task: `P06-A`
+- Required accepted evidence: proposition validation, source-backed mapping, baselines, ablations, TOP representative, and GPU metadata.
+- Upstream blockers: `T02` owner decisions, `T03` dirty-submodule cleanup, `T04` local GPU visibility, and `T05` experiment launch gate.
+- No paper-local readiness or SOTA wording is allowed until `T07`, `T08`, and `T09` complete from accepted artifacts.
+
 ## Current Verdict
 
 - Submission ready: `False`

@@ -21,6 +21,8 @@ from scripts.uxfd_submodule_dirty_triage import (
 
 
 DEFAULT_STATUS_DIR = Path("paper/UXFD_paper/goal/status")
+STAGE_REPORT_PATH = Path(".specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md")
+FOLLOWUP_TASKS_PATH = Path(".specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md")
 LAUNCH_SCRIPT_STATIC_GATE_PATHS = (
     Path("paper/UXFD_paper/results/queue_launch_plan.sh"),
     Path("paper/UXFD_paper/results/queue_launch_shards/gpu0.sh"),
@@ -79,6 +81,37 @@ PAPER_ORDER = (
     "TII_operator_attention",
 )
 
+PAPER_STAGE_BINDINGS: Mapping[str, Tuple[str, str]] = {
+    "TII_operator_attention": (
+        "P07-A",
+        "industrial same-protocol baselines, ablations, TOP representative, GPU metadata, and rejection-recovery traceability",
+    ),
+    "1D-2D_fusion_explainable": (
+        "P02-A",
+        "CWRU/XJTU same-protocol fusion matrix, branch ablations, TOP representative, and GPU metadata",
+    ),
+    "Explainable_FD_Toolkit": (
+        "P01-A",
+        "toolkit schema/report evidence, baselines, ablations, TOP representative, and local 2x4090 metadata",
+    ),
+    "MOE_explainable": (
+        "P04-A",
+        "MoE route entropy, expert activation/count surfaces, baselines, ablations, TOP representative, and GPU metadata",
+    ),
+    "Paper_fuzzy_XFD": (
+        "P05-A",
+        "fuzzy rule metrics, safety-case package, reviewer ablations, TOP representative, and GPU metadata",
+    ),
+    "Neuralsymbolic_theory": (
+        "P06-A",
+        "proposition validation, source-backed mapping, baselines, ablations, TOP representative, and GPU metadata",
+    ),
+    "LLM_Explainable_FD_Toolkit": (
+        "P03-A",
+        "LLM evidence packages, hallucination checks, latency sweep, baselines, ablations, TOP representative, and GPU metadata",
+    ),
+}
+
 
 def _header(title: str, goal_file: str, generated_on: str) -> List[str]:
     return [
@@ -88,6 +121,73 @@ def _header(title: str, goal_file: str, generated_on: str) -> List[str]:
         "",
         f"- Generated: `{generated_on}`",
         f"- Goal file: `{goal_file}`",
+        "",
+    ]
+
+
+def _stage2_source_lines() -> List[str]:
+    return [
+        "Source artifacts:",
+        "",
+        f"- `{STAGE_REPORT_PATH}`",
+        f"- `{FOLLOWUP_TASKS_PATH}`",
+        "",
+        "Current stage labels:",
+        "",
+        "- control-plane readiness: strong progress",
+        "- evidence-plane readiness: blocked",
+        "- submission readiness: not achieved",
+        "",
+    ]
+
+
+def _stage2_overall_lines() -> List[str]:
+    return [
+        "## 2026-05-16 Stage-2 Task Binding",
+        "",
+        *_stage2_source_lines(),
+        "Critical path: `T00` -> `T01` -> `T02` -> `T03` -> `T04` -> `T05` -> `T06` -> `T07` -> `T08` -> `T09` -> `T10`.",
+        "",
+        "Hard blockers remain: missing real owner-review decisions, dirty paper submodules, failed local 2x4090 CUDA visibility, zero accepted run records, missing SOTA aggregate root, and seven non-ready paper matrices.",
+        "",
+        "Do not mark the active goal complete and do not call `update_goal` until every final gate passes without override flags.",
+        "",
+    ]
+
+
+def _stage2_paper_lines(paper_id: str) -> List[str]:
+    task_id, task_summary = PAPER_STAGE_BINDINGS[paper_id]
+    return [
+        "## 2026-05-16 Stage-2 Task Binding",
+        "",
+        *_stage2_source_lines(),
+        f"- Bound evidence task: `{task_id}`",
+        f"- Required accepted evidence: {task_summary}.",
+        "- Upstream blockers: `T02` owner decisions, `T03` dirty-submodule cleanup, `T04` local GPU visibility, and `T05` experiment launch gate.",
+        "- No paper-local readiness or SOTA wording is allowed until `T07`, `T08`, and `T09` complete from accepted artifacts.",
+        "",
+    ]
+
+
+def _stage2_recent_work_lines() -> List[str]:
+    return [
+        "## 2026-05-16 Stage-2 Task Binding",
+        "",
+        *_stage2_source_lines(),
+        "- Bound manuscript task: `M-04` refresh recent-work README/citations.",
+        "- Bound SOTA task: `SOTA-03` create accepted-run refs for all TOP representative bindings.",
+        "- Policy/source verification is ready, but TOP evidence remains blocked until accepted same-protocol artifacts exist.",
+        "",
+    ]
+
+
+def _stage2_gpu_lines() -> List[str]:
+    return [
+        "## 2026-05-16 Stage-2 Task Binding",
+        "",
+        *_stage2_source_lines(),
+        "- Bound GPU tasks: `T04` restore local GPU visibility, `T05` pass experiment launch gate, `T06` execute Q0/Q1, and `T07` execute Q2-Q7.",
+        "- Accepted artifacts remain blocked until live 2x4090 preflight, owner review, static queue validation, and artifact-gate promotion all pass.",
         "",
     ]
 
@@ -155,6 +255,7 @@ def _render_overall(
         "paper/UXFD_paper/goal/00_overall_goal.md",
         generated_on,
     )
+    lines.extend(_stage2_overall_lines())
     lines.extend(
         [
             "## Current Verdict",
@@ -257,6 +358,7 @@ def _render_paper(
         {"covered": 0, "expected": 0, "missing": 0},
     )
     lines = _header(title, goal_file, generated_on)
+    lines.extend(_stage2_paper_lines(paper_id))
     lines.extend(
         [
             "## Current Verdict",
@@ -310,6 +412,7 @@ def _render_recent_work(generated_on: str, recent_report: object) -> str:
         "paper/UXFD_paper/goal/08_recent_work_citation_readme.md",
         generated_on,
     )
+    lines.extend(_stage2_recent_work_lines())
     lines.extend(
         [
             "## Current Verdict",
@@ -388,6 +491,7 @@ def _render_gpu_execution(
         "paper/UXFD_paper/goal/09_gpu_execution_queue.yaml",
         generated_on,
     )
+    lines.extend(_stage2_gpu_lines())
     lines.extend(
         [
             "## Current Verdict",

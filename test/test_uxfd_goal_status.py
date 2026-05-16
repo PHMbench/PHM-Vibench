@@ -16,6 +16,14 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     )
 
     assert "not accepted experiment evidence" in overall
+    assert "## 2026-05-16 Stage-2 Task Binding" in overall
+    assert ".specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md" in overall
+    assert ".specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md" in overall
+    assert "control-plane readiness: strong progress" in overall
+    assert "evidence-plane readiness: blocked" in overall
+    assert "submission readiness: not achieved" in overall
+    assert "`T00` -> `T01` -> `T02` -> `T03` -> `T04` -> `T05`" in overall
+    assert "Do not mark the active goal complete" in overall
     assert "Objective audit: `met=87`, `not_met=13`, `blocked=1`" in overall
     assert "Experiment launch gate ready: `False`" in overall
     assert "Experiment launch blockers: `3`" in overall
@@ -38,6 +46,7 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "Do not auto-commit these entries" in overall
     assert "| `paper/UXFD_paper/Explainable_FD_Toolkit` | 2 | 20 | 0 |" in overall
     assert "Queue dry-run entries: `104`" in gpu
+    assert "Bound GPU tasks: `T04` restore local GPU visibility" in gpu
     assert "Experiment launch gate ready: `False`" in gpu
     assert "Experiment launch blockers: `3`" in gpu
     assert "Owner-review gate ready: `False`" in gpu
@@ -75,6 +84,8 @@ def test_goal_status_generator_writes_current_non_evidence_reports(tmp_path: Pat
     assert "representative-only" in gpu
     assert "`pending_gpu_and_artifacts`" in gpu
     assert "Evidence ready: `False`" in citation
+    assert "Bound manuscript task: `M-04` refresh recent-work README/citations" in citation
+    assert "Bound SOTA task: `SOTA-03` create accepted-run refs" in citation
     assert "Source verification ready: `True`" in citation
     assert "## Paper-Local Exact-Status Scope" in citation
     assert "Unscoped Exact Claims" in citation

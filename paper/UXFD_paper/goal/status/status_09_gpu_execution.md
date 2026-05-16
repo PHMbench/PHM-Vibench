@@ -5,6 +5,22 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Generated: `2026-05-14`
 - Goal file: `paper/UXFD_paper/goal/09_gpu_execution_queue.yaml`
 
+## 2026-05-16 Stage-2 Task Binding
+
+Source artifacts:
+
+- `.specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md`
+- `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md`
+
+Current stage labels:
+
+- control-plane readiness: strong progress
+- evidence-plane readiness: blocked
+- submission readiness: not achieved
+
+- Bound GPU tasks: `T04` restore local GPU visibility, `T05` pass experiment launch gate, `T06` execute Q0/Q1, and `T07` execute Q2-Q7.
+- Accepted artifacts remain blocked until live 2x4090 preflight, owner review, static queue validation, and artifact-gate promotion all pass.
+
 ## Current Verdict
 
 - Can execute now: `False`

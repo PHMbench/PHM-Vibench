@@ -5,6 +5,23 @@ Status reports are generated control-plane summaries, not accepted experiment ev
 - Generated: `2026-05-14`
 - Goal file: `paper/UXFD_paper/goal/08_recent_work_citation_readme.md`
 
+## 2026-05-16 Stage-2 Task Binding
+
+Source artifacts:
+
+- `.specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md`
+- `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md`
+
+Current stage labels:
+
+- control-plane readiness: strong progress
+- evidence-plane readiness: blocked
+- submission readiness: not achieved
+
+- Bound manuscript task: `M-04` refresh recent-work README/citations.
+- Bound SOTA task: `SOTA-03` create accepted-run refs for all TOP representative bindings.
+- Policy/source verification is ready, but TOP evidence remains blocked until accepted same-protocol artifacts exist.
+
 ## Current Verdict
 
 - Ready: `False`
