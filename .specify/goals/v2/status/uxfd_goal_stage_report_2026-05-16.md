@@ -22,15 +22,17 @@ Do not mark the active goal complete. Do not call `update_goal`.
 
 ## Evidence Snapshot
 
-Latest inspected branch head:
+Latest inspected branch head before this metadata refresh:
 
 ```text
-925af6a docs: make UXFD stage2 status generator-owned
+30a2f82 docs: refresh UXFD stage2 handoff
 ```
 
 Recent high-impact commits:
 
 ```text
+30a2f82 docs: refresh UXFD stage2 handoff
+5fbf6d4 docs: refresh UXFD stage2 control baseline
 925af6a docs: make UXFD stage2 status generator-owned
 0dc804d test: refresh UXFD prelaunch gate report
 73e8daf test: refresh UXFD generated status reports
