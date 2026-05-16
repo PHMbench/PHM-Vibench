@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-16
 **Project:** `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`
-**Session Duration:** active goal tracker reported about 146 seconds before this handoff work.
+**Session Duration:** active goal tracker reported about 3043 seconds at the latest continuation checkpoint.
 
 ## Current State
 
@@ -11,9 +11,9 @@
 
 **Phase:** implementation / gate review.
 
-**Progress:** goal-control work is committed and clean; execution is blocked by
-owner-review decisions, GPU visibility, accepted experiment artifacts, and SOTA
-aggregate evidence.
+**Progress:** goal-control and Stage-2 control-baseline work are committed and
+clean; execution is blocked by owner-review decisions, GPU visibility, accepted
+experiment artifacts, and SOTA aggregate evidence.
 
 ## What We Did
 
@@ -27,8 +27,21 @@ The update was committed as:
 a110135 docs: align UXFD goals with stage tasks
 ```
 
-Latest audits confirm the parent goal-control checkpoint is now clean, but the
-overall UXFD objective remains incomplete.
+Follow-up commits made the generated status reports testable again, made the
+Stage-2 status sections generator-owned, refreshed the prelaunch report, and
+updated the `.specify/goals/v2` Stage-2 source docs to the current control
+baseline:
+
+```text
+73e8daf test: refresh UXFD generated status reports
+0dc804d test: refresh UXFD prelaunch gate report
+925af6a docs: make UXFD stage2 status generator-owned
+5fbf6d4 docs: refresh UXFD stage2 control baseline
+```
+
+Latest audits confirm the parent goal-control checkpoint is clean
+(`76 parent goal-control paths clean`), but the overall UXFD objective remains
+incomplete.
 
 ## Decisions Made
 
@@ -41,6 +54,10 @@ overall UXFD objective remains incomplete.
   aggregates are missing; all seven paper matrices remain non-ready.
 - **Keep goal-control clean.** No further changes should be made under
   `paper/UXFD_paper/goal/**` unless they address a concrete new requirement.
+- **Keep generated status content generator-owned.** Stage-2 sections in
+  `paper/UXFD_paper/goal/status/*.md` are now emitted by
+  `scripts/uxfd_goal_status.py`; update the generator and its test instead of
+  hand-editing generated status reports.
 
 ## Code Changes
 
@@ -61,6 +78,39 @@ overall UXFD objective remains incomplete.
   readiness to `T07` through `T10`.
 - `paper/UXFD_paper/goal/status/*.md` - added 2026-05-16 Stage-2 task binding,
   blockers, verification commands, and non-claim boundaries.
+
+**Files modified and committed after `a110135`:**
+
+- `scripts/uxfd_goal_status.py` - emits Stage-2 source paths, stage labels,
+  critical path, per-paper evidence-task bindings, GPU tasks, and
+  recent-work/SOTA bindings.
+- `test/test_uxfd_goal_status.py` - asserts generated status reports preserve
+  the Stage-2 source bindings and key non-claim boundaries.
+- `paper/UXFD_paper/goal/status/*.md` - regenerated from the status generator,
+  preserving Stage-2 bindings as generated content.
+- `paper/UXFD_paper/results/prelaunch_gate_current.{json,md}` - refreshed to
+  match the current prelaunch evaluator.
+- `.specify/goals/v2/status/uxfd_goal_stage_report_2026-05-16.md` - refreshed
+  current head, objective counts, and parent goal-control cleanliness.
+- `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md` - marked
+  `T01` done and updated the current gate baseline to `Met=87`, `Not met=13`,
+  `Blocked=1`.
+
+**Validation performed after these commits:**
+
+```text
+python -m pytest -q test/test_uxfd_goal_status.py
+2 passed, 1 warning
+
+python -m pytest -q test/test_uxfd*.py
+215 passed, 1 warning
+
+python -m scripts.validate_docs
+[OK] Documentation checks passed (128 files scanned).
+
+python -m scripts.uxfd_objective_audit --format markdown
+Achieved=False, Met=87, Not met=13, Blocked=1, Unverified=0
+```
 
 ## Open Questions
 
@@ -89,9 +139,9 @@ overall UXFD objective remains incomplete.
 ## Context to Remember
 
 - The active UXFD goal is not complete. Do not call `update_goal`.
-- Current goal-control paths are clean:
-  `git status --short -- paper/UXFD_paper/goal .specify/goals/v2 paper/UXFD_paper/results/submodule_owner_review_decisions.json`
-  returned no output before this handoff was created.
+- Current goal-control and Stage-2 paths are clean:
+  `git status --short -- .specify/goals/v2 paper/UXFD_paper/goal scripts/uxfd_goal_status.py test/test_uxfd_goal_status.py paper/UXFD_paper/results/prelaunch_gate_current.json paper/UXFD_paper/results/prelaunch_gate_current.md`
+  returned no output at the latest checkpoint.
 - The repository has many unrelated dirty files outside the UXFD goal-control
   scope. Do not stage or revert them.
 - The only accelerator resources allowed by the goal are local RTX 4090 GPUs
@@ -123,3 +173,7 @@ overall UXFD objective remains incomplete.
   metadata contract.
 - `.specify/goals/v2/tasks/uxfd_goal_followup_tasks_2026-05-16.md` - Stage-2
   critical path.
+- `scripts/uxfd_goal_status.py` - generator for status reports; update this
+  when Stage-2 status content changes.
+- `test/test_uxfd_goal_status.py` - focused contract for generated status
+  reports.
