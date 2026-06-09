@@ -1,0 +1,99 @@
+benchmark:
+  id: "phm_genbench_six_dataset_submission_v1"
+  output_dir: "results/paper/phm_generative/six_dataset_submission_v1"
+  baseline_method: "cfm_grid"
+  min_datasets: 6
+  python: "python"
+  seeds: [0, 1]
+  resource:
+    gpu_ids: [6, 7]
+    max_parallel_runs: 2
+    require_cuda: true
+  data_check:
+    data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+    metadata_file: "metadata.xlsx"
+  overrides:
+    data.data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+    data.metadata_file: "metadata.xlsx"
+    data.normalization: "standardization"
+    data.num_workers: 4
+    model.num_fault_classes: 32
+    model.num_domains: 16
+    trainer.device: "cuda"
+    trainer.gpus: 1
+
+datasets:
+  - dataset: "RM_001_CWRU"
+    dataset_id: 1
+    name: "CWRU"
+    overrides:
+      task.target_system_id: [1]
+      task.source_domain_id: [0, 1, 2]
+      task.target_domain_id: [3]
+    protocol:
+      utility: "domain_shift"
+      notes: "Balanced four-domain diagnostic benchmark."
+  - dataset: "RM_002_XJTU"
+    dataset_id: 2
+    name: "XJTU"
+    overrides:
+      task.target_system_id: [2]
+      task.source_domain_id: [0, 1]
+      task.target_domain_id: [2]
+    protocol:
+      utility: "conditional_quality_primary"
+      notes: "RUL-style bearing data; labels are not fully shared across domains."
+  - dataset: "RM_003_FEMTO"
+    dataset_id: 3
+    name: "FEMTO"
+    overrides:
+      task.target_system_id: [3]
+      task.source_domain_id: [0, 1]
+      task.target_domain_id: [2]
+    protocol:
+      utility: "conditional_quality_primary"
+      notes: "Large RUL-style bearing data; utility metrics require label-support checks."
+  - dataset: "RM_008_UNSW"
+    dataset_id: 8
+    name: "UNSW"
+    overrides:
+      task.target_system_id: [8]
+      task.source_domain_id: [0]
+      task.target_domain_id: [1, 2, 3]
+    protocol:
+      utility: "domain_shift"
+      notes: "Four-domain fault diagnosis data with small target-domain counts."
+  - dataset: "RM_024_JUST"
+    dataset_id: 18
+    name: "JUST"
+    overrides:
+      task.target_system_id: [18]
+      task.source_domain_id: [1, 2, 3, 4, 5, 6]
+      task.target_domain_id: [7, 8, 9]
+    protocol:
+      utility: "domain_shift"
+      notes: "Nine domains with balanced four-label support."
+  - dataset: "RM_027_PU"
+    dataset_id: 20
+    name: "PU"
+    overrides:
+      task.target_system_id: [20]
+      task.source_domain_id: [0, 1, 2]
+      task.target_domain_id: [3]
+    protocol:
+      utility: "domain_shift"
+      notes: "Four-domain three-label bearing benchmark."
+
+methods:
+  - method: "cfm_grid"
+    label: "Conditional Flow Matching"
+    train_config: "configs/paper/phm_generative/cfm_train_grid_seed0.yaml"
+    condition_sampling_policy: "grid"
+  - method: "rectified_flow_grid"
+    label: "Rectified Flow"
+    train_config: "configs/paper/phm_generative/rectified_flow_train_grid_seed0.yaml"
+    condition_sampling_policy: "grid"
+  - method: "ddpm_train_distribution"
+    label: "DDPM Epsilon"
+    train_config: "configs/paper/phm_generative/ddpm_train_distribution_seed0.yaml"
+    condition_sampling_policy: "train_distribution"

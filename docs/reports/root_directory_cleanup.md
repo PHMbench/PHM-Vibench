@@ -1,6 +1,7 @@
 # Root Directory Cleanup Audit
 
-This note records why the former root-level directories were moved under `docs/`.
+This note records why former root-level directories were audited and where
+their maintained content belongs now.
 
 ## Source History
 
@@ -12,11 +13,11 @@ This note records why the former root-level directories were moved under `docs/`
 | `reports/uxfd_runs.csv` | `729acd0` `Merge remote-tracking branch 'origin/lqfix_25-12' into lq_merge_UXFD` | 2026-01-06 11:15 +0800 | Historical UXFD run summary. |
 | `schemas/*.schema.json` | untracked local files, ignored by `.gitignore` `*.json` | mtimes 2026-05-04 to 2026-05-05 | Generative/domain-map JSON schemas. |
 
-## New Locations
+## Current Locations
 
-| Old root path | New docs path |
+| Old root path | Current location |
 | --- | --- |
-| `projects/phm_generative/` | `docs/phm_generative/` |
+| `projects/phm_generative/` | Owning module READMEs under `src/`, `configs/`, and `scripts/`; process notes under `specs/002-phm-genbench-frontier/` |
 | `examples/` | `docs/past/examples/` |
 | `reports/` | `docs/reports/` |
 | `metrics_reports/README.md` | `docs/reports/metrics_reports.md` |
@@ -24,5 +25,9 @@ This note records why the former root-level directories were moved under `docs/`
 
 ## Follow-up Rule
 
-Do not add new source-of-truth directories at the repository root for reports, schemas, examples, or project notes.
-Use `docs/` for maintained documentation and `save/`, `results/`, or `environment.output_dir` for runtime outputs.
+Do not add new source-of-truth directories at the repository root for reports,
+schemas, examples, or project notes. PHM generative module contracts belong in
+the README next to the owning module; PHM generative process, review, handoff,
+and paper-readiness artifacts belong under the active `specs/<feature>/`
+directory. Use `save/`, `results/`, or `environment.output_dir` for runtime
+outputs.
