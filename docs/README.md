@@ -24,6 +24,9 @@ index for project-level docs; module-specific usage belongs in the module
 - Data factory: [`../src/data_factory/README.md`](../src/data_factory/README.md)
 - Model factory: [`../src/model_factory/README.md`](../src/model_factory/README.md)
 - Task factory: [`../src/task_factory/README.md`](../src/task_factory/README.md)
+- PHM generative task/module docs: [`../src/task_factory/task/generative/README.md`](../src/task_factory/task/generative/README.md)
+- PHM generative model docs: [`../src/model_factory/generative_model/README.md`](../src/model_factory/generative_model/README.md)
+- PHM generative component docs: [`../src/task_factory/Components/generative/README.md`](../src/task_factory/Components/generative/README.md)
 - Trainer factory: [`../src/trainer_factory/README.md`](../src/trainer_factory/README.md)
 
 ## Archived docs

@@ -230,7 +230,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_drifting_flow.yaml`
 - Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
-- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `/`
 
 #### `base_task_generative_meanflow`
@@ -241,7 +241,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_meanflow.yaml`
 - Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
-- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `/`
 
 #### `base_task_generative_ot_nfm`
@@ -252,7 +252,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_ot_nfm.yaml`
 - Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
-- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `/`
 
 #### `base_task_generative_rectified_flow`
@@ -285,7 +285,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_transition_flow_matching.yaml`
 - Common overrides: `task.generative.experimental=true`, `task.generative.num_steps=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
-- Related docs: `configs/README.md`, `configs/base/task/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `/`
 
 #### `base_task_pretrain`
@@ -494,7 +494,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_drifting_flow.yaml`
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
 - Outputs: `results/demo/dummy_generative_drifting_flow/{experiment_name}/iter_{i}/`
-- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `sanity_ok`
 
 #### `demo_10_generative_meanflow`
@@ -511,7 +511,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_meanflow.yaml`
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
 - Outputs: `results/demo/dummy_generative_meanflow/{experiment_name}/iter_{i}/`
-- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `sanity_ok`
 
 #### `demo_10_generative_ot_nfm`
@@ -528,7 +528,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_ot_nfm.yaml`
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
 - Outputs: `results/demo/dummy_generative_ot_nfm/{experiment_name}/iter_{i}/`
-- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `sanity_ok`
 
 #### `demo_10_generative_rectified_flow`
@@ -579,7 +579,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_transition_flow_matching.yaml`
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
 - Outputs: `results/demo/dummy_generative_transition_flow_matching/{experiment_name}/iter_{i}/`
-- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `docs/phm_generative/EXPERIMENTAL_ONE_STEP_METHODS.md`
+- Related docs: `configs/demo/README.md`, `configs/demo/10_generative/README.md`, `src/task_factory/task/generative/README.md`, `src/model_factory/generative_model/README.md`
 - Status: `sanity_ok`
 
 ### paper
@@ -592,7 +592,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/cfm_ablation_first_metadata_seed0.yaml`
 - Common overrides: `task.generative.condition_sampling_policy=first_metadata_repeated`
 - Outputs: `results/paper/phm_generative/cfm_ablation_first_metadata_seed0/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`
 
 #### `paper_phm_gen_cfm_eval_seed0`
@@ -603,7 +603,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/cfm_eval_train_reference_seed0.yaml`
 - Common overrides: `task.generative.mode=eval`, `task.generative.eval_split=train`
 - Outputs: `results/paper/phm_generative/cfm_eval_train_reference_seed0/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`
 
 #### `paper_phm_gen_cfm_sample_grid_seed0`
@@ -614,7 +614,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/cfm_sample_grid_seed0.yaml`
 - Common overrides: `task.generative.mode=sample`, `task.generative.num_steps=32`
 - Outputs: `results/paper/phm_generative/cfm_sample_grid_seed0/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`
 
 #### `paper_phm_gen_cfm_train_grid_seed0`
@@ -625,7 +625,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/cfm_train_grid_seed0.yaml`
 - Common overrides: `trainer.num_epochs=50`, `task.generative.condition_sampling_policy=grid`
 - Outputs: `results/paper/phm_generative/cfm_grid_seed0/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`
 
 #### `paper_phm_gen_cfm_train_grid_seed1`
@@ -636,7 +636,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/cfm_train_grid_seed1.yaml`
 - Common overrides: `trainer.num_epochs=50`, `environment.seed=1`
 - Outputs: `results/paper/phm_generative/cfm_grid_seed1/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`
 
 #### `paper_phm_gen_ddpm_train_seed0`
@@ -647,7 +647,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/ddpm_train_distribution_seed0.yaml`
 - Common overrides: `trainer.num_epochs=50`, `task.generative.condition_sampling_policy=train_distribution`
 - Outputs: `results/paper/phm_generative/ddpm_distribution_seed0/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`
 
 #### `paper_phm_gen_rectified_flow_train_seed0`
@@ -658,5 +658,5 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Minimal run: `python main.py --config configs/paper/phm_generative/rectified_flow_train_grid_seed0.yaml`
 - Common overrides: `trainer.num_epochs=50`, `model.name=phm_dit1d`
 - Outputs: `results/paper/phm_generative/rectified_flow_seed0/{experiment_name}/iter_{i}/`
-- Related docs: `configs/paper/phm_generative/README.md`, `docs/phm_generative/PAPER_TABLES_AND_FIGURES.md`
+- Related docs: `configs/paper/phm_generative/README.md`, `scripts/README.md`, `src/task_factory/Components/generative/metrics/README.md`
 - Status: `paper_ready`

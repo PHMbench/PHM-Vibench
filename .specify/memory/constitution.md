@@ -107,9 +107,13 @@ Mamba and SSM modules are backbones, not losses. Sampling steps MUST be
 stateless unless a later goal introduces state handling with tests and manifest
 evidence.
 
-Official generative benchmark documentation lives under `docs/phm_generative/`.
-Research-only demos may live under `demos/generative/`, but they MUST declare
-that their outputs are not benchmark-valid.
+Module-specific generative benchmark documentation lives in the README next to
+the owning module or config directory. Process artifacts, review notes,
+handoffs, validation logs, and paper readiness notes live under the active
+Speckit feature directory. Project-level `docs/` remains an index and MUST NOT
+accumulate a separate PHM generative docs tree. Research-only demos may live
+under `demos/generative/`, but they MUST declare that their outputs are not
+benchmark-valid.
 
 ## Development Workflow And Quality Gates
 

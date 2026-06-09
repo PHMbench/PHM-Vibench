@@ -9,6 +9,11 @@ The ID module enables fine-grained control over which samples are used in experi
 - Dynamically splitting domains for domain generalization tasks
 - Handling invalid labels and missing metadata
 
+For PHM generative tasks, model conditions stay limited to `fault_label` and
+`domain_id`. Operating metadata such as `load`, `rpm`, `system_id`, and
+`sampling_rate` should be resolved through a domain map and used for audit,
+grouping, reporting, and paper analysis rather than direct model conditioning.
+
 ---
 
 ## File Structure

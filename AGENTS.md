@@ -84,4 +84,7 @@ python -m pytest test/
 <!-- SPECKIT START -->
 For tracked PHM-GenBench governance and goal context, read:
 `.specify/memory/constitution.md` and `.specify/goals/`.
+For module-specific PHM generative contracts, read the owning READMEs under
+`src/task_factory/task/generative/`, `src/model_factory/generative_model/`, and
+`src/task_factory/Components/generative/`.
 <!-- SPECKIT END -->

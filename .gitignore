@@ -211,12 +211,15 @@ metrics_reports/
 .github/
 .vscode/
 specs/
+!specs/
+!specs/**
 
 .specify/*
 !.specify/
 !.specify/feature.json
 !.specify/goals/
 !.specify/goals/*.md
+!.specify/goals/**
 !.specify/memory/
 !.specify/memory/constitution.md
 

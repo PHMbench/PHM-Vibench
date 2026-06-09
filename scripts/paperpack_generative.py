@@ -81,6 +81,38 @@ def _selected_metric(key: str, prefixes: tuple[str, ...], keys: set[str] | None 
     return key.startswith(prefixes)
 
 
+def _path_context(source_path: str) -> dict[str, str]:
+    parts = Path(source_path).parts
+    context = {"dataset": "", "method": "", "seed": ""}
+    if "runs" in parts:
+        index = parts.index("runs")
+        if len(parts) > index + 1:
+            context["dataset"] = parts[index + 1]
+        if len(parts) > index + 2:
+            context["method"] = parts[index + 2]
+        if len(parts) > index + 3:
+            context["seed"] = parts[index + 3].removeprefix("seed_")
+    for part in parts:
+        if part.startswith("seed_"):
+            context["seed"] = part.removeprefix("seed_")
+        elif part.startswith("seed") and part[4:].isdigit():
+            context["seed"] = part[4:]
+    return context
+
+
+def _row_context(row: dict[str, str]) -> dict[str, str]:
+    path_values = _path_context(row.get("source_path", ""))
+    return {
+        "dataset": row.get("dataset")
+        or row.get("dataset_name")
+        or row.get("source_dataset")
+        or row.get("dataset_id")
+        or path_values["dataset"],
+        "method": row.get("method") or row.get("method_id") or path_values["method"],
+        "seed": row.get("seed") or path_values["seed"],
+    }
+
+
 def _metric_records(
     rows: list[dict[str, str]],
     prefixes: tuple[str, ...],
@@ -90,6 +122,7 @@ def _metric_records(
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for row in rows:
+        context = _row_context(row)
         for key, value in row.items():
             if not _selected_metric(key, prefixes, keys):
                 continue
@@ -108,6 +141,7 @@ def _metric_records(
                     "source_path": row.get("source_path", ""),
                     "ablation_factor": row.get("ablation_factor", ""),
                     "ablation_level": row.get("ablation_level", ""),
+                    **context,
                 }
             )
     return records
@@ -172,9 +206,47 @@ def _missing_metric_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "reason": record.get("reason", ""),
                     "value": record.get("value", ""),
                     "source_path": record.get("source_path", ""),
+                    "dataset": record.get("dataset", ""),
+                    "method": record.get("method", ""),
+                    "seed": record.get("seed", ""),
                 }
             )
     return missing
+
+
+def _heatmap_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
+    for record in records:
+        dataset = str(record.get("dataset", "")).strip() or "unknown_dataset"
+        method = str(record.get("method", "")).strip() or "unknown_method"
+        groups.setdefault(
+            (
+                str(record.get("category", "")),
+                dataset,
+                method,
+                str(record.get("metric", "")),
+            ),
+            [],
+        ).append(record)
+
+    out = []
+    for (category, dataset, method, metric), group_records in sorted(groups.items()):
+        aggregate = _aggregate_records(group_records)[0]
+        out.append(
+            {
+                "category": category,
+                "dataset": dataset,
+                "method": method,
+                "metric": metric,
+                "mean": aggregate["mean"],
+                "std": aggregate["std"],
+                "n": aggregate["n"],
+                "missing_count": aggregate["missing_count"],
+                "missing_reasons": aggregate["missing_reasons"],
+                "source_paths": aggregate["source_paths"],
+            }
+        )
+    return out
 
 
 def _write_missing_metrics(path: Path, missing_rows: list[dict[str, Any]]) -> None:
@@ -356,9 +428,13 @@ def build_paperpack(run_dir: Path) -> Path:
     all_records = quality_records + utility_records + efficiency_records + leakage_records
 
     _write_reproducibility(paperpack / "reproducibility_statement.md", manifest, run_dir)
+    metric_source_paths = sorted(
+        {row.get("source_path", "") for row in metric_rows if row.get("source_path")}
+    )
     index = {
         "run_dir": str(run_dir),
         "synthetic_manifest_paths": [str(path) for path in manifests],
+        "metric_source_paths": metric_source_paths,
         "metric_rows": len(metric_rows),
     }
     (figure_sources / "manifest_index.json").write_text(
@@ -467,6 +543,27 @@ def build_paperpack(run_dir: Path) -> Path:
         figure_sources / "metric_barplot.csv",
         barplot_rows,
         ["category", *aggregate_fields],
+    )
+    _write_csv(
+        figure_sources / "dataset_method_heatmap.csv",
+        _heatmap_rows(all_records),
+        [
+            "category",
+            "dataset",
+            "method",
+            "metric",
+            "mean",
+            "std",
+            "n",
+            "missing_count",
+            "missing_reasons",
+            "source_paths",
+        ],
+    )
+    _write_csv(
+        figure_sources / "missing_metric_audit.csv",
+        missing_rows,
+        ["category", "dataset", "method", "seed", "metric", "status", "reason", "value", "source_path"],
     )
     return paperpack
 
