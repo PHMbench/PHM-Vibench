@@ -1,0 +1,30 @@
+schema_version: "0.3.0"
+primary_metrics:
+  quality:
+    lower_better:
+      - spectral_fft_l1
+      - spectral_log_l1
+      - temporal_l1
+      - distribution_mean_distance
+      - distribution_var_distance
+    higher_better:
+      - diversity_prdc_precision
+      - diversity_prdc_recall
+  utility:
+    higher_better:
+      - tstr_nearest_centroid_accuracy
+      - trts_nearest_centroid_accuracy
+  leakage:
+    lower_better:
+      - leakage_duplicate_rate
+      - leakage_nearest_neighbor_l2
+  efficiency:
+    lower_better:
+      - sampling_nfe
+      - sampling_wall_clock_sec
+    higher_better:
+      - samples_per_second
+promotion:
+  exclude_if_status:
+    - not_computable
+  require_reason_for_missing: true

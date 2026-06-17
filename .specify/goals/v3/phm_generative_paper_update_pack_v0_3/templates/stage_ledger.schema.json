@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PHM GenBench Stage Ledger v0.3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "dataset",
+    "method",
+    "seed",
+    "stages"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.3.0"
+    },
+    "benchmark_id": {
+      "type": "string"
+    },
+    "dataset": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "stages": {
+      "type": "object",
+      "properties": {
+        "train": {
+          "type": "object"
+        },
+        "sample": {
+          "type": "object"
+        },
+        "eval": {
+          "type": "object"
+        },
+        "paperpack": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
