@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic Data Manifest v0.3 minimum",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "synthetic_dataset_id",
+    "protocol",
+    "config",
+    "environment",
+    "generator",
+    "source_data",
+    "normalization",
+    "conditions",
+    "sampling",
+    "validity"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "synthetic_dataset_id": {
+      "type": "string"
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "protocol_path",
+        "protocol_hash"
+      ]
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "config_path",
+        "config_hash"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "python",
+        "torch",
+        "dependency_lock_hash"
+      ]
+    },
+    "generator": {
+      "type": "object",
+      "required": [
+        "model_type",
+        "model_name",
+        "loss_id",
+        "checkpoint_path"
+      ]
+    },
+    "source_data": {
+      "type": "object",
+      "required": [
+        "source_split",
+        "forbidden_splits",
+        "domain_map_path",
+        "domain_map_hash"
+      ]
+    },
+    "normalization": {
+      "type": "object",
+      "required": [
+        "method",
+        "scope",
+        "params_recorded"
+      ]
+    },
+    "conditions": {
+      "type": "object",
+      "required": [
+        "condition_keys",
+        "condition_sampling_policy",
+        "condition_counts"
+      ]
+    },
+    "sampling": {
+      "type": "object",
+      "required": [
+        "sampler_id",
+        "num_steps",
+        "seed",
+        "num_samples",
+        "shape"
+      ]
+    },
+    "validity": {
+      "type": "object",
+      "required": [
+        "status",
+        "benchmark_valid",
+        "evidence",
+        "missing_evidence"
+      ]
+    }
+  }
+}

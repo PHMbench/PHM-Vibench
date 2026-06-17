@@ -1,0 +1,8 @@
+field,status,evidence,notes
+stage_ledger_status,pass,test/generative/test_stage_ledger.py,train sample eval paperpack traceability covered
+eval_evidence_status,pass,src/Pipeline_06_generative.py,eval sidecar records promotion state
+condition_split_status,pass,test/generative/test_condition_sampling.py,train_distribution split evidence gate covered
+metric_naming_status,pass,src/task_factory/Components/generative/metrics/tstr.py,nearest-centroid probe naming explicit
+paper_matrix_dryrun_status,pass,/tmp/phm_genbench_v3_dryrun/run_plan.csv,144 planned rows over six datasets three methods two seeds four stages
+benchmark_valid_gating_status,pass,scripts/generative_benchmark_effect.py,requires eligible eval evidence plus paperpack traceability
+remaining_blockers,none_for_code_gate,specs/002-phm-genbench-frontier/reviews/v3/blocking_backlog.md,real run still needs CUDA and data

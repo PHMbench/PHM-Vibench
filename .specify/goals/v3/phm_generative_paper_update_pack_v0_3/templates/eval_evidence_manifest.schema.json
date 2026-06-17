@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PHM GenBench Eval Evidence Manifest v0.3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_path",
+    "metrics_path",
+    "reference_split",
+    "promotion"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.3.0"
+    },
+    "generated_path": {
+      "type": "string"
+    },
+    "synthetic_manifest_path": {
+      "type": "string"
+    },
+    "metrics_path": {
+      "type": "string"
+    },
+    "reference_split": {
+      "type": "string"
+    },
+    "allow_test_reference_eval": {
+      "type": "boolean"
+    },
+    "metric_status_summary": {
+      "type": "object"
+    },
+    "promotion": {
+      "type": "object",
+      "required": [
+        "eligible",
+        "missing"
+      ],
+      "properties": {
+        "eligible": {
+          "type": "boolean"
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

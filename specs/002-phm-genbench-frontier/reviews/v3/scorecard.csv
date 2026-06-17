@@ -1,0 +1,13 @@
+area,status,score,evidence,notes
+main config-first path,pass,5,main.py;configs/demo/10_generative/dummy_generative_cfm.yaml,preflight-only path remains config-first
+pipeline stage traceability,pass,5,src/Pipeline_06_generative.py,train sample eval update shared stage ledger
+sample manifest,pass,5,src/task_factory/Components/generative/manifests/synthetic_data_manifest.py,condition split evidence participates in downgrade
+eval evidence,pass,5,src/Pipeline_06_generative.py,eval_evidence_manifest records metrics and promotion status
+condition split evidence,pass,5,test/generative/test_condition_sampling.py,train_distribution without split evidence cannot benchmark-valid
+metric naming,pass,5,src/task_factory/Components/generative/metrics/tstr.py,nearest-centroid probe names are explicit
+leakage guard,pass_with_warnings,4,src/task_factory/Components/generative/metrics/leakage.py,threshold sweep remains optional
+paperpack traceability,pass,5,scripts/paperpack_generative.py,stage ledger resolves sibling sample manifest
+benchmark-valid gating,pass,5,scripts/generative_benchmark_effect.py,promotion requires eval evidence plus paperpack traceability
+paper matrix dry-run,pass,5,/tmp/phm_genbench_v3_dryrun,run_plan status ledger and dry-run manifest are generated
+submission readiness gate,pass_with_warnings,4,scripts/generative_submission_draft.py,no real benchmark-effect summary exists yet
+tests and validation,pass,5,test/generative/,focused validation passed
