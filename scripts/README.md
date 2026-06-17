@@ -14,6 +14,8 @@ Core commands (maintained):
 - `python -m scripts.generative_benchmark_effect --matrix configs/paper/phm_generative/six_dataset_benchmark_matrix.yaml --dry-run --output-dir results/paper/phm_generative/six_dataset_submission_v1/dry_run`
 - `eval "$(conda shell.bash hook)" && conda activate LQ_signal && python -m scripts.generative_benchmark_effect --matrix configs/paper/phm_generative/six_dataset_benchmark_matrix.yaml --preflight-gpu --dry-run --output-dir results/paper/phm_generative/six_dataset_submission_v1/gpu_preflight`
 - `python -m scripts.generative_submission_draft --summary <summary.csv> --manifest <manifest.json> --output specs/002-phm-genbench-frontier/paper/PAPER_DRAFT.md --require-submission-ready`
+- `bash scripts/run_phm_genbench_v3_longrun.sh`
+- `python -m scripts.phm_genbench_v3_status --out specs/002-phm-genbench-frontier/reviews/codex/2026-06-10-v3-real-run-ledger.csv`
 
 `scripts.validate_docs` also blocks the deprecated central PHM generative docs
 directories `docs/phm_generative/` and `docs/generative/`. Module-specific PHM
@@ -64,6 +66,13 @@ For long M2 execution resumes, use `--skip-existing` to skip completed stage
 artifacts and `--max-runs N` to run bounded chunks without retraining completed
 jobs. For train rows, `--skip-existing` requires `train_result_0.csv`; a
 checkpoint alone is treated as partial evidence from an interrupted run.
+For v0.3 real-run monitoring, `scripts/run_phm_genbench_v3_longrun.sh` executes
+the train/sample/eval/paperpack sequence with `--skip-existing`, writes
+`execution_summary_<stage>.csv` snapshots, and refreshes the review ledger via
+`python -m scripts.phm_genbench_v3_status`. The status helper is a filesystem
+audit only; it marks rows with recently updated partial artifacts as
+`IN_PROGRESS_NO_LEDGER`, and `COMPLETE_CHAIN` rows still require
+benchmark-effect aggregation and submission-draft gates before any paper claim.
 `generative_benchmark_effect` treats `--dry-run`, `--execute`, and
 `--from-runs` as mutually exclusive primary modes. `--preflight-gpu` may be
 combined with `--dry-run` or `--execute`. `--from-runs` requires at least one
