@@ -58,6 +58,7 @@ def build_synthetic_data_manifest(
     leakage_checks: dict[str, Any] | None = None,
     condition_sampling_policy: str = "match_train_distribution",
     condition_counts: dict[str, int] | None = None,
+    condition_sampling_split_verified: bool = True,
     metric_status_reason_recorded: bool = False,
     sampler_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -96,6 +97,7 @@ def build_synthetic_data_manifest(
         "leakage_checks": _leakage_checks_passed(checks),
         "condition_sampling_policy": _has_evidence_value(condition_sampling_policy),
         "condition_counts": bool(counts),
+        "condition_sampling_split_verified": bool(condition_sampling_split_verified),
         "metric_status_reason_recorded": bool(metric_status_reason_recorded),
     }
     benchmark_ready = (
@@ -106,6 +108,7 @@ def build_synthetic_data_manifest(
         and evidence["leakage_checks"]
         and evidence["condition_sampling_policy"]
         and evidence["condition_counts"]
+        and evidence["condition_sampling_split_verified"]
         and evidence["metric_status_reason_recorded"]
     )
     missing_evidence = [key for key, ok in evidence.items() if not ok]
@@ -157,6 +160,7 @@ def build_synthetic_data_manifest(
             "condition_keys": ["fault_label", "domain_id"],
             "condition_sampling_policy": condition_sampling_policy,
             "condition_counts": counts,
+            "condition_sampling_split_verified": bool(condition_sampling_split_verified),
         },
         "sampling": {
             "sampler_id": sampler_id,

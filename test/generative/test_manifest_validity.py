@@ -79,6 +79,11 @@ def test_manifest_keeps_benchmark_valid_when_all_evidence_is_present() -> None:
             {"metric_status_reason_recorded": False},
             "metric_status_reason_recorded",
         ),
+        (
+            "condition_sampling_split_verified",
+            {"condition_sampling_split_verified": False},
+            "condition_sampling_split_verified",
+        ),
     ],
 )
 def test_manifest_downgrades_benchmark_valid_when_evidence_is_missing(

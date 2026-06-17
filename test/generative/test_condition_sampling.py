@@ -6,7 +6,12 @@ import pytest
 import torch
 from pydantic import ValidationError
 
-from src.Pipeline_06_generative import _condition_counts, _select_condition
+from src.Pipeline_06_generative import (
+    _condition_counts,
+    _condition_sampling_split_verified,
+    _select_condition,
+    _to_ncl,
+)
 from src.config_schema.models import ExperimentConfig
 
 
@@ -81,6 +86,18 @@ def test_train_distribution_sampling_uses_metadata_pairs() -> None:
     assert set(counts).issubset({"fault=0,domain=0", "fault=1,domain=1"})
 
 
+def test_train_distribution_requires_explicit_split_evidence_for_benchmark_validity() -> None:
+    metadata_without_split = _metadata()
+    metadata_with_split = {
+        1: {"Label": 0, "Domain_id": 0, "split": "train"},
+        2: {"Label": 1, "Domain_id": 1, "split": "train"},
+    }
+
+    assert _condition_sampling_split_verified("train_distribution", metadata_without_split) is False
+    assert _condition_sampling_split_verified("train_distribution", metadata_with_split) is True
+    assert _condition_sampling_split_verified("grid", metadata_without_split) is True
+
+
 def test_first_metadata_repeated_keeps_smoke_behavior() -> None:
     gen_cfg = SimpleNamespace(condition_sampling_policy="first_metadata_repeated")
 
@@ -109,3 +126,10 @@ def test_explicit_policy_requires_condition_rows_schema() -> None:
         ExperimentConfig.model_validate(
             _base_config({"mode": "train", "condition_sampling_policy": "explicit"})
         )
+
+
+def test_pipeline_to_ncl_raises_when_channel_axis_is_ambiguous() -> None:
+    x = torch.randn(2, 5, 7)
+
+    with pytest.raises(ValueError, match="channels=3"):
+        _to_ncl(x, channels=3)
