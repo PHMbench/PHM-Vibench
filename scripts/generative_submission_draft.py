@@ -215,7 +215,8 @@ def build_draft(summary_rows: list[dict[str, str]], manifest: dict[str, Any]) ->
         lines.append(
             "This draft records the planned PHM generative benchmark narrative, but it is not "
             "submission-ready because the required evidence chain is incomplete. No numerical "
-            "claim in this draft should be treated as a benchmark result."
+            "claim in this draft should be treated as a benchmark result. No computable "
+            "benchmark rows are available under the submission-readiness gate."
         )
 
     lines.extend(

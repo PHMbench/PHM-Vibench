@@ -239,6 +239,24 @@ def _stage_output_dir(
     )
 
 
+def _run_root_dir(
+    matrix: BenchmarkMatrix,
+    dataset: BenchmarkDataset,
+    method: str,
+    seed: int,
+) -> Path:
+    return matrix.output_dir / "runs" / dataset.dataset / method / f"seed_{seed}"
+
+
+def _stage_ledger_path(
+    matrix: BenchmarkMatrix,
+    dataset: BenchmarkDataset,
+    method: str,
+    seed: int,
+) -> Path:
+    return _run_root_dir(matrix, dataset, method, seed) / "stage_ledger.json"
+
+
 def _stage_project(
     matrix: BenchmarkMatrix,
     dataset: BenchmarkDataset,
@@ -272,6 +290,9 @@ def _stage_overrides(
             ),
             "task.generative.mode": stage,
             "task.generative.synthetic_dataset_id": f"{dataset.dataset}_{method.method}_seed{seed}",
+            "task.generative.stage_ledger_path": str(
+                _stage_ledger_path(matrix, dataset, method.method, seed)
+            ),
         }
     )
     if method.condition_sampling_policy:
@@ -379,6 +400,8 @@ def build_run_plan(
                     "scripts.paperpack_generative",
                     "--run_dir",
                     str(paperpack_run_dir),
+                    "--stage_ledger",
+                    str(_stage_ledger_path(matrix, dataset, method.method, seed)),
                 ]
                 paperpack_cmd, gpu_id = _command_with_resource(
                     matrix, paperpack_cmd, row_index
@@ -502,6 +525,106 @@ def write_blocked_run_status_ledger(
     )
 
 
+def _group_plan_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    groups: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for row in rows:
+        key = (
+            row.get("benchmark_id", ""),
+            row.get("dataset", ""),
+            row.get("dataset_name", ""),
+            row.get("method", ""),
+            row.get("method_label", ""),
+            row.get("seed", ""),
+        )
+        item = groups.setdefault(
+            key,
+            {
+                "benchmark_id": row.get("benchmark_id", ""),
+                "dataset": row.get("dataset", ""),
+                "dataset_name": row.get("dataset_name", ""),
+                "method": row.get("method", ""),
+                "method_label": row.get("method_label", ""),
+                "seed": row.get("seed", ""),
+                "planned_stages": set(),
+            },
+        )
+        item["planned_stages"].add(row.get("stage", ""))
+
+    grouped: list[dict[str, Any]] = []
+    for item in groups.values():
+        stages = [
+            stage for stage in PLAN_STAGE_ORDER if stage in item["planned_stages"]
+        ]
+        grouped.append({**item, "planned_stages": ";".join(stages)})
+    grouped.sort(
+        key=lambda item: (
+            str(item["dataset"]),
+            str(item["method"]),
+            str(item["seed"]),
+        )
+    )
+    return grouped
+
+
+def write_dry_run_status_ledger(
+    path: Path, rows: list[dict[str, Any]], dataset_gaps: dict[str, list[str]]
+) -> None:
+    ledger_rows: list[dict[str, Any]] = []
+    for item in _group_plan_rows(rows):
+        gaps = dataset_gaps.get(str(item["dataset"]), [])
+        ledger_rows.append(
+            {
+                **item,
+                "status": "BLOCKED_MISSING_DATA" if gaps else "PLANNED_DRY_RUN",
+                "reason": "; ".join(gaps),
+            }
+        )
+    _write_csv(
+        path,
+        ledger_rows,
+        [
+            "benchmark_id",
+            "dataset",
+            "dataset_name",
+            "method",
+            "method_label",
+            "seed",
+            "planned_stages",
+            "status",
+            "reason",
+        ],
+    )
+
+
+def _dataset_metadata_gaps(matrix: BenchmarkMatrix) -> dict[str, list[str]]:
+    gaps: dict[str, list[str]] = {}
+    for dataset in matrix.datasets:
+        data_dir = (
+            dataset.data_check.get("data_dir")
+            or dataset.overrides.get("data.data_dir")
+            or matrix.data_check.get("data_dir")
+            or matrix.overrides.get("data.data_dir")
+        )
+        metadata_file = (
+            dataset.data_check.get("metadata_file")
+            or dataset.overrides.get("data.metadata_file")
+            or matrix.data_check.get("metadata_file")
+            or matrix.overrides.get("data.metadata_file")
+        )
+        dataset_gaps: list[str] = []
+        if data_dir and metadata_file:
+            metadata_path = Path(str(data_dir)) / str(metadata_file)
+            if not metadata_path.exists():
+                dataset_gaps.append(f"missing PHM metadata: {metadata_path}")
+        else:
+            dataset_gaps.append(
+                "missing data_check.data_dir or data_check.metadata_file"
+            )
+        if dataset_gaps:
+            gaps[dataset.dataset] = dataset_gaps
+    return gaps
+
+
 def validate_matrix_inputs(
     matrix: BenchmarkMatrix, *, allow_missing_data: bool
 ) -> list[str]:
@@ -527,30 +650,10 @@ def validate_matrix_inputs(
             errors.append(
                 f"missing train_config for {method.method}: {method.train_config}"
             )
-    for dataset in matrix.datasets:
-        data_dir = (
-            dataset.data_check.get("data_dir")
-            or dataset.overrides.get("data.data_dir")
-            or matrix.data_check.get("data_dir")
-            or matrix.overrides.get("data.data_dir")
-        )
-        metadata_file = (
-            dataset.data_check.get("metadata_file")
-            or dataset.overrides.get("data.metadata_file")
-            or matrix.data_check.get("metadata_file")
-            or matrix.overrides.get("data.metadata_file")
-        )
-        if data_dir and metadata_file:
-            metadata_path = Path(str(data_dir)) / str(metadata_file)
-            if not metadata_path.exists() and not allow_missing_data:
-                errors.append(
-                    f"missing PHM metadata for {dataset.dataset}: {metadata_path}"
-                )
-        elif not allow_missing_data:
-            errors.append(
-                f"matrix dataset {dataset.dataset} must define data_check.data_dir "
-                "and data_check.metadata_file"
-            )
+    if not allow_missing_data:
+        for dataset, gaps in _dataset_metadata_gaps(matrix).items():
+            for gap in gaps:
+                errors.append(f"{gap} for {dataset}")
     return errors
 
 
@@ -606,6 +709,135 @@ def _read_json(path: Path) -> dict[str, Any]:
 def _metric_rows(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
+
+
+def _manifest_from_eval_evidence(metric_path: Path) -> Path | None:
+    evidence_path = metric_path.with_name("eval_evidence_manifest.json")
+    if not evidence_path.exists():
+        return None
+    manifest_path = _read_json(evidence_path).get("synthetic_manifest_path")
+    if not manifest_path:
+        return None
+    path = Path(str(manifest_path))
+    return path if path.exists() else None
+
+
+def _manifest_from_stage_ledger(metric_path: Path) -> Path | None:
+    for parent in [metric_path.parent, *metric_path.parents]:
+        ledger_path = parent / "stage_ledger.json"
+        if not ledger_path.exists():
+            continue
+        sample_stage = _read_json(ledger_path).get("stages", {}).get("sample", {})
+        manifest_path = sample_stage.get("synthetic_manifest_path")
+        if not manifest_path:
+            continue
+        path = Path(str(manifest_path))
+        if path.exists():
+            return path
+    return None
+
+
+def _resolve_manifest_path(metric_path: Path) -> Path | None:
+    for candidate in [
+        _manifest_from_eval_evidence(metric_path),
+        _manifest_from_stage_ledger(metric_path),
+    ]:
+        if candidate is not None:
+            return candidate
+    manifest_paths = sorted(metric_path.parent.rglob("synthetic_data_manifest.json"))
+    if not manifest_paths:
+        manifest_paths = sorted(metric_path.parent.parent.rglob("synthetic_data_manifest.json"))
+    return manifest_paths[-1] if manifest_paths else None
+
+
+def _stage_ledger_path_for_metric(metric_path: Path) -> Path | None:
+    for parent in [metric_path.parent, *metric_path.parents]:
+        ledger_path = parent / "stage_ledger.json"
+        if ledger_path.exists():
+            return ledger_path
+    return None
+
+
+def _eval_evidence_for_metric(metric_path: Path) -> tuple[Path | None, dict[str, Any] | None]:
+    evidence_path = metric_path.with_name("eval_evidence_manifest.json")
+    if not evidence_path.exists():
+        return None, None
+    return evidence_path, _read_json(evidence_path)
+
+
+def _paperpack_dir_from_ledger(ledger_path: Path | None) -> Path | None:
+    if ledger_path is None:
+        return None
+    paperpack_stage = _read_json(ledger_path).get("stages", {}).get("paperpack", {})
+    for key in ("paperpack_dir", "run_dir"):
+        value = paperpack_stage.get(key)
+        if not value:
+            continue
+        path = Path(str(value))
+        if path.exists():
+            return path
+    return None
+
+
+def _missing_manifest_evidence(manifest: dict[str, Any]) -> list[str]:
+    validity = manifest.get("validity", {})
+    missing = validity.get("missing_evidence", [])
+    if isinstance(missing, list):
+        return [str(item) for item in missing]
+    if missing:
+        return [str(missing)]
+    return []
+
+
+def _promotion_status(
+    manifest: dict[str, Any] | None,
+    *,
+    metric_path: Path,
+    manifest_path: Path | None,
+) -> tuple[str, str, str, str]:
+    status, reason = _run_status(manifest)
+    if manifest is None:
+        return status, reason, "", ""
+
+    evidence_path, evidence = _eval_evidence_for_metric(metric_path)
+    ledger_path = _stage_ledger_path_for_metric(metric_path)
+    paperpack_dir = _paperpack_dir_from_ledger(ledger_path)
+    if evidence is None and paperpack_dir is None:
+        return status, reason, "", ""
+
+    missing: list[str] = []
+    if evidence is None:
+        missing.append("eval_evidence_manifest")
+    else:
+        promotion = evidence.get("promotion", {})
+        if promotion.get("eligible") is not True:
+            promotion_missing = promotion.get("missing", [])
+            if isinstance(promotion_missing, list) and promotion_missing:
+                missing.extend(f"eval:{item}" for item in promotion_missing)
+            else:
+                missing.append("eval:promotion_not_eligible")
+        if manifest_path is not None:
+            evidence_manifest_path = evidence.get("synthetic_manifest_path")
+            if evidence_manifest_path and Path(str(evidence_manifest_path)) != manifest_path:
+                missing.append("eval:synthetic_manifest_path_mismatch")
+    if paperpack_dir is None:
+        missing.append("paperpack_dir")
+
+    manifest_missing = _missing_manifest_evidence(manifest)
+    non_eval_missing = [
+        item for item in manifest_missing if item != "metric_status_reason_recorded"
+    ]
+    if non_eval_missing:
+        missing.extend(non_eval_missing)
+
+    if missing:
+        return "exploratory", ";".join(missing), (
+            str(evidence_path) if evidence_path else ""
+        ), str(paperpack_dir) if paperpack_dir else ""
+
+    return "benchmark-valid", "", (
+        str(evidence_path) if evidence_path else ""
+    ), str(paperpack_dir) if paperpack_dir else ""
 
 
 def _infer_method(
@@ -675,19 +907,19 @@ def collect_metric_records(
     records: list[dict[str, Any]] = []
     for root in run_dirs:
         for metric_path in sorted(root.rglob("generative_eval_metrics.csv")):
-            manifest_paths = sorted(
-                metric_path.parent.rglob("synthetic_data_manifest.json")
-            )
-            if not manifest_paths:
-                manifest_paths = sorted(
-                    metric_path.parent.parent.rglob("synthetic_data_manifest.json")
-                )
-            manifest_path = manifest_paths[-1] if manifest_paths else None
+            manifest_path = _resolve_manifest_path(metric_path)
             manifest = _read_json(manifest_path) if manifest_path is not None else None
             method = _infer_method(metric_path, matrix.methods, manifest)
             seed = _infer_seed(metric_path, manifest)
             dataset = _infer_dataset(metric_path, matrix, manifest)
-            run_status, status_reason = _run_status(manifest)
+            (
+                run_status,
+                status_reason,
+                eval_evidence_path,
+                paperpack_dir,
+            ) = _promotion_status(
+                manifest, metric_path=metric_path, manifest_path=manifest_path
+            )
             for row in _metric_rows(metric_path):
                 for metric, value in row.items():
                     if not _is_metric_key(metric):
@@ -713,6 +945,8 @@ def collect_metric_records(
                             if manifest_path
                             else "",
                             "metric_source_path": str(metric_path),
+                            "eval_evidence_path": eval_evidence_path,
+                            "paperpack_dir": paperpack_dir,
                         }
                     )
     return records
@@ -742,6 +976,13 @@ def aggregate_effects(
             }
         )
         statuses = {str(item.get("benchmark_status", "exploratory")) for item in items}
+        status_reasons = sorted(
+            {
+                str(item.get("benchmark_status_reason", ""))
+                for item in items
+                if item.get("benchmark_status_reason")
+            }
+        )
         rows.append(
             {
                 "dataset": dataset,
@@ -764,6 +1005,7 @@ def aggregate_effects(
                 "benchmark_status": "benchmark-valid"
                 if statuses == {"benchmark-valid"}
                 else "exploratory",
+                "benchmark_status_reasons": " | ".join(status_reasons),
                 "manifest_paths": ";".join(
                     sorted(
                         {
@@ -779,6 +1021,24 @@ def aggregate_effects(
                             str(item.get("metric_source_path", ""))
                             for item in items
                             if item.get("metric_source_path")
+                        }
+                    )
+                ),
+                "eval_evidence_paths": ";".join(
+                    sorted(
+                        {
+                            str(item.get("eval_evidence_path", ""))
+                            for item in items
+                            if item.get("eval_evidence_path")
+                        }
+                    )
+                ),
+                "paperpack_dirs": ";".join(
+                    sorted(
+                        {
+                            str(item.get("paperpack_dir", ""))
+                            for item in items
+                            if item.get("paperpack_dir")
                         }
                     )
                 ),
@@ -887,9 +1147,16 @@ def write_manifest(
     matrix: BenchmarkMatrix,
     run_dirs: list[Path],
     summary_rows: list[dict[str, Any]],
+    *,
+    mode: str = "from-runs",
+    input_gaps_extra: list[str] | None = None,
 ) -> None:
+    status_counts: dict[str, int] = {}
+    for row in summary_rows:
+        status = str(row.get("benchmark_status", "exploratory"))
+        status_counts[status] = status_counts.get(status, 0) + 1
     statuses = sorted(
-        {str(row.get("benchmark_status", "exploratory")) for row in summary_rows}
+        {status for status in status_counts}
     )
     configured_datasets = [dataset.dataset for dataset in matrix.datasets]
     configured_dataset_set = set(configured_datasets)
@@ -928,8 +1195,11 @@ def write_manifest(
             f"{len(observed_configured_datasets)} dataset(s), below required minimum "
             f"{matrix.min_datasets}"
         )
+    if input_gaps_extra:
+        input_gaps.extend(input_gaps_extra)
     payload = {
         "benchmark_id": matrix.benchmark_id,
+        "mode": mode,
         "datasets": [
             {
                 "dataset": dataset.dataset,
@@ -959,6 +1229,9 @@ def write_manifest(
         "run_dirs": [str(path) for path in run_dirs],
         "summary_rows": len(summary_rows),
         "benchmark_statuses": statuses,
+        "benchmark_status_counts": status_counts,
+        "benchmark_valid_row_count": status_counts.get("benchmark-valid", 0),
+        "exploratory_row_count": status_counts.get("exploratory", 0),
         "input_gaps": input_gaps,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -996,8 +1269,11 @@ def build_effect_report(
             "relative_delta_vs_baseline",
             "rank",
             "benchmark_status",
+            "benchmark_status_reasons",
             "manifest_paths",
             "metric_source_paths",
+            "eval_evidence_paths",
+            "paperpack_dirs",
         ],
     )
     write_missing_metrics(output_dir / "missing_metrics.md", records)
@@ -1183,6 +1459,67 @@ def _completed_stage_artifact(stage: str, cmd: list[str]) -> Path | None:
     return None
 
 
+def _stage_ledger_path_from_cmd(stage: str, cmd: list[str]) -> Path | None:
+    ledger_value = _override_value(cmd, "task.generative.stage_ledger_path")
+    if ledger_value:
+        return Path(ledger_value)
+    for index, arg in enumerate(cmd):
+        if arg == "--stage_ledger" and index + 1 < len(cmd):
+            return Path(cmd[index + 1])
+        if arg.startswith("--stage_ledger="):
+            return Path(arg.split("=", 1)[1])
+    output_dir = _override_value(cmd, "environment.output_dir")
+    if not output_dir:
+        return None
+    output_path = Path(output_dir)
+    if stage in VALID_PLAN_STAGES and output_path.name == stage:
+        return output_path.parent / "stage_ledger.json"
+    return None
+
+
+def _update_stage_ledger_metadata(
+    row: dict[str, Any],
+    cmd: list[str],
+    *,
+    status: str,
+    returncode: int | None = None,
+) -> None:
+    stage = str(row.get("stage", ""))
+    ledger_path = _stage_ledger_path_from_cmd(stage, cmd)
+    if ledger_path is None:
+        return
+    if ledger_path.exists():
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    else:
+        ledger = {"schema_version": "0.3.0", "stages": {}}
+    ledger.setdefault("schema_version", "0.3.0")
+    ledger.setdefault("stages", {})
+    now = datetime.now(timezone.utc).isoformat()
+    ledger.setdefault("created_at", now)
+    ledger.update(
+        {
+            "benchmark_id": str(row.get("benchmark_id", "")),
+            "dataset": str(row.get("dataset", "")),
+            "dataset_id": str(row.get("dataset_id", "")),
+            "dataset_name": str(row.get("dataset_name", "")),
+            "method": str(row.get("method", "")),
+            "method_label": str(row.get("method_label", "")),
+            "seed": str(row.get("seed", "")),
+            "current_stage": stage,
+            "config_path": str(row.get("config", "")),
+            "output_dir": str(_override_value(cmd, "environment.output_dir") or ""),
+            "status": status,
+            "updated_at": now,
+        }
+    )
+    if returncode is not None:
+        ledger["last_returncode"] = int(returncode)
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    ledger_path.write_text(
+        json.dumps(ledger, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
 def execute_plan(
     rows: list[dict[str, Any]],
     out_csv: Path,
@@ -1193,12 +1530,48 @@ def execute_plan(
     executed: list[dict[str, Any]] = []
     run_count = 0
     for row in rows:
+        if max_runs is not None and run_count >= max_runs:
+            break
         try:
             cmd = [
                 _resolve_placeholder_arg(arg)
                 for arg in shlex.split(str(row["command"]))
             ]
         except ValueError as exc:
+            executed.append(
+                {
+                    **row,
+                    "command": str(row.get("command", "")),
+                    "returncode": 2,
+                    "wall_clock_sec": "0.000000",
+                    "stdout_tail": "",
+                    "stderr_tail": (
+                        "[FAIL] failed to resolve artifact path for stage "
+                        f"{row.get('stage', '')}: {exc}"
+                    ),
+                }
+            )
+            _write_csv(
+                out_csv,
+                executed,
+                [
+                    "benchmark_id",
+                    "dataset",
+                    "dataset_id",
+                    "dataset_name",
+                    "method",
+                    "method_label",
+                    "seed",
+                    "stage",
+                    "gpu_id",
+                    "config",
+                    "command",
+                    "returncode",
+                    "wall_clock_sec",
+                    "stdout_tail",
+                    "stderr_tail",
+                ],
+            )
             raise ValueError(
                 f"failed to resolve artifact path for stage {row.get('stage', '')}: {exc}"
             ) from exc
@@ -1206,6 +1579,9 @@ def execute_plan(
         if skip_existing:
             artifact = _completed_stage_artifact(stage, cmd)
             if artifact is not None:
+                _update_stage_ledger_metadata(
+                    row, cmd, status="skipped_existing", returncode=0
+                )
                 executed.append(
                     {
                         **row,
@@ -1217,11 +1593,16 @@ def execute_plan(
                     }
                 )
                 continue
-        if max_runs is not None and run_count >= max_runs:
-            break
+        _update_stage_ledger_metadata(row, cmd, status="running")
         start = time.perf_counter()
         result = subprocess.run(cmd, text=True, capture_output=True)
         run_count += 1
+        _update_stage_ledger_metadata(
+            row,
+            cmd,
+            status="succeeded" if result.returncode == 0 else "failed",
+            returncode=result.returncode,
+        )
         executed.append(
             {
                 **row,
@@ -1431,6 +1812,23 @@ def main(argv: list[str] | None = None) -> int:
             print("[FAIL] stage filter produced an empty run plan", file=sys.stderr)
             return 2
         write_run_plan(output_dir / "run_plan.csv", plan_rows)
+        dataset_gaps = _dataset_metadata_gaps(matrix)
+        write_dry_run_status_ledger(
+            output_dir / "run_status_ledger.csv", plan_rows, dataset_gaps
+        )
+        gap_messages = [
+            f"{dataset}: {reason}"
+            for dataset, reasons in sorted(dataset_gaps.items())
+            for reason in reasons
+        ]
+        write_manifest(
+            output_dir / "benchmark_effect_manifest.json",
+            matrix,
+            [],
+            [],
+            mode="dry-run",
+            input_gaps_extra=gap_messages,
+        )
         print(f"[OK] run plan written: {output_dir / 'run_plan.csv'}")
         if args.execute:
             try:

@@ -86,9 +86,18 @@ def _write_metrics(
         )
 
 
-def _write_manifest(path: Path, *, method: str, seed: int, valid: bool = True) -> None:
+def _write_manifest(
+    path: Path,
+    *,
+    method: str,
+    seed: int,
+    valid: bool = True,
+    missing_evidence: list[str] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    missing = [] if valid else ["normalization_params"]
+    missing = missing_evidence if missing_evidence is not None else (
+        [] if valid else ["normalization_params"]
+    )
     path.write_text(
         json.dumps(
             {
@@ -126,6 +135,16 @@ def test_dry_run_plan_uses_real_phm_matrix_and_keeps_stages(tmp_path: Path) -> N
     stages = {row["stage"] for row in rows}
     assert stages == {"train", "sample", "eval", "paperpack"}
     assert any("task.generative.mode=eval" in row["command"] for row in rows)
+    assert all(
+        "task.generative.stage_ledger_path=" in row["command"]
+        for row in rows
+        if row["stage"] != "paperpack"
+    )
+    assert all(
+        "--stage_ledger" in row["command"]
+        for row in rows
+        if row["stage"] == "paperpack"
+    )
     assert any("trainer.num_epochs=1" in row["command"] for row in rows)
     assert (tmp_path / "run_plan.csv").exists()
 
@@ -154,6 +173,17 @@ def test_dry_run_stage_filter_writes_only_requested_stage(tmp_path: Path) -> Non
     rows = _read_csv(out_dir / "run_plan.csv")
     assert len(rows) == 3 * 2
     assert {row["stage"] for row in rows} == {"train"}
+    ledger = _read_csv(out_dir / "run_status_ledger.csv")
+    assert len(ledger) == 3 * 2
+    assert {row["planned_stages"] for row in ledger} == {"train"}
+    assert {row["status"] for row in ledger} == {"PLANNED_DRY_RUN"}
+    manifest = json.loads(
+        (out_dir / "benchmark_effect_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["mode"] == "dry-run"
+    assert manifest["configured_dataset_count"] == 1
+    assert manifest["observed_configured_dataset_count"] == 0
+    assert manifest["min_datasets_met"] is False
 
 
 def test_dry_run_rejects_unknown_stage_filter(tmp_path: Path) -> None:
@@ -177,6 +207,69 @@ def test_dry_run_rejects_unknown_stage_filter(tmp_path: Path) -> None:
 
     assert rc == 2
     assert not (tmp_path / "stage_plan" / "run_plan.csv").exists()
+
+
+def test_dry_run_allow_missing_data_writes_blocked_status_ledger(
+    tmp_path: Path,
+) -> None:
+    matrix_path = tmp_path / "matrix.yaml"
+    _write_matrix(matrix_path, tmp_path / "missing_data")
+    out_dir = tmp_path / "stage_plan"
+
+    rc = benchmark_effect_main(
+        [
+            "--matrix",
+            str(matrix_path),
+            "--dry-run",
+            "--allow-missing-data",
+            "--output-dir",
+            str(out_dir),
+        ]
+    )
+
+    assert rc == 0
+    assert (out_dir / "run_plan.csv").exists()
+    ledger = _read_csv(out_dir / "run_status_ledger.csv")
+    assert len(ledger) == 3 * 2
+    assert {row["planned_stages"] for row in ledger} == {
+        "train;sample;eval;paperpack"
+    }
+    assert {row["status"] for row in ledger} == {"BLOCKED_MISSING_DATA"}
+    assert all("missing PHM metadata" in row["reason"] for row in ledger)
+    manifest = json.loads(
+        (out_dir / "benchmark_effect_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["mode"] == "dry-run"
+    assert manifest["configured_dataset_count"] == 1
+    assert manifest["observed_configured_dataset_count"] == 0
+    assert any("missing PHM metadata" in gap for gap in manifest["input_gaps"])
+
+
+def test_dry_run_rejects_bad_baseline_method(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "metadata.xlsx").write_text("placeholder", encoding="utf-8")
+    matrix_path = tmp_path / "matrix.yaml"
+    _write_matrix(matrix_path, data_dir)
+    matrix_text = matrix_path.read_text(encoding="utf-8").replace(
+        'baseline_method: "cfm_grid"', 'baseline_method: "missing_method"'
+    )
+    matrix_path.write_text(matrix_text, encoding="utf-8")
+    out_dir = tmp_path / "stage_plan"
+
+    rc = benchmark_effect_main(
+        [
+            "--matrix",
+            str(matrix_path),
+            "--dry-run",
+            "--output-dir",
+            str(out_dir),
+        ]
+    )
+
+    assert rc == 2
+    assert not (out_dir / "run_plan.csv").exists()
+    assert not (out_dir / "run_status_ledger.csv").exists()
 
 
 def test_execute_requires_gpu_preflight_when_matrix_requires_cuda(
@@ -401,6 +494,205 @@ def test_effect_report_aggregates_quality_utility_delta_and_missing_reasons(
     assert (out / "benchmark_effect_manifest.json").exists()
 
 
+def test_effect_report_resolves_sibling_sample_manifest_from_stage_ledger(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "metadata.xlsx").write_text("placeholder", encoding="utf-8")
+    matrix_path = tmp_path / "matrix.yaml"
+    _write_matrix(matrix_path, data_dir)
+    matrix = load_matrix(matrix_path)
+    run_root = tmp_path / "runs" / "CWRU_domain_shift" / "cfm_grid" / "seed_0"
+    sample_manifest = (
+        run_root
+        / "sample"
+        / "experiment"
+        / "iter_0"
+        / "synthetic"
+        / "synthetic_data_manifest.json"
+    )
+    eval_dir = run_root / "eval" / "experiment" / "iter_0"
+    _write_manifest(sample_manifest, method="cfm_grid", seed=0, valid=True)
+    _write_metrics(
+        eval_dir / "generative_eval_metrics.csv",
+        temporal="1.0",
+        tstr="0.8",
+        trts="0.7",
+    )
+    (run_root / "stage_ledger.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "0.3.0",
+                "stages": {
+                    "sample": {"synthetic_manifest_path": str(sample_manifest)},
+                    "eval": {
+                        "metrics_path": str(eval_dir / "generative_eval_metrics.csv")
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out = build_effect_report(matrix, [tmp_path / "runs"], tmp_path / "effect")
+    summary = _read_csv(out / "benchmark_effect_summary.csv")
+
+    temporal = next(row for row in summary if row["metric"] == "temporal_l1")
+    assert temporal["benchmark_status"] == "benchmark-valid"
+    assert temporal["manifest_paths"] == str(sample_manifest)
+
+
+def test_effect_report_promotes_sample_manifest_with_eval_and_paperpack_evidence(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "metadata.xlsx").write_text("placeholder", encoding="utf-8")
+    matrix_path = tmp_path / "matrix.yaml"
+    _write_matrix(matrix_path, data_dir)
+    matrix = load_matrix(matrix_path)
+    run_root = tmp_path / "runs" / "CWRU_domain_shift" / "cfm_grid" / "seed_0"
+    sample_manifest = (
+        run_root
+        / "sample"
+        / "experiment"
+        / "iter_0"
+        / "synthetic"
+        / "synthetic_data_manifest.json"
+    )
+    eval_dir = run_root / "eval" / "experiment" / "iter_0"
+    paperpack_dir = eval_dir / "paperpack"
+    paperpack_dir.mkdir(parents=True)
+    _write_manifest(
+        sample_manifest,
+        method="cfm_grid",
+        seed=0,
+        valid=False,
+        missing_evidence=["metric_status_reason_recorded"],
+    )
+    metrics_path = eval_dir / "generative_eval_metrics.csv"
+    _write_metrics(metrics_path, temporal="1.0", tstr="0.8", trts="0.7")
+    eval_evidence_path = eval_dir / "eval_evidence_manifest.json"
+    eval_evidence_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.3.0",
+                "generated_path": str(
+                    run_root
+                    / "sample"
+                    / "experiment"
+                    / "iter_0"
+                    / "synthetic"
+                    / "samples.pt"
+                ),
+                "synthetic_manifest_path": str(sample_manifest),
+                "metrics_path": str(metrics_path),
+                "metric_status_summary": {"ok": 3, "not_computable": 0},
+                "promotion": {"eligible": True, "missing": []},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_root / "stage_ledger.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "0.3.0",
+                "stages": {
+                    "sample": {"synthetic_manifest_path": str(sample_manifest)},
+                    "eval": {
+                        "metrics_path": str(metrics_path),
+                        "eval_evidence_manifest_path": str(eval_evidence_path),
+                    },
+                    "paperpack": {"paperpack_dir": str(paperpack_dir)},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out = build_effect_report(matrix, [tmp_path / "runs"], tmp_path / "effect")
+    summary = _read_csv(out / "benchmark_effect_summary.csv")
+
+    temporal = next(row for row in summary if row["metric"] == "temporal_l1")
+    assert temporal["benchmark_status"] == "benchmark-valid"
+    assert temporal["benchmark_status_reasons"] == ""
+    assert temporal["manifest_paths"] == str(sample_manifest)
+    assert temporal["eval_evidence_paths"] == str(eval_evidence_path)
+    assert temporal["paperpack_dirs"] == str(paperpack_dir)
+
+
+def test_effect_report_keeps_eval_evidence_without_paperpack_exploratory(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "metadata.xlsx").write_text("placeholder", encoding="utf-8")
+    matrix_path = tmp_path / "matrix.yaml"
+    _write_matrix(matrix_path, data_dir)
+    matrix = load_matrix(matrix_path)
+    run_root = tmp_path / "runs" / "CWRU_domain_shift" / "cfm_grid" / "seed_0"
+    sample_manifest = (
+        run_root
+        / "sample"
+        / "experiment"
+        / "iter_0"
+        / "synthetic"
+        / "synthetic_data_manifest.json"
+    )
+    eval_dir = run_root / "eval" / "experiment" / "iter_0"
+    _write_manifest(
+        sample_manifest,
+        method="cfm_grid",
+        seed=0,
+        valid=False,
+        missing_evidence=["metric_status_reason_recorded"],
+    )
+    metrics_path = eval_dir / "generative_eval_metrics.csv"
+    _write_metrics(metrics_path, temporal="1.0", tstr="0.8", trts="0.7")
+    eval_evidence_path = eval_dir / "eval_evidence_manifest.json"
+    eval_evidence_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.3.0",
+                "synthetic_manifest_path": str(sample_manifest),
+                "metrics_path": str(metrics_path),
+                "metric_status_summary": {"ok": 3, "not_computable": 0},
+                "promotion": {"eligible": True, "missing": []},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_root / "stage_ledger.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "0.3.0",
+                "stages": {
+                    "sample": {"synthetic_manifest_path": str(sample_manifest)},
+                    "eval": {
+                        "metrics_path": str(metrics_path),
+                        "eval_evidence_manifest_path": str(eval_evidence_path),
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out = build_effect_report(matrix, [tmp_path / "runs"], tmp_path / "effect")
+    summary = _read_csv(out / "benchmark_effect_summary.csv")
+    manifest = json.loads(
+        (out / "benchmark_effect_manifest.json").read_text(encoding="utf-8")
+    )
+
+    temporal = next(row for row in summary if row["metric"] == "temporal_l1")
+    assert temporal["benchmark_status"] == "exploratory"
+    assert "paperpack_dir" in temporal["benchmark_status_reasons"]
+    assert manifest["benchmark_status_counts"] == {"exploratory": len(summary)}
+    assert manifest["benchmark_valid_row_count"] == 0
+    assert manifest["exploratory_row_count"] == len(summary)
+
+
 def test_matrix_validation_fails_missing_real_phm_data_without_explicit_allow(
     tmp_path: Path,
 ) -> None:
@@ -608,6 +900,103 @@ def test_execute_plan_rejects_unresolved_placeholder_artifact_paths(
 
     assert "placeholder base path does not exist" in message
     assert "sample" in message
+    summary = _read_csv(tmp_path / "execution_summary.csv")
+    assert len(summary) == 1
+    assert summary[0]["returncode"] == "2"
+    assert "placeholder base path does not exist" in summary[0]["stderr_tail"]
+
+
+def test_execute_plan_max_runs_stops_before_resolving_next_placeholder(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    sample = (
+        tmp_path
+        / "runs"
+        / "dataset"
+        / "method"
+        / "seed_0"
+        / "train"
+        / "resolved"
+        / "iter_0"
+        / "checkpoints"
+        / "best.ckpt"
+    )
+    sample.parent.mkdir(parents=True)
+    sample.write_text("checkpoint", encoding="utf-8")
+    valid_placeholder = (
+        tmp_path
+        / "runs"
+        / "dataset"
+        / "method"
+        / "seed_0"
+        / "train"
+        / "<experiment_name>"
+        / "iter_0"
+        / "checkpoints"
+        / "best.ckpt"
+    )
+    missing_placeholder = (
+        tmp_path
+        / "runs"
+        / "dataset"
+        / "method"
+        / "seed_1"
+        / "train"
+        / "<experiment_name>"
+        / "iter_0"
+        / "checkpoints"
+        / "best.ckpt"
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, text, capture_output):
+        calls.append(list(cmd))
+        return SimpleNamespace(returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    rows = [
+        {
+            "benchmark_id": "fixture",
+            "dataset": "dataset",
+            "dataset_id": "1",
+            "dataset_name": "Dataset",
+            "method": "method",
+            "method_label": "Method",
+            "seed": 0,
+            "stage": "sample",
+            "gpu_id": "7",
+            "config": "cfg.yaml",
+            "command": (
+                "env CUDA_VISIBLE_DEVICES=7 python main.py --config cfg.yaml "
+                f"--override task.generative.checkpoint_path={valid_placeholder}"
+            ),
+        },
+        {
+            "benchmark_id": "fixture",
+            "dataset": "dataset",
+            "dataset_id": "1",
+            "dataset_name": "Dataset",
+            "method": "method",
+            "method_label": "Method",
+            "seed": 1,
+            "stage": "sample",
+            "gpu_id": "7",
+            "config": "cfg.yaml",
+            "command": (
+                "env CUDA_VISIBLE_DEVICES=7 python main.py --config cfg.yaml "
+                f"--override task.generative.checkpoint_path={missing_placeholder}"
+            ),
+        },
+    ]
+
+    rc = execute_plan(rows, tmp_path / "execution_summary.csv", max_runs=1)
+
+    assert rc == 0
+    assert len(calls) == 1
+    summary = _read_csv(tmp_path / "execution_summary.csv")
+    assert len(summary) == 1
+    assert summary[0]["seed"] == "0"
 
 
 def test_execute_plan_resolves_existing_placeholder_artifact_paths(
@@ -823,6 +1212,18 @@ def test_execute_plan_skip_existing_train_artifact(tmp_path: Path, monkeypatch) 
     summary = _read_csv(tmp_path / "execution_summary.csv")
     assert summary[0]["returncode"] == "0"
     assert "[SKIP] existing train artifact" in summary[0]["stdout_tail"]
+    ledger = json.loads(
+        (
+            tmp_path / "runs" / "dataset" / "method" / "seed_0" / "stage_ledger.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert ledger["benchmark_id"] == "fixture"
+    assert ledger["dataset"] == "dataset"
+    assert ledger["method"] == "method"
+    assert ledger["seed"] == "0"
+    assert ledger["current_stage"] == "train"
+    assert ledger["status"] == "skipped_existing"
+    assert ledger["last_returncode"] == 0
 
 
 def test_execute_plan_max_runs_limits_non_skipped_commands(
