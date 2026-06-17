@@ -287,14 +287,37 @@ def _manifest_completeness_rows(manifests: list[Path]) -> list[dict[str, Any]]:
                 "leakage_checks": evidence.get("leakage_checks", ""),
                 "condition_sampling_policy": evidence.get("condition_sampling_policy", ""),
                 "condition_counts": evidence.get("condition_counts", ""),
+                "condition_sampling_split_verified": evidence.get(
+                    "condition_sampling_split_verified", ""
+                ),
                 "metric_status_reason_recorded": evidence.get("metric_status_reason_recorded", ""),
             }
         )
     return rows
 
 
-def _run_index_rows(manifests: list[Path], metric_rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+def _run_index_rows(
+    manifests: list[Path],
+    metric_rows: list[dict[str, str]],
+    warnings: list[str] | None = None,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    for warning in warnings or []:
+        rows.append(
+            {
+                "source_type": "warning",
+                "source_path": "",
+                "synthetic_dataset_id": "",
+                "seed": "",
+                "config_path": "",
+                "validity_status": "warning",
+                "benchmark_valid": "",
+                "metric_rows": "",
+                "utility_protocol_id": "",
+                "utility_source_split": "",
+                "utility_reference_split": warning,
+            }
+        )
     for path in manifests:
         manifest = _read_json(path)
         rows.append(
@@ -334,6 +357,47 @@ def _run_index_rows(manifests: list[Path], metric_rows: list[dict[str, str]]) ->
             }
         )
     return rows
+
+
+def _stage_ledger_manifest_paths(
+    stage_ledger: Path | None,
+) -> tuple[list[Path], list[str]]:
+    if stage_ledger is None:
+        return [], ["stage_ledger not provided"]
+    if not stage_ledger.exists():
+        return [], [f"stage_ledger missing: {stage_ledger}"]
+    ledger = _read_json(stage_ledger)
+    sample = ledger.get("stages", {}).get("sample", {})
+    manifest_path = sample.get("synthetic_manifest_path")
+    if not manifest_path:
+        return [], [f"stage_ledger has no sample.synthetic_manifest_path: {stage_ledger}"]
+    path = Path(str(manifest_path))
+    if not path.exists():
+        return [], [f"stage_ledger synthetic manifest missing: {path}"]
+    return [path], []
+
+
+def _unique_paths(paths: list[Path]) -> list[Path]:
+    unique: dict[str, Path] = {}
+    for path in paths:
+        unique[str(path.resolve() if path.exists() else path)] = path
+    return sorted(unique.values())
+
+
+def _update_paperpack_stage_ledger(
+    stage_ledger: Path | None, paperpack: Path, run_dir: Path
+) -> None:
+    if stage_ledger is None or not stage_ledger.exists():
+        return
+    ledger = _read_json(stage_ledger)
+    ledger.setdefault("schema_version", "0.3.0")
+    ledger.setdefault("stages", {})
+    stage = dict(ledger["stages"].get("paperpack", {}))
+    stage.update({"run_dir": str(run_dir), "paperpack_dir": str(paperpack)})
+    ledger["stages"]["paperpack"] = stage
+    stage_ledger.write_text(
+        json.dumps(ledger, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def _ablation_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -407,7 +471,7 @@ def _write_reproducibility(path: Path, manifest: dict[str, Any] | None, run_dir:
     path.write_text(text, encoding="utf-8")
 
 
-def build_paperpack(run_dir: Path) -> Path:
+def build_paperpack(run_dir: Path, stage_ledger: Path | None = None) -> Path:
     if not run_dir.exists():
         raise FileNotFoundError(f"run_dir does not exist: {run_dir}")
     paperpack = run_dir / "paperpack"
@@ -418,7 +482,10 @@ def build_paperpack(run_dir: Path) -> Path:
     figure_sources.mkdir(parents=True, exist_ok=True)
     appendix.mkdir(parents=True, exist_ok=True)
 
-    manifests = sorted(run_dir.rglob("synthetic_data_manifest.json"))
+    ledger_manifests, ledger_warnings = _stage_ledger_manifest_paths(stage_ledger)
+    manifests = _unique_paths(
+        [*sorted(run_dir.rglob("synthetic_data_manifest.json")), *ledger_manifests]
+    )
     manifest = _read_json(manifests[-1]) if manifests else None
     metric_rows = _read_metric_rows(run_dir)
     quality_records = _metric_records(metric_rows, QUALITY_PREFIXES, category="quality")
@@ -478,7 +545,7 @@ def build_paperpack(run_dir: Path) -> Path:
     )
     _write_csv(
         appendix / "run_index.csv",
-        _run_index_rows(manifests, metric_rows),
+        _run_index_rows(manifests, metric_rows, ledger_warnings),
         [
             "source_type",
             "source_path",
@@ -509,6 +576,7 @@ def build_paperpack(run_dir: Path) -> Path:
             "leakage_checks",
             "condition_sampling_policy",
             "condition_counts",
+            "condition_sampling_split_verified",
             "metric_status_reason_recorded",
         ],
     )
@@ -565,14 +633,23 @@ def build_paperpack(run_dir: Path) -> Path:
         missing_rows,
         ["category", "dataset", "method", "seed", "metric", "status", "reason", "value", "source_path"],
     )
+    _update_paperpack_stage_ledger(stage_ledger, paperpack, run_dir)
     return paperpack
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build a minimal generative paperpack.")
-    parser.add_argument("--run_dir", required=True, help="Run directory containing manifests/metrics.")
+    parser.add_argument(
+        "--run_dir", required=True, help="Run directory containing manifests/metrics."
+    )
+    parser.add_argument(
+        "--stage_ledger",
+        default=None,
+        help="Optional train/sample/eval stage ledger JSON.",
+    )
     args = parser.parse_args()
-    out = build_paperpack(Path(args.run_dir))
+    stage_ledger = Path(args.stage_ledger) if args.stage_ledger else None
+    out = build_paperpack(Path(args.run_dir), stage_ledger)
     print(f"[OK] paperpack written: {out}")
     return 0
 

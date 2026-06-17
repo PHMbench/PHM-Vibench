@@ -253,6 +253,16 @@ def test_repository_six_dataset_matrix_builds_complete_run_plan() -> None:
     paperpack_rows = [row for row in rows if row["stage"] == "paperpack"]
     assert all("trainer.device=cuda" in row["command"] for row in main_rows)
     assert all("trainer.gpus=1" in row["command"] for row in main_rows)
+    expected_channels = {
+        "RM_001_CWRU": 2,
+        "RM_002_XJTU": 2,
+        "RM_003_FEMTO": 2,
+        "RM_008_UNSW": 6,
+        "RM_024_JUST": 7,
+        "RM_027_PU": 3,
+    }
+    for row in main_rows:
+        assert f"model.in_channels={expected_channels[row['dataset']]}" in row["command"]
     assert all("python -m scripts.paperpack_generative" in row["command"] for row in paperpack_rows)
 
 
@@ -302,6 +312,9 @@ def test_six_dataset_fixture_aggregation_writes_paper_evidence(tmp_path: Path) -
     assert manifest["unexpected_datasets"] == []
     assert manifest["min_datasets_met"] is True
     assert manifest["input_gaps"] == []
+    assert manifest["benchmark_status_counts"] == {"benchmark-valid": len(summary)}
+    assert manifest["benchmark_valid_row_count"] == len(summary)
+    assert manifest["exploratory_row_count"] == 0
 
 
 def test_six_dataset_fixture_manifest_records_missing_dataset_evidence(
@@ -501,6 +514,7 @@ def test_submission_draft_refuses_submission_ready_when_evidence_is_incomplete()
     draft = build_draft(summary, manifest)
     assert "**Draft status:** `NOT_SUBMISSION_READY`" in draft
     assert "No numerical claim" in draft
+    assert "No computable benchmark rows" in draft
     assert_no_placeholders(draft)
 
 
