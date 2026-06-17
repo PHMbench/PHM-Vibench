@@ -27,6 +27,7 @@ datasets:
     dataset_id: 1
     name: "CWRU"
     overrides:
+      model.in_channels: 2
       task.target_system_id: [1]
       task.source_domain_id: [0, 1, 2]
       task.target_domain_id: [3]
@@ -37,6 +38,7 @@ datasets:
     dataset_id: 2
     name: "XJTU"
     overrides:
+      model.in_channels: 2
       task.target_system_id: [2]
       task.source_domain_id: [0, 1]
       task.target_domain_id: [2]
@@ -47,6 +49,7 @@ datasets:
     dataset_id: 3
     name: "FEMTO"
     overrides:
+      model.in_channels: 2
       task.target_system_id: [3]
       task.source_domain_id: [0, 1]
       task.target_domain_id: [2]
@@ -57,6 +60,7 @@ datasets:
     dataset_id: 8
     name: "UNSW"
     overrides:
+      model.in_channels: 6
       task.target_system_id: [8]
       task.source_domain_id: [0]
       task.target_domain_id: [1, 2, 3]
@@ -67,6 +71,7 @@ datasets:
     dataset_id: 18
     name: "JUST"
     overrides:
+      model.in_channels: 7
       task.target_system_id: [18]
       task.source_domain_id: [1, 2, 3, 4, 5, 6]
       task.target_domain_id: [7, 8, 9]
@@ -77,6 +82,7 @@ datasets:
     dataset_id: 20
     name: "PU"
     overrides:
+      model.in_channels: 3
       task.target_system_id: [20]
       task.source_domain_id: [0, 1, 2]
       task.target_domain_id: [3]
