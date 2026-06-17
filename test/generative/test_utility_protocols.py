@@ -36,16 +36,18 @@ def test_utility_protocol_metadata_is_paperpack_indexed(tmp_path: Path) -> None:
         reference_split="val",
         augmentation_ratio=1.0,
     )
+    assert "utility_classifier_tstr_accuracy" in metadata["metrics"]
+    assert "tstr_accuracy" in metadata["deprecated_metric_aliases"]
     metrics_path = tmp_path / "run" / "generative_eval_metrics.csv"
     metrics_path.parent.mkdir(parents=True)
     with metrics_path.open("w", encoding="utf-8", newline="") as f:
         fieldnames = [
-            "tstr_accuracy",
-            "tstr_accuracy_status",
-            "tstr_accuracy_reason",
-            "trts_accuracy",
-            "trts_accuracy_status",
-            "trts_accuracy_reason",
+            "tstr_nearest_centroid_accuracy",
+            "tstr_nearest_centroid_accuracy_status",
+            "tstr_nearest_centroid_accuracy_reason",
+            "trts_nearest_centroid_accuracy",
+            "trts_nearest_centroid_accuracy_status",
+            "trts_nearest_centroid_accuracy_reason",
             "utility_protocol_id",
             "utility_source_split",
             "utility_reference_split",
@@ -54,10 +56,10 @@ def test_utility_protocol_metadata_is_paperpack_indexed(tmp_path: Path) -> None:
         writer.writeheader()
         writer.writerow(
             {
-                "tstr_accuracy": "0.5",
-                "tstr_accuracy_status": "ok",
-                "trts_accuracy": "0.25",
-                "trts_accuracy_status": "ok",
+                "tstr_nearest_centroid_accuracy": "0.5",
+                "tstr_nearest_centroid_accuracy_status": "ok",
+                "trts_nearest_centroid_accuracy": "0.25",
+                "trts_nearest_centroid_accuracy_status": "ok",
                 "utility_protocol_id": metadata["utility_protocol_id"],
                 "utility_source_split": metadata["synthetic_source_split"],
                 "utility_reference_split": metadata["reference_split"],
@@ -66,8 +68,10 @@ def test_utility_protocol_metadata_is_paperpack_indexed(tmp_path: Path) -> None:
 
     paperpack = build_paperpack(tmp_path / "run")
     run_index = (paperpack / "appendix" / "run_index.csv").read_text(encoding="utf-8")
-    utility_table = (paperpack / "tables" / "table_utility_mean_std.csv").read_text(encoding="utf-8")
+    utility_table = (paperpack / "tables" / "table_utility_mean_std.csv").read_text(
+        encoding="utf-8"
+    )
 
     assert "tstr_trts_dummy" in run_index
-    assert "tstr_accuracy" in utility_table
-    assert "trts_accuracy" in utility_table
+    assert "tstr_nearest_centroid_accuracy" in utility_table
+    assert "trts_nearest_centroid_accuracy" in utility_table

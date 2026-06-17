@@ -32,5 +32,14 @@ def build_utility_protocol_metadata(
         "reference_split": "val" if reference == "valid" else reference,
         "allow_test_reference_eval": bool(allow_test_reference_eval),
         "augmentation_ratio": augmentation_ratio,
-        "metrics": ["tstr_accuracy", "trts_accuracy"],
+        "metrics": [
+            "tstr_nearest_centroid_accuracy",
+            "trts_nearest_centroid_accuracy",
+            "utility_classifier_tstr_accuracy",
+            "utility_classifier_trts_accuracy",
+            "utility_classifier_real_only_accuracy",
+            "utility_classifier_real_plus_synth_accuracy",
+            "utility_classifier_real_plus_synth_gain",
+        ],
+        "deprecated_metric_aliases": ["tstr_accuracy", "trts_accuracy"],
     }
