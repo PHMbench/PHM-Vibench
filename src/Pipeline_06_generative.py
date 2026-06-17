@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import json
 import os
 import time
 from pathlib import Path
@@ -22,6 +23,7 @@ from src.utils.config_utils import apply_overrides_to_config, parse_overrides
 
 
 PROTOCOL_SCHEMA_PATH = "docs/schemas/generative_protocol.schema.json"
+STAGE_NAMES = {"train", "sample", "eval", "paperpack"}
 
 
 def _load_configs(args):
@@ -84,6 +86,17 @@ def _get_cfg_attr(cfg, key: str, default=None):
     return getattr(cfg, key, default)
 
 
+def _optional_float(*values) -> float | None:
+    for value in values:
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _as_int_list(value, field_name: str) -> list[int]:
     if value is None:
         raise ValueError(f"{field_name} is required")
@@ -123,6 +136,22 @@ def _metadata_condition_pairs(metadata, split: str | None = None) -> list[tuple[
     if not pairs:
         raise ValueError("metadata does not contain any usable fault/domain condition pairs")
     return pairs
+
+
+def _metadata_row_split(row) -> str | None:
+    value = (
+        row.get("split")
+        or row.get("Split")
+        or row.get("source_split")
+        or row.get("Source_split")
+    )
+    return str(value).lower() if value is not None else None
+
+
+def _metadata_has_explicit_split(metadata) -> bool:
+    return bool(metadata) and all(
+        _metadata_row_split(row) is not None for row in metadata.values()
+    )
 
 
 def _condition_from_grid(gen_cfg, device) -> dict[str, torch.Tensor]:
@@ -180,6 +209,12 @@ def _select_condition(gen_cfg, metadata, num_samples: int, seed: int, device):
     if policy == "explicit":
         return _condition_from_explicit(gen_cfg, device)
     raise ValueError(f"Unsupported condition_sampling_policy: {policy}")
+
+
+def _condition_sampling_split_verified(policy: str, metadata) -> bool:
+    if policy != "train_distribution":
+        return True
+    return _metadata_has_explicit_split(metadata)
 
 
 def _hash_path_or_value(path_or_value: str) -> str:
@@ -352,7 +387,112 @@ def _to_ncl(x: torch.Tensor, channels: int) -> torch.Tensor:
         return x.contiguous()
     if x.shape[2] == channels:
         return x.transpose(1, 2).contiguous()
-    return x.contiguous()
+    raise ValueError(
+        f"expected channel axis with channels={channels} in [N,C,L] or [N,L,C], "
+        f"got shape={tuple(x.shape)}"
+    )
+
+
+def _stage_ledger_path(configs, run_path: str | Path, mode: str) -> Path:
+    args_task = transfer_namespace(configs.task)
+    gen_cfg = _generative_cfg(args_task)
+    configured = getattr(gen_cfg, "stage_ledger_path", None)
+    if configured:
+        return Path(str(configured))
+    output_dir = Path(str(configs.environment.get("output_dir", "")))
+    if output_dir.name in STAGE_NAMES:
+        return output_dir.parent / "stage_ledger.json"
+    return Path(run_path) / "stage_ledger.json"
+
+
+def _update_stage_ledger(path: str | Path, *, mode: str, values: dict) -> None:
+    ledger_path = Path(path)
+    if ledger_path.exists():
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    else:
+        ledger = {"schema_version": "0.3.0", "stages": {}}
+    ledger.setdefault("schema_version", "0.3.0")
+    ledger.setdefault("stages", {})
+    stage = dict(ledger["stages"].get(mode, {}))
+    stage.update(
+        {key: str(value) for key, value in values.items() if value not in {None, ""}}
+    )
+    ledger["stages"][mode] = stage
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    ledger_path.write_text(
+        json.dumps(ledger, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def _find_checkpoint_path(run_path: str | Path) -> str:
+    candidates = sorted(Path(run_path).rglob("*.ckpt"))
+    if not candidates:
+        return ""
+    for path in candidates:
+        if path.name == "best.ckpt":
+            return str(path)
+    return str(candidates[0])
+
+
+def _resolve_synthetic_manifest_path(generated_path: str | Path) -> str:
+    sample_path = Path(generated_path)
+    candidates = [
+        sample_path.with_name("synthetic_data_manifest.json"),
+        sample_path.parent / "synthetic_data_manifest.json",
+        sample_path.parent.parent / "synthetic_data_manifest.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return ""
+
+
+def _metric_status_summary(metrics: dict) -> dict[str, int]:
+    summary = {"ok": 0, "not_computable": 0}
+    for key, value in metrics.items():
+        if not key.endswith("_status"):
+            continue
+        status = str(value)
+        if status in summary:
+            summary[status] += 1
+    return summary
+
+
+def _write_eval_evidence_manifest(
+    path: str | Path,
+    *,
+    generated_path: str | Path,
+    metrics_path: str | Path,
+    reference_split: str,
+    allow_test_reference_eval: bool,
+    metrics: dict,
+) -> dict:
+    synthetic_manifest_path = _resolve_synthetic_manifest_path(generated_path)
+    status_summary = _metric_status_summary(metrics)
+    missing: list[str] = []
+    if not synthetic_manifest_path:
+        missing.append("synthetic_manifest_path")
+    if status_summary["not_computable"]:
+        missing.append("metric_status_ok")
+    if not status_summary["ok"] and not status_summary["not_computable"]:
+        missing.append("metric_status_reason_recorded")
+    manifest = {
+        "schema_version": "0.3.0",
+        "generated_path": str(generated_path),
+        "synthetic_manifest_path": synthetic_manifest_path,
+        "metrics_path": str(metrics_path),
+        "reference_split": reference_split,
+        "allow_test_reference_eval": bool(allow_test_reference_eval),
+        "metric_status_summary": status_summary,
+        "promotion": {
+            "eligible": not missing,
+            "missing": missing,
+        },
+    }
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    return manifest
 
 
 def _load_sample_payload(path: str | Path) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
@@ -436,6 +576,15 @@ def _train_one_iteration(args, configs, iteration):
         }
     )
     pd.DataFrame([result_row]).to_csv(os.path.join(path, f"train_result_{iteration}.csv"), index=False)
+    _update_stage_ledger(
+        _stage_ledger_path(configs, path, "train"),
+        mode="train",
+        values={
+            "run_dir": path,
+            "checkpoint_path": _find_checkpoint_path(path),
+            "train_result_path": os.path.join(path, f"train_result_{iteration}.csv"),
+        },
+    )
     return result_row
 
 
@@ -466,9 +615,11 @@ def _sample_once(args, configs, iteration):
     num_samples = int(getattr(gen_cfg, "num_samples", 2))
     num_steps = int(getattr(gen_cfg, "num_steps", 8))
     length = int(getattr(gen_cfg, "length", getattr(args_data, "window_size", 128)))
+    metadata = data_factory.get_metadata()
+    policy = str(getattr(gen_cfg, "condition_sampling_policy", "first_metadata_repeated"))
     expanded_condition = _select_condition(
         gen_cfg,
-        data_factory.get_metadata(),
+        metadata,
         num_samples,
         seed,
         task.device,
@@ -494,7 +645,7 @@ def _sample_once(args, configs, iteration):
         "samples": samples.cpu(),
         "fault_label": expanded_condition["fault_label"].detach().cpu(),
         "domain_id": expanded_condition["domain_id"].detach().cpu(),
-        "condition_policy": str(getattr(gen_cfg, "condition_sampling_policy", "first_metadata_repeated")),
+        "condition_policy": policy,
         "condition_counts": _condition_counts(expanded_condition),
         "num_steps": num_steps,
         "sampler_id": str(getattr(task, "sampler_id", "euler_ode")),
@@ -526,9 +677,19 @@ def _sample_once(args, configs, iteration):
         protocol_hash=_hash_path_or_value(PROTOCOL_SCHEMA_PATH),
         dependency_lock_hash=_dependency_lock_hash(),
         leakage_checks=leakage_checks,
-        condition_sampling_policy=str(getattr(gen_cfg, "condition_sampling_policy", "first_metadata_repeated")),
+        condition_sampling_policy=policy,
         condition_counts=_condition_counts(expanded_condition),
+        condition_sampling_split_verified=_condition_sampling_split_verified(policy, metadata),
         sampler_metadata=dict(getattr(task, "sampler_metadata", lambda: {})()),
+    )
+    _update_stage_ledger(
+        _stage_ledger_path(configs, path, "sample"),
+        mode="sample",
+        values={
+            "run_dir": path,
+            "samples_path": tensor_path,
+            "synthetic_manifest_path": manifest_path,
+        },
     )
     data_factory.data.close()
     return {
@@ -561,8 +722,7 @@ def _eval_once(args, configs, iteration):
         )
     real_batch = next(iter(data_factory.get_dataloader(eval_split)))
     real = _to_ncl(real_batch["x"], channels)
-    if fake.ndim == 3 and fake.shape[1] != channels and fake.shape[2] == channels:
-        fake = fake.transpose(1, 2).contiguous()
+    fake = _to_ncl(fake, channels)
     n = min(real.shape[0], fake.shape[0])
     real = real[:n]
     fake = fake[:n]
@@ -584,6 +744,22 @@ def _eval_once(args, configs, iteration):
         fake_labels=fake_labels,
         real_domains=real_domains,
         fake_domains=fake_domains,
+        sampling_rate_hz=_optional_float(
+            getattr(gen_cfg, "sampling_rate_hz", None),
+            getattr(gen_cfg, "sampling_rate", None),
+            getattr(args_data, "sampling_rate_hz", None),
+            getattr(args_data, "sampling_rate", None),
+        ),
+        shaft_rpm=_optional_float(
+            getattr(gen_cfg, "shaft_rpm", None),
+            getattr(gen_cfg, "rpm", None),
+            getattr(args_data, "shaft_rpm", None),
+            getattr(args_data, "rpm", None),
+        ),
+        fault_frequency_hz=_optional_float(
+            getattr(gen_cfg, "fault_frequency_hz", None),
+            getattr(args_data, "fault_frequency_hz", None),
+        ),
     )
     metrics.update(
         {
@@ -597,6 +773,26 @@ def _eval_once(args, configs, iteration):
     )
     metrics_path = Path(path) / "generative_eval_metrics.csv"
     pd.DataFrame([metrics]).to_csv(metrics_path, index=False)
+    eval_evidence_path = Path(path) / "eval_evidence_manifest.json"
+    _write_eval_evidence_manifest(
+        eval_evidence_path,
+        generated_path=fake_path,
+        metrics_path=metrics_path,
+        reference_split=eval_split,
+        allow_test_reference_eval=bool(
+            getattr(gen_cfg, "allow_test_reference_eval", False)
+        ),
+        metrics=metrics,
+    )
+    _update_stage_ledger(
+        _stage_ledger_path(configs, path, "eval"),
+        mode="eval",
+        values={
+            "run_dir": path,
+            "metrics_path": metrics_path,
+            "eval_evidence_manifest_path": eval_evidence_path,
+        },
+    )
     data_factory.data.close()
     return metrics
 

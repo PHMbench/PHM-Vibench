@@ -244,6 +244,7 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
         leakage_checks: dict[str, Any] | None = None,
         condition_sampling_policy: str = "match_train_distribution",
         condition_counts: dict[str, int] | None = None,
+        condition_sampling_split_verified: bool = True,
         sampler_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         normalization = {
@@ -281,6 +282,7 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             leakage_checks=leakage_checks,
             condition_sampling_policy=condition_sampling_policy,
             condition_counts=condition_counts,
+            condition_sampling_split_verified=condition_sampling_split_verified,
             sampler_metadata=sampler_metadata,
         )
         write_synthetic_data_manifest(output_path, manifest)
