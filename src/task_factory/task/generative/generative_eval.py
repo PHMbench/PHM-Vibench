@@ -47,6 +47,9 @@ def _reason_for_metric(
     fake_labels: torch.Tensor | None,
     real_domains: torch.Tensor | None,
     fake_domains: torch.Tensor | None,
+    sampling_rate_hz: float | None,
+    shaft_rpm: float | None,
+    fault_frequency_hz: float | None,
 ) -> str:
     shape_reason = _invalid_window_reason(real, fake)
     if shape_reason:
@@ -55,8 +58,35 @@ def _reason_for_metric(
         return "real or fake windows contain NaN/Inf"
     if key.startswith("diversity_prdc_") and (real.shape[0] < 2 or fake.shape[0] < 2):
         return "at least two real and fake samples are required for PRDC diversity metrics"
-    if key.startswith(("tstr_", "trts_")) and (real_labels is None or fake_labels is None):
+    if key in {
+        "spectral_phm_band_energy_error",
+        "spectral_envelope_spectrum_l1",
+        "spectral_cross_channel_coherence_error",
+    } and (sampling_rate_hz is None or float(sampling_rate_hz) <= 0.0):
+        return "sampling_rate_hz is required for PHM spectral metrics"
+    if key in {
+        "spectral_fault_characteristic_peak_error",
+        "spectral_harmonic_ratio_error",
+    }:
+        if sampling_rate_hz is None or float(sampling_rate_hz) <= 0.0:
+            return "sampling_rate_hz is required for PHM spectral metrics"
+        if fault_frequency_hz is None and shaft_rpm is None:
+            return "fault_frequency_hz or shaft_rpm is required for fault-characteristic spectral metrics"
+    if key.startswith(("tstr_", "trts_", "utility_classifier_")) and (
+        real_labels is None or fake_labels is None
+    ):
         return "real_labels and fake_labels are required for downstream utility metrics"
+    if key.startswith("utility_classifier_"):
+        if real_labels is not None and torch.unique(real_labels).numel() < 2:
+            return "at least two real label classes are required for classifier utility metrics"
+        if fake_labels is not None and torch.unique(fake_labels).numel() < 2:
+            return "at least two fake label classes are required for classifier utility metrics"
+        if (
+            real_labels is not None
+            and fake_labels is not None
+            and (real_labels.numel() < 4 or fake_labels.numel() < 2)
+        ):
+            return "classifier utility metrics require enough labeled real and fake samples"
     if key.startswith("diversity_intra_class") and (real_labels is None or fake_labels is None):
         return "real_labels and fake_labels are required for intra-class diversity"
     if "_fault_" in key and (real_labels is None or fake_labels is None):
@@ -75,6 +105,9 @@ def _annotate_metric_statuses(
     fake_labels: torch.Tensor | None,
     real_domains: torch.Tensor | None,
     fake_domains: torch.Tensor | None,
+    sampling_rate_hz: float | None,
+    shaft_rpm: float | None,
+    fault_frequency_hz: float | None,
 ) -> None:
     for key, value in list(metrics.items()):
         if not _is_metric_value_key(key) or not _numeric_metric_value(value):
@@ -94,6 +127,9 @@ def _annotate_metric_statuses(
                     fake_labels=fake_labels,
                     real_domains=real_domains,
                     fake_domains=fake_domains,
+                    sampling_rate_hz=sampling_rate_hz,
+                    shaft_rpm=shaft_rpm,
+                    fault_frequency_hz=fault_frequency_hz,
                 ),
             )
 
@@ -136,6 +172,9 @@ def evaluate_generated_windows(
     fake_labels: torch.Tensor | None = None,
     real_domains: torch.Tensor | None = None,
     fake_domains: torch.Tensor | None = None,
+    sampling_rate_hz: float | None = None,
+    shaft_rpm: float | None = None,
+    fault_frequency_hz: float | None = None,
 ) -> dict[str, object]:
     """Compute the lightweight generative metric bundle for `[N, C, L]` tensors."""
     real_labels = _label_tensor(real_labels)
@@ -144,7 +183,15 @@ def evaluate_generated_windows(
     fake_domains = _label_tensor(fake_domains)
     metrics: dict[str, object] = {}
     metrics.update(temporal_metrics(real, fake))
-    metrics.update(spectral_metrics(real, fake))
+    metrics.update(
+        spectral_metrics(
+            real,
+            fake,
+            sampling_rate_hz=sampling_rate_hz,
+            shaft_rpm=shaft_rpm,
+            fault_frequency_hz=fault_frequency_hz,
+        )
+    )
     metrics.update(distribution_metrics(real, fake))
     metrics.update(leakage_metrics(real, fake))
     metrics.update(diversity_metrics(real, fake, real_labels=real_labels, fake_labels=fake_labels))
@@ -175,5 +222,8 @@ def evaluate_generated_windows(
         fake_labels=fake_labels,
         real_domains=real_domains,
         fake_domains=fake_domains,
+        sampling_rate_hz=sampling_rate_hz,
+        shaft_rpm=shaft_rpm,
+        fault_frequency_hz=fault_frequency_hz,
     )
     return metrics
