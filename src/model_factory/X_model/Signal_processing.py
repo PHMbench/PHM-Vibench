@@ -107,7 +107,7 @@ class FFTSignalProcessing(SignalProcessingBase):
     def forward(self, x):
         # 假设 x 的形状为 [B, L, C]
         fft_result = torch.fft.rfft(x, dim=1, norm='ortho')  # 对长度L进行FFT
-        return fft_result
+        return torch.abs(fft_result)
 
 # 2 ############################################## subclass for Hilbert module###############################################  
 class HilbertTransform(SignalProcessingBase):

@@ -25,6 +25,10 @@ def iter_demo_configs() -> Iterable[Path]:
     yield from sorted(Path("configs/demo").rglob("*.yaml"))
 
 
+def iter_hydra_experiment_configs() -> Iterable[Path]:
+    yield from sorted(Path("configs/hydra/experiments").rglob("*.yaml"))
+
+
 def iter_registry_active_configs(registry_path: Path) -> Iterable[Path]:
     if not registry_path.exists():
         return
@@ -71,6 +75,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if p not in seen:
             seen.add(p)
             paths.append(p)
+    for p in iter_hydra_experiment_configs():
+        if p not in seen:
+            seen.add(p)
+            paths.append(p)
     for p in iter_registry_active_configs(Path(args.registry)):
         if p.exists() and p not in seen:
             seen.add(p)
@@ -96,4 +104,3 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

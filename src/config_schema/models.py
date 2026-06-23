@@ -60,6 +60,7 @@ class TaskConfig(BaseModel):
     name: str = Field(..., description="Task name under task.type.")
 
     target_system_id: Optional[List[int]] = None
+    contrastive_pairing: Optional[Literal["simclr_2view", "labels", "explicit_pairs"]] = None
 
     @model_validator(mode="after")
     def _check_target_system_id(self) -> "TaskConfig":
@@ -87,6 +88,10 @@ class ExperimentConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     pipeline: str = Field(..., description="Pipeline module name under src/ (e.g. Pipeline_01_default).")
+    pipeline_mode: Optional[Literal["single", "staged", "legacy"]] = Field(
+        default=None,
+        description="Explicit mode for multi-mode pipelines such as Pipeline_02_pretrain_fewshot.",
+    )
     environment: EnvironmentConfig
     data: DataConfig
     model: ModelConfig

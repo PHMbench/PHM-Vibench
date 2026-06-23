@@ -1,55 +1,92 @@
 # Paper Submodule Guide
 
-## Overview
-The `paper/2025-10_foundation_model_0_metric` directory is a Git submodule that points to the private repository:
-https://github.com/liq22/PHM-Vibench-Paper-2025-Metric
+This file is the parent-repo guide for paper submodules. Paper repositories keep
+their own code, configs, drafts, results, and README files. The parent
+PHM-Vibench repo tracks only the submodule commit pointers.
 
-## Structure
-- **Main Repository**: PHM-Vibench (codebase)
-- **Submodule**: PHM-Vibench-Paper-2025-Metric (paper materials)
+## Registered Paper Submodules
+
+| Path | Remote | Notes |
+|---|---|---|
+| `paper/2025-10_foundation_model_0_metric` | `git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git` | HSE/HSE-Prompt metric and foundation-model paper. |
+| `paper/LQ_vibench_fix` | `git@github.com:liq22/LQ_vibench_fix.git` | LQ fix history and UXFD merge work. |
+| `paper/UXFD_paper/1D-2D_fusion_explainable` | `https://github.com/liq22/1D-2D_fusion_explainable.git` | UXFD paper submodule. |
+| `paper/UXFD_paper/Explainable_FD_Toolkit` | `https://github.com/liq22/Explainable_FD_Toolkit.git` | UXFD paper submodule. |
+| `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `https://github.com/liq22/LLM_Explainable_FD_Toolkit.git` | UXFD paper submodule. |
+| `paper/UXFD_paper/MOE_explainable` | `https://github.com/liq22/MOE_explainable.git` | UXFD paper submodule. |
+| `paper/UXFD_paper/Neuralsymbolic_theory` | `https://github.com/liq22/Neuralsymbolic_theory.git` | UXFD paper submodule. |
+| `paper/UXFD_paper/Paper_fuzzy_XFD` | `https://github.com/liq22/Paper_fuzzy_XFD.git` | UXFD paper submodule. |
+| `paper/UXFD_paper/TII_operator_attention` | `git@github.com:liq22/TII_operator_attention.git` | UXFD paper submodule. |
+
+The source of truth for this list is `.gitmodules`.
 
 ## Common Operations
 
-### Clone with Submodule
+Clone with submodules:
+
 ```bash
 git clone --recurse-submodules git@github.com:liq22/Vbench.git
 ```
 
-### If Already Cloned Without Submodule
+Initialize after a normal clone:
+
 ```bash
 git submodule update --init --recursive
 ```
 
-### Update Submodule to Latest
+Check submodule pointers and dirty state:
+
 ```bash
-cd paper/2025-10_foundation_model_0_metric
-git pull origin main
-cd ../..
-git add paper/2025-10_foundation_model_0_metric
-git commit -m "Update paper submodule"
+git submodule status --recursive
+git status --short
 ```
 
-### Make Changes to Paper
+Update a submodule to the commit recorded by the parent repo:
+
 ```bash
-cd paper/2025-10_foundation_model_0_metric
-# Make your changes
-git add .
-git commit -m "Describe your changes"
-git push origin main
+git submodule update --recursive paper/UXFD_paper/Explainable_FD_Toolkit
 ```
 
-### Check Submodule Status
+Update a submodule to a newer upstream commit:
+
 ```bash
-git submodule status
+cd paper/UXFD_paper/Explainable_FD_Toolkit
+git fetch
+git checkout <branch>
+git pull --ff-only
+cd -
+git status --short
+git add paper/UXFD_paper/Explainable_FD_Toolkit
+git commit -m "Update Explainable_FD_Toolkit submodule"
 ```
 
-## Benefits
-- Clean separation between code and paper materials
-- Independent versioning for paper
-- Reduced main repository size
-- Flexible access permissions
+Make content changes inside a submodule:
 
-## Notes
-- The paper repository is private and only accessible to you
-- The main repository tracks a specific commit of the paper submodule
-- Always commit submodule changes in the main repository after updating
+```bash
+cd paper/UXFD_paper/Explainable_FD_Toolkit
+# edit files inside the submodule
+git status --short
+git add <changed-files>
+git commit -m "Describe paper change"
+git push
+cd -
+git add paper/UXFD_paper/Explainable_FD_Toolkit
+git commit -m "Record Explainable_FD_Toolkit submodule update"
+```
+
+## Parent-Repo Rules
+
+- Do not copy paper-specific configs or scripts into the parent repo unless they
+  are reusable core PHM-Vibench functionality.
+- Do not edit submodule files when the intended change is only a parent index
+  update.
+- Do not commit parent gitlink changes accidentally. A changed submodule pointer
+  should correspond to a real commit inside that submodule.
+- Keep parent docs focused on navigation and boundaries. Detailed paper
+  roadmaps, experiments, and evidence stay inside each paper repository.
+
+## Related Indexes
+
+- Parent paper index: `paper/README.md`
+- UXFD family index: `paper/UXFD_paper/README.md`
+- UXFD setup notes: `paper/UXFD_paper/README_SUBMODULE.md`

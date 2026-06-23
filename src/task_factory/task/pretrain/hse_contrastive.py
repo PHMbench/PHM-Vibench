@@ -57,6 +57,14 @@ class task(Default_task):
         # 对比学习权重与分类权重
         self.contrast_weight: float = float(getattr(args_task, "contrast_weight", 1.0))
         self.classification_weight: float = float(getattr(args_task, "classification_weight", 0.0))
+        self.contrastive_pairing: str = str(
+            getattr(args_task, "contrastive_pairing", "simclr_2view")
+        ).lower()
+        valid_pairings = {"simclr_2view", "labels", "explicit_pairs"}
+        if self.contrastive_pairing not in valid_pairings:
+            raise ValueError(
+                f"[hse_contrastive] Unsupported contrastive_pairing: {self.contrastive_pairing}"
+            )
 
         # 独立的分类损失（统一使用 CE），避免与 args_task.loss 冲突
         self.ce_loss_fn = get_loss_fn("CE")
@@ -75,10 +83,10 @@ class task(Default_task):
             try:
                 self.strategy_manager = create_contrastive_strategy(contrastive_config)
                 logger.info(f"[hse_contrastive] Enabled contrastive strategy: {loss_type}")
-            except Exception as exc:  # pragma: no cover - runtime safeguard
-                logger.error(f"[hse_contrastive] Failed to init contrastive strategy: {exc}")
-                self.strategy_manager = None
-                self.contrast_weight = 0.0
+            except Exception as exc:
+                raise RuntimeError(
+                    f"[hse_contrastive] Failed to init contrastive strategy: {loss_type}"
+                ) from exc
 
     # ------------------------------------------------------------------
     # Lightning hooks
@@ -250,28 +258,26 @@ class task(Default_task):
 
         # 确保logits和y的batch维度匹配
         if logits.shape[0] != y.shape[0]:
-            logger.error(f"[hse_contrastive] Batch size mismatch: logits={logits.shape[0]}, y={y.shape[0]}")
-            return torch.tensor(0.0, device=logits.device), torch.tensor(0.0, device=logits.device)
+            raise ValueError(
+                f"[hse_contrastive] Batch size mismatch: logits={logits.shape[0]}, y={y.shape[0]}"
+            )
 
         # 检查数值稳定性
         if torch.isnan(logits).any() or torch.isinf(logits).any():
-            logger.error("[hse_contrastive] Logits contain NaN or Inf values")
-            return torch.tensor(0.0, device=logits.device), torch.tensor(0.0, device=logits.device)
+            raise FloatingPointError("[hse_contrastive] Logits contain NaN or Inf values")
 
         if torch.isnan(y).any() or torch.isinf(y).any():
-            logger.error("[hse_contrastive] Labels contain NaN or Inf values")
-            return torch.tensor(0.0, device=logits.device), torch.tensor(0.0, device=logits.device)
+            raise FloatingPointError("[hse_contrastive] Labels contain NaN or Inf values")
 
         # 标签值范围检查
         num_classes = logits.shape[1]
         y_min, y_max = y.min().item(), y.max().item()
         if y_min < 0 or y_max >= num_classes:
-            logger.error(
+            raise ValueError(
                 f"[hse_contrastive] Label values out of range: "
                 f"[{y_min}, {y_max}], expected [0, {num_classes-1}]"
                 f"{'' if not system_ids else f', system_ids={system_ids}'}"
             )
-            return torch.tensor(0.0, device=logits.device), torch.tensor(0.0, device=logits.device)
 
         # 确保标签是long类型
         if y.dtype != torch.long:
@@ -288,12 +294,12 @@ class task(Default_task):
             if "device-side assert" in str(exc):
                 logger.error(f"[hse_contrastive] CUDA device-side assert in CE loss, logits shape: {logits.shape}, y shape: {y.shape}")
                 logger.error(f"[hse_contrastive] Logits range: [{logits.min().item():.3f}, {logits.max().item():.3f}], y range: [{y_min}, {y_max}]")
-            return torch.tensor(0.0, device=logits.device), torch.tensor(0.0, device=logits.device)
+            raise
 
     def _run_contrastive_flow(self, features: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """构造两视图特征并调用策略管理器计算对比损失。"""
         if self.strategy_manager is None:
-            return torch.tensor(0.0, device=features.device)
+            raise RuntimeError("[hse_contrastive] contrast_weight > 0 but strategy_manager is None")
 
         # 增强的GPU设备一致性检查
         if not torch.is_tensor(features):
@@ -314,36 +320,38 @@ class task(Default_task):
                 memory_used = torch.cuda.memory_allocated(target_device)
                 memory_total = torch.cuda.get_device_properties(target_device).total_memory
                 if memory_used > memory_total * 0.9:
-                    logger.error(f"[hse_contrastive] GPU memory nearly full: {memory_used/memory_total:.1%}")
-                    return torch.tensor(0.0, device=target_device)
+                    raise RuntimeError(
+                        f"[hse_contrastive] GPU memory nearly full: {memory_used/memory_total:.1%}"
+                    )
 
             # 检查数值稳定性
             if torch.isnan(features).any() or torch.isinf(features).any():
-                logger.error("[hse_contrastive] Features contain NaN or Inf values")
-                return torch.tensor(0.0, device=target_device)
+                raise FloatingPointError("[hse_contrastive] Features contain NaN or Inf values")
             if torch.isnan(y).any() or torch.isinf(y).any():
-                logger.error("[hse_contrastive] Labels contain NaN or Inf values")
-                return torch.tensor(0.0, device=target_device)
+                raise FloatingPointError("[hse_contrastive] Labels contain NaN or Inf values")
 
         # 确保特征展平为 [B, D]
         features = self._flatten_features(features)
         B = features.shape[0]
 
-        # 部分损失需要标签，先做最小一致性检查，避免在 CUDA 中触发 device-side assert
+        if self.contrastive_pairing == "explicit_pairs":
+            raise NotImplementedError(
+                "[hse_contrastive] contrastive_pairing=explicit_pairs requires explicit pair ids."
+            )
+
+        # 部分损失或 pairing 模式需要标签，先做最小一致性检查，避免 CUDA device-side assert
         requires_labels = getattr(self.strategy_manager, "requires_labels", False)
+        needs_labels = requires_labels or self.contrastive_pairing == "labels"
         labels_ext: Optional[torch.Tensor] = None
-        if requires_labels:
+        if needs_labels:
             if y is None:
-                logger.error("[hse_contrastive] Contrastive strategy requires labels, but y is None")
-                return torch.tensor(0.0, device=features.device)
+                raise ValueError("[hse_contrastive] Contrastive strategy requires labels, but y is None")
             if y.ndim != 1:
-                logger.error(f"[hse_contrastive] Expected 1D labels, got {y.ndim}D")
-                return torch.tensor(0.0, device=features.device)
+                raise ValueError(f"[hse_contrastive] Expected 1D labels, got {y.ndim}D")
             if y.shape[0] != B:
-                logger.error(
+                raise ValueError(
                     f"[hse_contrastive] Label length mismatch: features={B}, labels={y.shape[0]}"
                 )
-                return torch.tensor(0.0, device=features.device)
 
             # 标签数据类型和范围检查
             if y.dtype not in [torch.long, torch.int32, torch.int64]:
@@ -352,8 +360,7 @@ class task(Default_task):
 
             # 检查标签值的合理性
             if y.min() < 0:
-                logger.error(f"[hse_contrastive] Negative labels found: min={y.min()}")
-                return torch.tensor(0.0, device=features.device)
+                raise ValueError(f"[hse_contrastive] Negative labels found: min={y.min()}")
 
             labels_ext = torch.cat([y, y], dim=0)
             # 确保扩展标签也在正确设备上
@@ -378,7 +385,7 @@ class task(Default_task):
             return result["loss"]
         except Exception as exc:  # pragma: no cover - runtime safeguard
             logger.error(f"[hse_contrastive] Contrastive loss computation failed: {exc}")
-            return torch.tensor(0.0, device=features.device)
+            raise RuntimeError("[hse_contrastive] Contrastive loss computation failed") from exc
 
     def _create_augmented_view(self, features: torch.Tensor) -> torch.Tensor:
         """特征级数据增强，支持多种轻量策略以适配不同对比学习需求。

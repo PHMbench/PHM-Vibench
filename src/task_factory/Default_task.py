@@ -157,7 +157,12 @@ class Default_task(pl.LightningModule):
             batch.setdefault('task_id', 'classification')
             # Convert tensor-based ID to a Python int for indexing metadata
             file_ids_raw = batch.get("file_id")
-            file_id = file_ids_raw[0].item() if hasattr(file_ids_raw, "__getitem__") else int(file_ids_raw)
+            if file_ids_raw is None:
+                raise ValueError("batch['file_id'] is missing")
+            if hasattr(file_ids_raw, "__len__") and len(file_ids_raw) == 0:
+                raise ValueError("batch['file_id'] is empty")
+            first_file_id = file_ids_raw[0] if hasattr(file_ids_raw, "__getitem__") else file_ids_raw
+            file_id = first_file_id.item() if hasattr(first_file_id, "item") else int(first_file_id)
             data_name = self.metadata[file_id]['Name']# .values
             # dataset_id = self.metadata[file_id]['Dataset_id'].item() 
             batch.update({'file_id': file_id})

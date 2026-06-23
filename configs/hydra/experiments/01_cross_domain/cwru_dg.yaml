@@ -1,0 +1,22 @@
+# @package _global_
+defaults:
+  - /pipeline: pipeline_01_default
+  - /environment: base
+  - /data: base_cross_domain
+  - /model: backbone_dlinear
+  - /task: dg
+  - /trainer: default_single_gpu
+  - _self_
+
+pipeline: "Pipeline_01_default"
+
+environment:
+  project: "demo_cwru_dg"
+  seed: 42
+  output_dir: "results/demo/cwru_dg"
+  notes: "Single-dataset DG demo via domain split."
+
+task:
+  target_system_id: [1]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]

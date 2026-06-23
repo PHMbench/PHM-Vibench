@@ -1,6 +1,7 @@
 # Two-stage demo: pretrain (HSE) + few-shot finetune (v0.1.0 draft)
 
 pipeline: "Pipeline_02_pretrain_fewshot"
+pipeline_mode: "single"
 
 base_configs:
   environment: "configs/base/environment/base.yaml"
@@ -23,6 +24,11 @@ data: {}
 task:
   type: "pretrain"
   name: "hse_contrastive"
+  contrast_loss: "INFONCE"
+  contrastive_pairing: "simclr_2view"
+  contrast_weight: 1.0
+  classification_weight: 0.0
+  temperature: 0.07
   # 预训练阶段在 CDDG 视角下，默认覆盖多个系统
   target_system_id: [1, 13, 6, 12, 19]
   target_domain_num: 1

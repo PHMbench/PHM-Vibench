@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -126,7 +127,13 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
     Returns:
         ConfigWrapper: 统一的配置对象
     """
-    # 步骤0：支持 base_configs 的组合加载（仅针对 YAML / 预设）
+    # 步骤0：支持 Hydra defaults 组合配置（新范式，保持外部返回 ConfigWrapper）。
+    if _is_hydra_config_source(config_source):
+        from src.configs.hydra_adapter import compose_hydra_file
+
+        config_source = compose_hydra_file(Path(str(config_source)))
+
+    # 步骤1：支持 base_configs 的组合加载（仅针对 YAML / 预设）
     base_merged: Optional[ConfigWrapper] = None
 
     # 识别是否是预设名或 YAML 路径
@@ -242,7 +249,45 @@ def _load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
         with open(file_path, 'r', encoding='gb18030', errors='ignore') as f:
             config_dict = yaml.safe_load(f)
 
-    return config_dict or {}
+    return _expand_env_placeholders(config_dict or {})
+
+
+_ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^}]*))?\}")
+
+
+def _expand_env_placeholders(value: Any) -> Any:
+    """Expand ``${VAR}`` and ``${VAR:-default}`` in legacy YAML values.
+
+    Hydra configs should prefer ``${oc.env:VAR,default}``; this helper keeps existing
+    PyYAML configs portable without changing their public shape.
+    """
+
+    if isinstance(value, dict):
+        return {k: _expand_env_placeholders(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env_placeholders(v) for v in value]
+    if not isinstance(value, str):
+        return value
+
+    def replace(match: re.Match[str]) -> str:
+        env_name = match.group(1)
+        default = match.group(3)
+        if env_name in os.environ:
+            return os.environ[env_name]
+        if default is not None:
+            return default
+        raise ValueError(f"Environment variable is required but not set: {env_name}")
+
+    return _ENV_PATTERN.sub(replace, value)
+
+
+def _is_hydra_config_source(config_source: Any) -> bool:
+    if not isinstance(config_source, (str, Path)):
+        return False
+    path = Path(str(config_source))
+    if not path.exists() or not path.is_file():
+        return False
+    return "hydra" in path.parts and path.suffix.lower() in {".yaml", ".yml"}
 
 def _validate_config_wrapper(config: ConfigWrapper) -> None:
     """验证ConfigWrapper的必需字段
@@ -289,6 +334,11 @@ def _validate_contrastive_config(config: ConfigWrapper) -> None:
         return
 
     task = config.task
+    pairing = getattr(task, 'contrastive_pairing', None)
+    if pairing is not None:
+        valid_pairings = {'simclr_2view', 'labels', 'explicit_pairs'}
+        if pairing not in valid_pairings:
+            raise ValueError(f"不支持的对比配对方式: {pairing}")
 
     # 新格式配置验证 (contrastive_strategy)
     if hasattr(task, 'contrastive_strategy'):

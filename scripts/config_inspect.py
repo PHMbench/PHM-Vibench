@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 import yaml
 
 from src.configs.config_utils import merge_with_local_override
+from src.configs.preflight import build_preflight_report
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
 
 
@@ -69,6 +70,29 @@ def _find_local_override_path(explicit: Optional[str]) -> Optional[Path]:
         return p if p.exists() else None
     default_local = Path("configs/local/local.yaml")
     return default_local if default_local.exists() else None
+
+
+def _is_hydra_config_path(path: Path) -> bool:
+    return "hydra" in path.parts and path.suffix.lower() in {".yaml", ".yml"}
+
+
+def _collect_hydra_sources(
+    config_path: Path,
+    resolved: Dict[str, Any],
+    local_override: Optional[Path],
+    cli_overrides: Dict[str, Any],
+) -> Dict[str, str]:
+    sources = {key: f"hydra:{config_path.as_posix()}" for key, _ in _flatten(resolved, prefix="")}
+    if local_override is not None:
+        local_yaml = _load_yaml_dict(local_override)
+        for block in ["environment", "data", "model", "task", "trainer"]:
+            local_block = local_yaml.get(block, {})
+            if isinstance(local_block, dict):
+                for key, _ in _flatten(local_block, prefix=block):
+                    sources[key] = f"local:{local_override.as_posix()}"
+    for key, _ in _flatten(cli_overrides, prefix=""):
+        sources[key] = "cli:--override"
+    return sources
 
 
 def _collect_sources(
@@ -335,9 +359,30 @@ def inspect_config(
         overrides_dict = {}
 
     resolved = _namespace_to_dict(cfg)
-    sources = _collect_sources(config_path_p, local_override=local_override_path, cli_overrides=overrides_dict)
+    if _is_hydra_config_path(config_path_p):
+        sources = _collect_hydra_sources(
+            config_path_p,
+            resolved=resolved,
+            local_override=local_override_path,
+            cli_overrides=overrides_dict,
+        )
+    else:
+        sources = _collect_sources(
+            config_path_p,
+            local_override=local_override_path,
+            cli_overrides=overrides_dict,
+        )
     targets = _instantiation_targets(resolved)
     sanity = _sanity_checks(resolved)
+    sanity.extend(
+        build_preflight_report(
+            cfg,
+            config_path=str(config_path_p),
+            args=argparse.Namespace(fs_config_path=None),
+            require_data=True,
+            create_output_dir=False,
+        )
+    )
     return InspectResult(resolved=resolved, sources=sources, targets=targets, sanity=sanity)
 
 

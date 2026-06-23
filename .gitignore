@@ -256,3 +256,7 @@ dev/plot/
 
 # Local thesis workspace (not a tracked submodule in this repo)
 paper/UXFD_paper/thu_liqi_phd_thesis/
+
+# Specify / Spec Kit generated files
+.agents/
+.claude/skills/speckit-*/

@@ -1,0 +1,24 @@
+# @package _global_
+defaults:
+  - /pipeline: pipeline_01_default
+  - /environment: base
+  - /data: base_cross_system_fewshot
+  - /model: backbone_dlinear
+  - /task: gfs
+  - /trainer: default_single_gpu
+  - _self_
+
+pipeline: "Pipeline_01_default"
+
+environment:
+  project: "demo_cross_system_fewshot_tspn"
+  seed: 0
+  output_dir: "results/demo/cross_system_fewshot_tspn"
+  notes: "Cross-system few-shot TSPN demo."
+
+task:
+  target_system_id: [1, 6]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 1

@@ -1,0 +1,45 @@
+name: core-ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  config-smoke-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install core and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-core.txt -r requirements-test.txt
+
+      - name: Validate config registry and schema
+        run: python -m scripts.validate_configs
+
+      - name: Inspect resolved smoke config
+        run: >
+          python -m scripts.config_inspect
+          --config configs/hydra/experiments/00_smoke/dummy_dg.yaml
+          --override trainer.num_epochs=1
+
+      - name: Run focused contract tests
+        run: >
+          python -m pytest -q
+          test/test_main_strictness.py
+          test/test_preflight.py
+          test/test_infonce_pairing.py
+          test/test_hse_contrastive_failfast.py
+          test/test_run_artifacts_contract.py
+          test/test_pipeline_failfast.py
+          test/test_demo_matrix_script.py
+
+      - name: Run smoke demo matrix
+        run: bash scripts/run_demo_matrix.sh --mode smoke

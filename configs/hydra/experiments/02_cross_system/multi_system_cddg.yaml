@@ -1,0 +1,20 @@
+# @package _global_
+defaults:
+  - /pipeline: pipeline_01_default
+  - /environment: base
+  - /data: base_cross_system
+  - /model: backbone_dlinear
+  - /task: cddg
+  - /trainer: default_single_gpu
+  - _self_
+
+pipeline: "Pipeline_01_default"
+
+environment:
+  project: "demo_multi_system_cddg"
+  seed: 42
+  output_dir: "results/demo/multi_system_cddg"
+  notes: "Cross-system CDDG demo."
+
+task:
+  target_system_id: [1]

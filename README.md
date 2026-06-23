@@ -225,18 +225,43 @@ PHM-Vibench, as a benchmarking platform in the PHMbench ecosystem focused on ind
 git clone https://github.com/PHMbench/PHM-Vibench.git
 cd PHM-Vibench
 
-# Install dependencies
+# CLI/runtime dependencies for smoke + maintained demos
 conda create -n PHM python=3.10
 conda activate PHM
 pip install -r requirements.txt
 
-# (Optional) Download datasets (H5 / raw)
-
-# For example, in configs/base/data/base_classification.yaml
-data:
-  data_dir: "/path/to/PHM-Vibench"
-  metadata_file: "metadata.xlsx"
+# (Optional) point real-data demos at a local data root without editing tracked YAML
+export PHM_VIBENCH_DATA=/path/to/PHM-Vibench-data
+python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override trainer.num_epochs=1 --override data.num_workers=0
 ```
+
+### Preflight / Run / Consume
+
+```bash
+# Validate maintained configs and inspect the fully resolved config before training
+python -m scripts.validate_configs
+python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+
+# Run through the strict entrypoint
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+
+# Run the executable demo gate
+bash scripts/run_demo_matrix.sh --mode smoke
+```
+
+Each maintained run writes a parent-consumable contract under the run directory:
+
+```text
+artifacts/manifest.json
+config_snapshot.yaml
+test_result_0.csv
+artifacts/data_metadata_snapshot.json
+```
+
+Consumers should read `artifacts/manifest.json` first, then follow `metrics_path` and
+`data_metadata_snapshot`. Optional explain/prediction artifacts may be absent; manifest and metrics
+are required when reporting is enabled.
 
 ## 🚀 Quick Start
 
@@ -271,17 +296,30 @@ python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Streamlit Graphical Interface (TODO)
+### Streamlit Research Console
 
-Run experiments using the Streamlit graphical interface:
+The Streamlit console is experimental and is not a release validation gate. Run it with:
 
 ```bash
-streamlit run streamlit_app.py
+streamlit run frontend/streamlit_app.py
 ```
 
-Status: the UI is experimental. Basic config editing + pipeline launching works, but visualization (curves/figures) is still incomplete.
+Surface:
+- `Workbench`: recommended demos, recent runs, recent evidence
+- `Compose`: config selection, resolved YAML, field sources, sanity checks, CLI launch
+- `Runs`: repo-native run discovery from `artifacts/manifest.json`
+- `Compare`: protocol-aware compare guard rails
+- `Registry` / `Artifacts`: registries, presets, and run evidence previews
 
-If Streamlit fails to start, treat it as a TODO and use the CLI demos under `configs/demo/` instead.
+All frontend code now lives under `frontend/`, with archived experiments kept in `frontend/legacy/`.
+
+The CLI remains authoritative:
+
+```bash
+python main.py --config <yaml> [--override key=value ...]
+```
+
+The frontend only composes, inspects, launches, compares, and traces. If Streamlit fails to start, use the maintained CLI demos under `configs/demo/`.
 
 ### 📊 Performance Benchmark Examples
 

@@ -179,7 +179,9 @@ class SignalProcessingLayer(nn.Module):
         if hasattr(self, 'skip_connection'):
             # self.skip_connection.weight.data = F.softmax((1.0 / self.temperature) *
             #                                             self.skip_connection.weight.data, dim=0)
-            x = x + self.skip_connection(normed_x)
+            residual = self.skip_connection(normed_x)
+            if residual.shape == x.shape:
+                x = x + residual
         return x
     
 class FeatureExtractorlayer(nn.Module):

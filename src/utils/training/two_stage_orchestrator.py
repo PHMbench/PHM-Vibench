@@ -23,15 +23,16 @@ logger = logging.getLogger(__name__)
 from src.configs.config_utils import (
     load_config,
     transfer_namespace,
-    path_name,
     ConfigWrapper,
     dict_to_namespace,
     _validate_config_wrapper,
 )
-from src.data_factory import build_data
-from src.model_factory import build_model
-from src.task_factory import build_task
-from src.trainer_factory import build_trainer
+from src.utils.training.run_contract import (
+    build_training_stack,
+    make_config_wrapper,
+    prepare_run_context,
+    write_test_result_and_manifest,
+)
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 
 from pytorch_lightning import seed_everything
@@ -448,21 +449,19 @@ class MultiStageOrchestrator:
     def run_pretrain(self, stage_cfg: Any, iteration: int = 0) -> Dict[str, Any]:
         env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
 
-        # seed
-        seed = getattr(env, 'seed', 42) + int(iteration)
-        seed_everything(seed)
-
         # path and logging（包含 environment，允许使用 environment.output_dir 控制结果根目录）
-        cfg_for_path = ConfigWrapper(
-            environment=env,
-            data=data,
-            model=model,
-            task=task,
-            trainer=trainer,
+        cfg_for_path = make_config_wrapper(env, data, model, task, trainer)
+        run_ctx = prepare_run_context(
+            cfg_for_path,
+            env,
+            trainer,
+            iteration=0,
+            seed_offset=iteration,
         )
-        path, name = path_name(cfg_for_path)
-        trainer.logger_name = name
-        init_lab(env, self.cfg, name)
+        path = str(run_ctx.run_dir)
+        seed = run_ctx.seed
+        seed_everything(seed)
+        init_lab(env, self.cfg, run_ctx.logger_name)
 
         # Ensure trainer has required attributes for build_trainer
         self._ensure_trainer_attributes(trainer, path)
@@ -471,19 +470,17 @@ class MultiStageOrchestrator:
             close_lab()
             return {'checkpoint_path': None, 'metrics': {'dry_run': True}, 'path': path}
 
-        # build
-        data_factory = build_data(data, task)
-        net = build_model(model, metadata=data_factory.get_metadata())
-        lightning_task = build_task(
-            args_task=task,
-            network=net,
+        components = build_training_stack(
+            args_environment=env,
             args_data=data,
             args_model=model,
+            args_task=task,
             args_trainer=trainer,
-            args_environment=env,
-            metadata=data_factory.get_metadata(),
+            run_dir=path,
         )
-        pl_trainer = build_trainer(env, trainer, data, path)
+        data_factory = components.data_factory
+        lightning_task = components.task
+        pl_trainer = components.trainer
 
         # train
         pl_trainer.fit(lightning_task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
@@ -496,14 +493,20 @@ class MultiStageOrchestrator:
                 ckpt_path = cb.best_model_path
                 break
 
-        # optional test
-        test_metrics: Dict[str, Any] = {}
-        try:
-            result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
-            if result:
-                test_metrics = deepcopy(result[0])
-        except Exception:
-            pass
+        result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
+        test_metrics: Dict[str, Any] = deepcopy(result[0]) if result else {}
+        write_test_result_and_manifest(
+            run_dir=path,
+            metrics=test_metrics,
+            iteration=iteration,
+            args_trainer=trainer,
+            seed=seed,
+            trainer=pl_trainer,
+            stage="pretrain",
+            manifest_required=True,
+        )
+        if hasattr(data_factory, "data") and hasattr(data_factory.data, "close"):
+            data_factory.data.close()
 
         close_lab()
         return {'checkpoint_path': ckpt_path, 'metrics': test_metrics, 'path': path}
@@ -515,19 +518,18 @@ class MultiStageOrchestrator:
         if checkpoint_path:
             setattr(model, 'weights_path', checkpoint_path)
 
-        seed = getattr(env, 'seed', 42) + int(iteration)
-        seed_everything(seed)
-
-        cfg_for_path = ConfigWrapper(
-            environment=env,
-            data=data,
-            model=model,
-            task=task,
-            trainer=trainer,
+        cfg_for_path = make_config_wrapper(env, data, model, task, trainer)
+        run_ctx = prepare_run_context(
+            cfg_for_path,
+            env,
+            trainer,
+            iteration=0,
+            seed_offset=iteration,
         )
-        path, name = path_name(cfg_for_path)
-        trainer.logger_name = name
-        init_lab(env, self.cfg, name)
+        path = str(run_ctx.run_dir)
+        seed = run_ctx.seed
+        seed_everything(seed)
+        init_lab(env, self.cfg, run_ctx.logger_name)
 
         # Ensure trainer has required attributes for build_trainer
         self._ensure_trainer_attributes(trainer, path)
@@ -536,18 +538,17 @@ class MultiStageOrchestrator:
             close_lab()
             return {'checkpoint_path': checkpoint_path, 'metrics': {'dry_run': True}, 'path': path}
 
-        data_factory = build_data(data, task)
-        net = build_model(model, metadata=data_factory.get_metadata())
-        lightning_task = build_task(
-            args_task=task,
-            network=net,
+        components = build_training_stack(
+            args_environment=env,
             args_data=data,
             args_model=model,
+            args_task=task,
             args_trainer=trainer,
-            args_environment=env,
-            metadata=data_factory.get_metadata(),
+            run_dir=path,
         )
-        pl_trainer = build_trainer(env, trainer, data, path)
+        data_factory = components.data_factory
+        lightning_task = components.task
+        pl_trainer = components.trainer
         pl_trainer.fit(lightning_task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
 
         # best ckpt for this stage
@@ -558,14 +559,20 @@ class MultiStageOrchestrator:
                 ckpt_path = cb.best_model_path
                 break
 
-        # test
-        test_metrics: Dict[str, Any] = {}
-        try:
-            result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
-            if result:
-                test_metrics = deepcopy(result[0])
-        except Exception:
-            pass
+        result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
+        test_metrics: Dict[str, Any] = deepcopy(result[0]) if result else {}
+        write_test_result_and_manifest(
+            run_dir=path,
+            metrics=test_metrics,
+            iteration=iteration,
+            args_trainer=trainer,
+            seed=seed,
+            trainer=pl_trainer,
+            stage="adapt",
+            manifest_required=True,
+        )
+        if hasattr(data_factory, "data") and hasattr(data_factory.data, "close"):
+            data_factory.data.close()
 
         close_lab()
         return {'checkpoint_path': ckpt_path, 'metrics': test_metrics, 'path': path}

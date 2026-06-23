@@ -1,10 +1,84 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.configs.config_utils import save_config
+
 from .eligibility import explain_ready, write_eligibility
 from .metadata_reader import read_meta_from_batch, snapshot_metadata, write_metadata_snapshot
+
+
+def _is_main_process() -> bool:
+    return "LOCAL_RANK" not in os.environ or int(os.environ["LOCAL_RANK"]) == 0
+
+
+def _manifest_enabled(args_trainer: Any) -> bool:
+    extensions = getattr(args_trainer, "extensions", None)
+    report_cfg = getattr(extensions, "report", None) if extensions is not None else None
+    report_enable = getattr(report_cfg, "enable", True) if report_cfg is not None else True
+    manifest_enable = getattr(report_cfg, "manifest", True) if report_cfg is not None else True
+    return bool(report_enable) and bool(manifest_enable)
+
+
+def write_run_artifact_sidecars(
+    run_dir: str | Path,
+    cfg: Any,
+    args_trainer: Any,
+    data_factory: Any,
+) -> Tuple[Dict[str, Any], str, bool]:
+    run_dir = Path(run_dir)
+    save_config(cfg, run_dir / "config_snapshot.yaml")
+
+    batch_meta, meta_source, degraded = write_data_metadata_snapshot_from_data_factory(
+        run_dir=run_dir,
+        data_factory=data_factory,
+    )
+
+    extensions = getattr(args_trainer, "extensions", None)
+    explain_cfg = getattr(extensions, "explain", None) if extensions is not None else None
+    explain_enable = bool(getattr(explain_cfg, "enable", False)) if explain_cfg is not None else False
+    if not explain_enable:
+        return batch_meta, str(meta_source), bool(degraded)
+
+    explainer_id = str(getattr(explain_cfg, "explainer", "") or "unknown")
+    required_meta_keys = ["sampling_rate"] if explainer_id in {"timefreq", "time_freq"} else []
+    write_explain_eligibility(
+        run_dir=run_dir,
+        explainer_id=explainer_id,
+        meta=batch_meta,
+        meta_source=str(meta_source),
+        degraded=bool(degraded),
+        required_meta_keys=required_meta_keys,
+    )
+    return batch_meta, str(meta_source), bool(degraded)
+
+
+def rewrite_manifest_after_test_result(
+    run_dir: str | Path,
+    args_trainer: Any,
+    trainer: Any,
+    *,
+    seed: Optional[int],
+    stage: str = "test",
+    required: bool = True,
+) -> Optional[Path]:
+    if not _manifest_enabled(args_trainer) or not _is_main_process():
+        return None
+
+    from src.trainer_factory.extensions import write_run_manifest
+
+    return write_run_manifest(
+        run_dir=run_dir,
+        stage=stage,
+        paper_id=str(getattr(args_trainer, "paper_id", "") or ""),
+        preset_version=str(getattr(args_trainer, "preset_version", "") or ""),
+        run_id=str(getattr(args_trainer, "logger_name", "") or ""),
+        seed=seed,
+        trainer=trainer,
+        required=required,
+    )
 
 
 def write_data_metadata_snapshot_from_data_factory(
@@ -52,17 +126,12 @@ def write_explain_eligibility(
     degraded: bool,
     required_meta_keys: Optional[List[str]] = None,
 ) -> None:
-    """Best-effort eligibility writer; never raises."""
-    try:
-        eligibility_path = run_dir / "artifacts" / "explain" / "eligibility.json"
-        ready = explain_ready(
-            explainer_id=str(explainer_id or "unknown"),
-            meta=meta or {},
-            required_meta_keys=required_meta_keys or [],
-            meta_source=str(meta_source),
-            degraded=bool(degraded),
-        )
-        write_eligibility(eligibility_path, ready)
-    except Exception:
-        return
-
+    eligibility_path = Path(run_dir) / "artifacts" / "explain" / "eligibility.json"
+    ready = explain_ready(
+        explainer_id=str(explainer_id or "unknown"),
+        meta=meta or {},
+        required_meta_keys=required_meta_keys or [],
+        meta_source=str(meta_source),
+        degraded=bool(degraded),
+    )
+    write_eligibility(eligibility_path, ready)

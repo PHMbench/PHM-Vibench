@@ -1,19 +1,23 @@
 import argparse
 import os
-import pandas as pd
+import yaml
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.configs.config_utils import load_config, path_name, transfer_namespace, ConfigWrapper
+from src.configs.config_utils import load_config, transfer_namespace, ConfigWrapper
 from src.utils.config_utils import parse_overrides, apply_overrides_to_config
+from src.utils.training.run_contract import (
+    build_training_stack,
+    prepare_run_context,
+    write_test_result_and_manifest,
+)
 from typing import Optional
 from src.utils.training.two_stage_orchestrator import TwoStageOrchestrator
 from src.utils.config.pipeline_adapters import adapt_p02
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
-from src.data_factory import build_data
-from src.model_factory import build_model
-from src.task_factory import build_task
-from src.trainer_factory import build_trainer
+
+
+VALID_PIPELINE_MODES = {"single", "staged", "legacy"}
 
 
 def _run_single_stage_from_cfg(cfg: ConfigWrapper):
@@ -43,30 +47,42 @@ def _run_single_stage_from_cfg(cfg: ConfigWrapper):
                 if str(key).isupper():
                     os.environ[str(key)] = str(value)
 
-    # 随机种子与日志初始化
-    seed_everything(getattr(args_environment, 'seed', 42))
-    # 单阶段默认使用 iteration=0
-    path, name = path_name(cfg, 0)
-    init_lab(args_environment, cfg, name)
+    run_ctx = prepare_run_context(cfg, args_environment, args_trainer, iteration=0, seed_offset=0)
+    path = str(run_ctx.run_dir)
+    current_seed = run_ctx.seed
+    seed_everything(current_seed)
+    init_lab(args_environment, cfg, run_ctx.logger_name)
 
     # 构建 data/model/task/trainer
-    data_factory = build_data(args_data, args_task)
-    model = build_model(args_model, metadata=data_factory.get_metadata())
-    task = build_task(
-        args_task=args_task,
-        network=model,
+    components = build_training_stack(
+        args_environment=args_environment,
         args_data=args_data,
         args_model=args_model,
+        args_task=args_task,
         args_trainer=args_trainer,
-        args_environment=args_environment,
-        metadata=data_factory.get_metadata(),
+        run_dir=path,
+        sidecar_config=cfg,
     )
-    trainer = build_trainer(args_environment, args_trainer, args_data, path)
+    data_factory = components.data_factory
+    task = components.task
+    trainer = components.trainer
 
     # 运行训练与测试
     trainer.fit(task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
     task = load_best_model_checkpoint(task, trainer)
-    trainer.test(task, data_factory.get_dataloader('test'))
+    result = trainer.test(task, data_factory.get_dataloader('test'))
+    write_test_result_and_manifest(
+        run_dir=path,
+        metrics=result[0],
+        iteration=0,
+        args_trainer=args_trainer,
+        seed=current_seed,
+        trainer=trainer,
+        stage="test",
+        manifest_required=True,
+    )
+    if hasattr(data_factory, "data") and hasattr(data_factory.data, "close"):
+        data_factory.data.close()
     close_lab()
     return True
 
@@ -91,26 +107,38 @@ def run_stage(config_path, ckpt_path=None, iteration=0, local_config: Optional[s
         if key.isupper():
             os.environ[key] = str(value)
 
-    path, name = path_name(configs, iteration)
-    seed_everything(args_environment.seed)
-    init_lab(args_environment, configs, name)
-    data_factory = build_data(args_data, args_task)
-    model = build_model(args_model, metadata=data_factory.get_metadata())
-    task = build_task(
-        args_task=args_task,
-        network=model,
+    run_ctx = prepare_run_context(configs, args_environment, args_trainer, iteration=iteration)
+    path = str(run_ctx.run_dir)
+    current_seed = run_ctx.seed
+    seed_everything(current_seed)
+    init_lab(args_environment, configs, run_ctx.logger_name)
+    components = build_training_stack(
+        args_environment=args_environment,
         args_data=args_data,
         args_model=args_model,
+        args_task=args_task,
         args_trainer=args_trainer,
-        args_environment=args_environment,
-        metadata=data_factory.get_metadata()
+        run_dir=path,
+        sidecar_config=configs,
     )
-    trainer = build_trainer(args_environment, args_trainer, args_data, path)
+    data_factory = components.data_factory
+    task = components.task
+    trainer = components.trainer
     trainer.fit(task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
     task = load_best_model_checkpoint(task, trainer)
     result = trainer.test(task, data_factory.get_dataloader('test'))
-    result_df = pd.DataFrame([result[0]])
-    result_df.to_csv(os.path.join(path, 'test_result.csv'), index=False)
+    write_test_result_and_manifest(
+        run_dir=path,
+        metrics=result[0],
+        iteration=iteration,
+        args_trainer=args_trainer,
+        seed=current_seed,
+        trainer=trainer,
+        stage="test",
+        manifest_required=True,
+    )
+    if hasattr(data_factory, "data") and hasattr(data_factory.data, "close"):
+        data_factory.data.close()
     close_lab()
     return task, trainer
 
@@ -150,63 +178,89 @@ def run_fewshot_stage(fs_config_path, ckpt_dict=None, local_config: Optional[str
                 run_stage(fs_config_path, iteration=it1 * len(ckpt_dict) + it2, local_config=local_config)
     return True
 
+def _load_pipeline_yaml(config_path: str) -> dict:
+    with open(config_path, "r", encoding="utf-8") as f:
+        cfg_dict = yaml.safe_load(f) or {}
+    if not isinstance(cfg_dict, dict):
+        raise ValueError(f"P02 config must be a YAML mapping: {config_path}")
+    return cfg_dict
+
+
+def _get_pipeline_mode(cfg_dict: dict, config_path: str) -> str:
+    mode = cfg_dict.get("pipeline_mode")
+    if not isinstance(mode, str) or not mode.strip():
+        raise ValueError(
+            "Pipeline_02_pretrain_fewshot requires explicit pipeline_mode: "
+            "single | staged | legacy"
+        )
+    mode = mode.strip().lower()
+    if mode not in VALID_PIPELINE_MODES:
+        raise ValueError(f"Unsupported pipeline_mode in {config_path}: {mode}")
+    return mode
+
+
+def run_single_stage(args, cfg_dict: Optional[dict] = None):
+    """Run P02 as a single stage. No legacy fallback is allowed."""
+    if getattr(args, "fs_config_path", None):
+        raise ValueError("pipeline_mode=single conflicts with fs_config_path")
+    if cfg_dict is not None and "stages" in cfg_dict:
+        raise ValueError("pipeline_mode=single conflicts with stages")
+
+    overrides = None
+    if hasattr(args, "override") and args.override:
+        overrides = parse_overrides(args.override)
+    cfg = load_config(args.config_path, overrides=overrides)
+    _run_single_stage_from_cfg(cfg)
+    print("[INFO] Single-stage pipeline via P02 completed.")
+    return True
+
+
+def run_staged(args, cfg_dict: dict):
+    """Run P02 with a unified staged YAML."""
+    stages = cfg_dict.get("stages")
+    if not isinstance(stages, list) or not stages:
+        raise ValueError("pipeline_mode=staged requires a non-empty stages list")
+    if getattr(args, "fs_config_path", None):
+        raise ValueError("pipeline_mode=staged conflicts with fs_config_path")
+
+    print(f"[INFO] 使用 unified 多阶段配置运行训练: {args.config_path}")
+    cli_overrides = getattr(args, "override", None) or []
+    orchestrator = TwoStageOrchestrator(cfg_dict, cli_overrides=cli_overrides)
+    summary = orchestrator.run_complete()
+    print("[INFO] Unified multi-stage pipeline completed.")
+    return summary
+
+
+def run_legacy_dual_yaml(args):
+    """Run P02 legacy dual-YAML mode. Requires explicit fs_config_path."""
+    if not getattr(args, "fs_config_path", None):
+        raise ValueError("pipeline_mode=legacy requires fs_config_path")
+
+    unified = adapt_p02(args.config_path, args.fs_config_path, getattr(args, "local_config", None))
+    if hasattr(args, "override") and args.override:
+        print(f"[INFO] 应用CLI override参数到 legacy 两阶段流程: {args.override}")
+        overrides = parse_overrides(args.override)
+        unified = apply_overrides_to_config(unified, overrides)
+        print(f"[INFO] 已应用 {len(overrides)} 个override参数到 legacy 两阶段配置")
+
+    orchestrator = TwoStageOrchestrator(unified)
+    summary = orchestrator.run_complete()
+    print("[INFO] Unified two-stage pipeline (legacy dual YAML) completed.")
+    return summary
+
+
 def pipeline(args):
-    """Run multi-stage training for P02.
+    """Run P02 according to explicit pipeline_mode."""
+    cfg_dict = _load_pipeline_yaml(args.config_path)
+    mode = _get_pipeline_mode(cfg_dict, args.config_path)
 
-    优先支持“单 YAML + stages 列表”的统一配置范式：
-      - 推荐入口：只提供 `--config_path experiment_X_unified.yaml`；
-      - `fs_config_path` 仅用于兼容 legacy 双 YAML 配置（已移动到 configs/legacy_dual_yaml）。
-    """
-    try:
-        # 新范式：只有 config_path（优先支持 unified YAML + stages 列表）
-        if not getattr(args, 'fs_config_path', None):
-            import yaml
-
-            with open(args.config_path, "r", encoding="utf-8") as f:
-                cfg_dict = yaml.safe_load(f) or {}
-
-            # 情况A：包含 stages → 走多阶段 Orchestrator
-            if 'stages' in cfg_dict:
-                print(f"[INFO] 使用 unified 多阶段配置运行训练: {args.config_path}")
-                cli_overrides = getattr(args, 'override', None) or []
-                orchestrator = TwoStageOrchestrator(cfg_dict, cli_overrides=cli_overrides)
-                summary = orchestrator.run_complete()
-                print("[INFO] Unified multi-stage pipeline (single YAML) completed.")
-                return summary
-
-            # 情况B：不含 stages → 视为单阶段配置，直接运行一次训练/测试
-            print(f"[INFO] 检测到单阶段配置（无 stages），按单阶段模式运行: {args.config_path}")
-            # 使用通用 load_config + overrides 构造最终 ConfigWrapper
-            overrides = None
-            if hasattr(args, 'override') and args.override:
-                overrides = parse_overrides(args.override)
-            cfg = load_config(args.config_path, overrides=overrides)
-            _run_single_stage_from_cfg(cfg)
-            print("[INFO] Single-stage pipeline via P02 completed.")
-            return True
-
-        # 情况C 兼容路径：config_path + fs_config_path 双 YAML（legacy）
-        unified = adapt_p02(args.config_path, args.fs_config_path, getattr(args, 'local_config', None))
-
-        # 应用CLI override参数（最高优先级）——旧路径仍使用全局 override 机制
-        if hasattr(args, 'override') and args.override:
-            print(f"[INFO] 应用CLI override参数到两阶段流程: {args.override}")
-            overrides = parse_overrides(args.override)
-            unified = apply_overrides_to_config(unified, overrides)
-            print(f"[INFO] 已应用 {len(overrides)} 个override参数到两阶段配置")
-
-        orchestrator = TwoStageOrchestrator(unified)
-        summary = orchestrator.run_complete()
-        print("[INFO] Unified two-stage pipeline (legacy dual YAML) completed.")
-        return summary
-    except Exception as e:
-        print(f"[WARN] Unified orchestrator fallback due to: {e}")
-        # fallback 仅支持 legacy 双 YAML，unified 情况请使用 debug 脚本或修复配置
-        if getattr(args, 'fs_config_path', None):
-            ckpt_dict = run_pretraining_stage(args.config_path, local_config=getattr(args, 'local_config', None))
-            run_fewshot_stage(args.fs_config_path, ckpt_dict, local_config=getattr(args, 'local_config', None))
-            return True
-        raise
+    if mode == "single":
+        return run_single_stage(args, cfg_dict=cfg_dict)
+    if mode == "staged":
+        return run_staged(args, cfg_dict=cfg_dict)
+    if mode == "legacy":
+        return run_legacy_dual_yaml(args)
+    raise AssertionError(f"Unhandled pipeline_mode: {mode}")
 
 
 

@@ -3,6 +3,7 @@ import torch.nn as nn
 from pytorch_wavelets import DWT1DForward, DWT1DInverse  # or simply DWT1D, IDWT1D
 import ptwt
 from einops import rearrange
+from types import SimpleNamespace
 
 class A_cSE(nn.Module):
     def __init__(self, in_ch):
@@ -72,20 +73,20 @@ class Model(nn.Module):
         super(Model, self).__init__()
     
         
-        self.DWT0= DWT1DForward(J=1, wave='db16').cuda()
+        self.DWT0= DWT1DForward(J=1, wave='db16')
         
         self.SConv1 = SConv_1D(args.in_channels*2, numf, 3, 0)
-        self.DWT1= DWT1DForward(J=1, wave='db16').cuda()
+        self.DWT1= DWT1DForward(J=1, wave='db16')
         self.dropout1 = nn.Dropout(p=0.1)
         self.cSE1 = A_cSE(numf*2)
         
         self.SConv2 = SConv_1D(numf*2, numf*2, 3, 0)
-        self.DWT2= DWT1DForward(J=1, wave='db16').cuda() 
+        self.DWT2= DWT1DForward(J=1, wave='db16') 
         self.dropout2 = nn.Dropout(p=0.1)
         self.cSE2 = A_cSE(numf*4)
         
         self.SConv3 = SConv_1D(numf*4, numf*4, 3, 0)
-        self.DWT3= DWT1DForward(J=1, wave='db16').cuda()       
+        self.DWT3= DWT1DForward(J=1, wave='db16')       
         self.dropout3 = nn.Dropout(p=0.1)
         self.cSE3 = A_cSE(numf*8)
         
@@ -140,3 +141,15 @@ class Model(nn.Module):
         output = self.fc(output)
         
         return output
+
+
+class Huan_net(Model):
+    """Source-style compatibility alias.
+
+    Legacy scripts instantiate `Huan_net(input_size=..., num_class=...)`.
+    Keep this alias while routing to the factory-compatible `Model`.
+    """
+
+    def __init__(self, input_size: int = 1, num_class: int = 4):
+        args = SimpleNamespace(in_channels=input_size, num_classes=num_class)
+        super().__init__(args=args, metadata=None)

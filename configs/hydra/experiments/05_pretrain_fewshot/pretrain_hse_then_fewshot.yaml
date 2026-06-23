@@ -1,0 +1,32 @@
+# @package _global_
+defaults:
+  - /pipeline: pipeline_02_pretrain_fewshot
+  - /environment: base
+  - /data: base_classification
+  - /model: backbone_dlinear
+  - /task: pretrain
+  - /trainer: default_single_gpu
+  - _self_
+
+pipeline: "Pipeline_02_pretrain_fewshot"
+pipeline_mode: "single"
+
+environment:
+  project: "demo_pretrain_hse_then_fewshot"
+  seed: 42
+  output_dir: "results/demo/pretrain_hse_then_fewshot"
+  notes: "Single-stage HSE contrastive pretrain demo; staged finetune can be added later."
+
+task:
+  type: "pretrain"
+  name: "hse_contrastive"
+  contrast_loss: "INFONCE"
+  contrastive_pairing: "simclr_2view"
+  contrast_weight: 1.0
+  classification_weight: 0.0
+  temperature: 0.07
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 20

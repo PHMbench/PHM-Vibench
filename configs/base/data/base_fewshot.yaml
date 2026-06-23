@@ -1,5 +1,5 @@
 data:
-  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  data_dir: "${PHM_VIBENCH_DATA:-data}"
   metadata_file: "metadata.xlsx"
   batch_size: 256
   num_workers: 8

@@ -51,14 +51,11 @@ def pipeline(args: argparse.Namespace) -> Dict[str, Any]:
         Dict containing experiment results
     """
 
-    # Unified orchestrator fast-path (adapter). Fallback to legacy below on failure.
-    try:
-        unified = adapt_p04(args.config_path, getattr(args, 'local_config', None))
-        orchestrator = TwoStageOrchestrator(unified)
-        summary = orchestrator.run_complete()
-        return {"results": summary, "unified": True}
-    except Exception as e:
-        print(f"[WARN] Unified orchestrator for Pipeline_04 failed, fallback to legacy: {e}")
+    # Unified orchestrator is the maintained path; adapter failures are config/runtime errors.
+    unified = adapt_p04(args.config_path, getattr(args, 'local_config', None))
+    orchestrator = TwoStageOrchestrator(unified)
+    summary = orchestrator.run_complete()
+    return {"results": summary, "unified": True}
 
     # 1. Load configuration (legacy)
     config_path = args.config_path
@@ -79,9 +76,8 @@ def pipeline(args: argparse.Namespace) -> Dict[str, Any]:
     args_trainer = transfer_namespace(configs.trainer if hasattr(configs, 'trainer') else {})
 
     # 3. Set environment variables
-    # Add missing VBENCH_HOME if needed
     if not hasattr(args_environment, 'VBENCH_HOME'):
-        args_environment.VBENCH_HOME = '/home/lq/LQcode/2_project/PHMBench/PHM-Vibench'
+        raise ValueError("Legacy Pipeline_04 requires explicit environment.VBENCH_HOME")
     if not hasattr(args_environment, 'iterations'):
         args_environment.iterations = 1
 

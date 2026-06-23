@@ -203,3 +203,8 @@ Typical artifacts depend on trainer/task, but usually include checkpoints, metri
 - Change list: what changed and why (tight scope).
 - How to validate: copy-paste commands from `AGENTS.md`.
 - Expected outputs: generated files + output directory pattern.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

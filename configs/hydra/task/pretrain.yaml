@@ -1,0 +1,10 @@
+# @package task
+name: "pretrain"
+type: "pretrain"
+loss: "CE"
+metrics:
+  - "acc"
+epochs: 50
+lr: 0.001
+weight_decay: 0.0001
+optimizer: "adamw"

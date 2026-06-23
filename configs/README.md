@@ -9,6 +9,9 @@ The **single recommended entrypoint** is:
 python main.py --config <yaml> [--override key=value ...]
 ```
 
+The entrypoint is strict: the YAML must exist and expose a top-level `pipeline`.
+Bad paths, missing `pipeline`, or unknown pipeline modules fail before trainer setup.
+
 ## 30-Second Smoke Run (No External Data)
 
 1) Run the repo-shipped dummy demo:
@@ -35,6 +38,25 @@ python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
 3) Optional machine-local override `configs/local/local.yaml` (or `--local_config ...`)
 4) CLI `--override key=value` (repeatable)
 
+`scripts.config_inspect` is the maintained way to check where a field came from.
+Do not infer precedence from file order by reading YAML manually.
+
+High-risk fields should have one active source per run: `trainer.batch_size`,
+`data.num_workers`, `trainer.device`, `environment.output_dir`, and dataset path fields.
+Use CLI overrides for machine-local values instead of committing absolute paths.
+
+Hydra migration is staged under `configs/hydra/`. Hydra experiments compose the
+same final 5-block shape and can be run through the same entrypoint, for example:
+
+```bash
+python main.py --config configs/hydra/experiments/00_smoke/dummy_dg.yaml
+```
+
+Hydra does not change the runtime contract: the resolved config must still have
+top-level `pipeline` plus `environment/data/model/task/trainer`. Traditional demo
+YAMLs remain compatibility templates; registry-listed Hydra demos are the expanded
+matrix entries and must be regenerated into `docs/CONFIG_ATLAS.md` after registry edits.
+
 ## Single Source of Truth (Registry + Atlas)
 
 - Registry (authoritative index): `configs/config_registry.csv`
@@ -44,6 +66,7 @@ python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
 Regenerate atlas:
 ```bash
 python -m scripts.gen_config_atlas --registry configs/config_registry.csv
+git diff --exit-code docs/CONFIG_ATLAS.md
 ```
 
 ## Config Inspect (Explain Resolved Values + Sources + Targets)
@@ -78,9 +101,13 @@ python main.py --config <yaml> --override trainer.num_epochs=1
 - Edit the config (recommended) or use a local override:
 ```yaml
 data:
-  data_dir: "/path/to/PHM-Vibench"
+  data_dir: "${PHM_VIBENCH_DATA:-data}"
   metadata_file: "metadata.xlsx"
 ```
+
+Shared configs should use relative paths, `${ENV_VAR:-default}` placeholders, or
+CLI overrides such as `--override data.data_dir=/abs/path`. Do not commit private
+machine paths into maintained demos.
 
 ### “Change task but reuse the same data/model”
 - Keep `base_configs.data` + `base_configs.model`, switch `base_configs.task` to another base task.

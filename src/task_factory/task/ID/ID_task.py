@@ -79,6 +79,60 @@ class BaseIDTask(Default_task, ABC):
         logger.info(f"Initialized {self.__class__.__name__} with windowing strategy: "
                    f"{getattr(args_data, 'window_sampling_strategy', 'evenly_spaced')}")
 
+    @staticmethod
+    def _normalize_sample_id(sample_id: Any) -> Any:
+        """Normalize collated scalar IDs to plain Python values for HDF5 lookup."""
+        if hasattr(sample_id, "item"):
+            try:
+                return sample_id.item()
+            except Exception:
+                pass
+        if isinstance(sample_id, np.generic):
+            try:
+                return sample_id.item()
+            except Exception:
+                pass
+        return sample_id
+
+    def _normalize_metadata_batch(
+        self, metadata_batch: Any, batch_size: int
+    ) -> List[Dict[str, Any]]:
+        """Convert DataLoader-collated metadata back to a per-sample list of dicts."""
+        if isinstance(metadata_batch, list):
+            return metadata_batch
+        if not isinstance(metadata_batch, dict):
+            return [{} for _ in range(batch_size)]
+
+        normalized: List[Dict[str, Any]] = [{} for _ in range(batch_size)]
+        for key, values in metadata_batch.items():
+            if isinstance(values, torch.Tensor):
+                if values.ndim == 0:
+                    column = [values.item()] * batch_size
+                else:
+                    column = values.detach().cpu().tolist()
+            elif isinstance(values, (list, tuple)):
+                column = list(values)
+            else:
+                column = [values] * batch_size
+
+            if len(column) != batch_size:
+                if len(column) == 1:
+                    column = column * batch_size
+                else:
+                    raise ValueError(
+                        f"Collated metadata field '{key}' has length {len(column)}, expected {batch_size}"
+                    )
+
+            for idx, value in enumerate(column):
+                if hasattr(value, "item"):
+                    try:
+                        value = value.item()
+                    except Exception:
+                        pass
+                normalized[idx][key] = value
+
+        return normalized
+
     def _validate_data_config(self) -> None:
         """Validate required data processing configuration parameters."""
         required_params = ['window_size', 'stride', 'num_window']
@@ -374,26 +428,33 @@ class BaseIDTask(Default_task, ABC):
         """
         # Extract batch components
         ids = raw_batch.get('id', [])
-        metadata_list = raw_batch.get('metadata', [])
+        metadata_list = self._normalize_metadata_batch(
+            raw_batch.get('metadata', []), len(ids)
+        )
 
         # Load actual data for each ID
         batch_data = []
         for sample_id, metadata in zip(ids, metadata_list):
+            normalized_sample_id = self._normalize_sample_id(sample_id)
             try:
                 # Get data from the data factory (lazy loading)
-                data_array = self._get_data_for_id(sample_id)
+                data_array = self._get_data_for_id(normalized_sample_id)
                 if data_array is not None:
-                    batch_data.append((sample_id, data_array, metadata))
+                    batch_data.append((normalized_sample_id, data_array, metadata))
                 else:
-                    logger.warning(f"No data found for ID: {sample_id}")
+                    logger.warning(f"No data found for ID: {normalized_sample_id}")
             except Exception as e:
-                logger.error(f"Failed to load data for ID {sample_id}: {e}")
+                logger.error(f"Failed to load data for ID {normalized_sample_id}: {e}")
                 self.processing_stats['failed_samples'] += 1
                 continue
 
         # Apply the extensible batch preparation
         if batch_data:
             processed_batch = self.prepare_batch(batch_data)
+            target_device = next(self.network.parameters()).device
+            for key, value in processed_batch.items():
+                if isinstance(value, torch.Tensor):
+                    processed_batch[key] = value.to(target_device)
 
             # Update processing statistics
             if self.processing_stats['total_samples_processed'] > 0:
@@ -425,6 +486,9 @@ class BaseIDTask(Default_task, ABC):
             Data array for the specified ID, or None if not found
         """
         try:
+            attached_factory = getattr(self, "_data_factory", None)
+            if attached_factory is not None and hasattr(attached_factory, "data"):
+                return attached_factory.data[sample_id]
             # Access data through trainer's data factory
             if hasattr(self.trainer, 'datamodule') and hasattr(self.trainer.datamodule, 'data'):
                 return self.trainer.datamodule.data[sample_id]
@@ -659,4 +723,3 @@ if __name__ == '__main__':
 
     print("ID_task module tests completed successfully!")
     print("Note: Full task testing requires complete framework initialization.")
-

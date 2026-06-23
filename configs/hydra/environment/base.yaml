@@ -1,0 +1,7 @@
+# @package environment
+PROJECT_HOME: "."
+project: "demo_project"
+seed: 42
+output_dir: "results/demo"
+notes: ""
+iterations: 1

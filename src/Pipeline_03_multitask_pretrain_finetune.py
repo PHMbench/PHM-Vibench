@@ -508,6 +508,15 @@ class MultiTaskPretrainFinetunePipeline:
         return generate_pipeline_summary(checkpoint_paths, finetuning_results)
 
 
+def pipeline(args):
+    """Maintained entrypoint: run the unified two-stage orchestrator, fail-fast on errors."""
+
+    unified = adapt_p03(args.config_path, local_config=getattr(args, "local_config", None))
+    orchestrator = TwoStageOrchestrator(unified)
+    summary = orchestrator.run_complete()
+    return {"results": summary, "unified": True}
+
+
 def main():
     """Main function to run the pipeline."""
     parser = argparse.ArgumentParser(
@@ -550,17 +559,14 @@ def main():
         print(f"❌ Configuration file not found: {args.config_path}")
         sys.exit(1)
 
-    # Optional unified orchestrator path
+    # Optional unified orchestrator path. Errors are explicit; no fallback after partial setup.
     if args.use_unified:
-        try:
-            unified = adapt_p03(args.config_path, local_config=args.local_config)
-            orchestrator = TwoStageOrchestrator(unified)
-            summary = orchestrator.run_complete()
-            print("\nUnified two-stage pipeline completed.")
-            print(summary)
-            return
-        except Exception as e:
-            print(f"[WARN] Unified orchestrator failed, fallback to legacy: {e}")
+        unified = adapt_p03(args.config_path, local_config=args.local_config)
+        orchestrator = TwoStageOrchestrator(unified)
+        summary = orchestrator.run_complete()
+        print("\nUnified two-stage pipeline completed.")
+        print(summary)
+        return
 
     # Initialize legacy pipeline
     pipeline = MultiTaskPretrainFinetunePipeline(args.config_path, local_config=args.local_config)

@@ -399,6 +399,108 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/demo/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
 - Status: `sanity_ok`
 
+#### `hydra_00_smoke_dummy_dg`
+- Path: `configs/hydra/experiments/00_smoke/dummy_dg.yaml`
+- Description: Hydra smoke demo（repo 内置 dummy 数据）
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/dummy_cross_domain.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/dg.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/hydra/experiments/00_smoke/dummy_dg.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_dg_smoke/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/00_smoke/README.md`
+- Status: `sanity_ok`
+
+#### `hydra_01_cross_domain`
+- Path: `configs/hydra/experiments/01_cross_domain/cwru_dg.yaml`
+- Description: Hydra cross-domain DG demo
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/base_cross_domain.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/dg.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/hydra/experiments/01_cross_domain/cwru_dg.yaml`
+- Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
+- Outputs: `results/demo/cwru_dg/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/01_cross_domain/README.md`
+- Status: `sanity_ok`
+
+#### `hydra_02_cross_system`
+- Path: `configs/hydra/experiments/02_cross_system/multi_system_cddg.yaml`
+- Description: Hydra cross-system CDDG demo
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/base_cross_system.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/cddg.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/hydra/experiments/02_cross_system/multi_system_cddg.yaml`
+- Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
+- Outputs: `results/demo/multi_system_cddg/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/02_cross_system/README.md`
+- Status: `sanity_ok`
+
+#### `hydra_03_fewshot`
+- Path: `configs/hydra/experiments/03_fewshot/cwru_protonet.yaml`
+- Description: Hydra few-shot demo
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/base_fewshot.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/fewshot.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/hydra/experiments/03_fewshot/cwru_protonet.yaml`
+- Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
+- Outputs: `results/demo/cwru_protonet/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/03_fewshot/README.md`
+- Status: `sanity_ok`
+
+#### `hydra_04_cross_system_fewshot`
+- Path: `configs/hydra/experiments/04_cross_system_fewshot/cross_system_tspn.yaml`
+- Description: Hydra cross-system few-shot demo
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/base_cross_system_fewshot.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/gfs.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/hydra/experiments/04_cross_system_fewshot/cross_system_tspn.yaml`
+- Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
+- Outputs: `results/demo/cross_system_fewshot_tspn/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/04_cross_system_fewshot/README.md`
+- Status: `sanity_ok`
+
+#### `hydra_06_pretrain_cddg`
+- Path: `configs/hydra/experiments/06_pretrain_cddg/pretrain_hse_cddg.yaml`
+- Description: Hydra HSE pretrain CDDG demo
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/base_cross_system.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/pretrain.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/hydra/experiments/06_pretrain_cddg/pretrain_hse_cddg.yaml`
+- Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
+- Outputs: `results/demo/pretrain_hse_cddg/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/06_pretrain_cddg/README.md`
+- Status: `sanity_ok`
+
 
 ## Pipeline_02_pretrain_fewshot
 
@@ -419,4 +521,21 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
 - Outputs: `results/demo/pretrain_hse_then_fewshot/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/05_pretrain_fewshot/README.md`
+- Status: `sanity_ok`
+
+#### `hydra_05_pretrain_fewshot`
+- Path: `configs/hydra/experiments/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
+- Description: Hydra P02 HSE pretrain single-mode demo
+- Base configs:
+  - environment: `configs/hydra/environment/base.yaml`
+  - data: `configs/hydra/data/base_classification.yaml`
+  - model: `configs/hydra/model/backbone_dlinear.yaml`
+  - task: `configs/hydra/task/pretrain.yaml`
+  - trainer: `configs/hydra/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_02_pretrain_fewshot.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`, `pipeline_mode`
+- Minimal run: `python main.py --config configs/hydra/experiments/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
+- Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
+- Outputs: `results/demo/pretrain_hse_then_fewshot/{experiment_name}/iter_{i}/`
+- Related docs: `configs/hydra/README.md`, `configs/demo/05_pretrain_fewshot/README.md`
 - Status: `sanity_ok`

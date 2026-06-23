@@ -94,6 +94,19 @@ def test_tspn_uxfd_operator_attention_debug_state() -> None:
     assert state["enable_operator_attention"] is True
 
 
+def test_tspn_uxfd_fft_only_signal_layer_forward_shape_with_skip() -> None:
+    torch.manual_seed(0)
+    args = _make_args()
+    args.signal_processing_configs = {"layer1": ["FFT"]}
+    args.skip_connection = True
+    model = TSPNUXFD(args)
+    x = torch.randn(2, 128, 2)
+
+    logits = _forward_once(model, x)
+    assert logits.shape == (2, args.num_classes)
+    assert torch.isfinite(logits).all()
+
+
 def test_tspn_uxfd_forward_is_repeatable_given_same_state() -> None:
     torch.manual_seed(0)
     args = _make_args(enable_sp2d=True, fusion_type="gated", enable_operator_attention=True)

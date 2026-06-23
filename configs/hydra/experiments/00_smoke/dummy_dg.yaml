@@ -1,0 +1,28 @@
+# @package _global_
+defaults:
+  - /pipeline: pipeline_01_default
+  - /environment: base
+  - /data: dummy_cross_domain
+  - /model: backbone_dlinear
+  - /task: dg
+  - /trainer: default_single_gpu
+  - _self_
+
+# Keep the top-level pipeline visible so strict main dispatch can validate before composition.
+pipeline: "Pipeline_01_default"
+
+environment:
+  project: "demo_dummy_dg_smoke"
+  seed: 0
+  output_dir: "results/demo/dummy_dg_smoke"
+  notes: "Smoke test on repo-shipped dummy metadata + raw csv."
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

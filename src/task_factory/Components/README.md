@@ -8,7 +8,8 @@
 - `contrastive_strategies.py`：对比学习策略架构，支持 HSE Prompt 集成和系统感知对比学习，详见 [CONTRASTIVE_STRATEGIES.md](./README_CONTRASTIVE_STRATEGIES.md)。
 - `metrics.py`：评估指标工厂，封装 torchmetrics。
 - `regularization.py`：正则化工具（L1/L2/Domain penalty/mixup 等）。
-- 其他：prompt_contrastive、metric_loss 等高级模块。
+- 其他：prompt_contrastive、metric_loss 等高级/实验模块；除非有 focused test 或
+  registry evidence 覆盖，否则不要把它们计入当前支持矩阵。
 
 ## Loss 一览（常用关键字）
 > 配置中通过 `task.loss` 指定；对比学习多为 **embedding 输入**，需确保输入格式正确。
@@ -31,8 +32,8 @@
 | VICREG       | VICRegLoss       | 另一种两视图自监督             | z1, z2                         |
 
 ⚠️ 注意事项：
-- InfoNCE/SupCon 需要“正样本对”存在：监督对比需 batch 内有重复 label；自监督需双视图或其他配对逻辑。单视图+唯一标签会得到 0 loss。
-- Triplet 需要合理的 margin；BarlowTwins/VICReg 需要两视图输入。
+- InfoNCE/SupCon 需要“正样本对”存在：监督对比需 batch 内有重复 label；自监督需双视图或其他配对逻辑。无有效正样本时必须显式失败，不能返回 0 loss。
+- Triplet 需要同时存在正样本对和负样本对；Prototypical 至少需要两个类别；BarlowTwins/VICReg 需要两视图输入。
 - prompt_contrastive 的 `base_loss_type` 只接受文档列出的 key，额外参数请匹配底层 loss。
 
 ## 在 HSE 对比预训练任务中通过超参选择 loss
@@ -137,5 +138,5 @@ task:
 
 ## 规范建议
 - 不要在 Task 里硬编码具体 Loss/Metric，统一通过工厂获取。
-- 对比学习前确认数据流：是否提供双视图/重复标签；否则 InfoNCE/SupCon 会返回 0。
+- 对比学习前确认数据流：是否提供双视图/重复标签；否则对比损失应显式报错。
 - 如需新组件，先注册到对应工厂并更新本 README，保持可查性。 

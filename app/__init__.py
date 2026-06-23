@@ -1,3 +1,1 @@
-"""Streamlit application package."""
-
-__all__ = ["gui", "layout", "pipeline", "state"]
+"""Application helpers for the PHMfactory console."""

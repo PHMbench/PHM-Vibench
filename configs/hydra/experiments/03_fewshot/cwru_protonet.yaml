@@ -1,0 +1,20 @@
+# @package _global_
+defaults:
+  - /pipeline: pipeline_01_default
+  - /environment: base
+  - /data: base_fewshot
+  - /model: backbone_dlinear
+  - /task: fewshot
+  - /trainer: default_single_gpu
+  - _self_
+
+pipeline: "Pipeline_01_default"
+
+environment:
+  project: "demo_cwru_protonet"
+  seed: 42
+  output_dir: "results/demo/cwru_protonet"
+  notes: "Few-shot classification demo."
+
+trainer:
+  num_epochs: 1

@@ -63,9 +63,14 @@ class InfoNCELoss(nn.Module):
         Returns:
             InfoNCE loss value
         """
+        if not torch.is_tensor(features):
+            raise TypeError(f"features must be a torch.Tensor, got {type(features)}")
+        if features.ndim != 2:
+            raise ValueError(f"features must have shape [batch, dim], got {tuple(features.shape)}")
+
         batch_size = features.shape[0]
         if batch_size < 2:
-            return torch.tensor(0.0, device=features.device, requires_grad=True)
+            raise ValueError("InfoNCE requires at least one positive pair; got batch_size < 2")
         
         # Normalize features if requested
         if self.normalize:
@@ -76,22 +81,34 @@ class InfoNCELoss(nn.Module):
         
         # Create positive mask
         if labels is not None:
+            if not torch.is_tensor(labels):
+                raise TypeError(f"labels must be a torch.Tensor, got {type(labels)}")
+            labels = labels.to(features.device).view(-1)
+            if labels.shape[0] != batch_size:
+                raise ValueError(
+                    f"labels length must match features batch: {labels.shape[0]} != {batch_size}"
+                )
             # Supervised contrastive: same labels are positive pairs
             positive_mask = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
             # Remove self-similarities
             positive_mask = positive_mask - torch.eye(batch_size, device=features.device)
         else:
-            # Self-supervised contrastive: augmented pairs would be positive
-            # For now, treating no pairs as positive (unsupervised single view)
+            if batch_size % 2 != 0:
+                raise ValueError(
+                    "Unlabeled InfoNCE requires a two-view batch with even size [v1, v2]."
+                )
+            half = batch_size // 2
             positive_mask = torch.zeros((batch_size, batch_size), device=features.device)
+            idx = torch.arange(half, device=features.device)
+            positive_mask[idx, idx + half] = 1.0
+            positive_mask[idx + half, idx] = 1.0
         
         # Mask out diagonal (self-similarity)
         mask = torch.eye(batch_size, device=features.device, dtype=torch.bool)
         similarity_matrix = similarity_matrix.masked_fill(mask, -float('inf'))
         
         if positive_mask.sum() == 0:
-            # No positive pairs, return zero loss
-            return torch.tensor(0.0, device=features.device, requires_grad=True)
+            raise ValueError("InfoNCE received no positive pairs; check labels or pairing mode.")
         
         # Compute InfoNCE loss
         exp_similarity = torch.exp(similarity_matrix)
@@ -103,7 +120,7 @@ class InfoNCELoss(nn.Module):
         # Only compute loss for samples with positive pairs
         valid_samples = positive_count > 0
         if not valid_samples.any():
-            return torch.tensor(0.0, device=features.device, requires_grad=True)
+            raise ValueError("InfoNCE has no valid anchors with positive pairs.")
         
         log_prob = torch.log(positive_similarities[valid_samples].sum(dim=1) / 
                            sum_exp_similarity[valid_samples].squeeze())
@@ -167,7 +184,7 @@ class TripletLoss(nn.Module):
         """
         batch_size = embeddings.shape[0]
         if batch_size < 2:
-            return torch.tensor(0.0, device=embeddings.device, requires_grad=True)
+            raise ValueError("TripletLoss requires at least two samples.")
         
         # Compute distance matrix
         distance_matrix = self._compute_distance_matrix(embeddings)
@@ -179,7 +196,9 @@ class TripletLoss(nn.Module):
         negative_mask = ~labels_equal
         
         if not positive_mask.any() or not negative_mask.any():
-            return torch.tensor(0.0, device=embeddings.device, requires_grad=True)
+            raise ValueError(
+                "TripletLoss requires at least one positive pair and one negative pair."
+            )
         
         if self.hard_mining:
             # Hard positive mining: farthest positive
@@ -203,7 +222,7 @@ class TripletLoss(nn.Module):
             valid_triplets = (positive_mask.unsqueeze(2) & negative_mask.unsqueeze(1))
             
             if not valid_triplets.any():
-                return torch.tensor(0.0, device=embeddings.device, requires_grad=True)
+                raise ValueError("TripletLoss received no valid triplets.")
             
             triplet_loss = F.relu(triplet_matrix) * valid_triplets.float()
             triplet_loss = triplet_loss.sum() / valid_triplets.float().sum()
@@ -212,7 +231,7 @@ class TripletLoss(nn.Module):
         # Only compute loss for samples with both positive and negative pairs
         valid_mask = (positive_mask.any(dim=1) & (hardest_negative < 1e5))
         if not valid_mask.any():
-            return torch.tensor(0.0, device=embeddings.device, requires_grad=True)
+            raise ValueError("TripletLoss received no valid anchors.")
         
         return triplet_loss[valid_mask].mean()
 
@@ -257,7 +276,7 @@ class SupConLoss(nn.Module):
         batch_size = features.shape[0]
         
         if batch_size < 2:
-            return torch.tensor(0.0, device=device, requires_grad=True)
+            raise ValueError("SupConLoss requires at least two samples.")
         
         # Normalize features
         features = F.normalize(features, dim=1)
@@ -283,7 +302,7 @@ class SupConLoss(nn.Module):
         
         # Check if any positive pairs exist
         if mask_labels.sum() == 0:
-            return torch.tensor(0.0, device=device, requires_grad=True)
+            raise ValueError("SupConLoss received no positive pairs; check labels or mask.")
         
         # Compute log_prob
         exp_logits = torch.exp(logits) * logits_mask
@@ -298,7 +317,7 @@ class SupConLoss(nn.Module):
             pos_per_sample = mask_labels.sum(1)
             valid_samples = pos_per_sample > 0
             if not valid_samples.any():
-                return torch.tensor(0.0, device=device, requires_grad=True)
+                raise ValueError("SupConLoss received no valid anchors with positive pairs.")
             
             # Randomly select one positive per sample
             random_indices = torch.multinomial(mask_labels[valid_samples], 1).squeeze()
@@ -313,7 +332,7 @@ class SupConLoss(nn.Module):
         valid_samples = mask_labels.sum(1) > 0
         
         if not valid_samples.any():
-            return torch.tensor(0.0, device=device, requires_grad=True)
+            raise ValueError("SupConLoss received no valid anchors with positive pairs.")
         
         return loss[valid_samples].mean()
 
@@ -381,7 +400,7 @@ class PrototypicalLoss(nn.Module):
             Prototypical loss value
         """
         if len(torch.unique(labels)) < 2:
-            return torch.tensor(0.0, device=embeddings.device, requires_grad=True)
+            raise ValueError("PrototypicalLoss requires at least two classes.")
         
         # Compute prototypes
         prototypes, unique_labels = self._compute_prototypes(embeddings, labels)
@@ -436,11 +455,16 @@ class BarlowTwinsLoss(nn.Module):
         Returns:
             Barlow Twins loss value
         """
+        if z1.shape != z2.shape:
+            raise ValueError(
+                "BarlowTwins requires paired views with the same shape, "
+                f"got {tuple(z1.shape)} and {tuple(z2.shape)}"
+            )
         batch_size = z1.shape[0]
         feature_dim = z1.shape[1]
         
         if batch_size < 2:
-            return torch.tensor(0.0, device=z1.device, requires_grad=True)
+            raise ValueError("BarlowTwins requires at least two paired samples.")
         
         # Normalize along batch dimension
         if self.normalize:
@@ -499,11 +523,16 @@ class VICRegLoss(nn.Module):
         Returns:
             VICReg loss value
         """
+        if z1.shape != z2.shape:
+            raise ValueError(
+                "VICReg requires paired views with the same shape, "
+                f"got {tuple(z1.shape)} and {tuple(z2.shape)}"
+            )
         batch_size = z1.shape[0]
         feature_dim = z1.shape[1]
         
         if batch_size < 2:
-            return torch.tensor(0.0, device=z1.device, requires_grad=True)
+            raise ValueError("VICReg requires at least two paired samples.")
         
         # Invariance loss (MSE between views)
         inv_loss = F.mse_loss(z1, z2)

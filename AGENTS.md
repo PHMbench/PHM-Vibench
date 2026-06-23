@@ -8,6 +8,26 @@ This file is a practical runbook + double-check list for working in PHM-Vibench.
 - Modular wiring: factories under `src/*_factory/` assemble data/model/task/trainer from registries.
 - Single maintained entrypoint: `python main.py --config <yaml> [--override key=value ...]` (pipeline via YAML
   `pipeline:`).
+- Strict dispatch: missing config, unreadable config, missing `pipeline`, or unknown pipeline fails before trainer setup.
+
+## Agent Reading Order (avoid reading the whole repo)
+- Start with `AGENTS.md`, then `CLAUDE.md`, then `docs/REPO_INDEX.md`.
+- Use the index to choose the smallest relevant subsystem before reading source, configs, scripts, or paper assets.
+- Config work: read `configs/README.md`, `configs/config_registry.csv`, and `docs/CONFIG_ATLAS.md` before opening many
+  YAML files.
+- Source work: enter through the relevant `src/*_factory/README.md` or `CLAUDE.md`, then inspect the concrete module.
+- Paper work: read `paper/README.md`, `paper/README_SUBMODULE.md`, and if needed `paper/UXFD_paper/README.md` before
+  entering submodules.
+- Prefer `rg --files`, `rg <symbol> <focused-path>`, and `find <path> -maxdepth <n>` over recursive full-directory reads.
+
+## Avoid By Default
+- Do not recursively read `.venv/`, `.pytest_cache/`, `.cache/`, `__pycache__/`, `save/`, `results/`, or `outputs/`.
+- Do not recursively read `data/raw/` or dataset submodules unless the task is specifically about raw data.
+- Do not recursively read paper submodule results/artifacts such as `paper/**/results/`, `paper/**/outputs/`,
+  `paper/**/.agent/`, `paper/**/.claude/`, or `paper/**/.codex/`.
+- Treat `configs/reference/` as legacy material; do not template from it unless doing a migration.
+- For ignored local workspaces such as `paper/UXFD_paper/thu_liqi_phd_thesis/`, inspect only when the task explicitly
+  concerns that workspace.
 
 ## Quick Commands (copy-paste)
 ```bash
@@ -49,6 +69,7 @@ python -m pytest test/
 ## Configuration System (what to enforce)
 - Keep the 5-block model: `environment/data/model/task/trainer`.
 - Prefer composable configs (`base_configs + overrides`) and CLI dot overrides.
+- Do not rely on implicit demo or pipeline fallback; every run must name a valid config with a top-level `pipeline`.
 - Keep configs traceable:
   - add maintained demos to `configs/config_registry.csv`
   - regenerate atlas with `python -m scripts.gen_config_atlas`
@@ -67,7 +88,7 @@ python -m pytest test/
 ## Development Commands
 - Smoke: `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
 - Baseline demo: `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=1`
-- Streamlit UI: `streamlit run streamlit_app.py` (experimental; not a validation gate).
+- Streamlit UI: `streamlit run frontend/streamlit_app.py` (experimental; not a validation gate).
 
 ## Style and Testing
 - Style: PEP 8, 100-char line limit; format with `black src/ test/` and `isort src/ test/` if available.
@@ -83,3 +104,8 @@ python -m pytest test/
   - What changed + why
   - How to validate (commands above)
   - Expected outputs (e.g. `docs/CONFIG_ATLAS.md` updated, output directory pattern)
+
+<!-- SPECKIT START -->
+Current Spec Kit plan:
+`specs/006-uxfd-ieee-trans-submission-readiness/plan.md`
+<!-- SPECKIT END -->

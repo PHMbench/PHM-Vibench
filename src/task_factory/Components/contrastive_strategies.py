@@ -384,11 +384,7 @@ class SingleContrastiveStrategy(ContrastiveStrategy):
 
         except Exception as e:
             logger.error(f"Error in {self.loss_type} computation: {e}")
-            return {
-                'loss': torch.tensor(0.0, device=features.device),
-                'components': {self.loss_type: torch.tensor(0.0, device=features.device)},
-                'metrics': {}
-            }
+            raise RuntimeError(f"{self.loss_type} contrastive computation failed") from e
 
     @property
     def requires_multiple_views(self) -> bool:
@@ -1044,8 +1040,8 @@ class EnsembleContrastiveStrategy(ContrastiveStrategy):
                     metrics[f'{strategy_name}_{key}'] = value
 
             except Exception as e:
-                logger.warning(f"Error computing {strategy_name} loss: {e}")
-                components[strategy_name] = torch.tensor(0.0, device=features.device)
+                logger.error(f"Error computing {strategy_name} loss: {e}")
+                raise RuntimeError(f"Ensemble contrastive component failed: {strategy_name}") from e
 
         return {
             'loss': total_loss,

@@ -116,24 +116,29 @@ def _strip_stft_tokens_and_validate_1d_ops(args: Any) -> None:
     if sp_cfgs is None:
         return
 
-    # Convert dict-like to namespace so downstream TSPN can read it.
     if isinstance(sp_cfgs, dict):
-        setattr(args, "signal_processing_configs", _to_ns(sp_cfgs))
-        sp_cfgs = getattr(args, "signal_processing_configs")
+        layer_items = list(sp_cfgs.items())
+        setter = sp_cfgs.__setitem__
+        getter = sp_cfgs.get
+    else:
+        layer_items = list(getattr(sp_cfgs, "__dict__", {}).items())
+        setter = lambda k, v: setattr(sp_cfgs, k, v)
+        getter = lambda k: getattr(sp_cfgs, k, None)
 
     uxfd = _ensure_ns(args, "uxfd")
     found_stft = False
 
-    for layer_key, value in list(getattr(sp_cfgs, "__dict__", {}).items()):
+    for layer_key, value in layer_items:
         if not isinstance(value, list):
             continue
         if "STFT" in value:
             found_stft = True
             cleaned = [x for x in value if x != "STFT"]
-            setattr(sp_cfgs, layer_key, cleaned)
+            setter(layer_key, cleaned)
 
         # Validate remaining 1D operator keys early with a clearer error.
-        invalid = [x for x in getattr(sp_cfgs, layer_key) if isinstance(x, str) and x not in ALL_SP]
+        current = getter(layer_key) or []
+        invalid = [x for x in current if isinstance(x, str) and x not in ALL_SP]
         if invalid:
             allowed = ", ".join(sorted(ALL_SP.keys()))
             raise ValueError(

@@ -20,6 +20,8 @@ def resolve_task_module(args_task: Namespace) -> str:
     """Return the Python import path for the task module."""
     task_name = args_task.name
     task_type = args_task.type
+    if task_type == "Default_task" and task_name == "ID_task":
+        return "src.task_factory.task.ID.ID_task"
     if task_type == "Default_task" or task_name == "Default_task":
         return f"src.task_factory.{task_name}"
     if task_name == "multitask":
@@ -83,7 +85,6 @@ def task_factory(
     except Exception as exc:  # pragma: no cover - runtime safeguard
         print(f"Failed to create task {key}: {exc}")
         return None
-
 
 
 

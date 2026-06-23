@@ -87,9 +87,22 @@ class ID_dataset(Dataset):
             raise IndexError(f"Index {idx} out of range [0, {len(self.ids)})")
 
         sample_id = self.ids[idx]
+        raw_metadata = self.metadata[sample_id]
+        safe_metadata = {}
+        for key in ["Id", "Label", "Name", "Dataset_id", "Fault_level", "Condition_id"]:
+            if key not in raw_metadata:
+                continue
+            value = raw_metadata[key]
+            if hasattr(value, "item"):
+                try:
+                    value = value.item()
+                except Exception:
+                    pass
+            safe_metadata[key] = value
         return {
             "id": sample_id,
-            "metadata": self.metadata[sample_id]
+            # Keep only batch-stable fields; full metadata remains available through the task/global accessor.
+            "metadata": safe_metadata,
         }
 
     def get_ids(self) -> List[str]:
@@ -223,4 +236,3 @@ if __name__ == '__main__':
     print(f"Balanced groups: {balanced}")
 
     print("All tests passed!")
-
