@@ -1,8 +1,7 @@
 # HPC / Slurm Notes
 
 This is the maintained place for PHM-Vibench HPC notes. Older Grace snippets
-from `docs/grace.md` and `docs/past/grace.md` have been merged here to avoid
-parallel copies.
+from a former `docs/grace.md` were merged here to avoid parallel copies.
 
 ## Grace local path snippets
 

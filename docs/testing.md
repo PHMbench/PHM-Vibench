@@ -6,11 +6,7 @@
 python -m pytest test/
 ```
 
-## Legacy runner (optional; historical matrix)
+## Notes
 
-`dev/test_history/` contains a historical test runner used during earlier refactors. It may require additional
-dependencies and is not part of the maintained workflow.
-
-```bash
-python dev/test_history/run_tests.py --unit
-```
+The historical `dev/test_history/` runner was archived to `obsidian/history/dev/`.
+Use the maintained `pytest test/` workflow above for all testing.

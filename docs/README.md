@@ -31,19 +31,17 @@ index for project-level docs; module-specific usage belongs in the module
 
 ## Archived docs
 
-- `docs/past/` contains historical v0.0.x guides retained for reference.
-- `docs/v0.1.0/` contains release planning and completed migration notes.
-- Do not copy archived guides into new docs. Link to the maintained docs above
-  and move only still-current content into the canonical location.
+Historical docs (`docs/past/`, `docs/v0.1.0/`, `docs/reports/`) and the Chinese
+translations (`*_CN.md`) were archived to `obsidian/history/docs/` during the
+2026-07-05 cleanup. They are no longer in the tree — link to the maintained
+docs above for current content.
 
 ## Consolidation notes
 
 - `docs/app_usage.md` was merged into `app/README.md`.
-- `docs/grace.md` and `docs/past/grace.md` were merged into `docs/HPC.md`.
-- Lowercase duplicate docs were either migrated to `README_CN.md` when they
-  contained Chinese/bilingual content, or removed when they were compatibility
-  stubs. Use canonical `README.md` / `README_CN.md` / `CONTRIBUTING.md`
-  filenames for new docs.
+- `docs/grace.md` and historical `docs/past/grace.md` were merged into `docs/HPC.md`.
+- English is canonical; Chinese (`*_CN.md`) translations are archived, not
+  maintained in-tree. Use `README.md` / `CONTRIBUTING.md` filenames for new docs.
 
 ## Generation / validation
 
