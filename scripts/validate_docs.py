@@ -48,6 +48,11 @@ FORBIDDEN_PHM_GENERATIVE_PATHS = {
     "templates": "Do not create top-level templates for PHM generative work.",
     "schemas": "Do not create top-level schemas for PHM generative work.",
 }
+ALLOWED_FRONTIER_2026_DOC_PATHS = {
+    "projects": ("projects/phm_generative/frontier_2026",),
+    "projects/phm_generative": ("projects/phm_generative/frontier_2026",),
+    "templates": ("templates/generative_frontier",),
+}
 PHM_GENERATIVE_LEGACY_DOC_REFERENCE_RE = re.compile(
     r"docs/(?:phm_generative|generative)(?:/|$|[^A-Za-z0-9_-])"
 )
@@ -926,7 +931,10 @@ def check_ai_docs_point_to_readme(repo_root: Path) -> list[Issue]:
 def check_phm_generative_docs_placement(repo_root: Path) -> list[Issue]:
     issues: list[Issue] = []
     for rel, detail in FORBIDDEN_PHM_GENERATIVE_PATHS.items():
-        if (repo_root / rel).exists():
+        path = repo_root / rel
+        if path.exists() and not contains_only_allowed_frontier_2026_paths(
+            repo_root, rel
+        ):
             issues.append(
                 Issue(
                     kind="forbidden_phm_generative_path",
@@ -952,6 +960,29 @@ def check_phm_generative_docs_placement(repo_root: Path) -> list[Issue]:
                 )
             )
     return issues
+
+
+def contains_only_allowed_frontier_2026_paths(repo_root: Path, rel: str) -> bool:
+    allowed_rels = ALLOWED_FRONTIER_2026_DOC_PATHS.get(rel)
+    if not allowed_rels:
+        return False
+    path = repo_root / rel
+    allowed_paths = tuple(repo_root / allowed for allowed in allowed_rels)
+    if path.is_file():
+        return any(
+            path == allowed or path.is_relative_to(allowed)
+            for allowed in allowed_paths
+        )
+    files = [candidate for candidate in path.rglob("*") if candidate.is_file()]
+    if not files:
+        return False
+    return all(
+        any(
+            candidate == allowed or candidate.is_relative_to(allowed)
+            for allowed in allowed_paths
+        )
+        for candidate in files
+    )
 
 
 def check_required_phm_generative_readmes(repo_root: Path) -> list[Issue]:

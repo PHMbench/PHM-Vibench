@@ -587,6 +587,17 @@ def build_paperpack(run_dir: Path, stage_ledger: Path | None = None) -> Path:
         ["category", "metric", "status", "reason", "value", "source_path"],
     )
     _write_missing_metrics(appendix / "missing_metrics.md", missing_rows)
+    try:
+        from src.task_factory.Components.generative.registry import export_registry_snapshot
+
+        frontier_snapshot = export_registry_snapshot()
+    except (FileNotFoundError, ValueError, ImportError):
+        frontier_snapshot = []
+    if frontier_snapshot:
+        (appendix / "frontier_method_registry.json").write_text(
+            json.dumps(frontier_snapshot, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
     figure_fields = ["category", "metric", "value", "status", "reason", "source_path"]
     _write_csv(
         figure_sources / "spectra_overlay.csv",
