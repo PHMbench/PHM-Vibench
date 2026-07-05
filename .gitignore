@@ -54,6 +54,9 @@ obsidian/
 .specify/templates/
 .specify/workflows/
 
+# Goals/planning markdown: local-only (canonical copy kept elsewhere; override cleanup keep)
+.specify/goals/
+
 # --- specs/: local-only spec-kit workspace (snapshot kept in obsidian/history/) ---
 specs/
 
