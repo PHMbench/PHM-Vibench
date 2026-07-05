@@ -1,0 +1,31 @@
+benchmark:
+  id: "phm_genbench_frontier_2026_dummy_pilot"
+  output_dir: "results/paper/phm_generative/frontier_2026_dummy_pilot"
+  baseline_method: "cfm"
+  min_datasets: 1
+  seeds: [0]
+  python: "python"
+  evidence_status: "exploratory"
+  data_check:
+    data_dir: "data"
+    metadata_file: "metadata_dummy.csv"
+
+methods:
+  - method: "cfm"
+    label: "Conditional Flow Matching"
+    train_config: "configs/demo/10_generative/dummy_generative_cfm.yaml"
+  - method: "rectified_flow"
+    label: "Rectified Flow"
+    train_config: "configs/demo/10_generative/dummy_generative_rectified_flow.yaml"
+  - method: "ddpm"
+    label: "DDPM Epsilon"
+    train_config: "configs/demo/10_generative/dummy_generative_ddpm.yaml"
+  - method: "ot_nfm"
+    label: "OT-NFM exploratory"
+    train_config: "configs/demo/10_generative/dummy_generative_ot_nfm.yaml"
+  - method: "transition_flow"
+    label: "Transition Flow exploratory"
+    train_config: "configs/demo/10_generative/dummy_generative_transition_flow_matching.yaml"
+  - method: "euler_mean_flow"
+    label: "Euler Mean Flow exploratory"
+    train_config: "configs/demo/10_generative/dummy_generative_euler_mean_flow.yaml"

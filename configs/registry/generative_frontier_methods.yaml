@@ -1,0 +1,213 @@
+version: 1
+default_claim_status: exploratory
+methods:
+  w_flow:
+    title: "One-Step Generative Modeling via Wasserstein Gradient Flows"
+    family: wasserstein_gradient_flow
+    year: 2026
+    reference: https://arxiv.org/abs/2605.11755
+    integration_level: research_pilot
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: true
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  drifting_models:
+    title: "Generative Modeling via Drifting"
+    family: distribution_drifting
+    year: 2026
+    reference: https://arxiv.org/abs/2602.04770
+    integration_level: toy_only
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  euler_mean_flow:
+    title: "Trajectory Consistency for One-Step Generation on Euler Mean Flows"
+    family: mean_flow
+    year: 2026
+    reference: https://arxiv.org/abs/2602.02571
+    integration_level: runtime_pilot
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  transition_flow_matching:
+    title: "Transition Flow Matching"
+    family: transition_flow
+    year: 2026
+    reference: https://arxiv.org/abs/2603.15689
+    integration_level: runtime_pilot
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  ot_nfm:
+    title: "ODE-free Neural Flow Matching for One-Step Generative Modeling"
+    family: one_step_flow_map
+    year: 2026
+    reference: https://arxiv.org/abs/2604.06413
+    integration_level: runtime_pilot
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: true
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  cumulative_flow_maps:
+    title: "A Few-Step Generative Model on Cumulative Flow Maps"
+    family: cumulative_flow_map
+    year: 2026
+    reference: https://arxiv.org/abs/2605.03623
+    integration_level: runtime_pilot_after_tfm
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  physical_field_one_step_fm:
+    title: "One-Step Flow Matching for Generative Modeling of Path-Dependent Physical Fields"
+    family: latent_physical_field_flow
+    year: 2026
+    reference: https://arxiv.org/abs/2606.22752
+    integration_level: project_card_only
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: true
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  cogencast:
+    title: "CoGenCast: A Coupled Autoregressive-Flow Generative Framework for Time Series Forecasting"
+    family: autoregressive_flow_forecasting
+    year: 2026
+    reference: https://arxiv.org/abs/2602.03564
+    integration_level: project_card_only
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: false
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  equivariant_latent_flow:
+    title: "Unconditional flow-based time series generation with equivariance-regularised latent spaces"
+    family: latent_flow_matching
+    year: 2026
+    reference: https://arxiv.org/abs/2601.22848
+    integration_level: runtime_pilot_later
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: false
+    requires_ot: false
+    requires_mamba: false
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
+  dim_ts:
+    title: "DiM-TS: Bridge the Gap between Selective State Space Models and Time Series for Generative Modeling"
+    family: diffusion_ssm
+    year: 2025
+    reference: https://arxiv.org/abs/2511.18312
+    integration_level: backbone_pilot
+    runtime_status: not_implemented
+    claim_status: exploratory
+    supports_one_step: false
+    requires_ot: false
+    requires_mamba: true
+    promotion_requirements:
+      - method_card
+      - loss_card
+      - method_specific_objective
+      - unit_tests
+      - dummy_e2e
+      - sample_manifest
+      - eval_evidence_manifest
+      - stage_ledger
+      - reviewer_pass
