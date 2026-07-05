@@ -1,6 +1,0 @@
-
-
-def plot_curve():
-    
-    
-    
