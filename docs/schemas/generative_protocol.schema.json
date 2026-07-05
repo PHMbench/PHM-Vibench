@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://phm-vibench.local/docs/schemas/generative_protocol.schema.json",
+  "title": "PHM Generative Protocol",
+  "type": "object",
+  "required": ["schema_version", "task", "conditions", "training", "evaluation"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "task": {
+      "type": "object",
+      "required": ["type", "name"],
+      "properties": {
+        "type": {"const": "generative"},
+        "name": {"type": "string"}
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {"enum": ["fault_label", "domain_id"]},
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "training": {
+      "type": "object",
+      "required": ["loss_id"],
+      "properties": {
+        "loss_id": {"const": "conditional_flow_matching"}
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["metric_groups"],
+      "properties": {
+        "metric_groups": {
+          "type": "array",
+          "items": {"enum": ["temporal", "spectral", "distribution", "leakage", "tstr"]}
+        }
+      }
+    }
+  }
+}

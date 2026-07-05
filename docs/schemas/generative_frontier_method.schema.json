@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PHM-GenBench Frontier Method",
+  "type": "object",
+  "required": [
+    "method_id",
+    "family",
+    "runtime_status",
+    "claim_status",
+    "integration_level",
+    "reference"
+  ],
+  "properties": {
+    "method_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family": {
+      "type": "string"
+    },
+    "runtime_status": {
+      "enum": [
+        "not_implemented",
+        "toy_only",
+        "experimental",
+        "smoke_ok",
+        "pilot_ok",
+        "promoted"
+      ]
+    },
+    "claim_status": {
+      "enum": [
+        "exploratory",
+        "docs-only",
+        "benchmark-valid"
+      ]
+    },
+    "integration_level": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string",
+      "format": "uri"
+    },
+    "supports_one_step": {
+      "type": "boolean"
+    },
+    "requires_ot": {
+      "type": "boolean"
+    },
+    "requires_mamba": {
+      "type": "boolean"
+    },
+    "promotion_requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

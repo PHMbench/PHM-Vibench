@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://phm-vibench.local/docs/schemas/domain_map.schema.json",
+  "title": "PHM Domain Map Row",
+  "type": "object",
+  "required": ["domain_id", "system_id", "load", "rpm", "sampling_rate"],
+  "properties": {
+    "domain_id": {"type": "integer"},
+    "system_id": {"type": "integer"},
+    "load": {"type": ["string", "number"]},
+    "rpm": {"type": ["string", "number"]},
+    "sampling_rate": {"type": "number"},
+    "description": {"type": "string"},
+    "dataset_name": {"type": "string"}
+  }
+}
