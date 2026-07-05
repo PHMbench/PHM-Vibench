@@ -86,4 +86,4 @@ from configured datasets with evidence; matrix-external datasets do not satisfy
 the paper minimum.
 
 UXFD merge utilities:
-- `python -m scripts.collect_uxfd_runs --input save/ --out_dir docs/reports/` (collect `artifacts/manifest.json` into CSV)
+- `python -m scripts.collect_uxfd_runs --input save/ --out_dir metrics_reports/` (collect `artifacts/manifest.json` into CSV; `docs/reports/` was archived to `obsidian/history/docs/reports/`)

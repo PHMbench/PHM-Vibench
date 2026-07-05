@@ -1,10 +1,7 @@
 # Contributing to PHM-Vibench
 
 <div align="center">
-  <p>
-    <a href="CONTRIBUTING.md"><strong>English</strong></a> |
-    <a href="CONTRIBUTING_CN.md">中文</a>
-  </p>
+  <p><strong>English (canonical)</strong> · Chinese translations archived under <code>obsidian/history/docs/cn/</code></p>
 </div>
 
 We welcome contributions to PHM-Vibench! This guide will help you understand how to contribute effectively to the project.
@@ -300,25 +297,26 @@ class TestYourComponent:
 1. **API Documentation**: NumPy-style docstrings
 2. **Usage Examples**: Working code examples
 3. **Config Documentation**: Update registry and atlas
-4. **Bilingual Support**: English and Chinese (`_CN.md` suffix)
+4. **Language**: English is canonical. Chinese translations (`*_CN.md`) are
+   archived under `obsidian/history/docs/cn/`; do not maintain parallel CN
+   copies in the tree.
 
 ### Documentation Structure
 
 ```
 PHM-Vibench/
-├── README.md / README_CN.md           # Main project README
-├── CONTRIBUTING.md / CONTRIBUTING_CN.md  # This file
+├── README.md                           # Main project README
+├── CONTRIBUTING.md                     # This file
 ├── CLAUDE.md                           # Architecture and change strategy
 ├── AGENTS.md                           # Development runbook
 ├── configs/README.md                   # Config system guide
 ├── docs/
-│   ├── CONFIG_ATLAS.md                 # Generated config reference
 │   ├── developer_guide.md
 │   └── testing.md
 └── src/
-    ├── data_factory/README_CN.md
-    ├── model_factory/README_CN.md
-    └── task_factory/README_CN.md
+    ├── data_factory/README.md
+    ├── model_factory/README.md
+    └── task_factory/README.md
 ```
 
 ## Pull Request Process

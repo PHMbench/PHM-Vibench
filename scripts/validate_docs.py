@@ -20,13 +20,12 @@ import yaml
 
 SKIP_TOP_DIRS = {
     ".git",
-    ".archive",
-    ".pytest_cache",
     "__pycache__",
     "05_04",
     "data",
     "paper",  # paper workflows are not part of the core validation gate
     "results",
+    "obsidian",  # local knowledge base / archive vault, not validated
 }
 
 SKIP_DIR_NAMES = {"__pycache__"}

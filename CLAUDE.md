@@ -5,7 +5,8 @@ This file documents PHM-Vibench’s intent, architecture, and change strategy.
 - Canonical onboarding + runnable path: `README.md` and `configs/README.md`
 - Copy-paste run/validate commands: `AGENTS.md`
 - PHM generative benchmark constitution: `.specify/memory/constitution.md`
-- PHM-GenBench review and handoff artifacts:
+- PHM-GenBench review and handoff artifacts (local-only — `specs/` is gitignored;
+  snapshot kept under `obsidian/history/specs/`):
   `specs/002-phm-genbench-frontier/reviews/README.md` and
   `specs/002-phm-genbench-frontier/handoffs/README.md`
 

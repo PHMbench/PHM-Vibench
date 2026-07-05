@@ -61,8 +61,8 @@ result = base_config.copy().update(
 
 ## 📋 可用预设（v0.0.9 兼容）
 
-> 说明：以下预设仍指向 `configs/v0.0.9/demo/` 下的旧版配置，用于兼容历史脚本。  
-> v0.1.0 推荐直接使用 `configs/demo/*` + `base_configs` 结构（见 `docs/v0.1.0/v0.1.0_update.md` 和 `configs/README.md`）。
+> 说明：以下预设仍指向 `configs/v0.0.9/demo/` 下的旧版配置，用于兼容历史脚本。
+> v0.1.0 推荐直接使用 `configs/demo/*` + `base_configs` 结构（见 `configs/README.md`；历史 v0.1.0 更新说明已归档至 `obsidian/history/docs/v0.1.0/`）。
 
 | 预设名称 | 模板文件 | 说明 |
 |---------|---------|------|

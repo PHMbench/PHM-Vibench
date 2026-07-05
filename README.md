@@ -2,13 +2,10 @@
 
 <div align="center">
   <img src="pic/PHM-Vibench.png" alt="PHM-Vibench Logo" width="300"/>
-  
-  <!-- Language Switcher -->
-  <p>
-    <a href="README.md"><strong>English</strong></a> | 
-    <a href="README_CN.md">中文</a>
-  </p>
-  
+
+  <!-- English is canonical. Chinese translations archived to obsidian/history/docs/cn/. -->
+  <p><strong>English (canonical)</strong></p>
+
   <p><strong>🏭 End-to-End Reproducible, Modular Fault Diagnosis and Predictive Maintenance Benchmark Platform for Industrial Applications 🏭</strong></p>
   <p><em>⚠️ Alpha Stage - Invitation-Only Access ⚠️</em></p>
 
@@ -250,7 +247,7 @@ PHM-Vibench uses the powerful configuration system v0.1.0, supporting flexible e
 - **Dot Notation Parameter Override**: Supports `{'model.d_model': 512}` for direct nested parameter override
 - **Multi-stage Pipeline**: Perfect support for pretraining→fine-tuning and other multi-stage configuration inheritance
 - **Ablation Experiment Tools**: Built-in dual-mode API grid search and parameter ablation
-- **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/README.md` for details).
+- **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `configs/README.md` for details; the historical v0.1.0 update notes were archived to `obsidian/history/docs/v0.1.0/`).
 
 📖 **Start here**: [`configs/README.md`](configs/README.md) (30-second smoke run + override rules + config tools)
 
@@ -862,21 +859,19 @@ save/
 
 ### 4. Result Visualization 📈
 
-Plotting utilities live in `plot/` (typically consuming artifacts under `save/`).
+Plotting utilities live in `src/plot_factory/` (typically consuming artifacts under `save/`).
 
 ## 📂 Project Structure
 
 ```bash
 PHM-Vibench/
 ├── README.md
-├── README_CN.md
 ├── main.py
 ├── configs/        # experiment YAMLs + registry
-├── src/            # pipelines + factories
-├── dev/            # development utilities + scripts (e.g., HSE demos)
+├── src/            # pipelines + factories (incl. plot_factory/)
+├── dev/            # development utilities + paper scripts (e.g., HSE demos)
 ├── docs/           # documentation
 ├── test/           # pytest suite
-├── plot/           # plotting utilities
 ├── pic/            # images used by README/docs
 ├── data/           # user datasets (not tracked)
 └── save/           # run outputs (not tracked)
@@ -889,7 +884,7 @@ PHM-Vibench/
 - 📊 **save/**: Experimental results organized and saved hierarchically
 - 🧪 **test/**: Development testing suite ensuring code quality
 - 🧰 **dev/**: Development utilities and experimental scripts
-- 📈 **plot/**: Plotting and visualization utilities
+- 📈 **src/plot_factory/**: Plotting and visualization utilities
 
 ## 🧑‍💻 Development Guide TODO
 

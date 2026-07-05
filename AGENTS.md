@@ -70,7 +70,7 @@ python -m pytest test/
 - Style: PEP 8, 100-char line limit; format with `black src/ test/` and `isort src/ test/` if available.
 - Testing:
   - Maintained: `python -m pytest test/`
-  - Legacy runner (optional): `python dev/test_history/run_tests.py --unit`
+  - (The legacy `dev/test_history/` runner was archived to `obsidian/history/dev/`.)
 
 ## Commit & PR Guidelines (keep changes reviewable)
 - Keep changes focused (configs vs factories vs docs should be separable when possible).
