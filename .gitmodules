@@ -30,3 +30,7 @@
 	path = paper/LQ_vibench_fix
 	url = git@github.com:liq22/LQ_vibench_fix.git
 	branch = lqfix_25-12
+[submodule "paper/paper_state_flow"]
+	path = paper/paper_state_flow
+	url = ./paper/paper_state_flow
+	branch = master
