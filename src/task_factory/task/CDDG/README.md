@@ -174,6 +174,6 @@ The HSE contrastive learning task implements our core research contribution:
 ## References
 
 - [Task Factory Documentation](../../CLAUDE.md)
-- [HSE Innovation Specification](../../../../.claude/specs/hse-complete-publication-pipeline/)
+- HSE innovation notes: summarized above; historical agent specs are intentionally not tracked.
 - [Configuration System](../../../configs/CLAUDE.md)
 - [Model Factory](../../../model_factory/CLAUDE.md)
