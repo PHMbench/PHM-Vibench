@@ -1,9 +1,15 @@
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
-import os
-from pathlib import Path
-from typing import Iterable, Optional, Union
-import torch
+from __future__ import annotations
+
+from src.utils.checkpoint_io import (resolve_trusted_checkpoint_path,
+                                     safe_torch_load)
+
+try:
+    from pytorch_lightning import LightningModule, Trainer
+    from pytorch_lightning.callbacks import ModelCheckpoint
+except ImportError:
+    LightningModule = Trainer = object
+    ModelCheckpoint = None
+
 try: 
     import wandb
 except ImportError:
@@ -11,75 +17,17 @@ except ImportError:
     wandb = None
 try:
     import swanlab
-    from swanlab.plugin.notification import LarkCallback
-    from swanlab.plugin.notification import SlackCallback
+    from swanlab.plugin.notification import LarkCallback, SlackCallback
 except ImportError:
     print("[WARNING] swanlab 未安装")
     swanlab = None
 import numpy as np
 
 
-def _path_is_relative_to(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
-
-
-def _trusted_checkpoint_roots(
-    extra_roots: Optional[Iterable[Union[str, Path]]] = None,
-) -> list[Path]:
-    roots = [Path.cwd()]
-    env_roots = os.environ.get("PHM_TRUSTED_CHECKPOINT_ROOTS", "")
-    if env_roots:
-        roots.extend(Path(item) for item in env_roots.split(os.pathsep) if item)
-    if extra_roots:
-        roots.extend(Path(item) for item in extra_roots)
-    return [root.expanduser().resolve() for root in roots]
-
-
-def resolve_trusted_checkpoint_path(
-    checkpoint_path: Union[str, Path],
-    trusted_roots: Optional[Iterable[Union[str, Path]]] = None,
-) -> Path:
-    """Resolve a checkpoint path and ensure it is under an allowed root."""
-    path = Path(checkpoint_path).expanduser().resolve()
-    if not path.exists():
-        raise FileNotFoundError(f"Checkpoint file does not exist: {path}")
-
-    roots = _trusted_checkpoint_roots(trusted_roots)
-    if not any(path == root or _path_is_relative_to(path, root) for root in roots):
-        allowed = ", ".join(str(root) for root in roots)
-        raise ValueError(
-            f"Refusing to load checkpoint outside trusted roots: {path}. "
-            f"Set PHM_TRUSTED_CHECKPOINT_ROOTS to opt in. Trusted roots: {allowed}"
-        )
-    return path
-
-
-def safe_torch_load(
-    checkpoint_path: Union[str, Path],
-    *,
-    map_location="cpu",
-    trusted_roots: Optional[Iterable[Union[str, Path]]] = None,
-):
-    """Load a trusted local torch file, preferring weights-only deserialization."""
-    path = resolve_trusted_checkpoint_path(checkpoint_path, trusted_roots)
-    try:
-        return torch.load(path, map_location=map_location, weights_only=True)
-    except TypeError:
-        # Older PyTorch versions do not support weights_only.
-        return torch.load(path, map_location=map_location)
-    except Exception:
-        # Lightning checkpoints can contain metadata unsupported by weights_only.
-        # The fallback is allowed only after trusted-root validation above.
-        return torch.load(path, map_location=map_location, weights_only=False)
-
-
 def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
     """Load pretrained weights via the shared loader (backward compatibility helper)."""
-    from src.utils.pipeline_config.base_utils import load_pretrained_weights as _load_pretrained_weights
+    from src.utils.pipeline_config.base_utils import \
+        load_pretrained_weights as _load_pretrained_weights
 
     return _load_pretrained_weights(model, checkpoint_path, strict)
 
@@ -95,6 +43,9 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
     返回:
     - 加载了最佳检查点权重的模型实例。
     """
+    if ModelCheckpoint is None:
+        raise ImportError("pytorch_lightning is required to load best model checkpoints")
+
     # 从trainer的callbacks中找到ModelCheckpoint实例，并获取best_model_path
     model_checkpoint = None
     for callback in trainer.callbacks:

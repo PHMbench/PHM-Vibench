@@ -15,7 +15,7 @@ task:
     num_samples: 2
     length: 128
     validity_status: "exploratory"
-    allow_untrained_smoke: true
+    allow_untrained_smoke: false
     stochastic_sampler: "annealed_langevin"
     sigma_min: 0.01
     sigma_max: 1.0

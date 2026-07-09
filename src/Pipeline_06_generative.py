@@ -1,3 +1,12 @@
+"""PHM generative benchmark pipeline.
+
+The public flow is intentionally stage-separated:
+train builds data/model/task/trainer and records training evidence, sample
+requires a checkpoint unless explicitly running an untrained smoke path, and
+eval consumes generated samples plus train-reference data to write metrics and
+promotion evidence.
+"""
+
 import argparse
 import hashlib
 import json
@@ -8,24 +17,26 @@ from pathlib import Path
 import pandas as pd
 import torch
 
-from src.configs.config_utils import merge_with_local_override, path_name, transfer_namespace
+from src.configs.config_utils import (merge_with_local_override, path_name,
+                                      transfer_namespace)
 from src.data_factory import build_data
-from src.data_factory.data_utils import (
-    resolve_normalization_method,
-    write_normalization_params_artifact,
-)
+from src.data_factory.data_utils import (resolve_normalization_method,
+                                         write_normalization_params_artifact)
 from src.data_factory.ID.domain_map import hash_file
 from src.model_factory import build_model
 from src.task_factory import build_task
-from src.task_factory.task.generative.generative_eval import evaluate_generated_windows
-from src.task_factory.Components.generative.metrics.leakage import leakage_metrics
+from src.task_factory.Components.generative.metrics.leakage import \
+    leakage_metrics
+from src.task_factory.task.generative.generative_eval import \
+    evaluate_generated_windows
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
-
 
 PROTOCOL_SCHEMA_PATH = "docs/schemas/generative_protocol.schema.json"
 STAGE_NAMES = {"train", "sample", "eval", "paperpack"}
 
 
+# Config and factory helpers keep the five-block contract close to the
+# public entrypoint: environment, data, model, task, trainer.
 def _load_configs(args):
     configs = merge_with_local_override(args.config_path, getattr(args, "local_config", None))
     if hasattr(args, "override") and args.override:
@@ -97,6 +108,8 @@ def _optional_float(*values) -> float | None:
     return None
 
 
+# Condition helpers define all supported sample-time policies. Benchmark-valid
+# train-distribution sampling additionally requires metadata split evidence.
 def _as_int_list(value, field_name: str) -> list[int]:
     if value is None:
         raise ValueError(f"{field_name} is required")
@@ -231,6 +244,8 @@ def _dependency_lock_hash() -> str:
     return "missing"
 
 
+# Normalization evidence is computed from processed train dataloader windows
+# only; it must not inspect validation or test batches.
 def _build_normalization_params(data_factory, args_data, channels: int, max_batches: int = 32) -> dict:
     method = resolve_normalization_method(getattr(args_data, "normalization", "standardization"))
     chunks: list[torch.Tensor] = []
@@ -393,6 +408,8 @@ def _to_ncl(x: torch.Tensor, channels: int) -> torch.Tensor:
     )
 
 
+# Stage ledger helpers append per-stage paths without deleting sibling stage
+# entries, so train/sample/eval/paperpack runs remain auditable as one chain.
 def _stage_ledger_path(configs, run_path: str | Path, mode: str) -> Path:
     args_task = transfer_namespace(configs.task)
     gen_cfg = _generative_cfg(args_task)
@@ -447,6 +464,8 @@ def _resolve_synthetic_manifest_path(generated_path: str | Path) -> str:
     return ""
 
 
+# Eval evidence keeps promotion decisions explicit: missing sample manifests
+# or not-computable metrics downgrade eligibility rather than being hidden.
 def _metric_status_summary(metrics: dict) -> dict[str, int]:
     summary = {"ok": 0, "not_computable": 0}
     for key, value in metrics.items():
@@ -496,7 +515,7 @@ def _write_eval_evidence_manifest(
 
 
 def _load_sample_payload(path: str | Path) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
-    from src.utils.utils import safe_torch_load
+    from src.utils.checkpoint_io import safe_torch_load
 
     payload = safe_torch_load(str(path), map_location="cpu")
     if isinstance(payload, dict):
@@ -605,7 +624,7 @@ def _sample_once(args, configs, iteration):
     _attach_normalization_artifacts(path, data_factory, args_data, task, channels)
     checkpoint_path = str(getattr(gen_cfg, "checkpoint_path", "") or "")
     if checkpoint_path:
-        from src.utils.utils import safe_torch_load
+        from src.utils.checkpoint_io import safe_torch_load
 
         state = safe_torch_load(checkpoint_path, map_location="cpu")
         task.load_state_dict(state.get("state_dict", state), strict=False)

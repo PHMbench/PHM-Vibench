@@ -9,6 +9,7 @@
     "created_at",
     "protocol",
     "config",
+    "environment",
     "generator",
     "source_data",
     "normalization",
@@ -22,7 +23,16 @@
     "created_at": {"type": "string"},
     "protocol": {"type": "object"},
     "config": {"type": "object"},
-    "environment": {"type": "object"},
+    "environment": {
+      "type": "object",
+      "required": ["python", "torch", "platform", "dependency_lock_hash"],
+      "properties": {
+        "python": {"type": "string"},
+        "torch": {"type": "string"},
+        "platform": {"type": "string"},
+        "dependency_lock_hash": {"type": "string"}
+      }
+    },
     "generator": {
       "type": "object",
       "required": ["model_type", "model_name", "loss_id", "checkpoint_path", "generator_run_id"]
@@ -45,7 +55,18 @@
     },
     "conditions": {
       "type": "object",
-      "required": ["condition_keys", "condition_sampling_policy"]
+      "required": [
+        "condition_keys",
+        "condition_sampling_policy",
+        "condition_counts",
+        "condition_sampling_split_verified"
+      ],
+      "properties": {
+        "condition_keys": {"type": "array"},
+        "condition_sampling_policy": {"type": "string"},
+        "condition_counts": {"type": "object"},
+        "condition_sampling_split_verified": {"type": "boolean"}
+      }
     },
     "sampling": {
       "type": "object",
@@ -53,11 +74,21 @@
     },
     "validity": {
       "type": "object",
-      "required": ["status", "allowed_status", "benchmark_valid", "leakage_checks"],
+      "required": [
+        "status",
+        "allowed_status",
+        "benchmark_valid",
+        "reason",
+        "evidence",
+        "missing_evidence",
+        "leakage_checks"
+      ],
       "properties": {
         "status": {"enum": ["benchmark-valid", "exploratory", "docs-only"]},
         "benchmark_valid": {"type": "boolean"},
         "reason": {"type": "string"},
+        "evidence": {"type": "object"},
+        "missing_evidence": {"type": "array"},
         "leakage_checks": {
           "type": "object",
           "required": ["split_guard_passed", "nearest_neighbor_check"],

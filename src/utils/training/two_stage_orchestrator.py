@@ -502,8 +502,9 @@ class MultiStageOrchestrator:
             result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
             if result:
                 test_metrics = deepcopy(result[0])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("pl_trainer.test failed (run_pretrain): %s", exc, exc_info=True)
+            test_metrics['test_status'] = 'error'
 
         close_lab()
         return {'checkpoint_path': ckpt_path, 'metrics': test_metrics, 'path': path}
@@ -564,8 +565,9 @@ class MultiStageOrchestrator:
             result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
             if result:
                 test_metrics = deepcopy(result[0])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("pl_trainer.test failed (run_adapt): %s", exc, exc_info=True)
+            test_metrics['test_status'] = 'error'
 
         close_lab()
         return {'checkpoint_path': ckpt_path, 'metrics': test_metrics, 'path': path}

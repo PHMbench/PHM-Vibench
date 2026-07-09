@@ -2,6 +2,36 @@
 
 Runs the V0 PHM generative benchmark path on repo-shipped dummy data.
 
+## Fast Debug Commands
+
+Preflight only; verifies config composition and schema without running training:
+
+```bash
+python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml --preflight-only
+```
+
+CPU one-epoch train smoke:
+
+```bash
+python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml \
+  --override trainer.num_epochs=1 \
+  --override trainer.device=cpu \
+  --override data.num_workers=0
+```
+
+Untrained sample smoke; this is exploratory only and cannot produce
+benchmark-valid evidence:
+
+```bash
+python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml \
+  --override task.generative.mode=sample \
+  --override task.generative.allow_untrained_smoke=true \
+  --override trainer.device=cpu \
+  --override data.num_workers=0
+```
+
+## Demo Configs
+
 ```bash
 python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml
 python main.py --config configs/demo/10_generative/dummy_generative_rectified_flow.yaml
@@ -32,3 +62,7 @@ The conditions are explicit and traceable through metadata:
 Synthetic outputs are only benchmark-valid when produced through sample mode
 with a manifest and leakage checks. The default train smoke is for runtime
 validation.
+
+Sample mode normally requires `task.generative.checkpoint_path`. Setting
+`task.generative.allow_untrained_smoke=true` is a local debug convenience for
+checking wiring and manifest downgrade behavior; it must stay exploratory.

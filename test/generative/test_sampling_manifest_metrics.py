@@ -5,11 +5,11 @@ import torch
 
 from src.configs.config_utils import load_config
 from src.task_factory.Components.generative.manifests.synthetic_data_manifest import (
-    build_synthetic_data_manifest,
-    write_synthetic_data_manifest,
-)
-from src.task_factory.Components.generative.samplers.euler_ode import sample_euler_ode
-from src.task_factory.task.generative.generative_eval import evaluate_generated_windows
+    build_synthetic_data_manifest, write_synthetic_data_manifest)
+from src.task_factory.Components.generative.samplers.euler_ode import \
+    sample_euler_ode
+from src.task_factory.task.generative.generative_eval import \
+    evaluate_generated_windows
 
 
 class ZeroVelocityModel(torch.nn.Module):
@@ -58,7 +58,9 @@ def test_synthetic_manifest_write_contract(tmp_path):
     assert loaded["normalization"]["params_recorded"] is False
 
 
-def test_manifest_downgrades_benchmark_valid_without_evidence():
+def test_manifest_downgrades_benchmark_valid_instead_of_accepting_missing_evidence():
+    # Missing evidence must produce an explicit exploratory downgrade, not a
+    # silently accepted benchmark-valid manifest.
     manifest = build_synthetic_data_manifest(
         synthetic_dataset_id="test_synth",
         model_type="generative_model",

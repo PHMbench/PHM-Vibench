@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from src.task_factory.Components.generative.manifests.synthetic_data_manifest import (
     build_synthetic_data_manifest,
 )
+
+
+REPO = Path(__file__).resolve().parents[2]
 
 
 def _complete_manifest(**overrides):
@@ -55,6 +61,20 @@ def test_manifest_keeps_benchmark_valid_when_all_evidence_is_present() -> None:
     assert manifest["validity"]["benchmark_valid"] is True
     assert manifest["validity"]["missing_evidence"] == []
     assert all(manifest["validity"]["evidence"].values())
+
+
+def test_manifest_schema_requires_writer_evidence_fields() -> None:
+    schema = json.loads(
+        (REPO / "docs/schemas/synthetic_data_manifest.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert "environment" in schema["required"]
+    assert "dependency_lock_hash" in schema["properties"]["environment"]["required"]
+    assert "condition_counts" in schema["properties"]["conditions"]["required"]
+    assert "evidence" in schema["properties"]["validity"]["required"]
+    assert "missing_evidence" in schema["properties"]["validity"]["required"]
 
 
 @pytest.mark.parametrize(

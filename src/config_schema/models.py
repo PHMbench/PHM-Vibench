@@ -90,6 +90,7 @@ class GenerativeRuntimeConfig(BaseModel):
     run_test_loss_after_train: bool = False
     allow_test_reference_eval: bool = False
     domain_map_path: Optional[str] = None
+    stage_ledger_path: Optional[str] = None
     checkpoint_path: Optional[str] = None
     generated_path: Optional[str] = None
     num_steps: int = Field(8, ge=1)

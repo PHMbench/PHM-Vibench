@@ -103,12 +103,38 @@ def test_preflight_fails_on_generative_sample_without_checkpoint() -> None:
         "--preflight-only",
         "--override",
         "task.generative.mode=sample",
-        "--override",
-        "task.generative.allow_untrained_smoke=false",
     )
 
     assert result.returncode != 0
     assert "sample mode requires checkpoint_path" in result.stderr
+
+
+def test_preflight_accepts_explicit_untrained_sample_smoke() -> None:
+    result = _run_main(
+        "--config",
+        "configs/demo/10_generative/dummy_generative_cfm.yaml",
+        "--preflight-only",
+        "--override",
+        "task.generative.mode=sample",
+        "--override",
+        "task.generative.allow_untrained_smoke=true",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "[OK] preflight passed" in result.stdout
+
+
+def test_preflight_accepts_generative_stage_ledger_path(tmp_path: Path) -> None:
+    result = _run_main(
+        "--config",
+        "configs/demo/10_generative/dummy_generative_cfm.yaml",
+        "--preflight-only",
+        "--override",
+        f"task.generative.stage_ledger_path={tmp_path / 'stage_ledger.json'}",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "[OK] preflight passed" in result.stdout
 
 
 def test_preflight_does_not_import_pipeline_module(monkeypatch: pytest.MonkeyPatch) -> None:

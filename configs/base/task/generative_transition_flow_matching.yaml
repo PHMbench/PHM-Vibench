@@ -16,5 +16,5 @@ task:
     num_samples: 2
     length: 128
     validity_status: "exploratory"
-    allow_untrained_smoke: true
+    allow_untrained_smoke: false
     experimental: true

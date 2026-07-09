@@ -23,6 +23,54 @@ from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
 
+
+def _normalize_reader_output(data):
+    """Normalize reader output to the cache contract: ``(length, channels)``."""
+    if data is None:
+        raise ValueError("Reader returned None")
+    array = np.asarray(data)
+    if array.ndim == 1:
+        return array.reshape(-1, 1)
+    if array.ndim == 2:
+        return array
+    raise ValueError(
+        f"Reader output must be 1D or 2D, got shape {array.shape}. "
+        "H5 cache entries must be stored as (length, channels)."
+    )
+
+
+def _metadata_int(meta, field):
+    value = meta.get(field)
+    if value in (None, "", "/"):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _cached_dataset_matches_contract(dataset, meta):
+    """Return whether an H5 dataset can be reused for the current metadata row."""
+    if len(dataset.shape) != 2:
+        return False
+    name = str(meta.get("Name", ""))
+    expected_channels = _metadata_int(meta, "Channel")
+    if name == "RM_006_THU":
+        expected_channels = 2
+    if expected_channels is not None and dataset.shape[1] != expected_channels:
+        return False
+    expected_length = _metadata_int(meta, "Sample_lenth")
+    if expected_length is not None and dataset.shape[0] != expected_length:
+        return False
+    return True
+
+
+def _summarize_read_errors(name, errors):
+    preview = "; ".join(f"{id_key}: {error}" for id_key, error in errors[:5])
+    suffix = "" if len(errors) <= 5 else f"; ... {len(errors) - 5} more"
+    return f"Failed to read {len(errors)} {name} raw file(s): {preview}{suffix}"
+
+
 def register_data_factory(name: str):
     """Decorator to register a data factory implementation."""
     return DATA_FACTORY_REGISTRY.register(name)
@@ -109,9 +157,7 @@ class data_factory:
                 # Smoke/demo robustness: allow synthetic readers (e.g. Dummy_Data) to generate data.
                 if name != "Dummy_Data":
                     return id_key, None, f"原始数据文件未找到: {file_path}"
-            data = mod.read(file_path, args_data)
-            if data.ndim == 2:
-                data = np.expand_dims(data, axis=-1)
+            data = _normalize_reader_output(mod.read(file_path, args_data))
             return id_key, data, None
         except Exception as e:
             return id_key, None, str(e)
@@ -153,6 +199,8 @@ class data_factory:
                 with h5py.File(name_cache_file, 'r') as h5f:
                     if h5_key not in h5f:
                         need = True
+                    elif not _cached_dataset_matches_contract(h5f[h5_key], meta):
+                        need = True
             if need:
                 ids_to_fetch.setdefault(name, []).append(id_key)
         return ids_to_fetch
@@ -185,11 +233,12 @@ class data_factory:
             futures = [executor.submit(self._read_single_data, id_k, meta, args_data) for id_k, meta in id_meta_pairs]
             for fut in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc=f"并行读取 {name}"):
                 results.append(fut.result())
+        errors = [(id_res, error) for id_res, data_res, error in results if data_res is None]
+        if errors:
+            raise RuntimeError(_summarize_read_errors(name, errors))
         os.makedirs(os.path.dirname(name_cache_file), exist_ok=True)
         with h5py.File(name_cache_file, 'a') as h5f:
-            for id_res, data_res, _ in results:
-                if data_res is None:
-                    continue
+            for id_res, data_res, _error in results:
                 key = str(id_res)
                 if key in h5f:
                     del h5f[key]
@@ -218,22 +267,31 @@ class data_factory:
         if use_cache and os.path.exists(final_cache_path):
             with h5py.File(final_cache_path, 'r') as h5f:
                 for id_key in task_meta.keys():
-                    if str(id_key) not in h5f:
+                    meta = self.metadata[id_key]
+                    h5_key = str(id_key)
+                    if h5_key not in h5f:
+                        missing_keys.append(id_key)
+                    elif not _cached_dataset_matches_contract(h5f[h5_key], meta):
                         missing_keys.append(id_key)
         else:
             missing_keys = list(task_meta.keys())
         if missing_keys:
-            with h5py.File(final_cache_path, 'a') as h5f_consolidated:
+            mode = 'a' if use_cache else 'w'
+            with h5py.File(final_cache_path, mode) as h5f_consolidated:
                 for id_key in tqdm(missing_keys, desc="整合 cache.h5"):
                     meta = self.metadata[id_key]
                     name = meta['Name']
                     name_cache_file = os.path.join(args_data.data_dir, f"{name}.h5")
                     if not os.path.exists(name_cache_file):
-                        continue
+                        raise FileNotFoundError(f"Dataset cache missing: {name_cache_file}")
                     with h5py.File(name_cache_file, 'r') as h5f_name:
-                        if str(id_key) in h5f_name:
-                            data_arr = h5f_name[str(id_key)][()]
-                            h5f_consolidated.create_dataset(str(id_key), data=data_arr)
+                        key = str(id_key)
+                        if key not in h5f_name:
+                            raise KeyError(f"ID {key} missing from dataset cache: {name_cache_file}")
+                        data_arr = _normalize_reader_output(h5f_name[key][()])
+                        if key in h5f_consolidated:
+                            del h5f_consolidated[key]
+                        h5f_consolidated.create_dataset(str(id_key), data=data_arr)
         return final_cache_path
 
     def _init_data(self, args_data, use_cache=True, max_workers=32):

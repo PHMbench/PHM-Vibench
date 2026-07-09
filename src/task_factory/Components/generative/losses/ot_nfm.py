@@ -26,22 +26,16 @@ def _check_ncl(name: str, tensor: torch.Tensor) -> None:
 def _linear_sum_assignment(cost: torch.Tensor) -> tuple[torch.Tensor, str]:
     try:
         from scipy.optimize import linear_sum_assignment
-    except Exception:
-        linear_sum_assignment = None
+    except ImportError as exc:
+        raise ImportError(
+            "OT-NFM minibatch pairing requires scipy.optimize.linear_sum_assignment; "
+            "install scipy to use OTNFMLoss."
+        ) from exc
 
-    if linear_sum_assignment is not None:
-        rows, cols = linear_sum_assignment(cost.detach().cpu().numpy())
-        order = torch.as_tensor(rows, device=cost.device, dtype=torch.long).argsort()
-        cols_tensor = torch.as_tensor(cols, device=cost.device, dtype=torch.long)
-        return cols_tensor[order], "scipy_linear_sum_assignment"
-
-    remaining = set(range(cost.shape[1]))
-    cols = []
-    for row in range(cost.shape[0]):
-        best_col = min(remaining, key=lambda col: float(cost[row, col].detach().cpu()))
-        remaining.remove(best_col)
-        cols.append(best_col)
-    return torch.as_tensor(cols, device=cost.device, dtype=torch.long), "greedy_fallback"
+    rows, cols = linear_sum_assignment(cost.detach().cpu().numpy())
+    order = torch.as_tensor(rows, device=cost.device, dtype=torch.long).argsort()
+    cols_tensor = torch.as_tensor(cols, device=cost.device, dtype=torch.long)
+    return cols_tensor[order], "scipy_linear_sum_assignment"
 
 
 class OTNFMLoss(nn.Module):
