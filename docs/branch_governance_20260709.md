@@ -50,11 +50,15 @@ The repository already has a configuration-first core path. GUI and paper workfl
 
 Large historical branches should be decomposed into vertical slices with independent acceptance tests. The right unit of merge is not "whatever a branch contains"; it is "one coherent capability with a validation gate".
 
+### 5. Do not merge maintained demos before their target runtime exists
+
+The original draft put "config registry + demo skeleton" before "TSPN/UXFD model core". That order is unsafe: a maintained demo in `configs/demo/` must not reference a model that is absent from the runtime/registry. Therefore the UXFD order is revised below: minimal runtime contract first, maintained config promotion second.
+
 ## Execution status
 
 - Created `integration/uxfd-main-20260709` from latest `main`.
 - Created `feature/branch-governance-20260709` from latest `main`.
-- Added this document on `feature/branch-governance-20260709`.
+- Added and refined this document on `feature/branch-governance-20260709`.
 
 No destructive action has been taken.
 
@@ -86,30 +90,11 @@ python -m pytest test/
 
 If a PR only touches docs, the author may narrow the gate, but the PR body must explain why runtime tests are not applicable.
 
-## UXFD split plan
+## Revised UXFD split plan
 
-### U1: UXFD/NSN config registry and demo skeleton
+### U1: TSPN_UXFD minimal runtime contract
 
-Scope:
-
-```text
-configs/base/model/tspn_uxfd.yaml
-configs/demo/uxfd/*
-configs/demo/nsn/*
-configs/config_registry.csv
-docs/CONFIG_ATLAS.md
-configs/demo/*/README.md
-```
-
-Acceptance:
-
-```bash
-python -m scripts.validate_configs
-python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
-python -m scripts.config_inspect --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml
-```
-
-### U2: TSPN/UXFD model minimal core
+Goal: make the new model importable and instantiable without promoting demos as maintained examples too early.
 
 Scope:
 
@@ -118,27 +103,64 @@ src/model_factory/X_model/TSPN_UXFD.py
 src/model_factory/X_model/UXFD/*
 src/model_factory/model_factory.py
 src/model_factory/model_registry.csv
+configs/base/model/tspn_uxfd.yaml
+test/test_tspn_uxfd_assembly.py
 ```
 
 Acceptance:
 
 ```bash
-python -m scripts.config_inspect --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml --dump targets --format yaml
 python -m pytest test/test_tspn_uxfd_assembly.py
+python -m scripts.config_inspect --config <temporary-or-reference-uxfd-config> --dump targets --format yaml
 ```
 
-### U3: NSN / neurosymbolic extension
+Notes:
+
+- The base config may be added in U1 because it is part of the model contract.
+- Maintained demos should not be added until the model target exists and at least one assembly test passes.
+- If config inspection requires a committed demo, put it under `configs/reference/uxfd/` or `configs/experiments/uxfd/` until U2 promotes it.
+
+### U2: UXFD maintained demos and config registry promotion
+
+Goal: promote UXFD examples to the maintained `configs/demo/` surface only after U1 exists.
+
+Scope:
+
+```text
+configs/demo/uxfd/*
+configs/config_registry.csv
+docs/CONFIG_ATLAS.md
+configs/demo/README.md
+configs/demo/uxfd/README.md
+```
+
+Acceptance:
+
+```bash
+python -m scripts.validate_configs
+python -m scripts.gen_config_atlas && git diff --exit-code docs/CONFIG_ATLAS.md
+python -m scripts.config_inspect --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml
+python main.py --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml --override trainer.num_epochs=1
+```
+
+### U3: NSN / neurosymbolic wrapper extension
+
+Goal: introduce NSN as an explicit wrapper after the UXFD core contract is stable.
 
 Scope:
 
 ```text
 src/model_factory/X_model/NSN.py
 configs/demo/nsn/*
+configs/config_registry.csv
+docs/CONFIG_ATLAS.md
+configs/demo/nsn/README.md
 ```
 
 Acceptance:
 
 ```bash
+python -m scripts.validate_configs
 python -m scripts.config_inspect --config configs/demo/nsn/00_smoke_nsn_min.yaml
 python main.py --config configs/demo/nsn/00_smoke_nsn_min.yaml --override trainer.num_epochs=1
 ```
@@ -146,6 +168,8 @@ python main.py --config configs/demo/nsn/00_smoke_nsn_min.yaml --override traine
 If the demo requires non-repository data, it must be downgraded from `configs/demo/` to `configs/experiments/` or `configs/reference/`.
 
 ### U4: Run artifacts and plot factory
+
+Goal: add provenance, explainability artifacts, and plotting as optional backend capabilities.
 
 Scope:
 
@@ -164,6 +188,8 @@ python -m pytest test/test_collect_uxfd_runs.py test/test_run_artifacts_contract
 ```
 
 ### U5: Documentation and paper notes
+
+Goal: document UXFD/paper context without making paper-only workflows part of core validation.
 
 Scope:
 
