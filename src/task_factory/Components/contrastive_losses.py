@@ -81,16 +81,27 @@ class InfoNCELoss(nn.Module):
             # Remove self-similarities
             positive_mask = positive_mask - torch.eye(batch_size, device=features.device)
         else:
-            # Self-supervised contrastive: augmented pairs would be positive
-            # For now, treating no pairs as positive (unsupervised single view)
-            positive_mask = torch.zeros((batch_size, batch_size), device=features.device)
-        
+            # Self-supervised contrastive: assume [view1, view2] structure (SimCLR)
+            # Input features shape is [2*N, D]
+            if batch_size % 2 != 0:
+                 # Fallback if odd batch size (shouldn't happen in standard SimCLR)
+                 positive_mask = torch.zeros((batch_size, batch_size), device=features.device)
+            else:
+                 N = batch_size // 2
+                 # Create mask where i and i+N are positives
+                 diag = torch.eye(N, device=features.device)
+                 # Structure: [[0, I], [I, 0]]
+                 positive_mask = torch.cat([
+                     torch.cat([torch.zeros((N, N), device=features.device), diag], dim=1),
+                     torch.cat([diag, torch.zeros((N, N), device=features.device)], dim=1)
+                 ], dim=0)
+
         # Mask out diagonal (self-similarity)
         mask = torch.eye(batch_size, device=features.device, dtype=torch.bool)
         similarity_matrix = similarity_matrix.masked_fill(mask, -float('inf'))
         
         if positive_mask.sum() == 0:
-            # No positive pairs, return zero loss
+            # No positive pairs, return zero loss (only if fallback happened)
             return torch.tensor(0.0, device=features.device, requires_grad=True)
         
         # Compute InfoNCE loss
@@ -245,7 +256,7 @@ class SupConLoss(nn.Module):
         """
         Compute supervised contrastive loss.
         
-        Args:
+        Args: 
             features: Feature embeddings [batch_size, feature_dim] 
             labels: Ground truth labels [batch_size]
             mask: Optional mask for valid samples [batch_size, batch_size]
@@ -281,7 +292,7 @@ class SupConLoss(nn.Module):
         if mask is not None:
             mask_labels = mask_labels * mask
         
-        # Check if any positive pairs exist
+        # Check if any positive pairs exist 
         if mask_labels.sum() == 0:
             return torch.tensor(0.0, device=device, requires_grad=True)
         
