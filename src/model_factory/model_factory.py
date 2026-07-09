@@ -35,7 +35,14 @@ def model_factory(args_model: Any, metadata: Any):
     nn.Module
         Instantiated model ready for training.
     """
-    args_model.num_classes = get_num_classes(metadata)
+    # Respect an explicit `num_classes` from config (common for classification models).
+    # Otherwise infer from metadata; if only one dataset_id is present, collapse to an int.
+    if not getattr(args_model, "num_classes", None):
+        inferred = get_num_classes(metadata)
+        if isinstance(inferred, dict):
+            args_model.num_classes = next(iter(inferred.values())) if len(inferred) == 1 else inferred
+        else:
+            args_model.num_classes = inferred
     # key = f"{args_model.type}.{args_model.name}"
 
 
@@ -89,4 +96,3 @@ def load_ckpt(model, ckpt_path):
         for name, model_sz in skipped:
             print(f"  {name}: checkpoint vs model {model_sz}")
     print(f"已加载匹配的权重: {ckpt_path}")
-
