@@ -29,21 +29,14 @@ Optional UXFD modules (assembled by `TSPN_UXFD`):
 - `model.uxfd.fuzzy.enable=true`: fuzzy logits residual added to base logits
 - `model.uxfd.logic.enable=true`: logic logits residual added to base logits
 
-## NSN Wrapper (no-presets)
+## NSN Wrapper
 
-NSN is a thin wrapper over `TSPN_UXFD` that provides an optional **flat-ish** configuration surface while keeping the
-existing `model.uxfd.*` knobs as the stable backend contract.
+NSN is planned for U3 and is out of scope for the U1 runtime contract. This repository state only exposes the
+`TSPN_UXFD` entrypoint listed above.
 
-- Core: `model.type: X_model`, `model.name: NSN` (implementation: `src/model_factory/X_model/NSN.py`)
-- Legacy: `model.name: TSPN_UXFD` remains supported and unchanged.
-
-Supported NSN inline knobs (best-effort mapping):
-- `model.signal_processing_2d.*` → maps into `model.uxfd.enable_sp2d`, `model.uxfd.sp2d.*`, `model.uxfd.fusion.*`
-- `model.decision_configs.*` → maps into `model.uxfd.fuzzy.*` and/or `model.uxfd.logic.*`
-
-Semantic rule:
-- `STFT` is not an `ALL_SP` operator key. If a YAML uses an `STFT` token (NSN-only), it must be mapped to the SP2D
-  branch (`model.uxfd.enable_sp2d=true`) rather than treated as a 1D operator.
+Semantic rule for future NSN work:
+- `STFT` is not an `ALL_SP` operator key. If a YAML uses an `STFT` token, it must be mapped to the SP2D branch
+  (`model.uxfd.enable_sp2d=true`) rather than treated as a 1D operator.
 
 ## Configuration Surface (selected knobs)
 
@@ -66,6 +59,4 @@ Run artifacts:
 
 ## Runnable Demos
 
-See `configs/demo/uxfd/README.md`.
-
-NSN demos (no-presets) live at `configs/demo/nsn/README.md`.
+Maintained UXFD and NSN demos are planned for U2/U3 and are not part of this U1 contract.

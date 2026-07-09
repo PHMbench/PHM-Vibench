@@ -24,6 +24,7 @@ def _make_args(
     operator_list: Optional[list[str]] = None,
     enable_logic: bool = False,
     logic_logit_scale: float = 1.0,
+    num_classes: object = 3,
 ) -> SimpleNamespace:
     uxfd = _ns(
         enable_sp2d=enable_sp2d,
@@ -41,7 +42,7 @@ def _make_args(
 
     return _ns(
         device="cpu",
-        num_classes=3,
+        num_classes=num_classes,
         in_channels=2,
         out_channels=4,
         scale=1,
@@ -58,6 +59,42 @@ def _forward_once(model: TSPNUXFD, x: torch.Tensor) -> torch.Tensor:
     model.eval()
     with torch.no_grad():
         return model(x)
+
+
+def test_tspn_uxfd_rejects_dict_num_classes() -> None:
+    args = _make_args(num_classes={"source": 3, "target": 4})
+
+    with pytest.raises(ValueError, match="dict-valued multi-dataset heads are out of scope"):
+        TSPNUXFD(args)
+
+
+def test_tspn_uxfd_sp2d_modules_follow_configured_device() -> None:
+    args = _make_args(enable_sp2d=True, fusion_type="concat")
+    args.device = "meta"
+
+    model = TSPNUXFD(args)
+
+    assert model._uxfd_2d_proj is not None
+    assert model._uxfd_2d_proj.weight.device.type == "meta"
+    assert model._uxfd_fusion is not None
+    fusion_params = list(model._uxfd_fusion.parameters())
+    assert fusion_params
+    assert all(param.device.type == "meta" for param in fusion_params)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
+def test_tspn_uxfd_sp2d_forward_on_cuda() -> None:
+    torch.manual_seed(0)
+    args = _make_args(enable_sp2d=True, fusion_type="gated")
+    args.device = "cuda"
+    model = TSPNUXFD(args)
+    x = torch.randn(2, 128, 2, device="cuda")
+
+    logits = _forward_once(model, x)
+
+    assert logits.shape == (2, args.num_classes)
+    assert logits.device.type == "cuda"
+    assert torch.isfinite(logits).all()
 
 
 @pytest.mark.parametrize("fusion_type", ["concat", "sum", "gated"])

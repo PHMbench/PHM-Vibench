@@ -14,6 +14,7 @@ Implementation note:
 from __future__ import annotations
 
 from dataclasses import asdict
+from numbers import Integral
 from typing import Any, Dict, Optional
 
 import torch
@@ -45,6 +46,7 @@ class Model(_TSPNModel):
     """
 
     def __init__(self, args: Any, metadata: Any = None):
+        _validate_num_classes(args)
         super().__init__(args, metadata)
         self._uxfd_enable_sp2d = bool(_get_attr(args, "uxfd.enable_sp2d", False))
         self._uxfd_enable_fuzzy = bool(_get_attr(args, "uxfd.fuzzy.enable", False))
@@ -64,10 +66,14 @@ class Model(_TSPNModel):
 
         if self._uxfd_enable_sp2d:
             cfg = _build_stft_cfg(args)
-            self._uxfd_sp2d = STFTTimeFrequency(cfg)
-            self._uxfd_2d_proj = nn.Linear(int(self.args.in_channels), int(self.channel_for_classifier))
+            self._uxfd_sp2d = STFTTimeFrequency(cfg).to(self.args.device)
+            self._uxfd_2d_proj = nn.Linear(
+                int(self.args.in_channels), int(self.channel_for_classifier)
+            ).to(self.args.device)
             fusion_cfg = _build_fusion_cfg(args)
-            self._uxfd_fusion = build_fusion(int(self.channel_for_classifier), cfg=fusion_cfg)
+            self._uxfd_fusion = build_fusion(int(self.channel_for_classifier), cfg=fusion_cfg).to(
+                self.args.device
+            )
 
         if self._uxfd_enable_fuzzy:
             fuzzy_cfg = _build_fuzzy_cfg(args)
@@ -159,6 +165,21 @@ def _get_attr(obj: Any, dotted: str, default: Any) -> Any:
             return default
         cur = getattr(cur, part)
     return cur
+
+
+def _validate_num_classes(args: Any) -> None:
+    num_classes = getattr(args, "num_classes", None)
+    if isinstance(num_classes, bool) or not isinstance(num_classes, Integral):
+        if isinstance(num_classes, dict):
+            detail = f"dict keys={list(num_classes.keys())}"
+        else:
+            detail = type(num_classes).__name__
+        raise ValueError(
+            "TSPN_UXFD U1 requires args.num_classes to be an integer. "
+            f"Got {detail}; dict-valued multi-dataset heads are out of scope for U1."
+        )
+    if int(num_classes) <= 0:
+        raise ValueError(f"TSPN_UXFD requires a positive num_classes, got {num_classes}.")
 
 
 def _build_stft_cfg(args: Any) -> STFTConfig:

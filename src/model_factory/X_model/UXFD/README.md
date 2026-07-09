@@ -8,10 +8,6 @@ This package hosts **reusable UXFD building blocks** that are shared across the 
 python -m scripts.validate_configs
 python -m scripts.validate_docs
 python -m pytest test/test_tspn_uxfd_assembly.py -q
-
-python main.py --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml --override trainer.num_epochs=1
-python main.py --config configs/demo/uxfd/10_smoke_tspn_uxfd_sp2d.yaml --override trainer.num_epochs=1
-python main.py --config configs/demo/uxfd/20_smoke_tspn_uxfd_full.yaml --override trainer.num_epochs=1
 ```
 
 ## Core Contract (SSOT)
@@ -28,8 +24,6 @@ The composition surface is config-driven:
 SSOT docs:
 - `src/model_factory/X_model/UXFD/FACT_TABLE.md` (what exists today + artifact contract)
 - `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md` (operator/feature key catalog)
-- `configs/demo/uxfd/README.md` (runnable entry configs)
-- `configs/demo/nsn/README.md` (NSN wrapper demos; no-presets)
 
 ## Package Layout
 
@@ -43,4 +37,4 @@ SSOT docs:
 ## Repo Discipline
 
 - Keep paper-specific configs inside each paper submodule (`paper/UXFD_paper/<paper_id>/`).
-- Keep shared code here, and keep the runnable entrypoints under `configs/demo/uxfd/`.
+- Keep shared code here. Maintained runnable entrypoints under `configs/demo/uxfd/` are planned for U2.
