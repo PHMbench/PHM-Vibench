@@ -42,7 +42,9 @@ coverage.xml
 .claude/
 .codex/
 .agents/
-.github/
+
+# `.github/` is intentionally tracked for CI, security, issue templates, and
+# other repository-wide collaboration policy.
 
 # --- Local knowledge base / planning vault ---
 obsidian/
@@ -96,8 +98,8 @@ data/metadata_dummy.h5
 data/metadata_5_data.h5
 data/*.ipynb
 
-# --- Generated docs / machine-local config overrides ---
-docs/CONFIG_ATLAS.md
+# --- Machine-local config overrides ---
+# `docs/CONFIG_ATLAS.md` remains tracked because it is the rendered config SSOT.
 configs/local/*.yaml
 configs/local/*.yml
 
