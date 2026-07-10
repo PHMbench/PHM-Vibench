@@ -72,6 +72,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/README.md`, `configs/base/data/README.md`
 - Status: `/`
 
+
 ### base_environment
 
 #### `base_env_default`
@@ -85,6 +86,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/README.md`, `configs/base/environment/README.md`
 - Status: `/`
 
+
 ### base_model
 
 #### `base_model_isfm_hse`
@@ -97,6 +99,18 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/README.md`
 - Status: `/`
+
+#### `base_model_tspn_uxfd`
+- Path: `configs/base/model/tspn_uxfd.yaml`
+- Description: TSPN_UXFD base model（UXFD core wrapper, dummy-data friendly）
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/README.md`, `configs/base/model/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
+- Status: `/`
+
 
 ### base_task
 
@@ -165,6 +179,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/pretrain/README.md`
 - Status: `/`
+
 
 ### base_trainer
 
@@ -285,6 +300,23 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Outputs: `results/demo/pretrain_hse_cddg/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/06_pretrain_cddg/README.md`
 - Status: `sanity_ok`
+
+#### `demo_uxfd_00_smoke_tspn_uxfd`
+- Path: `configs/demo/uxfd/00_smoke_tspn_uxfd.yaml`
+- Description: UXFD smoke demo（TSPN_UXFD core contract, no optional UXFD modules）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/tspn_uxfd.yaml`
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/00_smoke_tspn_uxfd.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/uxfd/tspn_uxfd_min/{experiment_name}/iter_{i}/`
+- Related docs: `configs/demo/README.md`, `configs/demo/uxfd/README.md`, `src/model_factory/X_model/UXFD/FACT_TABLE.md`
+- Status: `needs_smoke`
 
 
 ## Pipeline_02_pretrain_fewshot
