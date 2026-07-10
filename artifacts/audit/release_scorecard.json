@@ -1,0 +1,48 @@
+{
+  "target": "v0.2.0",
+  "assessment_type": "PROVISIONAL_BASELINE_NOT_INDEPENDENT_REVIEW",
+  "generated_at": "2026-07-10",
+  "verdict": "NOT_READY",
+  "scores": {
+    "pipeline_runnability": null,
+    "component_contracts": null,
+    "parameter_traceability": null,
+    "combination_coverage": null,
+    "depth7_callgraph_audit": null,
+    "duplication_quality": null,
+    "testing_reproducibility": null,
+    "architecture_compatibility": null,
+    "documentation_paper_figures": null,
+    "branch_governance": null,
+    "release_completeness": null,
+    "total": null
+  },
+  "hard_gates": {
+    "p0_count": 0,
+    "p1_count_initial": 5,
+    "supported_pipeline_s6_rate": 0.0,
+    "valid_pairwise_coverage": 0.0,
+    "critical_cartesian_coverage": 0.0,
+    "invalid_unexpected_pass_count": null,
+    "unexplained_unknown_parameters": true,
+    "unexplained_ignored_parameters": null,
+    "unexplained_shadowed_parameters": null,
+    "all_existing_tests_pass": false,
+    "independent_reviewer_result": "NOT_EXECUTED",
+    "claude_counterexample_review": "NOT_EXECUTED"
+  },
+  "blocking_reasons": [
+    "No runtime baseline logs attached",
+    "No pipeline is proven S6 release-supported",
+    "Component contracts and parameter lifecycle are incomplete",
+    "Legal combination matrix and negative tests are incomplete",
+    "No active CI release gate is confirmed",
+    "Supported OS/hardware/dependency matrix is incomplete",
+    "Independent reviewer has not evaluated the candidate"
+  ],
+  "allowed_final_verdicts": [
+    "READY_FOR_v0.2.0",
+    "READY_WITH_EXPLICIT_LIMITATIONS",
+    "NOT_READY"
+  ]
+}
