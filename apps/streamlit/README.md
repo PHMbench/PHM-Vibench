@@ -76,14 +76,25 @@ recommended onboarding path.
 Provides:
 
 - catalog-defined safe fields with legacy key aliases;
-- a standalone, editable resolved YAML document;
+- an editable, portable YAML resolved before machine-local overrides;
 - one `key=value` CLI override per line;
 - a unified configuration diff;
 - the exact reproduction command.
 
-Safe fields are converted to CLI overrides. Raw overrides have the highest
-precedence. Both are passed as `subprocess` argv elements and are never composed
+Raw overrides are passed as `subprocess` argv elements. They are never composed
 into a `shell=True` command.
+
+The execution precedence is explicit:
+
+```text
+portable YAML
+< configs/local/local.yaml (when present)
+< catalog-safe CLI overrides
+< raw CLI overrides
+```
+
+The portable YAML never bakes in machine-local values. Normal validation and
+execution therefore let the core apply the local layer exactly once.
 
 ## Compatibility boundary
 
@@ -96,8 +107,6 @@ into a `shell=True` command.
   than add model-specific conditionals to `app.py`.
 - Machine-specific paths should be provided through advanced overrides or
   `configs/local/local.yaml`; they must not be committed into maintained demos.
-- Edited standalone YAML is validated with an explicit empty local override so a
-  machine-local file is not applied twice.
 
 ## Current staged scope
 
