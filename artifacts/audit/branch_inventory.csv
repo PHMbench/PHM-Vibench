@@ -1,0 +1,11 @@
+branch,latest_commit,last_update,ahead_of_main,behind_main,merged_into_main,open_pr,protected,unique_commits,unique_files,purpose,recommended_action,evidence
+main,ab064118b735eac641cdab41665591fe5c97e3fe,2026-07-09,0,0,true,,UNKNOWN,0,0,default branch,retain and protect,GitHub repository metadata
+feature/uxfd-u1-core-contract-20260709,2dd1a0fb49488d219454e2c4736416baf411d297,2026-07-09,UNKNOWN,UNKNOWN,false,39,UNKNOWN,UNKNOWN,15,TSPN_UXFD U1 runtime,review independently; no support claim before pipeline evidence,PR #39
+cleanup/repo-slim-2026-07-09,a4143f2bbaf77612b860bcd4ecaa73a2523046aa,2026-07-10,UNKNOWN,UNKNOWN,false,40,UNKNOWN,32,31,remove local agent workspace files,review deletion/recovery evidence then squash or rework,PR #40
+docs/pipeline06-generative-migration-20260710,17c68169e6bba78c96030107007942616b9a9cd4,2026-07-10,UNKNOWN,UNKNOWN,false,41,UNKNOWN,1,1,generative migration design,docs review only; do not imply runtime support,PR #41
+feature/uxfd-u2-demo-registry-20260710,129c7f22f102c1c6cc5df504d08be472d9e0ff47,2026-07-10,UNKNOWN,UNKNOWN,false,42,UNKNOWN,5,5,stacked minimal UXFD demo,keep draft until #39 merges and local smoke passes,PR #42
+ops/repo-optimization-goal-pack-20260710,bb1bcfa66ea460197a0e60fc0515fed19ccc4434,2026-07-10,UNKNOWN,UNKNOWN,false,43,UNKNOWN,UNKNOWN,UNKNOWN,v0.2.0 PR-0 audit and SOP,review as static baseline only,PR #43
+cleanup/repo-slim-2026-07-05,UNKNOWN,UNKNOWN,UNRELATED_HISTORY,UNRELATED_HISTORY,false,,UNKNOWN,UNKNOWN,UNKNOWN,source snapshot with cleanup/generative work,do not merge unrelated histories; migrate file-by-file,prior compare evidence
+lq_merge_UXFD,UNKNOWN,UNKNOWN,DIVERGED,DIVERGED,false,35-base,UNKNOWN,12,large,UXFD integration source,split into U1-U5; never merge wholesale,prior branch governance evidence
+integration/uxfd-main-20260709,UNKNOWN,UNKNOWN,0,3,false,,UNKNOWN,0,0,temporary integration placeholder,retain only while actively used; otherwise archive after recovery reference,prior compare evidence
+feature/branch-governance-20260709,3513d02cc707fc3349d72f6fec2783012fed43d3,2026-07-09,0,1,true,38,UNKNOWN,0,0,merged governance source,delete only after recovery reference and open-PR confirmation,PR #38 merged
