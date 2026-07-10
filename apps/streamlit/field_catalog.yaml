@@ -1,0 +1,112 @@
+version: 1
+default_template_id: demo_00_smoke_dummy_dg
+
+template_groups:
+  quick_start:
+    label: "快速体验 | Quick Start"
+    include_ids:
+      - demo_00_smoke_dummy_dg
+    include_statuses: [sanity_ok]
+  classic_fault_diagnosis:
+    label: "经典故障诊断 | Fault Diagnosis"
+    include_ids:
+      - demo_01_cross_domain
+      - demo_03_fewshot
+    include_statuses: [sanity_ok]
+  cross_domain_generalization:
+    label: "跨域泛化 | Domain Generalization"
+    include_ids:
+      - demo_01_cross_domain
+      - demo_02_cross_system
+      - demo_04_cross_system_fewshot
+    include_statuses: [sanity_ok]
+  generative_models:
+    label: "生成模型 | Generative Models"
+    include_ids: []
+    include_statuses: [sanity_ok]
+  advanced:
+    label: "高级配置 | Advanced"
+    include_all: true
+    include_statuses: [sanity_ok]
+
+fields:
+  device:
+    label: "运行设备 | Device"
+    widget: select
+    paths:
+      - trainer.device
+    options: [cpu, cuda]
+    default: cpu
+    quick_start: true
+    help: "CPU is the safest first run. Choose CUDA only when the core environment has a working GPU build."
+
+  epochs:
+    label: "训练轮数 | Epochs"
+    widget: number
+    paths:
+      - trainer.num_epochs
+      - task.epochs
+    min: 1
+    max: 1000
+    step: 1
+    default: 1
+    quick_start: true
+    help: "Number of training epochs. Use 1 for smoke validation."
+
+  seed:
+    label: "随机种子 | Random seed"
+    widget: number
+    paths:
+      - environment.seed
+    min: 0
+    max: 2147483647
+    step: 1
+    default: 0
+    help: "Base seed used by the experiment iterations."
+
+  batch_size:
+    label: "批大小 | Batch size"
+    widget: select
+    paths:
+      - data.batch_size
+      - task.batch_size
+      - trainer.batch_size
+    options: [4, 8, 16, 32, 64, 128]
+    default: 16
+    help: "The first existing alias is edited, so legacy and maintained configs remain compatible."
+
+  learning_rate:
+    label: "学习率 | Learning rate"
+    widget: number
+    paths:
+      - task.lr
+      - trainer.learning_rate
+      - trainer.lr
+      - model.learning_rate
+    min: 0.000001
+    max: 0.1
+    step: 0.0001
+    default: 0.001
+    help: "Learning-rate aliases are resolved from the selected configuration."
+
+  num_workers:
+    label: "数据加载进程 | Data workers"
+    widget: number
+    paths:
+      - data.num_workers
+      - task.num_workers
+      - trainer.num_workers
+    min: 0
+    max: 64
+    step: 1
+    default: 0
+    help: "Use 0 for the broadest Windows/Linux compatibility and for smoke runs."
+
+  output_dir:
+    label: "输出根目录 | Output directory"
+    widget: text
+    paths:
+      - environment.output_dir
+      - output_dir
+    default: results/streamlit
+    help: "Prefer a repository-relative path. Machine-specific absolute paths belong in configs/local/local.yaml."
