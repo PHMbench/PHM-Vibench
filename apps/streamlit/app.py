@@ -4,7 +4,7 @@ Launch from the repository root:
 
     streamlit run apps/streamlit/app.py
 
-The application never imports or calls a Pipeline function directly. Validation
+The application never imports or calls a Pipeline function directly.  Validation
 is delegated to ``python -m scripts.config_inspect`` and experiment execution is
 added by the run-service layer in the next stacked change.
 """
@@ -36,7 +36,6 @@ try:  # Supports both ``streamlit run`` and package imports in tests/tools.
         get_nested,
         group_entries,
         inspect_config,
-        inspect_yaml_text,
         load_catalog,
         load_registry,
         normalize_overrides,
@@ -62,7 +61,6 @@ except ImportError:  # pragma: no cover - Streamlit executes this file as a scri
         get_nested,
         group_entries,
         inspect_config,
-        inspect_yaml_text,
         load_catalog,
         load_registry,
         normalize_overrides,
@@ -71,27 +69,35 @@ except ImportError:  # pragma: no cover - Streamlit executes this file as a scri
         resolve_repo_path,
     )
 
+try:
+    from .runtime_policy import inspect_execution_yaml, inspect_portable_config
+except ImportError:  # pragma: no cover - Streamlit executes this file as a script.
+    from runtime_policy import inspect_execution_yaml, inspect_portable_config  # type: ignore
+
 
 APP_DIR = Path(__file__).resolve().parent
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=5)
 def _cached_registry(repo_root: str) -> Tuple[RegistryEntry, ...]:
     return load_registry(Path(repo_root))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=5)
 def _cached_catalog(path: str) -> Catalog:
     return load_catalog(Path(path))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=5)
 def _cached_inspection(
     repo_root: str,
     config_path: str,
     overrides: Tuple[Tuple[str, Any], ...],
+    apply_local: bool,
 ) -> ValidationReport:
-    return inspect_config(Path(repo_root), Path(config_path), overrides)
+    if apply_local:
+        return inspect_config(Path(repo_root), Path(config_path), overrides)
+    return inspect_portable_config(Path(repo_root), Path(config_path), overrides)
 
 
 def _signature(
@@ -300,17 +306,18 @@ def _render_validation(report: ValidationReport) -> None:
             for item in report.sanity
         ]
         st.dataframe(rows, use_container_width=True, hide_index=True)
+    if report.resolved:
+        with st.expander("Final resolved configuration"):
+            st.code(dump_yaml(report.resolved), language="yaml")
     if report.stderr:
         with st.expander("Validator stderr"):
             st.code(report.stderr, language="text")
 
 
-def _download_final_config(report: ValidationReport, *, key: str) -> None:
-    if not report.resolved:
-        return
+def _download_source_config(source_text: str, *, key: str) -> None:
     st.download_button(
-        "Download validated YAML",
-        data=dump_yaml(report.resolved),
+        "Download execution YAML",
+        data=source_text,
         file_name="phm_vibench_config.yaml",
         mime="application/x-yaml",
         key=key,
@@ -394,25 +401,45 @@ def main() -> None:
         st.stop()
 
     with st.spinner("Resolving the template through scripts.config_inspect..."):
-        base_report = _cached_inspection(str(repo_root), str(config_path), ())
-    if not base_report.resolved:
+        runtime_report = _cached_inspection(
+            str(repo_root), str(config_path), (), True
+        )
+    if not runtime_report.resolved:
         _render_error(
             "The template could not be fully resolved.",
-            RuntimeError(base_report.error or "Unknown inspector failure."),
-            details=base_report.stderr,
+            RuntimeError(runtime_report.error or "Unknown inspector failure."),
+            details=runtime_report.stderr,
         )
         st.stop()
-    baseline_resolved: Mapping[str, Any] = base_report.resolved
 
+    if mode == "Advanced":
+        with st.spinner("Preparing a portable YAML before local overrides..."):
+            source_report = _cached_inspection(
+                str(repo_root), str(config_path), (), False
+            )
+        if not source_report.resolved:
+            _render_error(
+                "The portable source configuration could not be resolved.",
+                RuntimeError(source_report.error or "Unknown inspector failure."),
+                details=source_report.stderr,
+            )
+            st.stop()
+        baseline_resolved: Mapping[str, Any] = source_report.resolved
+    else:
+        baseline_resolved = runtime_report.resolved
+
+    source_yaml_text = config_path.read_text(encoding="utf-8")
     st.header("2. 修改参数 | Configure")
     advanced_yaml_text = ""
     overrides: Tuple[Tuple[str, Any], ...]
     source_for_signature: str
+    execution_yaml_text: str
 
     if mode == "Quick Start":
         st.info("Quick Start changes only the device and number of epochs.")
         overrides = _render_quick_fields(baseline_resolved, catalog, selected_id)
         source_for_signature = str(config_path)
+        execution_yaml_text = source_yaml_text
     else:
         _ensure_advanced_yaml(selected_id, baseline_resolved)
         tabs = st.tabs(("Safe fields", "Full YAML", "Raw overrides"))
@@ -455,6 +482,7 @@ def main() -> None:
             _render_error("Raw overrides are invalid.", exc)
             overrides = safe_overrides
         source_for_signature = advanced_yaml_text
+        execution_yaml_text = advanced_yaml_text
 
     st.header("3. 运行前检查 | Preflight")
     if mode == "Quick Start":
@@ -483,7 +511,7 @@ def main() -> None:
 
     st.markdown("**Reproduction command**")
     st.code(format_command(command), language="bash")
-    with st.expander("Final configuration preview"):
+    with st.expander("Execution source preview"):
         if preview_config:
             st.code(dump_yaml(preview_config), language="yaml")
         else:
@@ -502,7 +530,7 @@ def main() -> None:
                 if mode == "Quick Start":
                     report = inspect_config(repo_root, config_path, overrides)
                 else:
-                    report = inspect_yaml_text(repo_root, advanced_yaml_text, overrides)
+                    report = inspect_execution_yaml(repo_root, advanced_yaml_text, overrides)
             st.session_state.validation_report = report
             st.session_state.validation_signature = current_signature
         except ConfigServiceError as exc:
@@ -517,19 +545,21 @@ def main() -> None:
     )
     if report_is_current:
         _render_validation(report)
-        with download_col:
-            _download_final_config(report, key="download_validated_config")
+        if report.ok:
+            with download_col:
+                _download_source_config(
+                    execution_yaml_text, key="download_validated_config"
+                )
     else:
         download_col.button(
-            "Download validated YAML",
+            "Download execution YAML",
             disabled=True,
             use_container_width=True,
             help="Validate the current configuration first.",
         )
         if isinstance(report, ValidationReport):
             st.warning(
-                "The configuration changed after validation. Validate again "
-                "before running."
+                "The configuration changed after validation. Validate again before running."
             )
 
     run_col.button(
@@ -544,9 +574,8 @@ def main() -> None:
 
     st.header("4. 查看结果 | Results")
     st.info(
-        "PR-S1 intentionally stops at a validated, downloadable, reproducible "
-        "configuration. The stacked PR-S2 adds subprocess execution and result "
-        "discovery without changing main.py."
+        "PR-S1 intentionally stops at a validated, downloadable, reproducible configuration. "
+        "The stacked PR-S2 adds subprocess execution and result discovery without changing main.py."
     )
 
 
