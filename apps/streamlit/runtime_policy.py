@@ -11,7 +11,14 @@ import tempfile
 from pathlib import Path
 from typing import Any, Iterable, Tuple
 
-from .config_service import ValidationReport, inspect_config, parse_yaml_text
+try:
+    from .config_service import ValidationReport, inspect_config, parse_yaml_text
+except ImportError:  # pragma: no cover - Streamlit executes app.py as a script.
+    from config_service import (  # type: ignore
+        ValidationReport,
+        inspect_config,
+        parse_yaml_text,
+    )
 
 
 def inspect_portable_config(
