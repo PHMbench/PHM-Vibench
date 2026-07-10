@@ -1,0 +1,46 @@
+# UXFD demo: minimal TSPN_UXFD (no optional UXFD modules enabled)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/tspn_uxfd.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_uxfd_tspn_uxfd_min"
+  seed: 0
+  output_dir: "results/demo/uxfd/tspn_uxfd_min"
+  notes: "Minimal TSPN_UXFD smoke with optional UXFD modules disabled."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
+
+model:
+  device: "cpu"
+  uxfd:
+    enable_sp2d: false
+    fuzzy:
+      enable: false
+    operator_attention:
+      enable: false
+    logic:
+      enable: false
