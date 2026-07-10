@@ -1,0 +1,79 @@
+{
+  "schema_version": "0.2.0-baseline-1",
+  "generated_at": "2026-07-10",
+  "evidence_class": "STATIC_GITHUB_CONNECTOR",
+  "repository": {
+    "full_name": "PHMbench/PHM-Vibench",
+    "url": "https://github.com/PHMbench/PHM-Vibench",
+    "visibility": "public",
+    "default_branch": "main",
+    "baseline_commit": "ab064118b735eac641cdab41665591fe5c97e3fe",
+    "active_release_branch": null,
+    "active_release_branch_status": "NOT_ESTABLISHED",
+    "latest_tag": null,
+    "latest_tag_status": "UNKNOWN_PENDING_LOCAL_ENUMERATION",
+    "protected_branches": null,
+    "protected_branches_status": "UNKNOWN_CONNECTOR_NOT_EXPOSED"
+  },
+  "open_pull_requests": [39, 40, 41, 42, 43],
+  "runtime": {
+    "python_declared": ">=3.8",
+    "python_install_example": "3.10",
+    "python_dormant_ci": "3.10",
+    "python_observed": null,
+    "python_observed_status": "NOT_EXECUTED",
+    "pytorch_readme": ">=2.0",
+    "pytorch_requirements": "==2.6.0",
+    "cuda_readme": ">=11.1",
+    "cuda_requirements_comment": "cu126",
+    "supported_os": [],
+    "supported_os_status": "NOT_DECLARED",
+    "available_hardware": null,
+    "available_hardware_status": "NOT_OBSERVABLE"
+  },
+  "dependency_management": {
+    "requirements_txt": true,
+    "pyproject_toml": false,
+    "setup_py": false,
+    "lock_file_confirmed": false,
+    "status": "MIXED_CONSTRAINTS_NOT_RELEASE_LOCKED"
+  },
+  "ci": {
+    "active_workflow_confirmed": false,
+    "dormant_workflow": ".github/workflows_TODO/config_tools_ci.yml",
+    "status": "P1_NO_ACTIVE_GATE_CONFIRMED"
+  },
+  "inventory": {
+    "pipelines_discovered": 6,
+    "pipelines_executed": 0,
+    "tasks_registered": 15,
+    "models_registered": 35,
+    "sampler_classes_discovered": 4,
+    "trainer_implementations_documented": 1,
+    "maintained_demo_configs": 7,
+    "config_registry_rows": 21,
+    "dataset_readers": null,
+    "dataset_readers_status": "PENDING_LOCAL_DISCOVERY",
+    "remote_branch_count": null,
+    "remote_branch_count_status": "PENDING_LOCAL_DISCOVERY"
+  },
+  "commands": {
+    "git_status": "NOT_EXECUTED",
+    "git_branch_all": "NOT_EXECUTED",
+    "git_remote_v": "NOT_EXECUTED",
+    "git_log_30": "NOT_EXECUTED",
+    "git_tags": "NOT_EXECUTED",
+    "find_files_depth4": "NOT_EXECUTED",
+    "python_version": "NOT_EXECUTED",
+    "main_help": "NOT_EXECUTED",
+    "pytest_q": "NOT_EXECUTED",
+    "offline_smoke": "NOT_EXECUTED"
+  },
+  "release": {
+    "target": "v0.2.0",
+    "verdict": "NOT_READY",
+    "p0_count": 0,
+    "p1_initial_count": 5,
+    "independent_review": "NOT_EXECUTED"
+  }
+}
