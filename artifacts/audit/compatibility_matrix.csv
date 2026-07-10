@@ -1,0 +1,17 @@
+dimension_a,component_a,dimension_b,component_b,compatibility,evidence_class,constraint_or_reason,required_test,status
+Task,FS,Sampler,HierarchicalFewShotSampler,DOC_DECLARED,documentation,"episodic M×J×N×K×Q sampling",construct plus one episode plus negative metadata tests,UNVERIFIED
+Task,GFS,Sampler,HierarchicalFewShotSampler,DOC_DECLARED,documentation,"episodic generalized few-shot sampling",construct plus one episode plus base/novel assertions,UNVERIFIED
+Task,CDDG,Sampler,Same_system_Sampler,DOC_DECLARED,documentation,"same-system batches by Dataset_id",batch purity and missing-key rejection tests,UNVERIFIED
+Task,DG,Sampler,Default PyTorch sampling,DOC_DECLARED,documentation,"no specialized sampler documented",data-loader construction and one-batch test,UNVERIFIED
+Task,pretrain,Sampler,Default PyTorch sampling,DOC_DECLARED,documentation,"no specialized sampler documented",data-loader construction and one-batch test,UNVERIFIED
+Task,FS,Sampler,BalancedIdSampler,UNKNOWN,no runtime trace,"class exists but factory routing not established",trace Get_sampler and reject or support explicitly,UNKNOWN
+Task,FS,Sampler,GroupedIdBatchSampler,UNKNOWN,no runtime trace,"class exists but factory routing not established",trace call sites and add contract test,UNKNOWN
+Model,all 35 registered models,Task,all 15 registered tasks,UNKNOWN,registry discovery only,"input/output/loss compatibility is not encoded in a machine-readable rule set",derive compatibility_rules.yaml from constructors/configs and run C0/C1/C2 coverage,UNKNOWN
+Trainer,Default_trainer,Device,CPU,DOC_DECLARED,trainer documentation,"factory claims centralized CPU/GPU settings",CPU smoke and artifact assertions,UNVERIFIED
+Trainer,Default_trainer,Device,CUDA,DOC_DECLARED,trainer documentation,"README/config examples use CUDA",CUDA-available conditional smoke plus clear unavailable error,UNVERIFIED
+Pipeline,Pipeline_01_default,Config,dummy_dg.yaml,DOC_DECLARED,README/config registry,"canonical offline smoke path",mini-E2E with clean exit and output assertions,UNVERIFIED
+Pipeline,Pipeline_02_pretrain_fewshot,Config,pretrain_hse_then_fewshot.yaml,DOC_DECLARED,README/config registry,"documented pretrain/few-shot entry",stage/batch/checkpoint evidence,UNVERIFIED
+Pipeline,Pipeline_03_multitask_pretrain_finetune,Config,UNKNOWN,UNKNOWN,no maintained command confirmed,"source exists without confirmed maintained config",discover config or mark unsupported,UNKNOWN
+Pipeline,Pipeline_04_unified_metric,Config,UNKNOWN,UNKNOWN,no maintained command confirmed,"source exists without confirmed maintained config",discover config or mark unsupported,UNKNOWN
+Pipeline,Pipeline_05_default_w_explain,Config,UNKNOWN,UNKNOWN,no maintained command confirmed,"source exists without confirmed maintained config",discover config and assert explanation artifacts or mark unsupported,UNKNOWN
+Pipeline,Pipeline_ID,Config,UNKNOWN,UNKNOWN,no maintained command confirmed,"source exists without confirmed maintained config",discover ID fixture/config or mark unsupported,UNKNOWN
