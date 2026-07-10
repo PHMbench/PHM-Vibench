@@ -1,0 +1,4 @@
+# Optional PHM-Vibench Streamlit UI dependencies.
+# Install the repository's core requirements separately before running experiments.
+streamlit>=1.37,<2
+PyYAML>=6.0
