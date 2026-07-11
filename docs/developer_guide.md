@@ -20,7 +20,7 @@ Vbench/
 └── results/           # 结果输出
 ```
 
-如需构建基于 Streamlit 的可视化界面，可参阅 [Streamlit App Prompt](./streamlit_prompt.md)。
+如需使用或扩展 Streamlit 界面，可参阅 [Streamlit 应用指南](../apps/streamlit/README.md)。
 
 ### 核心概念
 
@@ -164,4 +164,3 @@ A: 减小批量大小，检查是否有内存泄漏，或在配置中设置合�
 A: 在 `src/utils/metrics_utils.py` 中添加新的指标函数，并在相应任务中使用。
 
 ## 项目路线图
-
