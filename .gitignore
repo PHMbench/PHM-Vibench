@@ -147,6 +147,8 @@ obsidian/
 # Data files
 # data/raw/
 # data/processed/
+data/Reference/
+data/*.ipynb
 *.npy
 *.hdf5
 *.sqlite

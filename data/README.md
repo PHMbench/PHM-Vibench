@@ -51,11 +51,16 @@ python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
   --override data.num_workers=0
 ```
 
-## Tracked Reference Material
+## Reference Material Policy
 
-`data/Reference/` contains literature and source notes for dataset readers. These
-files are references, not a release claim that every referenced dataset payload is
-bundled or smoke-tested in this repository.
+Literature PDFs, DOCX notes, and exploratory notebooks are not tracked in this
+repository. Keep those files outside git, for example under a local
+`data/Reference/` directory or a paper/data-management workspace.
+
+Reference material is useful for maintaining dataset readers, but it is not a
+release claim that every referenced dataset payload is bundled or smoke-tested in
+this repository. Check source availability and redistribution permissions before
+including any reference artifact in a public release.
 
 `data/metadata.xlsx` is a metadata index used by local full-data workflows. The
 maintained offline smoke demo uses `metadata_dummy.csv` instead.
