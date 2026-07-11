@@ -456,7 +456,12 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
                     payload = _read_payload(run_dir)
             else:
                 pid = payload.get("pid")
-                new_status = "detached" if isinstance(pid, int) and _pid_exists(pid) else "orphaned"
+                cancel_requested = bool(payload.get("cancel_requested"))
+                new_status = (
+                    "cancelled"
+                    if cancel_requested
+                    else "detached" if isinstance(pid, int) and _pid_exists(pid) else "orphaned"
+                )
                 payload.update(
                     status=new_status,
                     ended_at="" if new_status == "detached" else _utc_now(),
@@ -464,6 +469,8 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
                         "The Streamlit worker restarted while the process is still alive; "
                         "automatic cancellation is disabled for safety."
                         if new_status == "detached"
+                        else ""
+                        if new_status == "cancelled"
                         else "The managed process is no longer available."
                     ),
                 )
