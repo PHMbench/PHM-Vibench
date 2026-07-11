@@ -10,6 +10,14 @@
 - `regularization.py`：正则化工具（L1/L2/Domain penalty/mixup 等）。
 - 其他：prompt_contrastive、metric_loss 等高级模块。
 
+## 生成/重构组件状态
+
+- `flow.py` / `FlowLoss`：实验性条件 flow-matching helper，已有 CPU 单元测试覆盖速度目标和采样形状；尚未注册为 maintained task/model。
+- `mean_flow_loss.py` / `MeanFlow`：实验性 MeanFlow helper，已有无条件 loss 和 sampler 设备推断 smoke 测试；采样协议和 PHM benchmark 配置尚未完成。
+- `ISFM/component/MaskedAutoencoder.py`：模型组件级 masked reconstruction 实现；pretrain 输出合同由 `test/generative/` 覆盖。
+
+这些组件不能单独作为 Pipeline 06、DDPM/CFM/Rectified Flow/Score-SDE 等完整方法的证据。进入 maintained surface 前仍需五段配置、registry/atlas、任务封装、shape/device/dtype 测试和 demo 证据。
+
 ## Loss 一览（常用关键字）
 > 配置中通过 `task.loss` 指定；对比学习多为 **embedding 输入**，需确保输入格式正确。
 

@@ -138,6 +138,7 @@ class MeanFlow:
 
         z = (1 - t_) * x + t_ * e
         v = e - x
+        v_hat = v
 
         if c is not None:
             assert self.cfg_ratio is not None
@@ -182,8 +183,27 @@ class MeanFlow:
 
     @torch.no_grad()
     def sample_each_class(self, model, n_per_class, classes=None,
-                          sample_steps=5, device='cuda'):
+                          sample_steps=5, device=None):
         model.eval()
+
+        if device is None:
+            parameters = getattr(model, "parameters", None)
+            if callable(parameters):
+                try:
+                    device = next(parameters()).device
+                except StopIteration:
+                    device = None
+            if device is None:
+                buffers = getattr(model, "buffers", None)
+                if callable(buffers):
+                    try:
+                        device = next(buffers()).device
+                    except StopIteration:
+                        device = None
+            if device is None:
+                device = torch.device('cpu')
+        else:
+            device = torch.device(device)
 
         if classes is None:
             c = torch.arange(self.num_classes, device=device).repeat(n_per_class)

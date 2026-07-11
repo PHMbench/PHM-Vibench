@@ -52,6 +52,7 @@ class FlowLoss(nn.Module):
         predict_v = self.net(noised_target, t * 1000, z)
 
         # 5. 计算损失
+        target_velocity = target - noise
         #    为不同通道/特征设置权重，通道索引越大权重越小
         weights = 1.0 / \
             torch.arange(1, self.in_channels + 1, dtype=torch.float32, device=target.device)
@@ -59,9 +60,9 @@ class FlowLoss(nn.Module):
         #    计算加权均方误差
         if mask_y is not None:
             # 如果有特征掩码，则只计算未被掩码的特征的损失
-            loss = (mask_y * weights * (predict_v - target) ** 2).sum(dim=-1)
+            loss = (mask_y * weights * (predict_v - target_velocity) ** 2).sum(dim=-1)
         else:
-            loss = (weights * (predict_v - target) ** 2).sum(dim=-1)
+            loss = (weights * (predict_v - target_velocity) ** 2).sum(dim=-1)
 
         # 6. 如果有样本掩码，则应用掩码并计算有效样本的平均损失
         if mask is not None:
@@ -91,8 +92,7 @@ class FlowLoss(nn.Module):
             # 使用网络预测速度 v
             pred = self.net(x, t * 1000, z)
             # 更新 x，向预测的目标方向移动一小步
-            # x_t = x_{t-1} + (v - noise) * dt
-            x = x + (pred - noise) * dt
+            x = x + pred * dt
         # 调整输出形状
         x = x.reshape(num_samples, -1, self.in_channels).transpose(0, 1)
         return x
