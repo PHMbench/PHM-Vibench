@@ -1,4 +1,4 @@
-# Two-stage demo: pretrain HSE for CDDG-style unified metric learning (v0.1.0 draft)
+# Single-stage demo: HSE contrastive pretraining for a CDDG-style view.
 
 pipeline: "Pipeline_01_default"
 

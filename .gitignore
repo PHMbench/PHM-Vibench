@@ -134,6 +134,16 @@ cython_debug/
 # VS Code settings (project-specific configs are tracked)
 # .vscode/  # Uncomment to ignore project VS Code settings
 
+# Local agent/tooling workspaces (not part of the runtime repository)
+.agents/
+.claude/handoffs/
+.claude/settings.json
+.claude/settings.local.json
+.claude/skills/speckit-*/
+.codex/claude-team-runs/
+.tmp/
+obsidian/
+
 # Data files
 # data/raw/
 # data/processed/
@@ -196,14 +206,12 @@ out.csv
 dev/project/valve.ipynb
 dev/ross_demo/fault.ipynb
 plot/
-test/
 metrics_reports/
 
 cache/
 # .codex/
 dev/project/valve.ipynb
 plot/
-test/
 metrics_reports/
 # .codex/
 .specify/

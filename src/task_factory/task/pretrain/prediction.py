@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import pytorch_lightning as pl
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 from ...Default_task import Default_task
 from ...Components.prediction_loss import Signal_mask_Loss
 
@@ -31,8 +31,8 @@ class task(Default_task):
 
 
     # 计算 prediction loss
-    def _compute_prediction_loss(self, batch) -> Tuple[torch.Tensor, Dict[str, float]]:
-        # 调用 Signal_mask_Loss: 返回 (loss, stats_dict)
+    def _compute_prediction_loss(self, batch) -> torch.Tensor:
+        # 调用 Signal_mask_Loss: 返回 prediction loss tensor
         return self.pred_loss_fn(self.network, batch) # 
 
     def _shared_step(self, batch: Tuple,
@@ -43,10 +43,13 @@ class task(Default_task):
         期望 batch 格式: ((x, y), data_name)
         """
         try:
-            file_id = batch['file_id'][0].item()  # 确保 id 是字符串 TODO @liq22 sample 1 id rather than tensor
-            data_name = self.metadata[file_id]['Name']# .values
-            # dataset_id = self.metadata[file_id]['Dataset_id'].item()
-            batch.update({'file_id': file_id})
+            file_ids = batch['file_id']
+            first_file_id = file_ids[0] if isinstance(file_ids, (list, tuple)) else file_ids
+            if torch.is_tensor(first_file_id):
+                first_file_id = first_file_id[0] if first_file_id.ndim > 0 else first_file_id
+                first_file_id = first_file_id.item()
+            data_name = self.metadata[first_file_id]['Name']# .values
+            # dataset_id = self.metadata[first_file_id]['Dataset_id'].item()
         except (ValueError, TypeError) as e:
             raise ValueError(f" Error: {e}")
 
@@ -66,10 +69,6 @@ class task(Default_task):
         step_metrics[f"{stage}_{data_name}_pred_loss"] = pred_loss
 
         # step_metrics[f"{stage}_{data_name}_loss"] = loss # 记录特定数据集的损失
-
-        # metric_values = self._compute_metrics(y_argmax, y, data_name, stage)
-
-        step_metrics.update(metric_values)
 
         # 4. 计算正则化损失
         reg_dict = self._compute_regularization()

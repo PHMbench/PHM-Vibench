@@ -27,19 +27,21 @@ class Signal_mask_Loss(nn.Module):
         \end{cases}
       \]
 
-    Returns `(loss, stats_dict)`
+    Returns a scalar loss tensor.
     """
 
     def __init__(self, cfg: SigPredCfg):
         super().__init__()
         self.cfg = cfg
-        self.loss_type = 'mse' # mse
+        self.loss_type = getattr(cfg, "loss_type", "mse").lower()
+        if self.loss_type not in {"mse", "rel_l2"}:
+            raise ValueError(f"Unsupported prediction loss_type: {self.loss_type}")
 
     # ──────────────────────── forward ─────────────────────────
     def forward(self,
                 model:  nn.Module,
                 batch: torch.Tensor           # (B,L,C) ground-truth
-                ) -> tuple[torch.Tensor, dict]:
+                ) -> torch.Tensor:
         # device = model.device
         signal = batch['x']# .to(device)  # (B,L,C)
         file_id = batch.get('file_id', None)
@@ -51,6 +53,17 @@ class Signal_mask_Loss(nn.Module):
             x_hat = model(x_in,file_id, task_id = 'prediction') 
             # x_hat = model(x_in)                          # (B,L,C)
 
+        if x_hat.shape != signal.shape:
+            raise ValueError(
+                "Prediction model output shape must match input signal shape: "
+                f"got {tuple(x_hat.shape)}, expected {tuple(signal.shape)}."
+            )
+        if x_hat.device != signal.device:
+            raise ValueError(
+                "Prediction model output device must match input signal device: "
+                f"got {x_hat.device}, expected {signal.device}."
+            )
+
         # 4️⃣ compute loss -----------------------------------------
         if self.loss_type == "mse":
             num = total_mask.sum().clamp(min=1)             # avoid /0
@@ -58,7 +71,9 @@ class Signal_mask_Loss(nn.Module):
 
         elif self.loss_type == "rel_l2":                # relative L2
             diff = (x_hat - signal)[total_mask]
-            loss = diff.pow(2).sum() / (signal[total_mask].pow(2).sum() + EPS)
+            loss = torch.sqrt(diff.pow(2).sum()) / (
+                torch.sqrt(signal[total_mask].pow(2).sum()) + EPS
+            )
 
 
 
@@ -90,5 +105,5 @@ if __name__ == "__main__":
     x = torch.randn(B, L, C, device="cuda")
     batch = {'x': x, 'file_id': None}  # Simulated batch with input signal
 
-    loss, st = crit(model, batch)
-    print(f"loss={loss.item():.4f}  stats={st}")
+    loss = crit(model, batch)
+    print(f"loss={loss.item():.4f}")

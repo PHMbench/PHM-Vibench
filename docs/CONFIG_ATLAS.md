@@ -113,13 +113,13 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 
 #### `base_task_cddg_fewshot`
 - Path: `configs/base/task/cddg_fewshot.yaml`
-- Description: 跨系统 few-shot 任务 base（仍用 FS 类型）
+- Description: 跨系统 few-shot 任务 base（GFS 类型）
 - Owner code: `src/task_factory/__init__.py:build_task`
 - Keyspace: `task.*`
 - Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml`
 - Common overrides: `trainer.num_epochs=1`, `task.target_domain_num=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
-- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/FS/README.md`
+- Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/GFS/README.md`
 - Status: `/`
 
 #### `base_task_classification`
