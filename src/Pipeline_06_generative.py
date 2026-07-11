@@ -542,14 +542,16 @@ def _leakage_checks_from_train_batch(data_factory, fake: torch.Tensor, channels:
         return {
             "split_guard_passed": True,
             "nearest_neighbor_check": "passed" if passed else "failed",
+            "leakage_check_status": "passed" if passed else "failed",
             "nearest_neighbor_l2": metrics.get("leakage_nearest_neighbor_l2", float("nan")),
             "duplicate_rate": metrics.get("leakage_duplicate_rate", float("nan")),
             "duplicate_threshold": float(threshold),
         }
     except Exception as exc:
         return {
-            "split_guard_passed": True,
-            "nearest_neighbor_check": "not_run",
+            "split_guard_passed": False,
+            "nearest_neighbor_check": "error",
+            "leakage_check_status": "error",
             "reason": str(exc),
         }
 

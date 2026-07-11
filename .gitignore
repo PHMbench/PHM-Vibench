@@ -117,3 +117,7 @@ script/LQ1/Pretraining/Pretraining_C+P.yaml
 configs/template/Pretraining_C+P_patchtst.yaml
 configs/test/
 configs/LQ_paper/
+cache/
+script/unified_metric/existing_test_files/
+script/unified_metric/test_results/
+script/unified_metric/

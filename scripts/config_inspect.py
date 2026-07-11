@@ -341,6 +341,10 @@ def inspect_config(
     return InspectResult(resolved=resolved, sources=sources, targets=targets, sanity=sanity)
 
 
+def _has_failed_sanity(result: InspectResult) -> bool:
+    return any(not bool(item.get("ok")) for item in result.sanity)
+
+
 def _render_md(result: InspectResult, dump: DumpMode) -> str:
     parts: List[str] = []
     if dump in ("resolved", "all"):
@@ -402,7 +406,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.dump in ("all",):
             payload["sanity"] = result.sanity
         print(json.dumps(payload, indent=2, ensure_ascii=False))
-        return 0
+        return 1 if _has_failed_sanity(result) else 0
 
     if args.format == "yaml":
         payload_y: Dict[str, Any] = {}
@@ -415,10 +419,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.dump in ("all",):
             payload_y["sanity"] = result.sanity
         print(yaml.safe_dump(payload_y, allow_unicode=True, sort_keys=False))
-        return 0
+        return 1 if _has_failed_sanity(result) else 0
 
     print(_render_md(result, dump=args.dump))
-    return 0
+    return 1 if _has_failed_sanity(result) else 0
 
 
 if __name__ == "__main__":
