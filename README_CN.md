@@ -16,8 +16,8 @@
     <img src="https://img.shields.io/badge/状态-内测中-orange" alt="Status: Alpha"/>
     <img src="https://img.shields.io/badge/版本-0.2.0--alpha-blue" alt="Version"/>
     <img src="https://img.shields.io/badge/许可-Apache%202.0-green" alt="License"/>
-    <img src="https://img.shields.io/badge/数据集-20+-purple" alt="Datasets"/>
-    <img src="https://img.shields.io/badge/算法-30+-red" alt="Algorithms"/>
+    <img src="https://img.shields.io/badge/维护_demo-7-purple" alt="Maintained demos"/>
+    <img src="https://img.shields.io/badge/注册状态-sanity__ok-red" alt="Registry status"/>
   </p>
 
   <p>
@@ -55,13 +55,12 @@
   <img src="pic/features.png" alt="PHM-Vibench Features" width="700"/>
 </div> -->
 
-- 🧩 **先进的模块化设计**：采用工厂设计模式实现数据集、模型、任务和训练器的高度模块化，为后续功能扩展提供了灵活架构
-- 🔄 **多样化任务支持**：内置对故障分类、异常检测和剩余使用寿命预测等多种故障诊断相关任务的全面支持
-- 📊 **丰富的工业数据集集成**：整合15+经典与前沿的工业设备故障诊断数据集，覆盖轴承、齿轮、电机等多种工业部件
-- 📏 **精确的评估框架**：提供针对不同故障诊断场景优化的评估指标和专业可视化工具，支持结果的定量分析与比较
-- 🖱️ **简洁高效的用户体验**：基于配置文件的实验设计，使研究人员无需修改代码即可快速配置与运行实验
-- 📈 **一键复现与基准测试**：内置30+经典和最新算法实现，只需一行命令即可复现论文结果并进行公平比较
-- 🆕 **Few-Shot 学习模块**：新增对少样本故障诊断的支持，提供原型网络示例及任务流水线，便于快速研究
+- 🧩 **模块化工厂架构**：数据读取、模型、任务、训练器和 pipeline 均通过显式配置选择。
+- 🔄 **维护中的 demo 面**：当前公开 smoke 面包含 7 个注册表跟踪的可运行 demo 配置。
+- 📊 **可追踪配置系统**：`configs/config_registry.csv`、`docs/CONFIG_ATLAS.md` 与 `scripts.config_inspect` 展示维护配置的字段来源。
+- 📏 **验证门禁**：配置校验、文档校验、维护测试与离线 smoke 是 release gate。
+- 🖱️ **配置优先工作流**：研究者可从 `configs/demo/` 复制模板到 `configs/experiments/`，再通过 YAML 或 CLI override 修改行为。
+- 🧪 **研究扩展入口**：新数据集、模型和任务头通过已文档化的 factory 接口集成。
 
 <details>
 <summary><b>为什么选择PHM-Vibench？</b> (点击展开)</summary>
@@ -88,12 +87,12 @@
   </tr>
   <tr>
     <td>可复现性</td>
-    <td>✅ 完整实验链追踪，结果可复现</td>
+    <td>✅ 注册表配置与命令级验证门禁</td>
     <td>❌ 缺乏完整实验环境记录</td>
   </tr>
   <tr>
     <td>多任务支持</td>
-    <td>✅ 分类、检测、寿命预测等多种任务</td>
+    <td>✅ 分类、域泛化、少样本和预训练导向 demo 路径</td>
     <td>⚠️ 通常专注于单一类型任务</td>
   </tr>
 </table>
@@ -132,6 +131,9 @@ PHM-Vibench 作为 PHMbench 生态系统中专注于工业设备故障诊断的�
 
 ## 🔄 支持的模型与数据集
 
+当前维护范围以 `SUPPORTED_COMPONENTS.md`、`SUPPORTED_COMBINATIONS.md` 与 `KNOWN_LIMITATIONS.md` 为准。
+历史配置或参考配置不自动属于 release-supported surface。
+
 ### 📊 支持的数据集 见
 - [Model scope](https://www.modelscope.cn/datasets/RichieTHU/PHM-Vibench_data)
 - [处理好的 h5文件](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
@@ -142,6 +144,7 @@ PHM-Vibench 作为 PHMbench 生态系统中专注于工业设备故障诊断的�
 
 ### 🧠 支持的算法模型
 
+维护中的模型/任务组合见 `SUPPORTED_COMBINATIONS.md`。
 
 
 
@@ -191,8 +194,7 @@ data:
 - 配置文档与工具：`configs/README.md`
 - 变更/运行门禁：`AGENTS.md`（runbook）与 `CLAUDE.md`（change strategy gate）
 
-vibecoding（AI 辅助编码）更新遵循 KISS：避免过度工程化与不必要的防御性设计；遵循奥卡姆剃刀原则，立足第一性原理，
-渐进式开发与验证。
+工程规则：变更应小、明确、可验证；避免投机式抽象和隐藏兜底逻辑。
 
 离线冒烟（无需下载数据）：
 ```bash
@@ -238,8 +240,9 @@ python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewsh
 # 6. 面向 CDDG 的 HSE 预训练示例
 python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
+```
 
-### Streamlit 图形界面（TODO）
+### Streamlit 图形界面（实验性）
 
 使用 Streamlit 提供的图形界面运行实验（实验性功能）：
 
@@ -247,16 +250,9 @@ python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
 streamlit run streamlit_app.py
 ```
 
-当前界面仍在开发中：可视化能力不完整，且可能存在运行问题。
-如无法启动，请优先使用 `configs/demo/` 下的命令行 demo。
+当前界面仍属实验性功能：基础配置编辑与 pipeline 启动可用；release 验证仍以 CLI demo 为准。
 
-
-### 📊 性能基准示例
-
-<!-- <div align="center">
-  <img src="pic/benchmark_results.png" alt="Benchmark Results" width="700"/>
-  <p><em>不同模型在CWRU数据集上的性能对比</em></p>
-</div> -->
+支持的 UI 工作流与验证命令见 `apps/streamlit/README.md`。
 
 ## 📘 使用指南
 
@@ -1030,12 +1026,5 @@ PHM-Vibench 的扩展方式是“工厂 + 注册表”，避免在 pipeline 中�
 ```
 
 ---
-
-## ⭐ Star历史
-
-<!-- [![Star History Chart](https://api.star-history.com/svg?repos=PHMbench/Vibench&type=Date)](https://star-history.com/#PHMbench/Vibench&Date) -->
-
-
-<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5DZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
 <p align="center">如有任何问题或建议，请联系我们或提交 <a href="https://github.com/PHMbench/PHM-Vibench/issues">Issue</a>。</p>
