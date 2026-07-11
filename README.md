@@ -16,8 +16,8 @@
     <img src="https://img.shields.io/badge/Status-Alpha-orange" alt="Status: Alpha"/>
     <img src="https://img.shields.io/badge/Version-0.2.0--alpha-blue" alt="Version"/>
     <img src="https://img.shields.io/badge/License-Apache%202.0-green" alt="License"/>
-    <img src="https://img.shields.io/badge/Datasets-20+-purple" alt="Datasets"/>
-    <img src="https://img.shields.io/badge/Algorithms-30+-red" alt="Algorithms"/>
+    <img src="https://img.shields.io/badge/Maintained%20demos-7-purple" alt="Maintained demos"/>
+    <img src="https://img.shields.io/badge/Registry%20status-sanity__ok-red" alt="Registry status"/>
   </p>
 
   <p>
@@ -39,8 +39,7 @@ The maintained workflow is configuration-first:
 - Config docs + tools: `configs/README.md`
 - Change/run checklists: `AGENTS.md` (runbook) and `CLAUDE.md` (change strategy gate)
 
-Vibecoding (AI-assisted updates): keep it simple (KISS). Avoid over-engineering and unnecessary defensive design;
-apply Occam’s razor; work from first principles; develop incrementally.
+Engineering rule: keep changes small, explicit, and testable. Avoid speculative abstractions and hidden fallback logic.
 
 Minimal offline smoke run (no downloads):
 ```bash
@@ -62,7 +61,7 @@ python -m scripts.validate_docs
 - Config index (SSOT → rendered docs): `configs/config_registry.csv` → `docs/CONFIG_ATLAS.md`
 - Runbook (copy-paste commands + gates): `AGENTS.md`
 - Change strategy / constraints: `CLAUDE.md`
-- AI assistant context (minimal pointers): `GEMINI.md`
+- Tool-specific contributor notes: `GEMINI.md`
 
 
 ## 📖 Table of Contents
@@ -85,14 +84,12 @@ python -m scripts.validate_docs
 
 ## ✨ Project Highlights
 
-- 🧩 **Advanced Modular Design**: Employs factory design patterns to achieve high modularity of datasets, models, tasks, and trainers, providing a flexible architecture for future feature extensions
-- 🔄 **Diverse Task Support**: Built-in comprehensive support for various fault diagnosis-related tasks including fault classification, anomaly detection, and remaining useful life prediction
-- 📊 **Rich Industrial Dataset Integration**: Integrates 15+ classic and cutting-edge industrial equipment fault diagnosis datasets, covering bearings, gears, motors, and various other industrial components
-- 📏 **Precise Evaluation Framework**: Provides evaluation metrics and professional visualization tools optimized for different fault diagnosis scenarios, supporting quantitative analysis and comparison of results
-- 🖱️ **Simple and Efficient User Experience**: Configuration-file-based experimental design allows researchers to quickly configure and run experiments without modifying code
-- 📈 **One-Click Reproduction and Benchmarking**: Built-in 30+ classic and latest algorithm implementations, reproducing paper results and enabling fair comparison with just one command
-- 🆕 **Few-Shot Learning Module**: New support for few-shot fault diagnosis, providing prototype network examples and task pipelines for rapid research
-- 🔥 **HSE Industrial Contrastive Learning**: Revolutionary prompt-guided contrastive learning for cross-system generalization, achieving 82% computational efficiency improvement
+- 🧩 **Modular Factory Architecture**: Dataset readers, models, tasks, trainers, and pipelines are selected through explicit configuration.
+- 🔄 **Maintained Demo Surface**: Seven registry-tracked demo configurations are kept runnable as the current public smoke surface.
+- 📊 **Traceable Configuration System**: `configs/config_registry.csv`, `docs/CONFIG_ATLAS.md`, and `scripts.config_inspect` expose where each maintained config value comes from.
+- 📏 **Validation Gates**: Config validation, documentation validation, maintained tests, and offline smoke runs are the release gate.
+- 🖱️ **Configuration-First Workflow**: Researchers can copy maintained demos into `configs/experiments/` and change behavior through YAML or CLI overrides.
+- 🧪 **Research Extension Points**: Additional datasets, models, and task heads can be integrated through the documented factory interfaces.
 
 <details>
 <summary><b>Why Choose PHM-Vibench?</b> (Click to expand)</summary>
@@ -119,12 +116,12 @@ python -m scripts.validate_docs
   </tr>
   <tr>
     <td>Reproducibility</td>
-    <td>✅ Complete experimental chain tracking, reproducible results</td>
+    <td>✅ Registry-backed configs and command-level validation gates</td>
     <td>❌ Lacks complete experimental environment records</td>
   </tr>
   <tr>
     <td>Multi-task Support</td>
-    <td>✅ Classification, detection, life prediction, and other tasks</td>
+    <td>✅ Classification, domain generalization, few-shot, and pretraining-oriented demo paths</td>
     <td>⚠️ Usually focuses on single task types</td>
   </tr>
 </table>
@@ -154,12 +151,17 @@ PHM-Vibench, as a benchmarking platform in the PHMbench ecosystem focused on ind
 
 ## 🔄 Supported Models and Datasets
 
+For the current maintained scope, see `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md`, and
+`KNOWN_LIMITATIONS.md`. Historical or reference configs are not automatically release-supported.
+
 ### 📊 Supported Datasets See
 - [Model scope](https://www.modelscope.cn/datasets/RichieTHU/PHM-Vibench_data)
 - [Processed h5 files](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
 - [raw_data (PHMbench group available)](https://www.modelscope.cn/datasets/PHMbench/PHMbench-raw_data)
 
 ### 🧠 Supported Algorithm Models
+
+Maintained model/task combinations are listed in `SUPPORTED_COMBINATIONS.md`.
 
 ## 🛠️ Installation Guide
 
@@ -223,7 +225,7 @@ python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-### Streamlit Graphical Interface (TODO)
+### Streamlit Graphical Interface (Experimental)
 
 Run experiments using the Streamlit graphical interface:
 
@@ -231,11 +233,10 @@ Run experiments using the Streamlit graphical interface:
 streamlit run streamlit_app.py
 ```
 
-Status: the UI is experimental. Basic config editing + pipeline launching works, but visualization (curves/figures) is still incomplete.
+Status: the UI is experimental. Basic config editing and pipeline launching are available; the CLI demos remain the
+release validation path.
 
-If Streamlit fails to start, treat it as a TODO and use the CLI demos under `configs/demo/` instead.
-
-### 📊 Performance Benchmark Examples
+See `apps/streamlit/README.md` for the supported UI workflow and validation commands.
 
 ## 📘 User Guide
 
@@ -890,7 +891,7 @@ PHM-Vibench/
 - 🧰 **dev/**: Development utilities and experimental scripts
 - 📈 **plot/**: Plotting and visualization utilities
 
-## 🧑‍💻 Development Guide TODO
+## 🧑‍💻 Development Guide
 
 PHM-Vibench adopts a modular design following factory patterns, facilitating extension and customization. If you wish to contribute code, please refer to the [Contributor Guide](./contributing.md).
 
@@ -900,7 +901,7 @@ PHM-Vibench adopts a modular design following factory patterns, facilitating ext
 
 ### Debugging and Testing 🐞 See [Testing Guide](docs/testing.md)
 
-### Streamlit Interface Examples 🌐 See [Streamlit Application Prompts](docs/streamlit_prompt.md)
+### Streamlit Interface 🌐 See [Streamlit Application Guide](apps/streamlit/README.md)
 
 ### On-Demand Data Processing
 
@@ -910,10 +911,6 @@ Additionally, `task_factory.Components` introduces `PretrainHierarchicalLoss` fo
 
     loss_fn = PretrainHierarchicalLoss(cfg)
     total_loss, stats = loss_fn(model, batch)
-
-### wandb blocked issue
-
-export WANDB_BASE_URL=HTTP://api.bandw.top
 
 ## 📃 Publications Using This Project
 
@@ -941,7 +938,8 @@ this section.
 </a>
 
 ### Contributing
-We welcome all forms of contributions! Whether it's new feature development, documentation improvement, or issue feedback. Please see the [Contribution Guide](CONTRIBUTING.md) for details.
+We welcome focused contributions for maintained configs, factories, tests, and documentation. Please see the
+[Contribution Guide](contributing.md) for details.
 
 ### Community Communication
 - Join our [Slack channel](https://phmbench.slack.com) to discuss issues and new ideas
@@ -966,9 +964,5 @@ This benchmark platform is licensed under the [Apache License (Version 2.0)](htt
 ```
 
 ---
-
-## ⭐ Star History
-
-<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX3BuNlNCUE1FSkRmVU5EZEJ4WFQ1Vjd6a0ZiSTNpZTFJTzZ5eg==#PHMbench/PHM-Vibench&Date" frameBorder="0"></iframe>
 
 <p align="center">If you have any questions or suggestions, please contact us or submit an <a href="https://github.com/PHMbench/PHM-Vibench/issues">Issue</a>.</p>
