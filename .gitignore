@@ -131,8 +131,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# VS Code settings (project-specific configs are tracked)
-# .vscode/  # Uncomment to ignore project VS Code settings
+# VS Code workspace settings are local by default.
+.vscode/
 
 # Local agent/tooling workspaces (not part of the runtime repository)
 .agents/
@@ -152,9 +152,6 @@ obsidian/
 *.sqlite
 # *.csv
 *.json
-
-# Re-allow VS Code config files
-!.vscode/*.json
 
 # Model files / Checkpoints / Results
 models/
