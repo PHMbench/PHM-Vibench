@@ -14,7 +14,7 @@ if __name__ == '__main__':
 ```
 to ensure the model integrates correctly.
 6. Follow PEP8 style and document your classes and functions.
-7. If you want to add model in ISFM family, please follow the [ISFM](./ISFM/readme.md) model structure.
+7. If you want to add a model in the ISFM family, follow the [ISFM](./ISFM/README.md) model structure.
 ## Example Skeleton
 ```python
 class YourModel(nn.Module):
