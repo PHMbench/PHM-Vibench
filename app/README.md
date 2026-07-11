@@ -1,22 +1,31 @@
-# App Module
+# Legacy Streamlit Prototype Package
 
-This package provides a Streamlit interface for PHM-Vibench.  The code is split
-into small modules:
+The modules in this directory are historical Streamlit prototypes retained
+temporarily for compatibility and provenance. New features are not developed here.
 
-- `state.py` manages `st.session_state` defaults.
-- `layout.py` defines UI sections and data helpers.
-- `pipeline.py` launches the training subprocess and streams output.
-- `gui.py` assembles the above pieces into the final application.
+The maintained configuration-first workspace lives at:
 
-Launch the app with:
-This directory contains a Streamlit interface for running PHM-Vibench pipelines.
-The web UI guides users through loading metadata, configuring parameters and
-starting experiments. Terminal output is streamed in real time and the process
-can be paused or resumed.
-
-Run the application with:
-
-```bash
-streamlit run app/gui.py
+```text
+apps/streamlit/
 ```
 
+Launch it from the repository root:
+
+```bash
+streamlit run apps/streamlit/app.py
+```
+
+The historical root command remains compatible and routes to the same workspace:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The maintained UI invokes experiments only through:
+
+```bash
+python main.py --config <yaml> [--override key=value ...]
+```
+
+It does not import Pipeline functions directly and keeps Streamlit optional for
+the core CLI workflow.
