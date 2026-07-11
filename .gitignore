@@ -136,8 +136,11 @@ cython_debug/
 
 # Local agent/tooling workspaces (not part of the runtime repository)
 .agents/
-.claude/
-.codex/
+.claude/handoffs/
+.claude/settings.json
+.claude/settings.local.json
+.claude/skills/speckit-*/
+.codex/claude-team-runs/
 .tmp/
 obsidian/
 
