@@ -604,8 +604,8 @@ python main.py --config configs/demo/cross_system_few_shot/cross_system_tspn.yam
 - [x] 新增 `configs/base/task/*.yaml`（`classification` / `dg` / `cddg` / `fewshot` / `cddg_fewshot` / `pretrain`），并只使用既有 key。
 - [x] 新增 `configs/base/environment/base.yaml`，统一提供 `PROJECT_HOME` / `iterations` 等环境字段，所有 demo 通过 `base_configs.environment` 复用。
 - [x] 将 6 个 demo（cross-domain / cross-system / few-shot / cross-system few-shot / pretrain+few-shot / pretrain+CDDG）迁移为 `base_configs + 局部 override` 结构，并校验可被 `load_config()` 正常加载。
-- [x] 在 `configs/readme.md` 中新增表格，说明 base 与 demo 的组合关系。
-- [x] 在 `src/model_factory/README*.md` / `src/task_factory/readme.md` / `docs/v0.1.0/codex/*` 中，对 model/type 与 task.type/name 的可选值做了统一说明，并建立 `model_registry.csv` / `isfm_components.csv` / `task_registry.csv` 作为索引。
+- [x] 在 `configs/README.md` 中新增表格，说明 base 与 demo 的组合关系。
+- [x] 在 `src/model_factory/README*.md` / `src/task_factory/README.md` / `docs/v0.1.0/codex/*` 中，对 model/type 与 task.type/name 的可选值做了统一说明，并建立 `model_registry.csv` / `isfm_components.csv` / `task_registry.csv` 作为索引。
 - [ ] 为 `configs/demo/` 中的 demo 补充完整的中文/英文 README 说明（命令示例 + 预期输出）；论文级 reference 配置计划迁移到 paper submodule（TODO）。
 
 > 合入 v0.1.0 的前置条件（配置侧）：

@@ -10,7 +10,7 @@ assignees: ''
 ### ✅ 前置检查清单 (Prerequisite Checklist)
 - [ ] 我已经搜索过现有的 [Issues](<YOUR_REPO_URL>/issues)，确认没有重复的问题。
 - [ ] 我正在最新的 `main` 分支上进行测试，并且此问题依然存在。
-- [ ] 我已经阅读了项目的 [贡献指南](<YOUR_REPO_URL>/blob/main/contributing.md)。
+- [ ] 我已经阅读了项目的 [贡献指南](<YOUR_REPO_URL>/blob/main/CONTRIBUTING.md)。
 - [ ] 我将提供一个**最小化**、可复现的配置文件来帮助定位问题。
 
 ---

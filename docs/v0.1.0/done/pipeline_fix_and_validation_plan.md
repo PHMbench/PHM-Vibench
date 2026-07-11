@@ -207,7 +207,7 @@ python main.py \
   - `docs/v0.1.0/v0.1.0_update.md`
   - `docs/v0.1.0/codex/config_registry_plan.md`
   - `src/model_factory/README*.md`
-  - `src/task_factory/readme.md`
+  - `src/task_factory/README.md`
 
 - 待 6 个代表性 demo 标记为 `sanity_ok` 后，可在 v0.1.0 发布说明中：
   - 列出“官方支持的 demo 列表 + 启动命令”；

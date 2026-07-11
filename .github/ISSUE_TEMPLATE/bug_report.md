@@ -10,7 +10,7 @@ assignees: ''
 ### ✅ Prerequisite Checklist
 - [ ] I have searched the existing [Issues](<YOUR_REPO_URL>/issues) and confirmed that this is not a duplicate.
 - [ ] I am testing on the latest `main` branch and the problem still exists.
-- [ ] I have read the project's [Contributing Guidelines](<YOUR_REPO_URL>/blob/main/contributing.md).
+- [ ] I have read the project's [Contributing Guidelines](<YOUR_REPO_URL>/blob/main/CONTRIBUTING.md).
 - [ ] I will provide a **minimal** and reproducible configuration file to help pinpoint the issue.
 
 ---

@@ -266,7 +266,7 @@ PHM-Vibench 使用强大的配置系统 v0.1.0，支持灵活的实验管理：
 - **点号参数覆盖**: 支持 `{'model.d_model': 512}` 直接覆盖嵌套参数
 - **多阶段Pipeline**: 完美支持预训练→微调等多阶段配置继承
 - **消融实验工具**: 内置双模式API的网格搜索和参数消融
-- **v0.1.0 更新**: 采用统一的 `base_configs + override` 结构（`configs/base/` + `configs/demo/`），并通过 `configs/config_registry.csv` 进行索引，详细说明见 `docs/v0.1.0/v0.1.0_update.md` 与 `configs/readme.md`。
+- **v0.1.0 更新**: 采用统一的 `base_configs + override` 结构（`configs/base/` + `configs/demo/`），并通过 `configs/config_registry.csv` 进行索引，详细说明见 `docs/v0.1.0/v0.1.0_update.md` 与 `configs/README.md`。
 
 📖 **从这里开始**: [`configs/README.md`](configs/README.md)（30 秒冒烟 + override 规则 + 配置工具）
 
@@ -549,7 +549,7 @@ trainer:      # 训练器配置
 
 在 PHM-Vibench 中，真正决定内部任务实现的是配置中的 `task.type` 和 `task.name`。  
 例如 `task.type: "DG"` 且 `task.name: "classification"` 会映射到 `src/task_factory/task/DG/classification.py`，而 ID 类任务和多任务 Lightning 模块分别位于 `task/ID` 和 `task/MT` 目录下。  
-更完整的映射表和示例请参考 `src/task_factory/readme.md`。
+更完整的映射表和示例请参考 `src/task_factory/README.md`。
 
 <table>
   <tr>

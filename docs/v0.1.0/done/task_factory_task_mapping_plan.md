@@ -47,7 +47,7 @@
 
 ---
 
-### 3. 重构 `src/task_factory/readme.md`（面向使用者）
+### 3. 重构 `src/task_factory/README.md`（面向使用者）
 
 规划将 `readme.md` 重构为 4 个核心部分：
 
@@ -103,7 +103,7 @@
 ### 7. 后续落地顺序建议
 
 1. 实际走完第 1 步（梳理 registry 和 config 字段），在此文件或单独表格中放出初版 Task 索引草稿。
-2. 根据草稿微调第 2–4 步的结构（尤其是 `readme.md` 的目录和索引表表头）。
+2. 根据草稿微调第 2–4 步的结构（尤其是 `README.md` 的目录和索引表表头）。
 3. 最后再决定是否实现第 5 步的辅助脚本，以及在文档中如何引用。
 
-> 本文件仅作为 codex 生成的规划草稿，你可以直接修改此文档，或将其中的部分内容复制到最终的 `src/task_factory/readme.md` / `CLAUDE.md` 中使用。
+> 本文件仅作为 codex 生成的规划草稿，你可以直接修改此文档，或将其中的部分内容复制到最终的 `src/task_factory/README.md` / `CLAUDE.md` 中使用。

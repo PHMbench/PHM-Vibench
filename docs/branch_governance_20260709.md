@@ -196,7 +196,7 @@ Scope:
 ```text
 paper/UXFD_paper/*
 src/changelog/CHANGELOG.md
-contributing.md
+CONTRIBUTING.md
 README_CN.md
 AGENTS.md
 ```
