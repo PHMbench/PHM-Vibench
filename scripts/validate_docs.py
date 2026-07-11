@@ -17,7 +17,12 @@ SKIP_TOP_DIRS = {
     ".git",
     ".archive",
     ".pytest_cache",
+    ".agents",
+    ".claude",
+    ".codex",
+    ".tmp",
     "__pycache__",
+    "obsidian",
     "paper",  # paper workflows are not part of the core validation gate
 }
 
@@ -139,4 +144,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
