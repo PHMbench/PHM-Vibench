@@ -26,7 +26,7 @@ and the five-block contract:
 environment / data / model / task / trainer
 ```
 
-Pipeline 06 remains factory-driven:
+Any migrated Pipeline 06 runtime must remain factory-driven:
 
 ```text
 YAML
@@ -41,16 +41,19 @@ YAML
 -> evaluation evidence
 ```
 
-## Source-branch inventory and intended maturity
+## Source-branch inventory and target maturity
 
-| Family | Intended maturity in `main` | Migration decision |
+This document is a migration contract only. It does not add Pipeline 06 to the
+v0.2.0 release-supported surface.
+
+| Family | Target maturity after migration gates | Migration decision |
 |---|---|---|
 | Conditional Flow Matching | smoke-runtime, then benchmark-candidate | migrate first |
 | Rectified Flow | exploratory-runtime | migrate after CFM |
 | DDPM | exploratory-runtime | migrate after CFM |
 | Score-SDE | research-only until sampler review | defer runtime promotion |
-| UNet1D | supported backbone | migrate with backbone PR |
-| DiT1D | supported experimental backbone | migrate with backbone PR |
+| UNet1D | backbone-candidate | migrate with backbone PR |
+| DiT1D | experimental backbone-candidate | migrate with backbone PR |
 | SSM/Mamba-style backbone | optional/research-only | keep optional and stateless |
 | MeanFlow | research-only | experimental PR only |
 | Drifting Flow | research-only | experimental PR only |
