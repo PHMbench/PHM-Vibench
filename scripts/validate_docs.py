@@ -17,11 +17,30 @@ SKIP_TOP_DIRS = {
     ".git",
     ".archive",
     ".pytest_cache",
+    ".agents",
+    ".tmp",
     "__pycache__",
+    "obsidian",
     "paper",  # paper workflows are not part of the core validation gate
 }
 
 SKIP_DIR_NAMES = {"__pycache__"}
+
+
+def is_skipped_path(rel: Path) -> bool:
+    if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
+        return True
+    if len(rel.parts) >= 2 and rel.parts[:2] == (".claude", "handoffs"):
+        return True
+    if (
+        len(rel.parts) >= 3
+        and rel.parts[:2] == (".claude", "skills")
+        and rel.parts[2].startswith("speckit-")
+    ):
+        return True
+    if len(rel.parts) >= 2 and rel.parts[:2] == (".codex", "claude-team-runs"):
+        return True
+    return any(part in SKIP_DIR_NAMES for part in rel.parts)
 
 
 @dataclass(frozen=True)
@@ -42,9 +61,7 @@ def iter_doc_files(repo_root: Path) -> Iterable[Path]:
     for pattern in patterns:
         for path in repo_root.rglob(pattern):
             rel = path.relative_to(repo_root)
-            if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
-                continue
-            if any(part in SKIP_DIR_NAMES for part in rel.parts):
+            if is_skipped_path(rel):
                 continue
             yield path
 
@@ -93,9 +110,7 @@ def check_ai_docs_point_to_readme(repo_root: Path) -> list[Issue]:
     for doc_name in ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]:
         for path in repo_root.rglob(doc_name):
             rel = path.relative_to(repo_root)
-            if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
-                continue
-            if any(part in SKIP_DIR_NAMES for part in rel.parts):
+            if is_skipped_path(rel):
                 continue
             readme = path.parent / "README.md"
             if not readme.exists():
@@ -139,4 +154,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

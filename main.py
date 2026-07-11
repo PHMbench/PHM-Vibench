@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from src.utils.config_utils import parse_overrides
+
 
 def main():
     """
@@ -68,6 +70,14 @@ def main():
         except Exception:
             # 若解析失败，则退回默认 Pipeline_01_default
             pass
+
+    if args.override:
+        overrides = parse_overrides(args.override)
+        override_pipeline = overrides.get("pipeline")
+        if override_pipeline is not None:
+            if not isinstance(override_pipeline, str) or not override_pipeline.strip():
+                raise ValueError("pipeline override must be a non-empty string")
+            pipeline_name = override_pipeline.strip()
 
     pipeline_module = importlib.import_module(f"src.{pipeline_name}")
     results = pipeline_module.pipeline(args)

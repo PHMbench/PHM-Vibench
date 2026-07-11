@@ -7,11 +7,16 @@
 - PHM-Vibench 是配置优先（config-first）的工业振动信号基准：实验由 YAML 配置定义（environment/data/model/task/trainer）。
 - 通过 `src/*_factory/` 工厂与注册表实现可插拔扩展（dataset/model/task/trainer）。
 - 维护入口：`python main.py --config <yaml> [--override key=value ...]`（pipeline 由 YAML 顶层 `pipeline:` 选择）。
+- 可选前端：`apps/streamlit/`，只负责配置、CLI 运行和结果展示，不直接调用 Pipeline。
 
 ## 快速命令（可复制）
 ```bash
 # 离线冒烟（仓库内置 Dummy_Data；无需下载数据）
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+
+# 可选的 Streamlit 引导式工作台
+pip install -r apps/streamlit/requirements.txt
+streamlit run apps/streamlit/app.py
 
 # 校验 demo 配置（loader 驱动 + pydantic schema）
 python -m scripts.validate_configs
@@ -34,6 +39,7 @@ python -m pytest test/
 - `configs/experiments/<task_dataset_variant>/`：本地研究配置（不要污染 demo）。
 - `configs/reference/`：历史遗留（计划迁移/删除；不要当模板）。
 - `src/data_factory/` / `src/model_factory/` / `src/task_factory/` / `src/trainer_factory/`：核心扩展点（按工厂注册）。
+- `apps/streamlit/`：可选前端；字段扩展优先改 `field_catalog.yaml`，不要在页面中硬编码模型分支。
 - `docs/`：维护文档；`docs/LQ_fix/`：内部计划与记录。
 
 ## 扩展流程（最常见）
@@ -46,9 +52,15 @@ python -m pytest test/
   2) 在 `configs/config_registry.csv` 增加一行
   3) `python -m scripts.gen_config_atlas` 生成/更新 `docs/CONFIG_ATLAS.md`
   4) `python -m scripts.validate_configs` 必须通过
+- 扩展前端：
+  1) 新安全字段放入 `apps/streamlit/field_catalog.yaml`
+  2) 新运行逻辑放入 `run_service.py`
+  3) 新结果格式放入 `result_service.py`
+  4) 运行四个 `test_streamlit_*` 测试文件
 
 ## 备注
-- `streamlit_app.py` 为实验性功能（不作为验证门禁）。
+- 正式前端入口为 `streamlit run apps/streamlit/app.py`；核心 CLI 仍是唯一训练契约。
+- `streamlit run streamlit_app.py` 保留为兼容入口，实际转发到正式工作台。
 - `dev/test_history/` 为历史 runner（可选，可能需要额外依赖）。
 
 ## 提交/PR 建议（便于 review）

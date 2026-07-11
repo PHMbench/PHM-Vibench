@@ -372,13 +372,15 @@ class Model(nn.Module):
             
             # Add positional encoding
             x = self.pos_embed(x)
-            
-            # Add class token
-            cls_token = self.cls_token.expand(x.shape[0], -1, -1)
-            x = torch.cat((cls_token, x), dim=1)
-            
-            # Random masking
+
+            # Random masking is defined over signal patches only. The class token
+            # is an encoder summary token and must not create a reconstruction target.
             x_masked, mask, ids_restore = self.random_masking(x)
+
+            # Add class token after masking so decoder restoration indices remain
+            # aligned with the original patch sequence.
+            cls_token = self.cls_token.expand(x.shape[0], -1, -1)
+            x_masked = torch.cat((cls_token, x_masked), dim=1)
             
             # Encoder
             latent = self.encoder(x_masked)
