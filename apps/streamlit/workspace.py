@@ -118,6 +118,18 @@ def _signature(mode: str, source: str, overrides: Sequence[Tuple[str, Any]]) -> 
     return hashlib.sha256(payload).hexdigest()
 
 
+def _local_config_fingerprint(repo_root: Path) -> str:
+    """Invalidate preflight when the machine-local configuration changes."""
+
+    path = repo_root / "configs" / "local" / "local.yaml"
+    if not path.is_file():
+        return "missing"
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        return f"unreadable:{type(exc).__name__}"
+
+
 def _initialize_state() -> None:
     defaults = {
         "ui_mode": "Quick Start",
@@ -320,7 +332,12 @@ def main() -> None:
         else:
             st.warning("Fix the configuration before validation.")
 
-    current_signature = _signature(mode, source_for_signature, overrides)
+    signature_source = (
+        source_for_signature
+        + "\n# local-config-sha256="
+        + _local_config_fingerprint(repo_root)
+    )
+    current_signature = _signature(mode, signature_source, overrides)
     validate_col, download_col, run_col = st.columns(3)
     if validate_col.button(
         "Validate configuration",
