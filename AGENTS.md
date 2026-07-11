@@ -13,6 +13,10 @@ config system).
 # Offline smoke run (repo-shipped dummy data)
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 
+# Optional guided Streamlit workspace
+pip install -r apps/streamlit/requirements.txt
+streamlit run apps/streamlit/app.py
+
 # Validate config schema (demos + active registry rows)
 python -m scripts.validate_configs
 
@@ -34,6 +38,7 @@ python -m pytest test/
 - `configs/experiments/`: your local experiment variants
 - `configs/reference/`: legacy (do not template from here)
 - `src/*_factory/`: extension points (data/model/task/trainer wiring)
+- `apps/streamlit/`: optional config-first UI; keep it isolated from core pipelines
 - `docs/`: maintained documentation; `docs/CONFIG_ATLAS.md` is generated from the registry
 
 ## Config Traceability (SSOT)
@@ -63,7 +68,9 @@ python -m pytest test/
 ## Development Commands
 - Smoke: `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
 - Baseline demo: `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml --override trainer.num_epochs=1`
-- Streamlit UI: `streamlit run streamlit_app.py` (experimental; not a validation gate).
+- Streamlit UI: `streamlit run apps/streamlit/app.py` (optional; core CLI remains authoritative).
+- Streamlit focused tests:
+  `python -m pytest test/test_streamlit_config_service.py test/test_streamlit_runtime_policy.py test/test_streamlit_run_service.py test/test_streamlit_result_service.py`
 
 ## Style and Testing
 - Style: PEP 8, 100-char line limit; format with `black src/ test/` and `isort src/ test/` if available.
