@@ -1,5 +1,6 @@
 -----
 
+
 # dataset_task Module
 
 This folder hosts **task-oriented dataset wrappers**.  
@@ -66,6 +67,7 @@ id,task.type,task.name,path,args,batch_format,test_status
 13,GFS,matching,dataset_task/GFS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","GFS-style episodes / batches",
 14,Default_task,Default_task,dataset_task/Default_dataset.py,"(data, metadata, args_data, args_task, mode)","Default windows: {'x','y'}",
 15,Default_task,ID_task,dataset_task/ID/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","ID-based windows: {'x','y','file_id',...}",
+16,FS,classification,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
 ```
 
 - `args` 列为当前实现中的构造函数签名，便于你在阅读代码时快速对齐。
@@ -107,4 +109,3 @@ When you introduce a new `task.type` / `task.name` pair on the task side:
 This keeps the config → task → dataset pipeline explicit and traceable.
 
 -----
-
