@@ -9,8 +9,8 @@
     <a href="README_CN.md"><strong>中文</strong></a>
   </p>
   
-  <p><strong>🏭 工业领域端到端可复现、模块化的故障诊断与预测性维护基准测试平台 🏭</strong></p>
-  <p><em>⚠️ 内测阶段 - 仅限邀请访问 ⚠️</em></p>
+  <p><strong>面向工业振动故障诊断与预测性维护的配置优先基准工作台。</strong></p>
+  <p><em>内测阶段 - 仅限邀请访问。</em></p>
 
   <p>
     <img src="https://img.shields.io/badge/状态-内测中-orange" alt="Status: Alpha"/>
@@ -55,48 +55,12 @@
   <img src="pic/features.png" alt="PHM-Vibench Features" width="700"/>
 </div> -->
 
-- 🧩 **模块化工厂架构**：数据读取、模型、任务、训练器和 pipeline 均通过显式配置选择。
-- 🔄 **维护中的 demo 面**：当前公开 smoke 面包含 7 个注册表跟踪的可运行 demo 配置。
-- 📊 **可追踪配置系统**：`configs/config_registry.csv`、`docs/CONFIG_ATLAS.md` 与 `scripts.config_inspect` 展示维护配置的字段来源。
-- 📏 **验证门禁**：配置校验、文档校验、维护测试与离线 smoke 是 release gate。
-- 🖱️ **配置优先工作流**：研究者可从 `configs/demo/` 复制模板到 `configs/experiments/`，再通过 YAML 或 CLI override 修改行为。
-- 🧪 **研究扩展入口**：新数据集、模型和任务头通过已文档化的 factory 接口集成。
-
-<details>
-<summary><b>为什么选择PHM-Vibench？</b> (点击展开)</summary>
-<table>
-  <tr>
-    <th>特性</th>
-    <th>PHM-Vibench</th>
-    <th>传统PHM工具</th>
-  </tr>
-  <tr>
-    <td>模块化设计</td>
-    <td>✅ 高度模块化，组件可随意组合</td>
-    <td>❌ 通常耦合紧密，难以扩展</td>
-  </tr>
-  <tr>
-    <td>配置驱动</td>
-    <td>✅ 通过YAML文件配置，无需编码</td>
-    <td>❌ 多需修改代码，配置繁琐</td>
-  </tr>
-  <tr>
-    <td>一致性评估</td>
-    <td>✅ 统一的数据处理和评估标准</td>
-    <td>❌ 评估标准不一致</td>
-  </tr>
-  <tr>
-    <td>可复现性</td>
-    <td>✅ 注册表配置与命令级验证门禁</td>
-    <td>❌ 缺乏完整实验环境记录</td>
-  </tr>
-  <tr>
-    <td>多任务支持</td>
-    <td>✅ 分类、域泛化、少样本和预训练导向 demo 路径</td>
-    <td>⚠️ 通常专注于单一类型任务</td>
-  </tr>
-</table>
-</details>
+- **模块化工厂架构**：数据读取、模型、任务、训练器和 pipeline 均通过显式配置选择。
+- **维护中的 demo 面**：当前公开 smoke 面包含 7 个注册表跟踪的可运行 demo 配置。
+- **可追踪配置系统**：`configs/config_registry.csv`、`docs/CONFIG_ATLAS.md` 与 `scripts.config_inspect` 展示维护配置的字段来源。
+- **验证门禁**：配置校验、文档校验、维护测试与离线 smoke 是 release gate。
+- **配置优先工作流**：研究者可从 `configs/demo/` 复制模板到 `configs/experiments/`，再通过 YAML 或 CLI override 修改行为。
+- **研究扩展入口**：新数据集、模型和任务头通过已文档化的 factory 接口集成。
 
 ## 📝 项目背景与简介
 
@@ -115,14 +79,14 @@
   <p><em>PHM研究面临的挑战</em></p>
 </div> -->
 
-PHM-Vibench 作为 PHMbench 生态系统中专注于工业设备故障诊断的基准测试平台，旨在提供一个标准化、可复现且易于使用的实验环境，以解决上述挑战。
+PHM-Vibench 是 PHMbench 生态中面向工业振动故障诊断的工作台，重点是让实验更容易配置、检查和重复运行。
 
 ### 🛠️ B. 核心功能与特性
 
-1. 🔌 **统一的接口设计**：标准化的数据加载、模型训练和评估流程，简化实验实施
-2. 🔄 **可复现的实验框架**：基于配置的实验管理确保研究结果可精确复现
-3. ⚖️ **公平的比较环境**：统一的数据划分策略和评估指标保证不同方法之间的公平比较
-4. 🚀 **快速原型开发支持**：模块化设计使研究人员能高效实施和验证新思路与方法
+1. **统一的接口设计**：数据加载、模型构建、任务装配和训练器设置使用共享 factory 接口。
+2. **配置记录**：维护中的 demo 由注册表索引，并可通过仓库工具检查。
+3. **比较纪律**：共享配置模式和验证门禁减少数据划分、预处理和指标口径漂移。
+4. **扩展入口**：新数据集、模型和任务可沿已文档化的 factory 边界添加。
 
 <!-- <div align="center">
   <img src="pic/workflow.png" alt="PHM-Vibench Workflow" width="700"/>
@@ -184,7 +148,7 @@ data:
 
 ## 🚀 快速开始
 
-通过以下步骤快速体验 PHM-Vibench 的功能：
+使用以下命令运行维护中的 demo 面：
 
 <!-- <div align="center">
   <img src="pic/quickstart.png" alt="PHM-Vibench Quick Start" width="650"/>
@@ -258,15 +222,14 @@ streamlit run streamlit_app.py
 
 ### 1. 配置文件详解 ⚙️
 
-PHM-Vibench 使用强大的配置系统 v0.1.0，支持灵活的实验管理：
+PHM-Vibench 使用 YAML 配置和维护中的 `base_configs + override` 模式。
+当前可运行模板位于 `configs/demo/`，维护行由 `configs/config_registry.csv` 索引。
 
-#### 🚀 核心特性
-- **统一配置管理**: 基于ConfigWrapper，支持4×4种配置组合方式
-- **预设模板系统**: 内置6种预设配置（quickstart、isfm、gfs等）快速上手
-- **点号参数覆盖**: 支持 `{'model.d_model': 512}` 直接覆盖嵌套参数
-- **多阶段Pipeline**: 完美支持预训练→微调等多阶段配置继承
-- **消融实验工具**: 内置双模式API的网格搜索和参数消融
-- **v0.1.0 更新**: 采用统一的 `base_configs + override` 结构（`configs/base/` + `configs/demo/`），并通过 `configs/config_registry.csv` 进行索引，详细说明见 `docs/v0.1.0/v0.1.0_update.md` 与 `configs/README.md`。
+#### 核心配置特性
+- **Base + Override 组合**：demo 配置复用共享 base block，并通过局部 override 调整。
+- **点号参数覆盖**：CLI override（如 `trainer.num_epochs=1`）可直接更新嵌套字段。
+- **注册表驱动文档**：`configs/config_registry.csv` 渲染为 `docs/CONFIG_ATLAS.md`。
+- **检查工具**：`scripts.config_inspect` 输出最终配置、字段来源和实例化落点。
 
 📖 **从这里开始**: [`configs/README.md`](configs/README.md)（30 秒冒烟 + override 规则 + 配置工具）
 

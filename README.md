@@ -9,8 +9,8 @@
     <a href="README_CN.md">中文</a>
   </p>
   
-  <p><strong>🏭 End-to-End Reproducible, Modular Fault Diagnosis and Predictive Maintenance Benchmark Platform for Industrial Applications 🏭</strong></p>
-  <p><em>⚠️ Alpha Stage - Invitation-Only Access ⚠️</em></p>
+  <p><strong>Configuration-first benchmark workbench for industrial vibration fault diagnosis and predictive maintenance.</strong></p>
+  <p><em>Alpha stage - invitation-only access.</em></p>
 
   <p>
     <img src="https://img.shields.io/badge/Status-Alpha-orange" alt="Status: Alpha"/>
@@ -84,48 +84,12 @@ python -m scripts.validate_docs
 
 ## ✨ Project Highlights
 
-- 🧩 **Modular Factory Architecture**: Dataset readers, models, tasks, trainers, and pipelines are selected through explicit configuration.
-- 🔄 **Maintained Demo Surface**: Seven registry-tracked demo configurations are kept runnable as the current public smoke surface.
-- 📊 **Traceable Configuration System**: `configs/config_registry.csv`, `docs/CONFIG_ATLAS.md`, and `scripts.config_inspect` expose where each maintained config value comes from.
-- 📏 **Validation Gates**: Config validation, documentation validation, maintained tests, and offline smoke runs are the release gate.
-- 🖱️ **Configuration-First Workflow**: Researchers can copy maintained demos into `configs/experiments/` and change behavior through YAML or CLI overrides.
-- 🧪 **Research Extension Points**: Additional datasets, models, and task heads can be integrated through the documented factory interfaces.
-
-<details>
-<summary><b>Why Choose PHM-Vibench?</b> (Click to expand)</summary>
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>PHM-Vibench</th>
-    <th>Traditional PHM Tools</th>
-  </tr>
-  <tr>
-    <td>Modular Design</td>
-    <td>✅ Highly modular, components freely combinable</td>
-    <td>❌ Usually tightly coupled, difficult to extend</td>
-  </tr>
-  <tr>
-    <td>Configuration-Driven</td>
-    <td>✅ YAML file configuration, no coding required</td>
-    <td>❌ Often requires code modification, complex configuration</td>
-  </tr>
-  <tr>
-    <td>Consistent Evaluation</td>
-    <td>✅ Unified data processing and evaluation standards</td>
-    <td>❌ Inconsistent evaluation standards</td>
-  </tr>
-  <tr>
-    <td>Reproducibility</td>
-    <td>✅ Registry-backed configs and command-level validation gates</td>
-    <td>❌ Lacks complete experimental environment records</td>
-  </tr>
-  <tr>
-    <td>Multi-task Support</td>
-    <td>✅ Classification, domain generalization, few-shot, and pretraining-oriented demo paths</td>
-    <td>⚠️ Usually focuses on single task types</td>
-  </tr>
-</table>
-</details>
+- **Modular Factory Architecture**: Dataset readers, models, tasks, trainers, and pipelines are selected through explicit configuration.
+- **Maintained Demo Surface**: Seven registry-tracked demo configurations are kept runnable as the current public smoke surface.
+- **Traceable Configuration System**: `configs/config_registry.csv`, `docs/CONFIG_ATLAS.md`, and `scripts.config_inspect` expose where each maintained config value comes from.
+- **Validation Gates**: Config validation, documentation validation, maintained tests, and offline smoke runs are the release gate.
+- **Configuration-First Workflow**: Researchers can copy maintained demos into `configs/experiments/` and change behavior through YAML or CLI overrides.
+- **Research Extension Points**: Additional datasets, models, and task heads can be integrated through the documented factory interfaces.
 
 
 ## 📝 Project Background and Introduction
@@ -140,14 +104,14 @@ Industrial equipment fault diagnosis and predictive maintenance technologies hav
 2. 🔄 **Reproducibility Difficulties**: Lack of standardized experimental processes and complete implementation details
 3. ⚖️ **Fair Comparison Barriers**: Inconsistencies in data splitting, preprocessing, and evaluation standards make results difficult to compare directly
 
-PHM-Vibench, as a benchmarking platform in the PHMbench ecosystem focused on industrial equipment fault diagnosis, aims to provide a standardized, reproducible, and easy-to-use experimental environment to address these challenges.
+PHM-Vibench is a PHMbench workbench for making industrial vibration fault-diagnosis experiments easier to configure, inspect, and repeat.
 
 ### 🛠️ B. Core Functions and Features
 
-1. 🔌 **Unified Interface Design**: Standardized data loading, model training, and evaluation processes, simplifying experimental implementation
-2. 🔄 **Reproducible Experimental Framework**: Configuration-based experiment management ensures research results can be precisely reproduced
-3. ⚖️ **Fair Comparison Environment**: Unified data splitting strategies and evaluation metrics ensure fair comparison between different methods
-4. 🚀 **Rapid Prototype Development Support**: Modular design enables researchers to efficiently implement and validate new ideas and methods
+1. **Unified Interface Design**: Dataset loading, model construction, task wiring, and trainer setup use shared factory interfaces.
+2. **Configuration Records**: Maintained demos are indexed in the registry and can be inspected with repository tools.
+3. **Comparison Discipline**: Shared config patterns and validation gates reduce drift in data splits, preprocessing, and metrics.
+4. **Extension Points**: New datasets, models, and tasks can be added through the documented factory boundaries.
 
 ## 🔄 Supported Models and Datasets
 
@@ -194,7 +158,7 @@ data:
 
 ## 🚀 Quick Start
 
-Experience PHM-Vibench functionality through the following steps:
+Run the maintained demo surface with:
 
 ```bash
 # 0. Offline smoke run (repo-shipped dummy data; no downloads required)
@@ -242,15 +206,15 @@ See `apps/streamlit/README.md` for the supported UI workflow and validation comm
 
 ### 1. Configuration File Details ⚙️
 
-PHM-Vibench uses the powerful configuration system v0.1.0, supporting flexible experiment management:
+PHM-Vibench uses YAML configs with a maintained `base_configs + override`
+pattern. Current runnable templates live under `configs/demo/`, and maintained
+rows are indexed in `configs/config_registry.csv`.
 
-#### 🚀 Core Features
-- **Unified Configuration Management**: Based on ConfigWrapper, supporting 4×4 configuration combination methods
-- **Preset Template System**: Built-in 6 preset configurations (quickstart, isfm, gfs, etc.) for quick start
-- **Dot Notation Parameter Override**: Supports `{'model.d_model': 512}` for direct nested parameter override
-- **Multi-stage Pipeline**: Perfect support for pretraining→fine-tuning and other multi-stage configuration inheritance
-- **Ablation Experiment Tools**: Built-in dual-mode API grid search and parameter ablation
-- **v0.1.0 update**: Configs adopt a unified `base_configs + override` pattern (`configs/base/` + `configs/demo/`), indexed via `configs/config_registry.csv` (see `docs/v0.1.0/v0.1.0_update.md` and `configs/README.md` for details).
+#### Core Configuration Features
+- **Base + Override Composition**: Demo configs compose shared base blocks with local overrides.
+- **Dot Notation Parameter Override**: CLI overrides such as `trainer.num_epochs=1` update nested fields directly.
+- **Registry-backed Documentation**: `configs/config_registry.csv` renders to `docs/CONFIG_ATLAS.md`.
+- **Inspection Tooling**: `scripts.config_inspect` reports resolved values, field sources, and instantiation targets.
 
 📖 **Start here**: [`configs/README.md`](configs/README.md) (30-second smoke run + override rules + config tools)
 
