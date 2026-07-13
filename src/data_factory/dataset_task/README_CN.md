@@ -25,7 +25,7 @@
 | `CDDG/classification_dataset.py`  | 跨数据集域泛化分类 Dataset，对应 `task.type: CDDG`。 |
 | `Pretrain/Classification_dataset.py` | 预训练相关任务的 Dataset（分类 / 预测 / 掩码重建等）。 |
 | `FS/Classification_dataset.py`    | few-shot 场景下的按样本视角 Dataset，episodic 由 sampler 构建。 |
-| `FS/Episode_dataset.py`           | 显式 episodic few-shot Dataset，直接返回 support/query 结构。 |
+| `FS/episode_dataset.py`           | 显式 episodic few-shot Dataset，直接返回 support/query 结构。 |
 | `GFS/Classification_dataset.py`   | Generalized Few-Shot 分类 Dataset。 |
 | `ID/Classification_dataset.py`    | ID 风格任务（如 `ID_task`）使用的 Dataset。 |
 | `ID_dataset.py`                   | 配合 `id_data_factory` 的 ID 中心 Dataset。 |
@@ -85,4 +85,3 @@ task:
 `config.task.* → task_factory.* → dataset_task.* → DataLoader → Trainer`。
 
 -----
-

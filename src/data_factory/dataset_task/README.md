@@ -27,7 +27,7 @@ Key files and directories:
 | `CDDG/classification_dataset.py` | Dataset for cross-dataset domain generalization classification (`task.type: CDDG`). |
 | `Pretrain/Classification_dataset.py` | Dataset for pretraining tasks that still use supervised labels or masked prediction (`task.type: pretrain`). |
 | `FS/Classification_dataset.py` | Window-based few-shot dataset (per-sample view) for FS tasks. |
-| `FS/Episode_dataset.py`     | Episode-style few-shot dataset (support/query episodic batch). |
+| `FS/episode_dataset.py`     | Episode-style few-shot dataset (support/query episodic batch). |
 | `GFS/Classification_dataset.py` | Dataset for generalized few-shot classification (`task.type: GFS`). |
 | `ID/Classification_dataset.py` | Dataset for ID-style tasks, aligned with `ID_task`. |
 | `ID_dataset.py`             | ID-centric dataset used by `id_data_factory`, focusing on raw ID access. |
