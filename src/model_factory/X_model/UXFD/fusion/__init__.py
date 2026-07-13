@@ -1,4 +1,8 @@
 """Fusion operators (UXFD)."""
 
-__all__ = []
+from .simple_fusion import FusionConfig, build_fusion
 
+__all__ = [
+    "FusionConfig",
+    "build_fusion",
+]
