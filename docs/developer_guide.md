@@ -1,167 +1,176 @@
-# Vbench 开发者指南
+# PHM-Vibench Developer Guide
 
-本文档提供了 Vbench 项目的开发者指南，旨在帮助新开发者快速熟悉项目结构、开发流程和调试方法。
-
-## 项目架构
-
-Vbench 采用模块化设计，主要组件包括：
-
-```
-Vbench/
-├── configs/           # 配置文件目录
-├── data/              # 数据存储目录
-├── src/               # 源代码目录
-│   ├── data_factory/  # 数据集加载和处理
-│   ├── model_factory/ # 模型定义和构建
-│   ├── task_factory/  # 任务抽象和实现
-│   ├── trainer_factory/# 训练器实现
-│   └── utils/         # 工具函数
-├── test/              # 测试代码
-└── results/           # 结果输出
-```
-
-如需构建基于 Streamlit 的可视化界面，可参阅 [Streamlit App Prompt](./streamlit_prompt.md)。
-
-### 核心概念
-
-1. **数据工厂（data_factory）**：负责数据集的加载、预处理和构建数据加载器
-2. **模型工厂（model_factory）**：包含各种模型的定义和实现
-3. **任务工厂（task_factory）**：定义不同类型的任务（如分类、异常检测、剩余使用寿命预测等）
-4. **训练器工厂（trainer_factory）**：实现各种训练策略和流程
-5. **流水线（Pipeline）**：协调各组件协同工作的流程控制器
-
-### 注册机制
-
-框架中的四个工厂（数据、模型、任务、训练器）都通过轻量级的
-`Registry` 类进行管理。开发者可使用 `register_data_factory`、
-`register_model`、`register_task` 和 `register_trainer` 装饰器
-将自定义实现加入注册表。`build_data`、`build_model` 等函数会优先
-从注册表检索对象，如果未找到才会按模块路径导入。
-
-## 开发工作流程
-
-### 1. 环境配置
+This guide describes the maintained development path for PHM-Vibench. Start from
+the configuration-first runtime contract and extend the existing factories rather
+than adding special cases to `main.py`.
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/Vbench.git
-cd Vbench
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 创建.env文件（可选）
-echo "WANDB_MODE=disabled" > .env
-echo "VBENCH_HOME=$(pwd)" >> .env
+python main.py --config <yaml> [--override key=value ...]
 ```
 
-### 配置工具
+## Architecture
 
-`src/utils/config_utils.py` 提供了一组便捷函数用于读取配置文件并组织实验目录：
-
-- `load_config(path)`：读取 YAML 配置并返回字典。
-- `makedir(path)`：确保目录存在。
-- `path_name(config, iteration=0)`：根据配置生成实验结果路径和实验名称。
-- `transfer_namespace(dict)`：将字典转换为 `SimpleNamespace`，便于以属性方式访问。
-
-### 2. 如何添加新模型
-
-1. 在 `src/model_factory/` 下创建新的模型文件，如 `my_model.py`
-2. 实现模型类，继承自 `BaseModel` 或其他适当的基类
-3. 使用装饰器注册模型：
-
-```python
-from src.model_factory import register_model
-
-@register_model('MyModel')
-class MyModel(BaseModel):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # 模型初始化代码...
-    
-    def forward(self, x):
-        # 前向传播实现...
-        return output
+```text
+main.py
+  └── configured pipeline
+      ├── data factory
+      ├── model factory
+      ├── task factory
+      └── trainer factory
 ```
 
-4. 在 `configs/` 目录下创建使用该模型的配置文件
+Primary implementation areas:
 
-### 3. 如何自定义数据工厂
+- `src/data_factory/`: metadata loading, readers, datasets, samplers, and data construction
+- `src/model_factory/`: model families, component registries, and model construction
+- `src/task_factory/`: task implementations and task registry
+- `src/trainer_factory/`: trainer implementations
+- `configs/`: shared base blocks, maintained demos, experiments, and config registry
+- `test/`: maintained pytest gate
+- `apps/streamlit/`: optional interface around the public CLI contract
 
-1. 在 `src/data_factory/` 下创建新的工厂文件，如 `my_factory.py`
-2. 实现类继承自 `data_factory`
-3. 使用装饰器注册数据工厂：
+## Sources of truth
 
-```python
-from src.data_factory import register_data_factory, data_factory
+Use the following files before changing behavior:
 
-@register_data_factory('MyFactory')
-class MyFactory(data_factory):
-    def _init_dataset(self):
-        ...
+- `configs/config_registry.csv`: maintained config inventory
+- `docs/CONFIG_ATLAS.md`: generated view of the config registry
+- `src/model_factory/model_registry.csv`: discovered model inventory
+- `src/task_factory/task_registry.csv`: discovered task inventory
+- `SUPPORTED_COMPONENTS.md`: release-supported component boundary
+- `SUPPORTED_COMBINATIONS.md`: maintained model/task/config combinations
+- `KNOWN_LIMITATIONS.md`: explicit runtime and evidence limitations
+
+A registry entry records discoverability. It does not establish release support
+without a maintained config and runtime evidence.
+
+## Development workflow
+
+1. Update local `main` and create a focused branch.
+2. Identify the nearest maintained demo under `configs/demo/`.
+3. Put local experiment variants under `configs/experiments/`.
+4. Change one coherent capability at a time.
+5. Add or update a focused test near the affected contract.
+6. Run config inspection and the smallest applicable smoke command.
+7. Update registries, generated docs, and support documentation only when the
+   capability is intentionally promoted to the maintained surface.
+8. Open one reviewable pull request with exact validation commands and results.
+
+Do not combine runtime changes, broad documentation cleanup, data artifact
+removal, and research roadmaps in one pull request.
+
+## Configuration changes
+
+Maintained configs use five logical blocks:
+
+```yaml
+environment: {}
+data: {}
+model: {}
+task: {}
+trainer: {}
 ```
-默认实现 `ID_data_factory` 便是这样一个示例，用于配合 `ID_dataset` 在任务阶段再处理原始数据。
 
-### 4. 注册新的任务和训练器
-
-任务和训练器同样通过装饰器完成注册：
-
-```python
-from src.task_factory import register_task
-from src.trainer_factory import register_trainer
-
-@register_task('DG', 'classification')
-class MyTask(Default_task):
-    ...
-
-@register_trainer('MyTrainer')
-def my_trainer(args_e, args_t, args_d, path):
-    ...
-```
-
-### 4. 测试和调试
-
-我们提供了测试方法：
+Inspect a resolved config and its field sources before changing code:
 
 ```bash
-# 运行维护的测试套件
-python -m pytest test/
-
-# 快速smoke测试
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+python -m scripts.config_inspect \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1
 ```
 
-## 代码风格和最佳实践
+Validate the maintained config registry and generated atlas:
 
-### 编码规范
+```bash
+python -m scripts.validate_configs
+python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+```
 
-- 使用 PEP8 风格指南
-- 类名使用 CamelCase（首字母大写）
-- 函数和变量名使用 snake_case（下划线分隔）
-- 每个函数和类都应有清晰的文档字符串
+## Extending a factory
 
-### 注释和文档
+Use the factory-specific contribution guides:
 
-- 使用文档字符串描述函数和类的功能、参数和返回值
-- 对于复杂的算法或逻辑，添加详细注释
-- 保持代码的可读性和自解释性
+- Data and readers: `src/data_factory/contributing.md`
+- Models: `src/model_factory/contributing.md`
+- Tasks: `src/task_factory/contributing.md`
+- Trainers: `src/trainer_factory/contributing.md`
 
-### 错误处理
+A public component extension should normally include:
 
-- 使用适当的异常处理机制
-- 提供有意义的错误消息
-- 对于可能失败的操作，添加适当的日志记录
+- implementation within the correct factory boundary;
+- registry and configuration entry;
+- documented input/output or batch contract;
+- focused import, assembly, or behavior test;
+- maintained or explicitly experimental config;
+- exact validation command;
+- clear failure behavior without silent fallback.
 
-## 常见问题和解决方案
+Do not modify `main.py` merely to add a dataset, model, task, or trainer. Add a
+new pipeline only when the existing pipeline contract cannot express a coherent
+runtime stage, and document that boundary separately.
 
-### Q: 如何调试模型训练过程中的问题？
-A: 使用 `ModularTrainer` 的 debug 模式，或在 test.ipynb 中逐步执行训练过程的各个部分。
+## Data changes
 
-### Q: 遇到 CUDA 内存问题怎么办？
-A: 减小批量大小，检查是否有内存泄漏，或在配置中设置合适的内存限制。
+The repository-shipped dummy data is the only fully offline maintained path.
+Non-dummy demos require local metadata/raw data and may need a
+`data.data_dir` override. See `data/README.md` and
+`configs/base/data/README.md` before changing data layout or readers.
 
-### Q: 如何添加新的评估指标？
-A: 在 `src/utils/metrics_utils.py` 中添加新的指标函数，并在相应任务中使用。
+Reader changes should make raw-to-runtime shape handling explicit. Dataset split,
+normalization, metadata requirements, and fallback behavior must be reviewable;
+they should not be hidden inside a demo-specific branch.
 
-## 项目路线图
+## Tests and validation
 
+Use focused tests during implementation. Before merging a runtime or config
+change, run the maintained gate where applicable:
+
+```bash
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+python -m scripts.validate_configs
+python -m scripts.config_inspect \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1
+python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+python -m scripts.validate_docs
+python -m pytest test/ -q
+```
+
+A documentation-only pull request may use a narrower gate, but its description
+must explain why runtime tests are not applicable. Local command output is local
+evidence, not GitHub Actions evidence.
+
+## Streamlit development
+
+The maintained optional UI lives under `apps/streamlit/`. See the
+[Streamlit application guide](../apps/streamlit/README.md).
+
+Streamlit code should:
+
+- preserve `python main.py --config ...` as the execution contract;
+- remain optional for CLI users;
+- avoid importing pipeline internals directly;
+- use argument lists rather than shell command strings;
+- keep process lifecycle and result discovery bounded and testable.
+
+## Research and historical material
+
+Research ideas, paper workflows, historical configs, and unverified components
+must remain clearly separated from the release-supported core. Promote them only
+through a small pull request with a protocol, config, test, and runtime evidence.
+
+## Pull request checklist
+
+Before requesting review, confirm:
+
+- the diff implements one coherent capability;
+- no machine-specific paths or personal tooling are introduced;
+- public CLI and five-block config contracts remain intact;
+- failures are explicit rather than silently falling back;
+- registry and generated documentation are synchronized where applicable;
+- validation commands and outcomes are recorded accurately;
+- unsupported performance or compatibility claims are not added.
