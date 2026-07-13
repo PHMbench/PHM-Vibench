@@ -68,6 +68,14 @@ def test_tspn_uxfd_rejects_dict_num_classes() -> None:
         TSPNUXFD(args)
 
 
+def test_tspn_uxfd_rejects_complex_sp2d_output() -> None:
+    args = _make_args(enable_sp2d=True)
+    args.uxfd.sp2d.magnitude = False
+
+    with pytest.raises(ValueError, match="requires uxfd.sp2d.magnitude=true"):
+        TSPNUXFD(args)
+
+
 def test_tspn_uxfd_sp2d_modules_follow_configured_device() -> None:
     args = _make_args(enable_sp2d=True, fusion_type="concat")
     args.device = "meta"
