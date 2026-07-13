@@ -159,7 +159,7 @@ python -m scripts.config_inspect \
   --config configs/demo/00_smoke/dummy_dg.yaml \
   --override trainer.num_epochs=1
 python -m scripts.gen_config_atlas
- git diff --exit-code docs/CONFIG_ATLAS.md
+git diff --exit-code docs/CONFIG_ATLAS.md
 python -m scripts.validate_docs
 python -m pytest test/ -q
 ```
