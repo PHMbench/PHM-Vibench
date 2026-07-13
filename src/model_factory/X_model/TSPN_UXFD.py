@@ -66,6 +66,11 @@ class Model(_TSPNModel):
 
         if self._uxfd_enable_sp2d:
             cfg = _build_stft_cfg(args)
+            if not cfg.magnitude:
+                raise ValueError(
+                    "TSPN_UXFD SP2D requires uxfd.sp2d.magnitude=true; "
+                    "complex real/imag output is not supported by the U1 pooling and fusion contract."
+                )
             self._uxfd_sp2d = STFTTimeFrequency(cfg).to(self.args.device)
             self._uxfd_2d_proj = nn.Linear(
                 int(self.args.in_channels), int(self.channel_for_classifier)
