@@ -107,3 +107,66 @@ jobs:
             uxfd-focused-environment.txt
           if-no-files-found: warn
           retention-days: 7
+
+  offline-smoke:
+    name: Offline config-first smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MPLBACKEND: Agg
+      WANDB_MODE: disabled
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install CPU Torch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0"
+
+      - name: Install maintained smoke dependencies
+        run: |
+          python -m pip install \
+            "numpy>=1.20" \
+            "pandas>=1.3" \
+            "scipy" \
+            "scikit-learn>=1.0" \
+            "h5py" \
+            "einops" \
+            "sympy" \
+            "pytorch-lightning>=1.5" \
+            "torchmetrics>=1.0" \
+            "PyYAML>=6.0" \
+            "matplotlib" \
+            "tensorboard" \
+            "openpyxl"
+
+      - name: Record smoke environment
+        run: python -m pip freeze > offline-smoke-environment.txt
+
+      - name: Run repository-shipped dummy smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          python main.py \
+            --config configs/demo/00_smoke/dummy_dg.yaml \
+            --override trainer.num_epochs=1 \
+            --override data.num_workers=0 \
+            2>&1 | tee offline-smoke.log
+
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-smoke-diagnostics
+          path: |
+            offline-smoke.log
+            offline-smoke-environment.txt
+          if-no-files-found: warn
+          retention-days: 7
