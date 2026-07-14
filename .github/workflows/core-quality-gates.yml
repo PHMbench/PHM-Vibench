@@ -140,6 +140,7 @@ jobs:
             "h5py" \
             "einops" \
             "sympy" \
+            "reformer-pytorch" \
             "pytorch-lightning>=1.5" \
             "torchmetrics>=1.0" \
             "PyYAML>=6.0" \
