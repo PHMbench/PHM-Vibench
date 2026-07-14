@@ -154,6 +154,19 @@ def test_bundled_template_requires_declared_assets(tmp_path: Path) -> None:
     assert "data/meta.csv" in status.detail
 
 
+def test_bundled_template_validates_final_overridden_data_path(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+
+    status = ob.assess_template_data(
+        root,
+        {"data": {"data_dir": "missing", "metadata_file": "meta.csv"}},
+        _profile(),
+    )
+
+    assert status.ready is False
+    assert "Configured smoke data" in status.detail
+
+
 def test_external_template_resolves_data_root_and_metadata(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     external = tmp_path / "external"
@@ -203,3 +216,15 @@ def test_every_maintained_demo_has_explicit_user_profile() -> None:
 
     assert maintained
     assert maintained.issubset(profiles.keys())
+
+
+def test_default_smoke_profile_assets_exist() -> None:
+    root = Path(__file__).parents[1]
+    profiles = ob.load_template_profiles(
+        root / "apps" / "streamlit" / "template_profiles.yaml"
+    )
+    smoke = profiles["demo_00_smoke_dummy_dg"]
+
+    assert smoke.requires_external_data is False
+    assert smoke.required_paths
+    assert all((root / path).exists() for path in smoke.required_paths)
