@@ -1,17 +1,18 @@
-# docs/
+# PHM-Vibench Documentation
 
-Maintained documentation for PHM-Vibench.
+The maintained documentation entrypoint is [docs/index.md](index.md).
 
-## Key docs
+Use it to find installation, quickstart, configuration, data, testing,
+development, contribution, Streamlit, release, and historical documentation.
 
-- Config atlas (generated): `docs/CONFIG_ATLAS.md`
-- Config registry schema: `docs/config_registry_schema.md`
-- Developer guide: `docs/developer_guide.md`
-- Custom dataset guide: `docs/custom_dataset.md`
+Key maintenance commands:
 
-## Generation / validation
+```bash
+python -m scripts.validate_docs
+python -m scripts.validate_configs
+python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+```
 
-See `AGENTS.md` for the copy-paste commands:
-
-- `python -m scripts.gen_config_atlas`
-- `python -m scripts.validate_configs`
+`docs/CONFIG_ATLAS.md` is generated from `configs/config_registry.csv`; do not
+edit the atlas manually.

@@ -1,9 +1,16 @@
-data_dir /gpfs/gibbs/project/lu_lu/ql334/PHM-Vibench/data
+# Grace Cluster Notes — Retired
 
-# Load modules and environment
-module reset
-module load miniconda
-conda activate P  # 使用您的环境名称
+This compatibility path previously contained a contributor-specific filesystem
+path, local Conda environment name, and editor launch commands. Those values are
+not portable PHM-Vibench documentation and have been removed.
 
-module load VSCode
-vscode
+Use:
+
+- [Installation](installation.md) for the supported environment baseline;
+- [Quickstart](quickstart.md) for the maintained runtime command;
+- [HPC usage](HPC.md) for the site-neutral scheduler boundary;
+- `configs/local/local.yaml` or CLI overrides for machine-specific data paths.
+
+Never commit a personal cluster path into a maintained configuration or user
+guide. The prior note remains recoverable from Git history if needed for private
+provenance.
