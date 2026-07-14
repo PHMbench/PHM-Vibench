@@ -1,28 +1,79 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+PHM-Vibench is currently an alpha project and does not publish a long-term
+security-support schedule.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| Version | Security-fix policy |
+|---|---|
+| Current `main` | Best-effort fixes for confirmed issues |
+| Latest tagged release, when one exists | Best-effort fixes or documented mitigation |
+| Older commits/releases | No guaranteed security updates |
 
-## Reporting a Vulnerability
+A release-support statement in `SUPPORTED_COMPONENTS.md` or
+`SUPPORTED_COMBINATIONS.md` describes functional scope; it is not a security
+maintenance guarantee.
 
-We take security seriously. If you discover a security vulnerability within this project, please report it to us privately. **Please do not report security vulnerabilities through public GitHub issues.**
+## Report a vulnerability privately
 
-Instead, please send an email to [INSERT SECURITY CONTACT EMAIL ADDRESS HERE].
+Do **not** disclose a suspected vulnerability in a public issue, pull request,
+discussion, log, or example config.
 
-Please include the following details with your report:
+Preferred reporting path:
 
-* A description of the vulnerability and its potential impact.
-* Steps to reproduce the vulnerability.
-* Any proof-of-concept code or examples.
-* Information about the affected versions.
+- use GitHub's private vulnerability reporting form for this repository:
+  <https://github.com/PHMbench/PHM-Vibench/security/advisories/new>
 
-We will acknowledge receipt of your vulnerability report as soon as possible, typically within 48 hours, and will work with you to understand and address the issue. We aim to provide an initial assessment of the vulnerability's severity and a plan for remediation within 7 days.
+If GitHub does not present a private form to you, contact a PHMbench organization
+owner or repository maintainer through an existing private channel. When no
+private channel is available, open a non-sensitive issue asking for private
+contact instructions; do not include exploit details, affected users, secrets,
+or personally identifiable information.
 
-We appreciate your efforts to responsibly disclose your findings, and will credit you for the discovery if you wish, once the vulnerability has been addressed.
+## Include in the report
+
+Provide as much of the following as can be shared safely:
+
+- affected commit, branch, or release;
+- affected file, component, config, or dependency;
+- vulnerability description and realistic impact;
+- reproduction steps or proof of concept;
+- required data, privileges, network access, and environment;
+- Python, PyTorch, CUDA, operating-system, and package versions;
+- whether the issue affects the CLI, Streamlit workspace, artifacts,
+  checkpoints, data handling, or third-party integration;
+- proposed mitigation, if known;
+- disclosure constraints or embargo requests.
+
+Remove real credentials, private datasets, access tokens, and personal data from
+attachments whenever possible.
+
+## Project response
+
+Maintainers will validate the report, identify the affected support boundary,
+and decide whether to fix, mitigate, document, or reject it. The project does not
+promise a fixed acknowledgement or remediation SLA.
+
+For a confirmed issue, maintainers should:
+
+1. minimize public disclosure until a mitigation is available;
+2. add a regression test when technically appropriate;
+3. update affected documentation and known limitations;
+4. publish an advisory or release note when users need to take action;
+5. credit the reporter when requested and safe.
+
+## Scope notes
+
+Security reports may include, but are not limited to:
+
+- command or argument injection;
+- unsafe path traversal, symlink handling, or artifact discovery;
+- arbitrary code execution through configs, checkpoints, or serialized data;
+- secret or private-data exposure;
+- unsafe subprocess management in optional applications;
+- dependency vulnerabilities with a concrete impact on PHM-Vibench;
+- malicious or untrusted dataset/model handling.
+
+General bugs, unsupported combinations, and performance disagreements should use
+the normal issue templates instead of the private security process.
