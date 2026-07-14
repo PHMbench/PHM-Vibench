@@ -149,7 +149,8 @@ streamlit run apps/streamlit/app.py
 
 提交 Issue 或 Pull Request 前请阅读 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。
 保持改动小而可审查，修改权威文档而不是复制内容，并提供准确的 commit、
-配置、override、环境和日志。
+配置、override、环境和日志。社区参与遵循
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
 
 - Bug 与功能建议：[GitHub Issues](https://github.com/PHMbench/PHM-Vibench/issues)
 - 安全问题：[SECURITY.md](SECURITY.md)
@@ -160,5 +161,5 @@ streamlit run apps/streamlit/app.py
 PHM-Vibench 使用 [Apache License 2.0](LICENSE)。数据集和模型产物可能适用
 原始来源的独立许可。
 
-在稳定论文引用发布前，请引用实验所使用的准确 Git commit 或 release tag，
-并记录配置、override、数据来源、随机种子和运行环境。
+软件引用元数据见 [CITATION.cff](CITATION.cff)。请引用实验所使用的准确 Git
+commit 或 release tag，并记录配置、override、数据来源、随机种子和运行环境。

@@ -1,36 +1,94 @@
 ---
 name: Bug report
-about: Create a report to help us improve PHMbench
-title: "[BUG] <Your concise title here>"
+about: Report a reproducible PHM-Vibench defect
+title: "[BUG] "
 labels: bug
 assignees: ''
-
 ---
 
-### ✅ Prerequisite Checklist
-- [ ] I have searched the existing [Issues](<YOUR_REPO_URL>/issues) and confirmed that this is not a duplicate.
-- [ ] I am testing on the latest `main` branch and the problem still exists.
-- [ ] I have read the project's [Contributing Guidelines](<YOUR_REPO_URL>/blob/main/contributing.md).
-- [ ] I will provide a **minimal** and reproducible configuration file to help pinpoint the issue.
+## Before submitting
 
----
+- [ ] I searched existing issues and pull requests.
+- [ ] I reproduced the problem on a current `main` checkout or identified the exact release/commit affected.
+- [ ] I read [CONTRIBUTING.md](https://github.com/PHMbench/PHM-Vibench/blob/main/CONTRIBUTING.md).
+- [ ] This report does not contain credentials, private data, or an undisclosed security vulnerability.
 
-### 1. Bug Description
-A clear and concise description of what the bug is.
+For security-sensitive reports, stop and use [SECURITY.md](https://github.com/PHMbench/PHM-Vibench/blob/main/SECURITY.md).
 
-### 2. To Reproduce
-Steps to reproduce the behavior:
-1. Dataset used: (e.g., 'CWRU')
-2. Configuration file used: (Please attach or paste your `.yaml` config file)
-3. Command run: (e.g., `python src/main.py --config-name=...`)
-4. Then... (Describe your actions)
-5. See error...
+## Problem
 
-### 3. Expected Behavior
-A clear and concise description of what you expected to happen.
+Describe the failure and its impact. Distinguish a code defect from a missing optional dependency, unavailable external dataset, unsupported combination, or documentation problem.
 
-### 4. Actual Behavior
-A clear and concise description of what actually happened. If applicable, add the full error log or screenshots.
+## Minimal reproduction
 
-```log
-<-- Paste your full error log here -->
+**Repository commit or tag:**
+
+```text
+<git rev-parse HEAD>
+```
+
+**Configuration:**
+
+```text
+<path under configs/ or attach a minimal YAML>
+```
+
+**Command:**
+
+```bash
+python main.py --config <yaml> [--override key=value ...]
+```
+
+**Steps:**
+
+1.
+2.
+3.
+
+## Expected behavior
+
+What should have happened?
+
+## Actual behavior
+
+What happened instead? Include the command exit code.
+
+```text
+<paste the complete traceback or log as text>
+```
+
+## Environment
+
+```text
+Operating system:
+Python version:
+PyTorch version:
+PyTorch Lightning version:
+CPU/GPU:
+CUDA version, if relevant:
+Installation method:
+```
+
+Helpful commands:
+
+```bash
+python --version
+python -m pip freeze
+```
+
+Attach environment output as a file when it is long. Remove secrets and private paths where possible.
+
+## Data and artifacts
+
+```text
+Data source: repository dummy data | external data
+Metadata file:
+Relevant input shape:
+Output or checkpoint path:
+```
+
+Do not upload data or model artifacts unless their license permits it. Prefer a small legal fixture or synthetic reproduction.
+
+## Additional context
+
+List workarounds tried, related issues, suspected files, or the last known working commit. Do not describe the issue as a performance regression without comparable commands, data, seeds, and environment evidence.

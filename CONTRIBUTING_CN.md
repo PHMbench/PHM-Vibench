@@ -7,392 +7,256 @@
   </p>
 </div>
 
-我们欢迎对 PHM-Vibench 的各种贡献！本指南将帮助您了解如何有效地为项目做出贡献。
+PHM-Vibench 欢迎聚焦的 Bug 修复、测试、文档、配置、数据 reader、模型、任务、
+训练器和可复现性改进。
 
-## 目录
-
-1. [快速开始](#快速开始)
-2. [开发环境设置](#开发环境设置)
-3. [贡献指南](#贡献指南)
-4. [添加组件](#添加组件)
-   - [新数据集](#新数据集)
-   - [新模型](#新模型)
-   - [新任务](#新任务)
-   - [新流水线](#新流水线)
-5. [配置系统](#配置系统)
-6. [代码规范](#代码规范)
-7. [测试](#测试)
-8. [文档](#文档)
-9. [Pull Request 流程](#pull-request-流程)
-
-## 快速开始
-
-### 前置要求
-
-- Python 3.8+
-- PyTorch 2.0+
-- Git
-- 对深度学习和时序分析的基本了解
-
-### 架构概览
-
-PHM-Vibench 使用**工厂设计模式**实现模块化扩展：
-
-```
-PHM-Vibench/
-├── src/
-│   ├── data_factory/      # 数据集加载与预处理
-│   ├── model_factory/     # 模型（嵌入、骨干、任务头）
-│   ├── task_factory/      # 训练逻辑与评估指标
-│   └── trainer_factory/   # PyTorch Lightning Trainer 配置
-├── configs/               # YAML 配置文件
-└── docs/                  # 文档
-```
-
-详细架构说明请参阅 [`CLAUDE.md`](CLAUDE.md)。
-
-## 开发环境设置
-
-1. **Fork 并克隆仓库**
-```bash
-git clone https://github.com/your-username/PHM-Vibench.git
-cd PHM-Vibench
-```
-
-2. **创建虚拟环境**
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
-
-3. **安装依赖**
-```bash
-pip install -r requirements.txt
-```
-
-4. **运行测试**
-```bash
-python -m pytest test/
-```
-
-5. **离线冒烟测试**（无需下载数据）
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
-```
-
-## 贡献指南
-
-### 贡献类型
-
-我们欢迎以下类型的贡献：
-
-1. **新组件**：数据集、模型、任务、流水线
-2. **Bug 修复**：修复现有代码中的问题
-3. **文档改进**：改进文档、示例和教程
-4. **性能优化**：优化代码效率和性能
-5. **配置添加**：新的实验配置和预设
-
-### 开始之前
-
-1. **检查现有 Issue**：查找相关问题或讨论
-2. **创建 Issue**：对于新功能或重大变更
-3. **先讨论**：对于重大变更，请先与维护者讨论
-4. **阅读 CLAUDE.md**：了解项目架构和变更策略
-
-### 核心设计原则
-
-- **配置优先**：所有实验通过 YAML 配置定义
-- **工厂模式**：注册组件，不要硬编码导入
-- **单一真实来源**：更新注册表 → 图谱 → 文档
-- **本科生能跑 + 博士生能改**：保持易用且可扩展
-
-## 添加组件
-
-### 新数据集
-
-详细指南请参阅 [`src/data_factory/contributing.md`](src/data_factory/contributing.md)。
-
-**快速步骤**：
-1. 在 `src/data_factory/dataset_task/` 中创建数据集类
-2. 在 `src/data_factory/dataset_task/__init__.py` 中注册
-3. 在 `data/metadata.xlsx` 中添加元数据条目
-4. 在 `configs/base/data/` 中创建配置
-
-### 新模型
-
-详细指南请参阅 [`src/model_factory/contributing.md`](src/model_factory/contributing.md)。
-
-**模型组件遵循注册表风格的 ID**：
-- 嵌入：`E_**_*`
-- 骨干网络：`B_**_*`
-- 任务头：`H_**_*`
-
-**快速步骤**：
-1. 创建模型类，使用 NumPy 风格的文档字符串
-2. 在相应的 `__init__.py` 中注册
-3. 在 `configs/demo/` 中添加配置预设
-
-### 新任务
-
-**任务类型**（通过 `task.type` + `task.name` 选择）：
-- `DG`：域泛化
-- `CDDG`：跨数据集域泛化
-- `FS`/`GFS`：少样本学习 / 广义少样本学习
-- `ID`：基于 ID 的数据加载
-- `MT`：多任务学习
-
-**快速步骤**：
-1. 在 `src/task_factory/task/<TYPE>/` 中创建任务
-2. 继承基础任务类
-3. 在 `src/task_factory/task/<TYPE>/__init__.py` 中注册
-
-### 新流水线
-
-流水线按固定顺序组装工厂：
-1. 加载配置
-2. 构建数据
-3. 构建模型
-4. 构建任务
-5. 构建训练器
-
-**快速步骤**：
-1. 创建 `src/Pipeline_<name>.py`
-2. 通过 YAML 选择：`pipeline: <name>`
-
-## 配置系统
-
-PHM-Vibench 使用 **v5.x 五模块配置模型**：
-- `environment` / `data` / `model` / `task` / `trainer`
-
-### 添加新配置
-
-1. **创建配置 YAML**：在 `configs/demo/` 或 `configs/experiments/` 中
-2. **添加到注册表**：更新 `configs/config_registry.csv`
-3. **重新生成图谱**：`python -m scripts.gen_config_atlas`
-4. **验证**：`python -m scripts.validate_configs`
-
-### 配置组合规则（优先级从低到高）
-
-1. `base_configs.*` YAML 文件
-2. Demo YAML 自身的模块覆盖
-3. 可选的本地覆盖 `configs/local/local.yaml`
-4. CLI `--override key=value`
-
-### 配置检查工具
+项目采用配置优先入口：
 
 ```bash
-# 查看解析后的配置 + 来源 + 目标
-python -m scripts.config_inspect --config <yaml> --override key=value
+python main.py --config <yaml> [--override key=value ...]
+```
 
-# 验证所有配置
+贡献必须保持五个公开配置块：
+
+```text
+environment / data / model / task / trainer
+```
+
+进行较大修改前，请先阅读[文档索引](docs/index.md)、
+[开发指南](docs/developer_guide.md)和[测试指南](docs/testing.md)。
+
+## 提交 Issue 或 PR 之前
+
+1. 搜索现有 Issue 和 Pull Request。
+2. 尽可能在最新 `main` 上复现问题。
+3. 从 `configs/demo/` 中最接近的维护配置开始。
+4. 将本地变体放在 `configs/experiments/` 或未跟踪的本地配置中；不要提交个人绝对路径。
+5. 将无关的运行时、文档、数据产物和仓库清理改动拆开。
+6. 不要因为注册表中存在条目，就宣称该组件已受支持。
+
+重大架构调整、新 pipeline、公开兼容性变化或大型数据/模型贡献，应先创建 Issue 讨论。
+
+## 报告 Bug
+
+使用 Bug Report 模板，并提供：
+
+- 简明的问题描述；
+- 可重复的复现步骤；
+- 预期行为和实际行为；
+- 操作系统与硬件；
+- Python、PyTorch、PyTorch Lightning，以及适用时的 CUDA 版本；
+- 仓库 commit 或 release tag；
+- 配置路径和全部 CLI override；
+- 数据来源，以及使用的是 Dummy 数据还是外部数据；
+- 文本形式的完整错误日志；
+- 可共享的最小配置或最小复现测试。
+
+缺少依赖、无效配置和代码缺陷是不同类型的问题。请提供命令退出码；能提供文本日志时，
+不要只提交截图。
+
+安全漏洞不得通过公开 Issue 报告，请遵循 [SECURITY.md](SECURITY.md)。
+
+## 提出功能建议
+
+功能建议应说明：
+
+- 用户或研究场景；
+- 当前限制；
+- 建议行为；
+- 为什么应由 PHM-Vibench 解决，而不是保留为本地实验；
+- 已考虑的更简单替代方案；
+- 对兼容性、依赖、测试、文档和长期维护的影响；
+- 该能力应定位为维护中、实验性还是研究性。
+
+新增方法应附主要论文或稳定技术来源，但论文存在本身不能证明仓库实现可运行。
+
+## 开发环境与分支
+
+按照[安装指南](docs/installation.md)配置环境。典型分支流程：
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c <type>/<short-topic>
+```
+
+建议前缀：
+
+```text
+fix/       Bug 或兼容性修复
+feat/      用户可见能力
+docs/      仅文档改动
+test/      测试和 fixture
+ci/        Workflow 或自动化
+cleanup/   有边界的删除或仓库清理
+release/   发布准备
+```
+
+保持分支聚焦。Commit 建议使用：
+
+```text
+<type>: <祈使式摘要>
+```
+
+例如：
+
+```text
+fix: reject unknown task registry entries
+test: cover TSPN_UXFD CPU assembly
+docs: clarify external data layout
+```
+
+仓库通常使用 squash merge，不需要人为制造大量 commit。
+
+## 提交代码贡献
+
+标准流程：
+
+```text
+创建聚焦分支
+→ 完成最小且完整的改动
+→ 添加或更新聚焦测试
+→ 更新权威文档
+→ 运行适用门禁
+→ 检查 diff 中是否夹带无关修改
+→ 提交包含准确证据的 PR
+```
+
+架构约束：
+
+- 扩展 `src/data_factory/`、`src/model_factory/`、`src/task_factory/` 或
+  `src/trainer_factory/`，不要在 `main.py` 中加入组件专用分支；
+- 保持公开 CLI 和五块配置模型兼容；
+- 非法组合应尽早失败，并给出可理解错误；
+- 避免隐藏 fallback、静默部分 checkpoint 加载和机器专用默认值，除非它们是已测试、已文档化的兼容行为；
+- 行为变化必须提供迁移说明或兼容层；
+- 不得通过修改测试来掩盖真实失败。
+
+Factory 专用指南：
+
+- [数据和 reader](src/data_factory/contributing.md)
+- [模型](src/model_factory/contributing.md)
+- [任务](src/task_factory/contributing.md)
+- [训练器](src/trainer_factory/contributing.md)
+
+## 贡献数据集或 reader
+
+应提供适用的全部信息：
+
+- 数据集名称、原始来源、稳定下载地址和引用；
+- License 与再分发限制；
+- 目录和 metadata 格式；
+- reader 实现及输入/输出契约；
+- 预处理和数据划分方法；
+- `configs/experiments/` 下的配置，或将其提升为维护 demo 的充分理由；
+- 原始数据不能再分发时，提供合法的小 fixture 或 synthetic 契约测试；
+- 实际执行的 inspect 和 smoke 命令；
+- 预期输出结构，而不是编造基准指标；
+- 已知限制和可复现性说明。
+
+大型数据通常不应进入 Git。参考资料和 metadata 的存在不代表拥有再分发权。
+详见 [data/README.md](data/README.md)。
+
+## 贡献模型、任务、训练器或配置
+
+公开组件通常应同时包含：
+
+- 正确 factory 边界内的实现；
+- 必要的注册表或配置入口；
+- 构造参数、batch、tensor shape、dtype、device 和输出契约；
+- 正向和负向聚焦测试；
+- 适用时的 checkpoint 或状态行为；
+- 最小可运行配置；
+- 明确的兼容与不兼容组件；
+- 复制或改编代码的来源和 License；
+- 已知限制与证据等级。
+
+本地实验放在 `configs/experiments/`。提升到 `configs/demo/` 和 `sanity_ok`
+必须有可审查的运行证据。只有公开维护面确实变化时，才更新
+`configs/config_registry.csv`、重新生成 `docs/CONFIG_ATLAS.md` 并同步支持文档。
+
+## 贡献文档
+
+新增页面前先检查[文档索引](docs/index.md)。若已有权威入口，应修改权威入口而不是再复制一份。
+
+文档贡献必须：
+
+- 明确读者和任务；
+- 定义首次出现的缩写和术语；
+- 内部文件优先使用仓库相对链接；
+- 验证命令、路径、配置键和文件名；
+- 区分维护中、实验性、计划中、已废弃和历史行为；
+- 不加入无证据的性能、兼容性、数据集数量或成熟度声明；
+- 将新的维护页面加入文档导航；
+- 删除会破坏外部引用或历史证据时，优先归档。
+
+不要再次复制安装、quickstart、配置优先级、测试门禁或支持矩阵；请链接到权威页面。
+
+## 运行验证
+
+从 [docs/testing.md](docs/testing.md) 选择适用命令。通用本地门禁：
+
+```bash
+python -m scripts.validate_docs
 python -m scripts.validate_configs
-
-# 生成 CONFIG_ATLAS.md
 python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+git diff --check
+python -m pytest test/ -q
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
 ```
 
-## 代码规范
+先运行聚焦测试。若文档 PR 没有修改命令、配置或运行时声明，可使用更窄门禁，
+但必须在 PR 中说明未运行其他命令的原因。
 
-### Python 代码风格
+结果必须准确记录为：
 
-遵循 PEP 8 规范，并做以下调整：
-
-1. **行长度**：最多 100 字符
-2. **导入顺序**：分组导入（标准库、第三方、本地）
-3. **命名规范**：
-   - 类：`PascalCase`
-   - 函数/变量：`snake_case`
-   - 常量：`UPPER_CASE`
-
-### 文档字符串标准
-
-使用 NumPy 风格的文档字符串：
-
-```python
-def function_name(param1: int, param2: str = "default") -> bool:
-    """函数简要描述。
-
-    更详细的描述，说明函数的用途和行为。
-
-    Parameters
-    ----------
-    param1 : int
-        param1 的描述
-    param2 : str, optional
-        param2 的描述（默认："default"）
-
-    Returns
-    -------
-    bool
-        返回值的描述
-
-    Raises
-    ------
-    ValueError
-        当 param1 为负数时抛出
-
-    Examples
-    --------
-    >>> result = function_name(5, "test")
-    >>> print(result)
-    True
-    """
+```text
+PASS
+FAIL
+EXPECTED FAILURE
+NOT EXECUTED — <原因>
 ```
 
-## 测试
+本地证据不能表述为 GitHub Actions 证据。
 
-### 测试结构
+## 提交 Pull Request
 
-```
-test/
-├── test_end_to_end_integration.py
-├── test_parameter_consistency.py
-└── ...
-```
+PR 必须说明：
 
-### 运行测试
+- 问题和修改理由；
+- 准确范围与明确的 non-goals；
+- 公开行为变化和迁移影响；
+- 涉及的文件或组件；
+- 已运行命令和结果；
+- 新增或修改的测试；
+- 文档和注册表更新；
+- 风险与限制；
+- 回滚方法；
+- 未包含本地 goal pack、缓存、日志、凭据、原始数据和机器路径。
 
-```bash
-# 运行所有维护的测试
-python -m pytest test/
+不要把大范围格式化与行为改动混在一起。不要单独提交生成的 atlas 而不提交注册表来源变化。
+不要为了让 PR 通过而降低测试或支持标准。
 
-# 运行特定测试文件
-python -m pytest test/test_parameter_consistency.py
+合并前通常需要至少一名维护者 review 和必要检查通过，默认采用 squash merge。
 
-# 运行测试并生成覆盖率报告
-python -m pytest test/ --cov=src --cov-report=html
-```
+## 通常不会接受的改动
 
-### 编写测试
+- 未审查的大改动直接进入 `main`；
+- 个人路径、凭据或私有基础设施细节；
+- 绕过现有配置和 factory 契约的平行框架；
+- 将无关运行时、清理、文档和研究工作混在一个巨型 PR；
+- 未核对仓库事实的生成式、复制式或 AI 堆砌文档；
+- 无可复现证据的精度、效率、SOTA 或通用兼容性声明；
+- 未提供来源和 License 的第三方代码；
+- 只通过 skip、捕获或压制失败来“修复”测试；
+- 未审查 License 和存储策略的大型数据或模型产物。
 
-```python
-import pytest
-import torch
-from argparse import Namespace
+## 社区与许可
 
-class TestYourComponent:
-    """YourComponent 的测试套件。"""
+社区参与遵循 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。提交贡献即表示同意其可在
+仓库 [Apache License 2.0](LICENSE) 下分发，同时遵守单独标注的第三方许可。
 
-    @pytest.fixture
-    def config(self):
-        """测试用的配置。"""
-        return Namespace(
-            param1="value1",
-            param2=42
-        )
-
-    def test_basic_functionality(self, config):
-        """测试基本功能。"""
-        # 准备
-        component = YourComponent(config)
-
-        # 执行
-        result = component.method()
-
-        # 断言
-        assert result is not None
-```
-
-## 文档
-
-### 文档要求
-
-1. **API 文档**：NumPy 风格的文档字符串
-2. **使用示例**：可运行的代码示例
-3. **配置文档**：更新注册表和图谱
-4. **双语支持**：英文和中文（`_CN.md` 后缀）
-
-### 文档结构
-
-```
-PHM-Vibench/
-├── README.md / README_CN.md           # 主项目 README
-├── CONTRIBUTING.md / CONTRIBUTING_CN.md  # 本文件
-├── CLAUDE.md                           # 架构和变更策略
-├── AGENTS.md                           # 开发命令手册
-├── configs/README.md                   # 配置系统指南
-├── docs/
-│   ├── CONFIG_ATLAS.md                 # 生成的配置参考
-│   ├── developer_guide.md
-│   └── testing.md
-└── src/
-    ├── data_factory/README_CN.md
-    ├── model_factory/README_CN.md
-    └── task_factory/README_CN.md
-```
-
-## Pull Request 流程
-
-### 提交之前
-
-1. **运行测试**：确保所有测试通过
-2. **检查代码风格**：遵循代码规范
-3. **更新文档**：添加/更新相关文档
-4. **添加测试**：为新功能包含测试
-5. **更新注册表**：对于新配置，更新 `config_registry.csv`
-
-### PR 模板
-
-```markdown
-## 描述
-变更的简要描述和动机。
-
-## 变更类型
-- [ ] Bug 修复
-- [ ] 新功能
-- [ ] 破坏性变更
-- [ ] 文档更新
-- [ ] 配置添加
-
-## 测试
-- [ ] 本地测试通过
-- [ ] 为新功能添加了测试
-- [ ] 配置已验证（如适用）
-
-## 文档
-- [ ] 代码遵循风格指南
-- [ ] 已完成自审
-- [ ] 文档已更新
-- [ ] 注册表/图谱已更新（如适用）
-```
-
-### 审查流程
-
-1. **自动检查**：CI/CD 管道运行测试和验证
-2. **代码审查**：维护者审查代码质量和设计
-3. **文档审查**：检查文档是否完整准确
-4. **批准**：至少需要一名维护者批准
-
-### 批准后
-
-1. **压缩并合并**：我们通常会压缩提交
-2. **更新变更日志**：维护者更新变更日志
-3. **发布说明**：重大变更将包含在发布说明中
-
-## 必要的变更顺序
-
-对于配置相关的变更：
-1. 注册表 → 2. 图谱 → 3. 检查 → 4. 模式验证 → 5. README → 6. CI/测试
-
-## 社区准则
-
-### 行为准则
-
-- 保持尊重和包容
-- 专注于建设性反馈
-- 帮助新人学习和贡献
-- 保持专业的沟通方式
-
-### 获取帮助
-
-- **GitHub Issues**：报告 Bug 和功能请求
-- **Discussions**：提问和一般讨论
-- **CLAUDE.md**：了解架构和变更策略
-- **AGENTS.md**：开发命令参考
-
-## 联系方式
-
-- **维护者**：[Qi Li](https://github.com/liq22)、[Xuan Li](https://github.com/Xuan423)
-- **GitHub**：[PHM-Vibench 仓库](https://github.com/PHMbench/PHM-Vibench)
-
-感谢您为 PHM-Vibench 做出贡献！
+一般问题可使用 GitHub Issues，或在启用时使用 Discussions。安全与行为问题不要放在公开 Issue 中。

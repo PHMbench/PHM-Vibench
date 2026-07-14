@@ -35,6 +35,7 @@ Documentation uses four status labels:
 | Development workflow and architecture | [Developer guide](developer_guide.md) |
 | Tests and validation gates | [Testing guide](testing.md) |
 | General contribution process | [CONTRIBUTING.md](../CONTRIBUTING.md) |
+| Community standards | [Code of Conduct](../CODE_OF_CONDUCT.md) |
 | Add a dataset or reader | [Data factory contribution guide](../src/data_factory/contributing.md) |
 | Add a model | [Model factory contribution guide](../src/model_factory/contributing.md) |
 | Add a task | [Task factory contribution guide](../src/task_factory/contributing.md) |
@@ -48,6 +49,7 @@ Documentation uses four status labels:
 - [v0.2.0 release notes](../RELEASE_NOTES_v0.2.0.md)
 - [v0.1 to v0.2 migration guide](../MIGRATION_v0.1_to_v0.2.md)
 - [Security policy](../SECURITY.md)
+- [Citation metadata](../CITATION.cff)
 - [Apache License 2.0](../LICENSE)
 - [Branch governance record](branch_governance_20260709.md)
 - [Repository optimization SOP](REPOSITORY_OPTIMIZATION_SOP.md)
@@ -81,6 +83,9 @@ page links to a specific document and says otherwise.
 | Supported components and combinations | `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md` | Do not infer support from registry presence |
 | Data layout and external-data boundary | `data/README.md` | Link from reader and dataset pages |
 | Contribution process | `CONTRIBUTING.md` | Factory guides describe only factory-specific steps |
+| Community behavior | `CODE_OF_CONDUCT.md` | Link instead of copying conduct policy |
+| Security reporting | `SECURITY.md` | Do not disclose sensitive details in public templates |
+| Citation metadata | `CITATION.cff` | Cite the exact release or commit used |
 | Test commands and evidence terms | `docs/testing.md` | Link to the relevant gate |
 | Optional Streamlit behavior | `apps/streamlit/README.md` | Keep compatibility pages as short redirects |
 | Release changes | `CHANGELOG.md` and release notes | Historical plans must not override release documents |
