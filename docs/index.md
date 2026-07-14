@@ -77,12 +77,15 @@ work. Their presence does not expand the release-supported component matrix.
 
 ## Historical and research material
 
-The following locations are evidence or research records, not current user
-instructions:
+Read the [historical and research documentation policy](archive/README.md) before
+using, moving, or deleting archived material.
 
-- `docs/v0.1.0/`
-- `docs/past/`
+Preserved evidence includes:
+
+- [`docs/v0.1.0/`](v0.1.0/README.md)
+- [`docs/past/`](past/README.md)
 - `src/configs/plan/`
+- `configs/v0.0.9/`
 - `dev/`
 - `paper/`
 - `.claude/` and `.codex/`
