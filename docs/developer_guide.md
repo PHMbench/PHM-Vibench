@@ -1,176 +1,165 @@
-# PHM-Vibench Developer Guide
+# Develop PHM-Vibench
 
-This guide describes the maintained development path for PHM-Vibench. Start from
-the configuration-first runtime contract and extend the existing factories rather
-than adding special cases to `main.py`.
+This guide is the architecture and extension map. It does not duplicate the
+installation, first-run, configuration, testing, or contribution procedures:
+
+- [Installation](installation.md)
+- [Quickstart](quickstart.md)
+- [Configuration system](../configs/README.md)
+- [Testing and evidence](testing.md)
+- [Contributor guide](../CONTRIBUTING.md)
+
+The public runtime contract is:
 
 ```bash
 python main.py --config <yaml> [--override key=value ...]
 ```
 
-## Architecture
+## Runtime architecture
 
 ```text
 main.py
-  └── configured pipeline
+  └── pipeline selected by config/override
       ├── data factory
       ├── model factory
       ├── task factory
-      └── trainer factory
+      ├── trainer factory
+      └── fit / test / artifact lifecycle
 ```
 
-Primary implementation areas:
+Maintained configuration remains divided into:
 
-- `src/data_factory/`: metadata loading, readers, datasets, samplers, and data construction
-- `src/model_factory/`: model families, component registries, and model construction
-- `src/task_factory/`: task implementations and task registry
-- `src/trainer_factory/`: trainer implementations
-- `configs/`: shared base blocks, maintained demos, experiments, and config registry
-- `test/`: maintained pytest gate
-- `apps/streamlit/`: optional interface around the public CLI contract
+```text
+environment / data / model / task / trainer
+```
+
+Do not create a second config system, registry, or training framework. Do not add
+component-specific branches to `main.py`.
+
+## Implementation boundaries
+
+| Location | Responsibility | Local contribution guide |
+|---|---|---|
+| `src/data_factory/` | metadata, readers, dataset wrappers, samplers, loaders | [`contributing.md`](../src/data_factory/contributing.md) |
+| `src/model_factory/` | model families, components, construction, checkpoints | [`contributing.md`](../src/model_factory/contributing.md) |
+| `src/task_factory/` | task modules, losses, metrics, optimizers, task registry | [`contributing.md`](../src/task_factory/contributing.md) |
+| `src/trainer_factory/` | Lightning trainer construction, callbacks, loggers, extensions | [`contributing.md`](../src/trainer_factory/contributing.md) |
+| `configs/` | base composition, demos, experiments, registry | [`README.md`](../configs/README.md) |
+| `apps/streamlit/` | optional UI/process/result adapter around the CLI | [`README.md`](../apps/streamlit/README.md) |
+| `test/` | maintained pytest gate | [Testing guide](testing.md) |
+
+Shared helpers belong under the narrowest existing utility/component module. An
+abstraction is useful only when input/output, state, lifecycle, and error
+semantics are genuinely shared.
 
 ## Sources of truth
 
-Use the following files before changing behavior:
+| Information | Source |
+|---|---|
+| Shipped config inventory | `configs/config_registry.csv` |
+| Generated config reference | `docs/CONFIG_ATLAS.md` |
+| Model discovery inventory | `src/model_factory/model_registry.csv` |
+| Task discovery inventory | `src/task_factory/task_registry.csv` |
+| Dataset-task mapping | `src/data_factory/dataset_task/dataset_task_mapping.csv` |
+| Release-supported components | `SUPPORTED_COMPONENTS.md` |
+| Release-supported combinations | `SUPPORTED_COMBINATIONS.md` |
+| Explicit limits | `KNOWN_LIMITATIONS.md` |
+| Test/evidence terminology | `docs/testing.md` |
 
-- `configs/config_registry.csv`: maintained config inventory
-- `docs/CONFIG_ATLAS.md`: generated view of the config registry
-- `src/model_factory/model_registry.csv`: discovered model inventory
-- `src/task_factory/task_registry.csv`: discovered task inventory
-- `SUPPORTED_COMPONENTS.md`: release-supported component boundary
-- `SUPPORTED_COMBINATIONS.md`: maintained model/task/config combinations
-- `KNOWN_LIMITATIONS.md`: explicit runtime and evidence limitations
+Discovery is not support. A model/task/config row requires compatible tests and a
+maintained runtime path before it belongs in the support documents.
 
-A registry entry records discoverability. It does not establish release support
-without a maintained config and runtime evidence.
+## Standard extension flow
 
-## Development workflow
+1. Update `main` and create one focused branch.
+2. Identify the nearest maintained component and demo.
+3. Put a new config under `configs/experiments/`.
+4. Define input/output, batch, parameter, error, and side-effect contracts.
+5. Make the smallest coherent code change inside the existing factory boundary.
+6. Add focused positive and negative regression tests.
+7. Inspect the resolved config and run the smallest applicable smoke path.
+8. Update the authoritative local documentation.
+9. Promote registry/demo/support status only after evidence exists.
+10. Open one reviewable pull request with commands, results, limits, and rollback.
 
-1. Update local `main` and create a focused branch.
-2. Identify the nearest maintained demo under `configs/demo/`.
-3. Put local experiment variants under `configs/experiments/`.
-4. Change one coherent capability at a time.
-5. Add or update a focused test near the affected contract.
-6. Run config inspection and the smallest applicable smoke command.
-7. Update registries, generated docs, and support documentation only when the
-   capability is intentionally promoted to the maintained surface.
-8. Open one reviewable pull request with exact validation commands and results.
+Avoid combining runtime behavior, broad docs cleanup, case-only renames, data
+artifact removal, and research planning in one pull request.
 
-Do not combine runtime changes, broad documentation cleanup, data artifact
-removal, and research roadmaps in one pull request.
+## Add or change configuration behavior
 
-## Configuration changes
+The configuration guide defines precedence and promotion rules. Changes to the
+loader or schema should test:
 
-Maintained configs use five logical blocks:
+- base/YAML/local/CLI precedence;
+- type conversion and null/list/bool behavior;
+- aliases and deprecation;
+- unknown or misspelled keys;
+- source reporting in `scripts.config_inspect`;
+- generated registry/Atlas consistency;
+- backward compatibility for maintained configs.
 
-```yaml
-environment: {}
-data: {}
-model: {}
-task: {}
-trainer: {}
-```
+A config inspector pass is not an end-to-end pass.
 
-Inspect a resolved config and its field sources before changing code:
+## Add a component
 
-```bash
-python -m scripts.config_inspect \
-  --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1
-```
+Every public component should have:
 
-Validate the maintained config registry and generated atlas:
+- stable identity and import/factory trace;
+- constructor/config contract;
+- input/output or batch contract;
+- dtype/device behavior;
+- compatible and rejected combinations;
+- focused tests that assert behavior;
+- an experimental config;
+- minimal runtime evidence;
+- dependency/license/provenance notes;
+- known limitations.
 
-```bash
-python -m scripts.validate_configs
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-```
+Optional dependencies should load only when the selected component needs them.
+Importing a lightweight model should not require every optional research model.
 
-## Extending a factory
+## Add a pipeline
 
-Use the factory-specific contribution guides:
+Add a pipeline only when existing pipelines cannot express a coherent stage or
+lifecycle. A new pipeline must still:
 
-- Data and readers: `src/data_factory/contributing.md`
-- Models: `src/model_factory/contributing.md`
-- Tasks: `src/task_factory/contributing.md`
-- Trainers: `src/trainer_factory/contributing.md`
+- use the public CLI;
+- consume the five configuration sections;
+- construct components through existing factories;
+- reject unsupported combinations early;
+- define expected outputs and side effects;
+- have config inspection, focused tests, and a mini end-to-end path;
+- remain experimental until its support boundary is documented.
 
-A public component extension should normally include:
+The [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md) is an
+example of defining gates before promoting runtime code.
 
-- implementation within the correct factory boundary;
-- registry and configuration entry;
-- documented input/output or batch contract;
-- focused import, assembly, or behavior test;
-- maintained or explicitly experimental config;
-- exact validation command;
-- clear failure behavior without silent fallback.
+## Data and scientific evidence
 
-Do not modify `main.py` merely to add a dataset, model, task, or trainer. Add a
-new pipeline only when the existing pipeline contract cannot express a coherent
-runtime stage, and document that boundary separately.
+Only the Dummy smoke path is fully repository-shipped. External-data claims must
+record source, license, metadata version, preprocessing, split/leakage controls,
+seed, environment, config, overrides, and evidence paths.
 
-## Data changes
+Synthetic data validates software contracts only. Do not infer benchmark quality,
+state-of-the-art performance, or dataset correctness from a smoke run.
 
-The repository-shipped dummy data is the only fully offline maintained path.
-Non-dummy demos require local metadata/raw data and may need a
-`data.data_dir` override. See `data/README.md` and
-`configs/base/data/README.md` before changing data layout or readers.
+## Optional Streamlit development
 
-Reader changes should make raw-to-runtime shape handling explicit. Dataset split,
-normalization, metadata requirements, and fallback behavior must be reviewable;
-they should not be hidden inside a demo-specific branch.
+The Streamlit application must remain an adapter around the public CLI. It should
+not import pipeline internals or become a scheduler. Process management, path
+safety, config precedence, and artifact scanning must remain isolated and tested.
+See [Streamlit architecture](../apps/streamlit/README.md).
 
-## Tests and validation
+## Historical and research material
 
-Use focused tests during implementation. Before merging a runtime or config
-change, run the maintained gate where applicable:
+`docs/v0.1.0/`, `docs/past/`, `dev/`, `paper/`, `.claude/`, `.codex/`, and old
+plan trees contain evidence or research material. They are not current user
+instructions and do not expand release support. Preserve provenance; move or
+delete only with inventory, reference checks, and recovery evidence.
 
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1 \
-  --override data.num_workers=0
-python -m scripts.validate_configs
-python -m scripts.config_inspect \
-  --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-python -m scripts.validate_docs
-python -m pytest test/ -q
-```
+## Before requesting review
 
-A documentation-only pull request may use a narrower gate, but its description
-must explain why runtime tests are not applicable. Local command output is local
-evidence, not GitHub Actions evidence.
-
-## Streamlit development
-
-The maintained optional UI lives under `apps/streamlit/`. See the
-[Streamlit application guide](../apps/streamlit/README.md).
-
-Streamlit code should:
-
-- preserve `python main.py --config ...` as the execution contract;
-- remain optional for CLI users;
-- avoid importing pipeline internals directly;
-- use argument lists rather than shell command strings;
-- keep process lifecycle and result discovery bounded and testable.
-
-## Research and historical material
-
-Research ideas, paper workflows, historical configs, and unverified components
-must remain clearly separated from the release-supported core. Promote them only
-through a small pull request with a protocol, config, test, and runtime evidence.
-
-## Pull request checklist
-
-Before requesting review, confirm:
-
-- the diff implements one coherent capability;
-- no machine-specific paths or personal tooling are introduced;
-- public CLI and five-block config contracts remain intact;
-- failures are explicit rather than silently falling back;
-- registry and generated documentation are synchronized where applicable;
-- validation commands and outcomes are recorded accurately;
-- unsupported performance or compatibility claims are not added.
+Follow the [pull request requirements](../CONTRIBUTING.md#pull-request-requirements)
+and run the applicable commands from [Testing and evidence](testing.md). Report
+`NOT_EXECUTED` for unavailable gates; never claim missing data, missing dependency,
+skipped tests, or local output as a CI pass.
