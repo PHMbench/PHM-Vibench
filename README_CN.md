@@ -166,6 +166,7 @@ streamlit run apps/streamlit/app.py
 
 提交 Issue 或 PR 前请阅读 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。
 公开组件贡献应包含实现、注册表/配置可追踪性、聚焦测试、文档、适用的冒烟路径和明确兼容边界。
+社区参与遵循[行为规范](CODE_OF_CONDUCT.md)。
 
 Factory 专项说明：
 
@@ -177,7 +178,7 @@ Factory 专项说明：
 ## 引用、许可与支持
 
 在稳定论文或 DOI 发布前，请记录并引用实验使用的准确 Git tag 或 commit。
-不要从 Dummy 冒烟结果或注册表清单推导科学结论。
+机器可读引用信息见 [`CITATION.cff`](CITATION.cff)。不要从 Dummy 冒烟结果或注册表清单推导科学结论。
 
 PHM-Vibench 源代码使用 [Apache License 2.0](LICENSE)。数据集、预训练权重和第三方模型
 可能适用其原始来源的独立许可。
