@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from apps.streamlit import config_service as cs
 from apps.streamlit import onboarding as ob
 
 
@@ -187,3 +188,18 @@ def test_external_template_returns_actionable_missing_path(tmp_path: Path) -> No
 
     assert status.ready is False
     assert "configs/local/local.yaml" in status.action
+
+
+def test_every_maintained_demo_has_explicit_user_profile() -> None:
+    root = Path(__file__).parents[1]
+    profiles = ob.load_template_profiles(
+        root / "apps" / "streamlit" / "template_profiles.yaml"
+    )
+    maintained = {
+        entry.id
+        for entry in cs.load_registry(root)
+        if entry.category == "demo" and entry.status == "sanity_ok"
+    }
+
+    assert maintained
+    assert maintained.issubset(profiles.keys())
