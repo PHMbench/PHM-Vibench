@@ -5,12 +5,12 @@ docs/index.md,Documentation navigation and SSOT map,all,MAINTAINED,no,no,no,ADD,
 docs/installation.md,Installation baseline and dependency setup,users,MAINTAINED,no,no,no,ADD,docs/installation.md,PR65_CI_PASS
 docs/quickstart.md,First offline run and troubleshooting,users,MAINTAINED,no,no,no,ADD,docs/quickstart.md,PR65_CI_PASS
 docs/testing.md,Test commands and evidence terminology,developers,MAINTAINED,no,no,no,REWRITE,docs/testing.md,PR65_CI_PASS
-docs/README.md,Compatibility entry for docs directory,all,COMPAT_REDIRECT,yes,no,no,REDIRECT,docs/index.md,PR69_CI_PENDING
+docs/README.md,Compatibility entry for docs directory,all,COMPAT_REDIRECT,yes,no,no,REDIRECT,docs/index.md,PR69_CI_PASS
 docs/developer_guide.md,Current development workflow and factory boundaries,developers,MAINTAINED,no,no,no,RETAIN,docs/developer_guide.md,STATIC_REVIEW
 docs/app_usage.md,Legacy Streamlit usage entry,users,COMPAT_REDIRECT,yes,no,no,REDIRECT,apps/streamlit/README.md,PR65_CI_PASS
 apps/streamlit/README.md,Optional Streamlit workspace usage and boundaries,users|developers,MAINTAINED,no,no,no,RETAIN,apps/streamlit/README.md,STATIC_REVIEW
 apps/streamlit/REVIEW.md,Streamlit review decisions and extension boundaries,maintainers,DECISION_RECORD,no,no,no,RETAIN,apps/streamlit/REVIEW.md,STATIC_REVIEW
-docs/custom_dataset.md,Short bridge for custom dataset onboarding,users|contributors,MAINTAINED,partial,yes,stale reader contract,REWRITE,data/README.md|src/data_factory/contributing.md,PR69_CI_PENDING
+docs/custom_dataset.md,Short bridge for custom dataset onboarding,users|contributors,MAINTAINED,partial,yes,stale reader contract,REWRITE,data/README.md|src/data_factory/contributing.md,PR69_CI_PASS
 data/README.md,Data layout external sources and licensing boundary,users|contributors,MAINTAINED,no,no,no,RETAIN,data/README.md,STATIC_REVIEW
 configs/README.md,Configuration composition precedence registry and promotion,users|developers,MAINTAINED,no,no,no,REWRITE,configs/README.md,PR65_CI_PASS
 configs/base/README.md and subtree READMEs,Reusable five-block configuration documentation,developers,MAINTAINED_GROUP,partial,unknown,not fully line-reviewed,RETAIN,configs/README.md,GROUP_CLASSIFIED
@@ -50,11 +50,11 @@ KNOWN_LIMITATIONS.md,Explicit release limitations,users|developers,AUTHORITATIVE
 docs/branch_governance_20260709.md,Branch governance decision record,maintainers,DECISION_RECORD,no,no,no,RETAIN,document itself,STATIC_REVIEW
 docs/REPOSITORY_OPTIMIZATION_SOP.md,Repository optimization process,maintainers,MAINTAINED_SOP,no,no,no,RETAIN,document itself,STATIC_REVIEW
 docs/PIPELINE_06_GENERATIVE_MIGRATION.md,Future generative migration contract,developers|researchers,EXPERIMENTAL_CONTRACT,no,no,no,RETAIN,document itself,STATIC_REVIEW
-docs/HPC.md,Site-specific HPC guidance,cluster_users,STATUS_PAGE,no,yes,YCRC-specific claims and wrong entrypoint,REWRITE_STATUS,official site docs plus current CLI,PR69_CI_PENDING
-docs/grace.md,Contributor-specific cluster scratch note,one_contributor,COMPAT_STATUS,no,yes,personal paths and environment,REWRITE_STATUS,docs/HPC.md,PR69_CI_PENDING
-docs/past/grace.md,Historical contributor cluster scratch note,one_contributor,HISTORICAL_STATUS,no,yes,personal paths and environment,REWRITE_STATUS,docs/HPC.md,PR69_CI_PENDING
-docs/multi_task_phm_foundation_model.md,Proposed multi-task model guide,researchers,EXPERIMENTAL_STATUS,no,yes,missing paths and unsupported support claims,REWRITE_STATUS,SUPPORTED_COMPONENTS.md|SUPPORTED_COMBINATIONS.md,PR69_CI_PENDING
-docs/multitask_pretrain_finetune_guide.md,Proposed Pipeline03 training guide,researchers,HISTORICAL_STATUS,no,yes,invalid direct commands and unsupported metrics,REWRITE_STATUS,KNOWN_LIMITATIONS.md|docs/testing.md,PR69_CI_PENDING
+docs/HPC.md,Site-specific HPC guidance,cluster_users,STATUS_PAGE,no,yes,YCRC-specific claims and wrong entrypoint,REWRITE_STATUS,official site docs plus current CLI,PR69_CI_PASS
+docs/grace.md,Contributor-specific cluster scratch note,one_contributor,COMPAT_STATUS,no,yes,personal paths and environment,REWRITE_STATUS,docs/HPC.md,PR69_CI_PASS
+docs/past/grace.md,Historical contributor cluster scratch note,one_contributor,HISTORICAL_STATUS,no,yes,personal paths and environment,REWRITE_STATUS,docs/HPC.md,PR69_CI_PASS
+docs/multi_task_phm_foundation_model.md,Proposed multi-task model guide,researchers,EXPERIMENTAL_STATUS,no,yes,missing paths and unsupported support claims,REWRITE_STATUS,SUPPORTED_COMPONENTS.md|SUPPORTED_COMBINATIONS.md,PR69_CI_PASS
+docs/multitask_pretrain_finetune_guide.md,Proposed Pipeline03 training guide,researchers,HISTORICAL_STATUS,no,yes,invalid direct commands and unsupported metrics,REWRITE_STATUS,KNOWN_LIMITATIONS.md|docs/testing.md,PR69_CI_PASS
 docs/v0.1.0/**,v0.1.0 plans reports and decision evidence,maintainers|researchers,HISTORICAL_GROUP,partial,yes,commands and facts may be obsolete,PRESERVE_GROUP,docs/v0.1.0/README.md,GROUP_CLASSIFIED
 docs/past/**,Older guides and migration notes,maintainers|researchers,HISTORICAL_GROUP,partial,yes,commands and facts may be obsolete,PRESERVE_GROUP,docs/past/README.md,GROUP_CLASSIFIED
 configs/v0.0.9/**,Older configuration records,maintainers|researchers,HISTORICAL_GROUP,partial,yes,not maintained config surface,PRESERVE_GROUP,docs/archive policy,GROUP_CLASSIFIED
