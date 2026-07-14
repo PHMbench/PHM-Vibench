@@ -120,8 +120,8 @@ class ConditionEncoder(nn.Module):
             if key not in condition:
                 raise ValueError(f"condition missing required key: {key}")
 
-        t = torch.as_tensor(t, device=self.fault_embedding.weight.device).float()
-        t = t.reshape(-1)
+        weight = self.fault_embedding.weight
+        t = torch.as_tensor(t, device=weight.device, dtype=weight.dtype).reshape(-1)
         if not torch.isfinite(t).all():
             raise ValueError("t contains NaN/Inf")
 
