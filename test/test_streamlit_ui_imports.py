@@ -25,6 +25,8 @@ def test_ui_modules_import_with_optional_streamlit_stub(monkeypatch):
 
     _install_streamlit_stub(monkeypatch)
     modules = (
+        "apps.streamlit.onboarding",
+        "apps.streamlit.ui_onboarding",
         "apps.streamlit.ui_theme",
         "apps.streamlit.ui_runtime",
         "apps.streamlit.workspace",
