@@ -82,7 +82,8 @@ jobs:
             test/generative/test_pipeline06_import.py \
             test/generative/test_pipeline06_preflight.py \
             test/generative/test_pipeline06_dispatch.py \
-            test/generative/test_cfm_core_contract.py
+            test/generative/test_cfm_core_contract.py \
+            test/generative/test_cfm_dtype_contract.py
 
       - name: Inspect exploratory CFM configuration
         shell: bash
@@ -106,6 +107,7 @@ jobs:
             test/generative/test_pipeline06_preflight.py \
             test/generative/test_pipeline06_dispatch.py \
             test/generative/test_cfm_core_contract.py \
+            test/generative/test_cfm_dtype_contract.py \
             2>&1 | tee pipeline06-cfm-pytest.log
 
       - name: Upload focused diagnostics
