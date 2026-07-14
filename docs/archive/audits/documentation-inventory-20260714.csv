@@ -1,0 +1,65 @@
+path_or_group,purpose,audience,current_status,duplicate,outdated,factual_issue,disposition,authority,verification
+README.md,Project positioning and shortest successful path,users,MAINTAINED,no,no,no,REWRITE,README.md,PR65_CI_PASS
+README_CN.md,Chinese project positioning and shortest path,users,MAINTAINED,translation_peer,no,no,REWRITE,README.md,PR65_CI_PASS
+docs/index.md,Documentation navigation and SSOT map,all,MAINTAINED,no,no,no,ADD,docs/index.md,PR65_CI_PASS
+docs/installation.md,Installation baseline and dependency setup,users,MAINTAINED,no,no,no,ADD,docs/installation.md,PR65_CI_PASS
+docs/quickstart.md,First offline run and troubleshooting,users,MAINTAINED,no,no,no,ADD,docs/quickstart.md,PR65_CI_PASS
+docs/testing.md,Test commands and evidence terminology,developers,MAINTAINED,no,no,no,REWRITE,docs/testing.md,PR65_CI_PASS
+docs/README.md,Compatibility entry for docs directory,all,COMPAT_REDIRECT,yes,no,no,REDIRECT,docs/index.md,PR69_CI_PENDING
+docs/developer_guide.md,Current development workflow and factory boundaries,developers,MAINTAINED,no,no,no,RETAIN,docs/developer_guide.md,STATIC_REVIEW
+docs/app_usage.md,Legacy Streamlit usage entry,users,COMPAT_REDIRECT,yes,no,no,REDIRECT,apps/streamlit/README.md,PR65_CI_PASS
+apps/streamlit/README.md,Optional Streamlit workspace usage and boundaries,users|developers,MAINTAINED,no,no,no,RETAIN,apps/streamlit/README.md,STATIC_REVIEW
+apps/streamlit/REVIEW.md,Streamlit review decisions and extension boundaries,maintainers,DECISION_RECORD,no,no,no,RETAIN,apps/streamlit/REVIEW.md,STATIC_REVIEW
+docs/custom_dataset.md,Short bridge for custom dataset onboarding,users|contributors,MAINTAINED,partial,yes,stale reader contract,REWRITE,data/README.md|src/data_factory/contributing.md,PR69_CI_PENDING
+data/README.md,Data layout external sources and licensing boundary,users|contributors,MAINTAINED,no,no,no,RETAIN,data/README.md,STATIC_REVIEW
+configs/README.md,Configuration composition precedence registry and promotion,users|developers,MAINTAINED,no,no,no,REWRITE,configs/README.md,PR65_CI_PASS
+configs/base/README.md and subtree READMEs,Reusable five-block configuration documentation,developers,MAINTAINED_GROUP,partial,unknown,not fully line-reviewed,RETAIN,configs/README.md,GROUP_CLASSIFIED
+configs/demo/README.md and demo READMEs,Maintained runnable examples,users,MAINTAINED_GROUP,partial,unknown,must track registry status,RETAIN,configs/config_registry.csv,GROUP_CLASSIFIED
+configs/experiments/README.md,Boundary for local and research variants,developers,MAINTAINED,no,no,no,RETAIN,configs/experiments/README.md,STATIC_REVIEW
+configs/local/README.md,Machine-local override policy,developers,MAINTAINED,no,no,no,RETAIN,configs/local/README.md,STATIC_REVIEW
+configs/config_registry.csv,Authoritative maintained configuration inventory,developers,AUTHORITATIVE_DATA,no,no,no,RETAIN,configs/config_registry.csv,CI_VALIDATED
+docs/config_registry_schema.md,Config registry field reference,developers,MAINTAINED,no,no,no,RETAIN,configs/config_registry.csv,CI_VALIDATED
+docs/CONFIG_ATLAS.md,Generated human-readable config inventory,users|developers,GENERATED,no,no,no,RETAIN_GENERATED,configs/config_registry.csv,CI_CLEAN_DIFF
+CONTRIBUTING.md,General contribution process,contributors,MAINTAINED,no,no,no,REWRITE,CONTRIBUTING.md,PR67_CI_PASS
+CONTRIBUTING_CN.md,Chinese contribution process,contributors,MAINTAINED,translation_peer,no,no,REWRITE,CONTRIBUTING.md,PR67_CI_PASS
+contributing.md,Legacy lowercase contribution path,contributors,COMPAT_REDIRECT,yes,no,no,REDIRECT,CONTRIBUTING.md,PR67_CI_PASS
+src/data_factory/contributing.md,Data reader and adapter contribution contract,developers,MAINTAINED,no,no,no,REWRITE,CONTRIBUTING.md|runtime factory,PR67_CI_PASS
+src/model_factory/contributing.md,Model contribution contract,developers,MAINTAINED,no,no,no,REWRITE,CONTRIBUTING.md|runtime factory,PR67_CI_PASS
+src/task_factory/contributing.md,Task loss metric and sampler contribution contract,developers,MAINTAINED,no,no,no,REWRITE,CONTRIBUTING.md|runtime factory,PR67_CI_PASS
+src/trainer_factory/contributing.md,Trainer builder and extension contribution contract,developers,MAINTAINED,no,no,no,REWRITE,CONTRIBUTING.md|runtime factory,PR67_CI_PASS
+src/*_factory/README.md and component READMEs,Near-code architecture and component documentation,developers,MAINTAINED_GROUP,partial,unknown,mixed depth and not fully line-reviewed,RETAIN,local README plus central guides,GROUP_CLASSIFIED
+src/**/CLAUDE.md,Agent-facing architecture constraints,maintainers|agents,ENGINEERING_POLICY,partial,unknown,not user documentation,RETAIN,root CLAUDE.md,GROUP_CLASSIFIED
+AGENTS.md and AGENTS_CN.md,Maintainer runbook and quality gates,maintainers|agents,ENGINEERING_POLICY,partial,no,no,RETAIN,AGENTS.md,STATIC_REVIEW
+CLAUDE.md and CLAUDE_CN.md,Change strategy and architecture invariants,maintainers|agents,ENGINEERING_POLICY,partial,no,no,RETAIN,CLAUDE.md,STATIC_REVIEW
+GEMINI.md,Minimal AI assistant pointers,maintainers|agents,ENGINEERING_POLICY,no,no,no,RETAIN,GEMINI.md,STATIC_REVIEW
+CODE_OF_CONDUCT.md,Community behavior and enforcement,community,MAINTAINED,no,no,no,ADD,CODE_OF_CONDUCT.md,PR67_CI_PASS
+SECURITY.md,Private vulnerability reporting and support boundary,security_reporters,MAINTAINED,no,no,no,REWRITE,SECURITY.md,PR67_CI_PASS
+CITATION.cff,Machine-readable software citation,researchers,MAINTAINED,no,no,no,ADD,CITATION.cff,PR67_CI_PASS
+LICENSE,Repository software license,all,LEGAL_AUTHORITY,no,no,no,RETAIN,LICENSE,STATIC_REVIEW
+CHANGELOG.md,Release change history,users|release_managers,MAINTAINED,no,no,no,RETAIN,CHANGELOG.md,STATIC_REVIEW
+RELEASE_NOTES_v0.2.0.md,Version-specific release narrative,users|release_managers,RELEASE_RECORD,no,no,no,RETAIN,RELEASE_NOTES_v0.2.0.md,STATIC_REVIEW
+MIGRATION_v0.1_to_v0.2.md,Version migration guidance,users,MAINTAINED,no,no,no,RETAIN,MIGRATION_v0.1_to_v0.2.md,STATIC_REVIEW
+SUPPORTED_COMPONENTS.md,Release-supported component boundary,users|developers,AUTHORITATIVE_SUPPORT,no,no,no,RETAIN,SUPPORTED_COMPONENTS.md,STATIC_REVIEW
+SUPPORTED_COMBINATIONS.md,Release-supported combination boundary,users|developers,AUTHORITATIVE_SUPPORT,no,no,no,RETAIN,SUPPORTED_COMBINATIONS.md,STATIC_REVIEW
+KNOWN_LIMITATIONS.md,Explicit release limitations,users|developers,AUTHORITATIVE_SUPPORT,no,no,no,RETAIN,KNOWN_LIMITATIONS.md,STATIC_REVIEW
+.github/ISSUE_TEMPLATE/bug_report.md,English bug intake,users|contributors,MAINTAINED,language_peer,no,no,REWRITE,CONTRIBUTING.md|SECURITY.md,PR67_CI_PASS
+.github/ISSUE_TEMPLATE/bug-report--错误报告-cn-.md,Chinese bug intake,users|contributors,MAINTAINED,language_peer,no,no,REWRITE,CONTRIBUTING_CN.md|SECURITY.md,PR67_CI_PASS
+.github/ISSUE_TEMPLATE/feature_request.md,English feature intake,users|contributors,MAINTAINED,language_peer,no,no,REWRITE,CONTRIBUTING.md,PR67_CI_PASS
+.github/ISSUE_TEMPLATE/功能建议--feature-request-.md,Chinese feature intake,users|contributors,MAINTAINED,language_peer,no,no,REWRITE,CONTRIBUTING_CN.md,PR67_CI_PASS
+.github/PULL_REQUEST_TEMPLATE.md,PR scope evidence and rollback checklist,contributors|reviewers,MAINTAINED,no,no,no,ADD,CONTRIBUTING.md,PR67_CI_PASS
+docs/branch_governance_20260709.md,Branch governance decision record,maintainers,DECISION_RECORD,no,no,no,RETAIN,document itself,STATIC_REVIEW
+docs/REPOSITORY_OPTIMIZATION_SOP.md,Repository optimization process,maintainers,MAINTAINED_SOP,no,no,no,RETAIN,document itself,STATIC_REVIEW
+docs/PIPELINE_06_GENERATIVE_MIGRATION.md,Future generative migration contract,developers|researchers,EXPERIMENTAL_CONTRACT,no,no,no,RETAIN,document itself,STATIC_REVIEW
+docs/HPC.md,Site-specific HPC guidance,cluster_users,STATUS_PAGE,no,yes,YCRC-specific claims and wrong entrypoint,REWRITE_STATUS,official site docs plus current CLI,PR69_CI_PENDING
+docs/grace.md,Contributor-specific cluster scratch note,one_contributor,COMPAT_STATUS,no,yes,personal paths and environment,REWRITE_STATUS,docs/HPC.md,PR69_CI_PENDING
+docs/past/grace.md,Historical contributor cluster scratch note,one_contributor,HISTORICAL_STATUS,no,yes,personal paths and environment,REWRITE_STATUS,docs/HPC.md,PR69_CI_PENDING
+docs/multi_task_phm_foundation_model.md,Proposed multi-task model guide,researchers,EXPERIMENTAL_STATUS,no,yes,missing paths and unsupported support claims,REWRITE_STATUS,SUPPORTED_COMPONENTS.md|SUPPORTED_COMBINATIONS.md,PR69_CI_PENDING
+docs/multitask_pretrain_finetune_guide.md,Proposed Pipeline03 training guide,researchers,HISTORICAL_STATUS,no,yes,invalid direct commands and unsupported metrics,REWRITE_STATUS,KNOWN_LIMITATIONS.md|docs/testing.md,PR69_CI_PENDING
+docs/v0.1.0/**,v0.1.0 plans reports and decision evidence,maintainers|researchers,HISTORICAL_GROUP,partial,yes,commands and facts may be obsolete,PRESERVE_GROUP,docs/v0.1.0/README.md,GROUP_CLASSIFIED
+docs/past/**,Older guides and migration notes,maintainers|researchers,HISTORICAL_GROUP,partial,yes,commands and facts may be obsolete,PRESERVE_GROUP,docs/past/README.md,GROUP_CLASSIFIED
+configs/v0.0.9/**,Older configuration records,maintainers|researchers,HISTORICAL_GROUP,partial,yes,not maintained config surface,PRESERVE_GROUP,docs/archive policy,GROUP_CLASSIFIED
+dev/** and dev/**/README*,Development experiments logs and scratch documentation,developers|researchers,DEVELOPMENT_GROUP,unknown,unknown,not fully inventoried as maintained docs,PRESERVE_REVIEW_REQUIRED,dev/README.md,GROUP_CLASSIFIED
+paper/**,Paper sources notes and experiment records,researchers,RESEARCH_GROUP,unknown,unknown,requires claim provenance and publication context,PRESERVE_REVIEW_REQUIRED,each paper README,GROUP_CLASSIFIED
+examples/README.md,Examples directory boundary,users|developers,MAINTAINED,no,no,no,RETAIN,examples/README.md,STATIC_REVIEW
+scripts/README.md,Utility script index,developers,MAINTAINED,no,no,no,RETAIN,scripts/README.md,STATIC_REVIEW
+source-code module docstrings and long comments,API and implementation explanation,developers,MIXED_GROUP,unknown,unknown,some act as unofficial docs,AUDIT_WHEN_TOUCHED,near-code README plus tests,GROUP_CLASSIFIED
