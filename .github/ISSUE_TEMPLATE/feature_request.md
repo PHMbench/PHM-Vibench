@@ -1,7 +1,7 @@
 ---
 name: Feature request
 about: Propose a bounded PHM-Vibench capability
- title: "[FEAT] "
+title: "[FEAT] "
 labels: enhancement
 assignees: ''
 ---
