@@ -377,11 +377,7 @@ def main() -> None:
             preview_config = {}
             configuration_has_error = True
 
-    data_status = assess_template_data(
-        repo_root,
-        preview_config if preview_config else runtime_report.resolved,
-        profile,
-    )
+    data_status = assess_template_data(repo_root, preview_config, profile)
     render_template_data_status(data_status)
     if not data_status.ready and selected_id != catalog.default_template_id:
         if st.button(
