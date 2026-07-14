@@ -58,8 +58,20 @@ class Model(nn.Module):
             raise ValueError(
                 f"x_t channel mismatch: expected {self.channels}, got {x_t.shape[1]}"
             )
+        if not torch.is_floating_point(x_t):
+            raise ValueError(f"x_t must be floating point, got {x_t.dtype}")
         if not torch.isfinite(x_t).all():
             raise ValueError("x_t contains NaN/Inf")
+
+        parameter = self.input_projection.weight
+        if x_t.device != parameter.device:
+            raise ValueError(
+                f"x_t device mismatch: input={x_t.device}, model={parameter.device}"
+            )
+        if x_t.dtype != parameter.dtype:
+            raise ValueError(
+                f"x_t dtype mismatch: input={x_t.dtype}, model={parameter.dtype}"
+            )
 
         t = torch.as_tensor(t, device=x_t.device, dtype=x_t.dtype).reshape(-1)
         if t.numel() != x_t.shape[0]:
@@ -70,13 +82,21 @@ class Model(nn.Module):
             raise ValueError("t contains NaN/Inf")
 
         condition_embedding = self.condition_encoder(condition, t)
-        hidden = self.input_projection(x_t.float())
+        hidden = self.input_projection(x_t)
         hidden = self.conditioning(hidden, condition_embedding)
         velocity = self.velocity_head(hidden)
 
         if velocity.shape != x_t.shape:
             raise ValueError(
                 f"velocity shape mismatch: {tuple(velocity.shape)} vs {tuple(x_t.shape)}"
+            )
+        if velocity.dtype != x_t.dtype:
+            raise ValueError(
+                f"velocity dtype mismatch: {velocity.dtype} vs {x_t.dtype}"
+            )
+        if velocity.device != x_t.device:
+            raise ValueError(
+                f"velocity device mismatch: {velocity.device} vs {x_t.device}"
             )
         if not torch.isfinite(velocity).all():
             raise ValueError("predicted velocity contains NaN/Inf")
