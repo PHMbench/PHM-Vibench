@@ -17,66 +17,36 @@
   </p>
 </div>
 
-PHM-Vibench 将数据加载、模型构建、任务装配、训练和实验配置统一到一个维护入口：
+PHM-Vibench 通过一个维护中的入口连接数据加载、模型构建、任务逻辑、训练和实验配置：
 
 ```bash
 python main.py --config <yaml> [--override key=value ...]
 ```
 
-项目仍处于 alpha 阶段。当前 release-supported surface 明显小于仓库中全部文件和注册表条目。
-请从维护中的 demo 开始；历史、参考和研究材料在没有独立运行证据前，不应视为已验证能力。
+项目仍处于 alpha 阶段。仓库中的文件或注册表条目数量大于当前 release-supported surface。
+组件可被发现或导入，并不等于其已受支持；支持声明需要维护配置和运行证据。
 
-## 从这里开始
+## 当前维护范围
 
-运行仓库自带的离线冒烟 demo：
+当前公开维护面包含 7 个 demo，覆盖：
 
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1 \
-  --override data.num_workers=0
-```
+- 使用 Dummy 数据的离线域泛化（DG）冒烟路径；
+- 跨域 DG；
+- 跨系统/跨数据集域泛化（CDDG）；
+- 小样本（FS）和广义小样本（GFS）分类；
+- 两个边界明确的 HSE 预训练视角。
 
-在不修改维护 YAML 的情况下检查最终配置：
+准确的模型、任务、pipeline、数据和 trainer 组合见：
 
-```bash
-python -m scripts.config_inspect \
-  --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1
-```
-
-权威入口：
-
-- [配置系统指南](configs/README.md)
-- [生成的配置图谱](docs/CONFIG_ATLAS.md)
 - [支持组件](SUPPORTED_COMPONENTS.md)
 - [支持组合](SUPPORTED_COMBINATIONS.md)
 - [已知限制](KNOWN_LIMITATIONS.md)
-- [数据目录边界](data/README.md)
-- [贡献指南](CONTRIBUTING_CN.md)
 
-## 维护中的 demo 面
-
-配置注册表当前将 7 个 demo 标记为 `sanity_ok`。该状态只代表配置具有功能冒烟证据，
-不代表基准精度、SOTA 性能或任意组件之间都兼容。
-
-| 场景 | 配置 | 数据要求 |
-| --- | --- | --- |
-| 离线冒烟 / DG | `configs/demo/00_smoke/dummy_dg.yaml` | 仓库自带 Dummy 数据 |
-| 跨域 DG | `configs/demo/01_cross_domain/cwru_dg.yaml` | 本地 PHM-Vibench metadata/raw 数据 |
-| 跨系统 CDDG | `configs/demo/02_cross_system/multi_system_cddg.yaml` | 本地 PHM-Vibench metadata/raw 数据 |
-| 小样本 FS | `configs/demo/03_fewshot/cwru_protonet.yaml` | 本地 PHM-Vibench metadata/raw 数据 |
-| 跨系统小样本 GFS | `configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml` | 本地 PHM-Vibench metadata/raw 数据 |
-| HSE 预训练视角 | `configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml` | 本地 PHM-Vibench metadata/raw 数据 |
-| 面向 CDDG 的 HSE 预训练 | `configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml` | 本地 PHM-Vibench metadata/raw 数据 |
-
-当前 v0.2.0 支持文档将维护模型路径限定为 `ISFM/M_01_ISFM`、`E_01_HSE`、
-`B_04_Dlinear`、`H_01_Linear_cla`，以及
-[SUPPORTED_COMPONENTS.md](SUPPORTED_COMPONENTS.md) 中列出的任务组合。
-注册表中存在条目本身并不构成支持声明。
+冒烟证据只说明软件路径能够运行，不代表基准精度、SOTA 性能、任意兼容性或数据再分发权利。
 
 ## 安装
 
-最小环境示例：
+Python 3.10 是当前文档和 CI 基线。
 
 ```bash
 git clone https://github.com/PHMbench/PHM-Vibench.git
@@ -84,34 +54,49 @@ cd PHM-Vibench
 
 conda create -n phm-vibench python=3.10
 conda activate phm-vibench
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-维护中的运行证据来自项目专用的 `LQ_signal` conda 环境。通用环境仍可能需要依赖或平台调整，
-详见 [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)。
+CPU-only PyTorch、CUDA 选择、平台边界和环境检查见[安装指南](docs/installation.md)。
 
-只有 Dummy 冒烟 demo 完全离线。其他 demo 应通过 override 指向本地数据根目录，
-不要直接修改维护配置：
+## 运行离线冒烟实验
+
+以下命令使用仓库自带的 Dummy 数据和 CPU：
 
 ```bash
-python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/PHM-Vibench-data \
-  --override data.metadata_file=metadata.xlsx \
+python main.py \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
   --override trainer.num_epochs=1 \
   --override data.num_workers=0
 ```
 
-处理后或原始数据也可能位于：
+成功运行应以退出码 `0` 结束，打印完成信息，并在以下目录下生成产物：
 
-- [ModelScope 处理后文件](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
-- [PHMbench 原始数据组](https://www.modelscope.cn/datasets/PHMbench/PHMbench-raw_data)
-- [Hugging Face 镜像](https://huggingface.co/datasets/PHMbench/PHM-Vibench/tree/main)
+```text
+results/demo/dummy_dg_smoke/
+```
 
-使用或再分发前必须核验来源许可和可用性。
+配置检查、预期证据、外部数据 override 和后续实验步骤见[快速开始](docs/quickstart.md)。
+
+## 文档导航
+
+- [文档索引](docs/index.md)
+- [安装](docs/installation.md)
+- [快速开始](docs/quickstart.md)
+- [配置系统](configs/README.md)
+- [生成的配置图谱](docs/CONFIG_ATLAS.md)
+- [数据目录与许可边界](data/README.md)
+- [测试与证据](docs/testing.md)
+- [故障排查](docs/troubleshooting.md)
+- [开发者指南](docs/developer_guide.md)
+- [中文贡献指南](CONTRIBUTING_CN.md)
+
+历史、论文、开发日志和 Agent 工作流材料不属于当前用户路径。
+其状态和保留规则记录在[文档审计](docs/DOCUMENTATION_AUDIT.md)中。
 
 ## 配置优先工作流
 
-维护配置由五个逻辑块组成：
+维护配置使用五个逻辑段：
 
 ```yaml
 environment: {}
@@ -121,107 +106,80 @@ task: {}
 trainer: {}
 ```
 
-Demo 通过 `base_configs` 组合共享 block，再应用 YAML 和 CLI override。建立实验变体时：
-
-1. 从 `configs/demo/` 复制最接近的模板到 `configs/experiments/`；
-2. 只修改实验真正需要的字段；
-3. 检查最终配置和字段来源；
-4. 运行最小适用冒烟命令；
-5. 若要提升为维护配置，同步更新注册表和生成的 atlas。
-
-常用命令：
+个人实验变体应放在 `configs/experiments/`，不要直接修改维护 demo。运行前先检查解析后的值和来源：
 
 ```bash
-python -m scripts.validate_configs
-python -m scripts.config_inspect --config <yaml> --override key=value
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-```
-
-## 合并前验证门禁
-
-开发时先运行最聚焦的测试；运行时或配置改动在合并前应执行维护门禁：
-
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1 \
-  --override data.num_workers=0
-python -m scripts.validate_configs
 python -m scripts.config_inspect \
   --config configs/demo/00_smoke/dummy_dg.yaml \
   --override trainer.num_epochs=1
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-python -m scripts.validate_docs
-python -m pytest test/ -q
 ```
 
-本地验证证据不能表述为 GitHub Actions 证据。仓库仍需要启用并设为 required 的 CI workflow，
-才能自动执行这些门禁。
+`configs/config_registry.csv` 是配置清单的事实源；`docs/CONFIG_ATLAS.md` 由它生成，
+不应手工编辑。
+
+## 仓库结构
+
+```text
+configs/             base block、维护 demo、实验配置与注册表
+src/data_factory/    metadata、reader、dataset、sampler 与数据构建
+src/model_factory/   模型家族、组件与模型构建
+src/task_factory/    任务实现、loss、metric 与任务注册表
+src/trainer_factory/ trainer 构建与扩展
+apps/streamlit/      围绕公开 CLI 的可选浏览器工作区
+docs/                用户、开发、release、迁移与设计文档
+test/                维护中的 pytest 测试集
+```
+
+扩展应留在现有 factory 边界内，不要在 `main.py` 中增加模型或数据集专用分支。
+
+## 验证改动
+
+开发时先运行最聚焦的测试。运行时或配置改动合并前，应执行适用的维护门禁：
+
+```bash
+python -m scripts.validate_docs
+python -m scripts.validate_configs
+python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+python -m pytest test/ -q
+python main.py \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
+
+当前分支实际自动执行的任务以 `.github/workflows/core-quality-gates.yml` 为准。
+本地输出不能表述为 GitHub Actions 证据。详见[测试与证据](docs/testing.md)。
 
 ## 可选 Streamlit 工作区
 
-Streamlit 工作区是同一配置优先契约的可选界面。它不替代 CLI release gate，
-也不应直接导入 pipeline 内部实现。
+Streamlit 工作区是围绕同一配置优先 CLI 的可选适配层，不是第二套训练框架。
 
 ```bash
-streamlit run streamlit_app.py
+python -m pip install -r apps/streamlit/requirements.txt
+streamlit run apps/streamlit/app.py
 ```
 
-配置、运行、结果查看和聚焦测试见[维护中的 Streamlit 指南](apps/streamlit/README.md)。
+使用说明见 [Streamlit 指南](docs/app_usage.md)。
 
-## 架构
+## 参与贡献
 
-```text
-main.py
-  └── 由 YAML 选择 pipeline
-      ├── data factory
-      ├── model factory
-      ├── task factory
-      └── trainer factory
-```
+提交 Issue 或 PR 前请阅读 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。
+公开组件贡献应包含实现、注册表/配置可追踪性、聚焦测试、文档、适用的冒烟路径和明确兼容边界。
 
-主要目录：
+Factory 专项说明：
 
-- `configs/`：base block、维护 demo、实验配置和注册表
-- `src/data_factory/`：metadata、reader、dataset、sampler 与数据构建
-- `src/model_factory/`：模型家族、组件注册表与模型构建
-- `src/task_factory/`：任务实现和任务注册表
-- `src/trainer_factory/`：训练器实现
-- `apps/streamlit/`：可选实验工作区
-- `test/`：维护中的 pytest 门禁
-- `docs/`：release、配置、迁移和工程文档
-- `results/`：运行输出，不是配置事实来源
+- [数据与 reader](src/data_factory/contributing.md)
+- [模型](src/model_factory/contributing.md)
+- [任务](src/task_factory/contributing.md)
+- [Trainer](src/trainer_factory/contributing.md)
 
-## 扩展 PHM-Vibench
+## 引用、许可与支持
 
-扩展应留在 factory 边界内，不要在 `main.py` 中加入模型或数据集专用分支。
+在稳定论文或 DOI 发布前，请记录并引用实验使用的准确 Git tag 或 commit。
+不要从 Dummy 冒烟结果或注册表清单推导科学结论。
 
-- [添加数据集或 reader](src/data_factory/contributing.md)
-- [添加模型](src/model_factory/contributing.md)
-- [添加任务](src/task_factory/contributing.md)
-- [添加训练器](src/trainer_factory/contributing.md)
+PHM-Vibench 源代码使用 [Apache License 2.0](LICENSE)。数据集、预训练权重和第三方模型
+可能适用其原始来源的独立许可。
 
-公开组件改动应同时包含实现、注册表或配置入口、聚焦测试、文档和适用的冒烟路径。
-研究想法在协议与验证证据明确前，应留在清楚标注的 project 或 experiment 区域。
-
-## 证据边界
-
-PHM-Vibench 当前为有限配置矩阵提供功能冒烟和契约证据。它本身不能证明：
-
-- 达到 SOTA 性能；
-- 任意外部实验之间都能公平比较；
-- 所有注册表组件组合均受支持；
-- 所有引用数据集都可获得或允许再分发；
-- 在未记录的数据与环境设置下仍可复现。
-
-报告实验时，应记录准确的仓库 commit、配置、override、数据来源、随机种子和运行环境。
-
-## 贡献、许可与引用
-
-提交 PR 前请阅读 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。每个改动应保持小、明确、可审查，
-并给出可复制的验证命令。
-
-PHM-Vibench 使用 [Apache License 2.0](LICENSE)。数据集和模型产物可能适用其原始来源的独立许可。
-
-项目仍处于 alpha 阶段。在稳定论文引用发布前，请引用实验所使用的准确 Git commit 或 release tag。
+可复现 Bug 和功能建议请使用 GitHub Issues。不要公开提交安全漏洞；请遵循 [SECURITY.md](SECURITY.md)。
