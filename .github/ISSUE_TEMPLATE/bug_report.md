@@ -1,36 +1,77 @@
 ---
 name: Bug report
-about: Create a report to help us improve PHMbench
-title: "[BUG] <Your concise title here>"
+about: Report a reproducible PHM-Vibench defect
+title: "[BUG] "
 labels: bug
 assignees: ''
-
 ---
 
-### ✅ Prerequisite Checklist
-- [ ] I have searched the existing [Issues](<YOUR_REPO_URL>/issues) and confirmed that this is not a duplicate.
-- [ ] I am testing on the latest `main` branch and the problem still exists.
-- [ ] I have read the project's [Contributing Guidelines](<YOUR_REPO_URL>/blob/main/contributing.md).
-- [ ] I will provide a **minimal** and reproducible configuration file to help pinpoint the issue.
+## Prerequisites
 
----
+- [ ] I searched existing [issues](https://github.com/PHMbench/PHM-Vibench/issues).
+- [ ] I reproduced the problem on a current commit or stated release tag.
+- [ ] I read the [contributor guide](../../CONTRIBUTING.md).
+- [ ] This is not a security vulnerability. Security reports follow [SECURITY.md](../../SECURITY.md).
 
-### 1. Bug Description
-A clear and concise description of what the bug is.
+## Problem
 
-### 2. To Reproduce
-Steps to reproduce the behavior:
-1. Dataset used: (e.g., 'CWRU')
-2. Configuration file used: (Please attach or paste your `.yaml` config file)
-3. Command run: (e.g., `python src/main.py --config-name=...`)
-4. Then... (Describe your actions)
-5. See error...
+Describe the defect and its impact. State whether it affects configuration,
+data, model, task, trainer, CLI, Streamlit, checkpoint, or artifact behavior.
 
-### 3. Expected Behavior
-A clear and concise description of what you expected to happen.
+## Reproduction
 
-### 4. Actual Behavior
-A clear and concise description of what actually happened. If applicable, add the full error log or screenshots.
+1. Repository commit or tag:
+2. Config file:
+3. CLI overrides:
+4. Data source/fixture:
+5. Exact command:
+6. Stable reproduction steps:
 
-```log
-<-- Paste your full error log here -->
+Use the maintained entrypoint, for example:
+
+```bash
+python main.py \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
+
+Attach the smallest legal config/data fixture that reproduces the problem.
+Remove credentials, private data, and machine-specific secrets.
+
+## Expected behavior
+
+Describe the expected output, state transition, error, metric, or artifact.
+
+## Actual behavior
+
+Include the exit code and complete traceback/log.
+
+```text
+paste log here
+```
+
+## Environment
+
+```text
+Operating system:
+CPU/GPU:
+Python:
+PyTorch:
+CUDA runtime/driver:
+PyTorch Lightning:
+Other relevant packages:
+```
+
+Helpful commands:
+
+```bash
+git rev-parse HEAD
+python --version
+python -m pip freeze
+```
+
+## Additional evidence
+
+Include screenshots, output-tree excerpts, checkpoints, or related issues only
+when they help reproduce or isolate the defect.
