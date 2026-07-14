@@ -1,31 +1,62 @@
 ---
 name: Feature request
-about: Suggest an idea for PHMbench
-title: "[FEAT] <Your feature request title here>"
+about: Propose a bounded PHM-Vibench capability
+ title: "[FEAT] "
 labels: enhancement
 assignees: ''
-
 ---
 
-### ✅ Prerequisite Checklist
-- [ ] I have searched the existing [Issues](<YOUR_repo_URL>/issues) and confirmed that this is not a duplicate feature request.
-- [ ] I have considered the impact of this feature on the overall project architecture and maintainability.
-- [ ] This feature request aligns with the project's general design philosophy and scope.
+## Prerequisites
 
----
+- [ ] I searched existing [issues](https://github.com/PHMbench/PHM-Vibench/issues) and discussions.
+- [ ] I read the [contributor guide](../../CONTRIBUTING.md) and [known limitations](../../KNOWN_LIMITATIONS.md).
+- [ ] I considered a simpler config, documentation, or extension-point solution.
 
-### 1. Is your feature request related to a problem?
-A clear and concise description of what the problem is. Ex. "I'm always frustrated when [...] because [...]"
+## Use case
 
-### 2. Describe the solution you'd like
-A clear and concise description of what you want to happen.
-* **For the user**: How would this new feature work?
-* **For the developer**: Which modules might need modification? (e.g., `data_factory`, `model_factory`, `task_factory`)
+Who needs this capability, for what workflow, and with what data/model/task?
 
-### 3. Describe alternatives you've considered
-A clear and concise description of any alternative solutions or features you've considered.
+## Current limitation
 
-### 4. Additional Context
-Add any other context or screenshots about the feature request here.
-* If you are proposing a new algorithm or model, you can include links to relevant papers.
-* If it's about structural changes, you could illustrate the proposed directory structure.
+Describe the current behavior and why existing configs, factories, components, or
+external tools do not solve the problem adequately.
+
+## Proposed behavior
+
+Describe the smallest useful behavior and measurable acceptance criteria.
+
+## Alternatives considered
+
+Include simpler workarounds, out-of-repository solutions, or narrower scope.
+
+## Architecture and compatibility
+
+```text
+Affected entrypoint/pipeline:
+Affected factory or registry:
+New/changed config keys:
+Input/output or batch contract:
+Backward compatibility:
+Invalid combinations to reject:
+Dependencies/hardware/data required:
+```
+
+Explain why the feature belongs in PHM-Vibench and whether it changes the
+release-supported surface.
+
+## Testing and evidence plan
+
+List the focused unit/contract tests, config inspection, smoke command, negative
+cases, and documentation required. Synthetic data can validate software paths but
+cannot establish scientific performance.
+
+## Maintenance and risks
+
+Describe ongoing maintenance cost, optional dependencies, data/license concerns,
+security implications, migration needs, and what remains unsupported.
+
+## References
+
+Link primary papers, standards, datasets, licenses, or prior implementations when
+relevant. Do not use a paper citation as evidence that the repository implementation
+already works.
