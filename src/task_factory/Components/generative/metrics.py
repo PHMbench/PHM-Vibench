@@ -14,6 +14,7 @@ REQUIRED_METRICS = (
     "duplicate_rate",
     "downstream_classifier_utility",
     "fid_like_embedding_distance",
+    "training_wall_clock_seconds",
 )
 
 
@@ -64,15 +65,22 @@ def _feature_embedding(windows: torch.Tensor) -> torch.Tensor:
     absolute_mean = windows.abs().mean(dim=2)
     spectrum = torch.fft.rfft(windows, dim=2, norm="ortho").abs()
     frequency_bins = spectrum.shape[2]
-    band_edges = [0, frequency_bins // 4, frequency_bins // 2, 3 * frequency_bins // 4, frequency_bins]
-    band_features = []
-    for start, end in zip(band_edges[:-1], band_edges[1:]):
-        if end <= start:
-            band_features.append(torch.zeros_like(mean))
-        else:
-            band_features.append(spectrum[:, :, start:end].mean(dim=2))
+    edges = [
+        0,
+        frequency_bins // 4,
+        frequency_bins // 2,
+        3 * frequency_bins // 4,
+        frequency_bins,
+    ]
+    bands = []
+    for start, end in zip(edges[:-1], edges[1:]):
+        bands.append(
+            spectrum[:, :, start:end].mean(dim=2)
+            if end > start
+            else torch.zeros_like(mean)
+        )
     return torch.cat(
-        [mean, standard_deviation, rms, absolute_mean, *band_features],
+        [mean, standard_deviation, rms, absolute_mean, *bands],
         dim=1,
     )
 
@@ -119,33 +127,21 @@ def _condition_distance(
     real_domains: torch.Tensor,
     fake_domains: torch.Tensor,
 ) -> float:
-    keys = sorted(
-        set(zip(real_labels.tolist(), real_domains.tolist()))
-        | set(zip(fake_labels.tolist(), fake_domains.tolist()))
-    )
-    real_counts = {
-        key: sum(
-            1
-            for label, domain in zip(real_labels.tolist(), real_domains.tolist())
-            if (label, domain) == key
+    real_pairs = list(zip(real_labels.tolist(), real_domains.tolist()))
+    fake_pairs = list(zip(fake_labels.tolist(), fake_domains.tolist()))
+    keys = sorted(set(real_pairs) | set(fake_pairs))
+    real_total = max(1, len(real_pairs))
+    fake_total = max(1, len(fake_pairs))
+    return float(
+        0.5
+        * sum(
+            abs(
+                real_pairs.count(key) / real_total
+                - fake_pairs.count(key) / fake_total
+            )
+            for key in keys
         )
-        for key in keys
-    }
-    fake_counts = {
-        key: sum(
-            1
-            for label, domain in zip(fake_labels.tolist(), fake_domains.tolist())
-            if (label, domain) == key
-        )
-        for key in keys
-    }
-    real_total = max(1, int(real_labels.numel()))
-    fake_total = max(1, int(fake_labels.numel()))
-    total_variation = 0.5 * sum(
-        abs(real_counts[key] / real_total - fake_counts[key] / fake_total)
-        for key in keys
     )
-    return float(total_variation)
 
 
 def _leakage_values(
@@ -155,9 +151,10 @@ def _leakage_values(
 ) -> tuple[float, float]:
     if duplicate_threshold < 0:
         raise ValueError("duplicate_threshold must be non-negative")
-    real_flat = real.reshape(real.shape[0], -1)
-    fake_flat = fake.reshape(fake.shape[0], -1)
-    distances = torch.cdist(fake_flat, real_flat)
+    distances = torch.cdist(
+        fake.reshape(fake.shape[0], -1),
+        real.reshape(real.shape[0], -1),
+    )
     nearest = distances.min(dim=1).values
     return (
         float(nearest.mean().item()),
@@ -174,15 +171,10 @@ def _nearest_centroid_accuracy(
     classes = torch.unique(train_labels)
     if classes.numel() < 2:
         raise ValueError("at least two generated label classes are required")
-    centroids = []
-    for label in classes:
-        class_features = train_features[train_labels == label]
-        if class_features.shape[0] == 0:
-            raise ValueError(f"generated class {int(label)} has no samples")
-        centroids.append(class_features.mean(dim=0))
-    centroid_tensor = torch.stack(centroids)
-    distances = torch.cdist(test_features, centroid_tensor)
-    predictions = classes[distances.argmin(dim=1)]
+    centroids = torch.stack(
+        [train_features[train_labels == label].mean(dim=0) for label in classes]
+    )
+    predictions = classes[torch.cdist(test_features, centroids).argmin(dim=1)]
     return float((predictions == test_labels).float().mean().item())
 
 
@@ -204,14 +196,10 @@ def _fid_like_distance(real: torch.Tensor, fake: torch.Tensor) -> float:
     return float((mean_term + covariance_term).clamp_min(0.0).item())
 
 
-def _safe_metric(
-    callback: Callable[[], float],
-    *,
-    not_computable_exceptions: tuple[type[BaseException], ...] = (ValueError,),
-) -> dict[str, Any]:
+def _safe_metric(callback: Callable[[], float]) -> dict[str, Any]:
     try:
         value = callback()
-    except not_computable_exceptions as exc:
+    except ValueError as exc:
         return _metric_result(None, status="not_computable", reason=str(exc))
     except Exception as exc:  # pragma: no cover - defensive evidence boundary.
         return _metric_result(None, status="failed", reason=repr(exc))
@@ -233,8 +221,9 @@ def evaluate_smoke_metrics(
     real_domains: torch.Tensor | None = None,
     fake_domains: torch.Tensor | None = None,
     duplicate_threshold: float = 1e-6,
+    training_wall_clock_seconds: float | None = None,
 ) -> dict[str, Any]:
-    """Compute the required structured Pipeline 06 smoke metric bundle."""
+    """Compute the eight required structured Pipeline 06 smoke metrics."""
 
     real_tensor, fake_tensor = _validate_windows(real, fake)
     real_labels = _label_vector(real_labels, real_tensor.shape[0])
@@ -270,22 +259,22 @@ def evaluate_smoke_metrics(
             )
         )
 
-    leakage_result = _safe_metric(
+    leakage = _safe_metric(
         lambda: _leakage_values(
             real_tensor,
             fake_tensor,
             duplicate_threshold,
         )[0]
     )
-    duplicate_result = _safe_metric(
+    duplicates = _safe_metric(
         lambda: _leakage_values(
             real_tensor,
             fake_tensor,
             duplicate_threshold,
         )[1]
     )
-    metrics["nearest_neighbor_leakage_l2"] = leakage_result
-    metrics["duplicate_rate"] = duplicate_result
+    metrics["nearest_neighbor_leakage_l2"] = leakage
+    metrics["duplicate_rate"] = duplicates
 
     if real_labels is None or fake_labels is None:
         metrics["downstream_classifier_utility"] = _metric_result(
@@ -305,6 +294,16 @@ def evaluate_smoke_metrics(
 
     metrics["fid_like_embedding_distance"] = _safe_metric(
         lambda: _fid_like_distance(real_tensor, fake_tensor)
+    )
+    metrics["training_wall_clock_seconds"] = (
+        _safe_metric(lambda: float(training_wall_clock_seconds))
+        if training_wall_clock_seconds is not None
+        and float(training_wall_clock_seconds) >= 0.0
+        else _metric_result(
+            None,
+            status="not_computable",
+            reason="training stage ledger does not contain a finite wall-clock value",
+        )
     )
     metrics["summary"] = {
         "required": list(REQUIRED_METRICS),
