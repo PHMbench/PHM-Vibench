@@ -1,37 +1,75 @@
 ---
-name: Bug Report (错误报告 CN)
-about: 创建一个报告来帮助我们改进 PHMbench
-title: "[BUG] <请在此处填写简明扼要的标题>"
+name: Bug 报告（中文）
+about: 报告可复现的 PHM-Vibench 缺陷
+title: "[BUG] "
 labels: bug
 assignees: ''
-
 ---
 
-### ✅ 前置检查清单 (Prerequisite Checklist)
-- [ ] 我已经搜索过现有的 [Issues](<YOUR_REPO_URL>/issues)，确认没有重复的问题。
-- [ ] 我正在最新的 `main` 分支上进行测试，并且此问题依然存在。
-- [ ] 我已经阅读了项目的 [贡献指南](<YOUR_REPO_URL>/blob/main/contributing.md)。
-- [ ] 我将提供一个**最小化**、可复现的配置文件来帮助定位问题。
+## 提交前检查
 
----
+- [ ] 我已搜索现有 [Issues](https://github.com/PHMbench/PHM-Vibench/issues)。
+- [ ] 我已在当前 commit 或明确的 release tag 上复现问题。
+- [ ] 我已阅读[中文贡献指南](../../CONTRIBUTING_CN.md)。
+- [ ] 这不是安全漏洞；安全问题应遵循 [SECURITY.md](../../SECURITY.md)。
 
-### 1. Bug 描述 (Bug Description)
-请清晰简洁地描述这个 Bug 是什么。
+## 问题描述
 
-### 2. 复现步骤 (To Reproduce)
-请提供可以稳定复现此 Bug 的步骤：
-1. 使用的数据集名称：(例如, 'CWRU')
-2. 使用的配置文件：(请附上或粘贴您的 `.yaml` 配置文件内容)
-3. 运行的命令：(例如, `python src/main.py --config-name=...`)
-4. 然后... (描述您进行的操作)
-5. 最后出现错误...
+说明缺陷和影响，并指出它涉及 config、data、model、task、trainer、CLI、
+Streamlit、checkpoint 还是 artifact。
 
-### 3. 预期行为 (Expected Behavior)
-请描述您原本期望发生什么。
+## 复现信息
 
-### 4. 实际行为 (Actual Behavior)
-请描述实际发生了什么，如果可能，请附上完整的错误日志或截图。
-（请将代码块或日志粘贴在下方的代码区域中）
+1. 仓库 commit 或 tag：
+2. 配置文件：
+3. CLI overrides：
+4. 数据来源或 fixture：
+5. 完整命令：
+6. 可稳定复现的步骤：
 
-```log
-<-- 在这里粘贴您的错误日志 -->
+请使用维护入口，例如：
+
+```bash
+python main.py \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
+
+请提供合法可共享的最小配置或数据 fixture，并移除凭据、私有数据和本机秘密。
+
+## 预期行为
+
+说明预期输出、状态变化、错误、指标或 artifact。
+
+## 实际行为
+
+请附退出码和完整 traceback/log：
+
+```text
+在此粘贴日志
+```
+
+## 环境
+
+```text
+操作系统：
+CPU/GPU：
+Python：
+PyTorch：
+CUDA runtime/driver：
+PyTorch Lightning：
+其他相关包：
+```
+
+可使用：
+
+```bash
+git rev-parse HEAD
+python --version
+python -m pip freeze
+```
+
+## 其他证据
+
+仅在有助于复现或定位问题时附截图、输出目录、checkpoint 或相关 Issue。
