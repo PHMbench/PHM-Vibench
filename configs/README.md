@@ -1,93 +1,149 @@
-# Config System (v0.1.0)
+# Configuration System
 
-This folder defines experiments via a 5-block configuration model:
-`environment` / `data` / `model` / `task` / `trainer`.
+This page is the maintained authority for PHM-Vibench configuration composition,
+precedence, inspection, and registry maintenance.
 
-The **single recommended entrypoint** is:
+The public runtime entrypoint is:
 
 ```bash
 python main.py --config <yaml> [--override key=value ...]
 ```
 
-## 30-Second Smoke Run (No External Data)
+For environment setup and the first successful run, use the
+[installation guide](../docs/installation.md) and
+[quickstart](../docs/quickstart.md) instead of duplicating those procedures here.
 
-1) Run the repo-shipped dummy demo:
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
+## Five-block model
+
+Maintained configurations use:
+
+```yaml
+environment: {}
+data: {}
+model: {}
+task: {}
+trainer: {}
 ```
 
-2) Find outputs:
+A top-level `pipeline` selects the pipeline module. New datasets, models, tasks,
+and trainers should normally extend their factory rather than require a new
+pipeline.
+
+## Composition and precedence
+
+Configuration values are applied from lower to higher precedence:
+
+1. YAML files referenced by `base_configs`;
+2. blocks in the selected experiment YAML;
+3. optional machine-local values from `configs/local/local.yaml`;
+4. repeatable CLI `--override key=value` arguments.
+
+Machine paths, credentials, and workstation-specific settings belong in local
+configuration or CLI overrides, not maintained demo files.
+
+## Maintained directories
+
+- `configs/base/` — reusable environment, data, model, task, and trainer blocks;
+- `configs/demo/` — maintained user-facing examples;
+- `configs/experiments/` — local or research variants that are not automatically
+  release-supported;
+- `configs/local/` — untracked machine-local values, with tracked examples and
+  documentation;
+- `configs/reference/` and versioned historical directories — reference material,
+  not the maintained quickstart surface.
+
+Start a local experiment by copying the nearest maintained demo into
+`configs/experiments/` and changing only required behavior-affecting values.
+
+## Inspect a resolved configuration
+
 ```bash
-ls -la results/demo/dummy_dg_smoke
+python -m scripts.config_inspect \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1
 ```
 
-If you want a fast sanity run for any config:
+Useful views:
+
 ```bash
-python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override trainer.num_epochs=1 --override data.num_workers=0
+python -m scripts.config_inspect --config <yaml> --dump resolved --format yaml
+python -m scripts.config_inspect --config <yaml> --dump sources --format md
+python -m scripts.config_inspect --config <yaml> --dump targets --format json
 ```
 
-## How Config Composition Works
+The inspector returns non-zero when any sanity check fails. A missing import or
+invalid target is not a successful inspection.
 
-**Precedence (low → high):**
-1) `base_configs.*` YAML files
-2) The demo YAML’s own block overrides (e.g. `data: {...}`)
-3) Optional machine-local override `configs/local/local.yaml` (or `--local_config ...`)
-4) CLI `--override key=value` (repeatable)
+## Registry and generated atlas
 
-## Single Source of Truth (Registry + Atlas)
+The authoritative maintained-config inventory is:
 
-- Registry (authoritative index): `configs/config_registry.csv`
-- Schema for registry fields: `docs/config_registry_schema.md`
-- Human-readable atlas (generated): `docs/CONFIG_ATLAS.md`
-
-Regenerate atlas:
-```bash
-python -m scripts.gen_config_atlas --registry configs/config_registry.csv
+```text
+configs/config_registry.csv
 ```
 
-## Config Inspect (Explain Resolved Values + Sources + Targets)
+Related files:
 
-Inspect a config and overrides (default output is Markdown):
+- registry field reference: `docs/config_registry_schema.md`;
+- generated human-readable view: `docs/CONFIG_ATLAS.md`.
+
+After an intentional registry change:
+
 ```bash
-python -m scripts.config_inspect --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override trainer.num_epochs=1 --override data.num_workers=0
-```
-
-Dump only field sources:
-```bash
-python -m scripts.config_inspect --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --dump sources --format md
-```
-
-## Schema Validation (Pydantic)
-
-Validate all `configs/demo/**/*.yaml` (and registry rows with `status != "/"`):
-```bash
+python -m scripts.gen_config_atlas
 python -m scripts.validate_configs
+git diff --exit-code docs/CONFIG_ATLAS.md
 ```
 
-## Common Edits (Copy-Paste)
+Do not hand-edit `docs/CONFIG_ATLAS.md`. A registry row records inventory and
+status; it does not by itself prove release support. The public support boundary is
+maintained in `SUPPORTED_COMPONENTS.md` and `SUPPORTED_COMBINATIONS.md`.
 
-### “Run 1 epoch for smoke test”
+## Common overrides
+
+Run one epoch:
+
 ```bash
 python main.py --config <yaml> --override trainer.num_epochs=1
 ```
 
-### “Change dataset without changing model/task”
-- Edit the config (recommended) or use a local override:
-```yaml
-data:
-  data_dir: "/path/to/PHM-Vibench"
-  metadata_file: "metadata.xlsx"
+Use local data without editing a demo:
+
+```bash
+python main.py --config <yaml> \
+  --override data.data_dir=/absolute/path/to/data \
+  --override data.metadata_file=metadata.xlsx
 ```
 
-### “Change task but reuse the same data/model”
-- Keep `base_configs.data` + `base_configs.model`, switch `base_configs.task` to another base task.
+Select CPU and avoid worker-process complexity during a smoke test:
 
-## Where to Read Next
+```bash
+python main.py --config <yaml> \
+  --override trainer.device=cpu \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
 
-- Base blocks overview: `configs/base/README.md`
-- Demo overview: `configs/demo/README.md`
-- Local research configs: `configs/experiments/README.md`
-- Deep dive: `docs/CONFIG_ATLAS.md`
+## Promoting a configuration
+
+A config should enter the maintained registry only when its PR includes:
+
+- a clear purpose and supported audience;
+- valid five-block composition;
+- no personal absolute paths;
+- successful schema validation and inspection;
+- the smallest applicable runtime evidence;
+- synchronized registry and generated atlas;
+- updated support or limitation documentation when the public surface changes.
+
+Use `needs_smoke` or another explicit non-supported status until runtime evidence
+exists. Do not label a configuration `sanity_ok` based only on YAML parsing.
+
+## Read next
+
+- Base blocks: `configs/base/README.md`
+- Maintained demos: `configs/demo/README.md`
+- Experiment variants: `configs/experiments/README.md`
+- Local overrides: `configs/local/README.md`
+- Documentation index: `docs/index.md`
+- Testing and evidence: `docs/testing.md`

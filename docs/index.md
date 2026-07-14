@@ -1,0 +1,86 @@
+# PHM-Vibench Documentation
+
+This page is the navigation entrypoint for maintained PHM-Vibench documentation.
+The public runtime contract is configuration-first:
+
+```bash
+python main.py --config <yaml> [--override key=value ...]
+```
+
+Documentation uses four status labels:
+
+- **Maintained** — expected to match current `main` and covered by repository checks.
+- **Experimental** — implemented or under active development, but outside the release-supported surface.
+- **Historical** — retained as evidence of earlier decisions or releases; not current instructions.
+- **Generated** — produced from another source of truth and should not be edited manually.
+
+## Start here
+
+| Need | Maintained entrypoint |
+| --- | --- |
+| Install PHM-Vibench | [Installation](installation.md) |
+| Run the offline example | [Quickstart](quickstart.md) |
+| Understand YAML composition and overrides | [Configuration guide](../configs/README.md) |
+| Find maintained configurations | [Configuration atlas](CONFIG_ATLAS.md) |
+| Prepare local datasets | [Data directory guide](../data/README.md) |
+| See the supported release surface | [Supported components](../SUPPORTED_COMPONENTS.md) and [supported combinations](../SUPPORTED_COMBINATIONS.md) |
+| Check known constraints | [Known limitations](../KNOWN_LIMITATIONS.md) |
+| Use the optional web interface | [Streamlit workspace](../apps/streamlit/README.md) |
+| Troubleshoot a first run | [Quickstart troubleshooting](quickstart.md#troubleshooting) |
+
+## Develop and contribute
+
+| Task | Maintained entrypoint |
+| --- | --- |
+| Development workflow and architecture | [Developer guide](developer_guide.md) |
+| Tests and validation gates | [Testing guide](testing.md) |
+| General contribution process | [CONTRIBUTING.md](../CONTRIBUTING.md) |
+| Add a dataset or reader | [Data factory contribution guide](../src/data_factory/contributing.md) |
+| Add a model | [Model factory contribution guide](../src/model_factory/contributing.md) |
+| Add a task | [Task factory contribution guide](../src/task_factory/contributing.md) |
+| Add or change a trainer | [Trainer factory contribution guide](../src/trainer_factory/contributing.md) |
+| Repository change constraints | [CLAUDE.md](../CLAUDE.md) |
+| Copy-paste maintainer commands | [AGENTS.md](../AGENTS.md) |
+
+## Releases and governance
+
+- [Changelog](../CHANGELOG.md)
+- [v0.2.0 release notes](../RELEASE_NOTES_v0.2.0.md)
+- [v0.1 to v0.2 migration guide](../MIGRATION_v0.1_to_v0.2.md)
+- [Security policy](../SECURITY.md)
+- [Apache License 2.0](../LICENSE)
+- [Branch governance record](branch_governance_20260709.md)
+- [Repository optimization SOP](REPOSITORY_OPTIMIZATION_SOP.md)
+- [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md)
+
+## Generated and historical material
+
+`docs/CONFIG_ATLAS.md` is generated from `configs/config_registry.csv`; update the
+registry, run `python -m scripts.gen_config_atlas`, and commit both changes.
+
+Earlier release and planning material remains under:
+
+- `docs/v0.1.0/`
+- `docs/past/`
+- `configs/v0.0.9/`
+- `dev/`
+
+Those paths are retained for provenance and research context. They are not current
+installation, usage, compatibility, or support instructions unless a maintained
+page links to a specific document and says otherwise.
+
+## Single-source-of-truth map
+
+| Information | Authority | Other documents should do |
+| --- | --- | --- |
+| Project positioning and shortest successful path | `README.md` | Link to the README or the detailed page below |
+| Installation | `docs/installation.md` | Keep only a minimal command and link |
+| First successful run | `docs/quickstart.md` | Avoid copying the complete walkthrough |
+| Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
+| Maintained config inventory | `configs/config_registry.csv` | Regenerate `docs/CONFIG_ATLAS.md` |
+| Supported components and combinations | `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md` | Do not infer support from registry presence |
+| Data layout and external-data boundary | `data/README.md` | Link from reader and dataset pages |
+| Contribution process | `CONTRIBUTING.md` | Factory guides describe only factory-specific steps |
+| Test commands and evidence terms | `docs/testing.md` | Link to the relevant gate |
+| Optional Streamlit behavior | `apps/streamlit/README.md` | Keep compatibility pages as short redirects |
+| Release changes | `CHANGELOG.md` and release notes | Historical plans must not override release documents |
