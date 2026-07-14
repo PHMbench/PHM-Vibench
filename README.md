@@ -159,7 +159,8 @@ single-worker boundary.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 Keep changes small, update the authoritative document rather than copying it, and
-report the exact commit, config, overrides, environment, and logs.
+report the exact commit, config, overrides, environment, and logs. Participation
+is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 - Bugs and feature requests: [GitHub Issues](https://github.com/PHMbench/PHM-Vibench/issues)
 - Security reports: [SECURITY.md](SECURITY.md)
@@ -170,6 +171,6 @@ report the exact commit, config, overrides, environment, and logs.
 PHM-Vibench is licensed under the [Apache License 2.0](LICENSE). Dataset and model
 artifacts can have separate source licenses.
 
-Until a stable publication citation is provided, cite the exact Git commit or
-release tag used for an experiment and record the configuration, overrides, data
-source, seed, and environment.
+Use [CITATION.cff](CITATION.cff) as the software citation metadata. Cite the exact
+Git commit or release tag used for an experiment and record the configuration,
+overrides, data source, seed, and environment.

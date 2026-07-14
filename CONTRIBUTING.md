@@ -7,392 +7,287 @@
   </p>
 </div>
 
-We welcome contributions to PHM-Vibench! This guide will help you understand how to contribute effectively to the project.
+PHM-Vibench welcomes focused bug fixes, tests, documentation, configurations,
+data readers, models, tasks, trainers, and reproducibility improvements.
 
-## Table of Contents
-
-1. [Getting Started](#getting-started)
-2. [Development Setup](#development-setup)
-3. [Contribution Guidelines](#contribution-guidelines)
-4. [Adding Components](#adding-components)
-   - [New Datasets](#new-datasets)
-   - [New Models](#new-models)
-   - [New Tasks](#new-tasks)
-   - [New Pipelines](#new-pipelines)
-5. [Configuration System](#configuration-system)
-6. [Code Standards](#code-standards)
-7. [Testing](#testing)
-8. [Documentation](#documentation)
-9. [Pull Request Process](#pull-request-process)
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8+
-- PyTorch 2.0+
-- Git
-- Basic understanding of deep learning and time-series analysis
-
-### Architecture Overview
-
-PHM-Vibench uses a **factory design pattern** for modular extension:
-
-```
-PHM-Vibench/
-├── src/
-│   ├── data_factory/      # Dataset loading and preprocessing
-│   ├── model_factory/     # Models (embeddings, backbones, heads)
-│   ├── task_factory/      # Training logic and metrics
-│   └── trainer_factory/   # PyTorch Lightning Trainer wiring
-├── configs/               # YAML configuration files
-└── docs/                  # Documentation
-```
-
-For detailed architecture, see [`CLAUDE.md`](CLAUDE.md).
-
-## Development Setup
-
-1. **Fork and Clone**
-```bash
-git clone https://github.com/your-username/PHM-Vibench.git
-cd PHM-Vibench
-```
-
-2. **Create Virtual Environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-4. **Run Tests**
-```bash
-python -m pytest test/
-```
-
-5. **Offline Smoke Test** (no downloads required)
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
-```
-
-## Contribution Guidelines
-
-### Types of Contributions
-
-We welcome several types of contributions:
-
-1. **New Components**: Datasets, models, tasks, pipelines
-2. **Bug Fixes**: Fixing issues in existing code
-3. **Documentation**: Improving docs, examples, and tutorials
-4. **Performance Improvements**: Optimizations and efficiency gains
-5. **Configuration**: New experiment configs and presets
-
-### Before You Start
-
-1. **Check Existing Issues**: Look for related issues or discussions
-2. **Create an Issue**: For new features or significant changes
-3. **Discuss First**: For major changes, discuss with maintainers
-4. **Read CLAUDE.md**: Understand project architecture and change strategy
-
-### Key Design Principles
-
-- **Configuration-First**: All experiments defined via YAML configs
-- **Factory Pattern**: Register components, don't hardcode imports
-- **Single Source of Truth**: Update registry → atlas → docs
-- **本科生能跑 + 博士生能改**: Keep it accessible yet extensible
-
-## Adding Components
-
-### New Datasets
-
-See [`src/data_factory/contributing.md`](src/data_factory/contributing.md) for detailed guide.
-
-**Quick steps**:
-1. Create dataset class in `src/data_factory/dataset_task/`
-2. Register in `src/data_factory/dataset_task/__init__.py`
-3. Add metadata entry to `data/metadata.xlsx`
-4. Create config in `configs/base/data/`
-
-### New Models
-
-See [`src/model_factory/contributing.md`](src/model_factory/contributing.md) for detailed guide.
-
-**Model components follow registry-style IDs**:
-- Embeddings: `E_**_*`
-- Backbones: `B_**_*`
-- Heads: `H_**_*`
-
-**Quick steps**:
-1. Create model class with NumPy-style docstrings
-2. Register in appropriate `__init__.py`
-3. Add config preset in `configs/demo/`
-
-### New Tasks
-
-**Task types** (selected by `task.type` + `task.name`):
-- `DG`: Domain Generalization
-- `CDDG`: Cross-Dataset Domain Generalization
-- `FS`/`GFS`: Few-shot / Generalized Few-shot
-- `ID`: ID-based ingestion
-- `MT`: Multi-task
-
-**Quick steps**:
-1. Create task in `src/task_factory/task/<TYPE>/`
-2. Inherit from base task class
-3. Register in `src/task_factory/task/<TYPE>/__init__.py`
-
-### New Pipelines
-
-Pipelines assemble factories in fixed order:
-1. Load config
-2. Build data
-3. Build model
-4. Build task
-5. Build trainer
-
-**Quick steps**:
-1. Create `src/Pipeline_<name>.py`
-2. Select via YAML: `pipeline: <name>`
-
-## Configuration System
-
-PHM-Vibench uses **v5.x 5-block config model**:
-- `environment` / `data` / `model` / `task` / `trainer`
-
-### Adding New Configs
-
-1. **Create config YAML** in `configs/demo/` or `configs/experiments/`
-2. **Add to registry**: Update `configs/config_registry.csv`
-3. **Regenerate atlas**: `python -m scripts.gen_config_atlas`
-4. **Validate**: `python -m scripts.validate_configs`
-
-### Config Composition Rules (low → high precedence)
-
-1. `base_configs.*` YAML files
-2. Demo YAML's own block overrides
-3. Optional local override `configs/local/local.yaml`
-4. CLI `--override key=value`
-
-### Inspection Tools
+The project is configuration-first. Contributions must preserve:
 
 ```bash
-# View resolved config + sources + targets
-python -m scripts.config_inspect --config <yaml> --override key=value
+python main.py --config <yaml> [--override key=value ...]
+```
 
-# Validate all configs
+and the five public configuration blocks:
+
+```text
+environment / data / model / task / trainer
+```
+
+Read the [documentation index](docs/index.md),
+[developer guide](docs/developer_guide.md), and
+[testing guide](docs/testing.md) before making a broad change.
+
+## Before opening an issue or pull request
+
+1. Search existing issues and pull requests.
+2. Reproduce the behavior on a current `main` checkout when possible.
+3. Start from the nearest maintained config under `configs/demo/`.
+4. Keep local variants under `configs/experiments/` or in an untracked local
+   config; do not commit personal absolute paths.
+5. Separate unrelated runtime, documentation, data-artifact, and cleanup work.
+6. Do not claim support merely because a registry row or source file exists.
+
+For major architecture changes, new pipelines, public compatibility changes, or
+large data/model additions, open an issue before implementation.
+
+## Report a bug
+
+Use the bug-report issue template and include:
+
+- a concise problem statement;
+- exact reproduction steps;
+- expected and actual behavior;
+- operating system and hardware;
+- Python, PyTorch, PyTorch Lightning, and CUDA versions when relevant;
+- repository commit or release tag;
+- configuration path and all CLI overrides;
+- data source and whether dummy or external data is used;
+- complete error output as text;
+- the smallest reproducible config or test case that can be shared.
+
+A missing dependency, invalid configuration, and code defect are different failure
+classes. Include the command's exit code and avoid replacing logs with screenshots
+when text is available.
+
+Do not report security vulnerabilities in a public issue. Follow
+[SECURITY.md](SECURITY.md).
+
+## Propose a feature
+
+A feature request should explain:
+
+- the user or research scenario;
+- the current limitation;
+- the behavior being requested;
+- why the change belongs in PHM-Vibench rather than a local experiment;
+- simpler alternatives considered;
+- expected compatibility, dependency, test, documentation, and maintenance cost;
+- whether the feature is intended to be maintained, experimental, or research-only.
+
+For a new method, include a primary paper or stable technical reference, but do not
+present a paper citation as evidence that the repository implementation works.
+
+## Development setup
+
+Follow the [installation guide](docs/installation.md). A typical branch starts
+from current `main`:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c <type>/<short-topic>
+```
+
+Suggested branch prefixes:
+
+```text
+fix/       bug or compatibility fix
+feat/      user-visible capability
+docs/      documentation-only work
+test/      tests and fixtures
+ci/        workflow or automation
+cleanup/   bounded removal or repository hygiene
+release/   release preparation
+```
+
+Keep a branch focused. Prefer small commits that leave the repository in a
+reviewable state.
+
+Suggested commit format:
+
+```text
+<type>: <imperative summary>
+```
+
+Examples:
+
+```text
+fix: reject unknown task registry entries
+test: cover TSPN_UXFD CPU assembly
+docs: clarify external data layout
+```
+
+Commit history does not need to be artificially expanded; pull requests are
+normally squash-merged.
+
+## Make a code contribution
+
+The standard sequence is:
+
+```text
+create a focused branch
+→ make the smallest coherent change
+→ add or update focused tests
+→ update the authoritative documentation
+→ run the relevant local gates
+→ review the diff for unrelated changes
+→ open a pull request with exact evidence
+```
+
+Architecture constraints:
+
+- extend `src/data_factory/`, `src/model_factory/`, `src/task_factory/`, or
+  `src/trainer_factory/` instead of adding component-specific branches to
+  `main.py`;
+- keep the public CLI and five-block config model compatible;
+- make invalid combinations fail early with a useful message;
+- avoid hidden fallback, silent partial checkpoint loading, and machine-specific
+  defaults unless they are explicitly documented compatibility behavior;
+- provide migration notes or a compatibility layer for intentional behavior
+  changes;
+- do not edit tests merely to hide a real failure.
+
+Factory-specific guides:
+
+- [Data and readers](src/data_factory/contributing.md)
+- [Models](src/model_factory/contributing.md)
+- [Tasks](src/task_factory/contributing.md)
+- [Trainers](src/trainer_factory/contributing.md)
+
+## Contribute a dataset or reader
+
+Provide all applicable items:
+
+- dataset name, original source, stable download location, and citation;
+- license and redistribution constraints;
+- expected directory and metadata layout;
+- reader implementation and input/output contract;
+- preprocessing and split procedure;
+- a configuration under `configs/experiments/` or a justified maintained demo;
+- a small legal fixture or synthetic contract test when raw data cannot be
+  redistributed;
+- the exact inspection and smoke commands used;
+- expected output structure, not invented benchmark metrics;
+- known limitations and reproducibility notes.
+
+Large dataset payloads should normally remain outside Git. Reference notes and
+metadata do not imply redistribution rights. See [data/README.md](data/README.md).
+
+## Contribute a model, task, trainer, or configuration
+
+A public component contribution should normally include:
+
+- implementation in the correct factory boundary;
+- registry or config entry where required;
+- documented constructor, batch, tensor-shape, dtype, device, and output contract;
+- focused positive and negative tests;
+- checkpoint or state behavior when relevant;
+- a smallest runnable config;
+- explicit compatible and incompatible components;
+- dependency and license information for copied or adapted code;
+- limitations and evidence level.
+
+New local experiments belong in `configs/experiments/`. Promotion to
+`configs/demo/` and `sanity_ok` requires reviewable runtime evidence. Update
+`configs/config_registry.csv`, regenerate `docs/CONFIG_ATLAS.md`, and update
+support documents only when the maintained public surface intentionally changes.
+
+## Contribute documentation
+
+Before adding a page, check the [documentation index](docs/index.md) and update the
+existing authority when one exists.
+
+Documentation contributions must:
+
+- identify the reader and task;
+- define new abbreviations and terminology;
+- use repository-relative links for internal files;
+- verify commands, paths, configuration keys, and filenames;
+- distinguish maintained, experimental, planned, deprecated, and historical
+  behavior;
+- avoid unsupported performance, compatibility, dataset-count, and maturity
+  claims;
+- add a new maintained page to the documentation navigation;
+- preserve historical evidence when deletion would break provenance or external
+  references.
+
+Do not copy installation, quickstart, configuration precedence, test gates, or
+support matrices into a new page. Link to their authorities instead.
+
+## Run validation
+
+Choose the relevant commands from [docs/testing.md](docs/testing.md). The general
+local gate is:
+
+```bash
+python -m scripts.validate_docs
 python -m scripts.validate_configs
-
-# Generate CONFIG_ATLAS.md
 python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+git diff --check
+python -m pytest test/ -q
+python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
 ```
 
-## Code Standards
+Run focused tests first. A documentation-only pull request can use a narrower gate
+when it does not modify executable commands or runtime claims; explain omitted
+commands in the pull-request description.
 
-### Python Style Guide
+Record commands and outcomes accurately:
 
-We follow PEP 8 with modifications:
-
-1. **Line Length**: 100 characters maximum
-2. **Imports**: Group imports (standard, third-party, local)
-3. **Naming**:
-   - Classes: `PascalCase`
-   - Functions/variables: `snake_case`
-   - Constants: `UPPER_CASE`
-
-### Docstring Standards
-
-Use NumPy-style docstrings:
-
-```python
-def function_name(param1: int, param2: str = "default") -> bool:
-    """Brief description.
-
-    Longer description explaining purpose and behavior.
-
-    Parameters
-    ----------
-    param1 : int
-        Description of param1
-    param2 : str, optional
-        Description of param2 (default: "default")
-
-    Returns
-    -------
-    bool
-        Description of return value
-
-    Raises
-    ------
-    ValueError
-        When param1 is negative
-
-    Examples
-    --------
-    >>> result = function_name(5, "test")
-    >>> print(result)
-    True
-    """
+```text
+PASS
+FAIL
+EXPECTED FAILURE
+NOT EXECUTED — <reason>
 ```
 
-## Testing
+Local evidence is not GitHub Actions evidence.
 
-### Test Structure
+## Open a pull request
 
-```
-test/
-├── test_end_to_end_integration.py
-├── test_parameter_consistency.py
-└── ...
-```
+A pull request must include:
 
-### Running Tests
+- problem and rationale;
+- exact scope and explicit non-goals;
+- changed public behavior and migration impact;
+- files or components affected;
+- commands run and results;
+- tests added or changed;
+- documentation and registry updates;
+- known risks and limitations;
+- rollback method;
+- confirmation that local goal packs, caches, logs, credentials, raw data, and
+  machine paths are not included.
 
-```bash
-# Run all maintained tests
-python -m pytest test/
+Do not mix broad formatting with behavioral changes. Do not submit a generated
+atlas without its registry source change. Do not lower a test or support standard
+to make a pull request pass.
 
-# Run specific test file
-python -m pytest test/test_parameter_consistency.py
+At least one maintainer review is expected for merge. The repository normally uses
+squash merge after required checks pass.
 
-# Run with coverage
-python -m pytest test/ --cov=src --cov-report=html
-```
+## Changes that will normally be rejected
 
-### Writing Tests
+- direct pushes or unreviewed large changes to `main`;
+- hard-coded personal paths, credentials, or private infrastructure details;
+- a parallel framework that bypasses the existing config and factory contracts;
+- a giant PR combining unrelated runtime, cleanup, docs, and research work;
+- generated, copied, or AI-produced documentation that was not checked against
+  the repository;
+- claims of accuracy, efficiency, SOTA status, or universal compatibility without
+  reproducible evidence;
+- code copied from another project without source and license information;
+- tests that only suppress, skip, or catch the failure being fixed;
+- raw dataset or model artifacts without a license and repository-storage review.
 
-```python
-import pytest
-import torch
-from argparse import Namespace
+## Community and licensing
 
-class TestYourComponent:
-    """Test suite for YourComponent."""
+Participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). By
+submitting a contribution, you agree that it may be distributed under the
+repository's [Apache License 2.0](LICENSE), subject to any separately documented
+third-party licenses.
 
-    @pytest.fixture
-    def config(self):
-        """Configuration for testing."""
-        return Namespace(
-            param1="value1",
-            param2=42
-        )
-
-    def test_basic_functionality(self, config):
-        """Test basic functionality."""
-        # Arrange
-        component = YourComponent(config)
-
-        # Act
-        result = component.method()
-
-        # Assert
-        assert result is not None
-```
-
-## Documentation
-
-### Documentation Requirements
-
-1. **API Documentation**: NumPy-style docstrings
-2. **Usage Examples**: Working code examples
-3. **Config Documentation**: Update registry and atlas
-4. **Bilingual Support**: English and Chinese (`_CN.md` suffix)
-
-### Documentation Structure
-
-```
-PHM-Vibench/
-├── README.md / README_CN.md           # Main project README
-├── CONTRIBUTING.md / CONTRIBUTING_CN.md  # This file
-├── CLAUDE.md                           # Architecture and change strategy
-├── AGENTS.md                           # Development runbook
-├── configs/README.md                   # Config system guide
-├── docs/
-│   ├── CONFIG_ATLAS.md                 # Generated config reference
-│   ├── developer_guide.md
-│   └── testing.md
-└── src/
-    ├── data_factory/README_CN.md
-    ├── model_factory/README_CN.md
-    └── task_factory/README_CN.md
-```
-
-## Pull Request Process
-
-### Before Submitting
-
-1. **Run Tests**: Ensure all tests pass
-2. **Check Style**: Follow code standards
-3. **Update Documentation**: Add/update relevant docs
-4. **Add Tests**: Include tests for new functionality
-5. **Update Registry**: For new configs, update `config_registry.csv`
-
-### PR Template
-
-```markdown
-## Description
-Brief description of changes and motivation.
-
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
-- [ ] Configuration addition
-
-## Testing
-- [ ] Tests pass locally
-- [ ] Added tests for new functionality
-- [ ] Configs validated (if applicable)
-
-## Documentation
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] Registry/atlas updated (if applicable)
-```
-
-### Review Process
-
-1. **Automated Checks**: CI/CD pipeline runs tests and validations
-2. **Code Review**: Maintainers review code quality and design
-3. **Documentation Review**: Check docs are complete and accurate
-4. **Approval**: At least one maintainer approval required
-
-### After Approval
-
-1. **Squash and Merge**: We typically squash commits
-2. **Update Changelog**: Maintainers update the changelog
-3. **Release Notes**: Significant changes included in release notes
-
-## Required Change Order
-
-For config-related changes:
-1. Registry → 2. Atlas → 3. Inspect → 4. Schema validate → 5. README → 6. CI/tests
-
-## Community Guidelines
-
-### Code of Conduct
-
-- Be respectful and inclusive
-- Focus on constructive feedback
-- Help newcomers learn and contribute
-- Maintain professional communication
-
-### Getting Help
-
-- **GitHub Issues**: For bugs and feature requests
-- **Discussions**: For questions and general discussion
-- **CLAUDE.md**: For architecture and change strategy
-- **AGENTS.md**: For development commands
-
-## Contact
-
-- **Maintainers**: [Qi Li](https://github.com/liq22), [Xuan Li](https://github.com/Xuan423)
-- **GitHub**: [PHM-Vibench Repository](https://github.com/PHMbench/PHM-Vibench)
-
-Thank you for contributing to PHM-Vibench!
+For general questions, use GitHub Issues or Discussions when available. Keep
+security and conduct reports out of public issue threads.
