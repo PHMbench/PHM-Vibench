@@ -12,6 +12,8 @@ profiles:
     required_paths:
       - configs/demo/00_smoke/dummy_dg.yaml
       - data/metadata_dummy.csv
+      - data/raw/Dummy_Data/dummy1.csv
+      - data/raw/Dummy_Data/dummy2.csv
     next_step: "Keep CPU, one epoch, and zero data workers for the broadest compatibility."
 
   demo_01_cross_domain:
