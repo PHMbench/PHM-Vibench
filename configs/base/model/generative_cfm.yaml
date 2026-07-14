@@ -1,0 +1,8 @@
+model:
+  type: "generative_model"
+  name: "phm_cfm_mlp1d"
+  in_channels: 2
+  hidden_dim: 64
+  condition_dim: 32
+  num_fault_classes: 2
+  num_domains: 2
