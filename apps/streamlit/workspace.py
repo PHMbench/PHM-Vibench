@@ -287,16 +287,6 @@ def main() -> None:
         )
         st.stop()
 
-    data_status = assess_template_data(repo_root, runtime_report.resolved, profile)
-    render_template_data_status(data_status)
-    if not data_status.ready and selected_id != catalog.default_template_id:
-        if st.button(
-            "Switch to the offline CPU smoke template",
-            type="secondary",
-            use_container_width=True,
-        ):
-            _safe_smoke_reset(catalog.default_template_id)
-
     with st.spinner("Preparing a portable standalone YAML before local overrides..."):
         portable_report = _cached_inspection(str(repo_root), str(config_path), (), False)
     if not portable_report.resolved:
@@ -386,6 +376,21 @@ def main() -> None:
             st.error(str(exc))
             preview_config = {}
             configuration_has_error = True
+
+    data_status = assess_template_data(
+        repo_root,
+        preview_config if preview_config else runtime_report.resolved,
+        profile,
+    )
+    render_template_data_status(data_status)
+    if not data_status.ready and selected_id != catalog.default_template_id:
+        if st.button(
+            "Switch to the offline CPU smoke template",
+            type="secondary",
+            use_container_width=True,
+            key="switch-to-offline-smoke",
+        ):
+            _safe_smoke_reset(catalog.default_template_id)
 
     output_dir = get_nested(preview_config, "environment.output_dir", "save")
     device = get_nested(preview_config, "trainer.device", "unspecified")
