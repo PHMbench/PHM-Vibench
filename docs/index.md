@@ -8,14 +8,17 @@ agent-workflow material is intentionally separated from the current user path.
 
 1. Read the [project overview](../README.md) or
    [Chinese overview](../README_CN.md).
-2. Run the repository-shipped offline smoke command from the overview.
-3. Learn how configuration composition and overrides work in the
+2. [Install PHM-Vibench](installation.md) in a Python 3.10 environment.
+3. [Run the repository-shipped offline experiment](quickstart.md).
+4. Learn configuration composition and overrides in the
    [configuration guide](../configs/README.md).
-4. Confirm the current support boundary in
+5. Confirm the current support boundary in
    [supported components](../SUPPORTED_COMPONENTS.md),
    [supported combinations](../SUPPORTED_COMBINATIONS.md), and
    [known limitations](../KNOWN_LIMITATIONS.md).
-5. For external data, read the [data directory policy](../data/README.md).
+6. For external data, read the [data directory policy](../data/README.md).
+
+Common failures are covered in [Troubleshooting](troubleshooting.md).
 
 ## Configuration reference
 
@@ -43,7 +46,7 @@ The Streamlit workspace is an optional adapter around the same
 - [Contributor guide](../CONTRIBUTING.md)
 - [Chinese contributor guide](../CONTRIBUTING_CN.md)
 - [Developer guide](developer_guide.md)
-- [Testing guide](testing.md)
+- [Testing and evidence guide](testing.md)
 - [Custom dataset tutorial](custom_dataset.md)
 - [Data factory contribution guide](../src/data_factory/contributing.md)
 - [Model factory contribution guide](../src/model_factory/contributing.md)
