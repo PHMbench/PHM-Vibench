@@ -1,31 +1,56 @@
 ---
-name: 功能建议 (Feature Request)
-about: " 为 PHMbench 提出一个新功能的想法"
-title: "[FEAT] <请在此处填写功能建议的标题>"
+name: 功能建议（中文）
+about: 提出边界明确的 PHM-Vibench 能力
+title: "[FEAT] "
 labels: enhancement
 assignees: ''
-
 ---
 
-### ✅ 前置检查清单 (Prerequisite Checklist)
-- [ ] 我已经搜索过现有的 [Issues](<YOUR_REPO_URL>/issues)，确认没有重复的功能建议。
-- [ ] 我已经考虑过这个功能对项目整体架构和维护性的影响。
-- [ ] 这个功能建议符合项目的总体设计理念和范围。
+## 提交前检查
 
----
+- [ ] 我已搜索现有 [Issues](https://github.com/PHMbench/PHM-Vibench/issues) 和 Discussions。
+- [ ] 我已阅读[中文贡献指南](../../CONTRIBUTING_CN.md)和[已知限制](../../KNOWN_LIMITATIONS.md)。
+- [ ] 我已考虑更简单的 config、文档或现有 extension point 方案。
 
-### 1. 您的功能建议是否与某个问题相关？(Is your feature request related to a problem?)
-请描述您在使用中遇到的问题或不便之处。例如：“我总是在 [...] 场景下感到沮丧，因为 [...]”
+## 使用场景
 
-### 2. 您希望的解决方案是什么？(Describe the solution you'd like)
-请清晰简洁地描述您希望实现的功能。
-* **对于用户**: 这个新功能将如何工作？
-* **对于开发者**: 可能涉及到对哪些模块的修改？(例如, `data_factory`, `model_factory`, `task_factory`)
+谁需要该能力？用于什么工作流？涉及哪些 data、model 或 task？
 
-### 3. 您考虑过的替代方案是什么？(Describe alternatives you've considered)
-请描述您考虑过的任何替代解决方案或功能。
+## 当前限制
 
-### 4. 补充信息 (Additional Context)
-请在此处添加任何关于此功能建议的其他上下文或截图。
-* 如果您建议的是一种新的算法或模型，可以附上相关的论文链接。
-* 如果是关于项目结构的调整，可以画出您建议的目录结构。
+说明当前行为，以及为什么现有 config、factory、component 或仓库外工具不能充分解决问题。
+
+## 建议行为
+
+描述最小可用行为和可测量的验收标准。
+
+## 已考虑的替代方案
+
+包括更简单的 workaround、仓库外方案或更窄范围。
+
+## 架构与兼容性
+
+```text
+受影响的入口/pipeline：
+受影响的 factory 或 registry：
+新增/修改的 config key：
+输入/输出或 batch 契约：
+向后兼容影响：
+应拒绝的非法组合：
+所需依赖/硬件/数据：
+```
+
+说明为什么该功能应由 PHM-Vibench 解决，以及它是否改变 release-supported surface。
+
+## 测试与证据计划
+
+列出需要的聚焦 unit/contract test、config inspection、smoke command、负向案例和文档。
+Synthetic data 只能验证软件路径，不能证明科学性能。
+
+## 维护成本与风险
+
+说明持续维护成本、可选依赖、数据/License 问题、安全影响、迁移需求和仍不支持的内容。
+
+## 参考资料
+
+可附 primary paper、标准、数据集、License 或已有实现。论文存在不等于仓库实现已经工作。
