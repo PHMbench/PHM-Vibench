@@ -181,7 +181,8 @@ See [Streamlit usage](docs/app_usage.md).
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 A public component contribution should include implementation, registry/config
 traceability, a focused test, documentation, an applicable smoke path, and
-explicit compatibility limits.
+explicit compatibility limits. Community participation follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 For factory-specific details:
 
@@ -193,7 +194,8 @@ For factory-specific details:
 ## Citation, license, and support
 
 Until a stable publication or DOI is released, record and cite the exact Git tag
-or commit used for an experiment. Do not infer scientific claims from the Dummy
+or commit used for an experiment. Machine-readable metadata is available in
+[`CITATION.cff`](CITATION.cff). Do not infer scientific claims from the Dummy
 smoke run or registry inventory.
 
 PHM-Vibench source code is licensed under the [Apache License 2.0](LICENSE).
