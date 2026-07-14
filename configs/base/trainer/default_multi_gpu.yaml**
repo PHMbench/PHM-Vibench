@@ -1,8 +1,0 @@
-trainer:
-  name: "Default_trainer"
-  num_epochs: 10
-  gpus: 2
-  device: "cuda"
-  early_stopping: true
-  patience: 5
-
