@@ -1,17 +1,11 @@
-# docs/
+# PHM-Vibench documentation
 
-Maintained documentation for PHM-Vibench.
+Use [`docs/index.md`](index.md) as the maintained documentation navigation page.
 
-## Key docs
+The generated configuration reference remains at
+[`docs/CONFIG_ATLAS.md`](CONFIG_ATLAS.md) and is derived from
+`configs/config_registry.csv`; do not edit it manually.
 
-- Config atlas (generated): `docs/CONFIG_ATLAS.md`
-- Config registry schema: `docs/config_registry_schema.md`
-- Developer guide: `docs/developer_guide.md`
-- Custom dataset guide: `docs/custom_dataset.md`
-
-## Generation / validation
-
-See `AGENTS.md` for the copy-paste commands:
-
-- `python -m scripts.gen_config_atlas`
-- `python -m scripts.validate_configs`
+Historical and research material is intentionally excluded from the primary
+navigation. See the [documentation audit](DOCUMENTATION_AUDIT.md) for its status,
+retention rules, and planned cleanup.
