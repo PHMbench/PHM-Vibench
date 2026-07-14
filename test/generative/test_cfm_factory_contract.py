@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from src.data_factory.data_utils import MetadataAccessor
 from src.model_factory import build_model
 from src.model_factory.generative_model.phm_cfm_mlp1d import Model
 from src.task_factory import build_task
@@ -13,9 +12,9 @@ from src.task_factory.task.generative.conditional_flow_matching import (
 )
 
 
-def _metadata() -> MetadataAccessor:
-    return MetadataAccessor(
-        pd.DataFrame(
+class _Metadata:
+    def __init__(self) -> None:
+        self.df = pd.DataFrame(
             [
                 {
                     "Id": 1,
@@ -30,13 +29,15 @@ def _metadata() -> MetadataAccessor:
                     "Domain_id": 1,
                 },
             ]
-        ),
-        key_column="Id",
-    )
+        )
+        self.df.set_index("Id", inplace=True, drop=False)
+
+    def __getitem__(self, key):
+        return self.df.loc[key].to_dict()
 
 
 def test_cfm_model_and_task_build_through_public_factories() -> None:
-    metadata = _metadata()
+    metadata = _Metadata()
     args_model = SimpleNamespace(
         type="generative_model",
         name="phm_cfm_mlp1d",
