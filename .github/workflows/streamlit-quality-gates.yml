@@ -49,7 +49,10 @@ jobs:
           python -m pip install -r apps/streamlit/requirements.txt "pytest>=7"
 
       - name: Compile optional UI modules
-        run: python -m py_compile apps/streamlit/*.py streamlit_app.py
+        run: >-
+          python -c "import glob, py_compile;
+          [py_compile.compile(path, doraise=True)
+          for path in glob.glob('apps/streamlit/*.py') + ['streamlit_app.py']]"
 
       - name: Import UI with real Streamlit
         run: python -c "import apps.streamlit.app; import streamlit_app"
