@@ -61,6 +61,8 @@ The Streamlit workspace is an optional adapter around the same
 - [v0.2.0 release notes](../RELEASE_NOTES_v0.2.0.md)
 - [v0.1 to v0.2 migration guide](../MIGRATION_v0.1_to_v0.2.md)
 - [Security policy](../SECURITY.md)
+- [Code of Conduct](../CODE_OF_CONDUCT.md)
+- [Citation metadata](../CITATION.cff)
 - [Apache License 2.0](../LICENSE)
 
 ## Advanced and design material
