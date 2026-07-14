@@ -1,0 +1,121 @@
+name: Pipeline 06 CFM quality gates
+
+on:
+  pull_request:
+    paths:
+      - "src/Pipeline_06_generative.py"
+      - "src/model_factory/generative_model/**"
+      - "src/task_factory/Components/generative/**"
+      - "src/task_factory/task/generative/**"
+      - "configs/base/model/generative_*.yaml"
+      - "configs/base/task/generative_*.yaml"
+      - "configs/experiments/generative/**"
+      - "test/generative/**"
+      - ".github/workflows/pipeline06-cfm-quality-gates.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/Pipeline_06_generative.py"
+      - "src/model_factory/generative_model/**"
+      - "src/task_factory/Components/generative/**"
+      - "src/task_factory/task/generative/**"
+      - "configs/base/model/generative_*.yaml"
+      - "configs/base/task/generative_*.yaml"
+      - "configs/experiments/generative/**"
+      - "test/generative/**"
+      - ".github/workflows/pipeline06-cfm-quality-gates.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline06-cfm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cfm-core:
+    name: CFM core contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MPLBACKEND: Agg
+      WANDB_MODE: disabled
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install CPU Torch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0"
+
+      - name: Install focused dependencies
+        run: |
+          python -m pip install \
+            "numpy>=1.20" \
+            "pandas>=1.3" \
+            "pytorch-lightning>=1.5" \
+            "torchmetrics>=1.0" \
+            "PyYAML>=6.0" \
+            "pydantic>=2.0" \
+            "tensorboard" \
+            "pytest>=7"
+
+      - name: Compile Pipeline 06 and CFM modules
+        run: |
+          python -m py_compile \
+            src/Pipeline_06_generative.py \
+            src/model_factory/generative_model/condition_encoder.py \
+            src/model_factory/generative_model/film.py \
+            src/model_factory/generative_model/phm_cfm_mlp1d.py \
+            src/task_factory/Components/generative/flow_matching.py \
+            src/task_factory/Components/generative/euler_ode.py \
+            src/task_factory/task/generative/conditional_flow_matching.py \
+            test/generative/test_pipeline06_import.py \
+            test/generative/test_pipeline06_preflight.py \
+            test/generative/test_pipeline06_dispatch.py \
+            test/generative/test_cfm_core_contract.py
+
+      - name: Inspect exploratory CFM configuration
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m scripts.config_inspect \
+            --config configs/experiments/generative/dummy_generative_cfm.yaml \
+            --dump targets \
+            --format yaml \
+            2>&1 | tee pipeline06-cfm-config-inspect.log
+
+      - name: Record focused environment
+        run: python -m pip freeze > pipeline06-cfm-environment.txt
+
+      - name: Run G1 and CFM focused tests
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -vv --tb=long \
+            test/generative/test_pipeline06_import.py \
+            test/generative/test_pipeline06_preflight.py \
+            test/generative/test_pipeline06_dispatch.py \
+            test/generative/test_cfm_core_contract.py \
+            2>&1 | tee pipeline06-cfm-pytest.log
+
+      - name: Upload focused diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline06-cfm-core-diagnostics
+          path: |
+            pipeline06-cfm-config-inspect.log
+            pipeline06-cfm-pytest.log
+            pipeline06-cfm-environment.txt
+          if-no-files-found: warn
+          retention-days: 7
