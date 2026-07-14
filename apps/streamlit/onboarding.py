@@ -1,8 +1,8 @@
 """First-run readiness and template guidance for the Streamlit workspace.
 
 This module deliberately has no Streamlit dependency. It converts repository,
-Python-environment, and selected-template facts into small immutable reports that
-the UI can render without duplicating runtime logic.
+Python-environment, and selected-template facts into immutable reports that the
+UI can render without duplicating runtime logic.
 """
 
 from __future__ import annotations
@@ -145,7 +145,9 @@ def load_template_profiles(path: Path) -> Mapping[str, TemplateProfile]:
         raise OnboardingError("template_profiles.yaml version must be a positive integer.")
     raw_profiles = raw.get("profiles")
     if not isinstance(raw_profiles, dict) or not raw_profiles:
-        raise OnboardingError("template_profiles.yaml must define a non-empty profiles mapping.")
+        raise OnboardingError(
+            "template_profiles.yaml must define a non-empty profiles mapping."
+        )
 
     profiles: Dict[str, TemplateProfile] = {}
     for template_id, item in raw_profiles.items():
@@ -342,12 +344,33 @@ def _expanded_path(repo_root: Path, raw: str) -> Path:
     return path if path.is_absolute() else repo_root / path
 
 
+def _resolved_data_paths(
+    repo_root: Path, resolved: Mapping[str, Any]
+) -> Tuple[Path, Path] | None:
+    data = resolved.get("data") if isinstance(resolved.get("data"), Mapping) else {}
+    data_dir = data.get("data_dir") if isinstance(data, Mapping) else None
+    metadata_file = data.get("metadata_file") if isinstance(data, Mapping) else None
+    if not isinstance(data_dir, str) or not data_dir.strip():
+        return None
+    if not isinstance(metadata_file, str) or not metadata_file.strip():
+        return None
+
+    data_root = _expanded_path(repo_root, data_dir.strip()).resolve()
+    metadata_value = Path(os.path.expandvars(os.path.expanduser(metadata_file.strip())))
+    metadata_path = (
+        metadata_value.resolve()
+        if metadata_value.is_absolute()
+        else (data_root / metadata_value).resolve()
+    )
+    return data_root, metadata_path
+
+
 def assess_template_data(
     repo_root: Path,
     resolved: Mapping[str, Any],
     profile: TemplateProfile,
 ) -> TemplateDataStatus:
-    """Resolve the selected template's data and return an actionable status."""
+    """Resolve the final selected-template data and return an actionable status."""
 
     root = Path(repo_root).resolve()
     missing_required = [
@@ -360,54 +383,38 @@ def assess_template_data(
             "Restore the missing files or switch to another maintained template.",
         )
 
-    data = resolved.get("data") if isinstance(resolved.get("data"), Mapping) else {}
-    data_dir = data.get("data_dir") if isinstance(data, Mapping) else None
-    metadata_file = data.get("metadata_file") if isinstance(data, Mapping) else None
-
-    if not profile.requires_external_data:
-        return TemplateDataStatus(
-            True,
-            "The selected template uses repository-shipped data and is ready for a first run.",
-            data_root=str(data_dir or "data"),
-            metadata_path=str(metadata_file or ""),
-        )
-
-    if not isinstance(data_dir, str) or not data_dir.strip():
+    resolved_paths = _resolved_data_paths(root, resolved)
+    if resolved_paths is None:
         return TemplateDataStatus(
             False,
-            "The selected template does not resolve a data.data_dir value.",
-            "Set data.data_dir in Advanced mode or configs/local/local.yaml.",
+            "The selected configuration needs data.data_dir and data.metadata_file.",
+            "Set the missing data fields in Advanced mode or configs/local/local.yaml.",
         )
-    if not isinstance(metadata_file, str) or not metadata_file.strip():
-        return TemplateDataStatus(
-            False,
-            "The selected template does not resolve a data.metadata_file value.",
-            "Set data.metadata_file in Advanced mode or the selected experiment YAML.",
-        )
+    data_root, metadata_path = resolved_paths
 
-    data_root = _expanded_path(root, data_dir.strip()).resolve()
-    metadata_value = Path(os.path.expandvars(os.path.expanduser(metadata_file.strip())))
-    metadata_path = (
-        metadata_value.resolve()
-        if metadata_value.is_absolute()
-        else (data_root / metadata_value).resolve()
-    )
     missing = []
     if not data_root.is_dir():
         missing.append(str(data_root))
     if not metadata_path.is_file():
         missing.append(str(metadata_path))
     if missing:
+        kind = "External data" if profile.requires_external_data else "Configured smoke data"
         return TemplateDataStatus(
             False,
-            "External data is not ready. Missing: " + ", ".join(missing),
+            f"{kind} is not ready. Missing: " + ", ".join(missing),
             "Set data.data_dir in Advanced mode or configs/local/local.yaml, then validate again.",
             data_root=str(data_root),
             metadata_path=str(metadata_path),
         )
+
+    detail = (
+        "External data and metadata were found for the selected template."
+        if profile.requires_external_data
+        else "Repository-shipped data and metadata are ready for the first run."
+    )
     return TemplateDataStatus(
         True,
-        "External data and metadata were found for the selected template.",
+        detail,
         data_root=str(data_root),
         metadata_path=str(metadata_path),
     )
