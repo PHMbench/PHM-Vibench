@@ -17,71 +17,41 @@
   </p>
 </div>
 
-PHM-Vibench organizes data loading, model construction, task wiring, training, and
-experiment configuration behind one maintained entrypoint:
+PHM-Vibench connects data loading, model construction, task logic, training, and
+experiment configuration through one maintained entrypoint:
 
 ```bash
 python main.py --config <yaml> [--override key=value ...]
 ```
 
-The project is in alpha. Its release-supported surface is deliberately narrower
-than the full set of files and registry entries in the repository. Start with the
-maintained demos and treat historical, reference, and research material as
-unverified until it has its own runtime evidence.
+The project is in alpha. The release-supported surface is deliberately smaller
+than the set of files and registry entries in the repository. A component is not
+supported merely because it can be discovered or imported; support requires a
+maintained configuration and runtime evidence.
 
-## Start here
+## What is currently maintained
 
-Run the repository-shipped offline smoke demo:
+The maintained public surface covers seven demo configurations for:
 
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1 \
-  --override data.num_workers=0
-```
+- offline Dummy-data domain generalization (DG);
+- cross-domain DG;
+- cross-system/cross-dataset domain generalization (CDDG);
+- few-shot (FS) and generalized few-shot (GFS) classification;
+- two bounded HSE pretraining views.
 
-Inspect the resolved configuration without editing a maintained YAML file:
+The exact model, task, pipeline, data, and trainer combinations are listed in:
 
-```bash
-python -m scripts.config_inspect \
-  --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1
-```
-
-Canonical entrypoints:
-
-- [Configuration guide](configs/README.md)
-- [Generated configuration atlas](docs/CONFIG_ATLAS.md)
 - [Supported components](SUPPORTED_COMPONENTS.md)
 - [Supported combinations](SUPPORTED_COMBINATIONS.md)
 - [Known limitations](KNOWN_LIMITATIONS.md)
-- [Data-directory policy](data/README.md)
-- [Contributor guide](CONTRIBUTING.md)
 
-## Maintained demo surface
+Smoke evidence establishes that a software path runs; it does not establish
+benchmark accuracy, state-of-the-art performance, universal compatibility, or
+data redistribution rights.
 
-The configuration registry currently marks seven demos as `sanity_ok`. That
-status means the configuration has smoke evidence; it does **not** establish
-benchmark accuracy, state-of-the-art performance, or universal compatibility.
+## Install
 
-| Area | Config | Data requirement |
-| --- | --- | --- |
-| Offline smoke / DG | `configs/demo/00_smoke/dummy_dg.yaml` | Repository-shipped dummy data |
-| Cross-domain DG | `configs/demo/01_cross_domain/cwru_dg.yaml` | Local PHM-Vibench metadata/raw data |
-| Cross-system CDDG | `configs/demo/02_cross_system/multi_system_cddg.yaml` | Local PHM-Vibench metadata/raw data |
-| Few-shot FS | `configs/demo/03_fewshot/cwru_protonet.yaml` | Local PHM-Vibench metadata/raw data |
-| Cross-system few-shot GFS | `configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml` | Local PHM-Vibench metadata/raw data |
-| HSE pretraining view | `configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml` | Local PHM-Vibench metadata/raw data |
-| HSE pretraining for CDDG | `configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml` | Local PHM-Vibench metadata/raw data |
-
-The current v0.2.0 support documents bound the maintained model path to
-`ISFM/M_01_ISFM` with `E_01_HSE`, `B_04_Dlinear`, and
-`H_01_Linear_cla`, plus the task combinations listed in
-[SUPPORTED_COMPONENTS.md](SUPPORTED_COMPONENTS.md). Registry discovery alone is
-not a support claim.
-
-## Installation
-
-A minimal environment setup is:
+Python 3.10 is the maintained documentation and CI baseline.
 
 ```bash
 git clone https://github.com/PHMbench/PHM-Vibench.git
@@ -89,35 +59,53 @@ cd PHM-Vibench
 
 conda create -n phm-vibench python=3.10
 conda activate phm-vibench
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Maintained runtime evidence was collected in the project-specific `LQ_signal`
-conda environment. A generic environment may still need dependency or platform
-adjustments; see [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
+CPU-only PyTorch, CUDA selection, platform boundaries, and environment checks are
+covered in the [installation guide](docs/installation.md).
 
-Only the dummy smoke demo is fully offline. For other demos, point the config to
-a local data root rather than editing the maintained YAML:
+## Run the offline smoke experiment
+
+This command uses repository-shipped Dummy data and CPU execution:
 
 ```bash
-python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/PHM-Vibench-data \
-  --override data.metadata_file=metadata.xlsx \
+python main.py \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
   --override trainer.num_epochs=1 \
   --override data.num_workers=0
 ```
 
-Processed or raw datasets may also be available from:
+A successful run exits with code `0`, prints the completion message, and creates
+artifacts below:
 
-- [ModelScope processed files](https://www.modelscope.cn/datasets/PHMbench/PHM-Vibench/files)
-- [PHMbench raw-data group](https://www.modelscope.cn/datasets/PHMbench/PHMbench-raw_data)
-- [Hugging Face mirror](https://huggingface.co/datasets/PHMbench/PHM-Vibench/tree/main)
+```text
+results/demo/dummy_dg_smoke/
+```
 
-Check the source license and availability before using or redistributing data.
+See [Quickstart](docs/quickstart.md) for configuration inspection, expected
+evidence, external-data overrides, and the next experiment steps.
+
+## Documentation
+
+- [Documentation index](docs/index.md)
+- [Installation](docs/installation.md)
+- [Quickstart](docs/quickstart.md)
+- [Configuration system](configs/README.md)
+- [Generated configuration atlas](docs/CONFIG_ATLAS.md)
+- [Data directory and licensing boundary](data/README.md)
+- [Testing and evidence](docs/testing.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Developer guide](docs/developer_guide.md)
+- [Contributor guide](CONTRIBUTING.md)
+
+Historical, paper, development-log, and agent-workflow material is not part of
+the current user path. The [documentation audit](docs/DOCUMENTATION_AUDIT.md)
+records its status and retention rules.
 
 ## Configuration-first workflow
 
-Maintained configs use five logical blocks:
+Maintained configs use five logical sections:
 
 ```yaml
 environment: {}
@@ -127,119 +115,90 @@ task: {}
 trainer: {}
 ```
 
-Demo files compose shared blocks through `base_configs` and then apply local YAML
-and CLI overrides. For an experiment variant:
-
-1. copy the nearest file from `configs/demo/` into `configs/experiments/`;
-2. change only the fields required by the experiment;
-3. inspect the resolved configuration and source trace;
-4. run the smallest applicable smoke command;
-5. keep the registry and generated atlas synchronized when promoting a maintained config.
-
-Useful commands:
+Create local variants under `configs/experiments/`, not by editing a maintained
+demo. Inspect the resolved values and sources before running:
 
 ```bash
-python -m scripts.validate_configs
-python -m scripts.config_inspect --config <yaml> --override key=value
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-```
-
-## Validation gate
-
-Use the narrowest relevant test during development, then run the maintained gate
-before merging a runtime or configuration change:
-
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1 \
-  --override data.num_workers=0
-python -m scripts.validate_configs
 python -m scripts.config_inspect \
   --config configs/demo/00_smoke/dummy_dg.yaml \
   --override trainer.num_epochs=1
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-python -m scripts.validate_docs
-python -m pytest test/ -q
 ```
 
-Local validation evidence should not be described as GitHub Actions evidence.
-The repository currently needs an active required CI workflow to enforce these
-gates automatically.
+`configs/config_registry.csv` is the configuration inventory source of truth.
+`docs/CONFIG_ATLAS.md` is generated from it and should not be edited manually.
+
+## Repository structure
+
+```text
+configs/             base blocks, maintained demos, experiments, registry
+src/data_factory/    metadata, readers, datasets, samplers, data construction
+src/model_factory/   model families, components, model construction
+src/task_factory/    task implementations, losses, metrics, task registry
+src/trainer_factory/ trainer construction and extensions
+apps/streamlit/      optional browser workspace around the public CLI
+docs/                user, developer, release, migration, and design docs
+test/                maintained pytest suite
+```
+
+Extensions should stay inside the existing factory boundaries. Do not add a
+model- or dataset-specific branch to `main.py`.
+
+## Validate a change
+
+Start with the narrow test for the affected contract. Before merging a runtime or
+configuration change, run the applicable maintained gates:
+
+```bash
+python -m scripts.validate_docs
+python -m scripts.validate_configs
+python -m scripts.gen_config_atlas
+git diff --exit-code docs/CONFIG_ATLAS.md
+python -m pytest test/ -q
+python main.py \
+  --config configs/demo/00_smoke/dummy_dg.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
+
+The exact automated jobs for the current branch are defined in
+`.github/workflows/core-quality-gates.yml`. Local output must not be presented as
+GitHub Actions evidence. See [Testing and evidence](docs/testing.md).
 
 ## Optional Streamlit workspace
 
-The Streamlit workspace is an optional interface around the same config-first
-contract. It does not replace the CLI release gate and should not import pipeline
-internals directly.
+The Streamlit workspace is an optional adapter around the same config-first CLI;
+it is not a second training framework.
 
 ```bash
-streamlit run streamlit_app.py
+python -m pip install -r apps/streamlit/requirements.txt
+streamlit run apps/streamlit/app.py
 ```
 
-See the [maintained Streamlit guide](apps/streamlit/README.md) for configuration,
-execution, result inspection, and focused tests.
+See [Streamlit usage](docs/app_usage.md).
 
-## Architecture
+## Contribute
 
-```text
-main.py
-  └── pipeline selected by YAML
-      ├── data factory
-      ├── model factory
-      ├── task factory
-      └── trainer factory
-```
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
+A public component contribution should include implementation, registry/config
+traceability, a focused test, documentation, an applicable smoke path, and
+explicit compatibility limits.
 
-Primary directories:
+For factory-specific details:
 
-- `configs/`: base blocks, maintained demos, experiments, and registry
-- `src/data_factory/`: metadata, readers, datasets, samplers, and data construction
-- `src/model_factory/`: model families, component registries, and model construction
-- `src/task_factory/`: task implementations and task registry
-- `src/trainer_factory/`: trainer implementations
-- `apps/streamlit/`: optional experiment workspace
-- `test/`: maintained pytest gate
-- `docs/`: release, configuration, migration, and engineering documentation
-- `results/`: runtime output, not configuration source of truth
+- [Data and readers](src/data_factory/contributing.md)
+- [Models](src/model_factory/contributing.md)
+- [Tasks](src/task_factory/contributing.md)
+- [Trainers](src/trainer_factory/contributing.md)
 
-## Extending PHM-Vibench
+## Citation, license, and support
 
-Keep extensions within factory boundaries; do not add model- or dataset-specific
-branches to `main.py`.
+Until a stable publication or DOI is released, record and cite the exact Git tag
+or commit used for an experiment. Do not infer scientific claims from the Dummy
+smoke run or registry inventory.
 
-- [Add a dataset or reader](src/data_factory/contributing.md)
-- [Add a model](src/model_factory/contributing.md)
-- [Add a task](src/task_factory/contributing.md)
-- [Add a trainer](src/trainer_factory/contributing.md)
+PHM-Vibench source code is licensed under the [Apache License 2.0](LICENSE).
+Datasets, pretrained weights, and third-party models may have separate licenses at
+their original sources.
 
-A public component change should include its implementation, registry/config
-entry, focused test, documentation, and an applicable smoke path. Research-only
-ideas should remain in clearly marked project or experiment areas until their
-protocol and validation evidence are defined.
-
-## Evidence boundaries
-
-PHM-Vibench currently provides functional smoke and contract evidence for a
-bounded configuration matrix. It does not, by itself, prove:
-
-- state-of-the-art performance;
-- fair comparison across arbitrary external experiments;
-- support for every registry-discovered component pair;
-- availability or redistribution rights for every referenced dataset;
-- reproducibility outside the recorded environment and data setup.
-
-Record the exact repository commit, config, overrides, data source, seed, and
-environment when reporting an experiment.
-
-## Contributing, license, and citation
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Keep each
-change small, explicit, reviewable, and backed by copy-paste validation commands.
-
-PHM-Vibench is licensed under the [Apache License 2.0](LICENSE). Dataset and model
-artifacts may have separate licenses at their original sources.
-
-The project remains in alpha. Until a stable publication citation is released,
-reference the exact Git commit or release tag used for an experiment.
+Use GitHub Issues for reproducible bugs and feature proposals. Do not post
+security vulnerabilities publicly; follow [SECURITY.md](SECURITY.md).
