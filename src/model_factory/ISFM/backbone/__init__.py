@@ -1,22 +1,40 @@
-from .B_01_basic_transformer import B_01_basic_transformer# ,B_03_FITS
-from .B_03_FITS import B_03_FITS
-from .B_04_Dlinear import B_04_Dlinear
-from .B_05_Mamba import B_05_Mamba
-from .B_06_TimesNet import B_06_TimesNet
-from .B_07_TSMixer import B_07_TSMixer
-from .B_08_PatchTST import B_08_PatchTST
-from .B_09_FNO import B_09_FNO
-from .B_10_VIBT import B_10_VIBT  # Vibration Transformer Backbone
-from .B_11_MomentumEncoder import B_11_MomentumEncoder  # Momentum Encoder Backbone
+"""Lazy exports for ISFM backbone implementations.
 
-__all__ = ["B_01_basic_transformer",
-       'B_03_FITS',
-       'B_04_Dlinear',
-       'B_05_Mamba',
-       'B_06_TimesNet',
-       'B_07_TSMixer',
-       'B_08_PatchTST',
-       'B_09_FNO',
-       'B_10_VIBT',  # Vibration Transformer Backbone
-       'B_11_MomentumEncoder',  # Momentum Encoder Backbone
-       ]
+A selected backbone should not require dependencies used only by a different
+backbone. Public names remain available through module-level ``__getattr__``.
+"""
+
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Any
+
+_BACKBONE_MODULES = {
+    "B_01_basic_transformer": "B_01_basic_transformer",
+    "B_03_FITS": "B_03_FITS",
+    "B_04_Dlinear": "B_04_Dlinear",
+    "B_05_Mamba": "B_05_Mamba",
+    "B_06_TimesNet": "B_06_TimesNet",
+    "B_07_TSMixer": "B_07_TSMixer",
+    "B_08_PatchTST": "B_08_PatchTST",
+    "B_09_FNO": "B_09_FNO",
+    "B_10_VIBT": "B_10_VIBT",
+    "B_11_MomentumEncoder": "B_11_MomentumEncoder",
+}
+
+__all__ = list(_BACKBONE_MODULES)
+
+
+def __getattr__(name: str) -> Any:
+    module_name = _BACKBONE_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module = import_module(f"{__name__}.{module_name}")
+    value = getattr(module, name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))
