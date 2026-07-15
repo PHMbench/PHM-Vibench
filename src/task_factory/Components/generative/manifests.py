@@ -37,9 +37,11 @@ def build_synthetic_manifest(
     checkpoint_evidence: dict[str, Any],
     normalization_evidence: dict[str, Any],
     config_evidence: dict[str, str],
+    protocol_evidence: dict[str, str],
     code_evidence: dict[str, str],
     dependency_evidence: dict[str, str],
     data_evidence: dict[str, str],
+    generated_evidence: dict[str, str],
     leakage_metrics: dict[str, Any],
     sampler_metadata: dict[str, Any] | None = None,
     scientific_status: str = "exploratory",
@@ -73,11 +75,17 @@ def build_synthetic_manifest(
     config_ok = _nonempty(config_evidence.get("path")) and _nonempty(
         config_evidence.get("sha256")
     )
+    protocol_ok = _nonempty(protocol_evidence.get("path")) and _nonempty(
+        protocol_evidence.get("sha256")
+    )
     code_ok = _nonempty(code_evidence.get("commit"))
     dependency_ok = _nonempty(dependency_evidence.get("sha256"))
     data_ok = all(
         _nonempty(data_evidence.get(key))
         for key in ("metadata_path", "metadata_sha256", "domain_map_path", "domain_map_sha256")
+    )
+    generated_ok = _nonempty(generated_evidence.get("path")) and _nonempty(
+        generated_evidence.get("sha256")
     )
     leakage_ok = all(
         leakage_metrics.get(name, {}).get("status") == "ok"
@@ -88,9 +96,11 @@ def build_synthetic_manifest(
         "strict_checkpoint": checkpoint_ok,
         "train_normalization": normalization_ok,
         "config_hash": config_ok,
+        "protocol": protocol_ok,
         "code_commit": code_ok,
         "dependency_hash": dependency_ok,
         "data_hashes": data_ok,
+        "generated": generated_ok,
         "condition_counts": bool(condition_counts),
         "leakage_metrics": leakage_ok,
     }
@@ -114,9 +124,11 @@ def build_synthetic_manifest(
         "normalization": normalization_evidence,
         "checkpoint": checkpoint_evidence,
         "config": config_evidence,
+        "protocol": protocol_evidence,
         "code": code_evidence,
         "dependency_lock": dependency_evidence,
         "environment": runtime_environment(),
+        "generated_artifact": generated_evidence,
         "conditions": {
             "direct_keys": ["fault_label", "domain_id"],
             "sampling_policy": condition_sampling_policy,

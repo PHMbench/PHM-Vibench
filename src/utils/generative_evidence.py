@@ -185,7 +185,11 @@ def update_stage_ledger(
         ledger = {"schema_version": "0.2.1", "stages": {}}
     if not isinstance(ledger.get("stages"), dict):
         raise ValueError(f"invalid stage ledger: {target}")
-    stage_values = dict(ledger["stages"].get(stage, {}))
+    stage_values = (
+        {}
+        if values.get("status") == "running"
+        else dict(ledger["stages"].get(stage, {}))
+    )
     stage_values.update(values)
     ledger["stages"][stage] = stage_values
     _, ledger_hash, digest_path = write_hashed_json(target, ledger)

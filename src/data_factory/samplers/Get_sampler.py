@@ -97,7 +97,8 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
     if args_task.type == 'GFS': # Generalized Few-Shot Learning
         sampler = _get_gfs_sampler(args_task, args_data, dataset, mode)
     elif args_task.type == 'FS':
-        # FS 视作单系统 few-shot 场景，先复用 Same_system_Sampler，保持与 DG/CDDG 一致的按系统分组 batch 行为
+        # FS 视作单系统 few-shot 场景，先复用 Same_system_Sampler，
+        # 保持与 DG/CDDG 一致的按系统分组 batch 行为。
         if mode == 'train':
             sampler = Same_system_Sampler(
                 dataset=dataset,
@@ -114,7 +115,7 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
             )
         else:
             raise ValueError(f"Unknown mode for FS sampler: {mode}")
-    elif args_task.type == 'pretrain':
+    elif args_task.type in {'pretrain', 'generative'}:
         sampler = _get_pretrain_sampler(args_data, dataset, mode)
     elif args_task.type == 'CDDG':
         sampler = _get_cddg_sampler(args_data, dataset, mode)

@@ -13,7 +13,12 @@ task:
     eval_split: "train"
     run_test_loss_after_train: false
     checkpoint_path: null
+    normalization_path: null
+    normalization_sha256: null
+    protocol_path: null
     generated_path: null
+    synthetic_manifest_path: null
+    stage_ledger_path: null
     allow_untrained_smoke: false
     num_steps: 8
     num_samples: 2
