@@ -25,10 +25,22 @@ class EnvironmentConfig(BaseModel):
 class DataConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    data_dir: str = Field(..., description="Dataset root dir containing metadata and processed files.")
-    metadata_file: str = Field(..., description="Metadata filename relative to data_dir (xlsx/csv).")
+    factory_name: str = "default"
+    data_dir: Optional[str] = Field(None, description="Dataset root dir containing metadata and processed files.")
+    metadata_file: Optional[str] = Field(None, description="Metadata filename relative to data_dir (xlsx/csv).")
+    phm_data_config: Optional[str] = None
+    dataset_name: Optional[str] = None
     batch_size: Optional[int] = Field(None, ge=1)
     num_workers: Optional[int] = Field(None, ge=0)
+
+    @model_validator(mode="after")
+    def _check_backend_fields(self) -> "DataConfig":
+        if self.factory_name == "phm_data":
+            if not self.phm_data_config:
+                raise ValueError("data.factory_name=phm_data requires phm_data_config")
+        elif not self.data_dir or not self.metadata_file:
+            raise ValueError("data_dir and metadata_file are required")
+        return self
 
 
 class ModelConfig(BaseModel):

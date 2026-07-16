@@ -30,3 +30,6 @@
 	path = paper/LQ_vibench_fix
 	url = git@github.com:liq22/LQ_vibench_fix.git
 	branch = lqfix_25-12
+[submodule "phm-data-factory"]
+	path = packages/phm-data-factory
+	url = https://github.com/liq22/P01-phm-data-factory.git

@@ -380,6 +380,23 @@ class data_factory:
     def __len__(self):
         """返回数据集数量"""
         return len(self.data)
+
+    def close(self):
+        close = getattr(self.data, "close", None)
+        if callable(close):
+            close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
     
 
 

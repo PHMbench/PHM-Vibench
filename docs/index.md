@@ -23,6 +23,7 @@ Documentation uses four status labels:
 | Understand YAML composition and overrides | [Configuration guide](../configs/README.md) |
 | Find maintained configurations | [Configuration atlas](CONFIG_ATLAS.md) |
 | Prepare local datasets | [Data directory guide](../data/README.md) |
+| Use the experimental shared data backend | [phm-data-factory backend](phm_data_factory.md) |
 | See the supported release surface | [Supported components](../SUPPORTED_COMPONENTS.md) and [supported combinations](../SUPPORTED_COMBINATIONS.md) |
 | Check known constraints | [Known limitations](../KNOWN_LIMITATIONS.md) |
 | Use the optional web interface | [Streamlit workspace](../apps/streamlit/README.md) |
