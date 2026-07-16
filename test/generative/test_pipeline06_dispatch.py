@@ -26,7 +26,11 @@ def _configs(mode: str, iterations: int = 2, **generative_values) -> SimpleNames
         (
             "sample",
             "_run_sample_stage",
-            {"checkpoint_path": "checkpoint.ckpt"},
+            {
+                "checkpoint_path": "checkpoint.ckpt",
+                "normalization_path": "normalization_params.json",
+                "normalization_sha256": "digest",
+            },
         ),
         (
             "eval",
@@ -74,6 +78,53 @@ def test_pipeline_dispatches_only_the_selected_stage(
     ]
 
 
-def test_g1_placeholder_fails_explicitly() -> None:
-    with pytest.raises(RuntimeError, match="not integrated in the G1 shell"):
-        pipeline06._run_train_stage(None, None, 0)
+def test_stage_failure_is_recorded_and_reraised(monkeypatch) -> None:
+    configs = _configs("train", iterations=1)
+    records = []
+    monkeypatch.setattr(pipeline06, "_load_configs", lambda args: configs)
+    monkeypatch.setattr(
+        pipeline06,
+        "_run_train_stage",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("stage exploded")),
+    )
+    monkeypatch.setattr(
+        pipeline06,
+        "_record_stage",
+        lambda configs, stage, **values: records.append((stage, values)),
+    )
+
+    with pytest.raises(RuntimeError, match="stage exploded"):
+        pipeline06.pipeline(SimpleNamespace(config_path="unused.yaml"))
+
+    assert records == [
+        (
+            "train",
+            {
+                "status": "failed",
+                "iteration": 0,
+                "error_type": "RuntimeError",
+                "error": "stage exploded",
+            },
+        )
+    ]
+
+
+def test_ledger_failure_does_not_replace_stage_failure(monkeypatch) -> None:
+    configs = _configs("train", iterations=1)
+    monkeypatch.setattr(pipeline06, "_load_configs", lambda args: configs)
+    monkeypatch.setattr(
+        pipeline06,
+        "_run_train_stage",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("stage exploded")),
+    )
+    monkeypatch.setattr(
+        pipeline06,
+        "_record_stage",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ledger unavailable")),
+    )
+
+    with pytest.raises(RuntimeError, match="stage exploded") as captured:
+        pipeline06.pipeline(SimpleNamespace(config_path="unused.yaml"))
+
+    assert isinstance(captured.value.__cause__, OSError)
+    assert str(captured.value.__cause__) == "ledger unavailable"

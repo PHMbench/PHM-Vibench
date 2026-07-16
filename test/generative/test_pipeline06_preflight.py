@@ -50,6 +50,30 @@ def test_sample_requires_checkpoint_by_default() -> None:
         )
 
 
+def test_trained_sample_requires_explicit_normalization_evidence() -> None:
+    config = _configs(mode="sample", checkpoint_path="model.ckpt")
+
+    with pytest.raises(ValueError, match="normalization_path"):
+        pipeline06._validate_stage_inputs(
+            "sample",
+            pipeline06._generative_cfg(config),
+        )
+
+
+def test_trained_sample_requires_expected_normalization_hash() -> None:
+    config = _configs(
+        mode="sample",
+        checkpoint_path="model.ckpt",
+        normalization_path="normalization_params.json",
+    )
+
+    with pytest.raises(ValueError, match="normalization_sha256"):
+        pipeline06._validate_stage_inputs(
+            "sample",
+            pipeline06._generative_cfg(config),
+        )
+
+
 def test_explicit_untrained_sample_smoke_is_allowed() -> None:
     config = _configs(mode="sample", allow_untrained_smoke=True)
 
