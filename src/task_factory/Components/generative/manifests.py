@@ -55,7 +55,7 @@ def build_synthetic_manifest(
         raise ValueError(
             f"generation source_split must be train, got {source_split!r}"
         )
-    if scientific_status not in {"exploratory", "benchmark-candidate"}:
+    if scientific_status not in {"exploratory", "docs-only"}:
         raise ValueError(
             f"unsupported scientific status for v0.2.1 smoke: {scientific_status}"
         )

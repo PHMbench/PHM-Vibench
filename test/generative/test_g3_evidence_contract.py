@@ -67,6 +67,25 @@ def test_synthetic_manifest_requires_protocol_and_sample_hashes() -> None:
     assert manifest["validity"]["runtime_smoke_eligible"] is True
 
 
+def test_synthetic_manifest_rejects_non_constitution_status() -> None:
+    kwargs = _synthetic_manifest_kwargs()
+    kwargs["scientific_status"] = "benchmark-candidate"
+
+    with pytest.raises(ValueError, match="unsupported scientific status"):
+        build_synthetic_manifest(**kwargs)
+
+
+def test_docs_only_manifest_remains_non_promotional() -> None:
+    kwargs = _synthetic_manifest_kwargs()
+    kwargs["scientific_status"] = "docs-only"
+
+    manifest = build_synthetic_manifest(**kwargs)
+
+    assert manifest["validity"]["scientific_status"] == "docs-only"
+    assert manifest["validity"]["benchmark_valid"] is False
+    assert manifest["validity"]["paper_ready"] is False
+
+
 @pytest.mark.parametrize("missing_key", ["protocol_evidence", "generated_evidence"])
 def test_synthetic_manifest_downgrades_missing_provenance(missing_key: str) -> None:
     kwargs = _synthetic_manifest_kwargs()
