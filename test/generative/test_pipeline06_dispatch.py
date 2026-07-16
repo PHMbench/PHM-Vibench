@@ -107,3 +107,24 @@ def test_stage_failure_is_recorded_and_reraised(monkeypatch) -> None:
             },
         )
     ]
+
+
+def test_ledger_failure_does_not_replace_stage_failure(monkeypatch) -> None:
+    configs = _configs("train", iterations=1)
+    monkeypatch.setattr(pipeline06, "_load_configs", lambda args: configs)
+    monkeypatch.setattr(
+        pipeline06,
+        "_run_train_stage",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("stage exploded")),
+    )
+    monkeypatch.setattr(
+        pipeline06,
+        "_record_stage",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ledger unavailable")),
+    )
+
+    with pytest.raises(RuntimeError, match="stage exploded") as captured:
+        pipeline06.pipeline(SimpleNamespace(config_path="unused.yaml"))
+
+    assert isinstance(captured.value.__cause__, OSError)
+    assert str(captured.value.__cause__) == "ledger unavailable"

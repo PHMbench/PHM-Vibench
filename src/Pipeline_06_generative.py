@@ -937,13 +937,16 @@ def pipeline(args: Any) -> list[Any]:
         try:
             results.append(handler(args, configs, iteration))
         except Exception as exc:
-            _record_stage(
-                configs,
-                mode,
-                status="failed",
-                iteration=iteration,
-                error_type=type(exc).__name__,
-                error=str(exc),
-            )
+            try:
+                _record_stage(
+                    configs,
+                    mode,
+                    status="failed",
+                    iteration=iteration,
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                )
+            except Exception as ledger_exc:
+                raise exc from ledger_exc
             raise
     return results
