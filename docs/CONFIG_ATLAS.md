@@ -12,6 +12,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - [BASE](#base)
 - [Pipeline_01_default](#pipeline-01-default)
 - [Pipeline_02_pretrain_fewshot](#pipeline-02-pretrain-fewshot)
+- [Pipeline_06_generative](#pipeline-06-generative)
 
 ## BASE
 
@@ -306,4 +307,26 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
 - Outputs: `results/demo/pretrain_hse_then_fewshot/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/05_pretrain_fewshot/README.md`
+- Status: `sanity_ok`
+
+
+## Pipeline_06_generative
+
+### demo
+
+#### `demo_10_generative_cfm`
+- Path: `configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Description: Conditional Flow Matching sanity demo（repo dummy；CPU/RTX 4090 seed-0 E-chain）
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_cfm.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_generative.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_cfm/stage_ledger.json`
+- Related docs: `configs/demo/10_generative/README.md`, `SUPPORTED_COMBINATIONS.md`, `KNOWN_LIMITATIONS.md`, `docs/PIPELINE_06_GENERATIVE_MIGRATION.md`
 - Status: `sanity_ok`

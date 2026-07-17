@@ -50,7 +50,15 @@ class ModelConfig(BaseModel):
         return self
 
 
-TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task"]
+TaskType = Literal[
+    "DG",
+    "CDDG",
+    "FS",
+    "GFS",
+    "pretrain",
+    "Default_task",
+    "generative",
+]
 
 
 class TaskConfig(BaseModel):

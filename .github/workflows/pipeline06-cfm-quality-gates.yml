@@ -10,6 +10,14 @@ on:
       - "configs/base/model/generative_*.yaml"
       - "configs/base/task/generative_*.yaml"
       - "configs/experiments/generative/**"
+      - "configs/demo/10_generative/**"
+      - "configs/demo/README.md"
+      - "configs/config_registry.csv"
+      - "docs/CONFIG_ATLAS.md"
+      - "src/config_schema/**"
+      - "SUPPORTED_COMPONENTS.md"
+      - "SUPPORTED_COMBINATIONS.md"
+      - "KNOWN_LIMITATIONS.md"
       - "test/generative/**"
       - ".github/workflows/pipeline06-cfm-quality-gates.yml"
   push:
@@ -23,6 +31,14 @@ on:
       - "configs/base/model/generative_*.yaml"
       - "configs/base/task/generative_*.yaml"
       - "configs/experiments/generative/**"
+      - "configs/demo/10_generative/**"
+      - "configs/demo/README.md"
+      - "configs/config_registry.csv"
+      - "docs/CONFIG_ATLAS.md"
+      - "src/config_schema/**"
+      - "SUPPORTED_COMPONENTS.md"
+      - "SUPPORTED_COMBINATIONS.md"
+      - "KNOWN_LIMITATIONS.md"
       - "test/generative/**"
       - ".github/workflows/pipeline06-cfm-quality-gates.yml"
   workflow_dispatch:
@@ -66,6 +82,11 @@ jobs:
             "torchmetrics>=1.0" \
             "PyYAML>=6.0" \
             "pydantic>=2.0" \
+            "scipy" \
+            "scikit-learn>=1.0" \
+            "h5py" \
+            "matplotlib" \
+            "openpyxl" \
             "tensorboard" \
             "pytest>=7"
 
@@ -84,14 +105,15 @@ jobs:
             test/generative/test_pipeline06_dispatch.py \
             test/generative/test_cfm_core_contract.py \
             test/generative/test_cfm_dtype_contract.py \
-            test/generative/test_cfm_factory_contract.py
+            test/generative/test_cfm_factory_contract.py \
+            test/generative/test_cfm_demo_e_chain.py
 
-      - name: Inspect exploratory CFM configuration
+      - name: Inspect maintained CFM configuration
         shell: bash
         run: |
           set -o pipefail
           python -m scripts.config_inspect \
-            --config configs/experiments/generative/dummy_generative_cfm.yaml \
+            --config configs/demo/10_generative/dummy_generative_cfm.yaml \
             --dump targets \
             --format yaml \
             2>&1 | tee pipeline06-cfm-config-inspect.log
@@ -110,6 +132,7 @@ jobs:
             test/generative/test_cfm_core_contract.py \
             test/generative/test_cfm_dtype_contract.py \
             test/generative/test_cfm_factory_contract.py \
+            test/generative/test_cfm_demo_e_chain.py \
             2>&1 | tee pipeline06-cfm-pytest.log
 
       - name: Upload focused diagnostics

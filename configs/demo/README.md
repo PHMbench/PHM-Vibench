@@ -28,6 +28,7 @@ python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 | `04_cross_system_fewshot/` | Generalized few-shot (GFS / cross-system) | `cross_system_tspn.yaml` |
 | `05_pretrain_fewshot/` | Pretrain + few-shot pipeline | `pretrain_hse_then_fewshot.yaml` |
 | `06_pretrain_cddg/` | Pretrain for CDDG pipeline | `pretrain_hse_cddg.yaml` |
+| `10_generative/` | Conditional Flow Matching runtime smoke | `dummy_generative_cfm.yaml` |
 
 ## Naming Convention (Recommended)
 
@@ -51,6 +52,7 @@ Examples:
 - `configs/demo/04_cross_system_fewshot/README.md`
 - `configs/demo/05_pretrain_fewshot/README.md`
 - `configs/demo/06_pretrain_cddg/README.md`
+- `configs/demo/10_generative/README.md`
 
 ## Adding a New Demo (Checklist)
 
