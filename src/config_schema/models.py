@@ -50,7 +50,42 @@ class ModelConfig(BaseModel):
         return self
 
 
-TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task"]
+TaskType = Literal[
+    "DG",
+    "CDDG",
+    "FS",
+    "GFS",
+    "pretrain",
+    "Default_task",
+    "generative",
+]
+
+
+class PopulationRegularizationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    weight: float = Field(0.1, gt=0.0)
+    dependency: Literal["pearson_correlation"] = "pearson_correlation"
+    estimator: Literal["biased"] = "biased"
+    rbf_bandwidths: List[float] = Field(
+        default_factory=lambda: [0.1, 0.5, 1.0, 2.0]
+    )
+    same_time_per_batch: bool = True
+
+    @model_validator(mode="after")
+    def _check_population_contract(self) -> "PopulationRegularizationConfig":
+        if not self.rbf_bandwidths or any(
+            value <= 0.0 for value in self.rbf_bandwidths
+        ):
+            raise ValueError(
+                "task.population_regularization.rbf_bandwidths must be positive"
+            )
+        if self.enabled and not self.same_time_per_batch:
+            raise ValueError(
+                "enabled population regularization requires same_time_per_batch=true"
+            )
+        return self
 
 
 class TaskConfig(BaseModel):
@@ -60,6 +95,7 @@ class TaskConfig(BaseModel):
     name: str = Field(..., description="Task name under task.type.")
 
     target_system_id: Optional[List[int]] = None
+    population_regularization: Optional[PopulationRegularizationConfig] = None
 
     @model_validator(mode="after")
     def _check_target_system_id(self) -> "TaskConfig":
@@ -97,4 +133,17 @@ class ExperimentConfig(BaseModel):
     def _basic_coupling_checks(self) -> "ExperimentConfig":
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
+        population = self.task.population_regularization
+        if population is not None and population.enabled:
+            if (
+                self.task.type != "generative"
+                or self.task.name != "conditional_flow_matching"
+            ):
+                raise ValueError(
+                    "population_regularization is supported only by conditional_flow_matching"
+                )
+            if int(getattr(self.model, "in_channels", 0)) < 2:
+                raise ValueError(
+                    "population_regularization requires model.in_channels >= 2"
+                )
         return self
