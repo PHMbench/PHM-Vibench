@@ -61,4 +61,4 @@ task:
 trainer:
   num_epochs: 10
   device: cpu
-  gpus: 0
+  gpus: 1
