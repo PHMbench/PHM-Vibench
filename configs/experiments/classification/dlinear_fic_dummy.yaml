@@ -1,0 +1,38 @@
+# Offline FIC gradient-constraint setting paired with the maintained dummy DG baseline.
+pipeline: Pipeline_01_default
+
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  model: configs/base/model/backbone_dlinear.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+
+environment:
+  project: experiment_dlinear_fic_dummy
+  seed: 42
+  iterations: 5
+  output_dir: results/experiments/dlinear_fic_dummy
+  notes: FIC contract comparison on dummy data; no benchmark claim.
+
+data:
+  data_dir: data
+  metadata_file: metadata_dummy.csv
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+  gradient_constraint:
+    name: fic
+    epsilon: 2.0
+
+trainer:
+  num_epochs: 1
+  device: cpu
+  gpus: 1

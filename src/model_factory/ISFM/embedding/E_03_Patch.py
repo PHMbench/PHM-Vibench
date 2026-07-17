@@ -38,6 +38,9 @@ class E_03_Patch(nn.Module):
             self.num_patches = self.seq_len // self.patch_len
             act_name = getattr(args_m, "activation", "gelu")
             embed_dim = getattr(args_m, "d_model", self.out_dim)
+            self.channel_independent = bool(
+                getattr(args_m, "channel_independent", False)
+            )
         else:
             self.seq_len = int(config_or_seq_len)
             self.patch_len = patch_len
@@ -45,17 +48,24 @@ class E_03_Patch(nn.Module):
             self.out_dim = out_dim
             self.num_patches = self.seq_len // self.patch_len
             act_name = act
+            self.channel_independent = False
 
         self.act = ACTIVATION[act_name]
 
         # 使用1D卷积实现分块和嵌入
+        projection_channels = 1 if self.channel_independent else self.in_chans
         self.proj = nn.Sequential(
-            nn.Conv1d(self.in_chans, embed_dim, kernel_size=self.patch_len, stride=self.patch_len),
+            nn.Conv1d(
+                projection_channels,
+                embed_dim,
+                kernel_size=self.patch_len,
+                stride=self.patch_len,
+            ),
             self.act,
             nn.Conv1d(embed_dim, self.out_dim, kernel_size=1, stride=1)
         )
 
-    def forward(self, x):
+    def _to_channel_first(self, x):
         # 自动检测并转换维度格式
         # 支持两种常见格式:
         # 1. (B, C, L) - 标准Conv1d格式
@@ -87,6 +97,32 @@ class E_03_Patch(nn.Module):
         # 验证维度匹配
         if C != self.in_chans:
             raise ValueError(f"Channel mismatch: model expects {self.in_chans}, got {C}")
+
+        return x
+
+    def forward_grid(self, x):
+        """Return independently encoded channels as ``[B, C, P, D]``."""
+        if not self.channel_independent:
+            raise ValueError(
+                "E_03_Patch.forward_grid requires model.channel_independent=true"
+            )
+        x = self._to_channel_first(x)
+        batch_size, channels, length = x.shape
+        if length % self.patch_len != 0:
+            raise ValueError("input length must be divisible by patch_size_L")
+        channel_batch = x.reshape(batch_size * channels, 1, length)
+        embedded = self.proj(channel_batch).transpose(1, 2)
+        return embedded.reshape(
+            batch_size,
+            channels,
+            embedded.shape[1],
+            embedded.shape[2],
+        )
+
+    def forward(self, x):
+        x = self._to_channel_first(x)
+        if self.channel_independent:
+            return self.forward_grid(x).mean(dim=1)
 
         # 允许动态长度，只要满足 patch_len 要求即可；seq_len 主要用于 num_patches 估计
         # 如果 L 与 seq_len 不一致，这里不再强制报错，以兼容不同 window_size

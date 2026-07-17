@@ -120,6 +120,57 @@ class Model(nn.Module):
         """Apply the configured backbone."""
         return self.backbone(x)
 
+    def encode_sequence(self, x: torch.Tensor, file_id=False) -> torch.Tensor:
+        """Return the post-backbone sequence before any task-head pooling."""
+        self.shape = x.shape
+        if (
+            self.args_m.embedding == "E_03_Patch"
+            and bool(getattr(self.args_m, "channel_independent", False))
+        ):
+            return self.encode_patch_grid(x, file_id=file_id).mean(dim=1)
+        return self._encode(self._embed(x, file_id))
+
+    def encode_patch_grid(self, x: torch.Tensor, file_id=False) -> torch.Tensor:
+        """Return channel-independent patch features as ``[B, C, P, D]``."""
+        del file_id
+        if self.args_m.embedding != "E_03_Patch":
+            raise ValueError("encode_patch_grid requires model.embedding=E_03_Patch")
+        if not bool(getattr(self.args_m, "channel_independent", False)):
+            raise ValueError("encode_patch_grid requires model.channel_independent=true")
+        self.shape = x.shape
+        grid = self.embedding.forward_grid(x)
+        batch_size, channels, patches, embedding_dim = grid.shape
+        encoded = self._encode(grid.reshape(batch_size * channels, patches, embedding_dim))
+        if encoded.ndim != 3 or tuple(encoded.shape[:2]) != (
+            batch_size * channels,
+            patches,
+        ):
+            raise RuntimeError(
+                "channel-independent ISFM backbone must preserve [batch, patches, dim]"
+            )
+        return encoded.reshape(
+            batch_size,
+            channels,
+            patches,
+            encoded.shape[-1],
+        )
+
+    def classify_encoded(
+        self,
+        sequence: torch.Tensor,
+        file_id=False,
+        return_feature: bool = False,
+    ):
+        """Classify an already encoded ``[B, P, D]`` sequence."""
+        if sequence.ndim != 3:
+            raise ValueError("classify_encoded expects [batch, patches, embedding_dim]")
+        return self._head(
+            sequence,
+            file_id=file_id,
+            task_id="classification",
+            return_feature=return_feature,
+        )
+
     def _head(self, x, file_id=False, task_id=False, return_feature=False):
         """Apply the configured task head."""
         system_ids_tensor, _ = resolve_batch_metadata(self.metadata, file_id, device=x.device)
@@ -144,12 +195,9 @@ class Model(nn.Module):
 
     def forward(self, x: torch.Tensor, file_id=False, task_id=False, return_feature=False):
         """Forward pass through embedding, backbone, and task head."""
-        self.shape = x.shape
-        x = self._embed(x, file_id)
+        x = self.encode_sequence(x, file_id)
         if return_feature:
-            feature = self._encode(x)
-            output = self._head(feature, file_id, task_id)
-            return output, feature
+            output = self._head(x, file_id, task_id)
+            return output, x
 
-        x = self._encode(x)
         return self._head(x, file_id, task_id)

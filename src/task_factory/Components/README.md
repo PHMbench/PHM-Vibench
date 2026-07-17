@@ -8,6 +8,7 @@
 - `contrastive_strategies.py`：对比学习策略架构，支持 HSE Prompt 集成和系统感知对比学习，详见 [CONTRASTIVE_STRATEGIES.md](./README_CONTRASTIVE_STRATEGIES.md)。
 - `metrics.py`：评估指标工厂，封装 torchmetrics。
 - `regularization.py`：正则化工具（L1/L2/Domain penalty/mixup 等）。
+- `gradient_constraints.py`：optimizer step 前的梯度约束；当前提供实验性 FIC。
 - 其他：prompt_contrastive、metric_loss 等高级模块。
 
 ## 生成/重构组件状态
@@ -42,6 +43,22 @@
 - InfoNCE/SupCon 需要“正样本对”存在：监督对比需 batch 内有重复 label；自监督需双视图或其他配对逻辑。单视图+唯一标签会得到 0 loss。
 - Triplet 需要合理的 margin；BarlowTwins/VICReg 需要两视图输入。
 - prompt_contrastive 的 `base_loss_type` 只接受文档列出的 key，额外参数请匹配底层 loss。
+
+## FIC 梯度约束
+
+FIC 不是新的 `task.loss` 标量。它复用 CE 的单次 backward，在 optimizer
+更新前计算梯度平方和，并在超过 `epsilon` 时统一缩放：
+
+```yaml
+task:
+  loss: CE
+  gradient_constraint:
+    name: fic
+    epsilon: 2.0
+```
+
+该设置默认关闭，当前只接受 CE。运行时记录 `train_fic_norm` 和
+`train_fic_scale`；出现 NaN/Inf 梯度时直接失败。
 
 ## 在 HSE 对比预训练任务中通过超参选择 loss
 
