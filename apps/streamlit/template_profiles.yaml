@@ -1,0 +1,83 @@
+version: 1
+profiles:
+  demo_00_smoke_dummy_dg:
+    title: "离线 CPU 入门 | Offline CPU starter"
+    summary: "Uses repository-shipped dummy data to verify configuration, training, logging, and result discovery without a download."
+    difficulty: "Beginner"
+    data_label: "Bundled"
+    device_label: "CPU"
+    estimated_time: "Short smoke run"
+    requires_external_data: false
+    badges: ["Offline", "No download", "Recommended first run"]
+    required_paths:
+      - configs/demo/00_smoke/dummy_dg.yaml
+      - data/metadata_dummy.csv
+      - data/raw/Dummy_Data/dummy1.csv
+      - data/raw/Dummy_Data/dummy2.csv
+    next_step: "Keep CPU, one epoch, and zero data workers for the broadest compatibility."
+
+  demo_01_cross_domain:
+    title: "跨域故障诊断 | Cross-domain diagnosis"
+    summary: "A maintained domain-generalization example for users who already have PHM-Vibench data locally."
+    difficulty: "Intermediate"
+    data_label: "External"
+    device_label: "CPU first"
+    estimated_time: "Dataset-dependent"
+    requires_external_data: true
+    badges: ["Domain generalization", "External data"]
+    next_step: "Point data.data_dir at the local dataset root before validation."
+
+  demo_02_cross_system:
+    title: "跨系统泛化 | Cross-system generalization"
+    summary: "A multi-system CDDG example with a larger data and configuration surface."
+    difficulty: "Advanced"
+    data_label: "External"
+    device_label: "CPU/GPU"
+    estimated_time: "Dataset-dependent"
+    requires_external_data: true
+    badges: ["CDDG", "Multi-system", "External data"]
+    next_step: "Confirm metadata system ids and the local data root before running."
+
+  demo_03_fewshot:
+    title: "小样本故障诊断 | Few-shot diagnosis"
+    summary: "A maintained few-shot classification example using the standard factory and registry path."
+    difficulty: "Intermediate"
+    data_label: "External"
+    device_label: "CPU first"
+    estimated_time: "Dataset-dependent"
+    requires_external_data: true
+    badges: ["Few-shot", "External data"]
+    next_step: "Verify the episode and target-system fields after the data path is ready."
+
+  demo_04_cross_system_fewshot:
+    title: "跨系统小样本 | Cross-system few-shot"
+    summary: "A generalized few-shot example spanning systems and requiring careful metadata selection."
+    difficulty: "Advanced"
+    data_label: "External"
+    device_label: "CPU/GPU"
+    estimated_time: "Dataset-dependent"
+    requires_external_data: true
+    badges: ["GFS", "Multi-system", "External data"]
+    next_step: "Inspect target-system and domain settings before increasing epochs."
+
+  demo_05_pretrain_fewshot:
+    title: "HSE 对比预训练 | HSE contrastive pretrain"
+    summary: "The maintained single-stage pretraining view through Pipeline_02; it is not a general multi-stage scheduler."
+    difficulty: "Advanced"
+    data_label: "External"
+    device_label: "GPU recommended"
+    estimated_time: "Dataset-dependent"
+    requires_external_data: true
+    badges: ["Pretrain", "Pipeline 02", "External data"]
+    next_step: "Start with one epoch and confirm memory use before a longer pretraining run."
+
+  demo_06_pretrain_cddg:
+    title: "跨系统预训练 | Cross-system pretrain"
+    summary: "A maintained cross-system HSE pretraining perspective with external data requirements."
+    difficulty: "Advanced"
+    data_label: "External"
+    device_label: "GPU recommended"
+    estimated_time: "Dataset-dependent"
+    requires_external_data: true
+    badges: ["Pretrain", "Cross-system", "External data"]
+    next_step: "Validate the system ids, data root, and accelerator before extending the run."

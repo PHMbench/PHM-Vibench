@@ -30,12 +30,27 @@ try:
         parse_yaml_text,
         resolve_repo_path,
     )
+    from .onboarding import (
+        OnboardingError,
+        apply_safe_defaults,
+        assess_template_data,
+        collect_environment_readiness,
+        load_template_profiles,
+        profile_for,
+    )
     from .run_service import RunConflictError, RunRequest, RunServiceError, start_run
     from .runtime_policy import inspect_execution_yaml, inspect_portable_config
+    from .ui_onboarding import (
+        render_launch_blockers,
+        render_readiness_banner,
+        render_readiness_sidebar,
+        render_template_data_status,
+        render_template_profile,
+        template_option_label,
+    )
     from .ui_runtime import _render_live_run, _render_run_selector
     from .ui_theme import (
         _ensure_advanced_yaml,
-        _entry_label,
         _group_label,
         _inject_style,
         _render_diff,
@@ -67,6 +82,14 @@ except ImportError:  # pragma: no cover
         parse_yaml_text,
         resolve_repo_path,
     )
+    from onboarding import (  # type: ignore
+        OnboardingError,
+        apply_safe_defaults,
+        assess_template_data,
+        collect_environment_readiness,
+        load_template_profiles,
+        profile_for,
+    )
     from run_service import (  # type: ignore
         RunConflictError,
         RunRequest,
@@ -74,10 +97,17 @@ except ImportError:  # pragma: no cover
         start_run,
     )
     from runtime_policy import inspect_execution_yaml, inspect_portable_config  # type: ignore
+    from ui_onboarding import (  # type: ignore
+        render_launch_blockers,
+        render_readiness_banner,
+        render_readiness_sidebar,
+        render_template_data_status,
+        render_template_profile,
+        template_option_label,
+    )
     from ui_runtime import _render_live_run, _render_run_selector  # type: ignore
     from ui_theme import (  # type: ignore
         _ensure_advanced_yaml,
-        _entry_label,
         _group_label,
         _inject_style,
         _render_diff,
@@ -99,6 +129,11 @@ def _cached_registry(repo_root: str) -> Tuple[RegistryEntry, ...]:
 @st.cache_data(show_spinner=False, ttl=5)
 def _cached_catalog(path: str) -> Catalog:
     return load_catalog(Path(path))
+
+
+@st.cache_data(show_spinner=False, ttl=5)
+def _cached_profiles(path: str):
+    return load_template_profiles(Path(path))
 
 
 @st.cache_data(show_spinner=False, ttl=5)
@@ -148,6 +183,11 @@ def _initialize_state() -> None:
             st.session_state[key] = value
 
 
+def _safe_smoke_reset(default_template_id: str) -> None:
+    apply_safe_defaults(st.session_state, default_template_id)
+    st.rerun()
+
+
 def main() -> None:
     st.set_page_config(
         page_title="PHM-Vibench Experiment Workspace",
@@ -162,10 +202,26 @@ def main() -> None:
     try:
         repo_root = find_repo_root(APP_DIR)
         catalog = _cached_catalog(str(APP_DIR / "field_catalog.yaml"))
+        profiles = _cached_profiles(str(APP_DIR / "template_profiles.yaml"))
         registry = _cached_registry(str(repo_root))
-    except ConfigServiceError as exc:
+    except (ConfigServiceError, OnboardingError) as exc:
         _render_error("The application contract could not be loaded.", exc)
         st.stop()
+
+    default_profile = profile_for(profiles, catalog.default_template_id)
+    readiness = collect_environment_readiness(repo_root, default_profile)
+    render_readiness_banner(readiness)
+
+    st.sidebar.markdown("### First run")
+    if st.sidebar.button(
+        "Use safe CPU smoke defaults",
+        type="primary",
+        use_container_width=True,
+        help="Return to Quick Start, the bundled dummy template, CPU, and one epoch.",
+    ):
+        _safe_smoke_reset(catalog.default_template_id)
+    render_readiness_sidebar(readiness)
+    st.sidebar.divider()
 
     st.sidebar.markdown("### Experiment workspace")
     mode = st.sidebar.radio(
@@ -205,11 +261,15 @@ def main() -> None:
         "Experiment template",
         available_ids,
         index=available_ids.index(preferred_id),
-        format_func=lambda value: _entry_label(entry_by_id(available, value)),
+        format_func=lambda value: template_option_label(
+            value, profile_for(profiles, value)
+        ),
     )
     st.session_state.selected_template_id = selected_id
     entry = entry_by_id(available, selected_id)
+    profile = profile_for(profiles, selected_id)
     _render_template_summary(entry)
+    render_template_profile(profile)
 
     try:
         config_path = resolve_repo_path(repo_root, entry.path, yaml_only=True)
@@ -317,6 +377,17 @@ def main() -> None:
             preview_config = {}
             configuration_has_error = True
 
+    data_status = assess_template_data(repo_root, preview_config, profile)
+    render_template_data_status(data_status)
+    if not data_status.ready and selected_id != catalog.default_template_id:
+        if st.button(
+            "Switch to the offline CPU smoke template",
+            type="secondary",
+            use_container_width=True,
+            key="switch-to-offline-smoke",
+        ):
+            _safe_smoke_reset(catalog.default_template_id)
+
     output_dir = get_nested(preview_config, "environment.output_dir", "save")
     device = get_nested(preview_config, "trainer.device", "unspecified")
     summary_cols = st.columns(4)
@@ -371,8 +442,13 @@ def main() -> None:
             "The configuration changed after validation. Validate it again before running."
         )
 
-    can_run = bool(report_is_current and report.ok and not configuration_has_error)
-    if can_run:
+    can_download = bool(
+        report_is_current and report.ok and not configuration_has_error
+    )
+    can_run = bool(can_download and readiness.can_execute and data_status.ready)
+    render_launch_blockers(readiness, data_status)
+
+    if can_download:
         download_col.download_button(
             "Download execution YAML",
             data=execution_yaml_text,
@@ -392,7 +468,10 @@ def main() -> None:
         type="primary",
         disabled=not can_run,
         use_container_width=True,
-        help="Runs the public main.py --config contract in a managed process group.",
+        help=(
+            "Runs the public main.py --config contract after environment, data, "
+            "and configuration checks pass."
+        ),
     ):
         assert isinstance(report, ValidationReport)
         resolved_output = get_nested(report.resolved, "environment.output_dir", output_dir)
@@ -410,6 +489,9 @@ def main() -> None:
                         "registry_path": entry.path,
                         "pipeline": entry.pipeline or "Pipeline_01_default",
                         "description": entry.description,
+                        "difficulty": profile.difficulty,
+                        "data_requirement": profile.data_label,
+                        "recommended_device": profile.device_label,
                     },
                 )
             )
