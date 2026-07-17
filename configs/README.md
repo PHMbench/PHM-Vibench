@@ -41,6 +41,32 @@ Configuration values are applied from lower to higher precedence:
 Machine paths, credentials, and workstation-specific settings belong in local
 configuration or CLI overrides, not maintained demo files.
 
+## Leakage-safe grouped splits
+
+The default `data.split.strategy` is `legacy_windows`, which preserves historical
+window-level train/validation behavior. For new benchmark experiments, prefer an
+explicit physical-unit split when metadata provides a subject, machine, bearing,
+or run identifier:
+
+```yaml
+data:
+  split:
+    strategy: grouped_metadata
+    group_key: Bearing_id
+    stratify_key: Label
+    seed: 42
+    test_policy: partition
+    fractions: {train: 0.7, val: 0.15, test: 0.15}
+    manifest_path: outputs/splits/example_seed42.json
+```
+
+All windows from one group remain in one partition. `DG` and `CDDG` tasks must
+use `test_policy: task_defined`, which preserves the task-selected target domain
+as test data and partitions only source-domain groups into train/validation.
+`FS` and `GFS` are rejected because episode-safe grouping is not yet defined.
+The manifest records IDs, groups, seed, fractions, a metadata digest, and the
+per-window normalization scope. Treat it as experiment evidence, not raw data.
+
 ## Maintained directories
 
 - `configs/base/` — reusable environment, data, model, task, and trainer blocks;

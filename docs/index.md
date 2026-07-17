@@ -22,6 +22,7 @@ Documentation uses four status labels:
 | Run the offline example | [Quickstart](quickstart.md) |
 | Understand YAML composition and overrides | [Configuration guide](../configs/README.md) |
 | Find maintained configurations | [Configuration atlas](CONFIG_ATLAS.md) |
+| Review 2025-2026 research candidates | [Research method atlas](research/2025_2026_METHOD_ATLAS.md) |
 | Prepare local datasets | [Data directory guide](../data/README.md) |
 | See the supported release surface | [Supported components](../SUPPORTED_COMPONENTS.md) and [supported combinations](../SUPPORTED_COMBINATIONS.md) |
 | Check known constraints | [Known limitations](../KNOWN_LIMITATIONS.md) |
@@ -60,6 +61,10 @@ Documentation uses four status labels:
 `docs/CONFIG_ATLAS.md` is generated from `configs/config_registry.csv`; update the
 registry, run `python -m scripts.gen_config_atlas`, and commit both changes.
 
+`docs/research/2025_2026_METHOD_ATLAS.md` is generated from
+`research/2025_2026/method_registry.csv`. It is a research inventory, not a
+release-support matrix.
+
 Earlier release and planning material remains under:
 
 - `docs/v0.1.0/`
@@ -80,6 +85,7 @@ page links to a specific document and says otherwise.
 | First successful run | `docs/quickstart.md` | Avoid copying the complete walkthrough |
 | Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
 | Maintained config inventory | `configs/config_registry.csv` | Regenerate `docs/CONFIG_ATLAS.md` |
+| 2025-2026 research inventory | `research/2025_2026/method_registry.csv` | Regenerate `docs/research/2025_2026_METHOD_ATLAS.md` |
 | Supported components and combinations | `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md` | Do not infer support from registry presence |
 | Data layout and external-data boundary | `data/README.md` | Link from reader and dataset pages |
 | Contribution process | `CONTRIBUTING.md` | Factory guides describe only factory-specific steps |
