@@ -19,6 +19,7 @@ from .samplers.Sampler import GroupedIdBatchSampler, BalancedIdSampler
 from .data_utils import smart_read_csv, MetadataAccessor, download_data
 from .samplers.Get_sampler import Get_sampler
 from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
+from .splitting import resolve_data_splits
 from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
@@ -290,17 +291,25 @@ class data_factory:
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
-        train_val_ids, test_ids = self.search_id()
-        # Initialize datasets with progress bars
-        print("Initializing training and validation datasets...")
-        for id in tqdm(train_val_ids, desc="Creating train/val datasets"):
+        train_val_ids, task_test_ids = self.search_id()
+        self.split_result = resolve_data_splits(
+            self.target_metadata,
+            self.args_data,
+            self.args_task,
+            train_val_ids,
+            task_test_ids,
+        )
+        print("Initializing training datasets...")
+        for id in tqdm(self.split_result.train_ids, desc="Creating train datasets"):
             train_dataset[id] = dataset_cls({id: self.data[id]},
                              self.target_metadata, self.args_data, self.args_task, 'train')
+        print("Initializing validation datasets...")
+        for id in tqdm(self.split_result.val_ids, desc="Creating val datasets"):
             val_dataset[id] = dataset_cls({id: self.data[id]},
                                self.target_metadata, self.args_data, self.args_task, 'val')
 
         print("Initializing test datasets...")
-        for id in tqdm(test_ids, desc="Creating test datasets"):
+        for id in tqdm(self.split_result.test_ids, desc="Creating test datasets"):
             test_dataset[id] = dataset_cls({id: self.data[id]},
                             self.target_metadata, self.args_data, self.args_task, 'test')
         train_dataset = IdIncludedDataset(train_dataset,self.target_metadata)

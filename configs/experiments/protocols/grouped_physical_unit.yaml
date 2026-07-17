@@ -1,0 +1,44 @@
+pipeline: Pipeline_01_default
+
+environment:
+  project: grouped_physical_unit_protocol
+  seed: 42
+  output_dir: outputs/experiments/grouped_physical_unit
+  iterations: 1
+  notes: Replace metadata fields with dataset-specific physical-unit identifiers.
+
+data:
+  data_dir: data
+  metadata_file: metadata.xlsx
+  factory_name: default
+  batch_size: 32
+  num_workers: 0
+  window_size: 1024
+  stride: 1024
+  num_window: 20
+  train_ratio: 0.8
+  dtype: float32
+  normalization: standardization
+  split:
+    strategy: grouped_metadata
+    group_key: Bearing_id
+    stratify_key: Label
+    seed: 42
+    test_policy: partition
+    fractions:
+      train: 0.7
+      val: 0.15
+      test: 0.15
+    manifest_path: outputs/splits/grouped_physical_unit_seed42.json
+
+model:
+  type: Default
+  name: CNN
+
+task:
+  type: Default_task
+  name: classification
+
+trainer:
+  name: Default_trainer
+  num_epochs: 100

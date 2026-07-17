@@ -19,6 +19,7 @@ from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
+from src.utils.run_summary import write_run_summary
 
 
 
@@ -79,16 +80,25 @@ def pipeline(args):
     # 2. 多次迭代训练与测试
     # -----------------------
     all_results = []
+    run_seeds = []
+    run_root = None
+    name = None
     
     for it in range(args_environment.iterations):
         print(f"\n{'='*50}\n[INFO] 开始实验迭代 {it+1}/{args_environment.iterations}\n{'='*50}")
         
         # 设置路径和名称
-        path, name = path_name(configs, it)
+        if run_root is None:
+            path, name = path_name(configs, it)
+            run_root = os.path.dirname(path)
+        else:
+            path = os.path.join(run_root, f"iter_{it}")
+            os.makedirs(path, exist_ok=True)
         # 把name 加到args_trainer中
         args_trainer.logger_name = name
         # 设置随机种子
         current_seed = args_environment.seed + it
+        run_seeds.append(current_seed)
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
         init_lab(args_environment, args, name)
@@ -147,6 +157,13 @@ def pipeline(args):
 
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
     pd.DataFrame(all_results).to_csv(os.path.join(path, 'all_results.csv'), index=False)
+    pd.DataFrame(all_results).to_csv(os.path.join(run_root, 'all_results.csv'), index=False)
+    write_run_summary(
+        os.path.join(run_root, 'run_summary.json'),
+        results=all_results,
+        seeds=run_seeds,
+        config=configs,
+    )
     return all_results
 
 

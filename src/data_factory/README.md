@@ -55,6 +55,20 @@ data:
 If you enable the ID-based path, ensure the corresponding task expects dictionary-style batches (e.g. `batch["x"]`,
 `batch["y"]`, and potentially `batch["file_id"]`).
 
+## Split strategies
+
+`data.split.strategy: legacy_windows` is the backward-compatible default. It
+creates train and validation windows from the same metadata IDs. New evaluations
+can use `grouped_metadata` to partition IDs by a physical-unit metadata field
+before window extraction. This prevents windows from the same unit appearing in
+multiple partitions.
+
+Grouped splits require `group_key`, `fractions`, and `manifest_path`. Optional
+`stratify_key` is valid only when every group has one unambiguous label. The
+factory fails explicitly for missing groups, overlapping DG/CDDG source and
+target groups, unsupported episodic tasks, and splits too small for the requested
+stratification.
+
 ## Data Components (mental model)
 
 Most datasets in this benchmark can be thought of as:

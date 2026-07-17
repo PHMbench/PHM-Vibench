@@ -16,7 +16,7 @@ def _get_gfs_sampler(args_task, args_data, dataset, mode):
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=False,
-            drop_last=True,
+            drop_last=False,
         )
     else:
         raise ValueError(f"Unknown mode for GFS sampler: {mode}")
@@ -35,7 +35,7 @@ def _get_cddg_sampler(args_data, dataset, mode):
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=False,
-            drop_last=True
+            drop_last=False
         )
     else:
         raise ValueError(f"Unknown mode for CDDG sampler: {mode}")
@@ -54,7 +54,7 @@ def _get_dg_sampler(args_data, dataset, mode):
             dataset,
             batch_size=args_data.batch_size,
             shuffle=False,
-            drop_last=True
+            drop_last=False
         )
     else:
         raise ValueError(f"Unknown mode for DG sampler: {mode}")
@@ -73,7 +73,7 @@ def _get_pretrain_sampler(args_data, dataset, mode):
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=False,
-            drop_last=True
+            drop_last=False
         )
     else:
         raise ValueError(f"Unknown mode for Pretrain sampler: {mode}")
@@ -111,7 +111,7 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
                 dataset=dataset,
                 batch_size=args_data.batch_size,
                 shuffle=False,
-                drop_last=True,
+                drop_last=False,
             )
         else:
             raise ValueError(f"Unknown mode for FS sampler: {mode}")
