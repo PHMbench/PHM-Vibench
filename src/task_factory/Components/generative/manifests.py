@@ -43,6 +43,7 @@ def build_synthetic_manifest(
     data_evidence: dict[str, str],
     generated_evidence: dict[str, str],
     leakage_metrics: dict[str, Any],
+    population_metrics: dict[str, Any] | None = None,
     sampler_metadata: dict[str, Any] | None = None,
     scientific_status: str = "exploratory",
 ) -> dict[str, Any]:
@@ -91,6 +92,12 @@ def build_synthetic_manifest(
         leakage_metrics.get(name, {}).get("status") == "ok"
         for name in ("nearest_neighbor_leakage_l2", "duplicate_rate")
     )
+    population_required = method_id == "population_aware_cfm"
+    population_metrics = dict(population_metrics or {})
+    population_ok = (
+        population_metrics.get("population_dependency_mmd", {}).get("status")
+        == "ok"
+    )
 
     evidence = {
         "strict_checkpoint": checkpoint_ok,
@@ -104,6 +111,8 @@ def build_synthetic_manifest(
         "condition_counts": bool(condition_counts),
         "leakage_metrics": leakage_ok,
     }
+    if population_required:
+        evidence["population_metrics"] = population_ok
     missing = [name for name, passed in evidence.items() if not passed]
 
     return {
@@ -142,6 +151,7 @@ def build_synthetic_manifest(
             "sampler_metadata": dict(sampler_metadata or {}),
         },
         "leakage": leakage_metrics,
+        "population": population_metrics,
         "validity": {
             "scientific_status": scientific_status,
             "runtime_smoke_eligible": not missing,

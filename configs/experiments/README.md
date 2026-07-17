@@ -15,3 +15,13 @@ python -m scripts.config_inspect --config configs/experiments/<name>/exp.yaml --
 # Validate schema (demos are checked by default; add new configs to the registry if you want CI coverage)
 python -m scripts.validate_configs
 ```
+
+Generative research contracts:
+
+- `generative/dummy_generative_cfm.yaml` keeps the baseline velocity-MSE CFM;
+- `generative/dummy_generative_cfm_population.yaml` enables a same-time,
+  population-correlation MMD regularizer.
+
+The population variant is a CFM adaptation inspired by population-aware
+generation objectives. It is not a DDPM or a full PaD-TS implementation, and
+its evidence remains exploratory.

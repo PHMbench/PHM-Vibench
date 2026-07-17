@@ -715,7 +715,9 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             synthetic_dataset_id=str(
                 _get_attr(gen_cfg, "synthetic_dataset_id", f"{name}-iter-{iteration}")
             ),
-            method_id="conditional_flow_matching",
+            method_id=str(
+                getattr(task, "method_id", "conditional_flow_matching")
+            ),
             model_type=str(args_model.type),
             model_name=str(args_model.name),
             loss_id=str(getattr(task, "loss_id", "conditional_flow_matching")),
@@ -745,6 +747,11 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             leakage_metrics={
                 name: leakage_bundle[name]
                 for name in ("nearest_neighbor_leakage_l2", "duplicate_rate")
+            },
+            population_metrics={
+                "population_dependency_mmd": leakage_bundle[
+                    "population_dependency_mmd"
+                ]
             },
             sampler_metadata=dict(getattr(task, "sampler_metadata", lambda: {})()),
             scientific_status=str(_get_attr(gen_cfg, "validity_status", "exploratory")),
