@@ -1,0 +1,2 @@
+# Optional dependency for src/model_factory/FoundationModel/MantisV1.py
+mantis-tsfm==1.0.0

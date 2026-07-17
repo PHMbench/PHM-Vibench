@@ -1,0 +1,42 @@
+# Experimental adapter contract. Provision the official checkpoint locally before running.
+pipeline: Pipeline_01_default
+
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+
+environment:
+  project: experiment_mantis_v1_local
+  seed: 42
+  output_dir: results/experiments/mantis_v1_local
+  notes: Frozen local MantisV1 features; not release-supported.
+
+data:
+  data_dir: data
+  metadata_file: metadata_dummy.csv
+  batch_size: 4
+  num_workers: 0
+  window_size: 512
+  stride: 512
+  num_window: 8
+  normalization: standardization
+
+model:
+  type: FoundationModel
+  name: MantisV1
+  checkpoint_path: artifacts/checkpoints/mantis-8m
+  seq_len: 512
+  input_channels: 1
+  freeze_backbone: true
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: cpu
+  gpus: 0

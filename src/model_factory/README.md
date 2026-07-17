@@ -23,6 +23,7 @@ Core files and submodules:
 | `Transformer/`          | Transformer-based architectures (e.g., `PatchTST`).                                                  |
 | `ISFM/`                 | Industrial Signal Foundation Models with embedding/backbone/task_head submodules.                    |
 | `ISFM_Prompt/`          | Prompt-style ISFM variants.                                                                           |
+| `FoundationModel/`      | Optional local-checkpoint adapters for third-party foundation models.                                 |
 | `X_model/`              | XAI and auxiliary models.                                                                             |
 
 Each model file normally exposes a `Model` class and can be instantiated via the factory.
@@ -88,6 +89,19 @@ model:
 ```
 
 This combination is used across `configs/demo/` and can be reused for CDDG / DG / FS / pretraining by changing only the `task.*` and trainer config.
+
+### 3.1 Experimental 2025/2026 models
+
+- `FoundationModel/MantisV2` is a frozen, local-checkpoint-only adapter. It
+  requires the optional pinned dependency and never downloads a checkpoint at
+  runtime. `return_transf_layer: 2` with `output_token: combined` is the default
+  research setting; the checkpoint path and computed SHA256 are recorded.
+- `Transformer/TSLTransformer` is a clean-room patch classifier with parallel
+  self-attention and unidirectional LSTM branches. It accepts `[B,L,C]`, requires
+  `seq_len % patch_size == 0`, and returns raw classification logits.
+
+Both remain experimental. See `configs/experiments/foundation_models/` and
+`configs/experiments/classification/`; neither carries a paper benchmark claim.
 
 ## 4. Model registry CSV
 

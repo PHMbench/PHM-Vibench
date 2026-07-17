@@ -1,0 +1,45 @@
+# Research-only adapter contract. Provision an official checkpoint locally before running.
+pipeline: Pipeline_01_default
+
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+
+environment:
+  project: experiment_mantis_v2_local
+  seed: 42
+  output_dir: results/experiments/mantis_v2_local
+  notes: Frozen local MantisV2 features; contract-tested without a bundled checkpoint.
+
+data:
+  data_dir: data
+  metadata_file: metadata_dummy.csv
+  batch_size: 4
+  num_workers: 0
+  window_size: 512
+  stride: 512
+  num_window: 8
+  normalization: standardization
+
+model:
+  type: FoundationModel
+  name: MantisV2
+  checkpoint_path: artifacts/checkpoints/mantis-v2
+  seq_len: 512
+  num_patches: 32
+  input_channels: 1
+  return_transf_layer: 2
+  output_token: combined
+  freeze_backbone: true
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: cpu
+  gpus: 1
