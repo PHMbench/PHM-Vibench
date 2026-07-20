@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Data
+/data/raw/*
+/data/processed/*
+!/data/README.md
+
+# Results
+/results/*
+!/results/README.md
+
+# Agent/runtime workspaces
+.agent/
+.claude/
+.codex/
+autoresearch/
+outputs/
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.figlist
+*.makefile
+*.xdv
+*.upa
+*.upb
+*.FLS
+*.listing
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig

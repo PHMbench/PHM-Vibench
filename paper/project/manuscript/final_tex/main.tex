@@ -1,0 +1,47 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Physics-Constrained Mixture-of-Experts for Explainable Fault Diagnosis}
+\author{Truth-First Autoresearch Draft}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\noindent\textbf{Truth-First Note.} This manuscript surface is synchronized to paper-local accepted autoresearch artifacts only. External submission readiness is still governed by the parent UXFD submission gate.
+
+\begin{abstract}
+The accepted evidence in the current cycle covers CWRU, XJTU. The dataset bridge reports mean test accuracy 68.75\%. Multi-seed stability reports mean accuracy 84.72\%, std 4.81\%, 95\% CI 5.44 percentage points, and CV 5.68\%. Routing analysis derives route entropy mean 0.6522 with expert usage distribution [0.7637, 0.1913, 0.0451]. The 3/5/8 expert ablation is currently a bounded CWRU probe and is reported as such.
+\end{abstract}
+
+\section{Evidence Snapshot}
+
+\begin{table}[htbp]
+\centering
+\caption{Truth-first accepted evidence snapshot}
+\begin{tabular}{lc}
+\toprule
+Metric & Value \\
+\midrule
+Dataset bridge mean accuracy & 68.75\% \\
+Stability mean accuracy & 84.72\% \\
+Stability std & 4.81\% \\
+Stability CV & 5.68\% \\
+Route entropy mean & 0.6522 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+Current accepted artifacts support manuscript-facing claims for CWRU, XJTU, route statistics, and bounded 3/5/8 expert ablation on CWRU. They do not support broader claims beyond those recorded artifacts.
+
+\end{document}
