@@ -1,0 +1,57 @@
+# P09 Exp-0: Backbone+Head independent-dataset GFS baseline (no HSE, no prompt, no pretrain).
+# Derives from demo configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml and
+# configs/demo/02_cross_system/multi_system_cddg.yaml.
+# Run one model per target system s* (override task.target_system_id + model.input_dim per dataset).
+#
+# NOTE (P09-G040 blocker): the GFS base/novel label mapping per target system s* is NOT
+# encoded anywhere in the maintained data_factory / GFS sampler yet. The keys below are
+# the maintained GFS knobs (task.type=GFS, num_support, num_query, num_episodes); the
+# base/novel split itself must be defined at PROTOCOL_LOCK before any accuracy claim.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_exp0_backbone_baseline"
+  seed: 42
+  output_dir: "results/p09/exp0_backbone_baseline"
+  notes: "P09 Exp0: Backbone+Head GFS baseline. No HSE, no prompt, no pretrain. Per-target-system sweep via --override."
+
+# Non-HSE patch embedding so the "no HSE / no prompt" baseline is honest.
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_03_Patch"
+  backbone: "B_01_basic_transformer"
+  task_head: "H_01_Linear_cla"
+  input_dim: 2        # per-dataset override: 1->2, 13->2, 6->1, 12->1, 19->3
+  use_prompt: false
+  prompt_dim: 0
+
+task:
+  type: "GFS"
+  name: "classification"
+  target_system_id: [1]   # s* — overridden per dataset at launch
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  # GFS sampler knobs (maintained base/task/cddg_fewshot.yaml); k-shot via --override task.num_support=<k>
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides
+  gpus: 1

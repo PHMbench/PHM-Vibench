@@ -1,0 +1,59 @@
+# P09 B2: Full fine-tuning baseline (unfrozen backbone), GFS.
+# Derives from demo configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml.
+# REQUIRED by the charter (missing from the legacy few-shot table). Central C1 comparison arm.
+#
+# Implementation: HSE-pretrained backbone (from p09_exp2 stage-0) with ALL parameters unfrozen,
+# fine-tuned end-to-end under the GFS protocol.
+#
+# NOTE (P09-G040 blockers): GFS base/novel mapping + LOSO leakage + sampler disjointness.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_b2_full_finetune"
+  seed: 42
+  output_dir: "results/p09/b2_full_finetune"
+  notes: "P09 baseline B2: full fine-tuning (unfrozen HSE-pretrained backbone) under GFS."
+
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  freeze_backbone: false       # full FT = nothing frozen
+  freeze_embedding: false
+  use_prompt: false
+  prompt_dim: 0
+  # checkpoint_path: "results/p09/exp2_hse_pretrain/pretrain/<best>.ckpt"  # set at launch
+
+task:
+  type: "GFS"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.0001         # full FT, lower LR
+  weight_decay: 0.00001
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides
+  gpus: 1

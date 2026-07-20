@@ -1,0 +1,57 @@
+schema_version: 1
+paper_id: P09
+project_name: P09-HSE-Prompt-GFS
+vibench_branch: paper/p09-hse-prompt-gfs
+vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
+paper_repository: https://github.com/AI4Engineering-L/P09-HSE-Prompt-GFS
+
+active_configs:
+  source_superproject: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+  source_superproject_head: 0f082f19e8d4b9ef0f439028e985db020e986a0a
+  source_path: configs/experiments/p09
+  source_state: untracked_in_dirty_source_worktree
+  destination_path: configs/experiments/p09
+  file_count: 13
+  total_bytes: 33000
+  filtered_tree_sha256: cc97da10e594b73d55aa33a8558f6b165aa61193506f101c9a99b65dc1332097
+  grouped_physical_unit_protocol: not_referenced
+
+metric_parent_source:
+  repository: git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git
+  commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
+  source_superproject_path: paper/2025-10_foundation_model_0_metric
+  extraction_method: git_archive_from_exact_commit
+  destination_path: paper/project/metric_source
+  included_paths:
+    - configs/GFS_config
+    - scripts/gfs
+    - scripts/validation
+  included_file_count: 18
+  included_total_bytes: 52492
+  included_tree_sha256: 22542dddba948252fa27bf6a15229f9fb8ada8cc16a762eb48585e9288443bef
+  evidence_status: legacy_unverified
+
+narrative_seed:
+  source_path: Few-shotpaper
+  tree: 9f5745d0af875b4ecc10854ace6e24f39196115d
+  byte_identical_to: CDDGpaper
+  role: shared_cddg_narrative_seed_only
+  copied: false
+  boundary: Not independent GFS code, protocol, run, result, or accepted evidence.
+
+excluded:
+  - path: Few-shotpaper
+    reason: Shared CDDG LaTeX narrative seed, represented by its tree hash only.
+  - pattern: .git/**
+    reason: Git metadata is never copied into an overlay.
+  - pattern: '**/{.agent,.agents,.claude,codex}/**'
+    reason: Agent prompt material is excluded.
+  - pattern: '**/{output,outputs,result,results,checkpoint,checkpoints,wandb,.cache,__pycache__}/**'
+    reason: Generated artifacts and caches are excluded.
+  - pattern: '**/*.{ckpt,pth,pt,h5,npy,npz,pkl,pickle,joblib,onnx,safetensors,zip,pdf}'
+    reason: Weights and large rendered/archive files are excluded.
+
+integrity:
+  source_mutated: false
+  positive_claim_created: false
+  results_imported: false
