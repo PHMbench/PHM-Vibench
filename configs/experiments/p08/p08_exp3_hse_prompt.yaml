@@ -1,0 +1,101 @@
+# P08 Exp-3: HSE-Prompt (proposed method) — pretrain + CDDG finetune.
+# Derives from legacy configs/CDDG_config/experiment_3_cddg_hse_prompt.yaml
+# and demo configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml.
+# This is THE method arm. Uses the registered ISFM_Prompt model family + HSE_prompt embedding.
+
+pipeline: "Pipeline_02_pretrain_fewshot"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp3_hse_prompt"
+  seed: 42
+  output_dir: "results/p08/exp3_hse_prompt"
+  notes: "P08 Exp3 (PROPOSED): HSE-Prompt pretrain + CDDG finetune. Method arm."
+
+# ISFM_Prompt model family + registered HSE_prompt embedding (see
+# src/model_factory/ISFM_Prompt/embedding/__init__.py).
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  system_prompt_dim: 64
+  sample_prompt_dim: 32
+
+stages:
+  - name: "pretraining"
+    description: "HSE-Prompt multi-objective contrastive pretraining (cross-system shared representations)"
+    overrides:
+      task:
+        type: "pretrain"
+        name: "hse_contrastive"
+        loss: "INFONCE"
+        contrast_loss: "INFONCE"
+        contrast_weight: 0.4
+        classification_weight: 0.1
+        temperature: 0.07
+        prompt_weight: 0.6
+        use_system_sampling: true
+        cross_system_contrast: true
+        target_system_id: [1, 13, 6, 12, 19]
+        target_domain_num: 1
+        hse_prompt_objectives:
+          - "hse_contrastive"
+          - "prompt_consistency"
+          - "domain_alignment"
+          - "masked_prediction"
+        multi_objective_loss:
+          hse_contrastive_weight: 0.4
+          prompt_consistency_weight: 0.2
+          domain_alignment_weight: 0.2
+          masked_prediction_weight: 0.2
+        lr: 0.0005
+        weight_decay: 0.0001
+        optimizer: "adamw"
+        metrics: ["acc", "f1", "precision", "recall"]
+      trainer:
+        num_epochs: 1   # smoke default; real launch overrides (legacy used 30)
+        save_dir: "results/p08/exp3_hse_prompt/pretrain"
+      data:
+        num_window: 64
+        stride: 5
+
+  - name: "finetuning"
+    description: "CDDG classification finetune after HSE-Prompt pretraining"
+    overrides:
+      task:
+        type: "CDDG"
+        name: "classification"
+        loss: "CE"
+        target_system_id: [1, 13, 6, 12, 19]
+        target_domain_num: 1
+        lr: 0.0001
+        weight_decay: 0.0001
+        optimizer: "adamw"
+        metrics: ["acc", "f1", "precision", "recall"]
+      trainer:
+        num_epochs: 1   # smoke default; real launch overrides (legacy used 20)
+        save_dir: "results/p08/exp3_hse_prompt/finetune"
+      data:
+        num_window: 64
+        stride: 5

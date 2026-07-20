@@ -1,0 +1,56 @@
+schema_version: 1
+paper_id: P08
+project_name: P08-HSE-Prompt-CDDG
+vibench_branch: paper/p08-hse-prompt-cddg
+vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
+paper_repository: https://github.com/AI4Engineering-L/P08-HSE-Prompt-CDDG
+
+active_configs:
+  source_superproject: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+  source_superproject_head: 0f082f19e8d4b9ef0f439028e985db020e986a0a
+  source_path: configs/experiments/p08
+  source_state: untracked_in_dirty_source_worktree
+  destination_path: configs/experiments/p08
+  file_count: 8
+  total_bytes: 20054
+  filtered_tree_sha256: 0140854aff0dac2c1ae760f8dfa5b55468e7f6288251e9986590dd0924ec2356
+  grouped_physical_unit_protocol: not_referenced
+
+metric_parent_source:
+  repository: git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git
+  commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
+  source_superproject_path: paper/2025-10_foundation_model_0_metric
+  extraction_method: git_archive_from_exact_commit
+  destination_path: paper/project/metric_source
+  included_paths:
+    - configs/CDDG_config
+    - scripts/cddg
+    - scripts/validation
+  included_file_count: 17
+  included_total_bytes: 49283
+  included_tree_sha256: 4d5e40ff9bb2c48a6b527900b30a50d5191a39211456dd7bb6d312ad6a0e6cab
+  evidence_status: legacy_unverified
+
+narrative_seed:
+  source_path: CDDGpaper
+  tree: 9f5745d0af875b4ecc10854ace6e24f39196115d
+  role: narrative_seed_only
+  copied: false
+  boundary: Not code, protocol, run, result, or accepted evidence.
+
+excluded:
+  - path: CDDGpaper
+    reason: Shared LaTeX narrative seed, represented by its tree hash only.
+  - pattern: .git/**
+    reason: Git metadata is never copied into an overlay.
+  - pattern: '**/{.agent,.agents,.claude,codex}/**'
+    reason: Agent prompt material is excluded.
+  - pattern: '**/{output,outputs,result,results,checkpoint,checkpoints,wandb,.cache,__pycache__}/**'
+    reason: Generated artifacts and caches are excluded.
+  - pattern: '**/*.{ckpt,pth,pt,h5,npy,npz,pkl,pickle,joblib,onnx,safetensors,zip,pdf}'
+    reason: Weights and large rendered/archive files are excluded.
+
+integrity:
+  source_mutated: false
+  positive_claim_created: false
+  results_imported: false

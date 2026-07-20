@@ -1,0 +1,44 @@
+# P08 Exp-0: Backbone+Head independent-dataset baseline (no HSE, no prompt, no pretrain)
+# Derives from legacy paper/2025-10_foundation_model_0_metric/configs/CDDG_config/experiment_0_cddg_baseline.yaml
+# and from demo configs/demo/02_cross_system/multi_system_cddg.yaml.
+# Run one model per dataset (override task.target_system_id + model.input_dim per dataset — see README.md).
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp0_backbone_baseline"
+  seed: 42
+  output_dir: "results/p08/exp0_backbone_baseline"
+  notes: "P08 Exp0: Backbone+Head independent-dataset baseline. No HSE, no prompt, no pretrain. Per-dataset sweep via --override."
+
+# Use the non-HSE patch embedding so the "no HSE" baseline is honest.
+# (Legacy experiment_0 used E_03_Patch; B_01_basic_transformer as backbone.)
+model:
+  embedding: "E_03_Patch"
+  backbone: "B_01_basic_transformer"
+  task_head: "H_01_Linear_cla"
+  input_dim: 2        # per-dataset override: 1->2, 13->2, 6->1, 12->1, 19->3
+  use_prompt: false
+  prompt_dim: 0
+
+task:
+  type: "CDDG"
+  name: "classification"
+  target_system_id: [1]   # overriden per dataset at launch
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides (legacy used 100)
+  gpus: 1

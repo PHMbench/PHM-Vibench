@@ -1,0 +1,65 @@
+# P08 Exp-4: HSE-Prompt component ablation (CDDG, single-stage finetune view).
+# Derives from legacy configs/CDDG_config/experiment_4_cddg_ablation.yaml.
+# This is the FULL HSE-Prompt config; each ablation row is produced at launch by --override.
+# The 6 ablation variants + their overrides are documented in paper/experiments/experiment_plan.md.
+#
+# Ablation rows (vs this base = "Full HSE-Prompt"):
+#   A0 Full            : this config as-is
+#   A1 No HSE          : model.embedding=E_03_Patch
+#   A2 No Prompt       : model.use_prompt=false, model.prompt_dim=0
+#   A3 End-to-End      : skip pretrain (use p08_exp1_hse_direct.yaml with E_01_HSE_v2 + prompt)
+#   A4 No Pretrain     : skip pretrain (use p08_exp1-style single-stage with HSE_prompt + prompt)
+#   A5 No Shared embed : model.embedding=E_01_HSE (no system/sample shared dims)
+#   A6 Minimal         : E_03_Patch + use_prompt=false + no pretrain (== p08_exp0 pool-trained)
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp4_ablation"
+  seed: 42
+  output_dir: "results/p08/exp4_ablation"
+  notes: "P08 Exp4: HSE-Prompt component ablation under CDDG. Per-row overrides in experiment_plan.md."
+
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  system_prompt_dim: 64
+  sample_prompt_dim: 32
+
+task:
+  type: "CDDG"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.0001
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides (legacy used 30)
+  gpus: 1
