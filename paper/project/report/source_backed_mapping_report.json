@@ -1,0 +1,687 @@
+{
+  "report_id": "paper06_source_backed_cross_method_mapping",
+  "paper_id": "Neuralsymbolic_theory",
+  "source_backed": true,
+  "accepted_evidence": false,
+  "paper_count": 6,
+  "papers": [
+    {
+      "paper_id": "1D-2D_fusion_explainable",
+      "mapping_role": "signal-to-representation fusion and alignment evidence",
+      "source_backed": true,
+      "accepted_evidence": false,
+      "required_terms": [
+        "fusion",
+        "alignment",
+        "signal_processing_2d"
+      ],
+      "matched_required_terms": [
+        "alignment",
+        "fusion",
+        "signal_processing_2d"
+      ],
+      "missing_required_terms": [],
+      "layer_support": {
+        "signal_layer": [
+          "1D",
+          "2D",
+          "frequency",
+          "spectral"
+        ],
+        "neural_layer": [
+          "features_1d",
+          "features_2d",
+          "fusion_layers"
+        ],
+        "constraint_layer": [
+          "alignment_loss",
+          "geometric",
+          "physical",
+          "semantic"
+        ],
+        "evidence_layer": [
+          "VIBENCH",
+          "accepted_evidence_status",
+          "baseline_ablation_matrix"
+        ]
+      },
+      "missing_layers": [],
+      "evidence": [
+        {
+          "path": "../1D-2D_fusion_explainable/VIBENCH.md",
+          "exists": true,
+          "matched_terms": [
+            "1D",
+            "2D",
+            "VIBENCH",
+            "alignment",
+            "baseline_ablation_matrix",
+            "fusion",
+            "signal_processing_2d"
+          ]
+        },
+        {
+          "path": "../1D-2D_fusion_explainable/submission_prep/baseline_ablation_matrix.yaml",
+          "exists": true,
+          "matched_terms": [
+            "1D",
+            "2D",
+            "VIBENCH",
+            "accepted_evidence_status",
+            "alignment",
+            "frequency",
+            "fusion",
+            "signal_processing_2d",
+            "spectral"
+          ]
+        },
+        {
+          "path": "../1D-2D_fusion_explainable/configs/vibench/min.yaml",
+          "exists": true,
+          "matched_terms": [
+            "1D",
+            "2D",
+            "VIBENCH",
+            "fusion",
+            "signal_processing_2d"
+          ]
+        },
+        {
+          "path": "../1D-2D_fusion_explainable/code/models/fusion_aligned.py",
+          "exists": true,
+          "matched_terms": [
+            "1D",
+            "2D",
+            "alignment",
+            "alignment_loss",
+            "features_1d",
+            "features_2d",
+            "fusion",
+            "fusion_layers",
+            "geometric",
+            "physical",
+            "semantic",
+            "spectral"
+          ]
+        },
+        {
+          "path": "../1D-2D_fusion_explainable/code/alignment/physical_alignment.py",
+          "exists": true,
+          "matched_terms": [
+            "1D",
+            "2D",
+            "alignment",
+            "alignment_loss",
+            "frequency",
+            "fusion",
+            "physical",
+            "spectral"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "MOE_explainable",
+      "mapping_role": "expert-routing and physics-constrained mixture evidence",
+      "source_backed": true,
+      "accepted_evidence": false,
+      "required_terms": [
+        "expert",
+        "router",
+        "load_balance",
+        "sparsity"
+      ],
+      "matched_required_terms": [
+        "expert",
+        "load_balance",
+        "router",
+        "sparsity"
+      ],
+      "missing_required_terms": [],
+      "layer_support": {
+        "signal_layer": [
+          "envelope",
+          "frequency",
+          "harmonic",
+          "low_pass"
+        ],
+        "neural_layer": [
+          "expert_outputs",
+          "moe",
+          "routing_weights"
+        ],
+        "constraint_layer": [
+          "diversity",
+          "load_balance",
+          "orthogonal",
+          "sparsity"
+        ],
+        "evidence_layer": [
+          "baseline_ablation_matrix",
+          "expert activation",
+          "route"
+        ]
+      },
+      "missing_layers": [],
+      "evidence": [
+        {
+          "path": "../MOE_explainable/VIBENCH.md",
+          "exists": true,
+          "matched_terms": [
+            "baseline_ablation_matrix",
+            "expert",
+            "load_balance",
+            "moe",
+            "route",
+            "router",
+            "sparsity"
+          ]
+        },
+        {
+          "path": "../MOE_explainable/submission_prep/baseline_ablation_matrix.yaml",
+          "exists": true,
+          "matched_terms": [
+            "envelope",
+            "expert",
+            "expert activation",
+            "frequency",
+            "harmonic",
+            "load_balance",
+            "low_pass",
+            "moe",
+            "route",
+            "router",
+            "sparsity"
+          ]
+        },
+        {
+          "path": "../MOE_explainable/configs/vibench/min.yaml",
+          "exists": true,
+          "matched_terms": [
+            "moe"
+          ]
+        },
+        {
+          "path": "../MOE_explainable/code/moe_model.py",
+          "exists": true,
+          "matched_terms": [
+            "diversity",
+            "envelope",
+            "expert",
+            "expert activation",
+            "expert_outputs",
+            "frequency",
+            "harmonic",
+            "load_balance",
+            "low_pass",
+            "moe",
+            "orthogonal",
+            "route",
+            "router",
+            "routing_weights",
+            "sparsity"
+          ]
+        },
+        {
+          "path": "../MOE_explainable/code/router/statistical_router.py",
+          "exists": true,
+          "matched_terms": [
+            "envelope",
+            "expert",
+            "frequency",
+            "harmonic",
+            "load_balance",
+            "low_pass",
+            "route",
+            "router",
+            "routing_weights",
+            "sparsity"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "Paper_fuzzy_XFD",
+      "mapping_role": "fuzzy rule, membership, and decision-path evidence",
+      "source_backed": true,
+      "accepted_evidence": false,
+      "required_terms": [
+        "fuzzy",
+        "rule",
+        "membership"
+      ],
+      "matched_required_terms": [
+        "fuzzy",
+        "membership",
+        "rule"
+      ],
+      "missing_required_terms": [],
+      "layer_support": {
+        "signal_layer": [
+          "diagnosis",
+          "fault",
+          "feature"
+        ],
+        "neural_layer": [
+          "NSN",
+          "TSPN_UXFD",
+          "decision_configs"
+        ],
+        "constraint_layer": [
+          "membership",
+          "predicate",
+          "rule"
+        ],
+        "evidence_layer": [
+          "active_rules",
+          "baseline_ablation_matrix",
+          "rule-level"
+        ]
+      },
+      "missing_layers": [],
+      "evidence": [
+        {
+          "path": "../Paper_fuzzy_XFD/VIBENCH.md",
+          "exists": true,
+          "matched_terms": [
+            "NSN",
+            "TSPN_UXFD",
+            "baseline_ablation_matrix",
+            "decision_configs",
+            "feature",
+            "fuzzy",
+            "membership",
+            "rule",
+            "rule-level"
+          ]
+        },
+        {
+          "path": "../Paper_fuzzy_XFD/submission_prep/baseline_ablation_matrix.yaml",
+          "exists": true,
+          "matched_terms": [
+            "NSN",
+            "TSPN_UXFD",
+            "active_rules",
+            "decision_configs",
+            "diagnosis",
+            "fault",
+            "feature",
+            "fuzzy",
+            "membership",
+            "rule",
+            "rule-level"
+          ]
+        },
+        {
+          "path": "../Paper_fuzzy_XFD/configs/vibench/min.yaml",
+          "exists": true,
+          "matched_terms": [
+            "NSN",
+            "decision_configs",
+            "fault",
+            "feature",
+            "fuzzy"
+          ]
+        },
+        {
+          "path": "../Paper_fuzzy_XFD/code/fuzzy_system/rule_base.py",
+          "exists": true,
+          "matched_terms": [
+            "active_rules",
+            "diagnosis",
+            "fault",
+            "feature",
+            "fuzzy",
+            "membership",
+            "predicate",
+            "rule"
+          ]
+        },
+        {
+          "path": "../Paper_fuzzy_XFD/code/fuzzy_system/membership_functions.py",
+          "exists": true,
+          "matched_terms": [
+            "fuzzy",
+            "membership"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "Explainable_FD_Toolkit",
+      "mapping_role": "explanation schema, metric, manifest, and toolkit evidence",
+      "source_backed": true,
+      "accepted_evidence": false,
+      "required_terms": [
+        "explain",
+        "schema",
+        "manifest"
+      ],
+      "matched_required_terms": [
+        "explain",
+        "manifest",
+        "schema"
+      ],
+      "missing_required_terms": [],
+      "layer_support": {
+        "signal_layer": [
+          "dataset",
+          "fault"
+        ],
+        "neural_layer": [
+          "NSN",
+          "baseline",
+          "model"
+        ],
+        "constraint_layer": [
+          "metric",
+          "schema",
+          "snapshot"
+        ],
+        "evidence_layer": [
+          "accepted_evidence",
+          "artifact",
+          "manifest"
+        ]
+      },
+      "missing_layers": [],
+      "evidence": [
+        {
+          "path": "../Explainable_FD_Toolkit/VIBENCH.md",
+          "exists": true,
+          "matched_terms": [
+            "accepted_evidence",
+            "artifact",
+            "baseline",
+            "explain",
+            "manifest",
+            "metric",
+            "model",
+            "schema",
+            "snapshot"
+          ]
+        },
+        {
+          "path": "../Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+          "exists": true,
+          "matched_terms": [
+            "NSN",
+            "accepted_evidence",
+            "artifact",
+            "baseline",
+            "dataset",
+            "explain",
+            "fault",
+            "manifest",
+            "metric",
+            "model",
+            "schema",
+            "snapshot"
+          ]
+        },
+        {
+          "path": "../Explainable_FD_Toolkit/configs/vibench/min.yaml",
+          "exists": true,
+          "matched_terms": [
+            "NSN",
+            "explain",
+            "fault",
+            "model"
+          ]
+        },
+        {
+          "path": "../Explainable_FD_Toolkit/scripts/run_toolkit_ablations.py",
+          "exists": true,
+          "matched_terms": [
+            "accepted_evidence",
+            "artifact",
+            "dataset",
+            "explain",
+            "fault",
+            "manifest",
+            "metric",
+            "model",
+            "schema",
+            "snapshot"
+          ]
+        },
+        {
+          "path": "../Explainable_FD_Toolkit/scripts/validate_schema.py",
+          "exists": true,
+          "matched_terms": [
+            "artifact",
+            "dataset",
+            "explain",
+            "metric",
+            "model",
+            "schema"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "LLM_Explainable_FD_Toolkit",
+      "mapping_role": "LLM evidence-chain and unsupported-claim control evidence",
+      "source_backed": true,
+      "accepted_evidence": false,
+      "required_terms": [
+        "llm",
+        "evidence",
+        "unsupported"
+      ],
+      "matched_required_terms": [
+        "evidence",
+        "llm",
+        "unsupported"
+      ],
+      "missing_required_terms": [],
+      "layer_support": {
+        "signal_layer": [
+          "diagnosis",
+          "fault",
+          "time"
+        ],
+        "neural_layer": [
+          "intermediate",
+          "model"
+        ],
+        "constraint_layer": [
+          "checker",
+          "hallucination",
+          "unsupported"
+        ],
+        "evidence_layer": [
+          "evidence",
+          "metrics",
+          "run_meta"
+        ]
+      },
+      "missing_layers": [],
+      "evidence": [
+        {
+          "path": "../LLM_Explainable_FD_Toolkit/VIBENCH.md",
+          "exists": true,
+          "matched_terms": [
+            "checker",
+            "evidence",
+            "hallucination",
+            "llm",
+            "metrics",
+            "model",
+            "run_meta"
+          ]
+        },
+        {
+          "path": "../LLM_Explainable_FD_Toolkit/submission_prep/baseline_ablation_matrix.yaml",
+          "exists": true,
+          "matched_terms": [
+            "checker",
+            "diagnosis",
+            "evidence",
+            "fault",
+            "hallucination",
+            "intermediate",
+            "llm",
+            "metrics",
+            "model",
+            "run_meta",
+            "time",
+            "unsupported"
+          ]
+        },
+        {
+          "path": "../LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml",
+          "exists": true,
+          "matched_terms": [
+            "fault",
+            "llm",
+            "model"
+          ]
+        },
+        {
+          "path": "../LLM_Explainable_FD_Toolkit/code/llm_explainable_toolkit/core/intermediate_representation.py",
+          "exists": true,
+          "matched_terms": [
+            "diagnosis",
+            "fault",
+            "intermediate",
+            "llm",
+            "model",
+            "time"
+          ]
+        },
+        {
+          "path": "../LLM_Explainable_FD_Toolkit/experiments/scripts/run_llm_evidence_smoke.py",
+          "exists": true,
+          "matched_terms": [
+            "checker",
+            "evidence",
+            "fault",
+            "intermediate",
+            "llm",
+            "metrics",
+            "run_meta",
+            "time",
+            "unsupported"
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "TII_operator_attention",
+      "mapping_role": "operator-attention and signal-operator evidence",
+      "source_backed": true,
+      "accepted_evidence": false,
+      "required_terms": [
+        "operator",
+        "attention",
+        "FFT"
+      ],
+      "matched_required_terms": [
+        "FFT",
+        "attention",
+        "operator"
+      ],
+      "missing_required_terms": [],
+      "layer_support": {
+        "signal_layer": [
+          "FFT",
+          "Hilbert",
+          "operator",
+          "signal"
+        ],
+        "neural_layer": [
+          "NSN",
+          "attention",
+          "operator_attention"
+        ],
+        "constraint_layer": [
+          "identity",
+          "subset",
+          "temperature"
+        ],
+        "evidence_layer": [
+          "accepted_evidence",
+          "baseline_ablation_matrix",
+          "validation"
+        ]
+      },
+      "missing_layers": [],
+      "evidence": [
+        {
+          "path": "../TII_operator_attention/VIBENCH.md",
+          "exists": true,
+          "matched_terms": [
+            "FFT",
+            "attention",
+            "baseline_ablation_matrix",
+            "operator",
+            "operator_attention",
+            "signal",
+            "validation"
+          ]
+        },
+        {
+          "path": "../TII_operator_attention/submission_prep/baseline_ablation_matrix.yaml",
+          "exists": true,
+          "matched_terms": [
+            "FFT",
+            "Hilbert",
+            "NSN",
+            "accepted_evidence",
+            "attention",
+            "identity",
+            "operator",
+            "operator_attention",
+            "signal",
+            "subset",
+            "temperature",
+            "validation"
+          ]
+        },
+        {
+          "path": "../TII_operator_attention/configs/vibench/min.yaml",
+          "exists": true,
+          "matched_terms": [
+            "FFT",
+            "NSN",
+            "attention",
+            "operator",
+            "operator_attention",
+            "signal",
+            "temperature"
+          ]
+        },
+        {
+          "path": "../TII_operator_attention/code/synthetic_signals/operator_validation.py",
+          "exists": true,
+          "matched_terms": [
+            "FFT",
+            "attention",
+            "operator",
+            "operator_attention",
+            "signal",
+            "validation"
+          ]
+        },
+        {
+          "path": "../TII_operator_attention/code/synthetic_verification.py",
+          "exists": true,
+          "matched_terms": [
+            "FFT",
+            "attention",
+            "operator",
+            "operator_attention",
+            "signal",
+            "validation"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "This report is source-introspection evidence only.",
+    "It does not prove model performance, mapping impact, TOP-method reproduction, GPU feasibility, or SOTA.",
+    "Accepted train/eval evidence still requires same-protocol logs, metrics, run_meta.yaml, and local GPU metadata."
+  ]
+}

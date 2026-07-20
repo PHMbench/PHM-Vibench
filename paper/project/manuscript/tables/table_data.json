@@ -1,0 +1,155 @@
+{
+  "table1": {
+    "headers": [
+      "Subproject",
+      "Signal Layer",
+      "Feature Layer",
+      "Symbolic Layer",
+      "Language Layer",
+      "Key Innovation"
+    ],
+    "rows": [
+      [
+        "TSPN",
+        "FFT, HT, WF, LNO",
+        "Statistical Features",
+        "N/A",
+        "Rule Templates",
+        "Transparent signal operations"
+      ],
+      [
+        "FuzzyLogic",
+        "Raw Signals",
+        "Feature Extractor",
+        "Fuzzy Rules",
+        "Natural Language",
+        "Neuro-fuzzy hybrid"
+      ],
+      [
+        "MoE",
+        "Preprocessed",
+        "Feature Maps",
+        "Expert Routing",
+        "Template Explanations",
+        "Sparse expert selection"
+      ],
+      [
+        "OperatorAttention",
+        "Multi-scale",
+        "Attention Features",
+        "Operator Weights",
+        "Structured NL",
+        "Physics-aware attention"
+      ],
+      [
+        "1D-2D Fusion",
+        "Time-Freq Maps",
+        "CNN Features",
+        "Decision Trees",
+        "Visual Reports",
+        "Multi-modal fusion"
+      ],
+      [
+        "Explainable FD Toolkit",
+        "Various",
+        "Feature Selection",
+        "Logic Rules",
+        "Custom Templates",
+        "Unified XAI pipeline"
+      ],
+      [
+        "LLM Interface",
+        "Processed",
+        "Embeddings",
+        "Symbolic Prompts",
+        "LLM Generation",
+        "Natural language interface"
+      ]
+    ]
+  },
+  "table2": {
+    "headers": [
+      "Proposition",
+      "Description",
+      "Validation Method",
+      "Result",
+      "Status"
+    ],
+    "rows": [
+      [
+        "Proposition 1",
+        "Symbolic constraints enhance reliability",
+        "FuzzyLogic rule integration",
+        "4.4% accuracy improvement, 94% interpretability",
+        "\u2705 Validated"
+      ],
+      [
+        "Proposition 2",
+        "Physical homomorphism enhances robustness",
+        "Noise robustness experiments",
+        "25.8% average improvement across noise levels",
+        "\u2705 Strongly Validated"
+      ],
+      [
+        "Proposition 3",
+        "Pareto-optimal tradeoff boundary",
+        "Multi-model comparison",
+        "Models cluster near theoretical boundary",
+        "\u26a0\ufe0f Partially Validated"
+      ]
+    ]
+  },
+  "table3": {
+    "headers": [
+      "Constraint Type",
+      "Accuracy",
+      "Stability",
+      "Interpretability",
+      "Physical Meaning"
+    ],
+    "rows": [
+      [
+        "None (Baseline)",
+        "0.445",
+        "\u00b10.007",
+        "High",
+        "None"
+      ],
+      [
+        "L1 Regularization",
+        "0.462",
+        "\u00b10.009",
+        "Medium",
+        "Sparsity"
+      ],
+      [
+        "L2 Regularization",
+        "0.458",
+        "\u00b10.006",
+        "Medium",
+        "Weight decay"
+      ],
+      [
+        "Energy Conservation",
+        "0.521",
+        "\u00b10.034",
+        "High",
+        "Physics-based"
+      ],
+      [
+        "Frequency Smoothness",
+        "0.515",
+        "\u00b10.041",
+        "High",
+        "Physics-based"
+      ],
+      [
+        "Combined Physics",
+        "0.568",
+        "\u00b10.031",
+        "High",
+        "Full physics"
+      ]
+    ]
+  }
+}

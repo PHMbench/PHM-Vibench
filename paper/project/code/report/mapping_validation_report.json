@@ -1,0 +1,309 @@
+{
+  "TSPN": {
+    "model": "TSPN",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "FFT",
+          "HT",
+          "WF",
+          "LNO",
+          "I"
+        ],
+        "validation": "\u2705 Explicit signal processing operations defined",
+        "score": 1.0
+      },
+      "feature": {
+        "found_ops": [
+          "StatisticalFeatures",
+          "FeatureExtractor"
+        ],
+        "validation": "\u2705 Statistical feature extraction implemented",
+        "score": 1.0
+      },
+      "symbolic": {
+        "found_ops": [],
+        "validation": "\u26a0\ufe0f No explicit symbolic reasoning layer",
+        "score": 0.3
+      },
+      "language": {
+        "found_ops": [
+          "SignalDescription"
+        ],
+        "validation": "\u26a0\ufe0f Limited natural language explanations",
+        "score": 0.4
+      }
+    },
+    "mapping_score": 0.6749999999999999,
+    "details": [
+      "TSPN implements transparent signal processing at layer 1",
+      "TSPN extracts interpretable statistical features",
+      "TSPN lacks explicit symbolic reasoning component",
+      "TSPN provides basic signal descriptions"
+    ]
+  },
+  "FuzzyLogic": {
+    "model": "FuzzyLogic",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "RawInput"
+        ],
+        "validation": "\u2705 Processes raw vibration signals",
+        "score": 0.8
+      },
+      "feature": {
+        "found_ops": [
+          "StatisticalFeatures",
+          "TimeDomain",
+          "FrequencyDomain"
+        ],
+        "validation": "\u2705 Comprehensive feature extraction",
+        "score": 1.0
+      },
+      "symbolic": {
+        "found_ops": [
+          "FuzzyRules",
+          "MembershipFunctions",
+          "InferenceEngine"
+        ],
+        "validation": "\u2705 Strong symbolic reasoning with fuzzy logic",
+        "score": 1.0
+      },
+      "language": {
+        "found_ops": [
+          "RuleExplanation",
+          "NaturalLanguage"
+        ],
+        "validation": "\u2705 Generates natural language explanations",
+        "score": 0.9
+      }
+    },
+    "mapping_score": 0.9249999999999999,
+    "details": [
+      "FuzzyLogic accepts raw signal input",
+      "Extracts time and frequency domain features",
+      "Implements fuzzy IF-THEN rules for reasoning",
+      "Provides interpretable rule-based explanations"
+    ]
+  },
+  "MoE": {
+    "model": "MoE",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "Preprocessing"
+        ],
+        "validation": "\u2705 Signal preprocessing stage",
+        "score": 0.7
+      },
+      "feature": {
+        "found_ops": [
+          "FeatureMaps",
+          "Embeddings"
+        ],
+        "validation": "\u2705 Feature extraction for expert routing",
+        "score": 0.9
+      },
+      "symbolic": {
+        "found_ops": [
+          "ExpertRouting",
+          "GatingNetwork",
+          "SparseSelection"
+        ],
+        "validation": "\u2705 Symbolic expert selection mechanism",
+        "score": 0.8
+      },
+      "language": {
+        "found_ops": [
+          "TemplateExplanation",
+          "ExpertContribution"
+        ],
+        "validation": "\u2705 Explains expert contributions",
+        "score": 0.8
+      }
+    },
+    "mapping_score": 0.8,
+    "details": [
+      "MoE includes signal preprocessing",
+      "Extracts features for expert selection",
+      "Implements sparse expert selection logic",
+      "Provides explanations of expert selection"
+    ]
+  },
+  "OperatorAttention": {
+    "model": "OperatorAttention",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "MultiScaleProcessing",
+          "OperatorConvolution"
+        ],
+        "validation": "\u2705 Multi-scale signal operations",
+        "score": 0.9
+      },
+      "feature": {
+        "found_ops": [
+          "AttentionFeatures",
+          "OperatorWeights"
+        ],
+        "validation": "\u2705 Attention-weighted feature extraction",
+        "score": 0.9
+      },
+      "symbolic": {
+        "found_ops": [
+          "OperatorSelection",
+          "PhysicsConstraints"
+        ],
+        "validation": "\u2705 Physics-based operator selection",
+        "score": 0.8
+      },
+      "language": {
+        "found_ops": [
+          "StructuredNL",
+          "OperatorDescription"
+        ],
+        "validation": "\u2705 Explains operator choices",
+        "score": 0.8
+      }
+    },
+    "mapping_score": 0.8500000000000001,
+    "details": [
+      "Implements physics-aware signal operators",
+      "Uses attention to weight important features",
+      "Selects operators based on physical principles",
+      "Provides explanations of operator selection"
+    ]
+  },
+  "1D-2D Fusion": {
+    "model": "1D-2D Fusion",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "TimeFrequencyAnalysis",
+          "STFT",
+          "CWT"
+        ],
+        "validation": "\u2705 Creates time-frequency representations",
+        "score": 0.9
+      },
+      "feature": {
+        "found_ops": [
+          "CNNFeatures",
+          "MultiModalFeatures"
+        ],
+        "validation": "\u2705 Multi-modal feature extraction",
+        "score": 1.0
+      },
+      "symbolic": {
+        "found_ops": [
+          "DecisionRules",
+          "FusionLogic"
+        ],
+        "validation": "\u2705 Fusion decision logic",
+        "score": 0.7
+      },
+      "language": {
+        "found_ops": [
+          "VisualReports",
+          "DiagnosticReports"
+        ],
+        "validation": "\u2705 Generates visual diagnostic reports",
+        "score": 0.8
+      }
+    },
+    "mapping_score": 0.8499999999999999,
+    "details": [
+      "Converts 1D signals to 2D time-frequency maps",
+      "Extracts features from multiple representations",
+      "Implements fusion decision rules",
+      "Creates visual explanation reports"
+    ]
+  },
+  "Explainable FD Toolkit": {
+    "model": "Explainable FD Toolkit",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "VariousPreprocessing"
+        ],
+        "validation": "\u2705 Multiple signal processing options",
+        "score": 0.8
+      },
+      "feature": {
+        "found_ops": [
+          "FeatureSelection",
+          "FeatureExtraction"
+        ],
+        "validation": "\u2705 Comprehensive feature pipeline",
+        "score": 1.0
+      },
+      "symbolic": {
+        "found_ops": [
+          "LogicRules",
+          "RuleEngine"
+        ],
+        "validation": "\u2705 Rule-based reasoning",
+        "score": 0.9
+      },
+      "language": {
+        "found_ops": [
+          "CustomTemplates",
+          "ExplanationGenerator"
+        ],
+        "validation": "\u2705 Template-based explanations",
+        "score": 0.9
+      }
+    },
+    "mapping_score": 0.9,
+    "details": [
+      "Supports various signal preprocessing methods",
+      "Implements feature selection and extraction",
+      "Uses logic rules for decision making",
+      "Generates explanations using templates"
+    ]
+  },
+  "LLM Interface": {
+    "model": "LLM Interface",
+    "layers": {
+      "signal": {
+        "found_ops": [
+          "SignalProcessing"
+        ],
+        "validation": "\u2705 Signal processing pipeline",
+        "score": 0.7
+      },
+      "feature": {
+        "found_ops": [
+          "Embeddings",
+          "FeatureEncoding"
+        ],
+        "validation": "\u2705 Encodes features for LLM",
+        "score": 0.8
+      },
+      "symbolic": {
+        "found_ops": [
+          "SymbolicPrompts",
+          "PromptEngineering"
+        ],
+        "validation": "\u2705 Symbolic prompt generation",
+        "score": 0.8
+      },
+      "language": {
+        "found_ops": [
+          "LLMGeneration",
+          "NaturalLanguage"
+        ],
+        "validation": "\u2705 Advanced natural language generation",
+        "score": 1.0
+      }
+    },
+    "mapping_score": 0.825,
+    "details": [
+      "Includes standard signal processing",
+      "Creates embeddings for language model",
+      "Generates symbolic prompts for LLM",
+      "Uses LLM for sophisticated explanations"
+    ]
+  }
+}
