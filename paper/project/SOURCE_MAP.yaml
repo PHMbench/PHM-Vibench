@@ -26,8 +26,8 @@ legacy_source:
 
 overlay_copy:
   destination_path: paper/project
-  regular_files_before_wrapper: 95
-  bytes_before_wrapper: 839900
+  regular_files_before_wrapper: 88
+  bytes_before_wrapper: 820043
   included:
     - Python source, tests, experiment configs, and runner scripts
     - Markdown, YAML, JSON, BibTeX, and TeX source needed for traceability
@@ -40,7 +40,8 @@ overlay_copy:
     - caches and Python bytecode
     - model weights (*.ckpt, *.pth, *.pt, *.onnx)
     - archives and generated binaries (*.zip, *.pdf, *.png, *.jpg, *.jpeg)
-    - generated logs (*.log)
+    - generated logs (*.log and *_log.txt)
+    - generated stability-test result JSON and summary files
   explicitly_excluded_dirty_paths:
     - best_model.pth
 
