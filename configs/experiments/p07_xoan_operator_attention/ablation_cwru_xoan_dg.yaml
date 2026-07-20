@@ -1,0 +1,88 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  model: configs/base/model/backbone_dlinear.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p07_ablation_cwru_xoan_dg
+  seed: 42
+  output_dir: results/experiments/p07/ablation_cwru_xoan_dg
+  notes: 'P07 ablation matrix on CWRU DG. (c) w/o residual blocked pending full DSOA.
+
+    '
+data:
+  metadata_file: metadata.xlsx
+  window_size: 4096
+  stride: 5
+  batch_size: 64
+  num_workers: 0
+  normalization: standardization
+  split:
+    strategy: grouped_metadata
+    group_key: File
+    stratify_key: null
+    seed: 42
+    test_policy: partition
+    fractions:
+      train: 0.7
+      val: 0.15
+      test: 0.15
+    manifest_path: results/experiments/p07/ablation_cwru_xoan_dg/splits/manifest_seed42.json
+model:
+  type: X_model
+  name: TSPN_UXFD
+  in_dim: 4096
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  num_classes: 4
+  signal_processing_configs:
+    layer1:
+    - I
+    - HT
+    - FFT
+    - WF
+  feature_extractor_configs:
+  - Mean
+  - Std
+  - Var
+  - RMS
+  - Kurtosis
+  - CrestFactor
+  - ClearanceFactor
+  uxfd:
+    operator_attention:
+      enable: true
+      operators:
+      - I
+      - HT
+      - FFT
+      hidden_dim: 128
+      temperature: 1.0
+task:
+  type: DG
+  name: classification
+  loss: CE
+  metrics:
+  - acc
+  - f1_macro
+  target_system_id:
+  - 1
+  source_domain_id:
+  - 0
+  - 1
+  - 2
+  target_domain_id:
+  - 3
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 1
+trainer:
+  num_epochs: 1
+  device: cpu
+  gpus: 1
+  paper_id: P07
+  preset_version: p07-ablation-cwru-v1

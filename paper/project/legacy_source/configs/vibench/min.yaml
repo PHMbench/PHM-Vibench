@@ -1,0 +1,62 @@
+# UXFD paper pilot config (vibench)
+#
+# Paper: TII_operator_attention
+# Goal: provide a minimal, runnable config that exercises the PHM‑Vibench entrypoint and the UXFD core model.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "uxfd_pilot_tii_operator_attention"
+  seed: 0
+  output_dir: "results/uxfd/pilot/TII_operator_attention"
+  notes: "WP0 pilot: dummy data + core model entrypoint (NSN wrapper over TSPN_UXFD)."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
+  paper_id: "TII_operator_attention"
+  preset_version: "vibench-min-v1"
+  extensions:
+    predictions:
+      enable: true
+
+model:
+  type: "X_model"
+  name: "NSN"
+  device: "cpu"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  uxfd:
+    operator_attention:
+      enable: true
+      operators: ["I", "HT", "FFT"]
+      hidden_dim: 128
+      temperature: 1.0
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]

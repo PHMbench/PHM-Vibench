@@ -1,0 +1,59 @@
+schema_version: 1
+paper_id: P07
+project_name: P07-XOAN-Operator-Attention
+vibench_branch: paper/p07-xoan-operator-attention
+vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
+paper_repository: https://github.com/AI4Engineering-L/P07-XOAN-Operator-Attention
+
+active_configs:
+  source_superproject: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+  source_superproject_head: 0f082f19e8d4b9ef0f439028e985db020e986a0a
+  source_path: configs/experiments/p07_xoan_operator_attention
+  source_state: untracked_in_dirty_source_worktree
+  destination_path: configs/experiments/p07_xoan_operator_attention
+  file_count: 6
+  total_bytes: 13932
+  filtered_tree_sha256: e496a959dd40e39909c80fe9a00f728a4a091025e3cf89b862459f3eefd42657
+  grouped_physical_unit_protocol: not_referenced
+
+project_payload:
+  source_repository: git@github.com:liq22/TII_operator_attention.git
+  source_repository_head: 805492b684b50b56075ae8d507aa8c633e6aecc7
+  source_superproject_gitlink: 20f47bac5c02763e1f6b856c90ce32861025c003
+  source_snapshot_root_sha256: 81dc2add6d9bafbfb091136adc74525eb47b732f7ea9e022913c13ffe1b9ecae
+  source_snapshot_file_count: 99
+  source_snapshot_total_bytes: 126744870
+  source_path: legacy/source_snapshot
+  destination_path: paper/project/legacy_source
+  selection: filtered_snapshot
+  included_file_count: 56
+  included_total_bytes: 27423617
+  included_tree_sha256: 2ce18738a90ae2a29b1cbc070f63ea95c7e54e5e23988c2b0a9ae2d40e6bca9d
+  excluded_file_count: 43
+  excluded_total_bytes: 99321253
+  evidence_status: legacy_unverified
+
+included:
+  - source code and tests under code/, experiments/, and scripts/
+  - Vibench bridge notes and configs under configs/
+  - manuscript TeX, bibliography, research notes, and paper planning documents
+  - non-PDF source images needed to understand the historical draft
+
+excluded:
+  - pattern: .git/**
+    reason: Git metadata is never copied into an overlay.
+  - pattern: '**/{.agent,.agents,.claude,codex}/**'
+    reason: Agent prompts and session material are not paper source.
+  - pattern: '**/{output,outputs,result,results,checkpoint,checkpoints,wandb,.cache,__pycache__}/**'
+    reason: Generated runs and caches remain outside the active branch.
+  - pattern: '**/*.{ckpt,pth,pt,h5,npy,npz,pkl,pickle,joblib,onnx,safetensors}'
+    reason: Model weights and generated arrays are not versioned here.
+  - pattern: '**/*.{zip,pdf}'
+    reason: Large archives and rendered PDFs remain in the PaperTrace archive history.
+  - pattern: '**/*.{pyc,synctex.gz,bbl,brf}'
+    reason: Interpreter and manuscript build artifacts are excluded.
+
+integrity:
+  source_mutated: false
+  positive_claim_created: false
+  results_imported: false
