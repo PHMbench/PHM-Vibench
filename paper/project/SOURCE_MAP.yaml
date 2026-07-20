@@ -1,0 +1,64 @@
+schema_version: 1
+paper_id: P05
+migrated_on: "2026-07-21"
+destination:
+  repository: https://github.com/PHMbench/PHM-Vibench.git
+  branch: paper/p05-neuro-fuzzy-safe-xfd
+  engine_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
+
+paper_snapshot:
+  repository: https://github.com/AI4Engineering-L/P05-Neuro-Fuzzy-Safe-XFD.git
+  branch: master
+  commit: d028a0cff6361d1ed2bc66ce79ece4fa5a65e7af
+  source_path: legacy/source_snapshot
+  destination_path: paper/project
+  mode: filtered_snapshot
+  copied_payload_before_metadata_overlay:
+    files: 48
+    bytes: 1496650
+
+experiment_configs:
+  source_repository: https://github.com/PHMbench/PHM-Vibench.git
+  source_worktree_commit: 0f082f19e8d4b9ef0f439028e985db020e986a0a
+  source_state: untracked_addition
+  source_path: configs/experiments/p05
+  destination_path: configs/experiments/p05
+  files: 12
+  bytes: 30806
+
+filters:
+  excluded_directories:
+    - .git
+    - .agent
+    - .agents
+    - .claude
+    - .codex
+    - outputs
+    - results
+    - checkpoints
+    - wandb
+    - cache
+    - __pycache__
+    - .pytest_cache
+    - .mypy_cache
+    - .ruff_cache
+  excluded_file_patterns:
+    - "*.ckpt"
+    - "*.pt"
+    - "*.pth"
+    - "*.h5"
+    - "*.hdf5"
+    - "*.zip"
+    - "*.pdf"
+
+audit:
+  method: rsync checksum dry-run with the declared filters
+  paper_payload_differences_before_metadata_overlay: 0
+  experiment_config_differences: 0
+  forbidden_files_in_destination: 0
+  files_over_10_mib_in_destination: 0
+  metadata_overlays:
+    - paper/project/README.md
+    - paper/project/SOURCE_MAP.yaml
+  evidence_effect: none
+

@@ -1,0 +1,144 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{url}
+
+\geometry{margin=2.2cm}
+
+\title{Fuzzy-XFD: Rule-Auditable Fuzzy Fault Diagnosis\\
+Submission Evidence Snapshot}
+\author{Fuzzy-XFD Team}
+\date{2026-05-11}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This entrypoint records the current submission-readiness state for the
+Fuzzy-XFD paper targeting IEEE Transactions on Fuzzy Systems. The only accepted
+claims at this stage are the presence of fuzzy rule-level implementation assets,
+the availability of rule/membership visual artifacts, and the declared
+PHM-Vibench minimal reproduction contract. Multi-seed CWRU/XJTU metrics,
+six-baseline comparisons, ablations, TOP recent-work representative runs, and
+SOTA wording remain blocked until same-protocol artifacts are generated under
+the local two-RTX-4090 compute constraint.
+\end{abstract}
+
+\noindent\textbf{Keywords:} fault diagnosis, fuzzy rules, explainable AI,
+rule-level evidence, submission readiness.
+
+\section{Scope}
+
+This file replaces the previous template manuscript entrypoint with a
+compilable evidence snapshot. It is not a final submission manuscript. Numerical
+performance, safety, and SOTA claims are intentionally withheld unless they map
+to accepted local artifacts.
+
+\section{Current Accepted Artifacts}
+
+The current local artifacts support only rule-level visualization and method
+structure claims. They do not support final diagnostic performance claims.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Accepted current-state artifacts and their allowed use.}
+\begin{tabular}{p{0.29\textwidth}p{0.34\textwidth}p{0.27\textwidth}}
+\toprule
+Artifact & Accepted use & Limitation \\
+\midrule
+\path{code/fuzzy_system/rule_base.py} &
+Defines fuzzy rule and rule-base objects used by the local fuzzy system. &
+No accepted multi-dataset performance metric is attached. \\
+\path{code/fuzzy_system/inference_engine.py} &
+Defines fuzzy inference and explanation-path mechanics. &
+No accepted rule-faithfulness metric is attached. \\
+\path{FuzzyLogic_explainable/results/fuzzy_membership_functions.pdf} &
+Visual evidence for membership-function presentation. &
+Visualization only; not a quantitative result. \\
+\path{FuzzyLogic_explainable/results/fuzzy_rule_heatmap.pdf} &
+Visual evidence for rule activation presentation. &
+Visualization only; not a same-protocol baseline result. \\
+\path{FuzzyLogic_explainable/results/fuzzy_inference_process.pdf} &
+Visual evidence for inference-process presentation. &
+Visualization only; not a safety-case artifact. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.32\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{FuzzyLogic_explainable/results/fuzzy_membership_functions.pdf}
+  \caption{Membership functions}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{FuzzyLogic_explainable/results/fuzzy_rule_heatmap.pdf}
+  \caption{Rule heatmap}
+\end{subfigure}
+\begin{subfigure}{0.32\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{FuzzyLogic_explainable/results/fuzzy_inference_process.pdf}
+  \caption{Inference process}
+\end{subfigure}
+\caption{Current rule-level visual artifacts available in the submodule.}
+\end{figure}
+
+\section{Submission Gates}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{IEEE Transactions readiness gates as of 2026-05-11.}
+\begin{tabular}{p{0.24\textwidth}p{0.28\textwidth}p{0.38\textwidth}}
+\toprule
+Gate & Status & Evidence or blocker \\
+\midrule
+Canonical TeX entrypoint & Partial & This file compiles as an evidence snapshot; final IEEE TFS manuscript text is still required. \\
+PHM-Vibench minimal contract & Partial & \path{VIBENCH.md} and \path{configs/vibench/min.yaml} declare the smoke path. \\
+CWRU/XJTU multi-seed results & Blocked & Missing accepted metrics for seeds 42, 123, and 456 on both datasets. \\
+Six or more baselines & Blocked & No same-split, same-seed baseline artifacts exist for the declared suite. \\
+Rule-level metrics & Blocked & Missing faithfulness, stability, sparsity, and efficiency result files. \\
+Safety failure cases & Blocked & Existing safety text is narrative only; missing sample IDs, triggered rules, memberships, and decision paths. \\
+Ablations & Blocked & Missing artifacts for removing or varying fuzzy-rule components. \\
+TOP recent-work runnable baseline & Blocked & RWTOP2024-TIMEXPP still needs an exact or representative local run artifact. \\
+SOTA wording & Blocked & No SOTA claim is allowed until the declared baselines and ablations are beaten under the same protocol. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Compute Constraint}
+
+Accepted experiment commands must bind the local devices explicitly, for
+example:
+
+\begin{verbatim}
+CUDA_VISIBLE_DEVICES=0 python main.py \
+  --config paper/UXFD_paper/Paper_fuzzy_XFD/configs/vibench/min.yaml \
+  --override trainer.num_epochs=1
+\end{verbatim}
+
+Runs may use only GPU 0, GPU 1, or both local RTX 4090 GPUs. Any external TOP
+method that cannot fit this budget must remain literature-only or
+resource-blocked and cannot support SOTA performance claims.
+
+\section{Next Evidence Package}
+
+The next accepted package must add submodule-local artifacts for the declared
+baseline, ablation, rule-metric, safety-case, and TOP-recent-work gates. The
+expected blocker list and command patterns are recorded in
+\path{doc/T044_submission_readiness_evidence.md}.
+
+\end{document}
