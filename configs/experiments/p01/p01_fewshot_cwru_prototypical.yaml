@@ -1,0 +1,42 @@
+# P01 few-shot arm: Prototypical-Network K-sweep on CWRU.
+# Derives from configs/demo/03_fewshot/cwru_protonet.yaml (READ-ONLY; not modified).
+# ADDITIVE under configs/experiments/p01/.
+# Status: blocked (episode-safe grouping not yet defined) - see configs/README.md
+#   "FS and GFS are rejected because episode-safe grouping is not yet defined."
+#   The grouped_metadata split currently supports DG/CDDG but not FS episodes.
+# Supports P01 claims: few-shot K-sweep (P01-N025 placeholder) and the fusion
+#   advantage at K={1,5,10,full} (P01-C002 sub-claim). Numbers produced before
+#   episode-safe grouping lands must be labelled exploratory, not paper-grade.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p01_fewshot_cwru_prototypical"
+  seed: 42
+  output_dir: "results/p01/fewshot_cwru_prototypical"
+  notes: "P01 FS prototypical K-sweep on CWRU (Dataset_id=1). BLOCKED until FS episode-safe grouping lands."
+
+data: {}
+
+task:
+  type: "FS"
+  name: "prototypical_network"
+  target_system_id: [1]   # CWRU only (single-system few-shot)
+  n_way: 5
+  k_shot: 5               # sweep via --override task.k_shot in {1,5,10}
+  q_query: 15
+  episodes_per_epoch: 100
+  lr: 0.001
+  loss: "CE"
+  metrics: ["acc", "f1"]
+
+trainer:
+  num_epochs: 1
+  device: "cuda"

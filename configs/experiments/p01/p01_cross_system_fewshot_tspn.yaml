@@ -1,0 +1,43 @@
+# P01 cross-system few-shot baseline: TSPN-style GFS, source=CWRU target=XJTU.
+# Derives from configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml (READ-ONLY; not modified).
+# ADDITIVE under configs/experiments/p01/.
+# Status: blocked (episode-safe grouping not yet defined) - see configs/README.md.
+#   The TSPN module is registered in model_registry.csv under
+#   (X_model, TSPN) and (X_model, TSPN_UXFD) but the GFS task rejects grouped
+#   splits until episode-safe grouping lands.
+# Supports P01 claims: cross-system few-shot baseline number for the fusion
+#   comparison (P01-N011 legacy TSPN 95.24% is narrative-only and must be
+#   replaced by a fresh same-protocol re-run), and the K-sweep matrix.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"   # swap to TSPN once FS grouping lands
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p01_cross_system_fewshot_tspn"
+  seed: 42
+  output_dir: "results/p01/cross_system_fewshot_tspn"
+  notes: "P01 GFS TSPN-style source=CWRU(1) target=XJTU(2). BLOCKED until FS/GFS episode-safe grouping lands."
+
+data: {}
+
+task:
+  type: "GFS"
+  name: "classification"
+  target_system_id: [1, 2]   # CWRU + XJTU; target_domain_num picks the held-out target
+  target_domain_num: 1
+  num_support: 5
+  num_query: 15
+  num_episodes: 100
+  lr: 0.001
+  loss: "CE"
+  metrics: ["acc", "f1"]
+
+trainer:
+  num_epochs: 1
+  device: "cuda"

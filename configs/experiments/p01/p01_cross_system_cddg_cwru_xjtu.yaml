@@ -1,0 +1,39 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_system.yaml
+  model: configs/base/model/backbone_dlinear.yaml
+  task: configs/base/task/cddg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p01_cross_system_cddg_cwru_xjtu
+  seed: 42
+  output_dir: results/p01/cross_system_cddg_cwru_xjtu
+  notes: 'P01 CDDG source=CWRU(1) target=XJTU(2). 5-seed: [42,123,456,789,1024]. THU_006 OUT OF SCOPE.'
+data:
+  split:
+    strategy: grouped_metadata
+    group_key: File
+    stratify_key: null
+    seed: 42
+    test_policy: task_defined
+    fractions:
+      train: 0.8
+      val: 0.2
+    manifest_path: results/p01/p01_cross_system_cddg_cwru_xjtu/split_manifest.json
+task:
+  type: CDDG
+  name: classification
+  target_system_id:
+  - 2
+  loss: CE
+  metrics:
+  - acc
+  - f1
+  - precision
+  - recall
+  lr: 0.001
+  weight_decay: 0.0001
+trainer:
+  num_epochs: 1
+  device: cuda

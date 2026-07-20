@@ -1,0 +1,100 @@
+# P01 METHOD arm (full tri-level-aligned 1D+2D fusion) + ablation variants.
+# TRACEABILITY-ONLY placeholder. NOT runnable as-is.
+# Status: needs_new_component.
+#
+# The full method and its ablation variants are NOT registered in the maintained
+# `src/model_factory/model_registry.csv`. They exist only in the READ-ONLY legacy
+# snapshot under `paper/UXFD_paper/1D-2D_fusion_explainable/`:
+#   code/models/fusion_aligned.py        (full tri-level-aligned fusion)
+#   code/models/fusion_early.py          (simple early-fusion concat - the
+#                                         'simple_fusion' ablation arm)
+#   code/models/one_d_branch.py          (1D branch)
+#   code/models/two_d_branch.py          (2D branch)
+#   code/alignment/{physical,semantic,geometric}_alignment.py
+#   model/Fusion1D2D_ablation.py         (ablation switches)
+#
+# Until these are ported into the maintained factory and given registry-style IDs
+# (E_*/B_*/H_*), the method + ablation + fusion-vs-single-modal few-shot arms
+# below CANNOT run via `main.py --config`. This file records the intended binding
+# so the run ledger has an explicit traceability link when the port lands.
+#
+# ADDITIVE under configs/experiments/p01/. Does not modify any base/demo/reference config.
+
+pipeline: "Pipeline_01_default"   # placeholder; final pipeline TBD at port time
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_classification.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"   # placeholder, overridden
+  task: "configs/base/task/classification.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p01_method_full_tri_level_alignment"
+  seed: 42
+  output_dir: "results/p01/method_full"
+  notes: "P01 full method + ablation arms. Status needs_new_component: Fusion1D2D family not ported to maintained model_factory."
+
+# Intended method arm config (BLOCKED - registry IDs not yet defined).
+# When ported, replace the placeholder block with registry-addressed IDs, e.g.:
+#   model:
+#     type: "Fusion1D2D"
+#     name: "M_P01_FusionAligned"
+#     embedding: "E_P01_HSE_1D2D"      # 1D/2D dual-view HSE embedding (to be registered)
+#     backbone: "B_P01_FusionAligned"  # tri-level-aligned fusion backbone (to be registered)
+#     task_head: "H_01_Linear_cla"
+#     alignment_components: [physical, semantic, geometric]
+#     statistical_features: true
+model:
+  type: "PLACEHOLDER_Fusion1D2D"
+  name: "M_P01_FusionAligned_UNREGISTERED"
+  notes: "Not in model_registry.csv. Port from legacy code/models/fusion_aligned.py first."
+
+task:
+  type: "Default_task"
+  name: "Default_task"
+  target_system_id: [1]   # CWRU primary; replicate for [2]=XJTU
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  lr: 0.001
+  weight_decay: 0.0001
+
+trainer:
+  num_epochs: 1
+  device: "cuda"
+
+# ---- Ablation variants (each = a separate arm, all needs_new_component) ----
+# Full            : [1D, 2D, Statistical, Physical-Align, Semantic-Align, Geometric-Align]
+# 1D-only         : [1D, Statistical]                                   (legacy code/models/one_d_branch.py)
+# 2D-only         : [2D, Statistical]                                   (legacy code/models/two_d_branch.py)
+# No-statistical  : [1D, 2D, Physical-Align, Semantic-Align, Geometric-Align]
+# No-alignment    : [1D, 2D, Statistical]                               (fusion without tri-level)
+# Simple-fusion   : [1D, 2D, Statistical, Concat]                       (legacy code/models/fusion_early.py)
+#
+# Each variant requires its own registered model ID before it can be run.
+
+# ---- Few-shot fusion variant (also needs_new_component) ----
+# Fusion K-sweep at K={1,5,10,full} on CWRU/XJTU vs 1D-only/2D-only/TSPN.
+# Blocked on BOTH: (a) Fusion1D2D registration, AND (b) FS episode-safe grouping.
+
+# ---- Explainability arm (also needs_new_component / blocked) ----
+# Quantitative explainability probe (faithfulness/stability/efficiency/alignment).
+# The legacy probe at results/autoresearch/20260319_193128/explainability_quant/
+# is SYNTHETIC only (6 samples, accuracy 0.0). Real-data probe needs the full
+# method registered AND a real-data evaluation harness (Pipeline_05_default_w_explain
+# exists but expects a registered explainable model).
+
+paper:
+  paper_id: P01
+  supports_claim_ids:
+    - P01-C001   # tri-level alignment is principled + novel (method arm)
+    - P01-C002   # full method beats 1D/2D/concat/attention (method + ablation + baselines)
+    - P01-C003   # fusion exposes quantifiable contribution + alignment consistency (explainability arm)
+    - P01-N023   # ablation delta targets (Full / 1D-only / 2D-only / no-stat / no-align / simple-fusion)
+    - P01-N024   # ablation target table (Full 95.7+/-0.8 acc, alignment_score 0.92)
+    - P01-N025   # few-shot fusion advantage K={1,5,10,full}
+    - P01-N027   # tri-level alignment target scores (physical/semantic/geometric/overall)
+    - P01-N028   # in-domain >=0.98 innovation gate (FAILED in legacy; must be re-attempted cleanly)
+    - P01-N022   # attention contributions (inner/outer/ball/cage) - real-data version
+  blocker: "Fusion1D2D family not registered in src/model_factory/model_registry.csv"
+  legacy_source: "paper/UXFD_paper/1D-2D_fusion_explainable/ (READ-ONLY submodule)"

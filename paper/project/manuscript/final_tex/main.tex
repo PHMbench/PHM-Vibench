@@ -1,0 +1,141 @@
+\documentclass[12pt,a4paper]{article}
+
+% ===== 基本包 =====
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% ===== 格式设置 =====
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage[parfill]{parskip}
+
+% ===== 参考文献管理 =====
+\usepackage[backend=biber,style=authoryear-comp,natbib=true]{biblatex}
+\addbibresource{../../references/library.bib}
+
+% ===== 标题信息 =====
+\title{[论文标题]}
+\author{作者姓名\\[2mm]
+  \small 单位名称 \\
+  \small \texttt{email@example.com}
+}
+\date{\today}
+
+% ===== 自定义命令 =====
+\newcommand{\sectionref}[1]{Section~\ref{#1}}
+\newcommand{\equationref}[1]{Equation~(\ref{#1})}
+\newcommand{\figureref}[1]{Figure~\ref{#1}}
+\newcommand{\tableref}[1]{Table~\ref{#1}}
+
+\begin{document}
+
+\maketitle
+
+\noindent\textbf{Truth-First Note.} This file is a non-canonical placeholder. The canonical draft is `../../paper_draft/NMI_Paper1_Fusion1D2D.tex`, and all numbers below are synchronized to paper-local autoresearch artifacts only. This file is not external submission-ready evidence without the parent UXFD gate.
+
+
+
+\begin{abstract}
+  [请在此处撰写摘要，简要说明研究背景、方法、主要发现和贡献。]
+
+  \vspace{2mm}
+  \textbf{关键词：} [关键词1], [关键词2], [关键词3]
+\end{abstract}
+
+% ===== 1. 引言 =====
+\section{引言}
+\label{sec:introduction}
+
+研究背景和动机...
+主要贡献概述...
+
+% ===== 2. 相关工作 =====
+\section{相关工作}
+\label{sec:related_work}
+
+文献综述...
+现有方法的局限性...
+
+% ===== 3. 方法 =====
+\section{提出的方法}
+\label{sec:methodology}
+
+\subsection{方法概述}
+\label{subsec:overview}
+
+\subsection{具体实现}
+\label{subsec:implementation}
+
+\subsection{算法复杂度分析}
+\label{subsec:complexity}
+
+% ===== 4. 实验结果 =====
+\section{实验}
+\label{sec:experiments}
+
+\subsection{实验设置}
+\label{subsec:setup}
+
+数据集描述...
+评估指标...
+
+\subsection{结果与分析}
+\label{subsec:results}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{../../figures/example.pdf}
+  \caption{实验结果示意图}
+  \label{fig:results}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Truth-first paper-local evidence snapshot}
+  \label{tab:truth_first_snapshot}
+  \begin{tabular}{lc}
+    \toprule
+    Evidence item & Value \\
+    \midrule
+    Cross-dataset mean accuracy (CWRU, XJTU) & 65.68\\% \\
+    Three-seed mean accuracy & 41.41\\% \\
+    Three-seed CV & 6.50\\% \\
+    Faithfulness probe & 0.0002 \\
+    Stability probe & 0.9988 \\
+    Efficiency & 63.47 ms/sample \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== 5. 讨论 =====
+\section{讨论}
+\label{sec:discussion}
+
+结果的深入分析...
+方法的优势与局限性...
+
+% ===== 6. 结论 =====
+\section{结论}
+\label{sec:conclusion}
+
+总结主要发现...
+展望未来工作...
+
+% ===== 参考文献 =====
+\printbibliography
+
+% ===== 附录 =====
+\appendix
+\section{附录}
+\label{sec:appendix}
+
+补充材料...
+
+\end{document}

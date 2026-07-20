@@ -1,0 +1,191 @@
+status_date: "2026-05-11"
+paper_id: "1D-2D_fusion_explainable"
+scope: "Command-bound baseline and fusion-ablation matrix for Paper 02."
+evidence_level: "baseline config-target validated; fusion ablation smoke runner bound"
+submission_ready: false
+base_config: "paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml"
+validation_note: >
+  The commands below bind the 1D-2D Fusion comparison surface to concrete
+  PHM-Vibench and paper-local entrypoints. They validate wiring and limited
+  dummy-data behavior only. They do not satisfy the strict IEEE gate because
+  accepted CWRU/XJTU multi-seed artifacts, real 1D-2D fusion/alignment
+  ablations, 2x4090 GPU metadata, TOP representatives, and accepted final
+  figure artifacts are still missing.
+
+common_policy:
+  devices: "local RTX 4090 GPUs 0,1 only"
+  default_binding: "CUDA_VISIBLE_DEVICES=0"
+  scheduler: "one GPU per run; at most two concurrent single-GPU jobs"
+  required_metadata:
+    - "CUDA_VISIBLE_DEVICES"
+    - "GPU model"
+    - "seed"
+    - "batch size"
+    - "precision"
+    - "runtime"
+    - "dataset split"
+    - "OOM or failure reason"
+
+proposed:
+  id: "P00"
+  label: "PHM-Vibench NSN proxy with 1D-2D signal_processing_2d config"
+  command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  config_target_validated: true
+  dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+  dummy_smoke_metric: "test_loss=1.1902445554733276, test_acc_Dummy_Data=0.0"
+  accepted_evidence_status: "pending same-protocol CWRU/XJTU GPU run with real Fusion1D2D path"
+
+paper_local_demo:
+  id: "D00"
+  label: "paper-local Fusion1D2D HDF5 and dummy demo"
+  command: "CUDA_VISIBLE_DEVICES=0 python scripts/run_minimal_demo.py --use_dummy --num_epochs=1 --batch_size=8 --input_dim=128 --num_classes=10 --output_root /tmp/uxfd_paper02_minimal_demo"
+  real_h5_command: "python scripts/run_minimal_demo.py --num_epochs=1 --batch_size=4 --input_dim=512 --num_classes=10 --max_records=4 --windows_per_record=2 --output_root /tmp/uxfd_paper02_real_h5_demo"
+  config_target_validated: true
+  real_h5_smoke_status: "pass on current PHM-Vibench HDF5 metadata/H5 loader; CPU run; non-accepted tiny THU_018 smoke only"
+  real_h5_smoke_metric: "test_accuracy=0.0, test_f1_macro=0.0, loaded 8 windows from THU_018_basic"
+  dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback; --use_dummy intentionally skips real-data loading"
+  dummy_smoke_metric: "test_accuracy=0.39, test_f1_macro=0.23883535636476813, training_time=3.277329206466675"
+  failed_sanity_check: "same command with --num_classes=4 failed with IndexError: Target 8 is out of bounds"
+  accepted_evidence_status: "paper-local demo only; pending current-root CWRU/XJTU evidence package"
+
+baselines:
+  - id: "B01"
+    label: "NSN/TSPN_UXFD with 2D signal path disabled"
+    goal_mapping: "paper-specific no-2D proxy"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU run"
+  - id: "B02"
+    label: "ResNet baseline"
+    goal_mapping: "CNN.ResNet1D / X_model.Resnet"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=1.1218299865722656, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU run"
+  - id: "B03"
+    label: "SincNet baseline"
+    goal_mapping: "X_model.Sincnet"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=4.801812171936035, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU run"
+  - id: "B04"
+    label: "TFN baseline"
+    goal_mapping: "X_model.TFN"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.8415476679801941, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU run"
+  - id: "B05"
+    label: "WKN baseline"
+    goal_mapping: "X_model.WKN"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.6259610652923584, test_acc_Dummy_Data=0.625"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU run"
+  - id: "B06"
+    label: "ConvTransformer baseline"
+    goal_mapping: "Transformer.ConvTransformer"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=7.736400604248047, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU run"
+
+ablations:
+  - id: "A01"
+    label: "disable 2D signal-processing path"
+    goal_mapping: "No-2D proxy for 1D-only contribution"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "same run as B01; pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending true Fusion1D2D 1D-only CWRU/XJTU run"
+  - id: "A02"
+    label: "smaller STFT window"
+    goal_mapping: "2D time-frequency sensitivity"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.n_fft=64 --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=1.1116316318511963, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol real-data sensitivity run"
+  - id: "A03"
+    label: "smaller STFT hop length"
+    goal_mapping: "2D time-frequency sensitivity"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.stft.hop_length=32 --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=1.1849299669265747, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol real-data sensitivity run"
+  - id: "A04"
+    label: "concat fusion switch"
+    goal_mapping: "Fusion operator sensitivity"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_2d.fusion.type=concat --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.9325022101402283, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending true fusion-operator ablation in Fusion1D2D"
+  - id: "A05"
+    label: "paper-local demo class-count sanity"
+    goal_mapping: "Validates local Fusion1D2D dummy demo entrypoint and exposes class-count failure"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.out_channels=10 --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass with 10 classes; --num_classes=4 fails with Target 8 out of bounds"
+    accepted_evidence_status: "paper-local sanity only; pending real-data ablation package"
+  - id: "A06"
+    label: "FFT-only signal layer"
+    goal_mapping: "2D/frequency-only signal path stress test"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.signal_processing_configs.layer1='[\"FFT\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "non-accepted smoke runner emits run_meta.yaml and metrics.json with accepted_evidence=false; true TSPN_UXFD FFT-only forward now passes a CPU shape/finite-logit gate after disabling residual addition for length-changing signal operators"
+    accepted_evidence_status: "pending same-protocol real-data FFT-only ablation artifact package"
+  - id: "A07"
+    label: "legacy 1D-only / 2D-only / no-statistical configs"
+    goal_mapping: "Original paper-specific component ablations"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override model.feature_extractor_configs='[\"Mean\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "non-accepted smoke runner emits run_meta.yaml and metrics.json with accepted_evidence=false; legacy runner now resolves the current repo root, uses the vibench min config, and restricts GPU binding to 0/1"
+    accepted_evidence_status: "pending current-root CWRU/XJTU rewrite for 1D-only, 2D-only, and no-statistical ablations"
+
+top_recent_work:
+  - id: "RWTOP2024-TIMEMIXER"
+    paper_goal_role: "multiscale temporal representative for 1D-2D fusion"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2024-MOMENT"
+    paper_goal_role: "foundation-style representation comparator"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2025-CATCH"
+    paper_goal_role: "channel/frequency baseline for 2D spectral evidence"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2025-DADA"
+    paper_goal_role: "bottleneck/anomaly comparator for fault diagnosis framing"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2026-PGRFNET"
+    paper_goal_role: "prototype/relational diagnostic comparator for fusion evidence"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2026-GTM"
+    paper_goal_role: "frequency-attention representation comparator for 1D-2D features"
+    status: "parent queue maps this to representative local proxy entries B04, B05, and A06; accepted artifacts pending"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+  - id: "RWTOP2026-CSLSTM"
+    paper_goal_role: "contextual/seasonal anomaly comparator for time-frequency robustness"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+
+strict_blockers:
+  - "No accepted CWRU/XJTU multi-seed six-baseline table yet."
+  - "No true Fusion1D2D same-protocol 1D-only, 2D-only, no-statistical, no-alignment, late-fusion, or no-explainability ablation package yet."
+  - "No accepted TOP representative command/log/artifact mapping yet."
+  - "No GPU model/runtime metadata from local GPUs 0,1 yet."
+  - "No SOTA claim is allowed from this matrix alone."

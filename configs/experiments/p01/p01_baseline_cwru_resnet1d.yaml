@@ -1,0 +1,57 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_classification.yaml
+  model: configs/base/model/backbone_dlinear.yaml
+  task: configs/base/task/classification.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p01_baseline_cwru_resnet1d
+  seed: 42
+  output_dir: results/p01/baseline_cwru_resnet1d
+  notes: 'P01 1D CNN baseline (ResNet1D) on CWRU (Dataset_id=1). Status needs_new_component: no ResNet1D model base config yet.'
+data:
+  split:
+    strategy: grouped_metadata
+    group_key: File
+    stratify_key: null
+    seed: 42
+    test_policy: partition
+    fractions:
+      train: 0.7
+      val: 0.15
+      test: 0.15
+    manifest_path: results/p01/p01_baseline_cwru_resnet1d/split_manifest.json
+model:
+  type: PLACEHOLDER_ISFM
+  name: M_P01_ResNet1D_UNREGISTERED
+  notes: Not in model_registry.csv. Port src/model_factory/CNN/ResNet1D.py into an ISFM backbone first.
+  intended:
+    embedding: E_01_HSE
+    backbone: B_P01_ResNet1D
+    task_head: H_01_Linear_cla
+    input_dim: 2
+    block_type: basic
+    layers:
+    - 2
+    - 2
+    - 2
+    - 2
+    initial_channels: 32
+    num_classes: 4
+task:
+  type: Default_task
+  name: Default_task
+  target_system_id:
+  - 1
+  loss: CE
+  metrics:
+  - acc
+  - f1
+  - precision
+  - recall
+  lr: 0.001
+  weight_decay: 0.0001
+trainer:
+  num_epochs: 1
+  device: cuda
