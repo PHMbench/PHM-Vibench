@@ -1,0 +1,51 @@
+schema_version: 1
+paper_id: P03
+overlay_branch: paper/p03-evidence-grounded-llm-xfd
+vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
+
+engine_config_copy:
+  source_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/configs/experiments/p03
+  destination_path: configs/experiments/p03
+  source_git_status: untracked-directory
+  regular_files: 8
+  grouped_physical_unit_dependency: false
+
+legacy_source:
+  snapshot_path: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-小论文/P03-Evidence-Grounded-LLM-XFD/legacy/source_snapshot
+  original_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+  origin: https://github.com/liq22/LLM_Explainable_FD_Toolkit.git
+  repository_head: 7a07a8463a9520a557bbf5ce26b07604797bc609
+  superproject_gitlink: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
+  branch: master
+  status_porcelain: []
+  snapshot_root_sha256: 2fb93f17eda45b317369b89146740b7d75fe4116c8f65c17c9abf39ffb5ae0ac
+  snapshot_selection: current-working-tree
+
+overlay_copy:
+  destination_path: paper/project
+  regular_files_before_wrapper: 80
+  bytes_before_wrapper: 904238
+  included:
+    - LLM toolkit source, adapters, tests, configs, and experiment scripts
+    - Questionnaire templates and manuscript/source documentation
+    - Markdown, YAML, JSON, CSV, BibTeX, and TeX source needed for traceability
+  excluded:
+    - .git and hidden agent prompt directories (.agent, .agents, .claude, .codex)
+    - sessions and plan/*/codex agent/session material
+    - isolated and pipeline test results, outputs, results, checkpoints, save, runs, and wandb
+    - caches and Python bytecode
+    - model weights (*.ckpt, *.pth, *.pt, *.onnx)
+    - archives and generated binaries (*.zip, *.pdf, *.png, *.jpg, *.jpeg)
+    - generated logs (*.log)
+
+evidence_status: legacy-unverified
+claim_promotion: false
+source_mutation: false
+
+validation:
+  validate_configs: "pass: 7/7 maintained registry configs"
+  validate_docs: "pass: 116 documentation files scanned"
+  copied_config_inspection: "7/7 diagnostic-backbone configs parsed by scripts.config_inspect"
+  copied_config_boundary: LLM generation and human-study arms remain blocked as documented in configs/experiments/p03/README.md.
+  python_compileall: pass
+  targeted_test: "pass: paper/project/code/tests/test_llm_evidence_smoke_runner.py (2 tests)"

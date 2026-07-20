@@ -1,0 +1,207 @@
+status_date: "2026-05-11"
+paper_id: "LLM_Explainable_FD_Toolkit"
+scope: "Command-bound PHM/LLM baseline and ablation blocker matrix for Paper 03."
+evidence_level: "baseline config-target validated; LLM package import gate fixed; accepted evidence still blocked"
+submission_ready: false
+base_config: "paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml"
+validation_note: >
+  The commands below bind the LLM Explainable FD Toolkit comparison surface to
+  concrete PHM-Vibench and paper-local entrypoints. They validate dummy-data
+  wiring and a standalone template LLM demo only. They do not satisfy the
+  strict IEEE gate because the generated run_meta/metrics files are smoke-only
+  and accepted results/llm_evidence packages under the main protocol, real
+  baseline/ablation protocols, TOP representatives, latency/hallucination
+  metrics, GPU metadata, and evidence-bearing final manuscript claims are still
+  missing. A conservative IEEE TeX entrypoint now exists at
+  manuscript/ieee_tii/main.tex, but it is a compile checkpoint only.
+
+common_policy:
+  devices: "local RTX 4090 GPUs 0,1 only"
+  default_binding: "CUDA_VISIBLE_DEVICES=0"
+  scheduler: "one GPU per run; at most two concurrent single-GPU jobs"
+  required_metadata:
+    - "CUDA_VISIBLE_DEVICES"
+    - "GPU model"
+    - "seed"
+    - "batch size or prompt batch size"
+    - "precision or quantization"
+    - "runtime"
+    - "dataset split or prompt set"
+    - "OOM or failure reason"
+
+proposed:
+  id: "P00"
+  label: "PHM-Vibench NSN smoke with agent/distillation extension enabled"
+  command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  config_target_validated: true
+  dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+  dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+  accepted_evidence_status: "pending results/llm_evidence run_meta.yaml and metrics.json under the main protocol"
+
+llm_demo_evidence:
+  - id: "D01"
+    label: "standalone template LLM pipeline"
+    command: "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode pipeline"
+    status: "pass in LQ_signal; stdout-only demo; no accepted run_meta.yaml or metrics.json"
+  - id: "D02"
+    label: "standalone template LLM single-case dialogue"
+    command: "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo_standalone.py --mode single --case 0"
+    status: "pass in LQ_signal; case 0 emits four template responses"
+  - id: "D03"
+    label: "package-based template LLM pipeline"
+    command: "CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output /tmp/uxfd_paper03_template_llm_artifacts"
+    status: "pass after local template/knowledge fallback fix; saves demo artifacts plus smoke run_meta.yaml and metrics.json with accepted_evidence=false under /tmp/uxfd_paper03_template_llm_artifacts"
+  - id: "D04"
+    label: "toolkit unit tests"
+    command: "python -m pytest -q code/tests/test_basic_functionality.py"
+    status: "pass after package import and timestamp normalization fixes: 14 passed"
+
+baselines:
+  - id: "B01"
+    label: "PHM-Vibench structured output without agent extension"
+    goal_mapping: "Template/structured report without LLM dialogue layer"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol results/llm_evidence package"
+  - id: "B02"
+    label: "standalone template LLM baseline"
+    goal_mapping: "Template-only structured report without external LLM"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.extensions.agent.mode=standalone --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal as stdout-only standalone template demo"
+    dummy_smoke_metric: "pipeline emits signal generation, prediction mock, intermediate representation, and multi-query template explanations"
+    accepted_evidence_status: "pending run_meta.yaml, metrics.json, latency, hallucination, and prompt-set artifacts"
+  - id: "B03"
+    label: "ResNet diagnostic baseline"
+    goal_mapping: "diagnostic model feeding the same explanation protocol"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=1.1218299865722656, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol diagnostic-plus-explanation run"
+  - id: "B04"
+    label: "SincNet diagnostic baseline"
+    goal_mapping: "signal-processing model feeding the same explanation protocol"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=4.801812171936035, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol diagnostic-plus-explanation run"
+  - id: "B05"
+    label: "TFN diagnostic baseline"
+    goal_mapping: "time-frequency model feeding the same explanation protocol"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.8415476679801941, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol diagnostic-plus-explanation run"
+  - id: "B06"
+    label: "WKN diagnostic baseline"
+    goal_mapping: "kernel/frequency model feeding the same explanation protocol"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.6259610652923584, test_acc_Dummy_Data=0.625"
+    accepted_evidence_status: "pending same-protocol diagnostic-plus-explanation run"
+  - id: "B07"
+    label: "ConvTransformer diagnostic baseline"
+    goal_mapping: "Transformer-style diagnostic model feeding the same explanation protocol"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=7.736400604248047, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol diagnostic-plus-explanation run"
+
+ablations:
+  - id: "A01"
+    label: "disable PHM-Vibench agent/distillation extension"
+    goal_mapping: "Remove repository-side agent output path"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "same run as B01; pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol explanation-output artifact comparison"
+  - id: "A02"
+    label: "single-case dialogue instead of pipeline demo"
+    goal_mapping: "One-shot/single-case explanation mode"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.mode=single_case --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass in LQ_signal as stdout-only standalone demo"
+    accepted_evidence_status: "pending prompt-set metrics, latency, and unsupported-claim rate"
+  - id: "A03"
+    label: "package-based template pipeline"
+    goal_mapping: "Use the actual llm_explainable_toolkit package path instead of standalone copied classes"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.mode=pipeline --override trainer.extensions.agent.save_outputs=true --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass after local template/knowledge fallback fix; emits smoke run_meta.yaml and metrics.json with accepted_evidence=false"
+    accepted_evidence_status: "pending accepted main-protocol results/llm_evidence run_meta.yaml, metrics.json, latency, and unsupported-claim metrics"
+  - id: "A04"
+    label: "core toolkit unit-test gate"
+    goal_mapping: "Validate DiagnosticSystem/conversation/export APIs"
+    command: "python -m pytest -q code/tests/test_basic_functionality.py"
+    config_target_validated: true
+    evidence_status: "pass after package import and timestamp normalization fixes: 14 passed"
+    accepted_evidence_status: "package smoke gate passed; still pending accepted results/llm_evidence evidence package"
+  - id: "A05"
+    label: "remove hallucination checker"
+    goal_mapping: "Anti-hallucination ablation"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.hallucination_checker.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; checker disabled and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted main-protocol hallucination checker and unsupported-claim metric collector"
+  - id: "A06"
+    label: "remove retrieval/domain knowledge context"
+    goal_mapping: "RAG/domain-context ablation"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.domain_context.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; domain context stripped and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted main-protocol retrieval/domain-context runner and same prompt set"
+  - id: "A07"
+    label: "short/medium/long template latency sweep"
+    goal_mapping: "Explanation-length latency and failure-rate ablation"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.agent.length_sweep='[\"short\",\"medium\",\"long\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; writes latency p50/p95 proxies with accepted_evidence=false"
+    accepted_evidence_status: "pending accepted main-protocol latency p50/p95 and failure-rate collector"
+
+top_recent_work:
+  - id: "RWTOP2024-TIMELLM"
+    paper_goal_role: "time-series LLM/foundation representative"
+    status: "representative command not yet bound to accepted metrics"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2024-MOMENT"
+    paper_goal_role: "foundation-style structured input proxy"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2025-TIMEMOE"
+    paper_goal_role: "sparse/foundation comparator for diagnostic representation"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "resource-blocked unless local 2x4090 proxy is accepted"
+  - id: "RWTOP2025-CBAE"
+    paper_goal_role: "concept-bottleneck explanation comparator"
+    status: "literature-only until fault-diagnosis concept supervision exists"
+    exact_reproduction_status: "resource-blocked until concept labels and local protocol exist"
+  - id: "RWTOP2026-TIMESEG"
+    paper_goal_role: "segment-evidence source for grounded explanation reports"
+    status: "parent queue maps this to representative local proxy entries B02, A05, and A07; accepted artifacts pending"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+  - id: "RWTOP2026-GTM"
+    paper_goal_role: "frequency-attention evidence encoder comparator"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2026-CALTSFM"
+    paper_goal_role: "calibration protocol for confidence-grounded LLM explanations"
+    status: "literature-only until local confidence artifacts are generated"
+    exact_reproduction_status: "resource-blocked until confidence calibration protocol exists locally"
+
+strict_blockers:
+  - "The manuscript/ieee_tii/main.tex entrypoint is a conservative compile checkpoint; it is not final evidence-bearing text."
+  - "Only smoke run_meta.yaml/metrics.json are emitted; no accepted results/llm_evidence/**/{run_meta.yaml,metrics.json} package exists for the main protocol."
+  - "No accepted six-condition LLM baseline table with matching prompts, seeds, metrics, latency, and unsupported-claim rate exists."
+  - "Standalone and package-based template demos pass only as smoke checks; they are not accepted LLM evidence packages."
+  - "Only smoke hallucination-checker, context-removal, and latency-sweep runners exist; no accepted main-protocol ablation artifacts exist yet."
+  - "No accepted TOP representative command/log/artifact mapping yet."
+  - "No GPU model/runtime metadata from local GPUs 0,1 yet."
+  - "No SOTA or human-centered decision-support claim is allowed from this matrix alone."

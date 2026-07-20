@@ -1,0 +1,139 @@
+# LLM-Specific Configuration for Experiments
+
+# LLM Provider Configuration
+llm_providers:
+  openai:
+    type: "openai"
+    model: "gpt-4"
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+    max_tokens: 1500
+    temperature: 0.7
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    timeout: 60
+    retry_attempts: 3
+    rate_limit: 60  # requests per minute
+
+  anthropic:
+    type: "anthropic"
+    model: "claude-3-sonnet-20240229"
+    api_key: "${ANTHROPIC_API_KEY}"
+    max_tokens: 1500
+    temperature: 0.7
+    timeout: 60
+    retry_attempts: 3
+    rate_limit: 50
+
+  local:
+    type: "local"
+    model_path: "./models/local_llm"
+    api_url: "http://localhost:8000/v1"
+    model_name: "local-model"
+    max_tokens: 1500
+    temperature: 0.7
+    timeout: 120
+    retry_attempts: 2
+
+# Prompt Configuration
+prompting:
+  language: "zh"  # Options: "zh", "en"
+  templates_path: "./prompt_templates"
+  domain_context: true
+  technical_accuracy: true
+  personalization: true
+
+  # Prompt templates for different scenarios
+  templates:
+    fault_explanation:
+      system_prompt: "system_fault_explanation.txt"
+      user_prompt_template: "user_fault_query.txt"
+
+    conversation:
+      greeting_template: "greeting_template.txt"
+      response_template: "response_template.txt"
+
+    technical_analysis:
+      analysis_template: "technical_analysis.txt"
+      recommendation_template: "recommendation.txt"
+
+# Response Parsing Configuration
+parsing:
+  response_format: "structured"  # Options: "structured", "text", "json"
+  extract_key_sections:
+    - "fault_identification"
+    - "cause_analysis"
+    - "maintenance_recommendations"
+    - "severity_assessment"
+  confidence_threshold: 0.7
+  validation_rules:
+    ensure_technical_accuracy: true
+    check_completeness: true
+    validate_safety_advice: true
+
+# Caching Configuration
+caching:
+  enabled: true
+  cache_type: "memory"  # Options: "memory", "file", "redis"
+  cache_size: 1000
+  ttl: 3600  # seconds
+  cache_file_path: "./cache/llm_cache.json"
+
+# Performance Configuration
+performance:
+  batch_processing: true
+  max_concurrent_requests: 5
+  request_timeout: 60
+  connection_pool_size: 10
+  enable_streaming: false
+
+# Quality Control
+quality_control:
+  response_validation: true
+  content_filtering: true
+  bias_detection: false
+  fact_checking: false
+
+  # Quality thresholds
+  min_response_length: 50
+  max_response_length: 2000
+  relevance_threshold: 0.7
+
+# Logging and Monitoring
+monitoring:
+  log_requests: true
+  log_responses: false  # Set to false for privacy
+  track_performance: true
+  error_tracking: true
+  metrics_collection: true
+
+  # Metrics to track
+  metrics:
+    - "response_time"
+    - "token_usage"
+    - "success_rate"
+    - "error_rate"
+    - "cache_hit_rate"
+
+# Cost Control
+cost_control:
+  daily_budget: 10.0  # USD
+  monthly_budget: 200.0  # USD
+  cost_tracking: true
+  budget_alerts: true
+  auto_throttle: true
+
+# Safety and Ethics
+safety:
+  content_moderation: true
+  bias_mitigation: true
+  privacy_protection: true
+  responsible_ai: true
+
+  # Safety checks
+  checks:
+    - "harmful_content"
+    - "misinformation"
+    - "privacy_violation"
+    - "technical_accuracy"
