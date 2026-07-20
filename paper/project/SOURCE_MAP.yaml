@@ -1,0 +1,73 @@
+schema_version: 1
+paper_id: P02
+overlay_branch: paper/p02-xfd-benchmark-toolkit
+vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
+
+engine_config_copy:
+  source_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/configs/experiments/p02_xfd_benchmark_toolkit
+  destination_path: configs/experiments/p02_xfd_benchmark_toolkit
+  source_git_status: untracked-directory
+  regular_files: 6
+  grouped_physical_unit_dependency: false
+
+legacy_source:
+  snapshot_path: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-小论文/P02-XFD-Benchmark-Toolkit/legacy/source_snapshot
+  original_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/Explainable_FD_Toolkit
+  origin: https://github.com/liq22/Explainable_FD_Toolkit.git
+  repository_head: 7c2683d986e4b47aa593270d112ec878d58205c9
+  superproject_gitlink: 379244dc8410eea0580714bc216c71074acba3a9
+  branch: autoresearch/benchmark_baseline
+  snapshot_root_sha256: 393df2324168e4e5a811e1d5048209c1aebe43912ae2bd83bbb701a27a154677
+  snapshot_selection: current-working-tree
+  source_status_summary:
+    tracked_dirty: benchmark results, result fixtures, and generated figures
+    untracked_included:
+      - EXPERIMENT_DESIGN.md
+      - doc/demo_explanation.txt
+      - manuscript/AUTORESEARCH_EVIDENCE.md
+    untracked_excluded: result summaries and generated logs under results/
+
+overlay_copy:
+  destination_path: paper/project
+  regular_files_before_wrapper: 123
+  bytes_before_wrapper: 1689460
+  included:
+    - Toolkit source, adapters, explainers, tests, examples, demos, and runners
+    - Schema examples and project configs
+    - Markdown, YAML, JSON, CSV, BibTeX, and TeX source needed for traceability
+    - The three non-result untracked source documents listed above
+    - Data documentation only; no raw dataset was present
+  excluded:
+    - .git and hidden agent prompt directories (.agent, .agents, .claude, .codex)
+    - autoresearch agent queues and plan/*/codex agent material
+    - outputs, results, benchmark/demo results, checkpoints, save, runs, and wandb
+    - comparative-analysis output and generated visualization directories
+    - caches and Python bytecode
+    - model weights (*.ckpt, *.pth, *.pt, *.onnx)
+    - archives and generated binaries (*.zip, *.pdf, *.png, *.jpg, *.jpeg)
+    - generated logs (*.log)
+
+evidence_status: legacy-unverified
+claim_promotion: false
+source_mutation: false
+
+overlay_adjustments:
+  - path: paper/project/scripts/run_benchmark_demo.py
+    reason: Repaired malformed report-writing statements and unmatched parentheses found by compileall.
+  - path: paper/project/toolkit_integration/explainability/llm/llm_explainer.py
+    reason: Repaired a missing closing bracket in the Optional conversation-history annotation.
+  - note: These are syntax-level repairs in the isolated overlay; the read-only source snapshot was not changed.
+
+validation:
+  validate_configs: "pass: 7/7 maintained registry configs"
+  validate_docs: "pass: 116 documentation files scanned"
+  copied_config_inspection:
+    passed:
+      - p02_resnet1d_cwru.yaml
+      - p02_resnet1d_thu018.yaml
+      - p02_resnet1d_xjtu.yaml
+    expected_non_engine_protocols:
+      - "p02_toolkit_benchmark.yaml: missing 5-block data section"
+      - "p02_toolkit_ablation.yaml: missing 5-block data section"
+  python_compileall: pass-after-targeted-syntax-repairs
+  targeted_test: "pass: paper/project/scripts/test_toolkit_ablation_smoke.py (2 tests)"

@@ -1,0 +1,153 @@
+# Explainable_FD_Toolkit 配置文件
+
+# 模型配置
+model:
+  name: "TSPN"
+  input_dim: 4096
+  output_dim: 10
+  signal_processing_layers:
+    - type: "FFT"
+      out_channels: 32
+      kernel_size: 7
+      stride: 2
+    - type: "HT"
+      out_channels: 32
+      kernel_size: 5
+      stride: 1
+    - type: "WF"
+      out_channels: 64
+      wavelet: "db4"
+      level: 3
+    - type: "I"
+      out_channels: 64
+      kernel_size: 3
+      stride: 1
+
+# 特征提取配置
+feature_extractor:
+  type: "statistical"
+  features:
+    - "mean"
+    - "std"
+    - "variance"
+    - "entropy"
+    - "max"
+    - "min"
+    - "abs_mean"
+    - "kurtosis"
+    - "rms"
+    - "crest_factor"
+    - "skewness"
+    - "clearance_factor"
+    - "shape_factor"
+
+# 解释器配置
+explanation:
+  methods:
+    - "gradient"
+    - "integrated_gradients"
+    - "shap"
+    - "lime"
+    - "feature_importance"
+
+  visualizations:
+    - "signal_processing_path"
+    - "feature_importance_plot"
+    - "attention_weights"
+    - "decision_boundary"
+
+  output_formats:
+    - "text"
+    - "html"
+    - "pdf"
+    - "json"
+
+# LLM配置
+llm:
+  enabled: true
+  model: "gpt-3.5-turbo"
+  api_key: "${OPENAI_API_KEY}"
+  temperature: 0.7
+  max_tokens: 500
+  system_prompt: "你是一个专业的工业故障诊断专家，请为故障诊断结果提供清晰、准确的解释。"
+
+# 知识图谱配置
+knowledge_graph:
+  enabled: true
+  neo4j_uri: "bolt://localhost:7687"
+  neo4j_user: "neo4j"
+  neo4j_password: "${NEO4J_PASSWORD}"
+
+  entities:
+    - "设备"
+    - "故障类型"
+    - "症状"
+    - "原因"
+    - "解决方案"
+
+  relations:
+    - ["设备", "出现", "故障类型"]
+    - ["故障类型", "表现为", "症状"]
+    - ["故障类型", "由...引起", "原因"]
+    - ["故障类型", "解决方案", "解决方案"]
+
+# 数据配置
+data:
+  signal_length: 4096
+  sampling_rate: 12000
+  normalization: "z_score"
+  augmentation:
+    enabled: true
+    methods:
+      - "noise_injection"
+      - "time_shift"
+      - "amplitude_scaling"
+
+# 训练配置
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  epochs: 100
+  optimizer: "adam"
+  scheduler: "cosine"
+  early_stopping:
+    patience: 10
+    monitor: "val_loss"
+
+  loss_weights:
+    classification: 1.0
+    explanation: 0.5
+
+# 评估配置
+evaluation:
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "explanation_faithfulness"
+    - "user_trust_score"
+
+  cross_validation:
+    enabled: true
+    folds: 5
+
+# 输出配置
+output:
+  save_model: true
+  save_explanations: true
+  save_visualizations: true
+  output_dir: "./results"
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/toolkit.log"
+
+# 性能配置
+performance:
+  device: "auto"  # auto, cpu, cuda
+  num_workers: 4
+  pin_memory: true
+  mixed_precision: true

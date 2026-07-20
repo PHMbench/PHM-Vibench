@@ -1,0 +1,30 @@
+schema_version: paper2_schema_v1
+
+paper:
+  paper_id: paper1
+  paper_dir: Paper/1D-2D_fusion_explainable
+
+run:
+  run_id: "20251215_153000"
+  seed: 42
+  dataset_id: RM_001_CWRU
+  dataset_numeric_id: 1
+  model_id: Fusion1D2D
+  explainer_id: intrinsic
+
+repro:
+  command: "CUDA_VISIBLE_DEVICES=0 python main.py --config_dir configs/unified_baseline/config_Fusion1D2D.yaml"
+  config_path: "configs/unified_baseline/config_Fusion1D2D.yaml"
+
+git:
+  commit: UNKNOWN
+  dirty: true
+
+env:
+  python: UNKNOWN
+  torch: UNKNOWN
+  device: cuda:0
+
+outputs:
+  run_dir: "<RUN_DIR>"
+  metrics_path: "<RUN_DIR>/metrics.json"

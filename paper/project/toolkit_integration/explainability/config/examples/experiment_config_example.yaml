@@ -1,0 +1,78 @@
+# Example experiment configuration for multiple explanation methods
+# This configuration demonstrates how to set up experiments with multiple methods
+
+experiment_name: "fault_diagnosis_comparison"
+description: "Comparison of different explanation methods on TSPN model"
+
+# Common parameters applied to all methods
+common_parameters:
+  sampling_rate: 1024.0
+  visualization_modes: ["auto", "importance"]
+
+# Method-specific configurations
+methods:
+  # Path Analysis (intrinsic method)
+  PathAnalysis:
+    include_frequency_analysis: true
+    include_energy_analysis: true
+    include_statistical_analysis: true
+    max_path_depth: 10
+    importance_threshold: 0.1
+    physical_interpretations:
+      "layer1": "Signal preprocessing"
+      "layer2": "Feature extraction"
+      "layer3": "Pattern recognition"
+
+  # Operator Weight Analysis (intrinsic method)
+  OperatorWeight:
+    include_weight_magnitude: true
+    include_weight_gradients: false
+    include_activation_patterns: true
+    weight_analysis_method: "magnitude"
+    layer_importance_threshold: 0.05
+    top_k_operators: 15
+    normalize_weights: true
+
+  # GradCAM (post-hoc method)
+  GradCAM:
+    target_layers: ["conv1", "conv2", "attention"]
+    use_abs_gradients: true
+    normalize_attributions: true
+    interpolation_method: "linear"
+    attribution_smoothing: true
+    smoothing_kernel: 5
+
+  # SHAP (post-hoc method)
+  SHAP:
+    explanation_method: "gradient"
+    background_samples: 20
+    n_segments: 100
+    use_segments: true
+    normalize_shap_values: true
+    aggregate_channels: true
+
+# Evaluation settings
+evaluation:
+  metrics:
+    - "explanation_sparsity"
+    - "attribution_coverage"
+    - "feature_importance_consistency"
+    - "computational_efficiency"
+
+  # Dataset splits for evaluation
+  evaluation_samples: 100
+  background_samples: 50
+
+# Output settings
+output:
+  base_dir: "results/experiment_fault_diagnosis_comparison"
+  save_visualizations: true
+  save_raw_explanations: true
+  save_evaluation_metrics: true
+  visualization_formats: ["png", "pdf"]
+
+# Logging settings
+logging:
+  level: "INFO"
+  save_logs: true
+  log_file: "experiment_log.txt"

@@ -1,0 +1,41 @@
+# Default configuration for GradCAM Explainer
+# This method generates attribution maps using gradient-weighted class activation mapping
+
+# Target layers for GradCAM computation
+# If empty, will auto-detect suitable layers
+target_layers: []
+
+# Gradient processing options
+use_abs_gradients: true
+normalize_attributions: true
+
+# Interpolation settings
+interpolation_method: "linear"  # Options: "linear", "nearest", "bilinear"
+
+# Attribution smoothing
+attribution_smoothing: true
+smoothing_kernel: 5  # Size of smoothing kernel
+
+# Layer selection preferences
+# GradCAM will try to find layers matching these patterns
+preferred_layer_patterns:
+  - "conv"      # Convolutional layers
+  - "attention" # Attention layers
+  - "feature"   # Feature extraction layers
+
+# Layers to avoid
+avoid_layer_patterns:
+  - "classifier"  # Final classification layers
+  - "fc_final"    # Final fully connected layers
+  - "output"      # Output layers
+
+# Visualization options
+visualization_modes:
+  - "auto"      # Automatic best visualization
+  - "heatmap"   # Attribution heatmap
+  - "overlay"   # Overlay on original signal
+  - "importance" # Importance profile
+
+# Advanced options
+use_class_specific_gradients: true  # Use gradients for specific class
+gradient_normalization: "l2"        # Gradient normalization method

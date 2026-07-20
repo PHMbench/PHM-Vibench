@@ -1,0 +1,47 @@
+# Default configuration for SHAP Explainer
+# This method computes feature attributions using SHAP values
+
+# SHAP explanation method
+explanation_method: "gradient"  # Options: "gradient", "kernel", "deep"
+
+# Background data settings
+background_samples: 10  # Number of background samples for computation
+background_data_type: "zeros"  # Options: "zeros", "noise", "provided"
+
+# Segmentation for efficiency
+use_segments: true
+n_segments: 50  # Number of segments to group signal features
+
+# SHAP value processing
+normalize_shap_values: true
+aggregate_channels: true  # Aggregate SHAP values across channels
+
+# Method-specific settings
+gradient_shap:
+  interpolation_steps: 50  # Steps for gradient interpolation
+  use_distributed_gradients: true
+
+kernel_shap:
+  max_evals: 500  # Maximum function evaluations
+  batch_size: 10  # Background batch size
+
+deep_shap:
+  use_fast_approximation: true
+  internal_batch_size: 50
+
+# Visualization options
+visualization_modes:
+  - "auto"       # Automatic best visualization
+  - "values"     # SHAP values over time
+  - "features"   # Feature importance rankings
+  - "segments"   # Segment-wise contributions
+  - "waterfall"  # Waterfall plot of contributions
+
+# Performance settings
+use_gpu: true  # Use GPU if available
+memory_efficient: true  # Use memory-efficient computation
+parallel_processing: false  # Process multiple explanations in parallel
+
+# Output settings
+save_intermediate_results: false
+return_raw_shap: false  # Return raw SHAP arrays
