@@ -53,7 +53,14 @@ Documentation uses four status labels:
 - [Apache License 2.0](../LICENSE)
 - [Branch governance record](branch_governance_20260709.md)
 - [Repository optimization SOP](REPOSITORY_OPTIMIZATION_SOP.md)
+- [PHMFactory v0.3.0 repository contract](PHMFACTORY_V0_3_REPOSITORY_CONTRACT.md)
+- [PHMFactory v0.3.0 reader preservation contract](PHMFACTORY_V0_3_READER_PRESERVATION.md)
+- [PHMFactory v0.3.0 task and PR plan](PHMFACTORY_V0_3_TASK_PLAN.md)
 - [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md)
+
+The PHMFactory v0.3.0 documents describe an accepted staged migration plan.
+They do not by themselves claim that the repository, package, Pipeline files,
+data providers, or GitHub repository have already been renamed or migrated.
 
 ## Generated and historical material
 
@@ -88,4 +95,7 @@ page links to a specific document and says otherwise.
 | Citation metadata | `CITATION.cff` | Cite the exact release or commit used |
 | Test commands and evidence terms | `docs/testing.md` | Link to the relevant gate |
 | Optional Streamlit behavior | `apps/streamlit/README.md` | Keep compatibility pages as short redirects |
+| v0.3 repository migration scope and boundaries | `docs/PHMFACTORY_V0_3_REPOSITORY_CONTRACT.md` | Do not infer completed implementation from an accepted plan |
+| v0.3 protected reader policy | `docs/PHMFACTORY_V0_3_READER_PRESERVATION.md` | Do not modify protected behavior in cleanup PRs |
+| v0.3 task order and PR boundaries | `docs/PHMFACTORY_V0_3_TASK_PLAN.md` | Keep each PR within its recorded scope |
 | Release changes | `CHANGELOG.md` and release notes | Historical plans must not override release documents |
