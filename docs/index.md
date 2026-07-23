@@ -11,7 +11,8 @@ This index is the maintained entry point for PHMFactory documentation.
 - [Supported components](../SUPPORTED_COMPONENTS.md)
 - [Supported combinations](../SUPPORTED_COMBINATIONS.md)
 - [Known limitations](../KNOWN_LIMITATIONS.md)
-- [v0.3.0 release and migration notes](../RELEASE_NOTES_v0.3.0.md)
+- [v0.2 to v0.3 migration guide](../MIGRATION_v0.2_to_v0.3.md)
+- [v0.3.0 release notes](../RELEASE_NOTES_v0.3.0.md)
 - [v0.3.0 release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
 - [v0.2.0 release-candidate provenance](releases/v0.2.0-rc-provenance.md)
 
@@ -43,6 +44,7 @@ This index is the maintained entry point for PHMFactory documentation.
 - [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md)
 - [Deny-by-default submodule allowlist](../.github/phmfactory-v0.3-submodules.allowlist.yml)
 - [Submodule inventory and governance audit](archive/audits/phmfactory-v0.3-submodule-inventory.md)
+- [Paper gitlink migration tracker](archive/audits/phmfactory-v0.3-paper-submodule-migration-status.md)
 
 The PHMFactory v0.3.0 documents describe a staged migration and pre-release state.
 They do not by themselves claim that the GitHub repository rename, public data pins,
@@ -72,10 +74,12 @@ and are not tracked through `results/` or `metrics_reports/` placeholder directo
 | Installation | `docs/installation.md` | Keep only a minimal command and link |
 | First successful run | `docs/quickstart.md` | Avoid copying the complete walkthrough |
 | v0.2 release-candidate baseline | `docs/releases/v0.2.0-rc-provenance.yaml` | Do not create or imply a retroactive final v0.2.0 tag |
-| v0.2 to v0.3 user migration | `RELEASE_NOTES_v0.3.0.md` | Link rather than duplicate the full migration map |
+| v0.2 to v0.3 user migration | `MIGRATION_v0.2_to_v0.3.md` | Keep release notes shorter and link to the migration procedure |
+| v0.3 release summary and limitations | `RELEASE_NOTES_v0.3.0.md` | Do not present the pre-release draft as a completed release |
 | Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` | Do not claim release completion while blockers remain |
 | Submodule ownership and backend exception | `.github/phmfactory-v0.3-submodules.allowlist.yml` | Do not add an unlisted or personal-account submodule URL |
 | Submodule history and frozen gitlinks | `docs/archive/audits/phmfactory-v0.3-submodule-inventory.md` | Preserve audit facts while deferring current policy to the allowlist |
+| Paper gitlink content migration | `docs/archive/audits/phmfactory-v0.3-paper-submodule-migration-status.yaml` | Do not delete a gitlink unless `safe_to_remove` is true |
 | Backend integration behavior | `docs/PHM_DATA_FACTORY_BACKEND_V0_3.md` | Treat the old experimental PR as evidence, not as the final patch |
 | Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
 | Maintained config inventory | `configs/config_registry.csv` | Regenerate `docs/CONFIG_ATLAS.md` |
