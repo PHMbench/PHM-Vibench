@@ -1,6 +1,11 @@
 name: Finalize PHMFactory backend governance
 
 on:
+  pull_request:
+    branches:
+      - agent/v030-v02-provenance-pr12c
+    paths:
+      - ".github/workflows/v030-finalize-backend-governance.yml"
   push:
     branches:
       - agent/v030-phm-data-backend-governance-pr12d
@@ -43,7 +48,7 @@ jobs:
           text = changelog.read_text(encoding='utf-8')
           old = '- the optional `phm-data-factory` backend disposition is finalized;\n'
           new = (
-              '- the backend repository is transferred to `PHMbench`, reviewed, and integrated '\
+              '- the backend repository is transferred to `PHMbench`, reviewed, and integrated '
               'at one immutable optional gitlink;\n'
               '- all remaining legacy paper gitlinks complete content-level migration and are removed;\n'
           )
@@ -55,7 +60,7 @@ jobs:
           text = notes.read_text(encoding='utf-8')
           old = '- optional `phm-data-factory` backend disposition remains undecided;\n'
           new = (
-              '- the organization-owned `phm-data-factory` transfer and governed integration '\
+              '- the organization-owned `phm-data-factory` transfer and governed integration '
               'are incomplete;\n'
               '- remaining legacy paper gitlinks have not completed content-level migration;\n'
           )
