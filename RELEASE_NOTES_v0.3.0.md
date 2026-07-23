@@ -304,7 +304,8 @@ The release is not ready while any of these remain:
 - Draft PRs have not been reviewed and merged in dependency order;
 - CWRU provider revisions or required hashes are not immutable and complete;
 - cross-provider public download parity has not passed;
-- optional `phm-data-factory` backend disposition remains undecided;
+- the organization-owned `phm-data-factory` transfer and governed integration are incomplete;
+- remaining legacy paper gitlinks have not completed content-level migration;
 - versions remain `0.3.0.dev0`;
 - GitHub repository rename and redirect have not been verified;
 - final checks have not run under the `PHMbench/phmfactory` identity;

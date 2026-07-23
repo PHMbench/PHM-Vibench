@@ -202,7 +202,8 @@ v0.3.0 must not be tagged or published until all of the following are resolved:
 - the staged PR chain is reviewed and merged in dependency order;
 - Hugging Face and ModelScope CWRU revisions and SHA-256 values are pinned;
 - cross-provider required-file parity passes against the public services;
-- the optional `phm-data-factory` backend disposition is finalized;
+- the backend repository is transferred to `PHMbench`, reviewed, and integrated at one immutable optional gitlink;
+- all remaining legacy paper gitlinks complete content-level migration and are removed;
 - repository branding and redirects are verified after the GitHub rename;
 - versions are changed from `0.3.0.dev0` to `0.3.0`;
 - final wheel, source distribution, cross-platform imports, and required gates pass on
