@@ -48,7 +48,18 @@ jobs:
         run: python -m py_compile phmfactory/*.py main.py test/test_phmfactory_entrypoints.py
 
       - name: Run focused entrypoint tests
-        run: python -m pytest -q test/test_phmfactory_entrypoints.py
+        run: >-
+          python -m pytest -vv
+          --junitxml=pytest-public-package.xml
+          test/test_phmfactory_entrypoints.py
+
+      - name: Upload focused pytest diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-public-package-pytest
+          path: pytest-public-package.xml
+          if-no-files-found: error
 
       - name: Build wheel and source distribution
         run: python -m build
