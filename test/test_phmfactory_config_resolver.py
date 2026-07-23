@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from phmfactory.config import (
     DEFAULT_PIPELINE,
+    MAINTAINED_PRESETS,
     load_config_dict,
     parse_overrides,
     resolve_config,
+    resolve_config_path,
 )
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
@@ -70,6 +71,16 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
 def test_resolve_config_rejects_missing_source(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         resolve_config(tmp_path / "missing.yaml")
+
+
+@pytest.mark.parametrize("preset, relative_path", sorted(MAINTAINED_PRESETS.items()))
+def test_maintained_presets_point_to_tracked_configs(
+    preset: str,
+    relative_path: str,
+) -> None:
+    expected = Path(relative_path).resolve()
+    assert expected.is_file()
+    assert resolve_config_path(preset) == expected
 
 
 def test_cycle_detection(tmp_path: Path) -> None:
