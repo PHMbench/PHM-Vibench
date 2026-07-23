@@ -6,11 +6,13 @@ on:
       - "pyproject.toml"
       - "phmfactory/__init__.py"
       - "README.md"
+      - "README_CN.md"
       - "CITATION.cff"
       - "CHANGELOG.md"
       - "RELEASE_NOTES_v0.3.0.md"
       - "phmfactory/data_sources/manifests/cwru-demo-v1.yaml"
       - "docs/PHMFACTORY_V0_3_RELEASE_READINESS.md"
+      - "docs/index.md"
       - "tools/repo/check_release_readiness.py"
       - ".github/workflows/phmfactory-release-readiness.yml"
   push:
@@ -47,7 +49,7 @@ jobs:
       - name: Record current blockers
         run: python tools/repo/check_release_readiness.py --mode audit | tee release-readiness.txt
 
-      - name: Require the pre-release gate to remain blocked
+      - name: Require only the remaining pre-release blockers
         shell: bash
         run: |
           set -euo pipefail
@@ -55,10 +57,29 @@ jobs:
             echo "Release mode unexpectedly passed before final release preparation." >&2
             exit 1
           fi
-          grep -q 'VERSION_NOT_FINAL' release-readiness.txt
-          grep -q 'README_BRAND_PENDING' release-readiness.txt
-          grep -q 'CWRU_REVISION_FLOATING' release-readiness.txt
-          grep -q 'CWRU_HASH_MISSING' release-readiness.txt
+
+          for blocker in \
+            VERSION_NOT_FINAL \
+            CWRU_REVISION_FLOATING \
+            CWRU_HASH_MISSING \
+            V020_PROVENANCE_UNRESOLVED \
+            REPOSITORY_RENAME_PENDING
+          do
+            grep -q "${blocker}" release-readiness.txt
+          done
+
+          for resolved in \
+            README_BRAND_PENDING \
+            CITATION_BRAND_PENDING \
+            CITATION_REPOSITORY_PENDING \
+            CHANGELOG_V030_MISSING \
+            RELEASE_NOTES_V030_MISSING
+          do
+            if grep -q "${resolved}" release-readiness.txt; then
+              echo "Resolved branding/documentation blocker returned: ${resolved}" >&2
+              exit 1
+            fi
+          done
 
       - name: Upload readiness report
         uses: actions/upload-artifact@v4
