@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This audit freezes the current submodule state before PHMFactory removes
-personal and paper workspaces from the public framework repository. It does not
-remove or modify a gitlink.
+This audit freezes the original submodule state and tracks the staged v0.3
+removal of personal and paper workspaces from the public framework repository.
+It does not authorize unlisted submodule changes.
 
 ## Immutable baseline
 
@@ -14,7 +14,7 @@ Commit:     a331769d4005018bc833534ecf4efeb5e8a5a78d
 ```
 
 The baseline `.gitmodules` file and every gitlink were preserved outside the
-public upstream before this inventory was written.
+public upstream before the cleanup began.
 
 Verification result:
 
@@ -27,13 +27,13 @@ path/gitlink parity:        PASS
 The preservation record contains the original `.gitmodules`, all URLs, the one
 configured branch, and the immutable gitlink commit for every path.
 
-## Current main-branch submodules
+## Frozen baseline and current disposition
 
 | Path | URL | Gitlink commit | v0.3 disposition |
 | --- | --- | --- | --- |
-| `data/Rotor_simulation` | `git@github.com:liq22/Rotor_simulation.git` | `d46d089c5a086965dda5555734692114bc347437` | Move the simulation workspace to the personal fork; remove the public gitlink after consumer and destination verification. |
-| `paper/2025-10_foundation_model_0_metric` | `git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git` | `2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7` | Maintain in its paper repository; remove from the public framework after paper destination review. |
-| `paper/LQ_vibench_fix` | `git@github.com:liq22/LQ_vibench_fix.git` | `1a15710fd532fad73c552704f48349576d843ee0` | Move to the personal fork; remove from the public framework after destination verification. |
+| `data/Rotor_simulation` | `git@github.com:liq22/Rotor_simulation.git` | `d46d089c5a086965dda5555734692114bc347437` | **Removed in personal-workspace Batch 06** after complete 41-blob preservation, consumer review, and exact gitlink verification. |
+| `paper/2025-10_foundation_model_0_metric` | `git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git` | `2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7` | Maintain in its paper repository; remove from the public framework only after paper destination review. |
+| `paper/LQ_vibench_fix` | `git@github.com:liq22/LQ_vibench_fix.git` | `1a15710fd532fad73c552704f48349576d843ee0` | **Removed in personal-workspace Batch 06** after complete 152-blob preservation, consumer review, and exact gitlink verification. |
 | `paper/UXFD_paper/1D-2D_fusion_explainable` | `https://github.com/liq22/1D-2D_fusion_explainable.git` | `b385b07e82d6323a291d90e55a5ef4aff9336c0b` | Maintain in the corresponding paper repository; remove after destination mapping and commit verification. |
 | `paper/UXFD_paper/Explainable_FD_Toolkit` | `https://github.com/liq22/Explainable_FD_Toolkit.git` | `379244dc8410eea0580714bc216c71074acba3a9` | Maintain in the corresponding paper repository; remove after destination mapping and commit verification. |
 | `paper/UXFD_paper/LLM_Explainable_FD_Toolkit` | `https://github.com/liq22/LLM_Explainable_FD_Toolkit.git` | `08eb944dd9acdbbd6c69cf39f050854a936e9b78` | Maintain in the corresponding paper repository; remove after destination mapping and commit verification. |
@@ -42,13 +42,13 @@ configured branch, and the immutable gitlink commit for every path.
 | `paper/UXFD_paper/Paper_fuzzy_XFD` | `https://github.com/liq22/Paper_fuzzy_XFD.git` | `1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f` | Maintain in the corresponding paper repository; remove after destination mapping and commit verification. |
 | `paper/UXFD_paper/TII_operator_attention` | `git@github.com:liq22/TII_operator_attention.git` | `20f47bac5c02763e1f6b856c90ce32861025c003` | Maintain in the corresponding paper repository; remove after destination mapping and commit verification. |
 
-`paper/LQ_vibench_fix` additionally configures `branch = lqfix_25-12`. The
-branch field is provenance only; the recorded gitlink commit remains the actual
-checked-out revision.
+The removed `paper/LQ_vibench_fix` entry originally configured
+`branch = lqfix_25-12`. The recorded gitlink commit, rather than the branch
+name, was the immutable checked-out revision.
 
-## Classification
+## Baseline classification
 
-The ten current entries fall into three non-framework categories:
+The ten baseline entries comprised:
 
 ```text
 personal simulation workspace: 1
@@ -56,11 +56,39 @@ personal fix workspace:        1
 paper/research workspaces:      8
 ```
 
-None is approved as a PHMFactory core or optional backend dependency.
+After Batch 06, the two personal workspaces are no longer present in the public
+cleanup branch. Eight paper/research gitlinks remain pending destination review.
 
-Four entries use personal SSH URLs. The remaining six use public HTTPS URLs but
-still point to personal paper repositories. URL accessibility does not change
+None of the ten baseline entries is approved as a PHMFactory core or optional
+backend dependency.
+
+Four baseline entries used personal SSH URLs. Six used public HTTPS URLs but
+still pointed to personal paper repositories. URL accessibility does not change
 the ownership boundary: paper code remains downstream of PHMFactory.
+
+## Completed personal-workspace batch
+
+The exact external trees for the two removed personal workspaces were
+reconstructed outside the public upstream directly from Git blob objects:
+
+```text
+Rotor_simulation: 41 verified blob entries
+LQ_vibench_fix:  152 verified blob entries
+Total:           193 verified blob entries
+Nested gitlinks:   0
+```
+
+Before removal, consumer review found no Python runtime, maintained config, test,
+script, or CI dependency. The only documentation references were neutralized.
+
+Guarded deletion commit:
+
+```text
+cbe5a451222db244a3b7fcc708fcb5840445980d
+```
+
+Detailed evidence is recorded in
+[`phmfactory-v0.3-personal-submodule-removal.md`](phmfactory-v0.3-personal-submodule-removal.md).
 
 ## Approved backend exception candidate
 
@@ -93,7 +121,7 @@ reintroduce historical submodules.
 
 ## Required migration evidence
 
-Before removing any current gitlink, record:
+Before removing any remaining gitlink, record:
 
 ```text
 source path
@@ -110,13 +138,9 @@ safe_to_remove status
 A path is not safe to remove merely because its external repository still
 exists. References and reproduction instructions must also be redirected.
 
-## Removal sequencing
+## Remaining removal sequencing
 
-Recommended batches:
-
-1. personal workspaces:
-   - `data/Rotor_simulation`
-   - `paper/LQ_vibench_fix`
+1. **Completed:** personal workspaces;
 2. foundation-model paper workspace;
 3. UXFD paper workspaces, grouped only after exact destination mapping;
 4. normalize `.gitmodules` to the approved optional backend entry, or remove
