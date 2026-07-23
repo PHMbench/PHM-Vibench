@@ -38,10 +38,21 @@ jobs:
           test "$(git hash-object results/README.md)" = "8aee63ebb3e992f241314349d8195ad59332c09f"
           test "$(git hash-object metrics_reports/README.md)" = "4b9e74841619784841247960d897f4d1231b94b0"
 
-          rotor_entry="$(git ls-tree HEAD -- data/Rotor_simulation)"
-          lq_entry="$(git ls-tree HEAD -- paper/LQ_vibench_fix)"
-          test "${rotor_entry}" = "160000 commit d46d089c5a086965dda5555734692114bc347437\tdata/Rotor_simulation"
-          test "${lq_entry}" = "160000 commit 1a15710fd532fad73c552704f48349576d843ee0\tpaper/LQ_vibench_fix"
+          read -r rotor_mode rotor_type rotor_sha rotor_path < <(
+            git ls-tree HEAD -- data/Rotor_simulation | awk '{print $1, $2, $3, $4}'
+          )
+          test "${rotor_mode}" = "160000"
+          test "${rotor_type}" = "commit"
+          test "${rotor_sha}" = "d46d089c5a086965dda5555734692114bc347437"
+          test "${rotor_path}" = "data/Rotor_simulation"
+
+          read -r lq_mode lq_type lq_sha lq_path < <(
+            git ls-tree HEAD -- paper/LQ_vibench_fix | awk '{print $1, $2, $3, $4}'
+          )
+          test "${lq_mode}" = "160000"
+          test "${lq_type}" = "commit"
+          test "${lq_sha}" = "1a15710fd532fad73c552704f48349576d843ee0"
+          test "${lq_path}" = "paper/LQ_vibench_fix"
 
           test "$(git config -f .gitmodules --get submodule.data/Rotor_simulation.path)" = "data/Rotor_simulation"
           test "$(git config -f .gitmodules --get submodule.paper/LQ_vibench_fix.path)" = "paper/LQ_vibench_fix"
@@ -57,8 +68,8 @@ jobs:
           git rm -- results/README.md metrics_reports/README.md
           git rm -- data/Rotor_simulation paper/LQ_vibench_fix
 
-          git config -f .gitmodules --remove-section submodule.data/Rotor_simulation
-          git config -f .gitmodules --remove-section submodule.paper/LQ_vibench_fix
+          git config -f .gitmodules --remove-section 'submodule.data/Rotor_simulation'
+          git config -f .gitmodules --remove-section 'submodule.paper/LQ_vibench_fix'
 
           python - <<'PY'
           from pathlib import Path
@@ -71,24 +82,28 @@ jobs:
           )
           if old not in text:
               raise SystemExit('expected personal-paper reference is missing from src/README.md')
-          text = text.replace(old, '')
-          path.write_text(text, encoding='utf-8')
+          path.write_text(text.replace(old, ''), encoding='utf-8')
           PY
 
           git rm -- .github/workflows/v030-inventory-nonframework-workspaces.yml
           git rm -- .github/workflows/v030-remove-nonframework-workspaces.yml
+          git add .gitmodules src/README.md
 
-      - name: Verify bounded final tree
+      - name: Verify bounded final index
         shell: bash
         run: |
           set -euo pipefail
 
-          test -z "$(git ls-files .archive dev results metrics_reports)"
-          test -z "$(git ls-tree HEAD -- data/Rotor_simulation paper/LQ_vibench_fix)"
+          test -z "$(git ls-files -- .archive dev results metrics_reports)"
+          test -z "$(git ls-files -- data/Rotor_simulation paper/LQ_vibench_fix)"
           test -d reports
           test -d plot
 
-          test "$(git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | wc -l | tr -d ' ')" = "8"
+          remaining_submodules="$(
+            git config -f .gitmodules --get-regexp '^submodule\..*\.path$' \
+              | wc -l | tr -d ' '
+          )"
+          test "${remaining_submodules}" = "8"
           ! git config -f .gitmodules --get-regexp 'Rotor_simulation|LQ_vibench_fix'
 
           git diff --cached --check
@@ -104,7 +119,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add .gitmodules src/README.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore(v0.3): remove archived non-framework workspaces"
