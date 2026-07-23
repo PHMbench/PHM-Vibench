@@ -67,16 +67,14 @@ data providers, or GitHub repository have already been renamed or migrated.
 `docs/CONFIG_ATLAS.md` is generated from `configs/config_registry.csv`; update the
 registry, run `python -m scripts.gen_config_atlas`, and commit both changes.
 
-Earlier release and planning material remains under:
+Earlier release material remains under:
 
 - `docs/v0.1.0/`
 - `docs/past/`
 - `configs/v0.0.9/`
-- `dev/`
 
-Those paths are retained for provenance and research context. They are not current
-installation, usage, compatibility, or support instructions unless a maintained
-page links to a specific document and says otherwise.
+The removed `dev/` and `.archive/` workspaces are preserved in the approved
+personal-fork archive and in Git history. They are not public framework inputs.
 
 ## Single-source-of-truth map
 
