@@ -10,6 +10,12 @@ docs/past/
 docs/v0.1.0/
 ```
 
+The atomic migration commit is:
+
+```text
+5726364936cdd75b8b02da5be55cc93ef208df29
+```
+
 They contain 22 tracked documents from earlier development, migration, and release
 planning cycles. They are valuable as provenance but are not current installation,
 configuration, extension, or support guidance.
