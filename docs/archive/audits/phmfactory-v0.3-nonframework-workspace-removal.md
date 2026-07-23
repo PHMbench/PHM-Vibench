@@ -1,8 +1,8 @@
 # PHMFactory v0.3 Non-framework Workspace Removal Audit
 
-## Scope
+## Completed scope
 
-This audit covers the bounded PR-10 removal set:
+PR-10 removes only the following content from the public framework branch:
 
 ```text
 .archive/
@@ -13,7 +13,13 @@ data/Rotor_simulation          Git submodule
 paper/LQ_vibench_fix           Git submodule
 ```
 
-The following are explicitly not removed in this PR:
+The atomic deletion commit is:
+
+```text
+f52a4b75b6617a03c4eaf259352590ab5b523997
+```
+
+The following remain intentionally unchanged:
 
 ```text
 reports/
@@ -23,12 +29,12 @@ packages/phm-data-factory      proposed optional backend
 ```
 
 `plot/` contains reusable public tooling and an owned requirements file. `reports/`
-requires document-level review. The remaining paper gitlinks require content-level
-paper-repository mapping or a complete personal archive before deletion.
+still requires document-level review. The eight paper gitlinks require exact target
+repository and content-level verification before removal.
 
 ## Regular workspace preservation
 
-The exact frozen trees are stored in the user's personal fork:
+The frozen public trees are stored in the approved personal fork:
 
 ```text
 repository: liq22/PHM-Vibench
@@ -49,7 +55,7 @@ upstream-archive/phmfactory-v0.3.0/dev-history/dev/
 
 ## Output-placeholder preservation
 
-The two tracked output-directory placeholders were copied byte-for-byte into:
+The tracked output-directory placeholders were copied byte-for-byte into:
 
 ```text
 upstream-archive/phmfactory-v0.3.0/runtime-output-placeholders/
@@ -60,14 +66,14 @@ upstream-archive/phmfactory-v0.3.0/runtime-output-placeholders/
 | `results/README.md` | `8aee63ebb3e992f241314349d8195ad59332c09f` | exact blob match |
 | `metrics_reports/README.md` | `4b9e74841619784841247960d897f4d1231b94b0` | exact blob match |
 
-These files are placeholders, not source-of-truth configuration or experiment
-results. Runtime output directories remain ignored after their tracked README files
-are removed.
+These files were placeholders, not source-of-truth configurations or experiment
+results. Runtime output paths remain local and ignored after their tracked README
+files are removed.
 
 ## Personal submodule preservation
 
 Complete fixed-commit trees were reconstructed in the personal fork before the
-public gitlinks are removed:
+public gitlinks were removed:
 
 | Former public path | External repository and commit | Preserved blobs | Verification |
 | --- | --- | ---: | --- |
@@ -81,25 +87,35 @@ upstream-archive/phmfactory-v0.3.0/personal-submodules/data/Rotor_simulation/
 upstream-archive/phmfactory-v0.3.0/personal-submodules/paper/LQ_vibench_fix/
 ```
 
-Neither archived workspace becomes a PHMFactory runtime, build, test, data, or
-release dependency.
+The public PHMFactory repository has no runtime, build, test, data, or release
+dependency on these archives.
 
-## Guarded public change
+## Atomic Git-tree verification
 
-The deletion workflow must:
+The deletion was constructed against parent:
 
-1. verify the exact regular-file counts and known source blobs;
-2. verify both gitlinks are mode `160000` and equal the archived commits;
-3. remove only the two approved `.gitmodules` sections;
-4. remove only the approved regular paths and gitlinks;
-5. retain all eight paper/research gitlinks;
-6. retain `reports/` and `plot/`;
-7. remove its temporary workflow and inventory workflow from the final tree;
-8. run documentation, configuration, package, dependency, CWRU, Streamlit, Dummy,
-   Pipeline 06, and UXFD gates.
+```text
+cbf929e26240b2b73d78a1461fde862bea388720
+```
+
+and applied as one fast-forward Git-tree commit. The resulting tree:
+
+1. removes the approved regular paths and two personal gitlinks;
+2. removes only their two `.gitmodules` sections;
+3. retains all eight paper/research gitlinks;
+4. retains `reports/` and `plot/`;
+5. removes temporary inventory/deletion workflows from the final tree;
+6. removes the stale `paper/LQ_vibench_fix` reference from `src/README.md`;
+7. leaves protected reader, factory, Pipeline, config, CWRU, dependency, and UI code unchanged.
+
+## Remaining release gate
+
+Repository-native documentation, configuration, package, dependency, CWRU,
+Streamlit, Dummy, Pipeline 06, and UXFD checks must pass on the final PR head before
+this Draft PR is eligible for review or merge.
 
 ## Rollback
 
-A normal revert restores the regular files, gitlinks, and `.gitmodules` sections.
-Exact content remains independently recoverable from Git history and the personal
-fork archive.
+A normal revert of the atomic deletion commit restores the regular files, gitlinks,
+and `.gitmodules` sections. Exact content is also independently recoverable from
+Git history and the personal-fork archives above.
