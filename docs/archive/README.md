@@ -39,6 +39,19 @@ are not public framework inputs and are not current guidance.
 presets. New historical material belongs under `docs/archive/`, not in new versioned
 or `past/` directory trees.
 
+## Current v0.3 governance audits
+
+- [Canonical integration coverage](audits/phmfactory-v0.3-canonical-integration-coverage.md)
+- [Canonical integration machine snapshot](audits/phmfactory-v0.3-canonical-integration-coverage.yaml)
+- [Submodule inventory and governance](audits/phmfactory-v0.3-submodule-inventory.md)
+- [Paper gitlink migration status](audits/phmfactory-v0.3-paper-submodule-migration-status.md)
+- [Historical documentation removal](audits/phmfactory-v0.3-historical-docs-removal.md)
+- [Agent workspace removal](audits/phmfactory-v0.3-agent-workspace-removal.md)
+
+These audits document pre-release migration state. They do not authorize a repository
+rename, final version, tag, package publication, or removal of a paper gitlink whose
+tracker state is not `safe_to_remove: true`.
+
 ## Maintained documentation
 
 Return to the [documentation index](../index.md) for current installation, usage,

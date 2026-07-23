@@ -1,0 +1,66 @@
+schema_version: 1
+task_id: TASK-170
+status: integration_tree_built_validation_pending
+repository: PHMbench/PHM-Vibench
+integration_branch: agent/v030-canonical-integration-r2
+frozen_main_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+physical_base:
+  pr: 120
+  commit: 19748c93fb4716a5314cdaf38317b39a84da0cd7
+head_before_coverage_audit: 9ee30a516559b65c157d3eac6738ae3d2fe6c650
+physical_ancestors:
+  - pr: 108
+    commit: 1c079079ee0776b2a5b6e60772c85b130c931e30
+    inherited_via: 120
+  - pr: 110
+    commit: 7b6ccc119d8128b18b43682cdfd2e91c3868f278
+    integration_commit: a287397ea6310b5ee189c45dce6d4ac4d5d064fe
+  - pr: 113
+    commit: 3d098efc11943b1f5ef477ccdf93a10ef27d6911
+    integration_commit: cfa4ad070582fef075bb7818fdfc926c3b89ce67
+  - pr: 114
+    commit: b1afdab6b0db54fce3f551e505d3b184498ee41f
+    integration_commit: 6ec5deb0bf34eb512fd0aa43e358e565a00c049b
+    resolution: branding_and_v020_provenance_with_canonical_readiness_preserved
+  - pr: 119
+    commit: bc43654b32c4b939ca5a9f4037c3b03a30edcf69
+    integration_commit: 51dcef593b536b67acfdc720c7624d3f93418280
+    authority: organization_backend_policy_and_release_readiness
+  - pr: 120
+    commit: 19748c93fb4716a5314cdaf38317b39a84da0cd7
+    integration_commit: physical_base
+  - pr: 122
+    commit: 7c2e8b7e654239c396081ed011a378078764a8a2
+    integration_commit: 779c89ee07916392e91985502ceb3cf8ad1e4bd5
+    scope: four_file_paper_tracker
+content_only_ports:
+  - pr: 117
+    source_commit: 8c1be3eb619f18c3d5e8ef51f1599a3aaeec4829
+    integration_commit: 097a39a1e30ae11b4a8ca697b98cd56efd4327b6
+    retained: baseline_inventory_and_frozen_gitlink_audit
+    excluded: personal_account_backend_candidate_as_current_policy
+  - pr: 121
+    source_commit: 334922ff1b33b5638a33b94f865a2dacea93f866
+    integration_commit: 9ee30a516559b65c157d3eac6738ae3d2fe6c650
+    retained: MIGRATION_v0.2_to_v0.3.md
+    excluded:
+      - stale_ancestry
+      - superseded_CHANGELOG.md
+      - superseded_RELEASE_NOTES_v0.3.0.md
+expected_release_blockers:
+  CWRU_HASH_MISSING: 2
+  CWRU_REVISION_FLOATING: 2
+  LEGACY_SUBMODULES_REMAIN: 1
+  PHM_DATA_FACTORY_BACKEND_PENDING: 1
+  REPOSITORY_RENAME_PENDING: 1
+  VERSION_NOT_FINAL: 1
+non_actions:
+  main_modified: false
+  source_prs_merged_to_main: false
+  repository_renamed: false
+  version_finalized: false
+  gitlinks_removed: false
+  tag_created: false
+  release_published: false
+validation:
+  state: pending_combined_tree_github_actions
