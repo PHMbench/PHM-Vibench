@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from phmfactory.config import (
+    DEFAULT_PIPELINE,
+    load_config_dict,
+    parse_overrides,
+    resolve_config,
+)
+from phmfactory.pipelines import PipelineNameDeprecationWarning
+
+
+def test_parse_overrides_expands_dotted_keys_and_yaml_types() -> None:
+    assert parse_overrides(
+        ["trainer.max_epochs=2", "task.enabled=true", "labels=[1, 2]"]
+    ) == {
+        "trainer": {"max_epochs": 2},
+        "task": {"enabled": True},
+        "labels": [1, 2],
+    }
+
+
+def test_recursive_base_config_merge_is_ordered(tmp_path: Path) -> None:
+    base_a = tmp_path / "base_a.yaml"
+    base_b = tmp_path / "base_b.yaml"
+    child = tmp_path / "child.yaml"
+    base_a.write_text("model:\n  width: 32\ntrainer:\n  epochs: 1\n", encoding="utf-8")
+    base_b.write_text("model:\n  depth: 4\ntrainer:\n  epochs: 2\n", encoding="utf-8")
+    child.write_text(
+        "base_configs:\n"
+        "  a: base_a.yaml\n"
+        "  b: base_b.yaml\n"
+        "pipeline: Pipeline_01_default\n"
+        "model:\n  width: 64\n",
+        encoding="utf-8",
+    )
+
+    resolved = load_config_dict(child)
+    assert resolved["model"] == {"width": 64, "depth": 4}
+    assert resolved["trainer"] == {"epochs": 2}
+
+
+def test_resolve_config_canonicalizes_pipeline_and_applies_override(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        "pipeline: Pipeline_01_default\ntrainer:\n  max_epochs: 5\n",
+        encoding="utf-8",
+    )
+
+    with pytest.warns(PipelineNameDeprecationWarning):
+        resolved = resolve_config(
+            config,
+            override_values=[
+                "pipeline=Pipeline_04_unified_metric",
+                "trainer.max_epochs=1",
+            ],
+        )
+
+    assert resolved.pipeline == "Pipeline_04_Unified_Evaluation"
+    assert resolved.data["pipeline"] == "Pipeline_04_Unified_Evaluation"
+    assert resolved.data["trainer"]["max_epochs"] == 1
+    assert resolved.path == config.resolve()
+
+
+def test_resolve_config_rejects_missing_source(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        resolve_config(tmp_path / "missing.yaml")
+
+
+def test_cycle_detection(tmp_path: Path) -> None:
+    first = tmp_path / "first.yaml"
+    second = tmp_path / "second.yaml"
+    first.write_text("base_configs:\n  second: second.yaml\n", encoding="utf-8")
+    second.write_text("base_configs:\n  first: first.yaml\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Cyclic base_configs"):
+        load_config_dict(first)
+
+
+def test_pipeline_defaults_when_omitted(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+    assert resolve_config(config).pipeline == DEFAULT_PIPELINE
