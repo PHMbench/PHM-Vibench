@@ -14,6 +14,12 @@ authors = [
 ]
 dynamic = ["dependencies"]
 
+[project.urls]
+Homepage = "https://github.com/PHMbench/phmfactory"
+Repository = "https://github.com/PHMbench/phmfactory"
+Issues = "https://github.com/PHMbench/phmfactory/issues"
+Documentation = "https://github.com/PHMbench/phmfactory/tree/main/docs"
+
 [project.scripts]
 phmfactory = "phmfactory.cli:main"
 
