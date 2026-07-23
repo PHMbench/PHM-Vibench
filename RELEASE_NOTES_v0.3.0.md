@@ -18,6 +18,29 @@ public interface and repository boundary cleanup
 without an unreviewed core-algorithm rewrite
 ```
 
+## v0.2 migration baseline
+
+The source baseline for this migration is explicitly recorded as a release candidate:
+
+```text
+project:         PHM-Vibench
+version label:   v0.2.0
+status:          release_candidate
+formal release:  false
+baseline commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+tag present:     false
+```
+
+Authorities:
+
+```text
+docs/releases/v0.2.0-rc-provenance.yaml
+docs/releases/v0.2.0-rc-provenance.md
+```
+
+No retroactive final `v0.2.0` tag is created. The immutable commit above anchors the
+reader/runtime fingerprints and v0.2-to-v0.3 compatibility comparison.
+
 ## Names
 
 | Object | v0.3.0 value |
@@ -268,6 +291,7 @@ CWRU local bundle validation
 requirements ownership checks
 Streamlit Ubuntu and Windows tests
 case-insensitive path checks
+v0.2 release-candidate provenance validation
 release-readiness blocker audit
 ```
 
@@ -278,7 +302,6 @@ Functional smoke evidence is not a performance benchmark.
 The release is not ready while any of these remain:
 
 - Draft PRs have not been reviewed and merged in dependency order;
-- v0.2 release-candidate provenance remains unresolved;
 - CWRU provider revisions or required hashes are not immutable and complete;
 - cross-provider public download parity has not passed;
 - optional `phm-data-factory` backend disposition remains undecided;
