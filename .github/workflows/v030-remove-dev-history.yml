@@ -33,7 +33,9 @@ jobs:
           archive_count="$(git ls-tree -r --name-only HEAD -- .archive | wc -l | tr -d ' ')"
           dev_count="$(git ls-tree -r --name-only HEAD -- dev | wc -l | tr -d ' ')"
           test "$archive_count" = "1"
-          test "$dev_count" = "114"
+          # Frozen source contained 114 dev files; PR #88 already removed the
+          # separately archived dev/test_history/AGENTS.md from this stack.
+          test "$dev_count" = "113"
 
           unexpected="$(
             git ls-tree -r --name-only HEAD -- .archive dev \
