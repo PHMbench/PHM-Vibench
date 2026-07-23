@@ -49,13 +49,15 @@ jobs:
             "1a15710fd532fad73c552704f48349576d843ee0"
 
           if git config -f .gitmodules --get-regexp '^submodule\..*\.path$' \
-            | grep -E $'\t?(data/Rotor_simulation|paper/LQ_vibench_fix)$'; then
+            | grep -E '(data/Rotor_simulation|paper/LQ_vibench_fix)$'; then
             echo "Removed paths still exist in .gitmodules." >&2
             exit 1
           fi
 
           if git grep -nE 'data/Rotor_simulation|paper/LQ_vibench_fix' -- \
-            'src/**/*.py' 'configs/**' 'test/**' 'scripts/**' '.github/**' ':!*.md'; then
+            'src/**/*.py' 'configs/**' 'test/**' 'scripts/**' '.github/**' \
+            ':!.github/workflows/v030-remove-personal-submodules.yml' \
+            ':!*.md'; then
             echo "A runtime/config/test/CI consumer still references a personal submodule." >&2
             exit 1
           fi
