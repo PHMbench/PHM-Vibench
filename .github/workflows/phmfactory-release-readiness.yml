@@ -58,6 +58,11 @@ jobs:
             exit 1
           fi
 
+          grep -q '^# PHMFactory$' README.md
+          grep -q '^# PHMFactory$' README_CN.md
+          grep -q 'Homepage = "https://github.com/PHMbench/phmfactory"' pyproject.toml
+          grep -q 'Repository = "https://github.com/PHMbench/phmfactory"' pyproject.toml
+
           grep -q 'VERSION_NOT_FINAL' release-readiness.txt
           grep -q 'CWRU_REVISION_FLOATING' release-readiness.txt
           grep -q 'CWRU_HASH_MISSING' release-readiness.txt
