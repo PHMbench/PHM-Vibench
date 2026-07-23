@@ -1,0 +1,165 @@
+name: Archive PHMFactory paper and result workspaces
+
+on:
+  push:
+    branches:
+      - agent/v030-paper-results-migration-pr10
+    paths:
+      - .github/workflows/v030-archive-paper-results.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out migration branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Build immutable paper and result archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive_root=/tmp/phmfactory-paper-results
+          rm -rf "${archive_root}"
+          mkdir -p "${archive_root}/tree"
+
+          tracked_roots=()
+          for path in paper results metrics_reports; do
+            if git cat-file -e "HEAD:${path}" 2>/dev/null; then
+              tracked_roots+=("${path}")
+            fi
+          done
+
+          if [ "${#tracked_roots[@]}" -eq 0 ]; then
+            echo "No governed paper/result roots exist." >&2
+            exit 1
+          fi
+
+          git archive HEAD -- "${tracked_roots[@]}" \
+            | tar -x -C "${archive_root}/tree"
+
+          git ls-tree -r HEAD -- "${tracked_roots[@]}" \
+            | awk '{print $1 "\t" $2 "\t" $3 "\t" $4}' \
+            > "${archive_root}/SOURCE_TREE_MANIFEST.tsv"
+
+          awk -F '\t' '$2 == "blob"' "${archive_root}/SOURCE_TREE_MANIFEST.tsv" \
+            > "${archive_root}/SOURCE_BLOB_MANIFEST.tsv"
+          awk -F '\t' '$2 == "commit"' "${archive_root}/SOURCE_TREE_MANIFEST.tsv" \
+            > "${archive_root}/SOURCE_GITLINK_MANIFEST.tsv"
+
+          if [ -f .gitmodules ]; then
+            cp .gitmodules "${archive_root}/GITMODULES.original"
+          else
+            : > "${archive_root}/GITMODULES.original"
+          fi
+
+          git grep -nE '(paper/|results/|metrics_reports/)' HEAD -- \
+            ':!paper/**' ':!results/**' ':!metrics_reports/**' \
+            ':!.github/workflows/v030-archive-paper-results.yml' \
+            > "${archive_root}/EXTERNAL_REFERENCE_INVENTORY.txt" || true
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import csv
+          import hashlib
+          from pathlib import Path
+
+          root = Path('/tmp/phmfactory-paper-results')
+          tree = root / 'tree'
+
+          source_rows = []
+          with (root / 'SOURCE_TREE_MANIFEST.tsv').open(encoding='utf-8') as handle:
+              for line in handle:
+                  mode, kind, sha, path = line.rstrip('\n').split('\t', 3)
+                  source_rows.append((mode, kind, sha, path))
+
+          archived_files = sorted(path for path in tree.rglob('*') if path.is_file())
+          blob_rows = [row for row in source_rows if row[1] == 'blob']
+          gitlink_rows = [row for row in source_rows if row[1] == 'commit']
+
+          if len(archived_files) != len(blob_rows):
+              raise SystemExit(
+                  f'archive/blob count mismatch: {len(archived_files)} != {len(blob_rows)}'
+              )
+
+          source_by_path = {path: sha for _, kind, sha, path in blob_rows if kind == 'blob'}
+          verification = []
+          for path in archived_files:
+              relative = path.relative_to(tree).as_posix()
+              data = path.read_bytes()
+              git_blob = hashlib.sha1(
+                  f'blob {len(data)}\0'.encode() + data
+              ).hexdigest()
+              expected = source_by_path.get(relative)
+              if expected != git_blob:
+                  raise SystemExit(
+                      f'blob mismatch for {relative}: {git_blob} != {expected}'
+                  )
+              verification.append(
+                  {
+                      'path': relative,
+                      'bytes': len(data),
+                      'git_blob_sha': git_blob,
+                      'sha256': hashlib.sha256(data).hexdigest(),
+                  }
+              )
+
+          with (root / 'ARCHIVED_FILE_MANIFEST.tsv').open(
+              'w', encoding='utf-8', newline=''
+          ) as handle:
+              writer = csv.DictWriter(
+                  handle,
+                  fieldnames=('path', 'bytes', 'git_blob_sha', 'sha256'),
+                  delimiter='\t',
+              )
+              writer.writeheader()
+              writer.writerows(verification)
+
+          roots = sorted({row[3].split('/', 1)[0] for row in source_rows})
+          total_bytes = sum(row['bytes'] for row in verification)
+          references = (root / 'EXTERNAL_REFERENCE_INVENTORY.txt').read_text(
+              encoding='utf-8'
+          ).splitlines()
+
+          (root / 'ARCHIVE_README.md').write_text(
+              '# PHMFactory v0.3 paper/result migration archive\n\n'
+              'This artifact preserves the exact regular files and Git tree metadata '
+              'under the governed paper/result roots before any public-upstream deletion.\n\n'
+              '```text\n'
+              f'source commit: {Path("/github/workspace").name if False else "'"${GITHUB_SHA}"'"}\n'
+              f'roots: {", ".join(roots)}\n'
+              f'regular files: {len(blob_rows)}\n'
+              f'gitlinks: {len(gitlink_rows)}\n'
+              f'archived bytes: {total_bytes}\n'
+              f'external reference lines: {len(references)}\n'
+              '```\n\n'
+              '`SOURCE_TREE_MANIFEST.tsv` records every blob and gitlink. '
+              '`ARCHIVED_FILE_MANIFEST.tsv` verifies every regular file by Git blob SHA '
+              'and SHA-256. Gitlink contents remain external and require destination '
+              'repository verification before removal.\n',
+              encoding='utf-8',
+          )
+          PY
+
+          test -s "${archive_root}/SOURCE_TREE_MANIFEST.tsv"
+          test -s "${archive_root}/SOURCE_BLOB_MANIFEST.tsv"
+          test -s "${archive_root}/ARCHIVED_FILE_MANIFEST.tsv"
+          test -s "${archive_root}/ARCHIVE_README.md"
+
+      - name: Upload immutable archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-v030-paper-results
+          path: /tmp/phmfactory-paper-results
+          if-no-files-found: error
+          retention-days: 30
