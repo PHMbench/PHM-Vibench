@@ -25,8 +25,8 @@ MAINTAINED_PRESETS: dict[str, str] = {
     "quickstart": DEFAULT_CONFIG,
     "smoke": "configs/demo/00_smoke/dummy_dg.yaml",
     "cross-domain": "configs/demo/01_cross_domain/cwru_dg.yaml",
-    "cross-system": "configs/demo/02_cross_system/cwru_to_thu.yaml",
-    "few-shot": "configs/demo/03_fewshot/cwru_fewshot.yaml",
+    "cross-system": "configs/demo/02_cross_system/multi_system_cddg.yaml",
+    "few-shot": "configs/demo/03_fewshot/cwru_protonet.yaml",
 }
 
 
