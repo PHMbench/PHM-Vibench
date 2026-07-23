@@ -1,0 +1,65 @@
+name: Fix Windows Streamlit run finalization
+
+on:
+  push:
+    branches:
+      - agent/v030-ui-consolidation-pr09
+    paths:
+      - .github/workflows/v030-fix-windows-run-finalization.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-ui-consolidation-pr09
+          fetch-depth: 0
+
+      - name: Patch terminal-state race
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/streamlit/run_service.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''            if managed is not None:\n                return_code = managed.process.poll()\n                if return_code is not None:\n                    time.sleep(0)\n                    payload = _read_payload(run_dir)\n            else:\n'''
+          new = '''            if managed is not None:\n                return_code = managed.process.poll()\n                if return_code is not None:\n                    # The monitor thread may not have written the terminal manifest yet.\n                    # Finalize synchronously so Windows does not misclassify a completed\n                    # child as orphaned during the short process/thread handoff window.\n                    cancelled = bool(payload.get("cancel_requested"))\n                    payload.update(\n                        status=(\n                            "cancelled"\n                            if cancelled\n                            else "succeeded"\n                            if return_code == 0\n                            else "failed"\n                        ),\n                        exit_code=return_code,\n                        ended_at=_utc_now(),\n                    )\n                    try:\n                        managed.log_handle.flush()\n                        managed.log_handle.close()\n                    except OSError:\n                        pass\n                    _atomic_write_json(_manifest_path(run_dir), payload)\n                    _PROCESSES.pop(_key(root, str(run_id)), None)\n            else:\n'''
+          if old not in text:
+              raise SystemExit('expected get_run block not found')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+          git rm -- .github/workflows/v030-fix-windows-run-finalization.yml
+          python -m py_compile apps/streamlit/run_service.py
+
+      - name: Run focused lifecycle regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q PyYAML pytest
+          python -m pytest -q \
+            test/test_streamlit_run_service.py::test_successful_run_writes_manifest_and_log \
+            test/test_streamlit_run_service.py::test_failed_process_is_recorded \
+            test/test_streamlit_run_service.py::test_cancel_terminates_process_group
+
+      - name: Commit focused fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add apps/streamlit/run_service.py
+          unexpected="$(git diff --cached --name-only | grep -Ev '^apps/streamlit/run_service\.py$|^\.github/workflows/v030-fix-windows-run-finalization\.yml$' || true)"
+          test -z "$unexpected"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(ui): finalize completed Windows runs before orphan checks"
+          git push origin HEAD:agent/v030-ui-consolidation-pr09
