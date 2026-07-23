@@ -1,6 +1,11 @@
 name: Archive PHMFactory research workspaces
 
 on:
+  pull_request:
+    branches:
+      - agent/v030-ui-consolidation-pr09
+    paths:
+      - .github/workflows/v030-archive-research-workspaces.yml
   push:
     branches:
       - agent/v030-research-workspace-migration-pr10
