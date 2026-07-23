@@ -28,10 +28,10 @@ compare generated SHA-256 sets                      PASS
 commit only the bounded PR-02 artifact set          PASS
 ```
 
-The initial commit attempt correctly failed because the repository globally ignores
-`*.json`; the workflow was corrected to force-add only the declared protected-runtime
-fingerprint JSON. Generation and deterministic-output verification were rerun and
-passed.
+The initial generation exposed the repository's global `*.json` ignore rule. Rather
+than retain a forced exception and a large pretty-printed JSON diff, the fingerprint
+artifact was redesigned as a compact CSV and the complete deterministic generation
+sequence was rerun successfully.
 
 ## Classification review
 
@@ -58,14 +58,35 @@ protected runtime files changed:      0
 ```
 
 The compact CSV records one row per protected file: full-file SHA-256, byte count,
-top-level callable count, and a deterministic aggregate callable-AST SHA-256. Reader implementations, factories, tasks, trainers, samplers, and
-Pipeline files are unchanged.
+top-level callable count, and a deterministic aggregate callable-AST SHA-256.
+Reader implementations, factories, tasks, trainers, samplers, and Pipeline files are
+unchanged.
+
+## Occam compaction
+
+The initially generated pretty-printed JSON was replaced before review by a compact
+257-line CSV: one header plus 256 protected files. It preserves the required change
+detection fields while avoiding thousands of low-value diff lines and avoids a forced
+exception to the repository's current global `*.json` ignore rule.
+
+Compaction checks:
+
+```text
+marker-based generator update                       PASS
+compact generator compile                           PASS
+compact artifact generation                         PASS
+second compact generation                           PASS
+compact artifact SHA-256 parity                     PASS
+fingerprint CSV line count = 257                     PASS
+verbose JSON removed                                PASS
+temporary compaction workflow removed               PASS
+```
 
 ## Repository-native quality gates
 
-This human-authored evidence commit exists to trigger the normal pull-request quality
-workflow after the generator's bot-authored commit. The PR must remain Draft until all
-of the following report success on the current head:
+This human-authored evidence commit triggers the normal pull-request quality workflow
+after the compacting bot-authored commit. The PR remains Draft until all of the
+following report success on the current head:
 
 ```text
 Docs and config contracts
@@ -78,10 +99,3 @@ UXFD focused contract
 
 A normal revert removes the inventories, allowlist, generator, and this evidence
 record. No runtime or dataset state is modified by PR-02.
-
-## Occam compaction
-
-The initially generated pretty-printed JSON was replaced before review by a compact
-257-line CSV (header plus 256 protected files). It preserves the required change
-detection fields while avoiding thousands of low-value diff lines and avoids a forced
-exception to the repository's current global `*.json` ignore rule.
