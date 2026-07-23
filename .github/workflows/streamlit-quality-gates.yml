@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - "apps/streamlit/**"
-      - "streamlit_app.py"
       - "test/test_streamlit_*.py"
       - "test/requirements.txt"
       - ".github/workflows/streamlit-quality-gates.yml"
@@ -13,7 +12,6 @@ on:
       - main
     paths:
       - "apps/streamlit/**"
-      - "streamlit_app.py"
       - "test/test_streamlit_*.py"
       - "test/requirements.txt"
       - ".github/workflows/streamlit-quality-gates.yml"
@@ -56,10 +54,10 @@ jobs:
         run: >-
           python -c "import glob, py_compile;
           [py_compile.compile(path, doraise=True)
-          for path in glob.glob('apps/streamlit/*.py') + ['streamlit_app.py']]"
+          for path in glob.glob('apps/streamlit/*.py')]"
 
-      - name: Import UI with real Streamlit
-        run: python -c "import apps.streamlit.app; import streamlit_app"
+      - name: Import maintained UI with real Streamlit
+        run: python -c "import apps.streamlit.app"
 
       - name: Run focused Streamlit tests
         run: >-
