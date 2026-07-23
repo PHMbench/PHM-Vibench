@@ -452,8 +452,28 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
             if managed is not None:
                 return_code = managed.process.poll()
                 if return_code is not None:
-                    time.sleep(0)
-                    payload = _read_payload(run_dir)
+                    # The monitor thread may not have written the terminal manifest yet.
+                    # Finalize synchronously so Windows does not misclassify a completed
+                    # child as orphaned during the short process/thread handoff window.
+                    cancelled = bool(payload.get("cancel_requested"))
+                    payload.update(
+                        status=(
+                            "cancelled"
+                            if cancelled
+                            else "succeeded"
+                            if return_code == 0
+                            else "failed"
+                        ),
+                        exit_code=return_code,
+                        ended_at=_utc_now(),
+                    )
+                    try:
+                        managed.log_handle.flush()
+                        managed.log_handle.close()
+                    except OSError:
+                        pass
+                    _atomic_write_json(_manifest_path(run_dir), payload)
+                    _PROCESSES.pop(_key(root, str(run_id)), None)
             else:
                 pid = payload.get("pid")
                 cancel_requested = bool(payload.get("cancel_requested"))
