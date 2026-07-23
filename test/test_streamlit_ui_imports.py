@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+from importlib.util import find_spec
 import sys
 import types
 
@@ -41,11 +42,7 @@ def test_ui_modules_import_with_optional_streamlit_stub(monkeypatch):
 def test_legacy_root_streamlit_launcher_is_removed() -> None:
     """The maintained UI has one import and deployment entrypoint."""
 
-    try:
-        importlib.import_module("streamlit_app")
-    except ModuleNotFoundError:
-        return
-    raise AssertionError("legacy root streamlit_app.py must not be importable")
+    assert find_spec("streamlit_app") is None
 
 
 def test_local_config_fingerprint_changes_with_file(monkeypatch, tmp_path):
