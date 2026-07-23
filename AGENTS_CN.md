@@ -60,7 +60,6 @@ python -m pytest test/
 
 ## 备注
 - 正式前端入口为 `streamlit run apps/streamlit/app.py`；核心 CLI 仍是唯一训练契约。
-- `streamlit run streamlit_app.py` 保留为兼容入口，实际转发到正式工作台。
 - `dev/test_history/` 为历史 runner（可选，可能需要额外依赖）。
 
 ## 提交/PR 建议（便于 review）
