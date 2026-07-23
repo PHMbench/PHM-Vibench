@@ -9,7 +9,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import yaml
 
@@ -19,6 +19,17 @@ TARGET_VERSION = "0.3.0"
 TARGET_REPOSITORY = "PHMbench/phmfactory"
 REQUIRED_BUNDLE_HASHES = ("metadata", "signals")
 FLOATING_REVISIONS = {"main", "master", "latest", "develop", "development", ""}
+V020_PROVENANCE_PATH = "docs/releases/v0.2.0-rc-provenance.yaml"
+V020_BASELINE_COMMIT = "a331769d4005018bc833534ecf4efeb5e8a5a78d"
+V020_EXPECTED_PROVENANCE: dict[str, Any] = {
+    "project_name": "PHM-Vibench",
+    "version_label": "v0.2.0",
+    "status": "release_candidate",
+    "formal_release": False,
+    "baseline_commit": V020_BASELINE_COMMIT,
+    "tag_present": False,
+    "superseded_by": "v0.3.0",
+}
 
 
 @dataclass(frozen=True)
@@ -50,6 +61,29 @@ def _git_tags() -> tuple[str, ...]:
         stdout=subprocess.PIPE,
     )
     return tuple(line.strip() for line in result.stdout.splitlines() if line.strip())
+
+
+def _v020_provenance_error() -> str:
+    path = ROOT / V020_PROVENANCE_PATH
+    if not path.is_file():
+        return f"no visible v0.2* Git tag and {V020_PROVENANCE_PATH} is absent"
+
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        return f"could not parse {V020_PROVENANCE_PATH}: {exc}"
+
+    if not isinstance(payload, dict):
+        return f"{V020_PROVENANCE_PATH} must contain a YAML mapping"
+
+    mismatches = []
+    for key, expected in V020_EXPECTED_PROVENANCE.items():
+        actual = payload.get(key)
+        if actual != expected:
+            mismatches.append(f"{key}={actual!r}, expected {expected!r}")
+    if mismatches:
+        return "; ".join(mismatches)
+    return ""
 
 
 def collect_findings() -> tuple[Finding, ...]:
@@ -126,9 +160,9 @@ def collect_findings() -> tuple[Finding, ...]:
 
     tags = _git_tags()
     if not any(tag.startswith("v0.2") for tag in tags):
-        findings.append(
-            Finding("V020_PROVENANCE_UNRESOLVED", "no visible v0.2* Git tag")
-        )
+        provenance_error = _v020_provenance_error()
+        if provenance_error:
+            findings.append(Finding("V020_PROVENANCE_UNRESOLVED", provenance_error))
     if any(tag in {"v0.3.0", "0.3.0"} for tag in tags):
         findings.append(
             Finding("V030_TAG_ALREADY_EXISTS", "release tag exists before readiness pass")
