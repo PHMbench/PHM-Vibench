@@ -1,0 +1,80 @@
+# PHMFactory v0.3 PR-02 Validation Record
+
+## Scope
+
+This record covers the inventory-only PR that freezes runtime, reader, personal-path,
+repository-boundary, and submodule evidence. It does not authorize deletion or
+runtime changes.
+
+## Immutable inputs
+
+```text
+repository:              PHMbench/PHM-Vibench
+runtime baseline commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+repository contract:     d044d2031165cd4186d1da462fb154f101d6d493
+```
+
+## Generator evidence
+
+The repository-native generator completed the following checks:
+
+```text
+export immutable baseline snapshot                 PASS
+compile baseline generator                          PASS
+byte-compare all protected runtime files           PASS
+generate reader/runtime/submodule inventories      PASS
+run the generator twice                             PASS
+compare generated SHA-256 sets                      PASS
+commit only the bounded PR-02 artifact set          PASS
+```
+
+The initial commit attempt correctly failed because the repository globally ignores
+`*.json`; the workflow was corrected to force-add only the declared protected-runtime
+fingerprint JSON. Generation and deterministic-output verification were rerun and
+passed.
+
+## Classification review
+
+A second deterministic run corrected two audit classifications before review:
+
+- `THU.py` is `unverified`, not `maintained`, because its legacy non-RM module name
+  and nonstandard callable signature require implementation-aware review;
+- `paper/LQ_vibench_fix` is `personal`, not a general paper dependency.
+
+Post-correction assertions passed:
+
+```text
+THU.py       -> unverified
+THU24.py     -> placeholder
+LQ fix       -> personal / non-allowlisted
+```
+
+## Protected-runtime result
+
+```text
+protected Python files fingerprinted: 256
+Python parse errors:                  0
+protected runtime files changed:      0
+```
+
+The fingerprint inventory records full-file SHA-256 plus top-level callable AST
+SHA-256 values. Reader implementations, factories, tasks, trainers, samplers, and
+Pipeline files are unchanged.
+
+## Repository-native quality gates
+
+This human-authored evidence commit exists to trigger the normal pull-request quality
+workflow after the generator's bot-authored commit. The PR must remain Draft until all
+of the following report success on the current head:
+
+```text
+Docs and config contracts
+Offline config-first smoke
+Pipeline 06 shell contract
+UXFD focused contract
+```
+
+## Rollback
+
+A normal revert removes the inventories, allowlist, generator, and this evidence
+record. No runtime or dataset state is modified by PR-02.
