@@ -1,0 +1,59 @@
+name: Validate PHMFactory PR-11 repository cleanup
+
+on:
+  push:
+    branches:
+      - agent/v030-case-collision-history-pr11
+    paths:
+      - citation.cff
+      - contributing.md
+      - configs/readme.md
+      - src/readme.md
+      - tools/repo/check_case_collisions.py
+      - docs/archive/audits/phmfactory-v0.3-case-collision-removal.md
+      - .github/workflows/repository-layout.yml
+      - .github/workflows/v030-pr11-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-contract:
+    name: PR-11 path and documentation contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out PR-11 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-case-collision-history-pr11
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install documentation and configuration dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "PyYAML>=6.0" "pydantic>=2.0"
+
+      - name: Validate portable tracked paths
+        run: |
+          python -m py_compile tools/repo/check_case_collisions.py
+          python tools/repo/check_case_collisions.py
+
+      - name: Validate documentation and maintained configurations
+        run: |
+          python -m scripts.validate_docs
+          python -m scripts.validate_configs
+
+      - name: Verify generated configuration Atlas
+        run: |
+          python -m scripts.gen_config_atlas
+          git diff --exit-code docs/CONFIG_ATLAS.md
+
+      - name: Check whitespace errors
+        run: git diff --check
