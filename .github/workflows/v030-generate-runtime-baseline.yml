@@ -79,10 +79,11 @@ jobs:
             .github/phmfactory-v0.3-submodules.allowlist.yml \
             docs/archive/audits/phmfactory-v0.3-runtime-reader-baseline.md \
             docs/archive/audits/phmfactory-v0.3-reader-inventory.csv \
-            docs/archive/audits/phmfactory-v0.3-protected-runtime-fingerprints.json \
             docs/archive/audits/phmfactory-v0.3-personal-path-inventory.csv \
             docs/archive/audits/phmfactory-v0.3-boundary-inventory.csv \
             docs/archive/audits/phmfactory-v0.3-submodule-baseline.csv
+          git add -f \
+            docs/archive/audits/phmfactory-v0.3-protected-runtime-fingerprints.json
 
           unexpected="$(
             git diff --cached --name-only \
