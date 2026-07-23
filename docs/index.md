@@ -40,8 +40,8 @@ Documentation uses four status labels:
 | Add a model | [Model factory contribution guide](../src/model_factory/contributing.md) |
 | Add a task | [Task factory contribution guide](../src/task_factory/contributing.md) |
 | Add or change a trainer | [Trainer factory contribution guide](../src/trainer_factory/contributing.md) |
-| Repository change constraints | [CLAUDE.md](../CLAUDE.md) |
-| Copy-paste maintainer commands | [AGENTS.md](../AGENTS.md) |
+| PHMFactory v0.3 migration constraints | [Repository contract](PHMFACTORY_V0_3_REPOSITORY_CONTRACT.md) |
+| Repository optimization process | [Repository optimization SOP](REPOSITORY_OPTIMIZATION_SOP.md) |
 
 ## Releases and governance
 
