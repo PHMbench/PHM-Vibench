@@ -1,0 +1,36 @@
+name: Repository layout
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-layout-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  path-contract:
+    name: Case-insensitive path contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Compile path guard
+        run: python -m py_compile tools/repo/check_case_collisions.py
+
+      - name: Reject case-insensitive collisions
+        run: python tools/repo/check_case_collisions.py
