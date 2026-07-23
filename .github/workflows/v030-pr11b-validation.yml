@@ -1,0 +1,112 @@
+name: Validate PHMFactory PR-11b historical documentation migration
+
+on:
+  push:
+    branches:
+      - agent/v030-historical-docs-pr11b
+    paths:
+      - .github/workflows/v030-pr11b-validation.yml
+      - docs/**
+      - src/README.md
+      - src/configs/README.md
+      - configs/v0.0.9/local/README.md
+      - SUPPORTED_COMPONENTS.md
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out PR-11b branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-historical-docs-pr11b
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install focused validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "PyYAML>=6.0" "pydantic>=2.0" "pytest>=7"
+
+      - name: Validate path portability and focused tests
+        run: |
+          python -m py_compile tools/repo/check_case_collisions.py
+          python tools/repo/check_case_collisions.py
+          python -m pytest -q test/test_case_collision_guard.py
+
+      - name: Validate documentation and maintained configurations
+        run: |
+          python -m scripts.validate_docs
+          python -m scripts.validate_configs
+
+      - name: Verify generated configuration Atlas
+        run: |
+          python -m scripts.gen_config_atlas
+          git diff --exit-code docs/CONFIG_ATLAS.md
+
+      - name: Verify exact migration boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e docs/past
+          test ! -e docs/v0.1.0
+          test -d configs/v0.0.9
+          test -f configs/v0.0.9/demo/Single_DG/CWRU.yaml
+          test -f reports/README.md
+          test -d plot
+          git diff --check
+
+          changed="$(git diff --name-only 6ab67111c9c1609f3cdd2339016e4cad237466ef...HEAD)"
+          unexpected="$(
+            printf '%s\n' "${changed}" \
+              | grep -Ev '^(docs/past/|docs/v0\.1\.0/|src/README\.md$|src/configs/README\.md$|docs/index\.md$|docs/archive/README\.md$|docs/archive/audits/phmfactory-v0\.3-historical-docs-removal\.md$|SUPPORTED_COMPONENTS\.md$|configs/v0\.0\.9/local/README\.md$|\.github/workflows/v030-pr11b-validation\.yml$)' \
+              || true
+          )"
+          if [ -n "${unexpected}" ]; then
+            printf 'PR-11b escaped approved paths:\n%s\n' "${unexpected}" >&2
+            exit 1
+          fi
+
+      - name: Record evidence and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence=docs/archive/audits/phmfactory-v0.3-pr11b-validation.md
+          cat > "${evidence}" <<EOF
+          # PHMFactory v0.3 PR-11b validation evidence
+
+          Validation source commit: \`${GITHUB_SHA}\`
+
+          ```text
+          case-insensitive path contract                 PASS
+          case-collision focused tests                   PASS
+          documentation validation                       PASS
+          maintained configuration validation            PASS
+          generated configuration Atlas parity           PASS
+          historical directory removal boundary          PASS
+          configs/v0.0.9 compatibility retention         PASS
+          reports and plot retention                     PASS
+          whitespace validation                          PASS
+          ```
+
+          Runtime code is unchanged from parent \`6ab67111c9c1609f3cdd2339016e4cad237466ef\`,
+          whose inherited Core gates were green.
+          EOF
+
+          git rm -- .github/workflows/v030-pr11b-validation.yml
+          git add "${evidence}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci(repo): record PR-11b validation evidence'
+          git push origin HEAD:agent/v030-historical-docs-pr11b
