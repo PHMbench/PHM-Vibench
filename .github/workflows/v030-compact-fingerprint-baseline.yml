@@ -41,61 +41,48 @@ jobs:
 
           path = Path('tools/repo/v030_generate_baseline.py')
           text = path.read_text(encoding='utf-8')
+          start_marker = '    fingerprint_document = {'
+          end_marker = '    status_counts: dict[str, int] = {}'
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit(
+                  f'fingerprint block markers not found: start={start}, end={end}'
+              )
 
-          old = '''    fingerprint_document = {
-                      "schema_version": 1,
-                      "repository": REPOSITORY,
-                      "runtime_baseline_commit": BASELINE_COMMIT,
-                      "repository_contract_commit": CONTRACT_COMMIT,
-                      "generated_from_head": contract_head,
-                      "protected_path_policy": {
-                          "prefixes": list(PROTECTED_PREFIXES),
-                          "exact": sorted(PROTECTED_EXACT),
-                          "pipeline_pattern": "src/Pipeline_*.py",
-                      },
-                      "protected_python_file_count": len(fingerprints),
-                      "parse_error_count": len(parse_errors),
-                      "files": fingerprints,
+          new_block = '''    fingerprint_rows: list[dict[str, object]] = []
+          for item in fingerprints:
+              callable_payload = json.dumps(
+                  item["callables"],
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  ensure_ascii=False,
+              ).encode("utf-8")
+              fingerprint_rows.append(
+                  {
+                      "path": item["path"],
+                      "file_sha256": item["file_sha256"],
+                      "bytes": item["bytes"],
+                      "callable_count": len(item["callables"]),
+                      "callable_ast_sha256": sha256_bytes(callable_payload),
+                      "parse_error": item["parse_error"] or "",
                   }
-                  (audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.json").write_text(
-                      json.dumps(fingerprint_document, indent=2, ensure_ascii=False) + "\\n",
-                      encoding="utf-8",
-                  )
+              )
+          write_csv(
+              audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.csv",
+              (
+                  "path",
+                  "file_sha256",
+                  "bytes",
+                  "callable_count",
+                  "callable_ast_sha256",
+                  "parse_error",
+              ),
+              fingerprint_rows,
+          )
+
           '''
-          new = '''    fingerprint_rows: list[dict[str, object]] = []
-                  for item in fingerprints:
-                      callable_payload = json.dumps(
-                          item["callables"],
-                          sort_keys=True,
-                          separators=(",", ":"),
-                          ensure_ascii=False,
-                      ).encode("utf-8")
-                      fingerprint_rows.append(
-                          {
-                              "path": item["path"],
-                              "file_sha256": item["file_sha256"],
-                              "bytes": item["bytes"],
-                              "callable_count": len(item["callables"]),
-                              "callable_ast_sha256": sha256_bytes(callable_payload),
-                              "parse_error": item["parse_error"] or "",
-                          }
-                      )
-                  write_csv(
-                      audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.csv",
-                      (
-                          "path",
-                          "file_sha256",
-                          "bytes",
-                          "callable_count",
-                          "callable_ast_sha256",
-                          "parse_error",
-                      ),
-                      fingerprint_rows,
-                  )
-          '''
-          if old not in text:
-              raise SystemExit('verbose fingerprint output block not found')
-          text = text.replace(old, new, 1)
+          text = text[:start] + new_block + text[end:]
           text = text.replace(
               '`phmfactory-v0.3-protected-runtime-fingerprints.json`',
               '`phmfactory-v0.3-protected-runtime-fingerprints.csv`',
@@ -150,7 +137,8 @@ jobs:
               'The fingerprint inventory records full-file SHA-256 plus top-level callable AST\nSHA-256 values.',
               'The compact CSV records one row per protected file: full-file SHA-256, byte count,\ntop-level callable count, and a deterministic aggregate callable-AST SHA-256.',
           )
-          text += '''\n## Occam compaction\n\nThe initially generated pretty-printed JSON was replaced before review by a compact\n257-line CSV (header plus 256 protected files). It preserves the required change\ndetection fields while avoiding thousands of low-value diff lines and avoids a forced\nexception to the repository's current global `*.json` ignore rule.\n'''
+          if '## Occam compaction' not in text:
+              text += '''\n## Occam compaction\n\nThe initially generated pretty-printed JSON was replaced before review by a compact\n257-line CSV (header plus 256 protected files). It preserves the required change\ndetection fields while avoiding thousands of low-value diff lines and avoids a forced\nexception to the repository's current global `*.json` ignore rule.\n'''
           path.write_text(text, encoding='utf-8')
           PY
 
