@@ -4,12 +4,16 @@ This directory contains historical files and documentation that were moved to ke
 
 ## 📂 Archive Structure
 
-### `/refactoring_reports/` (data/Rotor_simulation/)
-Historical reports from the Rotor simulation framework development:
+### `/refactoring_reports/`
+Historical reports originating from the former rotor-simulation development workspace:
 - `FINAL_REFACTORING_REPORT.md` - Final refactoring completion report
 - `PHYSICS_BASED_REFACTORING_SUMMARY.md` - Physics-based refactoring summary
 - `DELIVERABLE_SUMMARY.md` - Project deliverable completion summary
 - `README_DELIVERABLE.md` - Deliverable-specific README
+
+The `data/Rotor_simulation` gitlink is not a PHMFactory runtime dependency and is
+removed as part of the v0.3 repository-boundary cleanup. These retained reports
+are historical records only.
 
 ### Removed Files
 Files that were permanently removed as they were duplicates or outdated:
