@@ -25,5 +25,8 @@ where = ["."]
 include = ["phmfactory*", "src*"]
 exclude = ["test*", "tests*", "dev*", "paper*", "results*"]
 
+[tool.setuptools.package-data]
+"phmfactory.data_sources.manifests" = ["*.yaml"]
+
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
