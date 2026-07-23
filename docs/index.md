@@ -11,6 +11,8 @@ This index is the maintained entry point for PHMFactory documentation.
 - [Supported components](../SUPPORTED_COMPONENTS.md)
 - [Supported combinations](../SUPPORTED_COMBINATIONS.md)
 - [Known limitations](../KNOWN_LIMITATIONS.md)
+- [v0.3.0 release and migration notes](../RELEASE_NOTES_v0.3.0.md)
+- [v0.3.0 release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
 
 ## Architecture and extension
 
@@ -38,9 +40,10 @@ This index is the maintained entry point for PHMFactory documentation.
 - [PHMFactory v0.3.0 task and PR plan](PHMFACTORY_V0_3_TASK_PLAN.md)
 - [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md)
 
-The PHMFactory v0.3.0 documents describe an accepted staged migration plan.
-They do not by themselves claim that the repository, package, Pipeline files,
-data providers, or GitHub repository have already been renamed or migrated.
+The PHMFactory v0.3.0 documents describe a staged migration and pre-release state.
+They do not by themselves claim that the GitHub repository rename, public data pins,
+final version, tag, or package publication have completed. The release-readiness page
+is the authority for those blockers.
 
 ## Generated and historical material
 
@@ -65,6 +68,8 @@ Generated experiment outputs are local artifacts and are not tracked through
 | Project positioning and shortest successful path | `README.md` | Link to the README or the detailed page below |
 | Installation | `docs/installation.md` | Keep only a minimal command and link |
 | First successful run | `docs/quickstart.md` | Avoid copying the complete walkthrough |
+| v0.2 to v0.3 user migration | `RELEASE_NOTES_v0.3.0.md` | Link rather than duplicate the full migration map |
+| Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` | Do not claim release completion while blockers remain |
 | Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
 | Maintained config inventory | `configs/config_registry.csv` | Regenerate `docs/CONFIG_ATLAS.md` |
 | Supported components and combinations | `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md` | Do not infer support from registry presence |
