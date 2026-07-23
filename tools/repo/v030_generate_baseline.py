@@ -233,10 +233,10 @@ def parse_submodules(snapshot: Path) -> list[dict[str, str]]:
         tree_line = git("ls-tree", BASELINE_COMMIT, "--", path)
         fields = tree_line.split()
         gitlink = fields[2] if len(fields) >= 3 else ""
-        if path.startswith("paper/"):
-            classification = "paper"
-        elif path == "data/Rotor_simulation" or path == "paper/LQ_vibench_fix":
+        if path in {"data/Rotor_simulation", "paper/LQ_vibench_fix"}:
             classification = "personal"
+        elif path.startswith("paper/"):
+            classification = "paper"
         else:
             classification = "unclassified"
         rows.append(
@@ -356,10 +356,10 @@ def main() -> int:
         executable_nodes = callables
         if not source.strip() or (not executable_nodes and not source.replace("#", "").strip()):
             status = "placeholder"
+        elif read_record is not None and not module.startswith(("RM_", "Dummy_")):
+            status = "unverified"
         elif read_record is not None and (metadata_refs or module == "Dummy_Data"):
             status = "maintained"
-        elif read_record is not None and not module.startswith(("RM_", "Dummy_")):
-            status = "compatibility"
         elif read_record is not None:
             status = "unverified"
         else:
@@ -369,6 +369,8 @@ def main() -> int:
             notes.append(f"parse_error={parse_error}")
         if read_record is None:
             notes.append("no top-level read callable")
+        if read_record is not None and not module.startswith(("RM_", "Dummy_")):
+            notes.append("legacy non-RM module name and interface require implementation-aware review")
         if status in {"unverified", "placeholder", "experimental"}:
             notes.append("presence is not a maintained-support claim")
         reader_rows.append(

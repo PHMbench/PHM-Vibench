@@ -27,10 +27,10 @@ Artifacts:
 
 | Status | Count | Meaning |
 | --- | ---: | --- |
-| `maintained` | 20 | Top-level `read` callable and an active metadata/config reference, or the offline Dummy reader. |
+| `maintained` | 19 | Top-level `read` callable and an active metadata/config reference, or the offline Dummy reader. |
 | `compatibility` | 0 | Callable exists under a legacy/non-RM module name; retained without a new support claim. |
 | `experimental` | 2 | Non-empty reader-area module without the standard top-level `read` callable. |
-| `unverified` | 2 | Top-level `read` callable exists, but no active metadata/config reference was found. |
+| `unverified` | 3 | Top-level `read` callable exists, but no active metadata/config reference was found. |
 | `placeholder` | 1 | Empty or effectively non-executable placeholder. |
 
 Classification is an audit result, not a promise to delete non-maintained

@@ -1,7 +1,7 @@
 name,path,url,branch,gitlink_sha,classification,allowlisted,v0_3_action
 data/Rotor_simulation,data/Rotor_simulation,git@github.com:liq22/Rotor_simulation.git,,d46d089c5a086965dda5555734692114bc347437,personal,false,migrate_then_remove
 paper/2025-10_foundation_model_0_metric,paper/2025-10_foundation_model_0_metric,git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git,,2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7,paper,false,migrate_then_remove
-paper/LQ_vibench_fix,paper/LQ_vibench_fix,git@github.com:liq22/LQ_vibench_fix.git,lqfix_25-12,1a15710fd532fad73c552704f48349576d843ee0,paper,false,migrate_then_remove
+paper/LQ_vibench_fix,paper/LQ_vibench_fix,git@github.com:liq22/LQ_vibench_fix.git,lqfix_25-12,1a15710fd532fad73c552704f48349576d843ee0,personal,false,migrate_then_remove
 paper/UXFD_paper/1D-2D_fusion_explainable,paper/UXFD_paper/1D-2D_fusion_explainable,https://github.com/liq22/1D-2D_fusion_explainable.git,,b385b07e82d6323a291d90e55a5ef4aff9336c0b,paper,false,migrate_then_remove
 paper/UXFD_paper/Explainable_FD_Toolkit,paper/UXFD_paper/Explainable_FD_Toolkit,https://github.com/liq22/Explainable_FD_Toolkit.git,,379244dc8410eea0580714bc216c71074acba3a9,paper,false,migrate_then_remove
 paper/UXFD_paper/LLM_Explainable_FD_Toolkit,paper/UXFD_paper/LLM_Explainable_FD_Toolkit,https://github.com/liq22/LLM_Explainable_FD_Toolkit.git,,08eb944dd9acdbbd6c69cf39f050854a936e9b78,paper,false,migrate_then_remove

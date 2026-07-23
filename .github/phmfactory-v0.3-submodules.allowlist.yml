@@ -36,7 +36,7 @@ legacy_entries:
     action: migrate_then_remove
   - path: "paper/LQ_vibench_fix"
     gitlink_commit: 1a15710fd532fad73c552704f48349576d843ee0
-    classification: paper
+    classification: personal
     allowlisted: false
     action: migrate_then_remove
   - path: "paper/UXFD_paper/1D-2D_fusion_explainable"
