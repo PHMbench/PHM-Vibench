@@ -1,0 +1,196 @@
+name: One-shot Streamlit terminal race fix
+
+on:
+  push:
+    branches:
+      - agent/v030-canonical-integration-r2
+    paths:
+      - .github/workflows/v030-fix-streamlit-terminal-race.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-remove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v030-canonical-integration-r2
+          fetch-depth: 0
+
+      - name: Serialize managed-process reconciliation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/streamlit/run_service.py")
+          text = path.read_text(encoding="utf-8")
+
+          old_active = '''def _active_managed_run(repo_root: Path) -> Optional[str]:
+              prefix = f"{repo_root.resolve()}::"
+              stale: List[str] = []
+              for key, managed in _PROCESSES.items():
+                  if not key.startswith(prefix):
+                      continue
+                  if managed.process.poll() is None:
+                      return key.split("::", 1)[1]
+                  stale.append(key)
+              for key in stale:
+                  _PROCESSES.pop(key, None)
+              return None
+          '''
+          new_active = '''def _active_managed_run(repo_root: Path) -> Optional[str]:
+              prefix = f"{repo_root.resolve()}::"
+              for key, managed in _PROCESSES.items():
+                  if not key.startswith(prefix):
+                      continue
+                  if managed.process.poll() is None:
+                      return key.split("::", 1)[1]
+              # Keep completed processes registered until get_run() or the monitor thread
+              # persists the terminal manifest. Removing them here creates a Windows race
+              # where a real failed/succeeded process is misclassified as orphaned.
+              return None
+          '''
+
+          old_get = '''def get_run(repo_root: Path, run_id: str) -> RunRecord:
+              root = _ensure_repo_root(repo_root)
+              run_dir = _run_root(root) / str(run_id)
+              payload = _read_payload(run_dir)
+              status = str(payload.get("status") or "unknown")
+              if status in {"starting", "running", "cancelling"}:
+                  with _LOCK:
+                      managed = _PROCESSES.get(_key(root, str(run_id)))
+                      if managed is not None:
+                          return_code = managed.process.poll()
+                          if return_code is not None:
+                              # The monitor thread may not have written the terminal manifest yet.
+                              # Finalize synchronously so Windows does not misclassify a completed
+                              # child as orphaned during the short process/thread handoff window.
+                              cancelled = bool(payload.get("cancel_requested"))
+                              payload.update(
+                                  status=(
+                                      "cancelled"
+                                      if cancelled
+                                      else "succeeded"
+                                      if return_code == 0
+                                      else "failed"
+                                  ),
+                                  exit_code=return_code,
+                                  ended_at=_utc_now(),
+                              )
+                              try:
+                                  managed.log_handle.flush()
+                                  managed.log_handle.close()
+                              except OSError:
+                                  pass
+                              _atomic_write_json(_manifest_path(run_dir), payload)
+                              _PROCESSES.pop(_key(root, str(run_id)), None)
+                      else:
+                          pid = payload.get("pid")
+                          cancel_requested = bool(payload.get("cancel_requested"))
+                          new_status = (
+                              "cancelled"
+                              if cancel_requested
+                              else "detached" if isinstance(pid, int) and _pid_exists(pid) else "orphaned"
+                          )
+                          payload.update(
+                              status=new_status,
+                              ended_at="" if new_status == "detached" else _utc_now(),
+                              error=(
+                                  "The Streamlit worker restarted while the process is still alive; "
+                                  "automatic cancellation is disabled for safety."
+                                  if new_status == "detached"
+                                  else ""
+                                  if new_status == "cancelled"
+                                  else "The managed process is no longer available."
+                              ),
+                          )
+                          _atomic_write_json(_manifest_path(run_dir), payload)
+              return _record(payload, run_dir)
+          '''
+          new_get = '''def get_run(repo_root: Path, run_id: str) -> RunRecord:
+              root = _ensure_repo_root(repo_root)
+              run_dir = _run_root(root) / str(run_id)
+              key = _key(root, str(run_id))
+
+              # Read and reconcile the manifest under the same lock used by the monitor.
+              # Otherwise get_run() can read a stale "running" payload, wait for the
+              # monitor to persist "failed"/"succeeded", then overwrite it as orphaned.
+              with _LOCK:
+                  payload = _read_payload(run_dir)
+                  status = str(payload.get("status") or "unknown")
+                  if status in {"starting", "running", "cancelling"}:
+                      managed = _PROCESSES.get(key)
+                      if managed is not None:
+                          return_code = managed.process.poll()
+                          if return_code is not None:
+                              cancelled = bool(payload.get("cancel_requested"))
+                              payload.update(
+                                  status=(
+                                      "cancelled"
+                                      if cancelled
+                                      else "succeeded"
+                                      if return_code == 0
+                                      else "failed"
+                                  ),
+                                  exit_code=return_code,
+                                  ended_at=_utc_now(),
+                              )
+                              try:
+                                  managed.log_handle.flush()
+                                  managed.log_handle.close()
+                              except OSError:
+                                  pass
+                              _atomic_write_json(_manifest_path(run_dir), payload)
+                              _PROCESSES.pop(key, None)
+                      else:
+                          pid = payload.get("pid")
+                          cancel_requested = bool(payload.get("cancel_requested"))
+                          new_status = (
+                              "cancelled"
+                              if cancel_requested
+                              else "detached" if isinstance(pid, int) and _pid_exists(pid) else "orphaned"
+                          )
+                          payload.update(
+                              status=new_status,
+                              ended_at="" if new_status == "detached" else _utc_now(),
+                              error=(
+                                  "The Streamlit worker restarted while the process is still alive; "
+                                  "automatic cancellation is disabled for safety."
+                                  if new_status == "detached"
+                                  else ""
+                                  if new_status == "cancelled"
+                                  else "The managed process is no longer available."
+                              ),
+                          )
+                          _atomic_write_json(_manifest_path(run_dir), payload)
+                  return _record(payload, run_dir)
+          '''
+
+          if text.count(old_active) != 1:
+              raise SystemExit("active-run replacement target is not unique")
+          if text.count(old_get) != 1:
+              raise SystemExit("get_run replacement target is not unique")
+
+          text = text.replace(old_active, new_active).replace(old_get, new_get)
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Compile and run focused lifecycle tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest PyYAML
+          python -m py_compile apps/streamlit/run_service.py
+          python -m pytest test/test_streamlit_run_service.py -q
+
+      - name: Commit bounded fix and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/v030-fix-streamlit-terminal-race.yml
+          git add apps/streamlit/run_service.py
+          git diff --cached --check
+          git commit -m "fix(ui): serialize terminal run reconciliation"
+          git push origin HEAD:agent/v030-canonical-integration-r2
