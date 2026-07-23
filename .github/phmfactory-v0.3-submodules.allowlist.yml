@@ -13,6 +13,10 @@ allowed_submodules:
     license: Apache-2.0
     expected_owner: PHMbench
     approved_integration_pr: null
+    ownership_transfer:
+      status: open
+      source_issue_number: 5
+      target_repository: PHMbench/phm-data-factory
     baseline_consumers: []
     permitted_new_consumers:
       - src/data_factory/phm_data_factory.py
