@@ -23,6 +23,7 @@ This index is the maintained entry point for PHMFactory documentation.
 - [Model Factory](../src/model_factory/README.md)
 - [Task Factory](../src/task_factory/README.md)
 - [Trainer Factory](../src/trainer_factory/README.md)
+- [Governed `phm-data-factory` backend contract](PHM_DATA_FACTORY_BACKEND_V0_3.md)
 
 ## User interfaces
 
@@ -40,11 +41,12 @@ This index is the maintained entry point for PHMFactory documentation.
 - [PHMFactory v0.3.0 reader preservation contract](PHMFACTORY_V0_3_READER_PRESERVATION.md)
 - [PHMFactory v0.3.0 task and PR plan](PHMFACTORY_V0_3_TASK_PLAN.md)
 - [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md)
+- [Deny-by-default submodule allowlist](../.github/phmfactory-v0.3-submodules.allowlist.yml)
 
 The PHMFactory v0.3.0 documents describe a staged migration and pre-release state.
 They do not by themselves claim that the GitHub repository rename, public data pins,
-final version, tag, or package publication have completed. The release-readiness page
-is the authority for those blockers.
+backend transfer, final version, tag, or package publication have completed. The
+release-readiness page is the authority for those blockers.
 
 ## Generated and historical material
 
@@ -72,6 +74,8 @@ Generated experiment outputs are local artifacts and are not tracked through
 | v0.2 release-candidate baseline | `docs/releases/v0.2.0-rc-provenance.yaml` | Do not create or imply a retroactive final v0.2.0 tag |
 | v0.2 to v0.3 user migration | `RELEASE_NOTES_v0.3.0.md` | Link rather than duplicate the full migration map |
 | Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` | Do not claim release completion while blockers remain |
+| Submodule ownership and backend exception | `.github/phmfactory-v0.3-submodules.allowlist.yml` | Do not add an unlisted or personal-account submodule URL |
+| Backend integration behavior | `docs/PHM_DATA_FACTORY_BACKEND_V0_3.md` | Treat the old experimental PR as evidence, not as the final patch |
 | Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
 | Maintained config inventory | `configs/config_registry.csv` | Regenerate `docs/CONFIG_ATLAS.md` |
 | Supported components and combinations | `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md` | Do not infer support from registry presence |
