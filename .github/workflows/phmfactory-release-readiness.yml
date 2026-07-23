@@ -12,6 +12,8 @@ on:
       - "RELEASE_NOTES_v0.3.0.md"
       - "phmfactory/data_sources/manifests/cwru-demo-v1.yaml"
       - "docs/PHMFACTORY_V0_3_RELEASE_READINESS.md"
+      - "docs/releases/v0.2.0-rc-provenance.yaml"
+      - "docs/releases/v0.2.0-rc-provenance.md"
       - "docs/index.md"
       - "tools/repo/check_release_readiness.py"
       - ".github/workflows/phmfactory-release-readiness.yml"
@@ -62,7 +64,6 @@ jobs:
             VERSION_NOT_FINAL \
             CWRU_REVISION_FLOATING \
             CWRU_HASH_MISSING \
-            V020_PROVENANCE_UNRESOLVED \
             REPOSITORY_RENAME_PENDING
           do
             grep -q "${blocker}" release-readiness.txt
@@ -73,10 +74,11 @@ jobs:
             CITATION_BRAND_PENDING \
             CITATION_REPOSITORY_PENDING \
             CHANGELOG_V030_MISSING \
-            RELEASE_NOTES_V030_MISSING
+            RELEASE_NOTES_V030_MISSING \
+            V020_PROVENANCE_UNRESOLVED
           do
             if grep -q "${resolved}" release-readiness.txt; then
-              echo "Resolved branding/documentation blocker returned: ${resolved}" >&2
+              echo "Resolved blocker returned: ${resolved}" >&2
               exit 1
             fi
           done
