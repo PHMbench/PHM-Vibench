@@ -38,7 +38,7 @@ The `src/` directory is organized into four main factories and a utilities folde
 
 ## 🌊 Execution Workflow
 
-An experiment in Vibench is executed by a top-level pipeline script (e.g., `Pipeline_01_default.py`), which orchestrates the factories in a specific order:
+An experiment in Vibench is executed by a top-level pipeline script (e.g., `Pipeline_01_Fault_Diagnosis.py`), which orchestrates the factories in a specific order:
 
 1.  **Configuration Loading**: The pipeline starts by loading a YAML configuration file from the `configs/` directory. This file dictates which components to use for the experiment.
 2.  **Data Loading**: The `data_factory` is called to prepare the training, validation, and test `DataLoaders` along with dataset metadata.
@@ -53,7 +53,7 @@ An experiment in Vibench is executed by a top-level pipeline script (e.g., `Pipe
 
 Vibench ships multiple pipelines tailored to different experiment shapes. Choose based on your goal and stage structure.
 
-### Pipeline_01_default
+### Pipeline_01_Fault_Diagnosis
 - Purpose: Single‑stage, single‑task training. Ideal for domain generalization/classification/regression baselines.
 - Flow: load_config → build_data → build_model → build_task → build_trainer → fit → test (best checkpoint).
 - When to use: Fast baselines, ablations, dataset readers/model bring‑up.
@@ -61,7 +61,7 @@ Vibench ships multiple pipelines tailored to different experiment shapes. Choose
   - `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml`
   - Smoke (no downloads): `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
 
-### Pipeline_02_pretrain_fewshot
+### Pipeline_02_Pretraining_Few_Shot
 - Purpose: Two‑stage training (pretraining on source → few‑shot adaptation). Supports K‑shot episodes and checkpoint hand‑off.
 - Flow: run_pretraining_stage(config) → collect best ckpts → run_fewshot_stage(fs_config, ckpts).
 - Notable: Can control multiple iterations; passes checkpoint paths into stage 2 automatically.
@@ -69,16 +69,16 @@ Vibench ships multiple pipelines tailored to different experiment shapes. Choose
 - Run:
   - `python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
 
-### Pipeline_03_multitask_pretrain_finetune
+### Pipeline_03_Multitask_Pretraining_Finetuning
 - Purpose: Two‑stage multi‑task pipeline (unsupervised/masked pretraining → supervised fine‑tuning). Supports backbone comparison and multi‑task heads.
 - Flow: create_pretraining_config → train (stage 1) → create_finetuning_config → fine‑tune (single‑task and/or multi‑task) with best ckpts.
 - Notable: Compares backbones (e.g., PatchTST, FNO, DLinear, TimesNet); produces structured results and summaries.
 - When to use: Foundation‑model style experiments; larger studies that require controlled stage‑by‑stage configs.
 - Run:
-  - (Advanced) Prefer a dedicated YAML under `configs/` that selects `pipeline: Pipeline_03_multitask_pretrain_finetune`.
+  - (Advanced) Prefer a dedicated YAML under `configs/` that selects `pipeline: Pipeline_03_Multitask_Pretraining_Finetuning`.
   - Use `python -m scripts.config_inspect --config <yaml>` to verify resolved config + instantiation targets.
 
-### Pipeline_04_unified_metric
+### Pipeline_04_Unified_Evaluation
 - Status: legacy/experimental. Historical docs may reference `script/unified_metric/`, but that directory is not part of the maintained workflow of this repo.
 - If you need unified-metric experiments, keep them in a paper/research submodule and avoid mixing them into the core `configs/demo/` onboarding path.
 

@@ -8,6 +8,7 @@ on:
       - "pyproject.toml"
       - "requirements.txt"
       - "test/test_phmfactory_entrypoints.py"
+      - "test/test_pipeline_name_migration.py"
       - ".github/workflows/phmfactory-public-package.yml"
   push:
     branches:
@@ -18,6 +19,7 @@ on:
       - "pyproject.toml"
       - "requirements.txt"
       - "test/test_phmfactory_entrypoints.py"
+      - "test/test_pipeline_name_migration.py"
       - ".github/workflows/phmfactory-public-package.yml"
   workflow_dispatch:
 
@@ -45,13 +47,19 @@ jobs:
           python -m pip install "build>=1.2" "pytest>=7" PyYAML
 
       - name: Compile public package and dispatcher
-        run: python -m py_compile phmfactory/*.py main.py test/test_phmfactory_entrypoints.py
+        run: >-
+          python -m py_compile
+          phmfactory/*.py
+          main.py
+          test/test_phmfactory_entrypoints.py
+          test/test_pipeline_name_migration.py
 
       - name: Run focused entrypoint tests
         run: >-
           python -m pytest -vv
           --junitxml=pytest-public-package.xml
           test/test_phmfactory_entrypoints.py
+          test/test_pipeline_name_migration.py
 
       - name: Upload focused pytest diagnostics
         if: always()

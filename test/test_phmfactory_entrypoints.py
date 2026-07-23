@@ -11,6 +11,7 @@ import pytest
 
 from phmfactory import __version__
 from phmfactory import cli
+from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -38,7 +39,7 @@ def test_config_takes_precedence_over_legacy_alias() -> None:
     assert cli._resolve_config_path(args) == "public.yaml"
 
 
-def test_run_dispatches_to_protected_pipeline_without_changing_arguments(
+def test_run_dispatches_legacy_identifier_to_canonical_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
@@ -60,9 +61,10 @@ def test_run_dispatches_to_protected_pipeline_without_changing_arguments(
         override=["pipeline=Pipeline_04_unified_metric"],
     )
 
-    assert cli.run(args) == "sentinel"
+    with pytest.warns(PipelineNameDeprecationWarning):
+        assert cli.run(args) == "sentinel"
     assert observed == {
-        "module": "src.Pipeline_04_unified_metric",
+        "module": "src.Pipeline_04_Unified_Evaluation",
         "config_path": "missing.yaml",
         "notes": "entrypoint-parity",
     }

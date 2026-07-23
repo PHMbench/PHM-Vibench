@@ -5,13 +5,13 @@ rows in `configs/config_registry.csv` with `category=demo` and `status=sanity_ok
 
 | Registry id | Pipeline | Data base | Task | Model | Runtime status |
 |---|---|---|---|---|---|
-| `demo_00_smoke_dummy_dg` | `Pipeline_01_default` | `base_cross_domain` with repo dummy data | `DG/classification` | `ISFM/M_01_ISFM` | PASS |
-| `demo_01_cross_domain` | `Pipeline_01_default` | `base_cross_domain` | `DG/classification` | `ISFM/M_01_ISFM` | PASS |
-| `demo_02_cross_system` | `Pipeline_01_default` | `base_cross_system` | `CDDG/classification` | `ISFM/M_01_ISFM` | PASS |
-| `demo_03_fewshot` | `Pipeline_01_default` | `base_fewshot` | `FS/classification` | `ISFM/M_01_ISFM` | PASS |
-| `demo_04_cross_system_fewshot` | `Pipeline_01_default` | `base_cross_system_fewshot` | `GFS/classification` | `ISFM/M_01_ISFM` | PASS |
-| `demo_05_pretrain_fewshot` | `Pipeline_02_pretrain_fewshot` | `base_classification` | `pretrain/hse_contrastive` | `ISFM/M_01_ISFM` | PASS |
-| `demo_06_pretrain_cddg` | `Pipeline_01_default` | `base_cross_system` | `pretrain/hse_contrastive` | `ISFM/M_01_ISFM` | PASS |
+| `demo_00_smoke_dummy_dg` | `Pipeline_01_Fault_Diagnosis` | `base_cross_domain` with repo dummy data | `DG/classification` | `ISFM/M_01_ISFM` | PASS |
+| `demo_01_cross_domain` | `Pipeline_01_Fault_Diagnosis` | `base_cross_domain` | `DG/classification` | `ISFM/M_01_ISFM` | PASS |
+| `demo_02_cross_system` | `Pipeline_01_Fault_Diagnosis` | `base_cross_system` | `CDDG/classification` | `ISFM/M_01_ISFM` | PASS |
+| `demo_03_fewshot` | `Pipeline_01_Fault_Diagnosis` | `base_fewshot` | `FS/classification` | `ISFM/M_01_ISFM` | PASS |
+| `demo_04_cross_system_fewshot` | `Pipeline_01_Fault_Diagnosis` | `base_cross_system_fewshot` | `GFS/classification` | `ISFM/M_01_ISFM` | PASS |
+| `demo_05_pretrain_fewshot` | `Pipeline_02_Pretraining_Few_Shot` | `base_classification` | `pretrain/hse_contrastive` | `ISFM/M_01_ISFM` | PASS |
+| `demo_06_pretrain_cddg` | `Pipeline_01_Fault_Diagnosis` | `base_cross_system` | `pretrain/hse_contrastive` | `ISFM/M_01_ISFM` | PASS |
 
 Current runtime evidence is one-epoch smoke evidence. It verifies the config,
 factory, training, checkpoint, and test path for these combinations. It does not

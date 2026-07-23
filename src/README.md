@@ -6,7 +6,7 @@ Entry point:
 - `python main.py --config <yaml> [--override key=value ...]`
 
 Pipelines:
-- `src/Pipeline_01_default.py` (maintained default)
+- `src/Pipeline_01_Fault_Diagnosis.py` (maintained default)
 
 Factories:
 - `src/data_factory/`

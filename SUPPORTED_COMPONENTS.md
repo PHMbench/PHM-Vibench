@@ -7,7 +7,7 @@ evidence.
 
 | Surface | Supported values |
 |---|---|
-| Pipelines | `Pipeline_01_default`, `Pipeline_02_pretrain_fewshot` single-stage demo |
+| Pipelines | `Pipeline_01_Fault_Diagnosis`, `Pipeline_02_Pretraining_Few_Shot` single-stage demo |
 | Data entry | repo dummy data; PHM-Vibench metadata/raw data via `data.data_dir` |
 | Model | `ISFM/M_01_ISFM` |
 | ISFM embedding | `E_01_HSE` |

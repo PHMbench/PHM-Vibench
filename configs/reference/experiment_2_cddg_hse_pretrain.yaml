@@ -134,4 +134,4 @@ stages:
         project: "experiment_2_cddg_finetune"
 
 pipeline:
-  name: "Pipeline_02_pretrain_fewshot"
+  name: "Pipeline_02_Pretraining_Few_Shot"

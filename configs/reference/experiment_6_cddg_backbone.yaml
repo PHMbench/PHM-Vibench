@@ -135,4 +135,4 @@ trainer:
   patience: 15
   wandb: false
 
-# 推荐 pipeline：Pipeline_01_default（CDDG 单阶段分类）
+# 推荐 pipeline：Pipeline_01_Fault_Diagnosis（CDDG 单阶段分类）

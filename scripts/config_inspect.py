@@ -10,6 +10,8 @@ from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
 import yaml
 
+from phmfactory.pipelines import canonical_pipeline_name, pipeline_module_name
+
 from src.configs.config_utils import merge_with_local_override
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
 
@@ -181,10 +183,13 @@ def _maybe_import(module_name: str) -> Tuple[bool, str]:
 
 
 def _instantiation_targets(resolved: Dict[str, Any]) -> Dict[str, Any]:
-    pipeline = (resolved.get("pipeline") or "Pipeline_01_default").strip()
+    pipeline = canonical_pipeline_name(
+        str(resolved.get("pipeline") or "Pipeline_01_Fault_Diagnosis"),
+        warn=False,
+    )
 
     targets: Dict[str, Any] = {
-        "pipeline": {"name": pipeline, "module": f"src.{pipeline}", "symbol": "pipeline"},
+        "pipeline": {"name": pipeline, "module": pipeline_module_name(pipeline, warn=False), "symbol": "pipeline"},
         "factories": {
             "data_factory": "src/data_factory/__init__.py:build_data",
             "model_factory": "src/model_factory/__init__.py:build_model",
@@ -253,8 +258,11 @@ def _sanity_checks(resolved: Dict[str, Any]) -> List[Dict[str, Any]]:
             fix=f"Ensure `{block}: ...` exists after base_configs merge.",
         )
 
-    pipeline = (resolved.get("pipeline") or "Pipeline_01_default").strip()
-    ok, err = _maybe_import(f"src.{pipeline}")
+    pipeline = canonical_pipeline_name(
+        str(resolved.get("pipeline") or "Pipeline_01_Fault_Diagnosis"),
+        warn=False,
+    )
+    ok, err = _maybe_import(pipeline_module_name(pipeline, warn=False))
     add(
         "pipeline_import",
         ok,

@@ -135,5 +135,5 @@ stages:
         noise_snr: 20  # 将在脚本中通过 CLI override 设置为 20/10/5/0 等不同值
 
 pipeline:
-  name: "Pipeline_02_pretrain_fewshot"
+  name: "Pipeline_02_Pretraining_Few_Shot"
 

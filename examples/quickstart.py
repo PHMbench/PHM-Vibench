@@ -26,7 +26,7 @@ current_dir = Path(__file__).parent
 project_root = current_dir.parent
 sys.path.insert(0, str(project_root))
 
-from src.Pipeline_01_default import pipeline
+from src.Pipeline_01_Fault_Diagnosis import pipeline
 from src.utils.config_utils import save_config
 import tempfile
 import yaml

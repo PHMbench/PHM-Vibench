@@ -10,8 +10,10 @@ from typing import Any
 
 import yaml
 
+from phmfactory.pipelines import canonical_pipeline_name, pipeline_module_name
+
 DEFAULT_CONFIG = "configs/demo/01_cross_domain/cwru_dg.yaml"
-DEFAULT_PIPELINE = "Pipeline_01_default"
+DEFAULT_PIPELINE = "Pipeline_01_Fault_Diagnosis"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -113,7 +115,7 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
             if not isinstance(override_pipeline, str) or not override_pipeline.strip():
                 raise ValueError("pipeline override must be a non-empty string")
             pipeline_name = override_pipeline.strip()
-    return pipeline_name
+    return canonical_pipeline_name(pipeline_name)
 
 
 def run(args: argparse.Namespace) -> Any:
@@ -121,7 +123,9 @@ def run(args: argparse.Namespace) -> Any:
     config_path = _resolve_config_path(args)
     args.config_path = config_path
     pipeline_name = _resolve_pipeline(args, config_path)
-    pipeline_module = importlib.import_module(f"src.{pipeline_name}")
+    pipeline_module = importlib.import_module(
+        pipeline_module_name(pipeline_name, warn=False)
+    )
     result = pipeline_module.pipeline(args)
     print("完成所有实验！")
     return result

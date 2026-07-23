@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import src.Pipeline_06_generative as pipeline06
+import src.Pipeline_06_Generative_Modeling as pipeline06
 
 
 def _configs(mode: str, iterations: int = 2, **generative_values) -> SimpleNamespace:
