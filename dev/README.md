@@ -11,4 +11,4 @@ This directory contains development utilities and historical notes.
 
 - Canonical onboarding: `README.md`
 - Config system + runnable templates: `configs/README.md` and `configs/demo/`
-- Commands + validation gates: `AGENTS.md`
+- Commands + validation gates: `docs/testing.md` and `docs/REPOSITORY_OPTIMIZATION_SOP.md`
