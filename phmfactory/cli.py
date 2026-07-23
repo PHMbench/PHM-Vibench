@@ -5,15 +5,10 @@ from __future__ import annotations
 import argparse
 import importlib
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 
-import yaml
-
-from phmfactory.pipelines import canonical_pipeline_name, pipeline_module_name
-
-DEFAULT_CONFIG = "configs/demo/01_cross_domain/cwru_dg.yaml"
-DEFAULT_PIPELINE = "Pipeline_01_Fault_Diagnosis"
+from phmfactory.config import DEFAULT_CONFIG, resolve_config
+from phmfactory.pipelines import pipeline_module_name
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,40 +43,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _set_nested_value(config: dict[str, Any], key: str, value: Any) -> None:
-    current = config
-    parts = key.split(".")
-    for part in parts[:-1]:
-        existing = current.get(part)
-        if existing is None:
-            current[part] = {}
-        elif not isinstance(existing, dict):
-            raise ValueError(f"Cannot set nested key '{key}': '{part}' is not a dict")
-        current = current[part]
-    current[parts[-1]] = value
-
-
-def _parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
-    """Parse CLI overrides without importing the heavy protected runtime."""
-    parsed: dict[str, Any] = {}
-    for item in values or ():
-        if "=" not in item:
-            raise ValueError(f"Invalid override format: '{item}'. Use key=value format.")
-        key, raw_value = item.split("=", 1)
-        key = key.strip()
-        if not key:
-            raise ValueError("Override key must be non-empty")
-        try:
-            value = yaml.safe_load(raw_value.strip())
-        except yaml.YAMLError:
-            value = raw_value.strip()
-        if "." in key:
-            _set_nested_value(parsed, key, value)
-        else:
-            parsed[key] = value
-    return parsed
-
-
 def _resolve_config_path(args: argparse.Namespace) -> str:
     if args.config is not None:
         return args.config
@@ -90,41 +51,27 @@ def _resolve_config_path(args: argparse.Namespace) -> str:
     return DEFAULT_CONFIG
 
 
-def _pipeline_from_yaml(config_path: str) -> str:
-    path = Path(config_path)
-    if not path.exists():
-        return DEFAULT_PIPELINE
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            config = yaml.safe_load(handle) or {}
-    except (OSError, UnicodeDecodeError, yaml.YAMLError):
-        return DEFAULT_PIPELINE
-    if isinstance(config, dict):
-        pipeline = config.get("pipeline")
-        if isinstance(pipeline, str) and pipeline.strip():
-            return pipeline.strip()
-    return DEFAULT_PIPELINE
-
-
 def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
-    pipeline_name = _pipeline_from_yaml(config_path)
-    if args.override:
-        overrides = _parse_overrides(args.override)
-        override_pipeline = overrides.get("pipeline")
-        if override_pipeline is not None:
-            if not isinstance(override_pipeline, str) or not override_pipeline.strip():
-                raise ValueError("pipeline override must be a non-empty string")
-            pipeline_name = override_pipeline.strip()
-    return canonical_pipeline_name(pipeline_name)
+    """Resolve the canonical Pipeline through the public config API."""
+    return resolve_config(
+        config_path,
+        override_values=args.override,
+    ).pipeline
 
 
 def run(args: argparse.Namespace) -> Any:
     """Dispatch a parsed argument namespace to the protected runtime."""
-    config_path = _resolve_config_path(args)
-    args.config_path = config_path
-    pipeline_name = _resolve_pipeline(args, config_path)
+    requested_config = _resolve_config_path(args)
+    resolved = resolve_config(requested_config, override_values=args.override)
+
+    # Preserve the historical downstream contract: Pipelines receive the source
+    # requested by the user rather than a generated temporary file.
+    args.config_path = requested_config
+    args.resolved_config_path = str(resolved.path)
+    args.resolved_pipeline = resolved.pipeline
+
     pipeline_module = importlib.import_module(
-        pipeline_module_name(pipeline_name, warn=False)
+        pipeline_module_name(resolved.pipeline, warn=False)
     )
     result = pipeline_module.pipeline(args)
     print("完成所有实验！")
