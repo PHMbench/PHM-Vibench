@@ -1,0 +1,52 @@
+schema_version: 1
+bundle_id: cwru-demo-v1
+dataset_name: CWRU
+release_pin_required: true
+
+files:
+  metadata:
+    filename: metadata.xlsx
+    required: true
+  signals:
+    filename: RM_001_CWRU.h5
+    required: true
+  corpus:
+    filename: corpus.xlsx
+    required: false
+
+metadata:
+  id_column: Id
+  selector:
+    column: Name
+    values:
+      - RM_001_CWRU
+  column_aliases:
+    sample_length:
+      - Sample_lenth
+      - Sample_lenth (L)
+      - Sample_length
+    channel_count:
+      - Channel
+      - Channel (C)
+
+providers:
+  huggingface:
+    repo_id: PHMbench/PHM-Vibench
+    revision: main
+    repo_type: dataset
+    files:
+      metadata: metadata.xlsx
+      signals: RM_001_CWRU.h5
+      corpus: corpus.xlsx
+  modelscope:
+    repo_id: PHMbench/PHM-Vibench
+    revision: master
+    files:
+      metadata: metadata.xlsx
+      signals: RM_001_CWRU.h5
+      corpus: corpus.xlsx
+
+# These values remain empty until the identical versioned bundle has been
+# published to both providers. The v0.3.0 release gate must replace floating
+# revisions with immutable revisions and populate these hashes.
+expected_sha256: {}
