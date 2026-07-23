@@ -1,0 +1,160 @@
+name: Archive PHMFactory research workspaces
+
+on:
+  push:
+    branches:
+      - agent/v030-research-workspace-migration-pr10
+    paths:
+      - .github/workflows/v030-archive-research-workspaces.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-research-workspace-migration-pr10
+          fetch-depth: 0
+          submodules: false
+
+      - name: Build immutable research-workspace archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive_root=/tmp/phmfactory-research-workspaces
+          rm -rf "${archive_root}"
+          mkdir -p "${archive_root}/tree"
+
+          candidates=(paper results metrics_reports reports dev .archive)
+          existing=()
+          : > "${archive_root}/ROOTS.tsv"
+
+          for root in "${candidates[@]}"; do
+            tracked_count="$(git ls-files -- "${root}" | wc -l | tr -d ' ')"
+            tree_count="$(git ls-tree -r HEAD -- "${root}" | wc -l | tr -d ' ')"
+            if [ "${tree_count}" -gt 0 ]; then
+              existing+=("${root}")
+            fi
+            printf '%s\t%s\t%s\n' "${root}" "${tracked_count}" "${tree_count}" \
+              >> "${archive_root}/ROOTS.tsv"
+          done
+
+          if [ "${#existing[@]}" -eq 0 ]; then
+            echo 'No approved research roots exist on this branch.' >&2
+            exit 1
+          fi
+
+          git ls-tree -r HEAD -- "${existing[@]}" \
+            | awk '{print $1 "\t" $2 "\t" $3 "\t" $4}' \
+            > "${archive_root}/SOURCE_TREE_MANIFEST.tsv"
+
+          awk -F '\t' '$1 == "160000" {print}' \
+            "${archive_root}/SOURCE_TREE_MANIFEST.tsv" \
+            > "${archive_root}/GITLINK_MANIFEST.tsv"
+          awk -F '\t' '$2 == "blob" {print}' \
+            "${archive_root}/SOURCE_TREE_MANIFEST.tsv" \
+            > "${archive_root}/SOURCE_BLOB_MANIFEST.tsv"
+
+          git archive HEAD -- "${existing[@]}" \
+            | tar -x -C "${archive_root}/tree"
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import csv
+          from pathlib import Path
+          import subprocess
+
+          archive_root = Path('/tmp/phmfactory-research-workspaces')
+          tree_root = archive_root / 'tree'
+          manifest = archive_root / 'SOURCE_BLOB_MANIFEST.tsv'
+          rows = []
+          with manifest.open('r', encoding='utf-8') as handle:
+              for raw in handle:
+                  mode, kind, expected, path = raw.rstrip('\n').split('\t', 3)
+                  archived = tree_root / path
+                  if not archived.is_file():
+                      raise SystemExit(f'archived blob is missing: {path}')
+                  actual = subprocess.check_output(
+                      ['git', 'hash-object', str(archived)],
+                      text=True,
+                  ).strip()
+                  if actual != expected:
+                      raise SystemExit(
+                          f'blob mismatch for {path}: expected {expected}, got {actual}'
+                      )
+                  rows.append(
+                      {
+                          'path': path,
+                          'mode': mode,
+                          'git_blob': expected,
+                          'bytes': archived.stat().st_size,
+                      }
+                  )
+
+          with (archive_root / 'VERIFIED_BLOBS.tsv').open(
+              'w', encoding='utf-8', newline=''
+          ) as handle:
+              writer = csv.DictWriter(
+                  handle,
+                  fieldnames=('path', 'mode', 'git_blob', 'bytes'),
+                  delimiter='\t',
+              )
+              writer.writeheader()
+              writer.writerows(rows)
+
+          if not rows:
+              raise SystemExit('archive contains no regular blobs')
+          PY
+
+          git grep -nE \
+            '(^|[^A-Za-z0-9_])(paper/|results/|metrics_reports/|reports/|dev/|\.archive/)' \
+            HEAD -- \
+            ':!paper/**' ':!results/**' ':!metrics_reports/**' ':!reports/**' \
+            ':!dev/**' ':!.archive/**' \
+            ':!.github/workflows/v030-archive-research-workspaces.yml' \
+            > "${archive_root}/REFERENCE_INVENTORY.txt" || true
+
+          cat > "${archive_root}/ARCHIVE_README.md" <<'EOF'
+          # PHMFactory v0.3 research-workspace archive
+
+          This artifact records the exact Git objects under the bounded candidate roots:
+
+          ```text
+          paper/
+          results/
+          metrics_reports/
+          reports/
+          dev/
+          .archive/
+          ```
+
+          Regular files are reconstructed under `tree/` and verified by Git blob SHA.
+          Gitlinks are recorded separately in `GITLINK_MANIFEST.tsv`; their external
+          repository contents are not silently treated as ordinary files.
+
+          This artifact is inventory and preservation evidence only. It does not authorize
+          deletion. Each paper/result/submodule still requires a destination, immutable
+          source commit, content or hash verification, and reviewer confirmation.
+          EOF
+
+          test -s "${archive_root}/ROOTS.tsv"
+          test -s "${archive_root}/SOURCE_TREE_MANIFEST.tsv"
+          test -s "${archive_root}/SOURCE_BLOB_MANIFEST.tsv"
+          test -s "${archive_root}/VERIFIED_BLOBS.tsv"
+
+      - name: Upload archive and migration inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-v030-research-workspaces
+          path: /tmp/phmfactory-research-workspaces
+          if-no-files-found: error
+          retention-days: 30
