@@ -16,6 +16,12 @@ src/trainer_factory/readme.md
 src/utils/readme.md
 ```
 
+The atomic cleanup commit is:
+
+```text
+f87a925ddb2517a547a7c1c810413e927f4fe68b
+```
+
 Canonical paths retained:
 
 ```text
@@ -67,7 +73,8 @@ src/trainer_factory/README.md / src/trainer_factory/readme.md
 src/utils/README.md / src/utils/readme.md
 ```
 
-It also recorded:
+The lowercase member of each group was removed, leaving one canonical path per
+group. It also recorded:
 
 ```text
 external reference lines requiring classification: 53
