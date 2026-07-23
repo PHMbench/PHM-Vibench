@@ -1,0 +1,74 @@
+name: Remove archived dev and historical workspaces
+
+on:
+  pull_request:
+    branches:
+      - agent/v030-remove-personal-submodules-batch6
+    paths:
+      - .github/workflows/v030-remove-dev-history.yml
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_BRANCH: agent/v030-remove-dev-history-batch7
+
+    steps:
+      - name: Check out cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-remove-dev-history-batch7
+          fetch-depth: 0
+          submodules: false
+
+      - name: Verify exact removal scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_count="$(git ls-tree -r --name-only HEAD -- .archive | wc -l | tr -d ' ')"
+          dev_count="$(git ls-tree -r --name-only HEAD -- dev | wc -l | tr -d ' ')"
+          test "$archive_count" = "1"
+          test "$dev_count" = "114"
+
+          unexpected="$(
+            git ls-tree -r --name-only HEAD -- .archive dev \
+              | grep -Ev '^\.archive/|^dev/' || true
+          )"
+          test -z "$unexpected"
+
+          if git grep -nE '(^|[^[:alnum:]_])(dev/|\.archive/)' -- \
+            'src/**/*.py' 'configs/**' 'test/**' 'scripts/**' '.github/**' \
+            ':!.github/workflows/v030-remove-dev-history.yml' ':!*.md'; then
+            echo "A runtime/config/test/script/CI consumer references a removed workspace." >&2
+            exit 1
+          fi
+
+      - name: Remove only approved workspaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -r -- .archive dev
+          git rm -- .github/workflows/v030-remove-dev-history.yml
+
+      - name: Commit scoped removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(
+            git diff --cached --name-only \
+              | grep -Ev '^\.archive/|^dev/|^\.github/workflows/v030-remove-dev-history\.yml$' \
+              || true
+          )"
+          if [ -n "$unexpected" ]; then
+            printf 'Removal escaped approved paths:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: remove archived dev and historical workspaces"
+          git push origin "HEAD:${TARGET_BRANCH}"
