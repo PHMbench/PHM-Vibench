@@ -1,0 +1,100 @@
+name: Generate PHMFactory v0.3 runtime baseline
+
+on:
+  pull_request:
+    branches:
+      - agent/v030-repository-contract
+    paths:
+      - .github/workflows/v030-generate-runtime-baseline.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET_BRANCH: agent/v030-runtime-reader-baseline-pr02
+      BASELINE_COMMIT: a331769d4005018bc833534ecf4efeb5e8a5a78d
+
+    steps:
+      - name: Check out PR-02 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-runtime-reader-baseline-pr02
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Export immutable runtime snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/phmfactory-v030-baseline
+          mkdir -p /tmp/phmfactory-v030-baseline
+          git archive "${BASELINE_COMMIT}" | tar -x -C /tmp/phmfactory-v030-baseline
+
+      - name: Compile and generate inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/repo/v030_generate_baseline.py
+          python tools/repo/v030_generate_baseline.py \
+            --snapshot-root /tmp/phmfactory-v030-baseline \
+            --output-root . | tee /tmp/phmfactory-v030-summary.json
+
+      - name: Verify deterministic output
+        shell: bash
+        run: |
+          set -euo pipefail
+          outputs=(
+            .github/phmfactory-v0.3-submodules.allowlist.yml
+            docs/archive/audits/phmfactory-v0.3-runtime-reader-baseline.md
+            docs/archive/audits/phmfactory-v0.3-reader-inventory.csv
+            docs/archive/audits/phmfactory-v0.3-protected-runtime-fingerprints.json
+            docs/archive/audits/phmfactory-v0.3-personal-path-inventory.csv
+            docs/archive/audits/phmfactory-v0.3-boundary-inventory.csv
+            docs/archive/audits/phmfactory-v0.3-submodule-baseline.csv
+          )
+          sha256sum "${outputs[@]}" > /tmp/baseline-first.sha256
+          python tools/repo/v030_generate_baseline.py \
+            --snapshot-root /tmp/phmfactory-v030-baseline \
+            --output-root . > /tmp/phmfactory-v030-summary-second.json
+          sha256sum "${outputs[@]}" > /tmp/baseline-second.sha256
+          diff -u /tmp/baseline-first.sha256 /tmp/baseline-second.sha256
+          diff -u /tmp/phmfactory-v030-summary.json /tmp/phmfactory-v030-summary-second.json
+
+      - name: Commit bounded PR-02 artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -- .github/workflows/v030-generate-runtime-baseline.yml
+          git add \
+            .github/phmfactory-v0.3-submodules.allowlist.yml \
+            docs/archive/audits/phmfactory-v0.3-runtime-reader-baseline.md \
+            docs/archive/audits/phmfactory-v0.3-reader-inventory.csv \
+            docs/archive/audits/phmfactory-v0.3-protected-runtime-fingerprints.json \
+            docs/archive/audits/phmfactory-v0.3-personal-path-inventory.csv \
+            docs/archive/audits/phmfactory-v0.3-boundary-inventory.csv \
+            docs/archive/audits/phmfactory-v0.3-submodule-baseline.csv
+
+          unexpected="$(
+            git diff --cached --name-only \
+              | grep -Ev '^\.github/workflows/v030-generate-runtime-baseline\.yml$|^\.github/phmfactory-v0\.3-submodules\.allowlist\.yml$|^docs/archive/audits/phmfactory-v0\.3-(runtime-reader-baseline\.md|reader-inventory\.csv|protected-runtime-fingerprints\.json|personal-path-inventory\.csv|boundary-inventory\.csv|submodule-baseline\.csv)$' \
+              || true
+          )"
+          if [ -n "${unexpected}" ]; then
+            printf 'Generation escaped approved PR-02 paths:\n%s\n' "${unexpected}" >&2
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(v0.3): record immutable runtime and reader baselines'
+          git push origin "HEAD:${TARGET_BRANCH}"
