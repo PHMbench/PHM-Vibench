@@ -48,6 +48,21 @@ release gate must publish the same bundle to both services, replace both revisio
 with immutable revisions, populate expected SHA-256 values, and prove provider
 parity.
 
+## Installation
+
+The root requirements include the default Hugging Face provider:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+ModelScope is optional and is installed from its owning subsystem:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install -r phmfactory/data_sources/modelscope/requirements.txt
+```
+
 ## CLI
 
 Hugging Face:
@@ -93,7 +108,8 @@ python examples/cwru_quickstart.py --source huggingface
 
 The example downloads and validates the bundle, then runs the maintained CWRU
 cross-domain configuration for one CPU epoch with a small window count. Switching
-providers changes only `--source`.
+providers changes only `--source` after the corresponding provider dependency is
+installed.
 
 ## Validation levels
 
