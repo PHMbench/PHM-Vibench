@@ -9,7 +9,7 @@ This directory provides helper utilities for configuration management, experimen
 ## Quick Links
 
 - **[Comprehensive Documentation (中文)](README.md)** - Main documentation with decision trees and guides
-- **[Architecture Guide](../../CLAUDE.md)** - Project-wide architecture documentation
+- **[Architecture Guide](../../docs/developer_guide.md)** - Project-wide architecture documentation
 
 ## Core Utilities
 
@@ -87,7 +87,6 @@ A generic registry pattern implementation for dynamic component registration and
   from src.utils.registry import Registry
 
   MODEL_REGISTRY = Registry('model')
-
   @MODEL_REGISTRY.register_module()
   class MyModel:
       pass
