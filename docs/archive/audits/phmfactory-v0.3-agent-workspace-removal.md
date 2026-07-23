@@ -62,6 +62,12 @@ The public deletion is based on canonical migration parent:
 6ab67111c9c1609f3cdd2339016e4cad237466ef
 ```
 
+Canonical public cleanup review:
+
+```text
+PHMbench/PHM-Vibench PR #110
+```
+
 Public PHMFactory has no runtime, build, test, data, CI, or release dependency on the
 private archive.
 
