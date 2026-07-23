@@ -1,92 +1,31 @@
 # PHMFactory v0.3.0 Release Notes
 
 > Status: **pre-release draft**  
-> Final tag, package publication, repository rename, and data-provider pins are not yet complete.
+> Repository rename, final version, immutable CWRU pins, tag, and publication are not complete.
 
 ## Overview
 
-PHM-Vibench becomes **PHMFactory** in v0.3.0.
+PHM-Vibench becomes **PHMFactory** in v0.3.0. The release establishes a public package,
+CLI, configuration surface, reproducible CWRU bundle contract, and stricter repository
+boundaries while preserving the mature runtime under `src.*`.
 
-This release establishes a stable public project identity and Python entrypoint while
-preserving the mature runtime that already implements dataset readers, factories,
-tasks, trainers, and Pipeline behavior.
+This document is the user-facing release summary. For step-by-step upgrade instructions,
+use [`MIGRATION_v0.2_to_v0.3.md`](MIGRATION_v0.2_to_v0.3.md). For the exact release gate,
+use [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md).
 
-The guiding rule is:
+## Public identity and entrypoints
 
-```text
-public interface and repository boundary cleanup
-without an unreviewed core-algorithm rewrite
-```
-
-## v0.2 migration baseline
-
-The source baseline for this migration is explicitly recorded as a release candidate:
-
-```text
-project:         PHM-Vibench
-version label:   v0.2.0
-status:          release_candidate
-formal release:  false
-baseline commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
-tag present:     false
-```
-
-Authorities:
-
-```text
-docs/releases/v0.2.0-rc-provenance.yaml
-docs/releases/v0.2.0-rc-provenance.md
-```
-
-No retroactive final `v0.2.0` tag is created. The immutable commit above anchors the
-reader/runtime fingerprints and v0.2-to-v0.3 compatibility comparison.
-
-## Names
-
-| Object | v0.3.0 value |
+| Surface | v0.3 value |
 | --- | --- |
 | Project | `PHMFactory` |
-| GitHub repository | `PHMbench/phmfactory` |
-| Python distribution | `phmfactory` |
-| Python import namespace | `phmfactory` |
-| CLI command | `phmfactory` |
+| Target repository | `PHMbench/phmfactory` |
+| Distribution | `phmfactory` |
+| Import namespace | `phmfactory` |
+| Console command | `phmfactory` |
 | Root entrypoint | `python main.py` |
 | Module entrypoint | `python -m phmfactory` |
 
-No `phm_factory` or `phm_vibench` compatibility namespace is introduced.
-
-## Installation
-
-Core environment:
-
-```bash
-git clone https://github.com/PHMbench/phmfactory.git
-cd phmfactory
-python -m pip install -r requirements.txt
-python -m pip install -e .
-```
-
-The root `requirements.txt` remains the core dependency authority.
-
-Optional subsystems install their incremental requirements separately:
-
-```bash
-# Streamlit workspace
-python -m pip install -r apps/streamlit/requirements.txt
-
-# ModelScope data provider
-python -m pip install -r phmfactory/data_sources/modelscope/requirements.txt
-
-# Test environment
-python -m pip install -r test/requirements.txt
-
-# Plotting tools
-python -m pip install -r plot/requirements.txt
-```
-
-## Public entrypoints
-
-These commands use one parser and dispatcher:
+The three command forms share one parser and dispatcher:
 
 ```bash
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml
@@ -94,26 +33,23 @@ python -m phmfactory --config configs/demo/00_smoke/dummy_dg.yaml
 phmfactory --config configs/demo/00_smoke/dummy_dg.yaml
 ```
 
-`--config_path` remains accepted as a compatibility alias. `--config` is preferred.
+`--config` is preferred. `--config_path` remains a compatibility alias. No
+`phm_factory` or `phm_vibench` namespace is introduced.
 
-## Python API migration
+## Main changes
 
-New integrations should use:
+### Public package and configuration
 
-```python
-import phmfactory
-from phmfactory.config import resolve_config
-```
+- Added the root `phmfactory` package and installed CLI.
+- Added `phmfactory.config` for maintained preset/path resolution, ordered
+  `base_configs`, typed dotted overrides, Pipeline canonicalization, and cycle errors.
+- Kept root `main.py` as a thin compatibility dispatcher.
 
-The mature runtime remains under `src.*` during v0.3.0. It is packaged because the
-public façade delegates to it, but new third-party integrations should not add new
-hard dependencies on internal `src.*` paths unless no public surface exists.
+### Pipeline names
 
-## Pipeline migration
+The six established Pipeline modules are renamed directly:
 
-Canonical v0.3 module names are:
-
-| v0.2 name | v0.3 name |
+| Previous | Canonical v0.3 name |
 | --- | --- |
 | `Pipeline_01_default` | `Pipeline_01_Fault_Diagnosis` |
 | `Pipeline_02_pretrain_fewshot` | `Pipeline_02_Pretraining_Few_Shot` |
@@ -122,48 +58,46 @@ Canonical v0.3 module names are:
 | `Pipeline_05_default_w_explain` | `Pipeline_05_Explainable_Fault_Diagnosis` |
 | `Pipeline_06_generative` | `Pipeline_06_Generative_Modeling` |
 
-Legacy YAML values remain accepted through explicit aliases and emit a deprecation
-warning. Direct imports of removed filenames must change:
+Legacy YAML values remain explicit aliases with warnings. Direct Python imports of old
+module filenames must be updated. The rename does not intentionally change Pipeline
+function bodies, data splits, metrics, checkpoints, seeds, or reader behavior.
 
-```python
-# v0.2
-from src.Pipeline_01_default import pipeline
+### CWRU bundle
 
-# v0.3
-from src.Pipeline_01_Fault_Diagnosis import pipeline
-```
-
-The rename does not change Pipeline function bodies, seeds, splitting, metrics,
-checkpoint formats, model construction, or reader behavior.
-
-## Configuration
-
-The public resolver is:
-
-```python
-from phmfactory.config import resolve_config
-
-resolved = resolve_config(
-    "configs/demo/00_smoke/dummy_dg.yaml",
-    overrides=("trainer.num_epochs=1",),
-)
-```
-
-It provides maintained preset/path resolution, ordered `base_configs` composition,
-dotted overrides, YAML value parsing, canonical Pipeline selection, and cycle errors.
-
-The established five-block configuration contract remains:
+The v0.3 bundle contract is:
 
 ```text
-environment / data / model / task / trainer
+metadata.xlsx      required
+RM_001_CWRU.h5     required
+corpus.xlsx        optional
 ```
 
-Historical internal loaders remain available for compatibility in v0.3.0. Their
-physical consolidation is deferred to a later, separately reviewed release.
+Available operations include selective Hugging Face/ModelScope download, local
+validation, cross-directory hash comparison, and a non-interactive quickstart. The
+online path is not release-ready until both providers use immutable revisions and the
+required files have matching SHA-256 values.
 
-## Data readers and factories
+### Dependencies and UI
 
-The following areas are deliberately preserved in place:
+- Root `requirements.txt` remains the core dependency authority.
+- Streamlit, ModelScope, plotting, and test requirements are owned by their subsystems.
+- `apps/streamlit/app.py` is the only maintained web entrypoint.
+- The old `app/` prototype and root `streamlit_app.py` were archived and removed.
+
+### Repository boundary
+
+The public repository no longer carries root/hidden Agent workspaces, `.archive/`,
+`dev/`, tracked result placeholders, or the two personal Rotor/LQ-fix gitlinks. Historical
+and removed material remains recoverable from immutable Git history and the approved
+archive, which is not a runtime, build, test, data, or release dependency.
+
+One optional `phm-data-factory` backend may be integrated later only under the governed
+organization-owned target and an immutable gitlink. Eight paper/research gitlinks remain
+frozen until their content-level migration trackers permit removal.
+
+## Preserved compatibility boundary
+
+v0.3 intentionally preserves:
 
 ```text
 src/data_factory/reader/
@@ -176,156 +110,68 @@ src/task_factory/
 src/trainer_factory/
 ```
 
-v0.3.0 does not mechanically class-convert readers, unify all reader signatures,
-change channel ordering, alter `(L, C)` signal semantics, or merge dataset-specific
-implementations.
+Reader signatures, parsing, channel order, `(L, C)` signal semantics, dtype behavior,
+normalization, task/trainer logic, and Pipeline algorithms are not mechanically rewritten.
+New integrations should prefer `phmfactory.*`; `src.*` remains the packaged compatibility
+engine for this release.
 
-## CWRU quickstart
+## v0.2 migration baseline
 
-The v0.3 bundle contract is:
-
-```text
-metadata.xlsx          required
-RM_001_CWRU.h5         required
-corpus.xlsx            optional
-```
-
-Commands:
-
-```bash
-python main.py data download --source huggingface
-python main.py data download --source modelscope
-python main.py data validate --path <bundle-dir>
-python main.py data compare --left <hf-dir> --right <modelscope-dir>
-```
-
-Python example:
-
-```bash
-python examples/cwru_quickstart.py --source huggingface
-```
-
-The fault-diagnosis quickstart does not require `corpus.xlsx`. A Pipeline that requires
-textual evidence must fail clearly when corpus data is absent.
-
-The final release requires immutable provider revisions and identical SHA-256 values
-for `metadata.xlsx` and `RM_001_CWRU.h5`. Until those values are published and pinned,
-the online CWRU path is a pre-release interface rather than final release evidence.
-
-## Streamlit
-
-The only maintained web entrypoint is:
-
-```bash
-streamlit run apps/streamlit/app.py
-```
-
-The historical `app/` prototype and root `streamlit_app.py` launcher were preserved in
-the approved personal archive and removed from the public framework.
-
-The maintained workspace delegates execution to the public CLI. It does not import a
-Pipeline directly or maintain a second training implementation.
-
-## Repository ownership boundaries
-
-Allowed direction:
+The migration baseline is the recorded v0.2.0 release candidate:
 
 ```text
-paper repositories ────────┐
-personal forks ────────────┼──> PHMFactory
-third-party projects ──────┘
+project:         PHM-Vibench
+status:          release_candidate
+formal release:  false
+baseline commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+tag present:     false
 ```
 
-Forbidden reverse dependencies:
+No retroactive final v0.2.0 tag is created. The machine-readable authority is
+`docs/releases/v0.2.0-rc-provenance.yaml`.
+
+## Validation coverage
+
+The canonical integration exercises:
+
+- documentation, maintained config, generated Atlas, and whitespace checks;
+- offline Dummy smoke, Pipeline 06 shell/CFM, and UXFD focused contracts;
+- public package tests, wheel/sdist build, wheel inspection, and clean installation;
+- dependency ownership and subsystem requirement boundaries;
+- offline CWRU validation and manifest packaging;
+- Streamlit tests on Ubuntu and Windows;
+- portable/case-insensitive path and Agent-boundary guards;
+- submodule policy, paper migration policy, and release-readiness auditing.
+
+Functional and smoke evidence validates software paths; it is not a performance benchmark
+or a universal compatibility claim.
+
+## Remaining release blockers
+
+The strict release gate currently reports:
 
 ```text
-PHMFactory ─X─> personal fork
-PHMFactory ─X─> paper repository
-PHMFactory ─X─> Agent tooling
+2 x CWRU_HASH_MISSING
+2 x CWRU_REVISION_FLOATING
+1 x LEGACY_SUBMODULES_REMAIN
+1 x PHM_DATA_FACTORY_BACKEND_PENDING
+1 x REPOSITORY_RENAME_PENDING
+1 x VERSION_NOT_FINAL
 ```
 
-Public documentation may cite a paper repository or DOI. Removing that link must not
-break installation, runtime, tests, data access, or release publication.
+Until those conditions are cleared:
 
-Personal Agent content, development scratchpads, historical prototypes, and personal
-submodules were moved out of the public framework after exact Git-object preservation.
-Remaining paper gitlinks require destination-level content verification before removal.
+- the version remains `0.3.0.dev0`;
+- the repository remains `PHMbench/PHM-Vibench`;
+- no `v0.3.0` tag, GitHub Release, wheel, or sdist publication is authorized;
+- no paper gitlink may be removed unless its tracker says `safe_to_remove: true`;
+- no CWRU online parity claim may be made.
 
-## Removed public paths
-
-The staged v0.3 migration removes or normalizes:
-
-```text
-app/
-streamlit_app.py
-.claude/
-.codex/
-dev/
-.archive/
-results/                tracked placeholder only
-metrics_reports/        tracked placeholder only
-data/Rotor_simulation   personal gitlink
-paper/LQ_vibench_fix    personal gitlink
-```
-
-It also removes lowercase path duplicates that collide on case-insensitive filesystems,
-while retaining canonical authorities such as `CITATION.cff`, `CONTRIBUTING.md`,
-`configs/README.md`, and `src/README.md`.
-
-The removed content remains recoverable from immutable public Git history and the
-approved personal-fork archive. PHMFactory does not depend on that archive.
-
-## Validation
-
-The v0.3 PR chain adds or exercises:
-
-```text
-document and maintained-config validation
-generated configuration Atlas parity
-fully offline Dummy_Data smoke
-public package / wheel / CLI parity
-canonical Pipeline selection
-Pipeline 06 contract tests
-UXFD assembly tests
-CWRU local bundle validation
-requirements ownership checks
-Streamlit Ubuntu and Windows tests
-case-insensitive path checks
-v0.2 release-candidate provenance validation
-release-readiness blocker audit
-```
-
-Functional smoke evidence is not a performance benchmark.
-
-## Release blockers
-
-The release is not ready while any of these remain:
-
-- Draft PRs have not been reviewed and merged in dependency order;
-- CWRU provider revisions or required hashes are not immutable and complete;
-- cross-provider public download parity has not passed;
-- the organization-owned `phm-data-factory` transfer and governed integration are incomplete;
-- remaining legacy paper gitlinks have not completed content-level migration;
-- versions remain `0.3.0.dev0`;
-- GitHub repository rename and redirect have not been verified;
-- final checks have not run under the `PHMbench/phmfactory` identity;
-- wheel and source distribution have not been built from the final release commit;
-- tag `v0.3.0` has not been created from a zero-blocker readiness state.
-
-Audit locally with:
+Audit commands:
 
 ```bash
 python tools/repo/check_release_readiness.py --mode audit
-```
-
-The strict release mode must fail until all blockers are resolved:
-
-```bash
 python tools/repo/check_release_readiness.py --mode release
 ```
 
-## Rollback
-
-Before tagging, revert the relevant staged PR or keep the package at `0.3.0.dev0`.
-After publishing `v0.3.0`, do not move or recreate the tag; publish a corrective patch
-release instead.
+The second command must remain non-zero until all release blockers are resolved.
