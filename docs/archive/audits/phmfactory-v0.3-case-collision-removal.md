@@ -28,10 +28,11 @@ src/readme.md
 Exact source Git blobs were copied to the approved personal-fork archive:
 
 ```text
-repository: liq22/PHM-Vibench
-branch:     archive/phmfactory-v0.3.0-removals
-path:       upstream-archive/phmfactory-v0.3.0/case-collisions/tree/
-source:     f22409521da2a6001dd620efd3e21180130d1b52
+repository:           liq22/PHM-Vibench
+branch:               archive/phmfactory-v0.3.0-removals
+archive object commit: 05e56ef93c6dd4e5f4c53a95a9f0a1362a38e1dd
+path:                 upstream-archive/phmfactory-v0.3.0/case-collisions/tree/
+source:               f22409521da2a6001dd620efd3e21180130d1b52
 ```
 
 | Removed path | Source and archive Git blob |
@@ -41,10 +42,10 @@ source:     f22409521da2a6001dd620efd3e21180130d1b52
 | `configs/readme.md` | `21b60cc2ec53a00d2eb4b7b8983c9a089702d289` |
 | `src/readme.md` | `dfe9d6f442bb55627acf1a50c46dba77ed6b0ab7` |
 
-The lowercase citation file was empty. The lowercase contribution file was a
-compatibility redirect. The two lowercase README files contained historical notes;
-their exact contents remain recoverable from the personal archive and immutable
-public Git history.
+`SOURCE_BLOB_MANIFEST.tsv` in the private archive records the same identities. The
+lowercase citation file was empty. The lowercase contribution file was a compatibility
+redirect. The two lowercase README files contained historical notes; their exact
+contents remain recoverable from the personal archive and immutable public Git history.
 
 PHMFactory has no runtime, build, test, data, or release dependency on the private
 archive.
