@@ -27,6 +27,7 @@ exclude = ["test*", "tests*", "dev*", "paper*", "results*"]
 
 [tool.setuptools.package-data]
 "phmfactory.data_sources.manifests" = ["*.yaml"]
+"phmfactory.data_sources.modelscope" = ["requirements.txt"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
