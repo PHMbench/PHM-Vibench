@@ -11,6 +11,7 @@ import pytest
 
 from phmfactory import __version__
 from phmfactory import cli
+from phmfactory.config import ResolvedConfig
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
@@ -39,13 +40,15 @@ def test_config_takes_precedence_over_legacy_alias() -> None:
     assert cli._resolve_config_path(args) == "public.yaml"
 
 
-def test_run_dispatches_legacy_identifier_to_canonical_module(
+def test_run_dispatches_resolved_canonical_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
 
     def pipeline(args: argparse.Namespace) -> str:
         observed["config_path"] = args.config_path
+        observed["resolved_config_path"] = args.resolved_config_path
+        observed["resolved_pipeline"] = args.resolved_pipeline
         observed["notes"] = args.notes
         return "sentinel"
 
@@ -53,6 +56,18 @@ def test_run_dispatches_legacy_identifier_to_canonical_module(
         observed["module"] = name
         return SimpleNamespace(pipeline=pipeline)
 
+    def fake_resolve(source: str, *, override_values: list[str] | None = None) -> ResolvedConfig:
+        assert source == "missing.yaml"
+        assert override_values == ["pipeline=Pipeline_04_unified_metric"]
+        return ResolvedConfig(
+            requested=source,
+            path=Path("/tmp/missing.yaml"),
+            data={"pipeline": "Pipeline_04_Unified_Evaluation"},
+            pipeline="Pipeline_04_Unified_Evaluation",
+            overrides={"pipeline": "Pipeline_04_unified_metric"},
+        )
+
+    monkeypatch.setattr(cli, "resolve_config", fake_resolve)
     monkeypatch.setattr(cli.importlib, "import_module", fake_import)
     args = argparse.Namespace(
         config="missing.yaml",
@@ -61,11 +76,12 @@ def test_run_dispatches_legacy_identifier_to_canonical_module(
         override=["pipeline=Pipeline_04_unified_metric"],
     )
 
-    with pytest.warns(PipelineNameDeprecationWarning):
-        assert cli.run(args) == "sentinel"
+    assert cli.run(args) == "sentinel"
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
         "config_path": "missing.yaml",
+        "resolved_config_path": "/tmp/missing.yaml",
+        "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
         "notes": "entrypoint-parity",
     }
 
