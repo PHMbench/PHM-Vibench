@@ -1,9 +1,11 @@
-schema_version: 1
+schema_version: 2
 policy: deny_by_default
-runtime_baseline_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
-allowed_submodules:
+frozen_baseline_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+current_migration_parent: 3d098efc11943b1f5ef477ccdf93a10ef27d6911
+
+candidate_submodules:
   - name: phm-data-factory
-    status: candidate_not_in_frozen_baseline
+    status: blocked_pending_provider_merge_and_consumer_rebase
     optional: true
     path: packages/phm-data-factory
     url: https://github.com/liq22/P01-phm-data-factory.git
@@ -11,66 +13,80 @@ allowed_submodules:
     license: Apache-2.0
     owner: liq22
     proposed_by: PHMbench/PHM-Vibench#82
-    baseline_consumers: []
-    proposed_consumers:
-      - src/data_factory/phm_data_factory.py
-      - src/data_factory/standalone.py
-      - src/data_factory/data_factory.py
-      - src/data_factory/__init__.py
+    provider_review: liq22/P01-phm-data-factory#4
+    current_in_gitmodules: false
     required_conditions:
+      - provider_review_merged_or_commit_explicitly_accepted
+      - consumer_change_rebased_on_clean_v0_3_chain
       - public_https_url
       - immutable_reviewed_commit
       - compatible_explicit_license
-      - core_install_and_dummy_smoke_work_without_initialization
+      - submodule_uninitialized_core_install_passes
+      - submodule_uninitialized_dummy_smoke_passes
       - no_paper_personal_or_agent_runtime_dependency
-legacy_entries:
-  - path: "data/Rotor_simulation"
+      - focused_backend_tests_pass
+      - full_core_quality_gates_pass
+
+removed_legacy_entries:
+  - path: data/Rotor_simulation
     gitlink_commit: d46d089c5a086965dda5555734692114bc347437
     classification: personal
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/2025-10_foundation_model_0_metric"
-    gitlink_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
-    classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/LQ_vibench_fix"
+    status: removed_after_private_archive_verification
+    removal_review: PHMbench/PHM-Vibench#103
+    private_archive: upstream-archive/phmfactory-v0.3.0/personal-submodules/data/Rotor_simulation
+  - path: paper/LQ_vibench_fix
     gitlink_commit: 1a15710fd532fad73c552704f48349576d843ee0
     classification: personal
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/1D-2D_fusion_explainable"
+    status: removed_after_private_archive_verification
+    removal_review: PHMbench/PHM-Vibench#103
+    private_archive: upstream-archive/phmfactory-v0.3.0/personal-submodules/paper/LQ_vibench_fix
+
+frozen_legacy_entries:
+  - path: paper/2025-10_foundation_model_0_metric
+    url: git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git
+    gitlink_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
+    classification: paper
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/1D-2D_fusion_explainable
+    url: https://github.com/liq22/1D-2D_fusion_explainable.git
     gitlink_commit: b385b07e82d6323a291d90e55a5ef4aff9336c0b
     classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/Explainable_FD_Toolkit"
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/Explainable_FD_Toolkit
+    url: https://github.com/liq22/Explainable_FD_Toolkit.git
     gitlink_commit: 379244dc8410eea0580714bc216c71074acba3a9
     classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/LLM_Explainable_FD_Toolkit"
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+    url: https://github.com/liq22/LLM_Explainable_FD_Toolkit.git
     gitlink_commit: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
     classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/MOE_explainable"
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/MOE_explainable
+    url: https://github.com/liq22/MOE_explainable.git
     gitlink_commit: 0da06ae366eeb66d852c144013af6925446615cb
     classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/Neuralsymbolic_theory"
-    gitlink_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
-    classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/Paper_fuzzy_XFD"
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/Paper_fuzzy_XFD
+    url: https://github.com/liq22/Paper_fuzzy_XFD.git
     gitlink_commit: 1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f
     classification: paper
-    allowlisted: false
-    action: migrate_then_remove
-  - path: "paper/UXFD_paper/TII_operator_attention"
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/Neuralsymbolic_theory
+    url: https://github.com/liq22/Neuralsymbolic_theory.git
+    gitlink_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
+    classification: paper
+    status: frozen_pending_content_level_destination_verification
+  - path: paper/UXFD_paper/TII_operator_attention
+    url: git@github.com:liq22/TII_operator_attention.git
     gitlink_commit: 20f47bac5c02763e1f6b856c90ce32861025c003
     classification: paper
-    allowlisted: false
-    action: migrate_then_remove
+    status: frozen_pending_content_level_destination_verification
+
+release_rules:
+  - no_unknown_gitlinks
+  - no_personal_workspace_gitlinks
+  - no_agent_tool_gitlinks
+  - frozen_paper_gitlinks_must_not_be_treated_as_framework_dependencies
+  - candidate_backend_must_not_be_present_until_status_is_active
+  - active_backend_must_remain_optional_and_pinned
