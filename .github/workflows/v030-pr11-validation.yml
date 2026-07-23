@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   focused-contract:
@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: agent/v030-case-collision-history-pr11
+          fetch-depth: 0
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -57,3 +58,36 @@ jobs:
 
       - name: Check whitespace errors
         run: git diff --check
+
+      - name: Record successful validation and remove this temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence=docs/archive/audits/phmfactory-v0.3-pr11-validation.md
+          cat > "${evidence}" <<EOF
+          # PHMFactory v0.3 PR-11 validation evidence
+
+          Validation source commit: \`${GITHUB_SHA}\`
+
+          The one-shot branch workflow completed the following checks successfully:
+
+          ```text
+          compile tools/repo/check_case_collisions.py     PASS
+          case-insensitive tracked-path contract          PASS
+          documentation validation                        PASS
+          maintained configuration validation             PASS
+          generated configuration Atlas parity            PASS
+          whitespace validation                           PASS
+          ```
+
+          The workflow removed itself after recording this evidence. Runtime smoke,
+          Pipeline 06, and UXFD contracts already passed on the unchanged PR-10 parent
+          commit \`f22409521da2a6001dd620efd3e21180130d1b52\`.
+          EOF
+
+          git rm -- .github/workflows/v030-pr11-validation.yml
+          git add "${evidence}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci(repo): record PR-11 validation evidence'
+          git push origin HEAD:agent/v030-case-collision-history-pr11
