@@ -72,6 +72,7 @@ jobs:
 
           import csv
           import hashlib
+          import os
           from pathlib import Path
 
           root = Path('/tmp/phmfactory-paper-results')
@@ -136,7 +137,7 @@ jobs:
               'This artifact preserves the exact regular files and Git tree metadata '
               'under the governed paper/result roots before any public-upstream deletion.\n\n'
               '```text\n'
-              f'source commit: {Path("/github/workspace").name if False else "'"${GITHUB_SHA}"'"}\n'
+              f'source commit: {os.environ["GITHUB_SHA"]}\n'
               f'roots: {", ".join(roots)}\n'
               f'regular files: {len(blob_rows)}\n'
               f'gitlinks: {len(gitlink_rows)}\n'
