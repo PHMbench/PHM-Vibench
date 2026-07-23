@@ -20,20 +20,24 @@ Archive a document instead of deleting it when it records at least one of:
 
 Delete a document only when it is wholly duplicated, empty, unrelated to the
 repository, or a template with no historical or operational value, and only after
-checking references.
+checking references and preserving required provenance.
 
 ## Current historical locations
 
-The repository already contains historical material outside this directory:
+Public repository history is organized as follows:
 
-- `docs/v0.1.0/`
-- `docs/past/`
-- `configs/v0.0.9/`
-- selected material under `dev/`
+- `docs/archive/` — maintained public audits, migration records, and historical
+  evidence that still supports repository governance;
+- `configs/v0.0.9/` — retained compatibility configurations, not the maintained
+  quickstart surface.
 
-Those paths are preserved to avoid unnecessary link breakage. New historical audit
-snapshots should be placed under `docs/archive/` rather than added to the maintained
-documentation root.
+The former `docs/v0.1.0/`, `docs/past/`, `dev/`, and root `.archive/` workspaces are
+preserved in immutable Git history and in the approved personal-fork archive. They
+are not public framework inputs and are not current guidance.
+
+`configs/v0.0.9/` must remain while protected compatibility code references its
+presets. New historical material belongs under `docs/archive/`, not in new versioned
+or `past/` directory trees.
 
 ## Maintained documentation
 

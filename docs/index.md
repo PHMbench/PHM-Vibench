@@ -47,16 +47,15 @@ data providers, or GitHub repository have already been renamed or migrated.
 `docs/CONFIG_ATLAS.md` is generated from `configs/config_registry.csv`; update the
 registry, run `python -m scripts.gen_config_atlas`, and commit both changes.
 
-Earlier release material remains under:
+Public historical audits and migration evidence are indexed under
+[`docs/archive/`](archive/README.md). `configs/v0.0.9/` remains only because the
+protected compatibility loader still references its presets; it is not the
+maintained quickstart surface.
 
-- `docs/v0.1.0/`
-- `docs/past/`
-- `configs/v0.0.9/`
-
-The removed `dev/` and `.archive/` workspaces are preserved in the approved
-personal-fork archive and in Git history. They are not public framework inputs.
-Generated experiment outputs are local artifacts and are not tracked through
-`results/` or `metrics_reports/` placeholder directories.
+The former `docs/v0.1.0/`, `docs/past/`, `dev/`, and root `.archive/` workspaces are
+preserved in immutable Git history and in the approved personal-fork archive. They
+are not public framework inputs. Generated experiment outputs are local artifacts
+and are not tracked through `results/` or `metrics_reports/` placeholder directories.
 
 ## Single-source-of-truth map
 

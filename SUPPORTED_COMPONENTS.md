@@ -38,6 +38,5 @@ also appear in `SUPPORTED_COMBINATIONS.md` with runtime evidence.
 - `Pipeline_03` public support.
 - Full model/task Cartesian-product compatibility.
 - Paper-only or historical configs under `configs/reference/`, `configs/v0.0.9/`,
-  `docs/past/`, or `obsidian/history/`.
+  or research/history archives outside the maintained documentation surface.
 - Performance claims across datasets or algorithms.
-

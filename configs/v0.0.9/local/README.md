@@ -3,8 +3,8 @@
 Place machine-specific minimal override YAMLs here to adapt paths like `data.data_dir` across devices without editing the main experiment YAMLs.
 
 > ⚠️ **Note (v0.1.0)**: This folder and README describe the legacy v0.0.9-style `local_config` mechanism.  
-> In v0.1.0, the recommended way to adapt paths is via `base_configs` in YAML (see `configs/readme.md`),  
-> not via `--local_config` CLI flags.
+> For maintained configurations, use `base_configs` and the precedence documented in [`configs/README.md`](../../README.md),  
+> not legacy `--local_config` examples.
 
 Legacy lookup order (v0.0.9):
 1. Explicit CLI: `--local_config /path/to/override.yaml`
@@ -31,6 +31,7 @@ In v0.0.9 you could also pass an explicit path via CLI:
 - Pipeline_03_multitask_pretrain_finetune: `--local_config configs/local/local.yaml`
 - Pipeline_ID: inherits Pipeline_01_default behavior
 
-For v0.1.0, please prefer:
-- putting all environment fields (including `PROJECT_HOME`) into `configs/base/environment/base.yaml`, and
-- using `base_configs.environment` + `--override` instead of `--local_config`.
+For maintained configurations, prefer:
+- portable environment fields in the relevant `configs/base/` blocks;
+- `configs/local/local.yaml` for untracked machine values; and
+- repeatable `--override key=value` arguments for explicit run-time changes.
