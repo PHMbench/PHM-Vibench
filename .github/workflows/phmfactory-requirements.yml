@@ -61,7 +61,13 @@ jobs:
           python - <<'PY'
           from email.parser import Parser
           from pathlib import Path
+          import re
           from zipfile import ZipFile
+
+          from packaging.requirements import Requirement
+
+          def canonical(name: str) -> str:
+              return re.sub(r"[-_.]+", "-", name).lower()
 
           wheels = sorted(Path("dist").glob("*.whl"))
           assert len(wheels) == 1, wheels
@@ -75,7 +81,7 @@ jobs:
               )
 
           requires = {
-              value.split(" ", 1)[0].lower().replace("_", "-")
+              canonical(Requirement(value).name)
               for value in metadata.get_all("Requires-Dist", [])
           }
           assert "huggingface-hub" in requires, requires
