@@ -1,5 +1,6 @@
 name: Inventory PHMFactory non-framework workspaces
 
+# Archive-only inventory. This workflow never deletes repository content.
 on:
   pull_request:
     branches:
