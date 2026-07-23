@@ -396,7 +396,7 @@ print(config)
 
 ### 核心文档
 - **[API参考手册 (English)](API_REFERENCE.md)** - 详细的函数签名和快速参考
-- **[架构指南 (English)](../../CLAUDE.md)** - 英文架构文档和最佳实践
+- **[架构指南 (English)](../../docs/developer_guide.md)** - 英文架构文档和最佳实践
 
 ### 相关模块文档
 - **[数据工厂文档](../data_factory/CLAUDE.md)**
