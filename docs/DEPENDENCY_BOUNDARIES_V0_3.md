@@ -26,9 +26,9 @@ packages. This keeps ownership visible and avoids two independent version source
 | Plot and post-run utilities | `plot/requirements.txt` | `scienceplots`, `umap-learn` |
 | Repository tests | `test/requirements.txt` | `pytest` |
 
-The legacy `app/requirements_gui.txt` remains outside this v0.3 ownership contract
-until the separate `app/` versus `apps/streamlit/` consolidation PR. It already
-owns legacy-only `plotly`; therefore `plotly` is no longer a core dependency.
+The legacy `app/` workspace and its separate requirements file were archived in
+the personal fork and removed from the public framework. `plotly` is not a core or
+maintained UI dependency because `apps/streamlit/` does not import it.
 
 ## Core additions and removals
 

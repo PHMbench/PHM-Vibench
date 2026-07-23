@@ -50,9 +50,9 @@ process/results.
 
 1. Visual styling is isolated from orchestration in `ui_theme.py`.
 2. Live refresh and artifact rendering are isolated in `ui_runtime.py`.
-3. The official entry point remains small and stable: `apps/streamlit/app.py`.
-4. The legacy root command remains a compatibility shim instead of maintaining a
-   second implementation.
+3. The official and only maintained entry point is `apps/streamlit/app.py`.
+4. The historical `app/` prototype and root launcher were archived in the personal
+   fork and removed from the public framework.
 5. The Run button is enabled only for the exact signature that passed repository
    inspection.
 
@@ -60,5 +60,4 @@ process/results.
 
 - remote execution and multi-user scheduling;
 - persistent job queues or databases;
-- online mutation of a running experiment;
-- deletion of legacy `app/` prototype modules.
+- online mutation of a running experiment.

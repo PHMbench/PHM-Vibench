@@ -29,7 +29,7 @@ EXPECTED_OWNERS = {
 }
 
 FORBIDDEN_IN_CORE = set().union(*EXPECTED_OWNERS.values()) | {
-    "plotly",       # legacy app owns it through app/requirements_gui.txt
+    "plotly",       # no maintained core or apps/streamlit import
     "torchaudio",   # no maintained runtime import in the frozen audit
     "torchvision",  # no maintained runtime import in the frozen audit
     "urllib3",      # transitive library; no direct maintained import
