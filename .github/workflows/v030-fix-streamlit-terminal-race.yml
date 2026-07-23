@@ -1,0 +1,73 @@
+name: Fix Streamlit terminal-state handoff
+
+on:
+  push:
+    branches:
+      - agent/v030-ui-consolidation-pr09
+    paths:
+      - .github/workflows/v030-fix-streamlit-terminal-race.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out PR-09 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-ui-consolidation-pr09
+          fetch-depth: 0
+
+      - name: Keep monitor ownership of resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/streamlit/run_service.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''                    try:
+                        managed.log_handle.flush()
+                        managed.log_handle.close()
+                    except OSError:
+                        pass
+                    _atomic_write_json(_manifest_path(run_dir), payload)
+                    _PROCESSES.pop(_key(root, str(run_id)), None)
+'''
+          new = '''                    # The monitor thread remains the sole owner of log-handle
+                    # closure and process-registry cleanup. It may write the same
+                    # terminal state again after this lock is released.
+                    _atomic_write_json(_manifest_path(run_dir), payload)
+'''
+          if old not in text:
+              raise SystemExit('expected terminal-state handoff block not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          python -m py_compile apps/streamlit/run_service.py
+
+      - name: Commit bounded correction and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -- .github/workflows/v030-fix-streamlit-terminal-race.yml
+          git add apps/streamlit/run_service.py
+          unexpected="$(
+            git diff --cached --name-only \
+              | grep -Ev '^apps/streamlit/run_service\.py$|^\.github/workflows/v030-fix-streamlit-terminal-race\.yml$' \
+              || true
+          )"
+          if [ -n "${unexpected}" ]; then
+            printf 'Terminal-race fix escaped approved paths:\n%s\n' "${unexpected}" >&2
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(ui): preserve monitor ownership during terminal handoff'
+          git push origin HEAD:agent/v030-ui-consolidation-pr09
