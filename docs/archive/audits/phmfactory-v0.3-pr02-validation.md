@@ -57,8 +57,8 @@ Python parse errors:                  0
 protected runtime files changed:      0
 ```
 
-The fingerprint inventory records full-file SHA-256 plus top-level callable AST
-SHA-256 values. Reader implementations, factories, tasks, trainers, samplers, and
+The compact CSV records one row per protected file: full-file SHA-256, byte count,
+top-level callable count, and a deterministic aggregate callable-AST SHA-256. Reader implementations, factories, tasks, trainers, samplers, and
 Pipeline files are unchanged.
 
 ## Repository-native quality gates
@@ -78,3 +78,10 @@ UXFD focused contract
 
 A normal revert removes the inventories, allowlist, generator, and this evidence
 record. No runtime or dataset state is modified by PR-02.
+
+## Occam compaction
+
+The initially generated pretty-printed JSON was replaced before review by a compact
+257-line CSV (header plus 256 protected files). It preserves the required change
+detection fields while avoiding thousands of low-value diff lines and avoids a forced
+exception to the repository's current global `*.json` ignore rule.

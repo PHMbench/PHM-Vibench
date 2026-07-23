@@ -486,67 +486,36 @@ def main() -> int:
         submodule_rows,
     )
 
-    fingerprint_document = {
-        "schema_version": 1,
-        "repository": REPOSITORY,
-        "runtime_baseline_commit": BASELINE_COMMIT,
-        "repository_contract_commit": CONTRACT_COMMIT,
-        "generated_from_head": contract_head,
-        "protected_path_policy": {
-            "prefixes": list(PROTECTED_PREFIXES),
-            "exact": sorted(PROTECTED_EXACT),
-            "pipeline_pattern": "src/Pipeline_*.py",
-        },
-        "protected_python_file_count": len(fingerprints),
-        "parse_error_count": len(parse_errors),
-        "files": fingerprints,
-    }
-    (audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.json").write_text(
-        json.dumps(fingerprint_document, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-
-    allowlist_path = output_root / ".github/phmfactory-v0.3-submodules.allowlist.yml"
-    allowlist_path.parent.mkdir(parents=True, exist_ok=True)
-    allowlist_lines = [
-        "schema_version: 1",
-        "policy: deny_by_default",
-        f"runtime_baseline_commit: {BASELINE_COMMIT}",
-        "allowed_submodules:",
-        "  - name: phm-data-factory",
-        "    status: candidate_not_in_frozen_baseline",
-        "    optional: true",
-        "    path: packages/phm-data-factory",
-        "    url: https://github.com/liq22/P01-phm-data-factory.git",
-        "    pinned_commit: 5580fafec2ea5615f6d3276d95e1e5a948cc0f13",
-        "    license: Apache-2.0",
-        "    owner: liq22",
-        "    proposed_by: PHMbench/PHM-Vibench#82",
-        "    baseline_consumers: []",
-        "    proposed_consumers:",
-        "      - src/data_factory/phm_data_factory.py",
-        "      - src/data_factory/standalone.py",
-        "      - src/data_factory/data_factory.py",
-        "      - src/data_factory/__init__.py",
-        "    required_conditions:",
-        "      - public_https_url",
-        "      - immutable_reviewed_commit",
-        "      - compatible_explicit_license",
-        "      - core_install_and_dummy_smoke_work_without_initialization",
-        "      - no_paper_personal_or_agent_runtime_dependency",
-        "legacy_entries:",
-    ]
-    for row in submodule_rows:
-        allowlist_lines.extend(
-            [
-                f"  - path: {yaml_quote(row['path'])}",
-                f"    gitlink_commit: {row['gitlink_sha']}",
-                f"    classification: {row['classification']}",
-                "    allowlisted: false",
-                "    action: migrate_then_remove",
-            ]
+    fingerprint_rows: list[dict[str, object]] = []
+    for item in fingerprints:
+        callable_payload = json.dumps(
+            item["callables"],
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        fingerprint_rows.append(
+            {
+                "path": item["path"],
+                "file_sha256": item["file_sha256"],
+                "bytes": item["bytes"],
+                "callable_count": len(item["callables"]),
+                "callable_ast_sha256": sha256_bytes(callable_payload),
+                "parse_error": item["parse_error"] or "",
+            }
         )
-    allowlist_path.write_text("\n".join(allowlist_lines) + "\n", encoding="utf-8")
+    write_csv(
+        audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.csv",
+        (
+            "path",
+            "file_sha256",
+            "bytes",
+            "callable_count",
+            "callable_ast_sha256",
+            "parse_error",
+        ),
+        fingerprint_rows,
+    )
 
     status_counts: dict[str, int] = {}
     for row in reader_rows:
@@ -577,7 +546,7 @@ def main() -> int:
         "",
         "Artifacts:",
         "",
-        "- `phmfactory-v0.3-protected-runtime-fingerprints.json`",
+        "- `phmfactory-v0.3-protected-runtime-fingerprints.csv`",
         "- `phmfactory-v0.3-reader-inventory.csv`",
         "",
         "## Reader classification",

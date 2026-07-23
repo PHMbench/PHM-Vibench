@@ -20,7 +20,7 @@ submodule, paper workspace, result, package name, Pipeline, config, or test.
 
 Artifacts:
 
-- `phmfactory-v0.3-protected-runtime-fingerprints.json`
+- `phmfactory-v0.3-protected-runtime-fingerprints.csv`
 - `phmfactory-v0.3-reader-inventory.csv`
 
 ## Reader classification
