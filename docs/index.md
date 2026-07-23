@@ -13,6 +13,7 @@ This index is the maintained entry point for PHMFactory documentation.
 - [Known limitations](../KNOWN_LIMITATIONS.md)
 - [v0.3.0 release and migration notes](../RELEASE_NOTES_v0.3.0.md)
 - [v0.3.0 release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
+- [v0.2.0 release-candidate provenance](releases/v0.2.0-rc-provenance.md)
 
 ## Architecture and extension
 
@@ -68,6 +69,7 @@ Generated experiment outputs are local artifacts and are not tracked through
 | Project positioning and shortest successful path | `README.md` | Link to the README or the detailed page below |
 | Installation | `docs/installation.md` | Keep only a minimal command and link |
 | First successful run | `docs/quickstart.md` | Avoid copying the complete walkthrough |
+| v0.2 release-candidate baseline | `docs/releases/v0.2.0-rc-provenance.yaml` | Do not create or imply a retroactive final v0.2.0 tag |
 | v0.2 to v0.3 user migration | `RELEASE_NOTES_v0.3.0.md` | Link rather than duplicate the full migration map |
 | Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` | Do not claim release completion while blockers remain |
 | Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
