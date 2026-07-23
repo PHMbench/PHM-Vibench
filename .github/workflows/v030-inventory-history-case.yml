@@ -1,0 +1,176 @@
+name: Inventory PHMFactory history and case-collision cleanup
+
+on:
+  pull_request:
+    branches:
+      - agent/v030-workspace-migration-pr10-final
+    paths:
+      - .github/workflows/v030-inventory-history-case.yml
+  push:
+    branches:
+      - agent/v030-history-case-normalization-pr11
+    paths:
+      - .github/workflows/v030-inventory-history-case.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out PR-11 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Export removal candidates and references
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          root=/tmp/phmfactory-v030-history-case
+          rm -rf "${root}"
+          mkdir -p "${root}/tree"
+
+          candidates=(
+            docs/past
+            docs/v0.1.0
+            citation.cff
+            contributing.md
+            configs/readme.md
+            src/readme.md
+          )
+
+          present=()
+          for path in "${candidates[@]}"; do
+            if git cat-file -e "HEAD:${path}" 2>/dev/null; then
+              present+=("${path}")
+            else
+              printf 'Missing expected candidate: %s\n' "${path}" >&2
+              exit 1
+            fi
+          done
+
+          git archive HEAD -- "${present[@]}" | tar -x -C "${root}/tree"
+          git ls-tree -r HEAD -- "${present[@]}" \
+            | awk '{print $1 "\t" $2 "\t" $3 "\t" $4}' \
+            > "${root}/SOURCE_BLOB_MANIFEST.tsv"
+
+          git grep -nE '(docs/past/|docs/v0\.1\.0/|citation\.cff|contributing\.md|configs/readme\.md|src/readme\.md)' \
+            HEAD -- \
+            ':!docs/past/**' ':!docs/v0.1.0/**' \
+            ':!citation.cff' ':!contributing.md' \
+            ':!configs/readme.md' ':!src/readme.md' \
+            ':!.github/workflows/v030-inventory-history-case.yml' \
+            > "${root}/EXTERNAL_REFERENCE_INVENTORY.txt" || true
+
+          git grep -n 'configs/v0.0.9' HEAD -- \
+            ':!configs/v0.0.9/**' \
+            ':!.github/workflows/v030-inventory-history-case.yml' \
+            > "${root}/V009_RUNTIME_REFERENCE_INVENTORY.txt" || true
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import csv
+          import hashlib
+          from pathlib import Path
+
+          root = Path('/tmp/phmfactory-v030-history-case')
+          tree = root / 'tree'
+
+          source = {}
+          with (root / 'SOURCE_BLOB_MANIFEST.tsv').open(encoding='utf-8') as handle:
+              for line in handle:
+                  mode, kind, sha, path = line.rstrip('\n').split('\t', 3)
+                  if kind != 'blob':
+                      raise SystemExit(f'unexpected non-blob candidate: {path} ({kind})')
+                  source[path] = sha
+
+          rows = []
+          for path in sorted(item for item in tree.rglob('*') if item.is_file()):
+              relative = path.relative_to(tree).as_posix()
+              data = path.read_bytes()
+              git_blob = hashlib.sha1(
+                  f'blob {len(data)}\0'.encode() + data
+              ).hexdigest()
+              if source.get(relative) != git_blob:
+                  raise SystemExit(f'Git blob mismatch: {relative}')
+              rows.append(
+                  {
+                      'path': relative,
+                      'bytes': len(data),
+                      'git_blob_sha': git_blob,
+                      'sha256': hashlib.sha256(data).hexdigest(),
+                  }
+              )
+
+          if len(rows) != len(source):
+              raise SystemExit(f'archive count mismatch: {len(rows)} != {len(source)}')
+
+          with (root / 'ARCHIVED_FILE_MANIFEST.tsv').open(
+              'w', encoding='utf-8', newline=''
+          ) as handle:
+              writer = csv.DictWriter(
+                  handle,
+                  fieldnames=('path', 'bytes', 'git_blob_sha', 'sha256'),
+                  delimiter='\t',
+              )
+              writer.writeheader()
+              writer.writerows(rows)
+
+          all_paths = [
+              line.strip()
+              for line in __import__('subprocess').run(
+                  ['git', 'ls-files'], check=True, capture_output=True, text=True
+              ).stdout.splitlines()
+              if line.strip()
+          ]
+          groups = {}
+          for path in all_paths:
+              groups.setdefault(path.casefold(), []).append(path)
+          collisions = [sorted(values) for values in groups.values() if len(values) > 1]
+          with (root / 'CASE_COLLISIONS.tsv').open('w', encoding='utf-8') as handle:
+              handle.write('casefold_key\tpaths\n')
+              for values in sorted(collisions, key=lambda item: item[0].casefold()):
+                  handle.write(f'{values[0].casefold()}\t{";".join(values)}\n')
+
+          refs = (root / 'EXTERNAL_REFERENCE_INVENTORY.txt').read_text(
+              encoding='utf-8'
+          ).splitlines()
+          v009_refs = (root / 'V009_RUNTIME_REFERENCE_INVENTORY.txt').read_text(
+              encoding='utf-8'
+          ).splitlines()
+          (root / 'ARCHIVE_README.md').write_text(
+              '# PHMFactory v0.3 history and case-collision inventory\n\n'
+              'This artifact preserves exact bytes for the proposed PR-11 removal '
+              'candidates and inventories external references before deletion.\n\n'
+              '```text\n'
+              f'candidate blobs: {len(rows)}\n'
+              f'external reference lines: {len(refs)}\n'
+              f'configs/v0.0.9 reference lines: {len(v009_refs)}\n'
+              f'case-collision groups: {len(collisions)}\n'
+              '```\n\n'
+              '`configs/v0.0.9/` is inventory-only and must remain while runtime '
+              'compatibility code references it.\n',
+              encoding='utf-8',
+          )
+          PY
+
+          test -s "${root}/SOURCE_BLOB_MANIFEST.tsv"
+          test -s "${root}/ARCHIVED_FILE_MANIFEST.tsv"
+          test -s "${root}/CASE_COLLISIONS.tsv"
+          test -s "${root}/ARCHIVE_README.md"
+
+      - name: Upload bounded inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-v030-history-case
+          path: /tmp/phmfactory-v030-history-case
+          if-no-files-found: error
+          retention-days: 30
