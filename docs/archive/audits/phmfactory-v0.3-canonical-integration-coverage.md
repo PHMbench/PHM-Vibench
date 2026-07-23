@@ -7,6 +7,7 @@ repository:             PHMbench/PHM-Vibench
 main:                   a331769d4005018bc833534ecf4efeb5e8a5a78d
 canonical PR:           #127
 integration branch:     agent/v030-canonical-integration-r2
+review state:           ready for human review
 source PR cleanup:      complete; closed unmerged as superseded
 main modified:          no
 repository renamed:     no
@@ -96,6 +97,10 @@ Special cases:
 - #118 was validation-only and never mergeable by design.
 - #121 had stale ancestry; only its migration guide was retained.
 - #122 remains the paper-tracker source; closing it does not remove any gitlink.
+
+The older feature/research PRs #42, #79, #80, #81, and #83 were also closed without
+merge as `post-v0.3/rebuild-required`. Their branches and evidence remain available for
+bounded reconstruction after the v0.3 topology is established.
 
 Temporary integration PRs #123–#126 targeted only the integration branch. Their closed
 state records ancestry construction, not a merge to `main`.
@@ -189,9 +194,10 @@ forbidden: rebase merge
 ```
 
 Squash or rebase would discard the exact source-head ancestry that TASK-170 exists to
-preserve. Until separate merge authorization is given, PR #127 remains Draft and:
+preserve. Until separate merge authorization is given:
 
 ```text
+PR #127 remains open and unmerged
 main remains unchanged
 repository remains PHMbench/PHM-Vibench
 version remains 0.3.0.dev0
