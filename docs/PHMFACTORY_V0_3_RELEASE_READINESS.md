@@ -33,9 +33,23 @@ The checker currently evaluates:
 5. `RELEASE_NOTES_v0.3.0.md` exists;
 6. Hugging Face and ModelScope CWRU revisions are immutable rather than `main` or `master`;
 7. required CWRU bundle SHA-256 values are populated;
-8. v0.2 provenance has a visible resolution;
+8. v0.2 provenance is resolved either by a visible historical tag or by the exact approved release-candidate provenance record;
 9. no v0.3.0 tag already exists before the release gate passes;
 10. when running in GitHub Actions, the repository has the final `PHMbench/phmfactory` identity.
+
+## Resolved staged records
+
+The staged v0.3 chain now includes:
+
+- PHMFactory README and citation branding;
+- a v0.3 changelog section and draft release notes;
+- an explicit v0.2.0 release-candidate provenance authority at
+  `docs/releases/v0.2.0-rc-provenance.yaml`;
+- the immutable v0.2 runtime baseline commit
+  `a331769d4005018bc833534ecf4efeb5e8a5a78d`;
+- an explicit decision not to create a retroactive final v0.2.0 tag.
+
+These records are only effective after their stacked PRs are reviewed and merged.
 
 ## Human-reviewed blockers
 
@@ -55,11 +69,11 @@ The following cannot be inferred safely from repository files alone:
 
 ```text
 1. merge the reviewed v0.3 PR stack in dependency order
-2. resolve the v0.2 provenance record
+2. retain the approved v0.2 release-candidate provenance record
 3. publish and pin the dual-source CWRU bundle
 4. finalize repository branding and citation metadata
 5. change versions from 0.3.0.dev0 to 0.3.0
-6. create and validate RELEASE_NOTES_v0.3.0.md
+6. validate RELEASE_NOTES_v0.3.0.md against the final tree
 7. rename the GitHub repository to PHMbench/phmfactory
 8. rerun all required checks on the final repository identity
 9. build wheel and sdist from the final commit
