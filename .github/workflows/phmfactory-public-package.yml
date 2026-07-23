@@ -79,5 +79,6 @@ jobs:
           python -m venv /tmp/phmfactory-wheel
           /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
           /tmp/phmfactory-wheel/bin/python -c "import phmfactory, src; print(phmfactory.__version__)"
+          /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
           /tmp/phmfactory-wheel/bin/phmfactory --help
           /tmp/phmfactory-wheel/bin/python -m phmfactory --help
