@@ -1,0 +1,135 @@
+name: Archive PHMFactory legacy app workspace
+
+on:
+  push:
+    branches:
+      - agent/v030-ui-consolidation-pr09
+    paths:
+      - .github/workflows/v030-archive-legacy-app.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Build immutable legacy UI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/phmfactory-legacy-ui
+          mkdir -p /tmp/phmfactory-legacy-ui/tree
+
+          git archive HEAD app streamlit_app.py \
+            | tar -x -C /tmp/phmfactory-legacy-ui/tree
+
+          git ls-tree -r HEAD -- app streamlit_app.py \
+            | awk '{print $1 "\t" $2 "\t" $3 "\t" $4}' \
+            > /tmp/phmfactory-legacy-ui/SOURCE_BLOB_MANIFEST.tsv
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import ast
+          import csv
+          from pathlib import Path
+          import subprocess
+
+          root = Path('/tmp/phmfactory-legacy-ui/tree')
+          rows = []
+          for path in sorted(root.rglob('*')):
+              if not path.is_file():
+                  continue
+              rel = path.relative_to(root).as_posix()
+              entry = {
+                  'path': rel,
+                  'bytes': path.stat().st_size,
+                  'kind': 'text',
+                  'top_level_functions': '',
+                  'top_level_classes': '',
+                  'imports': '',
+                  'parse_error': '',
+              }
+              if path.suffix == '.py':
+                  try:
+                      tree = ast.parse(path.read_text(encoding='utf-8'))
+                  except (UnicodeDecodeError, SyntaxError) as exc:
+                      entry['parse_error'] = str(exc)
+                  else:
+                      entry['top_level_functions'] = ';'.join(
+                          node.name
+                          for node in tree.body
+                          if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                      )
+                      entry['top_level_classes'] = ';'.join(
+                          node.name for node in tree.body if isinstance(node, ast.ClassDef)
+                      )
+                      imports = []
+                      for node in tree.body:
+                          if isinstance(node, ast.Import):
+                              imports.extend(alias.name for alias in node.names)
+                          elif isinstance(node, ast.ImportFrom) and node.module:
+                              imports.append(node.module)
+                      entry['imports'] = ';'.join(imports)
+              rows.append(entry)
+
+          with Path('/tmp/phmfactory-legacy-ui/CAPABILITY_INVENTORY.tsv').open(
+              'w', encoding='utf-8', newline=''
+          ) as handle:
+              writer = csv.DictWriter(
+                  handle,
+                  fieldnames=tuple(rows[0]),
+                  delimiter='\t',
+              )
+              writer.writeheader()
+              writer.writerows(rows)
+
+          references = subprocess.run(
+              [
+                  'git', 'grep', '-nE',
+                  r'(^|[^A-Za-z0-9_])(app\.|app/|streamlit_app\.py)',
+                  'HEAD', '--',
+                  ':!app/**', ':!streamlit_app.py', ':!.github/workflows/v030-archive-legacy-app.yml',
+              ],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          Path('/tmp/phmfactory-legacy-ui/REFERENCE_INVENTORY.txt').write_text(
+              references.stdout,
+              encoding='utf-8',
+          )
+          PY
+
+          cat > /tmp/phmfactory-legacy-ui/ARCHIVE_README.md <<'EOF'
+          # PHMFactory v0.3 legacy UI archive
+
+          This artifact preserves the exact `app/` tree and root `streamlit_app.py`
+          from the PR-09 base before public-upstream removal. `SOURCE_BLOB_MANIFEST.tsv`
+          records Git object identities. `CAPABILITY_INVENTORY.tsv` records the bounded
+          Python surface. `REFERENCE_INVENTORY.txt` records references outside the
+          archived paths for migration review.
+          EOF
+
+          test -s /tmp/phmfactory-legacy-ui/SOURCE_BLOB_MANIFEST.tsv
+          test -s /tmp/phmfactory-legacy-ui/CAPABILITY_INVENTORY.tsv
+          test -f /tmp/phmfactory-legacy-ui/tree/app/README.md
+          test -f /tmp/phmfactory-legacy-ui/tree/streamlit_app.py
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-v030-legacy-ui
+          path: /tmp/phmfactory-legacy-ui
+          if-no-files-found: error
+          retention-days: 30
