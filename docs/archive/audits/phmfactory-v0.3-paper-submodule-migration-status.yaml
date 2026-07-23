@@ -1,0 +1,104 @@
+schema_version: 1
+source_repository: PHMbench/PHM-Vibench
+release_target: v0.3.0
+policy: content_level_destination_evidence_required
+
+papers:
+  - paper_id: foundation-metric
+    source_path: paper/2025-10_foundation_model_0_metric
+    source_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
+    target_repository: null
+    target_pr: null
+    coverage_status: not_started
+    target_review_status: not_started
+    safe_to_remove: false
+
+  - paper_id: P01
+    source_path: paper/UXFD_paper/1D-2D_fusion_explainable
+    source_repository: liq22/1D-2D_fusion_explainable
+    source_commit: b385b07e82d6323a291d90e55a5ef4aff9336c0b
+    source_blob_count: 89
+    target_repository: AI4Engineering-L/P01-UXFD-Multimodal-Alignment
+    target_branch: migration/verify-phmfactory-gitlink-b385
+    target_head: 9b895a4a3fbf5faaa4152f9fe3096104d583ee87
+    target_pr: 2
+    snapshot_exact_count: 68
+    archive_or_overlay_exact_count: 21
+    uncovered_count: 0
+    coverage_manifest_sha256: 82cf569c2a900a9a5f0931a179cc2a5965ba48cf1f1101f407748e9721614780
+    source_archive_sha256: c498b48144524174e7054efc1451c52c72c51c0bc5603a0c35f0b358f5bfcb51
+    coverage_status: complete
+    target_review_status: workflow_approval_required
+    safe_to_remove: false
+
+  - paper_id: P02
+    source_path: paper/UXFD_paper/Explainable_FD_Toolkit
+    source_repository: liq22/Explainable_FD_Toolkit
+    source_commit: 379244dc8410eea0580714bc216c71074acba3a9
+    source_blob_count: 163
+    target_repository: AI4Engineering-L/P02-XFD-Benchmark-Toolkit
+    target_branch: migration/verify-phmfactory-gitlink-379244
+    target_head: 47d256ff923685d2f84b1f07004b459f86a79b63
+    target_pr: 2
+    snapshot_exact_count: 142
+    archive_or_overlay_exact_count: 21
+    uncovered_count: 0
+    coverage_manifest_sha256: 05770099dfd98477b1eaca0a5a1f01db18595b763ef1b529f8f289c1ce61f3c0
+    source_archive_sha256: f6adc63df49697b1f50f6e5f99325c968c97acc8ded60efb3c4fbbb183a1a633
+    coverage_status: complete
+    target_review_status: workflow_approval_required
+    safe_to_remove: false
+
+  - paper_id: P03
+    source_path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+    source_repository: liq22/LLM_Explainable_FD_Toolkit
+    source_commit: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
+    source_blob_count: 90
+    target_repository: AI4Engineering-L/P03-Evidence-Grounded-LLM-XFD
+    target_branch: migration/verify-phmfactory-gitlink-08eb94
+    target_head: 31e0f9f1c66839648af9315895f67a35cce98bff
+    target_pr: 2
+    snapshot_exact_count: 81
+    archive_or_overlay_exact_count: 9
+    uncovered_count: 0
+    coverage_manifest_sha256: 9c34faa184756cb7a2db5d85ba3bbabac4a7116f21afbd82f3c95230641e3883
+    source_archive_sha256: 6db015b3505435cef73632f9e6e15cbf3fdf4c67d9fb47c38cc0d7ebdb6e366c
+    coverage_status: complete
+    target_review_status: workflow_approval_required
+    safe_to_remove: false
+
+  - paper_id: P04
+    source_path: paper/UXFD_paper/MOE_explainable
+    source_commit: 0da06ae366eeb66d852c144013af6925446615cb
+    target_repository: AI4Engineering-L/P04-Physics-Informed-MoE-XFD
+    target_pr: null
+    coverage_status: not_started
+    target_review_status: not_started
+    safe_to_remove: false
+
+  - paper_id: P05
+    source_path: paper/UXFD_paper/Paper_fuzzy_XFD
+    source_commit: 1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f
+    target_repository: AI4Engineering-L/P05-Neuro-Fuzzy-Safe-XFD
+    target_pr: null
+    coverage_status: not_started
+    target_review_status: not_started
+    safe_to_remove: false
+
+  - paper_id: P06
+    source_path: paper/UXFD_paper/Neuralsymbolic_theory
+    source_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
+    target_repository: AI4Engineering-L/P06-Verifiable-Neural-Symbolic-XFD
+    target_pr: null
+    coverage_status: not_started
+    target_review_status: not_started
+    safe_to_remove: false
+
+  - paper_id: P07
+    source_path: paper/UXFD_paper/TII_operator_attention
+    source_commit: 20f47bac5c02763e1f6b856c90ce32861025c003
+    target_repository: AI4Engineering-L/P07-XOAN-Operator-Attention
+    target_pr: null
+    coverage_status: not_started
+    target_review_status: not_started
+    safe_to_remove: false
