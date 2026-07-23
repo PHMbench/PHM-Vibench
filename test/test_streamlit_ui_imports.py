@@ -31,12 +31,21 @@ def test_ui_modules_import_with_optional_streamlit_stub(monkeypatch):
         "apps.streamlit.ui_runtime",
         "apps.streamlit.workspace",
         "apps.streamlit.app",
-        "streamlit_app",
     )
     for name in modules:
         sys.modules.pop(name, None)
         imported = importlib.import_module(name)
         assert imported is not None
+
+
+def test_legacy_root_streamlit_launcher_is_removed() -> None:
+    """The maintained UI has one import and deployment entrypoint."""
+
+    try:
+        importlib.import_module("streamlit_app")
+    except ModuleNotFoundError:
+        return
+    raise AssertionError("legacy root streamlit_app.py must not be importable")
 
 
 def test_local_config_fingerprint_changes_with_file(monkeypatch, tmp_path):
