@@ -20,19 +20,20 @@ file against its source Git blob SHA.
 | `remove-archived` | Clearly historical or Agent-only; exact archived copy exists and current references are zero. |
 | `merge-neutral-first` | Contains potentially useful module knowledge; merge verified facts into a neutral README or developer guide before removal. |
 | `protected-review` | Describes a protected runtime area; requires implementation-aware review and cannot be mechanically removed. |
+| `neutralized-removed` | Accurate facts were merged into neutral documentation and the archived Agent document was removed without runtime changes. |
 
 ## Inventory
 
 | Path | v0.3 status | Required next action |
 | --- | --- | --- |
-| `dev/test_history/AGENTS.md` | `remove-archived` | Remove in this batch; maintained testing guidance is `docs/testing.md`. |
+| `dev/test_history/AGENTS.md` | `remove-archived` | Removed after exact archive verification; maintained testing guidance is `docs/testing.md`. |
 | `configs/base/CLAUDE.md` | `merge-neutral-first` | Compare with `configs/README.md`; retain only accurate base-composition guidance. |
 | `configs/demo/CLAUDE.md` | `merge-neutral-first` | Compare with `configs/demo/README.md`; retain maintained-demo admission rules. |
 | `configs/experiments/CLAUDE.md` | `merge-neutral-first` | Compare with the experiments README; retain only current local-experiment policy. |
 | `configs/reference/CLAUDE.md` | `merge-neutral-first` | Record historical/reference status without presenting it as maintained guidance. |
 | `src/configs/CLAUDE.md` | `merge-neutral-first` | Compare with `src/configs/README.md` and public configuration docs. |
 | `src/data_factory/CLAUDE.md` | `protected-review` | Merge only implementation-backed facts into `src/data_factory/README.md`. |
-| `src/data_factory/reader/CLAUDE.md` | `protected-review` | Preserve reader contracts; verify against actual function-based readers before neutral merge. |
+| `src/data_factory/reader/CLAUDE.md` | `neutralized-removed` | Function-based runtime facts are now documented in `src/data_factory/reader/README.md`; no reader code changed. |
 | `src/model_factory/CLAUDE.md` | `protected-review` | Compare with registry, factory, and maintained README. |
 | `src/model_factory/CNN/CLAUDE.md` | `merge-neutral-first` | Consolidate accurate CNN-family notes into a neutral family README. |
 | `src/model_factory/ISFM/CLAUDE.md` | `merge-neutral-first` | Consolidate accurate ISFM notes without changing model code. |
@@ -47,17 +48,21 @@ file against its source Git blob SHA.
 | `src/trainer_factory/CLAUDE.md` | `protected-review` | Compare with trainer construction and Lightning compatibility docs. |
 | `src/utils/CLAUDE.md` | `merge-neutral-first` | Compare with `src/utils/README.md` and API reference; remove stale claims. |
 
-## Batch 03 decision
+## Completed decisions
 
-Only `dev/test_history/AGENTS.md` is removed in this batch because:
+### Batch 03
 
-1. it is explicitly a legacy document;
-2. no current repository reference targets it;
-3. its exact Git blob is preserved;
-4. `dev/test_history/README.md` already points to maintained testing guidance;
-5. it contains outdated advice that conflicts with current validation gates.
+`dev/test_history/AGENTS.md` was removed because it was historical, unreferenced,
+exactly archived, superseded by `docs/testing.md`, and contained outdated
+validation advice.
 
-The remaining 21 files are not deleted by this PR.
+### Batch 04
+
+`src/data_factory/reader/CLAUDE.md` was removed only after implementation review
+showed that its class-based `BaseReader` and dictionary-output description did
+not match the current function-based runtime. The neutral reader README now
+documents the actual `Name`-based module resolution, `read(...)` contract,
+NumPy output, raw path, HDF5 cache flow, and preservation boundary.
 
 ## Protected-runtime boundary
 
