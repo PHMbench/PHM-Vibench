@@ -1,6 +1,6 @@
 schema_version: 3
 task_id: TASK-170
-status: canonical_pr_only_awaiting_current_head_validation_and_merge_authorization
+status: ready_for_review_awaiting_merge_authorization
 repository: PHMbench/PHM-Vibench
 main_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
 canonical_pr: 127
@@ -74,6 +74,12 @@ source_pr_cleanup:
     - 120
     - 121
     - 122
+  closed_post_v03_rebuild_required:
+    - 42
+    - 79
+    - 80
+    - 81
+    - 83
 
 bounded_followup:
   streamlit_windows_terminal_race:
@@ -84,17 +90,20 @@ bounded_followup:
     protected_runtime_changed: false
     temporary_workflow_present: false
 
-required_workflows:
-  - Core quality gates
-  - Repository layout
-  - PHMFactory public package
-  - PHMFactory dependency ownership
-  - PHMFactory CWRU bundle contract
-  - Streamlit quality gates
-  - Pipeline 06 CFM quality gates
-  - Submodule policy
-  - Paper migration status
-  - PHMFactory release readiness
+validation:
+  required_on_current_pr_head: true
+  last_all_success_head_before_review_state_sync: 3c7f95e708db43eb4a8c99875b192df811015252
+  required_workflows:
+    - Core quality gates
+    - Repository layout
+    - PHMFactory public package
+    - PHMFactory dependency ownership
+    - PHMFactory CWRU bundle contract
+    - Streamlit quality gates
+    - Pipeline 06 CFM quality gates
+    - Submodule policy
+    - Paper migration status
+    - PHMFactory release readiness
 
 expected_release_blockers:
   CWRU_HASH_MISSING: 2
@@ -103,6 +112,10 @@ expected_release_blockers:
   PHM_DATA_FACTORY_BACKEND_PENDING: 1
   REPOSITORY_RENAME_PENDING: 1
   VERSION_NOT_FINAL: 1
+
+review:
+  state: ready_for_human_review
+  human_approval_recorded: false
 
 merge_contract:
   authorization: pending
