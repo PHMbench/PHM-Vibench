@@ -10,8 +10,6 @@ from typing import Any
 
 import yaml
 
-from src.utils.config_utils import parse_overrides
-
 DEFAULT_CONFIG = "configs/demo/01_cross_domain/cwru_dg.yaml"
 DEFAULT_PIPELINE = "Pipeline_01_default"
 
@@ -48,6 +46,40 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _set_nested_value(config: dict[str, Any], key: str, value: Any) -> None:
+    current = config
+    parts = key.split(".")
+    for part in parts[:-1]:
+        existing = current.get(part)
+        if existing is None:
+            current[part] = {}
+        elif not isinstance(existing, dict):
+            raise ValueError(f"Cannot set nested key '{key}': '{part}' is not a dict")
+        current = current[part]
+    current[parts[-1]] = value
+
+
+def _parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
+    """Parse CLI overrides without importing the heavy protected runtime."""
+    parsed: dict[str, Any] = {}
+    for item in values or ():
+        if "=" not in item:
+            raise ValueError(f"Invalid override format: '{item}'. Use key=value format.")
+        key, raw_value = item.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ValueError("Override key must be non-empty")
+        try:
+            value = yaml.safe_load(raw_value.strip())
+        except yaml.YAMLError:
+            value = raw_value.strip()
+        if "." in key:
+            _set_nested_value(parsed, key, value)
+        else:
+            parsed[key] = value
+    return parsed
+
+
 def _resolve_config_path(args: argparse.Namespace) -> str:
     if args.config is not None:
         return args.config
@@ -75,7 +107,7 @@ def _pipeline_from_yaml(config_path: str) -> str:
 def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     pipeline_name = _pipeline_from_yaml(config_path)
     if args.override:
-        overrides = parse_overrides(args.override)
+        overrides = _parse_overrides(args.override)
         override_pipeline = overrides.get("pipeline")
         if override_pipeline is not None:
             if not isinstance(override_pipeline, str) or not override_pipeline.strip():
