@@ -14,8 +14,9 @@ Factories:
 - `src/task_factory/`
 - `src/trainer_factory/`
 
-UXFD merge:
-- Final plan: `paper/LQ_vibench_fix/merge_uxfd/12_18temp/codex/final_plan.md`
+Repository migration records:
+- `docs/PHMFACTORY_V0_3_REPOSITORY_CONTRACT.md`
+- `docs/archive/audits/phmfactory-v0.3-submodule-inventory.md`
 
 Run artifacts (UXFD merge, best-effort):
 - `<run_dir>/config_snapshot.yaml` (fully resolved config snapshot)
