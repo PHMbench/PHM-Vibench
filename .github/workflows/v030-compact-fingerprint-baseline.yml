@@ -50,38 +50,41 @@ jobs:
                   f'fingerprint block markers not found: start={start}, end={end}'
               )
 
-          new_block = '''    fingerprint_rows: list[dict[str, object]] = []
-          for item in fingerprints:
-              callable_payload = json.dumps(
-                  item["callables"],
-                  sort_keys=True,
-                  separators=(",", ":"),
-                  ensure_ascii=False,
-              ).encode("utf-8")
-              fingerprint_rows.append(
-                  {
-                      "path": item["path"],
-                      "file_sha256": item["file_sha256"],
-                      "bytes": item["bytes"],
-                      "callable_count": len(item["callables"]),
-                      "callable_ast_sha256": sha256_bytes(callable_payload),
-                      "parse_error": item["parse_error"] or "",
-                  }
-              )
-          write_csv(
-              audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.csv",
-              (
-                  "path",
-                  "file_sha256",
-                  "bytes",
-                  "callable_count",
-                  "callable_ast_sha256",
-                  "parse_error",
-              ),
-              fingerprint_rows,
-          )
-
-          '''
+          lines = [
+              '    fingerprint_rows: list[dict[str, object]] = []',
+              '    for item in fingerprints:',
+              '        callable_payload = json.dumps(',
+              '            item["callables"],',
+              '            sort_keys=True,',
+              '            separators=(",", ":"),',
+              '            ensure_ascii=False,',
+              '        ).encode("utf-8")',
+              '        fingerprint_rows.append(',
+              '            {',
+              '                "path": item["path"],',
+              '                "file_sha256": item["file_sha256"],',
+              '                "bytes": item["bytes"],',
+              '                "callable_count": len(item["callables"]),',
+              '                "callable_ast_sha256": sha256_bytes(callable_payload),',
+              '                "parse_error": item["parse_error"] or "",',
+              '            }',
+              '        )',
+              '    write_csv(',
+              '        audit_dir / "phmfactory-v0.3-protected-runtime-fingerprints.csv",',
+              '        (',
+              '            "path",',
+              '            "file_sha256",',
+              '            "bytes",',
+              '            "callable_count",',
+              '            "callable_ast_sha256",',
+              '            "parse_error",',
+              '        ),',
+              '        fingerprint_rows,',
+              '    )',
+              '',
+              '',
+          ]
+          new_block = '\n'.join(lines)
           text = text[:start] + new_block + text[end:]
           text = text.replace(
               '`phmfactory-v0.3-protected-runtime-fingerprints.json`',
