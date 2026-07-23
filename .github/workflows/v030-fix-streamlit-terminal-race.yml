@@ -1,6 +1,11 @@
 name: Fix Streamlit terminal-state handoff
 
 on:
+  pull_request:
+    branches:
+      - agent/v030-requirements-ownership-pr08
+    paths:
+      - .github/workflows/v030-fix-streamlit-terminal-race.yml
   push:
     branches:
       - agent/v030-ui-consolidation-pr09
