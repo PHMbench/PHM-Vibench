@@ -1,0 +1,180 @@
+name: Regenerate corrected PHMFactory v0.3 baseline
+
+on:
+  pull_request:
+    branches:
+      - agent/v030-repository-contract
+    paths:
+      - .github/workflows/v030-regenerate-baseline-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET_BRANCH: agent/v030-runtime-reader-baseline-pr02
+      BASELINE_COMMIT: a331769d4005018bc833534ecf4efeb5e8a5a78d
+
+    steps:
+      - name: Check out PR-02 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-runtime-reader-baseline-pr02
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Correct deterministic classification rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tools/repo/v030_generate_baseline.py')
+          text = path.read_text(encoding='utf-8')
+
+          old_submodule = '''        if path.startswith("paper/"):
+                      classification = "paper"
+                  elif path == "data/Rotor_simulation" or path == "paper/LQ_vibench_fix":
+                      classification = "personal"
+                  else:
+                      classification = "unclassified"
+          '''
+          new_submodule = '''        if path in {"data/Rotor_simulation", "paper/LQ_vibench_fix"}:
+                      classification = "personal"
+                  elif path.startswith("paper/"):
+                      classification = "paper"
+                  else:
+                      classification = "unclassified"
+          '''
+          if old_submodule not in text:
+              raise SystemExit('submodule classification block not found')
+          text = text.replace(old_submodule, new_submodule, 1)
+
+          old_reader = '''        if not source.strip() or (not executable_nodes and not source.replace("#", "").strip()):
+                      status = "placeholder"
+                  elif read_record is not None and (metadata_refs or module == "Dummy_Data"):
+                      status = "maintained"
+                  elif read_record is not None and not module.startswith(("RM_", "Dummy_")):
+                      status = "compatibility"
+                  elif read_record is not None:
+                      status = "unverified"
+                  else:
+                      status = "experimental"
+          '''
+          new_reader = '''        if not source.strip() or (not executable_nodes and not source.replace("#", "").strip()):
+                      status = "placeholder"
+                  elif read_record is not None and not module.startswith(("RM_", "Dummy_")):
+                      status = "unverified"
+                  elif read_record is not None and (metadata_refs or module == "Dummy_Data"):
+                      status = "maintained"
+                  elif read_record is not None:
+                      status = "unverified"
+                  else:
+                      status = "experimental"
+          '''
+          if old_reader not in text:
+              raise SystemExit('reader classification block not found')
+          text = text.replace(old_reader, new_reader, 1)
+
+          old_note = '''        if read_record is None:
+                      notes.append("no top-level read callable")
+                  if status in {"unverified", "placeholder", "experimental"}:
+                      notes.append("presence is not a maintained-support claim")
+          '''
+          new_note = '''        if read_record is None:
+                      notes.append("no top-level read callable")
+                  if read_record is not None and not module.startswith(("RM_", "Dummy_")):
+                      notes.append("legacy non-RM module name and interface require implementation-aware review")
+                  if status in {"unverified", "placeholder", "experimental"}:
+                      notes.append("presence is not a maintained-support claim")
+          '''
+          if old_note not in text:
+              raise SystemExit('reader notes block not found')
+          text = text.replace(old_note, new_note, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          python -m py_compile tools/repo/v030_generate_baseline.py
+
+      - name: Export immutable runtime snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/phmfactory-v030-baseline
+          mkdir -p /tmp/phmfactory-v030-baseline
+          git archive "${BASELINE_COMMIT}" | tar -x -C /tmp/phmfactory-v030-baseline
+
+      - name: Regenerate and verify deterministic output
+        shell: bash
+        run: |
+          set -euo pipefail
+          outputs=(
+            .github/phmfactory-v0.3-submodules.allowlist.yml
+            docs/archive/audits/phmfactory-v0.3-runtime-reader-baseline.md
+            docs/archive/audits/phmfactory-v0.3-reader-inventory.csv
+            docs/archive/audits/phmfactory-v0.3-protected-runtime-fingerprints.json
+            docs/archive/audits/phmfactory-v0.3-personal-path-inventory.csv
+            docs/archive/audits/phmfactory-v0.3-boundary-inventory.csv
+            docs/archive/audits/phmfactory-v0.3-submodule-baseline.csv
+          )
+          python tools/repo/v030_generate_baseline.py \
+            --snapshot-root /tmp/phmfactory-v030-baseline \
+            --output-root . | tee /tmp/summary-first.json
+          sha256sum "${outputs[@]}" > /tmp/output-first.sha256
+          python tools/repo/v030_generate_baseline.py \
+            --snapshot-root /tmp/phmfactory-v030-baseline \
+            --output-root . > /tmp/summary-second.json
+          sha256sum "${outputs[@]}" > /tmp/output-second.sha256
+          diff -u /tmp/summary-first.json /tmp/summary-second.json
+          diff -u /tmp/output-first.sha256 /tmp/output-second.sha256
+
+          grep -q '^THU,.*unverified,' docs/archive/audits/phmfactory-v0.3-reader-inventory.csv
+          grep -q '^THU24,.*placeholder,' docs/archive/audits/phmfactory-v0.3-reader-inventory.csv
+          grep -q 'path: "paper/LQ_vibench_fix"' .github/phmfactory-v0.3-submodules.allowlist.yml
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('.github/phmfactory-v0.3-submodules.allowlist.yml').read_text()
+          block = text.split('path: "paper/LQ_vibench_fix"', 1)[1].split('  - path:', 1)[0]
+          if 'classification: personal' not in block:
+              raise SystemExit('LQ_vibench_fix is not classified as personal')
+          PY
+
+      - name: Commit corrected generator and artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -- .github/workflows/v030-regenerate-baseline-fixes.yml
+          git add \
+            tools/repo/v030_generate_baseline.py \
+            .github/phmfactory-v0.3-submodules.allowlist.yml \
+            docs/archive/audits/phmfactory-v0.3-runtime-reader-baseline.md \
+            docs/archive/audits/phmfactory-v0.3-reader-inventory.csv \
+            docs/archive/audits/phmfactory-v0.3-personal-path-inventory.csv \
+            docs/archive/audits/phmfactory-v0.3-boundary-inventory.csv \
+            docs/archive/audits/phmfactory-v0.3-submodule-baseline.csv
+          git add -f docs/archive/audits/phmfactory-v0.3-protected-runtime-fingerprints.json
+
+          unexpected="$(
+            git diff --cached --name-only \
+              | grep -Ev '^\.github/workflows/v030-regenerate-baseline-fixes\.yml$|^tools/repo/v030_generate_baseline\.py$|^\.github/phmfactory-v0\.3-submodules\.allowlist\.yml$|^docs/archive/audits/phmfactory-v0\.3-(runtime-reader-baseline\.md|reader-inventory\.csv|protected-runtime-fingerprints\.json|personal-path-inventory\.csv|boundary-inventory\.csv|submodule-baseline\.csv)$' \
+              || true
+          )"
+          if [ -n "${unexpected}" ]; then
+            printf 'Correction escaped approved PR-02 paths:\n%s\n' "${unexpected}" >&2
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(v0.3): correct reader and submodule baseline classifications'
+          git push origin "HEAD:${TARGET_BRANCH}"
