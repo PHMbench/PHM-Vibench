@@ -1,6 +1,11 @@
 name: Archive PHMFactory legacy app workspace
 
 on:
+  pull_request:
+    branches:
+      - agent/v030-requirements-ownership-pr08
+    paths:
+      - .github/workflows/v030-archive-legacy-app.yml
   push:
     branches:
       - agent/v030-ui-consolidation-pr09
