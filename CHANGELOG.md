@@ -55,6 +55,9 @@ results, and historical prototypes are moved to their correct ownership boundari
   release readiness, and bounded workspace migration.
 - Added explicit PHMFactory v0.3 repository, reader-preservation, Pipeline-name,
   dependency-boundary, CWRU, and release-readiness documents.
+- Added machine-readable and human-readable v0.2.0 release-candidate provenance under
+  `docs/releases/`, anchored to commit
+  `a331769d4005018bc833534ecf4efeb5e8a5a78d`.
 
 ### Changed
 
@@ -79,6 +82,8 @@ results, and historical prototypes are moved to their correct ownership boundari
   while treating `corpus.xlsx` as optional for the current fault-diagnosis quickstart.
 - Added a public façade around the established `src.*` runtime instead of moving the
   four mature factory trees during v0.3.0.
+- Resolved the missing-v0.2-tag ambiguity by recording v0.2.0 as a release-candidate
+  baseline rather than creating a retroactive final tag.
 
 ### Preserved
 
@@ -156,6 +161,22 @@ results, and historical prototypes are moved to their correct ownership boundari
 - Remaining paper gitlinks are not removed merely because similarly named destination
   repositories exist; content-level verification remains mandatory.
 
+### v0.2 release-candidate provenance
+
+The v0.3 migration uses this immutable baseline:
+
+```text
+project:         PHM-Vibench
+version label:   v0.2.0
+status:          release_candidate
+formal release:  false
+baseline commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+tag present:     false
+```
+
+The authority is `docs/releases/v0.2.0-rc-provenance.yaml`. A final v0.2.0 tag is not
+created retroactively, and published history is not rewritten.
+
 ### Validation state
 
 The staged v0.3 PR chain includes focused gates for:
@@ -169,7 +190,7 @@ The staged v0.3 PR chain includes focused gates for:
 - dependency ownership;
 - Streamlit imports and lifecycle behavior on Linux and Windows;
 - case-insensitive repository paths;
-- release-readiness blocker reporting.
+- release-readiness blocker reporting, including exact v0.2 provenance validation.
 
 Passing smoke and contract tests establishes software-path evidence, not benchmark
 performance or universal component compatibility.
@@ -179,7 +200,6 @@ performance or universal component compatibility.
 v0.3.0 must not be tagged or published until all of the following are resolved:
 
 - the staged PR chain is reviewed and merged in dependency order;
-- the v0.2 baseline or release-candidate provenance is explicitly resolved;
 - Hugging Face and ModelScope CWRU revisions and SHA-256 values are pinned;
 - cross-provider required-file parity passes against the public services;
 - the optional `phm-data-factory` backend disposition is finalized;
