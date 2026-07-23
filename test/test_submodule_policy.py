@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import sys
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "tools/repo/check_submodule_policy.py"
 SPEC = importlib.util.spec_from_file_location("check_submodule_policy", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 policy = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = policy
 SPEC.loader.exec_module(policy)
 
 
