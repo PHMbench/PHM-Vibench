@@ -33,6 +33,22 @@ upstream-archive/phmfactory-v0.3.0/dev-history/dev/
 Every regular file and symlink was reconstructed from the immutable Git object
 and rehashed with the Git blob algorithm.
 
+The stacked public branch contained 113 `dev/` files at deletion time because
+`dev/test_history/AGENTS.md` had already been independently archived and removed
+in PR #88. Thus the private archive preserves the complete 114-file frozen
+baseline while this PR removes the 113 files still present in its base branch.
+
+## Guarded deletion
+
+```text
+deletion commit: 473b2b805fc506f103db2fd439a6d65f4080fb45
+scope check:      PASS
+```
+
+The same-repository workflow verified exact path counts, rejected consumers in
+runtime/config/test/script/CI surfaces, removed only `.archive/` and `dev/`, and
+removed its own temporary workflow.
+
 ## Boundary
 
 The removed trees are historical reports, scratch scripts, local development
