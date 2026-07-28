@@ -1,0 +1,34 @@
+name: Pull request base policy
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out trusted base branch policy
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Evaluate auditable main/dev topology
+        env:
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          python tools/repo/check_pr_base_policy.py \
+            --base "$BASE_BRANCH" \
+            --head "$HEAD_BRANCH" \
+            --number "$PR_NUMBER" \
+            --labels-json "$LABELS_JSON"
