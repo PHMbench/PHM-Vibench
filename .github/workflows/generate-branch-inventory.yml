@@ -1,0 +1,343 @@
+name: Generate branch governance inventory
+
+on:
+  push:
+    branches:
+      - cleanup/branch-inventory-20260728
+    paths:
+      - .github/workflows/generate-branch-inventory.yml
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out inventory branch
+        uses: actions/checkout@v4
+        with:
+          ref: cleanup/branch-inventory-20260728
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Fetch all branch and PR refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+          gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state all \
+            --limit 500 \
+            --json number,state,isDraft,mergedAt,headRefName,baseRefName,headRefOid,url,title \
+            > /tmp/prs.json
+
+      - name: Generate decision matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'PyYAML>=6.0'
+          python - <<'PY'
+          from __future__ import annotations
+
+          import csv
+          import json
+          import subprocess
+          from collections import Counter, defaultdict
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          import yaml
+
+          ROOT = Path.cwd()
+          OUT = ROOT / "docs/archive/audits"
+          OUT.mkdir(parents=True, exist_ok=True)
+
+          PHYSICAL_PRS = {108, 110, 113, 114, 119, 120, 122}
+          CONTENT_PORT_PRS = {117, 121}
+          REBUILD_PRS = {35, 42, 79, 80, 81, 83}
+          SALVAGE_BRANCHES = {
+              "Feature_factory-update": "split into generative runtime, registry/config, smoke, evidence tools, and research-material disposition",
+              "lq_merge_UXFD": "split into TSPN_UXFD runtime, configs/registry, NSN wrapper, artifact tools, and paper material",
+              "fea_X_model": "rebuild the still-useful six-file TSPN/X-model delta from current dev",
+          }
+          CANONICAL = "agent/v030-canonical-integration-r2"
+
+          def run(*args: str, check: bool = True) -> str:
+              completed = subprocess.run(
+                  args,
+                  cwd=ROOT,
+                  check=check,
+                  text=True,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+              )
+              return completed.stdout.strip()
+
+          def is_ancestor(older: str, newer: str) -> bool:
+              result = subprocess.run(
+                  ["git", "merge-base", "--is-ancestor", older, newer],
+                  cwd=ROOT,
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              )
+              return result.returncode == 0
+
+          def counts(base: str, head: str) -> tuple[int, int]:
+              left, right = run("git", "rev-list", "--left-right", "--count", f"{base}...{head}").split()
+              return int(right), int(left)
+
+          def unique_file_count(base: str, head: str) -> int:
+              names = run("git", "diff", "--name-only", f"{base}...{head}", check=False)
+              return len([line for line in names.splitlines() if line.strip()])
+
+          prs = json.loads(Path("/tmp/prs.json").read_text(encoding="utf-8"))
+          prs_by_branch: dict[str, list[dict[str, object]]] = defaultdict(list)
+          for pr in prs:
+              prs_by_branch[str(pr.get("headRefName") or "")].append(pr)
+          for values in prs_by_branch.values():
+              values.sort(key=lambda item: int(item["number"]), reverse=True)
+
+          refs = run(
+              "git",
+              "for-each-ref",
+              "--format=%(refname:strip=3)%09%(objectname)%09%(committerdate:iso8601-strict)%09%(authorname)",
+              "refs/remotes/origin/",
+          )
+
+          rows: list[dict[str, object]] = []
+          for raw in refs.splitlines():
+              if not raw.strip():
+                  continue
+              branch, sha, committed_at, author = raw.split("\t", 3)
+              if branch == "HEAD":
+                  continue
+
+              branch_prs = prs_by_branch.get(branch, [])
+              latest = branch_prs[0] if branch_prs else {}
+              pr_numbers = [int(pr["number"]) for pr in branch_prs]
+              open_prs = [pr for pr in branch_prs if str(pr.get("state")) == "OPEN"]
+              merged_prs = [pr for pr in branch_prs if pr.get("mergedAt")]
+              closed_unmerged = [
+                  pr for pr in branch_prs
+                  if str(pr.get("state")) == "CLOSED" and not pr.get("mergedAt")
+              ]
+
+              ahead_main, behind_main = counts("origin/main", sha)
+              ahead_dev, behind_dev = counts("origin/dev", sha)
+              ancestor_main = is_ancestor(sha, "origin/main")
+              ancestor_dev = is_ancestor(sha, "origin/dev")
+              physical = bool(PHYSICAL_PRS.intersection(pr_numbers))
+              content_port = bool(CONTENT_PORT_PRS.intersection(pr_numbers))
+              rebuild = bool(REBUILD_PRS.intersection(pr_numbers))
+
+              if branch == "main":
+                  decision, reason, batch = "retain_permanent", "user-facing stable/default branch", "K0"
+              elif branch == "dev":
+                  decision, reason, batch = "retain_permanent", "development and integration branch", "K0"
+              elif branch == CANONICAL:
+                  decision, reason, batch = (
+                      "hold_until_canonical_post_merge",
+                      "PR #127 source and ancestry authority; delete last after main/dev synchronization",
+                      "K1/R14",
+                  )
+              elif branch in SALVAGE_BRANCHES:
+                  decision, reason, batch = "salvage_by_vertical_slice", SALVAGE_BRANCHES[branch], "K4/R07"
+              elif rebuild:
+                  decision, reason, batch = (
+                      "rebuild_from_dev",
+                      f"legacy PR(s) {','.join('#' + str(n) for n in sorted(REBUILD_PRS.intersection(pr_numbers)))} require bounded replacement",
+                      "K5/R07",
+                  )
+              elif physical:
+                  decision, reason, batch = (
+                      "hold_physical_ancestry",
+                      "required source-head ancestry for canonical PR until merged main is verified",
+                      "K1/R06",
+                  )
+              elif content_port:
+                  decision, reason, batch = (
+                      "hold_content_port_evidence",
+                      "content-port mapping and superseding commit must be retained before deletion",
+                      "K1/R08",
+                  )
+              elif open_prs:
+                  decision, reason, batch = "hold_open_pr", "branch has an open pull request", "review"
+              elif ancestor_main or ancestor_dev:
+                  decision, reason, batch = (
+                      "delete_after_ledger",
+                      "head is already contained in main or dev and no protected evidence dependency was detected",
+                      "R04-R06",
+                  )
+              elif branch.startswith("agent/") and ("validation" in branch or "staging" in branch):
+                  decision, reason, batch = (
+                      "review_validation_or_staging",
+                      "agent validation/staging branch is non-ancestor and needs exact superseding proof",
+                      "R04-R05",
+                  )
+              else:
+                  decision, reason, batch = (
+                      "manual_salvage_review",
+                      "non-ancestor branch with no complete automated disposition",
+                      "R07",
+                  )
+
+              rows.append({
+                  "branch": branch,
+                  "head_sha": sha,
+                  "last_commit_at": committed_at,
+                  "last_author": author,
+                  "protected": str(branch in {"main", "dev"}).lower(),
+                  "default_branch": str(branch == "main").lower(),
+                  "open_pr": str(bool(open_prs)).lower(),
+                  "closed_pr": str(bool(closed_unmerged)).lower(),
+                  "merged_pr": str(bool(merged_prs)).lower(),
+                  "pr_numbers": ",".join(str(n) for n in pr_numbers),
+                  "latest_pr_number": latest.get("number", ""),
+                  "latest_pr_base": latest.get("baseRefName", ""),
+                  "latest_pr_url": latest.get("url", ""),
+                  "ahead_main": ahead_main,
+                  "behind_main": behind_main,
+                  "ahead_dev": ahead_dev,
+                  "behind_dev": behind_dev,
+                  "ancestor_of_main": str(ancestor_main).lower(),
+                  "ancestor_of_dev": str(ancestor_dev).lower(),
+                  "unique_commit_count_vs_dev": ahead_dev,
+                  "unique_file_count_vs_dev": unique_file_count("origin/dev", sha),
+                  "physical_ancestry_required": str(physical).lower(),
+                  "content_port_required": str(content_port).lower(),
+                  "decision": decision,
+                  "reason": reason,
+                  "delete_batch": batch,
+              })
+
+          rows.sort(key=lambda item: str(item["branch"]).casefold())
+          columns = list(rows[0].keys()) if rows else []
+          tsv_path = OUT / "branch-inventory-20260728.tsv"
+          with tsv_path.open("w", encoding="utf-8", newline="") as handle:
+              writer = csv.DictWriter(handle, fieldnames=columns, delimiter="\t", lineterminator="\n")
+              writer.writeheader()
+              writer.writerows(rows)
+
+          decisions = Counter(str(row["decision"]) for row in rows)
+          decision_payload = {
+              "schema_version": 1,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "repository": "PHMbench/PHM-Vibench",
+              "main_sha": run("git", "rev-parse", "origin/main"),
+              "dev_sha": run("git", "rev-parse", "origin/dev"),
+              "branch_count": len(rows),
+              "destructive_actions_performed": False,
+              "decision_counts": dict(sorted(decisions.items())),
+              "hard_gates": {
+                  "pr_127_merged": False,
+                  "main_post_merge_ci": False,
+                  "dev_synchronized_after_pr127": False,
+                  "deletion_ledger_required": True,
+                  "force_push_forbidden": True,
+              },
+              "branches": [
+                  {
+                      "branch": row["branch"],
+                      "head_sha": row["head_sha"],
+                      "decision": row["decision"],
+                      "reason": row["reason"],
+                      "delete_batch": row["delete_batch"],
+                  }
+                  for row in rows
+              ],
+          }
+          (OUT / "branch-decision-20260728.yaml").write_text(
+              yaml.safe_dump(decision_payload, sort_keys=False, allow_unicode=True),
+              encoding="utf-8",
+          )
+
+          special = {row["branch"]: row for row in rows if row["branch"] in SALVAGE_BRANCHES}
+          md = [
+              "# PHM-Vibench branch salvage map — 2026-07-28",
+              "",
+              "> Read-only inventory. No branch was deleted, moved, force-pushed, or merged by this task.",
+              "",
+              f"- Total remote branches: **{len(rows)}**",
+              f"- Main SHA: `{decision_payload['main_sha']}`",
+              f"- Dev SHA: `{decision_payload['dev_sha']}`",
+              "",
+              "## Decision counts",
+              "",
+              "| Decision | Count |",
+              "|---|---:|",
+          ]
+          md.extend(f"| `{key}` | {value} |" for key, value in sorted(decisions.items()))
+          md.extend([
+              "",
+              "## Divergent branches requiring extraction",
+              "",
+              "| Branch | Ahead of dev | Behind dev | Unique files | Required action |",
+              "|---|---:|---:|---:|---|",
+          ])
+          for branch in ("Feature_factory-update", "lq_merge_UXFD", "fea_X_model"):
+              row = special.get(branch)
+              if row:
+                  md.append(
+                      f"| `{branch}` | {row['ahead_dev']} | {row['behind_dev']} | "
+                      f"{row['unique_file_count_vs_dev']} | {SALVAGE_BRANCHES[branch]} |"
+                  )
+          md.extend([
+              "",
+              "## Rebuild-required PRs",
+              "",
+              "`#35`, `#42`, `#79`, `#80`, `#81`, and `#83` must be rebuilt from current `dev`; their source branches are not direct merge candidates.",
+              "",
+              "## Deletion gate",
+              "",
+              "A branch may be deleted only after its head SHA, ancestry/content-port proof, superseding commit, operator, timestamp, and restore command are recorded in a deletion ledger.",
+              "",
+              "The canonical branch `agent/v030-canonical-integration-r2` is the last v0.3 integration branch eligible for deletion.",
+          ])
+          (OUT / "branch-salvage-map-20260728.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+          PY
+
+      - name: Validate inventory artifacts
+        run: |
+          test -s docs/archive/audits/branch-inventory-20260728.tsv
+          test -s docs/archive/audits/branch-decision-20260728.yaml
+          test -s docs/archive/audits/branch-salvage-map-20260728.md
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          import yaml
+
+          with Path("docs/archive/audits/branch-inventory-20260728.tsv").open(encoding="utf-8", newline="") as handle:
+              rows = list(csv.DictReader(handle, delimiter="\t"))
+          names = {row["branch"] for row in rows}
+          assert {"main", "dev", "agent/v030-canonical-integration-r2"}.issubset(names)
+          assert len(rows) >= 2
+          payload = yaml.safe_load(Path("docs/archive/audits/branch-decision-20260728.yaml").read_text(encoding="utf-8"))
+          assert payload["branch_count"] == len(rows)
+          assert payload["destructive_actions_performed"] is False
+          PY
+          git diff --check
+
+      - name: Commit workflow-free inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/generate-branch-inventory.yml
+          git add \
+            docs/archive/audits/branch-inventory-20260728.tsv \
+            docs/archive/audits/branch-decision-20260728.yaml \
+            docs/archive/audits/branch-salvage-map-20260728.md
+          git commit -m "docs(governance): inventory remote branches"
+          git push origin HEAD:cleanup/branch-inventory-20260728
