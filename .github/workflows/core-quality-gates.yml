@@ -196,7 +196,8 @@ jobs:
             "PyYAML>=6.0" \
             "matplotlib" \
             "tensorboard" \
-            "openpyxl"
+            "openpyxl" \
+            "pytest>=7"
 
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
@@ -211,6 +212,28 @@ jobs:
             --override data.num_workers=0 \
             2>&1 | tee offline-smoke.log
 
+      - name: Validate doctor and local-override-safe demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p configs/local
+          cat > configs/local/local.yaml <<'YAML'
+          data:
+            data_dir: /definitely/not/the/dummy/data
+            metadata_file: external.xlsx
+            num_workers: 37
+          trainer:
+            num_epochs: 99
+            device: gpu
+            gpus: 8
+          environment:
+            output_dir: /definitely/not/the/dummy/output
+          YAML
+          python -m pytest -q test/test_phm_user_cli.py
+          python -m scripts.phm doctor
+          python -m scripts.phm demo 2>&1 | tee phm-helper-smoke.log
+          rm -f configs/local/local.yaml
+
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -218,6 +241,7 @@ jobs:
           name: offline-smoke-diagnostics
           path: |
             offline-smoke.log
+            phm-helper-smoke.log
             offline-smoke-environment.txt
           if-no-files-found: warn
           retention-days: 7
