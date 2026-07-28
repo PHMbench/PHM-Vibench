@@ -17,8 +17,9 @@ python -m scripts.phm doctor
 ```
 
 The command checks Python, the repository entrypoint, the maintained smoke config,
-output-directory writability, and the core Python imports. It does not start training
-and exits non-zero with a remediation message when a required check fails.
+Dummy metadata, output-directory writability, and the unconditional Python imports
+required by the smoke Pipeline, including PyTorch Lightning. It does not start
+training and exits non-zero with a remediation message when a required check fails.
 
 The shortest maintained offline run is:
 
@@ -26,8 +27,15 @@ The shortest maintained offline run is:
 python -m scripts.phm demo
 ```
 
-This is a thin wrapper around the existing one-epoch Dummy command. Inspect the exact
-command without starting a subprocess with `python -m scripts.phm demo --dry-run`.
+The helper resolves the maintained Dummy configuration and re-applies every resolved
+leaf value as a CLI-precedence override. Therefore a machine-local
+`configs/local/local.yaml` cannot redirect the Dummy data path, metadata, device,
+epoch count, worker count, model/task selection, or output directory. Inspect the
+exact command without starting a subprocess with:
+
+```bash
+python -m scripts.phm demo --dry-run
+```
 
 ## 3. Inspect the configuration
 
