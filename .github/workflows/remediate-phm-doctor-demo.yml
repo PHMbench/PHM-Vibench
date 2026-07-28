@@ -1,0 +1,292 @@
+name: Remediate PHMFactory doctor and demo review
+
+on:
+  push:
+    branches:
+      - feat/phm-doctor-demo
+    paths:
+      - .github/workflows/remediate-phm-doctor-demo.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/phm-doctor-demo
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Apply bounded review fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one target, found {count}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "scripts/phm.py",
+              "import tempfile\nfrom dataclasses import dataclass\n",
+              "import tempfile\nfrom copy import deepcopy\nfrom dataclasses import dataclass\n",
+          )
+          replace_once(
+              "scripts/phm.py",
+              'REQUIRED_MODULES = ("yaml", "torch", "numpy", "pandas")\n',
+              'REQUIRED_MODULES = ("yaml", "torch", "pytorch_lightning", "numpy", "pandas")\n',
+          )
+
+          start = Path("scripts/phm.py").read_text(encoding="utf-8").index("def demo_command(\n")
+          end = Path("scripts/phm.py").read_text(encoding="utf-8").index("\n\ndef build_parser()", start)
+          path = Path("scripts/phm.py")
+          text = path.read_text(encoding="utf-8")
+          replacement = '''def _isolated_smoke_config(
+              root: Path,
+              directory: Path,
+              *,
+              epochs: int,
+              num_workers: int,
+          ) -> Path:
+              """Write a fully resolved smoke config outside the local-override lookup tree."""
+              import yaml
+              from phmfactory.config import resolve_config
+
+              if epochs <= 0:
+                  raise ValueError("epochs must be a positive integer")
+              if num_workers < 0:
+                  raise ValueError("num_workers cannot be negative")
+
+              previous = Path.cwd()
+              try:
+                  os.chdir(root)
+                  resolved = resolve_config(SMOKE_CONFIG)
+              finally:
+                  os.chdir(previous)
+
+              payload = deepcopy(resolved.data)
+              payload.setdefault("data", {})["data_dir"] = str((root / "data").resolve())
+              payload["data"]["metadata_file"] = "metadata_dummy.csv"
+              payload["data"]["num_workers"] = num_workers
+              payload.setdefault("environment", {})["output_dir"] = str(
+                  (root / SMOKE_OUTPUT).resolve()
+              )
+              payload.setdefault("trainer", {})["num_epochs"] = epochs
+              payload["trainer"]["device"] = "cpu"
+              payload["trainer"]["gpus"] = 1
+
+              target = directory / "dummy_dg_isolated.yaml"
+              target.write_text(
+                  yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+                  encoding="utf-8",
+              )
+              return target
+
+
+          def demo_command(root: Path, config_path: Path) -> list[str]:
+              return [
+                  sys.executable,
+                  str(root / "main.py"),
+                  "--config",
+                  str(config_path),
+              ]
+
+
+          def run_demo(
+              root: Path | None = None,
+              *,
+              epochs: int = 1,
+              num_workers: int = 0,
+              dry_run: bool = False,
+              runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+          ) -> int:
+              resolved_root = (root or repository_root()).resolve()
+              with tempfile.TemporaryDirectory(prefix="phmfactory-demo-") as temp_dir:
+                  isolated_root = Path(temp_dir)
+                  config_path = _isolated_smoke_config(
+                      resolved_root,
+                      isolated_root,
+                      epochs=epochs,
+                      num_workers=num_workers,
+                  )
+                  command = demo_command(resolved_root, config_path)
+                  print("command:", " ".join(command))
+                  print("local overrides: disabled by isolated working directory")
+                  if dry_run:
+                      print("demo: DRY RUN")
+                      return 0
+                  completed = runner(
+                      command,
+                      cwd=isolated_root,
+                      check=False,
+                      text=True,
+                      shell=False,
+                  )
+              if completed.returncode == 0:
+                  print(f"demo: PASS; inspect {resolved_root / SMOKE_OUTPUT}")
+              else:
+                  print(f"demo: FAIL (exit={completed.returncode})", file=sys.stderr)
+              return int(completed.returncode)
+          '''
+          replacement = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in replacement.splitlines()
+          )
+          path.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
+
+          tests = Path("test/test_phm_user_cli.py")
+          text = tests.read_text(encoding="utf-8")
+          text = text.replace(
+              '              (root / phm.SMOKE_CONFIG).write_text("pipeline: Pipeline_01_Fault_Diagnosis\\n", encoding="utf-8")\n',
+              '''              (root / "data").mkdir()
+              (root / "data/metadata_dummy.csv").write_text("Id,File_name\\n", encoding="utf-8")
+              (root / phm.SMOKE_CONFIG).write_text(
+                  "pipeline: Pipeline_01_Fault_Diagnosis\\n"
+                  "data:\\n  data_dir: external-would-be-wrong\\n  metadata_file: wrong.csv\\n"
+                  "environment:\\n  output_dir: wrong-output\\n"
+                  "trainer:\\n  num_epochs: 9\\n  device: gpu\\n  gpus: 8\\n",
+                  encoding="utf-8",
+              )
+              ''',
+              1,
+          )
+          old_test = '''def test_demo_uses_argument_list_and_existing_main_path(tmp_path: Path) -> None:
+              root = make_repo(tmp_path)
+              observed = {}
+
+              def runner(command, **kwargs):
+                  observed["command"] = command
+                  observed.update(kwargs)
+                  return subprocess.CompletedProcess(command, 0)
+
+              assert phm.run_demo(root, runner=runner) == 0
+              assert observed["command"] == [
+                  phm.sys.executable,
+                  str(root / "main.py"),
+                  "--config",
+                  str(phm.SMOKE_CONFIG),
+                  "--override",
+                  "trainer.num_epochs=1",
+                  "--override",
+                  "data.num_workers=0",
+              ]
+              assert observed["cwd"] == root.resolve()
+              assert observed["shell"] is False
+          '''
+          old_test = "\n".join(
+              line[14:] if line.startswith("              ") else line
+              for line in old_test.splitlines()
+          )
+          new_test = '''def test_demo_uses_isolated_resolved_config(tmp_path: Path) -> None:
+              import yaml
+
+              root = make_repo(tmp_path)
+              observed = {}
+
+              def runner(command, **kwargs):
+                  observed["command"] = command
+                  observed["payload"] = yaml.safe_load(Path(command[3]).read_text(encoding="utf-8"))
+                  observed.update(kwargs)
+                  return subprocess.CompletedProcess(command, 0)
+
+              assert phm.run_demo(root, runner=runner) == 0
+              assert observed["command"][:3] == [
+                  phm.sys.executable,
+                  str(root / "main.py"),
+                  "--config",
+              ]
+              payload = observed["payload"]
+              assert payload["data"]["data_dir"] == str((root / "data").resolve())
+              assert payload["data"]["metadata_file"] == "metadata_dummy.csv"
+              assert payload["data"]["num_workers"] == 0
+              assert payload["trainer"]["num_epochs"] == 1
+              assert payload["trainer"]["device"] == "cpu"
+              assert payload["environment"]["output_dir"] == str((root / phm.SMOKE_OUTPUT).resolve())
+              assert observed["cwd"] != root.resolve()
+              assert not (observed["cwd"] / "configs/local/local.yaml").exists()
+              assert observed["shell"] is False
+          '''
+          new_test = "\n".join(
+              line[14:] if line.startswith("              ") else line
+              for line in new_test.splitlines()
+          )
+          if old_test not in text:
+              raise SystemExit("demo unit-test replacement target missing")
+          text = text.replace(old_test, new_test, 1)
+          old_bounds = '''    root = make_repo(tmp_path)
+              with pytest.raises(ValueError):
+                  phm.demo_command(root, epochs=epochs, num_workers=workers)
+          '''
+          old_bounds = "\n".join(
+              line[14:] if line.startswith("              ") else line
+              for line in old_bounds.splitlines()
+          )
+          new_bounds = '''    root = make_repo(tmp_path)
+              with pytest.raises(ValueError):
+                  phm.run_demo(root, epochs=epochs, num_workers=workers, dry_run=True)
+          '''
+          new_bounds = "\n".join(
+              line[14:] if line.startswith("              ") else line
+              for line in new_bounds.splitlines()
+          )
+          if old_bounds not in text:
+              raise SystemExit("bounds-test replacement target missing")
+          tests.write_text(text.replace(old_bounds, new_bounds, 1), encoding="utf-8")
+
+          replace_once(
+              "docs/quickstart.md",
+              "This is a thin wrapper around the existing one-epoch Dummy command. Inspect the exact\ncommand without starting a subprocess with `python -m scripts.phm demo --dry-run`.\n",
+              "This resolves the Dummy config into a temporary YAML with repository-absolute dummy\npaths and runs it from an isolated working directory, so `configs/local/local.yaml`\ncannot redirect the offline demo. Inspect the command without starting a subprocess\nwith `python -m scripts.phm demo --dry-run`.\n",
+          )
+          PY
+
+      - name: Install focused dependencies
+        run: python -m pip install --disable-pip-version-check pytest PyYAML
+
+      - name: Validate review fixes
+        run: |
+          python -m py_compile scripts/phm.py test/test_phm_user_cli.py
+          python -m pytest -q test/test_phm_user_cli.py
+          python -m scripts.phm --help
+          python -m scripts.phm demo --dry-run
+          python -m scripts.validate_docs
+          git diff --check
+
+      - name: Commit workflow-free remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/remediate-phm-doctor-demo.yml
+          git add scripts/phm.py test/test_phm_user_cli.py docs/quickstart.md
+          git commit -m "fix(cli): isolate demo and complete doctor checks"
+          git push origin HEAD:feat/phm-doctor-demo
+
+      - name: Record review remediation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/PHMbench/PHM-Vibench/issues/132/comments \
+            -f body="DOCTOR_DEMO_REVIEW_REMEDIATION_PASS
+          run_id: ${GITHUB_RUN_ID}
+          validated_head: $(git rev-parse HEAD)
+          local_override_isolated: true
+          pytorch_lightning_checked: true"
