@@ -1,0 +1,426 @@
+name: Remediate PR 127 runtime review follow-up
+
+on:
+  push:
+    branches:
+      - agent/v030-canonical-integration-r2
+    paths:
+      - .github/workflows/remediate-pr127-runtime-followup.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out canonical branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/v030-canonical-integration-r2
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Apply bounded runtime follow-up
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement target, found {count}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "phmfactory/data_sources/bundle.py",
+              "import shutil\nimport subprocess\n",
+              "import shutil\nimport subprocess\nimport tempfile\n",
+          )
+
+          helper_marker = "\n\ndef download_bundle(\n"
+          helpers = '''
+
+          def _read_provenance(root: Path) -> Mapping[str, Any]:
+              path = root / ".phmfactory-bundle.yaml"
+              if not path.is_file():
+                  return {}
+              try:
+                  payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+              except (OSError, yaml.YAMLError):
+                  return {}
+              return payload if isinstance(payload, Mapping) else {}
+
+
+          def _provenance_matches(
+              root: Path,
+              source: str,
+              revision: str,
+              validation: BundleValidation,
+          ) -> bool:
+              payload = _read_provenance(root)
+              if payload.get("provider") != source:
+                  return False
+              if str(payload.get("requested_revision") or "") != revision:
+                  return False
+              if bool(payload.get("corpus_present")) != validation.corpus_present:
+                  return False
+              recorded = payload.get("files")
+              if not isinstance(recorded, Mapping):
+                  return False
+              actual_names = {item.name for item in validation.files}
+              if set(str(name) for name in recorded) != actual_names:
+                  return False
+              for item in validation.files:
+                  entry = recorded.get(item.name)
+                  if not isinstance(entry, Mapping):
+                      return False
+                  if str(entry.get("sha256") or "").casefold() != item.sha256.casefold():
+                      return False
+                  try:
+                      if int(entry.get("size_bytes")) != item.size_bytes:
+                          return False
+                  except (TypeError, ValueError):
+                      return False
+              return True
+
+
+          def _replace_bundle_files(
+              root: Path,
+              staging: Path,
+              validation: BundleValidation,
+          ) -> None:
+              spec = validation.spec
+              declared = [spec.metadata_file, spec.signal_file, ".phmfactory-bundle.yaml"]
+              if spec.corpus_file:
+                  declared.append(spec.corpus_file)
+              root.mkdir(parents=True, exist_ok=True)
+              for name in declared:
+                  target = root / name
+                  if target.is_dir() and not target.is_symlink():
+                      shutil.rmtree(target)
+                  elif target.exists() or target.is_symlink():
+                      target.unlink()
+              for report in validation.files:
+                  _materialise(staging / report.name, root / report.name)
+          '''.replace("          ", "")
+          replace_once("phmfactory/data_sources/bundle.py", helper_marker, helpers + helper_marker)
+
+          old_download = '''    root = Path(destination or Path.home() / ".cache" / "phmfactory" / bundle_id)
+              root = root.expanduser().resolve()
+              root.mkdir(parents=True, exist_ok=True)
+
+              required_names = (spec.metadata_file, spec.signal_file)
+              if not force and all((root / name).is_file() for name in required_names):
+                  validation = validate_bundle(root, spec=spec)
+                  _write_provenance(root, source, requested_revision, validation)
+                  return BundleDownload(source, requested_revision, root, validation)
+
+              if source == "huggingface":
+                  _download_huggingface(spec, provider, root, requested_revision)
+              elif source == "modelscope":
+                  _download_modelscope(spec, provider, root, requested_revision)
+              else:  # guarded above; retained for explicit exhaustiveness
+                  raise ValueError(f"Unsupported provider implementation: {source}")
+
+              validation = validate_bundle(root, spec=spec)
+              _write_provenance(root, source, requested_revision, validation)
+              return BundleDownload(source, requested_revision, root, validation)
+          '''.replace("              ", "")
+          new_download = '''    root = Path(destination or Path.home() / ".cache" / "phmfactory" / bundle_id)
+              root = root.expanduser().resolve()
+              root.parent.mkdir(parents=True, exist_ok=True)
+              root.mkdir(parents=True, exist_ok=True)
+
+              required_names = (spec.metadata_file, spec.signal_file)
+              if not force and all((root / name).is_file() for name in required_names):
+                  try:
+                      validation = validate_bundle(root, spec=spec)
+                  except BundleValidationError:
+                      validation = None
+                  if validation is not None and _provenance_matches(
+                      root,
+                      source,
+                      requested_revision,
+                      validation,
+                  ):
+                      return BundleDownload(source, requested_revision, root, validation)
+
+              with tempfile.TemporaryDirectory(
+                  prefix=f".{bundle_id}-",
+                  dir=root.parent,
+              ) as temp_dir:
+                  staging = Path(temp_dir)
+                  if source == "huggingface":
+                      _download_huggingface(spec, provider, staging, requested_revision)
+                  elif source == "modelscope":
+                      _download_modelscope(spec, provider, staging, requested_revision)
+                  else:  # guarded above; retained for explicit exhaustiveness
+                      raise ValueError(f"Unsupported provider implementation: {source}")
+                  staged_validation = validate_bundle(staging, spec=spec)
+                  _replace_bundle_files(root, staging, staged_validation)
+
+              validation = validate_bundle(root, spec=spec)
+              _write_provenance(root, source, requested_revision, validation)
+              return BundleDownload(source, requested_revision, root, validation)
+          '''.replace("              ", "")
+          replace_once("phmfactory/data_sources/bundle.py", old_download, new_download)
+
+          replace_once(
+              "test/test_phmfactory_data_sources.py",
+              "from types import SimpleNamespace\n\nimport h5py\n",
+              "from types import SimpleNamespace\n\nimport h5py\nimport yaml\n",
+          )
+          download_test_marker = "\n\ndef test_modelscope_provider_uses_argument_list_without_shell(\n"
+          download_tests = '''
+
+          def test_download_reuses_only_matching_recorded_provenance(
+              tmp_path: Path,
+              monkeypatch: pytest.MonkeyPatch,
+          ) -> None:
+              remote_a = _write_bundle(tmp_path / "remote-a")
+              remote_b = _write_bundle(tmp_path / "remote-b")
+              with h5py.File(remote_b / "RM_001_CWRU.h5", "a") as handle:
+                  handle["1"][0, 0] = 7.0
+              calls: list[str] = []
+
+              def fake_download(spec, provider, root: Path, revision: str) -> None:
+                  calls.append(revision)
+                  remote = remote_a if revision == "revision-a" else remote_b
+                  for _, local_name, required in bundle_module._bundle_files(spec):
+                      source = remote / local_name
+                      if source.is_file():
+                          shutil.copy2(source, root / local_name)
+                      elif required:
+                          raise FileNotFoundError(source)
+
+              monkeypatch.setattr(bundle_module, "_download_huggingface", fake_download)
+              destination = tmp_path / "downloaded"
+              first = download_bundle(
+                  source="huggingface",
+                  destination=destination,
+                  revision="revision-a",
+              )
+              first_hash = {
+                  item.name: item.sha256 for item in first.validation.files
+              }["RM_001_CWRU.h5"]
+
+              reused = download_bundle(
+                  source="huggingface",
+                  destination=destination,
+                  revision="revision-a",
+              )
+              assert calls == ["revision-a"]
+              assert reused.validation.files == first.validation.files
+
+              refreshed = download_bundle(
+                  source="huggingface",
+                  destination=destination,
+                  revision="revision-b",
+              )
+              assert calls == ["revision-a", "revision-b"]
+              refreshed_hash = {
+                  item.name: item.sha256 for item in refreshed.validation.files
+              }["RM_001_CWRU.h5"]
+              assert refreshed_hash != first_hash
+              provenance = yaml.safe_load(
+                  (destination / ".phmfactory-bundle.yaml").read_text(encoding="utf-8")
+              )
+              assert provenance["provider"] == "huggingface"
+              assert provenance["requested_revision"] == "revision-b"
+
+
+          def test_forced_refresh_removes_stale_optional_file(
+              tmp_path: Path,
+              monkeypatch: pytest.MonkeyPatch,
+          ) -> None:
+              remote_with_corpus = _write_bundle(tmp_path / "with-corpus", include_corpus=True)
+              remote_without_corpus = _write_bundle(tmp_path / "without-corpus")
+              selected = {"revision-a": remote_with_corpus, "revision-b": remote_without_corpus}
+
+              def fake_download(spec, provider, root: Path, revision: str) -> None:
+                  remote = selected[revision]
+                  for _, local_name, required in bundle_module._bundle_files(spec):
+                      source = remote / local_name
+                      if source.is_file():
+                          shutil.copy2(source, root / local_name)
+                      elif required:
+                          raise FileNotFoundError(source)
+
+              monkeypatch.setattr(bundle_module, "_download_huggingface", fake_download)
+              destination = tmp_path / "downloaded"
+              first = download_bundle(
+                  source="huggingface",
+                  destination=destination,
+                  revision="revision-a",
+              )
+              assert first.validation.corpus_present is True
+              assert (destination / "corpus.xlsx").is_file()
+
+              refreshed = download_bundle(
+                  source="huggingface",
+                  destination=destination,
+                  revision="revision-b",
+                  force=True,
+              )
+              assert refreshed.validation.corpus_present is False
+              assert not (destination / "corpus.xlsx").exists()
+          '''.replace("          ", "")
+          replace_once(
+              "test/test_phmfactory_data_sources.py",
+              download_test_marker,
+              download_tests + download_test_marker,
+          )
+
+          replace_once(
+              "MIGRATION_v0.2_to_v0.3.md",
+              "    overrides=(\"trainer.num_epochs=1\", \"data.num_workers=0\"),\n",
+              "    override_values=(\"trainer.num_epochs=1\", \"data.num_workers=0\"),\n",
+          )
+
+          replace_once(
+              "apps/streamlit/run_service.py",
+              "        except OSError:\n            pass\n",
+              "        except (OSError, ValueError):\n            pass\n",
+          )
+          replace_once(
+              "apps/streamlit/run_service.py",
+              '''                    try:
+                          managed.log_handle.flush()
+                          managed.log_handle.close()
+                      except OSError:
+                          pass
+                      _atomic_write_json(_manifest_path(run_dir), payload)
+                      _PROCESSES.pop(key, None)
+              '''.replace("              ", ""),
+              '''                    # The monitor thread exclusively owns log-handle closure and
+                      # process-registry removal. get_run only reconciles durable state.
+                      _atomic_write_json(_manifest_path(run_dir), payload)
+              '''.replace("              ", ""),
+          )
+
+          replace_once(
+              "test/test_streamlit_run_service.py",
+              "import time\nfrom pathlib import Path\n",
+              "import time\nfrom pathlib import Path\nfrom types import SimpleNamespace\n",
+          )
+          replace_once(
+              "test/test_streamlit_run_service.py",
+              "import pytest\n\nfrom apps.streamlit.run_service import (\n",
+              "import pytest\n\nfrom apps.streamlit import run_service as run_service_module\nfrom apps.streamlit.run_service import (\n",
+          )
+          streamlit_marker = "\n\ndef test_detached_manifest_blocks_a_second_run_on_posix(tmp_path: Path):\n"
+          streamlit_test = '''
+
+          def test_get_run_reconciliation_leaves_log_handle_to_monitor(tmp_path: Path):
+              repo = make_repo(tmp_path)
+              run_id = "reconcile-run"
+              run_dir = repo / "outputs" / "streamlit" / run_id
+              run_dir.mkdir(parents=True)
+              (run_dir / "run.json").write_text(
+                  json.dumps({"run_id": run_id, "status": "running", "command": []}),
+                  encoding="utf-8",
+              )
+
+              class MonitorOwnedHandle:
+                  closed = False
+
+                  def flush(self) -> None:
+                      raise AssertionError("get_run must not flush the monitor-owned handle")
+
+                  def close(self) -> None:
+                      raise AssertionError("get_run must not close the monitor-owned handle")
+
+              key = run_service_module._key(repo, run_id)
+              managed = run_service_module._ManagedProcess(
+                  process=SimpleNamespace(poll=lambda: 0),
+                  log_handle=MonitorOwnedHandle(),
+                  run_dir=run_dir,
+              )
+              with run_service_module._LOCK:
+                  run_service_module._PROCESSES[key] = managed
+              try:
+                  record = get_run(repo, run_id)
+                  assert record.status == "succeeded"
+                  assert record.exit_code == 0
+                  assert key in run_service_module._PROCESSES
+                  assert managed.log_handle.closed is False
+              finally:
+                  with run_service_module._LOCK:
+                      run_service_module._PROCESSES.pop(key, None)
+          '''.replace("          ", "")
+          replace_once(
+              "test/test_streamlit_run_service.py",
+              streamlit_marker,
+              streamlit_test + streamlit_marker,
+          )
+          PY
+
+      - name: Install focused dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pytest>=7" "PyYAML>=6.0" h5py openpyxl
+
+      - name: Validate runtime follow-up
+        run: |
+          python -m py_compile \
+            phmfactory/data_sources/bundle.py \
+            apps/streamlit/run_service.py \
+            test/test_phmfactory_data_sources.py \
+            test/test_streamlit_run_service.py
+          python -m pytest -q \
+            test/test_phmfactory_data_sources.py \
+            test/test_streamlit_run_service.py
+          python -m scripts.validate_docs
+          git diff --check
+
+      - name: Commit final workflow-free tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/remediate-pr127-runtime-followup.yml
+          git add \
+            phmfactory/data_sources/bundle.py \
+            test/test_phmfactory_data_sources.py \
+            MIGRATION_v0.2_to_v0.3.md \
+            apps/streamlit/run_service.py \
+            test/test_streamlit_run_service.py
+          git commit -m "fix(v0.3): harden bundle and UI lifecycle contracts"
+          git push origin HEAD:agent/v030-canonical-integration-r2
+
+      - name: Record success
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/PHMbench/PHM-Vibench/issues/127/comments \
+            -f body="PR127_RUNTIME_FOLLOWUP_PASS
+          run_id: ${GITHUB_RUN_ID}
+          validated_head: $(git rev-parse HEAD)
+          cache_provenance_guard: true
+          clean_staging_refresh: true
+          migration_api_example_fixed: true
+          monitor_owns_log_handle: true
+          temporary_workflow_present: false"
+
+      - name: Record failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/PHMbench/PHM-Vibench/issues/127/comments \
+            -f body="PR127_RUNTIME_FOLLOWUP_FAIL
+          run_id: ${GITHUB_RUN_ID}
+          inspect: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
