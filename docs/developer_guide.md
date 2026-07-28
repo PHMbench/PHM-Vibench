@@ -44,9 +44,34 @@ Use the following files before changing behavior:
 A registry entry records discoverability. It does not establish release support
 without a maintained config and runtime evidence.
 
+## Branch topology
+
+`main` is the user-facing stable branch. `dev` is the integration and development
+branch. Routine work branches from and returns to `dev`:
+
+```text
+feat/* | fix/* | docs/* | test/* | ci/* | cleanup/* | migration/*
+                              ↓
+                             dev
+                              ↓ explicit release promotion only
+                            main
+```
+
+Only an authorized release promotion or emergency hotfix targets `main`. Hotfixes
+must be synchronized back to `dev`. Direct pushes to either long-lived branch are
+outside the maintained workflow. Canonical v0.3 PR #127 is the one transition
+exception because it predates this policy and must preserve its direct-to-`main`
+ancestry contract.
+
+Repository administrators should protect both long-lived branches. At minimum,
+changes should require a pull request, the applicable checks, and maintainer review;
+force pushes and branch deletion should be disabled. This document records the
+required policy, but it does not itself prove that every GitHub branch-protection
+setting has been configured.
+
 ## Development workflow
 
-1. Update local `main` and create a focused branch.
+1. Update local `dev` and create a focused branch that will open a PR back to `dev`.
 2. Identify the nearest maintained demo under `configs/demo/`.
 3. Put local experiment variants under `configs/experiments/`.
 4. Change one coherent capability at a time.
@@ -54,7 +79,15 @@ without a maintained config and runtime evidence.
 6. Run config inspection and the smallest applicable smoke command.
 7. Update registries, generated docs, and support documentation only when the
    capability is intentionally promoted to the maintained surface.
-8. Open one reviewable pull request with exact validation commands and results.
+8. Open one reviewable pull request to `dev` with exact validation commands and results.
+
+Typical setup:
+
+```bash
+git switch dev
+git pull --ff-only origin dev
+git switch -c <type>/<short-topic>
+```
 
 Do not combine runtime changes, broad documentation cleanup, data artifact
 removal, and research roadmaps in one pull request.
@@ -167,6 +200,7 @@ through a small pull request with a protocol, config, test, and runtime evidence
 
 Before requesting review, confirm:
 
+- the pull request targets `dev` unless it is an explicitly authorized release or hotfix;
 - the diff implements one coherent capability;
 - no machine-specific paths or personal tooling are introduced;
 - public CLI and five-block config contracts remain intact;
