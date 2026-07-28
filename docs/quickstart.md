@@ -8,7 +8,28 @@ shipped dummy data. It is a software smoke test, not a benchmark-performance run
 Complete the [installation guide](installation.md), activate the environment, and
 run all commands from the repository root.
 
-## 2. Inspect the configuration
+## 2. Check the environment and run the offline helper
+
+Before inspecting or training, verify the source checkout and active environment:
+
+```bash
+python -m scripts.phm doctor
+```
+
+The command checks Python, the repository entrypoint, the maintained smoke config,
+output-directory writability, and the core Python imports. It does not start training
+and exits non-zero with a remediation message when a required check fails.
+
+The shortest maintained offline run is:
+
+```bash
+python -m scripts.phm demo
+```
+
+This is a thin wrapper around the existing one-epoch Dummy command. Inspect the exact
+command without starting a subprocess with `python -m scripts.phm demo --dry-run`.
+
+## 3. Inspect the configuration
 
 ```bash
 python -m scripts.config_inspect \
@@ -29,7 +50,7 @@ environment / data / model / task / trainer
 It selects `Pipeline_01_Fault_Diagnosis`, uses `data/metadata_dummy.csv`, runs on CPU, and
 writes below `results/demo/dummy_dg_smoke/`.
 
-## 3. Run one offline epoch
+## 4. Run one offline epoch
 
 ```bash
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
@@ -55,7 +76,7 @@ Runtime outputs are evidence for the exact commit, configuration, overrides, dat
 and environment used. They are not a configuration source of truth and should not
 be committed unless a specific review requires a small fixture.
 
-## 4. Run repository checks
+## 5. Run repository checks
 
 ```bash
 python -m scripts.validate_docs
@@ -69,7 +90,7 @@ Use the focused test closest to a change during development; use the broader gat
 before requesting review for runtime or configuration changes. See the
 [testing guide](testing.md).
 
-## 5. Run a maintained demo with local data
+## 6. Run a maintained demo with local data
 
 Only the dummy demo is fully offline. For another maintained configuration, pass
 local data paths as overrides instead of editing the tracked YAML:
