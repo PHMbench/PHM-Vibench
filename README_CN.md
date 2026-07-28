@@ -32,6 +32,17 @@ PHMFactory 是 PHM-Vibench 的 v0.3 后继项目。v0.3 兼容性版本增加公
 项目仍处于 alpha 阶段；发布支持范围仅限
 [SUPPORTED_COMBINATIONS.md](SUPPORTED_COMBINATIONS.md) 中记录的维护配置。
 
+## 分支策略
+
+`main` 是面向用户的稳定分支，并继续作为 clone、用户文档和发布的默认分支；
+`dev` 是集成与开发分支。常规功能、修复、文档、测试、CI、清理和迁移 PR
+必须以 `dev` 为目标分支，topic branch 也必须从最新 `dev` 创建。
+
+只有明确授权的发布提升 PR（`dev` 或 `release/<version>` → `main`）或紧急
+hotfix 可以指向 `main`；hotfix 必须同步回 `dev`。两个长期分支都只能通过
+Pull Request 更新，不属于维护流程的直接 push 不应使用。完整规则见
+[CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。
+
 ## 运行离线示例
 
 安装核心环境后，运行仓库自带的 Dummy 配置：
