@@ -119,6 +119,30 @@ def load_bundle_spec(bundle_id: str = "cwru-demo-v1") -> BundleSpec:
     )
 
 
+def _expected_sha256_for_file(spec: BundleSpec, filename: str) -> str:
+    """Resolve one hash pin using provider-neutral logical manifest keys."""
+    logical_by_filename = {
+        spec.metadata_file: "metadata",
+        spec.signal_file: "signals",
+    }
+    if spec.corpus_file:
+        logical_by_filename[spec.corpus_file] = "corpus"
+
+    logical_key = logical_by_filename.get(filename)
+    logical_value = str(spec.expected_sha256.get(logical_key, "")) if logical_key else ""
+    filename_value = str(spec.expected_sha256.get(filename, ""))
+    if (
+        logical_value
+        and filename_value
+        and logical_value.casefold() != filename_value.casefold()
+    ):
+        raise BundleValidationError(
+  f"Conflicting SHA-256 pins for {filename}: "
+  f"{logical_key}={logical_value}, {filename}={filename_value}"
+        )
+    return logical_value or filename_value
+
+
 def validate_bundle(
     directory: str | Path,
     *,
@@ -228,7 +252,7 @@ def validate_bundle(
         )
     )
     for report in reports:
-        expected = bundle_spec.expected_sha256.get(report.name)
+        expected = _expected_sha256_for_file(bundle_spec, report.name)
         if expected and report.sha256.lower() != expected.lower():
             raise BundleValidationError(
                 f"SHA-256 mismatch for {report.name}: expected {expected}, "

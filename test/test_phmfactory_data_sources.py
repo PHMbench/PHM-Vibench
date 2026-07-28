@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
@@ -102,6 +104,45 @@ def test_validate_bundle_requires_two_dimensional_lc_shape(tmp_path: Path) -> No
     root = _write_bundle(tmp_path / "bundle", signal_shape=(4, 2, 1))
     with pytest.raises(BundleValidationError, match=r"shape \(L, C\)"):
         validate_bundle(root)
+
+
+def test_validate_bundle_enforces_logical_hash_keys(tmp_path: Path) -> None:
+    root = _write_bundle(tmp_path / "bundle")
+    metadata_digest = sha256((root / "metadata.xlsx").read_bytes()).hexdigest()
+    signal_digest = sha256((root / "RM_001_CWRU.h5").read_bytes()).hexdigest()
+    spec = replace(
+        load_bundle_spec(),
+        expected_sha256={
+  "metadata": metadata_digest,
+  "signals": signal_digest,
+        },
+    )
+    assert validate_bundle(root, spec=spec).selected_rows == 2
+
+    bad_metadata = replace(
+        spec,
+        expected_sha256={"metadata": "0" * 64, "signals": signal_digest},
+    )
+    with pytest.raises(BundleValidationError, match="metadata.xlsx"):
+        validate_bundle(root, spec=bad_metadata)
+
+    bad_signals = replace(
+        spec,
+        expected_sha256={"metadata": metadata_digest, "signals": "1" * 64},
+    )
+    with pytest.raises(BundleValidationError, match="RM_001_CWRU.h5"):
+        validate_bundle(root, spec=bad_signals)
+
+    conflicting = replace(
+        spec,
+        expected_sha256={
+  "metadata": metadata_digest,
+  "metadata.xlsx": "0" * 64,
+  "signals": signal_digest,
+        },
+    )
+    with pytest.raises(BundleValidationError, match="Conflicting SHA-256 pins"):
+        validate_bundle(root, spec=conflicting)
 
 
 def test_compare_bundle_hashes_requires_provider_parity(tmp_path: Path) -> None:

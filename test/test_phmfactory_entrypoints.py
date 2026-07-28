@@ -11,7 +11,7 @@ import pytest
 
 from phmfactory import __version__
 from phmfactory import cli
-from phmfactory.config import ResolvedConfig
+from phmfactory.config import MAINTAINED_PRESETS, ResolvedConfig, resolve_config_path
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
@@ -46,6 +46,7 @@ def test_run_dispatches_resolved_canonical_module(
     observed: dict[str, object] = {}
 
     def pipeline(args: argparse.Namespace) -> str:
+        observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
         observed["resolved_config_path"] = args.resolved_config_path
         observed["resolved_pipeline"] = args.resolved_pipeline
@@ -79,11 +80,41 @@ def test_run_dispatches_resolved_canonical_module(
     assert cli.run(args) == "sentinel"
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
-        "config_path": "missing.yaml",
+        "requested_config": "missing.yaml",
+        "config_path": "/tmp/missing.yaml",
         "resolved_config_path": "/tmp/missing.yaml",
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
         "notes": "entrypoint-parity",
     }
+
+
+@pytest.mark.parametrize("preset", tuple(sorted(MAINTAINED_PRESETS)))
+def test_run_passes_maintained_preset_path_to_runtime(
+    preset: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def pipeline(args: argparse.Namespace) -> None:
+        observed["requested_config"] = args.requested_config
+        observed["config_path"] = args.config_path
+
+    monkeypatch.setattr(
+        cli.importlib,
+        "import_module",
+        lambda name: SimpleNamespace(pipeline=pipeline),
+    )
+    args = argparse.Namespace(
+        config=preset,
+        config_path=None,
+        notes="",
+        override=None,
+    )
+
+    cli.run(args)
+
+    assert observed["requested_config"] == preset
+    assert Path(str(observed["config_path"])) == resolve_config_path(preset)
 
 
 @pytest.mark.parametrize(

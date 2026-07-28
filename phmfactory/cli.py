@@ -98,9 +98,10 @@ def run(args: argparse.Namespace) -> Any:
     requested_config = _resolve_config_path(args)
     resolved = resolve_config(requested_config, override_values=args.override)
 
-    # Preserve the historical downstream contract: Pipelines receive the source
-    # requested by the user rather than a generated temporary file.
-    args.config_path = requested_config
+    # Keep the user's source for provenance, but pass the resolved file path to
+    # the protected runtime so public presets never fall into legacy aliases.
+    args.requested_config = requested_config
+    args.config_path = str(resolved.path)
     args.resolved_config_path = str(resolved.path)
     args.resolved_pipeline = resolved.pipeline
 
