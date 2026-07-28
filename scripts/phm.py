@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import os
 import subprocess
 import sys
 import tempfile
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 MIN_PYTHON = (3, 10)
-REQUIRED_MODULES = ("yaml", "torch", "numpy", "pandas")
+REQUIRED_MODULES = ("yaml", "torch", "pytorch_lightning", "numpy", "pandas")
 SMOKE_CONFIG = Path("configs/demo/00_smoke/dummy_dg.yaml")
 SMOKE_OUTPUT = Path("results/demo/dummy_dg_smoke")
 
@@ -101,10 +103,11 @@ def collect_doctor_checks(
             "repository:root",
             (resolved_root / ".git").exists() or (resolved_root / "pyproject.toml").is_file(),
             str(resolved_root),
-            "Run the command from a PHMFactory source checkout." ,
+            "Run the command from a PHMFactory source checkout.",
         ),
         _file_check(resolved_root, Path("main.py"), "entrypoint:main.py"),
         _file_check(resolved_root, SMOKE_CONFIG, "config:offline-smoke"),
+        _file_check(resolved_root, Path("data/metadata_dummy.csv"), "data:dummy-metadata"),
         _writable_output_check(resolved_root),
     ]
     checks.extend(_dependency_checks(importer))
@@ -127,26 +130,74 @@ def run_doctor(
     return 0 if not failed else 1
 
 
+def _flatten_leaves(value: Mapping[str, Any], prefix: str = "") -> list[tuple[str, Any]]:
+    leaves: list[tuple[str, Any]] = []
+    for key in sorted(value):
+        path = f"{prefix}.{key}" if prefix else str(key)
+        item = value[key]
+        if isinstance(item, Mapping):
+            leaves.extend(_flatten_leaves(item, path))
+        else:
+            leaves.append((path, item))
+    return leaves
+
+
+def _smoke_override_values(
+    root: Path,
+    *,
+    epochs: int,
+    num_workers: int,
+) -> list[str]:
+    """Return CLI-precedence values that restore the maintained Dummy contract."""
+    if epochs <= 0:
+        raise ValueError("epochs must be a positive integer")
+    if num_workers < 0:
+        raise ValueError("num_workers cannot be negative")
+
+    from phmfactory.config import resolve_config
+
+    previous = Path.cwd()
+    try:
+        os.chdir(root)
+        resolved = resolve_config(SMOKE_CONFIG)
+    finally:
+        os.chdir(previous)
+
+    payload = deepcopy(resolved.data)
+    payload.pop("pipeline", None)
+    data = payload.setdefault("data", {})
+    data["data_dir"] = str((root / "data").resolve())
+    data["metadata_file"] = "metadata_dummy.csv"
+    data["num_workers"] = num_workers
+    environment = payload.setdefault("environment", {})
+    environment["output_dir"] = str((root / SMOKE_OUTPUT).resolve())
+    trainer = payload.setdefault("trainer", {})
+    trainer["num_epochs"] = epochs
+    trainer["device"] = "cpu"
+    trainer["gpus"] = 1
+
+    return [f"{key}={json.dumps(value, ensure_ascii=False)}" for key, value in _flatten_leaves(payload)]
+
+
 def demo_command(
     root: Path,
     *,
     epochs: int = 1,
     num_workers: int = 0,
 ) -> list[str]:
-    if epochs <= 0:
-        raise ValueError("epochs must be a positive integer")
-    if num_workers < 0:
-        raise ValueError("num_workers cannot be negative")
-    return [
+    command = [
         sys.executable,
         str(root / "main.py"),
         "--config",
-        str(SMOKE_CONFIG),
-        "--override",
-        f"trainer.num_epochs={epochs}",
-        "--override",
-        f"data.num_workers={num_workers}",
+        str((root / SMOKE_CONFIG).resolve()),
     ]
+    for override in _smoke_override_values(
+        root,
+        epochs=epochs,
+        num_workers=num_workers,
+    ):
+        command.extend(("--override", override))
+    return command
 
 
 def run_demo(
@@ -160,6 +211,7 @@ def run_demo(
     resolved_root = (root or repository_root()).resolve()
     command = demo_command(resolved_root, epochs=epochs, num_workers=num_workers)
     print("command:", " ".join(command))
+    print("local overrides: restored to the maintained Dummy contract at CLI precedence")
     if dry_run:
         print("demo: DRY RUN")
         return 0
