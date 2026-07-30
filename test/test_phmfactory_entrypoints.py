@@ -168,3 +168,43 @@ def test_root_main_is_only_a_dispatcher(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(cli, "main", lambda argv=None: calls.append(argv))
     runpy.run_path(str(REPOSITORY_ROOT / "main.py"), run_name="__main__")
     assert calls == [None]
+
+def test_run_dispatches_packaged_base_configs_outside_checkout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.configs.config_utils import load_config
+
+    observed: dict[str, object] = {}
+
+    def pipeline(args: argparse.Namespace) -> str:
+        config = load_config(args.config_path)
+        observed["data"] = config.data.metadata_file
+        observed["model"] = config.model.name
+        observed["task"] = config.task.name
+        observed["trainer"] = config.trainer.device
+        return "dispatched"
+
+    real_import_module = cli.importlib.import_module
+
+    def fake_import(name: str):
+        if name == "src.Pipeline_01_Fault_Diagnosis":
+            return SimpleNamespace(pipeline=pipeline)
+        return real_import_module(name)
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+    args = argparse.Namespace(
+        config="smoke",
+        config_path=None,
+        notes="",
+        override=None,
+    )
+
+    assert cli.run(args) == "dispatched"
+    assert observed == {
+        "data": "metadata_dummy.csv",
+        "model": "M_01_ISFM",
+        "task": "classification",
+        "trainer": "cpu",
+    }
