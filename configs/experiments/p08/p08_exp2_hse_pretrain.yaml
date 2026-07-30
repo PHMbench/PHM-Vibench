@@ -1,0 +1,90 @@
+# P08 Exp-2: HSE contrastive pretrain + CDDG finetune (two-stage, NO prompt).
+# Derives from legacy configs/CDDG_config/experiment_2_cddg_hse_pretrain.yaml
+# and demo configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml.
+# Supports CLAIM-EXP2-PRETRAIN (placeholder) and the "pretrain but no prompt" reference.
+
+pipeline: "Pipeline_02_pretrain_fewshot"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp2_hse_pretrain"
+  seed: 42
+  output_dir: "results/p08/exp2_hse_pretrain"
+  notes: "P08 Exp2: HSE contrastive pretrain + CDDG finetune (two-stage, no prompt)."
+
+model:
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  system_embedding_dim: 64
+  sample_embedding_dim: 32
+  hierarchical_levels: 3
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 32
+  use_prompt: false
+  prompt_dim: 0
+
+stages:
+  - name: "pretraining"
+    description: "HSE contrastive pretraining across the 5-system pool"
+    overrides:
+      task:
+        type: "pretrain"
+        name: "hse_contrastive"
+        loss: "INFONCE"
+        contrast_loss: "INFONCE"
+        contrast_weight: 1.0
+        classification_weight: 0.1
+        temperature: 0.07
+        target_system_id: [1, 13, 6, 12, 19]
+        target_domain_num: 1
+        lr: 0.0005
+        weight_decay: 0.0001
+        optimizer: "adamw"
+        scheduler: "cosine"
+        metrics: ["acc", "f1", "precision", "recall"]
+      trainer:
+        num_epochs: 1   # smoke default; real launch overrides (legacy used 200)
+        save_dir: "results/p08/exp2_hse_pretrain/pretrain"
+      data:
+        num_window: 256
+        stride: 32
+        shuffle: true
+        drop_last: true
+
+  - name: "finetuning"
+    description: "CDDG classification finetune after HSE pretraining"
+    overrides:
+      model:
+        training_stage: "finetune"
+      task:
+        type: "CDDG"
+        name: "classification"
+        loss: "CE"
+        target_system_id: [1, 13, 6, 12, 19]
+        target_domain_num: 1
+        lr: 0.0001
+        weight_decay: 0.00001
+        optimizer: "adamw"
+        scheduler: "step"
+        step_size: 10
+        gamma: 0.1
+        metrics: ["acc", "f1", "precision", "recall"]
+      trainer:
+        num_epochs: 1   # smoke default; real launch overrides (legacy used 200)
+        save_dir: "results/p08/exp2_hse_pretrain/finetune"
+      data:
+        num_window: 64
+        stride: 8
+        shuffle: true
+        drop_last: false

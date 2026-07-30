@@ -1,0 +1,52 @@
+# P08 Exp-1: HSE direct CDDG classification (no pretrain, no prompt).
+# Derives from legacy configs/CDDG_config/experiment_1_cddg_hse.yaml
+# and demo configs/demo/02_cross_system/multi_system_cddg.yaml.
+# Single-stage CDDG across the 5-system pool. Supports CLAIM-EXP1-HSE (placeholder) and the
+# "no pretrain" reference row for ablations.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp1_hse_direct"
+  seed: 42
+  output_dir: "results/p08/exp1_hse_direct"
+  notes: "P08 Exp1: HSE direct CDDG classification (no pretrain, no prompt)."
+
+model:
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: false
+  prompt_dim: 0
+
+task:
+  type: "CDDG"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]   # CWRU, Ottawa-19, THU, JNU, HUST24 (see README)
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides (legacy used 200)
+  gpus: 1
