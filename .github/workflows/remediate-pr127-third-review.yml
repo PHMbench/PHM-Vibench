@@ -59,7 +59,7 @@ jobs:
               '''                        base_path = _resolve_base_config_path(yaml_path, base_path_str)\n                        merged.update(_to_config_wrapper(base_path))\n''',
           )
 
-          entry_test = '''\n\ndef test_run_dispatches_packaged_base_configs_outside_checkout(\n    tmp_path: Path,\n    monkeypatch: pytest.MonkeyPatch,\n) -> None:\n    from src.configs.config_utils import load_config\n\n    observed: dict[str, object] = {}\n\n    def pipeline(args: argparse.Namespace) -> str:\n        config = load_config(args.config_path)\n        observed["data"] = config.data.metadata_file\n        observed["model"] = config.model.name\n        observed["task"] = config.task.name\n        observed["trainer"] = config.trainer.device\n        return "dispatched"\n\n    monkeypatch.chdir(tmp_path)\n    monkeypatch.setattr(\n        cli.importlib,\n        "import_module",\n        lambda name: SimpleNamespace(pipeline=pipeline),\n    )\n    args = argparse.Namespace(\n        config="smoke",\n        config_path=None,\n        notes="",\n        override=None,\n    )\n\n    assert cli.run(args) == "dispatched"\n    assert observed == {\n        "data": "metadata_dummy.csv",\n        "model": "Dlinear",\n        "task": "DG",\n        "trainer": "cpu",\n    }\n'''
+          entry_test = '''\n\ndef test_run_dispatches_packaged_base_configs_outside_checkout(\n    tmp_path: Path,\n    monkeypatch: pytest.MonkeyPatch,\n) -> None:\n    from src.configs.config_utils import load_config\n\n    observed: dict[str, object] = {}\n\n    def pipeline(args: argparse.Namespace) -> str:\n        config = load_config(args.config_path)\n        observed["data"] = config.data.metadata_file\n        observed["model"] = config.model.name\n        observed["task"] = config.task.name\n        observed["trainer"] = config.trainer.device\n        return "dispatched"\n\n    real_import_module = cli.importlib.import_module\n\n    def fake_import(name: str):\n        if name == "src.Pipeline_01_Fault_Diagnosis":\n            return SimpleNamespace(pipeline=pipeline)\n        return real_import_module(name)\n\n    monkeypatch.chdir(tmp_path)\n    monkeypatch.setattr(cli.importlib, "import_module", fake_import)\n    args = argparse.Namespace(\n        config="smoke",\n        config_path=None,\n        notes="",\n        override=None,\n    )\n\n    assert cli.run(args) == "dispatched"\n    assert observed == {\n        "data": "metadata_dummy.csv",\n        "model": "Dlinear",\n        "task": "DG",\n        "trainer": "cpu",\n    }\n'''
           path = Path("test/test_phmfactory_entrypoints.py")
           text = path.read_text(encoding="utf-8")
           if "test_run_dispatches_packaged_base_configs_outside_checkout" not in text:
@@ -137,11 +137,14 @@ jobs:
               assert config.trainer.device == "cpu"
               return "wheel-dispatch-pass"
 
-          with patch.object(
-              cli.importlib,
-              "import_module",
-              return_value=SimpleNamespace(pipeline=pipeline),
-          ):
+          real_import_module = cli.importlib.import_module
+
+          def fake_import(name):
+              if name == "src.Pipeline_01_Fault_Diagnosis":
+                  return SimpleNamespace(pipeline=pipeline)
+              return real_import_module(name)
+
+          with patch.object(cli.importlib, "import_module", side_effect=fake_import):
               assert cli.main(["--config", "smoke"]) == "wheel-dispatch-pass"
           PY
 
