@@ -22,12 +22,14 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["phmfactory*", "src*"]
+include = ["phmfactory*", "src*", "configs*", "data*"]
 exclude = ["test*", "tests*", "dev*", "paper*", "results*"]
 
 [tool.setuptools.package-data]
 "phmfactory.data_sources.manifests" = ["*.yaml"]
 "phmfactory.data_sources.modelscope" = ["requirements.txt"]
+"configs" = ["**/*.yaml", "**/*.yml", "**/*.csv", "**/*.md"]
+"data" = ["metadata_dummy.csv", "raw/Dummy_Data/*.csv"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }

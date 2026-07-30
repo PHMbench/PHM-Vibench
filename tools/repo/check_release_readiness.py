@@ -256,6 +256,20 @@ def collect_findings() -> tuple[Finding, ...]:
             )
 
     expected_hashes = manifest.get("expected_sha256") or {}
+    filename_hash_keys = {
+        str((manifest.get("files") or {}).get(key, {}).get("filename") or "")
+        for key in REQUIRED_BUNDLE_HASHES
+    }
+    conflicting_filename_keys = sorted(
+        key for key in filename_hash_keys if key and expected_hashes.get(key)
+    )
+    if conflicting_filename_keys:
+        findings.append(
+            Finding(
+                "CWRU_HASH_KEY_CONFLICT",
+                f"filename hash keys are forbidden; use logical keys: {conflicting_filename_keys}",
+            )
+        )
     for key in REQUIRED_BUNDLE_HASHES:
         value = str(expected_hashes.get(key) or "")
         if not re.fullmatch(r"[0-9a-f]{64}", value):

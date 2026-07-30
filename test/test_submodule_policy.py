@@ -28,13 +28,28 @@ def test_unknown_submodule_is_rejected(monkeypatch) -> None:
         "_configured_submodules",
         lambda: {"packages/unreviewed": {"url": "https://example.invalid/x.git", "branch": ""}},
     )
-    monkeypatch.setattr(policy, "_gitlink", lambda path: "a" * 40)
+    monkeypatch.setattr(policy, "_gitlinks", lambda: {"packages/unreviewed": "a" * 40})
     findings = policy.collect_findings()
     assert any(
         finding.code == "UNKNOWN_SUBMODULE" and finding.detail == "packages/unreviewed"
         for finding in findings
     )
 
+
+
+def test_unconfigured_raw_gitlink_is_rejected(monkeypatch) -> None:
+    monkeypatch.setattr(policy, "_configured_submodules", lambda: {})
+    monkeypatch.setattr(
+        policy,
+        "_gitlinks",
+        lambda: {"arbitrary/raw-gitlink": "d" * 40},
+    )
+    findings = policy.collect_findings()
+    assert any(
+        finding.code == "UNKNOWN_SUBMODULE"
+        and finding.detail == "arbitrary/raw-gitlink"
+        for finding in findings
+    )
 
 def test_personal_backend_url_is_not_allowlisted(monkeypatch) -> None:
     allowlist = policy._load_allowlist()
@@ -44,6 +59,7 @@ def test_personal_backend_url_is_not_allowlisted(monkeypatch) -> None:
     changed["allowed_submodules"] = [candidate]
     monkeypatch.setattr(policy, "_load_allowlist", lambda: changed)
     monkeypatch.setattr(policy, "_configured_submodules", lambda: {})
+    monkeypatch.setattr(policy, "_gitlinks", lambda: {})
 
     findings = policy.collect_findings()
     assert any(finding.code == "BACKEND_URL_INVALID" for finding in findings)
@@ -66,7 +82,11 @@ def test_approved_backend_requires_exact_gitlink(monkeypatch) -> None:
             }
         },
     )
-    monkeypatch.setattr(policy, "_gitlink", lambda path: "c" * 40)
+    monkeypatch.setattr(
+        policy,
+        "_gitlinks",
+        lambda: {policy.TARGET_BACKEND_PATH: "c" * 40},
+    )
 
     findings = policy.collect_findings()
     assert any(finding.code == "BACKEND_GITLINK_MISMATCH" for finding in findings)

@@ -11,6 +11,7 @@ import pytest
 
 from phmfactory import __version__
 from phmfactory import cli
+from examples import cwru_quickstart
 from phmfactory.config import MAINTAINED_PRESETS, ResolvedConfig, resolve_config_path
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
@@ -116,6 +117,30 @@ def test_run_passes_maintained_preset_path_to_runtime(
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
 
+
+
+def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[str] = []
+    monkeypatch.setattr(
+        cwru_quickstart,
+        "download_bundle",
+        lambda *args, **kwargs: SimpleNamespace(directory=tmp_path),
+    )
+    monkeypatch.setattr(
+        cwru_quickstart.cli,
+        "main",
+        lambda argv: observed.extend(argv),
+    )
+    monkeypatch.setattr(sys, "argv", ["cwru_quickstart.py"])
+
+    cwru_quickstart.main()
+
+    assert "trainer.device=cpu" in observed
+    assert "trainer.gpus=1" in observed
+    assert "trainer.gpus=0" not in observed
 
 @pytest.mark.parametrize(
     "command",

@@ -7,11 +7,13 @@ understands, then returns that directory without changing reader or cache logic.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 from typing import Any, Callable, Mapping, Sequence
 
 import yaml
@@ -46,6 +48,7 @@ class BundleSpec:
     selector_values: tuple[str, ...]
     sample_length_aliases: tuple[str, ...]
     channel_count_aliases: tuple[str, ...]
+    required_metadata_columns: tuple[str, ...]
     providers: Mapping[str, Mapping[str, Any]]
     expected_sha256: Mapping[str, str]
 
@@ -110,6 +113,9 @@ def load_bundle_spec(bundle_id: str = "cwru-demo-v1") -> BundleSpec:
         channel_count_aliases=tuple(
             str(value) for value in aliases.get("channel_count") or ("Channel",)
         ),
+        required_metadata_columns=tuple(
+            str(value) for value in metadata.get("required_columns") or ()
+        ),
         providers=providers,
         expected_sha256={
             str(name): str(value)
@@ -163,6 +169,8 @@ def validate_bundle(
     headers, metadata_rows = _read_excel_rows(metadata_path)
     _require_column(headers, bundle_spec.id_column, metadata_path)
     _require_column(headers, bundle_spec.selector_column, metadata_path)
+    for column in bundle_spec.required_metadata_columns:
+        _require_column(headers, column, metadata_path)
     sample_length_column = _find_alias(headers, bundle_spec.sample_length_aliases)
     channel_count_column = _find_alias(headers, bundle_spec.channel_count_aliases)
     if sample_length_column is None:
@@ -189,8 +197,23 @@ def validate_bundle(
             f"{bundle_spec.selector_values}"
         )
 
+    selected_id_values = [
+        _normalise_id(row[bundle_spec.id_column]) for row in selected
+    ]
+    duplicate_ids = sorted(
+        sample_id
+        for sample_id, count in Counter(selected_id_values).items()
+        if count > 1
+    )
+    if duplicate_ids:
+        preview = ", ".join(duplicate_ids[:10])
+        raise BundleValidationError(
+            f"Metadata contains {len(duplicate_ids)} duplicate selected Id value(s): "
+            f"{preview}"
+        )
+
     h5py = _import_h5py()
-    selected_ids = {_normalise_id(row[bundle_spec.id_column]) for row in selected}
+    selected_ids = set(selected_id_values)
     with h5py.File(signal_path, "r") as handle:
         signal_keys = {str(key) for key in handle.keys()}
         missing_ids = sorted(selected_ids - signal_keys)
@@ -270,6 +293,87 @@ def validate_bundle(
     )
 
 
+
+def _read_provenance(root: Path) -> Mapping[str, Any]:
+    path = root / ".phmfactory-bundle.yaml"
+    if not path.is_file():
+        return {}
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+    return payload if isinstance(payload, Mapping) else {}
+
+
+def _provenance_matches(
+    root: Path,
+    source: str,
+    revision: str,
+    validation: BundleValidation,
+) -> bool:
+    payload = _read_provenance(root)
+    if payload.get("bundle_id") != validation.spec.bundle_id:
+        return False
+    if payload.get("provider") != source:
+        return False
+    if str(payload.get("requested_revision") or "") != revision:
+        return False
+    if bool(payload.get("corpus_present")) != validation.corpus_present:
+        return False
+    recorded = payload.get("files")
+    if not isinstance(recorded, Mapping):
+        return False
+    if {str(name) for name in recorded} != {item.name for item in validation.files}:
+        return False
+    for item in validation.files:
+        entry = recorded.get(item.name)
+        if not isinstance(entry, Mapping):
+            return False
+        if str(entry.get("sha256") or "").casefold() != item.sha256.casefold():
+            return False
+        try:
+            if int(entry.get("size_bytes")) != item.size_bytes:
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
+def _replace_bundle_files(
+    root: Path,
+    staging: Path,
+    validation: BundleValidation,
+) -> None:
+    spec = validation.spec
+    root.mkdir(parents=True, exist_ok=True)
+    staged_names = {report.name for report in validation.files}
+    declared = [spec.metadata_file, spec.signal_file]
+    if spec.corpus_file:
+        declared.append(spec.corpus_file)
+
+    for name in declared:
+        target = root / name
+        if name not in staged_names:
+            if target.is_dir() and not target.is_symlink():
+                shutil.rmtree(target)
+            elif target.exists() or target.is_symlink():
+                target.unlink()
+            continue
+
+        source = staging / name
+        temp_target = root / f".{name}.phmfactory-tmp"
+        if temp_target.exists() or temp_target.is_symlink():
+            if temp_target.is_dir() and not temp_target.is_symlink():
+                shutil.rmtree(temp_target)
+            else:
+                temp_target.unlink()
+        _materialise(source, temp_target)
+        temp_target.replace(target)
+
+    provenance = root / ".phmfactory-bundle.yaml"
+    if provenance.exists() or provenance.is_symlink():
+        provenance.unlink()
+
 def download_bundle(
     bundle_id: str = "cwru-demo-v1",
     *,
@@ -290,20 +394,36 @@ def download_bundle(
 
     root = Path(destination or Path.home() / ".cache" / "phmfactory" / bundle_id)
     root = root.expanduser().resolve()
+    root.parent.mkdir(parents=True, exist_ok=True)
     root.mkdir(parents=True, exist_ok=True)
 
     required_names = (spec.metadata_file, spec.signal_file)
     if not force and all((root / name).is_file() for name in required_names):
-        validation = validate_bundle(root, spec=spec)
-        _write_provenance(root, source, requested_revision, validation)
-        return BundleDownload(source, requested_revision, root, validation)
+        try:
+            validation = validate_bundle(root, spec=spec)
+        except BundleValidationError:
+            validation = None
+        if validation is not None and _provenance_matches(
+            root,
+            source,
+            requested_revision,
+            validation,
+        ):
+            return BundleDownload(source, requested_revision, root, validation)
 
-    if source == "huggingface":
-        _download_huggingface(spec, provider, root, requested_revision)
-    elif source == "modelscope":
-        _download_modelscope(spec, provider, root, requested_revision)
-    else:  # guarded above; retained for explicit exhaustiveness
-        raise ValueError(f"Unsupported provider implementation: {source}")
+    with tempfile.TemporaryDirectory(
+        prefix=f".{bundle_id}-",
+        dir=root.parent,
+    ) as temp_dir:
+        staging = Path(temp_dir)
+        if source == "huggingface":
+            _download_huggingface(spec, provider, staging, requested_revision)
+        elif source == "modelscope":
+            _download_modelscope(spec, provider, staging, requested_revision)
+        else:  # guarded above; retained for explicit exhaustiveness
+            raise ValueError(f"Unsupported provider implementation: {source}")
+        staged_validation = validate_bundle(staging, spec=spec)
+        _replace_bundle_files(root, staging, staged_validation)
 
     validation = validate_bundle(root, spec=spec)
     _write_provenance(root, source, requested_revision, validation)

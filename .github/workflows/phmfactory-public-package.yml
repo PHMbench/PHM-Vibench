@@ -7,6 +7,11 @@ on:
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
+      - "MIGRATION_v0.2_to_v0.3.md"
+      - "examples/cwru_quickstart.py"
+      - "configs/**"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
@@ -19,6 +24,11 @@ on:
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
+      - "MIGRATION_v0.2_to_v0.3.md"
+      - "examples/cwru_quickstart.py"
+      - "configs/**"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
@@ -93,6 +103,17 @@ jobs:
               "phmfactory/config.py",
               "phmfactory/pipelines.py",
               "src/__init__.py",
+              "configs/__init__.py",
+              "configs/demo/00_smoke/dummy_dg.yaml",
+              "configs/base/environment/base.yaml",
+              "configs/base/data/base_cross_domain.yaml",
+              "configs/base/model/backbone_dlinear.yaml",
+              "configs/base/task/dg.yaml",
+              "configs/base/trainer/default_single_gpu.yaml",
+              "data/__init__.py",
+              "data/metadata_dummy.csv",
+              "data/raw/Dummy_Data/dummy1.csv",
+              "data/raw/Dummy_Data/dummy2.csv",
           }
           missing = sorted(required - names)
           assert not missing, missing
@@ -107,3 +128,17 @@ jobs:
           /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.config, src; print(phmfactory.__version__)"
           /tmp/phmfactory-wheel/bin/phmfactory --help
           /tmp/phmfactory-wheel/bin/python -m phmfactory --help
+          cd /tmp
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          from pathlib import Path
+          import data
+          from phmfactory.config import resolve_config
+
+          resolved = resolve_config("smoke")
+          assert resolved.path.is_file(), resolved.path
+          assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
+          data_root = Path(data.__file__).resolve().parent
+          assert (data_root / "metadata_dummy.csv").is_file()
+          assert (data_root / "raw/Dummy_Data/dummy1.csv").is_file()
+          assert (data_root / "raw/Dummy_Data/dummy2.csv").is_file()
+          PY
