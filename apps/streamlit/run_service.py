@@ -400,7 +400,7 @@ def _monitor_process(repo_root: Path, run_id: str, managed: _ManagedProcess) -> 
         try:
             managed.log_handle.flush()
             managed.log_handle.close()
-        except OSError:
+        except (OSError, ValueError):
             pass
 
     with _LOCK:
@@ -468,13 +468,9 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
                         exit_code=return_code,
                         ended_at=_utc_now(),
                     )
-                    try:
-                        managed.log_handle.flush()
-                        managed.log_handle.close()
-                    except OSError:
-                        pass
+                    # The monitor thread exclusively owns log-handle closure and
+                    # process-registry removal. get_run only reconciles durable state.
                     _atomic_write_json(_manifest_path(run_dir), payload)
-                    _PROCESSES.pop(key, None)
             else:
                 pid = payload.get("pid")
                 cancel_requested = bool(payload.get("cancel_requested"))

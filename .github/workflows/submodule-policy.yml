@@ -2,14 +2,6 @@ name: Submodule policy
 
 on:
   pull_request:
-    paths:
-      - ".gitmodules"
-      - ".github/phmfactory-v0.3-submodules.allowlist.yml"
-      - "packages/phm-data-factory"
-      - "tools/repo/check_submodule_policy.py"
-      - "test/test_submodule_policy.py"
-      - "docs/PHM_DATA_FACTORY_BACKEND_V0_3.md"
-      - ".github/workflows/submodule-policy.yml"
   push:
     branches:
       - main

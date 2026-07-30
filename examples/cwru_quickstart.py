@@ -57,7 +57,7 @@ def main() -> object:
             "--override",
             "trainer.device=cpu",
             "--override",
-            "trainer.gpus=0",
+            "trainer.gpus=1",
             "--override",
             "trainer.num_epochs=1",
             "--override",

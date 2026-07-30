@@ -16,6 +16,10 @@ files:
 
 metadata:
   id_column: Id
+  required_columns:
+    - Dataset_id
+    - Label
+    - Domain_id
   selector:
     column: Name
     values:

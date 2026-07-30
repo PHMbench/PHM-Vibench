@@ -105,7 +105,7 @@ from phmfactory.config import resolve_config
 
 resolved = resolve_config(
     "configs/demo/00_smoke/dummy_dg.yaml",
-    overrides=("trainer.num_epochs=1", "data.num_workers=0"),
+    override_values=("trainer.num_epochs=1", "data.num_workers=0"),
 )
 ```
 

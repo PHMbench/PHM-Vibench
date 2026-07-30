@@ -83,6 +83,18 @@ def test_maintained_presets_point_to_tracked_configs(
     assert resolve_config_path(preset) == expected
 
 
+
+def test_installed_style_resolution_works_outside_repository(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    resolved = resolve_config("smoke")
+    assert resolved.path.is_file()
+    assert resolved.path.as_posix().endswith("configs/demo/00_smoke/dummy_dg.yaml")
+    assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
+    assert resolved.data["trainer"]["device"] == "cpu"
+
 def test_cycle_detection(tmp_path: Path) -> None:
     first = tmp_path / "first.yaml"
     second = tmp_path / "second.yaml"

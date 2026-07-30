@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -59,16 +60,45 @@ def parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
     return parsed
 
 
+
+def _packaged_config_path(relative_path: str) -> Path | None:
+    normalized = relative_path.replace("\\", "/")
+    prefix = "configs/"
+    if not normalized.startswith(prefix):
+        return None
+    try:
+        resource = resources.files("configs").joinpath(
+            *Path(normalized[len(prefix):]).parts
+        )
+    except (ModuleNotFoundError, TypeError):
+        return None
+    candidate = Path(str(resource))
+    return candidate.resolve() if candidate.is_file() else None
+
+
+def _resolve_existing_config_path(source: str | Path, *, relative_to: Path | None = None) -> Path:
+    requested = str(source)
+    candidate = Path(requested).expanduser()
+    if not candidate.is_absolute() and relative_to is not None and not requested.replace("\\", "/").startswith("configs/"):
+        candidate = relative_to / candidate
+    if candidate.is_file():
+        return candidate.resolve()
+    packaged = _packaged_config_path(requested)
+    if packaged is not None:
+        return packaged
+    raise FileNotFoundError(requested)
+
 def resolve_config_path(source: str | Path | None) -> Path:
-    """Resolve a public preset or YAML path without changing the working tree."""
+    """Resolve a public preset or YAML path from a checkout or installed wheel."""
     requested = str(source or DEFAULT_CONFIG)
-    candidate = Path(MAINTAINED_PRESETS.get(requested, requested)).expanduser()
-    if not candidate.is_file():
+    mapped = MAINTAINED_PRESETS.get(requested, requested)
+    try:
+        return _resolve_existing_config_path(mapped)
+    except FileNotFoundError as exc:
         known = ", ".join(sorted(MAINTAINED_PRESETS))
         raise FileNotFoundError(
             f"Configuration {requested!r} was not found. Maintained presets: {known}"
-        )
-    return candidate.resolve()
+        ) from exc
 
 
 def load_config_dict(path: str | Path) -> dict[str, Any]:
@@ -117,12 +147,11 @@ def _load_recursive(path: Path, *, stack: tuple[Path, ...]) -> dict[str, Any]:
     if not isinstance(base_configs, Mapping):
         raise TypeError(f"base_configs must be a mapping: {path}")
     for base_source in base_configs.values():
-        base_path = Path(str(base_source)).expanduser()
-        if not base_path.is_absolute() and not str(base_path).startswith("configs/"):
-            base_path = path.parent / base_path
-        else:
-            base_path = base_path.resolve()
-        _deep_merge(merged, _load_recursive(base_path.resolve(), stack=(*stack, path)))
+        base_path = _resolve_existing_config_path(
+            str(base_source),
+            relative_to=path.parent,
+        )
+        _deep_merge(merged, _load_recursive(base_path, stack=(*stack, path)))
 
     current = {key: value for key, value in payload.items() if key != "base_configs"}
     _deep_merge(merged, current)

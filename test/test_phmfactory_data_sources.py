@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
 
 import h5py
 from openpyxl import Workbook
+import yaml
 import pytest
 
 from phmfactory import cli
@@ -39,11 +42,19 @@ def _write_bundle(
     root.mkdir(parents=True, exist_ok=True)
     _write_workbook(
         root / "metadata.xlsx",
-        ["Id", "Name", "Sample_lenth", "Channel", "Dataset_id"],
         [
-            [1, "RM_001_CWRU", 4, 2, 1],
-            [2, "RM_001_CWRU", 4, 2, 1],
-            [99, "OTHER", 4, 2, 2],
+            "Id",
+            "Name",
+            "Sample_lenth",
+            "Channel",
+            "Dataset_id",
+            "Label",
+            "Domain_id",
+        ],
+        [
+            [1, "RM_001_CWRU", 4, 2, 1, 0, 0],
+            [2, "RM_001_CWRU", 4, 2, 1, 1, 1],
+            [99, "OTHER", 4, 2, 2, 0, 0],
         ],
     )
     with h5py.File(root / "RM_001_CWRU.h5", "w") as handle:
@@ -104,6 +115,100 @@ def test_validate_bundle_requires_two_dimensional_lc_shape(tmp_path: Path) -> No
         validate_bundle(root)
 
 
+
+@pytest.mark.parametrize("missing_column", ["Dataset_id", "Label", "Domain_id"])
+def test_validate_bundle_requires_runtime_metadata_columns(
+    tmp_path: Path,
+    missing_column: str,
+) -> None:
+    root = _write_bundle(tmp_path / "bundle")
+    headers = [
+        "Id",
+        "Name",
+        "Sample_lenth",
+        "Channel",
+        "Dataset_id",
+        "Label",
+        "Domain_id",
+    ]
+    rows = [
+        [1, "RM_001_CWRU", 4, 2, 1, 0, 0],
+        [2, "RM_001_CWRU", 4, 2, 1, 1, 1],
+        [99, "OTHER", 4, 2, 2, 0, 0],
+    ]
+    index = headers.index(missing_column)
+    _write_workbook(
+        root / "metadata.xlsx",
+        [value for offset, value in enumerate(headers) if offset != index],
+        [
+            [value for offset, value in enumerate(row) if offset != index]
+            for row in rows
+        ],
+    )
+    with pytest.raises(BundleValidationError, match=missing_column):
+        validate_bundle(root)
+
+
+def test_validate_bundle_rejects_duplicate_selected_metadata_ids(tmp_path: Path) -> None:
+    root = _write_bundle(tmp_path / "bundle")
+    _write_workbook(
+        root / "metadata.xlsx",
+        [
+            "Id",
+            "Name",
+            "Sample_lenth",
+            "Channel",
+            "Dataset_id",
+            "Label",
+            "Domain_id",
+        ],
+        [
+            [1, "RM_001_CWRU", 4, 2, 1, 0, 0],
+            [1, "RM_001_CWRU", 4, 2, 1, 1, 1],
+        ],
+    )
+    with pytest.raises(BundleValidationError, match="duplicate selected Id"):
+        validate_bundle(root)
+
+def test_validate_bundle_enforces_logical_hash_keys(tmp_path: Path) -> None:
+    root = _write_bundle(tmp_path / "bundle")
+    metadata_digest = sha256((root / "metadata.xlsx").read_bytes()).hexdigest()
+    signal_digest = sha256((root / "RM_001_CWRU.h5").read_bytes()).hexdigest()
+    spec = replace(
+        load_bundle_spec(),
+        expected_sha256={
+  "metadata": metadata_digest,
+  "signals": signal_digest,
+        },
+    )
+    assert validate_bundle(root, spec=spec).selected_rows == 2
+
+    bad_metadata = replace(
+        spec,
+        expected_sha256={"metadata": "0" * 64, "signals": signal_digest},
+    )
+    with pytest.raises(BundleValidationError, match="metadata.xlsx"):
+        validate_bundle(root, spec=bad_metadata)
+
+    bad_signals = replace(
+        spec,
+        expected_sha256={"metadata": metadata_digest, "signals": "1" * 64},
+    )
+    with pytest.raises(BundleValidationError, match="RM_001_CWRU.h5"):
+        validate_bundle(root, spec=bad_signals)
+
+    conflicting = replace(
+        spec,
+        expected_sha256={
+  "metadata": metadata_digest,
+  "metadata.xlsx": "0" * 64,
+  "signals": signal_digest,
+        },
+    )
+    with pytest.raises(BundleValidationError, match="Conflicting SHA-256 pins"):
+        validate_bundle(root, spec=conflicting)
+
+
 def test_compare_bundle_hashes_requires_provider_parity(tmp_path: Path) -> None:
     left = _write_bundle(tmp_path / "left")
     right = tmp_path / "right"
@@ -146,6 +251,139 @@ def test_huggingface_download_materializes_required_files_and_provenance(
     assert result.validation.corpus_present is False
     assert (result.directory / ".phmfactory-bundle.yaml").is_file()
 
+
+
+def test_download_reuses_only_matching_recorded_provenance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote_a = _write_bundle(tmp_path / "remote-a")
+    remote_b = _write_bundle(tmp_path / "remote-b")
+    with h5py.File(remote_b / "RM_001_CWRU.h5", "a") as handle:
+        handle["1"][0, 0] = 7.0
+    calls: list[str] = []
+
+    def fake_download(spec, provider, root: Path, revision: str) -> None:
+        calls.append(revision)
+        remote = remote_a if revision == "revision-a" else remote_b
+        for _, local_name, required in bundle_module._bundle_files(spec):
+            source = remote / local_name
+            if source.is_file():
+                shutil.copy2(source, root / local_name)
+            elif required:
+                raise FileNotFoundError(source)
+
+    monkeypatch.setattr(bundle_module, "_download_huggingface", fake_download)
+    destination = tmp_path / "downloaded"
+    first = download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-a",
+    )
+    first_hash = next(
+        item.sha256
+        for item in first.validation.files
+        if item.name == "RM_001_CWRU.h5"
+    )
+
+    reused = download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-a",
+    )
+    assert calls == ["revision-a"]
+    assert reused.validation.files == first.validation.files
+
+    refreshed = download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-b",
+    )
+    assert calls == ["revision-a", "revision-b"]
+    refreshed_hash = next(
+        item.sha256
+        for item in refreshed.validation.files
+        if item.name == "RM_001_CWRU.h5"
+    )
+    assert refreshed_hash != first_hash
+    provenance = yaml.safe_load(
+        (destination / ".phmfactory-bundle.yaml").read_text(encoding="utf-8")
+    )
+    assert provenance["provider"] == "huggingface"
+    assert provenance["requested_revision"] == "revision-b"
+
+
+def test_download_rejects_tampered_cache_provenance_and_refreshes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote = _write_bundle(tmp_path / "remote")
+    calls: list[str] = []
+
+    def fake_download(spec, provider, root: Path, revision: str) -> None:
+        calls.append(revision)
+        for _, local_name, required in bundle_module._bundle_files(spec):
+            source = remote / local_name
+            if source.is_file():
+                shutil.copy2(source, root / local_name)
+            elif required:
+                raise FileNotFoundError(source)
+
+    monkeypatch.setattr(bundle_module, "_download_huggingface", fake_download)
+    destination = tmp_path / "downloaded"
+    download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-a",
+    )
+    provenance_path = destination / ".phmfactory-bundle.yaml"
+    payload = yaml.safe_load(provenance_path.read_text(encoding="utf-8"))
+    payload["provider"] = "modelscope"
+    provenance_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+    download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-a",
+    )
+    assert calls == ["revision-a", "revision-a"]
+
+
+def test_forced_refresh_removes_stale_optional_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with_corpus = _write_bundle(tmp_path / "with-corpus", include_corpus=True)
+    without_corpus = _write_bundle(tmp_path / "without-corpus")
+    selected = {"revision-a": with_corpus, "revision-b": without_corpus}
+
+    def fake_download(spec, provider, root: Path, revision: str) -> None:
+        remote = selected[revision]
+        for _, local_name, required in bundle_module._bundle_files(spec):
+            source = remote / local_name
+            if source.is_file():
+                shutil.copy2(source, root / local_name)
+            elif required:
+                raise FileNotFoundError(source)
+
+    monkeypatch.setattr(bundle_module, "_download_huggingface", fake_download)
+    destination = tmp_path / "downloaded"
+    first = download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-a",
+    )
+    assert first.validation.corpus_present is True
+    assert (destination / "corpus.xlsx").is_file()
+
+    refreshed = download_bundle(
+        source="huggingface",
+        destination=destination,
+        revision="revision-b",
+        force=True,
+    )
+    assert refreshed.validation.corpus_present is False
+    assert not (destination / "corpus.xlsx").exists()
 
 def test_modelscope_provider_uses_argument_list_without_shell(
     tmp_path: Path,
@@ -190,3 +428,32 @@ def test_data_validate_cli_uses_same_public_contract(
     output = capsys.readouterr().out
     assert "bundle=cwru-demo-v1" in output
     assert "corpus_present=false" in output
+
+@pytest.mark.parametrize(
+    ("sample_length", "channel_count"),
+    [(4.5, 2), (4, 2.5)],
+)
+def test_validate_bundle_rejects_fractional_shape_metadata(
+    tmp_path: Path,
+    sample_length: float,
+    channel_count: float,
+) -> None:
+    root = _write_bundle(tmp_path / "bundle")
+    _write_workbook(
+        root / "metadata.xlsx",
+        [
+            "Id",
+            "Name",
+            "Sample_lenth",
+            "Channel",
+            "Dataset_id",
+            "Label",
+            "Domain_id",
+        ],
+        [
+            [1, "RM_001_CWRU", sample_length, channel_count, 1, 0, 0],
+            [2, "RM_001_CWRU", 4, 2, 1, 1, 1],
+        ],
+    )
+    with pytest.raises(BundleValidationError, match="positive integer"):
+        validate_bundle(root)

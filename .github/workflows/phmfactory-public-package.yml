@@ -4,9 +4,15 @@ on:
   pull_request:
     paths:
       - "phmfactory/**"
+      - "src/configs/config_utils.py"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
+      - "MIGRATION_v0.2_to_v0.3.md"
+      - "examples/cwru_quickstart.py"
+      - "configs/**"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
@@ -16,9 +22,15 @@ on:
       - main
     paths:
       - "phmfactory/**"
+      - "src/configs/config_utils.py"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
+      - "MIGRATION_v0.2_to_v0.3.md"
+      - "examples/cwru_quickstart.py"
+      - "configs/**"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
@@ -52,6 +64,7 @@ jobs:
         run: >-
           python -m py_compile
           phmfactory/*.py
+          src/configs/config_utils.py
           main.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
@@ -93,13 +106,25 @@ jobs:
               "phmfactory/config.py",
               "phmfactory/pipelines.py",
               "src/__init__.py",
+              "src/configs/config_utils.py",
+              "configs/__init__.py",
+              "configs/demo/00_smoke/dummy_dg.yaml",
+              "configs/base/environment/base.yaml",
+              "configs/base/data/base_cross_domain.yaml",
+              "configs/base/model/backbone_dlinear.yaml",
+              "configs/base/task/dg.yaml",
+              "configs/base/trainer/default_single_gpu.yaml",
+              "data/__init__.py",
+              "data/metadata_dummy.csv",
+              "data/raw/Dummy_Data/dummy1.csv",
+              "data/raw/Dummy_Data/dummy2.csv",
           }
           missing = sorted(required - names)
           assert not missing, missing
           assert not any(name.startswith(("paper/", "dev/", "results/")) for name in names)
           PY
 
-      - name: Verify clean no-dependency installation
+      - name: Verify clean no-dependency installation and dispatch
         run: |
           python -m venv /tmp/phmfactory-wheel
           /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
@@ -107,3 +132,40 @@ jobs:
           /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.config, src; print(phmfactory.__version__)"
           /tmp/phmfactory-wheel/bin/phmfactory --help
           /tmp/phmfactory-wheel/bin/python -m phmfactory --help
+          cd /tmp
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          from pathlib import Path
+          from types import SimpleNamespace
+          from unittest.mock import patch
+
+          import data
+          from phmfactory import cli
+          from phmfactory.config import resolve_config
+          from src.configs.config_utils import load_config
+
+          resolved = resolve_config("smoke")
+          assert resolved.path.is_file(), resolved.path
+          assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
+          data_root = Path(data.__file__).resolve().parent
+          assert (data_root / "metadata_dummy.csv").is_file()
+          assert (data_root / "raw/Dummy_Data/dummy1.csv").is_file()
+          assert (data_root / "raw/Dummy_Data/dummy2.csv").is_file()
+
+          def pipeline(args):
+              config = load_config(args.config_path)
+              assert config.data.metadata_file == "metadata_dummy.csv"
+              assert config.model.name == "M_01_ISFM"
+              assert config.task.name == "classification"
+              assert config.trainer.device == "cpu"
+              return "wheel-dispatch-pass"
+
+          real_import_module = cli.importlib.import_module
+
+          def fake_import(name):
+              if name == "src.Pipeline_01_Fault_Diagnosis":
+                  return SimpleNamespace(pipeline=pipeline)
+              return real_import_module(name)
+
+          with patch.object(cli.importlib, "import_module", side_effect=fake_import):
+              assert cli.main(["--config", "smoke"]) == "wheel-dispatch-pass"
+          PY

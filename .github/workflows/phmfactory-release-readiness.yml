@@ -20,6 +20,8 @@ on:
       - "docs/index.md"
       - "tools/repo/check_release_readiness.py"
       - "tools/repo/check_submodule_policy.py"
+      - "test/test_release_readiness.py"
+      - "test/test_submodule_policy.py"
       - ".github/workflows/phmfactory-release-readiness.yml"
   push:
     branches:
@@ -47,14 +49,25 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install audit dependency
-        run: python -m pip install PyYAML
+      - name: Install audit dependencies
+        run: python -m pip install PyYAML pytest
 
-      - name: Compile release checkers
+      - name: Compile release checkers and tests
         run: >-
           python -m py_compile
           tools/repo/check_release_readiness.py
           tools/repo/check_submodule_policy.py
+          test/test_release_readiness.py
+          test/test_submodule_policy.py
+
+      - name: Run release and submodule negative tests
+        run: >-
+          python -m pytest -vv
+          test/test_release_readiness.py
+          test/test_submodule_policy.py
+
+      - name: Enforce deny-by-default submodule policy
+        run: python tools/repo/check_submodule_policy.py --mode policy
 
       - name: Record current blockers
         run: python tools/repo/check_release_readiness.py --mode audit | tee release-readiness.txt
@@ -85,10 +98,11 @@ jobs:
             CITATION_REPOSITORY_PENDING \
             CHANGELOG_V030_MISSING \
             RELEASE_NOTES_V030_MISSING \
-            V020_PROVENANCE_UNRESOLVED
+            V020_PROVENANCE_UNRESOLVED \
+            UNKNOWN_SUBMODULES_PRESENT
           do
             if grep -q "${resolved}" release-readiness.txt; then
-              echo "Resolved blocker returned: ${resolved}" >&2
+              echo "Resolved or unexpected blocker returned: ${resolved}" >&2
               exit 1
             fi
           done

@@ -57,20 +57,27 @@ def _configured_submodules() -> dict[str, dict[str, str]]:
     return result
 
 
-def _gitlink(path: str) -> str:
+def _gitlinks() -> dict[str, str]:
     result = subprocess.run(
-        ["git", "ls-tree", "HEAD", "--", path],
+        ["git", "ls-tree", "-r", "HEAD"],
         cwd=ROOT,
         check=True,
         text=True,
         stdout=subprocess.PIPE,
-    ).stdout.strip()
-    if not result:
-        return ""
-    fields = result.split(None, 3)
-    if len(fields) < 3 or fields[0] != "160000" or fields[1] != "commit":
-        return ""
-    return fields[2]
+    ).stdout
+    gitlinks: dict[str, str] = {}
+    for line in result.splitlines():
+        if "\t" not in line:
+            continue
+        metadata, path = line.split("\t", 1)
+        fields = metadata.split()
+        if len(fields) == 3 and fields[0] == "160000" and fields[1] == "commit":
+            gitlinks[path] = fields[2]
+    return gitlinks
+
+
+def _gitlink(path: str) -> str:
+    return _gitlinks().get(path, "")
 
 
 def collect_findings() -> tuple[Finding, ...]:
@@ -142,8 +149,15 @@ def collect_findings() -> tuple[Finding, ...]:
             legacy[path] = item
 
     configured = _configured_submodules()
+    gitlinks = _gitlinks()
+    for path in sorted(set(gitlinks) - set(configured)):
+        findings.append(Finding("UNKNOWN_SUBMODULE", path))
+
     for path, entry in sorted(configured.items()):
-        gitlink = _gitlink(path)
+        gitlink = gitlinks.get(path, "")
+        if not gitlink:
+            findings.append(Finding("CONFIGURED_SUBMODULE_GITLINK_MISSING", path))
+            continue
         if path == TARGET_BACKEND_PATH:
             if status != "approved":
                 findings.append(

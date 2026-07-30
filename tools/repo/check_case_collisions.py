@@ -35,7 +35,7 @@ def _collisions(paths: tuple[str, ...]) -> tuple[tuple[str, tuple[str, ...]], ..
         parts = PurePosixPath(path).parts
         for index in range(1, len(parts)):
             prefix = "/".join(parts[:index])
-            groups[f"directory:{_portable_key(prefix)}"].add(prefix)
+            groups[_portable_key(prefix)].add(prefix)
 
     return tuple(
         (key, tuple(sorted(values)))

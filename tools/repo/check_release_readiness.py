@@ -23,6 +23,7 @@ TARGET_BACKEND_PATH = "packages/phm-data-factory"
 TARGET_BACKEND_URL = "https://github.com/PHMbench/phm-data-factory.git"
 REQUIRED_BUNDLE_HASHES = ("metadata", "signals")
 FLOATING_REVISIONS = {"main", "master", "latest", "develop", "development", ""}
+SHA40 = re.compile(r"[0-9a-f]{40}")
 V020_PROVENANCE_PATH = "docs/releases/v0.2.0-rc-provenance.yaml"
 SUBMODULE_ALLOWLIST_PATH = ".github/phmfactory-v0.3-submodules.allowlist.yml"
 V020_BASELINE_COMMIT = "a331769d4005018bc833534ecf4efeb5e8a5a78d"
@@ -68,20 +69,31 @@ def _git_tags() -> tuple[str, ...]:
     return tuple(line.strip() for line in result.stdout.splitlines() if line.strip())
 
 
-def _gitlink(path: str) -> str:
+def _gitlinks() -> dict[str, str]:
     result = subprocess.run(
-        ["git", "ls-tree", "HEAD", "--", path],
+        ["git", "ls-tree", "-r", "HEAD"],
         cwd=ROOT,
         check=True,
         text=True,
         stdout=subprocess.PIPE,
-    ).stdout.strip()
-    if not result:
-        return ""
-    fields = result.split(None, 3)
-    if len(fields) < 3 or fields[0] != "160000" or fields[1] != "commit":
-        return ""
-    return fields[2]
+    ).stdout
+    gitlinks: dict[str, str] = {}
+    for line in result.splitlines():
+        if "\t" not in line:
+            continue
+        metadata, path = line.split("\t", 1)
+        fields = metadata.split()
+        if len(fields) == 3 and fields[0] == "160000" and fields[1] == "commit":
+            gitlinks[path] = fields[2]
+    return gitlinks
+
+
+def _gitlink(path: str) -> str:
+    return _gitlinks().get(path, "")
+
+
+def _is_immutable_revision(value: str) -> bool:
+    return SHA40.fullmatch(value.casefold()) is not None
 
 
 def _configured_submodules() -> dict[str, dict[str, str]]:
@@ -145,6 +157,11 @@ def _submodule_findings() -> tuple[Finding, ...]:
     pinned_commit = str(candidate.get("pinned_commit") or "")
 
     configured = _configured_submodules()
+    gitlinks = _gitlinks()
+    raw_unknown = sorted(set(gitlinks) - set(configured))
+    if raw_unknown:
+        findings.append(Finding("UNKNOWN_SUBMODULES_PRESENT", ", ".join(raw_unknown)))
+
     backend = configured.get(TARGET_BACKEND_PATH)
     backend_ready = (
         status == "approved"
@@ -245,9 +262,10 @@ def collect_findings() -> tuple[Finding, ...]:
         )
 
     providers = manifest.get("providers") or {}
+    release_pin_required = manifest.get("release_pin_required") is True
     for provider_name, provider in sorted(providers.items()):
         revision = str((provider or {}).get("revision") or "")
-        if revision.casefold() in FLOATING_REVISIONS:
+        if (release_pin_required and not _is_immutable_revision(revision)) or revision.casefold() in FLOATING_REVISIONS:
             findings.append(
                 Finding(
                     "CWRU_REVISION_FLOATING",
@@ -256,6 +274,20 @@ def collect_findings() -> tuple[Finding, ...]:
             )
 
     expected_hashes = manifest.get("expected_sha256") or {}
+    filename_hash_keys = {
+        str((manifest.get("files") or {}).get(key, {}).get("filename") or "")
+        for key in REQUIRED_BUNDLE_HASHES
+    }
+    conflicting_filename_keys = sorted(
+        key for key in filename_hash_keys if key and expected_hashes.get(key)
+    )
+    if conflicting_filename_keys:
+        findings.append(
+            Finding(
+                "CWRU_HASH_KEY_CONFLICT",
+                f"filename hash keys are forbidden; use logical keys: {conflicting_filename_keys}",
+            )
+        )
     for key in REQUIRED_BUNDLE_HASHES:
         value = str(expected_hashes.get(key) or "")
         if not re.fullmatch(r"[0-9a-f]{64}", value):
