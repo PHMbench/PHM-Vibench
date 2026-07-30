@@ -34,6 +34,19 @@ protected internal engine. The project remains in alpha; release support is limi
 the maintained configurations documented in
 [SUPPORTED_COMBINATIONS.md](SUPPORTED_COMBINATIONS.md).
 
+## Branch policy
+
+`main` is the user-facing stable branch and remains the default branch for cloning,
+documentation, and releases. `dev` is the integration and development branch. All
+routine feature, fix, documentation, test, CI, cleanup, and migration pull requests
+must target `dev`, and topic branches must start from the latest `dev`.
+
+Only an explicitly authorized release-promotion pull request (`dev` or
+`release/<version>` to `main`) or an emergency hotfix may target `main`. A hotfix
+must be synchronized back to `dev`. Both long-lived branches are pull-request-only;
+direct pushes are outside the maintained workflow. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full contract.
+
 ## Run the offline example
 
 Install the core environment, then execute the repository-shipped Dummy configuration:
