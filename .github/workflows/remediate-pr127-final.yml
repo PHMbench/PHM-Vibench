@@ -158,7 +158,7 @@ jobs:
         run: |
           gh api repos/PHMbench/PHM-Vibench/issues/127/comments \
             -f body="PR127_FINAL_REMEDIATION_APPLIED
-          validated_parent: 39fc3835227e97a74c615af2e366dc481281df38
+          validated_parent: 9f5772c4964d8aa4c462b60517dd2e5d109a9ac7
           committed_head: $(git rev-parse HEAD)
           correctness_negative_tests: pass
           wheel_external_resolution: pass
@@ -175,3 +175,5 @@ jobs:
             -f body="PR127_FINAL_REMEDIATION_FAILED
           run_id: ${GITHUB_RUN_ID}
           inspect: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+# retry: corrected marker matching
