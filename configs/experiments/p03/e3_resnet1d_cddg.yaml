@@ -1,0 +1,56 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_system.yaml
+  task: configs/base/task/cddg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p03_e3_resnet1d_cddg
+  seed: 42
+  output_dir: results/p03/e3_resnet1d_cddg
+  notes: 'P03 E3: ResNet1D diagnostic baseline, multi-system CDDG.'
+model:
+  type: CNN
+  name: ResNet1D
+  input_dim: 2
+  block_type: basic
+  layers:
+  - 2
+  - 2
+  - 2
+  - 2
+  initial_channels: 32
+task:
+  type: CDDG
+  name: classification
+  target_system_id:
+  - 1
+  target_domain_num: 1
+  lr: 0.001
+  weight_decay: 0.0001
+data:
+  data_dir: /home/user/data/PHMbenchdata/PHM-Vibench
+  metadata_file: metadata.xlsx
+  window_size: 4096
+  stride: 5
+  num_window: 64
+  batch_size: 64
+  num_workers: 8
+  normalization: standardization
+  split:
+    strategy: grouped_metadata
+    group_key: Domain_id       # leakage-safe: keeps each operating-condition domain whole across train/val (metadata.xlsx has Domain_id; Bearing_id is absent; File is per-row unique -> not a real group)
+    seed: 42
+    test_policy: task_defined
+    fractions:
+      train: 0.9
+      val: 0.1
+    manifest_path: results/p03/e3_resnet1d_cddg/splits/manifest_seed42.json
+trainer:
+  num_epochs: 1
+  gpus: 1
+  paper_id: P03
+  preset_version: p03-e3-v1
+  extensions:
+    report:
+      manifest: true
