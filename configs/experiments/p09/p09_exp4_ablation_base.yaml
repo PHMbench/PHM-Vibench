@@ -1,0 +1,73 @@
+# P09 Exp-4: HSE-Prompt component ablation base under GFS (single-stage finetune view).
+# Derives from legacy ablation table and demo configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml.
+# This is the FULL HSE-Prompt config; each ablation row is produced at launch by --override.
+#
+# Ablation rows (vs this base = "Full HSE-Prompt on GFS"):
+#   A0 Full              : this config as-is
+#   A1 No physical-prompt: model.use_prompt=false, model.prompt_dim=0  (legacy claims -4.4%)
+#   A2 No HSE            : model.embedding=E_03_Patch                  (legacy claims -7.1%)
+#   A3 No contrastive    : stages[0].task.contrast_weight=0 (run via p09_exp3 + override)
+#   A4 No prototype-align: stages[1].task.loss=CE  + alignment-weight override (set at G040)
+#   A5 Prompt-only       : model.use_prompt=true, skip stage-1 losses (use p09_exp1 + prompt)
+#   A6 Standard CNN      : model.backbone=B_01_basic_transformer
+#
+# NOTE (P09-G040): the alignment-loss and SupCon-loss knobs for A3/A4 are not finalized in
+# the maintained task layer; legacy lambda_SupCon=0.5, lambda_align=0.3 are unverified.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_exp4_ablation"
+  seed: 42
+  output_dir: "results/p09/exp4_ablation"
+  notes: "P09 Exp4: HSE-Prompt component ablation under GFS. Per-row overrides in experiment_plan.md."
+
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  system_prompt_dim: 64
+  sample_prompt_dim: 32
+
+task:
+  type: "GFS"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.0001
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides (legacy used 50)
+  gpus: 1
