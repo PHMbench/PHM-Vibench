@@ -147,5 +147,5 @@ stages:
         stride: 5
 
 pipeline:
-  name: "Pipeline_02_pretrain_fewshot"
+  name: "Pipeline_02_Pretraining_Few_Shot"
 

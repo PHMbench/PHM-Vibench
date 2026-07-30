@@ -115,4 +115,4 @@ trainer:
   wandb: false
 
 pipeline:
-  name: "Pipeline_01_default"
+  name: "Pipeline_01_Fault_Diagnosis"

@@ -1,0 +1,95 @@
+schema_version: 2
+policy: deny_by_default
+runtime_baseline_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+
+allowed_submodules:
+  - name: phm-data-factory
+    status: blocked_pending_org_transfer
+    optional: true
+    path: packages/phm-data-factory
+    target_url: https://github.com/PHMbench/phm-data-factory.git
+    reviewed_source_tree_commit: 5580fafec2ea5615f6d3276d95e1e5a948cc0f13
+    pinned_commit: null
+    license: Apache-2.0
+    expected_owner: PHMbench
+    approved_integration_pr: null
+    ownership_transfer:
+      status: open
+      source_issue_number: 5
+      target_repository: PHMbench/phm-data-factory
+    baseline_consumers: []
+    permitted_new_consumers:
+      - src/data_factory/phm_data_factory.py
+      - src/data_factory/standalone.py
+      - src/data_factory/__init__.py
+      - src/config_schema/models.py
+      - src/configs/config_utils.py
+    forbidden_changes:
+      - src/data_factory/data_factory.py
+      - src/data_factory/reader/**
+      - src/data_factory/dataset_task/**
+      - src/data_factory/samplers/**
+    required_conditions:
+      - public_organization_https_url
+      - immutable_reviewed_commit
+      - compatible_explicit_license
+      - exact_gitlink_matches_allowlist
+      - no_branch_tracking_in_gitmodules
+      - no_personal_account_or_private_ssh_url
+      - no_sys_path_mutation
+      - explicit_missing_backend_error
+      - core_wheel_cli_dummy_and_cwru_work_without_initialization
+      - no_paper_personal_or_agent_runtime_dependency
+      - protected_runtime_fingerprints_unchanged
+
+legacy_entries:
+  - path: data/Rotor_simulation
+    gitlink_commit: d46d089c5a086965dda5555734692114bc347437
+    classification: personal
+    allowlisted: false
+    action: migrated_and_removed
+  - path: paper/2025-10_foundation_model_0_metric
+    gitlink_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/LQ_vibench_fix
+    gitlink_commit: 1a15710fd532fad73c552704f48349576d843ee0
+    classification: personal
+    allowlisted: false
+    action: migrated_and_removed
+  - path: paper/UXFD_paper/1D-2D_fusion_explainable
+    gitlink_commit: b385b07e82d6323a291d90e55a5ef4aff9336c0b
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/UXFD_paper/Explainable_FD_Toolkit
+    gitlink_commit: 379244dc8410eea0580714bc216c71074acba3a9
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+    gitlink_commit: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/UXFD_paper/MOE_explainable
+    gitlink_commit: 0da06ae366eeb66d852c144013af6925446615cb
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/UXFD_paper/Neuralsymbolic_theory
+    gitlink_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/UXFD_paper/Paper_fuzzy_XFD
+    gitlink_commit: 1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove
+  - path: paper/UXFD_paper/TII_operator_attention
+    gitlink_commit: 20f47bac5c02763e1f6b856c90ce32861025c003
+    classification: paper
+    allowlisted: false
+    action: migrate_then_remove

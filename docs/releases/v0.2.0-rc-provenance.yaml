@@ -1,0 +1,14 @@
+schema_version: 1
+project_name: PHM-Vibench
+repository: PHMbench/PHM-Vibench
+version_label: v0.2.0
+status: release_candidate
+formal_release: false
+evidence_date: 2026-07-11
+baseline_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+tag_present: false
+superseded_by: v0.3.0
+resolution: >-
+  Treat the recorded commit as the immutable v0.2.0 release-candidate baseline for
+  the PHMFactory v0.3 migration. Do not create a retroactive final v0.2.0 tag or
+  rewrite published history.

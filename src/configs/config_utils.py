@@ -35,6 +35,29 @@ PRESET_TEMPLATES = {
 }
 
 
+def _resolve_base_config_path(yaml_path: Path, base_source: Union[str, Path]) -> Path:
+    """Resolve a base config from a checkout or an installed wheel."""
+    source = str(base_source)
+    candidate = Path(source)
+    if candidate.is_absolute():
+        return candidate
+
+    normalized = source.replace("\\", "/")
+    if normalized.startswith("configs/"):
+        if candidate.is_file():
+            return candidate.resolve()
+        relative = Path(normalized[len("configs/"):])
+        for parent in yaml_path.resolve().parents:
+            if parent.name == "configs":
+                packaged = parent / relative
+                if packaged.is_file():
+                    return packaged.resolve()
+                break
+        return candidate
+
+    return yaml_path.parent / candidate
+
+
 # ==================== 兼容包装器 ====================
 
 class ConfigWrapper(SimpleNamespace):
@@ -150,10 +173,7 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
                         base_path_str = str(base_rel)
                         # 约定：以 configs/ 或绝对路径开头的，按仓库根相对/绝对路径解析；
                         # 否则按当前 YAML 文件所在目录的相对路径解析。
-                        if os.path.isabs(base_path_str) or base_path_str.startswith("configs/"):
-                            base_path = Path(base_path_str)
-                        else:
-                            base_path = yaml_path.parent / base_path_str
+                        base_path = _resolve_base_config_path(yaml_path, base_path_str)
                         merged.update(_to_config_wrapper(base_path))
 
                     # 2) 当前 YAML 自身作为 override（移除 base_configs 字段）

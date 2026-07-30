@@ -131,7 +131,7 @@ def _entry_label(entry: RegistryEntry) -> str:
 
 def _render_template_summary(entry: RegistryEntry) -> None:
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Pipeline", entry.pipeline or "Pipeline_01_default")
+    col1.metric("Pipeline", entry.pipeline or "Pipeline_01_Fault_Diagnosis")
     col2.metric("Readiness", entry.status or "unspecified")
     col3.metric("Category", entry.category or "unspecified")
     col4.metric("Overrides", len([v for v in entry.common_overrides.split(";") if v]))

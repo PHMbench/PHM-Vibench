@@ -3,7 +3,7 @@ name: Pipeline 06 CFM quality gates
 on:
   pull_request:
     paths:
-      - "src/Pipeline_06_generative.py"
+      - "src/Pipeline_06_Generative_Modeling.py"
       - "src/model_factory/generative_model/**"
       - "src/task_factory/Components/generative/**"
       - "src/task_factory/task/generative/**"
@@ -16,7 +16,7 @@ on:
     branches:
       - main
     paths:
-      - "src/Pipeline_06_generative.py"
+      - "src/Pipeline_06_Generative_Modeling.py"
       - "src/model_factory/generative_model/**"
       - "src/task_factory/Components/generative/**"
       - "src/task_factory/task/generative/**"
@@ -72,7 +72,7 @@ jobs:
       - name: Compile Pipeline 06 and CFM modules
         run: |
           python -m py_compile \
-            src/Pipeline_06_generative.py \
+            src/Pipeline_06_Generative_Modeling.py \
             src/model_factory/generative_model/condition_encoder.py \
             src/model_factory/generative_model/film.py \
             src/model_factory/generative_model/phm_cfm_mlp1d.py \

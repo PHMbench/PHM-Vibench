@@ -4,16 +4,16 @@ on:
   pull_request:
     paths:
       - "apps/streamlit/**"
-      - "streamlit_app.py"
       - "test/test_streamlit_*.py"
+      - "test/requirements.txt"
       - ".github/workflows/streamlit-quality-gates.yml"
   push:
     branches:
       - main
     paths:
       - "apps/streamlit/**"
-      - "streamlit_app.py"
       - "test/test_streamlit_*.py"
+      - "test/requirements.txt"
       - ".github/workflows/streamlit-quality-gates.yml"
   workflow_dispatch:
 
@@ -43,26 +43,38 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install optional UI and test dependencies
+      - name: Install optional UI and focused test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r apps/streamlit/requirements.txt "pytest>=7"
+          python -m pip install PyYAML
+          python -m pip install -r apps/streamlit/requirements.txt
+          python -m pip install -r test/requirements.txt
 
       - name: Compile optional UI modules
         run: >-
           python -c "import glob, py_compile;
           [py_compile.compile(path, doraise=True)
-          for path in glob.glob('apps/streamlit/*.py') + ['streamlit_app.py']]"
+          for path in glob.glob('apps/streamlit/*.py')]"
 
-      - name: Import UI with real Streamlit
-        run: python -c "import apps.streamlit.app; import streamlit_app"
+      - name: Import maintained UI with real Streamlit
+        run: python -c "import apps.streamlit.app"
 
       - name: Run focused Streamlit tests
         run: >-
           python -m pytest -q
+          --junitxml=streamlit-pytest-${{ matrix.os }}.xml
           test/test_streamlit_config_service.py
           test/test_streamlit_runtime_policy.py
           test/test_streamlit_onboarding.py
           test/test_streamlit_run_service.py
           test/test_streamlit_result_service.py
           test/test_streamlit_ui_imports.py
+
+      - name: Upload focused Streamlit diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamlit-focused-${{ matrix.os }}
+          path: streamlit-pytest-${{ matrix.os }}.xml
+          if-no-files-found: error
+          retention-days: 7
