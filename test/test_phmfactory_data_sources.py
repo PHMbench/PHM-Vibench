@@ -428,3 +428,32 @@ def test_data_validate_cli_uses_same_public_contract(
     output = capsys.readouterr().out
     assert "bundle=cwru-demo-v1" in output
     assert "corpus_present=false" in output
+
+@pytest.mark.parametrize(
+    ("sample_length", "channel_count"),
+    [(4.5, 2), (4, 2.5)],
+)
+def test_validate_bundle_rejects_fractional_shape_metadata(
+    tmp_path: Path,
+    sample_length: float,
+    channel_count: float,
+) -> None:
+    root = _write_bundle(tmp_path / "bundle")
+    _write_workbook(
+        root / "metadata.xlsx",
+        [
+            "Id",
+            "Name",
+            "Sample_lenth",
+            "Channel",
+            "Dataset_id",
+            "Label",
+            "Domain_id",
+        ],
+        [
+            [1, "RM_001_CWRU", sample_length, channel_count, 1, 0, 0],
+            [2, "RM_001_CWRU", 4, 2, 1, 1, 1],
+        ],
+    )
+    with pytest.raises(BundleValidationError, match="positive integer"):
+        validate_bundle(root)

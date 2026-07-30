@@ -668,12 +668,12 @@ def _positive_int(value: Any) -> int | None:
     if value is None or value == "":
         return None
     try:
-        parsed = int(float(value))
+        numeric = float(value)
     except (TypeError, ValueError) as exc:
         raise BundleValidationError(f"Expected a positive integer, found {value!r}") from exc
-    if parsed <= 0:
+    if not numeric.is_integer() or numeric <= 0:
         raise BundleValidationError(f"Expected a positive integer, found {value!r}")
-    return parsed
+    return int(numeric)
 
 
 def _file_report(path: Path) -> BundleFileReport:

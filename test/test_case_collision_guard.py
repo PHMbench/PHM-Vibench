@@ -34,3 +34,7 @@ def test_detects_unicode_normalization_collisions() -> None:
 
 def test_accepts_portable_distinct_paths() -> None:
     assert MODULE._collisions(("docs/guide.md", "src/readme.py")) == ()
+
+def test_detects_file_directory_case_collisions() -> None:
+    groups = _groups(("foo", "FOO/bar.txt"))
+    assert ("FOO", "foo") in groups
