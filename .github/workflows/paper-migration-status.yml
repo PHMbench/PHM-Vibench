@@ -42,7 +42,7 @@ jobs:
       - name: Validate structural tracker policy
         run: python tools/repo/check_paper_migration_status.py --mode policy | tee paper-migration-policy.txt
 
-      - name: Require release mode to remain blocked
+      - name: Require only Foundation migration to remain pending
         shell: bash
         run: |
           set -euo pipefail
@@ -50,7 +50,8 @@ jobs:
             echo "Paper migration release policy unexpectedly passed." >&2
             exit 1
           fi
-          test "$(grep -c 'PAPER_MIGRATION_PENDING' paper-migration-release.txt)" = 8
+          test "$(grep -c 'PAPER_MIGRATION_PENDING' paper-migration-release.txt)" = 1
+          grep -q 'paper/2025-10_foundation_model_0_metric' paper-migration-release.txt
 
       - name: Upload migration evidence
         uses: actions/upload-artifact@v4
