@@ -1,0 +1,92 @@
+# P05 - METHOD arm: Neuro-Fuzzy Safe XFD (Fuzzy-XFD) in-domain.
+# ADDITIVE config under configs/experiments/p05/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml (single-dataset DG base).
+#
+# Status: ready (config instantiates the registered X_model.TSPN_UXFD model with
+#   the uxfd.fuzzy.* toggle from src/model_factory/X_model/UXFD/fuzzy/).
+#   IMPORTANT wiring note: the legacy snapshot used an UNREGISTERED model.name=NSN
+#   with a `model.decision_configs.fuzzy.*` block. That path is NOT in
+#   src/model_factory/model_registry.csv. This config instead uses the registered
+#   X_model.TSPN_UXFD with `model.uxfd.fuzzy.*` (the only registered UXFD-aligned
+#   entry point that exposes a fuzzy residual head). Phase-2 must verify this
+#   registered graph matches the legacy FuzzyLogic_v2 / NSN semantics before any
+#   accepted run; if a divergence is found, register a new model component
+#   (M_0X_FuzzyXFD) and update this config.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu, dummy data.
+#
+# Sweep policy (run after protocol lock P05-G040):
+#   for ds in {1=CWRU, 2=XJTU}; for seed in {42,123,456,789,1024}:
+#     python main.py --config configs/experiments/p05/method_fuzzy_indomain.yaml \
+#       --override task.target_system_id=[<ds>] --override environment.seed=<seed> \
+#       --override trainer.num_epochs=<full> --override trainer.device=cuda \
+#       --override data.data_dir=/home/user/data/PHMbenchdata/PHM-Vibench \
+#       --override data.metadata_file=metadata.xlsx \
+#       --override data.split.strategy=grouped_metadata --override data.split.group_key=Domain_id \
+#       --override data.split.test_policy=partition
+#
+# Supports: CLAIM-ACC-001, CLAIM-PARAM-001 (re-measured), CLAIM-IMP-001 (vs baselines),
+#           CLAIM-BASELINE-001 (method column), CLAIM-EVIDENCE-CHAIN-CONTRACT.
+
+pipeline: "Pipeline_05_default_w_explain"   # DG pipeline that also writes explain/report artifacts (rule-output evidence)
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_method_fuzzy_indomain"
+  seed: 42
+  output_dir: "results/experiments/p05/method_fuzzy_indomain"
+  notes: "P05 method arm: X_model.TSPN_UXFD + uxfd.fuzzy on CWRU/XJTU. Registered wiring; semantics vs legacy NSN to be verified."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # Registered UXFD-aligned model (model_registry.csv: X_model,TSPN_UXFD,...).
+  # Required TSPN.__init__ args (see src/model_factory/X_model/TSPN.py): in_dim,
+  # in_channels, out_channels (must be divisible by len(signal_processing_configs.layer1)),
+  # scale, skip_connection, device, num_classes. Matches configs/base/model/tspn_uxfd.yaml.
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128               # = data.window_size; raise to 2048/4096 for CWRU/XJTU real windows
+  out_dim: 128              # signal-processing output length (Identity preserves L); raise with in_dim
+  in_channels: 2
+  out_channels: 4           # 4 % module_num(=1 for layer1:[I]) == 0; TSPN.py asserts this
+  scale: 1
+  skip_connection: true
+  device: "cpu"             # smoke; raise to cuda via --override trainer.device=cuda for the full run
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  # UXFD fuzzy residual head (registered toggle in TSPN_UXFD.Model.__init__).
+  # Config keys map 1:1 onto FuzzyConfig in src/model_factory/X_model/UXFD/fuzzy/fuzzy_reasoner.py:
+  #   num_fuzzy_features, num_membership_functions, num_rules, logit_scale.
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 32
+      num_membership_functions: 3     # low / medium / high (Gaussian)
+      num_rules: 10
+      logit_scale: 0.5
+
+task:
+  target_system_id: [1]              # CWRU default; sweep [1]/[2]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

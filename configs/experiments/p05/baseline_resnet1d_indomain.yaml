@@ -1,0 +1,56 @@
+# P05 - BASELINE comparator: CNN.ResNet1D in-domain.
+# ADDITIVE config under configs/experiments/p05/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: ready (CNN.ResNet1D is registered in model_registry.csv).
+# Registered CNN comparator standing in for the legacy draft's "CNN 62.8%"
+# baseline. Must be produced under the SAME protocol/split/seed as the method arm.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Sweep policy: identical seed/dataset policy to method_fuzzy_indomain.yaml.
+#
+# Supports: CLAIM-BASELINE-001 (CNN row), CLAIM-SPEED-001 (vs CNN).
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_baseline_resnet1d_indomain"
+  seed: 42
+  output_dir: "results/experiments/p05/baseline_resnet1d_indomain"
+  notes: "P05 baseline comparator: registered CNN.ResNet1D on CWRU/XJTU."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  type: "CNN"
+  name: "ResNet1D"
+  input_dim: 2
+  block_type: "basic"
+  layers: [2, 2, 2, 2]
+  initial_channels: 16
+  num_classes: 10
+
+task:
+  target_system_id: [1]              # CWRU default; sweep [1]/[2]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

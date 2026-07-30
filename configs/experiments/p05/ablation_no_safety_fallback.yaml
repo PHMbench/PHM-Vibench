@@ -1,0 +1,81 @@
+# P05 - ABLATION R02 / R03 (PLACEHOLDER): no-safety-fallback / no-rule-output / hard-threshold.
+# ADDITIVE sibling of configs/experiments/p05/method_fuzzy_indomain.yaml.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# STATUS: needs_new_component.
+# The registered X_model.TSPN_UXFD + FuzzyConfig does NOT expose switches for:
+#   - hard-threshold inference (R01)
+#   - safety-fallback disable (R02)
+#   - rule-level explanation-output disable (R03)
+# These were driven in the legacy snapshot by an unregistered reviewer-ablation
+# script (paper/UXFD_paper/Paper_fuzzy_XFD/scripts/run_reviewer_ablation_smoke.py)
+# that is READ-ONLY here and emits only non-accepted smoke metrics.
+# Phase-2 must:
+#   1) extend FuzzyConfig (or a new wrapper) with explicit
+#      `hard_threshold` / `safety_fallback` / `rule_output` switches, AND
+#   2) author scripts/evaluate_rule_metrics.py + scripts/collect_safety_cases.py,
+#   before any of R01/R02/R03 can become accepted evidence.
+# This stub config mirrors the method arm so the only delta needed after the
+# new switches are added is the `uxfd.fuzzy.<switch>=<value>` override.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Supports (once unblocked): CLAIM-ABL-004, CLAIM-ABL-005, CLAIM-SAFETY-PITCH,
+#   CLAIM-CASE-001, CLAIM-CASE-002.
+
+pipeline: "Pipeline_05_default_w_explain"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_ablation_no_safety_fallback"
+  seed: 42
+  output_dir: "results/experiments/p05/ablation_no_safety_fallback"
+  notes: "P05 R02/R03 reviewer ablation (PLACEHOLDER). needs_new_component: safety-fallback / rule-output / hard-threshold switches not registered."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_channels: 2
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 32
+      num_membership_functions: 3
+      num_rules: 10
+      logit_scale: 0.5
+      # --- BEGIN needs_new_component block ---
+      # Provisional switches (NOT in FuzzyConfig today). Phase-2 must add them to
+      # FuzzyConfig and wire them in TSPN_UXFD.forward / explanation output:
+      # hard_threshold: false        # R01
+      # safety_fallback: false       # R02
+      # rule_output: false           # R03
+      # --- END needs_new_component block ---
+
+task:
+  target_system_id: [1]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
