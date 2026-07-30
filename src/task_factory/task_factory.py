@@ -45,26 +45,33 @@ def task_factory(
         module_path = resolve_task_module(args_task)
         try:
             task_module = importlib.import_module(module_path)
-            # 智能检测类名，支持多种命名约定
-            task_cls = None
+            # Importing the module runs any @register_task decorators. Re-check
+            # the authoritative registry before using naming heuristics.
+            try:
+                task_cls = TASK_REGISTRY.get(key)
+            except KeyError:
+                task_cls = None
 
-            # 优先级1：查找与文件名相同的类名（如 hse_contrastive.py 中的 HseContrastiveTask）
+            # 智能检测类名，支持多种命名约定（fallback）
             class_name_from_file = module_path.split('.')[-1].replace('_', ' ').title().replace(' ', '')
-            if hasattr(task_module, class_name_from_file):
+            if task_cls is None and hasattr(task_module, class_name_from_file):
                 task_cls = getattr(task_module, class_name_from_file)
 
             # 优先级2：查找标准化的类名（Task后缀）
             task_name = args_task.name
             standard_name = task_name.replace('_', ' ').title().replace(' ', '') + 'Task'
-            if hasattr(task_module, standard_name):
+            if task_cls is None and hasattr(task_module, standard_name):
                 task_cls = getattr(task_module, standard_name)
 
             # 优先级3：向后兼容 - 查找 'task' 类名
-            if hasattr(task_module, 'task'):
+            if task_cls is None and hasattr(task_module, 'task'):
                 task_cls = getattr(task_module, 'task')
 
             if task_cls is None:
-                raise AttributeError(f"No task class found in {module_path} (tried: {class_name_from_file}, {standard_name}, task)")
+                raise AttributeError(
+                    f"No task class found in {module_path} "
+                    f"(tried: registry, {class_name_from_file}, {standard_name}, task)"
+                )
 
         except Exception as exc:  # pragma: no cover - runtime safeguard
             print(f"Failed to import task from {module_path}: {exc}")
@@ -83,7 +90,6 @@ def task_factory(
     except Exception as exc:  # pragma: no cover - runtime safeguard
         print(f"Failed to create task {key}: {exc}")
         return None
-
 
 
 

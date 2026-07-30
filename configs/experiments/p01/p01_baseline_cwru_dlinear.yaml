@@ -1,0 +1,40 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_classification.yaml
+  model: configs/base/model/backbone_dlinear.yaml
+  task: configs/base/task/classification.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p01_baseline_cwru_dlinear
+  seed: 42
+  output_dir: results/p01/baseline_cwru_dlinear
+  notes: 'P01 1D-only baseline (ISFM/DLinear) on CWRU (Dataset_id=1). 5-seed: [42,123,456,789,1024].'
+data:
+  split:
+    strategy: grouped_metadata
+    group_key: File
+    stratify_key: null
+    seed: 42
+    test_policy: partition
+    fractions:
+      train: 0.7
+      val: 0.15
+      test: 0.15
+    manifest_path: results/p01/p01_baseline_cwru_dlinear/split_manifest.json
+task:
+  type: Default_task
+  name: Default_task
+  target_system_id:
+  - 1
+  loss: CE
+  metrics:
+  - acc
+  - f1
+  - precision
+  - recall
+  lr: 0.001
+  weight_decay: 0.0001
+trainer:
+  num_epochs: 1
+  device: cuda
