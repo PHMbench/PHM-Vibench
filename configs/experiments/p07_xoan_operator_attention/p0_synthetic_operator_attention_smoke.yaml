@@ -1,0 +1,76 @@
+# P07 — Arm P0: Synthetic operator-selection validation (smoke, the only hashed evidence).
+# Derives from: legacy/source_snapshot/configs/vibench/min.yaml (the only P07-side PHM-Vibench
+#   config in the snapshot) + configs/demo/00_smoke/dummy_dg.yaml (Pipeline_01_default smoke shape).
+# Pipeline: Pipeline_01_default.
+# Purpose: re-host the legacy synthetic_validation_results.json claim (CLAIM-SYN-WEIGHTS /
+#   CLAIM-SYN-CONSIST / CLAIM-SYN-EXPLAINABILITY) on a *real, registered* PHM-Vibench model
+#   (TSPN_UXFD with uxfd.operator_attention.enable=true), instead of the legacy
+#   `code/synthetic_verification.py` which uses SimpleOperatorAttention and, on inspection,
+#   RETURNS HARDCODED HAND-TUNED WEIGHTS (simulate_operator_weights) rather than running the
+#   model. So this smoke is a STEP toward verified, NOT verified itself.
+# IMPORTANT implementation-mismatch (recorded as P0 blocker): the registered
+#   `OperatorAttention1D` (src/model_factory/X_model/UXFD/operator_attention/) is the
+#   *simplified* mean-pool + Linear/ReLU/Linear gate + softmax, operators {I, HT, FFT} only.
+#   It does NOT implement the manuscript's FP(Avg+Var) + top-k sparse attention (DSOA) over the
+#   full EKD (WF + HT + statistical FE). Until a real DSOA component is registered, this arm
+#   CANNOT upgrade CLAIM-SYN-* above artifact-present-unverified.
+# Dataset: Dummy_Data.h5 (repo-shipped) so the entrypoint runs with no external data.
+# Seeds: smoke single-seed (seed 0). Accepted runs must use [20, 42, 100, 7, 31].
+# Output: results/experiments/p07/p0_synthetic_operator_attention_smoke/{experiment_name}/iter_{i}/
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"   # placeholder; overridden below
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p07_p0_synthetic_operator_attention_smoke"
+  seed: 0
+  output_dir: "results/experiments/p07/p0_synthetic_operator_attention_smoke"
+  notes: >
+    P07 P0 smoke: TSPN_UXFD with simplified OperatorAttention1D on dummy data.
+    Implementation-mismatch vs manuscript DSOA; smoke-only; cannot verify CLAIM-SYN-*.
+
+data:
+  metadata_file: "metadata_dummy.csv"
+  window_size: 128
+  stride: 16
+  batch_size: 4
+  num_workers: 0
+
+model:
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  num_classes: 4
+  device: "cpu"
+  signal_processing_configs:
+    layer1: ["I", "HT", "FFT"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    operator_attention:
+      enable: true
+      operators: ["I", "HT", "FFT"]
+      hidden_dim: 128
+      temperature: 1.0
+
+task:
+  type: "DG"
+  name: "classification"
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
+  paper_id: "P07"
+  preset_version: "p07-p0-smoke-v1"
