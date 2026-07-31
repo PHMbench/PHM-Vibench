@@ -1,7 +1,7 @@
 # Explainable FD Toolkit Autoresearch Program
 
 > paper_root: `paper/UXFD_paper/Explainable_FD_Toolkit`
-> exec_root: `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`
+> exec_root: repository root (`.`)
 > Mode: nonstop, baseline-first, no human confirmation between stages
 
 ## Contract

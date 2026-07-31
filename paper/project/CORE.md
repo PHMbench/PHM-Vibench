@@ -1,6 +1,6 @@
 # Paper 2（唯一核心文件）：Explainable FD Toolkit（顶刊口径）
 
-> Autoresearch root normalization: the maintained paper path is `paper/UXFD_paper/Explainable_FD_Toolkit`, and the maintained execution root is `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`. Historical `Paper/...` references below are legacy aliases.
+> Autoresearch root normalization: the maintained paper path is `paper/project`, and the maintained execution root is the repository root (`.`). Historical `Paper/...` references below are legacy aliases.
 
 > 本文件是 `paper/UXFD_paper/Explainable_FD_Toolkit/` 的唯一“总控核心文件”。
 > 目标：把故障诊断可解释性从“零散可视化”升级为可复现的基础设施论文：统一 API + 统一评估协议 + 一键 benchmark + 竞争对比（Captum/SHAP/LIME）+ 工业 demo。

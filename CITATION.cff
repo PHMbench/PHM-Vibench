@@ -1,14 +1,14 @@
 cff-version: 1.2.0
 message: >-
-  If you use PHM-Vibench, cite the exact release tag or Git commit used for the
-  experiment and record the configuration, overrides, data source, seed, and
-  environment.
-title: PHM-Vibench
+  If you use PHMFactory, cite the exact release tag or Git commit used for the
+  experiment and record the configuration, overrides, data source and revision,
+  random seed, and environment.
+title: PHMFactory
 type: software
 authors:
-  - name: PHMbench contributors
-repository-code: https://github.com/PHMbench/PHM-Vibench
-url: https://github.com/PHMbench/PHM-Vibench
+  - name: PHMFactory contributors
+repository-code: https://github.com/PHMbench/phmfactory
+url: https://github.com/PHMbench/phmfactory
 license: Apache-2.0
 keywords:
   - prognostics and health management
@@ -17,6 +17,7 @@ keywords:
   - benchmark
   - PyTorch
 abstract: >-
-  PHM-Vibench is a configuration-first research-software workbench for industrial
-  vibration fault-diagnosis experiments. Its documented support surface is
-  limited to maintained configurations with explicit runtime evidence.
+  PHMFactory is a configuration-first PHM research and evaluation framework for
+  industrial vibration signals. Version 0.3 introduces the public phmfactory
+  package while preserving the established PHM-Vibench runtime as a protected
+  compatibility engine.

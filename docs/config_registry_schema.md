@@ -26,7 +26,7 @@ This document defines the required columns and formatting rules for `configs/con
 | `category` | str | One of: `base_environment`, `base_data`, `base_model`, `base_task`, `base_trainer`, `demo`. |
 | `path` | path | YAML path of this config. |
 | `description` | str | Human readable summary. |
-| `pipeline` | str | Pipeline name (e.g. `Pipeline_01_default`); blank for base configs. |
+| `pipeline` | str | Pipeline name (e.g. `Pipeline_01_Fault_Diagnosis`); blank for base configs. |
 | `base_environment` | path | For `demo` rows: base environment YAML path. |
 | `base_data` | path | For `demo` rows: base data YAML path. |
 | `base_model` | path | For `demo` rows: base model YAML path. |
@@ -38,7 +38,7 @@ This document defines the required columns and formatting rules for `configs/con
 
 | Column | Type | Meaning | Example |
 |---|---:|---|---|
-| `owner_code` | str | Primary code entry consuming this config (file:symbol). | `src/Pipeline_01_default.py:pipeline` |
+| `owner_code` | str | Primary code entry consuming this config (file:symbol). | `src/Pipeline_01_Fault_Diagnosis.py:pipeline` |
 | `keyspace` | str | Key namespaces mainly controlled by this config. Semicolon-separated. | `data.*;task.*` |
 | `minimal_run` | str | Copy-paste minimal runnable command. | `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml` |
 | `common_overrides` | str | 2–5 common overrides (semicolon-separated). | `trainer.num_epochs=1;data.num_workers=0` |

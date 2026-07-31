@@ -4,7 +4,7 @@
 # demo and must not be added to configs/config_registry.csv until the complete
 # train -> checkpoint -> sample -> manifest -> eval chain passes on CPU and GPU.
 
-pipeline: "Pipeline_06_generative"
+pipeline: "Pipeline_06_Generative_Modeling"
 
 base_configs:
   environment: "configs/base/environment/base.yaml"

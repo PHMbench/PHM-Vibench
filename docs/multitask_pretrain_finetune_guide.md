@@ -6,7 +6,7 @@ PHM-Vibench operating guidance.
 
 ## Current status
 
-`Pipeline_03_multitask_pretrain_finetune.py` exists as research-oriented code, but
+`Pipeline_03_Multitask_Pretraining_Finetuning.py` exists as research-oriented code, but
 Pipeline 03 is outside the current release-supported surface. The maintained
 public entrypoint remains:
 

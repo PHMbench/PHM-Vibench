@@ -1,0 +1,587 @@
+schema_version: 1
+generated_at: '2026-07-28T03:53:24.261452+00:00'
+repository: PHMbench/PHM-Vibench
+main_sha: a331769d4005018bc833534ecf4efeb5e8a5a78d
+dev_sha: cf3c767b5d475308686b966d18a38eb26294bf7c
+branch_count: 108
+destructive_actions_performed: false
+decision_counts:
+  delete_after_ledger: 20
+  hold_content_port_evidence: 2
+  hold_physical_ancestry: 7
+  hold_until_canonical_post_merge: 1
+  manual_salvage_review: 68
+  rebuild_from_dev: 5
+  retain_permanent: 2
+  review_validation_or_staging: 1
+  salvage_by_vertical_slice: 2
+hard_gates:
+  pr_127_merged: false
+  main_post_merge_ci: false
+  dev_synchronized_after_pr127: false
+  deletion_ledger_required: true
+  force_push_forbidden: true
+branches:
+- branch: 004-uxfd-paper-alignment
+  head_sha: d8a610c3f14c9115e6086f29abaaa538d2750bb7
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/paper-program-runtime-contract-20260721
+  head_sha: 06a4e6b4a1d30def69dc389b250e585f3239bdc4
+  decision: rebuild_from_dev
+  reason: 'legacy PR(s) #83 require bounded replacement'
+  delete_batch: K5/R07
+- branch: agent/v030-agent-cleanup-validation
+  head_sha: 7b6ccc119d8128b18b43682cdfd2e91c3868f278
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-agent-hidden-cleanup-batch2
+  head_sha: 612fc54589cffbf341a872773a5f1f64d9f9120f
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-agent-root-cleanup-batch1
+  head_sha: b725a270736e63cf292a578b5e3384dbd41496a0
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-agent-workspace-cleanup-pr03a
+  head_sha: 7b6ccc119d8128b18b43682cdfd2e91c3868f278
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-branding-changelog-pr12b
+  head_sha: b2941db404514f8af8d13dccddacd8aebefef84d
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-canonical-integration-r2
+  head_sha: ea48534e5167c189b73091fc4b6e21614cd16389
+  decision: hold_until_canonical_post_merge
+  reason: 'PR #127 source and ancestry authority; delete last after main/dev synchronization'
+  delete_batch: K1/R14
+- branch: agent/v030-case-collision-history-pr11
+  head_sha: 6ab67111c9c1609f3cdd2339016e4cad237466ef
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-cwru-dual-source-pr07
+  head_sha: fa4a0306fc2ee4aee846812b5ed0e05837a50807
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-historical-docs-pr11b
+  head_sha: 1c079079ee0776b2a5b6e60772c85b130c931e30
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-historical-docs-pr11b-final
+  head_sha: 1c079079ee0776b2a5b6e60772c85b130c931e30
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-history-case-normalization-pr11
+  head_sha: 880475da292a048ce923bb08fa513bad6a599928
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-module-agent-doc-inventory-batch3
+  head_sha: fdf3663dc2f90c7cf69a7d85fbf7a31e369ca0ba
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-paper-migration-tracker-pr12e
+  head_sha: 7c2e8b7e654239c396081ed011a378078764a8a2
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-paper-results-migration-pr10
+  head_sha: cacc4feb18c1fa2c02b34c13de94059a5d1cf8e1
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-phm-data-backend-governance-pr12d
+  head_sha: bc43654b32c4b939ca5a9f4037c3b03a30edcf69
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-pipeline-descriptive-names-pr05
+  head_sha: 9b1337dc4f51d313b9be2da187e4d598c6731a9e
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-public-config-resolver-pr06
+  head_sha: 7508b8083d40fd303a86fa2092f0a8a99004d455
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-public-package-cli-pr04
+  head_sha: 7d0981a026a4749685d39a7a7c8491b89d25cdca
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-reader-doc-neutralization-batch4
+  head_sha: a56d4a025a5d58429412f4da4cfce3df23442cfc
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-reader-doc-neutralization-pr03b
+  head_sha: 3d098efc11943b1f5ef477ccdf93a10ef27d6911
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-reader-doc-validation
+  head_sha: 3d098efc11943b1f5ef477ccdf93a10ef27d6911
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-release-docs-pr12b
+  head_sha: 334922ff1b33b5638a33b94f865a2dacea93f866
+  decision: hold_content_port_evidence
+  reason: content-port mapping and superseding commit must be retained before deletion
+  delete_batch: K1/R08
+- branch: agent/v030-release-metadata-pr12a
+  head_sha: ae5c8e0ab7aa2fd7b2905ced8ea7e302ca90d776
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-release-readiness-pr12
+  head_sha: 5e69940ded28ff6e1abdcf8b83c67c2395767295
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-release-readiness-pr12-final
+  head_sha: 19748c93fb4716a5314cdaf38317b39a84da0cd7
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-release-readiness-pr12-r2
+  head_sha: 8d1853c7627a311d400e2a6be7e1555049a3105f
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-remove-dev-history-batch7
+  head_sha: 644966451b57100e1084d489977fa06ce5ff007d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-remove-personal-submodules-batch6
+  head_sha: 855cc5622d24899752cb9bccae96c1ab3b5842bc
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-remove-root-agent-docs
+  head_sha: ec3d017fe0045b15a219bc5568947c1526b5504d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-repository-contract
+  head_sha: d044d2031165cd4186d1da462fb154f101d6d493
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-requirements-ownership-pr08
+  head_sha: 369a9b7c3b51505c4d0ba56ca201099a7db6fd67
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-research-workspace-migration-pr10
+  head_sha: 497ebfb93ca8a2a9c1f1f9b93fe009e2a1a7ae5d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-runtime-reader-baseline-pr02
+  head_sha: 3b2909e516283b1147ad1b07163f1a8745361d86
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-submodule-governance-pr10b
+  head_sha: 8c1be3eb619f18c3d5e8ef51f1599a3aaeec4829
+  decision: hold_content_port_evidence
+  reason: content-port mapping and superseding commit must be retained before deletion
+  delete_batch: K1/R08
+- branch: agent/v030-submodule-governance-validation
+  head_sha: 8c1be3eb619f18c3d5e8ef51f1599a3aaeec4829
+  decision: review_validation_or_staging
+  reason: agent validation/staging branch is non-ancestor and needs exact superseding
+    proof
+  delete_batch: R04-R05
+- branch: agent/v030-submodule-inventory-batch5
+  head_sha: a44e5074448826bdb2055984e21eebc0627a18a9
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: agent/v030-ui-consolidation-pr09
+  head_sha: 46a0872cee7e1e292eec7a123f46d54580559de8
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-v02-provenance-pr12c
+  head_sha: b1afdab6b0db54fce3f551e505d3b184498ee41f
+  decision: hold_physical_ancestry
+  reason: required source-head ancestry for canonical PR until merged main is verified
+  delete_batch: K1/R06
+- branch: agent/v030-workspace-migration-pr10
+  head_sha: f22409521da2a6001dd620efd3e21180130d1b52
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: agent/v030-workspace-migration-pr10-final
+  head_sha: f22409521da2a6001dd620efd3e21180130d1b52
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: archive/pipeline06-source-20260705-7b97deb
+  head_sha: 7b97deb213c02727e73ba61bc1c508a9e61a5826
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: archive/pipeline06-source-7b97deb
+  head_sha: 7b97deb213c02727e73ba61bc1c508a9e61a5826
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: archive/pre-pipeline06-v021-908fdb3
+  head_sha: 908fdb330eef33e3daedb271527ca5e9da6ee4b3
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: candidate/v0.2.0-repo-convergence-20260707
+  head_sha: 341792e749cbff32d1f48907c0a1504c43840c5d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: ci/core-quality-gates-20260713
+  head_sha: d574cca9569f346e14c6f80412154e964c49cdde
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: ci/offline-smoke-gate-20260713
+  head_sha: e51efc490f52eb12ea75c7b6e73385849fd3a824
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/branch-inventory-20260728
+  head_sha: 137eb700eb8d4e000629d60f4149ef3355acfdb9
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/remove-case-colliding-dataset-modules-20260712
+  head_sha: 729961e697d5b9bf1c4a39edb9ca7956be232cbc
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/remove-personal-vscode-ai-profiles-20260713
+  head_sha: 7db2fcf976b66cfd729c021fe579ff3bef2b8df5
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/remove-vscode-ai-profiles-20260712
+  head_sha: f0c330dc2099dc8a2930f90a242b359a34582877
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/repo-slim-2026-07-05
+  head_sha: 7b97deb213c02727e73ba61bc1c508a9e61a5826
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/repo-slim-2026-07-09
+  head_sha: a4143f2bbaf77612b860bcd4ecaa73a2523046aa
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: cleanup/repo-slim-minimal-20260711
+  head_sha: cbbbc16d465ae0e7d13dcff15eb7f1b22eeea8bd
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: dev
+  head_sha: cf3c767b5d475308686b966d18a38eb26294bf7c
+  decision: retain_permanent
+  reason: development and integration branch
+  delete_batch: K0
+- branch: docs/app-surface-maturity-20260712
+  head_sha: 34c6da3a1718ddac197b00f9454591a95bbe1839
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/archive-boundary-20260714
+  head_sha: 8f81469885af17f9b7a3155a450f6439b43f7e4e
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/branch-policy-main-dev
+  head_sha: b7d706ebf26ec463f7b72d9436eeef5ac2d29f94
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/contribution-policy-20260714
+  head_sha: 07d2771b2c4157d943ff6832cb98e9a7677eda66
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/contributor-governance-20260714
+  head_sha: 415a703d11c1d30c49e6c71689dbe31ed026c3f8
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/data-directory-scope-20260713
+  head_sha: bb7aa1d7c16698d09c928b031087dc910157cf6f
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/documentation-architecture-20260714
+  head_sha: 36e84a834a030d55b1dae6d86005a946e9b4f90a
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/documentation-audit-20260714
+  head_sha: e337886e1fd825dd134a7681c8399d8b6c097dc5
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/factory-guides-validation-20260714
+  head_sha: 5d624a1a52b304b7e61c1db2fdcec1de865b2d0e
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/finalize-documentation-audit-status-20260714
+  head_sha: 85abcc0e680af03e4972094975fcd19aefa146ad
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/pipeline06-generative-migration-20260710
+  head_sha: c7daf0e074e116a28709e844b13542d54575e4c6
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/public-readme-surface-20260713
+  head_sha: 692b659220e7cd6d589d63ec84ee9326120def98
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/readme-public-surface-20260712
+  head_sha: ccb21ba6e0a5997f657f85fe8e4c1e4a1ce1711d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/remove-isfm-lowercase-readme-20260712
+  head_sha: 595cf675d1d631bae583df2bc97c2f54bb9128d3
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/repo-surface-docs-20260712
+  head_sha: eb37a51ae514bb1e8669ce18be8209ff52969c52
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/repository-optimization-sop-20260711
+  head_sha: 9bc4937f1a844bd740e3430448b6e8e418347254
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/specialist-history-cleanup-20260714
+  head_sha: b61b2edf0d9554c5017061acfde021e4608af610
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/task-readme-maturity-20260712
+  head_sha: 7f4932af757e2d3eb945b391ef81de96f932b9c8
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: docs/user-onboarding-20260714
+  head_sha: 3c5e2b8ace3f73ca5b43d91e84b553daf99aa485
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feat/phm-data-factory-agent
+  head_sha: ff78e8d7e017f5ef2719185fe190a17321d324e5
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feat/phm-data-factory-v02-backend
+  head_sha: 84605c0b8276cdb03f40fcd0577183e4dade0ae0
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/branch-governance-20260709
+  head_sha: 3513d02cc707fc3349d72f6fec2783012fed43d3
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: feature/pipeline06-g1-runtime-shell-v021
+  head_sha: d57fa5d03c661189f3d8c7b80a3e2ddd335a3630
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/pipeline06-g2-cfm-core-v021
+  head_sha: fa0c8ba8f5dc4d2fa69dba3040696ecabb29ab06
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/pipeline06-g3-evidence-contract-v021
+  head_sha: 509eb907e115192289911a6abaffd4d415b84aee
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: feature/pipeline06-g4-cfm-promotion-v021
+  head_sha: 97f3a907b24d160db1478fe95f4c277da8bef7ac
+  decision: rebuild_from_dev
+  reason: 'legacy PR(s) #80 require bounded replacement'
+  delete_batch: K5/R07
+- branch: feature/population-aware-cfm-v021
+  head_sha: 12c41b3cbe96801ea8393d7af43930156f114ede
+  decision: rebuild_from_dev
+  reason: 'legacy PR(s) #79 require bounded replacement'
+  delete_batch: K5/R07
+- branch: feature/streamlit-app-experimental
+  head_sha: 26fc18e7a806957b8d9d6062759be1b11cfbb7e2
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/streamlit-experience
+  head_sha: ce14675466ea3f6d5554889c8a705af21efe9c8d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/streamlit-first-run-ux-20260714
+  head_sha: 51a38c805ad0032ccf5af847060e17ae2e3ff45d
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/streamlit-run-results
+  head_sha: 3620dc877dc1079792359d7628e15ccd94723a2c
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/uxfd-u1-core-contract-20260709
+  head_sha: 2dd1a0fb49488d219454e2c4736416baf411d297
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/uxfd-u1-core-contract-20260713
+  head_sha: 0454cb92190ea11be716502bd6d22e572d9a32ea
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: feature/uxfd-u2-demo-registry-20260710
+  head_sha: 129c7f22f102c1c6cc5df504d08be472d9e0ff47
+  decision: rebuild_from_dev
+  reason: 'legacy PR(s) #42 require bounded replacement'
+  delete_batch: K5/R07
+- branch: Feature_factory-update
+  head_sha: ed1bc7d7968cff6a1e0f0cf1c2d1c476054d4cdb
+  decision: salvage_by_vertical_slice
+  reason: split into generative runtime, registry/config, smoke, evidence tools, and
+    research-material disposition
+  delete_batch: K4/R07
+- branch: fix/demo05-pretrain-data-dir-20260712
+  head_sha: 4386cf63ee62634158c888beed7ef95efa7069d4
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: fix/streamlit-cancel-status-20260711
+  head_sha: 1065c56db58fbe628d610c329fb3024d9255c484
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: integration/uxfd-main-20260709
+  head_sha: cf9c37d3e50450f94c7b303612b7df5d0085e712
+  decision: delete_after_ledger
+  reason: head is already contained in main or dev and no protected evidence dependency
+    was detected
+  delete_batch: R04-R06
+- branch: lq_merge_UXFD
+  head_sha: 31958fa1d767007cafa56e3bbb4cfb81d0881d65
+  decision: salvage_by_vertical_slice
+  reason: split into TSPN_UXFD runtime, configs/registry, NSN wrapper, artifact tools,
+    and paper material
+  delete_batch: K4/R07
+- branch: main
+  head_sha: a331769d4005018bc833534ecf4efeb5e8a5a78d
+  decision: retain_permanent
+  reason: user-facing stable/default branch
+  delete_batch: K0
+- branch: ops/repo-optimization-goal-pack-20260710
+  head_sha: f2f072f3cb4b36a296eb31d00003362c1e75cc8b
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: optimize/repo-health-10h-20260711
+  head_sha: f7e5d1200f5bd395b73a687201ff98a82ac16116
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p01-uxfd-multimodal-alignment
+  head_sha: d63d84a7163652f7d5505fa652d4229af6d2131b
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p02-xfd-benchmark-toolkit
+  head_sha: a71094f90ad5e49eb18f50b1454ff000ff250bbb
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p03-evidence-grounded-llm-xfd
+  head_sha: 1854c9d35e223e72f2fe89b5b0c0d88e3d5fba6b
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p04-physics-informed-moe-xfd
+  head_sha: b8fb4b76760a216adab807c7a15a5b9445de79be
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p05-neuro-fuzzy-safe-xfd
+  head_sha: 37ce23470c4937bb56db483caf16caacc602a51b
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p06-verifiable-neural-symbolic-xfd
+  head_sha: 932bea9b8ffbd4595cd932f11c5beaa8dc51866b
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p07-xoan-operator-attention
+  head_sha: 0d90a9aaf38957b0a86166d18756158f56ac7d14
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p08-hse-prompt-cddg
+  head_sha: 1b343ca4cfbbc102875960b3fdd07f489e842163
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: paper/p09-hse-prompt-gfs
+  head_sha: 6274b2493d438427cc5713f331eb71508c2004c9
+  decision: manual_salvage_review
+  reason: non-ancestor branch with no complete automated disposition
+  delete_batch: R07
+- branch: research/2025-2026-method-expansion-current
+  head_sha: 0f082f19e8d4b9ef0f439028e985db020e986a0a
+  decision: rebuild_from_dev
+  reason: 'legacy PR(s) #81 require bounded replacement'
+  delete_batch: K5/R07

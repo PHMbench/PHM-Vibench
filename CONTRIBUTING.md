@@ -29,7 +29,7 @@ Read the [documentation index](docs/index.md),
 ## Before opening an issue or pull request
 
 1. Search existing issues and pull requests.
-2. Reproduce the behavior on a current `main` checkout when possible.
+2. Reproduce user-facing behavior on current `main`; verify development fixes against current `dev`.
 3. Start from the nearest maintained config under `configs/demo/`.
 4. Keep local variants under `configs/experiments/` or in an untracked local
    config; do not commit personal absolute paths.
@@ -76,16 +76,38 @@ A feature request should explain:
 For a new method, include a primary paper or stable technical reference, but do not
 present a paper citation as evidence that the repository implementation works.
 
-## Development setup
+## Branch model and development setup
 
-Follow the [installation guide](docs/installation.md). A typical branch starts
-from current `main`:
+The repository uses two long-lived branches:
+
+```text
+main  user-facing stable branch; clone, documentation, release, and supported-state authority
+dev   integration and development branch; base for routine pull requests
+```
+
+All routine feature, fix, documentation, test, CI, cleanup, and migration pull
+requests must target `dev`. Create the topic branch from current `dev`:
 
 ```bash
-git switch main
-git pull --ff-only origin main
+git switch dev
+git pull --ff-only origin dev
 git switch -c <type>/<short-topic>
 ```
+
+`main` accepts only:
+
+1. an explicitly authorized release-promotion pull request from `dev` or a
+   `release/<version>` branch; or
+2. an authorized emergency hotfix created from `main`, followed immediately by a
+   synchronization or backport to `dev`.
+
+Both `main` and `dev` are pull-request-only branches. Do not push directly to either
+branch. The already-open canonical v0.3 integration PR #127 predates this policy and
+is the sole transition exception: it remains targeted at `main` because its merge
+contract preserves source ancestry. After #127 merges, synchronize the resulting
+`main` merge commit into `dev` before accepting further development work.
+
+Follow the [installation guide](docs/installation.md) for the local environment.
 
 Suggested branch prefixes:
 
@@ -116,21 +138,24 @@ test: cover TSPN_UXFD CPU assembly
 docs: clarify external data layout
 ```
 
-Commit history does not need to be artificially expanded; pull requests are
-normally squash-merged.
+Commit history does not need to be artificially expanded. Routine topic pull
+requests into `dev` may be squash-merged when no provenance or ancestry contract
+requires individual commits. Release-promotion pull requests into `main`, and any
+migration or provenance pull request whose validation depends on ancestry, must use
+a merge commit; squash and rebase are forbidden for those cases.
 
 ## Make a code contribution
 
 The standard sequence is:
 
 ```text
-create a focused branch
+create a focused branch from dev
 → make the smallest coherent change
 → add or update focused tests
 → update the authoritative documentation
 → run the relevant local gates
 → review the diff for unrelated changes
-→ open a pull request with exact evidence
+→ open a pull request to dev with exact evidence
 ```
 
 Architecture constraints:
@@ -247,6 +272,10 @@ Local evidence is not GitHub Actions evidence.
 
 ## Open a pull request
 
+Routine pull requests must use `dev` as their base. A pull request targeting `main`
+must identify the approved release-promotion or emergency-hotfix exception in its
+description.
+
 A pull request must include:
 
 - problem and rationale;
@@ -265,12 +294,14 @@ Do not mix broad formatting with behavioral changes. Do not submit a generated
 atlas without its registry source change. Do not lower a test or support standard
 to make a pull request pass.
 
-At least one maintainer review is expected for merge. The repository normally uses
-squash merge after required checks pass.
+At least one maintainer review and the required checks are expected before merge.
+Routine topic pull requests merge into `dev`. Promotion from `dev` or
+`release/<version>` into `main` uses a merge commit so the release boundary and
+`dev` ancestry remain auditable.
 
 ## Changes that will normally be rejected
 
-- direct pushes or unreviewed large changes to `main`;
+- direct pushes to `main` or `dev`, or routine pull requests that target `main` instead of `dev`;
 - hard-coded personal paths, credentials, or private infrastructure details;
 - a parallel framework that bypasses the existing config and factory contracts;
 - a giant PR combining unrelated runtime, cleanup, docs, and research work;
@@ -278,16 +309,16 @@ squash merge after required checks pass.
   the repository;
 - claims of accuracy, efficiency, SOTA status, or universal compatibility without
   reproducible evidence;
-- code copied from another project without source and license information;
-- tests that only suppress, skip, or catch the failure being fixed;
-- raw dataset or model artifacts without a license and repository-storage review.
+- third-party code without source and license information;
+- test "fixes" that only skip, catch, or suppress real failures;
+- large data or model artifacts without reviewed licensing and storage policy.
 
 ## Community and licensing
 
 Participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). By
-submitting a contribution, you agree that it may be distributed under the
-repository's [Apache License 2.0](LICENSE), subject to any separately documented
+contributing, you agree that your contribution may be distributed under the
+repository's [Apache License 2.0](LICENSE), subject to separately identified
 third-party licenses.
 
-For general questions, use GitHub Issues or Discussions when available. Keep
-security and conduct reports out of public issue threads.
+Use GitHub Issues for general questions or Discussions when enabled. Do not place
+security or conduct reports in public issues.

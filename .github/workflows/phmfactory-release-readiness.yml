@@ -1,0 +1,114 @@
+name: PHMFactory release readiness
+
+on:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "phmfactory/__init__.py"
+      - "README.md"
+      - "README_CN.md"
+      - "CITATION.cff"
+      - "CHANGELOG.md"
+      - "RELEASE_NOTES_v0.3.0.md"
+      - "phmfactory/data_sources/manifests/cwru-demo-v1.yaml"
+      - ".gitmodules"
+      - ".github/phmfactory-v0.3-submodules.allowlist.yml"
+      - "docs/PHMFACTORY_V0_3_RELEASE_READINESS.md"
+      - "docs/PHM_DATA_FACTORY_BACKEND_V0_3.md"
+      - "docs/releases/v0.3.0-backend-deferral.yaml"
+      - "docs/releases/v0.2.0-rc-provenance.yaml"
+      - "docs/releases/v0.2.0-rc-provenance.md"
+      - "docs/index.md"
+      - "tools/repo/check_release_readiness.py"
+      - "tools/repo/check_submodule_policy.py"
+      - "test/test_release_readiness.py"
+      - "test/test_submodule_policy.py"
+      - ".github/workflows/phmfactory-release-readiness.yml"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness-audit:
+    name: Audit v0.3 release blockers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository with tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install audit dependencies
+        run: python -m pip install PyYAML pytest
+
+      - name: Compile release checkers and tests
+        run: >-
+          python -m py_compile
+          tools/repo/check_release_readiness.py
+          tools/repo/check_submodule_policy.py
+          test/test_release_readiness.py
+          test/test_submodule_policy.py
+
+      - name: Run release and submodule negative tests
+        run: >-
+          python -m pytest -vv
+          test/test_release_readiness.py
+          test/test_submodule_policy.py
+
+      - name: Enforce deny-by-default submodule policy
+        run: python tools/repo/check_submodule_policy.py --mode release
+
+      - name: Record current blockers
+        run: python tools/repo/check_release_readiness.py --mode audit | tee release-readiness.txt
+
+      - name: Require only the intentionally deferred pre-release blockers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if python tools/repo/check_release_readiness.py --mode release; then
+            echo "Release mode unexpectedly passed before CWRU, rename, and final version preparation." >&2
+            exit 1
+          fi
+
+          grep -q 'PHMFactory v0.3 release readiness BLOCKED: 6 blocker(s)' release-readiness.txt
+          test "$(grep -c 'CWRU_REVISION_FLOATING' release-readiness.txt)" = 2
+          test "$(grep -c 'CWRU_HASH_MISSING' release-readiness.txt)" = 2
+          test "$(grep -c 'REPOSITORY_RENAME_PENDING' release-readiness.txt)" = 1
+          test "$(grep -c 'VERSION_NOT_FINAL' release-readiness.txt)" = 1
+
+          for resolved in \
+            PHM_DATA_FACTORY_BACKEND_PENDING \
+            BACKEND_DEFERRAL_INVALID \
+            LEGACY_SUBMODULES_REMAIN \
+            README_BRAND_PENDING \
+            CITATION_BRAND_PENDING \
+            CITATION_REPOSITORY_PENDING \
+            CHANGELOG_V030_MISSING \
+            RELEASE_NOTES_V030_MISSING \
+            V020_PROVENANCE_UNRESOLVED \
+            UNKNOWN_SUBMODULES_PRESENT
+          do
+            if grep -q "${resolved}" release-readiness.txt; then
+              echo "Resolved or unexpected blocker returned: ${resolved}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Upload readiness report
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-v030-release-readiness
+          path: release-readiness.txt
+          if-no-files-found: error

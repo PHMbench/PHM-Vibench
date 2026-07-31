@@ -4,7 +4,7 @@ overlay_branch: paper/p02-xfd-benchmark-toolkit
 vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
 
 engine_config_copy:
-  source_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/configs/experiments/p02_xfd_benchmark_toolkit
+  source_path: configs/experiments/p02_xfd_benchmark_toolkit
   destination_path: configs/experiments/p02_xfd_benchmark_toolkit
   source_git_status: untracked-directory
   regular_files: 6
@@ -12,7 +12,7 @@ engine_config_copy:
 
 legacy_source:
   snapshot_path: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-小论文/P02-XFD-Benchmark-Toolkit/legacy/source_snapshot
-  original_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/Explainable_FD_Toolkit
+  original_path: paper/project
   origin: https://github.com/liq22/Explainable_FD_Toolkit.git
   repository_head: 7c2683d986e4b47aa593270d112ec878d58205c9
   superproject_gitlink: 379244dc8410eea0580714bc216c71074acba3a9

@@ -487,7 +487,7 @@ def main() -> None:
                     validation_signature=current_signature,
                     metadata={
                         "registry_path": entry.path,
-                        "pipeline": entry.pipeline or "Pipeline_01_default",
+                        "pipeline": entry.pipeline or "Pipeline_01_Fault_Diagnosis",
                         "description": entry.description,
                         "difficulty": profile.difficulty,
                         "data_requirement": profile.data_label,

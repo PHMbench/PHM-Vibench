@@ -266,15 +266,14 @@ def _new_run_id() -> str:
 
 def _active_managed_run(repo_root: Path) -> Optional[str]:
     prefix = f"{repo_root.resolve()}::"
-    stale: List[str] = []
     for key, managed in _PROCESSES.items():
         if not key.startswith(prefix):
             continue
         if managed.process.poll() is None:
             return key.split("::", 1)[1]
-        stale.append(key)
-    for key in stale:
-        _PROCESSES.pop(key, None)
+    # Keep completed processes registered until get_run() or the monitor thread
+    # persists the terminal manifest. Removing them here creates a Windows race
+    # where a real failed/succeeded process is misclassified as orphaned.
     return None
 
 
@@ -401,7 +400,7 @@ def _monitor_process(repo_root: Path, run_id: str, managed: _ManagedProcess) -> 
         try:
             managed.log_handle.flush()
             managed.log_handle.close()
-        except OSError:
+        except (OSError, ValueError):
             pass
 
     with _LOCK:
@@ -444,16 +443,34 @@ def _pid_exists(pid: int) -> bool:
 def get_run(repo_root: Path, run_id: str) -> RunRecord:
     root = _ensure_repo_root(repo_root)
     run_dir = _run_root(root) / str(run_id)
-    payload = _read_payload(run_dir)
-    status = str(payload.get("status") or "unknown")
-    if status in {"starting", "running", "cancelling"}:
-        with _LOCK:
-            managed = _PROCESSES.get(_key(root, str(run_id)))
+    key = _key(root, str(run_id))
+
+    # Read and reconcile the manifest under the same lock used by the monitor.
+    # Otherwise get_run() can read a stale "running" payload, wait for the
+    # monitor to persist "failed"/"succeeded", then overwrite it as orphaned.
+    with _LOCK:
+        payload = _read_payload(run_dir)
+        status = str(payload.get("status") or "unknown")
+        if status in {"starting", "running", "cancelling"}:
+            managed = _PROCESSES.get(key)
             if managed is not None:
                 return_code = managed.process.poll()
                 if return_code is not None:
-                    time.sleep(0)
-                    payload = _read_payload(run_dir)
+                    cancelled = bool(payload.get("cancel_requested"))
+                    payload.update(
+                        status=(
+                            "cancelled"
+                            if cancelled
+                            else "succeeded"
+                            if return_code == 0
+                            else "failed"
+                        ),
+                        exit_code=return_code,
+                        ended_at=_utc_now(),
+                    )
+                    # The monitor thread exclusively owns log-handle closure and
+                    # process-registry removal. get_run only reconciles durable state.
+                    _atomic_write_json(_manifest_path(run_dir), payload)
             else:
                 pid = payload.get("pid")
                 cancel_requested = bool(payload.get("cancel_requested"))
@@ -475,7 +492,7 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
                     ),
                 )
                 _atomic_write_json(_manifest_path(run_dir), payload)
-    return _record(payload, run_dir)
+        return _record(payload, run_dir)
 
 
 def list_runs(repo_root: Path, *, limit: int = 30) -> Tuple[RunRecord, ...]:
