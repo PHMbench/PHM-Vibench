@@ -5,7 +5,9 @@ from types import SimpleNamespace
 import pytest
 import torch
 import torch.nn as nn
+from pydantic import ValidationError
 
+from src.config_schema import ExperimentConfig
 from src.model_factory.generative_model.phm_cfm_mlp1d import Model
 from src.task_factory.Components.generative import (
     PopulationCorrelationMMD,
@@ -129,3 +131,47 @@ def test_population_metric_is_optional_but_structured() -> None:
 
     assert metrics["population_dependency_mmd"]["status"] == "ok"
     assert "population_dependency_mmd" in metrics["summary"]["optional"]
+
+
+def test_population_metric_uses_requested_bandwidths() -> None:
+    torch.manual_seed(7)
+    real = torch.randn(3, 2, 16)
+    fake = torch.randn(3, 2, 16)
+    expected = PopulationCorrelationMMD([7.0])(real, fake).item()
+
+    metrics = evaluate_smoke_metrics(
+        real,
+        fake,
+        population_rbf_bandwidths=[7.0],
+    )
+
+    assert metrics["population_dependency_mmd"]["value"] == pytest.approx(expected)
+
+
+def test_population_config_rejects_single_sample_batches() -> None:
+    config = {
+        "pipeline": "Pipeline_06_generative",
+        "environment": {
+            "project": "population-contract",
+            "output_dir": "results/test-population-contract",
+        },
+        "data": {
+            "data_dir": "data",
+            "metadata_file": "metadata_dummy.csv",
+            "batch_size": 1,
+        },
+        "model": {
+            "type": "generative_model",
+            "name": "phm_cfm_mlp1d",
+            "in_channels": 2,
+        },
+        "task": {
+            "type": "generative",
+            "name": "conditional_flow_matching",
+            "population_regularization": {"enabled": True},
+        },
+        "trainer": {"name": "Default_trainer"},
+    }
+
+    with pytest.raises(ValidationError, match="data.batch_size >= 2"):
+        ExperimentConfig.model_validate(config)

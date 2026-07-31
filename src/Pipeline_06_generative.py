@@ -31,6 +31,16 @@ def _get_attr(value: Any, key: str, default: Any = None) -> Any:
     return getattr(value, key, default)
 
 
+def _population_rbf_bandwidths(args_task: Any) -> tuple[float, ...]:
+    population_cfg = _get_attr(args_task, "population_regularization", None)
+    values = _get_attr(
+        population_cfg,
+        "rbf_bandwidths",
+        (0.1, 0.5, 1.0, 2.0),
+    )
+    return tuple(float(value) for value in values)
+
+
 def _validate_required_sections(configs: Any) -> None:
     """Reject incomplete five-block configurations before factory dispatch."""
 
@@ -694,6 +704,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             fake_labels=condition["fault_label"].detach().cpu(),
             real_domains=real_domains,
             fake_domains=condition["domain_id"].detach().cpu(),
+            population_rbf_bandwidths=_population_rbf_bandwidths(args_task),
         )
         config_evidence, generated_protocol = _write_run_contracts(
             run_path, configs, args, args_task
@@ -874,6 +885,7 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             training_wall_clock_seconds=(
                 float(training_wall_clock) if training_wall_clock is not None else None
             ),
+            population_rbf_bandwidths=_population_rbf_bandwidths(args_task),
         )
         metrics_path = run_path / "generative_eval_metrics.csv"
         metrics_hash = _write_metrics_csv(metrics_path, metrics)

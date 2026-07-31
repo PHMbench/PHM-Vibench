@@ -146,4 +146,8 @@ class ExperimentConfig(BaseModel):
                 raise ValueError(
                     "population_regularization requires model.in_channels >= 2"
                 )
+            if self.data.batch_size is None or self.data.batch_size < 2:
+                raise ValueError(
+                    "population_regularization requires data.batch_size >= 2"
+                )
         return self
