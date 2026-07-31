@@ -53,7 +53,7 @@ legacy_entries:
     gitlink_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/LQ_vibench_fix
     gitlink_commit: 1a15710fd532fad73c552704f48349576d843ee0
     classification: personal
@@ -63,34 +63,34 @@ legacy_entries:
     gitlink_commit: b385b07e82d6323a291d90e55a5ef4aff9336c0b
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/UXFD_paper/Explainable_FD_Toolkit
     gitlink_commit: 379244dc8410eea0580714bc216c71074acba3a9
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
     gitlink_commit: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/UXFD_paper/MOE_explainable
     gitlink_commit: 0da06ae366eeb66d852c144013af6925446615cb
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/UXFD_paper/Neuralsymbolic_theory
     gitlink_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/UXFD_paper/Paper_fuzzy_XFD
     gitlink_commit: 1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
   - path: paper/UXFD_paper/TII_operator_attention
     gitlink_commit: 20f47bac5c02763e1f6b856c90ce32861025c003
     classification: paper
     allowlisted: false
-    action: migrated_and_removed
+    action: migrate_then_remove
