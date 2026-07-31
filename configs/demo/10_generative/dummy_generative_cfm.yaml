@@ -1,0 +1,55 @@
+# Candidate CPU CFM runtime smoke on repository Dummy_Data.
+# No historical artifact is accepted as evidence for this locked-dev rebuild.
+
+pipeline: "Pipeline_06_Generative_Modeling"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/generative_cfm.yaml"
+  task: "configs/base/task/generative_cfm.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_dummy_generative_cfm"
+  seed: 0
+  iterations: 1
+  output_dir: "results/demo/dummy_generative_cfm"
+  notes: "Candidate CPU CFM smoke; not benchmark or paper evidence."
+  wandb: false
+  swanlab: false
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 2
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.2
+  test_ratio: 0.0
+  normalization: "standardization"
+  window_size: 128
+  stride: 16
+  num_window: 4
+  dtype: "float32"
+  pin_memory: false
+
+model:
+  hidden_dim: 32
+  condition_dim: 16
+
+task:
+  target_system_id: null
+  generative:
+    mode: "train"
+    synthetic_dataset_id: "dummy_generative_cfm"
+    validity_status: "exploratory"
+
+trainer:
+  monitor: "val_loss"
+  num_epochs: 1
+  gpus: 1
+  device: "cpu"
+  early_stopping: false
+  log_every_n_steps: 1
+  save_top_k: 1

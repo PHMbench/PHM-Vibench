@@ -1,0 +1,62 @@
+# Exploratory population-aware CFM adaptation on repository Dummy_Data.
+# This is not a PaD-TS/DDPM reproduction and carries no benchmark claim.
+
+pipeline: "Pipeline_06_Generative_Modeling"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/generative_cfm.yaml"
+  task: "configs/base/task/generative_cfm.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "experiment_dummy_population_aware_cfm"
+  seed: 0
+  iterations: 1
+  output_dir: "results/experiments/dummy_population_aware_cfm"
+  notes: "Population correlation MMD adaptation; exploratory CPU evidence only."
+  wandb: false
+  swanlab: false
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 2
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.2
+  test_ratio: 0.0
+  normalization: "standardization"
+  window_size: 128
+  stride: 16
+  num_window: 4
+  dtype: "float32"
+  pin_memory: false
+
+model:
+  hidden_dim: 32
+  condition_dim: 16
+
+task:
+  target_system_id: null
+  population_regularization:
+    enabled: true
+    weight: 0.1
+    dependency: "pearson_correlation"
+    estimator: "biased"
+    rbf_bandwidths: [0.1, 0.5, 1.0, 2.0]
+    same_time_per_batch: true
+  generative:
+    mode: "train"
+    synthetic_dataset_id: "dummy_population_aware_cfm"
+    validity_status: "exploratory"
+
+trainer:
+  monitor: "val_loss"
+  num_epochs: 1
+  gpus: 1
+  device: "cpu"
+  early_stopping: false
+  log_every_n_steps: 1
+  save_top_k: 1

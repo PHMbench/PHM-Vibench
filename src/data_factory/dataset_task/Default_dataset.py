@@ -1,8 +1,7 @@
 import numpy as np
-import torch
 from torch.utils.data import Dataset
-from torch.utils.data import random_split
-from pytorch_lightning.utilities import CombinedLoader
+
+
 class Default_dataset(Dataset): # THU_006or018_basic
     def __init__(self, data, metadata, args_data, args_task, mode="train"):
         """
@@ -19,6 +18,8 @@ class Default_dataset(Dataset): # THU_006or018_basic
         # self.metadata = metadata
         self.args_data = args_data
         self.mode = mode
+        split_cfg = getattr(args_data, "split", None)
+        self.split_strategy = getattr(split_cfg, "strategy", "legacy_windows")
         
         # 数据处理参数
         self.window_size = args_data.window_size
@@ -41,7 +42,10 @@ class Default_dataset(Dataset): # THU_006or018_basic
         self._process_single_data(self.data)
 
         # 如果是train或valid模式，进行数据集划分
-        if self.mode in ["train", "valid"]:
+        if (
+            self.mode in {"train", "val", "valid"}
+            and self.split_strategy == "legacy_windows"
+        ):
             self._split_data_for_mode()
             
         self.total_samples = len(self.processed_data) # L'
@@ -201,7 +205,7 @@ class Default_dataset(Dataset): # THU_006or018_basic
         if self.mode == "train":
             # 训练模式只保留训练数据
             self.processed_data = self.processed_data[:train_size]
-        elif self.mode == "valid":
+        elif self.mode in {"val", "valid"}:
             # 验证模式只保留验证数据
             self.processed_data = self.processed_data[train_size:]
         self.total_samples = len(self.processed_data)

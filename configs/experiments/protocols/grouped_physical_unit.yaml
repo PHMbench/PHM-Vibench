@@ -1,0 +1,46 @@
+# CPU-only grouped physical-unit split contract for current-main DG wiring.
+# Replace the placeholder group key only with a verified physical-unit metadata field.
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "grouped_physical_unit_protocol"
+  seed: 42
+  iterations: 1
+  output_dir: "results/experiments/grouped_physical_unit"
+  notes: "Protocol contract only; verify dataset-specific physical-unit metadata before any run."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+  split:
+    strategy: "grouped_metadata"
+    group_key: "Bearing_id"
+    stratify_key: "Label"
+    seed: 42
+    test_policy: "task_defined"
+    fractions:
+      train: 0.75
+      val: 0.25
+    manifest_path: "results/experiments/grouped_physical_unit/split_seed42.json"
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
