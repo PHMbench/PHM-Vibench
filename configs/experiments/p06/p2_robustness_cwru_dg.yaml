@@ -1,0 +1,63 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  model: configs/base/model/backbone_dlinear.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p06_p2_robustness_cwru_standard
+  seed: 42
+  output_dir: results/experiments/p06/p2_robustness_cwru_standard
+  notes: P06 P2 STANDARD arm (unconstrained) on CWRU DG; noise sweep hook pending.
+data:
+  metadata_file: metadata.xlsx
+  window_size: 4096
+  stride: 5
+  batch_size: 64
+  num_workers: 0
+  normalization: standardization
+  split:
+    strategy: grouped_metadata
+    group_key: File
+    stratify_key: null
+    seed: 42
+    test_policy: task_defined
+    fractions:
+      train: 0.85
+      val: 0.15
+    manifest_path: results/experiments/p06/p2_robustness_cwru_standard/splits/manifest_seed42.json
+  noise:
+    sigma: 0.0
+    distribution: gaussian
+    apply_to:
+    - test
+model:
+  type: ISFM
+  name: M_01_ISFM
+  embedding: E_01_HSE
+  backbone: B_04_Dlinear
+  task_head: H_01_Linear_cla
+task:
+  type: DG
+  name: classification
+  loss: CE
+  metrics:
+  - acc
+  - f1_macro
+  target_system_id:
+  - 1
+  source_domain_id:
+  - 0
+  - 1
+  - 2
+  target_domain_id:
+  - 3
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 1
+trainer:
+  num_epochs: 1
+  device: cpu
+  gpus: 1
