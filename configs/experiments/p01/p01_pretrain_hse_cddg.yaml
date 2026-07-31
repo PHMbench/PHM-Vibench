@@ -1,0 +1,42 @@
+# P01 pretrain arm: HSE contrastive pretraining for the CDDG view, source-only pool.
+# Derives from configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml (READ-ONLY; not modified).
+# ADDITIVE under configs/experiments/p01/.
+# Status: ready (pretrain pool = source only; no target leakage).
+# Supports P01 claims: SSL pretraining backbone for the fusion method's 1D
+#   branch (P01-C001 method precondition), and the pretrain+finetune pipeline
+#   variant of the cross-dataset experiment.
+#
+# Leakage control: target_system_id restricts the pretrain pool to the SOURCE
+#   system only (CWRU). Pretraining over the target system (XJTU) is forbidden
+#   leakage. The downstream CDDG eval uses p01_cross_system_cddg_cwru_xjtu.yaml.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p01_pretrain_hse_cddg"
+  seed: 42
+  output_dir: "results/p01/pretrain_hse_cddg"
+  notes: "P01 HSE contrastive pretrain, pool=CWRU(1) SOURCE ONLY. 3-seed: [42,123,456]."
+
+data:
+  train_ratio: 0.7
+  stride: 10
+
+task:
+  name: "hse_contrastive"
+  type: "pretrain"
+  target_system_id: [1]   # SOURCE ONLY - never include the CDDG target
+  target_domain_num: 1
+  lr: 0.0005
+  weight_decay: 0.0001
+
+trainer:
+  num_epochs: 1   # smoke-friendly; override to ~50 for paper pretraining
+  device: "cuda"
