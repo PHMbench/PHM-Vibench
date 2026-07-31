@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from typing import Any, Callable
 
 import torch
+
+from .population import PopulationCorrelationMMD
 
 
 REQUIRED_METRICS = (
@@ -16,6 +19,8 @@ REQUIRED_METRICS = (
     "fid_like_embedding_distance",
     "training_wall_clock_seconds",
 )
+
+POPULATION_DEPENDENCY_METRIC = "population_dependency_mmd"
 
 
 def _metric_result(
@@ -222,6 +227,7 @@ def evaluate_smoke_metrics(
     fake_domains: torch.Tensor | None = None,
     duplicate_threshold: float = 1e-6,
     training_wall_clock_seconds: float | None = None,
+    population_rbf_bandwidths: Sequence[float] | None = None,
 ) -> dict[str, Any]:
     """Compute the eight required structured Pipeline 06 smoke metrics."""
 
@@ -239,6 +245,17 @@ def evaluate_smoke_metrics(
             lambda: _spectral_distance(real_tensor, fake_tensor)
         ),
     }
+    method_required_metrics: list[str] = []
+    if population_rbf_bandwidths is not None:
+        metrics[POPULATION_DEPENDENCY_METRIC] = _safe_metric(
+            lambda: float(
+                PopulationCorrelationMMD(population_rbf_bandwidths)(
+                    real_tensor,
+                    fake_tensor,
+                ).item()
+            )
+        )
+        method_required_metrics.append(POPULATION_DEPENDENCY_METRIC)
 
     if any(
         value is None
@@ -318,4 +335,9 @@ def evaluate_smoke_metrics(
             metrics[name]["status"] == "failed" for name in REQUIRED_METRICS
         ),
     }
+    if method_required_metrics:
+        metrics["summary"]["required_for_method"] = method_required_metrics
+        metrics["summary"]["method_required_ok"] = all(
+            metrics[name]["status"] == "ok" for name in method_required_metrics
+        )
     return metrics

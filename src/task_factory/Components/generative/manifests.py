@@ -43,6 +43,7 @@ def build_synthetic_manifest(
     data_evidence: dict[str, str],
     generated_evidence: dict[str, str],
     leakage_metrics: dict[str, Any],
+    population_metrics: dict[str, Any] | None = None,
     sampler_metadata: dict[str, Any] | None = None,
     scientific_status: str = "exploratory",
 ) -> dict[str, Any]:
@@ -91,6 +92,12 @@ def build_synthetic_manifest(
         leakage_metrics.get(name, {}).get("status") == "ok"
         for name in ("nearest_neighbor_leakage_l2", "duplicate_rate")
     )
+    population_required = method_id == "population_aware_cfm"
+    population_metrics = dict(population_metrics or {})
+    population_ok = (
+        population_metrics.get("population_dependency_mmd", {}).get("status")
+        == "ok"
+    )
 
     evidence = {
         "strict_checkpoint": checkpoint_ok,
@@ -104,9 +111,11 @@ def build_synthetic_manifest(
         "condition_counts": bool(condition_counts),
         "leakage_metrics": leakage_ok,
     }
+    if population_required:
+        evidence["population_metrics"] = population_ok
     missing = [name for name, passed in evidence.items() if not passed]
 
-    return {
+    manifest = {
         "schema_version": "0.2.1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "synthetic_dataset_id": synthetic_dataset_id,
@@ -151,6 +160,9 @@ def build_synthetic_manifest(
             "paper_ready": False,
         },
     }
+    if population_required:
+        manifest["population"] = population_metrics
+    return manifest
 
 
 def build_evaluation_manifest(
@@ -172,9 +184,16 @@ def build_evaluation_manifest(
             "test-reference evaluation is not eligible in the maintained smoke contract"
         )
 
+    method_required_metrics = list(
+        metrics.get("summary", {}).get("required_for_method", [])
+    )
+    metric_names = list(REQUIRED_METRICS)
+    metric_names.extend(
+        name for name in method_required_metrics if name not in metric_names
+    )
     statuses = {
         name: str(metrics.get(name, {}).get("status", "missing"))
-        for name in REQUIRED_METRICS
+        for name in metric_names
     }
     missing_status = [
         name for name, status in statuses.items() if status == "missing"
@@ -206,7 +225,7 @@ def build_evaluation_manifest(
     )
     paper_smoke_metric_eligible = runtime_smoke_eligible and not not_computable
 
-    return {
+    manifest = {
         "schema_version": "0.2.1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "generated_artifact": {
@@ -249,3 +268,8 @@ def build_evaluation_manifest(
             ),
         },
     }
+    if method_required_metrics:
+        manifest["metric_summary"][
+            "required_for_method"
+        ] = method_required_metrics
+    return manifest

@@ -31,6 +31,18 @@ def _get_attr(value: Any, key: str, default: Any = None) -> Any:
     return getattr(value, key, default)
 
 
+def _population_rbf_bandwidths(args_task: Any) -> tuple[float, ...] | None:
+    population_cfg = _get_attr(args_task, "population_regularization", None)
+    if not bool(_get_attr(population_cfg, "enabled", False)):
+        return None
+    values = _get_attr(
+        population_cfg,
+        "rbf_bandwidths",
+        (0.1, 0.5, 1.0, 2.0),
+    )
+    return tuple(float(value) for value in values)
+
+
 def _validate_required_sections(configs: Any) -> None:
     """Reject incomplete five-block configurations before factory dispatch."""
 
@@ -504,10 +516,13 @@ def _write_metrics_csv(path: Path, metrics: dict[str, Any]) -> str:
     from src.utils.generative_evidence import sha256_file
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    method_required = list(metrics.get("summary", {}).get("required_for_method", []))
+    metric_names = list(REQUIRED_METRICS)
+    metric_names.extend(name for name in method_required if name not in metric_names)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["metric", "value", "status", "reason"])
         writer.writeheader()
-        for name in REQUIRED_METRICS:
+        for name in metric_names:
             result = metrics[name]
             writer.writerow(
                 {
@@ -687,6 +702,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             channels,
             max_samples=num_samples,
         )
+        population_bandwidths = _population_rbf_bandwidths(args_task)
         leakage_bundle = evaluate_smoke_metrics(
             real,
             samples,
@@ -694,6 +710,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             fake_labels=condition["fault_label"].detach().cpu(),
             real_domains=real_domains,
             fake_domains=condition["domain_id"].detach().cpu(),
+            population_rbf_bandwidths=population_bandwidths,
         )
         config_evidence, generated_protocol = _write_run_contracts(
             run_path, configs, args, args_task
@@ -715,7 +732,9 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             synthetic_dataset_id=str(
                 _get_attr(gen_cfg, "synthetic_dataset_id", f"{name}-iter-{iteration}")
             ),
-            method_id="conditional_flow_matching",
+            method_id=str(
+                getattr(task, "method_id", "conditional_flow_matching")
+            ),
             model_type=str(args_model.type),
             model_name=str(args_model.name),
             loss_id=str(getattr(task, "loss_id", "conditional_flow_matching")),
@@ -746,6 +765,15 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
                 name: leakage_bundle[name]
                 for name in ("nearest_neighbor_leakage_l2", "duplicate_rate")
             },
+            population_metrics=(
+                {
+                    "population_dependency_mmd": leakage_bundle[
+                        "population_dependency_mmd"
+                    ]
+                }
+                if population_bandwidths is not None
+                else None
+            ),
             sampler_metadata=dict(getattr(task, "sampler_metadata", lambda: {})()),
             scientific_status=str(_get_attr(gen_cfg, "validity_status", "exploratory")),
         )
@@ -811,6 +839,24 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             )
         )
         synthetic_manifest, synthetic_manifest_hash = load_hashed_json(manifest_path)
+        population_bandwidths = _population_rbf_bandwidths(args_task)
+        expected_method_id = (
+            "population_aware_cfm"
+            if population_bandwidths is not None
+            else "conditional_flow_matching"
+        )
+        manifest_method_id = str(
+            _get_attr(
+                _get_attr(synthetic_manifest, "method", {}),
+                "method_id",
+                "",
+            )
+        )
+        if manifest_method_id != expected_method_id:
+            raise ValueError(
+                "evaluation config population mode does not match the synthetic "
+                f"manifest: expected {expected_method_id!r}, got {manifest_method_id!r}"
+            )
         expected_samples_hash = _get_attr(
             _get_attr(synthetic_manifest, "generated_artifact", {}),
             "sha256",
@@ -867,6 +913,7 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             training_wall_clock_seconds=(
                 float(training_wall_clock) if training_wall_clock is not None else None
             ),
+            population_rbf_bandwidths=population_bandwidths,
         )
         metrics_path = run_path / "generative_eval_metrics.csv"
         metrics_hash = _write_metrics_csv(metrics_path, metrics)

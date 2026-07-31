@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -9,6 +10,7 @@ import torch.nn as nn
 
 from src.task_factory.Components.generative import (
     ConditionalFlowMatchingLoss,
+    PopulationCorrelationMMD,
     sample_euler_ode,
 )
 
@@ -22,6 +24,12 @@ def _flatten_values(value: Any) -> list[Any]:
             flattened.extend(_flatten_values(item))
         return flattened
     return [value]
+
+
+def _get_value(value: Any, key: str, default: Any = None) -> Any:
+    if isinstance(value, Mapping):
+        return value.get(key, default)
+    return getattr(value, key, default)
 
 
 class ConditionalFlowMatchingTask(pl.LightningModule):
@@ -46,10 +54,55 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
         self.args_environment = args_environment
         self.metadata = metadata
         self.loss_id = "conditional_flow_matching"
+        self.method_id = "conditional_flow_matching"
         self.sampler_id = "euler_ode"
         self.loss_fn = ConditionalFlowMatchingLoss(
             eps=float(getattr(args_task, "t_eps", 1e-3))
         )
+        population = _get_value(args_task, "population_regularization", None)
+        self.population_regularization_enabled = bool(
+            _get_value(population, "enabled", False)
+        )
+        self.population_weight = 0.0
+        self.population_rbf_bandwidths: tuple[float, ...] = ()
+        self.population_loss: PopulationCorrelationMMD | None = None
+        if self.population_regularization_enabled:
+            dependency = str(
+                _get_value(population, "dependency", "pearson_correlation")
+            )
+            estimator = str(_get_value(population, "estimator", "biased"))
+            same_time = bool(
+                _get_value(population, "same_time_per_batch", True)
+            )
+            self.population_weight = float(_get_value(population, "weight", 0.1))
+            bandwidths = _get_value(
+                population,
+                "rbf_bandwidths",
+                (0.1, 0.5, 1.0, 2.0),
+            )
+            if dependency != "pearson_correlation":
+                raise ValueError(
+                    "population_regularization.dependency must be pearson_correlation"
+                )
+            if estimator != "biased":
+                raise ValueError(
+                    "population_regularization.estimator must be biased"
+                )
+            if not same_time:
+                raise ValueError(
+                    "population_regularization requires same_time_per_batch=true"
+                )
+            if (
+                not math.isfinite(self.population_weight)
+                or self.population_weight <= 0.0
+            ):
+                raise ValueError(
+                    "population_regularization.weight must be finite and positive"
+                )
+            self.population_loss = PopulationCorrelationMMD(bandwidths)
+            self.population_rbf_bandwidths = self.population_loss.bandwidths
+            self.method_id = "population_aware_cfm"
+            self.loss_id = "conditional_flow_matching+population_correlation_mmd"
         self.save_hyperparameters(
             {
                 "task_type": getattr(args_task, "type", "generative"),
@@ -71,6 +124,13 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
                 "lr": float(getattr(args_task, "lr", 1e-4)),
                 "weight_decay": float(
                     getattr(args_task, "weight_decay", 1e-4)
+                ),
+                "population_regularization_enabled": (
+                    self.population_regularization_enabled
+                ),
+                "population_weight": self.population_weight,
+                "population_rbf_bandwidths": list(
+                    self.population_rbf_bandwidths
                 ),
             }
         )
@@ -192,15 +252,28 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
         x1 = self._to_ncl(batch["x"])
         condition = self._extract_condition(batch, x1.shape[0])
         noise = torch.randn_like(x1)
+        time_batch_size = (
+            1 if self.population_regularization_enabled else x1.shape[0]
+        )
         t = self.loss_fn.sample_t(
-            x1.shape[0],
+            time_batch_size,
             x1.device,
             dtype=x1.dtype,
         )
+        if self.population_regularization_enabled:
+            t = t.expand(x1.shape[0]).clone()
         x_t = self.loss_fn.sample_xt(x1, noise, t)
         predicted_velocity = self.forward(x_t, t, condition)
         loss_values = self.loss_fn(predicted_velocity, x1, noise, t)
         loss = loss_values["loss"]
+        population_mmd = None
+        if self.population_regularization_enabled:
+            if self.population_loss is None:
+                raise RuntimeError("population regularization is missing its loss module")
+            t_view = t.to(device=x1.device, dtype=x1.dtype).view(-1, 1, 1)
+            predicted_clean = x_t + (1.0 - t_view) * predicted_velocity
+            population_mmd = self.population_loss(x1, predicted_clean)
+            loss = loss + self.population_weight * population_mmd
         self.log(
             f"{stage}_loss",
             loss,
@@ -219,6 +292,16 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             logger=True,
             batch_size=x1.shape[0],
         )
+        if population_mmd is not None:
+            self.log(
+                f"{stage}_population_correlation_mmd",
+                population_mmd,
+                on_step=(stage == "train"),
+                on_epoch=True,
+                prog_bar=False,
+                logger=True,
+                batch_size=x1.shape[0],
+            )
         return loss
 
     def training_step(
