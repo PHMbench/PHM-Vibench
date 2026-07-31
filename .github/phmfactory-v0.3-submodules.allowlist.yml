@@ -4,7 +4,7 @@ runtime_baseline_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
 
 allowed_submodules:
   - name: phm-data-factory
-    status: blocked_pending_org_transfer
+    status: deferred_to_v0.3.1
     optional: true
     path: packages/phm-data-factory
     target_url: https://github.com/PHMbench/phm-data-factory.git
@@ -13,6 +13,7 @@ allowed_submodules:
     license: Apache-2.0
     expected_owner: PHMbench
     approved_integration_pr: null
+    deferral_contract: docs/releases/v0.3.0-backend-deferral.yaml
     ownership_transfer:
       status: open
       source_issue_number: 5

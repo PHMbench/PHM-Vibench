@@ -20,6 +20,7 @@ PHM-Vibench is being renamed to **PHMFactory**. This entry records the release d
   submodule policy, and paper-migration tracking.
 - Explicit v0.2.0 release-candidate provenance anchored to
   `a331769d4005018bc833534ecf4efeb5e8a5a78d`.
+- Machine-readable `phm-data-factory` v0.3.0 exclusion and v0.3.1 deferral contract.
 
 ### Changed
 
@@ -35,6 +36,8 @@ PHM-Vibench is being renamed to **PHMFactory**. This entry records the release d
 - CWRU requires `metadata.xlsx` and `RM_001_CWRU.h5`; `corpus.xlsx` is optional for the
   fault-diagnosis quickstart.
 - The mature `src.*` runtime remains in place behind the public façade.
+- Optional `phm-data-factory` integration is deferred to v0.3.1; v0.3.0 contains no
+  backend gitlink, runtime import, support claim, or live-IoTDB claim.
 
 ### Removed or migrated
 
@@ -43,6 +46,9 @@ PHM-Vibench is being renamed to **PHMFactory**. This entry records the release d
 - Tracked `results/` and `metrics_reports/` placeholders.
 - Personal `data/Rotor_simulation` and `paper/LQ_vibench_fix` gitlinks after complete
   fixed-commit preservation.
+- P01–P09 paper/research gitlinks after destination-level fixed-SHA preservation,
+  accepted Foundation partitioning, and machine-verifiable migration tracking.
+- `.gitmodules` after the final migrated gitlink was removed.
 - Case-colliding lowercase authority files.
 - Historical `docs/past/` and `docs/v0.1.0/` trees after provenance preservation.
 
@@ -60,18 +66,18 @@ PHM-Vibench is being renamed to **PHMFactory**. This entry records the release d
 
 ### Release status
 
-v0.3.0 is not publishable while these machine-checked conditions remain:
+The paper/submodule migration and optional-backend decisions are complete. v0.3.0 remains
+unpublishable only while these machine-checked conditions remain:
 
 ```text
 2 x CWRU_HASH_MISSING
 2 x CWRU_REVISION_FLOATING
-1 x LEGACY_SUBMODULES_REMAIN
-1 x PHM_DATA_FACTORY_BACKEND_PENDING
 1 x REPOSITORY_RENAME_PENDING
 1 x VERSION_NOT_FINAL
 ```
 
-The package remains `0.3.0.dev0`; no final tag or release is authorized.
+The package remains `0.3.0.dev0`; no final tag or release is authorized. The version is
+changed to `0.3.0` only in the final promotion after CWRU and repository identity are ready.
 
 ## v0.2.0 Release Candidate - 2026-07-11
 
