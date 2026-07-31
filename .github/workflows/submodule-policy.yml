@@ -40,16 +40,20 @@ jobs:
       - name: Run focused policy tests
         run: python -m pytest -q test/test_submodule_policy.py
 
-      - name: Require release mode to remain blocked
+      - name: Require only backend integration to remain blocked
         shell: bash
         run: |
           set -euo pipefail
           if python tools/repo/check_submodule_policy.py --mode release > submodule-release.txt; then
-            echo "Submodule release policy unexpectedly passed." >&2
+            echo "Submodule release policy unexpectedly passed before backend resolution." >&2
             exit 1
           fi
           grep -q 'PHM_DATA_FACTORY_BACKEND_PENDING' submodule-release.txt
-          grep -q 'LEGACY_SUBMODULE_REMAINS' submodule-release.txt
+          if grep -q 'LEGACY_SUBMODULE_REMAINS' submodule-release.txt; then
+            echo "Legacy submodule blocker returned after all gitlinks were removed." >&2
+            exit 1
+          fi
+          test "$(grep -c 'release-blocker' submodule-release.txt)" = 1
 
       - name: Upload policy evidence
         uses: actions/upload-artifact@v4
