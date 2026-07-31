@@ -1,0 +1,48 @@
+schema_version: 2
+paper_id: P08
+integration_mode: adapted_contract_only
+source_branch: origin/paper/p08-hse-prompt-cddg
+source_commit: 1b343ca4cfbbc102875960b3fdd07f489e842163
+source_project_file_count: 19
+
+active_runtime:
+  branch: agent/p08-vibench-shared-v3-20260731
+  shared_overlay_commit: 0ef8f024b176256b0b8e87e094c9827a12b4ba4a
+  latest_engine_ref: origin/dev
+  latest_engine_commit: 921b6f7485798eb20cc8323da9078003474eb541
+  merge_commit: 4d87aea835ef011f434454bd45246d03a489306b
+  config_root: configs/experiments/p08
+
+allowlist_port:
+  - path: paper/project/README.md
+    disposition: adapted_without_machine_local_paths
+  - path: paper/project/SOURCE_MAP.yaml
+    disposition: regenerated_from_commit_and_blob_audit
+
+covered_elsewhere:
+  - source: paper/project/metric_source/configs/CDDG_config/**
+    destination_repository: AI4Engineering-L/P08-HSE-Prompt-CDDG
+    destination_ref: master
+    destination: legacy/phmfactory_foundation_2dd7da/configs/CDDG_config/**
+    disposition: parent_archive_authoritative
+  - source: paper/project/metric_source/scripts/cddg/**
+    destination_repository: AI4Engineering-L/P08-HSE-Prompt-CDDG
+    destination_ref: master
+    destination: legacy/phmfactory_foundation_2dd7da/scripts/cddg/**
+    disposition: parent_archive_authoritative
+  - source: configs/experiments/p08/**
+    destination: configs/experiments/p08/**
+    disposition: already_present_in_shared_overlay
+  - source: paper/project/metric_source/scripts/validation/validate_experiment_config.py
+    destination: scripts/validate_configs.py
+    disposition: superseded_by_maintained_validator
+
+forbidden_from_old_branch:
+  - .gitmodules
+  - paper/2025-10_foundation_model_0_metric
+  - paper/UXFD_paper/**
+  - src/data_factory/samplers/Get_sampler.py
+  - src/task_factory/task_factory.py
+
+evidence_status: legacy_unverified
+positive_claim_created: false
