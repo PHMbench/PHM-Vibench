@@ -26,6 +26,7 @@ FLOATING_REVISIONS = {"main", "master", "latest", "develop", "development", ""}
 SHA40 = re.compile(r"[0-9a-f]{40}")
 V020_PROVENANCE_PATH = "docs/releases/v0.2.0-rc-provenance.yaml"
 SUBMODULE_ALLOWLIST_PATH = ".github/phmfactory-v0.3-submodules.allowlist.yml"
+BACKEND_DEFERRAL_PATH = "docs/releases/v0.3.0-backend-deferral.yaml"
 V020_BASELINE_COMMIT = "a331769d4005018bc833534ecf4efeb5e8a5a78d"
 V020_EXPECTED_PROVENANCE: dict[str, Any] = {
     "project_name": "PHM-Vibench",
@@ -36,6 +37,7 @@ V020_EXPECTED_PROVENANCE: dict[str, Any] = {
     "tag_present": False,
     "superseded_by": "v0.3.0",
 }
+DEFERRED_STATUS = "deferred_to_v0.3.1"
 
 
 @dataclass(frozen=True)
@@ -116,84 +118,122 @@ def _configured_submodules() -> dict[str, dict[str, str]]:
     return configured
 
 
+def _yaml_mapping(path: str) -> dict[str, Any]:
+    payload = yaml.safe_load(_read(path)) or {}
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path} must contain a YAML mapping")
+    return payload
+
+
 def _v020_provenance_error() -> str:
     path = ROOT / V020_PROVENANCE_PATH
     if not path.is_file():
         return f"no visible v0.2* Git tag and {V020_PROVENANCE_PATH} is absent"
-
-    try:
-        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError) as exc:
-        return f"could not parse {V020_PROVENANCE_PATH}: {exc}"
-
-    if not isinstance(payload, dict):
-        return f"{V020_PROVENANCE_PATH} must contain a YAML mapping"
-
+    payload = _yaml_mapping(V020_PROVENANCE_PATH)
     mismatches = []
     for key, expected in V020_EXPECTED_PROVENANCE.items():
         actual = payload.get(key)
         if actual != expected:
             mismatches.append(f"{key}={actual!r}, expected {expected!r}")
-    if mismatches:
-        return "; ".join(mismatches)
-    return ""
+    return "; ".join(mismatches)
+
+
+def _backend_deferral_error(payload: dict[str, Any]) -> str:
+    decision = payload.get("decision") or {}
+    ownership = payload.get("ownership") or {}
+    state = payload.get("v0.3.0_repository_state") or {}
+    behavior = payload.get("behavior_without_backend") or {}
+    claims = payload.get("claim_boundary") or {}
+    checks = {
+        "schema_version": (payload.get("schema_version"), 1),
+        "release": (str(payload.get("release") or ""), "0.3.0"),
+        "component": (payload.get("component"), "phm-data-factory"),
+        "decision.status": (decision.get("status"), DEFERRED_STATUS),
+        "decision.included_in_v0.3.0": (decision.get("included_in_v0.3.0"), False),
+        "decision.required_for_core": (decision.get("required_for_core"), False),
+        "decision.release_blocking_for_v0.3.0": (
+            decision.get("release_blocking_for_v0.3.0"),
+            False,
+        ),
+        "decision.target_release": (str(decision.get("target_release") or ""), "0.3.1"),
+        "ownership.target_repository": (
+            ownership.get("target_repository"),
+            "PHMbench/phm-data-factory",
+        ),
+        "ownership.organization_owned_required": (
+            ownership.get("organization_owned_required"),
+            True,
+        ),
+        "ownership.immutable_pin_required": (
+            ownership.get("immutable_pin_required"),
+            True,
+        ),
+        "ownership.personal_repository_url_forbidden": (
+            ownership.get("personal_repository_url_forbidden"),
+            True,
+        ),
+        "v0.3.0_repository_state.gitlink_present_allowed": (
+            state.get("gitlink_present_allowed"),
+            False,
+        ),
+        "v0.3.0_repository_state.runtime_import_allowed": (
+            state.get("runtime_import_allowed"),
+            False,
+        ),
+        "behavior_without_backend.silent_fallback_allowed": (
+            behavior.get("silent_fallback_allowed"),
+            False,
+        ),
+        "behavior_without_backend.explicit_selection_error_required": (
+            behavior.get("explicit_selection_error_required"),
+            True,
+        ),
+        "claim_boundary.backend_integrated": (claims.get("backend_integrated"), False),
+        "claim_boundary.backend_supported": (claims.get("backend_supported"), False),
+        "claim_boundary.live_iotdb_supported": (claims.get("live_iotdb_supported"), False),
+        "claim_boundary.performance_claim_authorized": (
+            claims.get("performance_claim_authorized"),
+            False,
+        ),
+    }
+    mismatches = [
+        f"{field}={actual!r}, expected {expected!r}"
+        for field, (actual, expected) in checks.items()
+        if actual != expected
+    ]
+    return "; ".join(mismatches)
 
 
 def _submodule_findings() -> tuple[Finding, ...]:
     findings: list[Finding] = []
-    try:
-        allowlist = yaml.safe_load(_read(SUBMODULE_ALLOWLIST_PATH)) or {}
-    except (OSError, yaml.YAMLError) as exc:
-        return (Finding("SUBMODULE_POLICY_INVALID", str(exc)),)
-    if not isinstance(allowlist, dict):
-        return (Finding("SUBMODULE_POLICY_INVALID", "allowlist is not a mapping"),)
-
+    allowlist = _yaml_mapping(SUBMODULE_ALLOWLIST_PATH)
     allowed = allowlist.get("allowed_submodules") or []
     candidate = allowed[0] if isinstance(allowed, list) and len(allowed) == 1 else {}
     if not isinstance(candidate, dict):
         candidate = {}
+
     status = str(candidate.get("status") or "")
     target_url = str(candidate.get("target_url") or "")
     pinned_commit = str(candidate.get("pinned_commit") or "")
-
     configured = _configured_submodules()
     gitlinks = _gitlinks()
+
     raw_unknown = sorted(set(gitlinks) - set(configured))
     if raw_unknown:
         findings.append(Finding("UNKNOWN_SUBMODULES_PRESENT", ", ".join(raw_unknown)))
-
-    backend = configured.get(TARGET_BACKEND_PATH)
-    backend_ready = (
-        status == "approved"
-        and target_url == TARGET_BACKEND_URL
-        and re.fullmatch(r"[0-9a-f]{40}", pinned_commit) is not None
-        and backend is not None
-        and backend.get("url") == TARGET_BACKEND_URL
-        and not backend.get("branch")
-        and _gitlink(TARGET_BACKEND_PATH) == pinned_commit
-    )
-    if not backend_ready:
-        findings.append(
-            Finding(
-                "PHM_DATA_FACTORY_BACKEND_PENDING",
-                f"status={status!r}, configured={backend is not None}, target_url={target_url!r}",
-            )
-        )
 
     legacy_items = allowlist.get("legacy_entries") or []
     legacy_paths = {
         str(item.get("path"))
         for item in legacy_items
-        if isinstance(item, dict)
-        and item.get("path")
-        and item.get("action") == "migrate_then_remove"
+        if isinstance(item, dict) and item.get("path")
     }
     remaining = sorted(path for path in configured if path in legacy_paths)
     if remaining:
         findings.append(
             Finding(
                 "LEGACY_SUBMODULES_REMAIN",
-                f"{len(remaining)} legacy paper gitlink(s): {', '.join(remaining)}",
+                f"{len(remaining)} legacy gitlink(s): {', '.join(remaining)}",
             )
         )
 
@@ -201,9 +241,50 @@ def _submodule_findings() -> tuple[Finding, ...]:
         path for path in configured if path != TARGET_BACKEND_PATH and path not in legacy_paths
     )
     if unknown:
-        findings.append(
-            Finding("UNKNOWN_SUBMODULES_PRESENT", ", ".join(unknown))
+        findings.append(Finding("UNKNOWN_SUBMODULES_PRESENT", ", ".join(unknown)))
+
+    backend = configured.get(TARGET_BACKEND_PATH)
+    if status == DEFERRED_STATUS:
+        if not (ROOT / BACKEND_DEFERRAL_PATH).is_file():
+            findings.append(
+                Finding("BACKEND_DEFERRAL_INVALID", f"{BACKEND_DEFERRAL_PATH} is absent")
+            )
+        else:
+            error = _backend_deferral_error(_yaml_mapping(BACKEND_DEFERRAL_PATH))
+            if error:
+                findings.append(Finding("BACKEND_DEFERRAL_INVALID", error))
+        if backend is not None or _gitlink(TARGET_BACKEND_PATH):
+            findings.append(
+                Finding(
+                    "BACKEND_DEFERRAL_INVALID",
+                    "v0.3.0 deferral requires no configured backend or gitlink",
+                )
+            )
+        if pinned_commit:
+            findings.append(
+                Finding("BACKEND_DEFERRAL_INVALID", "deferred backend must not set pinned_commit")
+            )
+        if target_url != TARGET_BACKEND_URL:
+            findings.append(
+                Finding("BACKEND_DEFERRAL_INVALID", f"target_url={target_url!r}")
+            )
+    else:
+        backend_ready = (
+            status == "approved"
+            and target_url == TARGET_BACKEND_URL
+            and SHA40.fullmatch(pinned_commit) is not None
+            and backend is not None
+            and backend.get("url") == TARGET_BACKEND_URL
+            and not backend.get("branch")
+            and _gitlink(TARGET_BACKEND_PATH) == pinned_commit
         )
+        if not backend_ready:
+            findings.append(
+                Finding(
+                    "PHM_DATA_FACTORY_BACKEND_PENDING",
+                    f"status={status!r}, configured={backend is not None}, target_url={target_url!r}",
+                )
+            )
 
     return tuple(findings)
 
@@ -214,11 +295,9 @@ def collect_findings() -> tuple[Finding, ...]:
     pyproject = _read("pyproject.toml")
     package_init = _read("phmfactory/__init__.py")
     readme = _read("README.md")
-    citation = yaml.safe_load(_read("CITATION.cff")) or {}
+    citation = _yaml_mapping("CITATION.cff")
     changelog = _read("CHANGELOG.md")
-    manifest = yaml.safe_load(
-        _read("phmfactory/data_sources/manifests/cwru-demo-v1.yaml")
-    ) or {}
+    manifest = _yaml_mapping("phmfactory/data_sources/manifests/cwru-demo-v1.yaml")
 
     project_version = _toml_version(pyproject)
     package_version = _python_version(package_init)
@@ -241,9 +320,7 @@ def collect_findings() -> tuple[Finding, ...]:
         findings.append(Finding("README_BRAND_PENDING", "README heading is not PHMFactory"))
 
     if citation.get("title") != "PHMFactory":
-        findings.append(
-            Finding("CITATION_BRAND_PENDING", f"title={citation.get('title')!r}")
-        )
+        findings.append(Finding("CITATION_BRAND_PENDING", f"title={citation.get('title')!r}"))
     expected_url = f"https://github.com/{TARGET_REPOSITORY}"
     for field in ("repository-code", "url"):
         if citation.get(field) != expected_url:
@@ -265,7 +342,9 @@ def collect_findings() -> tuple[Finding, ...]:
     release_pin_required = manifest.get("release_pin_required") is True
     for provider_name, provider in sorted(providers.items()):
         revision = str((provider or {}).get("revision") or "")
-        if (release_pin_required and not _is_immutable_revision(revision)) or revision.casefold() in FLOATING_REVISIONS:
+        if (
+            release_pin_required and not _is_immutable_revision(revision)
+        ) or revision.casefold() in FLOATING_REVISIONS:
             findings.append(
                 Finding(
                     "CWRU_REVISION_FLOATING",
@@ -303,9 +382,7 @@ def collect_findings() -> tuple[Finding, ...]:
         if provenance_error:
             findings.append(Finding("V020_PROVENANCE_UNRESOLVED", provenance_error))
     if any(tag in {"v0.3.0", "0.3.0"} for tag in tags):
-        findings.append(
-            Finding("V030_TAG_ALREADY_EXISTS", "release tag exists before readiness pass")
-        )
+        findings.append(Finding("V030_TAG_ALREADY_EXISTS", "release tag exists before readiness pass"))
 
     repository = os.environ.get("GITHUB_REPOSITORY", "")
     if repository and repository != TARGET_REPOSITORY:
@@ -336,7 +413,13 @@ def main() -> int:
 
     try:
         findings = collect_findings()
-    except (OSError, configparser.Error, yaml.YAMLError, subprocess.CalledProcessError) as exc:
+    except (
+        OSError,
+        ValueError,
+        configparser.Error,
+        yaml.YAMLError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"Release readiness ERROR: {exc}", file=sys.stderr)
         return 1
 
