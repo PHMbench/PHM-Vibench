@@ -1,0 +1,52 @@
+# P02 - XFD Benchmark Toolkit: planned six-baseline matrix entrypoint.
+# ADDITIVE config under configs/experiments/p02_xfd_benchmark_toolkit/.
+# Status: planned - binds the legacy toolkit runner to a same-protocol
+# multi-seed, multi-dataset matrix that does NOT yet exist as accepted evidence.
+#
+# This config is for traceability only. It does not modify configs/base,
+# configs/demo, or configs/reference.
+
+# The toolkit runs from its own scripts (paper-side scope), not from main.py.
+# This YAML records the intended command + matrix so the run ledger can bind it.
+
+experiment:
+  paper_id: P02
+  experiment_id: E-SIX-BASELINE
+  status: planned
+  comparison_protocol_sha256: TODO  # frozen when P02-G030 metric contract lands
+
+runner:
+  script: paper/UXFD_paper/Explainable_FD_Toolkit/scripts/run_unified_explain_eval.py
+  # legacy script (read-only); not hashed yet.
+  output_dir: paper/UXFD_paper/Explainable_FD_Toolkit/results/autoresearch/<run_id>/six_baseline_matrix
+
+matrix:
+  models: [TSPN, Fusion1D2D, MoE, OperatorAttention, FuzzyLogic, ResNet1D-WIP]
+  explainers: [intrinsic, posthoc]
+  datasets: [CWRU, XJTU, THU_018_basic]
+  seeds: [0, 1, 2]
+
+metrics:
+  performance: [accuracy, f1_macro, precision_macro, recall_macro]
+  explainability:
+    faithfulness: [del_k, aopC]
+    stability: [spearman_rho, iou]
+    efficiency: [comp_time_ms, memory_mb]
+    coverage: [activation_ratio, attribution_coverage]
+
+gates:
+  - split-known
+  - leakage-free
+  - implementation-consistent
+  - protocol-complete
+
+acceptance:
+  - all cells present (>=6 models x >=2 explainers x >=3 datasets x >=3 seeds)
+  - schema validator passes on every run_dir
+  - complete local RTX 4090 compute metadata in every run_meta.yaml
+  - no fallback; no synthetic fixtures
+
+notes: >
+  The 6th model candidate is open (ResNet1D / SincNet / TFN / PatchTST) - see
+  paper/logs/open_questions.md OQ-05. The legacy toolkit's model registry
+  currently defines only 5 models.

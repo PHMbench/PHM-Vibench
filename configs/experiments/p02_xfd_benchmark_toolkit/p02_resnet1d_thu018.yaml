@@ -1,0 +1,89 @@
+# P02 - 6th same-protocol baseline candidate: CNN.ResNet1D on THU_018 (= RM_018_THU24).
+# ADDITIVE config under configs/experiments/p02_xfd_benchmark_toolkit/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml (single-dataset DG base),
+# mirroring the P04 baseline_resnet1d_indomain.yaml convention.
+#
+# Status: ready (CNN.ResNet1D is registered in src/model_factory/model_registry.csv).
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu. Raise both for the full run.
+#
+# THU_018 mapping: manuscript "THU_018_basic" = RM_018_THU24 = Dataset_id 14
+# (NOT RM_006_THU / Dataset_id 6 — those are different datasets).
+#
+# Leakage-safe split is BAKED IN below (grouped_metadata, group_key=File,
+# test_policy=partition). NOTE: the metadata has no Bearing_id column; File is
+# the per-window physical unit. THU_018 has only 3 files/Label (<6), so
+# stratify_key is intentionally omitted.
+#
+# Protocol repair (Phase-2A, 2026-07-18): THU_018 (RM_018_THU24) has a SINGLE
+# domain (Domain_id=0 only), so DG/task_defined is impossible (no held-out
+# domain). Switched to in-domain Default_task with test_policy=partition and
+# 3-way fractions. Scientific intent (ResNet1D 6th-baseline on THU_018, leakage-
+# safe) is preserved; only the task family changes from DG (undefined for this
+# dataset) to in-domain partition (the only leakage-safe option for a single-
+# domain dataset).
+#
+# Sweep policy (>=5 seeds per Evidence Contract):
+#   for seed in {0,1,2,3,4}:
+#     python main.py --config configs/experiments/p02_xfd_benchmark_toolkit/p02_resnet1d_thu018.yaml \
+#       --override environment.seed=<seed> \
+#       --override trainer.num_epochs=<full_epochs> --override trainer.device=cuda
+#
+# GPU note: on this host, Conv backward currently hits a libcudnn_cnn_train.so.8
+# symbol error (env bug, not a config bug). Phase-2A must run on CPU until the
+# cuDNN install is repaired, or on a host with a clean CUDA/cuDNN stack.
+#
+# Supports: independent param count + real-data accuracy anchor for the 6th-baseline
+# slot (P02-G060, OQ-05). Does NOT validate the legacy toolkit's 5-model numbers.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"   # overridden block-by-block below
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p02_resnet1d_thu018"
+  seed: 0
+  output_dir: "results/experiments/p02/resnet1d_thu018"
+  notes: "P02 6th-baseline candidate: CNN.ResNet1D on THU_018 / RM_018_THU24 (Dataset_id=14). Leakage-safe only with grouped_metadata override."
+
+# Real-data + leakage-safe defaults baked in (Phase-2A repair, 2026-07-18).
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
+  batch_size: 32
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+  split:
+    strategy: "grouped_metadata"
+    group_key: "File"            # per-window physical unit; Bearing_id does not exist in metadata
+    test_policy: "partition"     # single-domain dataset: partition by File groups
+    fractions:
+      train: 0.6
+      val: 0.2
+      test: 0.2
+    manifest_path: "results/experiments/p02/resnet1d_thu018/_manifest.json"
+
+model:
+  type: "CNN"
+  name: "ResNet1D"
+  input_dim: 2
+  num_classes: 5            # THU_018 has 5 labels (0..4)
+  block_type: "basic"
+  layers: [2, 2, 2, 2]
+  initial_channels: 32
+
+task:
+  name: "Default_task"      # resolves src.task_factory.Default_task (single-domain in-domain partition)
+  type: "Default_task"      # THU_018 is single-domain: in-domain partition (DG undefined here)
+  target_system_id: [14]    # THU_018 = RM_018_THU24
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
