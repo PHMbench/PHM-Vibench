@@ -84,16 +84,33 @@ required files have matching SHA-256 values.
 - `apps/streamlit/app.py` is the only maintained web entrypoint.
 - The old `app/` prototype and root `streamlit_app.py` were archived and removed.
 
-### Repository boundary
+### Repository boundary and paper migration
 
 The public repository no longer carries root/hidden Agent workspaces, `.archive/`,
-`dev/`, tracked result placeholders, or the two personal Rotor/LQ-fix gitlinks. Historical
-and removed material remains recoverable from immutable Git history and the approved
-archive, which is not a runtime, build, test, data, or release dependency.
+`dev/`, tracked result placeholders, or legacy personal/paper gitlinks. P01–P09 content
+was resolved through fixed-SHA destination evidence; the Foundation tree was partitioned
+into accepted P08/P09 imports and provenance/reference classes. All legacy mode-160000
+entries and the now-empty `.gitmodules` file are removed.
 
-One optional `phm-data-factory` backend may be integrated later only under the governed
-organization-owned target and an immutable gitlink. Eight paper/research gitlinks remain
-frozen until their content-level migration trackers permit removal.
+### Optional backend decision
+
+`phm-data-factory` is deferred to v0.3.1. It is not part of the v0.3.0 runtime, package,
+submodule tree, supported component set, or release blocker.
+
+The v0.3.0 contract requires:
+
+```text
+backend gitlink absent
+runtime import absent
+silent fallback forbidden
+core runtime independent
+backend integration/support/live-IoTDB claims false
+```
+
+The machine-readable authority is
+`docs/releases/v0.3.0-backend-deferral.yaml`. A future v0.3.1 integration still requires
+an organization-owned public repository, compatible license, immutable reviewed commit,
+bounded adapter PR, and proof that core paths pass without backend initialization.
 
 ## Preserved compatibility boundary
 
@@ -148,24 +165,32 @@ or a universal compatibility claim.
 
 ## Remaining release blockers
 
-The strict release gate currently reports:
+The strict release gate now expects exactly:
 
 ```text
 2 x CWRU_HASH_MISSING
 2 x CWRU_REVISION_FLOATING
-1 x LEGACY_SUBMODULES_REMAIN
-1 x PHM_DATA_FACTORY_BACKEND_PENDING
 1 x REPOSITORY_RENAME_PENDING
 1 x VERSION_NOT_FINAL
 ```
 
-Until those conditions are cleared:
+Resolved conditions that must not return include:
+
+```text
+PHM_DATA_FACTORY_BACKEND_PENDING
+LEGACY_SUBMODULES_REMAIN
+UNKNOWN_SUBMODULES_PRESENT
+```
+
+Until the remaining conditions are cleared:
 
 - the version remains `0.3.0.dev0`;
 - the repository remains `PHMbench/PHM-Vibench`;
 - no `v0.3.0` tag, GitHub Release, wheel, or sdist publication is authorized;
-- no paper gitlink may be removed unless its tracker says `safe_to_remove: true`;
 - no CWRU online parity claim may be made.
+
+The final version switch to `0.3.0` belongs in the last promotion step after CWRU and
+repository identity are ready; it is not performed early merely to suppress the version gate.
 
 Audit commands:
 
@@ -174,4 +199,4 @@ python tools/repo/check_release_readiness.py --mode audit
 python tools/repo/check_release_readiness.py --mode release
 ```
 
-The second command must remain non-zero until all release blockers are resolved.
+The second command must remain non-zero until all final release blockers are resolved.
