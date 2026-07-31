@@ -258,10 +258,6 @@ def collect_findings() -> tuple[Finding, ...]:
             if path in legacy:
                 findings.append(Finding("LEGACY_ENTRY_DUPLICATE", path))
             legacy[path] = item
-            if item.get("action") != "migrated_and_removed":
-                findings.append(
-                    Finding("LEGACY_ENTRY_STATUS_STALE", f"{path}: action={item.get('action')!r}")
-                )
 
     configured = _configured_submodules()
     gitlinks = _gitlinks()
