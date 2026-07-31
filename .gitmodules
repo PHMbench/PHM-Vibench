@@ -1,9 +1,6 @@
 [submodule "paper/2025-10_foundation_model_0_metric"]
 	path = paper/2025-10_foundation_model_0_metric
 	url = git@github.com:liq22/PHM-Vibench-Paper-2025-Metric.git
-[submodule "paper/UXFD_paper/Neuralsymbolic_theory"]
-	path = paper/UXFD_paper/Neuralsymbolic_theory
-	url = https://github.com/liq22/Neuralsymbolic_theory.git
 [submodule "paper/UXFD_paper/TII_operator_attention"]
 	path = paper/UXFD_paper/TII_operator_attention
 	url = git@github.com:liq22/TII_operator_attention.git
