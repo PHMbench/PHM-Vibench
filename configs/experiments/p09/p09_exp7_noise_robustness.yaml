@@ -1,0 +1,101 @@
+# P09 Exp-7: Noise robustness sweep (HSE-Prompt on GFS, single-stage finetune).
+# Derives from demo configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml and the
+# P08 sibling p08_exp7_noise_robustness.yaml.
+# Injects noise {gaussian, uniform, colored} x SNR {20,10,5,0,-5} dB at evaluation time.
+# Supports CLAIM-P09-LEG-NOISE (90%+ @ 10 dB; degrades below -5 dB — quarantined).
+#
+# VERIFIED BLOCKER: the data.noise_injection and task.noise_robustness blocks are encoded
+# here as written in the legacy config, but grep of src/data_factory and src/task_factory
+# confirms NEITHER factory consumes these keys. If the keys are silently ignored, this arm
+# produces no noise sweep and must NOT be promoted. Status = needs_new_component until a
+# noise-injection transform is registered in src/data_factory.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_exp7_noise_robustness"
+  seed: 42
+  output_dir: "results/p09/exp7_noise_robustness"
+  notes: "P09 Exp7: HSE-Prompt noise robustness under GFS. data.noise_injection consumer UNVERIFIED -> needs_new_component."
+
+data:
+  noise_injection:
+    enabled: true
+    noise_types: ["gaussian", "uniform", "colored"]
+    snr_levels: [20, 10, 5, 0, -5]
+    base_snr: 20
+    gaussian_noise:
+      mean: 0.0
+      std_range: [0.01, 0.1]
+    uniform_noise:
+      range_factor: 0.05
+    colored_noise:
+      colors: ["pink", "brown", "blue"]
+      filter_order: 4
+
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  system_prompt_dim: 64
+  sample_prompt_dim: 32
+  noise_robust_features:
+    enabled: true
+    spectral_filtering: true
+    denoising_prompts: true
+    adaptive_threshold: true
+    ensemble_predictions: true
+
+task:
+  type: "GFS"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall", "robustness_score"]
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.0001
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15
+  noise_robustness:
+    enabled: true
+    noise_augmentation:
+      enabled: true
+      noise_prob: 0.5
+      snr_range: [10, 20]
+      noise_types: ["gaussian", "uniform"]
+    test_time_augmentation:
+      enabled: true
+      num_augmentations: 5
+      voting_strategy: "majority"
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides
+  gpus: 1

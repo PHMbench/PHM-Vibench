@@ -1,0 +1,61 @@
+# P09 B1: Linear-probe baseline (frozen pretrained backbone + linear head), GFS.
+# Derives from demo configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml.
+# This baseline is REQUIRED by the charter (missing from the legacy few-shot table) and is
+# one of the central C1 comparison arms (HSE-Prompt vs linear probe on GFS harmonic mean).
+#
+# Implementation: load the HSE pretrain checkpoint (from p09_exp2 stage-0) with backbone
+# frozen, train only the linear head H_01_Linear_cla under the GFS protocol.
+#
+# NOTE (P09-G040 blockers): GFS base/novel label mapping + LOSO target leakage + GFS sampler
+# support/query disjointness — all unresolved. Status reflects this.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_b1_linear_probe"
+  seed: 42
+  output_dir: "results/p09/b1_linear_probe"
+  notes: "P09 baseline B1: linear probe (frozen HSE-pretrained backbone + linear head) under GFS."
+
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  freeze_backbone: true        # linear-probe = backbone frozen
+  freeze_embedding: true
+  use_prompt: false
+  prompt_dim: 0
+  # checkpoint_path: "results/p09/exp2_hse_pretrain/pretrain/<best>.ckpt"  # set at launch
+
+task:
+  type: "GFS"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+  optimizer: "adamw"
+  lr: 0.001          # head-only, higher LR
+  weight_decay: 0.0001
+  num_episodes: 100
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 5
+  num_query: 15
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides
+  gpus: 1
