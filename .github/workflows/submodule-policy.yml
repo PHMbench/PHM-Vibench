@@ -40,16 +40,18 @@ jobs:
       - name: Run focused policy tests
         run: python -m pytest -q test/test_submodule_policy.py
 
-      - name: Require release mode to remain blocked
+      - name: Require release-mode submodule policy to pass
+        run: python tools/repo/check_submodule_policy.py --mode release | tee submodule-release.txt
+
+      - name: Require zero submodule release blockers
         shell: bash
         run: |
           set -euo pipefail
-          if python tools/repo/check_submodule_policy.py --mode release > submodule-release.txt; then
-            echo "Submodule release policy unexpectedly passed." >&2
+          grep -q '0 release blocker(s)' submodule-release.txt
+          if grep -Eq 'PHM_DATA_FACTORY_BACKEND_PENDING|LEGACY_SUBMODULE_REMAINS|BACKEND_DEFERRAL_(MISSING|INVALID|CONFLICT)' submodule-release.txt; then
+            echo "Resolved submodule blocker returned." >&2
             exit 1
           fi
-          grep -q 'PHM_DATA_FACTORY_BACKEND_PENDING' submodule-release.txt
-          grep -q 'LEGACY_SUBMODULE_REMAINS' submodule-release.txt
 
       - name: Upload policy evidence
         uses: actions/upload-artifact@v4

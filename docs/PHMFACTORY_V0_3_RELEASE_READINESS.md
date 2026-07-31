@@ -1,119 +1,151 @@
 # PHMFactory v0.3 Release Readiness
 
-This page is the blocking checklist for the final PHMFactory v0.3 release. It is an audit contract, not a claim that the release is already ready.
+This document is the blocking contract for the final PHMFactory v0.3.0 release. It records the current tree, not an assertion that publication is already authorized.
 
 ## Current status
 
 ```text
 status: BLOCKED
 release target: v0.3.0
-repository target: PHMbench/phmfactory
+current repository: PHMbench/PHM-Vibench
+target repository: PHMbench/phmfactory
+package version: 0.3.0.dev0
 ```
 
-Run the audit with:
-
-```bash
-python tools/repo/check_release_readiness.py --mode audit
-```
-
-The release command must remain blocked while any finding exists:
-
-```bash
-python tools/repo/check_release_readiness.py --mode release
-```
-
-Submodule policy can be inspected independently:
+Audit commands:
 
 ```bash
 python tools/repo/check_submodule_policy.py --mode policy
 python tools/repo/check_submodule_policy.py --mode release
+python tools/repo/check_release_readiness.py --mode audit
+python tools/repo/check_release_readiness.py --mode release
 ```
 
-## Machine-checked blockers
+The submodule release policy must now pass. The overall release command remains non-zero while any final release finding exists.
 
-The checker currently evaluates:
+## Resolved release areas
 
-1. `pyproject.toml` and `phmfactory.__version__` agree and equal `0.3.0`;
-2. the public README heading uses `PHMFactory`;
-3. `CITATION.cff` uses the PHMFactory title and final repository URL;
-4. `CHANGELOG.md` contains a v0.3.0 section;
-5. `RELEASE_NOTES_v0.3.0.md` exists;
-6. Hugging Face and ModelScope CWRU revisions are immutable rather than `main` or `master`;
-7. required CWRU bundle SHA-256 values are populated;
-8. the governed `phm-data-factory` backend is organization-owned, approved, pinned, and present at the exact gitlink;
-9. all legacy paper/research submodules have completed content-level migration and are absent from `.gitmodules`;
-10. v0.2 provenance is resolved either by a visible historical tag or by the exact approved release-candidate provenance record;
-11. no v0.3.0 tag already exists before the release gate passes;
-12. when running in GitHub Actions, the repository has the final `PHMbench/phmfactory` identity.
-
-## Resolved staged records
-
-The staged v0.3 chain now includes:
+The following areas are complete and must not return as blockers:
 
 - PHMFactory README and citation branding;
-- a v0.3 changelog section and draft release notes;
-- an explicit v0.2.0 release-candidate provenance authority at
-  `docs/releases/v0.2.0-rc-provenance.yaml`;
-- the immutable v0.2 runtime baseline commit
-  `a331769d4005018bc833534ecf4efeb5e8a5a78d`;
-- an explicit decision not to create a retroactive final v0.2.0 tag;
-- a deny-by-default submodule allowlist with one neutral organization-owned backend target;
-- an explicit decision not to merge the old personal-URL backend integration directly.
+- public `phmfactory` package, CLI, configuration resolver, and canonical Pipeline names;
+- explicit v0.2.0 release-candidate provenance anchored to `a331769d4005018bc833534ecf4efeb5e8a5a78d`;
+- P01–P09 content-level migration evidence;
+- Foundation 257-path partition with zero unassigned paths;
+- removal of every legacy mode-160000 paper, personal, and research gitlink;
+- removal of `.gitmodules` after the last gitlink was deleted;
+- deny-by-default submodule policy with zero submodule release blockers;
+- formal deferral of optional `phm-data-factory` integration to v0.3.1.
 
-These records are only effective after their stacked PRs are reviewed and merged.
-
-## Current submodule state
-
-The `phm-data-factory` source tree has a reviewed Apache-2.0 commit, but its neutral
-organization-owned repository transfer has not completed. The allowlist therefore
-uses:
+The backend decision authority is:
 
 ```text
-status: blocked_pending_org_transfer
-path: packages/phm-data-factory
-target: https://github.com/PHMbench/phm-data-factory.git
+docs/releases/v0.3.0-backend-deferral.yaml
 ```
 
-The remaining paper gitlinks are still frozen because destination repository names
-alone do not prove content coverage. Both conditions remain release blockers.
+A valid deferral means the backend is absent, optional, not imported by the v0.3.0 runtime, not claimed as supported, and not release-blocking.
+
+## Remaining machine-checked blockers
+
+The expected current finding set is exactly:
+
+```text
+2 x CWRU_REVISION_FLOATING
+2 x CWRU_HASH_MISSING
+1 x REPOSITORY_RENAME_PENDING
+1 x VERSION_NOT_FINAL
+```
+
+Total expected findings:
+
+```text
+6
+```
+
+No other finding is authorized. In particular, these must remain absent:
+
+```text
+PHM_DATA_FACTORY_BACKEND_PENDING
+BACKEND_DEFERRAL_INVALID
+LEGACY_SUBMODULES_REMAIN
+UNKNOWN_SUBMODULES_PRESENT
+README_BRAND_PENDING
+CITATION_BRAND_PENDING
+CITATION_REPOSITORY_PENDING
+V020_PROVENANCE_UNRESOLVED
+```
+
+## Meaning of the remaining blockers
+
+### CWRU immutable publication
+
+Both Hugging Face and ModelScope currently use floating revisions, and the logical `metadata` and `signals` SHA-256 values are not pinned. This is intentionally deferred from the present change set.
+
+Release requires:
+
+```text
+immutable provider revisions
+metadata SHA-256
+signals SHA-256
+byte-identical required files across providers
+```
+
+### Repository identity
+
+GitHub still reports `PHMbench/PHM-Vibench`. The final release identity is `PHMbench/phmfactory`. The rename is intentionally deferred from the present change set.
+
+### Final version
+
+`pyproject.toml` and `phmfactory.__version__` must remain `0.3.0.dev0` until the CWRU and repository-identity gates are ready. The final promotion PR changes both to `0.3.0` exactly once, after the other release blockers are cleared.
+
+`VERSION_NOT_FINAL` is therefore a finalization gate, not a request to publish final metadata early.
+
+## Backend boundary
+
+`phm-data-factory` is deferred to v0.3.1 and must not be added to the v0.3.0 tree.
+
+For v0.3.0:
+
+```text
+backend gitlink: absent
+runtime import: forbidden
+silent fallback: forbidden
+core dependency: false
+release blocker: false
+support claim: false
+```
+
+A future v0.3.1 integration still requires an organization-owned public repository, compatible license, immutable reviewed commit, bounded adapter PR, explicit missing-backend failure, and proof that core paths pass without backend initialization.
 
 See [PHM_DATA_FACTORY_BACKEND_V0_3.md](PHM_DATA_FACTORY_BACKEND_V0_3.md).
 
-## Human-reviewed blockers
-
-The following cannot be inferred safely from repository files alone:
-
-- all staged v0.3 PRs have been reviewed and merged in dependency order;
-- branch protection and required checks are configured for the final default branch;
-- public Hugging Face and ModelScope artifacts are available at the pinned immutable revisions;
-- the two providers return byte-identical required bundle files;
-- the backend organization transfer preserves the reviewed source tree or has verified replacement-tree parity;
-- the final backend adapter remains optional and does not modify protected Data Factory behavior;
-- every legacy paper gitlink has destination-level source/config/result verification;
-- the GitHub repository rename and redirect behavior have been verified;
-- release notes accurately separate compatibility guarantees from experimental features;
-- the final wheel and source distribution were built from the tagged commit;
-- installation, CLI, module entrypoint, offline smoke, Pipeline 06, UXFD, Streamlit, dependency ownership, repository-layout, submodule-policy, and CWRU gates all pass on the final release commit.
-
-## Release order
+## Final release order
 
 ```text
-1. merge the reviewed v0.3 PR stack in dependency order
-2. retain the approved v0.2 release-candidate provenance record
-3. transfer and integrate the organization-owned phm-data-factory backend
-4. complete content-level migration of the remaining paper gitlinks
-5. publish and pin the dual-source CWRU bundle
-6. finalize repository branding and citation metadata
-7. change versions from 0.3.0.dev0 to 0.3.0
-8. validate RELEASE_NOTES_v0.3.0.md against the final tree
-9. rename the GitHub repository to PHMbench/phmfactory
-10. rerun all required checks on the final repository identity
-11. build wheel and sdist from the final commit
-12. create tag v0.3.0 and publish the release
+1. keep the merged migration and backend-deferral authorities unchanged
+2. publish and verify the dual-source immutable CWRU bundle
+3. update the CWRU manifest with immutable revisions and logical-key SHA-256 values
+4. rerun release-readiness and confirm only rename/version remain
+5. prepare the final promotion PR
+6. rename the GitHub repository to PHMbench/phmfactory
+7. change 0.3.0.dev0 to 0.3.0 in package metadata
+8. update changelog and release-note status from pre-release to final
+9. run full CI, wheel/sdist build, clean installation, CLI and smoke validation
+10. require release-readiness PASS with 0 blockers
+11. create tag v0.3.0 and publish the release
 ```
 
-The repository rename, final version change, tag, and release publication must not occur before all blockers are cleared.
+## Human review required before tagging
+
+The final tagged commit still requires confirmation that:
+
+- branch protection and required checks are correct for the final repository identity;
+- Hugging Face and ModelScope expose the exact immutable bundle revisions;
+- required CWRU files are byte-identical across providers;
+- release notes accurately separate maintained software behavior from experimental or deferred components;
+- wheel and source distribution are built from the exact tagged commit;
+- clean installation, CLI entrypoints, offline Dummy smoke, Pipeline 06, UXFD, Streamlit, dependency ownership, repository layout, submodule policy, and CWRU validation all pass.
 
 ## Rollback
 
-Before tagging, revert the release-preparation commit or keep the repository at `0.3.0.dev0`. After tagging, use a corrective release rather than moving or recreating the published tag.
+Before tagging, revert the final promotion commit or retain `0.3.0.dev0`. After publication, do not move or recreate the tag; issue a corrective release instead.
