@@ -1,0 +1,75 @@
+# P05 - ABLATION A03: weak (near-fixed) fuzzy fusion scale.
+# ADDITIVE sibling of configs/experiments/p05/method_fuzzy_indomain.yaml.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: ready (config-only change to uxfd.fuzzy.logit_scale).
+# NOTE: the legacy draft's "fixed fusion" ablation refers to a non-adaptive
+#   fusion weight between statistical and deep features. The registered
+#   TSPN_UXFD does NOT expose an adaptive-fusion switch in FuzzyConfig; the
+#   closest registered knob is the fuzzy residual logit_scale. This config
+#   approximates the "fixed fusion" intent by clamping the fuzzy residual scale
+#   to a small constant (legacy RUN-SMOKE-A03 used logit_scale=0.1). A faithful
+#   fixed-fusion ablation requires a new component (see
+#   ablation_no_safety_fallback.yaml blocker notes).
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Supports: CLAIM-ABL-003 (approximate; exact fixed-fusion needs new component).
+
+pipeline: "Pipeline_05_default_w_explain"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_ablation_weak_fuzzy_scale"
+  seed: 42
+  output_dir: "results/experiments/p05/ablation_weak_fuzzy_scale"
+  notes: "P05 A03 ablation: weak fixed fuzzy residual scale (approx of legacy fixed-fusion)."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # Required TSPN.__init__ args (src/model_factory/X_model/TSPN.py): in_dim,
+  # out_dim, in_channels, out_channels, scale, skip_connection, device, num_classes.
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  device: "cpu"
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 32
+      num_membership_functions: 3
+      num_rules: 10
+      logit_scale: 0.1               # A03: clamp fuzzy residual scale to a small constant
+
+task:
+  target_system_id: [1]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

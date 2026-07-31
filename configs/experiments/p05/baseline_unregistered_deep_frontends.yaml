@@ -1,0 +1,73 @@
+# P05 - BASELINE comparators (B03/B04/B05 PLACEHOLDER): SincNet / TFN / WKN.
+# ADDITIVE stub config under configs/experiments/p05/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# STATUS: needs_new_component.
+# The legacy baseline_ablation_matrix.yaml (2026-05-11) binds three deep
+# front-end baselines to model.name = Sincnet / TFN / WKN (X_model.*). NONE of
+# these names is registered in src/model_factory/model_registry.csv (only
+# X_model.TSPN, X_model.TSPN_UXFD, X_model.BASE_ExplainableCNN are registered
+# under X_model today). They existed in the legacy paper-local submodule
+# (paper/UXFD_paper/Paper_fuzzy_XFD/...) and were driven by its unregistered
+# entrypoint; they are READ-ONLY here and not importable from this repo's
+# model_factory.
+# Phase-2 must, for each of {Sincnet, TFN, WKN}:
+#   1) port + register the model under src/model_factory/X_model/<Name>.py with
+#      a row in src/model_factory/model_registry.csv, AND
+#   2) clone this stub three times with model.name set to the registered name,
+#      under the SAME protocol/split/seed as the method arm.
+# This single stub mirrors the method-arm data/task blocks so the only delta
+# needed after registration is the `model.*` block.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Supports (once unblocked): CLAIM-BASELINE-001 (SincNet/TFN/WKN rows).
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_baseline_unregistered_deep_frontends"
+  seed: 42
+  output_dir: "results/experiments/p05/baseline_unregistered_deep_frontends"
+  notes: "P05 B03/B04/B05 baseline stub (PLACEHOLDER). needs_new_component: Sincnet/TFN/WKN not in model_registry.csv."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # --- BEGIN needs_new_component block ---
+  # Provisional. Phase-2 must add a registry row for each of:
+  #   X_model,Sincnet,src/model_factory/X_model/Sincnet.py,...
+  #   X_model,TFN,src/model_factory/X_model/TFN.py,...
+  #   X_model,WKN,src/model_factory/X_model/WKN.py,...
+  # then split this stub into three configs (baseline_sincnet_indomain.yaml,
+  # baseline_tfn_indomain.yaml, baseline_wkn_indomain.yaml) with the SAME
+  # data/task blocks as method_fuzzy_indomain.yaml and the registered
+  # model.* block per arm.
+  type: "X_model"
+  name: "Sincnet"                   # sweep {Sincnet, TFN, WKN} after registration
+  num_classes: 10
+  # --- END needs_new_component block ---
+
+task:
+  target_system_id: [1]              # CWRU default; sweep [1]/[2]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

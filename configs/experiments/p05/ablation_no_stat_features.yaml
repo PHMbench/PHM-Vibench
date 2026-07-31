@@ -1,0 +1,72 @@
+# P05 - ABLATION A02: no statistical features (drop Mean/Std from the feature extractor).
+# ADDITIVE sibling of configs/experiments/p05/method_fuzzy_indomain.yaml.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: ready (config-only change to feature_extractor_configs).
+# NOTE: replacing statistical features with a deep-only extractor (e.g. a learned
+#   1D pooling head) is a component-graph change; this config instead drops the
+#   stat features and keeps an identity/linear extractor path so the ablation is
+#   config-only. Phase-2 must confirm the resulting extractor still produces a
+#   finite-width vector compatible with TSPN_UXFD.channel_for_classifier.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Supports: CLAIM-ABL-002.
+
+pipeline: "Pipeline_05_default_w_explain"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_ablation_no_stat_features"
+  seed: 42
+  output_dir: "results/experiments/p05/ablation_no_stat_features"
+  notes: "P05 A02 ablation: drop statistical features from the feature extractor."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # Required TSPN.__init__ args (src/model_factory/X_model/TSPN.py): in_dim,
+  # out_dim, in_channels, out_channels, scale, skip_connection, device, num_classes.
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  device: "cpu"
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: []      # A02: no stat features (empty list)
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 32
+      num_membership_functions: 3
+      num_rules: 10
+      logit_scale: 0.5
+
+task:
+  target_system_id: [1]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
