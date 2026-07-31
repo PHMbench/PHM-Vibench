@@ -3,7 +3,7 @@
 ## Execution Roots
 
 - `paper_root`: `paper/UXFD_paper/1D-2D_fusion_explainable`
-- `exec_root`: `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`
+- `exec_root`: `.` (nested ViBench repository root)
 - Historical `Paper/...` references in older notes map to the real lowercase path under `paper/UXFD_paper/...`.
 
 ## Maintained Parent Entry

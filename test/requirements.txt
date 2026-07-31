@@ -1,0 +1,3 @@
+# Incremental dependencies for repository tests.
+# Install the repository root requirements first for integration and smoke tests.
+pytest>=7.0.0

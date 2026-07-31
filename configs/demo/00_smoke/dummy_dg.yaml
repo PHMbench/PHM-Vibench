@@ -1,6 +1,6 @@
 # Smoke demo: runs end-to-end on repo-shipped dummy data (no external dataset required)
 
-pipeline: "Pipeline_01_default"
+pipeline: "Pipeline_01_Fault_Diagnosis"
 
 base_configs:
   environment: "configs/base/environment/base.yaml"

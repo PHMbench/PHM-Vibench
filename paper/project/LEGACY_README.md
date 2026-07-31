@@ -3,7 +3,7 @@
 ## Autoresearch Execution Roots
 
 - `paper_root`: `paper/UXFD_paper/1D-2D_fusion_explainable`
-- `exec_root`: `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`
+- `exec_root`: `.` (nested ViBench repository root)
 - Executable commands below use maintained lowercase paths; remaining `Paper/...` notes are historical references.
 - Maintained nonstop contract: `program.md`
 - Maintained parent entrypoint mapping: `VIBENCH.md`

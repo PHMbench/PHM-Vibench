@@ -95,7 +95,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_exp
 - manuscript_status: `ready`
 - cross_dataset_generalization: `accepted`
 - manuscript_binding: `accepted`
-- canonical_manuscript: `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/1D-2D_fusion_explainable/paper_draft/NMI_Paper1_Fusion1D2D.tex`
+- canonical_manuscript: `paper/UXFD_paper/1D-2D_fusion_explainable/paper_draft/NMI_Paper1_Fusion1D2D.tex` (legacy repository-relative snapshot path)
 
 ### Remaining Blockers
 

@@ -26,7 +26,7 @@ The maintained configuration contains the five public blocks:
 environment / data / model / task / trainer
 ```
 
-It selects `Pipeline_01_default`, uses `data/metadata_dummy.csv`, runs on CPU, and
+It selects `Pipeline_01_Fault_Diagnosis`, uses `data/metadata_dummy.csv`, runs on CPU, and
 writes below `results/demo/dummy_dg_smoke/`.
 
 ## 3. Run one offline epoch

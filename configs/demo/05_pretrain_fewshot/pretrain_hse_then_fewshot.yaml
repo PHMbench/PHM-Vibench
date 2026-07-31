@@ -1,6 +1,6 @@
 # Two-stage demo: pretrain (HSE) + few-shot finetune (v0.1.0 draft)
 
-pipeline: "Pipeline_02_pretrain_fewshot"
+pipeline: "Pipeline_02_Pretraining_Few_Shot"
 
 base_configs:
   environment: "configs/base/environment/base.yaml"

@@ -1,75 +1,70 @@
-# PHM-Vibench Documentation
+# Documentation Index
 
-This page is the navigation entrypoint for maintained PHM-Vibench documentation.
-The public runtime contract is configuration-first:
-
-```bash
-python main.py --config <yaml> [--override key=value ...]
-```
-
-Documentation uses four status labels:
-
-- **Maintained** — expected to match current `main` and covered by repository checks.
-- **Experimental** — implemented or under active development, but outside the release-supported surface.
-- **Historical** — retained as evidence of earlier decisions or releases; not current instructions.
-- **Generated** — produced from another source of truth and should not be edited manually.
+This index is the maintained entry point for PHMFactory documentation.
 
 ## Start here
 
-| Need | Maintained entrypoint |
-| --- | --- |
-| Install PHM-Vibench | [Installation](installation.md) |
-| Run the offline example | [Quickstart](quickstart.md) |
-| Understand YAML composition and overrides | [Configuration guide](../configs/README.md) |
-| Find maintained configurations | [Configuration atlas](CONFIG_ATLAS.md) |
-| Prepare local datasets | [Data directory guide](../data/README.md) |
-| See the supported release surface | [Supported components](../SUPPORTED_COMPONENTS.md) and [supported combinations](../SUPPORTED_COMBINATIONS.md) |
-| Check known constraints | [Known limitations](../KNOWN_LIMITATIONS.md) |
-| Use the optional web interface | [Streamlit workspace](../apps/streamlit/README.md) |
-| Troubleshoot a first run | [Quickstart troubleshooting](quickstart.md#troubleshooting) |
+- [README](../README.md)
+- [Installation](installation.md)
+- [Quickstart](quickstart.md)
+- [Configuration](../configs/README.md)
+- [Supported components](../SUPPORTED_COMPONENTS.md)
+- [Supported combinations](../SUPPORTED_COMBINATIONS.md)
+- [Known limitations](../KNOWN_LIMITATIONS.md)
+- [v0.2 to v0.3 migration guide](../MIGRATION_v0.2_to_v0.3.md)
+- [v0.3.0 release notes](../RELEASE_NOTES_v0.3.0.md)
+- [v0.3.0 release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
+- [v0.2.0 release-candidate provenance](releases/v0.2.0-rc-provenance.md)
 
-## Develop and contribute
+## Architecture and extension
 
-| Task | Maintained entrypoint |
-| --- | --- |
-| Development workflow and architecture | [Developer guide](developer_guide.md) |
-| Tests and validation gates | [Testing guide](testing.md) |
-| General contribution process | [CONTRIBUTING.md](../CONTRIBUTING.md) |
-| Community standards | [Code of Conduct](../CODE_OF_CONDUCT.md) |
-| Add a dataset or reader | [Data factory contribution guide](../src/data_factory/contributing.md) |
-| Add a model | [Model factory contribution guide](../src/model_factory/contributing.md) |
-| Add a task | [Task factory contribution guide](../src/task_factory/contributing.md) |
-| Add or change a trainer | [Trainer factory contribution guide](../src/trainer_factory/contributing.md) |
-| Repository change constraints | [CLAUDE.md](../CLAUDE.md) |
-| Copy-paste maintainer commands | [AGENTS.md](../AGENTS.md) |
+- [Developer guide](developer_guide.md)
+- [Configuration Atlas](CONFIG_ATLAS.md)
+- [Data Factory](../src/data_factory/README.md)
+- [Model Factory](../src/model_factory/README.md)
+- [Task Factory](../src/task_factory/README.md)
+- [Trainer Factory](../src/trainer_factory/README.md)
+- [Governed `phm-data-factory` backend contract](PHM_DATA_FACTORY_BACKEND_V0_3.md)
 
-## Releases and governance
+## User interfaces
 
-- [Changelog](../CHANGELOG.md)
-- [v0.2.0 release notes](../RELEASE_NOTES_v0.2.0.md)
-- [v0.1 to v0.2 migration guide](../MIGRATION_v0.1_to_v0.2.md)
-- [Security policy](../SECURITY.md)
-- [Citation metadata](../CITATION.cff)
-- [Apache License 2.0](../LICENSE)
-- [Branch governance record](branch_governance_20260709.md)
+- [Streamlit workspace](../apps/streamlit/README.md)
+- [CWRU v0.3 demo contract](CWRU_DEMO_V0_3.md)
+
+## Contribution and governance
+
+- [Contributing](../CONTRIBUTING.md)
+- [Testing](testing.md)
+- [Security](../SECURITY.md)
+- [Code of conduct](../CODE_OF_CONDUCT.md)
 - [Repository optimization SOP](REPOSITORY_OPTIMIZATION_SOP.md)
+- [PHMFactory v0.3.0 repository contract](PHMFACTORY_V0_3_REPOSITORY_CONTRACT.md)
+- [PHMFactory v0.3.0 reader preservation contract](PHMFACTORY_V0_3_READER_PRESERVATION.md)
+- [PHMFactory v0.3.0 task and PR plan](PHMFACTORY_V0_3_TASK_PLAN.md)
 - [Pipeline 06 migration contract](PIPELINE_06_GENERATIVE_MIGRATION.md)
+- [Deny-by-default submodule allowlist](../.github/phmfactory-v0.3-submodules.allowlist.yml)
+- [Submodule inventory and governance audit](archive/audits/phmfactory-v0.3-submodule-inventory.md)
+- [Paper gitlink migration tracker](archive/audits/phmfactory-v0.3-paper-submodule-migration-status.md)
+
+The PHMFactory v0.3.0 documents describe a staged migration and pre-release state.
+They do not by themselves claim that the GitHub repository rename, public data pins,
+backend transfer, final version, tag, or package publication have completed. The
+release-readiness page is the authority for those blockers.
 
 ## Generated and historical material
 
 `docs/CONFIG_ATLAS.md` is generated from `configs/config_registry.csv`; update the
 registry, run `python -m scripts.gen_config_atlas`, and commit both changes.
 
-Earlier release and planning material remains under:
+Public historical audits and migration evidence are indexed under
+[`docs/archive/`](archive/README.md). `configs/v0.0.9/` remains only because the
+protected compatibility loader still references its presets; it is not the
+maintained quickstart surface.
 
-- `docs/v0.1.0/`
-- `docs/past/`
-- `configs/v0.0.9/`
-- `dev/`
-
-Those paths are retained for provenance and research context. They are not current
-installation, usage, compatibility, or support instructions unless a maintained
-page links to a specific document and says otherwise.
+The former `docs/v0.1.0/`, `docs/past/`, `dev/`, and root `.archive/` workspaces are
+preserved in immutable Git history and in the approved personal-fork archive. They
+are not public framework inputs. Generated experiment outputs are local artifacts
+and are not tracked through `results/` or `metrics_reports/` placeholder directories.
 
 ## Single-source-of-truth map
 
@@ -78,14 +73,17 @@ page links to a specific document and says otherwise.
 | Project positioning and shortest successful path | `README.md` | Link to the README or the detailed page below |
 | Installation | `docs/installation.md` | Keep only a minimal command and link |
 | First successful run | `docs/quickstart.md` | Avoid copying the complete walkthrough |
+| v0.2 release-candidate baseline | `docs/releases/v0.2.0-rc-provenance.yaml` | Do not create or imply a retroactive final v0.2.0 tag |
+| v0.2 to v0.3 user migration | `MIGRATION_v0.2_to_v0.3.md` | Keep release notes shorter and link to the migration procedure |
+| v0.3 release summary and limitations | `RELEASE_NOTES_v0.3.0.md` | Do not present the pre-release draft as a completed release |
+| Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` | Do not claim release completion while blockers remain |
+| Submodule ownership and backend exception | `.github/phmfactory-v0.3-submodules.allowlist.yml` | Do not add an unlisted or personal-account submodule URL |
+| Submodule history and frozen gitlinks | `docs/archive/audits/phmfactory-v0.3-submodule-inventory.md` | Preserve audit facts while deferring current policy to the allowlist |
+| Paper gitlink content migration | `docs/archive/audits/phmfactory-v0.3-paper-submodule-migration-status.yaml` | Do not delete a gitlink unless `safe_to_remove` is true |
+| Backend integration behavior | `docs/PHM_DATA_FACTORY_BACKEND_V0_3.md` | Treat the old experimental PR as evidence, not as the final patch |
 | Configuration semantics | `configs/README.md` | Link rather than redefine precedence |
 | Maintained config inventory | `configs/config_registry.csv` | Regenerate `docs/CONFIG_ATLAS.md` |
 | Supported components and combinations | `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md` | Do not infer support from registry presence |
-| Data layout and external-data boundary | `data/README.md` | Link from reader and dataset pages |
-| Contribution process | `CONTRIBUTING.md` | Factory guides describe only factory-specific steps |
-| Community behavior | `CODE_OF_CONDUCT.md` | Link instead of copying conduct policy |
-| Security reporting | `SECURITY.md` | Do not disclose sensitive details in public templates |
-| Citation metadata | `CITATION.cff` | Cite the exact release or commit used |
-| Test commands and evidence terms | `docs/testing.md` | Link to the relevant gate |
-| Optional Streamlit behavior | `apps/streamlit/README.md` | Keep compatibility pages as short redirects |
-| Release changes | `CHANGELOG.md` and release notes | Historical plans must not override release documents |
+| Known limitations | `KNOWN_LIMITATIONS.md` | Link rather than duplicate caveats |
+| Testing and contribution gates | `CONTRIBUTING.md`, `docs/testing.md` | Keep commands synchronized |
+| Streamlit UI contract | `apps/streamlit/README.md` | Keep UI-specific behavior there |

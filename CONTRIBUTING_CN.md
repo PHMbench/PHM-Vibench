@@ -28,7 +28,7 @@ environment / data / model / task / trainer
 ## 提交 Issue 或 PR 之前
 
 1. 搜索现有 Issue 和 Pull Request。
-2. 尽可能在最新 `main` 上复现问题。
+2. 用户可见问题尽可能在最新 `main` 上复现；开发修复应在最新 `dev` 上验证。
 3. 从 `configs/demo/` 中最接近的维护配置开始。
 4. 将本地变体放在 `configs/experiments/` 或未跟踪的本地配置中；不要提交个人绝对路径。
 5. 将无关的运行时、文档、数据产物和仓库清理改动拆开。
@@ -70,15 +70,35 @@ environment / data / model / task / trainer
 
 新增方法应附主要论文或稳定技术来源，但论文存在本身不能证明仓库实现可运行。
 
-## 开发环境与分支
+## 分支模型与开发环境
 
-按照[安装指南](docs/installation.md)配置环境。典型分支流程：
+仓库保留两个长期分支：
+
+```text
+main  面向用户的稳定分支；是 clone、用户文档、发布和受支持状态的权威来源
+dev   集成与开发分支；是常规 Pull Request 的目标分支
+```
+
+常规功能、修复、文档、测试、CI、清理和迁移 PR 必须指向 `dev`。topic branch
+应从最新 `dev` 创建：
 
 ```bash
-git switch main
-git pull --ff-only origin main
+git switch dev
+git pull --ff-only origin dev
 git switch -c <type>/<short-topic>
 ```
+
+`main` 只接受：
+
+1. 经过明确授权、由 `dev` 或 `release/<version>` 发起的发布提升 PR；或
+2. 从 `main` 创建的已授权紧急 hotfix，且合并后必须立即同步或回补到 `dev`。
+
+`main` 与 `dev` 都只能通过 Pull Request 更新，不得直接 push。已经打开的
+canonical v0.3 集成 PR #127 早于本策略，是唯一的过渡例外：其 source ancestry
+合同要求继续指向 `main`。#127 合并后，在接收新的开发工作前，必须先将产生的
+`main` merge commit 同步到 `dev`。
+
+按照[安装指南](docs/installation.md)配置本地环境。
 
 建议前缀：
 
@@ -106,20 +126,22 @@ test: cover TSPN_UXFD CPU assembly
 docs: clarify external data layout
 ```
 
-仓库通常使用 squash merge，不需要人为制造大量 commit。
+不需要人为制造大量 commit。没有 provenance 或 ancestry 合同的常规 topic PR
+可以 squash merge 到 `dev`；发布提升以及依赖提交祖先关系的迁移/来源证明 PR
+必须使用 merge commit，禁止 squash 或 rebase。
 
 ## 提交代码贡献
 
 标准流程：
 
 ```text
-创建聚焦分支
+从 dev 创建聚焦分支
 → 完成最小且完整的改动
 → 添加或更新聚焦测试
 → 更新权威文档
 → 运行适用门禁
 → 检查 diff 中是否夹带无关修改
-→ 提交包含准确证据的 PR
+→ 向 dev 提交包含准确证据的 PR
 ```
 
 架构约束：
@@ -224,6 +246,9 @@ NOT EXECUTED — <原因>
 
 ## 提交 Pull Request
 
+常规 PR 必须以 `dev` 为 base。指向 `main` 的 PR 必须在描述中注明已批准的
+发布提升或紧急 hotfix 例外。
+
 PR 必须说明：
 
 - 问题和修改理由；
@@ -240,11 +265,13 @@ PR 必须说明：
 不要把大范围格式化与行为改动混在一起。不要单独提交生成的 atlas 而不提交注册表来源变化。
 不要为了让 PR 通过而降低测试或支持标准。
 
-合并前通常需要至少一名维护者 review 和必要检查通过，默认采用 squash merge。
+合并前需要至少一名维护者 review 并通过必要检查。常规 topic PR 合并到 `dev`；
+由 `dev` 或 `release/<version>` 提升到 `main` 时使用 merge commit，以保留发布边界和
+`dev` 祖先关系。
 
 ## 通常不会接受的改动
 
-- 未审查的大改动直接进入 `main`；
+- 直接 push 到 `main` 或 `dev`，或常规 PR 绕过 `dev` 直接指向 `main`；
 - 个人路径、凭据或私有基础设施细节；
 - 绕过现有配置和 factory 契约的平行框架；
 - 将无关运行时、清理、文档和研究工作混在一个巨型 PR；

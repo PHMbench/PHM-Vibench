@@ -1,37 +1,37 @@
+# PHMFactory core runtime dependencies.
+# Optional subsystems are intentionally colocated with their owning directories:
+#   apps/streamlit/requirements.txt
+#   phmfactory/data_sources/modelscope/requirements.txt
+#   plot/requirements.txt
+#   test/requirements.txt
+
+# Numerical and tabular data
 numpy>=1.20.0
 pandas>=1.3.0
-# For PyTorch, torchvision, and torchaudio, consider using the specified index URL during installation:
-# pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu126
-torch==2.6.0
-torchvision==0.21.0
-torchaudio==2.6.0
-pytorch-lightning>=1.5.0
-torchmetrics>=1.0.0
+scipy
 scikit-learn>=1.0.0
 h5py
-wandb
-einops
-matplotlib
-scipy
-seaborn
-umap-learn
-urllib3
-modelscope
 xlrd>2.0.0
 openpyxl
-tensorboard
-swanlab
-plotly
+
+# Core training runtime
+# Select a platform-appropriate PyTorch index URL when required by the host.
+torch==2.6.0
+pytorch-lightning>=1.5.0
+torchmetrics>=1.0.0
+einops
 reformer_pytorch
-scienceplots
 transformers
 timm
 
-streamlit
+# Evaluation and maintained runtime logging
+matplotlib
+seaborn
+wandb
+swanlab
+tensorboard
 
-# Config tooling (schema validate + inspect)
+# Configuration and default Hugging Face data provider
 pydantic>=2.0.0
 PyYAML>=6.0
-
-# Tests (CI + local)
-pytest>=7.0.0
+huggingface_hub>=0.23

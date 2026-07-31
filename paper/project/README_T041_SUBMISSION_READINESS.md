@@ -36,7 +36,7 @@ are stricter and supersede that local ready flag for T041.
 - Compile command used for the IEEE Transactions smoke gate:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/1D-2D_fusion_explainable
+cd paper/UXFD_paper/1D-2D_fusion_explainable
 mkdir -p /tmp/uxfd_1d2d_t041_tex
 latexmk -pdf -interaction=nonstopmode -halt-on-error -outdir=/tmp/uxfd_1d2d_t041_tex paper_draft/NMI_Paper1_Fusion1D2D.tex
 ```
@@ -53,7 +53,7 @@ Known compile blockers to check before accepting the manuscript:
 The maintained parent entrypoint is the VIBENCH min config:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+cd .
 CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0 --override trainer.device=cuda --override model.device=cuda --override trainer.gpus=1 --override environment.output_dir=paper/UXFD_paper/1D-2D_fusion_explainable/results/t041/vibench_min
 ```
 
@@ -119,7 +119,7 @@ Required artifact shape for every baseline:
 Required command pattern from the current repo root:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+cd .
 CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/baselines/<method>.yaml --override environment.seed=<seed> --override trainer.num_epochs=50 --override data.num_workers=0 --override trainer.device=cuda --override model.device=cuda --override trainer.gpus=1 --override environment.output_dir=paper/UXFD_paper/1D-2D_fusion_explainable/results/t041/baselines/<method>/seed_<seed>
 ```
 
@@ -150,7 +150,7 @@ Required ablations:
 Required command pattern:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+cd .
 CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/1D-2D_fusion_explainable/configs/vibench/ablations/<ablation>.yaml --override environment.seed=<seed> --override trainer.num_epochs=50 --override data.num_workers=0 --override trainer.device=cuda --override model.device=cuda --override trainer.gpus=1 --override environment.output_dir=paper/UXFD_paper/1D-2D_fusion_explainable/results/t041/ablations/<ablation>/seed_<seed>
 ```
 

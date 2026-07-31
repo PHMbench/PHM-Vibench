@@ -1,6 +1,6 @@
 # Paper 1（唯一核心文件）：1D-2D Fusion Explainable Fault Diagnosis（顶刊口径）
 
-> Autoresearch root normalization: the maintained paper path is `paper/UXFD_paper/1D-2D_fusion_explainable`, and the maintained execution root is `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`. Historical `Paper/...` references below are legacy aliases.
+> Autoresearch root normalization: the maintained paper path is `paper/UXFD_paper/1D-2D_fusion_explainable`, and the maintained execution root is `.` (the nested ViBench repository root). Historical `Paper/...` references below are legacy aliases.
 
 
 > 本文件是 `paper/UXFD_paper/1D-2D_fusion_explainable/` 的唯一“总控核心文件”。

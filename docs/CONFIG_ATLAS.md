@@ -10,8 +10,8 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 
 ## Index
 - [BASE](#base)
-- [Pipeline_01_default](#pipeline-01-default)
-- [Pipeline_02_pretrain_fewshot](#pipeline-02-pretrain-fewshot)
+- [Pipeline_01_Fault_Diagnosis](#pipeline-01-fault-diagnosis)
+- [Pipeline_02_Pretraining_Few_Shot](#pipeline-02-pretraining-few-shot)
 
 ## BASE
 
@@ -77,7 +77,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 #### `base_env_default`
 - Path: `configs/base/environment/base.yaml`
 - Description: 通用 environment base（PROJECT_HOME + iterations）
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`
 - Minimal run: `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`, `environment.seed=0`
@@ -180,7 +180,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Status: `/`
 
 
-## Pipeline_01_default
+## Pipeline_01_Fault_Diagnosis
 
 ### demo
 
@@ -193,7 +193,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/dg.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
@@ -210,7 +210,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/dg.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
@@ -227,7 +227,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/cddg.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/02_cross_system/multi_system_cddg.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
@@ -244,7 +244,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/fewshot.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/03_fewshot/cwru_protonet.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
@@ -261,7 +261,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/cddg_fewshot.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
@@ -278,7 +278,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/pretrain.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_01_default.py:pipeline`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/06_pretrain_cddg/pretrain_hse_cddg.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
@@ -287,7 +287,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Status: `sanity_ok`
 
 
-## Pipeline_02_pretrain_fewshot
+## Pipeline_02_Pretraining_Few_Shot
 
 ### demo
 
@@ -300,7 +300,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - model: `configs/base/model/backbone_dlinear.yaml`
   - task: `configs/base/task/pretrain.yaml`
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
-- Owner code: `src/Pipeline_02_pretrain_fewshot.py:pipeline`
+- Owner code: `src/Pipeline_02_Pretraining_Few_Shot.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`

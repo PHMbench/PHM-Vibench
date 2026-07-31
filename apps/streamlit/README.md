@@ -1,7 +1,7 @@
-# PHM-Vibench Streamlit Experiment Workspace
+# PHMFactory Streamlit Experiment Workspace
 
 This directory contains the optional, configuration-first web workspace for
-PHM-Vibench. It is a user-facing adapter around the maintained CLI, not a second
+PHMFactory. It is a user-facing adapter around the maintained CLI, not a second
 training framework.
 
 ```text
@@ -31,6 +31,10 @@ pip install -r requirements.txt
 pip install -r apps/streamlit/requirements.txt
 streamlit run apps/streamlit/app.py
 ```
+
+`apps/streamlit/app.py` is the only maintained UI entrypoint. The historical
+`app/` prototype and root compatibility launcher were archived outside the public
+framework before removal.
 
 Run the command from the repository root. Streamlit 1.37 or newer is required for
 independent live-log refresh through `st.fragment`.
@@ -182,7 +186,7 @@ to `template_profiles.yaml`.
 ## Validation
 
 ```bash
-python -m py_compile apps/streamlit/*.py streamlit_app.py
+python -m py_compile apps/streamlit/*.py
 python -m pytest \
   test/test_streamlit_config_service.py \
   test/test_streamlit_runtime_policy.py \

@@ -4,7 +4,7 @@ overlay_branch: paper/p01-uxfd-multimodal-alignment
 vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
 
 engine_config_copy:
-  source_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/configs/experiments/p01
+  source_path: configs/experiments/p01
   destination_path: configs/experiments/p01
   source_git_status: untracked-directory
   regular_files: 10
@@ -12,7 +12,7 @@ engine_config_copy:
 
 legacy_source:
   snapshot_path: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-小论文/P01-UXFD-Multimodal-Alignment/legacy/source_snapshot
-  original_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/1D-2D_fusion_explainable
+  original_path: paper/UXFD_paper/1D-2D_fusion_explainable
   origin: https://github.com/liq22/1D-2D_fusion_explainable.git
   repository_head: 53a03eac6ec6794f7d37ebb71b69dd40faba6a85
   superproject_gitlink: b385b07e82d6323a291d90e55a5ef4aff9336c0b

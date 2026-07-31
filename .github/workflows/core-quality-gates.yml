@@ -70,7 +70,7 @@ jobs:
       - name: Compile Pipeline 06 shell and tests
         run: |
           python -m py_compile \
-            src/Pipeline_06_generative.py \
+            src/Pipeline_06_Generative_Modeling.py \
             test/generative/test_pipeline06_import.py \
             test/generative/test_pipeline06_preflight.py \
             test/generative/test_pipeline06_dispatch.py

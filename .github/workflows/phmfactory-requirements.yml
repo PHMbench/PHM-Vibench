@@ -1,0 +1,126 @@
+name: PHMFactory dependency ownership
+
+on:
+  pull_request:
+    paths:
+      - "requirements.txt"
+      - "apps/streamlit/requirements.txt"
+      - "phmfactory/data_sources/modelscope/**"
+      - "plot/requirements.txt"
+      - "test/requirements.txt"
+      - "tools/repo/check_requirements.py"
+      - "docs/DEPENDENCY_BOUNDARIES_V0_3.md"
+      - "pyproject.toml"
+      - ".github/workflows/phmfactory-requirements.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "requirements.txt"
+      - "apps/streamlit/requirements.txt"
+      - "phmfactory/data_sources/modelscope/**"
+      - "plot/requirements.txt"
+      - "test/requirements.txt"
+      - "tools/repo/check_requirements.py"
+      - "docs/DEPENDENCY_BOUNDARIES_V0_3.md"
+      - "pyproject.toml"
+      - ".github/workflows/phmfactory-requirements.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ownership-contract:
+    name: Dependency ownership contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Compile and enforce ownership
+        run: |
+          python -m py_compile tools/repo/check_requirements.py
+          python tools/repo/check_requirements.py
+
+      - name: Build distribution metadata
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "build>=1.2"
+          python -m build
+
+      - name: Inspect wheel dependency and package boundaries
+        run: |
+          python - <<'PY'
+          from email.parser import Parser
+          from pathlib import Path
+          import re
+          from zipfile import ZipFile
+
+          from packaging.requirements import Requirement
+
+          def canonical(name: str) -> str:
+              return re.sub(r"[-_.]+", "-", name).lower()
+
+          wheels = sorted(Path("dist").glob("*.whl"))
+          assert len(wheels) == 1, wheels
+          with ZipFile(wheels[0]) as archive:
+              names = set(archive.namelist())
+              metadata_name = next(
+                  name for name in names if name.endswith(".dist-info/METADATA")
+              )
+              metadata = Parser().parsestr(
+                  archive.read(metadata_name).decode("utf-8")
+              )
+
+          requires = {
+              canonical(Requirement(value).name)
+              for value in metadata.get_all("Requires-Dist", [])
+          }
+          assert "huggingface-hub" in requires, requires
+          forbidden = {
+              "modelscope",
+              "pytest",
+              "scienceplots",
+              "streamlit",
+              "umap-learn",
+              "plotly",
+              "torchaudio",
+              "torchvision",
+              "urllib3",
+          }
+          assert not (requires & forbidden), sorted(requires & forbidden)
+
+          required_files = {
+              "phmfactory/data_sources/modelscope/__init__.py",
+              "phmfactory/data_sources/modelscope/requirements.txt",
+          }
+          assert not (required_files - names), sorted(required_files - names)
+          PY
+
+      - name: Verify optional files contain only incremental packages
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          expected = {
+              Path("apps/streamlit/requirements.txt"): {"streamlit"},
+              Path("phmfactory/data_sources/modelscope/requirements.txt"): {"modelscope"},
+              Path("plot/requirements.txt"): {"scienceplots", "umap-learn"},
+              Path("test/requirements.txt"): {"pytest"},
+          }
+          for path, packages in expected.items():
+              observed = {
+                  line.split("=", 1)[0].split("<", 1)[0].split(">", 1)[0].strip()
+                  for line in path.read_text(encoding="utf-8").splitlines()
+                  if line.strip() and not line.lstrip().startswith("#")
+              }
+              assert observed == packages, (path, observed, packages)
+          PY

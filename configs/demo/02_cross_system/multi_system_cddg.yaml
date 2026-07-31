@@ -1,6 +1,6 @@
 # Cross-system CDDG demo (edit target_system_id for multi-system) (v0.1.0 draft)
 
-pipeline: "Pipeline_01_default"
+pipeline: "Pipeline_01_Fault_Diagnosis"
 
 base_configs:
   environment: "configs/base/environment/base.yaml"

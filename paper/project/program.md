@@ -1,7 +1,7 @@
 # 1D-2D Fusion Autoresearch Program
 
 > paper_root: `paper/UXFD_paper/1D-2D_fusion_explainable`
-> exec_root: `/home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix`
+> exec_root: `.` (nested ViBench repository root)
 > mode: staged execution, evidence-gated, no SOTA wording before accepted artifacts
 
 ## Contract
