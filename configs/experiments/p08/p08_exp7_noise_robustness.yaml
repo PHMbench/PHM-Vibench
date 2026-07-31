@@ -1,0 +1,92 @@
+# P08 Exp-7: Noise robustness sweep (HSE-Prompt on CDDG, single-stage finetune).
+# Derives from legacy configs/CDDG_config/experiment_7_cddg_noise.yaml.
+# Injects noise {gaussian, uniform, colored} x SNR {20,10,5,0,-5} dB at evaluation time.
+#
+# NOTE: the data.noise_injection block is encoded as written in the legacy config; whether the
+# maintained data_factory currently consumes these keys is UNVERIFIED. If the keys are not
+# consumed, this arm is `needs_new_component` (noise injection transform) and must not be
+# promoted until the data_factory registers the noise injector. Flagged in config_bridge.yaml.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp7_noise_robustness"
+  seed: 42
+  output_dir: "results/p08/exp7_noise_robustness"
+  notes: "P08 Exp7: HSE-Prompt noise robustness under CDDG. data.noise_injection consumer UNVERIFIED."
+
+data:
+  noise_injection:
+    enabled: true
+    noise_types: ["gaussian", "uniform", "colored"]
+    snr_levels: [20, 10, 5, 0, -5]
+    base_snr: 20
+    gaussian_noise:
+      mean: 0.0
+      std_range: [0.01, 0.1]
+    uniform_noise:
+      range_factor: 0.05
+    colored_noise:
+      colors: ["pink", "brown", "blue"]
+      filter_order: 4
+
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 64
+  patch_size_C: 1
+  num_patches: 64
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  system_prompt_dim: 64
+  sample_prompt_dim: 32
+  noise_robust_features:
+    enabled: true
+    spectral_filtering: true
+    denoising_prompts: true
+    adaptive_threshold: true
+    ensemble_predictions: true
+
+task:
+  type: "CDDG"
+  name: "classification"
+  target_system_id: [1, 13, 6, 12, 19]
+  target_domain_num: 1
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall", "robustness_score"]
+  optimizer: "adamw"
+  lr: 0.0005
+  weight_decay: 0.0001
+  noise_robustness:
+    enabled: true
+    noise_augmentation:
+      enabled: true
+      noise_prob: 0.5
+      snr_range: [10, 20]
+      noise_types: ["gaussian", "uniform"]
+    test_time_augmentation:
+      enabled: true
+      num_augmentations: 5
+      voting_strategy: "majority"
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides (legacy used 30)
+  gpus: 1
