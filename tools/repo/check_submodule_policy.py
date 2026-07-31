@@ -17,10 +17,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 ALLOWLIST_PATH = ROOT / ".github/phmfactory-v0.3-submodules.allowlist.yml"
+DEFERRAL_PATH = ROOT / "docs/releases/v0.3.0-backend-deferral.yaml"
 GITMODULES_PATH = ROOT / ".gitmodules"
 TARGET_BACKEND_PATH = "packages/phm-data-factory"
 TARGET_BACKEND_URL = "https://github.com/PHMbench/phm-data-factory.git"
 SHA40 = re.compile(r"[0-9a-f]{40}")
+DEFERRED_STATUS = "deferred_to_v0.3.1"
+APPROVED_STATUS = "approved"
 
 
 @dataclass(frozen=True)
@@ -30,11 +33,19 @@ class Finding:
     release_only: bool = False
 
 
-def _load_allowlist() -> dict[str, Any]:
-    payload = yaml.safe_load(ALLOWLIST_PATH.read_text(encoding="utf-8")) or {}
+def _load_yaml(path: Path, label: str) -> dict[str, Any]:
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(payload, dict):
-        raise ValueError("submodule allowlist must contain a YAML mapping")
+        raise ValueError(f"{label} must contain a YAML mapping")
     return payload
+
+
+def _load_allowlist() -> dict[str, Any]:
+    return _load_yaml(ALLOWLIST_PATH, "submodule allowlist")
+
+
+def _load_deferral() -> dict[str, Any]:
+    return _load_yaml(DEFERRAL_PATH, "backend deferral contract")
 
 
 def _configured_submodules() -> dict[str, dict[str, str]]:
@@ -76,8 +87,94 @@ def _gitlinks() -> dict[str, str]:
     return gitlinks
 
 
-def _gitlink(path: str) -> str:
-    return _gitlinks().get(path, "")
+def _deferral_errors(payload: dict[str, Any]) -> tuple[str, ...]:
+    errors: list[str] = []
+    decision = payload.get("decision") or {}
+    ownership = payload.get("ownership") or {}
+    state = payload.get("v0.3.0_repository_state") or {}
+    behavior = payload.get("behavior_without_backend") or {}
+    claims = payload.get("claim_boundary") or {}
+
+    exact = {
+        "schema_version": (payload.get("schema_version"), 1),
+        "release": (str(payload.get("release") or ""), "0.3.0"),
+        "component": (payload.get("component"), "phm-data-factory"),
+        "decision.status": (decision.get("status"), DEFERRED_STATUS),
+        "decision.included_in_v0.3.0": (decision.get("included_in_v0.3.0"), False),
+        "decision.required_for_core": (decision.get("required_for_core"), False),
+        "decision.release_blocking_for_v0.3.0": (
+            decision.get("release_blocking_for_v0.3.0"),
+            False,
+        ),
+        "decision.target_release": (str(decision.get("target_release") or ""), "0.3.1"),
+        "ownership.target_repository": (
+            ownership.get("target_repository"),
+            "PHMbench/phm-data-factory",
+        ),
+        "ownership.organization_owned_required": (
+            ownership.get("organization_owned_required"),
+            True,
+        ),
+        "ownership.immutable_pin_required": (
+            ownership.get("immutable_pin_required"),
+            True,
+        ),
+        "ownership.personal_repository_url_forbidden": (
+            ownership.get("personal_repository_url_forbidden"),
+            True,
+        ),
+        "v0.3.0_repository_state.gitlink_required": (state.get("gitlink_required"), False),
+        "v0.3.0_repository_state.gitlink_present_allowed": (
+            state.get("gitlink_present_allowed"),
+            False,
+        ),
+        "v0.3.0_repository_state.placeholder_gitlink_allowed": (
+            state.get("placeholder_gitlink_allowed"),
+            False,
+        ),
+        "v0.3.0_repository_state.branch_tracking_allowed": (
+            state.get("branch_tracking_allowed"),
+            False,
+        ),
+        "v0.3.0_repository_state.runtime_import_allowed": (
+            state.get("runtime_import_allowed"),
+            False,
+        ),
+        "behavior_without_backend.public_cli_works": (behavior.get("public_cli_works"), True),
+        "behavior_without_backend.dummy_smoke_works": (behavior.get("dummy_smoke_works"), True),
+        "behavior_without_backend.silent_fallback_allowed": (
+            behavior.get("silent_fallback_allowed"),
+            False,
+        ),
+        "behavior_without_backend.explicit_selection_error_required": (
+            behavior.get("explicit_selection_error_required"),
+            True,
+        ),
+        "claim_boundary.backend_integrated": (claims.get("backend_integrated"), False),
+        "claim_boundary.backend_supported": (claims.get("backend_supported"), False),
+        "claim_boundary.live_iotdb_supported": (claims.get("live_iotdb_supported"), False),
+        "claim_boundary.performance_claim_authorized": (
+            claims.get("performance_claim_authorized"),
+            False,
+        ),
+    }
+    for field, (actual, expected) in exact.items():
+        if actual != expected:
+            errors.append(f"{field}={actual!r}, expected {expected!r}")
+
+    gates = payload.get("v0.3.1_entry_gate") or []
+    required_gates = {
+        "organization_owned_public_https_repository",
+        "compatible_explicit_license",
+        "immutable_reviewed_commit",
+        "bounded_adapter_pr",
+        "no_protected_runtime_rewrite",
+        "explicit_missing_backend_error",
+        "core_paths_pass_without_backend",
+    }
+    if not isinstance(gates, list) or set(gates) != required_gates:
+        errors.append("v0.3.1_entry_gate must contain the exact approved gate set")
+    return tuple(errors)
 
 
 def collect_findings() -> tuple[Finding, ...]:
@@ -115,7 +212,7 @@ def collect_findings() -> tuple[Finding, ...]:
         findings.append(Finding("BACKEND_LICENSE_INVALID", "license must be Apache-2.0"))
 
     status = str(candidate.get("status") or "")
-    if status not in {"blocked_pending_org_transfer", "approved"}:
+    if status not in {DEFERRED_STATUS, APPROVED_STATUS}:
         findings.append(Finding("BACKEND_STATUS_INVALID", f"unsupported status: {status!r}"))
 
     reviewed = str(candidate.get("reviewed_source_tree_commit") or "")
@@ -125,13 +222,27 @@ def collect_findings() -> tuple[Finding, ...]:
         )
 
     pinned = str(candidate.get("pinned_commit") or "")
-    if status == "approved" and not SHA40.fullmatch(pinned):
+    if status == APPROVED_STATUS and not SHA40.fullmatch(pinned):
         findings.append(
             Finding("BACKEND_PIN_MISSING", "approved backend requires a 40-hex pinned_commit")
         )
-    if status != "approved" and pinned:
+    if status != APPROVED_STATUS and pinned:
         findings.append(
-            Finding("BACKEND_PIN_PREMATURE", "blocked backend must not advertise a final pinned_commit")
+            Finding("BACKEND_PIN_PREMATURE", "deferred backend must not advertise a final pin")
+        )
+
+    if status == DEFERRED_STATUS:
+        if not DEFERRAL_PATH.is_file():
+            findings.append(Finding("BACKEND_DEFERRAL_MISSING", str(DEFERRAL_PATH.relative_to(ROOT))))
+        else:
+            for error in _deferral_errors(_load_deferral()):
+                findings.append(Finding("BACKEND_DEFERRAL_INVALID", error))
+    elif status == APPROVED_STATUS and DEFERRAL_PATH.is_file():
+        findings.append(
+            Finding(
+                "BACKEND_DEFERRAL_CONFLICT",
+                "approved backend cannot retain the v0.3.0 exclusion contract",
+            )
         )
 
     legacy_items = allowlist.get("legacy_entries") or []
@@ -159,11 +270,11 @@ def collect_findings() -> tuple[Finding, ...]:
             findings.append(Finding("CONFIGURED_SUBMODULE_GITLINK_MISSING", path))
             continue
         if path == TARGET_BACKEND_PATH:
-            if status != "approved":
+            if status != APPROVED_STATUS:
                 findings.append(
                     Finding(
                         "BACKEND_PRESENT_BEFORE_APPROVAL",
-                        "backend gitlink exists while allowlist status is not approved",
+                        "backend gitlink exists while v0.3.0 defers integration",
                     )
                 )
             if entry["url"] != TARGET_BACKEND_URL:
@@ -183,42 +294,16 @@ def collect_findings() -> tuple[Finding, ...]:
                 )
             continue
 
-        item = legacy.get(path)
-        if item is None:
+        if path in legacy:
+            findings.append(Finding("REMOVED_LEGACY_SUBMODULE_RETURNED", path))
+        else:
             findings.append(Finding("UNKNOWN_SUBMODULE", path))
-            continue
-        expected = str(item.get("gitlink_commit") or "")
-        if gitlink != expected:
-            findings.append(
-                Finding(
-                    "LEGACY_GITLINK_DRIFT",
-                    f"{path}: gitlink={gitlink!r}, expected={expected!r}",
-                )
-            )
-        findings.append(
-            Finding("LEGACY_SUBMODULE_REMAINS", path, release_only=True)
-        )
 
-    for path, item in sorted(legacy.items()):
-        action = str(item.get("action") or "")
-        if action == "migrated_and_removed" and path in configured:
-            findings.append(
-                Finding("REMOVED_LEGACY_SUBMODULE_RETURNED", path)
-            )
-
-    if TARGET_BACKEND_PATH not in configured:
+    if status == APPROVED_STATUS and TARGET_BACKEND_PATH not in configured:
         findings.append(
             Finding(
                 "PHM_DATA_FACTORY_BACKEND_PENDING",
-                f"{status}: organization-owned backend gitlink is not integrated",
-                release_only=True,
-            )
-        )
-    elif status != "approved":
-        findings.append(
-            Finding(
-                "PHM_DATA_FACTORY_BACKEND_PENDING",
-                f"backend status is {status!r}",
+                "approved backend is missing its exact configured gitlink",
                 release_only=True,
             )
         )
@@ -233,7 +318,13 @@ def main() -> int:
 
     try:
         findings = collect_findings()
-    except (OSError, ValueError, configparser.Error, yaml.YAMLError) as exc:
+    except (
+        OSError,
+        ValueError,
+        configparser.Error,
+        yaml.YAMLError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"Submodule policy ERROR: {exc}", file=sys.stderr)
         return 1
 
