@@ -86,13 +86,13 @@ jobs:
             CWRU_REVISION_FLOATING \
             CWRU_HASH_MISSING \
             PHM_DATA_FACTORY_BACKEND_PENDING \
-            LEGACY_SUBMODULES_REMAIN \
             REPOSITORY_RENAME_PENDING
           do
             grep -q "${blocker}" release-readiness.txt
           done
 
           for resolved in \
+            LEGACY_SUBMODULES_REMAIN \
             README_BRAND_PENDING \
             CITATION_BRAND_PENDING \
             CITATION_REPOSITORY_PENDING \
