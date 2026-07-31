@@ -19,7 +19,7 @@ def test_repository_policy_has_no_structural_errors() -> None:
     assert structural == []
     codes = {finding.code for finding in findings}
     assert "PHM_DATA_FACTORY_BACKEND_PENDING" in codes
-    assert "LEGACY_SUBMODULE_REMAINS" in codes
+    assert "LEGACY_SUBMODULE_REMAINS" not in codes
 
 
 def test_unknown_submodule_is_rejected(monkeypatch) -> None:
@@ -36,7 +36,6 @@ def test_unknown_submodule_is_rejected(monkeypatch) -> None:
     )
 
 
-
 def test_unconfigured_raw_gitlink_is_rejected(monkeypatch) -> None:
     monkeypatch.setattr(policy, "_configured_submodules", lambda: {})
     monkeypatch.setattr(
@@ -50,6 +49,7 @@ def test_unconfigured_raw_gitlink_is_rejected(monkeypatch) -> None:
         and finding.detail == "arbitrary/raw-gitlink"
         for finding in findings
     )
+
 
 def test_personal_backend_url_is_not_allowlisted(monkeypatch) -> None:
     allowlist = policy._load_allowlist()
