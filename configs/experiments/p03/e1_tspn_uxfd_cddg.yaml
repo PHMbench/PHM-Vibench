@@ -1,0 +1,69 @@
+pipeline: Pipeline_01_default
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_system.yaml
+  model: configs/base/model/tspn_uxfd.yaml
+  task: configs/base/task/cddg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: p03_e1_tspn_uxfd_cddg
+  seed: 42
+  output_dir: results/p03/e1_tspn_uxfd_cddg
+  notes: 'P03 E1: TSPN_UXFD diagnostic backbone, multi-system CDDG; feeds the LLM explanation protocol.'
+model:
+  type: X_model
+  name: TSPN_UXFD
+  device: cuda
+  in_dim: 4096
+  out_dim: 128
+  in_channels: 2
+  out_channels: 6           # MUST be divisible by len(signal_processing_configs.layer1); TSPN.py asserts out_channels % module_num == 0. Here module_num=2 (I,HT) -> 6%2=0.
+  scale: 1
+  skip_connection: true
+  signal_processing_configs:
+    # Operator set must satisfy two TSPN constraints (src/model_factory/X_model/
+    # TSPN.py + Signal_processing.py): (1) out_channels % module_num == 0;
+    # (2) every operator returns a REAL tensor of identical length L, because
+    # SignalProcessingLayer concatenates them along dim=2. FFT is excluded
+    # (returns complex, length L//2+1). Valid UXFD pairs: [I,HT] (both L, real).
+    layer1:
+    - I
+    - HT
+  feature_extractor_configs:
+  - Mean
+  - Std
+  - Kurtosis
+task:
+  type: CDDG
+  name: classification
+  target_system_id:
+  - 1
+  target_domain_num: 1
+  lr: 0.001
+  weight_decay: 0.0001
+data:
+  data_dir: /home/user/data/PHMbenchdata/PHM-Vibench
+  metadata_file: metadata.xlsx
+  window_size: 4096
+  stride: 5
+  num_window: 64
+  batch_size: 64
+  num_workers: 8
+  normalization: standardization
+  split:
+    strategy: grouped_metadata
+    group_key: Domain_id       # leakage-safe: keeps each operating-condition domain whole across train/val (metadata.xlsx has Domain_id; Bearing_id is absent; File is per-row unique -> not a real group)
+    seed: 42
+    test_policy: task_defined
+    fractions:
+      train: 0.9
+      val: 0.1
+    manifest_path: results/p03/e1_tspn_uxfd_cddg/splits/manifest_seed42.json
+trainer:
+  num_epochs: 1
+  gpus: 1
+  paper_id: P03
+  preset_version: p03-e1-v1
+  extensions:
+    report:
+      manifest: true
