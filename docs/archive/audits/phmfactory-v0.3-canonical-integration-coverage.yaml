@@ -1,0 +1,132 @@
+schema_version: 3
+task_id: TASK-170
+status: ready_for_review_awaiting_merge_authorization
+repository: PHMbench/PHM-Vibench
+main_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
+canonical_pr: 127
+integration_branch: agent/v030-canonical-integration-r2
+
+physical_base:
+  pr: 120
+  commit: 19748c93fb4716a5314cdaf38317b39a84da0cd7
+
+physical_ancestors:
+  - {pr: 108, commit: 1c079079ee0776b2a5b6e60772c85b130c931e30}
+  - {pr: 110, commit: 7b6ccc119d8128b18b43682cdfd2e91c3868f278}
+  - {pr: 113, commit: 3d098efc11943b1f5ef477ccdf93a10ef27d6911}
+  - {pr: 114, commit: b1afdab6b0db54fce3f551e505d3b184498ee41f}
+  - {pr: 119, commit: bc43654b32c4b939ca5a9f4037c3b03a30edcf69}
+  - {pr: 120, commit: 19748c93fb4716a5314cdaf38317b39a84da0cd7}
+  - {pr: 122, commit: 7c2e8b7e654239c396081ed011a378078764a8a2}
+
+content_only_ports:
+  - pr: 117
+    retained: baseline_and_frozen_gitlink_audit
+    excluded: personal_account_backend_candidate_as_current_policy
+  - pr: 121
+    retained: MIGRATION_v0.2_to_v0.3.md
+    excluded: [stale_ancestry, duplicate_changelog, duplicate_release_notes]
+
+authority:
+  repository_contract: {pr: 84}
+  protected_runtime_baseline: {pr: 93}
+  submodule_machine_policy:
+    source_pr: 119
+    path: .github/phmfactory-v0.3-submodules.allowlist.yml
+  release_readiness:
+    ancestry_pr: 120
+    content_pr: 119
+    paths:
+      - tools/repo/check_release_readiness.py
+      - .github/workflows/phmfactory-release-readiness.yml
+      - docs/PHMFACTORY_V0_3_RELEASE_READINESS.md
+  paper_migration_tracker:
+    source_pr: 122
+    path: docs/archive/audits/phmfactory-v0.3-paper-submodule-migration-status.yaml
+  release_documents:
+    CHANGELOG.md: concise_release_delta
+    RELEASE_NOTES_v0.3.0.md: user_facing_overview
+    MIGRATION_v0.2_to_v0.3.md: detailed_upgrade_procedure
+    docs/PHMFACTORY_V0_3_RELEASE_READINESS.md: machine_gated_blockers
+
+source_pr_cleanup:
+  state: complete
+  merged_to_main: false
+  closed_as_superseded:
+    - 84
+    - 85
+    - 93
+    - 94
+    - 95
+    - 96
+    - 97
+    - 98
+    - 99
+    - 103
+    - 105
+    - 108
+    - 110
+    - 113
+    - 114
+    - 117
+    - 118
+    - 119
+    - 120
+    - 121
+    - 122
+  closed_post_v03_rebuild_required:
+    - 42
+    - 79
+    - 80
+    - 81
+    - 83
+
+bounded_followup:
+  streamlit_windows_terminal_race:
+    status: fixed_on_canonical_branch
+    scope:
+      - retain_completed_managed_process_until_terminal_manifest
+      - serialize_manifest_read_and_terminal_reconciliation
+    protected_runtime_changed: false
+    temporary_workflow_present: false
+
+validation:
+  required_on_current_pr_head: true
+  last_all_success_head_before_review_state_sync: 3c7f95e708db43eb4a8c99875b192df811015252
+  required_workflows:
+    - Core quality gates
+    - Repository layout
+    - PHMFactory public package
+    - PHMFactory dependency ownership
+    - PHMFactory CWRU bundle contract
+    - Streamlit quality gates
+    - Pipeline 06 CFM quality gates
+    - Submodule policy
+    - Paper migration status
+    - PHMFactory release readiness
+
+expected_release_blockers:
+  CWRU_HASH_MISSING: 2
+  CWRU_REVISION_FLOATING: 2
+  LEGACY_SUBMODULES_REMAIN: 1
+  PHM_DATA_FACTORY_BACKEND_PENDING: 1
+  REPOSITORY_RENAME_PENDING: 1
+  VERSION_NOT_FINAL: 1
+
+review:
+  state: ready_for_human_review
+  human_approval_recorded: false
+
+merge_contract:
+  authorization: pending
+  required_method: merge_commit
+  forbidden_methods: [squash, rebase]
+
+non_actions:
+  main_modified: false
+  repository_renamed: false
+  version_finalized: false
+  paper_gitlinks_removed: false
+  backend_integrated: false
+  tag_created: false
+  release_published: false

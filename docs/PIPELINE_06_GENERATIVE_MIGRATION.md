@@ -2,7 +2,7 @@
 
 ## Decision
 
-`cleanup/repo-slim-2026-07-05` already contains a substantial PHM generative stack, including `src/Pipeline_06_generative.py`, generative models, tasks, samplers, metrics, manifests, smoke demos, and paper configs. However, that branch has no common ancestor with the current `main`; it must be treated as a source snapshot rather than merged directly.
+`cleanup/repo-slim-2026-07-05` already contains a substantial PHM generative stack, including `src/Pipeline_06_Generative_Modeling.py`, generative models, tasks, samplers, metrics, manifests, smoke demos, and paper configs. However, that branch has no common ancestor with the current `main`; it must be treated as a source snapshot rather than merged directly.
 
 The migration policy is:
 
@@ -31,7 +31,7 @@ Any migrated Pipeline 06 runtime must remain factory-driven:
 ```text
 YAML
 -> main.py
--> Pipeline_06_generative
+-> Pipeline_06_Generative_Modeling
 -> data_factory
 -> model_factory/generative_model
 -> task_factory/task/generative
@@ -85,7 +85,7 @@ No runtime behavior changes.
 Scope:
 
 ```text
-src/Pipeline_06_generative.py
+src/Pipeline_06_Generative_Modeling.py
 minimum import dependencies only
 focused import/preflight tests
 ```
@@ -100,7 +100,7 @@ Requirements:
 Gates:
 
 ```bash
-python -m py_compile src/Pipeline_06_generative.py
+python -m py_compile src/Pipeline_06_Generative_Modeling.py
 python -m pytest test/test_pipeline_06_generative_import.py -q
 python -m scripts.validate_docs
 ```

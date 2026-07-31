@@ -1,0 +1,4 @@
+# Incremental dependencies for repository plotting and post-run analysis tools.
+# Install the repository root requirements first.
+scienceplots
+umap-learn

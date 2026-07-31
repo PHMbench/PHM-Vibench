@@ -1,0 +1,3 @@
+# Incremental dependency for the optional ModelScope bundle provider.
+# Install the repository root requirements first.
+modelscope

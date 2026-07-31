@@ -1,0 +1,171 @@
+name: PHMFactory public package
+
+on:
+  pull_request:
+    paths:
+      - "phmfactory/**"
+      - "src/configs/config_utils.py"
+      - "main.py"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "MIGRATION_v0.2_to_v0.3.md"
+      - "examples/cwru_quickstart.py"
+      - "configs/**"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
+      - "test/test_phmfactory_entrypoints.py"
+      - "test/test_phmfactory_config_resolver.py"
+      - "test/test_pipeline_name_migration.py"
+      - ".github/workflows/phmfactory-public-package.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "phmfactory/**"
+      - "src/configs/config_utils.py"
+      - "main.py"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "MIGRATION_v0.2_to_v0.3.md"
+      - "examples/cwru_quickstart.py"
+      - "configs/**"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
+      - "test/test_phmfactory_entrypoints.py"
+      - "test/test_phmfactory_config_resolver.py"
+      - "test/test_pipeline_name_migration.py"
+      - ".github/workflows/phmfactory-public-package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-contract:
+    name: Public package and entrypoint contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install focused tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "build>=1.2" "pytest>=7" PyYAML
+
+      - name: Compile public package and dispatcher
+        run: >-
+          python -m py_compile
+          phmfactory/*.py
+          src/configs/config_utils.py
+          main.py
+          test/test_phmfactory_entrypoints.py
+          test/test_phmfactory_config_resolver.py
+          test/test_pipeline_name_migration.py
+
+      - name: Run focused public API tests
+        run: >-
+          python -m pytest -vv
+          --junitxml=pytest-public-package.xml
+          test/test_phmfactory_entrypoints.py
+          test/test_phmfactory_config_resolver.py
+          test/test_pipeline_name_migration.py
+
+      - name: Upload focused pytest diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-public-package-pytest
+          path: pytest-public-package.xml
+          if-no-files-found: error
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Inspect wheel contents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheels = sorted(Path("dist").glob("*.whl"))
+          assert len(wheels) == 1, wheels
+          with ZipFile(wheels[0]) as archive:
+              names = set(archive.namelist())
+          required = {
+              "phmfactory/__init__.py",
+              "phmfactory/__main__.py",
+              "phmfactory/cli.py",
+              "phmfactory/config.py",
+              "phmfactory/pipelines.py",
+              "src/__init__.py",
+              "src/configs/config_utils.py",
+              "configs/__init__.py",
+              "configs/demo/00_smoke/dummy_dg.yaml",
+              "configs/base/environment/base.yaml",
+              "configs/base/data/base_cross_domain.yaml",
+              "configs/base/model/backbone_dlinear.yaml",
+              "configs/base/task/dg.yaml",
+              "configs/base/trainer/default_single_gpu.yaml",
+              "data/__init__.py",
+              "data/metadata_dummy.csv",
+              "data/raw/Dummy_Data/dummy1.csv",
+              "data/raw/Dummy_Data/dummy2.csv",
+          }
+          missing = sorted(required - names)
+          assert not missing, missing
+          assert not any(name.startswith(("paper/", "dev/", "results/")) for name in names)
+          PY
+
+      - name: Verify clean no-dependency installation and dispatch
+        run: |
+          python -m venv /tmp/phmfactory-wheel
+          /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
+          /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.config, src; print(phmfactory.__version__)"
+          /tmp/phmfactory-wheel/bin/phmfactory --help
+          /tmp/phmfactory-wheel/bin/python -m phmfactory --help
+          cd /tmp
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          from pathlib import Path
+          from types import SimpleNamespace
+          from unittest.mock import patch
+
+          import data
+          from phmfactory import cli
+          from phmfactory.config import resolve_config
+          from src.configs.config_utils import load_config
+
+          resolved = resolve_config("smoke")
+          assert resolved.path.is_file(), resolved.path
+          assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
+          data_root = Path(data.__file__).resolve().parent
+          assert (data_root / "metadata_dummy.csv").is_file()
+          assert (data_root / "raw/Dummy_Data/dummy1.csv").is_file()
+          assert (data_root / "raw/Dummy_Data/dummy2.csv").is_file()
+
+          def pipeline(args):
+              config = load_config(args.config_path)
+              assert config.data.metadata_file == "metadata_dummy.csv"
+              assert config.model.name == "M_01_ISFM"
+              assert config.task.name == "classification"
+              assert config.trainer.device == "cpu"
+              return "wheel-dispatch-pass"
+
+          real_import_module = cli.importlib.import_module
+
+          def fake_import(name):
+              if name == "src.Pipeline_01_Fault_Diagnosis":
+                  return SimpleNamespace(pipeline=pipeline)
+              return real_import_module(name)
+
+          with patch.object(cli.importlib, "import_module", side_effect=fake_import):
+              assert cli.main(["--config", "smoke"]) == "wheel-dispatch-pass"
+          PY

@@ -4,7 +4,7 @@ overlay_branch: paper/p03-evidence-grounded-llm-xfd
 vibench_base_commit: 27e5fd008d74a4eaf872a0815514b6ccbf5073e2
 
 engine_config_copy:
-  source_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/configs/experiments/p03
+  source_path: configs/experiments/p03
   destination_path: configs/experiments/p03
   source_git_status: untracked-directory
   regular_files: 8
@@ -12,7 +12,7 @@ engine_config_copy:
 
 legacy_source:
   snapshot_path: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-小论文/P03-Evidence-Grounded-LLM-XFD/legacy/source_snapshot
-  original_path: /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+  original_path: paper/project
   origin: https://github.com/liq22/LLM_Explainable_FD_Toolkit.git
   repository_head: 7a07a8463a9520a557bbf5ce26b07604797bc609
   superproject_gitlink: 08eb944dd9acdbbd6c69cf39f050854a936e9b78

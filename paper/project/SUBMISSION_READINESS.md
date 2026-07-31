@@ -126,20 +126,20 @@ No table, figure, or SOTA wording is accepted if either `run_meta.yaml` or
 Run from the parent repository root:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix
+cd "$(git rev-parse --show-toplevel)"
 ```
 
 Minimal PHM-Vibench smoke command, writing inside this submodule:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/LLM_Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.device=cuda --override model.device=cuda --override trainer.gpus=1 --override trainer.num_epochs=1 --override environment.seed=0 --override environment.output_dir=paper/UXFD_paper/LLM_Explainable_FD_Toolkit/results/vibench_min/gpu0_seed0
+CUDA_VISIBLE_DEVICES=0 conda run -n LQ_signal python main.py --config paper/project/configs/vibench/min.yaml --override trainer.device=cuda --override model.device=cuda --override trainer.gpus=1 --override trainer.num_epochs=1 --override environment.seed=0 --override environment.output_dir=paper/project/results/vibench_min/gpu0_seed0
 ```
 
 Local template LLM demo command, writing inside this submodule:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/LLM_Explainable_FD_Toolkit
-CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output results/llm_evidence/demo_smoke/template_llm/seed_0/artifacts
+cd paper/project
+CUDA_VISIBLE_DEVICES=0 conda run -n LQ_signal python experiments/scripts/run_minimal_llm_demo.py --mode pipeline --save --output results/llm_evidence/demo_smoke/template_llm/seed_0/artifacts
 ```
 
 These commands are smoke commands only. The package demo writes `run_meta.yaml`
@@ -150,8 +150,8 @@ metadata, and reviewer baseline/ablation gates are satisfied.
 Non-accepted hallucination/context/latency smoke runner:
 
 ```bash
-cd /home/user/LQ/B_Signal/vibench_fix/PHM-Vibench_fix/paper/UXFD_paper/LLM_Explainable_FD_Toolkit
-CUDA_VISIBLE_DEVICES=0 python experiments/scripts/run_llm_evidence_smoke.py --condition all --output results/llm_evidence/demo_smoke --seed 0
+cd paper/project
+CUDA_VISIBLE_DEVICES=0 conda run -n LQ_signal python experiments/scripts/run_llm_evidence_smoke.py --condition all --output results/llm_evidence/demo_smoke --seed 0
 ```
 
 This runner writes `run_meta.yaml`, `metrics.json`, prompt sets, and responses

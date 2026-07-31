@@ -39,7 +39,7 @@ python main.py --config <yaml> --override environment.output_dir=results/my_run
 ## 5) Coupling Notes
 
 - `environment.output_dir` is consumed by `src/configs/config_utils.py:path_name`.
-- Uppercase fields are exported by `src/Pipeline_01_default.py` (and other pipelines).
+- Uppercase fields are exported by `src/Pipeline_01_Fault_Diagnosis.py` (and other pipelines).
 
 ## 6) How to Extend
 

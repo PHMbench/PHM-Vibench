@@ -130,4 +130,4 @@ trainer:
 
 # Pipeline Configuration - Single Stage Training
 pipeline:
-  name: "Pipeline_01_default"
+  name: "Pipeline_01_Fault_Diagnosis"

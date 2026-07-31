@@ -4,7 +4,7 @@
 
 - v0.2.0 supports the maintained demo combinations listed in
   `SUPPORTED_COMBINATIONS.md`, not every discovered model/task pair.
-- `Pipeline_02_pretrain_fewshot` is validated for the current single-stage
+- `Pipeline_02_Pretraining_Few_Shot` is validated for the current single-stage
   pretrain demo. Multi-stage `stages:` workflows need separate evidence.
 - `Pipeline_03` remains outside the public release-supported surface.
 

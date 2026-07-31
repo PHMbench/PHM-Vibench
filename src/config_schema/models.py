@@ -86,7 +86,7 @@ class TrainerConfig(BaseModel):
 class ExperimentConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    pipeline: str = Field(..., description="Pipeline module name under src/ (e.g. Pipeline_01_default).")
+    pipeline: str = Field(..., description="Pipeline module name under src/ (e.g. Pipeline_01_Fault_Diagnosis).")
     environment: EnvironmentConfig
     data: DataConfig
     model: ModelConfig

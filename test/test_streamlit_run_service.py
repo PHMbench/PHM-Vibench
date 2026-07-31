@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from apps.streamlit import run_service as run_service_module
 from apps.streamlit.run_service import (
     RunConflictError,
     RunRequest,
@@ -192,6 +194,44 @@ def test_list_runs_is_newest_first(tmp_path: Path):
     records = list_runs(repo)
     assert [item.template_id for item in records[:2]] == ['two', 'one']
 
+
+
+def test_get_run_reconciliation_leaves_log_handle_to_monitor(tmp_path: Path):
+    repo = make_repo(tmp_path)
+    run_id = "reconcile-run"
+    run_dir = repo / "outputs" / "streamlit" / run_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "run.json").write_text(
+        json.dumps({"run_id": run_id, "status": "running", "command": []}),
+        encoding="utf-8",
+    )
+
+    class MonitorOwnedHandle:
+        closed = False
+
+        def flush(self) -> None:
+            raise AssertionError("get_run must not flush the monitor-owned handle")
+
+        def close(self) -> None:
+            raise AssertionError("get_run must not close the monitor-owned handle")
+
+    key = run_service_module._key(repo, run_id)
+    managed = run_service_module._ManagedProcess(
+        process=SimpleNamespace(poll=lambda: 0),
+        log_handle=MonitorOwnedHandle(),
+        run_dir=run_dir,
+    )
+    with run_service_module._LOCK:
+        run_service_module._PROCESSES[key] = managed
+    try:
+        record = get_run(repo, run_id)
+        assert record.status == "succeeded"
+        assert record.exit_code == 0
+        assert key in run_service_module._PROCESSES
+        assert managed.log_handle.closed is False
+    finally:
+        with run_service_module._LOCK:
+            run_service_module._PROCESSES.pop(key, None)
 
 def test_detached_manifest_blocks_a_second_run_on_posix(tmp_path: Path):
     import os

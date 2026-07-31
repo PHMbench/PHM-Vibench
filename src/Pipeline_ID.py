@@ -1,6 +1,6 @@
 """Pipeline that uses id_data_factory."""
 
-from src.Pipeline_01_default import pipeline as default_pipeline
+from src.Pipeline_01_Fault_Diagnosis import pipeline as default_pipeline
 
 
 def pipeline(args):

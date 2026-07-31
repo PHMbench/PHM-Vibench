@@ -1,0 +1,51 @@
+name: Repository layout
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-layout-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-contracts:
+    name: Repository boundary contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install focused test dependency
+        run: python -m pip install "pytest>=7"
+
+      - name: Compile repository guards
+        run: |
+          python -m py_compile \
+            tools/repo/check_case_collisions.py \
+            tools/repo/check_agent_boundaries.py
+
+      - name: Enforce portable tracked paths
+        run: python tools/repo/check_case_collisions.py
+
+      - name: Enforce public Agent boundary
+        run: python tools/repo/check_agent_boundaries.py
+
+      - name: Run focused guard tests
+        run: >-
+          python -m pytest -q
+          test/test_case_collision_guard.py
+          test/test_agent_boundary_guard.py
