@@ -15,6 +15,7 @@ on:
       - ".github/phmfactory-v0.3-submodules.allowlist.yml"
       - "docs/PHMFACTORY_V0_3_RELEASE_READINESS.md"
       - "docs/PHM_DATA_FACTORY_BACKEND_V0_3.md"
+      - "docs/releases/v0.3.0-backend-deferral.yaml"
       - "docs/releases/v0.2.0-rc-provenance.yaml"
       - "docs/releases/v0.2.0-rc-provenance.md"
       - "docs/index.md"
@@ -67,31 +68,29 @@ jobs:
           test/test_submodule_policy.py
 
       - name: Enforce deny-by-default submodule policy
-        run: python tools/repo/check_submodule_policy.py --mode policy
+        run: python tools/repo/check_submodule_policy.py --mode release
 
       - name: Record current blockers
         run: python tools/repo/check_release_readiness.py --mode audit | tee release-readiness.txt
 
-      - name: Require only the remaining pre-release blockers
+      - name: Require only the intentionally deferred pre-release blockers
         shell: bash
         run: |
           set -euo pipefail
           if python tools/repo/check_release_readiness.py --mode release; then
-            echo "Release mode unexpectedly passed before final release preparation." >&2
+            echo "Release mode unexpectedly passed before CWRU, rename, and final version preparation." >&2
             exit 1
           fi
 
-          for blocker in \
-            VERSION_NOT_FINAL \
-            CWRU_REVISION_FLOATING \
-            CWRU_HASH_MISSING \
-            PHM_DATA_FACTORY_BACKEND_PENDING \
-            REPOSITORY_RENAME_PENDING
-          do
-            grep -q "${blocker}" release-readiness.txt
-          done
+          grep -q 'PHMFactory v0.3 release readiness BLOCKED: 6 blocker(s)' release-readiness.txt
+          test "$(grep -c 'CWRU_REVISION_FLOATING' release-readiness.txt)" = 2
+          test "$(grep -c 'CWRU_HASH_MISSING' release-readiness.txt)" = 2
+          test "$(grep -c 'REPOSITORY_RENAME_PENDING' release-readiness.txt)" = 1
+          test "$(grep -c 'VERSION_NOT_FINAL' release-readiness.txt)" = 1
 
           for resolved in \
+            PHM_DATA_FACTORY_BACKEND_PENDING \
+            BACKEND_DEFERRAL_INVALID \
             LEGACY_SUBMODULES_REMAIN \
             README_BRAND_PENDING \
             CITATION_BRAND_PENDING \
