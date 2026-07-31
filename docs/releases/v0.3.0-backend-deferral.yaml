@@ -1,0 +1,45 @@
+schema_version: 1
+release: 0.3.0
+component: phm-data-factory
+
+decision:
+  status: deferred_to_v0.3.1
+  included_in_v0.3.0: false
+  required_for_core: false
+  release_blocking_for_v0.3.0: false
+  target_release: 0.3.1
+
+ownership:
+  target_repository: PHMbench/phm-data-factory
+  organization_owned_required: true
+  immutable_pin_required: true
+  personal_repository_url_forbidden: true
+
+v0.3.0_repository_state:
+  gitlink_required: false
+  gitlink_present_allowed: false
+  placeholder_gitlink_allowed: false
+  branch_tracking_allowed: false
+  runtime_import_allowed: false
+
+behavior_without_backend:
+  public_cli_works: true
+  dummy_smoke_works: true
+  cwru_bundle_interface_works: true
+  silent_fallback_allowed: false
+  explicit_selection_error_required: true
+
+v0.3.1_entry_gate:
+  - organization_owned_public_https_repository
+  - compatible_explicit_license
+  - immutable_reviewed_commit
+  - bounded_adapter_pr
+  - no_protected_runtime_rewrite
+  - explicit_missing_backend_error
+  - core_paths_pass_without_backend
+
+claim_boundary:
+  backend_integrated: false
+  backend_supported: false
+  live_iotdb_supported: false
+  performance_claim_authorized: false
