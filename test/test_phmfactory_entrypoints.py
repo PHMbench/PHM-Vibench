@@ -29,6 +29,7 @@ def test_parser_preserves_legacy_config_path_alias() -> None:
     assert args.config is None
     assert args.config_path == "legacy.yaml"
     assert args.notes == "compat"
+    assert args.allow_experimental is False
 
 
 def test_config_takes_precedence_over_legacy_alias() -> None:
@@ -83,6 +84,7 @@ def test_run_dispatches_resolved_canonical_module(
         config_path=None,
         notes="entrypoint-parity",
         override=["pipeline=Pipeline_04_unified_metric"],
+        allow_experimental=True,
     )
 
     assert cli.run(args) == "sentinel"
@@ -181,6 +183,7 @@ def test_python_entrypoints_share_help_surface(command: list[str]) -> None:
     assert "--config" in completed.stdout
     assert "--config_path" in completed.stdout
     assert "--override" in completed.stdout
+    assert "--allow-experimental" in completed.stdout
 
 
 def test_root_main_is_only_a_dispatcher(monkeypatch: pytest.MonkeyPatch) -> None:
