@@ -14,6 +14,7 @@ All configs here:
 
 | Config | Arm | Status | Derives from |
 |---|---|---|---|
+| `g030_executable_operator_path_smoke.yaml` | G030 typed executable operator-path wiring | ready (CPU software smoke; not C6-C9 evidence) | `configs/base/model/xoan_operator_path.yaml` + dummy DG bases |
 | `p0_synthetic_operator_attention_smoke.yaml` | P0 synthetic operator-selection validation | ready (smoke; cannot verify CLAIM-SYN-* — simplified OperatorAttention1D, not manuscript DSOA) | legacy `configs/vibench/min.yaml` + `configs/demo/00_smoke/dummy_dg.yaml` |
 | `case1_cwru_xoan_dg.yaml` | Case 1 industrial proxy — XOAN method arm | ready (simplified OA model) / needs_new_component (full DSOA) | `configs/demo/01_cross_domain/cwru_dg.yaml` |
 | `case1_cwru_baselines_dg.yaml` | Case 1 baselines M1 (ResNet1D) + M4 (MWA-CNN) | ready for M1, M4; M2 (SincNet) + M3 (WKN) = needs_new_component | `configs/demo/01_cross_domain/cwru_dg.yaml` |
@@ -24,6 +25,11 @@ Authoritative machine-readable map: `paper/experiments/config_bridge.yaml` (dest
 
 ## Reused IDs / registered model rows (no new component required)
 
+- Active P07 method: standalone `X_model/XOANOperatorPath` with
+  `model.operator_path.*`. It uses a typed K-stage DAG chain, Avg+Var gates,
+  sparse top-k relaxation, deterministic per-sample export, and an independent
+  executor. G030 verifies software wiring only; C6-C9 still require approved
+  protocols and accepted runs.
 - Method (simplified): `X_model/TSPN_UXFD` with `uxfd.operator_attention.enable=true`
   (uses `OperatorAttention1D`: mean-pool + Linear/ReLU/Linear gate + softmax; ops `{I, HT, FFT}`).
 - Baseline M1: `CNN/ResNet1D` (1D ResNet-18).
@@ -32,11 +38,12 @@ Authoritative machine-readable map: `paper/experiments/config_bridge.yaml` (dest
 - Embedding/backbone/head IDs (when an ISFM/DLinear baseline is needed): `E_01_HSE`, `B_04_Dlinear`,
   `H_01_Linear_cla`.
 
-## Required new components (NOT registered — blockers, see experiment_plan.md)
+## Required experiment components (not supplied by the G030 software smoke)
 
-- **Full DSOA / XOAN architecture** (`M_0X_XOAN`): Feature-Pooling (Avg+Var), top-k sparse
-  softmax, full EKD (WF + HT + statistical FE), 4×XOA_SP + 1×XOA_FE residual stack. The
-  registered `OperatorAttention1D` is the simplified variant only.
+- **E7-E11 protocol runners and metric parsers**: recovery/equivalence,
+  matched interventions, risk-coverage, industrial noninferiority, and
+  reproducibility audit. The typed path component is implemented, but no
+  claim is evidence-eligible until these protocols and thresholds are frozen.
 - **SincNet** (`B_0X_SincNet`) — manuscript baseline M2.
 - **WKN / Wavelet Kernel Network** (`B_0X_WKN`) — manuscript baseline M3.
 - **Test-time additive-Gaussian SNR-sweep sampler** — for the Case 2 noise-robustness curve

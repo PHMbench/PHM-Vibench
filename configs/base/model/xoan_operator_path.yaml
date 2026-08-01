@@ -1,0 +1,30 @@
+# P07 standalone typed executable operator-path classifier.
+#
+# This base defines runnable software defaults only. It does not freeze the
+# E7-E11 evidence protocol, claim thresholds, or dataset split contract.
+
+model:
+  type: "X_model"
+  name: "XOANOperatorPath"
+  device: "cpu"
+  in_channels: 2
+  num_classes: 2
+  classifier_hidden_dim: 64
+  dropout: 0.1
+  inference_mode: "discrete"
+  operator_path:
+    dictionary_id: "p07-real-series-operators"
+    dictionary_version: "1.0.0"
+    stage_operators:
+      - ["I", "D1", "ABS", "SQUARE", "MA3", "HT"]
+      - ["I", "D1", "ABS", "SQUARE", "MA3", "HT"]
+      - ["I", "D1", "ABS", "SQUARE", "MA3", "HT"]
+    hidden_dim: 64
+    temperature: 1.0
+    top_k: 2
+    execution_mode: "relaxed"
+    tie_break_rule: "registry_order"
+    input_kind: "blc_real_series"
+    entropy_weight: 0.5
+    export_gap_weight: 0.5
+    eps: 1.0e-8
