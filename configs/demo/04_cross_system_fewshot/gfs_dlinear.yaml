@@ -1,0 +1,26 @@
+# Cross-system generalized few-shot demo using the maintained DLinear/HSE model
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_cross_system_fewshot_dlinear"
+  seed: 0
+  output_dir: "results/demo/cross_system_fewshot_dlinear"
+  notes: "Cross-system generalized few-shot demo with the maintained DLinear/HSE model."
+
+data: {}
+
+task:
+  # 使用 GFS 任务，选择两个典型系统做跨系统 few-shot 示例
+  target_system_id: [1, 6]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 1
