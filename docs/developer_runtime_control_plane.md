@@ -8,8 +8,10 @@ config or preset + CLI overrides
   -> phmfactory.config.resolve_config
   -> phmfactory.runtime.CompiledRunSpec
   -> phmfactory.runtime.ExecutionEnvelope
+  -> phmfactory.runtime.RunAttestation (pending)
   -> canonical Pipeline adapter
   -> protected src runtime
+  -> RunAttestation (succeeded or failed)
 ```
 
 `CompiledRunSpec` contains the fully composed configuration, canonical Pipeline
@@ -22,11 +24,35 @@ succeeded, or failed state and rejects ambiguous outcomes. A Pipeline module mus
 a callable `pipeline(args)` and a successful invocation must return an explicit result.
 Returning `None`, omitting the entrypoint, or attempting to execute the same envelope
 twice is a contract error. Exceptions retain their original traceback while the envelope
-records the failure type and message for the later run-attestation writer.
+records the failure stage, type, and message.
 
 The public CLI prints the completion message only after the envelope reaches
 `succeeded`. A failed Pipeline therefore produces a non-zero process outcome rather than
 `print + return` followed by apparent success.
+
+## Mandatory invocation manifest
+
+After configuration compilation and before Pipeline import, the CLI creates:
+
+```text
+<environment.output_dir>/.phmfactory/runs/<run_id>/run_manifest.json
+```
+
+The first atomic version has `status: pending`. The same path is atomically replaced with
+`succeeded` or `failed` after execution. Each manifest contains the run ID, run-spec hash,
+canonical Pipeline and module, config source, explicit overrides, code revision when
+available, Python/platform summary, execution timestamps, and structured failure data.
+
+Manifest writes use a same-directory temporary file, flush and `fsync`, followed by
+`os.replace`. If the pending manifest cannot be created, the Pipeline is not imported. If
+the final succeeded manifest cannot be written, the public invocation fails and no
+completion message is printed. This makes the minimum attestation mandatory rather than
+best effort.
+
+The first schema intentionally keeps `data`, `protocol`, `seed`, and `environment`
+evidence as nested extension points. Pipeline-specific evidence such as the Pipeline 06
+stage ledger or UXFD explainability artifacts should be referenced from this manifest in
+later bounded PRs; they must not create another top-level run identity.
 
 Protected Pipeline code must consume `compiled_run_spec.runtime_config()` instead of
 reparsing the source YAML or automatically discovering machine-local files. Until a
@@ -67,4 +93,5 @@ The following invariants govern later refactors:
 5. missing sections, invalid iterations, invalid factory results, `None` Pipeline
    results, and execution failures raise rather than printing success;
 6. data and logging resources are closed through a shared `finally` boundary;
-7. successful and failed runs must produce a mandatory minimal attestation.
+7. every compiled invocation creates one mandatory minimal attestation;
+8. Pipeline-specific evidence extends the invocation manifest instead of redefining it.

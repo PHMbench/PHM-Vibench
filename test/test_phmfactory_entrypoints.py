@@ -42,6 +42,7 @@ def test_config_takes_precedence_over_legacy_alias() -> None:
 
 
 def test_run_dispatches_resolved_canonical_module(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
@@ -66,8 +67,11 @@ def test_run_dispatches_resolved_canonical_module(
         assert override_values == ["pipeline=Pipeline_04_unified_metric"]
         return ResolvedConfig(
             requested=source,
-            path=Path("/tmp/missing.yaml"),
-            data={"pipeline": "Pipeline_04_Unified_Evaluation"},
+            path=tmp_path / "missing.yaml",
+            data={
+                "pipeline": "Pipeline_04_Unified_Evaluation",
+                "environment": {"output_dir": str(tmp_path / "runs")},
+            },
             pipeline="Pipeline_04_Unified_Evaluation",
             overrides={"pipeline": "Pipeline_04_unified_metric"},
         )
@@ -86,21 +90,26 @@ def test_run_dispatches_resolved_canonical_module(
     resolved_data = observed.pop("resolved_config_data")
     run_spec_sha256 = observed.pop("run_spec_sha256")
     assert compiled.pipeline == "Pipeline_04_Unified_Evaluation"
-    assert resolved_data == {"pipeline": "Pipeline_04_Unified_Evaluation"}
+    assert resolved_data == {
+        "pipeline": "Pipeline_04_Unified_Evaluation",
+        "environment": {"output_dir": str(tmp_path / "runs")},
+    }
     assert run_spec_sha256 == compiled.sha256
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
         "requested_config": "missing.yaml",
-        "config_path": "/tmp/missing.yaml",
-        "resolved_config_path": "/tmp/missing.yaml",
+        "config_path": str(tmp_path / "missing.yaml"),
+        "resolved_config_path": str(tmp_path / "missing.yaml"),
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
         "notes": "entrypoint-parity",
     }
+    assert Path(args.run_manifest_path).is_file()
 
 
 @pytest.mark.parametrize("preset", tuple(sorted(MAINTAINED_PRESETS)))
 def test_run_passes_maintained_preset_path_to_runtime(
     preset: str,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
@@ -119,13 +128,14 @@ def test_run_passes_maintained_preset_path_to_runtime(
         config=preset,
         config_path=None,
         notes="",
-        override=None,
+        override=[f"environment.output_dir={tmp_path / 'runs'}"],
     )
 
     assert cli.run(args) is True
 
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
+    assert Path(args.run_manifest_path).is_file()
 
 
 def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
@@ -219,3 +229,4 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
         "task": "classification",
         "trainer": "cpu",
     }
+    assert Path(args.run_manifest_path).is_file()

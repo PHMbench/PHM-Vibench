@@ -18,6 +18,7 @@ on:
       - "test/test_pipeline_name_migration.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
+      - "test/test_runtime_attestation.py"
       - ".github/workflows/phmfactory-public-package.yml"
   push:
     branches:
@@ -38,6 +39,7 @@ on:
       - "test/test_pipeline_name_migration.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
+      - "test/test_runtime_attestation.py"
       - ".github/workflows/phmfactory-public-package.yml"
   workflow_dispatch:
 
@@ -76,6 +78,7 @@ jobs:
           test/test_pipeline_name_migration.py
           test/test_runtime_control_plane.py
           test/test_runtime_execution.py
+          test/test_runtime_attestation.py
 
       - name: Run focused public API tests
         run: >-
@@ -86,6 +89,7 @@ jobs:
           test/test_pipeline_name_migration.py
           test/test_runtime_control_plane.py
           test/test_runtime_execution.py
+          test/test_runtime_attestation.py
 
       - name: Upload focused pytest diagnostics
         if: always()
@@ -117,6 +121,7 @@ jobs:
               "phmfactory/runtime/__init__.py",
               "phmfactory/runtime/spec.py",
               "phmfactory/runtime/execution.py",
+              "phmfactory/runtime/attestation.py",
               "src/__init__.py",
               "src/configs/config_utils.py",
               "configs/__init__.py",
@@ -146,6 +151,7 @@ jobs:
           /tmp/phmfactory-wheel/bin/python -m phmfactory --help
           cd /tmp
           /tmp/phmfactory-wheel/bin/python - <<'PY'
+          import json
           from pathlib import Path
           from types import SimpleNamespace
           from unittest.mock import patch
@@ -180,4 +186,10 @@ jobs:
 
           with patch.object(cli.importlib, "import_module", side_effect=fake_import):
               assert cli.main(["--config", "smoke"]) == "wheel-dispatch-pass"
+
+          manifests = list(Path("/tmp/results").rglob("run_manifest.json"))
+          assert len(manifests) == 1, manifests
+          payload = json.loads(manifests[0].read_text(encoding="utf-8"))
+          assert payload["status"] == "succeeded"
+          assert payload["run_spec"]["pipeline"] == "Pipeline_01_Fault_Diagnosis"
           PY

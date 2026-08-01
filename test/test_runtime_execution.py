@@ -50,6 +50,7 @@ def test_envelope_rejects_none_as_ambiguous_success() -> None:
         envelope.execute(SimpleNamespace(pipeline=lambda args: None), object())
 
     assert envelope.status is ExecutionStatus.FAILED
+    assert envelope.failure_stage == "pipeline"
     assert envelope.error_type == "PipelineContractError"
     assert envelope.finished_at is not None
 
@@ -61,6 +62,7 @@ def test_envelope_rejects_missing_entrypoint() -> None:
         envelope.execute(SimpleNamespace(), object())
 
     assert envelope.status is ExecutionStatus.FAILED
+    assert envelope.failure_stage == "contract"
 
 
 def test_envelope_records_and_reraises_pipeline_error() -> None:
@@ -73,6 +75,7 @@ def test_envelope_records_and_reraises_pipeline_error() -> None:
         envelope.execute(SimpleNamespace(pipeline=fail), object())
 
     assert envelope.status is ExecutionStatus.FAILED
+    assert envelope.failure_stage == "pipeline"
     assert envelope.error_type == "ValueError"
     assert envelope.error_message == "invalid training state"
 
@@ -86,13 +89,17 @@ def test_envelope_cannot_execute_twice() -> None:
 
 
 def test_cli_does_not_print_completion_when_pipeline_returns_none(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     resolved = ResolvedConfig(
         requested="broken",
-        path=Path("/tmp/broken.yaml"),
-        data={"pipeline": "Pipeline_01_Fault_Diagnosis"},
+        path=tmp_path / "broken.yaml",
+        data={
+            "pipeline": "Pipeline_01_Fault_Diagnosis",
+            "environment": {"output_dir": str(tmp_path / "outputs")},
+        },
         pipeline="Pipeline_01_Fault_Diagnosis",
         overrides={},
     )
@@ -114,3 +121,4 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
 
     assert "完成所有实验" not in capsys.readouterr().out
     assert args.execution_envelope.status is ExecutionStatus.FAILED
+    assert Path(args.run_manifest_path).is_file()

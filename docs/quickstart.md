@@ -41,14 +41,20 @@ A successful smoke run should:
 
 - exit with status code `0`;
 - complete the config → data → model → task → trainer path;
-- print the repository completion message;
+- print `run_manifest=<path>` followed by the completion message;
 - create run output beneath `results/demo/dummy_dg_smoke/`;
+- create one invocation manifest below
+  `results/demo/dummy_dg_smoke/.phmfactory/runs/<run_id>/run_manifest.json`;
 - require no external dataset download.
+
+The invocation manifest is created with `status: pending` before Pipeline import and is
+atomically updated to `succeeded` or `failed`. A run is not considered successful when
+the final manifest cannot be written.
 
 Inspect the output tree without assuming a fixed experiment subdirectory name:
 
 ```bash
-find results/demo/dummy_dg_smoke -maxdepth 4 -type f | sort
+find results/demo/dummy_dg_smoke -maxdepth 6 -type f | sort
 ```
 
 Runtime outputs are evidence for the exact commit, configuration, overrides, data,
@@ -72,7 +78,8 @@ before requesting review for runtime or configuration changes. See the
 ## 5. Run a maintained demo with local data
 
 Only the dummy demo is fully offline. For another maintained configuration, pass
-local data paths as overrides instead of editing the tracked YAML:
+local data paths as explicit overrides instead of editing tracked YAML or relying on
+machine-local auto-discovery:
 
 ```bash
 python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
@@ -110,8 +117,15 @@ surface; report unconditional optional imports as dependency-boundary bugs.
 ### A data or metadata path does not exist
 
 Return to the offline dummy config to verify the software environment. For local
-data, use `data.data_dir` and `data.metadata_file` overrides or
-`configs/local/local.yaml`.
+data, use explicit `data.data_dir` and `data.metadata_file` overrides or create a
+reviewable experiment YAML under `configs/experiments/`.
+
+### The run fails before training starts
+
+Open the printed or expected manifest path below
+`<environment.output_dir>/.phmfactory/runs/`. A failed manifest records the stage,
+exception type, and message. Configuration compilation failures that cannot determine a
+valid `environment.output_dir` fail before a manifest can be created.
 
 ### CUDA initialization fails
 
