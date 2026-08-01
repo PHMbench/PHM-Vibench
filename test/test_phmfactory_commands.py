@@ -1,0 +1,125 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from phmfactory import cli
+from phmfactory.commands import demo, doctor, preflight
+from phmfactory.commands.common import check_writable_directory
+from phmfactory.config import ResolvedConfig
+
+
+def _resolved(tmp_path: Path) -> ResolvedConfig:
+    return ResolvedConfig(
+        requested="smoke",
+        path=tmp_path / "smoke.yaml",
+        data={
+            "pipeline": "Pipeline_01_Fault_Diagnosis",
+            "environment": {"output_dir": str(tmp_path / "new" / "outputs")},
+        },
+        pipeline="Pipeline_01_Fault_Diagnosis",
+        overrides={},
+    )
+
+
+def test_command_router_preserves_legacy_experiment_form(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    routed: list[object] = []
+    monkeypatch.setattr(
+        cli,
+        "_run_command",
+        lambda name, argv: routed.append((name, list(argv))) or "command",
+    )
+    monkeypatch.setattr(
+        cli,
+        "run",
+        lambda args: routed.append(("experiment", args.config)) or "experiment",
+    )
+
+    assert cli.main(["doctor"]) == "command"
+    assert cli.main(["--config", "smoke"]) == "experiment"
+    assert routed == [("doctor", []), ("experiment", "smoke")]
+
+
+def test_demo_uses_offline_defaults_and_user_override_wins() -> None:
+    observed: list[argparse.Namespace] = []
+    result = demo.run(
+        ["--override", "trainer.num_epochs=2", "--notes", "demo-test"],
+        experiment_runner=lambda args: observed.append(args) or "ok",
+    )
+
+    assert result == "ok"
+    args = observed[0]
+    assert args.config == "smoke"
+    assert args.notes == "demo-test"
+    assert args.allow_experimental is False
+    assert args.override[:4] == list(demo.DEFAULT_OVERRIDES)
+    assert args.override[-1] == "trainer.num_epochs=2"
+
+
+def test_preflight_compiles_without_importing_pipeline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resolved = _resolved(tmp_path)
+    monkeypatch.setattr(preflight, "resolve_config", lambda *args, **kwargs: resolved)
+    monkeypatch.setattr(
+        preflight.importlib.util,
+        "find_spec",
+        lambda name: SimpleNamespace(name=name),
+    )
+
+    result = preflight.run(["--config", "smoke"])
+
+    assert result["status"] == "passed"
+    assert result["pipeline"] == "Pipeline_01_Fault_Diagnosis"
+    assert len(result["run_spec_sha256"]) == 64
+    assert not (tmp_path / "new").exists()
+
+
+def test_preflight_requires_output_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resolved = _resolved(tmp_path)
+    resolved.data["environment"] = {}
+    monkeypatch.setattr(preflight, "resolve_config", lambda *args, **kwargs: resolved)
+    monkeypatch.setattr(
+        preflight.importlib.util,
+        "find_spec",
+        lambda name: SimpleNamespace(name=name),
+    )
+
+    with pytest.raises(ValueError, match="environment.output_dir"):
+        preflight.run(["--config", "smoke"])
+
+
+def test_doctor_failure_has_nonzero_exit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        doctor,
+        "collect_checks",
+        lambda: [doctor.DoctorCheck("import:torch", False, "missing")],
+    )
+    with pytest.raises(SystemExit) as error:
+        doctor.run([])
+    assert error.value.code == 1
+
+
+def test_doctor_success_returns_check_records(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = [doctor.DoctorCheck("python", True, "3.10")]
+    monkeypatch.setattr(doctor, "collect_checks", lambda: expected)
+    assert doctor.run([]) == expected
+
+
+def test_writable_probe_removes_new_directory_tree(tmp_path: Path) -> None:
+    target = tmp_path / "new" / "nested" / "output"
+    assert check_writable_directory(target) == target.resolve()
+    assert not (tmp_path / "new").exists()
