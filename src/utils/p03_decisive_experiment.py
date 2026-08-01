@@ -632,13 +632,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--log", required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     summary = run_experiment(args.config, args.output)
-    print(json.dumps(summary, indent=2, ensure_ascii=False, allow_nan=False))
+    rendered = json.dumps(summary, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    log_path = Path(args.log).resolve()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(rendered, encoding="utf-8")
+    log_digest = sha256_file(log_path)
+    log_path.with_suffix(log_path.suffix + ".sha256").write_text(
+        f"{log_digest}  {log_path.name}\n", encoding="utf-8"
+    )
+    print(rendered, end="")
     return 0
 
 

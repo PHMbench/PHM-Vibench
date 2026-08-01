@@ -42,6 +42,7 @@ execution:
     conda run -n LQ_signal python -m src.utils.p03_decisive_experiment
     --config configs/experiments/p03/decisive_mechanism.yaml
     --output ../../paper/experiments/artifacts/p03_g050_decisive.json
+    --log ../../paper/experiments/artifacts/p03_g050_decisive.stdout.log
   physical_gpu_indices: []
   multi_gpu: false
   device: cpu
