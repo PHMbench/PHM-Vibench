@@ -166,18 +166,26 @@ jobs:
           /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
           /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.commands, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
 
-      - name: Verify clean installed commands and preflight
-        shell: bash
-        run: |
-          set -euxo pipefail
-          /tmp/phmfactory-wheel/bin/phmfactory --help
-          /tmp/phmfactory-wheel/bin/python -m phmfactory --help
-          /tmp/phmfactory-wheel/bin/phmfactory doctor --help
-          /tmp/phmfactory-wheel/bin/phmfactory demo --help
-          /tmp/phmfactory-wheel/bin/phmfactory preflight \
-            --config smoke \
-            --override environment.output_dir=/tmp/phmfactory-preflight-output
-          test ! -e /tmp/phmfactory-preflight-output
+      - name: Verify clean installed root help
+        run: /tmp/phmfactory-wheel/bin/phmfactory --help
+
+      - name: Verify clean installed module help
+        run: /tmp/phmfactory-wheel/bin/python -m phmfactory --help
+
+      - name: Verify clean installed doctor help
+        run: /tmp/phmfactory-wheel/bin/phmfactory doctor --help
+
+      - name: Verify clean installed demo help
+        run: /tmp/phmfactory-wheel/bin/phmfactory demo --help
+
+      - name: Verify clean installed preflight
+        run: >-
+          /tmp/phmfactory-wheel/bin/phmfactory preflight
+          --config smoke
+          --override environment.output_dir=/tmp/phmfactory-preflight-output
+
+      - name: Verify preflight leaves target absent
+        run: test ! -e /tmp/phmfactory-preflight-output
 
       - name: Verify clean installed experiment dispatch
         shell: bash
