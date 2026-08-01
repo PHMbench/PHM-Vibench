@@ -27,8 +27,11 @@ Authoritative machine-readable map: `paper/experiments/config_bridge.yaml` (dest
 
 - Active P07 method: standalone `X_model/XOANOperatorPath` with
   `model.operator_path.*`. It uses a typed K-stage DAG chain, Avg+Var gates,
-  sparse top-k relaxation, deterministic per-sample export, and an independent
-  executor. G030 verifies software wiring only; C6-C9 still require approved
+  continuous sparsemax relaxation, deterministic per-sample export, an
+  effective-dictionary-bound path artifact, and an independent executor. Its
+  post-training counterfactual API supports preregistered dormant-slot
+  unmasking, removal, same-signature replacement, and stateless seeded output
+  corruption. G030 verifies software wiring only; C6-C9 still require approved
   protocols and accepted runs.
 - Method (simplified): `X_model/TSPN_UXFD` with `uxfd.operator_attention.enable=true`
   (uses `OperatorAttention1D`: mean-pool + Linear/ReLU/Linear gate + softmax; ops `{I, HT, FFT}`).
@@ -44,8 +47,9 @@ Authoritative machine-readable map: `paper/experiments/config_bridge.yaml` (dest
   matched interventions, risk-coverage, industrial noninferiority, and
   reproducibility audit. The typed path component is implemented, but no
   claim is evidence-eligible until these protocols and thresholds are frozen.
-- **SincNet** (`B_0X_SincNet`) — manuscript baseline M2.
-- **WKN / Wavelet Kernel Network** (`B_0X_WKN`) — manuscript baseline M3.
+- **Scientific-contract comparator runners** — dense decoder, discrete search,
+  feature attention, a parameter-matched black box, and a random-dictionary
+  control. Legacy SincNet/WKN placeholders are not C6-C9 contract comparators.
 - **Test-time additive-Gaussian SNR-sweep sampler** — for the Case 2 noise-robustness curve
   (CLAIM-CASE2-NOISE-ROBUST, CLAIM-CASE2-NOISE-AS).
 

@@ -92,9 +92,16 @@ class XOANOperatorPathConfig(BaseModel):
     dictionary_id: str = Field(..., min_length=1)
     dictionary_version: str = Field(..., min_length=1)
     stage_operators: List[List[OperatorName]] = Field(..., min_length=1, max_length=8)
+    addable_stage_operators: List[List[OperatorName]] = Field(
+        ..., min_length=1, max_length=8
+    )
     hidden_dim: int = Field(64, ge=1)
     temperature: float = Field(1.0, gt=0.0)
-    top_k: int = Field(2, ge=2)
+    relaxation: Literal["sparsemax"] = "sparsemax"
+    relaxation_version: Literal["sparsemax-euclidean-projection-1"] = (
+        "sparsemax-euclidean-projection-1"
+    )
+    support_tolerance: float = Field(1e-8, ge=0.0, le=1e-4)
     execution_mode: Literal["relaxed"] = "relaxed"
     tie_break_rule: Literal["registry_order"] = "registry_order"
     input_kind: Literal["blc_real_series"] = "blc_real_series"
@@ -104,6 +111,11 @@ class XOANOperatorPathConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_typed_dictionary(self) -> "XOANOperatorPathConfig":
+        if len(self.addable_stage_operators) != len(self.stage_operators):
+            raise ValueError(
+                "model.operator_path.addable_stage_operators must have the same "
+                "number of stages as stage_operators"
+            )
         current_kind = "blc_real_series"
         signatures = {
             "I": ("blc_real_series", "blc_real_series"),
@@ -116,19 +128,27 @@ class XOANOperatorPathConfig(BaseModel):
             "FFT_MAG": ("blc_real_series", "blc_frequency_magnitude"),
             "F_ID": ("blc_frequency_magnitude", "blc_frequency_magnitude"),
         }
-        for stage, operators in enumerate(self.stage_operators):
+        for stage, (operators, addable) in enumerate(
+            zip(self.stage_operators, self.addable_stage_operators)
+        ):
             if not operators:
                 raise ValueError(f"model.operator_path.stage_operators[{stage}] is empty")
             if len(set(operators)) != len(operators):
                 raise ValueError(
                     f"model.operator_path.stage_operators[{stage}] contains duplicates"
                 )
-            if self.top_k > len(operators):
+            if len(set(addable)) != len(addable):
                 raise ValueError(
-                    f"model.operator_path.top_k exceeds stage {stage} dictionary width"
+                    f"model.operator_path.addable_stage_operators[{stage}] contains duplicates"
                 )
-            inputs = {signatures[name][0] for name in operators}
-            outputs = {signatures[name][1] for name in operators}
+            overlap = set(operators).intersection(addable)
+            if overlap:
+                raise ValueError(
+                    f"model.operator_path stage {stage} active/addable dictionaries overlap"
+                )
+            candidates = operators + addable
+            inputs = {signatures[name][0] for name in candidates}
+            outputs = {signatures[name][1] for name in candidates}
             if inputs != {current_kind} or len(outputs) != 1:
                 raise ValueError(
                     f"model.operator_path stage {stage} has incompatible type signatures"

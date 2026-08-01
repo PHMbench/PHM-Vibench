@@ -7,7 +7,8 @@ sequence of registry calls that can be executed independently on the input.
 All tensors use the ``(batch, length, channels)`` layout.  A stage adds one node
 to a directed acyclic chain.  Its candidate edges pair the immediately prior
 node with an operator from the frozen stage dictionary.  During relaxation the
-candidate outputs are mixed with sparse, input-conditioned weights.  Export
+    candidate outputs are mixed with continuous sparsemax, input-conditioned
+    weights.  Export
 selects one edge per stage and produces an executable path for each sample.
 """
 
@@ -18,7 +19,8 @@ import json
 import math
 from dataclasses import dataclass
 from numbers import Integral
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from pathlib import Path
+from typing import Any, Dict, Iterator, Mapping, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -52,16 +54,53 @@ OperatorPath = Tuple[OperatorEdge, ...]
 
 
 @dataclass(frozen=True)
-class DictionaryIntervention:
-    """Non-mutating dictionary removal/replacement applied before selection.
+class OperatorCorruption:
+    """One deterministic, non-mutating corruption of a registered slot."""
 
-    ``removed`` entries are ``(stage, operator)``.  ``replacements`` entries
-    are ``(stage, registered_name, executed_name)`` and model a wrong or
-    corrupted dictionary label while preserving the declared type signature.
+    stage: int
+    registered_operator: str
+    magnitude: float
+    seed: int
+    mode: str = "additive_gaussian_absolute"
+
+
+@dataclass(frozen=True)
+class DictionaryIntervention:
+    """Non-mutating dictionary intervention applied before selection.
+
+    ``added`` entries activate a preregistered dormant slot. ``removed`` entries
+    deactivate a base slot. ``replacements`` change the executed operator while
+    preserving its type signature. ``corruptions`` add deterministic absolute
+    Gaussian noise after a registered slot is executed.
     """
 
+    added: Tuple[Tuple[int, str], ...] = ()
     removed: Tuple[Tuple[int, str], ...] = ()
     replacements: Tuple[Tuple[int, str, str], ...] = ()
+    corruptions: Tuple[OperatorCorruption, ...] = ()
+    timing: str = "post_training"
+    retraining_policy: str = "reuse_frozen_weights"
+    algorithm_id: str = "p07-dictionary-counterfactual"
+    algorithm_version: str = "1.0.0"
+
+
+@dataclass(frozen=True)
+class ExecutablePathArtifact:
+    """Exported edges bound to the exact effective dictionary used for selection."""
+
+    edges: OperatorPath
+    base_dictionary_sha256: str
+    effective_dictionary_sha256: str
+    dictionary_intervention: Optional[DictionaryIntervention]
+
+    def __iter__(self) -> Iterator[OperatorEdge]:
+        return iter(self.edges)
+
+    def __len__(self) -> int:
+        return len(self.edges)
+
+    def __getitem__(self, index: int) -> OperatorEdge:
+        return self.edges[index]
 
 
 @dataclass(frozen=True)
@@ -69,7 +108,6 @@ class OperatorPathTrace:
     """Relaxed weights and their stable candidate-edge ordering."""
 
     stage_weights: Tuple[torch.Tensor, ...]
-    stage_dense_weights: Tuple[torch.Tensor, ...]
     candidate_edges: Tuple[Tuple[OperatorEdge, ...], ...]
     node_kinds: Tuple[str, ...]
     dictionary_intervention: Optional[DictionaryIntervention] = None
@@ -77,9 +115,6 @@ class OperatorPathTrace:
     def detached(self) -> "OperatorPathTrace":
         return OperatorPathTrace(
             stage_weights=tuple(weight.detach().clone() for weight in self.stage_weights),
-            stage_dense_weights=tuple(
-                weight.detach().clone() for weight in self.stage_dense_weights
-            ),
             candidate_edges=self.candidate_edges,
             node_kinds=self.node_kinds,
             dictionary_intervention=self.dictionary_intervention,
@@ -101,11 +136,18 @@ class ExecutableOperatorPathConfig:
         ("I", "D1", "ABS", "SQUARE", "MA3", "HT"),
         ("I", "D1", "ABS", "SQUARE", "MA3", "HT"),
     )
+    addable_stage_operators: Sequence[Sequence[str]] = (
+        ("MA5",),
+        ("MA5",),
+        ("MA5",),
+    )
     dictionary_id: str = "p07-real-series-operators"
-    dictionary_version: str = "1.0.0"
+    dictionary_version: str = "2.0.0"
     hidden_dim: int = 64
     temperature: float = 1.0
-    top_k: int = 2
+    relaxation: str = "sparsemax"
+    relaxation_version: str = "sparsemax-euclidean-projection-1"
+    support_tolerance: float = 1e-8
     execution_mode: str = "relaxed"  # relaxed | discrete
     tie_break_rule: str = "registry_order"
     input_kind: str = REAL_SERIES
@@ -145,9 +187,25 @@ _OPERATOR_SEMANTICS = {
     "F_ID": "frequency_magnitude_identity",
 }
 
+_INTERVENTION_SEMANTICS = {
+    "version": "p07-dictionary-intervention-2",
+    "operation_order": [
+        "unmask_preregistered_slot",
+        "remove_base_slot",
+        "replace_executed_semantics",
+        "corrupt_operator_output",
+    ],
+    "addition_semantics": "preallocated_slot_unmasking_secondary_diagnostic_only",
+    "corruption_seed_scope": (
+        "sha256(seed,stage,registered_operator,root_sample_content_sha256)"
+    ),
+    "corruption_rng": "torch.Generator_backend_native",
+    "device_determinism_scope": "same_torch_runtime_and_device_backend",
+}
+
 
 class ExecutableOperatorPath1D(nn.Module):
-    """Sparse relaxed DAG with deterministic, per-sample discrete export."""
+    """Continuous sparsemax DAG with deterministic discrete export."""
 
     def __init__(
         self,
@@ -169,10 +227,16 @@ class ExecutableOperatorPath1D(nn.Module):
             raise ValueError("dictionary_version must be non-empty.")
         if not math.isfinite(float(self.cfg.temperature)) or float(self.cfg.temperature) <= 0:
             raise ValueError("temperature must be positive.")
-        if isinstance(self.cfg.top_k, bool) or int(self.cfg.top_k) != self.cfg.top_k:
-            raise ValueError("top_k must be an integer.")
-        if int(self.cfg.top_k) <= 0:
-            raise ValueError("top_k must be positive.")
+        if self.cfg.relaxation != "sparsemax":
+            raise ValueError("relaxation must be 'sparsemax'.")
+        if self.cfg.relaxation_version != "sparsemax-euclidean-projection-1":
+            raise ValueError(
+                "relaxation_version must be 'sparsemax-euclidean-projection-1'."
+            )
+        if not math.isfinite(float(self.cfg.support_tolerance)) or not (
+            0.0 <= float(self.cfg.support_tolerance) <= 1e-4
+        ):
+            raise ValueError("support_tolerance must be finite and in [0, 1e-4].")
         if self.cfg.execution_mode not in {"relaxed", "discrete"}:
             raise ValueError("execution_mode must be 'relaxed' or 'discrete'.")
         if self.cfg.tie_break_rule != "registry_order":
@@ -191,13 +255,23 @@ class ExecutableOperatorPath1D(nn.Module):
         self.stage_operators = _canonicalize_stage_operators(self.cfg.stage_operators)
         if not self.stage_operators:
             raise ValueError("stage_operators must contain at least one stage.")
-        if any(int(self.cfg.top_k) > len(stage) for stage in self.stage_operators):
-            raise ValueError("top_k cannot exceed any stage dictionary width.")
+        self.addable_stage_operators = _canonicalize_addable_stage_operators(
+            self.cfg.addable_stage_operators,
+            expected_stages=len(self.stage_operators),
+        )
 
         node_kinds = [str(self.cfg.input_kind)]
         candidate_edges = []
         gates = []
-        for stage, operators in enumerate(self.stage_operators):
+        for stage, (active_operators, addable_operators) in enumerate(
+            zip(self.stage_operators, self.addable_stage_operators)
+        ):
+            overlap = set(active_operators).intersection(addable_operators)
+            if overlap:
+                raise ValueError(
+                    f"Stage {stage} active/addable dictionaries overlap: {sorted(overlap)}."
+                )
+            operators = active_operators + addable_operators
             specs = tuple(_SPEC_BY_NAME[name] for name in operators)
             input_kinds = {spec.input_kind for spec in specs}
             output_kinds = {spec.output_kind for spec in specs}
@@ -232,18 +306,46 @@ class ExecutableOperatorPath1D(nn.Module):
         self.candidate_edges: Tuple[Tuple[OperatorEdge, ...], ...] = tuple(candidate_edges)
         self.node_kinds: Tuple[str, ...] = tuple(node_kinds)
         self.last_trace: Optional[OperatorPathTrace] = None
-        self.last_exported_paths: Optional[Tuple[OperatorPath, ...]] = None
+        self.last_exported_paths: Optional[Tuple[ExecutablePathArtifact, ...]] = None
 
     @property
     def num_stages(self) -> int:
         return len(self.candidate_edges)
 
+    def get_extra_state(self) -> Dict[str, Any]:
+        """Persist method semantics so shape-compatible checkpoints cannot drift."""
+
+        return {
+            "schema_version": 1,
+            "dictionary_semantic_sha256": self.dictionary_sha256,
+        }
+
+    def set_extra_state(self, state: Any) -> None:
+        if not isinstance(state, dict) or set(state) != {
+            "schema_version",
+            "dictionary_semantic_sha256",
+        }:
+            raise RuntimeError("Checkpoint operator-path semantic state has an invalid key set.")
+        if state["schema_version"] != 1:
+            raise RuntimeError("Checkpoint operator-path semantic state has an unsupported version.")
+        if state["dictionary_semantic_sha256"] != self.dictionary_sha256:
+            raise RuntimeError(
+                "Checkpoint dictionary semantic hash does not match the current operator path."
+            )
+
     @property
     def dictionary_sha256(self) -> str:
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "dictionary_id": str(self.cfg.dictionary_id),
             "dictionary_version": str(self.cfg.dictionary_version),
+            "intervention_semantics": _INTERVENTION_SEMANTICS,
+            "relaxation": str(self.cfg.relaxation),
+            "relaxation_version": str(self.cfg.relaxation_version),
+            "temperature": float(self.cfg.temperature),
+            "support_tolerance": float(self.cfg.support_tolerance),
+            "numerical_eps": float(self.cfg.eps),
+            "operator_implementation_sha256": _operator_implementation_sha256(),
             "tie_break_rule": str(self.cfg.tie_break_rule),
             "operator_semantics": _OPERATOR_SEMANTICS,
             "operator_specs": [
@@ -256,6 +358,9 @@ class ExecutableOperatorPath1D(nn.Module):
                 for spec in _SPECS
             ],
             "stage_operators": [list(stage) for stage in self.stage_operators],
+            "addable_stage_operators": [
+                list(stage) for stage in self.addable_stage_operators
+            ],
             "node_kinds": list(self.node_kinds),
             "candidate_edges": [
                 [
@@ -290,9 +395,16 @@ class ExecutableOperatorPath1D(nn.Module):
 
         normalized = self._validate_dictionary_intervention(intervention)
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "dictionary_id": str(self.cfg.dictionary_id),
             "dictionary_version": str(self.cfg.dictionary_version),
+            "intervention_semantics": dict(_INTERVENTION_SEMANTICS),
+            "relaxation": str(self.cfg.relaxation),
+            "relaxation_version": str(self.cfg.relaxation_version),
+            "temperature": float(self.cfg.temperature),
+            "support_tolerance": float(self.cfg.support_tolerance),
+            "numerical_eps": float(self.cfg.eps),
+            "operator_implementation_sha256": _operator_implementation_sha256(),
             "base_dictionary_sha256": self.dictionary_sha256,
             "effective_dictionary_sha256": self.effective_dictionary_sha256(normalized),
             "dictionary_intervention": _dictionary_intervention_payload(normalized),
@@ -308,6 +420,9 @@ class ExecutableOperatorPath1D(nn.Module):
                 for spec in _SPECS
             ],
             "stage_operators": [list(stage) for stage in self.stage_operators],
+            "addable_stage_operators": [
+                list(stage) for stage in self.addable_stage_operators
+            ],
             "node_kinds": list(self.node_kinds),
             "candidate_edges": [
                 [
@@ -343,14 +458,9 @@ class ExecutableOperatorPath1D(nn.Module):
                 f"Input device {x.device} does not match selector device {parameter.device}."
             )
         intervention = self._validate_dictionary_intervention(dictionary_intervention)
-        if self.training and int(self.cfg.top_k) == 1:
-            raise RuntimeError(
-                "top_k=1 makes the current hard sparse relaxation non-trainable; "
-                "use top_k>=2 for training and reserve top_k=1 for evaluation diagnostics."
-            )
+        sample_keys = _sample_content_sha256(x)
         nodes = [x]
         stage_weights = []
-        stage_dense_weights = []
 
         for stage, (gate, edges) in enumerate(zip(self.gates, self.candidate_edges)):
             reference_source = max(edge.source for edge in edges)
@@ -359,47 +469,37 @@ class ExecutableOperatorPath1D(nn.Module):
                 (reference.mean(dim=1), reference.var(dim=1, unbiased=False)), dim=1
             )
             logits = gate(pooled) / float(self.cfg.temperature)
-            removed: set[str] = set()
-            allowed_count = len(edges)
-            if intervention is not None:
-                removed = {
-                    operator for item_stage, operator in intervention.removed if item_stage == stage
-                }
-                allowed = torch.tensor(
-                    [edge.operator not in removed for edge in edges],
-                    dtype=torch.bool,
-                    device=logits.device,
-                )
-                if not bool(allowed.any()):
-                    raise ValueError(f"Dictionary intervention removes every candidate at stage {stage}.")
-                allowed_count = int(allowed.sum().item())
-                logits = logits.masked_fill(~allowed.unsqueeze(0), -torch.inf)
-            dense_weights = F.softmax(logits, dim=1)
-            weights = _sparsify(
-                dense_weights,
-                min(int(self.cfg.top_k), allowed_count),
+            active = self._active_operator_set(stage, intervention)
+            allowed = torch.tensor(
+                [edge.operator in active for edge in edges],
+                dtype=torch.bool,
+                device=logits.device,
             )
+            weights = _masked_sparsemax(logits, allowed)
 
             candidate_outputs = torch.stack(
                 [
                     torch.zeros_like(nodes[edge.source])
-                    if edge.operator in removed
-                    else _apply_operator(
-                        self._effective_operator(intervention, stage, edge.operator),
+                    if edge.operator not in active
+                    else self._execute_registered_operator(
+                        intervention,
+                        stage,
+                        edge.operator,
                         nodes[edge.source],
+                        sample_keys=sample_keys,
                     )
                     for edge in edges
                 ],
                 dim=1,
             )
             next_node = (weights[:, :, None, None] * candidate_outputs).sum(dim=1)
+            if not bool(torch.isfinite(next_node).all()):
+                raise ValueError(f"Sparsemax mixture produced non-finite values at stage {stage}.")
             nodes.append(next_node)
             stage_weights.append(weights)
-            stage_dense_weights.append(dense_weights)
 
         trace = OperatorPathTrace(
             stage_weights=tuple(stage_weights),
-            stage_dense_weights=tuple(stage_dense_weights),
             candidate_edges=self.candidate_edges,
             node_kinds=self.node_kinds,
             dictionary_intervention=intervention,
@@ -410,7 +510,7 @@ class ExecutableOperatorPath1D(nn.Module):
 
     def export_paths(
         self, trace: Optional[OperatorPathTrace] = None
-    ) -> Tuple[OperatorPath, ...]:
+    ) -> Tuple[ExecutablePathArtifact, ...]:
         selected_trace = trace or self.last_trace
         if selected_trace is None:
             raise RuntimeError("No trace is available; run relaxed_forward first.")
@@ -428,12 +528,22 @@ class ExecutableOperatorPath1D(nn.Module):
             if not bool(torch.isfinite(weight).all()):
                 raise ValueError(f"Trace contains non-finite weights at stage {stage}.")
         selected_indices = [weight.argmax(dim=1).tolist() for weight in selected_trace.stage_weights]
+        intervention = self._validate_dictionary_intervention(
+            selected_trace.dictionary_intervention
+        )
         paths = []
         for sample in range(batch_size):
+            path = tuple(
+                self.candidate_edges[stage][selected_indices[stage][sample]]
+                for stage in range(self.num_stages)
+            )
+            self._require_path_active(path, intervention)
             paths.append(
-                tuple(
-                    self.candidate_edges[stage][selected_indices[stage][sample]]
-                    for stage in range(self.num_stages)
+                ExecutablePathArtifact(
+                    edges=path,
+                    base_dictionary_sha256=self.dictionary_sha256,
+                    effective_dictionary_sha256=self.effective_dictionary_sha256(intervention),
+                    dictionary_intervention=intervention,
                 )
             )
         return tuple(paths)
@@ -447,19 +557,15 @@ class ExecutableOperatorPath1D(nn.Module):
         """Execute exported paths without using gate weights."""
 
         _validate_input(x, self.in_channels)
-        intervention = self._validate_dictionary_intervention(dictionary_intervention)
         if len(paths) != x.shape[0]:
             raise ValueError(f"Expected {x.shape[0]} paths, got {len(paths)}.")
-        normalized_paths = tuple(self._validate_path(path) for path in paths)
-        if intervention is not None:
-            removed = set(intervention.removed)
-            for path in normalized_paths:
-                for edge in path:
-                    if (edge.stage, edge.operator) in removed:
-                        raise ValueError(
-                            "Cannot execute a path that selects a removed dictionary slot: "
-                            f"stage={edge.stage}, operator={edge.operator}."
-                        )
+        sample_keys = _sample_content_sha256(x)
+        normalized_paths, intervention = self._resolve_path_artifacts(
+            paths,
+            dictionary_intervention,
+        )
+        for path in normalized_paths:
+            self._require_path_active(path, intervention)
         nodes = [x]
 
         for stage in range(self.num_stages):
@@ -471,8 +577,12 @@ class ExecutableOperatorPath1D(nn.Module):
                 ]
                 index = torch.tensor(sample_indices, dtype=torch.long, device=x.device)
                 source_batch = nodes[choice.source].index_select(0, index)
-                executed = _apply_operator(
-                    self._effective_operator(intervention, stage, choice.operator), source_batch
+                executed = self._execute_registered_operator(
+                    intervention,
+                    stage,
+                    choice.operator,
+                    source_batch,
+                    sample_keys=[sample_keys[sample_index] for sample_index in sample_indices],
                 )
                 next_node.index_copy_(0, index, executed)
             nodes.append(next_node)
@@ -496,12 +606,16 @@ class ExecutableOperatorPath1D(nn.Module):
         replacement = canonical_operator_name(replacement_operator)
         intervened = []
         for raw_path in paths:
-            path = list(self._validate_path(raw_path))
+            normalized, bound_intervention = self._resolve_single_path_artifact(raw_path, None)
+            if bound_intervention is not None:
+                raise ValueError("Direct path intervention requires a base-dictionary path.")
+            self._require_path_active(normalized, None)
+            path = list(normalized)
             current = path[stage]
             candidate = OperatorEdge(stage=stage, source=current.source, operator=replacement)
-            if candidate not in self.candidate_edges[stage]:
+            if replacement not in self.stage_operators[stage]:
                 raise ValueError(
-                    f"Replacement {replacement} is not type/dictionary compatible at stage {stage}."
+                    f"Replacement {replacement} is not active in the base dictionary at stage {stage}."
                 )
             path[stage] = candidate
             intervened.append(tuple(path))
@@ -514,7 +628,7 @@ class ExecutableOperatorPath1D(nn.Module):
     ) -> Dict[str, Any]:
         """Return per-sample export gap and an *uncalibrated* insufficiency score.
 
-        The raw score is a convex combination of normalized dense-selection
+        The raw score is a convex combination of normalized sparsemax-selection
         entropy and relative relaxed/discrete RMSE.  It is only a selector input;
         a risk/coverage threshold must be fitted on validation data, never here.
         """
@@ -531,16 +645,12 @@ class ExecutableOperatorPath1D(nn.Module):
             raise ValueError("Relaxed/discrete fidelity produced a non-finite discrepancy.")
 
         entropy_by_stage = []
-        removed_by_stage: Dict[int, set[str]] = {}
-        if trace.dictionary_intervention is not None:
-            for stage, operator in trace.dictionary_intervention.removed:
-                removed_by_stage.setdefault(stage, set()).add(operator)
-        for stage, (weights, edges) in enumerate(
-            zip(trace.stage_dense_weights, trace.candidate_edges)
-        ):
-            count = sum(
-                edge.operator not in removed_by_stage.get(stage, set()) for edge in edges
-            )
+        active_by_stage = tuple(
+            self._active_operator_set(stage, trace.dictionary_intervention)
+            for stage in range(self.num_stages)
+        )
+        for stage, weights in enumerate(trace.stage_weights):
+            count = len(active_by_stage[stage])
             if count == 1:
                 entropy_by_stage.append(torch.zeros_like(weights[:, 0]))
                 continue
@@ -549,19 +659,23 @@ class ExecutableOperatorPath1D(nn.Module):
                 torch.tensor(float(count), device=weights.device, dtype=weights.dtype)
             )
             entropy_by_stage.append(entropy)
-        selection_entropy = torch.stack(entropy_by_stage, dim=1).mean(dim=1)
-        if not bool(torch.isfinite(selection_entropy).all()):
+        normalized_sparsemax_selection_entropy = torch.stack(
+            entropy_by_stage, dim=1
+        ).mean(dim=1)
+        if not bool(torch.isfinite(normalized_sparsemax_selection_entropy).all()):
             raise ValueError("Selection entropy is non-finite.")
-        tolerance = 10 * torch.finfo(selection_entropy.dtype).eps
-        if bool((selection_entropy < -tolerance).any()) or bool(
-            (selection_entropy > 1.0 + tolerance).any()
+        tolerance = 10 * torch.finfo(normalized_sparsemax_selection_entropy.dtype).eps
+        if bool((normalized_sparsemax_selection_entropy < -tolerance).any()) or bool(
+            (normalized_sparsemax_selection_entropy > 1.0 + tolerance).any()
         ):
             raise ValueError("Normalized selection entropy is outside [0, 1].")
-        selection_entropy = selection_entropy.clamp(0.0, 1.0)
+        normalized_sparsemax_selection_entropy = (
+            normalized_sparsemax_selection_entropy.clamp(0.0, 1.0)
+        )
 
         total_weight = float(self.cfg.entropy_weight) + float(self.cfg.export_gap_weight)
         insufficiency_score = (
-            float(self.cfg.entropy_weight) * selection_entropy
+            float(self.cfg.entropy_weight) * normalized_sparsemax_selection_entropy
             + float(self.cfg.export_gap_weight) * relative_rmse
         ) / total_weight
         return {
@@ -569,11 +683,14 @@ class ExecutableOperatorPath1D(nn.Module):
             "discrete": discrete,
             "paths": paths,
             "relative_rmse": relative_rmse,
-            "selection_entropy": selection_entropy,
-            "active_candidate_counts": tuple(
-                sum(edge.operator not in removed_by_stage.get(stage, set()) for edge in edges)
-                for stage, edges in enumerate(trace.candidate_edges)
+            "normalized_sparsemax_selection_entropy": (
+                normalized_sparsemax_selection_entropy
             ),
+            "support_sizes": tuple(
+                (weights > float(self.cfg.support_tolerance)).sum(dim=1)
+                for weights in trace.stage_weights
+            ),
+            "active_candidate_counts": tuple(len(active) for active in active_by_stage),
             "dictionary_insufficiency_score": insufficiency_score,
             "dictionary_intervention": trace.dictionary_intervention,
             "base_dictionary_sha256": self.dictionary_sha256,
@@ -595,8 +712,10 @@ class ExecutableOperatorPath1D(nn.Module):
         unregistered algebraic rewrites.
         """
 
-        normalized = self._validate_path(path)
-        intervention = self._validate_dictionary_intervention(dictionary_intervention)
+        normalized, intervention = self._resolve_single_path_artifact(
+            path, dictionary_intervention
+        )
+        self._require_path_active(normalized, intervention)
         expressions = ["x"]
         for edge in normalized:
             source = expressions[edge.source]
@@ -605,6 +724,13 @@ class ExecutableOperatorPath1D(nn.Module):
                 expression = source
             else:
                 expression = f"{operator}({source})"
+            corruption = self._corruption_for(intervention, edge.stage, edge.operator)
+            if corruption is not None:
+                expression = (
+                    "CORRUPT["
+                    f"{corruption.mode},magnitude={_canonical_float(corruption.magnitude)},"
+                    f"seed={corruption.seed}]({expression})"
+                )
             expressions.append(expression)
         expression = expressions[-1]
         if equivalence_classes is not None:
@@ -616,22 +742,13 @@ class ExecutableOperatorPath1D(nn.Module):
         path: Sequence[OperatorEdge],
         dictionary_intervention: Optional[DictionaryIntervention] = None,
     ) -> str:
-        normalized = self._validate_path(path)
-        intervention = self._validate_dictionary_intervention(dictionary_intervention)
-        if intervention is not None:
-            removed = set(intervention.removed)
-            selected_removed = [
-                (edge.stage, edge.operator)
-                for edge in normalized
-                if (edge.stage, edge.operator) in removed
-            ]
-            if selected_removed:
-                raise ValueError(
-                    f"Cannot serialize a path containing removed slots: {selected_removed}."
-                )
+        normalized, intervention = self._resolve_single_path_artifact(
+            path, dictionary_intervention
+        )
+        self._require_path_active(normalized, intervention)
         return json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "base_dictionary_sha256": self.dictionary_sha256,
                 "effective_dictionary_sha256": self.effective_dictionary_sha256(intervention),
                 "dictionary_intervention": _dictionary_intervention_payload(intervention),
@@ -642,6 +759,9 @@ class ExecutableOperatorPath1D(nn.Module):
                         "registered_operator": edge.operator,
                         "executed_operator": self._effective_operator(
                             intervention, edge.stage, edge.operator
+                        ),
+                        "corruption": _corruption_payload(
+                            self._corruption_for(intervention, edge.stage, edge.operator)
                         ),
                     }
                     for edge in normalized
@@ -661,7 +781,7 @@ class ExecutableOperatorPath1D(nn.Module):
     ) -> tuple[OperatorPath, Optional[DictionaryIntervention]]:
         """Restore both selected registry slots and the effective dictionary."""
 
-        payload = json.loads(serialized)
+        payload = _strict_json_loads(serialized)
         if not isinstance(payload, dict):
             raise ValueError("Serialized executable path must be a JSON object.")
         required_payload_keys = {
@@ -674,7 +794,7 @@ class ExecutableOperatorPath1D(nn.Module):
         }
         if set(payload) != required_payload_keys:
             raise ValueError("Serialized executable path has an invalid key set.")
-        if payload.get("schema_version") != 1:
+        if payload.get("schema_version") != 2:
             raise ValueError("Unsupported exported-path schema version.")
         if payload.get("base_dictionary_sha256") != self.dictionary_sha256:
             raise ValueError("Exported path dictionary hash does not match this module.")
@@ -682,18 +802,26 @@ class ExecutableOperatorPath1D(nn.Module):
         if intervention_payload is None:
             intervention = None
         else:
-            if not isinstance(intervention_payload, dict) or set(intervention_payload) != {
+            intervention_keys = {
+                "added",
                 "removed",
                 "replacements",
-            }:
+                "corruptions",
+                "timing",
+                "retraining_policy",
+                "algorithm_id",
+                "algorithm_version",
+            }
+            if not isinstance(intervention_payload, dict) or set(intervention_payload) != intervention_keys:
                 raise ValueError("Serialized dictionary intervention has an invalid key set.")
-            if not isinstance(intervention_payload["removed"], list) or not isinstance(
-                intervention_payload["replacements"], list
+            if any(
+                not isinstance(intervention_payload[name], list)
+                for name in ("added", "removed", "replacements", "corruptions")
             ):
                 raise ValueError("Serialized dictionary intervention entries must be lists.")
-            for item in intervention_payload["removed"]:
+            for item in intervention_payload["added"] + intervention_payload["removed"]:
                 if not isinstance(item, dict) or set(item) != {"stage", "operator"}:
-                    raise ValueError("Serialized removal entry has an invalid key set.")
+                    raise ValueError("Serialized add/remove entry has an invalid key set.")
             for item in intervention_payload["replacements"]:
                 if not isinstance(item, dict) or set(item) != {
                     "stage",
@@ -701,8 +829,21 @@ class ExecutableOperatorPath1D(nn.Module):
                     "executed_operator",
                 }:
                     raise ValueError("Serialized replacement entry has an invalid key set.")
+            for item in intervention_payload["corruptions"]:
+                if not isinstance(item, dict) or set(item) != {
+                    "stage",
+                    "registered_operator",
+                    "mode",
+                    "magnitude",
+                    "seed",
+                }:
+                    raise ValueError("Serialized corruption entry has an invalid key set.")
             intervention = self._validate_dictionary_intervention(
                 DictionaryIntervention(
+                    added=tuple(
+                        (_require_json_int(item["stage"], "addition stage"), item["operator"])
+                        for item in intervention_payload["added"]
+                    ),
                     removed=tuple(
                         (_require_json_int(item["stage"], "removal stage"), item["operator"])
                         for item in intervention_payload["removed"]
@@ -715,6 +856,22 @@ class ExecutableOperatorPath1D(nn.Module):
                         )
                         for item in intervention_payload["replacements"]
                     ),
+                    corruptions=tuple(
+                        OperatorCorruption(
+                            stage=_require_json_int(item["stage"], "corruption stage"),
+                            registered_operator=item["registered_operator"],
+                            mode=item["mode"],
+                            magnitude=_require_json_float(
+                                item["magnitude"], "corruption magnitude"
+                            ),
+                            seed=_require_json_int(item["seed"], "corruption seed"),
+                        )
+                        for item in intervention_payload["corruptions"]
+                    ),
+                    timing=intervention_payload["timing"],
+                    retraining_policy=intervention_payload["retraining_policy"],
+                    algorithm_id=intervention_payload["algorithm_id"],
+                    algorithm_version=intervention_payload["algorithm_version"],
                 )
             )
         if payload.get("effective_dictionary_sha256") != self.effective_dictionary_sha256(
@@ -730,6 +887,7 @@ class ExecutableOperatorPath1D(nn.Module):
                 "source",
                 "registered_operator",
                 "executed_operator",
+                "corruption",
             }:
                 raise ValueError("Serialized executable edge has an invalid key set.")
         edges = tuple(
@@ -741,10 +899,16 @@ class ExecutableOperatorPath1D(nn.Module):
             for item in raw_edges
         )
         path = self._validate_path(edges)
+        self._require_path_active(path, intervention)
         for edge, item in zip(path, raw_edges):
             expected = self._effective_operator(intervention, edge.stage, edge.operator)
             if canonical_operator_name(item["executed_operator"]) != expected:
                 raise ValueError("Serialized executed operator does not match the intervention.")
+            expected_corruption = _corruption_payload(
+                self._corruption_for(intervention, edge.stage, edge.operator)
+            )
+            if item["corruption"] != expected_corruption:
+                raise ValueError("Serialized corruption does not match the intervention.")
         expected_expression = self.canonical_expression(
             path,
             dictionary_intervention=intervention,
@@ -786,27 +950,117 @@ class ExecutableOperatorPath1D(nn.Module):
             normalized.append(edge)
         return tuple(normalized)
 
+    def _resolve_single_path_artifact(
+        self,
+        path: Sequence[OperatorEdge],
+        dictionary_intervention: Optional[DictionaryIntervention],
+    ) -> tuple[OperatorPath, Optional[DictionaryIntervention]]:
+        requested = self._validate_dictionary_intervention(dictionary_intervention)
+        if not isinstance(path, ExecutablePathArtifact):
+            return self._validate_path(path), requested
+        bound = self._validate_dictionary_intervention(path.dictionary_intervention)
+        if path.base_dictionary_sha256 != self.dictionary_sha256:
+            raise ValueError("Exported path artifact base dictionary hash is invalid.")
+        if path.effective_dictionary_sha256 != self.effective_dictionary_sha256(bound):
+            raise ValueError("Exported path artifact effective dictionary hash is invalid.")
+        if requested is not None and requested != bound:
+            raise ValueError("Explicit dictionary intervention conflicts with exported artifact.")
+        normalized = self._validate_path(path.edges)
+        self._require_path_active(normalized, bound)
+        return normalized, bound
+
+    def _resolve_path_artifacts(
+        self,
+        paths: Sequence[Sequence[OperatorEdge]],
+        dictionary_intervention: Optional[DictionaryIntervention],
+    ) -> tuple[Tuple[OperatorPath, ...], Optional[DictionaryIntervention]]:
+        requested = self._validate_dictionary_intervention(dictionary_intervention)
+        artifact_flags = [isinstance(path, ExecutablePathArtifact) for path in paths]
+        if any(artifact_flags) and not all(artifact_flags):
+            raise ValueError("Cannot mix bound exported artifacts with raw paths.")
+        if not any(artifact_flags):
+            return tuple(self._validate_path(path) for path in paths), requested
+        resolved = [self._resolve_single_path_artifact(path, requested) for path in paths]
+        interventions = [item[1] for item in resolved]
+        if any(intervention != interventions[0] for intervention in interventions[1:]):
+            raise ValueError("Exported path artifacts do not share one effective dictionary.")
+        return tuple(item[0] for item in resolved), interventions[0]
+
     def _validate_dictionary_intervention(
         self, intervention: Optional[DictionaryIntervention]
     ) -> Optional[DictionaryIntervention]:
         if intervention is None:
             return None
+        if not isinstance(intervention, DictionaryIntervention):
+            raise TypeError("dictionary_intervention must be a DictionaryIntervention.")
+        if intervention.timing != "post_training":
+            raise ValueError("Dictionary intervention timing must be 'post_training'.")
+        if intervention.retraining_policy != "reuse_frozen_weights":
+            raise ValueError(
+                "Dictionary intervention retraining_policy must be 'reuse_frozen_weights'."
+            )
+        if intervention.algorithm_id != "p07-dictionary-counterfactual":
+            raise ValueError(
+                "Dictionary intervention algorithm_id must be "
+                "'p07-dictionary-counterfactual'."
+            )
+        if intervention.algorithm_version != "1.0.0":
+            raise ValueError("Dictionary intervention algorithm_version must be '1.0.0'.")
+
+        added = []
         removed = []
         replacements = []
+        corruptions = []
+        for raw_stage, raw_operator in intervention.added:
+            if isinstance(raw_stage, bool) or not isinstance(raw_stage, Integral):
+                raise ValueError("Dictionary intervention stages must be integers.")
+            stage = int(raw_stage)
+            operator = canonical_operator_name(raw_operator)
+            self._require_stage_index(stage)
+            if operator not in self.addable_stage_operators[stage]:
+                raise ValueError(
+                    f"Operator {operator} is not a preregistered dormant slot at stage {stage}."
+                )
+            added.append((stage, operator))
         for raw_stage, raw_operator in intervention.removed:
             if isinstance(raw_stage, bool) or not isinstance(raw_stage, Integral):
                 raise ValueError("Dictionary intervention stages must be integers.")
             stage = int(raw_stage)
             operator = canonical_operator_name(raw_operator)
-            self._require_stage_operator(stage, operator)
+            self._require_stage_index(stage)
+            if operator not in self.stage_operators[stage]:
+                raise ValueError(f"Operator {operator} is not active at stage {stage}.")
             removed.append((stage, operator))
+
+        if len(set(added)) != len(added) or len(set(removed)) != len(removed):
+            raise ValueError("Dictionary intervention contains duplicate add/remove entries.")
+        effective_active = [set(stage) for stage in self.stage_operators]
+        for stage, operator in added:
+            effective_active[stage].add(operator)
+        for stage, operator in removed:
+            effective_active[stage].remove(operator)
+        empty_stages = [stage for stage, active in enumerate(effective_active) if not active]
+        if empty_stages:
+            raise ValueError(
+                f"Dictionary intervention leaves stages without active candidates: {empty_stages}."
+            )
+
         for raw_stage, raw_registered, raw_executed in intervention.replacements:
             if isinstance(raw_stage, bool) or not isinstance(raw_stage, Integral):
                 raise ValueError("Dictionary intervention stages must be integers.")
             stage = int(raw_stage)
             registered = canonical_operator_name(raw_registered)
             executed = canonical_operator_name(raw_executed)
-            self._require_stage_operator(stage, registered)
+            self._require_candidate_operator(stage, registered)
+            if registered not in effective_active[stage]:
+                raise ValueError(
+                    f"Dictionary replacement targets inactive slot {registered} at stage {stage}."
+                )
+            if registered == executed:
+                raise ValueError(
+                    "No-op dictionary replacement is not a corruption; register an explicit "
+                    "sham control outside the intervention API."
+                )
             registered_spec = _SPEC_BY_NAME[registered]
             executed_spec = _SPEC_BY_NAME[executed]
             if (
@@ -817,8 +1071,43 @@ class ExecutableOperatorPath1D(nn.Module):
                     f"Dictionary replacement {registered}->{executed} changes its type signature."
                 )
             replacements.append((stage, registered, executed))
-        if len(set(removed)) != len(removed) or len(set(replacements)) != len(replacements):
-            raise ValueError("Dictionary intervention contains duplicate entries.")
+        for raw in intervention.corruptions:
+            if not isinstance(raw, OperatorCorruption):
+                raise TypeError("corruptions must contain OperatorCorruption entries.")
+            if isinstance(raw.stage, bool) or not isinstance(raw.stage, Integral):
+                raise ValueError("Dictionary intervention stages must be integers.")
+            stage = int(raw.stage)
+            registered = canonical_operator_name(raw.registered_operator)
+            self._require_candidate_operator(stage, registered)
+            if registered not in effective_active[stage]:
+                raise ValueError(
+                    f"Dictionary corruption targets inactive slot {registered} at stage {stage}."
+                )
+            if raw.mode != "additive_gaussian_absolute":
+                raise ValueError(
+                    "Dictionary corruption mode must be 'additive_gaussian_absolute'."
+                )
+            if isinstance(raw.magnitude, bool) or not isinstance(raw.magnitude, (int, float)):
+                raise ValueError("Dictionary corruption magnitude must be a positive finite number.")
+            magnitude = float(raw.magnitude)
+            if not math.isfinite(magnitude) or magnitude <= 0.0:
+                raise ValueError("Dictionary corruption magnitude must be a positive finite number.")
+            if isinstance(raw.seed, bool) or not isinstance(raw.seed, Integral):
+                raise ValueError("Dictionary corruption seed must be a non-negative integer.")
+            seed = int(raw.seed)
+            if seed < 0 or seed >= 2**63:
+                raise ValueError("Dictionary corruption seed must be in [0, 2**63).")
+            corruptions.append(
+                OperatorCorruption(
+                    stage=stage,
+                    registered_operator=registered,
+                    magnitude=magnitude,
+                    seed=seed,
+                    mode=raw.mode,
+                )
+            )
+        if len(set(replacements)) != len(replacements):
+            raise ValueError("Dictionary intervention contains duplicate replacement entries.")
         replaced_keys = [(stage, registered) for stage, registered, _ in replacements]
         if len(set(replaced_keys)) != len(replaced_keys):
             raise ValueError("Dictionary intervention replaces one registered slot more than once.")
@@ -828,18 +1117,118 @@ class ExecutableOperatorPath1D(nn.Module):
                 "Dictionary intervention cannot remove and replace the same registered slot: "
                 f"{sorted(overlap)}."
             )
-        if not removed and not replacements:
+        corrupted_keys = [
+            (corruption.stage, corruption.registered_operator)
+            for corruption in corruptions
+        ]
+        if len(set(corrupted_keys)) != len(corrupted_keys):
+            raise ValueError("Dictionary intervention corrupts one registered slot more than once.")
+        corruption_overlap = set(removed).intersection(corrupted_keys)
+        if corruption_overlap:
+            raise ValueError(
+                "Dictionary intervention cannot remove and corrupt the same registered slot: "
+                f"{sorted(corruption_overlap)}."
+            )
+        if not added and not removed and not replacements and not corruptions:
             return None
         return DictionaryIntervention(
-            tuple(sorted(removed)),
-            tuple(sorted(replacements)),
+            added=tuple(sorted(added)),
+            removed=tuple(sorted(removed)),
+            replacements=tuple(sorted(replacements)),
+            corruptions=tuple(
+                sorted(
+                    corruptions,
+                    key=lambda item: (
+                        item.stage,
+                        item.registered_operator,
+                        item.mode,
+                        item.magnitude,
+                        item.seed,
+                    ),
+                )
+            ),
+            timing=intervention.timing,
+            retraining_policy=intervention.retraining_policy,
+            algorithm_id=intervention.algorithm_id,
+            algorithm_version=intervention.algorithm_version,
         )
 
-    def _require_stage_operator(self, stage: int, operator: str) -> None:
+    def _require_stage_index(self, stage: int) -> None:
         if stage < 0 or stage >= self.num_stages:
             raise ValueError(f"Dictionary intervention stage {stage} is out of range.")
-        if operator not in self.stage_operators[stage]:
+
+    def _require_candidate_operator(self, stage: int, operator: str) -> None:
+        self._require_stage_index(stage)
+        if operator not in {edge.operator for edge in self.candidate_edges[stage]}:
             raise ValueError(f"Operator {operator} is not registered at stage {stage}.")
+
+    def _active_operator_set(
+        self,
+        stage: int,
+        intervention: Optional[DictionaryIntervention],
+    ) -> set[str]:
+        active = set(self.stage_operators[stage])
+        if intervention is None:
+            return active
+        active.update(operator for item_stage, operator in intervention.added if item_stage == stage)
+        active.difference_update(
+            operator for item_stage, operator in intervention.removed if item_stage == stage
+        )
+        return active
+
+    def _require_path_active(
+        self,
+        path: Sequence[OperatorEdge],
+        intervention: Optional[DictionaryIntervention],
+    ) -> None:
+        inactive = [
+            (edge.stage, edge.operator)
+            for edge in path
+            if edge.operator not in self._active_operator_set(edge.stage, intervention)
+        ]
+        if inactive:
+            raise ValueError(
+                "Cannot use a path containing an inactive or removed dictionary slot: "
+                f"{inactive}."
+            )
+
+    @staticmethod
+    def _corruption_for(
+        intervention: Optional[DictionaryIntervention],
+        stage: int,
+        registered: str,
+    ) -> Optional[OperatorCorruption]:
+        if intervention is None:
+            return None
+        for corruption in intervention.corruptions:
+            if corruption.stage == stage and corruption.registered_operator == registered:
+                return corruption
+        return None
+
+    def _execute_registered_operator(
+        self,
+        intervention: Optional[DictionaryIntervention],
+        stage: int,
+        registered: str,
+        x: torch.Tensor,
+        sample_keys: Optional[Sequence[str]] = None,
+    ) -> torch.Tensor:
+        output = _apply_operator(self._effective_operator(intervention, stage, registered), x)
+        corruption = self._corruption_for(intervention, stage, registered)
+        if corruption is not None:
+            output = _apply_corruption(output, corruption, sample_keys=sample_keys)
+        if output.shape != x.shape:
+            raise RuntimeError(
+                f"Operator slot {stage}:{registered} changed shape from "
+                f"{tuple(x.shape)} to {tuple(output.shape)}."
+            )
+        if output.dtype != x.dtype or output.device != x.device:
+            raise RuntimeError(
+                f"Operator slot {stage}:{registered} changed dtype or device."
+            )
+        if not bool(torch.isfinite(output).all()):
+            raise ValueError(f"Operator slot {stage}:{registered} produced non-finite values.")
+        return output
 
     @staticmethod
     def _effective_operator(
@@ -870,12 +1259,54 @@ def _require_json_int(value: Any, field: str) -> int:
     return value
 
 
+def _require_json_float(value: Any, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"Serialized {field} must be a finite number.")
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError(f"Serialized {field} must be a finite number.")
+    return result
+
+
+def _strict_json_loads(serialized: str) -> Any:
+    def reject_duplicate_keys(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Serialized JSON contains duplicate key {key!r}.")
+            result[key] = value
+        return result
+
+    try:
+        return json.loads(serialized, object_pairs_hook=reject_duplicate_keys)
+    except json.JSONDecodeError as error:
+        raise ValueError("Serialized executable path is not valid JSON.") from error
+
+
+def _corruption_payload(
+    corruption: Optional[OperatorCorruption],
+) -> Optional[Dict[str, Any]]:
+    if corruption is None:
+        return None
+    return {
+        "stage": corruption.stage,
+        "registered_operator": corruption.registered_operator,
+        "mode": corruption.mode,
+        "magnitude": corruption.magnitude,
+        "seed": corruption.seed,
+    }
+
+
 def _dictionary_intervention_payload(
     intervention: Optional[DictionaryIntervention],
 ) -> Optional[Dict[str, Any]]:
     if intervention is None:
         return None
     return {
+        "added": [
+            {"stage": stage, "operator": operator}
+            for stage, operator in intervention.added
+        ],
         "removed": [
             {"stage": stage, "operator": operator}
             for stage, operator in intervention.removed
@@ -888,6 +1319,13 @@ def _dictionary_intervention_payload(
             }
             for stage, registered, executed in intervention.replacements
         ],
+        "corruptions": [
+            _corruption_payload(corruption) for corruption in intervention.corruptions
+        ],
+        "timing": intervention.timing,
+        "retraining_policy": intervention.retraining_policy,
+        "algorithm_id": intervention.algorithm_id,
+        "algorithm_version": intervention.algorithm_version,
     }
 
 
@@ -909,6 +1347,33 @@ def _canonicalize_stage_operators(
     return tuple(normalized)
 
 
+def _canonicalize_addable_stage_operators(
+    stages: Sequence[Sequence[str]],
+    *,
+    expected_stages: int,
+) -> Tuple[Tuple[str, ...], ...]:
+    if isinstance(stages, str):
+        raise ValueError("addable_stage_operators must be a sequence of stage dictionaries.")
+    raw_stages = list(stages)
+    if len(raw_stages) != expected_stages:
+        raise ValueError(
+            "addable_stage_operators must have the same number of stages as stage_operators."
+        )
+    normalized = []
+    for stage, raw_operators in enumerate(raw_stages):
+        if isinstance(raw_operators, str):
+            raw_values = [part.strip() for part in raw_operators.split(",") if part.strip()]
+        else:
+            raw_values = list(raw_operators)
+        operators = tuple(canonical_operator_name(value) for value in raw_values)
+        if len(set(operators)) != len(operators):
+            raise ValueError(
+                f"Addable stage {stage} contains duplicate canonical operators: {operators}."
+            )
+        normalized.append(operators)
+    return tuple(normalized)
+
+
 def _validate_input(x: torch.Tensor, in_channels: int) -> None:
     if x.ndim != 3:
         raise ValueError(f"Expected x shape (B,L,C), got {tuple(x.shape)}.")
@@ -925,15 +1390,98 @@ def _validate_input(x: torch.Tensor, in_channels: int) -> None:
         raise ValueError("Operator-path input contains non-finite values.")
 
 
-def _sparsify(weights: torch.Tensor, top_k: int) -> torch.Tensor:
-    if top_k >= weights.shape[1]:
-        return weights
-    # Stable descending sort makes exact ties resolve to the earliest registry
-    # index instead of relying on backend-specific ``topk`` tie behavior.
-    indices = torch.argsort(weights, dim=1, descending=True, stable=True)[:, :top_k]
-    mask = torch.zeros_like(weights).scatter_(1, indices, 1.0)
-    sparse = weights * mask
-    return sparse / sparse.sum(dim=1, keepdim=True).clamp_min(torch.finfo(weights.dtype).eps)
+def _masked_sparsemax(logits: torch.Tensor, allowed: torch.Tensor) -> torch.Tensor:
+    """Continuous Euclidean projection onto the allowed probability simplex."""
+
+    if logits.ndim != 2:
+        raise ValueError(f"Sparsemax expects rank-2 logits, got {tuple(logits.shape)}.")
+    if allowed.ndim != 1 or int(allowed.shape[0]) != int(logits.shape[1]):
+        raise ValueError("Sparsemax allowed mask does not match the candidate dimension.")
+    if allowed.dtype != torch.bool or allowed.device != logits.device:
+        raise ValueError("Sparsemax allowed mask must be boolean and colocated with logits.")
+    if not bool(allowed.any()):
+        raise ValueError("Sparsemax requires at least one allowed candidate.")
+    if not bool(torch.isfinite(logits).all()):
+        raise ValueError("Sparsemax logits must be finite before dictionary masking.")
+
+    active_logits = logits[:, allowed]
+    active_logits = active_logits - active_logits.max(dim=1, keepdim=True).values
+    if not bool(torch.isfinite(active_logits).all()):
+        raise ValueError("Sparsemax logits exceed the supported numerical range.")
+    sorted_logits = torch.sort(active_logits, dim=1, descending=True, stable=True).values
+    cumulative = sorted_logits.cumsum(dim=1)
+    ranks = torch.arange(
+        1,
+        int(active_logits.shape[1]) + 1,
+        dtype=active_logits.dtype,
+        device=active_logits.device,
+    ).unsqueeze(0)
+    support = 1.0 + ranks * sorted_logits > cumulative
+    support_size = support.sum(dim=1, keepdim=True).clamp_min(1)
+    tau = (
+        cumulative.gather(1, support_size - 1) - 1.0
+    ) / support_size.to(active_logits.dtype)
+    active_weights = torch.clamp(active_logits - tau, min=0.0)
+    active_weights = active_weights / active_weights.sum(dim=1, keepdim=True).clamp_min(
+        torch.finfo(active_weights.dtype).eps
+    )
+    weights = torch.zeros_like(logits)
+    weights[:, allowed] = active_weights
+    return weights
+
+
+def _apply_corruption(
+    x: torch.Tensor,
+    corruption: OperatorCorruption,
+    *,
+    sample_keys: Optional[Sequence[str]] = None,
+) -> torch.Tensor:
+    if corruption.mode != "additive_gaussian_absolute":
+        raise AssertionError(f"Unsupported validated corruption mode {corruption.mode!r}.")
+    keys = _sample_content_sha256(x) if sample_keys is None else list(sample_keys)
+    if len(keys) != int(x.shape[0]):
+        raise ValueError("Corruption sample_keys must match the batch dimension.")
+    noise_samples = []
+    for sample_key in keys:
+        if not isinstance(sample_key, str) or len(sample_key) != 64:
+            raise ValueError("Corruption sample keys must be SHA-256 hex strings.")
+        seed_material = (
+            f"{corruption.seed}:{corruption.stage}:"
+            f"{corruption.registered_operator}:{sample_key}"
+        ).encode("utf-8")
+        derived_seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big") % (2**63)
+        generator = torch.Generator(device=x.device)
+        generator.manual_seed(derived_seed)
+        noise_samples.append(
+            torch.randn(
+                x[int(len(noise_samples))].shape,
+                dtype=x.dtype,
+                device=x.device,
+                generator=generator,
+            )
+        )
+    noise = torch.stack(noise_samples, dim=0)
+    return x + float(corruption.magnitude) * noise
+
+
+def _sample_content_sha256(x: torch.Tensor) -> Tuple[str, ...]:
+    keys = []
+    for sample in x.detach():
+        raw = bytes(sample.contiguous().view(torch.uint8).flatten().cpu().tolist())
+        keys.append(hashlib.sha256(raw).hexdigest())
+    return tuple(keys)
+
+
+def _canonical_float(value: float) -> str:
+    return format(float(value), ".17g")
+
+
+def _operator_implementation_sha256() -> str:
+    try:
+        content = Path(__file__).read_bytes()
+    except OSError as error:
+        raise RuntimeError("Cannot hash the operator implementation source file.") from error
+    return hashlib.sha256(content).hexdigest()
 
 
 def _apply_operator(name: str, x: torch.Tensor) -> torch.Tensor:

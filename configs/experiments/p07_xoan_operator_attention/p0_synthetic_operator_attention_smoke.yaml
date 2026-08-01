@@ -11,8 +11,8 @@
 # IMPORTANT implementation-mismatch (recorded as P0 blocker): the registered
 #   `OperatorAttention1D` (src/model_factory/X_model/UXFD/operator_attention/) is the
 #   *simplified* mean-pool + Linear/ReLU/Linear gate + softmax, operators {I, HT, FFT} only.
-#   It does NOT implement the manuscript's FP(Avg+Var) + top-k sparse attention (DSOA) over the
-#   full EKD (WF + HT + statistical FE). Until a real DSOA component is registered, this arm
+#   It does NOT implement the active FP(Avg+Var) + continuous sparsemax executable path over
+#   the typed dictionary. Until the standalone XOANOperatorPath arm is used, this legacy arm
 #   CANNOT upgrade CLAIM-SYN-* above artifact-present-unverified.
 # Dataset: Dummy_Data.h5 (repo-shipped) so the entrypoint runs with no external data.
 # Seeds: smoke single-seed (seed 0). Accepted runs must use [20, 42, 100, 7, 31].

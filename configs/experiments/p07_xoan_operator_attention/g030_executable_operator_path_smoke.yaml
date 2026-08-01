@@ -13,7 +13,7 @@ environment:
   seed: 0
   output_dir: "results/experiments/p07/g030_executable_operator_path_smoke"
   notes: >-
-    CPU-only method smoke for the typed sparse relaxed DAG, deterministic
+    CPU-only method smoke for the typed continuous-sparsemax DAG, deterministic
     per-sample export, and independent discrete executor. It cannot support
     C6-C9 because it uses dummy data, one seed, and no approved thresholds.
 
@@ -36,14 +36,20 @@ model:
   inference_mode: "discrete"
   operator_path:
     dictionary_id: "p07-real-series-operators"
-    dictionary_version: "1.0.0"
+    dictionary_version: "2.0.0"
     stage_operators:
       - ["I", "D1", "ABS", "SQUARE", "MA3", "HT"]
       - ["I", "D1", "ABS", "SQUARE", "MA3", "HT"]
       - ["I", "D1", "ABS", "SQUARE", "MA3", "HT"]
+    addable_stage_operators:
+      - ["MA5"]
+      - ["MA5"]
+      - ["MA5"]
     hidden_dim: 64
     temperature: 1.0
-    top_k: 2
+    relaxation: "sparsemax"
+    relaxation_version: "sparsemax-euclidean-projection-1"
+    support_tolerance: 1.0e-8
     execution_mode: "relaxed"
     tie_break_rule: "registry_order"
     input_kind: "blc_real_series"
