@@ -46,9 +46,7 @@ def test_command_router_preserves_legacy_experiment_form(
 
 
 @pytest.mark.parametrize("command", ("doctor", "demo", "preflight", "data"))
-def test_named_command_help_is_standard_argparse(
-    command: str,
-) -> None:
+def test_named_command_help_is_standard_argparse(command: str) -> None:
     with pytest.raises(SystemExit) as error:
         cli.main([command, "--help"])
     assert error.value.code == 0
@@ -126,11 +124,7 @@ def test_doctor_exercises_real_imports(
         "find_spec",
         lambda name: SimpleNamespace(name=name),
     )
-    monkeypatch.setattr(
-        doctor,
-        "check_writable_directory",
-        lambda path: Path(path),
-    )
+    monkeypatch.setattr(doctor, "check_writable_directory", lambda path: Path(path))
 
     checks = doctor.collect_checks()
     torch_check = next(check for check in checks if check.name == "import:torch")
@@ -140,9 +134,7 @@ def test_doctor_exercises_real_imports(
     assert "OSError: binary ABI mismatch" in torch_check.detail
 
 
-def test_doctor_failure_has_nonzero_exit(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_doctor_failure_has_nonzero_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         doctor,
         "collect_checks",
@@ -153,25 +145,36 @@ def test_doctor_failure_has_nonzero_exit(
     assert error.value.code == 1
 
 
-def test_doctor_success_returns_check_records(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_doctor_success_returns_check_records(monkeypatch: pytest.MonkeyPatch) -> None:
     expected = [doctor.DoctorCheck("python", True, "3.10")]
     monkeypatch.setattr(doctor, "collect_checks", lambda: expected)
     assert doctor.run([]) == expected
 
 
-def test_writable_probe_removes_only_its_new_empty_directory_tree(tmp_path: Path) -> None:
+def test_writable_probe_leaves_missing_target_absent(tmp_path: Path) -> None:
     target = tmp_path / "new" / "nested" / "output"
     assert check_writable_directory(target) == target.resolve()
+    assert not target.exists()
     assert not (tmp_path / "new").exists()
+    assert not list(tmp_path.glob(".phmfactory-dir-probe-*"))
 
 
-def test_writable_probe_preserves_concurrent_content(
+def test_writable_probe_preserves_existing_directory_content(tmp_path: Path) -> None:
+    target = tmp_path / "output"
+    target.mkdir()
+    marker = target / "owned-by-user.txt"
+    marker.write_text("preserve\n", encoding="utf-8")
+
+    assert check_writable_directory(target) == target.resolve()
+    assert marker.read_text(encoding="utf-8") == "preserve\n"
+    assert not list(target.glob(".phmfactory-write-probe-*"))
+
+
+def test_writable_probe_never_recursively_deletes_concurrent_content(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    target = tmp_path / "new" / "nested" / "output"
+    target = tmp_path / "new" / "output"
     original_write_text = Path.write_text
 
     def write_text(path: Path, *args, **kwargs):
@@ -187,6 +190,9 @@ def test_writable_probe_preserves_concurrent_content(
     monkeypatch.setattr(Path, "write_text", write_text)
 
     assert check_writable_directory(target) == target.resolve()
-    assert (target / "concurrent.txt").read_text(encoding="utf-8") == (
+    assert not target.exists()
+    probe_directories = list(tmp_path.glob(".phmfactory-dir-probe-*"))
+    assert len(probe_directories) == 1
+    assert (probe_directories[0] / "concurrent.txt").read_text(encoding="utf-8") == (
         "created by another owner\n"
     )
