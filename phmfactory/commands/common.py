@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-import shutil
 from uuid import uuid4
 
 from phmfactory.config import DEFAULT_CONFIG
@@ -56,30 +55,49 @@ def requested_config(args: argparse.Namespace) -> str:
 
 
 def check_writable_directory(path: str | Path) -> Path:
-    """Prove a directory is writable without leaving probe files or new trees."""
+    """Prove a directory is writable without deleting unowned filesystem content.
+
+    Only directories created successfully by this invocation are candidates for
+    cleanup. They are removed with ``rmdir`` from child to parent and cleanup stops as
+    soon as a directory is non-empty. Concurrent files or directories are therefore
+    preserved.
+    """
 
     target = Path(path).expanduser()
     if not target.is_absolute():
         target = Path.cwd() / target
     target = target.resolve()
 
-    ancestor = target
-    while not ancestor.exists() and ancestor != ancestor.parent:
-        ancestor = ancestor.parent
-    cleanup_root = ancestor
-    if ancestor != target:
-        relative = target.relative_to(ancestor)
-        cleanup_root = ancestor / relative.parts[0]
+    missing: list[Path] = []
+    cursor = target
+    while not cursor.exists():
+        missing.append(cursor)
+        if cursor == cursor.parent:
+            break
+        cursor = cursor.parent
 
-    target.mkdir(parents=True, exist_ok=True)
+    created: list[Path] = []
+    for directory in reversed(missing):
+        try:
+            directory.mkdir()
+        except FileExistsError:
+            # Another process created it after the initial observation. It is not ours.
+            continue
+        else:
+            created.append(directory)
+
+    if not target.is_dir():
+        raise NotADirectoryError(target)
+
     probe = target / f".phmfactory-write-probe-{uuid4().hex}"
     try:
         probe.write_text("ok\n", encoding="utf-8")
-        probe.unlink()
-    except OSError:
-        probe.unlink(missing_ok=True)
-        raise
     finally:
-        if cleanup_root != ancestor and cleanup_root.exists():
-            shutil.rmtree(cleanup_root)
+        probe.unlink(missing_ok=True)
+        for directory in reversed(created):
+            try:
+                directory.rmdir()
+            except OSError:
+                # Non-empty, concurrently claimed, or otherwise no longer safe to remove.
+                break
     return target
