@@ -51,6 +51,9 @@ def test_run_dispatches_resolved_canonical_module(
         observed["config_path"] = args.config_path
         observed["resolved_config_path"] = args.resolved_config_path
         observed["resolved_pipeline"] = args.resolved_pipeline
+        observed["compiled_run_spec"] = args.compiled_run_spec
+        observed["resolved_config_data"] = args.resolved_config_data
+        observed["run_spec_sha256"] = args.run_spec_sha256
         observed["notes"] = args.notes
         return "sentinel"
 
@@ -79,6 +82,12 @@ def test_run_dispatches_resolved_canonical_module(
     )
 
     assert cli.run(args) == "sentinel"
+    compiled = observed.pop("compiled_run_spec")
+    resolved_data = observed.pop("resolved_config_data")
+    run_spec_sha256 = observed.pop("run_spec_sha256")
+    assert compiled.pipeline == "Pipeline_04_Unified_Evaluation"
+    assert resolved_data == {"pipeline": "Pipeline_04_Unified_Evaluation"}
+    assert run_spec_sha256 == compiled.sha256
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
         "requested_config": "missing.yaml",
@@ -118,7 +127,6 @@ def test_run_passes_maintained_preset_path_to_runtime(
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
 
 
-
 def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -141,6 +149,7 @@ def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
     assert "trainer.device=cpu" in observed
     assert "trainer.gpus=1" in observed
     assert "trainer.gpus=0" not in observed
+
 
 @pytest.mark.parametrize(
     "command",
@@ -168,6 +177,7 @@ def test_root_main_is_only_a_dispatcher(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(cli, "main", lambda argv=None: calls.append(argv))
     runpy.run_path(str(REPOSITORY_ROOT / "main.py"), run_name="__main__")
     assert calls == [None]
+
 
 def test_run_dispatches_packaged_base_configs_outside_checkout(
     tmp_path: Path,
