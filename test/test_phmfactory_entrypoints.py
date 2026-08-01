@@ -105,9 +105,10 @@ def test_run_passes_maintained_preset_path_to_runtime(
 ) -> None:
     observed: dict[str, object] = {}
 
-    def pipeline(args: argparse.Namespace) -> None:
+    def pipeline(args: argparse.Namespace) -> bool:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
+        return True
 
     monkeypatch.setattr(
         cli.importlib,
@@ -121,7 +122,7 @@ def test_run_passes_maintained_preset_path_to_runtime(
         override=None,
     )
 
-    cli.run(args)
+    assert cli.run(args) is True
 
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
