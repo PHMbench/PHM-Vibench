@@ -16,6 +16,7 @@ from phmfactory.runtime import (
     ExecutionEnvelope,
     RunAttestation,
 )
+from phmfactory.runtime.evidence import register_pipeline_result_evidence
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -119,7 +120,7 @@ def _write_failed_attestation(
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Compile, attest, authorize, and execute one Pipeline."""
+    """Compile, attest, authorize, execute, and index one Pipeline."""
     requested_config = _resolve_config_path(args)
     resolved = resolve_config(requested_config, override_values=args.override)
     compiled = CompiledRunSpec.compile(resolved)
@@ -172,6 +173,13 @@ def run(args: argparse.Namespace) -> Any:
     try:
         result = envelope.execute(pipeline_module, args)
     except BaseException as error:
+        _write_failed_attestation(attestation, envelope, error)
+        raise
+
+    try:
+        register_pipeline_result_evidence(attestation, compiled, result)
+    except BaseException as error:
+        envelope.record_failure(error, stage="evidence_finalize")
         _write_failed_attestation(attestation, envelope, error)
         raise
 
