@@ -13,6 +13,7 @@ on:
       - "configs/**"
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
+      - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
@@ -35,6 +36,7 @@ on:
       - "configs/**"
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
+      - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
@@ -72,9 +74,11 @@ jobs:
         run: >-
           python -m py_compile
           phmfactory/*.py
+          phmfactory/commands/*.py
           phmfactory/runtime/*.py
           src/configs/config_utils.py
           main.py
+          test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
           test/test_pipeline_name_migration.py
@@ -87,6 +91,7 @@ jobs:
         run: >-
           python -m pytest -vv
           --junitxml=pytest-public-package.xml
+          test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
           test/test_pipeline_name_migration.py
@@ -122,6 +127,12 @@ jobs:
               "phmfactory/cli.py",
               "phmfactory/config.py",
               "phmfactory/pipelines.py",
+              "phmfactory/commands/__init__.py",
+              "phmfactory/commands/common.py",
+              "phmfactory/commands/data.py",
+              "phmfactory/commands/demo.py",
+              "phmfactory/commands/doctor.py",
+              "phmfactory/commands/preflight.py",
               "phmfactory/runtime/__init__.py",
               "phmfactory/runtime/spec.py",
               "phmfactory/runtime/execution.py",
@@ -150,9 +161,13 @@ jobs:
           python -m venv /tmp/phmfactory-wheel
           /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
           /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
-          /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
+          /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.commands, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
           /tmp/phmfactory-wheel/bin/phmfactory --help
           /tmp/phmfactory-wheel/bin/python -m phmfactory --help
+          /tmp/phmfactory-wheel/bin/phmfactory preflight \
+            --config smoke \
+            --override environment.output_dir=/tmp/phmfactory-preflight-output
+          test ! -e /tmp/phmfactory-preflight-output
           cd /tmp
           /tmp/phmfactory-wheel/bin/python - <<'PY'
           import json
