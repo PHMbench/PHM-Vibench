@@ -1,4 +1,4 @@
-# Cross-system few-shot demo: TSPN-style (v0.1.0 draft)
+# Cross-system generalized few-shot demo using the maintained DLinear/HSE model
 
 pipeline: "Pipeline_01_Fault_Diagnosis"
 
@@ -10,10 +10,10 @@ base_configs:
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 
 environment:
-  project: "demo_cross_system_fewshot_tspn"
+  project: "demo_cross_system_fewshot_dlinear"
   seed: 0
-  output_dir: "results/demo/cross_system_fewshot_tspn"
-  notes: "Cross-system few-shot TSPN demo."
+  output_dir: "results/demo/cross_system_fewshot_dlinear"
+  notes: "Cross-system generalized few-shot demo with the maintained DLinear/HSE model."
 
 data: {}
 

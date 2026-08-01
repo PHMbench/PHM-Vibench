@@ -1,18 +1,32 @@
-# Demo: Cross-system Few-shot (`demo_04_cross_system_fewshot`)
+# Demo: Cross-system Generalized Few-shot (`demo_04_cross_system_fewshot`)
 
 ## Purpose
 
-Cross-system few-shot-style demo (task is still `FS` in v0.1.0).
+Exercise the maintained `GFS/classification` path across two systems with the standard
+`ISFM/M_01_ISFM` model, `E_01_HSE` embedding, and `B_04_Dlinear` backbone. The filename
+and documentation intentionally name the resolved model rather than implying TSPN.
 
 ## Minimal Run
 
 ```bash
-python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml \
-  --override trainer.num_epochs=1 --override data.num_workers=0
+python main.py --config configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
+
+## Resolved Contract
+
+```text
+Pipeline: Pipeline_01_Fault_Diagnosis
+Task:     GFS/classification
+Model:    ISFM/M_01_ISFM
+Embedding:E_01_HSE
+Backbone: B_04_Dlinear
+Trainer:  Default_trainer
 ```
 
 ## Common Pitfalls
 
-1) Expecting full GFS semantics while the task type is `FS`.
-2) Using `task.target_system_id` values not present in metadata.
-
+1. Treating the filename or directory as evidence for a different model family.
+2. Using `task.target_system_id` values absent from the supplied metadata.
+3. Treating one-epoch `sanity_ok` smoke evidence as a benchmark result.
