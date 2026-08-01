@@ -54,13 +54,33 @@ def requested_config(args: argparse.Namespace) -> str:
     return DEFAULT_CONFIG
 
 
-def check_writable_directory(path: str | Path) -> Path:
-    """Prove a directory is writable without deleting unowned filesystem content.
+def _probe_existing_directory(directory: Path) -> None:
+    """Create and remove one owned file inside an existing directory."""
 
-    Only directories created successfully by this invocation are candidates for
-    cleanup. They are removed with ``rmdir`` from child to parent and cleanup stops as
-    soon as a directory is non-empty. Concurrent files or directories are therefore
-    preserved.
+    probe = directory / f".phmfactory-write-probe-{uuid4().hex}"
+    try:
+        probe.write_text("ok\n", encoding="utf-8")
+    finally:
+        probe.unlink(missing_ok=True)
+
+
+def _nearest_existing_ancestor(path: Path) -> Path:
+    ancestor = path
+    while not ancestor.exists() and ancestor != ancestor.parent:
+        ancestor = ancestor.parent
+    if not ancestor.is_dir():
+        raise NotADirectoryError(ancestor)
+    return ancestor
+
+
+def check_writable_directory(path: str | Path) -> Path:
+    """Prove output writability without creating the configured target path.
+
+    Existing targets are probed with one owned temporary file. For a missing target,
+    PHMFactory creates a unique sibling probe directory below the nearest existing
+    ancestor, writes one file there, and removes only those owned objects. This proves
+    that the missing path could be created while avoiding destructive cleanup and
+    leaving the configured target absent.
     """
 
     target = Path(path).expanduser()
@@ -68,36 +88,21 @@ def check_writable_directory(path: str | Path) -> Path:
         target = Path.cwd() / target
     target = target.resolve()
 
-    missing: list[Path] = []
-    cursor = target
-    while not cursor.exists():
-        missing.append(cursor)
-        if cursor == cursor.parent:
-            break
-        cursor = cursor.parent
+    if target.exists():
+        if not target.is_dir():
+            raise NotADirectoryError(target)
+        _probe_existing_directory(target)
+        return target
 
-    created: list[Path] = []
-    for directory in reversed(missing):
-        try:
-            directory.mkdir()
-        except FileExistsError:
-            # Another process created it after the initial observation. It is not ours.
-            continue
-        else:
-            created.append(directory)
-
-    if not target.is_dir():
-        raise NotADirectoryError(target)
-
-    probe = target / f".phmfactory-write-probe-{uuid4().hex}"
+    ancestor = _nearest_existing_ancestor(target.parent)
+    probe_directory = ancestor / f".phmfactory-dir-probe-{uuid4().hex}"
+    probe_directory.mkdir()
     try:
-        probe.write_text("ok\n", encoding="utf-8")
+        _probe_existing_directory(probe_directory)
     finally:
-        probe.unlink(missing_ok=True)
-        for directory in reversed(created):
-            try:
-                directory.rmdir()
-            except OSError:
-                # Non-empty, concurrently claimed, or otherwise no longer safe to remove.
-                break
+        try:
+            probe_directory.rmdir()
+        except OSError:
+            # Never recursively delete content that may have appeared concurrently.
+            pass
     return target
