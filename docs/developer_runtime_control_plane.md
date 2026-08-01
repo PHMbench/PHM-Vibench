@@ -84,6 +84,26 @@ Direct imports of the old Pipeline functions retain an explicit compatibility fa
 to the legacy config loader. The maintained public CLI path always uses the compiled
 contract and therefore applies base configs and CLI overrides exactly once.
 
+## Pipeline 02 mode selection
+
+Pipeline 02 has exactly three recognizable inputs and never changes mode after an error:
+
+```text
+compiled config without stages -> shared single-stage classification runtime
+compiled config with stages    -> one unified multi-stage orchestrator
+explicit legacy_dual_yaml       -> isolated dual-YAML adapter + one orchestrator
+```
+
+The maintained public demo currently has no `stages` list and therefore uses the same
+classification lifecycle as Pipeline 01/05. A non-empty `stages` list selects the
+orchestrator before execution. Orchestrator errors are propagated; they do not activate a
+manual pretrain/few-shot implementation or another algorithm.
+
+The historical `fs_config_path` input is rejected unless direct legacy callers also set
+`pipeline_mode=legacy_dual_yaml`. The public CLI does not expose this mode. Manual
+`run_stage`, `run_pretraining_stage`, `run_fewshot_stage`, and duplicate single-stage
+functions are no longer maintained entrypoints.
+
 The following invariants govern later refactors:
 
 1. the public config is compiled exactly once;
@@ -94,4 +114,5 @@ The following invariants govern later refactors:
    results, and execution failures raise rather than printing success;
 6. data and logging resources are closed through a shared `finally` boundary;
 7. every compiled invocation creates one mandatory minimal attestation;
-8. Pipeline-specific evidence extends the invocation manifest instead of redefining it.
+8. Pipeline-specific evidence extends the invocation manifest instead of redefining it;
+9. an exception never changes the selected execution mode or activates a fallback.
