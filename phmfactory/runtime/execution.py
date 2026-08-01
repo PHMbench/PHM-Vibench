@@ -38,12 +38,18 @@ class ExecutionEnvelope:
     status: ExecutionStatus = ExecutionStatus.PENDING
     started_at: str | None = None
     finished_at: str | None = None
+    failure_stage: str | None = None
     error_type: str | None = None
     error_message: str | None = None
 
-    def _fail(self, error: BaseException) -> None:
+    def record_failure(self, error: BaseException, *, stage: str) -> None:
+        """Record one terminal failure while retaining the original exception."""
+
+        if self.status is ExecutionStatus.FAILED:
+            return
         self.status = ExecutionStatus.FAILED
         self.finished_at = _utc_now()
+        self.failure_stage = stage
         self.error_type = type(error).__name__
         self.error_message = str(error)
 
@@ -60,7 +66,7 @@ class ExecutionEnvelope:
             error = PipelineContractError(
                 f"Pipeline module {self.pipeline_module!r} has no callable pipeline(args)"
             )
-            self._fail(error)
+            self.record_failure(error, stage="contract")
             raise error
 
         self.status = ExecutionStatus.RUNNING
@@ -73,7 +79,7 @@ class ExecutionEnvelope:
                     "successful Pipelines must return an explicit result"
                 )
         except BaseException as error:
-            self._fail(error)
+            self.record_failure(error, stage="pipeline")
             raise
 
         self.status = ExecutionStatus.SUCCEEDED
@@ -81,7 +87,7 @@ class ExecutionEnvelope:
         return result
 
     def as_dict(self) -> dict[str, Any]:
-        """Return the minimal state needed by the later run-attestation writer."""
+        """Return the minimal state consumed by the run-attestation writer."""
 
         return {
             "schema_version": self.schema_version,
@@ -91,6 +97,7 @@ class ExecutionEnvelope:
             "status": self.status.value,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
+            "failure_stage": self.failure_stage,
             "error_type": self.error_type,
             "error_message": self.error_message,
         }
