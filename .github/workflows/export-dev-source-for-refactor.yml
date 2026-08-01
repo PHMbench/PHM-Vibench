@@ -22,9 +22,9 @@ jobs:
         run: |
           set -euo pipefail
           git rev-parse HEAD > SOURCE_HEAD.txt
-          tar --exclude=.git --exclude='*.pyc' --exclude='__pycache__' -czf phmfactory-source.tar.gz .
+          tar --exclude=.git --exclude='*.pyc' --exclude='__pycache__' -czf "$RUNNER_TEMP/phmfactory-source.tar.gz" .
       - uses: actions/upload-artifact@v4
         with:
           name: phmfactory-source-for-refactor
-          path: phmfactory-source.tar.gz
+          path: ${{ runner.temp }}/phmfactory-source.tar.gz
           if-no-files-found: error
