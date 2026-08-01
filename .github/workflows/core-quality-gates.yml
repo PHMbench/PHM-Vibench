@@ -202,7 +202,7 @@ jobs:
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
 
-      - name: Run shared classification contract tests
+      - name: Run shared runtime and Pipeline 02 contract tests
         shell: bash
         run: |
           set -o pipefail
@@ -210,10 +210,14 @@ jobs:
             src/runtime/classification.py \
             src/runtime/explainability.py \
             src/Pipeline_01_Fault_Diagnosis.py \
+            src/Pipeline_02_Pretraining_Few_Shot.py \
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
-            test/test_classification_runtime.py
-          python -m pytest test/test_classification_runtime.py -vv --tb=long \
-            2>&1 | tee classification-runtime-pytest.log
+            test/test_classification_runtime.py \
+            test/test_pipeline02_runtime.py
+          python -m pytest \
+            test/test_classification_runtime.py \
+            test/test_pipeline02_runtime.py \
+            -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
       - name: Run repository-shipped dummy smoke
         shell: bash
@@ -231,7 +235,7 @@ jobs:
         with:
           name: offline-smoke-diagnostics
           path: |
-            classification-runtime-pytest.log
+            runtime-contracts-pytest.log
             offline-smoke.log
             offline-smoke-environment.txt
           if-no-files-found: warn
