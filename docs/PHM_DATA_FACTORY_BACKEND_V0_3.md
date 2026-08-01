@@ -26,6 +26,32 @@ The deny-by-default candidate record remains in:
 
 This preserves the future integration contract without advertising an unavailable backend as part of v0.3.0.
 
+## v0.3.1 integration authority
+
+The v0.3.0 deferral remains a historical release fact. The bounded v0.3.1
+integration is now authorized against one public, immutable provider release:
+
+```text
+integration status: implementation_in_review
+provider repository: https://github.com/PHMbench/phm-data-factory.git
+provider release: v0.2.0
+provider commit: 16180b5fd9ca31d79fe65efd29b11439c1e54186
+provider package: phm-data-factory 0.2.0
+provider API schema: 1.0.0
+provider capability schema: 1.0.0
+license: Apache-2.0
+```
+
+The provider repository is organization-owned and public, its `v0.2.0` tag
+peels to the reviewed merge commit above, and its release publishes a wheel,
+source archive, and checksums. This satisfies the ownership, licensing, and
+immutable-source entry gates; the remaining gates belong to the bounded
+PHMFactory adapter PR and its validation.
+
+This authority does not make the backend part of the default installation and
+does not authorize claims about real-dataset accuracy, throughput, live IoTDB
+operation inside PHMFactory, or additional signal modalities.
+
 ## Why deferral is the correct v0.3 boundary
 
 The reviewed backend source tree exists at:
