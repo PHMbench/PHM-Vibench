@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from phmfactory.config import DEFAULT_CONFIG, resolve_config
-from phmfactory.pipelines import pipeline_module_name
+from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import (
     AttestationWriteError,
     CompiledRunSpec,
@@ -46,6 +46,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--override",
         action="append",
         help="Configuration override in key=value form; may be repeated.",
+    )
+    parser.add_argument(
+        "--allow-experimental",
+        action="store_true",
+        help=(
+            "Explicitly authorize a Pipeline whose maturity descriptor requires "
+            "experimental opt-in."
+        ),
     )
     return parser
 
@@ -111,7 +119,7 @@ def _write_failed_attestation(
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Compile, attest, and execute one Pipeline through the public boundary."""
+    """Compile, attest, authorize, and execute one Pipeline."""
     requested_config = _resolve_config_path(args)
     resolved = resolve_config(requested_config, override_values=args.override)
     compiled = CompiledRunSpec.compile(resolved)
@@ -139,6 +147,20 @@ def run(args: argparse.Namespace) -> Any:
     args.run_attestation = attestation
     args.run_id = attestation.run_id
     args.run_manifest_path = str(attestation.manifest_path)
+
+    try:
+        descriptor = require_pipeline_access(
+            resolved.pipeline,
+            allow_experimental=bool(
+                getattr(args, "allow_experimental", False)
+            ),
+            warn=False,
+        )
+    except BaseException as error:
+        envelope.record_failure(error, stage="maturity")
+        _write_failed_attestation(attestation, envelope, error)
+        raise
+    args.pipeline_descriptor = descriptor
 
     try:
         pipeline_module = importlib.import_module(module_name)
