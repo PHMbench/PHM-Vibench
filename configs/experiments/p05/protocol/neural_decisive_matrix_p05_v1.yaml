@@ -1,0 +1,494 @@
+schema_version: 1
+kind: p05_frozen_neural_decisive_execution_matrix
+paper_id: P05
+protocol_id: P05-G040-v3.2
+matrix_id: P05-NEURAL-DECISIVE-v1
+status: frozen_declarative_awaiting_gpu_uuid_and_tuning_selection_binding
+
+pilot_common_contract:
+  path: configs/experiments/p05/protocol/pilot_matrix_p05_v1.yaml
+  sha256: 2920bf24053579c0fbe192f780c07f0c2d59401be84a5b5c8c4bae6a3b3fb138
+  selector: common_config
+  reused_sections: [common_config, datasets.CWRU.config, datasets.XJTU.config]
+  hash_mismatch: hard_error
+
+stage_contract:
+  phase: decisive
+  factors:
+    arms: [P05-M, P05-B0, P05-B1, P05-B3]
+    datasets: [CWRU, XJTU]
+    seeds: [42, 123, 456, 789, 1024]
+  job_count: 40
+  environment_stage: fit_validate_test
+  maximum_epochs: 100
+  early_stopping: true
+  patience: 15
+  optimizer: adam
+  weight_decay: 0.0001
+  scheduler: null
+  checkpoint_selection: minimum_validation_loss
+  test_evaluation: exactly_once_per_frozen_checkpoint
+  learning_rate:
+    source: bound_hash_verified_tuning_selection_manifest_only
+    allowed_values: [0.001, 0.0003]
+    matrix_job_field: forbidden
+  tuning_selection_manifest:
+    schema_name: p05.tuning_selection
+    schema_version: 1
+    path_binding: required
+    sha256_binding: required
+    selection_index_key_format: DATASET/ARM
+    required_selection_count: 8
+  trace_export:
+    P05-M: true
+    P05-B0: false
+    P05-B1: false
+    P05-B3: false
+
+runtime:
+  conda_environment: LQ_signal
+  command_prefix: [conda, run, -n, LQ_signal, python]
+  materializer: scripts/materialize_p05_neural_job.py
+  allowed_physical_gpu_indices: [0, 1]
+  forbidden_physical_gpu_indices: [2]
+  maximum_concurrent_processes_per_gpu: 1
+  one_gpu_per_process: true
+  distributed_execution: forbidden
+  gpu_uuid_binding: required_at_materialization
+  network_use: forbidden
+  automatic_download: forbidden
+  output_collision: atomic_create_only_hard_error
+
+outputs:
+  materialization_status: created-not-executed
+  execution_status: not_started
+  evidence_status: unadjudicated
+  claim_support_before_ledger_and_audit: forbidden
+
+arms:
+  P05-M:
+    role: proposed_fuzzy_head
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: true}
+          neural_residual: {enable: false}
+          anfis: {enable: false}
+      task: {p05_arm_id: P05-M, p05_trace_export: true}
+  P05-B0:
+    role: same_backbone_no_fuzzy_head
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: false}
+          neural_residual: {enable: false}
+          anfis: {enable: false}
+      task: {p05_arm_id: P05-B0, p05_trace_export: false}
+  P05-B1:
+    role: parameter_matched_neural_residual
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: false}
+          neural_residual: {enable: true}
+          anfis: {enable: false}
+      task: {p05_arm_id: P05-B1, p05_trace_export: false}
+    dataset_config:
+      CWRU:
+        model:
+          uxfd:
+            neural_residual: {hidden_dim: 26}
+      XJTU:
+        model:
+          uxfd:
+            neural_residual: {hidden_dim: 29}
+  P05-B3:
+    role: anfis_complete_logits_head
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: false}
+          neural_residual: {enable: false}
+          anfis:
+            enable: true
+            num_features: 8
+            num_membership_functions: 3
+            num_rules: 10
+            antecedent_temperature: 1.0
+            min_width: 0.0001
+            firing_epsilon: 1.0e-12
+      task: {p05_arm_id: P05-B3, p05_trace_export: false}
+
+datasets:
+  CWRU:
+    pilot_dataset_key: CWRU
+    dataset_id: 1
+    num_classes: 4
+  XJTU:
+    pilot_dataset_key: XJTU
+    dataset_id: 2
+    num_classes: 2
+
+jobs:
+  - id: P05-DEC-M-CWRU-S42
+    arm: P05-M
+    dataset: CWRU
+    seed: 42
+    tuning_selection_key: CWRU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-CWRU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-CWRU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-CWRU-S123
+    arm: P05-M
+    dataset: CWRU
+    seed: 123
+    tuning_selection_key: CWRU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-CWRU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-CWRU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-CWRU-S456
+    arm: P05-M
+    dataset: CWRU
+    seed: 456
+    tuning_selection_key: CWRU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-CWRU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-CWRU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-CWRU-S789
+    arm: P05-M
+    dataset: CWRU
+    seed: 789
+    tuning_selection_key: CWRU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-CWRU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-CWRU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-CWRU-S1024
+    arm: P05-M
+    dataset: CWRU
+    seed: 1024
+    tuning_selection_key: CWRU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-CWRU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-CWRU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-XJTU-S42
+    arm: P05-M
+    dataset: XJTU
+    seed: 42
+    tuning_selection_key: XJTU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-XJTU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-XJTU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-XJTU-S123
+    arm: P05-M
+    dataset: XJTU
+    seed: 123
+    tuning_selection_key: XJTU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-XJTU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-XJTU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-XJTU-S456
+    arm: P05-M
+    dataset: XJTU
+    seed: 456
+    tuning_selection_key: XJTU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-XJTU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-XJTU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-XJTU-S789
+    arm: P05-M
+    dataset: XJTU
+    seed: 789
+    tuning_selection_key: XJTU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-XJTU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-XJTU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-M-XJTU-S1024
+    arm: P05-M
+    dataset: XJTU
+    seed: 1024
+    tuning_selection_key: XJTU/P05-M
+    output_dir: results/experiments/p05/decisive/P05-DEC-M-XJTU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-M-XJTU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-CWRU-S42
+    arm: P05-B0
+    dataset: CWRU
+    seed: 42
+    tuning_selection_key: CWRU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-CWRU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-CWRU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-CWRU-S123
+    arm: P05-B0
+    dataset: CWRU
+    seed: 123
+    tuning_selection_key: CWRU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-CWRU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-CWRU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-CWRU-S456
+    arm: P05-B0
+    dataset: CWRU
+    seed: 456
+    tuning_selection_key: CWRU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-CWRU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-CWRU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-CWRU-S789
+    arm: P05-B0
+    dataset: CWRU
+    seed: 789
+    tuning_selection_key: CWRU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-CWRU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-CWRU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-CWRU-S1024
+    arm: P05-B0
+    dataset: CWRU
+    seed: 1024
+    tuning_selection_key: CWRU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-CWRU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-CWRU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-XJTU-S42
+    arm: P05-B0
+    dataset: XJTU
+    seed: 42
+    tuning_selection_key: XJTU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-XJTU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-XJTU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-XJTU-S123
+    arm: P05-B0
+    dataset: XJTU
+    seed: 123
+    tuning_selection_key: XJTU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-XJTU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-XJTU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-XJTU-S456
+    arm: P05-B0
+    dataset: XJTU
+    seed: 456
+    tuning_selection_key: XJTU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-XJTU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-XJTU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-XJTU-S789
+    arm: P05-B0
+    dataset: XJTU
+    seed: 789
+    tuning_selection_key: XJTU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-XJTU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-XJTU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B0-XJTU-S1024
+    arm: P05-B0
+    dataset: XJTU
+    seed: 1024
+    tuning_selection_key: XJTU/P05-B0
+    output_dir: results/experiments/p05/decisive/P05-DEC-B0-XJTU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B0-XJTU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-CWRU-S42
+    arm: P05-B1
+    dataset: CWRU
+    seed: 42
+    tuning_selection_key: CWRU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-CWRU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-CWRU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-CWRU-S123
+    arm: P05-B1
+    dataset: CWRU
+    seed: 123
+    tuning_selection_key: CWRU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-CWRU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-CWRU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-CWRU-S456
+    arm: P05-B1
+    dataset: CWRU
+    seed: 456
+    tuning_selection_key: CWRU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-CWRU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-CWRU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-CWRU-S789
+    arm: P05-B1
+    dataset: CWRU
+    seed: 789
+    tuning_selection_key: CWRU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-CWRU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-CWRU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-CWRU-S1024
+    arm: P05-B1
+    dataset: CWRU
+    seed: 1024
+    tuning_selection_key: CWRU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-CWRU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-CWRU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-XJTU-S42
+    arm: P05-B1
+    dataset: XJTU
+    seed: 42
+    tuning_selection_key: XJTU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-XJTU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-XJTU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-XJTU-S123
+    arm: P05-B1
+    dataset: XJTU
+    seed: 123
+    tuning_selection_key: XJTU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-XJTU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-XJTU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-XJTU-S456
+    arm: P05-B1
+    dataset: XJTU
+    seed: 456
+    tuning_selection_key: XJTU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-XJTU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-XJTU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-XJTU-S789
+    arm: P05-B1
+    dataset: XJTU
+    seed: 789
+    tuning_selection_key: XJTU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-XJTU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-XJTU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B1-XJTU-S1024
+    arm: P05-B1
+    dataset: XJTU
+    seed: 1024
+    tuning_selection_key: XJTU/P05-B1
+    output_dir: results/experiments/p05/decisive/P05-DEC-B1-XJTU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B1-XJTU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-CWRU-S42
+    arm: P05-B3
+    dataset: CWRU
+    seed: 42
+    tuning_selection_key: CWRU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-CWRU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-CWRU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-CWRU-S123
+    arm: P05-B3
+    dataset: CWRU
+    seed: 123
+    tuning_selection_key: CWRU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-CWRU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-CWRU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-CWRU-S456
+    arm: P05-B3
+    dataset: CWRU
+    seed: 456
+    tuning_selection_key: CWRU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-CWRU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-CWRU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-CWRU-S789
+    arm: P05-B3
+    dataset: CWRU
+    seed: 789
+    tuning_selection_key: CWRU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-CWRU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-CWRU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-CWRU-S1024
+    arm: P05-B3
+    dataset: CWRU
+    seed: 1024
+    tuning_selection_key: CWRU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-CWRU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-CWRU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-XJTU-S42
+    arm: P05-B3
+    dataset: XJTU
+    seed: 42
+    tuning_selection_key: XJTU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-XJTU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-XJTU-S42 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-XJTU-S123
+    arm: P05-B3
+    dataset: XJTU
+    seed: 123
+    tuning_selection_key: XJTU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-XJTU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-XJTU-S123 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-XJTU-S456
+    arm: P05-B3
+    dataset: XJTU
+    seed: 456
+    tuning_selection_key: XJTU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-XJTU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-XJTU-S456 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-XJTU-S789
+    arm: P05-B3
+    dataset: XJTU
+    seed: 789
+    tuning_selection_key: XJTU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-XJTU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-XJTU-S789 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-DEC-B3-XJTU-S1024
+    arm: P05-B3
+    dataset: XJTU
+    seed: 1024
+    tuning_selection_key: XJTU/P05-B3
+    output_dir: results/experiments/p05/decisive/P05-DEC-B3-XJTU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage decisive --job-id P05-DEC-B3-XJTU-S1024 --gpu-uuid GPU_UUID_AT_LAUNCH --tuning-selection-manifest TUNING_SELECTION_MANIFEST_PATH --tuning-selection-sha256 TUNING_SELECTION_MANIFEST_SHA256 --output-package CREATE_ONLY_PACKAGE_PATH
+
+execution_waves:
+  - wave: 1
+    concurrent_jobs:
+      - {job_id: P05-DEC-M-CWRU-S42, physical_gpu_index: 0}
+      - {job_id: P05-DEC-M-CWRU-S123, physical_gpu_index: 1}
+  - wave: 2
+    concurrent_jobs:
+      - {job_id: P05-DEC-M-CWRU-S456, physical_gpu_index: 0}
+      - {job_id: P05-DEC-M-CWRU-S789, physical_gpu_index: 1}
+  - wave: 3
+    concurrent_jobs:
+      - {job_id: P05-DEC-M-CWRU-S1024, physical_gpu_index: 0}
+      - {job_id: P05-DEC-M-XJTU-S42, physical_gpu_index: 1}
+  - wave: 4
+    concurrent_jobs:
+      - {job_id: P05-DEC-M-XJTU-S123, physical_gpu_index: 0}
+      - {job_id: P05-DEC-M-XJTU-S456, physical_gpu_index: 1}
+  - wave: 5
+    concurrent_jobs:
+      - {job_id: P05-DEC-M-XJTU-S789, physical_gpu_index: 0}
+      - {job_id: P05-DEC-M-XJTU-S1024, physical_gpu_index: 1}
+  - wave: 6
+    concurrent_jobs:
+      - {job_id: P05-DEC-B0-CWRU-S42, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B0-CWRU-S123, physical_gpu_index: 1}
+  - wave: 7
+    concurrent_jobs:
+      - {job_id: P05-DEC-B0-CWRU-S456, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B0-CWRU-S789, physical_gpu_index: 1}
+  - wave: 8
+    concurrent_jobs:
+      - {job_id: P05-DEC-B0-CWRU-S1024, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B0-XJTU-S42, physical_gpu_index: 1}
+  - wave: 9
+    concurrent_jobs:
+      - {job_id: P05-DEC-B0-XJTU-S123, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B0-XJTU-S456, physical_gpu_index: 1}
+  - wave: 10
+    concurrent_jobs:
+      - {job_id: P05-DEC-B0-XJTU-S789, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B0-XJTU-S1024, physical_gpu_index: 1}
+  - wave: 11
+    concurrent_jobs:
+      - {job_id: P05-DEC-B1-CWRU-S42, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B1-CWRU-S123, physical_gpu_index: 1}
+  - wave: 12
+    concurrent_jobs:
+      - {job_id: P05-DEC-B1-CWRU-S456, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B1-CWRU-S789, physical_gpu_index: 1}
+  - wave: 13
+    concurrent_jobs:
+      - {job_id: P05-DEC-B1-CWRU-S1024, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B1-XJTU-S42, physical_gpu_index: 1}
+  - wave: 14
+    concurrent_jobs:
+      - {job_id: P05-DEC-B1-XJTU-S123, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B1-XJTU-S456, physical_gpu_index: 1}
+  - wave: 15
+    concurrent_jobs:
+      - {job_id: P05-DEC-B1-XJTU-S789, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B1-XJTU-S1024, physical_gpu_index: 1}
+  - wave: 16
+    concurrent_jobs:
+      - {job_id: P05-DEC-B3-CWRU-S42, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B3-CWRU-S123, physical_gpu_index: 1}
+  - wave: 17
+    concurrent_jobs:
+      - {job_id: P05-DEC-B3-CWRU-S456, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B3-CWRU-S789, physical_gpu_index: 1}
+  - wave: 18
+    concurrent_jobs:
+      - {job_id: P05-DEC-B3-CWRU-S1024, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B3-XJTU-S42, physical_gpu_index: 1}
+  - wave: 19
+    concurrent_jobs:
+      - {job_id: P05-DEC-B3-XJTU-S123, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B3-XJTU-S456, physical_gpu_index: 1}
+  - wave: 20
+    concurrent_jobs:
+      - {job_id: P05-DEC-B3-XJTU-S789, physical_gpu_index: 0}
+      - {job_id: P05-DEC-B3-XJTU-S1024, physical_gpu_index: 1}

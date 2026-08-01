@@ -10,6 +10,11 @@ from .Components.loss import get_loss_fn
 from .Components.metrics import get_metrics
 from .Components.regularization import calculate_regularization
 from .Components.gradient_constraints import FisherGradientConstraint
+from .p05_epoch_metrics import (
+    WeightedEpochConfusionMatrix,
+    WeightedEpochLoss,
+    weighted_mean_loss,
+)
 
 
 @register_task("Default_task", "Default_task")
@@ -45,18 +50,42 @@ class Default_task(pl.LightningModule):
         """
         super().__init__()
 
+        evidence_mode = getattr(args_task, "p05_evidence_mode", False)
+        if not isinstance(evidence_mode, bool):
+            raise TypeError("task.p05_evidence_mode must be a boolean")
+        self.p05_evidence_mode = evidence_mode
+
         # 兼容旧配置：为 gpus 提供合理默认值，避免缺少属性导致崩溃
         gpus = getattr(args_trainer, "gpus", None)
         if gpus is None:
             gpus = getattr(args_trainer, "devices", 1)
             setattr(args_trainer, "gpus", gpus)
 
-        # 将网络移动到 GPU（仅在 CUDA 可用且配置要求使用 GPU 时）
-        use_cuda = bool(gpus) and torch.cuda.is_available()
-        if use_cuda and hasattr(network, "cuda"):
-            self.network = network.cuda()
+        if self.p05_evidence_mode:
+            if getattr(args_model, "device", None) != "cuda":
+                raise RuntimeError("P05 evidence mode requires model.device='cuda'")
+            runtime_identity = getattr(args_trainer, "p05_runtime_identity", None)
+            if not isinstance(runtime_identity, dict) or runtime_identity.get("evidence_mode") is not True:
+                raise RuntimeError(
+                    "P05 evidence task requires a completed fail-closed runtime preflight"
+                )
+            if gpus != 1:
+                raise RuntimeError("P05 evidence task requires exactly one GPU")
+            if not hasattr(network, "cuda"):
+                raise RuntimeError("P05 evidence network cannot be moved to CUDA")
+            try:
+                self.network = network.cuda()
+            except Exception as exc:
+                raise RuntimeError(
+                    "P05 evidence network CUDA placement failed; CPU fallback is forbidden"
+                ) from exc
         else:
-            self.network = network  # 在当前环境（无 GPU）下保持 CPU 训练
+            # Legacy behavior: use CUDA when available, otherwise keep CPU.
+            use_cuda = bool(gpus) and torch.cuda.is_available()
+            if use_cuda and hasattr(network, "cuda"):
+                self.network = network.cuda()
+            else:
+                self.network = network
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
@@ -82,9 +111,43 @@ class Default_task(pl.LightningModule):
             self.gradient_constraint = FisherGradientConstraint(epsilon=float(epsilon))
 
         # 使用组件配置损失和指标
-        self.loss_fn = get_loss_fn(self.args_task.loss)
+        if self.p05_evidence_mode:
+            if str(self.args_task.loss).upper() not in {"CE", "CE_WEIGHTED"}:
+                raise ValueError(
+                    "P05 evidence mode requires task.loss=CE_weighted "
+                    "(legacy CE spelling is also accepted)"
+                )
+            self.loss_fn = get_loss_fn(self.args_task.loss, reduction="none")
+        else:
+            self.loss_fn = get_loss_fn(self.args_task.loss)
+
+        configured_metrics = list(getattr(self.args_task, "metrics", []))
+        if self.p05_evidence_mode:
+            if any(str(name).lower() == "f1" for name in configured_metrics):
+                raise ValueError(
+                    "P05 evidence mode forbids batch-aggregated metric 'f1'; "
+                    "use 'f1_macro'"
+                )
+            configured_metrics = [
+                name
+                for name in configured_metrics
+                if str(name).lower() not in {"f1_macro", "acc", "accuracy"}
+            ]
+            num_classes = self._resolve_p05_num_classes(args_model, metadata)
+            self.p05_epoch_metrics = nn.ModuleDict(
+                {
+                    f"{stage}_epoch": WeightedEpochConfusionMatrix(num_classes)
+                    for stage in ("train", "val", "test")
+                }
+            )
+            self.p05_epoch_losses = nn.ModuleDict(
+                {
+                    f"{stage}_epoch": WeightedEpochLoss()
+                    for stage in ("train", "val", "test")
+                }
+            )
         # 假设 get_metrics 需要数据配置来确定任务类型和类别数
-        self.metrics = get_metrics(self.args_task.metrics, self.metadata)
+        self.metrics = get_metrics(configured_metrics, self.metadata)
 
         # 保存超参数 (确保 Namespace 可以转换为字典)
         hparams_dict = {**vars(self.args_task),
@@ -110,10 +173,56 @@ class Default_task(pl.LightningModule):
     #     """执行前向传播"""
     #     return self(batch)
 
-    def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def _resolve_p05_num_classes(args_model: Any, metadata: Any) -> int:
+        configured = getattr(args_model, "num_classes", None)
+        if configured is None:
+            labels = [item["Label"] for item in metadata.values() if "Label" in item]
+            if not labels:
+                raise ValueError("P05 evidence mode requires model.num_classes or metadata labels")
+            configured = max(int(label) for label in labels) + 1
+        if isinstance(configured, bool) or int(configured) != configured or configured < 2:
+            raise ValueError("P05 evidence num_classes must be an integer >= 2")
+        return int(configured)
+
+    def _p05_sample_weight(self, batch: dict, stage: str) -> torch.Tensor:
+        specific_key = getattr(self.args_task, f"{stage}_sample_weight_key", None)
+        weight_key = specific_key or getattr(
+            self.args_task,
+            "sample_weight_key",
+            "sample_weight",
+        )
+        if not isinstance(weight_key, str) or not weight_key:
+            raise ValueError(f"P05 {stage} sample-weight key must be a non-empty string")
+        if weight_key not in batch:
+            raise KeyError(
+                f"P05 evidence {stage} batch is missing sample-weight field {weight_key!r}"
+            )
+        return batch[weight_key]
+
+    def _compute_loss(
+        self,
+        y_hat: torch.Tensor,
+        y: torch.Tensor,
+        sample_weight: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """计算任务损失"""
-        # 确保 y 是 long 类型用于分类损失        
-        return self.loss_fn(y_hat, y.long() if y.dtype != torch.long else y)
+        # 确保 y 是 long 类型用于分类损失
+        targets = y.long() if y.dtype != torch.long else y
+        loss = self.loss_fn(y_hat, targets)
+        if not self.p05_evidence_mode:
+            return loss
+        return weighted_mean_loss(loss, sample_weight)
+
+    def _p05_unreduced_loss(
+        self,
+        y_hat: torch.Tensor,
+        y: torch.Tensor,
+    ) -> torch.Tensor:
+        if not self.p05_evidence_mode:
+            raise RuntimeError("unreduced P05 loss is available only in evidence mode")
+        targets = y.long() if y.dtype != torch.long else y
+        return self.loss_fn(y_hat, targets)
 
     def _compute_metrics(self, y_hat: torch.Tensor, y: torch.Tensor, data_name: str, stage: str) -> Dict[str, torch.Tensor]:
         """计算并更新评估指标"""
@@ -164,13 +273,26 @@ class Default_task(pl.LightningModule):
         except (ValueError, TypeError) as e:
             raise ValueError(f" Error: {e}")
 
+        sample_weight = self._p05_sample_weight(batch, stage) if self.p05_evidence_mode else None
+
         # 1. 前向传播
         y_hat = self.forward(batch)
 
         # 2. 计算任务损失
         y = batch['y']
-        loss = self._compute_loss(y_hat, y)
+        if self.p05_evidence_mode:
+            per_sample_loss = self._p05_unreduced_loss(y_hat, y)
+            loss = weighted_mean_loss(per_sample_loss, sample_weight)
+            self.p05_epoch_losses[f"{stage}_epoch"].update(
+                per_sample_loss,
+                sample_weight,
+            )
+        else:
+            loss = self._compute_loss(y_hat, y, sample_weight=sample_weight)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
+
+        if self.p05_evidence_mode:
+            self.p05_epoch_metrics[f"{stage}_epoch"].update(y_argmax, y, sample_weight)
 
         # 3. 计算和记录指标
         step_metrics = {f"{stage}_loss": loss}
@@ -216,8 +338,66 @@ class Default_task(pl.LightningModule):
         self._log_metrics(metrics, "test")
         # test_step 通常不返回损失
 
+    def _reset_p05_epoch_metric(self, stage: str) -> None:
+        if self.p05_evidence_mode:
+            self.p05_epoch_metrics[f"{stage}_epoch"].reset()
+            self.p05_epoch_losses[f"{stage}_epoch"].reset()
+
+    def _log_p05_epoch_statistics(self, stage: str) -> None:
+        if not self.p05_evidence_mode:
+            return
+        confusion = self.p05_epoch_metrics[f"{stage}_epoch"]
+        values = {
+            f"{stage}_loss": self.p05_epoch_losses[f"{stage}_epoch"].compute(),
+            f"{stage}_acc": confusion.compute_accuracy(),
+            f"{stage}_f1_macro": confusion.compute_macro_f1(),
+        }
+        for name, value in values.items():
+            self.log(
+                name,
+                value,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=(stage == "val" and name in {"val_loss", "val_f1_macro"}),
+                logger=True,
+                sync_dist=False,
+            )
+
+    def on_train_epoch_start(self) -> None:
+        self._reset_p05_epoch_metric("train")
+
+    def on_validation_epoch_start(self) -> None:
+        self._reset_p05_epoch_metric("val")
+
+    def on_test_epoch_start(self) -> None:
+        self._reset_p05_epoch_metric("test")
+
+    def on_train_epoch_end(self) -> None:
+        self._log_p05_epoch_statistics("train")
+
+    def on_validation_epoch_end(self) -> None:
+        self._log_p05_epoch_statistics("val")
+
+    def on_test_epoch_end(self) -> None:
+        self._log_p05_epoch_statistics("test")
+
     def _log_metrics(self, metrics: Dict[str, torch.Tensor], stage: str) -> None:
         """统一日志记录"""
+        if self.p05_evidence_mode:
+            # Validation/checkpoint metrics are emitted exactly once from the
+            # complete float64 epoch accumulators.  A step-only training value
+            # remains useful for diagnostics but cannot select a checkpoint.
+            if stage == "train":
+                self.log(
+                    "train_step_loss",
+                    metrics["train_loss"],
+                    on_step=True,
+                    on_epoch=False,
+                    prog_bar=False,
+                    logger=True,
+                    sync_dist=False,
+                )
+            return
         log_dict = {}
         prog_bar_metrics = {}
         for k, v in metrics.items():

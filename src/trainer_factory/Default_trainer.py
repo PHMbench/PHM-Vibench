@@ -12,6 +12,8 @@ except ImportError:  # Optional experiment service; required only when enabled.
 
 from src.trainer_factory import register_trainer
 from src.trainer_factory.extensions import ManifestWriterCallback
+from src.trainer_factory.p05_pilot_timing import build_p05_pilot_timing_callback
+from src.trainer_factory.p05_runtime import prepare_p05_runtime
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -33,6 +35,10 @@ def trainer(args_e, args_t, args_d, path):
     返回:
     - trainer: 训练器对象
     """
+    # Fail closed before callbacks, loggers, or Trainer construction in the
+    # explicitly enabled P05 evidence mode. Legacy configs return None here.
+    runtime_contract = prepare_p05_runtime(args_t)
+
     # 为兼容旧配置，填充 num_epochs / gpus / pruning 的合理默认值
     if not hasattr(args_t, "num_epochs"):
         setattr(args_t, "num_epochs", getattr(args_t, "max_epochs", 1))
@@ -63,24 +69,34 @@ def trainer(args_e, args_t, args_d, path):
         swanlab_logger = SwanLabLogger(project=args_e.project)
         log_list.append(swanlab_logger)
 
-    # 设置设备类型：CPU 或自动选择
-    accelerate_type = "cpu" if args_t.device == "cpu" else "auto"
-
     # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
     if not getattr(args_t, "log_every_n_steps", None):
         args_t.log_every_n_steps = 50
 
+    if runtime_contract is None:
+        runtime_kwargs = {
+            "accelerator": "cpu" if args_t.device == "cpu" else "auto",
+            "devices": args_t.gpus,
+            "strategy": "ddp_find_unused_parameters_true" if args_t.gpus > 1 else "auto",
+        }
+    else:
+        runtime_kwargs = dict(runtime_contract.trainer_kwargs)
+
     # 初始化训练器
-    trainer = pl.Trainer(
+    trainer_instance = pl.Trainer(
         callbacks=callback_list,
-        accelerator=accelerate_type,
         max_epochs=args_t.num_epochs,
-        devices=args_t.gpus,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-        strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else "auto",
+        **runtime_kwargs,
     )
-    return trainer
+    if runtime_contract is not None:
+        setattr(
+            trainer_instance,
+            "p05_runtime_identity",
+            dict(runtime_contract.runtime_identity),
+        )
+    return trainer_instance
 
 
 def call_backs(args, path):
@@ -103,6 +119,10 @@ def call_backs(args, path):
     )
 
     callback_list = [checkpoint_callback]
+
+    pilot_timing_callback = build_p05_pilot_timing_callback(args, path)
+    if pilot_timing_callback is not None:
+        callback_list.append(pilot_timing_callback)
 
     # UXFD merge: always write an auditable manifest (safe no-op if not main process).
     try:

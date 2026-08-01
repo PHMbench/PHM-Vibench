@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Optional
 
@@ -10,62 +11,311 @@ import torch.nn.functional as F
 
 @dataclass(frozen=True)
 class FuzzyConfig:
-    num_fuzzy_features: int = 32
-    num_membership_functions: int = 3  # low/medium/high (Gaussian)
+    num_fuzzy_features: int = 8
+    num_membership_functions: int = 3
     num_rules: int = 10
     logit_scale: float = 1.0
+    antecedent_temperature: float = 1.0
+    min_width: float = 1.0e-4
+    firing_epsilon: float = 1.0e-12
+
+
+@dataclass(frozen=True)
+class FuzzyTrace:
+    """All tensors needed to audit one fuzzy forward pass.
+
+    The contribution identity is structural:
+
+        fuzzy_logits[b, k] == sum_r rule_contributions[b, r, k]
+
+    No nonlinear layer is applied after the rule sum.
+    """
+
+    reduced_features: torch.Tensor
+    membership_values: torch.Tensor
+    centers: torch.Tensor
+    widths: torch.Tensor
+    antecedent_probabilities: torch.Tensor
+    antecedent_memberships: torch.Tensor
+    log_rule_firing: torch.Tensor
+    rule_firing: torch.Tensor
+    normalized_rule_firing: torch.Tensor
+    rule_consequents: torch.Tensor
+    rule_contributions: torch.Tensor
+    fuzzy_logits: torch.Tensor
+    rule_mask: torch.Tensor
+    consequent_permutation: torch.Tensor
+
+    def reconstruct_fuzzy_logits(self) -> torch.Tensor:
+        return self.rule_contributions.sum(dim=1)
+
+    def reconstruction_residual(self) -> torch.Tensor:
+        return self.fuzzy_logits - self.reconstruct_fuzzy_logits()
+
+    def normalized_firing_entropy(self) -> torch.Tensor:
+        weights = self.normalized_rule_firing.clamp_min(torch.finfo(self.fuzzy_logits.dtype).tiny)
+        entropy = -(weights * weights.log()).sum(dim=1)
+        num_rules = int(weights.shape[1])
+        if num_rules <= 1:
+            return torch.zeros_like(entropy)
+        return entropy / math.log(num_rules)
+
+    def top_rule_share(self) -> torch.Tensor:
+        return self.normalized_rule_firing.max(dim=1).values
 
 
 class FuzzyReasoner(nn.Module):
-    """A small fuzzy-rule head over a feature vector.
+    """Additive Takagi--Sugeno-style fuzzy head over learned features.
 
-    Input:  (B, D)
-    Output: (B, num_classes) logits (to be added to a base classifier).
+    Each rule has an explicit soft antecedent over ordered Gaussian membership
+    terms for every reduced feature. Rule firing is the geometric mean of the
+    selected memberships. Normalized firing weights multiply class-specific
+    consequents, so every class logit is exactly the sum of per-rule
+    contributions recorded in FuzzyTrace.
     """
 
     def __init__(self, dim_in: int, num_classes: int, cfg: Optional[FuzzyConfig] = None):
         super().__init__()
         self.cfg = cfg or FuzzyConfig()
+        self._validate_config(dim_in=dim_in, num_classes=num_classes)
 
-        self.feature_reducer = nn.Sequential(
-            nn.Linear(dim_in, int(self.cfg.num_fuzzy_features)),
-            nn.ReLU(inplace=True),
+        num_features = int(self.cfg.num_fuzzy_features)
+        num_memberships = int(self.cfg.num_membership_functions)
+        num_rules = int(self.cfg.num_rules)
+        num_outputs = int(num_classes)
+
+        if num_features == int(dim_in):
+            self.feature_reducer = nn.LayerNorm(num_features)
+        else:
+            self.feature_reducer = nn.Sequential(
+                nn.Linear(int(dim_in), num_features),
+                nn.LayerNorm(num_features),
+            )
+
+        initial_centers = (
+            torch.zeros(1)
+            if num_memberships == 1
+            else torch.linspace(-1.0, 1.0, steps=num_memberships)
+        )
+        initial_centers = initial_centers.repeat(num_features, 1)
+        self.center_origin = nn.Parameter(initial_centers[:, :1].clone())
+        if num_memberships > 1:
+            initial_gap = float(2.0 / (num_memberships - 1))
+            inverse_softplus_gap = math.log(math.expm1(initial_gap))
+            self.center_deltas_unconstrained = nn.Parameter(
+                torch.full((num_features, num_memberships - 1), inverse_softplus_gap)
+            )
+        else:
+            self.register_parameter("center_deltas_unconstrained", None)
+
+        initial_width = 0.75
+        inverse_softplus_width = math.log(
+            math.expm1(max(initial_width - float(self.cfg.min_width), 1.0e-6))
+        )
+        self.widths_unconstrained = nn.Parameter(
+            torch.full((num_features, num_memberships), inverse_softplus_width)
         )
 
-        f = int(self.cfg.num_fuzzy_features)
-        m = int(self.cfg.num_membership_functions)
-        r = int(self.cfg.num_rules)
-        k = int(num_classes)
-
-        self.centers = nn.Parameter(torch.randn(f, m) * 0.5)
-        self.widths = nn.Parameter(torch.ones(f, m) * 0.3)
-        self.rule_weights = nn.Parameter(torch.ones(r, f) / max(1, f))
-        self.rule_outputs = nn.Parameter(torch.randn(r, k) * 0.1)
-
-        self.classifier = nn.Sequential(
-            nn.Linear(k, 64),
-            nn.ReLU(inplace=True),
-            nn.Linear(64, k),
+        antecedent_logits = torch.full(
+            (num_rules, num_features, num_memberships),
+            -2.0,
         )
+        rule_index = torch.arange(num_rules).unsqueeze(1)
+        feature_index = torch.arange(num_features).unsqueeze(0)
+        initial_terms = (rule_index + feature_index) % num_memberships
+        antecedent_logits.scatter_(2, initial_terms.unsqueeze(-1), 2.0)
+        self.antecedent_logits = nn.Parameter(antecedent_logits)
+
+        self.rule_consequents = nn.Parameter(torch.randn(num_rules, num_outputs) * 0.1)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
-        reduced = self.feature_reducer(features)  # (B, F)
-        membership = self._compute_membership(reduced)  # (B, F, M)
-        fuzzy_logits = self._apply_rules(membership)  # (B, K)
-        return self.classifier(fuzzy_logits)
+        return self.forward_with_trace(features).fuzzy_logits
 
-    def _compute_membership(self, x: torch.Tensor) -> torch.Tensor:
-        x_expanded = x.unsqueeze(-1)  # (B, F, 1)
-        centers = self.centers.unsqueeze(0)  # (1, F, M)
-        widths = torch.abs(self.widths).unsqueeze(0).clamp_min(1e-6)  # (1, F, M)
-        return torch.exp(-((x_expanded - centers) ** 2) / (2.0 * widths**2))
+    def forward_with_trace(
+        self,
+        features: torch.Tensor,
+        *,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_permutation: Optional[torch.Tensor] = None,
+    ) -> FuzzyTrace:
+        """Return logits and their complete additive rule trace.
 
-    def _apply_rules(self, membership: torch.Tensor) -> torch.Tensor:
-        aggregated = membership.mean(dim=2)  # (B, F)
-        activation = torch.sum(
-            aggregated.unsqueeze(1) * self.rule_weights.unsqueeze(0),
-            dim=2,
-        )  # (B, R)
-        activation = F.softmax(activation, dim=-1)
-        outputs = activation.unsqueeze(-1) * self.rule_outputs.unsqueeze(0)  # (B, R, K)
-        return outputs.sum(dim=1)
+        rule_mask implements rule deletion. It may have shape (R,) or
+        (B, R); deleted rules are removed before firing normalization.
+        consequent_permutation implements the negative-control shuffle by
+        assigning a permutation of the learned consequent rows to the original
+        rule firings. It may have shape (R,) for one shared permutation or
+        (B, R) for one registered permutation per sample.
+        """
+
+        if features.ndim != 2:
+            raise ValueError(
+                f"FuzzyReasoner expects features with shape (batch, dim), got {tuple(features.shape)}."
+            )
+
+        reduced = self.feature_reducer(features)
+        centers = self._ordered_centers()
+        widths = F.softplus(self.widths_unconstrained) + float(self.cfg.min_width)
+        membership = self._compute_membership(reduced, centers=centers, widths=widths)
+
+        temperature = float(self.cfg.antecedent_temperature)
+        antecedent_probabilities = F.softmax(self.antecedent_logits / temperature, dim=-1)
+        antecedent_memberships = torch.einsum(
+            "bfm,rfm->brf",
+            membership,
+            antecedent_probabilities,
+        )
+        log_rule_firing = antecedent_memberships.clamp_min(
+            float(self.cfg.firing_epsilon)
+        ).log().mean(dim=-1)
+        rule_firing = log_rule_firing.exp()
+
+        normalized_mask = self._normalize_rule_mask(
+            rule_mask,
+            batch_size=int(features.shape[0]),
+            device=features.device,
+        )
+        masked_log_firing = log_rule_firing.masked_fill(~normalized_mask, -torch.inf)
+        normalized_rule_firing = F.softmax(masked_log_firing, dim=-1)
+
+        permutation = self._normalize_consequent_permutation(
+            consequent_permutation,
+            batch_size=int(features.shape[0]),
+            device=features.device,
+        )
+        if permutation.ndim == 1:
+            consequents = self.rule_consequents.index_select(0, permutation)
+            contribution_consequents = consequents.unsqueeze(0)
+        else:
+            consequents = self.rule_consequents[permutation]
+            contribution_consequents = consequents
+        rule_contributions = (
+            normalized_rule_firing.unsqueeze(-1) * contribution_consequents
+        )
+        fuzzy_logits = rule_contributions.sum(dim=1)
+
+        return FuzzyTrace(
+            reduced_features=reduced,
+            membership_values=membership,
+            centers=centers,
+            widths=widths,
+            antecedent_probabilities=antecedent_probabilities,
+            antecedent_memberships=antecedent_memberships,
+            log_rule_firing=log_rule_firing,
+            rule_firing=rule_firing,
+            normalized_rule_firing=normalized_rule_firing,
+            rule_consequents=consequents,
+            rule_contributions=rule_contributions,
+            fuzzy_logits=fuzzy_logits,
+            rule_mask=normalized_mask,
+            consequent_permutation=permutation,
+        )
+
+    def _ordered_centers(self) -> torch.Tensor:
+        if self.center_deltas_unconstrained is None:
+            return self.center_origin
+        positive_deltas = F.softplus(self.center_deltas_unconstrained)
+        return torch.cat(
+            (
+                self.center_origin,
+                self.center_origin + positive_deltas.cumsum(dim=1),
+            ),
+            dim=1,
+        )
+
+    @staticmethod
+    def _compute_membership(
+        x: torch.Tensor,
+        *,
+        centers: torch.Tensor,
+        widths: torch.Tensor,
+    ) -> torch.Tensor:
+        standardized = (x.unsqueeze(-1) - centers.unsqueeze(0)) / widths.unsqueeze(0)
+        return torch.exp(-0.5 * standardized.square())
+
+    def _normalize_rule_mask(
+        self,
+        rule_mask: Optional[torch.Tensor],
+        *,
+        batch_size: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        num_rules = int(self.cfg.num_rules)
+        if rule_mask is None:
+            return torch.ones((batch_size, num_rules), dtype=torch.bool, device=device)
+
+        mask = torch.as_tensor(rule_mask, device=device)
+        if mask.ndim == 1:
+            if tuple(mask.shape) != (num_rules,):
+                raise ValueError(
+                    f"rule_mask with one dimension must have shape ({num_rules},), "
+                    f"got {tuple(mask.shape)}."
+                )
+            mask = mask.unsqueeze(0).expand(batch_size, -1)
+        elif tuple(mask.shape) != (batch_size, num_rules):
+            raise ValueError(
+                f"rule_mask must have shape ({num_rules},) or ({batch_size}, {num_rules}), "
+                f"got {tuple(mask.shape)}."
+            )
+
+        mask = mask.to(dtype=torch.bool)
+        if not bool(mask.any(dim=1).all()):
+            raise ValueError("rule_mask must retain at least one rule for every sample.")
+        return mask
+
+    def _normalize_consequent_permutation(
+        self,
+        consequent_permutation: Optional[torch.Tensor],
+        *,
+        batch_size: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        num_rules = int(self.cfg.num_rules)
+        if consequent_permutation is None:
+            return torch.arange(num_rules, dtype=torch.long, device=device)
+
+        permutation = torch.as_tensor(
+            consequent_permutation,
+            dtype=torch.long,
+            device=device,
+        )
+        valid_shape = tuple(permutation.shape) in {
+            (num_rules,),
+            (batch_size, num_rules),
+        }
+        if not valid_shape:
+            raise ValueError(
+                "consequent_permutation must have shape "
+                f"({num_rules},) or ({batch_size}, {num_rules}), "
+                f"got {tuple(permutation.shape)}."
+            )
+        expected = torch.arange(num_rules, dtype=torch.long, device=device)
+        sorted_permutation = permutation.sort(dim=-1).values
+        expected_permutation = (
+            expected
+            if permutation.ndim == 1
+            else expected.unsqueeze(0).expand(batch_size, -1)
+        )
+        if not torch.equal(sorted_permutation, expected_permutation):
+            raise ValueError(
+                "each consequent_permutation row must contain every rule index exactly once."
+            )
+        return permutation
+
+    def _validate_config(self, *, dim_in: int, num_classes: int) -> None:
+        integer_fields = {
+            "dim_in": dim_in,
+            "num_classes": num_classes,
+            "num_fuzzy_features": self.cfg.num_fuzzy_features,
+            "num_membership_functions": self.cfg.num_membership_functions,
+            "num_rules": self.cfg.num_rules,
+        }
+        for name, value in integer_fields.items():
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"{name} must be a positive integer, got {value!r}.")
+        if float(self.cfg.antecedent_temperature) <= 0.0:
+            raise ValueError("antecedent_temperature must be positive.")
+        if float(self.cfg.min_width) <= 0.0:
+            raise ValueError("min_width must be positive.")
+        if not 0.0 < float(self.cfg.firing_epsilon) < 1.0:
+            raise ValueError("firing_epsilon must lie strictly between zero and one.")

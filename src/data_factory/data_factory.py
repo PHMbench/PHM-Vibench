@@ -20,9 +20,19 @@ from .data_utils import smart_read_csv, MetadataAccessor, download_data
 from .samplers.Get_sampler import Get_sampler
 from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
 from .splitting import resolve_data_splits
+from .p05_weighting import build_weight_plan, production_weight_contract
+from .protocol_cache import expected_channel_order
+from .protocol_transforms import (
+    WindowObservation,
+    exact_evenly_spaced_spans,
+    fit_train_channel_standardization,
+    protocol_sample_id,
+)
 from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
+
+EVIDENCE_EXECUTION_STAGES = {"fit_validate_only", "fit_validate_test"}
 
 def register_data_factory(name: str):
     """Decorator to register a data factory implementation."""
@@ -45,12 +55,182 @@ class data_factory:
         # parameters    
         self.args_data = args_data
         self.args_task = args_task
+        p05_evidence_mode = getattr(args_task, "p05_evidence_mode", False)
+        if not isinstance(p05_evidence_mode, bool):
+            raise TypeError("task.p05_evidence_mode must be a boolean")
+        self.p05_evidence_mode = p05_evidence_mode
+        self.args_data.p05_evidence_mode = p05_evidence_mode
+        self.execution_stage = str(
+            getattr(args_data, "execution_stage", "fit_validate_test")
+        )
+        if self.execution_stage not in EVIDENCE_EXECUTION_STAGES:
+            raise ValueError(
+                "data.execution_stage must be one of "
+                f"{sorted(EVIDENCE_EXECUTION_STAGES)}, got {self.execution_stage!r}"
+            )
         # metadata and data cache
         self.metadata = self._init_metadata(args_data)
+        self.target_metadata = search_target_dataset_metadata(self.metadata, self.args_task)
+        self.train_val_ids, self.test_ids = search_ids_for_task(
+            self.target_metadata,
+            self.args_task,
+        )
+        self.split_result = resolve_data_splits(
+            self.target_metadata,
+            self.args_data,
+            self.args_task,
+            self.train_val_ids,
+            self.test_ids,
+        )
+        active_ids = list(self.split_result.train_ids) + list(self.split_result.val_ids)
+        if self.execution_stage == "fit_validate_test":
+            active_ids.extend(self.split_result.test_ids)
+        self.active_metadata = self._metadata_for_ids(self.target_metadata, active_ids)
         self.data = self._init_data(args_data)
+        if self.p05_evidence_mode:
+            self._init_p05_protocol_artifacts()
         # dataset and dataloader
         self.train_dataset, self.val_dataset,self.test_dataset = self._init_dataset()
         self.train_loader, self.val_loader, self.test_loader = self._init_dataloader()
+
+    @staticmethod
+    def _metadata_for_ids(metadata, ids):
+        """Return a metadata view containing only the explicitly active IDs."""
+
+        ordered_ids = list(dict.fromkeys(ids))
+        available = set(metadata.keys())
+        missing = [sample_id for sample_id in ordered_ids if sample_id not in available]
+        if missing:
+            raise ValueError(f"active split IDs are absent from metadata: {missing[:5]}")
+        frame = metadata.df.loc[ordered_ids].copy()
+        frame.reset_index(drop=True, inplace=True)
+        return MetadataAccessor(frame, key_column=metadata.key_column)
+
+    def _p05_dataset_id(self):
+        dataset_ids = sorted(
+            set(int(value) for value in self.target_metadata.df["Dataset_id"])
+        )
+        if len(dataset_ids) != 1 or dataset_ids[0] not in {1, 2}:
+            raise ValueError(
+                "P05 evidence runs must target exactly one of Dataset_id 1 or 2"
+            )
+        return dataset_ids[0]
+
+    def _validate_p05_data_contract(self):
+        dataset_id = self._p05_dataset_id()
+        split_cfg = getattr(self.args_data, "split", None)
+        required = {
+            "cache_mode": "read_only_verified",
+            "allow_download": False,
+            "batch_size": 64,
+            "window_size": 4096,
+            "window_sampling_strategy": "evenly_spaced",
+            "normalization": "train_channel_standardization",
+            "dtype": "float32",
+            "num_workers": 0,
+            "drop_last_train": False,
+        }
+        for key, expected in required.items():
+            actual = getattr(self.args_data, key, None)
+            if actual != expected:
+                raise ValueError(
+                    f"P05 evidence requires data.{key}={expected!r}, got {actual!r}"
+                )
+        if getattr(split_cfg, "strategy", None) != "preassigned_metadata":
+            raise ValueError(
+                "P05 evidence requires data.split.strategy='preassigned_metadata'"
+            )
+        if getattr(split_cfg, "split_key", None) != "Protocol_Split":
+            raise ValueError(
+                "P05 evidence requires data.split.split_key='Protocol_Split'"
+            )
+        if getattr(split_cfg, "group_key", None) != "Protocol_Group":
+            raise ValueError(
+                "P05 evidence requires data.split.group_key='Protocol_Group'"
+            )
+        expected_windows = 16 if dataset_id == 1 else 4
+        if getattr(self.args_data, "num_window", None) != expected_windows:
+            raise ValueError(
+                f"P05 Dataset_id={dataset_id} requires data.num_window={expected_windows}"
+            )
+        if getattr(self.args_data, "noise_snr", None) is not None:
+            raise ValueError("P05 evidence data forbids runtime noise_snr")
+        return dataset_id, expected_windows
+
+    def _init_p05_protocol_artifacts(self):
+        """Fit train-only transforms and bind registered per-record weights."""
+
+        dataset_id, windows_per_record = self._validate_p05_data_contract()
+        role_by_mode = {"train": "train", "val": "validation", "test": "test"}
+        active_modes = ["train", "val"]
+        if self.execution_stage == "fit_validate_test":
+            active_modes.append("test")
+        weight_plans = {}
+        for mode in active_modes:
+            role = role_by_mode[mode]
+            weight_plans[mode] = build_weight_plan(
+                self.target_metadata.df,
+                dataset_id=dataset_id,
+                role=role,
+                expected=production_weight_contract(dataset_id, role),
+            )
+
+        observations = []
+        expected_windows_per_group = {}
+        channel_names = None
+        for sample_id in self.split_result.train_ids:
+            metadata_row = self.target_metadata[sample_id]
+            group = str(metadata_row["Protocol_Group"])
+            raw = self.data[sample_id]
+            if raw.ndim != 3 or raw.shape[1:] != (2, 1) or raw.dtype != np.float64:
+                raise ValueError(
+                    f"P05 verified cache Id {sample_id} must be float64 (L,2,1)"
+                )
+            row_channels = tuple(expected_channel_order(metadata_row["Name"]))
+            if channel_names is None:
+                channel_names = row_channels
+            elif row_channels != channel_names:
+                raise ValueError("P05 training metadata has inconsistent channel order")
+            spans = exact_evenly_spaced_spans(
+                data_length=int(raw.shape[0]),
+                window_size=int(self.args_data.window_size),
+                count=windows_per_record,
+            )
+            expected_windows_per_group[group] = (
+                expected_windows_per_group.get(group, 0) + len(spans)
+            )
+            for span in spans:
+                observations.append(
+                    WindowObservation(
+                        sample_id=protocol_sample_id(sample_id, span),
+                        group_id=group,
+                        values=np.asarray(
+                            raw[span.start:span.end, :, 0],
+                            dtype=np.float64,
+                        ).copy(),
+                    )
+                )
+        if channel_names is None:
+            raise ValueError("P05 training split contains no records")
+        normalization_plan = fit_train_channel_standardization(
+            lambda: iter(observations),
+            dataset_id=dataset_id,
+            channel_names=channel_names,
+            expected_window_size=int(self.args_data.window_size),
+            expected_windows_per_group=expected_windows_per_group,
+        )
+        self.args_data.p05_weight_plans = weight_plans
+        self.args_data.p05_normalization_plan = normalization_plan
+        self.p05_protocol_artifacts = {
+            "dataset_id": dataset_id,
+            "normalization_plan": normalization_plan,
+            "weight_plans": weight_plans,
+        }
+
+    def get_protocol_artifacts(self):
+        if not self.p05_evidence_mode:
+            raise RuntimeError("protocol artifacts exist only in P05 evidence mode")
+        return self.p05_protocol_artifacts
 
     def _init_metadata(self, args_data):
         """
@@ -62,6 +242,28 @@ class data_factory:
         Returns:
             MetadataAccessor: 元数据访问器对象
         """
+        if str(getattr(args_data, "cache_mode", "legacy")) == "read_only_verified":
+            if getattr(args_data, "allow_download", None) is not False:
+                raise ValueError(
+                    "data.allow_download=false is required for read_only_verified"
+                )
+            metadata_path = getattr(args_data, "metadata_path", None)
+            if metadata_path is None or not str(metadata_path).strip():
+                raise ValueError(
+                    "data.metadata_path is required for read_only_verified"
+                )
+            resolved_metadata = os.path.realpath(os.path.expanduser(str(metadata_path)))
+            if not os.path.isfile(resolved_metadata):
+                raise FileNotFoundError(
+                    f"data.metadata_path does not resolve to a file: {resolved_metadata}"
+                )
+            meta_df = smart_read_csv(resolved_metadata, auto_detect=True)
+            metadata = MetadataAccessor(meta_df, key_column='Id')
+            print(
+                f"[SUCCESS] 从显式只读 metadata_path 加载 {len(metadata)} 条记录"
+            )
+            return metadata
+
         # 1. 检查并自动下载元数据文件（如果不存在）
         try:
              download_data(data_file=args_data.metadata_file,
@@ -254,7 +456,41 @@ class data_factory:
         H5DataDict
             Dictionary-like access to ``cache.h5``.
         """
-        task_meta = self.search_dataset_id()
+        if hasattr(self, "active_metadata"):
+            task_meta = self.active_metadata
+        else:
+            task_meta = self.search_dataset_id()
+        if str(getattr(args_data, "cache_mode", "legacy")) == "read_only_verified":
+            if getattr(args_data, "allow_download", None) is not False:
+                raise ValueError(
+                    "data.allow_download=false is required for read_only_verified"
+                )
+            cache_path = getattr(args_data, "cache_path", None)
+            manifest_path = getattr(args_data, "cache_manifest_path", None)
+            if cache_path is None or not str(cache_path).strip():
+                raise ValueError("data.cache_path is required for read_only_verified")
+            if manifest_path is None or not str(manifest_path).strip():
+                raise ValueError(
+                    "data.cache_manifest_path is required for read_only_verified"
+                )
+            resolved_cache = os.path.realpath(os.path.expanduser(str(cache_path)))
+            resolved_manifest = os.path.realpath(os.path.expanduser(str(manifest_path)))
+            if not os.path.isfile(resolved_cache):
+                raise FileNotFoundError(
+                    f"data.cache_path does not resolve to a file: {resolved_cache}"
+                )
+            if not os.path.isfile(resolved_manifest):
+                raise FileNotFoundError(
+                    "data.cache_manifest_path does not resolve to a file: "
+                    f"{resolved_manifest}"
+                )
+            return H5DataDict(
+                resolved_cache,
+                mode='r',
+                allowed_ids=task_meta.keys(),
+                manifest_path=resolved_manifest,
+                metadata=task_meta,
+            )
         ids_to_fetch = self._determine_missing_ids(task_meta, args_data, use_cache)
         for name, ids in ids_to_fetch.items():
             self._update_name_cache(name, ids, args_data, max_workers)
@@ -264,6 +500,11 @@ class data_factory:
     
     def get_metadata(self):
         """获取元数据"""
+        if (
+            getattr(self, "execution_stage", "fit_validate_test") == "fit_validate_only"
+            and hasattr(self, "active_metadata")
+        ):
+            return self.active_metadata
         return self.target_metadata if hasattr(self, 'target_metadata') else self.metadata
     def get_data(self):
         """获取数据"""
@@ -291,14 +532,15 @@ class data_factory:
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
-        train_val_ids, task_test_ids = self.search_id()
-        self.split_result = resolve_data_splits(
-            self.target_metadata,
-            self.args_data,
-            self.args_task,
-            train_val_ids,
-            task_test_ids,
-        )
+        if not hasattr(self, "split_result"):
+            train_val_ids, task_test_ids = self.search_id()
+            self.split_result = resolve_data_splits(
+                self.target_metadata,
+                self.args_data,
+                self.args_task,
+                train_val_ids,
+                task_test_ids,
+            )
         print("Initializing training datasets...")
         for id in tqdm(self.split_result.train_ids, desc="Creating train datasets"):
             train_dataset[id] = dataset_cls({id: self.data[id]},
@@ -308,13 +550,18 @@ class data_factory:
             val_dataset[id] = dataset_cls({id: self.data[id]},
                                self.target_metadata, self.args_data, self.args_task, 'val')
 
-        print("Initializing test datasets...")
-        for id in tqdm(self.split_result.test_ids, desc="Creating test datasets"):
-            test_dataset[id] = dataset_cls({id: self.data[id]},
-                            self.target_metadata, self.args_data, self.args_task, 'test')
+        if getattr(self, "execution_stage", "fit_validate_test") == "fit_validate_test":
+            print("Initializing test datasets...")
+            for id in tqdm(self.split_result.test_ids, desc="Creating test datasets"):
+                test_dataset[id] = dataset_cls({id: self.data[id]},
+                                self.target_metadata, self.args_data, self.args_task, 'test')
         train_dataset = IdIncludedDataset(train_dataset,self.target_metadata)
         val_dataset = IdIncludedDataset(val_dataset,self.target_metadata)
-        test_dataset = IdIncludedDataset(test_dataset,self.target_metadata)
+        test_dataset = (
+            IdIncludedDataset(test_dataset, self.target_metadata)
+            if getattr(self, "execution_stage", "fit_validate_test") == "fit_validate_test"
+            else None
+        )
         return train_dataset, val_dataset, test_dataset
 
 
@@ -336,12 +583,20 @@ class data_factory:
             dataset = self.test_dataset
         else:
             raise ValueError(f"Unknown mode for get_sampler: {mode}")
+        if dataset is None:
+            raise RuntimeError(
+                "test data is unavailable in execution_stage='fit_validate_only'"
+            )
         return Get_sampler(self.args_task, self.args_data, dataset, mode)
 
     def _init_dataloader(self):
         train_sampler = self.get_sampler(mode='train')
         val_sampler = self.get_sampler(mode='val')
-        test_sampler = self.get_sampler(mode='test')
+        test_sampler = (
+            self.get_sampler(mode='test')
+            if self.test_dataset is not None
+            else None
+        )
 
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
@@ -354,11 +609,15 @@ class data_factory:
                                         batch_sampler = val_sampler,
                                         # shuffle=False,
                                         num_workers=self.args_data.num_workers,)
-        self.test_loader = DataLoader(self.test_dataset,
-                                #  batch_size=self.args_data.batch_size,
-                                        batch_sampler = test_sampler,
-                                        # shuffle=False,
-                                        num_workers=self.args_data.num_workers,)
+        self.test_loader = (
+            DataLoader(self.test_dataset,
+                       # batch_size=self.args_data.batch_size,
+                       batch_sampler=test_sampler,
+                       # shuffle=False,
+                       num_workers=self.args_data.num_workers)
+            if self.test_dataset is not None
+            else None
+        )
 
 
 
@@ -373,7 +632,12 @@ class data_factory:
         Returns:
             数据集
         """
-        return self.train_dataset if mode == "train" else self.val_dataset if mode == "val" else self.test_dataset
+        dataset = self.train_dataset if mode == "train" else self.val_dataset if mode == "val" else self.test_dataset
+        if mode == "test" and dataset is None:
+            raise RuntimeError(
+                "test data is unavailable in execution_stage='fit_validate_only'"
+            )
+        return dataset
     def get_dataloader(self, mode = "test"):
         """获取指定ID的数据加载器
         
@@ -384,7 +648,12 @@ class data_factory:
         Returns:
             数据加载器
         """
-        return self.train_loader if mode == "train" else self.val_loader if mode == "val" else self.test_loader
+        loader = self.train_loader if mode == "train" else self.val_loader if mode == "val" else self.test_loader
+        if mode == "test" and loader is None:
+            raise RuntimeError(
+                "test data is unavailable in execution_stage='fit_validate_only'"
+            )
+        return loader
 
     def __len__(self):
         """返回数据集数量"""

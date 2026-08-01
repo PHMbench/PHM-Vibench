@@ -34,6 +34,13 @@ PRESET_TEMPLATES = {
     'id': 'configs/v0.0.9/demo/ID/id_demo.yaml',
 }
 
+_ALLOWED_EXECUTION_STAGES = {"fit_validate_only", "fit_validate_test"}
+_ALLOWED_SPLIT_STRATEGIES = {
+    "legacy_windows",
+    "grouped_metadata",
+    "preassigned_metadata",
+}
+
 
 def _resolve_base_config_path(yaml_path: Path, base_source: Union[str, Path]) -> Path:
     """Resolve a base config from a checkout or an installed wheel."""
@@ -194,7 +201,8 @@ def load_config(config_source: Union[str, Path, Dict, SimpleNamespace],
         override_config = _to_config_wrapper(overrides)
         config.update(override_config)
 
-    # 步骤3: 验证必需字段
+    # 步骤3: 显式兼容新协议键，再验证必需字段。
+    _canonicalize_protocol_contract(config)
     _validate_config_wrapper(config)
 
     return config
@@ -263,6 +271,68 @@ def _load_yaml_file(file_path: Union[str, Path]) -> Dict[str, Any]:
             config_dict = yaml.safe_load(f)
 
     return config_dict or {}
+
+
+def _canonicalize_protocol_contract(config: ConfigWrapper) -> None:
+    """Canonicalize bounded protocol aliases without changing legacy defaults.
+
+    ``metadata_path`` is the explicit path-oriented key. The current data
+    runtime still consumes ``metadata_file``, so a configured metadata path is
+    resolved against the process working directory and copied to both keys.
+    An absolute ``metadata_file`` remains safe because ``os.path.join`` and
+    ``pathlib.Path`` both preserve an absolute right-hand operand.
+    """
+
+    environment = getattr(config, "environment", None)
+    if isinstance(environment, SimpleNamespace):
+        stage = getattr(environment, "stage", "fit_validate_test")
+        if not isinstance(stage, str) or stage not in _ALLOWED_EXECUTION_STAGES:
+            raise ValueError(
+                "environment.stage must be one of "
+                f"{sorted(_ALLOWED_EXECUTION_STAGES)}, got {stage!r}"
+            )
+        environment.stage = stage
+
+    data = getattr(config, "data", None)
+    if not isinstance(data, SimpleNamespace):
+        return
+
+    metadata_path = getattr(data, "metadata_path", None)
+    if metadata_path is not None:
+        if not isinstance(metadata_path, (str, Path)) or not str(metadata_path).strip():
+            raise ValueError("data.metadata_path must be a non-empty path")
+        canonical_metadata_path = str(Path(metadata_path).resolve(strict=False))
+        data.metadata_path = canonical_metadata_path
+        data.metadata_file = canonical_metadata_path
+
+    flat_strategy = getattr(data, "split_strategy", None)
+    split = getattr(data, "split", None)
+    nested_strategy = (
+        getattr(split, "strategy", None)
+        if isinstance(split, SimpleNamespace)
+        else None
+    )
+    for location, strategy in (
+        ("data.split_strategy", flat_strategy),
+        ("data.split.strategy", nested_strategy),
+    ):
+        if strategy is not None and (
+            not isinstance(strategy, str)
+            or strategy not in _ALLOWED_SPLIT_STRATEGIES
+        ):
+            raise ValueError(
+                f"{location} must be one of {sorted(_ALLOWED_SPLIT_STRATEGIES)}, "
+                f"got {strategy!r}"
+            )
+    if (
+        flat_strategy is not None
+        and nested_strategy is not None
+        and flat_strategy != nested_strategy
+    ):
+        raise ValueError(
+            "data.split_strategy must match data.split.strategy when both are provided"
+        )
+
 
 def _validate_config_wrapper(config: ConfigWrapper) -> None:
     """验证ConfigWrapper的必需字段
@@ -431,7 +501,7 @@ def makedir(path):
 
 def build_experiment_name(configs) -> str:
     """Compose an experiment name from configuration sections."""
-    dataset_name = configs.data.metadata_file
+    dataset_name = Path(str(configs.data.metadata_file)).name
     model_name = configs.model.name
     task_name = f"{configs.task.type}{configs.task.name}"
     timestamp = datetime.now().strftime("%d_%H%M%S")

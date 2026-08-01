@@ -49,6 +49,107 @@ def _groups(metadata, ids):
     return {metadata[sample_id]["Bearing_id"] for sample_id in ids}
 
 
+def _preassigned_metadata():
+    records = []
+    roles = ("train", "validation", "test")
+    for index, role in enumerate(roles, start=1):
+        records.append(
+            {
+                "Id": index,
+                "Dataset_id": 2,
+                "Name": "RM_002_XJTU",
+                "File": f"condition/bearing-{index}/sample.csv",
+                "Original_Label": index % 2,
+                "Protocol_Label": index % 2,
+                "Label": index % 2,
+                "Domain_id": index - 1,
+                "Sample_rate": 25600,
+                "Protocol_Group": f"XJTU/condition/bearing-{index}",
+                "Protocol_Fold": -1,
+                "Protocol_Split": role,
+            }
+        )
+    return MetadataAccessor(pd.DataFrame(records), key_column="Id")
+
+
+def _write_preassigned_manifest(path, metadata):
+    roles = {}
+    fields = [
+        "Id",
+        "Dataset_id",
+        "Name",
+        "File",
+        "Original_Label",
+        "Protocol_Label",
+        "Label",
+        "Domain_id",
+        "Sample_rate",
+        "Protocol_Group",
+        "Protocol_Fold",
+        "Protocol_Split",
+    ]
+    for role in ("train", "validation", "test"):
+        frame = (
+            metadata.df.loc[metadata.df["Protocol_Split"] == role]
+            .reset_index(drop=True)
+            .sort_values("Id", kind="mergesort")
+        )
+        rows = [
+            {
+                field: int(row[field])
+                if field
+                in {
+                    "Id",
+                    "Dataset_id",
+                    "Original_Label",
+                    "Protocol_Label",
+                    "Label",
+                    "Domain_id",
+                    "Sample_rate",
+                    "Protocol_Fold",
+                }
+                else str(row[field])
+                for field in fields
+            }
+            for _, row in frame.iterrows()
+        ]
+        roles[role] = {
+            "row_count": len(rows),
+            "ids": [row["Id"] for row in rows],
+            "groups": sorted({row["Protocol_Group"] for row in rows}),
+            "class_counts": {str(rows[0]["Label"]): 1},
+            "rows": rows,
+        }
+    payload = {
+        "schema_version": 1,
+        "paper_id": "P05",
+        "protocol_id": "test",
+        "dataset_id": 2,
+        "dataset_name": "RM_002_XJTU",
+        "metadata_semantic_sha256": "a" * 64,
+        "protocol_fold": -1,
+        "role_key": "Protocol_Split",
+        "group_key": "Protocol_Group",
+        "label_key": "Label",
+        "roles": roles,
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return payload
+
+
+def _preassigned_args(path):
+    return SimpleNamespace(
+        split=SimpleNamespace(
+            strategy="preassigned_metadata",
+            group_key="Protocol_Group",
+            split_key="Protocol_Split",
+            test_policy="partition",
+            manifest_path=str(path),
+        ),
+        normalization="train_channel_standardization",
+    )
+
+
 def test_grouped_partition_is_disjoint_deterministic_and_manifested(tmp_path):
     metadata = _metadata()
     ids = metadata.keys()
@@ -108,6 +209,70 @@ def test_task_defined_keeps_target_groups_as_test(tmp_path):
     assert set(result.test_ids) == set(target_ids)
     assert _groups(metadata, result.train_ids).isdisjoint(_groups(metadata, result.test_ids))
     assert _groups(metadata, result.val_ids).isdisjoint(_groups(metadata, result.test_ids))
+
+
+def test_preassigned_split_reuses_and_verifies_full_manifest(tmp_path):
+    metadata = _preassigned_metadata()
+    manifest = tmp_path / "preassigned.json"
+    _write_preassigned_manifest(manifest, metadata)
+    before = manifest.read_bytes()
+
+    result = resolve_data_splits(
+        metadata,
+        _preassigned_args(manifest),
+        SimpleNamespace(type="Default_task"),
+        metadata.keys(),
+        metadata.keys(),
+    )
+
+    assert result.train_ids == (1,)
+    assert result.val_ids == (2,)
+    assert result.test_ids == (3,)
+    assert result.strategy == "preassigned_metadata"
+    assert manifest.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda payload: payload["roles"]["test"].update(ids=[999]), "ids"),
+        (
+            lambda payload: payload["roles"]["validation"]["rows"][0].update(Label=1),
+            "rows",
+        ),
+        (lambda payload: payload.update(protocol_fold=0), "protocol_fold"),
+    ],
+)
+def test_preassigned_split_rejects_manifest_drift(tmp_path, mutation, message):
+    metadata = _preassigned_metadata()
+    manifest = tmp_path / "drift.json"
+    payload = _write_preassigned_manifest(manifest, metadata)
+    mutation(payload)
+    manifest.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=message):
+        resolve_data_splits(
+            metadata,
+            _preassigned_args(manifest),
+            SimpleNamespace(type="Default_task"),
+            metadata.keys(),
+            metadata.keys(),
+        )
+
+
+def test_preassigned_split_requires_existing_manifest(tmp_path):
+    metadata = _preassigned_metadata()
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        resolve_data_splits(
+            metadata,
+            _preassigned_args(tmp_path / "missing.json"),
+            SimpleNamespace(type="Default_task"),
+            metadata.keys(),
+            metadata.keys(),
+        )
 
 
 def test_task_defined_rejects_source_target_group_overlap(tmp_path):

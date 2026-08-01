@@ -39,6 +39,7 @@ trainer:
 
 model:
   device: "cpu"
+  internal_instance_normalization: false
   uxfd:
     enable_sp2d: true
     sp2d:

@@ -1,0 +1,233 @@
+schema_version: 1
+kind: p05_frozen_pilot_matrix
+paper_id: P05
+protocol_id: P05-G040-v3.2
+matrix_id: P05-PILOT-v1
+status: frozen_declarative
+evidence_eligible: false
+
+design:
+  type: full_factorial_2x2_engineering_pilot
+  factors:
+    arm: [P05-B0, P05-M]
+    dataset: [CWRU, XJTU]
+  experimental_unit: one_single_gpu_training_process_for_one_arm_dataset_cell
+  replicate_level: one_unreplicated_engineering_pilot_per_cell
+  analysis_use: resource_forecast_only
+  claim_support: forbidden
+  job_list_is_execution_order: false
+  run_order_status: frozen_in_pilot_launch_plan_p05_v1
+  hardware_block_status: physical_indices_frozen_UUID_binding_pending
+  responses:
+    - startup_seconds
+    - epoch_seconds_1_through_5
+    - median_epoch_seconds_2_through_5
+    - peak_allocated_memory
+    - peak_reserved_memory
+  fixed_contract:
+    seed: 20260801
+    learning_rate: 1.0e-3
+    batch_size: 64
+    epochs: 5
+    early_stopping: false
+    stage: fit_validate_only
+    optimizer: adam
+    weight_decay: 1.0e-4
+    scheduler: null
+    process_count: 1
+    gpu_count: 1
+
+launch_gate:
+  status: blocked
+  expected_gpu_uuid_placeholder: __REQUIRED_GPU_UUID_AT_LAUNCH__
+  required_external_environment:
+    CUDA_VISIBLE_DEVICES: exactly_one_of_0_or_1
+    conda_environment: LQ_signal
+  required_before_gpu_execution:
+    - materialize_each_job_as_a_standalone_config_and_register_its_digest
+    - replace_only_trainer_expected_gpu_uuid_with_the_observed_physical_GPU_UUID
+  launch_plan_path: configs/experiments/p05/protocol/pilot_launch_plan_p05_v1.yaml
+  satisfied_implementation_gates:
+    - registered_CUDA_epoch_timing_and_memory_collector_targeted_tests_pass
+  forbidden_during_pilot:
+    - test_dataset_construction
+    - test_cache_access
+    - test_metric_access
+    - scientific_key_overrides
+
+common_config:
+  pipeline: Pipeline_05_Explainable_Fault_Diagnosis
+  environment:
+    PROJECT_HOME: "."
+    seed: 20260801
+    iterations: 1
+    stage: fit_validate_only
+    notes: "P05 frozen engineering pilot; outputs are not paper evidence."
+    wandb: false
+    swanlab: false
+  data:
+    data_dir: /home/user/data/PHMbenchdata/PHM-Vibench
+    metadata_path: configs/experiments/p05/protocol/metadata_p05_v2.csv
+    allow_download: false
+    cache_mode: read_only_verified
+    cache_path: /home/user/data/PHMbenchdata/PHM-Vibench/cache.h5
+    cache_manifest_path: configs/experiments/p05/protocol/signal_cache_p05_v2.manifest.json
+    p05_evidence_mode: true
+    batch_size: 64
+    window_size: 4096
+    stride: 4096
+    train_ratio: 0.8
+    window_sampling_strategy: evenly_spaced
+    normalization: train_channel_standardization
+    dtype: float32
+    num_workers: 0
+    drop_last_train: false
+    noise_snr: null
+    split_strategy: preassigned_metadata
+    split:
+      strategy: preassigned_metadata
+      split_key: Protocol_Split
+      group_key: Protocol_Group
+      seed: 20260801
+      test_policy: partition
+  model:
+    type: X_model
+    name: TSPN_UXFD
+    in_dim: 4096
+    out_dim: 4096
+    in_channels: 2
+    out_channels: 4
+    scale: 1
+    skip_connection: true
+    internal_instance_normalization: false
+    device: cuda
+    signal_processing_configs:
+      layer1: [I]
+    feature_extractor_configs: [Mean, Std]
+    uxfd:
+      enable_sp2d: false
+      operator_attention:
+        enable: false
+      logic:
+        enable: false
+      fuzzy:
+        num_fuzzy_features: 8
+        num_membership_functions: 3
+        num_rules: 10
+        logit_scale: 0.5
+        antecedent_temperature: 1.0
+        min_width: 1.0e-4
+        firing_epsilon: 1.0e-12
+  task:
+    type: Default_task
+    name: Default_task
+    loss: CE_weighted
+    metrics: [acc, f1_macro]
+    optimizer: adam
+    lr: 1.0e-3
+    weight_decay: 1.0e-4
+    scheduler: null
+    p05_evidence_mode: true
+    p05_run_phase: pilot
+    sample_weight_key: sample_weight
+  trainer:
+    name: Default_trainer
+    p05_evidence_mode: true
+    p05_pilot_mode: true
+    expected_gpu_uuid: __REQUIRED_GPU_UUID_AT_LAUNCH__
+    num_epochs: 5
+    device: cuda
+    accelerator: gpu
+    devices: 1
+    gpus: 1
+    num_nodes: 1
+    num_processes: 1
+    strategy: auto
+    precision: 32
+    deterministic: true
+    monitor: val_loss
+    monitor_mode: min
+    save_top_k: 1
+    early_stopping: false
+    pruning: 0.0
+    log_every_n_steps: 1
+
+arms:
+  P05-B0:
+    role: same_backbone_no_fuzzy
+    config:
+      model:
+        uxfd:
+          fuzzy:
+            enable: false
+      task:
+        p05_arm_id: P05-B0
+        p05_trace_export: false
+  P05-M:
+    role: proposed_fuzzy_trace
+    config:
+      model:
+        uxfd:
+          fuzzy:
+            enable: true
+      task:
+        p05_arm_id: P05-M
+        p05_trace_export: true
+
+datasets:
+  CWRU:
+    dataset_id: 1
+    num_classes: 4
+    windows_per_record: 16
+    config:
+      data:
+        num_window: 16
+        split:
+          manifest_path: configs/experiments/p05/protocol/cwru_split_p05_v2.manifest.json
+      model:
+        num_classes: 4
+      task:
+        target_system_id: [1]
+  XJTU:
+    dataset_id: 2
+    num_classes: 2
+    windows_per_record: 4
+    config:
+      data:
+        num_window: 4
+        split:
+          manifest_path: configs/experiments/p05/protocol/xjtu_split_p05_v2.manifest.json
+      model:
+        num_classes: 2
+      task:
+        target_system_id: [2]
+
+jobs:
+  - id: P05-PILOT-B0-CWRU
+    arm: P05-B0
+    dataset: CWRU
+    config:
+      environment:
+        project: p05_pilot_b0_cwru
+        output_dir: results/experiments/p05/pilot/P05-PILOT-B0-CWRU
+  - id: P05-PILOT-M-CWRU
+    arm: P05-M
+    dataset: CWRU
+    config:
+      environment:
+        project: p05_pilot_m_cwru
+        output_dir: results/experiments/p05/pilot/P05-PILOT-M-CWRU
+  - id: P05-PILOT-B0-XJTU
+    arm: P05-B0
+    dataset: XJTU
+    config:
+      environment:
+        project: p05_pilot_b0_xjtu
+        output_dir: results/experiments/p05/pilot/P05-PILOT-B0-XJTU
+  - id: P05-PILOT-M-XJTU
+    arm: P05-M
+    dataset: XJTU
+    config:
+      environment:
+        project: p05_pilot_m_xjtu
+        output_dir: results/experiments/p05/pilot/P05-PILOT-M-XJTU

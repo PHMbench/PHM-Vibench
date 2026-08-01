@@ -1,5 +1,16 @@
 from .Sampler import HierarchicalFewShotSampler, Same_system_Sampler
 
+
+def _drop_last_train(args_data):
+    """Return the configured training tail-batch policy.
+
+    Historical configurations did not expose this setting and dropped the final
+    incomplete training batch.  Keep that behavior as the compatibility default;
+    evidence protocols such as P05 must opt in with ``drop_last_train: false``.
+    """
+
+    return bool(getattr(args_data, "drop_last_train", True))
+
 def _get_gfs_sampler(args_task, args_data, dataset, mode):
     if mode == 'train':
         sampler = HierarchicalFewShotSampler(
@@ -28,7 +39,7 @@ def _get_cddg_sampler(args_data, dataset, mode):
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=True,
-            drop_last=True,
+            drop_last=_drop_last_train(args_data),
         )
     elif mode == 'val' or mode == 'test':
         sampler = Same_system_Sampler(
@@ -47,7 +58,7 @@ def _get_dg_sampler(args_data, dataset, mode):
             dataset, 
             batch_size=args_data.batch_size,
             shuffle=True,
-            drop_last=True
+            drop_last=_drop_last_train(args_data)
         )
     elif mode == 'val' or mode == 'test':
         sampler = Same_system_Sampler(
@@ -66,7 +77,7 @@ def _get_pretrain_sampler(args_data, dataset, mode):
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=True,
-            drop_last=True,
+            drop_last=_drop_last_train(args_data),
         )
     elif mode == 'val' or mode == 'test':
         sampler = Same_system_Sampler(
@@ -104,7 +115,7 @@ def Get_sampler(args_task, args_data, dataset, mode='train'):
                 dataset=dataset,
                 batch_size=args_data.batch_size,
                 shuffle=True,
-                drop_last=True,
+                drop_last=_drop_last_train(args_data),
             )
         elif mode == 'val' or mode == 'test':
             sampler = Same_system_Sampler(

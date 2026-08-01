@@ -23,6 +23,13 @@ def search_ids_for_task(metadata_accessor, args_task):
         elif args_task.type in ['pretrain', 'Pretrain']:
             # 对于预训练任务，通常使用全部可用 ID
             train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
+        elif args_task.type == 'Default_task':
+            # The exact partition is owned by resolve_data_splits.  In
+            # particular, P05 preassigned_metadata must receive the complete
+            # target-dataset ID universe here and may not inherit DG domain
+            # filtering or an "unknown task" fallback.
+            train_val_ids = list(metadata_accessor.keys())
+            test_ids = list(metadata_accessor.keys())
         # Add other task types here if needed
         # elif args_task.type == 'SOME_OTHER_TYPE':
         #     train_val_ids, test_ids = get_some_other_type_ids(metadata_accessor, args_task)

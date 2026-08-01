@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 import pytorch_lightning as pl
 from ..utils.registry import Registry
+from .p05_runtime import p05_evidence_mode_enabled
 
 TRAINER_REGISTRY = Registry()
 
@@ -28,6 +29,7 @@ def trainer_factory(
     path: str,
 ) -> Optional[pl.Trainer]:
     """Instantiate a trainer using configuration namespaces."""
+    p05_evidence_mode = p05_evidence_mode_enabled(args_trainer)
     name = getattr(args_trainer, "name", "Default_trainer")
     try:
         trainer_fn = TRAINER_REGISTRY.get(name)
@@ -37,6 +39,10 @@ def trainer_factory(
             trainer_module = importlib.import_module(module_path)
             trainer_fn = trainer_module.trainer
         except Exception as exc:  # pragma: no cover - runtime safeguard
+            if p05_evidence_mode:
+                raise RuntimeError(
+                    f"P05 evidence mode failed to import trainer {module_path}"
+                ) from exc
             print(f"Failed to import trainer {module_path}: {exc}")
             return None
 
@@ -48,5 +54,9 @@ def trainer_factory(
             path=path,
         )
     except Exception as exc:  # pragma: no cover - runtime safeguard
+        if p05_evidence_mode:
+            raise RuntimeError(
+                f"P05 evidence mode failed to create trainer {name}"
+            ) from exc
         print(f"Failed to create trainer {name}: {exc}")
         return None

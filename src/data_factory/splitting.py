@@ -17,6 +17,25 @@ from .data_utils import MetadataAccessor
 SUPPORTED_PARTITION_TASKS = {"Default_task", "pretrain"}
 SUPPORTED_TASK_DEFINED_TASKS = {"DG", "CDDG"}
 UNSUPPORTED_EPISODIC_TASKS = {"FS", "GFS"}
+PREASSIGNED_ROLE_TO_RESULT = {
+    "train": "train",
+    "validation": "val",
+    "test": "test",
+}
+PREASSIGNED_ROW_FIELDS = (
+    "Id",
+    "Dataset_id",
+    "Name",
+    "File",
+    "Original_Label",
+    "Protocol_Label",
+    "Label",
+    "Domain_id",
+    "Sample_rate",
+    "Protocol_Group",
+    "Protocol_Fold",
+    "Protocol_Split",
+)
 
 
 @dataclass(frozen=True)
@@ -24,6 +43,7 @@ class SplitSpec:
     strategy: str = "legacy_windows"
     group_key: str | None = None
     stratify_key: str | None = None
+    split_key: str | None = None
     seed: int = 42
     test_policy: str = "partition"
     fractions: Mapping[str, float] | None = None
@@ -65,6 +85,7 @@ def split_spec_from_args(args_data: Any) -> SplitSpec:
         strategy=str(_get(raw, "strategy", "legacy_windows")),
         group_key=_get(raw, "group_key", None),
         stratify_key=_get(raw, "stratify_key", None),
+        split_key=_get(raw, "split_key", None),
         seed=int(_get(raw, "seed", 42)),
         test_policy=str(_get(raw, "test_policy", "partition")),
         fractions=fractions,
@@ -73,9 +94,29 @@ def split_spec_from_args(args_data: Any) -> SplitSpec:
 
 
 def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
-    if spec.strategy not in {"legacy_windows", "grouped_metadata"}:
+    if spec.strategy not in {
+        "legacy_windows",
+        "grouped_metadata",
+        "preassigned_metadata",
+    }:
         raise ValueError(f"unknown data.split.strategy {spec.strategy!r}")
     if spec.strategy == "legacy_windows":
+        return {}
+    if spec.strategy == "preassigned_metadata":
+        if not spec.group_key:
+            raise ValueError("data.split.group_key is required for preassigned_metadata")
+        if not spec.split_key:
+            raise ValueError("data.split.split_key is required for preassigned_metadata")
+        if not spec.manifest_path:
+            raise ValueError("data.split.manifest_path is required for preassigned_metadata")
+        if spec.test_policy != "partition":
+            raise ValueError("preassigned_metadata requires test_policy=partition")
+        if spec.fractions is not None:
+            raise ValueError("data.split.fractions must be omitted for preassigned_metadata")
+        if task_type != "Default_task":
+            raise ValueError(
+                "preassigned_metadata is currently registered only for task.type=Default_task"
+            )
         return {}
     if not spec.group_key:
         raise ValueError("data.split.group_key is required for grouped_metadata")
@@ -230,6 +271,146 @@ def _assert_disjoint(result: SplitResult) -> None:
             raise ValueError(f"group leakage between {left} and {right}: {ordered}")
 
 
+def _require_manifest_mapping(value: Any, location: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"split manifest {location} must be an object")
+    return value
+
+
+def _canonical_preassigned_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    missing = [field for field in PREASSIGNED_ROW_FIELDS if field not in frame.columns]
+    if missing:
+        raise ValueError(f"preassigned metadata is missing canonical fields: {missing}")
+    ordered = frame.reset_index(drop=True).sort_values("Id", kind="mergesort")
+    return [
+        {field: _json_scalar(row[field]) for field in PREASSIGNED_ROW_FIELDS}
+        for _, row in ordered.iterrows()
+    ]
+
+
+def _resolve_preassigned(
+    metadata: MetadataAccessor,
+    spec: SplitSpec,
+    train_val_ids: Sequence[Any],
+    task_test_ids: Sequence[Any],
+) -> SplitResult:
+    assert spec.group_key is not None
+    assert spec.split_key is not None
+    assert spec.manifest_path is not None
+
+    manifest_path = Path(str(spec.manifest_path))
+    if not manifest_path.is_file():
+        raise FileNotFoundError(
+            f"preassigned split manifest does not exist: {manifest_path}"
+        )
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"unable to read preassigned split manifest: {exc}") from exc
+    payload = _require_manifest_mapping(payload, "root")
+
+    if payload.get("schema_version") != 1:
+        raise ValueError("preassigned split manifest schema_version must be 1")
+    if payload.get("role_key") != spec.split_key:
+        raise ValueError("split manifest role_key does not match data.split.split_key")
+    if payload.get("group_key") != spec.group_key:
+        raise ValueError("split manifest group_key does not match data.split.group_key")
+    if payload.get("label_key") != "Label":
+        raise ValueError("preassigned split manifest label_key must be 'Label'")
+    semantic_sha = payload.get("metadata_semantic_sha256")
+    if (
+        not isinstance(semantic_sha, str)
+        or len(semantic_sha) != 64
+        or any(character not in "0123456789abcdef" for character in semantic_sha)
+    ):
+        raise ValueError("split manifest metadata_semantic_sha256 is invalid")
+
+    id_key = metadata.key_column
+    if id_key != "Id":
+        raise ValueError("preassigned P05 metadata must use Id as its key column")
+    frame = metadata.df.copy()
+    if frame[id_key].duplicated().any():
+        raise ValueError("preassigned metadata contains duplicate Id values")
+    for field in (spec.group_key, spec.split_key, "Label", "Protocol_Fold"):
+        if field not in frame.columns:
+            raise ValueError(f"preassigned metadata does not contain {field!r}")
+        if frame[field].isna().any():
+            raise ValueError(f"preassigned metadata field {field!r} contains missing values")
+
+    candidate_ids = list(dict.fromkeys([*train_val_ids, *task_test_ids]))
+    if set(candidate_ids) != set(metadata.keys()):
+        raise ValueError(
+            "preassigned split candidates must equal the complete target metadata ID set"
+        )
+    frame = _selected_frame(metadata, candidate_ids, spec.group_key)
+    actual_roles = set(frame[spec.split_key].astype(str))
+    if actual_roles != set(PREASSIGNED_ROLE_TO_RESULT):
+        raise ValueError(
+            "preassigned metadata roles must be exactly train, validation, and test"
+        )
+    if set(int(value) for value in frame["Protocol_Fold"].unique()) != {-1}:
+        raise ValueError("preassigned metadata Protocol_Fold must be constant -1")
+    if payload.get("protocol_fold") != -1:
+        raise ValueError("split manifest protocol_fold must be -1")
+
+    dataset_ids = sorted(set(int(value) for value in frame["Dataset_id"]))
+    if len(dataset_ids) != 1 or payload.get("dataset_id") != dataset_ids[0]:
+        raise ValueError("split manifest dataset_id does not match target metadata")
+    dataset_names = sorted(set(str(value) for value in frame["Name"]))
+    if len(dataset_names) != 1 or payload.get("dataset_name") != dataset_names[0]:
+        raise ValueError("split manifest dataset_name does not match target metadata")
+
+    roles = _require_manifest_mapping(payload.get("roles"), "roles")
+    if set(roles) != set(PREASSIGNED_ROLE_TO_RESULT):
+        raise ValueError("split manifest roles must be exactly train, validation, and test")
+
+    verified_ids: dict[str, tuple[Any, ...]] = {}
+    verified_groups: dict[str, tuple[Any, ...]] = {}
+    for role in PREASSIGNED_ROLE_TO_RESULT:
+        role_payload = _require_manifest_mapping(roles[role], f"roles.{role}")
+        role_frame = frame.loc[frame[spec.split_key].astype(str) == role]
+        actual_rows = _canonical_preassigned_rows(role_frame)
+        actual_ids = [row["Id"] for row in actual_rows]
+        actual_groups = sorted(
+            set(role_frame[spec.group_key].astype(str)),
+            key=str,
+        )
+        actual_counts = {
+            str(int(label)): int(count)
+            for label, count in role_frame["Label"].value_counts().sort_index().items()
+        }
+        expected = {
+            "row_count": len(actual_rows),
+            "ids": actual_ids,
+            "groups": actual_groups,
+            "class_counts": actual_counts,
+            "rows": actual_rows,
+        }
+        for key, actual in expected.items():
+            if role_payload.get(key) != actual:
+                raise ValueError(
+                    f"split manifest roles.{role}.{key} does not match metadata"
+                )
+        verified_ids[role] = tuple(actual_ids)
+        verified_groups[role] = tuple(actual_groups)
+
+    result = SplitResult(
+        train_ids=verified_ids["train"],
+        val_ids=verified_ids["validation"],
+        test_ids=verified_ids["test"],
+        train_groups=verified_groups["train"],
+        val_groups=verified_groups["validation"],
+        test_groups=verified_groups["test"],
+        strategy=spec.strategy,
+        manifest_path=str(manifest_path),
+    )
+    _assert_disjoint(result)
+    all_ids = [*result.train_ids, *result.val_ids, *result.test_ids]
+    if len(all_ids) != len(set(all_ids)) or set(all_ids) != set(metadata.keys()):
+        raise ValueError("preassigned split IDs are not a disjoint complete partition")
+    return result
+
+
 def _write_manifest(
     result: SplitResult,
     spec: SplitSpec,
@@ -287,6 +468,13 @@ def resolve_data_splits(
             train_ids=tuple(train_val_ids),
             val_ids=tuple(train_val_ids),
             test_ids=tuple(task_test_ids),
+        )
+    if spec.strategy == "preassigned_metadata":
+        return _resolve_preassigned(
+            metadata,
+            spec,
+            train_val_ids,
+            task_test_ids,
         )
 
     assert spec.group_key is not None
