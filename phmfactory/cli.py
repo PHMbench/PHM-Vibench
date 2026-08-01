@@ -10,7 +10,12 @@ from typing import Any
 
 from phmfactory.config import DEFAULT_CONFIG, resolve_config
 from phmfactory.pipelines import pipeline_module_name
-from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
+from phmfactory.runtime import (
+    AttestationWriteError,
+    CompiledRunSpec,
+    ExecutionEnvelope,
+    RunAttestation,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -94,8 +99,19 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     ).pipeline
 
 
+def _write_failed_attestation(
+    attestation: RunAttestation,
+    envelope: ExecutionEnvelope,
+    original_error: BaseException,
+) -> None:
+    try:
+        attestation.write(envelope)
+    except AttestationWriteError as write_error:
+        raise write_error from original_error
+
+
 def run(args: argparse.Namespace) -> Any:
-    """Compile and execute one Pipeline through the fail-closed public boundary."""
+    """Compile, attest, and execute one Pipeline through the public boundary."""
     requested_config = _resolve_config_path(args)
     resolved = resolve_config(requested_config, override_values=args.override)
     compiled = CompiledRunSpec.compile(resolved)
@@ -113,8 +129,37 @@ def run(args: argparse.Namespace) -> Any:
     module_name = pipeline_module_name(resolved.pipeline, warn=False)
     envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
     args.execution_envelope = envelope
-    pipeline_module = importlib.import_module(module_name)
-    result = envelope.execute(pipeline_module, args)
+
+    try:
+        attestation = RunAttestation.prepare(compiled, module_name, envelope)
+    except BaseException as error:
+        envelope.record_failure(error, stage="attestation_prepare")
+        raise
+
+    args.run_attestation = attestation
+    args.run_id = attestation.run_id
+    args.run_manifest_path = str(attestation.manifest_path)
+
+    try:
+        pipeline_module = importlib.import_module(module_name)
+    except BaseException as error:
+        envelope.record_failure(error, stage="import")
+        _write_failed_attestation(attestation, envelope, error)
+        raise
+
+    try:
+        result = envelope.execute(pipeline_module, args)
+    except BaseException as error:
+        _write_failed_attestation(attestation, envelope, error)
+        raise
+
+    try:
+        attestation.write(envelope)
+    except AttestationWriteError as error:
+        envelope.record_failure(error, stage="attestation_finalize")
+        raise
+
+    print(f"run_manifest={attestation.manifest_path}")
     print("完成所有实验！")
     return result
 
