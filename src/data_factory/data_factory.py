@@ -5,6 +5,7 @@
 import os
 import importlib
 import glob
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import h5py
@@ -22,6 +23,114 @@ from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
 from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
+
+
+class SplitContractError(RuntimeError):
+    """Raised before I/O when a configured split cannot be enforced safely."""
+
+
+class DatasetResolutionError(RuntimeError):
+    """Raised when the configured dataset implementation cannot be resolved."""
+
+
+def _config_value(config, key, default=None):
+    """Read a key from either a mapping or the runtime config namespace."""
+    if isinstance(config, dict):
+        return config.get(key, default)
+    return getattr(config, key, default)
+
+
+def validate_split_preflight(args_data):
+    """Reject configured split contracts that the maintained runtime cannot honor.
+
+    Legacy configurations without a ``data.split`` block retain their historical
+    behavior.  A declared split contract, however, must never be silently ignored.
+    The grouped splitter and its manifest schemas are not implemented yet, so a
+    syntactically complete request is still rejected before metadata or raw data I/O.
+    """
+    split_config = _config_value(args_data, "split")
+    if split_config is None:
+        return
+
+    strategy = _config_value(split_config, "strategy")
+    if not isinstance(strategy, str) or not strategy.strip():
+        raise SplitContractError("data.split.strategy is required")
+    if strategy != "grouped_metadata":
+        raise SplitContractError(
+            f"Unsupported data.split.strategy {strategy!r}; refusing to ignore it"
+        )
+
+    group_key = _config_value(split_config, "group_key")
+    if not isinstance(group_key, str) or not group_key.strip():
+        raise SplitContractError(
+            "data.split.group_key is required for grouped_metadata"
+        )
+
+    manifest_path = _config_value(split_config, "manifest_path")
+    if not isinstance(manifest_path, str) or not manifest_path.strip():
+        raise SplitContractError(
+            "data.split.manifest_path is required for grouped_metadata"
+        )
+
+    raise SplitContractError(
+        "grouped_metadata split/manifest execution is not implemented in the "
+        "maintained runtime; refusing to load data with an inert split contract"
+    )
+
+
+def resolve_dataset_class(task_type, task_name):
+    """Resolve one configured dataset module without a silent default fallback.
+
+    Repository module names historically vary in capitalization.  Resolution is
+    therefore case-insensitive but must identify exactly one directory and one
+    module file.  Missing, ambiguous, or broken imports are fatal.
+    """
+    if not isinstance(task_type, str) or not task_type.isidentifier():
+        raise DatasetResolutionError(f"Invalid task type {task_type!r}")
+    if not isinstance(task_name, str) or not task_name.isidentifier():
+        raise DatasetResolutionError(f"Invalid task name {task_name!r}")
+
+    task_root = Path(__file__).resolve().parent / "dataset_task"
+    task_dirs = sorted(
+        path
+        for path in task_root.iterdir()
+        if path.is_dir() and path.name.casefold() == task_type.casefold()
+    )
+    if len(task_dirs) != 1:
+        raise DatasetResolutionError(
+            f"Expected exactly one dataset task directory for {task_type!r}, "
+            f"found {[path.name for path in task_dirs]}"
+        )
+
+    expected_stem = f"{task_name}_dataset".casefold()
+    module_files = sorted(
+        path
+        for path in task_dirs[0].glob("*.py")
+        if path.stem.casefold() == expected_stem
+    )
+    if len(module_files) != 1:
+        raise DatasetResolutionError(
+            f"Expected exactly one dataset module for {task_type}.{task_name}, "
+            f"found {[path.name for path in module_files]}"
+        )
+
+    module_name = (
+        f"{__package__}.dataset_task.{task_dirs[0].name}.{module_files[0].stem}"
+    )
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError as exc:
+        raise DatasetResolutionError(
+            f"Failed to import configured dataset module {module_name}"
+        ) from exc
+
+    dataset_class = getattr(module, "set_dataset", None)
+    if dataset_class is None:
+        raise DatasetResolutionError(
+            f"Configured dataset module {module_name} has no set_dataset"
+        )
+    return dataset_class
+
 
 def register_data_factory(name: str):
     """Decorator to register a data factory implementation."""
@@ -41,6 +150,10 @@ class data_factory:
         Args:
             args_data: 包含data_dir和metadata_file的字典或命名空间
         """
+        # A declared split must be enforceable before any metadata download,
+        # cache creation, or raw-data access can occur.
+        validate_split_preflight(args_data)
+
         # parameters    
         self.args_data = args_data
         self.args_task = args_task
@@ -278,15 +391,7 @@ class data_factory:
     def _init_dataset(self):
         task_name = self.args_task.name
         task_type = self.args_task.type
-        try:
-            mod = importlib.import_module(
-                f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset"
-            )
-            dataset_cls = mod.set_dataset
-        except ImportError as e:
-            print("Using Default datasets")
-            from .dataset_task.Default_dataset import Default_dataset
-            dataset_cls = Default_dataset
+        dataset_cls = resolve_dataset_class(task_type, task_name)
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}

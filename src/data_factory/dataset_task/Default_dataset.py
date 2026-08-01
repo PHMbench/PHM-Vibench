@@ -12,13 +12,27 @@ class Default_dataset(Dataset): # THU_006or018_basic
             metadata: 数据元信息，格式为 {ID: {字段: 值}} 字典
             args_data: 数据处理参数
             args_task: 任务参数
-            mode: 数据模式，可选 "train", "valid", "test"
+            mode: 数据模式，可选 "train", "val"/"valid", "test"
         """
+        canonical_modes = {
+            "train": "train",
+            "val": "valid",
+            "valid": "valid",
+            "test": "test",
+        }
+        if mode not in canonical_modes:
+            raise ValueError(
+                f"mode must be one of {sorted(canonical_modes)}, got {mode!r}"
+            )
+
         self.key = list(data.keys())[0]
         self.data = data[self.key]  # 取出第一个键的数据
         # self.metadata = metadata
         self.args_data = args_data
-        self.mode = mode
+        # ``data_factory`` historically passes ``val`` while the split logic uses
+        # ``valid``.  Canonicalize before window processing so validation can never
+        # bypass the held-out suffix.
+        self.mode = canonical_modes[mode]
         
         # 数据处理参数
         self.window_size = args_data.window_size

@@ -1,56 +1,44 @@
-# P02 - XFD Benchmark Toolkit - additive experiment configs
+# P02 measurement-contract configurations
 
-These configs are ADDITIVE: they live under
-`configs/experiments/p02_xfd_benchmark_toolkit/` and do NOT modify any
-existing config under `configs/base/`, `configs/demo/`, or `configs/reference/`.
+## Maintained G030 entry point
 
-## Purpose
+measurement_contract_v1.yaml is the non-evidence conformance configuration for
+the maintained measurement object and metric registry.
 
-Provide the same-protocol config scaffolding for the planned P02-G050 / G060
-runs that the normalized manuscript is waiting on.
+Run it from the src/vibench repository root:
 
-Two engines are involved (see `paper/experiments/experiment_plan.md`):
+~~~bash
+conda run -n LQ_signal python -m src.explain_factory.contract_cli \
+  --config configs/experiments/p02_xfd_benchmark_toolkit/measurement_contract_v1.yaml
+~~~
 
-- **E1 (legacy toolkit)** - drives the 5-model explainability cube from its own
-  scripts under `paper/UXFD_paper/Explainable_FD_Toolkit/scripts/`. The 5
-  toolkit models (TSPN, Fusion1D2D, MoE, OperatorAttention, FuzzyLogic) are NOT
-  registered in `src/model_factory/model_registry.csv`, so this engine cannot be
-  launched through `main.py`. The two YAMLs below are traceability bindings for
-  the run ledger.
-- **E2 (`main.py`)** - drives the real-data, registry-style baselines that the
-  cube is missing. The three `p02_resnet1d_*.yaml` configs below are runnable.
+This configuration:
 
-### Traceability configs (Engine E1, not launched via `main.py`)
+- uses its own strict schema and loader;
+- is not a main.py training configuration;
+- is not compatible with the standard training-config registry;
+- exercises all nine registered metric contracts on deterministic fixtures;
+- always reports evidence_eligible=false.
 
-- `p02_toolkit_benchmark.yaml` - six-plus-baseline matrix entrypoint
-  (TSPN, Fusion1D2D, MoE, OperatorAttention, FuzzyLogic, +1 candidate)
-  driven by `scripts/run_unified_explain_eval.py`.
-- `p02_toolkit_ablation.yaml` - Toolkit ablation runner binding
-  (`scripts/run_toolkit_ablations.py` - EXISTS, 216 LOC; in the legacy snapshot
-  it consumed synthetic fixtures, real-data binding requires the protocol lock).
+The conformance result supports no paper claim. Real evidence remains blocked
+until G040 is human-approved and fixed P07/P08 outputs have versioned,
+source-specific adapters.
 
-### Runnable configs (Engine E2, via `python main.py --config <yaml>`)
+## Historical traceability configurations
 
-6th same-protocol baseline candidate (CNN.ResNet1D, registered), one per dataset.
-Smoke-friendly defaults (1 epoch, CPU); for decisive runs apply the
-`grouped_metadata` leakage-safe overrides documented in each file's header:
+p02_toolkit_benchmark.yaml and p02_toolkit_ablation.yaml describe legacy
+paper-side runners. They are retained for audit only. They are not loadable by
+the maintained training schema and are ineligible because the historical path
+contains synthetic inputs, RNG or hard-coded metric behavior, silent
+fallbacks, and arbitrary overall-score semantics.
 
-- `p02_resnet1d_cwru.yaml`    - Dataset_id=1 (CWRU)
-- `p02_resnet1d_xjtu.yaml`    - Dataset_id=2 (XJTU)
-- `p02_resnet1d_thu018.yaml`  - Dataset_id=14 (RM_018_THU24 = manuscript "THU_018_basic")
+## Classification-only smoke configurations
 
-The E1 traceability configs are **planned, not runnable as-is** through `main.py`.
-The E2 configs are runnable today (status: ready).
+p02_resnet1d_cwru.yaml, p02_resnet1d_xjtu.yaml, and
+p02_resnet1d_thu018.yaml are historical classification smoke configurations.
+Passing those configurations does not execute the P02 measurement contract and
+does not support C1, C2, or C3. Their data-boundary claims must be re-audited in
+G040 before any reuse.
 
-## Source provenance
-
-- Legacy toolkit scripts: `paper/UXFD_paper/Explainable_FD_Toolkit/scripts/`
-  (READ-ONLY; do not edit).
-- Legacy parent smoke config: `paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml`.
-- Engine: PHM-Vibench_fix (`main.py --config <yaml>`).
-
-## Non-destructive attestation
-
-- No file under `configs/base/`, `configs/demo/`, or `configs/reference/` was modified.
-- No git commit / push was performed.
-- The legacy `paper/UXFD_paper/Explainable_FD_Toolkit/` tree remains read-only.
+No file in this directory authorizes a real experiment, GPU run, claim
+promotion, or protocol approval.
