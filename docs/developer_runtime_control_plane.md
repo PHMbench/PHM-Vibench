@@ -12,6 +12,7 @@ config or preset + CLI overrides
   -> Pipeline maturity gate
   -> canonical Pipeline adapter
   -> protected src runtime
+  -> evidence registration
   -> RunAttestation (succeeded or failed)
 ```
 
@@ -50,15 +51,39 @@ the final succeeded manifest cannot be written, the public invocation fails and 
 completion message is printed. This makes the minimum attestation mandatory rather than
 best effort.
 
-The first schema intentionally keeps `data`, `protocol`, `seed`, and `environment`
-evidence as nested extension points. Pipeline-specific evidence such as the Pipeline 06
-stage ledger or UXFD explainability artifacts should be referenced from this manifest in
-later bounded PRs; they must not create another top-level run identity.
-
 Protected Pipeline code must consume `compiled_run_spec.runtime_config()` instead of
 reparsing the source YAML or automatically discovering machine-local files. Until a
 Pipeline is migrated, the legacy loader remains a compatibility implementation, not a
 second public configuration authority.
+
+## Evidence convergence
+
+`RunAttestation` is the only top-level run identity. Existing metrics, configuration
+snapshots, explainability files, stage ledgers, synthetic manifests, checkpoints, and
+evaluation manifests remain separate files, but they are indexed through two APIs:
+
+```python
+run_attestation.register_artifact(role=..., path=..., sha256=..., metadata=...)
+run_attestation.set_evidence(section, value)
+run_attestation.append_evidence(section, value)
+```
+
+Artifact registration accepts existing files only. Repeating an identical registration
+is idempotent; a conflicting role/path record fails. Evidence values must be JSON
+serializable, and a scalar/mapping section cannot be silently overwritten with a
+different value.
+
+The shared classification runtime registers each `test_result_<iteration>.csv`, the
+iteration seed/run directory, and the final `all_results.csv`. Pipeline 05 registers its
+config snapshot, metadata snapshot, eligibility record, and compatibility explain/report
+manifest as role-labelled artifacts. Those files no longer define an independent run
+identity.
+
+Pipeline 06 is indexed after its explicit train, sample, or eval invocation returns. The
+control-plane adapter records the stage result, indexes any returned path/SHA records,
+and requires the existing `stage_ledger.json`. Missing or conflicting evidence changes
+the execution to `failed` with `failure.stage: evidence_finalize`; successful model
+execution alone is insufficient for a successful public invocation.
 
 ## Shared classification runtime
 

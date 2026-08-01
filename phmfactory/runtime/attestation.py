@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 from typing import Any, Mapping
@@ -15,6 +17,9 @@ from uuid import uuid4
 
 from phmfactory.runtime.execution import ExecutionEnvelope
 from phmfactory.runtime.spec import CompiledRunSpec
+
+
+SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class AttestationError(RuntimeError):
@@ -66,6 +71,13 @@ def _code_revision() -> dict[str, str | None]:
     return {"value": revision or None, "source": "git"}
 
 
+def _json_copy(value: Any, *, label: str) -> Any:
+    try:
+        return json.loads(json.dumps(value, ensure_ascii=False, sort_keys=True))
+    except (TypeError, ValueError) as error:
+        raise AttestationError(f"{label} must be JSON serializable: {error}") from error
+
+
 def _atomic_json_write(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
@@ -84,15 +96,25 @@ def _atomic_json_write(path: Path, payload: Mapping[str, Any]) -> None:
         raise AttestationWriteError(f"could not write run manifest {path}: {error}") from error
 
 
-@dataclass(frozen=True)
+@dataclass
 class RunAttestation:
-    """Location and immutable identity of one invocation-level run manifest."""
+    """Identity and accumulated evidence for one public invocation."""
 
     spec: CompiledRunSpec
     pipeline_module: str
     run_id: str
     manifest_path: Path
     created_at: str
+    artifacts: list[dict[str, Any]] = field(default_factory=list, repr=False)
+    evidence: dict[str, Any] = field(
+        default_factory=lambda: {
+            "data": {},
+            "protocol": {},
+            "seed": {},
+            "environment": {},
+        },
+        repr=False,
+    )
 
     @classmethod
     def prepare(
@@ -116,6 +138,66 @@ class RunAttestation:
         )
         attestation.write(envelope)
         return attestation
+
+    def register_artifact(
+        self,
+        *,
+        role: str,
+        path: str | Path,
+        sha256: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Register one existing artifact without silently replacing conflicts."""
+
+        normalized_role = str(role).strip()
+        if not normalized_role:
+            raise AttestationError("artifact role must be non-empty")
+        artifact_path = Path(path).expanduser().resolve()
+        if not artifact_path.is_file():
+            raise AttestationError(f"artifact does not exist or is not a file: {artifact_path}")
+        digest = str(sha256 or "").strip().lower() or None
+        if digest is not None and SHA256.fullmatch(digest) is None:
+            raise AttestationError(f"artifact sha256 is not 64 lowercase hex: {digest!r}")
+        record = {
+            "role": normalized_role,
+            "path": str(artifact_path),
+            "sha256": digest,
+            "metadata": _json_copy(dict(metadata or {}), label="artifact metadata"),
+        }
+        for existing in self.artifacts:
+            if existing["role"] == normalized_role and existing["path"] == str(artifact_path):
+                if existing != record:
+                    raise AttestationError(
+                        "conflicting artifact registration for "
+                        f"role={normalized_role!r}, path={artifact_path}"
+                    )
+                return deepcopy(existing)
+        self.artifacts.append(record)
+        return deepcopy(record)
+
+    def set_evidence(self, section: str, value: Any) -> None:
+        """Set one evidence section exactly once unless the value is identical."""
+
+        key = str(section).strip()
+        if not key:
+            raise AttestationError("evidence section must be non-empty")
+        normalized = _json_copy(value, label=f"evidence section {key!r}")
+        existing = self.evidence.get(key)
+        if existing not in (None, {}, [] ) and existing != normalized:
+            raise AttestationError(f"conflicting evidence section: {key!r}")
+        self.evidence[key] = normalized
+
+    def append_evidence(self, section: str, value: Any) -> None:
+        """Append one JSON evidence record to an ordered section."""
+
+        key = str(section).strip()
+        if not key:
+            raise AttestationError("evidence section must be non-empty")
+        normalized = _json_copy(value, label=f"evidence section {key!r}")
+        current = self.evidence.setdefault(key, [])
+        if not isinstance(current, list):
+            raise AttestationError(f"evidence section {key!r} is not appendable")
+        current.append(normalized)
 
     def payload(self, envelope: ExecutionEnvelope) -> dict[str, Any]:
         """Build the single invocation-level evidence document."""
@@ -148,13 +230,8 @@ class RunAttestation:
                 if envelope.status.value == "failed"
                 else None
             ),
-            "artifacts": [],
-            "evidence": {
-                "data": {},
-                "protocol": {},
-                "seed": {},
-                "environment": {},
-            },
+            "artifacts": deepcopy(self.artifacts),
+            "evidence": deepcopy(self.evidence),
         }
 
     def write(self, envelope: ExecutionEnvelope) -> None:
