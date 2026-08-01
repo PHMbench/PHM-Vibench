@@ -113,7 +113,7 @@ def test_classification_metrics_are_registered_without_new_output_files(
 def test_pipeline06_result_indexes_existing_stage_artifacts(tmp_path: Path) -> None:
     spec, _, attestation = _attestation(tmp_path, "Pipeline_06_Generative_Modeling")
     output_root = Path(spec.config["environment"]["output_dir"])
-    output_root.mkdir(parents=True)
+    output_root.mkdir(parents=True, exist_ok=True)
     ledger = output_root / "stage_ledger.json"
     ledger.write_text('{"stages": {}}\n', encoding="utf-8")
     run_dir = tmp_path / "stage"
