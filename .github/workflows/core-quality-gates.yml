@@ -196,10 +196,24 @@ jobs:
             "PyYAML>=6.0" \
             "matplotlib" \
             "tensorboard" \
-            "openpyxl"
+            "openpyxl" \
+            "pytest>=7"
 
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
+
+      - name: Run shared classification contract tests
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m py_compile \
+            src/runtime/classification.py \
+            src/runtime/explainability.py \
+            src/Pipeline_01_Fault_Diagnosis.py \
+            src/Pipeline_05_Explainable_Fault_Diagnosis.py \
+            test/test_classification_runtime.py
+          python -m pytest test/test_classification_runtime.py -vv --tb=long \
+            2>&1 | tee classification-runtime-pytest.log
 
       - name: Run repository-shipped dummy smoke
         shell: bash
@@ -217,6 +231,7 @@ jobs:
         with:
           name: offline-smoke-diagnostics
           path: |
+            classification-runtime-pytest.log
             offline-smoke.log
             offline-smoke-environment.txt
           if-no-files-found: warn
