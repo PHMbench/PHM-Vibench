@@ -3,11 +3,16 @@
 Paper: `P03-Evidence-Grounded-LLM-XFD`
 Engine: PHM-Vibench_fix (`python main.py --config <yaml> [--override key=value ...]`)
 
-These configs are the **diagnostic-backbone** arms of P03. They are composed
-from maintained base blocks (`configs/base/**`) and registered component IDs
-only — no ambiguous names, no hard-coded personal paths. Each file derives from
-a maintained demo (cited in its header comment) and is smoke-friendly
-(`trainer.num_epochs: 1`, CPU-safe defaults).
+This directory now has two deliberately separated surfaces:
+
+- the retained **diagnostic-backbone** configs, which can provide frozen
+  upstream evidence but do not support a new backbone-accuracy claim; and
+- `verifiable_report_smoke.yaml`, the CPU-only typed claim--evidence verifier
+  contract used to test report verification without invoking a renderer.
+
+The backbone configs are composed from maintained base blocks
+(`configs/base/**`) and registered component IDs only. Each derives from a
+maintained demo and retains a smoke-friendly one-epoch default.
 
 ## Why a separate group of configs
 
@@ -17,21 +22,19 @@ P03 has two layers of evidence:
    datasets and feed their (prediction, structured explanation) output into the
    LLM explanation protocol. This layer IS reproducible on PHM-Vibench_fix and
    is what these configs address.
-2. **LLM explanation / human-factors layer** — template-vs-LLM conditions,
-   hallucination ablations, latency/cost, the 30-participant user study, and
-   the TOP-rep comparators (Time-LLM, MOMENT, Time-MoE, CBAE). This layer is
-   **blocked**: the `trainer.extensions.agent.*` / `hallucination_checker.*` /
-   `domain_context.*` / `length_sweep` keys used by the legacy
-   `baseline_ablation_matrix.yaml` are NOT implemented in PHM-Vibench_fix
-   (only `trainer.extensions.report.manifest` exists), and no IRB-approved
-   user-study artifact, no industrial deployment artifact, and no TOP-rep
-   reproduction exist. These arms are recorded as `blocked` in
-   `paper/experiments/config_bridge.yaml` and are not covered by a config here.
+2. **Verifiable-report layer** — the deterministic verifier is implemented and
+   smoke-tested in `src/utils/claim_evidence_verifier.py`. The matched renderer
+   comparison remains `review_only`: generic, RAG, structured, PCN-style,
+   RefChecker-style, and proposed-condition adapters may not generate
+   evidence-bearing results until the experiment protocol is explicitly
+   approved. The old human-study, deployment, and backbone-superiority claims
+   remain outside the current paper boundary.
 
 ## Files
 
 | File | Derives from | Pipeline | Model | Task | Dataset IDs |
 |---|---|---|---|---|---|
+| `verifiable_report_smoke.yaml` | `paper/method/method_contract.md` | standalone deterministic verifier | none | report verification | embedded synthetic contract only |
 | `e1_tspn_uxfd_cddg.yaml` | `configs/demo/02_cross_system/multi_system_cddg.yaml` | `Pipeline_01_default` | `X_model / TSPN_UXFD` | `CDDG / classification` | 1,2,6,14,16 (CWRU,XJTU,THU,THU24,DIRG) |
 | `e2_isfm_dlinear_cddg.yaml` | `configs/demo/02_cross_system/multi_system_cddg.yaml` | `Pipeline_01_default` | `ISFM / M_01_ISFM` (E_01_HSE/B_04_Dlinear/H_01_Linear_cla) | `CDDG / classification` | 1,2,6,14,16 |
 | `e3_resnet1d_cddg.yaml` | `configs/demo/02_cross_system/multi_system_cddg.yaml` | `Pipeline_01_default` | `CNN / ResNet1D` | `CDDG / classification` | 1,2,6,14,16 |
@@ -39,6 +42,19 @@ P03 has two layers of evidence:
 | `e5_base_explainable_cnn_cddg.yaml` | `configs/demo/02_cross_system/multi_system_cddg.yaml` | `Pipeline_01_default` | `X_model / BASE_ExplainableCNN` | `CDDG / classification` | 1,2,6,14,16 |
 | `e6_mwa_cnn_cddg.yaml` | `configs/demo/02_cross_system/multi_system_cddg.yaml` | `Pipeline_01_default` | `X_model / MWA_CNN` | `CDDG / classification` | 1,2,6,14,16 |
 | `e1_tspn_uxfd_cwru_dg.yaml` | `configs/demo/01_cross_domain/cwru_dg.yaml` | `Pipeline_01_default` | `X_model / TSPN_UXFD` | `DG / classification` | 1 (CWRU, intra-dataset domain split) |
+
+## Verifier smoke
+
+The smoke is wiring evidence only and cannot support the paper claim:
+
+```bash
+conda run -n LQ_signal python -m src.utils.claim_evidence_verifier \
+  --config configs/experiments/p03/verifiable_report_smoke.yaml \
+  --output /tmp/p03-verifiable-report-smoke.json
+
+conda run -n LQ_signal python -m pytest -q \
+  test/test_claim_evidence_verifier.py
+```
 
 ## Dataset ID map (from `data/metadata.xlsx`)
 
