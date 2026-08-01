@@ -55,7 +55,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Description: 跨系统 few-shot data base
 - Owner code: `src/data_factory/__init__.py:build_data`
 - Keyspace: `data.*`
-- Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml`
+- Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml`
 - Common overrides: `data.num_workers=0`, `trainer.num_epochs=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/data/README.md`
@@ -116,7 +116,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Description: 跨系统 few-shot 任务 base（GFS 类型）
 - Owner code: `src/task_factory/__init__.py:build_task`
 - Keyspace: `task.*`
-- Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml`
+- Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml`
 - Common overrides: `trainer.num_epochs=1`, `task.target_domain_num=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/GFS/README.md`
@@ -253,8 +253,8 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Status: `sanity_ok`
 
 #### `demo_04_cross_system_fewshot`
-- Path: `configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml`
-- Description: Cross-system few-shot demo（跨系统 few-shot 示例）
+- Path: `configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml`
+- Description: Cross-system generalized few-shot demo（GFS + DLinear/HSE）
 - Base configs:
   - environment: `configs/base/environment/base.yaml`
   - data: `configs/base/data/base_cross_system_fewshot.yaml`
@@ -263,9 +263,9 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
   - trainer: `configs/base/trainer/default_single_gpu.yaml`
 - Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
-- Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml`
+- Minimal run: `python main.py --config configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml`
 - Common overrides: `trainer.num_epochs=1`, `data.num_workers=0`
-- Outputs: `results/demo/cross_system_fewshot_tspn/{experiment_name}/iter_{i}/`
+- Outputs: `results/demo/cross_system_fewshot_dlinear/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/04_cross_system_fewshot/README.md`
 - Status: `sanity_ok`
 
