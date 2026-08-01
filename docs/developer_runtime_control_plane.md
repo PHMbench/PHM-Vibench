@@ -9,6 +9,7 @@ config or preset + CLI overrides
   -> phmfactory.runtime.CompiledRunSpec
   -> phmfactory.runtime.ExecutionEnvelope
   -> phmfactory.runtime.RunAttestation (pending)
+  -> Pipeline maturity gate
   -> canonical Pipeline adapter
   -> protected src runtime
   -> RunAttestation (succeeded or failed)
@@ -104,6 +105,32 @@ The historical `fs_config_path` input is rejected unless direct legacy callers a
 `run_stage`, `run_pretraining_stage`, `run_fewshot_stage`, and duplicate single-stage
 functions are no longer maintained entrypoints.
 
+## Pipeline maturity gate
+
+`phmfactory.pipelines.PIPELINE_DESCRIPTORS` separates discoverability from default
+execution and release support. The maturity gate runs after the pending manifest is
+created and before the Pipeline module is imported.
+
+Pipeline 03 and Pipeline 04 require explicit public opt-in:
+
+```bash
+phmfactory --config <yaml> --allow-experimental
+```
+
+Without that flag, the CLI writes a failed manifest with `failure.stage: maturity` and
+does not import the module. The flag is an acknowledgement of maturity, not a support
+promotion. Pipeline 03 remains experimental because no maintained smoke combination
+exists and its legacy implementation contains error/checkpoint paths that have not been
+normalized. Pipeline 04 remains `experimental_blocked` because it additionally contains
+environment-specific paths, `sys.path` mutation, broad fallback, and unverified partial
+checkpoint loading.
+
+Pipeline 01 and the maintained single-stage Pipeline 02 path remain the release-supported
+surface. Pipeline 05, Pipeline 06, and Pipeline_ID remain discoverable under their
+compatibility or experimental-contract descriptors; their presence is not a
+release-support claim. The user-facing distinction is recorded in
+`SUPPORTED_COMPONENTS.md`.
+
 The following invariants govern later refactors:
 
 1. the public config is compiled exactly once;
@@ -115,4 +142,6 @@ The following invariants govern later refactors:
 6. data and logging resources are closed through a shared `finally` boundary;
 7. every compiled invocation creates one mandatory minimal attestation;
 8. Pipeline-specific evidence extends the invocation manifest instead of redefining it;
-9. an exception never changes the selected execution mode or activates a fallback.
+9. an exception never changes the selected execution mode or activates a fallback;
+10. discoverability, explicit experimental execution, and release support remain separate
+    machine-readable claims.
