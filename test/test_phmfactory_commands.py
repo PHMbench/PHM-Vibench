@@ -45,6 +45,15 @@ def test_command_router_preserves_legacy_experiment_form(
     assert routed == [("doctor", []), ("experiment", "smoke")]
 
 
+@pytest.mark.parametrize("command", ("doctor", "demo", "preflight", "data"))
+def test_named_command_help_is_standard_argparse(
+    command: str,
+) -> None:
+    with pytest.raises(SystemExit) as error:
+        cli.main([command, "--help"])
+    assert error.value.code == 0
+
+
 def test_demo_uses_offline_defaults_and_user_override_wins() -> None:
     observed: list[argparse.Namespace] = []
     result = demo.run(
@@ -98,6 +107,39 @@ def test_preflight_requires_output_dir(
         preflight.run(["--config", "smoke"])
 
 
+def test_doctor_exercises_real_imports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    imported: list[str] = []
+
+    def fake_import(name: str) -> object:
+        imported.append(name)
+        if name == "torch":
+            raise OSError("binary ABI mismatch")
+        return SimpleNamespace(__version__="test")
+
+    monkeypatch.setattr(doctor.importlib, "import_module", fake_import)
+    monkeypatch.setattr(doctor, "resolve_config", lambda source: _resolved(tmp_path))
+    monkeypatch.setattr(
+        doctor.importlib.util,
+        "find_spec",
+        lambda name: SimpleNamespace(name=name),
+    )
+    monkeypatch.setattr(
+        doctor,
+        "check_writable_directory",
+        lambda path: Path(path),
+    )
+
+    checks = doctor.collect_checks()
+    torch_check = next(check for check in checks if check.name == "import:torch")
+
+    assert imported == list(doctor.CORE_MODULES)
+    assert torch_check.passed is False
+    assert "OSError: binary ABI mismatch" in torch_check.detail
+
+
 def test_doctor_failure_has_nonzero_exit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -119,7 +161,32 @@ def test_doctor_success_returns_check_records(
     assert doctor.run([]) == expected
 
 
-def test_writable_probe_removes_new_directory_tree(tmp_path: Path) -> None:
+def test_writable_probe_removes_only_its_new_empty_directory_tree(tmp_path: Path) -> None:
     target = tmp_path / "new" / "nested" / "output"
     assert check_writable_directory(target) == target.resolve()
     assert not (tmp_path / "new").exists()
+
+
+def test_writable_probe_preserves_concurrent_content(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / "new" / "nested" / "output"
+    original_write_text = Path.write_text
+
+    def write_text(path: Path, *args, **kwargs):
+        result = original_write_text(path, *args, **kwargs)
+        if path.name.startswith(".phmfactory-write-probe-"):
+            original_write_text(
+                path.parent / "concurrent.txt",
+                "created by another owner\n",
+                encoding="utf-8",
+            )
+        return result
+
+    monkeypatch.setattr(Path, "write_text", write_text)
+
+    assert check_writable_directory(target) == target.resolve()
+    assert (target / "concurrent.txt").read_text(encoding="utf-8") == (
+        "created by another owner\n"
+    )
