@@ -13,6 +13,10 @@
 - Only the dummy smoke demo is offline and repo-shipped.
 - Non-dummy demos require local PHM-Vibench metadata/raw data and may need a
   machine-specific `data.data_dir` override.
+- The optional `phm_data` adapter is contract-tested with a synthetic local
+  HDF5 fixture. PHMFactory has not validated a maintained real-data demo,
+  live-IoTDB run, throughput target, or PHM accuracy result through this
+  backend.
 - Maintained validation uses the `LQ_signal` conda environment. Base Python may
   lack required packages such as `pytorch_lightning`.
 
@@ -31,4 +35,3 @@
 - Dataset adapter fallback to `Default_dataset` remains a behavior to inspect
   carefully when adding new task names.
 - Unknown pipeline, model, and task values are expected to fail explicitly.
-

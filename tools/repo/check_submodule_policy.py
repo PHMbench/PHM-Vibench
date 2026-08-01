@@ -21,6 +21,8 @@ DEFERRAL_PATH = ROOT / "docs/releases/v0.3.0-backend-deferral.yaml"
 GITMODULES_PATH = ROOT / ".gitmodules"
 TARGET_BACKEND_PATH = "packages/phm-data-factory"
 TARGET_BACKEND_URL = "https://github.com/PHMbench/phm-data-factory.git"
+TARGET_BACKEND_COMMIT = "16180b5fd9ca31d79fe65efd29b11439c1e54186"
+TARGET_INTEGRATION_PR = 148
 SHA40 = re.compile(r"[0-9a-f]{40}")
 DEFERRED_STATUS = "deferred_to_v0.3.1"
 APPROVED_STATUS = "approved"
@@ -70,7 +72,7 @@ def _configured_submodules() -> dict[str, dict[str, str]]:
 
 def _gitlinks() -> dict[str, str]:
     result = subprocess.run(
-        ["git", "ls-tree", "-r", "HEAD"],
+        ["git", "ls-files", "--stage"],
         cwd=ROOT,
         check=True,
         text=True,
@@ -82,8 +84,8 @@ def _gitlinks() -> dict[str, str]:
             continue
         metadata, path = line.split("\t", 1)
         fields = metadata.split()
-        if len(fields) == 3 and fields[0] == "160000" and fields[1] == "commit":
-            gitlinks[path] = fields[2]
+        if len(fields) == 3 and fields[0] == "160000" and fields[2] == "0":
+            gitlinks[path] = fields[1]
     return gitlinks
 
 
@@ -215,16 +217,56 @@ def collect_findings() -> tuple[Finding, ...]:
     if status not in {DEFERRED_STATUS, APPROVED_STATUS}:
         findings.append(Finding("BACKEND_STATUS_INVALID", f"unsupported status: {status!r}"))
 
+    if status == APPROVED_STATUS:
+        expected_release = {
+            "release_tag": "v0.2.0",
+            "package_version": "0.2.0",
+            "api_schema_version": "1.0.0",
+            "capability_schema_version": "1.0.0",
+            "approved_integration_pr": TARGET_INTEGRATION_PR,
+        }
+        for field, expected in expected_release.items():
+            actual = candidate.get(field)
+            if actual != expected:
+                findings.append(
+                    Finding(
+                        "BACKEND_RELEASE_AUTHORITY_INVALID",
+                        f"{field}={actual!r}, expected {expected!r}",
+                    )
+                )
+        ownership = candidate.get("ownership_transfer") or {}
+        if not isinstance(ownership, dict) or ownership.get("status") != "completed":
+            findings.append(
+                Finding(
+                    "BACKEND_OWNERSHIP_TRANSFER_INCOMPLETE",
+                    "ownership_transfer.status must be completed",
+                )
+            )
+
     reviewed = str(candidate.get("reviewed_source_tree_commit") or "")
     if not SHA40.fullmatch(reviewed):
         findings.append(
             Finding("BACKEND_REVIEWED_COMMIT_INVALID", "reviewed source tree commit is not 40 hex")
+        )
+    elif status == APPROVED_STATUS and reviewed != TARGET_BACKEND_COMMIT:
+        findings.append(
+            Finding(
+                "BACKEND_REVIEWED_COMMIT_INVALID",
+                f"reviewed commit must be released commit {TARGET_BACKEND_COMMIT}",
+            )
         )
 
     pinned = str(candidate.get("pinned_commit") or "")
     if status == APPROVED_STATUS and not SHA40.fullmatch(pinned):
         findings.append(
             Finding("BACKEND_PIN_MISSING", "approved backend requires a 40-hex pinned_commit")
+        )
+    elif status == APPROVED_STATUS and pinned != TARGET_BACKEND_COMMIT:
+        findings.append(
+            Finding(
+                "BACKEND_PIN_INVALID",
+                f"pinned commit must be released commit {TARGET_BACKEND_COMMIT}",
+            )
         )
     if status != APPROVED_STATUS and pinned:
         findings.append(
@@ -237,13 +279,17 @@ def collect_findings() -> tuple[Finding, ...]:
         else:
             for error in _deferral_errors(_load_deferral()):
                 findings.append(Finding("BACKEND_DEFERRAL_INVALID", error))
-    elif status == APPROVED_STATUS and DEFERRAL_PATH.is_file():
-        findings.append(
-            Finding(
-                "BACKEND_DEFERRAL_CONFLICT",
-                "approved backend cannot retain the v0.3.0 exclusion contract",
+    elif status == APPROVED_STATUS:
+        if not DEFERRAL_PATH.is_file():
+            findings.append(
+                Finding(
+                    "BACKEND_HISTORICAL_DEFERRAL_MISSING",
+                    str(DEFERRAL_PATH.relative_to(ROOT)),
+                )
             )
-        )
+        else:
+            for error in _deferral_errors(_load_deferral()):
+                findings.append(Finding("BACKEND_HISTORICAL_DEFERRAL_INVALID", error))
 
     legacy_items = allowlist.get("legacy_entries") or []
     legacy: dict[str, dict[str, Any]] = {}

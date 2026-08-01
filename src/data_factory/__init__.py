@@ -9,6 +9,8 @@ from .data_factory import (
 )
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .id_data_factory import id_data_factory
+from .phm_data_factory import PHMDataFactory
+from .standalone import build_data_repository
 
 
 
@@ -58,9 +60,11 @@ def build_data(args_data: Any, args_task: Any) -> Any:
 # public exports
 __all__ = [
     "build_data",
+    "build_data_repository",
     "resolve_data_factory_class",
     "register_data_factory",
     "DATA_FACTORY_REGISTRY",
     "IdIncludedDataset",
     "id_data_factory",
+    "PHMDataFactory",
 ]

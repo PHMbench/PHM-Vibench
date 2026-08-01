@@ -97,6 +97,23 @@ The final v0.3 release remains blocked until both public providers use immutable
 revisions and byte-identical required-file SHA-256 values. See
 [docs/CWRU_DEMO_V0_3.md](docs/CWRU_DEMO_V0_3.md).
 
+## Optional shared data backend (v0.3.1)
+
+PHMFactory can explicitly select the organization-owned
+[`phm-data-factory`](https://github.com/PHMbench/phm-data-factory) v0.2.0
+backend while retaining PHMFactory's existing splits, windowing, datasets, and
+loaders. The backend is optional and never initializes itself or replaces the
+default factory silently.
+
+```bash
+git submodule update --init packages/phm-data-factory
+python -m pip install -e 'packages/phm-data-factory[legacy,yaml]'
+```
+
+Then set `data.factory_name: phm_data` and provide `data.phm_data_config`.
+See the [governed backend contract](docs/PHM_DATA_FACTORY_BACKEND_V0_3.md) for
+the exact pin, configuration example, failure behavior, and evidence limits.
+
 ## Maintained surface
 
 The maintained demo surface covers:
@@ -106,6 +123,8 @@ The maintained demo surface covers:
 - few-shot and generalized few-shot examples;
 - bounded HSE pretraining examples;
 - an optional Streamlit workspace around the same public CLI.
+- an opt-in `phm-data-factory` v0.2.0 training backend for dense continuous
+  signals, outside the default install and maintained performance matrix.
 
 Files, registry entries, research notes, and historical configurations outside the
 maintained surface are not automatically supported. The exact model, task, data, and

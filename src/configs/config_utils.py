@@ -274,7 +274,7 @@ def _validate_config_wrapper(config: ConfigWrapper) -> None:
         ValueError: 缺少必需字段时
     """
     required_sections = {
-        'data': ['data_dir', 'metadata_file'],
+        'data': [],
         'model': ['name', 'type'],
         'task': ['name', 'type']
     }
@@ -290,6 +290,17 @@ def _validate_config_wrapper(config: ConfigWrapper) -> None:
         for field in fields:
             if not hasattr(section_obj, field):
                 raise ValueError(f"缺少必需字段: {section}.{field}")
+
+    data = config.data
+    if getattr(data, 'factory_name', 'default') == 'phm_data':
+        if not getattr(data, 'phm_data_config', None):
+            raise ValueError(
+                "data.factory_name=phm_data requires data.phm_data_config"
+            )
+    else:
+        for field in ('data_dir', 'metadata_file'):
+            if not getattr(data, field, None):
+                raise ValueError(f"缺少必需字段: data.{field}")
 
     # 扩展验证：对比学习配置验证
     _validate_contrastive_config(config)
@@ -431,7 +442,16 @@ def makedir(path):
 
 def build_experiment_name(configs) -> str:
     """Compose an experiment name from configuration sections."""
-    dataset_name = configs.data.metadata_file
+    dataset_name = getattr(configs.data, "dataset_name", None)
+    if not dataset_name:
+        source = getattr(configs.data, "metadata_file", None) or getattr(
+            configs.data, "phm_data_config", None
+        )
+        dataset_name = (
+            Path(str(source)).stem
+            if isinstance(source, (str, Path))
+            else "phm_data"
+        )
     model_name = configs.model.name
     task_name = f"{configs.task.type}{configs.task.name}"
     timestamp = datetime.now().strftime("%d_%H%M%S")
