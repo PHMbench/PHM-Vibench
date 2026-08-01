@@ -232,6 +232,26 @@ jobs:
             --override data.num_workers=0 \
             2>&1 | tee offline-smoke.log
 
+      - name: Verify Dummy run evidence index
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("results/demo/dummy_dg_smoke/.phmfactory/runs")
+          manifests = sorted(root.glob("*/run_manifest.json"))
+          assert len(manifests) == 1, manifests
+          payload = json.loads(manifests[0].read_text(encoding="utf-8"))
+          assert payload["status"] == "succeeded"
+          roles = {item["role"] for item in payload["artifacts"]}
+          assert "classification_test_metrics" in roles, roles
+          assert "classification_aggregate_metrics" in roles, roles
+          iterations = payload["evidence"].get("classification_iterations")
+          assert isinstance(iterations, list) and len(iterations) == 1, iterations
+          assert iterations[0]["iteration"] == 0
+          assert iterations[0]["metrics_artifact"]["role"] == "classification_test_metrics"
+          PY
+
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -241,5 +261,7 @@ jobs:
             runtime-contracts-pytest.log
             offline-smoke.log
             offline-smoke-environment.txt
+            results/demo/dummy_dg_smoke/.phmfactory/runs/**/run_manifest.json
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 7
