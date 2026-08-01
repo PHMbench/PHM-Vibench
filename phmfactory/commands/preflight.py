@@ -7,7 +7,11 @@ from collections.abc import Sequence
 import importlib.util
 from typing import Any
 
-from phmfactory.commands.common import add_config_arguments, check_writable_directory, requested_config
+from phmfactory.commands.common import (
+    add_config_arguments,
+    check_writable_directory,
+    requested_config,
+)
 from phmfactory.config import resolve_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import CompiledRunSpec
@@ -36,9 +40,11 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
     if importlib.util.find_spec(module_name) is None:
         raise ModuleNotFoundError(module_name)
 
-    environment = compiled.config.get("environment") or {}
-    output_dir = environment.get("output_dir")
-    writable = check_writable_directory(str(output_dir))
+    environment = compiled.config.get("environment")
+    output_dir = environment.get("output_dir") if isinstance(environment, dict) else None
+    if not isinstance(output_dir, str) or not output_dir.strip():
+        raise ValueError("environment.output_dir is required for preflight")
+    writable = check_writable_directory(output_dir)
     result = {
         "status": "passed",
         "requested_config": source,
