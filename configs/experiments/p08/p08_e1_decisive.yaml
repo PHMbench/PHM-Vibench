@@ -1,0 +1,410 @@
+schema_version: 2
+config_id: P08-E1-decisive-v1.1
+paper_id: P08
+experiment_id: P08-E1
+protocol:
+  id: P08-LOSO-v1.1
+  supersedes: P08-LOSO-v1
+  status: frozen_human_approved
+  approval_gate: experiment_protocol_approved
+  approved: true
+  approved_on: '2026-08-01'
+  amendment:
+    timing: pre_result_before_any_formal_evidence_run
+    prior_protocol_state: approved_unexecuted_superseded
+    prior_protocol_formal_evidence_runs: 0
+    scientific_delta: e1_finite_sample_noise_semantics_only
+    formal_evidence_launch_allowed: true
+  source_path: paper/experiments/config_bridge.yaml
+  source_sha256: 605ffbddddd7df87292083deac21756654712481402cd9384a9616a3e8d06428
+  experiment_status_at_freeze: protocol_ready_implementation_pending
+
+objective:
+  purpose: controlled_same_signal_resampling
+  supports_claims: [C1]
+  confirmatory_contrast:
+    mechanism_arm: P08-DN
+    comparator_arm: P08-BG
+  secondary_arms: [P08-M, P08-NC]
+  all_arms: [P08-DN, P08-M, P08-BG, P08-NC]
+
+execution:
+  repository_root: src/vibench
+  required_branch: agent/p08-vibench-shared-v3-20260731
+  conda_environment: LQ_signal
+  evidence_command_prefix: conda run -n LQ_signal
+  evidence_output_boundary: paper/experiments/runs
+  model_seed_order: [42, 123, 456, 789, 999]
+  reported_run_unit: arm_seed_compound_artifact
+  candidate_fit_count_recorded_separately: true
+  selected_candidate_action: retain_already_trained_candidate_checkpoint_without_retraining
+  device:
+    accelerator: cuda
+    physical_gpu_policy: exactly_one_allowed_physical_gpu_per_process
+    allowed_physical_gpu_indices: [0, 1, 3, 4, 5, 6, 7]
+    forbidden_physical_gpu_indices: [2]
+    multi_gpu: false
+    multi_gpu_forbidden: true
+    maximum_world_size: 1
+    ddp_strategy_forbidden: true
+    preflight_required: true
+    preflight_guards:
+      reject_physical_gpu_indices: [2]
+      reject_world_size_greater_than: 1
+      reject_ddp_strategy: true
+      record_visible_to_physical_gpu_map: true
+    gpu_inventory_checked_on: '2026-08-01'
+    expected_gpu_model: NVIDIA GeForce RTX 4090
+    expected_gpu_memory_mib: 24564
+    cpu_declaration:
+      physical_gpu_indices: []
+      multi_gpu: false
+
+resource_ceiling:
+  maximum_compound_runs: 20
+  maximum_model_fits: 40
+  timeout_hours_per_compound_run: 1
+  aggregate_device_hours: 20
+  artifact_gb: 25
+
+data:
+  authority: generated_analytic_signal_bank_only
+  external_metadata_used: false
+  external_cache_used: false
+  raw_data_mutable: false
+  generator:
+    seed: 20260801
+    random_generator: numpy_Generator_PCG64
+    signal_seed_sequence: [20260801, class_id, underlying_id]
+    split_seed_sequence: [20260801, class_id, 999]
+    native_rate_hz: 200000
+    duration_s: 0.02
+    native_points: 4000
+    signals_per_class: 256
+    class_ids: [0, 1, 2, 3]
+    split_counts_per_class:
+      train: 154
+      validation: 51
+      test: 51
+    split_rule: seeded_shuffle_underlying_ids_before_rate_copy_generation
+    evaluation_rates_hz: [12000, 20480, 25600, 48000, 50000, 200000]
+    rate_copies_per_underlying_signal_hz: [12000, 20480, 25600, 48000, 50000, 200000]
+    all_rate_copies_stay_with_underlying_split: true
+    analytic_components:
+      shared_sinusoids_hz: [250, 600, 1200, 3000]
+      shared_amplitude_distribution: uniform_0.2_1.0
+      shared_phase_distribution_rad: uniform_0_2pi
+      impulse_frequency_hz_by_class:
+        0: null
+        1: 97
+        2: 73
+        3: 131
+      impulse_signal_amplitude_distribution: uniform_0.5_1.5
+      first_impulse_time_distribution: uniform_0_inclusive_nominal_period_exclusive
+      class_2_interval_jitter:
+        formula: nominal_period_times_1_plus_epsilon
+        epsilon_distribution: normal_mean_0_sd_0.05
+        nonpositive_interval_action: redraw_epsilon_from_same_signal_rng
+      private_resonance_hz_by_class:
+        1: 8000
+        2: 18000
+        3: 40000
+      resonance_kernel: exp_minus_1200_n_over_200000_times_sin_2pi_fc_n_over_200000
+      resonance_kernel_support_samples: 4000
+      convolution_rule: full_then_truncate_first_4000_samples
+      pre_noise_scaling: unit_rms
+      noise_base_draws: iid_standard_normal
+      finite_sample_noise_centering: subtract_realized_sample_mean
+      finite_sample_noise_scaling: rescale_realized_rms_to_exact_drawn_snr
+      finite_sample_noise_distribution_note: centered_and_rms_constrained_vector_not_iid_gaussian
+      noise_snr_db_distribution: uniform_10_30
+      snr_definition: 10_log10_clean_power_over_noise_power_before_rate_conversion
+      noise_realizations_per_underlying_signal: 1
+      noise_injection_stage: native_200khz_before_rate_conversion
+      all_rate_copies_share_same_noisy_native_realization: true
+      per_rate_noise_redraw_allowed: false
+    rate_copy_resampling:
+      implementation: scipy.signal.resample_poly
+      ratio_rule: exact_reduced_rational
+      window:
+        name: kaiser
+        beta: 8.6
+      padtype: line
+    source_shared_band_hz: 6000.0
+  training_and_validation_rate_policy: all_six_rates_with_rate_balanced_sampling
+
+normalization:
+  method: source_train_scalar_standardization
+  fit_scope: analytic_train_split_only
+  algorithm: deterministic_float64_welford
+  iteration_order: [class_id_sorted, underlying_id_sorted, exact_sampling_rate_hz_sorted, sample_index_ascending]
+  variance_denominator: population_N_ddof_0
+  application: float64_then_cast_signal_to_float32
+  nonfinite_or_nonpositive_std_action: fail_run
+  artifact_fields:
+    - ordered_input_hash
+    - sample_count
+    - mean
+    - standard_deviation
+    - algorithm
+    - dtype
+    - canonical_json_sha256
+
+model:
+  registry:
+    path: src/vibench/src/model_factory/model_registry.csv
+    model_type: ISFM_Prompt
+    model_name: M_02_ISFM_Prompt
+  wrapper: src/vibench/src/model_factory/ISFM_Prompt/M_02_ISFM_Prompt.py
+  embedding: src/vibench/src/model_factory/ISFM_Prompt/embedding/HSE_prompt.py
+  backbone: B_04_Dlinear
+  task_head: src/vibench/src/model_factory/ISFM/task_head/H_11_Unified_cla.py
+  output_dim: 128
+  unified_num_classes: 4
+  num_tokens: 32
+  neural_token_points: 256
+  physical_token_point_count_rule: floor_duration_times_sampling_rate_plus_0_5
+  prompt_dim: 128
+  prompt_combination: add
+  prompt_reference_fs_hz: 10000.0
+  prompt_reference_duration_s: 0.01
+  dropout: 0.1
+  model_receives_dataset_id: false
+  sampling_rate_scalar_broadcast_allowed: false
+  metadata_batch_length_mismatch_action: fail_batch
+
+arms:
+  P08-DN:
+    role: c1_mechanism_arm_and_factorial_A110
+    native_rate: true
+    physical_duration: true
+    duration_candidates_ms: [5, 10, 15]
+    shared_private_bands: true
+    continuous_prompt: false
+    dataset_identity: false
+    source_validation_trials: 3
+    duration_selection: select_per_model_seed
+  P08-M:
+    role: proposed_and_factorial_A111
+    native_rate: true
+    physical_duration: true
+    duration_candidates_ms: [5, 10, 15]
+    shared_private_bands: true
+    continuous_prompt: true
+    dataset_identity: false
+    duration_selection: reuse_P08-DN_selected_duration_same_model_seed
+    additional_source_validation_trials: 0
+  P08-BG:
+    role: primary_comparator
+    native_rate: false
+    physical_duration: false
+    fixed_raw_token_points: 256
+    shared_private_bands: false
+    continuous_prompt: false
+    dataset_identity: false
+    source_validation_trials: 3
+    target_rate_candidates:
+      - candidate_id: BG-17066.666667Hz-15ms
+        numerator_hz: 51200
+        denominator: 3
+        token_duration_ms: 15
+        required_output_points: 341
+      - candidate_id: BG-25600Hz-10ms
+        numerator_hz: 25600
+        denominator: 1
+        token_duration_ms: 10
+        required_output_points: 512
+      - candidate_id: BG-51200Hz-5ms
+        numerator_hz: 51200
+        denominator: 1
+        token_duration_ms: 5
+        required_output_points: 1024
+    resampling:
+      implementation: scipy.signal.resample_poly
+      ratio_rule: exact_reduced_rational_from_source_and_target_rates
+      window:
+        name: kaiser
+        beta: 8.6
+      padtype: line
+      scipy_version_recorded: true
+      required_output_points_rule: floor_0.02_times_target_rate_plus_0.5
+      crop_rule: center_crop_start_floor_resampled_minus_required_over_2
+      shorter_output_action: fail_no_padding
+  P08-NC:
+    role: negative_control
+    native_rate: true
+    physical_duration: false
+    fixed_raw_token_points: 128
+    neural_token_points: 256
+    shared_private_bands: false
+    continuous_prompt: false
+    dataset_identity: false
+    matched_dimensions: [neural_token_points, patch_encoder, backbone, task_head]
+    active_parameter_count_may_differ: true
+    report_total_and_trainable_parameters: true
+    source_validation_trials: 1
+
+candidate_selection:
+  scope: per_model_seed
+  validation_data: analytic_validation_split_only
+  criterion: validation_balanced_accuracy_equal_weight_over_rates_then_classes
+  direction: maximize
+  tie_break: [lower_representation_compute, smaller_numeric_candidate]
+  target_test_metrics_allowed: false
+  selected_checkpoint_retrained: false
+  fit_plan_per_seed:
+    P08-DN: 3
+    P08-M: 1
+    P08-BG: 3
+    P08-NC: 1
+  total_fits_per_seed: 8
+  total_fits_all_seeds: 40
+
+training:
+  seeds: [42, 123, 456, 789, 999]
+  batch_size: 64
+  batches_per_rate_per_epoch: 10
+  batches_per_epoch: 60
+  batch_bucket_key: exact_sampling_rate_hz
+  batch_sampling_order:
+    - rate_bucket_uniform
+    - supported_label_near_uniform
+    - underlying_signal_uniform_with_replacement
+  label_allocation: floor_batch_over_K_each_with_remainder_rotated_by_seed_plus_batch_index_mod_K
+  class_count_K: 4
+  cross_entropy_class_weights: [1.0, 1.0, 1.0, 1.0]
+  inverse_frequency_weighting_allowed: false
+  preserve_per_sample_metadata: [underlying_id, sampling_rate_hz]
+  optimizer: adamw
+  learning_rate_scheduler: none
+  weight_decay: 0.0001
+  freeze_prompts_in_finetuning: false
+  numerical_precision: ieee_float32
+  deterministic_algorithms: enabled_fail_on_unsupported
+  candidate_initialization: component_seeded_shared_parameters_exactly_paired_within_model_seed
+  validation_evaluation: full_census_of_all_validation_underlying_signal_rate_copies
+  pretrain:
+    max_epochs: 30
+    learning_rate: 0.0005
+    contrastive_weight: 0.4
+    classification_weight: 0.1
+    temperature: 0.07
+    feature_view_noise_std: 0.1
+    checkpoint: maximum_validation_score_with_earliest_epoch_tie_break
+  finetune:
+    max_epochs: 20
+    learning_rate: 0.0001
+    initialization: best_pretrain_checkpoint_same_candidate
+    checkpoint: maximum_validation_score_with_earliest_epoch_tie_break
+  early_stopping:
+    monitor: validation_balanced_accuracy_equal_weight_over_rates_then_classes
+    patience: 5
+    min_delta: 0.0001
+    tie_break: earliest_epoch
+  unresolved_nan_divergence_oom_or_timeout_action: retain_as_method_failure
+  metric_based_outlier_exclusion_allowed: false
+
+evaluation:
+  split: analytic_test_split
+  checkpoint_selection_must_precede_test_inference: true
+  probabilities: uncalibrated_softmax
+  probability_vector_dimension: 4
+  probability_columns: [p_class_0, p_class_1, p_class_2, p_class_3]
+  probability_sum_tolerance: 1.0e-6
+  scoring_unit: underlying_signal_rate_copy
+  class_weighting: equal
+  rate_weighting: equal
+  primary_metrics:
+    worst_rate_balanced_accuracy:
+      arm_summary: minimum_across_six_rates_after_signals_equal_within_class_then_classes_equal_then_seeds_equal
+      effect: P08-DN_minus_P08-BG
+      higher_is_better: true
+    prediction_consistency_divergence:
+      name: mean_binary_jensen_shannon_divergence_to_within_signal_centroid_natural_log
+      binary_js_formula: 0.5_KL_p_to_m_plus_0.5_KL_q_to_m_where_m_is_half_p_plus_q
+      scipy_sqrt_distance_allowed: false
+      zero_log_zero_convention: 0
+      reference_probability: within_signal_and_model_seed_mean_across_six_rates
+      aggregation_order: [rates_within_signal, signals_equal_within_class, classes_equal, seeds_equal]
+      rate_copies_independent: false
+      effect: P08-BG_minus_P08-DN
+      higher_effect_is_better_for_P08-DN: true
+  secondary_metrics:
+    - balanced_accuracy_per_rate
+    - balanced_accuracy_equal_weight_over_rates_then_classes
+    - macro_f1_per_rate_zero_division_0
+    - representation_distance
+  representation_distance:
+    feature: final_backbone_output_immediately_before_H_11_Unified_cla
+    pooling: mean_over_tokens_then_L2_normalize
+    per_signal_seed: mean_one_minus_cosine_over_15_unordered_rate_pairs
+    aggregation_order: [rate_pairs_within_signal, signals_equal_within_class, classes_equal, seeds_equal]
+
+bootstrap:
+  type: crossed_hierarchical_paired
+  replicates: 10000
+  seed: 20260801
+  confidence_level: 0.95
+  interval: unadjusted_percentile
+  resample_underlying_signal_ids: independently_with_replacement_within_each_class
+  resample_paired_model_seed_ids: independently_with_replacement
+  crossed_weights: cartesian_product_of_signal_and_seed_multiplicities
+  arm_pairing: identical_signal_and_seed_multiplicities
+  rate_copy_cluster: keep_all_six_rates_of_each_underlying_signal_together
+  analytic_bank_and_split: fixed_across_model_seeds
+  interpretation: stability_within_fixed_analytic_signal_bank_and_prespecified_model_seeds
+
+decision_rule:
+  family: C1_intersection_union_two_prespecified_outcomes
+  support_requires:
+    - worst_rate_balanced_accuracy_effect_point_estimate_gt_zero
+    - worst_rate_balanced_accuracy_effect_ci_lower_gt_zero
+    - jsd_reduction_effect_point_estimate_gt_zero
+    - jsd_reduction_effect_ci_lower_gt_zero
+  refuted_if:
+    - either_effect_confidence_interval_entirely_below_zero
+  otherwise: inconclusive
+  progression:
+    supported: permit_fold_F13_seed_42_integration
+    refuted: stop_full_LOSO_spending
+    inconclusive: stop_full_LOSO_spending
+
+artifacts:
+  run_root_pattern: paper/experiments/runs/{run_id}
+  run_id_pattern: P08-E1-{arm}-seed{seed}
+  required_files:
+    resolved_config: resolved_config.yaml
+    command: command.txt
+    provenance: provenance.json
+    conda_environment_export: environment.yml
+    fold_manifest: fold_manifest.json
+    partition_disjointness: partition_disjointness.json
+    target_eval_manifest_after_checkpoint: target_eval_manifest.json
+    normalization: normalization.json
+    epoch_log: epoch_log.jsonl
+    selection_trace: selection_trace.jsonl
+    checkpoint: selected.ckpt
+    checkpoint_hash: checkpoint.sha256
+    dirty_patch_if_worktree_dirty: dirty.patch
+    window_predictions: window_predictions.parquet
+    record_predictions: record_predictions.parquet
+    scored_records: scored_records.parquet
+    metrics: metrics.json
+    leakage_audit: leakage_audit.json
+    artifact_hashes: artifact_manifest.sha256
+    stdout: stdout.log
+    stderr: stderr.log
+  leakage_audit_fields: [item_id, status, evidence_paths, expected_value, observed_value, evidence_sha256]
+  accepted_audit_status: pass
+  dirty_tree_rule: retain_patch_content_and_sha256
+  artifact_hash_manifest_excludes_itself: true
+
+contract_assertions:
+  dataset_id_prompt_rejected: true
+  system_selected_head_rejected: true
+  test_samples_in_training: false
+  test_statistics_allowed: false
+  test_informed_selection_allowed: false
+  underlying_signal_split_overlap_allowed: false
+  rate_copy_pseudoreplication_allowed: false
+  smoke_run_is_claim_evidence: false
