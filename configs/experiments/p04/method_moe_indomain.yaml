@@ -1,74 +1,94 @@
-# P04 - METHOD arm (placeholder): PhysicsConstrainedMoE / NNSPNMoE in-domain.
-# ADDITIVE config under configs/experiments/p04/.
-# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+# P04 v5 wiring config for M_04_RoleConstrainedMoE.
 #
-# STATUS: needs_new_component.
-# The MoE model family (NNSPNMoE + LowPassExpert / HarmonicExpert / EnvelopeExpert +
-# StatisticalRouter) is NOT registered in src/model_factory/model_registry.csv.
-# It currently lives only in the read-only P04 legacy source snapshot:
-#   legacy/source_snapshot/code/{moe_model.py, experts/, router/}
-# Phase-2 must port it into src/model_factory/MoE/ and add a MoE row to
-# model_registry.csv before this config can run. The block below uses the
-# provisional id M_05_NNSPNMoE so a registry change is the only delta needed.
+# The checked-in defaults are a CPU/dummy-data wiring smoke only. They are not
+# paper evidence. Real CWRU/XJTU runs must use the commands and grouped split
+# contract in paper/experiments/config_bridge.yaml.
 #
-# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
-#
-# Sweep policy:
-#   for ds in {1=CWRU, 2=XJTU, 6=THU_006}; for seed in {42,123,456,789,1024}:
-#     python main.py --config configs/experiments/p04/method_moe_indomain.yaml \
-#       --override task.target_system_id=[<ds>] --override environment.seed=<seed> \
-#       --override trainer.num_epochs=<full> --override trainer.device=cuda \
-#       --override data.data_dir=/home/user/data/PHMbenchdata/PHM-Vibench \
-#       --override data.split.strategy=grouped_metadata --override data.split.group_key=Bearing_id \
-#       --override data.split.test_policy=partition
-#
-# Supports: CLAIM-C-GATE-98, CLAIM-N-DATASETS, CLAIM-C-BRIDGE-{CWRU,XJTU}.
+# The current runtime does not carry shaft speed per sample. Consequently this
+# implementation uses normalized FFT frequency, not shaft order. No order-domain
+# claim is permitted until a verified speed field and task/data interface exist.
 
-pipeline: "Pipeline_01_default"
+pipeline: "Pipeline_01_Fault_Diagnosis"
 
 base_configs:
   environment: "configs/base/environment/base.yaml"
   data: "configs/base/data/base_cross_domain.yaml"
-  model: "configs/base/model/backbone_dlinear.yaml"
-  task: "configs/base/task/dg.yaml"
+  model: "configs/base/model/role_constrained_moe.yaml"
+  task: "configs/base/task/classification.yaml"
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 
 environment:
-  project: "p04_method_moe_indomain"
+  project: "p04_g030_role_constrained_moe_smoke"
   seed: 42
-  output_dir: "results/experiments/p04/method_moe_indomain"
-  notes: "P04 method arm (PLACEHOLDER): NNSPNMoE on CWRU/XJTU/THU_006. needs_new_component."
+  iterations: 1
+  output_dir: "results/experiments/p04/g030_role_constrained_moe_smoke"
+  notes: "CPU wiring smoke only; never cite as C1 evidence."
 
 data:
   data_dir: "data"
   metadata_file: "metadata_dummy.csv"
   batch_size: 4
   num_workers: 0
+  normalization: "standardization"
   window_size: 128
   stride: 16
   num_window: 8
+  split:
+    # Switch only to grouped_metadata for real data. The remaining fields are
+    # already the full-run contract and therefore cannot be silently omitted.
+    strategy: "legacy_windows"
+    group_key: "Split_group"
+    stratify_key: "Split_stratum"
+    seed: 7
+    test_policy: "partition"
+    fractions: {train: 0.60, val: 0.20, test: 0.20}
+    manifest_path: "results/experiments/p04/v5/splits/dummy/grouped_seed7.json"
 
 model:
-  # --- BEGIN needs_new_component block ---
-  # Provisional registry id. Will resolve once src/model_factory/MoE/ is added and
-  # model_registry.csv gains a row: MoE,M_05_NNSPNMoE,src/model_factory/MoE/M_05_NNSPNMoE.py,...
   type: "MoE"
-  name: "M_05_NNSPNMoE"
-  num_classes: 10
+  name: "M_04_RoleConstrainedMoE"
+  input_dim: 2
+  # num_classes is intentionally omitted and must be inferred from the selected
+  # dataset metadata; CWRU and XJTU do not share a class count.
   feature_dim: 64
-  num_experts: 5
-  use_load_balance: true
-  use_sparsity: true
+  expert_hidden_channels: 32
+  router_hidden_dim: 32
+  dropout: 0.10
   routing_temperature: 1.0
-  dropout_rate: 0.1
-  # --- END needs_new_component block ---
+  router_mode: "learned_prior"
+
+  # Frequencies are normalized by Nyquist and therefore portable across the
+  # 12/48 kHz CWRU and 25.6 kHz XJTU sampling rates.
+  low_cutoff: 0.12
+  envelope_band: [0.20, 0.80]
+  filter_transition: 0.03
+
+  # The coefficient is learned through a sigmoid and cannot exceed the maximum.
+  role_prior_strength: 0.50
+  role_prior_max: 1.00
+  role_prior_permutation: [0, 1, 2, 3]
+
+  # Safeguards, not evidence of specialization. Remove separately in ablations.
+  load_balance_weight: 0.01
+  entropy_floor_weight: 0.01
+  entropy_floor: 0.25
 
 task:
-  target_system_id: [1]       # CWRU default; sweep [1]/[2]/[6]
-  source_domain_id: [0, 1, 2]
-  target_domain_id: [3]
+  type: "Default_task"
+  name: "Default_task"
+  loss: "CE"
+  # Wiring-smoke metric only. Paper macro-F1/ECE are computed from held-out
+  # logits by the governed evaluator specified in config_bridge.yaml.
+  metrics: ["acc"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 10
+  target_system_id: [0]  # dummy smoke; override with [1] CWRU or [2] XJTU
 
 trainer:
+  name: "Default_trainer"
   num_epochs: 1
   device: "cpu"
+  # Legacy field name: Default_trainer passes this value to Lightning devices.
   gpus: 1

@@ -85,6 +85,9 @@ def pipeline(args):
     args_task = transfer_namespace(configs.task if hasattr(configs, 'task') else {})
 
     args_trainer = transfer_namespace(configs.trainer if hasattr(configs, 'trainer') else {})
+    test_after_fit = getattr(args_trainer, 'test_after_fit', True)
+    if not isinstance(test_after_fit, bool):
+        raise TypeError("trainer.test_after_fit must resolve to a boolean")
     if args_task.name == 'Multitask':
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list    
@@ -161,9 +164,18 @@ def pipeline(args):
             data_factory.get_dataloader('val')
         )
         
-        # 加载最佳模型并测试
-        print("[INFO] 加载最佳模型并测试...")
+        # 加载最佳模型；按配置决定是否执行测试分区
+        if test_after_fit:
+            print("[INFO] 加载最佳模型并测试...")
+        else:
+            print("[INFO] 加载最佳模型；跳过训练后测试...")
         task = load_best_model_checkpoint(task, trainer)
+
+        if not test_after_fit:
+            data_factory.data.close()  # 关闭数据工厂，释放资源
+            close_lab()
+            continue
+
         result = trainer.test(task, data_factory.get_dataloader('test'))
         data_factory.data.close()  # 关闭数据工厂，释放资源
         all_results.append(result[0])  # Lightning返回的是包含字典的列表
@@ -177,13 +189,16 @@ def pipeline(args):
         close_lab()
 
     print(f"\n{'='*50}\n[INFO] 所有实验已完成\n{'='*50}")
-    _write_aggregate_outputs(
-        run_root,
-        path,
-        all_results,
-        run_seeds,
-        configs,
-    )
+    if test_after_fit:
+        _write_aggregate_outputs(
+            run_root,
+            path,
+            all_results,
+            run_seeds,
+            configs,
+        )
+    else:
+        print("[INFO] 未运行训练后测试；未生成测试指标或聚合结果。")
     return all_results
 
 

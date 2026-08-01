@@ -28,6 +28,9 @@ class SplitSpec:
     test_policy: str = "partition"
     fractions: Mapping[str, float] | None = None
     manifest_path: str | None = None
+    manifest_mode: str = "generate"
+    manifest_sha256: str | None = None
+    partition_map: Mapping[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,15 @@ def split_spec_from_args(args_data: Any) -> SplitSpec:
             fractions = {str(key): float(value) for key, value in fractions_raw.items()}
         else:
             raise ValueError("data.split.fractions must be a mapping")
+    partition_map_raw = _get(raw, "partition_map", None)
+    partition_map = None
+    if partition_map_raw is not None:
+        if isinstance(partition_map_raw, Mapping) or hasattr(partition_map_raw, "items"):
+            partition_map = {
+                str(key): str(value) for key, value in partition_map_raw.items()
+            }
+        else:
+            raise ValueError("data.split.partition_map must be a mapping")
     return SplitSpec(
         strategy=str(_get(raw, "strategy", "legacy_windows")),
         group_key=_get(raw, "group_key", None),
@@ -69,6 +81,9 @@ def split_spec_from_args(args_data: Any) -> SplitSpec:
         test_policy=str(_get(raw, "test_policy", "partition")),
         fractions=fractions,
         manifest_path=_get(raw, "manifest_path", None),
+        manifest_mode=str(_get(raw, "manifest_mode", "generate")),
+        manifest_sha256=_get(raw, "manifest_sha256", None),
+        partition_map=partition_map,
     )
 
 
@@ -77,6 +92,10 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
         raise ValueError(f"unknown data.split.strategy {spec.strategy!r}")
     if spec.strategy == "legacy_windows":
         return {}
+    if spec.manifest_mode not in {"generate", "read_only"}:
+        raise ValueError(
+            "data.split.manifest_mode must be either 'generate' or 'read_only'"
+        )
     if not spec.group_key:
         raise ValueError("data.split.group_key is required for grouped_metadata")
     if not spec.manifest_path:
@@ -100,6 +119,20 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
             "data.split.test_policy=task_defined is only supported for DG and CDDG"
         )
 
+    if spec.manifest_mode == "read_only":
+        if spec.test_policy != "partition" or task_type not in SUPPORTED_PARTITION_TASKS:
+            raise ValueError(
+                "read_only split manifests currently require a partition task"
+            )
+        mapping = dict(spec.partition_map or {})
+        if set(mapping) != {"train", "val", "test"} or any(
+            not value for value in mapping.values()
+        ):
+            raise ValueError(
+                "read_only data.split.partition_map must contain exactly train, val, and test"
+            )
+        return dict(spec.fractions or {})
+
     fractions = dict(spec.fractions or {})
     expected = {"train", "val", "test"} if spec.test_policy == "partition" else {"train", "val"}
     if set(fractions) != expected:
@@ -111,6 +144,159 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
     if not math.isclose(sum(fractions.values()), 1.0, rel_tol=0.0, abs_tol=1e-8):
         raise ValueError("data.split.fractions must sum to 1.0")
     return fractions
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _partition_ids(payload: Mapping[str, Any], name: str) -> list[Any]:
+    partitions = payload.get("partitions")
+    if not isinstance(partitions, Mapping) or name not in partitions:
+        raise ValueError(f"frozen split manifest is missing partition {name!r}")
+    entry = partitions[name]
+    if isinstance(entry, Mapping):
+        ids = entry.get("ids")
+    else:
+        ids = entry
+    if not isinstance(ids, list) or not ids:
+        raise ValueError(f"frozen split partition {name!r} must contain non-empty ids")
+    return ids
+
+
+def _resolve_manifest_ids(
+    manifest_ids: Sequence[Any],
+    candidate_by_text: Mapping[str, Any],
+    partition_name: str,
+) -> tuple[Any, ...]:
+    resolved: list[Any] = []
+    seen: set[str] = set()
+    for manifest_id in manifest_ids:
+        text_id = str(manifest_id)
+        if text_id in seen:
+            raise ValueError(
+                f"duplicate ID {manifest_id!r} in frozen partition {partition_name!r}"
+            )
+        if text_id not in candidate_by_text:
+            raise ValueError(
+                f"frozen partition {partition_name!r} references unknown ID {manifest_id!r}"
+            )
+        seen.add(text_id)
+        resolved.append(candidate_by_text[text_id])
+    return tuple(resolved)
+
+
+def _read_only_manifest_result(
+    metadata: MetadataAccessor,
+    args_data: Any,
+    spec: SplitSpec,
+    candidate_ids: Sequence[Any],
+) -> SplitResult:
+    assert spec.manifest_path is not None
+    assert spec.group_key is not None
+    manifest_path = Path(spec.manifest_path)
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"frozen split manifest does not exist: {manifest_path}")
+    actual_manifest_sha256 = _sha256_file(manifest_path)
+    if spec.manifest_sha256 and actual_manifest_sha256 != spec.manifest_sha256:
+        raise ValueError("frozen split manifest SHA-256 does not match configuration")
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"unable to read frozen split manifest: {exc}") from exc
+    if not isinstance(payload, Mapping) or payload.get("schema_version") != 1:
+        raise ValueError("frozen split manifest must use schema_version 1")
+    if payload.get("group_key") != spec.group_key:
+        raise ValueError("frozen split manifest group_key does not match configuration")
+    if payload.get("stratify_key") != spec.stratify_key:
+        raise ValueError("frozen split manifest stratify_key does not match configuration")
+
+    metadata_path = Path(str(getattr(args_data, "data_dir"))) / str(
+        getattr(args_data, "metadata_file")
+    )
+    expected_metadata_sha256 = payload.get("metadata_file_sha256")
+    if not isinstance(expected_metadata_sha256, str) or len(expected_metadata_sha256) != 64:
+        raise ValueError("frozen split manifest is missing metadata_file_sha256")
+    if not metadata_path.is_file() or _sha256_file(metadata_path) != expected_metadata_sha256:
+        raise ValueError("frozen split manifest metadata SHA-256 does not match input")
+
+    ordered_candidates = tuple(dict.fromkeys(candidate_ids))
+    candidate_by_text: dict[str, Any] = {}
+    for candidate in ordered_candidates:
+        text_id = str(candidate)
+        if text_id in candidate_by_text and candidate_by_text[text_id] != candidate:
+            raise ValueError(f"candidate IDs are ambiguous after string conversion: {text_id!r}")
+        candidate_by_text[text_id] = candidate
+
+    partition_names = list(payload.get("partitions", {}))
+    if not partition_names:
+        raise ValueError("frozen split manifest contains no partitions")
+    resolved_partitions = {
+        name: _resolve_manifest_ids(
+            _partition_ids(payload, name), candidate_by_text, name
+        )
+        for name in partition_names
+    }
+    ownership: dict[str, str] = {}
+    for name, ids in resolved_partitions.items():
+        for sample_id in ids:
+            text_id = str(sample_id)
+            if text_id in ownership:
+                raise ValueError(
+                    f"frozen split ID {sample_id!r} occurs in both "
+                    f"{ownership[text_id]!r} and {name!r}"
+                )
+            ownership[text_id] = name
+    if set(ownership) != set(candidate_by_text):
+        missing = sorted(set(candidate_by_text) - set(ownership))
+        raise ValueError(f"frozen split manifest does not cover candidate IDs: {missing[:5]}")
+
+    frame = _selected_frame(metadata, ordered_candidates, spec.group_key)
+    id_key = metadata.key_column
+    group_by_id = {
+        str(row[id_key]): row[spec.group_key] for _, row in frame.iterrows()
+    }
+    partition_groups: dict[str, tuple[Any, ...]] = {}
+    group_owner: dict[str, str] = {}
+    raw_partitions = payload["partitions"]
+    for name, ids in resolved_partitions.items():
+        groups = tuple(sorted({group_by_id[str(sample_id)] for sample_id in ids}, key=str))
+        partition_groups[name] = groups
+        entry = raw_partitions[name]
+        if isinstance(entry, Mapping) and "groups" in entry:
+            manifest_groups = entry["groups"]
+            if not isinstance(manifest_groups, list) or {str(v) for v in manifest_groups} != {
+                str(v) for v in groups
+            }:
+                raise ValueError(
+                    f"frozen partition {name!r} groups do not match metadata"
+                )
+        for group in groups:
+            text_group = str(group)
+            if text_group in group_owner:
+                raise ValueError(
+                    f"frozen split group {group!r} occurs in both "
+                    f"{group_owner[text_group]!r} and {name!r}"
+                )
+            group_owner[text_group] = name
+
+    mapping = dict(spec.partition_map or {})
+    result = SplitResult(
+        train_ids=resolved_partitions[mapping["train"]],
+        val_ids=resolved_partitions[mapping["val"]],
+        test_ids=resolved_partitions[mapping["test"]],
+        train_groups=partition_groups[mapping["train"]],
+        val_groups=partition_groups[mapping["val"]],
+        test_groups=partition_groups[mapping["test"]],
+        strategy="grouped_metadata_read_only",
+        manifest_path=str(manifest_path),
+    )
+    _assert_disjoint(result)
+    return result
 
 
 def _selected_frame(metadata: MetadataAccessor, ids: Sequence[Any], group_key: str) -> pd.DataFrame:
@@ -288,6 +474,10 @@ def resolve_data_splits(
             val_ids=tuple(train_val_ids),
             test_ids=tuple(task_test_ids),
         )
+
+    if spec.manifest_mode == "read_only":
+        candidates = tuple(dict.fromkeys(tuple(train_val_ids) + tuple(task_test_ids)))
+        return _read_only_manifest_result(metadata, args_data, spec, candidates)
 
     assert spec.group_key is not None
     source_frame = _selected_frame(metadata, train_val_ids, spec.group_key)

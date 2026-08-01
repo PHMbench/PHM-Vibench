@@ -1,4 +1,5 @@
 import json
+import hashlib
 from types import SimpleNamespace
 
 import numpy as np
@@ -277,3 +278,97 @@ def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
         for split_dataset in (id_train, id_val, id_test)
         for sample_id, child in split_dataset.dataset_dict.items()
     )
+
+
+def _write_frozen_manifest_fixture(tmp_path):
+    frame = pd.DataFrame(
+        [
+            {
+                "Id": f"id-{index}",
+                "Split_group": f"cell-{index}",
+                "Split_stratum": index % 2,
+                "Label": index % 2,
+                "Dataset_id": 904,
+                "Domain_id": 0,
+            }
+            for index in range(8)
+        ]
+    )
+    metadata_path = tmp_path / "metadata.csv"
+    frame.to_csv(metadata_path, index=False)
+    partitions = {
+        "train": ["id-0", "id-1", "id-2", "id-3"],
+        "optimization_validation": ["id-4"],
+        "identification": ["id-5"],
+        "intervention": ["id-6", "id-7"],
+    }
+    payload = {
+        "schema_version": 1,
+        "strategy": "frozen_partitions",
+        "group_key": "Split_group",
+        "stratify_key": "Split_stratum",
+        "metadata_file_sha256": hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
+        "partitions": {
+            name: {
+                "ids": ids,
+                "groups": [f"cell-{sample_id.split('-')[-1]}" for sample_id in ids],
+            }
+            for name, ids in partitions.items()
+        },
+    }
+    manifest_path = tmp_path / "partition_manifest.json"
+    manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    args = SimpleNamespace(
+        data_dir=str(tmp_path),
+        metadata_file="metadata.csv",
+        normalization="none",
+        split=SimpleNamespace(
+            strategy="grouped_metadata",
+            group_key="Split_group",
+            stratify_key="Split_stratum",
+            seed=240401,
+            test_policy="partition",
+            manifest_path=str(manifest_path),
+            manifest_mode="read_only",
+            manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+            partition_map={
+                "train": "train",
+                "val": "optimization_validation",
+                "test": "intervention",
+            },
+        ),
+    )
+    return MetadataAccessor(frame, key_column="Id"), args, manifest_path
+
+
+def test_read_only_manifest_consumes_four_frozen_partitions_without_rewrite(tmp_path):
+    metadata, args, manifest_path = _write_frozen_manifest_fixture(tmp_path)
+    before = manifest_path.read_bytes()
+
+    result = resolve_data_splits(
+        metadata,
+        args,
+        SimpleNamespace(type="Default_task"),
+        metadata.keys(),
+        metadata.keys(),
+    )
+
+    assert result.train_ids == ("id-0", "id-1", "id-2", "id-3")
+    assert result.val_ids == ("id-4",)
+    assert result.test_ids == ("id-6", "id-7")
+    assert result.strategy == "grouped_metadata_read_only"
+    assert manifest_path.read_bytes() == before
+
+
+def test_read_only_manifest_rejects_hash_mismatch(tmp_path):
+    metadata, args, _ = _write_frozen_manifest_fixture(tmp_path)
+    args.split.manifest_sha256 = "0" * 64
+
+    with pytest.raises(ValueError, match="manifest SHA-256"):
+        resolve_data_splits(
+            metadata,
+            args,
+            SimpleNamespace(type="Default_task"),
+            metadata.keys(),
+            metadata.keys(),
+        )
