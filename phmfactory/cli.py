@@ -10,7 +10,7 @@ from typing import Any
 
 from phmfactory.config import DEFAULT_CONFIG, resolve_config
 from phmfactory.pipelines import pipeline_module_name
-from phmfactory.runtime import CompiledRunSpec
+from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -95,7 +95,7 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Dispatch a parsed argument namespace to the protected runtime."""
+    """Compile and execute one Pipeline through the fail-closed public boundary."""
     requested_config = _resolve_config_path(args)
     resolved = resolve_config(requested_config, override_values=args.override)
     compiled = CompiledRunSpec.compile(resolved)
@@ -110,10 +110,11 @@ def run(args: argparse.Namespace) -> Any:
     args.resolved_config_data = compiled.runtime_config()
     args.run_spec_sha256 = compiled.sha256
 
-    pipeline_module = importlib.import_module(
-        pipeline_module_name(resolved.pipeline, warn=False)
-    )
-    result = pipeline_module.pipeline(args)
+    module_name = pipeline_module_name(resolved.pipeline, warn=False)
+    envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
+    args.execution_envelope = envelope
+    pipeline_module = importlib.import_module(module_name)
+    result = envelope.execute(pipeline_module, args)
     print("完成所有实验！")
     return result
 

@@ -16,6 +16,8 @@ on:
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
+      - "test/test_runtime_control_plane.py"
+      - "test/test_runtime_execution.py"
       - ".github/workflows/phmfactory-public-package.yml"
   push:
     branches:
@@ -34,6 +36,8 @@ on:
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
       - "test/test_pipeline_name_migration.py"
+      - "test/test_runtime_control_plane.py"
+      - "test/test_runtime_execution.py"
       - ".github/workflows/phmfactory-public-package.yml"
   workflow_dispatch:
 
@@ -64,11 +68,14 @@ jobs:
         run: >-
           python -m py_compile
           phmfactory/*.py
+          phmfactory/runtime/*.py
           src/configs/config_utils.py
           main.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
           test/test_pipeline_name_migration.py
+          test/test_runtime_control_plane.py
+          test/test_runtime_execution.py
 
       - name: Run focused public API tests
         run: >-
@@ -77,6 +84,8 @@ jobs:
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
           test/test_pipeline_name_migration.py
+          test/test_runtime_control_plane.py
+          test/test_runtime_execution.py
 
       - name: Upload focused pytest diagnostics
         if: always()
@@ -105,6 +114,9 @@ jobs:
               "phmfactory/cli.py",
               "phmfactory/config.py",
               "phmfactory/pipelines.py",
+              "phmfactory/runtime/__init__.py",
+              "phmfactory/runtime/spec.py",
+              "phmfactory/runtime/execution.py",
               "src/__init__.py",
               "src/configs/config_utils.py",
               "configs/__init__.py",
@@ -129,7 +141,7 @@ jobs:
           python -m venv /tmp/phmfactory-wheel
           /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
           /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
-          /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.config, src; print(phmfactory.__version__)"
+          /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
           /tmp/phmfactory-wheel/bin/phmfactory --help
           /tmp/phmfactory-wheel/bin/python -m phmfactory --help
           cd /tmp

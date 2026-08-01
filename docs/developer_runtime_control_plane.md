@@ -7,15 +7,26 @@ imported:
 config or preset + CLI overrides
   -> phmfactory.config.resolve_config
   -> phmfactory.runtime.CompiledRunSpec
+  -> phmfactory.runtime.ExecutionEnvelope
   -> canonical Pipeline adapter
   -> protected src runtime
 ```
 
-`CompiledRunSpec` is the hand-off boundary for the ongoing runtime consolidation. It
-contains the fully composed configuration, canonical Pipeline identifier, explicit
-overrides, and a deterministic semantic SHA-256. Its hash excludes the absolute
-installation path, so an identical packaged preset has the same identity outside a
-repository checkout.
+`CompiledRunSpec` contains the fully composed configuration, canonical Pipeline
+identifier, explicit overrides, and a deterministic semantic SHA-256. Its hash excludes
+the absolute installation path, so an identical packaged preset has the same identity
+outside a repository checkout.
+
+`ExecutionEnvelope` is the public invocation boundary. It records pending, running,
+succeeded, or failed state and rejects ambiguous outcomes. A Pipeline module must expose
+a callable `pipeline(args)` and a successful invocation must return an explicit result.
+Returning `None`, omitting the entrypoint, or attempting to execute the same envelope
+twice is a contract error. Exceptions retain their original traceback while the envelope
+records the failure type and message for the later run-attestation writer.
+
+The public CLI prints the completion message only after the envelope reaches
+`succeeded`. A failed Pipeline therefore produces a non-zero process outcome rather than
+`print + return` followed by apparent success.
 
 Protected Pipeline code must consume `compiled_run_spec.runtime_config()` instead of
 reparsing the source YAML or automatically discovering machine-local files. Until a
@@ -53,7 +64,7 @@ The following invariants govern later refactors:
 2. local configuration is an explicit input;
 3. the selected Pipeline and executed configuration share one contract;
 4. runtime code receives a mutable copy and cannot mutate the compiled contract;
-5. missing sections, invalid iterations, invalid factory results, and execution failures
-   raise rather than printing success;
+5. missing sections, invalid iterations, invalid factory results, `None` Pipeline
+   results, and execution failures raise rather than printing success;
 6. data and logging resources are closed through a shared `finally` boundary;
-7. successful runs must produce a mandatory minimal attestation.
+7. successful and failed runs must produce a mandatory minimal attestation.
