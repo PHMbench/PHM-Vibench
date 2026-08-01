@@ -67,11 +67,46 @@ class E_01_HSE(nn.Module):
             x = repeat(x, 'b l c -> b l (c r)', r=repeats_C)
             C = x.size(2)
 
-        # Randomly sample starting positions for patches
+        # Randomly sample starting positions for patches unless an audited
+        # evaluator supplies manifest-keyed starts.  Explicit starts make one
+        # cached feature vector independent of arm order and global RNG state.
         max_start_L = L - self.patch_size_L
         max_start_C = C - self.patch_size_C
-        start_indices_L = torch.randint(0, max_start_L + 1, (B, self.num_patches), device=device)
-        start_indices_C = torch.randint(0, max_start_C + 1, (B, self.num_patches), device=device)
+        explicit_L = kwargs.get("start_indices_L")
+        explicit_C = kwargs.get("start_indices_C")
+        if (explicit_L is None) != (explicit_C is None):
+            raise ValueError(
+                "start_indices_L and start_indices_C must be supplied together"
+            )
+        if explicit_L is None:
+            start_indices_L = torch.randint(
+                0, max_start_L + 1, (B, self.num_patches), device=device
+            )
+            start_indices_C = torch.randint(
+                0, max_start_C + 1, (B, self.num_patches), device=device
+            )
+        else:
+            expected_shape = (B, self.num_patches)
+            start_indices_L = torch.as_tensor(
+                explicit_L, dtype=torch.long, device=device
+            )
+            start_indices_C = torch.as_tensor(
+                explicit_C, dtype=torch.long, device=device
+            )
+            if tuple(start_indices_L.shape) != expected_shape:
+                raise ValueError(
+                    "start_indices_L must have shape "
+                    f"{expected_shape}, observed={tuple(start_indices_L.shape)}"
+                )
+            if tuple(start_indices_C.shape) != expected_shape:
+                raise ValueError(
+                    "start_indices_C must have shape "
+                    f"{expected_shape}, observed={tuple(start_indices_C.shape)}"
+                )
+            if (start_indices_L < 0).any() or (start_indices_L > max_start_L).any():
+                raise ValueError("start_indices_L contains an out-of-range start")
+            if (start_indices_C < 0).any() or (start_indices_C > max_start_C).any():
+                raise ValueError("start_indices_C contains an out-of-range start")
 
         # Create offsets for patch sizes
         offsets_L = torch.arange(self.patch_size_L, device=device)

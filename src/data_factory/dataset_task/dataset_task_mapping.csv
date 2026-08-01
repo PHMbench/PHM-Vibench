@@ -15,3 +15,4 @@ id,task.type,task.name,path,args,batch_format,test_status
 14,Default_task,Default_task,dataset_task/Default_dataset.py,"(data, metadata, args_data, args_task, mode)","Default windows: {'x','y'}",
 15,Default_task,ID_task,dataset_task/ID/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","ID-based windows: {'x','y','file_id',...}",
 16,FS,classification,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
+17,GFS,reliability_conditioned,dataset_task/GFS/reliability_conditioned_dataset.py,"(data, metadata, args_data, args_task, mode)","ordered episode {'x','y','file_id'}; support/query order audited by protocol",

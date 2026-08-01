@@ -1,0 +1,167 @@
+schema_version: 1
+experiment_id: P09-G060-FULL-V1
+protocol_id: P09-GFS-V1
+study_designation: post_pilot_protocol_scale_replication
+claim_eligible_after_e1_only: true
+
+data:
+  metadata_path: /home/user/data/PHMbenchdata/PHM-Vibench/metadata.xlsx
+  metadata_sha256: 0b61d1f8b1f74811309a6bec9827b0c2f2956940e877a8070275e108ce2c9c30
+  manifest_path: results/p09/protocol/p09_gfs_v1_episode_manifest.json
+  manifest_sha256: b1d1a87cbd0a298aa8997bc2443084e57ab372f2df15c213190490bb6933b2b2
+  window_bank_path: results/p09/protocol/p09_gfs_v1_window_bank.h5
+  window_bank_sha256: 70d9448dc76405518c7a4a7893ad2e6a076fd7072b42bb2dcfcd9c2ad30e083f
+  target_system_ids: [1, 5, 6, 12, 18, 19]
+  base_class_ids: [0, 1]
+  novel_class_ids: [2, 3]
+
+representation:
+  embedding: E_01_HSE
+  backbone: B_04_Dlinear
+  pooling: patch_mean
+  patch_size_L: 128
+  patch_size_C: 1
+  num_patches: 32
+  output_dim: 128
+  evaluation_patch_sampling: manifest_keyed
+  feature_cache_shared_across_arms: true
+
+source_fit:
+  seeds: [42, 123, 456, 789, 999]
+  inner_design: leave_two_systems_out_reused_for_ordered_outer_inner_folds
+  checkpoint_epochs: [5, 10, 20]
+  max_epochs: 20
+  optimizer: adamw
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  batch_size: 256
+  windows_per_system_class_per_epoch: 96
+  canonical_novel_records_in_gradient_fit: forbidden
+  output_dir: results/p09/g060_source_fit_v1
+
+inner_selection:
+  episodes_per_valid_cell: 20
+  aggregation: equal_state_then_valid_k_then_seed_then_inner_system
+  comparator_pool: [B0, B1, B2, B3, B4, B5, B6, B7, B8, B9]
+  tie_tolerance_absolute: 0.002
+  tie_break: [fewer_adapted_parameters, lower_arm_id]
+  max_configs_per_arm: 12
+
+method:
+  feature_dim: 128
+  adapter_rank: 16
+  count_prior: 2.0
+  reliability_floor: 0.05
+  reliability_ceiling: 0.98
+  temperature_min: 0.75
+  temperature_max: 2.0
+  prior_temperature: 0.25
+  adapter_max_gate: 0.25
+  adapter_relative_bound: 0.10
+  abstention_min: 0.45
+  abstention_max: 0.85
+  epsilon: 1.0e-8
+  source_adapter_steps: 500
+  source_adapter_learning_rate: 0.001
+  source_adapter_weight_decay: 0.0001
+
+arms:
+  P:
+    implementation: reliability_conditioned_method
+    settings: fixed_by_method_contract
+  B0:
+    implementation: frozen_base_head_plus_arithmetic_mean_novel_prototypes
+  B1:
+    implementation: cosine_generalized_protonet_with_source_base_prototypes
+    temperature_grid: [0.75, 1.0, 1.5]
+  B2:
+    implementation: componentwise_median_novel_prototypes_with_frozen_base_head
+  B3:
+    implementation: source_trained_distance_weighted_robust_prototype_network
+    hidden_dim: 16
+    training_steps: 500
+  B4:
+    implementation: source_trained_query_blind_multihead_support_set_attention
+    attention_heads: 4
+    training_steps: 500
+  B5:
+    implementation: source_selected_base_novel_logit_calibration_and_retention
+    novel_scale_grid: [0.5, 1.0, 2.0]
+    novel_bias_grid: [-0.5, 0.0, 0.5]
+  B6:
+    implementation: source_trained_fixed_prompt_without_reliability_conditioning
+    prompt_dim: 128
+    training_steps: 500
+  B7:
+    implementation: target_support_ridge_linear_probe_with_frozen_representation
+    ridge_grid: [0.01, 0.1, 1.0]
+  B8:
+    implementation: source_trained_rank16_adapter_with_fixed_gate_0_25
+    adapter_rank: 16
+    fixed_gate: 0.25
+    relative_bound: 0.10
+    training_steps: 500
+  B9:
+    implementation: end_to_end_support_finetuning_from_shared_source_checkpoint
+    steps_grid: [10, 20]
+    learning_rate_grid: [0.0001, 0.0003, 0.001]
+    initial_weight_anchor: 0.001
+
+ablations:
+  component_arms: [A0, A1, A2, A3, A4, A5, A6, A7]
+  reliability_leave_one_out: [R1, R2, R3, R4]
+  identity_bindings: {A0: P, A7: B0}
+
+sensitivities:
+  S1_label_noise_probability: [0.10, 0.20, 0.40]
+  S2_outlier_probability: [0.10, 0.20, 0.40]
+  S3_imbalance_ratio: [2, 4, 8]
+  S4_adapter_rank: [8, 16, 32]
+  S5_adapter_max_gate: [0.10, 0.25, 0.40]
+  S6_taxonomy:
+    base_class_ids: [0, 3]
+    novel_class_ids: [1, 2]
+    arms: [P, B0, B1, B2, B3, B4, B5, B6, B7, B8, B9]
+  S1_to_S3_arms: [P, B0, fold_selected_primary_comparator]
+  S4_to_S5_arms: [P_parameter_variant, P_full_reference]
+
+metrics:
+  per_episode:
+    - base_accuracy
+    - novel_accuracy
+    - harmonic_mean
+    - joint_accuracy
+    - negative_log_likelihood
+    - equal_mass_ece_15_bins
+    - normalized_aurc_coverage_0_5_to_1_0
+    - coverage
+    - matched_coverage_risk_0_80
+    - adaptation_wall_time
+    - inference_latency
+    - adapted_parameters
+    - peak_accelerator_memory
+  full_class_probabilities_required: true
+  recomputation_tolerance_absolute: 1.0e-8
+
+statistics:
+  hierarchical_bootstrap_draws: 10000
+  analysis_seed: 20260801
+  harmonic_bonferroni_family_size: 11
+  exact_target_sign_flips: 64
+  secondary_fdr_q: 0.05
+  base_noninferiority_margin: -0.02
+  aurc_noninferiority_margin: 0.01
+  state_consistency_margin: -0.02
+
+execution:
+  conda_environment: LQ_signal
+  physical_gpu_indices: [0]
+  cuda_visible_devices: '0'
+  multi_gpu: false
+  device: cuda
+  precision: float32
+  num_workers: 0
+  fit_wall_time_hours: 8
+  evaluation_wall_time_hours: 2
+  infrastructure_retries: 1
+  cublas_workspace_config: ':4096:8'

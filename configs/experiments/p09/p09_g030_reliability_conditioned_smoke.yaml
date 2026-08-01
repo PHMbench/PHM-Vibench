@@ -1,0 +1,64 @@
+# P09-G030 method-path smoke configuration.
+# This configuration validates assembly only. It is not claim-eligible evidence;
+# target-specific class partitions and episode manifests are frozen at P09-G040.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_g030_reliability_conditioned_smoke"
+  seed: 0
+  output_dir: "results/p09/g030_reliability_conditioned_smoke"
+  notes: "CPU one-epoch assembly smoke only; cannot support C1 or C2."
+
+data:
+  num_workers: 0
+
+model:
+  input_dim: 2
+  output_dim: 128
+
+task:
+  type: "GFS"
+  name: "reliability_conditioned"
+  target_system_id: [1]
+  target_domain_num: 1
+  num_episodes: 2
+  num_systems: 1
+  num_domains: 1
+  num_labels: 3
+  num_support: 1
+  num_query: 2
+
+  # Three-class synthetic/assembly partition. Claim runs must override this
+  # from the target-excluded class map frozen at P09-G040.
+  base_class_ids: [0, 1]
+  novel_class_ids: [2]
+  freeze_encoder_base: true
+  claim_eligible: false
+  protocol_state: "g030_assembly_smoke"
+
+  reliability_conditioner:
+    adapter_rank: 16
+    count_prior: 2.0
+    reliability_floor: 0.05
+    reliability_ceiling: 0.98
+    temperature_min: 0.75
+    temperature_max: 2.0
+    prior_temperature: 0.25
+    adapter_max_gate: 0.25
+    adapter_relative_bound: 0.10
+    abstention_min: 0.45
+    abstention_max: 0.85
+    eps: 1.0e-8
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 0
