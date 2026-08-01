@@ -3,8 +3,11 @@
 负责读取和处理元数据及原始数据文件
 """
 import os
+import hashlib
 import importlib
 import glob
+import json
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import h5py
@@ -19,6 +22,7 @@ from .samplers.Sampler import GroupedIdBatchSampler, BalancedIdSampler
 from .data_utils import smart_read_csv, MetadataAccessor, download_data
 from .samplers.Get_sampler import Get_sampler
 from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
+from .grouped_split import build_grouped_split, write_frozen_json
 from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
@@ -47,6 +51,7 @@ class data_factory:
         # metadata and data cache
         self.metadata = self._init_metadata(args_data)
         self.data = self._init_data(args_data)
+        self._data_fingerprint_records = {}
         # dataset and dataloader
         self.train_dataset, self.val_dataset,self.test_dataset = self._init_dataset()
         self.train_loader, self.val_loader, self.test_loader = self._init_dataloader()
@@ -254,6 +259,26 @@ class data_factory:
             Dictionary-like access to ``cache.h5``.
         """
         task_meta = self.search_dataset_id()
+        if bool(getattr(args_data, 'read_only_cache_required', False)):
+            cache_path = Path(str(args_data.data_dir)) / 'cache.h5'
+            if not cache_path.is_file():
+                raise FileNotFoundError(
+                    f"Read-only evidence cache is missing: {cache_path}"
+                )
+            with h5py.File(cache_path, 'r', libver='latest', swmr=True) as handle:
+                available = set(handle.keys())
+                missing = sorted(
+                    str(identifier)
+                    for identifier in task_meta.keys()
+                    if str(identifier) not in available
+                )
+            if missing:
+                preview = missing[:20]
+                raise RuntimeError(
+                    "Read-only evidence cache is incomplete; refusing mutation: "
+                    f"missing_count={len(missing)}, first_missing={preview}"
+                )
+            return H5DataDict(str(cache_path))
         ids_to_fetch = self._determine_missing_ids(task_meta, args_data, use_cache)
         for name, ids in ids_to_fetch.items():
             self._update_name_cache(name, ids, args_data, max_workers)
@@ -290,23 +315,184 @@ class data_factory:
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
-        train_val_ids, test_ids = self.search_id()
+
+        split_cfg = getattr(self.args_data, 'split', None)
+        grouped = split_cfg is not None and getattr(split_cfg, 'strategy', None) in {
+            'grouped_metadata', 'grouped_kfold'
+        }
+        if grouped:
+            if getattr(split_cfg, 'test_policy', 'partition') != 'partition':
+                raise ValueError(
+                    "grouped splitting in the in-domain data factory requires test_policy=partition"
+                )
+            split = build_grouped_split(self.target_metadata, split_cfg)
+            expected_split_sha = getattr(
+                split_cfg, 'expected_manifest_payload_sha256', None
+            )
+            if getattr(split_cfg, 'strategy', None) == 'grouped_kfold' and not expected_split_sha:
+                raise ValueError(
+                    "grouped_kfold requires data.split.expected_manifest_payload_sha256"
+                )
+            if expected_split_sha and split.manifest['manifest_payload_sha256'] != str(expected_split_sha):
+                raise RuntimeError(
+                    "Grouped split payload hash does not match the approved protocol: "
+                    f"observed={split.manifest['manifest_payload_sha256']}, "
+                    f"expected={expected_split_sha}"
+                )
+            self.split_manifest = split.manifest
+            train_ids, val_ids, test_ids = split.train_ids, split.val_ids, split.test_ids
+            manifest_path = getattr(split_cfg, 'manifest_path', None)
+            if not manifest_path:
+                raise ValueError("grouped splitting requires data.split.manifest_path")
+            write_frozen_json(split.manifest, manifest_path)
+            self.train_val_ids = list(train_ids) + list(val_ids)
+            self.test_ids = list(test_ids)
+        else:
+            train_val_ids, test_ids = self.search_id()
+            train_ids, val_ids = train_val_ids, train_val_ids
+
         # Initialize datasets with progress bars
         print("Initializing training and validation datasets...")
-        for id in tqdm(train_val_ids, desc="Creating train/val datasets"):
-            train_dataset[id] = dataset_cls({id: self.data[id]},
-                             self.target_metadata, self.args_data, self.args_task, 'train')
-            val_dataset[id] = dataset_cls({id: self.data[id]},
-                               self.target_metadata, self.args_data, self.args_task, 'val')
+        for id in tqdm(train_ids, desc="Creating train datasets"):
+            data_array = self.data[id]
+            self._record_data_fingerprint(id, data_array)
+            train_dataset[id] = dataset_cls({id: data_array},
+                             self.target_metadata, self.args_data, self.args_task,
+                             'test' if grouped else 'train')
+        for id in tqdm(val_ids, desc="Creating val datasets"):
+            data_array = self.data[id]
+            self._record_data_fingerprint(id, data_array)
+            val_dataset[id] = dataset_cls({id: data_array},
+                               self.target_metadata, self.args_data, self.args_task,
+                               'test' if grouped else 'valid')
 
         print("Initializing test datasets...")
         for id in tqdm(test_ids, desc="Creating test datasets"):
-            test_dataset[id] = dataset_cls({id: self.data[id]},
+            data_array = self.data[id]
+            self._record_data_fingerprint(id, data_array)
+            test_dataset[id] = dataset_cls({id: data_array},
                             self.target_metadata, self.args_data, self.args_task, 'test')
         train_dataset = IdIncludedDataset(train_dataset,self.target_metadata)
         val_dataset = IdIncludedDataset(val_dataset,self.target_metadata)
         test_dataset = IdIncludedDataset(test_dataset,self.target_metadata)
+
+        pairing_cfg = getattr(self.args_data, 'pairing', None)
+        pairing_mode = getattr(pairing_cfg, 'mode', 'paired') if pairing_cfg is not None else 'paired'
+        if pairing_mode != 'paired':
+            from .dataset_task.Dataset_cluster import FrozenClassPairDataset
+
+            if pairing_mode != 'frozen_within_group_class_derangement':
+                raise ValueError(f"Unknown data.pairing.mode: {pairing_mode}")
+            required_pairing_fields = ('seed', 'splits', 'group_key', 'manifest_dir', 'protocol_id')
+            missing_pairing_fields = [
+                field for field in required_pairing_fields if not hasattr(pairing_cfg, field)
+            ]
+            if missing_pairing_fields:
+                raise ValueError(
+                    "frozen_within_group_class_derangement requires explicit fields: "
+                    + ", ".join(missing_pairing_fields)
+                )
+            if not grouped:
+                raise ValueError("Frozen P01 pairing requires a grouped split manifest")
+            pairing_seed = int(pairing_cfg.seed)
+            manifest_dir = str(pairing_cfg.manifest_dir)
+            pairing_group_key = str(pairing_cfg.group_key)
+            if pairing_group_key != str(split_cfg.group_key):
+                raise ValueError(
+                    "data.pairing.group_key must equal data.split.group_key"
+                )
+            pairing_protocol_id = str(pairing_cfg.protocol_id)
+            raw_pairing_splits = pairing_cfg.splits
+            if isinstance(raw_pairing_splits, str):
+                raise ValueError("data.pairing.splits must be a non-empty list")
+            pairing_splits = list(raw_pairing_splits)
+            if not pairing_splits or len(set(pairing_splits)) != len(pairing_splits):
+                raise ValueError("data.pairing.splits must be non-empty and duplicate-free")
+            unknown_pairing_splits = sorted(set(pairing_splits) - {'train', 'val', 'test'})
+            if unknown_pairing_splits:
+                raise ValueError(
+                    f"Unknown data.pairing.splits entries: {unknown_pairing_splits}"
+                )
+            datasets = {
+                'train': train_dataset,
+                'val': val_dataset,
+                'test': test_dataset,
+            }
+            for split_name in pairing_splits:
+                datasets[split_name] = FrozenClassPairDataset(
+                    datasets[split_name], seed=pairing_seed, split_name=split_name,
+                    manifest_dir=manifest_dir, group_key=pairing_group_key,
+                    protocol_id=pairing_protocol_id,
+                    split_manifest_sha256=split.manifest['manifest_payload_sha256'],
+                )
+            train_dataset = datasets['train']
+            val_dataset = datasets['val']
+            test_dataset = datasets['test']
+            write_frozen_json(
+                {
+                    'schema_version': 1,
+                    'protocol_id': pairing_protocol_id,
+                    'mode': pairing_mode,
+                    'seed': pairing_seed,
+                    'active_splits': pairing_splits,
+                    'group_key': pairing_group_key,
+                    'split_manifest_sha256': split.manifest['manifest_payload_sha256'],
+                },
+                Path(manifest_dir) / 'index.json',
+            )
         return train_dataset, val_dataset, test_dataset
+
+    def _record_data_fingerprint(self, identifier, value):
+        """Hash the exact numeric array consumed for one metadata identifier."""
+
+        array = np.asarray(value)
+        if array.dtype.hasobject:
+            raise ValueError("Evidence data fingerprints reject object-dtype arrays")
+        contiguous = np.ascontiguousarray(array)
+        key = str(identifier)
+        record = {
+            'sha256': hashlib.sha256(contiguous.tobytes(order='C')).hexdigest(),
+            'shape': list(contiguous.shape),
+            'dtype': str(contiguous.dtype),
+            'nbytes': int(contiguous.nbytes),
+        }
+        existing = self._data_fingerprint_records.get(key)
+        if existing is not None and existing != record:
+            raise RuntimeError(f"Data content drift detected within run for ID {key}")
+        self._data_fingerprint_records[key] = record
+
+    def get_data_fingerprint(self):
+        """Return a canonical fingerprint for every eligible array used in the run."""
+
+        expected_ids = {str(identifier) for identifier in self.target_metadata.keys()}
+        observed_ids = set(self._data_fingerprint_records)
+        if observed_ids != expected_ids:
+            raise RuntimeError(
+                "Data fingerprint coverage mismatch: "
+                f"missing={sorted(expected_ids - observed_ids)}, "
+                f"unexpected={sorted(observed_ids - expected_ids)}"
+            )
+        records = {
+            key: self._data_fingerprint_records[key]
+            for key in sorted(self._data_fingerprint_records)
+        }
+        canonical = json.dumps(
+            records,
+            sort_keys=True,
+            separators=(',', ':'),
+            ensure_ascii=False,
+        ).encode('utf-8')
+        cache_path = Path(str(self.data.h5_file))
+        cache_stat = cache_path.stat()
+        return {
+            'algorithm': 'sha256_over_c_contiguous_array_bytes',
+            'eligible_ids': len(records),
+            'records': records,
+            'data_payload_sha256': hashlib.sha256(canonical).hexdigest(),
+            'cache_path': str(cache_path.resolve()),
+            'cache_size_bytes': int(cache_stat.st_size),
+            'cache_mtime_ns': int(cache_stat.st_mtime_ns),
+        }
 
 
     def search_dataset_id(self):
@@ -365,6 +551,11 @@ class data_factory:
             数据集
         """
         return self.train_dataset if mode == "train" else self.val_dataset if mode == "val" else self.test_dataset
+    def get_split_manifest(self):
+        """Return the active immutable grouped-split manifest."""
+        if not hasattr(self, 'split_manifest'):
+            raise RuntimeError("No grouped split manifest is active")
+        return self.split_manifest
     def get_dataloader(self, mode = "test"):
         """获取指定ID的数据加载器
         

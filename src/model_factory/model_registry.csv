@@ -33,4 +33,6 @@ NO,WaveletNO,src/model_factory/NO/WaveletNO.py,"input_dim, hidden_dim, num_layer
 X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"input_dim, num_windows, kernel_size, num_classes/output_dim","multi-window attention CNN for auxiliary analysis","/"
 X_model,TSPN,src/model_factory/X_model/TSPN.py,"input_dim, hidden_dim, num_prototypes, num_classes/output_dim","time-series prototype/explainability network","/"
 X_model,TSPN_UXFD,src/model_factory/X_model/TSPN_UXFD.py,"signal_processing_configs, feature_extractor_configs, in_channels, num_classes/output_dim","UXFD-aligned TSPN wrapper (stable name for paper submodules)","/"
+X_model,P01SharedPrivate,src/model_factory/X_model/P01SharedPrivate.py,"in_channels, encoder_dim, latent_dim, time_frequency, pairing, objective, ablation, num_classes","Paired raw/STFT shared-private classifier with auditable auxiliary losses","unit-tested"
+X_model,P01Baselines,src/model_factory/X_model/P01Baselines.py,"variant, in_channels, encoder_dim, head_hidden, projection_dim, contrastive_temperature, attention_heads, time_frequency, num_classes","Parameter-auditable P01 single-view and generic paired-view baselines","unit-tested"
 X_model,BASE_ExplainableCNN,src/model_factory/X_model/BASE_ExplainableCNN.py,"in_channels, width, dropout, num_classes/output_dim","torch-only 1D CNN baseline for UXFD comparisons","/"

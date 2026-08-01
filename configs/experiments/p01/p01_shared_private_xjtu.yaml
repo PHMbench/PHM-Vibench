@@ -1,0 +1,84 @@
+pipeline: Pipeline_01_default
+
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_classification.yaml
+  model: configs/base/model/p01_shared_private.yaml
+  task: configs/base/task/classification.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+
+environment:
+  project: p01_shared_private_xjtu
+  seed: 42
+  iterations: 1
+  output_dir: results/p01/shared_private_xjtu
+  notes: XJTU binary normal/fault task with bearing-disjoint grouped evaluation.
+
+data:
+  batch_size: 64
+  num_workers: 4
+  window_size: 4096
+  num_window: 64
+  window_sampling_strategy: evenly_spaced
+  dtype: float32
+  read_only_cache_required: true
+  normalization: standardization
+  pairing:
+    mode: paired
+  split:
+    strategy: grouped_kfold
+    group_key: FileParent
+    stratify_key: Domain_id
+    seed: 20260801
+    test_policy: partition
+    outer_folds: 5
+    outer_fold: 0
+    validation_offset: 1
+    expected_manifest_payload_sha256: 1c376ac9831b3cfd836d8068788bda2c12d73a852cce6abbe7ee93884f9242c1
+    manifest_path: results/p01/protocol/xjtu/fold_0.json
+
+task:
+  type: Default_task
+  name: Default_task
+  target_system_id: [2]
+  label_policy: binary_fault
+  batch_size: 64
+  loss: CE
+  metrics: [acc, f1, precision, recall]
+  export_predictions: true
+  required_representation_arrays:
+    - shared_1d
+    - shared_2d
+    - private_1d
+    - private_2d
+    - reconstructed_1d
+    - reconstructed_2d
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+  auxiliary_loss_weights:
+    alignment: 0.1
+    private_independence: 0.01
+    reconstruction: 0.1
+    shared_variance: 0.1
+
+trainer:
+  name: Default_trainer
+  monitor: val_loss
+  num_epochs: 50
+  gpus: 1
+  device: cuda
+  early_stopping: true
+  patience: 10
+
+paper:
+  paper_id: P01
+  protocol_id: P01-G040-v1
+  dataset_key: XJTU
+  dataset_slug: xjtu
+  dataset_id: 2
+  arm_id: FULL
+  attempt_id: 0
+  method_id: P01-M1
+  supports_claim_ids: [C1, C2]
+  evidence_status: not_run

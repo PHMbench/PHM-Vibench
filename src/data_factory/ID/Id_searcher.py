@@ -64,6 +64,12 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
     if len(filtered_df) == 0:
         print(f"警告: 目标数据集ID {args_task.target_system_id} 没有匹配的记录")
     
+    label_policy = getattr(args_task, 'label_policy', 'native')
+    if label_policy == 'binary_fault':
+        filtered_df['Label'] = (filtered_df['Label'].astype(float) > 0.0).astype(int)
+    elif label_policy != 'native':
+        raise ValueError(f"Unknown task.label_policy: {label_policy}")
+
     filtered_df.reset_index(drop=True, inplace=True)
     target_metadata = MetadataAccessor(filtered_df, key_column=metadata_accessor.key_column)
     return target_metadata

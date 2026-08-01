@@ -86,6 +86,13 @@ class Default_task(pl.LightningModule):
         file_id = batch['file_id']
         task_id = batch['task_id'] if 'task_id' in batch else None
 
+        if 'x_2d' in batch:
+            paired_forward = getattr(self.network, 'forward_paired_views', None)
+            if not callable(paired_forward):
+                raise ValueError(
+                    "Batch provides x_2d but the selected model has no forward_paired_views contract"
+                )
+            return paired_forward(x, batch['x_2d'], file_id, task_id)
         return self.network(x, file_id, task_id)
 
     # def _forward_pass(self, batch) -> torch.Tensor:
@@ -127,6 +134,61 @@ class Default_task(pl.LightningModule):
             self.parameters() # 只对当前 LightningModule 的参数计算正则化
         )
 
+    def _compute_auxiliary_loss(
+        self, reference_loss: torch.Tensor
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """Collect explicitly weighted model-provided representation losses.
+
+        Networks that do not implement ``get_auxiliary_losses`` preserve the
+        historical classification-only behavior.  Networks that do implement
+        it must have one explicit weight per returned component so a misspelled
+        or silently omitted research objective fails fast.
+        """
+        provider = getattr(self.network, "get_auxiliary_losses", None)
+        if not callable(provider):
+            return reference_loss.new_zeros(()), {}
+
+        components = provider()
+        if not isinstance(components, dict):
+            raise ValueError("get_auxiliary_losses must return a dict")
+
+        configured = getattr(self.args_task, "auxiliary_loss_weights", None)
+        if not components:
+            if isinstance(configured, dict) and configured:
+                raise ValueError("Auxiliary weights were configured but the model returned no losses")
+            if hasattr(configured, "__dict__") and vars(configured):
+                raise ValueError("Auxiliary weights were configured but the model returned no losses")
+            return reference_loss.new_zeros(()), {}
+        if isinstance(configured, dict):
+            weights = configured
+        elif hasattr(configured, "__dict__"):
+            weights = vars(configured)
+        else:
+            raise ValueError(
+                "A model with auxiliary losses requires task.auxiliary_loss_weights"
+            )
+
+        missing = sorted(set(components) - set(weights))
+        unknown = sorted(set(weights) - set(components))
+        if missing or unknown:
+            raise ValueError(
+                f"Auxiliary loss/weight mismatch: missing={missing}, unknown={unknown}"
+            )
+
+        total = reference_loss.new_zeros(())
+        checked: Dict[str, torch.Tensor] = {}
+        for name, component in components.items():
+            if not isinstance(component, torch.Tensor) or component.numel() != 1:
+                raise ValueError(f"Auxiliary loss '{name}' must be a scalar tensor")
+            if not bool(torch.isfinite(component).all()):
+                raise FloatingPointError(f"Auxiliary loss '{name}' is not finite")
+            weight = float(weights[name])
+            if weight < 0.0:
+                raise ValueError(f"Auxiliary loss weight '{name}' must be non-negative")
+            checked[name] = component
+            total = total + weight * component
+        return total, checked
+
     def _shared_step(self, batch: Tuple,
                      stage: str,
                      task_id = False) -> Dict[str, torch.Tensor]:
@@ -152,6 +214,7 @@ class Default_task(pl.LightningModule):
         # 2. 计算任务损失
         y = batch['y']
         loss = self._compute_loss(y_hat, y)
+        auxiliary_loss, auxiliary_components = self._compute_auxiliary_loss(loss)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
         # 3. 计算和记录指标
@@ -166,8 +229,17 @@ class Default_task(pl.LightningModule):
             if reg_type != 'total':
                 step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
 
+        for name, component in auxiliary_components.items():
+            step_metrics[f"{stage}_aux_{name}_loss"] = component
+        if auxiliary_components:
+            step_metrics[f"{stage}_aux_total_loss"] = auxiliary_loss
+
         # 5. 计算总损失
-        total_loss = loss + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
+        total_loss = (
+            loss
+            + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
+            + auxiliary_loss
+        )
         step_metrics[f"{stage}_total_loss"] = total_loss
 
         # 添加 batch size 用于日志记录

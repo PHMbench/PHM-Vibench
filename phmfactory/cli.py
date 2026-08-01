@@ -37,6 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Experiment notes.",
     )
     parser.add_argument(
+        "--local_config",
+        type=str,
+        default=None,
+        help="Explicit machine-local override YAML passed to the runtime.",
+    )
+    parser.add_argument(
         "--override",
         action="append",
         help="Configuration override in key=value form; may be repeated.",

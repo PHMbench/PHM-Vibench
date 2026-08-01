@@ -1,0 +1,73 @@
+pipeline: Pipeline_01_default
+
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_classification.yaml
+  model: configs/base/model/p01_baseline_family.yaml
+  task: configs/base/task/classification.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+
+environment:
+  project: p01_generic_attention_cwru
+  seed: 42
+  iterations: 1
+  output_dir: results/p01/generic_attention_cwru
+  notes: Strongest generic paired-view comparator with audited parameter count.
+
+data:
+  batch_size: 64
+  num_workers: 4
+  window_size: 4096
+  num_window: 64
+  window_sampling_strategy: evenly_spaced
+  dtype: float32
+  read_only_cache_required: true
+  normalization: standardization
+  pairing:
+    mode: paired
+  split:
+    strategy: grouped_kfold
+    group_key: File
+    stratify_key: Label
+    seed: 20260801
+    test_policy: partition
+    outer_folds: 4
+    outer_fold: 0
+    validation_offset: 1
+    expected_manifest_payload_sha256: ed14b16912d91fd7d92d81bfb6d4e0fcdabe9fdc9fe5c56d613dc9143f8cc202
+    manifest_path: results/p01/protocol/cwru/fold_0.json
+
+task:
+  type: Default_task
+  name: Default_task
+  target_system_id: [1]
+  label_policy: native
+  batch_size: 64
+  loss: CE
+  metrics: [acc, f1, precision, recall]
+  export_predictions: true
+  required_representation_arrays: [encoded_1d, encoded_2d]
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+
+trainer:
+  name: Default_trainer
+  monitor: val_loss
+  num_epochs: 50
+  gpus: 1
+  device: cuda
+  early_stopping: true
+  patience: 10
+
+paper:
+  paper_id: P01
+  protocol_id: P01-G040-v1
+  dataset_key: CWRU
+  dataset_slug: cwru
+  dataset_id: 1
+  arm_id: B4-GATTN
+  attempt_id: 0
+  baseline_id: B4-GATTN
+  supports_claim_ids: [C2]
+  evidence_status: not_run

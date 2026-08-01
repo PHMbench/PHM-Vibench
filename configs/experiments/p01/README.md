@@ -1,83 +1,62 @@
-# P01 - UXFD 1D-2D Multimodal Alignment - additive experiment configs
+# P01 Paired 1D/2D Experiment Configurations
 
-These configs are ADDITIVE: they live under `configs/experiments/p01/` and do NOT
-modify any existing config under `configs/base/`, `configs/demo/`, or
-`configs/reference/`.
+These additive configurations bind paper P01 to the maintained `main.py`
+entrypoint. The scientific source of truth is
+`paper/experiments/config_bridge.yaml`; this directory provides executable
+dataset and arm bases.
 
-## Purpose
+## Active files
 
-Map every experimental arm of paper P01 (1D-2D physical-semantic-geometric
-tri-level alignment XFD) to a PHM-Vibench_fix `main.py --config <yaml>` entrypoint.
+- `p01_shared_private_cwru.yaml` and `p01_shared_private_xjtu.yaml`: full
+  shared-private method.
+- `p01_generic_attention_cwru.yaml` and
+  `p01_generic_attention_xjtu.yaml`: predeclared primary comparator and base
+  for the other `P01Baselines` variants.
+- `p01_shared_only_cwru.yaml` and `p01_shared_only_xjtu.yaml`: direct
+  private-branch removal.
+- `no_local_override.yaml`: explicit empty machine-local override required by
+  evidence commands.
+- `configs/base/model/p01_shared_private.yaml` and
+  `configs/base/model/p01_baseline_family.yaml`: registered model bases.
 
-The paper's full method (tri-level-aligned 1D+2D fusion) is the central novelty
-claim. That model and its ablation variants are NOT yet registered in the
-maintained `src/model_factory/model_registry.csv` - they exist only in the
-READ-ONLY legacy snapshot under
-`paper/UXFD_paper/1D-2D_fusion_explainable/.../code/models/`. Therefore:
+Older P01 configs for DLinear, ResNet1D, CDDG, few-shot, pretraining, and the
+superseded tri-level placeholder remain historical/supporting files. They are
+not members of protocol `P01-G040-v1` and cannot support C1–C3.
 
-- **Method arms (full + ablation)** are recorded as `needs_new_component` and
-  bound to the placeholder traceability config `p01_method_placeholder.yaml`.
-  They become runnable only after the Fusion1D2D family is ported into the
-  maintained factory and given registry IDs `E_*/B_*/H_*`.
-- **Baseline arms** (1D-only DLinear, 2D-only ResNet1D, simple-fusion concat,
-  TSPN, OperatorAttention, MoE) reuse already-registered model components and
-  have runnable configs below.
-- **Supporting arms** (DG, CDDG, few-shot, pretrain) reuse the matching demo
-  pipelines (`Pipeline_01_default`, `Pipeline_02_pretrain_fewshot`) with paper
-  dataset/seed overrides.
-
-## Files
-
-- `p01_baseline_cwru_dlinear.yaml` - 1D single-modal baseline (ISFM/DLinear), CWRU.
-- `p01_baseline_cwru_resnet1d.yaml` - 1D single-modal baseline (ResNet1D), CWRU.
-- `p01_baseline_xjtu_dlinear.yaml` - 1D single-modal baseline (ISFM/DLinear), XJTU.
-- `p01_baseline_xjtu_resnet1d.yaml` - 1D single-modal baseline (ResNet1D), XJTU.
-- `p01_cross_system_cddg_cwru_xjtu.yaml` - cross-system generalization source=CWRU target=XJTU.
-- `p01_fewshot_cwru_prototypical.yaml` - few-shot K-sweep on CWRU (FS task).
-- `p01_cross_system_fewshot_tspn.yaml` - cross-system few-shot baseline (TSPN-style, GFS task).
-- `p01_pretrain_hse_cddg.yaml` - HSE contrastive pretraining for CDDG (pretrain pool = source only).
-- `p01_method_placeholder.yaml` - traceability binding for the full method +
-  ablation arms; status `needs_new_component`.
-
-## How to run a baseline smoke
+## Inspection
 
 ```bash
-python main.py --config configs/experiments/p01/p01_baseline_cwru_dlinear.yaml \
-  --override trainer.num_epochs=1 --override data.num_workers=0
+conda run -n LQ_signal python -m scripts.config_inspect \
+  --config configs/experiments/p01/p01_shared_private_cwru.yaml \
+  --dump targets --format yaml
 ```
 
-## Seed policy (paper-level, frozen at PROTOCOL_LOCK)
+## Post-lock smoke shape
 
-Default seed list for P01 is `[42, 123, 456, 789, 1024]` (5 seeds, matching the
-few-shot design; >=5 for any paper-grade claim). For 3-seed arms use the subset
-`[42, 123, 456]`. Set per-run via `--override environment.seed=<s>`.
+```bash
+conda run -n LQ_signal python main.py \
+  --config configs/experiments/p01/p01_shared_private_cwru.yaml \
+  --local_config configs/experiments/p01/no_local_override.yaml \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
+```
 
-## Leakage notes (binding)
+This shape is an implementation smoke only. Evidence commands additionally
+require the approved protocol, a unique arm/dataset/fold/seed/attempt output
+path, the frozen split manifest, and exactly one allowed physical GPU.
 
-- DG/CDDG arms: use `data.split.strategy: grouped_metadata` with
-  `test_policy: task_defined` so the target domain/system is held out as test.
-- Few-shot arms (FS/GFS): grouped_metadata episode-safe grouping is NOT yet
-  defined for FS - see `configs/README.md`. Treat few-shot baseline numbers as
-  exploratory until episode-safe grouping lands.
-- Pretrain arms: the pretraining pool MUST be the source domain only (CWRU
-  in-domain or CWRU train split). Pretraining over the target domain is
-  forbidden leakage and is explicitly excluded by `target_system_id`.
-- Normalization statistics are fit on the train split only (grouped split).
+## Frozen boundary
 
-## Source provenance
+- Training seeds: `[42, 123, 456, 789, 1024]`.
+- Split, pairing, and analysis seed: `20260801`.
+- CWRU: four `File`-stratified outer folds. This is source-record-disjoint, not
+  bearing-identity-disjoint.
+- XJTU: five `FileParent` outer folds, stratified by operating-condition
+  `Domain_id`, with binary normal/fault labels.
+- Standardization is deterministic per window and has no corpus-level fitted
+  state.
+- The negative control deranges only training windows within class and group;
+  validation and test stay paired.
+- Physical GPU index 2 and multi-GPU runs are forbidden.
 
-- Legacy method code (READ-ONLY): `paper/UXFD_paper/1D-2D_fusion_explainable/`
-  submodule - `code/models/{fusion_aligned,one_d_branch,two_d_branch,fusion_early}.py`,
-  `code/alignment/{physical,semantic,geometric}_alignment.py`,
-  `model/Fusion1D2D_ablation.py`.
-- Legacy configs (incompatible with maintained CLI; recorded for traceability):
-  `paper/UXFD_paper/1D-2D_fusion_explainable/configs/config_{CWRU,XJTU,THU_006}.yaml`
-  and `configs/ablation/config_{1D_only,2D_only,no_statistical}.yaml` use the
-  pre-5-block `args:` schema and are NOT runnable as-is.
-- Maintained engine: PHM-Vibench_fix `main.py --config <yaml>`.
-
-## Non-destructive attestation
-
-- No file under `configs/base/`, `configs/demo/`, or `configs/reference/` was modified.
-- No git commit / push was performed.
-- The legacy `paper/UXFD_paper/1D-2D_fusion_explainable/` tree remains read-only.
+No smoke, configuration inspection, or unit test is experimental evidence.

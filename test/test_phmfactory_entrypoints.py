@@ -31,6 +31,14 @@ def test_parser_preserves_legacy_config_path_alias() -> None:
     assert args.notes == "compat"
 
 
+def test_parser_accepts_explicit_local_config() -> None:
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        ["--config", "paper.yaml", "--local_config", "empty.yaml"]
+    )
+    assert args.local_config == "empty.yaml"
+
+
 def test_config_takes_precedence_over_legacy_alias() -> None:
     args = argparse.Namespace(
         config="public.yaml",
@@ -161,6 +169,7 @@ def test_python_entrypoints_share_help_surface(command: list[str]) -> None:
     assert "--config" in completed.stdout
     assert "--config_path" in completed.stdout
     assert "--override" in completed.stdout
+    assert "--local_config" in completed.stdout
 
 
 def test_root_main_is_only_a_dispatcher(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -43,7 +43,9 @@ def trainer(args_e, args_t, args_d, path):
 
     # 获取回调列表
     callback_list = call_backs(args_t, path)
-    log_list = [CSVLogger(path, name="logs")]
+    # Evidence paths are already unique per run/attempt.  Pin the CSV logger
+    # version so its metrics path is deterministic and can be hash-bound.
+    log_list = [CSVLogger(path, name="logs", version=0)]
     use_wandb = getattr(args_e, "wandb", False)
     use_swanlab = getattr(args_e, "swanlab", False)
 
