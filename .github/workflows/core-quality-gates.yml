@@ -202,21 +202,24 @@ jobs:
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
 
-      - name: Run shared runtime and Pipeline 02 contract tests
+      - name: Run shared runtime, evidence, and Pipeline 02 contract tests
         shell: bash
         run: |
           set -o pipefail
           python -m py_compile \
+            phmfactory/runtime/evidence.py \
             src/runtime/classification.py \
             src/runtime/explainability.py \
             src/Pipeline_01_Fault_Diagnosis.py \
             src/Pipeline_02_Pretraining_Few_Shot.py \
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
             test/test_classification_runtime.py \
-            test/test_pipeline02_runtime.py
+            test/test_pipeline02_runtime.py \
+            test/test_runtime_evidence.py
           python -m pytest \
             test/test_classification_runtime.py \
             test/test_pipeline02_runtime.py \
+            test/test_runtime_evidence.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
       - name: Run repository-shipped dummy smoke
