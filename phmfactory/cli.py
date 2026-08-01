@@ -1,4 +1,4 @@
-"""Public command-line interface for PHMFactory."""
+"""Public command router and experiment execution boundary for PHMFactory."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from phmfactory.config import DEFAULT_CONFIG, resolve_config
+from phmfactory.commands.common import add_config_arguments, requested_config
+from phmfactory.config import resolve_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import (
     AttestationWriteError,
@@ -19,89 +20,33 @@ from phmfactory.runtime import (
 from phmfactory.runtime.evidence import register_pipeline_result_evidence
 
 
+COMMANDS = ("data", "doctor", "demo", "preflight")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    """Build the parser shared by the three experiment entrypoints."""
+    """Build the backward-compatible experiment parser."""
+
     parser = argparse.ArgumentParser(
         prog="phmfactory",
         description="PHMFactory task pipeline",
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Configuration path or maintained preset name.",
-    )
-    parser.add_argument(
-        "--config_path",
-        type=str,
-        default=None,
-        help="Deprecated alias for --config.",
-    )
-    parser.add_argument(
-        "--notes",
-        type=str,
-        default="",
-        help="Experiment notes.",
-    )
-    parser.add_argument(
-        "--override",
-        action="append",
-        help="Configuration override in key=value form; may be repeated.",
-    )
-    parser.add_argument(
-        "--allow-experimental",
-        action="store_true",
-        help=(
-            "Explicitly authorize a Pipeline whose maturity descriptor requires "
-            "experimental opt-in."
+        epilog=(
+            "Commands: doctor, demo, preflight, data. "
+            "Legacy experiment form remains: phmfactory --config <yaml>."
         ),
     )
-    return parser
-
-
-def build_data_parser() -> argparse.ArgumentParser:
-    """Build the bounded dataset-bundle management command surface."""
-    parser = argparse.ArgumentParser(
-        prog="phmfactory data",
-        description="Download and validate PHMFactory dataset bundles.",
-    )
-    commands = parser.add_subparsers(dest="data_command", required=True)
-
-    download = commands.add_parser("download", help="Download one versioned bundle.")
-    download.add_argument("--bundle", default="cwru-demo-v1")
-    download.add_argument(
-        "--source",
-        choices=("huggingface", "modelscope"),
-        default="huggingface",
-    )
-    download.add_argument("--destination", default=None)
-    download.add_argument("--revision", default=None)
-    download.add_argument("--force", action="store_true")
-
-    validate = commands.add_parser("validate", help="Validate a local bundle.")
-    validate.add_argument("--bundle", default="cwru-demo-v1")
-    validate.add_argument("--path", required=True)
-
-    compare = commands.add_parser(
-        "compare",
-        help="Require identical core-file hashes for two local bundles.",
-    )
-    compare.add_argument("--bundle", default="cwru-demo-v1")
-    compare.add_argument("--left", required=True)
-    compare.add_argument("--right", required=True)
+    add_config_arguments(parser, include_notes=True, include_experimental=True)
     return parser
 
 
 def _resolve_config_path(args: argparse.Namespace) -> str:
-    if args.config is not None:
-        return args.config
-    if args.config_path is not None:
-        return args.config_path
-    return DEFAULT_CONFIG
+    """Compatibility wrapper retained for callers and tests."""
+
+    return requested_config(args)
 
 
 def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     """Resolve the canonical Pipeline through the public config API."""
+
     return resolve_config(
         config_path,
         override_values=args.override,
@@ -121,13 +66,12 @@ def _write_failed_attestation(
 
 def run(args: argparse.Namespace) -> Any:
     """Compile, attest, authorize, execute, and index one Pipeline."""
-    requested_config = _resolve_config_path(args)
-    resolved = resolve_config(requested_config, override_values=args.override)
+
+    requested = requested_config(args)
+    resolved = resolve_config(requested, override_values=args.override)
     compiled = CompiledRunSpec.compile(resolved)
 
-    # Keep the user's source for provenance, but pass the resolved file path to
-    # the protected runtime so public presets never fall into legacy aliases.
-    args.requested_config = requested_config
+    args.requested_config = requested
     args.config_path = str(resolved.path)
     args.resolved_config_path = str(resolved.path)
     args.resolved_pipeline = resolved.pipeline
@@ -152,9 +96,7 @@ def run(args: argparse.Namespace) -> Any:
     try:
         descriptor = require_pipeline_access(
             resolved.pipeline,
-            allow_experimental=bool(
-                getattr(args, "allow_experimental", False)
-            ),
+            allow_experimental=bool(getattr(args, "allow_experimental", False)),
             warn=False,
         )
     except BaseException as error:
@@ -194,56 +136,32 @@ def run(args: argparse.Namespace) -> Any:
     return result
 
 
-def _run_data_command(argv: Sequence[str]) -> Any:
-    from phmfactory.data_sources import (
-        compare_bundle_hashes,
-        download_bundle,
-        load_bundle_spec,
-        validate_bundle,
-    )
+def _run_command(name: str, argv: Sequence[str]) -> Any:
+    """Load one small command module only when selected."""
 
-    parser = build_data_parser()
-    args = parser.parse_args(list(argv))
-    spec = load_bundle_spec(args.bundle)
+    if name == "data":
+        from phmfactory.commands import data
 
-    if args.data_command == "download":
-        result = download_bundle(
-            args.bundle,
-            source=args.source,
-            destination=args.destination,
-            revision=args.revision,
-            force=args.force,
-        )
-        validation = result.validation
-        print(f"bundle={validation.spec.bundle_id}")
-        print(f"provider={result.provider}")
-        print(f"revision={result.requested_revision}")
-        print(f"path={result.directory}")
-        print(f"selected_rows={validation.selected_rows}")
-        print(f"corpus_present={str(validation.corpus_present).lower()}")
-        return result
+        return data.run(argv)
+    if name == "doctor":
+        from phmfactory.commands import doctor
 
-    if args.data_command == "validate":
-        validation = validate_bundle(args.path, spec=spec)
-        print(f"bundle={validation.spec.bundle_id}")
-        print(f"path={validation.directory}")
-        print(f"metadata_rows={validation.metadata_rows}")
-        print(f"selected_rows={validation.selected_rows}")
-        print(f"signal_keys={validation.signal_keys}")
-        print(f"corpus_present={str(validation.corpus_present).lower()}")
-        return validation
+        return doctor.run(argv)
+    if name == "preflight":
+        from phmfactory.commands import preflight
 
-    hashes = compare_bundle_hashes(args.left, args.right, spec=spec)
-    for name, digest in hashes.items():
-        print(f"{name}={digest}")
-    return hashes
+        return preflight.run(argv)
+    if name == "demo":
+        from phmfactory.commands import demo
+
+        return demo.run(argv, experiment_runner=run)
+    raise ValueError(f"unknown PHMFactory command: {name!r}")
 
 
 def main(argv: Sequence[str] | None = None) -> Any:
-    """Execute a data subcommand or the backward-compatible experiment CLI."""
+    """Route a named command or execute the compatible experiment form."""
+
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments[:1] == ["data"]:
-        return _run_data_command(arguments[1:])
-    parser = build_parser()
-    args = parser.parse_args(arguments)
-    return run(args)
+    if arguments[:1] and arguments[0] in COMMANDS:
+        return _run_command(arguments[0], arguments[1:])
+    return run(build_parser().parse_args(arguments))
