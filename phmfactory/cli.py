@@ -10,6 +10,7 @@ from typing import Any
 
 from phmfactory.config import DEFAULT_CONFIG, resolve_config
 from phmfactory.pipelines import pipeline_module_name
+from phmfactory.runtime import CompiledRunSpec
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -97,6 +98,7 @@ def run(args: argparse.Namespace) -> Any:
     """Dispatch a parsed argument namespace to the protected runtime."""
     requested_config = _resolve_config_path(args)
     resolved = resolve_config(requested_config, override_values=args.override)
+    compiled = CompiledRunSpec.compile(resolved)
 
     # Keep the user's source for provenance, but pass the resolved file path to
     # the protected runtime so public presets never fall into legacy aliases.
@@ -104,6 +106,9 @@ def run(args: argparse.Namespace) -> Any:
     args.config_path = str(resolved.path)
     args.resolved_config_path = str(resolved.path)
     args.resolved_pipeline = resolved.pipeline
+    args.compiled_run_spec = compiled
+    args.resolved_config_data = compiled.runtime_config()
+    args.run_spec_sha256 = compiled.sha256
 
     pipeline_module = importlib.import_module(
         pipeline_module_name(resolved.pipeline, warn=False)
