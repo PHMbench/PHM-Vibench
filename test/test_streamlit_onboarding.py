@@ -108,6 +108,10 @@ def test_readiness_is_ready_for_complete_offline_environment(tmp_path: Path) -> 
 
     assert report.can_execute is True
     assert report.blocked == ()
+    assert report.warnings == ()
+    config_check = next(item for item in report.checks if item.key == "config-inputs")
+    assert config_check.status == "ready"
+    assert "explicit overrides" in config_check.detail
 
 
 def test_readiness_blocks_missing_training_dependency(tmp_path: Path) -> None:
@@ -126,7 +130,7 @@ def test_readiness_blocks_missing_training_dependency(tmp_path: Path) -> None:
     assert [item.key for item in report.blocked] == ["dependency:pytorch_lightning"]
 
 
-def test_local_config_is_visible_warning_not_blocker(tmp_path: Path) -> None:
+def test_unmentioned_local_yaml_does_not_change_readiness(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     local = root / "configs" / "local"
     local.mkdir()
@@ -141,7 +145,9 @@ def test_local_config_is_visible_warning_not_blocker(tmp_path: Path) -> None:
     )
 
     assert report.can_execute is True
-    assert [item.key for item in report.warnings] == ["local-config"]
+    assert report.warnings == ()
+    config_check = next(item for item in report.checks if item.key == "config-inputs")
+    assert config_check.status == "ready"
 
 
 def test_bundled_template_requires_declared_assets(tmp_path: Path) -> None:
@@ -200,7 +206,9 @@ def test_external_template_returns_actionable_missing_path(tmp_path: Path) -> No
     )
 
     assert status.ready is False
-    assert "configs/local/local.yaml" in status.action
+    assert "Advanced mode" in status.action
+    assert "explicit override" in status.action
+    assert "local.yaml" not in status.action
 
 
 def test_every_maintained_demo_has_explicit_user_profile() -> None:
