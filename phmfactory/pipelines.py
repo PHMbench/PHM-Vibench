@@ -1,4 +1,4 @@
-"""Canonical Pipeline identifiers, maturity, and compatibility aliases."""
+"""Canonical Pipeline identifiers, maturity, and public runtime adapters."""
 
 from __future__ import annotations
 
@@ -16,16 +16,22 @@ class PipelineMaturityError(RuntimeError):
 
 @dataclass(frozen=True)
 class PipelineDescriptor:
-    """Machine-readable public maturity contract for one protected Pipeline."""
+    """Machine-readable public maturity contract for one Pipeline.
+
+    ``module`` may point to a narrow public adapter when the scientific implementation
+    remains in ``src`` but requires a control-plane compatibility bridge.  The adapter
+    must not change the selected algorithm or silently fall back to another Pipeline.
+    """
 
     name: str
     maturity: str
     opt_in_required: bool = False
     reason: str = ""
+    module: str | None = None
 
     @property
     def module_name(self) -> str:
-        return f"src.{self.name}"
+        return self.module or f"src.{self.name}"
 
 
 PIPELINE_DESCRIPTORS: dict[str, PipelineDescriptor] = {
@@ -65,6 +71,7 @@ PIPELINE_DESCRIPTORS: dict[str, PipelineDescriptor] = {
         name="Pipeline_06_Generative_Modeling",
         maturity="experimental_contract",
         reason="guarded CFM contract evidence; no release-supported benchmark claim",
+        module="phmfactory.runtime.pipeline06_adapter",
     ),
     "Pipeline_ID": PipelineDescriptor(
         name="Pipeline_ID",
@@ -89,6 +96,7 @@ PIPELINE_ALIASES: dict[str, str] = {
 
 def canonical_pipeline_name(name: str, *, warn: bool = True) -> str:
     """Return the canonical Pipeline identifier or raise a bounded error."""
+
     if not isinstance(name, str) or not name.strip():
         raise ValueError("pipeline must be a non-empty string")
 
@@ -111,6 +119,7 @@ def canonical_pipeline_name(name: str, *, warn: bool = True) -> str:
 
 def pipeline_descriptor(name: str, *, warn: bool = True) -> PipelineDescriptor:
     """Return the descriptor for a canonical or legacy Pipeline identifier."""
+
     return PIPELINE_DESCRIPTORS[canonical_pipeline_name(name, warn=warn)]
 
 
@@ -121,6 +130,7 @@ def require_pipeline_access(
     warn: bool = True,
 ) -> PipelineDescriptor:
     """Require explicit opt-in for Pipelines outside the safe default surface."""
+
     descriptor = pipeline_descriptor(name, warn=warn)
     if descriptor.opt_in_required and not allow_experimental:
         detail = f" {descriptor.reason}" if descriptor.reason else ""
@@ -132,5 +142,6 @@ def require_pipeline_access(
 
 
 def pipeline_module_name(name: str, *, warn: bool = True) -> str:
-    """Resolve a public or legacy identifier to its protected runtime module."""
+    """Resolve a public or legacy identifier to its maintained runtime module."""
+
     return pipeline_descriptor(name, warn=warn).module_name
