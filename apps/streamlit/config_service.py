@@ -1,8 +1,10 @@
-"""Configuration adapter for the optional PHM-Vibench Streamlit UI.
+"""Configuration utilities for the optional PHMFactory Streamlit workspace.
 
-The module has no Streamlit dependency. It treats the repository registry and
-``scripts.config_inspect`` CLI as authoritative, while keeping UI aliases and
-grouping declarative in ``field_catalog.yaml``.
+This module owns UI-only concerns: registry parsing, safe widgets, override
+serialization, command rendering, and conversion of the public config inspector's JSON
+into a ``ValidationReport``.  It does not merge base configs, canonicalize Pipelines, or
+apply hidden machine-local state; those semantics belong exclusively to
+``phmfactory.config`` and ``scripts.config_inspect``.
 """
 
 from __future__ import annotations
@@ -33,23 +35,23 @@ _OVERRIDE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 
 
 class ConfigServiceError(RuntimeError):
-    """Base class for user-correctable configuration failures."""
+    """Base class for user-correctable workspace configuration failures."""
 
 
 class RegistryError(ConfigServiceError):
-    pass
+    """Raised when the maintained template registry is malformed."""
 
 
 class ConfigPathError(ConfigServiceError):
-    pass
+    """Raised when a UI-selected repository path is unsafe or missing."""
 
 
 class ConfigFormatError(ConfigServiceError):
-    pass
+    """Raised when edited YAML or catalog data is malformed."""
 
 
 class OverrideError(ConfigServiceError):
-    pass
+    """Raised when a user override cannot be represented safely."""
 
 
 @dataclass(frozen=True)
@@ -92,12 +94,16 @@ class Catalog:
 
 @dataclass(frozen=True)
 class ValidationReport:
+    """Public inspector result presented by the UI without changing its semantics."""
+
     ok: bool
     command: Tuple[str, ...]
     resolved: Mapping[str, Any] = field(default_factory=dict)
     sources: Mapping[str, str] = field(default_factory=dict)
     targets: Mapping[str, Any] = field(default_factory=dict)
     sanity: Tuple[Mapping[str, Any], ...] = ()
+    effective_config_sha256: str = ""
+    local_config_path: str | None = None
     stdout: str = ""
     stderr: str = ""
     error: str = ""
@@ -108,6 +114,8 @@ class ValidationReport:
 
 
 def find_repo_root(start: Optional[Path] = None) -> Path:
+    """Locate a checkout containing the public launcher and config directory."""
+
     current = (start or Path(__file__)).resolve()
     if current.is_file():
         current = current.parent
@@ -115,8 +123,8 @@ def find_repo_root(start: Optional[Path] = None) -> Path:
         if (candidate / "main.py").is_file() and (candidate / "configs").is_dir():
             return candidate
     raise ConfigPathError(
-        "Could not locate the PHM-Vibench repository root. Start the app from "
-        "a checkout containing main.py and configs/."
+        "Could not locate the PHMFactory repository root. Start the app from a "
+        "checkout containing main.py and configs/."
     )
 
 
@@ -125,9 +133,17 @@ def _within(root: Path, candidate: Path) -> Path:
     candidate = candidate.resolve()
     try:
         candidate.relative_to(root)
-    except ValueError as exc:
-        raise ConfigPathError(f"Path escapes the repository root: {candidate}") from exc
+    except ValueError as error:
+        raise ConfigPathError(f"Path escapes the repository root: {candidate}") from error
     return candidate
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+        return True
+    except ValueError:
+        return False
 
 
 def resolve_repo_path(
@@ -138,6 +154,8 @@ def resolve_repo_path(
     must_exist: bool = True,
     yaml_only: bool = False,
 ) -> Path:
+    """Resolve a user-selected path while preventing repository traversal."""
+
     if not isinstance(value, str) or not value.strip():
         raise ConfigPathError("Configuration path is empty.")
     raw = Path(value.strip())
@@ -159,18 +177,12 @@ def resolve_repo_path(
     return resolved
 
 
-def _is_relative_to(path: Path, parent: Path) -> bool:
-    try:
-        path.relative_to(parent)
-        return True
-    except ValueError:
-        return False
-
-
 def load_registry(
     repo_root: Path,
     registry_path: str = "configs/config_registry.csv",
 ) -> Tuple[RegistryEntry, ...]:
+    """Load maintained templates while preserving future registry columns."""
+
     path = resolve_repo_path(repo_root, registry_path, yaml_only=False)
     try:
         with path.open("r", encoding="utf-8-sig", newline="") as handle:
@@ -186,10 +198,11 @@ def load_registry(
                     + ", ".join(sorted(missing))
                 )
             entries: List[RegistryEntry] = []
-            seen = set()
+            seen: set[str] = set()
             for line_no, row in enumerate(reader, start=2):
                 data = {str(key): (value or "").strip() for key, value in row.items()}
-                entry_id, entry_path = data.get("id", ""), data.get("path", "")
+                entry_id = data.get("id", "")
+                entry_path = data.get("path", "")
                 if not entry_id or not entry_path:
                     raise RegistryError(
                         f"Registry row {line_no} must include non-empty id and path."
@@ -212,40 +225,46 @@ def load_registry(
                         metadata=data,
                     )
                 )
-    except OSError as exc:
-        raise RegistryError(f"Could not read registry: {path}") from exc
+    except OSError as error:
+        raise RegistryError(f"Could not read registry: {path}") from error
     if not entries:
         raise RegistryError(f"Registry contains no entries: {path}")
     return tuple(entries)
 
 
+def _yaml_error(error: yaml.YAMLError, message: str) -> str:
+    mark = getattr(error, "problem_mark", None)
+    return (
+        f"{message} at line {mark.line + 1}, column {mark.column + 1}"
+        if mark is not None
+        else message
+    )
+
+
 def load_yaml_mapping(path: Path) -> Dict[str, Any]:
+    """Read one UTF-8 YAML mapping for UI catalogs or edited source."""
+
     try:
         with path.open("r", encoding="utf-8") as handle:
             value = yaml.safe_load(handle) or {}
-    except FileNotFoundError as exc:
-        raise ConfigPathError(f"Configuration file does not exist: {path}") from exc
-    except UnicodeDecodeError as exc:
-        raise ConfigFormatError(f"Configuration must be UTF-8 encoded: {path}") from exc
-    except yaml.YAMLError as exc:
-        raise ConfigFormatError(_yaml_error(exc, f"Invalid YAML: {path}")) from exc
+    except FileNotFoundError as error:
+        raise ConfigPathError(f"Configuration file does not exist: {path}") from error
+    except UnicodeDecodeError as error:
+        raise ConfigFormatError(f"Configuration must be UTF-8 encoded: {path}") from error
+    except yaml.YAMLError as error:
+        raise ConfigFormatError(_yaml_error(error, f"Invalid YAML: {path}")) from error
     if not isinstance(value, dict):
         raise ConfigFormatError(f"YAML root must be a mapping: {path}")
     return value
 
 
-def _yaml_error(error: yaml.YAMLError, message: str) -> str:
-    mark = getattr(error, "problem_mark", None)
-    if mark is None:
-        return message
-    return f"{message} at line {mark.line + 1}, column {mark.column + 1}"
-
-
 def parse_yaml_text(text: str, *, source: str = "edited configuration") -> Dict[str, Any]:
+    """Parse standalone effective YAML and require the maintained five blocks."""
+
     try:
         value = yaml.safe_load(text) or {}
-    except yaml.YAMLError as exc:
-        raise ConfigFormatError(_yaml_error(exc, f"Invalid YAML in {source}")) from exc
+    except yaml.YAMLError as error:
+        raise ConfigFormatError(_yaml_error(error, f"Invalid YAML in {source}")) from error
     if not isinstance(value, dict):
         raise ConfigFormatError(f"{source} must contain a YAML mapping at its root.")
     missing = [block for block in CONFIG_BLOCKS if not isinstance(value.get(block), dict)]
@@ -271,6 +290,8 @@ def _number(value: Any, name: str) -> Optional[float]:
 
 
 def load_catalog(path: Path) -> Catalog:
+    """Load declarative UI fields without embedding model-specific Python branches."""
+
     raw = load_yaml_mapping(path)
     version = raw.get("version", 1)
     if not isinstance(version, int) or version < 1:
@@ -367,8 +388,8 @@ def validate_override_key(key: str) -> str:
     key = key.strip() if isinstance(key, str) else ""
     if not key or not _OVERRIDE_KEY.fullmatch(key):
         raise OverrideError(
-            f"Invalid override key {key!r}. Use dot-delimited identifiers "
-            "such as trainer.num_epochs."
+            f"Invalid override key {key!r}. Use dot-delimited identifiers such as "
+            "trainer.num_epochs."
         )
     if key == "base_configs" or key.startswith("base_configs."):
         raise OverrideError("base_configs cannot be changed through the UI override editor.")
@@ -385,19 +406,19 @@ def serialize_override_value(value: Any) -> str:
     if isinstance(value, (str, bool, list, dict)) or value is None:
         try:
             return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError) as error:
             raise OverrideError(
                 f"Override value is not JSON/YAML serializable: {value!r}"
-            ) from exc
+            ) from error
     raise OverrideError(
-        f"Unsupported override value type: {type(value).__name__}. Use a "
-        "string, number, boolean, list, mapping, or null."
+        f"Unsupported override value type: {type(value).__name__}. Use a string, "
+        "number, boolean, list, mapping, or null."
     )
 
 
 def parse_override_lines(text: str) -> Tuple[Tuple[str, Any], ...]:
     parsed: List[Tuple[str, Any]] = []
-    seen = set()
+    seen: set[str] = set()
     for line_no, raw_line in enumerate(text.splitlines(), start=1):
         line = raw_line.strip()
         if not line or line.startswith("#"):
@@ -413,8 +434,8 @@ def parse_override_lines(text: str) -> Tuple[Tuple[str, Any], ...]:
         seen.add(key)
         try:
             value = yaml.safe_load(raw_value.strip())
-        except yaml.YAMLError as exc:
-            raise OverrideError(f"Invalid YAML value on override line {line_no}.") from exc
+        except yaml.YAMLError as error:
+            raise OverrideError(f"Invalid YAML value on override line {line_no}.") from error
         serialize_override_value(value)
         parsed.append((key, value))
     return tuple(parsed)
@@ -486,6 +507,8 @@ def build_main_command(
     *,
     python_executable: Optional[str] = None,
 ) -> Tuple[str, ...]:
+    """Build the exact argv list; no shell interpolation is used."""
+
     return (
         python_executable or sys.executable,
         "main.py",
@@ -510,6 +533,8 @@ def inspect_config(
     python_executable: Optional[str] = None,
     local_config_path: Optional[Path] = None,
 ) -> ValidationReport:
+    """Invoke the public inspector and preserve its effective config identity."""
+
     command = [
         python_executable or sys.executable,
         "-m",
@@ -522,7 +547,7 @@ def inspect_config(
         "json",
     ]
     if local_config_path is not None:
-        command.extend(("--local_config", str(local_config_path.resolve())))
+        command.extend(("--local-config", str(local_config_path.resolve())))
     command.extend(override_args(overrides))
     try:
         completed = subprocess.run(
@@ -533,19 +558,19 @@ def inspect_config(
             timeout=timeout,
             check=False,
         )
-    except subprocess.TimeoutExpired as exc:
+    except subprocess.TimeoutExpired as error:
         return ValidationReport(
             False,
             tuple(command),
-            stdout=exc.stdout or "",
-            stderr=exc.stderr or "",
+            stdout=error.stdout or "",
+            stderr=error.stderr or "",
             error=f"Configuration inspection timed out after {timeout:g} seconds.",
         )
-    except OSError as exc:
+    except OSError as error:
         return ValidationReport(
             False,
             tuple(command),
-            error=f"Could not start the config inspector: {exc}",
+            error=f"Could not start the config inspector: {error}",
         )
     if completed.returncode != 0:
         return ValidationReport(
@@ -554,8 +579,8 @@ def inspect_config(
             stdout=completed.stdout,
             stderr=completed.stderr,
             error=(
-                "The repository config inspector rejected the configuration. "
-                "Review stderr and install core dependencies if an import failed."
+                "The repository config inspector rejected the configuration. Review "
+                "stderr and install core dependencies if an import failed."
             ),
         )
     try:
@@ -576,14 +601,20 @@ def inspect_config(
             stderr=completed.stderr,
             error="The config inspector returned an unexpected payload.",
         )
-    resolved, sanity_raw = payload.get("resolved") or {}, payload.get("sanity") or []
-    if not isinstance(resolved, dict) or not isinstance(sanity_raw, list):
+    resolved = payload.get("resolved") or {}
+    sanity_raw = payload.get("sanity") or []
+    digest = str(payload.get("effective_config_sha256") or "")
+    if (
+        not isinstance(resolved, dict)
+        or not isinstance(sanity_raw, list)
+        or len(digest) != 64
+    ):
         return ValidationReport(
             False,
             tuple(command),
             stdout=completed.stdout,
             stderr=completed.stderr,
-            error="The config inspector returned an unexpected payload.",
+            error="The config inspector returned an incomplete payload.",
         )
     sanity = tuple(item for item in sanity_raw if isinstance(item, dict))
     passed = bool(sanity) and all(bool(item.get("ok")) for item in sanity)
@@ -594,6 +625,8 @@ def inspect_config(
         sources=payload.get("sources") or {},
         targets=payload.get("targets") or {},
         sanity=sanity,
+        effective_config_sha256=digest,
+        local_config_path=payload.get("local_config_path"),
         stdout=completed.stdout,
         stderr=completed.stderr,
         error="" if passed else "One or more repository sanity checks failed.",
@@ -607,21 +640,13 @@ def inspect_yaml_text(
     *,
     timeout: float = 90.0,
 ) -> ValidationReport:
+    """Inspect edited standalone YAML without a hidden local layer."""
+
     parse_yaml_text(yaml_text)
-    with tempfile.TemporaryDirectory(prefix="phm_vibench_streamlit_") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="phmfactory_streamlit_") as temp_dir:
         config_path = Path(temp_dir) / "edited_config.yaml"
-        empty_local = Path(temp_dir) / "empty_local.yaml"
         config_path.write_text(yaml_text, encoding="utf-8")
-        empty_local.write_text("{}\n", encoding="utf-8")
-        return inspect_config(
-            repo_root,
-            config_path,
-            overrides,
-            timeout=timeout,
-            # The YAML is already resolved. Prevent default local config from
-            # being applied a second time by the core loader.
-            local_config_path=empty_local,
-        )
+        return inspect_config(repo_root, config_path, overrides, timeout=timeout)
 
 
 def group_entries(
