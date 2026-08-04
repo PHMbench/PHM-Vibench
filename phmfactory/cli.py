@@ -1,4 +1,20 @@
-"""Public command router and experiment execution boundary for PHMFactory."""
+"""Public command routing and process entrypoints for PHMFactory.
+
+This module deliberately exposes two layers:
+
+``main(argv)``
+    Programmatic router. It returns structured command or Pipeline results so tests,
+    notebooks, and Python callers can inspect them directly.
+
+``entrypoint(argv)``
+    Operating-system process boundary used by the installed ``phmfactory`` command,
+    ``python -m phmfactory``, and the repository ``main.py`` compatibility launcher.
+    It converts every successful structured result into exit status ``0`` while
+    allowing ``SystemExit`` and runtime exceptions to retain their failure status.
+
+Keeping these contracts separate prevents a successful dictionary or list result from
+being passed to ``sys.exit`` and incorrectly reported as process exit code ``1``.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="PHMFactory task pipeline",
         epilog=(
             "Commands: doctor, demo, preflight, data. "
-            "Legacy experiment form remains: phmfactory --config <yaml>."
+            "Compatible experiment form: phmfactory --config <yaml>."
         ),
     )
     add_config_arguments(parser, include_notes=True, include_experimental=True)
@@ -39,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _resolve_config_path(args: argparse.Namespace) -> str:
-    """Compatibility wrapper retained for callers and tests."""
+    """Return the selected config while preserving the deprecated alias."""
 
     return requested_config(args)
 
@@ -58,6 +74,8 @@ def _write_failed_attestation(
     envelope: ExecutionEnvelope,
     original_error: BaseException,
 ) -> None:
+    """Persist terminal failure state without replacing the original exception."""
+
     try:
         attestation.write(envelope)
     except AttestationWriteError as write_error:
@@ -65,7 +83,12 @@ def _write_failed_attestation(
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Compile, attest, authorize, execute, and index one Pipeline."""
+    """Compile, record, authorize, execute, and index one Pipeline invocation.
+
+    The function is the single maintained experiment execution boundary. It returns the
+    Pipeline's explicit Python result for programmatic callers. Process exit handling is
+    owned by :func:`entrypoint`, not by this function.
+    """
 
     requested = requested_config(args)
     resolved = resolve_config(requested, override_values=args.override)
@@ -159,9 +182,27 @@ def _run_command(name: str, argv: Sequence[str]) -> Any:
 
 
 def main(argv: Sequence[str] | None = None) -> Any:
-    """Route a named command or execute the compatible experiment form."""
+    """Return the structured result of a named command or experiment.
+
+    This function is retained as the programmatic compatibility API. Code that starts an
+    operating-system process must call :func:`entrypoint` instead so a successful mapping,
+    list, or model result is not interpreted as an error exit message by ``sys.exit``.
+    """
 
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] and arguments[0] in COMMANDS:
         return _run_command(arguments[0], arguments[1:])
     return run(build_parser().parse_args(arguments))
+
+
+def entrypoint(argv: Sequence[str] | None = None) -> int:
+    """Execute the public process contract and return an integer status code.
+
+    Successful command and Pipeline results are intentionally discarded at this boundary;
+    their human-readable output and generated files remain available. ``argparse`` exits,
+    explicit command failures, and runtime exceptions are not caught, so their original
+    non-zero status and traceback are preserved.
+    """
+
+    main(argv)
+    return 0
