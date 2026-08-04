@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ResolvedConfig
+from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
 from phmfactory.runtime import (
     AttestationError,
     CompiledRunSpec,
@@ -19,7 +19,10 @@ from phmfactory.runtime.evidence import register_pipeline_result_evidence
 from src.runtime.classification import _register_iteration_evidence
 
 
-def _spec(tmp_path: Path, pipeline: str = "Pipeline_01_Fault_Diagnosis") -> CompiledRunSpec:
+def _spec(
+    tmp_path: Path,
+    pipeline: str = "Pipeline_01_Fault_Diagnosis",
+) -> CompiledRunSpec:
     return CompiledRunSpec.compile(
         ResolvedConfig(
             requested="evidence-test",
@@ -31,6 +34,29 @@ def _spec(tmp_path: Path, pipeline: str = "Pipeline_01_Fault_Diagnosis") -> Comp
             pipeline=pipeline,
             overrides={},
         )
+    )
+
+
+def _analysis(
+    tmp_path: Path,
+    pipeline: str = "Pipeline_01_Fault_Diagnosis",
+) -> ConfigAnalysis:
+    data = {
+        "pipeline": pipeline,
+        "environment": {"output_dir": str(tmp_path / "outputs")},
+    }
+    path = tmp_path / "config.yaml"
+    return ConfigAnalysis(
+        requested="evidence-test",
+        path=path,
+        effective_config=data,
+        pipeline=pipeline,
+        overrides={},
+        local_config_path=None,
+        source_files=(path,),
+        sources={},
+        diagnostics=(),
+        effective_config_sha256=semantic_config_sha256(data),
     )
 
 
@@ -159,17 +185,8 @@ def test_cli_records_evidence_finalize_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     pipeline = "Pipeline_06_Generative_Modeling"
-    resolved = ResolvedConfig(
-        requested="generative",
-        path=tmp_path / "generative.yaml",
-        data={
-            "pipeline": pipeline,
-            "environment": {"output_dir": str(tmp_path / "outputs")},
-        },
-        pipeline=pipeline,
-        overrides={},
-    )
-    monkeypatch.setattr(cli, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path, pipeline)
+    monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
@@ -182,6 +199,7 @@ def test_cli_records_evidence_finalize_failure(
     args = argparse.Namespace(
         config="generative",
         config_path=None,
+        local_config=None,
         notes="",
         override=None,
         allow_experimental=False,
