@@ -1,0 +1,163 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from phmfactory.commands import preflight
+from phmfactory.config import (
+    analyze_config,
+    resolve_config,
+    semantic_config_sha256,
+)
+from scripts.config_inspect import inspect_config
+from scripts.validate_configs import validate_one
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+SMOKE_CONFIG = REPOSITORY_ROOT / "configs" / "demo" / "00_smoke" / "dummy_dg.yaml"
+
+
+def _minimal_config(path: Path, *, epochs: int) -> None:
+    path.write_text(
+        "pipeline: Pipeline_01_Fault_Diagnosis\n"
+        "environment:\n"
+        "  seed: 0\n"
+        "  iterations: 1\n"
+        "  output_dir: results/test\n"
+        "data: {}\n"
+        "model: {}\n"
+        "task: {}\n"
+        "trainer:\n"
+        f"  num_epochs: {epochs}\n",
+        encoding="utf-8",
+    )
+
+
+def test_preset_and_explicit_path_have_same_effective_identity() -> None:
+    preset = analyze_config("smoke")
+    explicit = analyze_config(SMOKE_CONFIG)
+
+    assert preset.effective_config == explicit.effective_config
+    assert preset.effective_config_sha256 == explicit.effective_config_sha256
+
+
+def test_equivalent_yaml_and_cli_override_have_same_effective_identity(
+    tmp_path: Path,
+) -> None:
+    direct = tmp_path / "direct.yaml"
+    overridden = tmp_path / "overridden.yaml"
+    _minimal_config(direct, epochs=2)
+    _minimal_config(overridden, epochs=1)
+
+    direct_analysis = analyze_config(direct)
+    override_analysis = analyze_config(
+        overridden,
+        override_values=["trainer.num_epochs=2"],
+    )
+
+    assert direct_analysis.effective_config == override_analysis.effective_config
+    assert (
+        direct_analysis.effective_config_sha256
+        == override_analysis.effective_config_sha256
+    )
+
+
+def test_precedence_is_base_then_config_then_explicit_local_then_cli(
+    tmp_path: Path,
+) -> None:
+    base = tmp_path / "base.yaml"
+    config = tmp_path / "config.yaml"
+    local = tmp_path / "machine.yaml"
+    base.write_text(
+        "environment: {seed: 0, iterations: 1, output_dir: results/test}\n"
+        "data: {}\nmodel: {}\ntask: {}\n"
+        "trainer: {num_epochs: 1, device: cpu}\n",
+        encoding="utf-8",
+    )
+    config.write_text(
+        "base_configs:\n  common: base.yaml\n"
+        "pipeline: Pipeline_01_Fault_Diagnosis\n"
+        "trainer: {num_epochs: 2}\n",
+        encoding="utf-8",
+    )
+    local.write_text("trainer: {num_epochs: 3, device: cuda}\n", encoding="utf-8")
+
+    local_only = analyze_config(config, local_config=local)
+    final = analyze_config(
+        config,
+        local_config=local,
+        override_values=["trainer.num_epochs=4"],
+    )
+
+    assert local_only.effective_config["trainer"] == {
+        "num_epochs": 3,
+        "device": "cuda",
+    }
+    assert final.effective_config["trainer"] == {
+        "num_epochs": 4,
+        "device": "cuda",
+    }
+    assert final.sources["trainer.num_epochs"] == "cli:--override"
+    assert final.sources["trainer.device"] == f"local:{local.resolve()}"
+    assert final.local_config_path == local.resolve()
+
+
+def test_unmentioned_local_yaml_is_not_an_input(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = tmp_path / "experiment.yaml"
+    _minimal_config(config, epochs=2)
+    hidden = tmp_path / "configs" / "local" / "local.yaml"
+    hidden.parent.mkdir(parents=True)
+    hidden.write_text("trainer: {num_epochs: 999}\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    analysis = analyze_config(config)
+
+    assert analysis.local_config_path is None
+    assert analysis.effective_config["trainer"]["num_epochs"] == 2
+    assert hidden not in analysis.source_files
+
+
+def test_resolve_config_is_a_compatibility_view_of_analysis() -> None:
+    analysis = analyze_config("smoke", override_values=["trainer.num_epochs=2"])
+    resolved = resolve_config("smoke", override_values=["trainer.num_epochs=2"])
+
+    assert resolved.data == analysis.effective_config
+    assert resolved.pipeline == analysis.pipeline
+    assert resolved.overrides == analysis.overrides
+    assert resolved.path == analysis.path
+
+
+def test_inspector_and_public_analysis_return_same_config_and_hash(
+    tmp_path: Path,
+) -> None:
+    override = f"environment.output_dir={tmp_path / 'output'}"
+    analysis = analyze_config("smoke", override_values=[override])
+    inspected = inspect_config("smoke", overrides=[override])
+
+    assert inspected.resolved == analysis.effective_config
+    assert inspected.effective_config_sha256 == analysis.effective_config_sha256
+
+
+def test_validator_accepts_the_same_maintained_smoke_config() -> None:
+    assert validate_one(SMOKE_CONFIG) == []
+
+
+def test_preflight_reports_the_same_effective_hash(
+    tmp_path: Path,
+) -> None:
+    override = f"environment.output_dir={tmp_path / 'preflight'}"
+    expected = analyze_config("smoke", override_values=[override])
+
+    report = preflight.run(["--config", "smoke", "--override", override])
+
+    assert report["effective_config_sha256"] == expected.effective_config_sha256
+    assert report["pipeline"] == expected.pipeline
+    assert not (tmp_path / "preflight").exists()
+
+
+def test_semantic_hash_is_stable_for_mapping_order() -> None:
+    left = {"pipeline": "P", "trainer": {"device": "cpu", "epochs": 1}}
+    right = {"trainer": {"epochs": 1, "device": "cpu"}, "pipeline": "P"}
+    assert semantic_config_sha256(left) == semantic_config_sha256(right)
