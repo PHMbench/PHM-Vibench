@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ResolvedConfig
+from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
 from phmfactory.runtime import (
     CompiledRunSpec,
     ExecutionEnvelope,
@@ -93,17 +93,24 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    resolved = ResolvedConfig(
+    data = {
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "environment": {"output_dir": str(tmp_path / "outputs")},
+    }
+    path = tmp_path / "broken.yaml"
+    analysis = ConfigAnalysis(
         requested="broken",
-        path=tmp_path / "broken.yaml",
-        data={
-            "pipeline": "Pipeline_01_Fault_Diagnosis",
-            "environment": {"output_dir": str(tmp_path / "outputs")},
-        },
+        path=path,
+        effective_config=data,
         pipeline="Pipeline_01_Fault_Diagnosis",
         overrides={},
+        local_config_path=None,
+        source_files=(path,),
+        sources={},
+        diagnostics=(),
+        effective_config_sha256=semantic_config_sha256(data),
     )
-    monkeypatch.setattr(cli, "resolve_config", lambda *args, **kwargs: resolved)
+    monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
@@ -113,6 +120,7 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
     args = argparse.Namespace(
         config="broken",
         config_path=None,
+        local_config=None,
         notes="",
         override=None,
     )
