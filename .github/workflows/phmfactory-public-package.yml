@@ -8,6 +8,10 @@ on:
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
+      - "README.md"
+      - "README_CN.md"
+      - "docs/installation.md"
+      - "docs/quickstart.md"
       - "MIGRATION_v0.2_to_v0.3.md"
       - "examples/cwru_quickstart.py"
       - "configs/**"
@@ -31,6 +35,10 @@ on:
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
+      - "README.md"
+      - "README_CN.md"
+      - "docs/installation.md"
+      - "docs/quickstart.md"
       - "MIGRATION_v0.2_to_v0.3.md"
       - "examples/cwru_quickstart.py"
       - "configs/**"
@@ -111,7 +119,7 @@ jobs:
       - name: Build wheel and source distribution
         run: python -m build
 
-      - name: Inspect wheel contents
+      - name: Inspect wheel contents and console entrypoint
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -121,6 +129,12 @@ jobs:
           assert len(wheels) == 1, wheels
           with ZipFile(wheels[0]) as archive:
               names = set(archive.namelist())
+              entry_point_files = sorted(
+                  name for name in names if name.endswith(".dist-info/entry_points.txt")
+              )
+              assert len(entry_point_files) == 1, entry_point_files
+              entry_points = archive.read(entry_point_files[0]).decode("utf-8")
+          assert "phmfactory = phmfactory.cli:entrypoint" in entry_points
           required = {
               "phmfactory/__init__.py",
               "phmfactory/__main__.py",
@@ -160,7 +174,11 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          rm -rf /tmp/phmfactory-wheel /tmp/phmfactory-preflight-output /tmp/results
+          rm -rf \
+            /tmp/phmfactory-wheel \
+            /tmp/phmfactory-console-preflight \
+            /tmp/phmfactory-module-preflight \
+            /tmp/results
           python -m venv /tmp/phmfactory-wheel
           /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
           /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
@@ -178,14 +196,35 @@ jobs:
       - name: Verify clean installed demo help
         run: /tmp/phmfactory-wheel/bin/phmfactory demo --help
 
-      - name: Verify clean installed preflight
+      - name: Verify clean installed console preflight exits zero
         run: >-
           /tmp/phmfactory-wheel/bin/phmfactory preflight
           --config smoke
-          --override environment.output_dir=/tmp/phmfactory-preflight-output
+          --override environment.output_dir=/tmp/phmfactory-console-preflight
 
-      - name: Verify preflight leaves target absent
-        run: test ! -e /tmp/phmfactory-preflight-output
+      - name: Verify clean installed module preflight exits zero
+        run: >-
+          /tmp/phmfactory-wheel/bin/python -m phmfactory preflight
+          --config smoke
+          --override environment.output_dir=/tmp/phmfactory-module-preflight
+
+      - name: Verify preflight leaves configured targets absent
+        run: |
+          test ! -e /tmp/phmfactory-console-preflight
+          test ! -e /tmp/phmfactory-module-preflight
+
+      - name: Verify invalid clean installed preflight exits non-zero
+        shell: bash
+        run: |
+          set -euo pipefail
+          if /tmp/phmfactory-wheel/bin/phmfactory preflight \
+            --config /tmp/phmfactory-does-not-exist.yaml \
+            >/tmp/phmfactory-invalid-preflight.log 2>&1; then
+            cat /tmp/phmfactory-invalid-preflight.log
+            echo "invalid preflight unexpectedly returned exit code 0" >&2
+            exit 1
+          fi
+          grep -F "was not found" /tmp/phmfactory-invalid-preflight.log
 
       - name: Verify clean installed experiment dispatch
         shell: bash
