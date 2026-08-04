@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ResolvedConfig
+from phmfactory.config import ConfigAnalysis, semantic_config_sha256
 from phmfactory.pipelines import (
     PipelineMaturityError,
     pipeline_descriptor,
@@ -16,16 +16,23 @@ from phmfactory.pipelines import (
 )
 
 
-def _resolved(tmp_path: Path, pipeline: str) -> ResolvedConfig:
-    return ResolvedConfig(
+def _analysis(tmp_path: Path, pipeline: str) -> ConfigAnalysis:
+    data = {
+        "pipeline": pipeline,
+        "environment": {"output_dir": str(tmp_path / "runs")},
+    }
+    path = tmp_path / "maturity.yaml"
+    return ConfigAnalysis(
         requested="maturity-test",
-        path=tmp_path / "maturity.yaml",
-        data={
-            "pipeline": pipeline,
-            "environment": {"output_dir": str(tmp_path / "runs")},
-        },
+        path=path,
+        effective_config=data,
         pipeline=pipeline,
         overrides={},
+        local_config_path=None,
+        source_files=(path,),
+        sources={},
+        diagnostics=(),
+        effective_config_sha256=semantic_config_sha256(data),
     )
 
 
@@ -68,8 +75,8 @@ def test_cli_blocks_experimental_before_import_and_writes_failed_manifest(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    resolved = _resolved(tmp_path, "Pipeline_03_Multitask_Pretraining_Finetuning")
-    monkeypatch.setattr(cli, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path, "Pipeline_03_Multitask_Pretraining_Finetuning")
+    monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
@@ -78,6 +85,7 @@ def test_cli_blocks_experimental_before_import_and_writes_failed_manifest(
     args = argparse.Namespace(
         config="maturity-test",
         config_path=None,
+        local_config=None,
         notes="",
         override=None,
         allow_experimental=False,
@@ -96,8 +104,8 @@ def test_cli_explicit_opt_in_allows_experimental_import(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    resolved = _resolved(tmp_path, "Pipeline_03_Multitask_Pretraining_Finetuning")
-    monkeypatch.setattr(cli, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path, "Pipeline_03_Multitask_Pretraining_Finetuning")
+    monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
@@ -106,6 +114,7 @@ def test_cli_explicit_opt_in_allows_experimental_import(
     args = argparse.Namespace(
         config="maturity-test",
         config_path=None,
+        local_config=None,
         notes="",
         override=None,
         allow_experimental=True,
