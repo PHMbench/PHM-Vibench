@@ -1,4 +1,9 @@
-"""Shared argument and filesystem helpers for PHMFactory commands."""
+"""Shared argument and filesystem helpers for PHMFactory commands.
+
+The helpers keep the user-facing command surface consistent.  In particular, a
+machine-local YAML file is an explicit input; the public path never searches for
+``configs/local/local.yaml`` on its own.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +20,7 @@ def add_config_arguments(
     include_notes: bool = False,
     include_experimental: bool = True,
 ) -> None:
-    """Add the maintained config/preset and override surface to a parser."""
+    """Add the maintained config, explicit local layer, and override surface."""
 
     parser.add_argument(
         "--config",
@@ -28,6 +33,16 @@ def add_config_arguments(
         type=str,
         default=None,
         help="Deprecated alias for --config.",
+    )
+    parser.add_argument(
+        "--local-config",
+        "--local_config",
+        dest="local_config",
+        default=None,
+        help=(
+            "Optional machine-local YAML applied explicitly after the experiment "
+            "config and before CLI overrides. No local file is auto-discovered."
+        ),
     )
     if include_notes:
         parser.add_argument("--notes", default="", help="Experiment notes.")
@@ -52,6 +67,13 @@ def requested_config(args: argparse.Namespace) -> str:
     if getattr(args, "config_path", None) is not None:
         return str(args.config_path)
     return DEFAULT_CONFIG
+
+
+def requested_local_config(args: argparse.Namespace) -> str | None:
+    """Return the explicit machine-local YAML path, or ``None`` when omitted."""
+
+    value = getattr(args, "local_config", None)
+    return str(value) if value is not None else None
 
 
 def _probe_existing_directory(directory: Path) -> None:
