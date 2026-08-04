@@ -8,14 +8,14 @@ version = "0.3.0.dev0"
 description = "Configuration-first PHM research and evaluation framework"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 authors = [
   { name = "PHMFactory contributors" },
 ]
 dynamic = ["dependencies"]
 
 [project.scripts]
-phmfactory = "phmfactory.cli:main"
+phmfactory = "phmfactory.cli:entrypoint"
 
 [tool.setuptools]
 include-package-data = true
