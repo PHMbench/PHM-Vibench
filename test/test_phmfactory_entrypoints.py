@@ -13,7 +13,6 @@ from phmfactory import __version__
 from phmfactory import cli
 from examples import cwru_quickstart
 from phmfactory.config import MAINTAINED_PRESETS, ResolvedConfig, resolve_config_path
-from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +39,26 @@ def test_config_takes_precedence_over_legacy_alias() -> None:
         override=None,
     )
     assert cli._resolve_config_path(args) == "public.yaml"
+
+
+def test_process_entrypoint_discards_structured_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The OS boundary must never pass a successful mapping to ``sys.exit``."""
+
+    monkeypatch.setattr(cli, "main", lambda argv=None: {"status": "passed"})
+    assert cli.entrypoint(["preflight"]) == 0
+
+
+def test_process_entrypoint_preserves_runtime_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(argv=None):
+        raise RuntimeError("runtime failed")
+
+    monkeypatch.setattr(cli, "main", fail)
+    with pytest.raises(RuntimeError, match="runtime failed"):
+        cli.entrypoint([])
 
 
 def test_run_dispatches_resolved_canonical_module(
@@ -186,10 +205,70 @@ def test_python_entrypoints_share_help_surface(command: list[str]) -> None:
     assert "--allow-experimental" in completed.stdout
 
 
-def test_root_main_is_only_a_dispatcher(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    "prefix",
+    (
+        [sys.executable, "main.py"],
+        [sys.executable, "-m", "phmfactory"],
+    ),
+)
+def test_python_process_entrypoints_return_zero_for_preflight(
+    prefix: list[str],
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "preflight-output"
+    completed = subprocess.run(
+        [
+            *prefix,
+            "preflight",
+            "--config",
+            "smoke",
+            "--override",
+            f"environment.output_dir={target}",
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "status=passed" in completed.stdout
+    assert not target.exists()
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    (
+        [sys.executable, "main.py"],
+        [sys.executable, "-m", "phmfactory"],
+    ),
+)
+def test_python_process_entrypoints_return_nonzero_for_invalid_config(
+    prefix: list[str],
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "missing.yaml"
+    completed = subprocess.run(
+        [*prefix, "preflight", "--config", str(missing)],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert "was not found" in completed.stderr
+
+
+def test_root_main_is_only_a_process_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: list[object] = []
-    monkeypatch.setattr(cli, "main", lambda argv=None: calls.append(argv))
-    runpy.run_path(str(REPOSITORY_ROOT / "main.py"), run_name="__main__")
+    monkeypatch.setattr(cli, "entrypoint", lambda argv=None: calls.append(argv) or 0)
+
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(REPOSITORY_ROOT / "main.py"), run_name="__main__")
+
+    assert error.value.code == 0
     assert calls == [None]
 
 
