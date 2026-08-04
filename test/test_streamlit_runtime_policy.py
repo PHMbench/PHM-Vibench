@@ -8,7 +8,10 @@ from apps.streamlit import runtime_policy as policy
 from apps.streamlit.config_service import CONFIG_BLOCKS, ValidationReport
 
 
-def test_portable_resolution_uses_explicit_empty_local(monkeypatch, tmp_path: Path) -> None:
+def test_template_resolution_passes_no_hidden_local_config(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text("environment: {}\n", encoding="utf-8")
     seen = {}
@@ -16,18 +19,20 @@ def test_portable_resolution_uses_explicit_empty_local(monkeypatch, tmp_path: Pa
     def fake_inspect(repo_root, path, overrides=(), timeout=90.0, local_config_path=None):
         seen["local"] = local_config_path
         assert path == config_path
-        assert local_config_path is not None
-        assert local_config_path.read_text(encoding="utf-8") == "{}\n"
+        assert local_config_path is None
         return ValidationReport(True, ("python",))
 
     monkeypatch.setattr(policy, "inspect_config", fake_inspect)
     report = policy.inspect_portable_config(tmp_path, config_path)
 
     assert report.ok
-    assert not seen["local"].exists()
+    assert seen["local"] is None
 
 
-def test_execution_yaml_allows_core_local_layer_once(monkeypatch, tmp_path: Path) -> None:
+def test_execution_yaml_passes_no_hidden_local_config(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
     seen = {}
 
     def fake_inspect(repo_root, path, overrides=(), timeout=90.0, local_config_path=None):
@@ -42,4 +47,5 @@ def test_execution_yaml_allows_core_local_layer_once(monkeypatch, tmp_path: Path
     report = policy.inspect_execution_yaml(tmp_path, yaml_text)
 
     assert report.ok
+    assert seen["local"] is None
     assert not seen["path"].exists()
