@@ -122,7 +122,7 @@ preset: smoke
 trainer.num_epochs: 1
 trainer.device: cpu
 trainer.gpus: 1
- data.num_workers: 0
+data.num_workers: 0
 ```
 
 An explicit user override still wins:
