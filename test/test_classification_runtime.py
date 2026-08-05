@@ -4,10 +4,14 @@ from argparse import Namespace
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from phmfactory.config import ResolvedConfig
 from phmfactory.runtime import CompiledRunSpec
+from src.data_factory.dataset_task.Dataset_cluster import IdIncludedDataset
+from src.data_factory.dataset_task.Default_dataset import Default_dataset
+from src.data_factory.samplers.Get_sampler import Get_sampler
 from src.runtime import classification
 
 
@@ -47,6 +51,28 @@ def _args(tmp_path: Path, *, iterations: int = 1) -> Namespace:
         override=["trainer.num_epochs=99"],
         notes="",
     )
+
+
+def _window_args(**values) -> SimpleNamespace:
+    payload = {
+        "window_size": 4,
+        "stride": 4,
+        "num_window": 5,
+        "window_sampling_strategy": "sequential",
+        "window_sampling_seed": 0,
+        "train_ratio": 0.6,
+        "val_ratio": 0.2,
+        "test_ratio": 0.2,
+        "normalization": "none",
+        "dtype": "float32",
+        "batch_size": 4,
+    }
+    payload.update(values)
+    return SimpleNamespace(**payload)
+
+
+def _window_starts(dataset: Default_dataset) -> list[int]:
+    return [int(item["x"][0, 0]) for item in dataset]
 
 
 def test_compiled_config_bypasses_legacy_reparse(
@@ -115,10 +141,22 @@ def test_runtime_closes_data_and_lab_when_training_fails(
         "seed_everything",
         lambda seed: events.append(f"seed:{seed}"),
     )
-    monkeypatch.setattr(classification, "init_lab", lambda *args: events.append("lab-open"))
-    monkeypatch.setattr(classification, "close_lab", lambda: events.append("lab-close"))
+    monkeypatch.setattr(
+        classification,
+        "init_lab",
+        lambda *args: events.append("lab-open"),
+    )
+    monkeypatch.setattr(
+        classification,
+        "close_lab",
+        lambda: events.append("lab-close"),
+    )
     monkeypatch.setattr(classification, "build_data", lambda *args: DataFactory())
-    monkeypatch.setattr(classification, "build_model", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        classification,
+        "build_model",
+        lambda *args, **kwargs: object(),
+    )
     monkeypatch.setattr(classification, "build_task", lambda **kwargs: object())
     monkeypatch.setattr(classification, "build_trainer", lambda *args: Trainer())
 
@@ -148,3 +186,68 @@ def test_pipeline_wrappers_only_select_hooks(monkeypatch: pytest.MonkeyPatch) ->
     assert pipeline_01.pipeline(marker) == []
     assert pipeline_05.pipeline(marker) == []
     assert calls == [("p01", marker), ("p05", marker, "ExplainabilityHooks")]
+
+
+def test_same_file_fewshot_windows_are_disjoint_across_splits() -> None:
+    raw = np.arange(40, dtype=np.float32).reshape(20, 2)
+    data = {1: raw}
+    metadata = {1: {"Label": 0}}
+    args_data = _window_args()
+    args_task = SimpleNamespace(type="FS")
+
+    train = Default_dataset(data, metadata, args_data, args_task, "train")
+    val = Default_dataset(data, metadata, args_data, args_task, "val")
+    test = Default_dataset(data, metadata, args_data, args_task, "test")
+
+    assert _window_starts(train) == [0, 8, 16]
+    assert _window_starts(val) == [24]
+    assert _window_starts(test) == [32]
+    assert set(_window_starts(train)).isdisjoint(_window_starts(val))
+    assert set(_window_starts(train)).isdisjoint(_window_starts(test))
+    assert set(_window_starts(val)).isdisjoint(_window_starts(test))
+
+
+def test_valid_alias_uses_the_validation_slice() -> None:
+    raw = np.arange(40, dtype=np.float32).reshape(20, 2)
+    data = {1: raw}
+    metadata = {1: {"Label": 0}}
+    args_data = _window_args()
+    args_task = SimpleNamespace(type="DG")
+
+    val = Default_dataset(data, metadata, args_data, args_task, "val")
+    valid = Default_dataset(data, metadata, args_data, args_task, "valid")
+
+    assert _window_starts(val) == _window_starts(valid) == [24]
+
+
+def test_evaluation_sampler_keeps_a_short_final_batch() -> None:
+    raw = np.arange(40, dtype=np.float32).reshape(20, 2)
+    data = {1: raw}
+    metadata = {1: {"Label": 0, "Dataset_id": 7}}
+    args_data = _window_args(batch_size=8)
+    args_task = SimpleNamespace(type="DG")
+    val_dataset = Default_dataset(data, metadata, args_data, args_task, "val")
+    clustered = IdIncludedDataset({1: val_dataset}, metadata)
+
+    sampler = Get_sampler(args_task, args_data, clustered, mode="val")
+
+    assert len(clustered) == 1
+    assert len(sampler) == 1
+    assert list(sampler) == [[0]]
+
+
+def test_short_signal_fails_with_actionable_message() -> None:
+    args_data = _window_args(window_size=16)
+    args_task = SimpleNamespace(type="DG")
+
+    with pytest.raises(
+        ValueError,
+        match="Reduce window_size or provide a longer signal",
+    ):
+        Default_dataset(
+            {1: np.zeros((8, 2), dtype=np.float32)},
+            {1: {"Label": 0}},
+            args_data,
+            args_task,
+            "train",
+        )
