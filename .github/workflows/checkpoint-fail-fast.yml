@@ -1,0 +1,45 @@
+name: Checkpoint fail-fast contract
+
+on:
+  pull_request:
+    paths:
+      - "src/model_factory/model_factory.py"
+      - "src/utils/utils.py"
+      - "src/utils/pipeline_config/base_utils.py"
+      - "test/test_checkpoint_fail_fast.py"
+      - ".github/workflows/checkpoint-fail-fast.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checkpoint-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install CPU test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0"
+          python -m pip install "numpy>=1.20" "pytorch-lightning>=1.5" "pytest>=7"
+
+      - name: Compile checkpoint paths and focused tests
+        run: |
+          python -m py_compile \
+            src/model_factory/model_factory.py \
+            src/utils/utils.py \
+            src/utils/pipeline_config/base_utils.py \
+            test/test_checkpoint_fail_fast.py
+
+      - name: Run checkpoint fail-fast tests
+        run: python -m pytest test/test_checkpoint_fail_fast.py -q
