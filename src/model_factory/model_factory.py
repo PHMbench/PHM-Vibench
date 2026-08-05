@@ -65,7 +65,7 @@ def model_factory(args_model: Any, metadata: Any):
 
 
 def _extract_state_dict(checkpoint: Any, ckpt_path: str) -> Mapping[str, Any]:
-    """Return a state dict from a plain or Lightning-style checkpoint."""
+    """Return bare-model weights from a plain or PHMFactory Lightning checkpoint."""
     if not isinstance(checkpoint, Mapping):
         raise TypeError(
             f"Checkpoint '{ckpt_path}' must contain a mapping, "
@@ -77,7 +77,16 @@ def _extract_state_dict(checkpoint: Any, ckpt_path: str) -> Mapping[str, Any]:
         raise TypeError(
             f"Checkpoint '{ckpt_path}' contains a non-mapping state_dict."
         )
-    return state_dict
+
+    # PHMFactory task modules register the bare model as ``self.network``.
+    # Support that one canonical Lightning key space without guessing unrelated
+    # prefixes such as module., model., backbone., or encoder.
+    network_state = {
+        key.removeprefix("network."): value
+        for key, value in state_dict.items()
+        if key.startswith("network.")
+    }
+    return network_state or state_dict
 
 
 def load_ckpt(model: Any, ckpt_path: str, *, strict: bool = True) -> None:
