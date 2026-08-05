@@ -1,14 +1,35 @@
 from __future__ import annotations
 
 from argparse import Namespace
+import importlib
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import torch
+from pytorch_lightning import LightningModule
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 from phmfactory.config import ResolvedConfig
 from phmfactory.runtime import CompiledRunSpec
 import src.Pipeline_02_Pretraining_Few_Shot as pipeline02
+import src.utils.training.two_stage_orchestrator as orchestrator_module
+from src.utils.pipeline_config.base_utils import load_pretrained_weights
+from src.utils.utils import load_best_model_checkpoint
+
+model_factory_module = importlib.import_module("src.model_factory.model_factory")
+
+
+class TinyModel(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.linear = torch.nn.Linear(2, 2)
+
+
+class TinyLightningTask(LightningModule):
+    def __init__(self) -> None:
+        super().__init__()
+        self.network = TinyModel()
 
 
 def _compiled(tmp_path: Path, *, stages=None) -> CompiledRunSpec:
@@ -87,7 +108,10 @@ def test_compiled_stages_select_one_unified_orchestrator(
     )
     args = _args(
         tmp_path,
-        stages=[{"name": "pretrain", "overrides": {}}, {"name": "finetune", "overrides": {}}],
+        stages=[
+            {"name": "pretrain", "overrides": {}},
+            {"name": "finetune", "overrides": {}},
+        ],
     )
 
     assert pipeline02.pipeline(args) == {"stages": 2}
@@ -167,3 +191,198 @@ def test_pipeline02_no_longer_exposes_manual_duplicate_stage_runners() -> None:
     assert not hasattr(pipeline02, "run_pretraining_stage")
     assert not hasattr(pipeline02, "run_fewshot_stage")
     assert not hasattr(pipeline02, "_run_single_stage_from_cfg")
+
+
+def test_model_factory_fails_when_configured_checkpoint_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    module = SimpleNamespace(Model=lambda args, metadata: TinyModel())
+    monkeypatch.setattr(
+        model_factory_module.importlib,
+        "import_module",
+        lambda module_path: module,
+    )
+    args = SimpleNamespace(
+        type="Dummy",
+        name="Tiny",
+        num_classes=2,
+        weights_path=str(tmp_path / "missing.ckpt"),
+    )
+
+    with pytest.raises(
+        FileNotFoundError,
+        match="Configured checkpoint does not exist",
+    ):
+        model_factory_module.model_factory(args, metadata=None)
+
+
+def test_load_ckpt_restores_real_lightning_network_state(tmp_path: Path) -> None:
+    source_task = TinyLightningTask()
+    target = TinyModel()
+    for parameter in target.parameters():
+        torch.nn.init.zeros_(parameter)
+
+    checkpoint = tmp_path / "lightning.ckpt"
+    torch.save({"state_dict": source_task.state_dict()}, checkpoint)
+
+    model_factory_module.load_ckpt(target, str(checkpoint))
+
+    for expected, actual in zip(source_task.network.parameters(), target.parameters()):
+        assert torch.equal(expected, actual)
+
+
+def test_load_ckpt_non_strict_rejects_zero_matches(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "wrong.ckpt"
+    torch.save({"unrelated.weight": torch.ones(1)}, checkpoint)
+
+    with pytest.raises(RuntimeError, match="matched zero model parameters"):
+        model_factory_module.load_ckpt(
+            TinyModel(),
+            str(checkpoint),
+            strict=False,
+        )
+
+
+def test_pipeline02_adapt_uses_explicit_backbone_transfer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_task = TinyLightningTask()
+    checkpoint = tmp_path / "stage1.ckpt"
+    torch.save({"state_dict": source_task.state_dict()}, checkpoint)
+
+    target = TinyModel()
+    for parameter in target.parameters():
+        torch.nn.init.zeros_(parameter)
+
+    orchestrator = orchestrator_module.MultiStageOrchestrator.__new__(
+        orchestrator_module.MultiStageOrchestrator
+    )
+    orchestrator.cfg = SimpleNamespace()
+    orchestrator.dry_run = False
+
+    env = SimpleNamespace(seed=1)
+    data = SimpleNamespace()
+    model = SimpleNamespace()
+    task = SimpleNamespace()
+    trainer_config = SimpleNamespace()
+    monkeypatch.setattr(
+        orchestrator,
+        "_stage_to_namespaces",
+        lambda stage_cfg: (env, data, model, task, trainer_config),
+    )
+    monkeypatch.setattr(
+        orchestrator,
+        "_ensure_trainer_attributes",
+        lambda trainer, path: None,
+    )
+    monkeypatch.setattr(
+        orchestrator_module,
+        "path_name",
+        lambda config: (str(tmp_path), "adapt"),
+    )
+    monkeypatch.setattr(orchestrator_module, "seed_everything", lambda seed: None)
+    monkeypatch.setattr(orchestrator_module, "init_lab", lambda *args: None)
+    monkeypatch.setattr(orchestrator_module, "close_lab", lambda: None)
+
+    class DataFactory:
+        def get_metadata(self):
+            return None
+
+        def get_dataloader(self, split):
+            return split
+
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_data",
+        lambda args_data, args_task: DataFactory(),
+    )
+
+    def build_model(args_model, metadata):
+        assert not hasattr(args_model, "weights_path")
+        return target
+
+    monkeypatch.setattr(orchestrator_module, "build_model", build_model)
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_task",
+        lambda **kwargs: SimpleNamespace(),
+    )
+
+    best_checkpoint = tmp_path / "stage2.ckpt"
+    callback = ModelCheckpoint()
+    callback.best_model_path = str(best_checkpoint)
+
+    class Trainer:
+        callbacks = [callback]
+
+        def fit(self, *args):
+            return None
+
+        def test(self, *args):
+            return [{"loss": 0.0}]
+
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_trainer",
+        lambda *args: Trainer(),
+    )
+    monkeypatch.setattr(
+        orchestrator_module,
+        "load_best_model_checkpoint",
+        lambda lightning_task, trainer: lightning_task,
+    )
+
+    result = orchestrator.run_adapt(
+        stage_cfg=object(),
+        checkpoint_path=str(checkpoint),
+    )
+
+    for expected, actual in zip(source_task.network.parameters(), target.parameters()):
+        assert torch.equal(expected, actual)
+    assert result["checkpoint_path"] == str(best_checkpoint)
+
+
+def test_best_checkpoint_must_exist_before_evaluation(tmp_path: Path) -> None:
+    callback = ModelCheckpoint()
+    callback.best_model_path = str(tmp_path / "missing-best.ckpt")
+    trainer = SimpleNamespace(callbacks=[callback])
+
+    with pytest.raises(
+        FileNotFoundError,
+        match="Best checkpoint does not exist",
+    ):
+        load_best_model_checkpoint(TinyModel(), trainer)
+
+
+def test_best_checkpoint_path_cannot_be_empty() -> None:
+    callback = ModelCheckpoint()
+    callback.best_model_path = ""
+    trainer = SimpleNamespace(callbacks=[callback])
+
+    with pytest.raises(
+        RuntimeError,
+        match="did not produce a best checkpoint",
+    ):
+        load_best_model_checkpoint(TinyModel(), trainer)
+
+
+def test_pretrained_loader_rejects_checkpoint_without_backbone_weights(
+    tmp_path: Path,
+) -> None:
+    checkpoint = tmp_path / "no-backbone.ckpt"
+    torch.save(
+        {"state_dict": {"task_head.weight": torch.ones(1)}},
+        checkpoint,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="no transferable 'network.' backbone",
+    ):
+        load_pretrained_weights(
+            TinyModel(),
+            str(checkpoint),
+            strict=False,
+        )
