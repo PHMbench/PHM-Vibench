@@ -223,14 +223,10 @@ def run_classification_pipeline(
 
             print("[INFO] 构建数据工厂...")
             context.data_factory = build_data(args_data, args_task)
-            if context.data_factory is None:
-                raise RuntimeError("data factory returned None")
             metadata = context.data_factory.get_metadata()
 
             print("[INFO] 构建模型...")
             context.model = build_model(args_model, metadata=metadata)
-            if context.model is None:
-                raise RuntimeError("model factory returned None")
 
             print("[INFO] 构建任务...")
             context.task = build_task(
@@ -242,8 +238,6 @@ def run_classification_pipeline(
                 args_environment=args_environment,
                 metadata=metadata,
             )
-            if context.task is None:
-                raise RuntimeError("task factory returned None")
 
             print("[INFO] 构建训练器...")
             context.trainer = build_trainer(
@@ -252,8 +246,6 @@ def run_classification_pipeline(
                 args_data,
                 str(path),
             )
-            if context.trainer is None:
-                raise RuntimeError("trainer factory returned None")
 
             hooks.after_stack_built(context)
 
