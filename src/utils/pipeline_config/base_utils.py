@@ -14,13 +14,13 @@ import os
 import torch
 
 
-def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> None:
+def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
     """Load pretrained backbone weights into ``model``.
 
     ``strict=False`` is the intentional stage-transfer mode. A configured
     checkpoint must exist, contain a Lightning ``state_dict``, and provide at
     least one compatible ``network.`` backbone parameter. Failures propagate to
-    the caller; successful loading returns normally.
+    the caller; successful loading returns ``True`` for compatibility.
     """
     checkpoint_file = os.fspath(checkpoint_path or "")
     if not checkpoint_file or not os.path.isfile(checkpoint_file):
@@ -72,6 +72,8 @@ def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -
                     f"{len(missing_keys)} missing and "
                     f"{len(unexpected_keys)} unexpected keys."
                 )
+
+        return True
     except Exception as exc:
         if isinstance(exc, FileNotFoundError):
             raise
