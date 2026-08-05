@@ -4,20 +4,25 @@ from __future__ import annotations
 
 import importlib
 from argparse import Namespace
-from typing import Any, Optional
+from typing import Any
 
 import pytorch_lightning as pl
 import torch.nn as nn
+
 from ..utils.registry import Registry
 
 TASK_REGISTRY = Registry()
 
+
 def register_task(task_type: str, name: str):
     """Decorator to register a task implementation."""
+
     return TASK_REGISTRY.register(f"{task_type}.{name}")
 
+
 def resolve_task_module(args_task: Namespace) -> str:
-    """Return the Python import path for the task module."""
+    """Return the historical Python import path for one task configuration."""
+
     task_name = args_task.name
     task_type = args_task.type
     if task_type == "Default_task" or task_name == "Default_task":
@@ -28,6 +33,41 @@ def resolve_task_module(args_task: Namespace) -> str:
     return f"src.task_factory.task.{task_type}.{task_name}"
 
 
+def _resolve_task_class(args_task: Namespace):
+    """Resolve one task class from the registry or historical ``task`` symbol."""
+
+    key = f"{args_task.type}.{args_task.name}"
+    try:
+        return TASK_REGISTRY.get(key)
+    except KeyError:
+        pass
+
+    module_path = resolve_task_module(args_task)
+    try:
+        task_module = importlib.import_module(module_path)
+    except Exception as exc:
+        raise ImportError(
+            f"Cannot import task {key!r} from {module_path!r}: {exc}. "
+            "Check task.type, task.name, the module path, and optional "
+            "dependencies."
+        ) from exc
+
+    # Importing a module may execute its @register_task decorator.
+    try:
+        return TASK_REGISTRY.get(key)
+    except KeyError:
+        pass
+
+    task_class = getattr(task_module, "task", None)
+    if task_class is None:
+        raise AttributeError(
+            f"Task module {module_path!r} does not register {key!r} and does "
+            "not expose the historical class name 'task'. Register the class "
+            "with @register_task or export 'task'."
+        )
+    return task_class
+
+
 def task_factory(
     args_task: Namespace,
     network: nn.Module,
@@ -36,42 +76,13 @@ def task_factory(
     args_trainer: Namespace,
     args_environment: Namespace,
     metadata: Any,
-) -> Optional[pl.LightningModule]:
-    """Instantiate a task module using configuration namespaces."""
+) -> pl.LightningModule:
+    """Instantiate one task or raise at the task factory boundary."""
+
     key = f"{args_task.type}.{args_task.name}"
+    task_class = _resolve_task_class(args_task)
     try:
-        task_cls = TASK_REGISTRY.get(key)
-    except KeyError:
-        module_path = resolve_task_module(args_task)
-        try:
-            task_module = importlib.import_module(module_path)
-            # 智能检测类名，支持多种命名约定
-            task_cls = None
-
-            # 优先级1：查找与文件名相同的类名（如 hse_contrastive.py 中的 HseContrastiveTask）
-            class_name_from_file = module_path.split('.')[-1].replace('_', ' ').title().replace(' ', '')
-            if hasattr(task_module, class_name_from_file):
-                task_cls = getattr(task_module, class_name_from_file)
-
-            # 优先级2：查找标准化的类名（Task后缀）
-            task_name = args_task.name
-            standard_name = task_name.replace('_', ' ').title().replace(' ', '') + 'Task'
-            if hasattr(task_module, standard_name):
-                task_cls = getattr(task_module, standard_name)
-
-            # 优先级3：向后兼容 - 查找 'task' 类名
-            if hasattr(task_module, 'task'):
-                task_cls = getattr(task_module, 'task')
-
-            if task_cls is None:
-                raise AttributeError(f"No task class found in {module_path} (tried: {class_name_from_file}, {standard_name}, task)")
-
-        except Exception as exc:  # pragma: no cover - runtime safeguard
-            print(f"Failed to import task from {module_path}: {exc}")
-            return None
-
-    try:
-        return task_cls(
+        return task_class(
             network=network,
             args_data=args_data,
             args_model=args_model,
@@ -80,11 +91,17 @@ def task_factory(
             args_environment=args_environment,
             metadata=metadata,
         )
-    except Exception as exc:  # pragma: no cover - runtime safeguard
-        print(f"Failed to create task {key}: {exc}")
-        return None
+    except Exception as exc:
+        class_name = getattr(task_class, "__name__", type(task_class).__name__)
+        raise RuntimeError(
+            f"Cannot construct task {key!r} with {class_name}: {exc}. Check "
+            "the task configuration and constructor arguments."
+        ) from exc
 
 
-
-
-
+__all__ = [
+    "TASK_REGISTRY",
+    "register_task",
+    "resolve_task_module",
+    "task_factory",
+]

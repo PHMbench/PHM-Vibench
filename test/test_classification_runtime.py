@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+import importlib
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,6 +19,12 @@ from src.data_factory.dataset_task.adapters import (
 )
 from src.data_factory.samplers.Get_sampler import Get_sampler
 from src.runtime import classification
+
+
+task_factory_module = importlib.import_module("src.task_factory.task_factory")
+trainer_factory_module = importlib.import_module(
+    "src.trainer_factory.trainer_factory"
+)
 
 
 def _config(tmp_path: Path, *, iterations: int = 1) -> dict:
@@ -78,6 +85,14 @@ def _window_args(**values) -> SimpleNamespace:
 
 def _window_starts(dataset: Default_dataset) -> list[int]:
     return [int(item["x"][0, 0]) for item in dataset]
+
+
+def _raise_key_error(key):
+    raise KeyError(key)
+
+
+def _raise_module_not_found(message: str):
+    raise ModuleNotFoundError(message)
 
 
 def test_compiled_config_bypasses_legacy_reparse(
@@ -282,3 +297,154 @@ def test_unknown_dataset_adapter_fails_with_registered_combinations() -> None:
 def test_unknown_data_factory_name_fails_with_available_factories() -> None:
     with pytest.raises(ValueError, match="Unknown data.factory_name"):
         resolve_data_factory_class("auto_guess")
+
+
+def test_task_import_failure_preserves_requested_module_and_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_factory_module.TASK_REGISTRY,
+        "get",
+        _raise_key_error,
+    )
+    monkeypatch.setattr(
+        task_factory_module.importlib,
+        "import_module",
+        lambda path: _raise_module_not_found("missing optional package"),
+    )
+    args_task = SimpleNamespace(type="DG", name="missing_task")
+
+    with pytest.raises(
+        ImportError,
+        match=(
+            "DG.missing_task.*src.task_factory.task.DG.missing_task.*"
+            "missing optional package"
+        ),
+    ) as captured:
+        task_factory_module.task_factory(
+            args_task=args_task,
+            network=object(),
+            args_data=SimpleNamespace(),
+            args_model=SimpleNamespace(),
+            args_trainer=SimpleNamespace(),
+            args_environment=SimpleNamespace(),
+            metadata={},
+        )
+
+    assert isinstance(captured.value.__cause__, ModuleNotFoundError)
+
+
+def test_task_module_requires_registration_or_task_symbol(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_factory_module.TASK_REGISTRY,
+        "get",
+        _raise_key_error,
+    )
+    monkeypatch.setattr(
+        task_factory_module.importlib,
+        "import_module",
+        lambda path: SimpleNamespace(),
+    )
+
+    with pytest.raises(
+        AttributeError,
+        match="does not register.*does not expose.*'task'",
+    ):
+        task_factory_module.task_factory(
+            args_task=SimpleNamespace(type="DG", name="empty_module"),
+            network=object(),
+            args_data=SimpleNamespace(),
+            args_model=SimpleNamespace(),
+            args_trainer=SimpleNamespace(),
+            args_environment=SimpleNamespace(),
+            metadata={},
+        )
+
+
+def test_task_construction_failure_is_raised_with_original_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenTask:
+        def __init__(self, **kwargs):
+            raise ValueError("invalid task dimensions")
+
+    monkeypatch.setattr(
+        task_factory_module.TASK_REGISTRY,
+        "get",
+        lambda key: BrokenTask,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Cannot construct task 'DG.classification'.*invalid task dimensions",
+    ) as captured:
+        task_factory_module.task_factory(
+            args_task=SimpleNamespace(type="DG", name="classification"),
+            network=object(),
+            args_data=SimpleNamespace(),
+            args_model=SimpleNamespace(),
+            args_trainer=SimpleNamespace(),
+            args_environment=SimpleNamespace(),
+            metadata={},
+        )
+
+    assert isinstance(captured.value.__cause__, ValueError)
+
+
+def test_trainer_import_failure_preserves_requested_module_and_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        trainer_factory_module.TRAINER_REGISTRY,
+        "get",
+        _raise_key_error,
+    )
+    monkeypatch.setattr(
+        trainer_factory_module.importlib,
+        "import_module",
+        lambda path: _raise_module_not_found("trainer dependency missing"),
+    )
+
+    with pytest.raises(
+        ImportError,
+        match=(
+            "MissingTrainer.*src.trainer_factory.MissingTrainer.*"
+            "trainer dependency missing"
+        ),
+    ) as captured:
+        trainer_factory_module.trainer_factory(
+            args_environment=SimpleNamespace(),
+            args_trainer=SimpleNamespace(name="MissingTrainer"),
+            args_data=SimpleNamespace(),
+            path="results/run",
+        )
+
+    assert isinstance(captured.value.__cause__, ModuleNotFoundError)
+
+
+def test_trainer_construction_failure_is_raised_with_original_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken_trainer(**kwargs):
+        raise OSError("output path is read-only")
+
+    monkeypatch.setattr(
+        trainer_factory_module.TRAINER_REGISTRY,
+        "get",
+        lambda key: broken_trainer,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Cannot construct trainer 'Default_trainer'.*output path is read-only",
+    ) as captured:
+        trainer_factory_module.trainer_factory(
+            args_environment=SimpleNamespace(),
+            args_trainer=SimpleNamespace(name="Default_trainer"),
+            args_data=SimpleNamespace(),
+            path="results/run",
+        )
+
+    assert isinstance(captured.value.__cause__, OSError)
