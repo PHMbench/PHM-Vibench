@@ -2,7 +2,7 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 import os
 import torch
-try:
+try: 
     import wandb
 except ImportError:
     print("[WARNING] wandb 未安装")
@@ -25,11 +25,12 @@ def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -
 
 
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
-    """Load the best checkpoint produced by ``trainer`` into ``model``.
+    """Load the best checkpoint produced by ``trainer`` before evaluation.
 
-    Testing a trained run without its selected checkpoint changes the experiment
-    semantics. Missing, unreadable, or incompatible checkpoints therefore fail
-    immediately with the checkpoint path and original cause.
+    Evaluation must stop when no ``ModelCheckpoint`` callback exists, no best
+    path was recorded, the recorded file is missing, or the checkpoint does not
+    contain a Lightning ``state_dict``. Continuing with the current in-memory
+    model would misrepresent the experiment as best-checkpoint evaluation.
     """
     model_checkpoint = next(
         (
@@ -40,16 +41,13 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
         None,
     )
     if model_checkpoint is None:
-        raise ValueError(
-            "ModelCheckpoint callback not found in trainer.callbacks. "
-            "Enable checkpointing before requesting best-model evaluation."
-        )
+        raise ValueError("ModelCheckpoint callback not found in trainer callbacks.")
 
-    best_model_path = os.fspath(model_checkpoint.best_model_path or "")
+    best_model_path = model_checkpoint.best_model_path
     if not best_model_path:
         raise RuntimeError(
-            "Training did not produce a best checkpoint. Check the monitored "
-            "metric, validation loop, and ModelCheckpoint configuration."
+            "Training did not produce a best checkpoint. Check the checkpoint "
+            "monitor, validation metrics, and save configuration before evaluation."
         )
     if not os.path.isfile(best_model_path):
         raise FileNotFoundError(
@@ -71,10 +69,8 @@ def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> Ligh
             )
         model.load_state_dict(checkpoint["state_dict"], strict=True)
     except Exception as exc:
-        if isinstance(exc, FileNotFoundError):
-            raise
         raise RuntimeError(
-            f"Failed to restore best checkpoint '{best_model_path}': {exc}"
+            f"Failed to load best checkpoint '{best_model_path}': {exc}"
         ) from exc
 
     return model
@@ -85,9 +81,9 @@ def init_lab(args_environment, cli_args, experiment_name):
     Initializes wandb and swanlab loggers based on environment configuration.
 
     Args:
-        args_environment: Namespace containing environment configurations (e.g., wandb, swanlab flags, project name, notes).
-        cli_args: Namespace containing command-line arguments (e.g., notes).
-        experiment_name: The name for the current experiment run.
+    - args_environment: Namespace containing environment configurations (e.g., wandb, swanlab flags, project name, notes).
+    - cli_args: Namespace containing command-line arguments (e.g., notes).
+    - experiment_name: The name for the current experiment run.
     """
     use_wandb = getattr(args_environment, 'wandb', False)
     use_swanlab = getattr(args_environment, 'swanlab', False)
@@ -116,11 +112,10 @@ def init_lab(args_environment, cli_args, experiment_name):
             swanlab.init(
                 workspace = getattr(args_environment, 'workspace', 'PHMbench'), # SwanLab uses 'workspace'
                 project=project_name, # Assuming swanlab uses 'project' similar to wandb
-                experiment_name= notes, # experiment_name,
+                experiment_name= notes, # experiment_name, 
                 description=notes.strip() # Swanlab uses 'description' for notes
                 # logdir= # Optional: specify log directory if needed
             )
-            print(f"[INFO] SwanLab initialized for project '{project_name}', experiment '{experiment_name}'.")
         else:
             swanlab.init(mode='disabled')
             print("[INFO] SwanLab disabled by configuration.")
