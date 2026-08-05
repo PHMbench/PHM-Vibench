@@ -93,6 +93,28 @@ def test_successful_dataset_cache_replaces_only_after_all_ids_exist(
     assert not (tmp_path / ".Demo.h5.tmp").exists()
 
 
+def test_complete_published_cache_is_reused_without_source_cache(
+    tmp_path: Path,
+) -> None:
+    metadata = {
+        1: {"Name": "Demo", "File": "one.csv"},
+        2: {"Name": "Demo", "File": "two.csv"},
+    }
+    factory = _factory(metadata)
+    final_cache = tmp_path / "cache.h5"
+    _write_h5(final_cache, {"1": 1.0, "2": 2.0, "extra": 3.0})
+
+    result = factory._build_final_cache(
+        metadata,
+        _args(tmp_path),
+        use_cache=True,
+    )
+
+    assert result == str(final_cache)
+    assert _keys(final_cache) == {"1", "2", "extra"}
+    assert not (tmp_path / "Demo.h5").exists()
+
+
 def test_incomplete_final_cache_keeps_previous_published_file(tmp_path: Path) -> None:
     metadata = {
         1: {"Name": "Demo", "File": "one.csv"},
@@ -126,7 +148,7 @@ def test_complete_final_cache_atomically_replaces_previous_file(tmp_path: Path) 
     result = factory._build_final_cache(
         metadata,
         _args(tmp_path),
-        use_cache=True,
+        use_cache=False,
     )
 
     assert result == str(final_cache)
