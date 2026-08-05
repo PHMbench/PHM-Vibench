@@ -8,6 +8,11 @@ import numpy as np
 import pytest
 
 from src.data_factory import ExplicitDataFactory
+from src.data_factory.contracts import (
+    format_loader_summary,
+    require_nonempty_dataloaders,
+)
+from src.data_factory.data_factory import data_factory as BaseDataFactory
 
 
 def _factory(metadata):
@@ -35,6 +40,24 @@ def _write_h5(path: Path, values: dict[str, float]) -> None:
 def _keys(path: Path) -> set[str]:
     with h5py.File(path, "r") as h5_file:
         return set(h5_file.keys())
+
+
+class _Loader:
+    def __init__(self, count: int) -> None:
+        self.count = count
+
+    def __len__(self) -> int:
+        return self.count
+
+
+class _LoaderFactory:
+    def __init__(self, **counts: int) -> None:
+        self.loaders = {
+            split: _Loader(count) for split, count in counts.items()
+        }
+
+    def get_dataloader(self, split: str):
+        return self.loaders[split]
 
 
 def test_failed_reader_does_not_publish_partial_dataset_cache(
@@ -165,3 +188,50 @@ def test_empty_task_selection_fails_before_cache_publication(
         factory._build_final_cache({}, _args(tmp_path), use_cache=True)
 
     assert not (tmp_path / "cache.h5").exists()
+
+
+def test_nonempty_loader_contract_returns_user_readable_counts() -> None:
+    factory = _LoaderFactory(train=3, val=1, test=2)
+    args_task = SimpleNamespace(type="DG", name="classification")
+    args_data = SimpleNamespace(batch_size=8)
+
+    counts = require_nonempty_dataloaders(factory, args_task, args_data)
+
+    assert counts == {"train": 3, "val": 1, "test": 2}
+    assert format_loader_summary(counts) == (
+        "train=3 batches, val=1 batch, test=2 batches"
+    )
+
+
+def test_zero_batch_loader_fails_with_actionable_configuration_fields() -> None:
+    factory = _LoaderFactory(train=3, val=0, test=2)
+    args_task = SimpleNamespace(type="FS", name="classification")
+    args_data = SimpleNamespace(batch_size=256)
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "FS/classification: val loader has 0 batches.*"
+            "window_size.*num_window.*batch_size=256"
+        ),
+    ):
+        require_nonempty_dataloaders(factory, args_task, args_data)
+
+
+def test_explicit_factory_checks_loaders_after_base_construction(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fake_base_init(self, args_data, args_task):
+        self.train_loader = _Loader(2)
+        self.val_loader = _Loader(1)
+        self.test_loader = _Loader(1)
+
+    monkeypatch.setattr(BaseDataFactory, "__init__", fake_base_init)
+    args_data = SimpleNamespace(batch_size=4)
+    args_task = SimpleNamespace(type="DG", name="classification")
+
+    ExplicitDataFactory(args_data, args_task)
+
+    output = capsys.readouterr().out
+    assert "train=2 batches, val=1 batch, test=1 batch" in output
