@@ -116,6 +116,7 @@ def init_lab(args_environment, cli_args, experiment_name):
                 description=notes.strip() # Swanlab uses 'description' for notes
                 # logdir= # Optional: specify log directory if needed
             )
+            print(f"[INFO] SwanLab initialized for project '{project_name}', experiment '{experiment_name}'.")
         else:
             swanlab.init(mode='disabled')
             print("[INFO] SwanLab disabled by configuration.")
@@ -192,7 +193,7 @@ def get_num_channels(metadata, dataset_id=None):
             raise ValueError(f"Dataset_id {dataset_id} not found in metadata")
         return int(max(dataset_data['Channel']))
     else:
-        # 返回所有数据集的通道数映射(dict)
+        # 返回所有数据集的类别数映射(dict)
         num_channels = {}
         for key in np.unique(df['Dataset_id']):
             num_channels[key] = int(max(df[df['Dataset_id'] == key]['Channel']))
