@@ -81,9 +81,9 @@ def init_lab(args_environment, cli_args, experiment_name):
     Initializes wandb and swanlab loggers based on environment configuration.
 
     Args:
-    - args_environment: Namespace containing environment configurations (e.g., wandb, swanlab flags, project name, notes).
-    - cli_args: Namespace containing command-line arguments (e.g., notes).
-    - experiment_name: The name for the current experiment run.
+        args_environment: Namespace containing environment configurations (e.g., wandb, swanlab flags, project name, notes).
+        cli_args: Namespace containing command-line arguments (e.g., notes).
+        experiment_name: The name for the current experiment run.
     """
     use_wandb = getattr(args_environment, 'wandb', False)
     use_swanlab = getattr(args_environment, 'swanlab', False)
@@ -193,7 +193,7 @@ def get_num_channels(metadata, dataset_id=None):
             raise ValueError(f"Dataset_id {dataset_id} not found in metadata")
         return int(max(dataset_data['Channel']))
     else:
-        # 返回所有数据集的类别数映射(dict)
+        # 返回所有数据集的通道数映射(dict)
         num_channels = {}
         for key in np.unique(df['Dataset_id']):
             num_channels[key] = int(max(df[df['Dataset_id'] == key]['Channel']))
