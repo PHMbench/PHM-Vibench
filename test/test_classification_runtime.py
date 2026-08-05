@@ -9,8 +9,13 @@ import pytest
 
 from phmfactory.config import ResolvedConfig
 from phmfactory.runtime import CompiledRunSpec
+from src.data_factory import ExplicitDataFactory, resolve_data_factory_class
 from src.data_factory.dataset_task.Dataset_cluster import IdIncludedDataset
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
+from src.data_factory.dataset_task.adapters import (
+    DATASET_ADAPTERS,
+    resolve_dataset_adapter,
+)
 from src.data_factory.samplers.Get_sampler import Get_sampler
 from src.runtime import classification
 
@@ -251,3 +256,29 @@ def test_short_signal_fails_with_actionable_message() -> None:
             args_task,
             "train",
         )
+
+
+def test_default_data_factory_uses_explicit_adapter_resolution() -> None:
+    assert resolve_data_factory_class("default") is ExplicitDataFactory
+
+
+@pytest.mark.parametrize("task_type,task_name", sorted(DATASET_ADAPTERS))
+def test_every_registered_dataset_adapter_imports(
+    task_type: str,
+    task_name: str,
+) -> None:
+    dataset_class = resolve_dataset_adapter(task_type, task_name)
+    assert isinstance(dataset_class, type)
+
+
+def test_unknown_dataset_adapter_fails_with_registered_combinations() -> None:
+    with pytest.raises(
+        ValueError,
+        match="No dataset adapter is registered.*Add an explicit adapter",
+    ):
+        resolve_dataset_adapter("unknown", "task")
+
+
+def test_unknown_data_factory_name_fails_with_available_factories() -> None:
+    with pytest.raises(ValueError, match="Unknown data.factory_name"):
+        resolve_data_factory_class("auto_guess")
