@@ -10,20 +10,31 @@ import shutil
 import h5py
 from tqdm import tqdm
 
+from .contracts import format_loader_summary, require_nonempty_dataloaders
 from .data_factory import data_factory
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .dataset_task.adapters import resolve_dataset_adapter
 
 
 class ExplicitDataFactory(data_factory):
-    """Build data through explicit adapters and publish only complete caches.
+    """Build data through explicit adapters and publish only usable data stacks.
 
     Reader behavior, ID selection, windowing, samplers and DataLoaders remain in
-    their existing modules. This class owns two user-visible boundaries:
+    their existing modules. This class owns three user-visible boundaries:
 
     - task-to-dataset selection is explicit;
-    - a cache path is replaced only after every requested ID is present.
+    - a cache path is replaced only after every requested ID is present;
+    - train, validation and test loaders must each contain at least one batch.
     """
+
+    def __init__(self, args_data, args_task):
+        super().__init__(args_data, args_task)
+        counts = require_nonempty_dataloaders(
+            self,
+            args_task,
+            args_data,
+        )
+        print(f"[SUCCESS] 数据加载器可用: {format_loader_summary(counts)}")
 
     def _update_name_cache(self, name, ids, args_data, max_workers):
         """Read all requested IDs and atomically update one dataset cache."""
