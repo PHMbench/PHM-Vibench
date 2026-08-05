@@ -1,4 +1,4 @@
-"""Public API for the data factory package."""
+"""Public API for PHMFactory data construction and dataset extensions."""
 
 from typing import Any
 
@@ -8,6 +8,11 @@ from .data_factory import (
     register_data_factory,
 )
 from .dataset_task.Dataset_cluster import IdIncludedDataset
+from .dataset_task.adapters import (
+    DATASET_ADAPTERS,
+    register_dataset_adapter,
+    resolve_dataset_adapter,
+)
 from .explicit_data_factory import ExplicitDataFactory
 from .id_data_factory import id_data_factory
 
@@ -27,13 +32,7 @@ def resolve_data_factory_class(name: str):
     try:
         return DATA_FACTORY_REGISTRY.get(requested)
     except KeyError as exc:
-        available = sorted(
-            {
-                "default",
-                "department",
-                "id",
-            }
-        )
+        available = ["default", "department", "id"]
         raise ValueError(
             f"Unknown data.factory_name={requested!r}. "
             f"Available factories: {', '.join(available)}"
@@ -55,6 +54,9 @@ __all__ = [
     "DATA_FACTORY_REGISTRY",
     "data_factory",
     "ExplicitDataFactory",
+    "DATASET_ADAPTERS",
+    "register_dataset_adapter",
+    "resolve_dataset_adapter",
     "IdIncludedDataset",
     "id_data_factory",
 ]
