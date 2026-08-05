@@ -112,9 +112,7 @@ class ExplicitDataFactory(data_factory):
             raise
 
     def _build_final_cache(self, task_meta, args_data, use_cache):
-        """Build the current task cache completely, then publish it atomically."""
-        del use_cache  # The final cache is rebuilt from validated dataset caches.
-
+        """Reuse a complete task cache or rebuild it before atomic publication."""
         expected_ids = list(task_meta.keys())
         if not expected_ids:
             raise ValueError(
@@ -122,9 +120,22 @@ class ExplicitDataFactory(data_factory):
                 "domain selection, labels, and metadata."
             )
 
+        expected_keys = {str(file_id) for file_id in expected_ids}
         cache_path = Path(args_data.data_dir) / "cache.h5"
         temp_path = cache_path.with_name(".cache.h5.tmp")
         cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if use_cache and cache_path.is_file():
+            try:
+                with h5py.File(cache_path, "r") as published_cache:
+                    if expected_keys.issubset(published_cache.keys()):
+                        return str(cache_path)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Existing cache cannot be opened: {cache_path}. Delete this "
+                    "cache and rerun so PHMFactory can rebuild it."
+                ) from exc
+
         temp_path.unlink(missing_ok=True)
         missing = []
 
