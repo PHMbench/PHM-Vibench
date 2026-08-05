@@ -1,19 +1,8 @@
 """Public command routing and process entrypoints for PHMFactory.
 
-This module deliberately exposes two layers:
-
-``main(argv)``
-    Programmatic router. It returns structured command or Pipeline results so tests,
-    notebooks, and Python callers can inspect them directly.
-
-``entrypoint(argv)``
-    Operating-system process boundary used by the installed ``phmfactory`` command,
-    ``python -m phmfactory``, and the repository ``main.py`` compatibility launcher.
-    It converts every successful structured result into exit status ``0`` while
-    allowing ``SystemExit`` and runtime exceptions to retain their failure status.
-
-Keeping these contracts separate prevents a successful dictionary or list result from
-being passed to ``sys.exit`` and incorrectly reported as process exit code ``1``.
+This module exposes a programmatic API and an operating-system process boundary.  Both
+consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML or
+searches for machine-local configuration after compilation.
 """
 
 from __future__ import annotations
@@ -24,8 +13,12 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from phmfactory.commands.common import add_config_arguments, requested_config
-from phmfactory.config import resolve_config
+from phmfactory.commands.common import (
+    add_config_arguments,
+    requested_config,
+    requested_local_config,
+)
+from phmfactory.config import analyze_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import (
     AttestationWriteError,
@@ -61,11 +54,12 @@ def _resolve_config_path(args: argparse.Namespace) -> str:
 
 
 def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
-    """Resolve the canonical Pipeline through the public config API."""
+    """Resolve the canonical Pipeline through the public config authority."""
 
-    return resolve_config(
+    return analyze_config(
         config_path,
         override_values=args.override,
+        local_config=requested_local_config(args),
     ).pipeline
 
 
@@ -83,26 +77,34 @@ def _write_failed_attestation(
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Compile, record, authorize, execute, and index one Pipeline invocation.
+    """Analyze, record, authorize, execute, and index one Pipeline invocation.
 
-    The function is the single maintained experiment execution boundary. It returns the
-    Pipeline's explicit Python result for programmatic callers. Process exit handling is
-    owned by :func:`entrypoint`, not by this function.
+    Configuration composition occurs exactly once in :func:`analyze_config`.  Protected
+    runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
+    The function returns the Pipeline's explicit Python result for programmatic callers;
+    process exit handling is owned by :func:`entrypoint`.
     """
 
     requested = requested_config(args)
-    resolved = resolve_config(requested, override_values=args.override)
+    analysis = analyze_config(
+        requested,
+        override_values=args.override,
+        local_config=requested_local_config(args),
+    )
+    resolved = analysis.to_resolved_config()
     compiled = CompiledRunSpec.compile(resolved)
 
     args.requested_config = requested
-    args.config_path = str(resolved.path)
-    args.resolved_config_path = str(resolved.path)
-    args.resolved_pipeline = resolved.pipeline
+    args.config_path = str(analysis.path)
+    args.resolved_config_path = str(analysis.path)
+    args.resolved_pipeline = analysis.pipeline
+    args.config_analysis = analysis
     args.compiled_run_spec = compiled
     args.resolved_config_data = compiled.runtime_config()
+    args.effective_config_sha256 = analysis.effective_config_sha256
     args.run_spec_sha256 = compiled.sha256
 
-    module_name = pipeline_module_name(resolved.pipeline, warn=False)
+    module_name = pipeline_module_name(analysis.pipeline, warn=False)
     envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
     args.execution_envelope = envelope
 
@@ -118,7 +120,7 @@ def run(args: argparse.Namespace) -> Any:
 
     try:
         descriptor = require_pipeline_access(
-            resolved.pipeline,
+            analysis.pipeline,
             allow_experimental=bool(getattr(args, "allow_experimental", False)),
             warn=False,
         )
@@ -182,12 +184,7 @@ def _run_command(name: str, argv: Sequence[str]) -> Any:
 
 
 def main(argv: Sequence[str] | None = None) -> Any:
-    """Return the structured result of a named command or experiment.
-
-    This function is retained as the programmatic compatibility API. Code that starts an
-    operating-system process must call :func:`entrypoint` instead so a successful mapping,
-    list, or model result is not interpreted as an error exit message by ``sys.exit``.
-    """
+    """Return the structured result of a named command or experiment."""
 
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] and arguments[0] in COMMANDS:
@@ -196,12 +193,11 @@ def main(argv: Sequence[str] | None = None) -> Any:
 
 
 def entrypoint(argv: Sequence[str] | None = None) -> int:
-    """Execute the public process contract and return an integer status code.
+    """Execute the public process contract and return integer status code ``0``.
 
-    Successful command and Pipeline results are intentionally discarded at this boundary;
-    their human-readable output and generated files remain available. ``argparse`` exits,
-    explicit command failures, and runtime exceptions are not caught, so their original
-    non-zero status and traceback are preserved.
+    Successful structured results are discarded at the process boundary. ``argparse``
+    exits and runtime exceptions are deliberately not caught, preserving non-zero status
+    and the original diagnostic.
     """
 
     main(argv)

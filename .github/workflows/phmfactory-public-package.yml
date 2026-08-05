@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "phmfactory/**"
+      - "scripts/config_inspect.py"
+      - "scripts/validate_configs.py"
       - "src/configs/config_utils.py"
       - "main.py"
       - "pyproject.toml"
@@ -17,6 +19,7 @@ on:
       - "configs/**"
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
+      - "test/test_config_analysis_parity.py"
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
@@ -31,6 +34,8 @@ on:
       - main
     paths:
       - "phmfactory/**"
+      - "scripts/config_inspect.py"
+      - "scripts/validate_configs.py"
       - "src/configs/config_utils.py"
       - "main.py"
       - "pyproject.toml"
@@ -44,6 +49,7 @@ on:
       - "configs/**"
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
+      - "test/test_config_analysis_parity.py"
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
@@ -76,16 +82,19 @@ jobs:
       - name: Install focused tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "build>=1.2" "pytest>=7" PyYAML
+          python -m pip install "build>=1.2" "pytest>=7" "PyYAML>=6" "pydantic>=2"
 
-      - name: Compile public package and dispatcher
+      - name: Compile public package and config adapters
         run: >-
           python -m py_compile
           phmfactory/*.py
           phmfactory/commands/*.py
           phmfactory/runtime/*.py
+          scripts/config_inspect.py
+          scripts/validate_configs.py
           src/configs/config_utils.py
           main.py
+          test/test_config_analysis_parity.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
@@ -95,10 +104,11 @@ jobs:
           test/test_runtime_execution.py
           test/test_runtime_attestation.py
 
-      - name: Run focused public API tests
+      - name: Run focused public API and config parity tests
         run: >-
           python -m pytest -vv
           --junitxml=pytest-public-package.xml
+          test/test_config_analysis_parity.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
@@ -151,6 +161,7 @@ jobs:
               "phmfactory/runtime/spec.py",
               "phmfactory/runtime/execution.py",
               "phmfactory/runtime/attestation.py",
+              "phmfactory/runtime/pipeline06_adapter.py",
               "src/__init__.py",
               "src/configs/config_utils.py",
               "configs/__init__.py",
@@ -226,7 +237,7 @@ jobs:
           fi
           grep -F "was not found" /tmp/phmfactory-invalid-preflight.log
 
-      - name: Verify clean installed experiment dispatch
+      - name: Verify clean installed experiment dispatch uses compiled config
         shell: bash
         run: |
           set -euxo pipefail
@@ -239,23 +250,23 @@ jobs:
 
           import data
           from phmfactory import cli
-          from phmfactory.config import resolve_config
-          from src.configs.config_utils import load_config
+          from phmfactory.config import analyze_config
 
-          resolved = resolve_config("smoke")
-          assert resolved.path.is_file(), resolved.path
-          assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
+          analysis = analyze_config("smoke")
+          assert analysis.path.is_file(), analysis.path
+          assert analysis.effective_config["data"]["metadata_file"] == "metadata_dummy.csv"
           data_root = Path(data.__file__).resolve().parent
           assert (data_root / "metadata_dummy.csv").is_file()
           assert (data_root / "raw/Dummy_Data/dummy1.csv").is_file()
           assert (data_root / "raw/Dummy_Data/dummy2.csv").is_file()
 
           def pipeline(args):
-              config = load_config(args.config_path)
-              assert config.data.metadata_file == "metadata_dummy.csv"
-              assert config.model.name == "M_01_ISFM"
-              assert config.task.name == "classification"
-              assert config.trainer.device == "cpu"
+              config = args.compiled_run_spec.runtime_config()
+              assert config["data"]["metadata_file"] == "metadata_dummy.csv"
+              assert config["model"]["name"] == "M_01_ISFM"
+              assert config["task"]["name"] == "classification"
+              assert config["trainer"]["device"] == "cpu"
+              assert args.effective_config_sha256 == args.compiled_run_spec.effective_config_sha256
               return "wheel-dispatch-pass"
 
           real_import_module = cli.importlib.import_module
@@ -273,4 +284,5 @@ jobs:
           payload = json.loads(manifests[0].read_text(encoding="utf-8"))
           assert payload["status"] == "succeeded"
           assert payload["run_spec"]["pipeline"] == "Pipeline_01_Fault_Diagnosis"
+          assert payload["run_spec"]["effective_config_sha256"] == analysis.effective_config_sha256
           PY

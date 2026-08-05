@@ -9,20 +9,44 @@ import pytest
 from phmfactory import cli
 from phmfactory.commands import demo, doctor, preflight
 from phmfactory.commands.common import check_writable_directory
-from phmfactory.config import ResolvedConfig
+from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+
+
+def _config(tmp_path: Path, *, output: bool = True) -> dict:
+    environment = {
+        "seed": 0,
+        "iterations": 1,
+        **({"output_dir": str(tmp_path / "new" / "outputs")} if output else {}),
+    }
+    return {
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "environment": environment,
+        "data": {},
+        "model": {},
+        "task": {},
+        "trainer": {},
+    }
+
+
+def _analysis(tmp_path: Path, *, output: bool = True) -> ConfigAnalysis:
+    config = _config(tmp_path, output=output)
+    path = tmp_path / "smoke.yaml"
+    return ConfigAnalysis(
+        requested="smoke",
+        path=path,
+        effective_config=config,
+        pipeline="Pipeline_01_Fault_Diagnosis",
+        overrides={},
+        local_config_path=None,
+        source_files=(path,),
+        sources={},
+        diagnostics=(),
+        effective_config_sha256=semantic_config_sha256(config),
+    )
 
 
 def _resolved(tmp_path: Path) -> ResolvedConfig:
-    return ResolvedConfig(
-        requested="smoke",
-        path=tmp_path / "smoke.yaml",
-        data={
-            "pipeline": "Pipeline_01_Fault_Diagnosis",
-            "environment": {"output_dir": str(tmp_path / "new" / "outputs")},
-        },
-        pipeline="Pipeline_01_Fault_Diagnosis",
-        overrides={},
-    )
+    return _analysis(tmp_path).to_resolved_config()
 
 
 def test_command_router_preserves_legacy_experiment_form(
@@ -68,12 +92,12 @@ def test_demo_uses_offline_defaults_and_user_override_wins() -> None:
     assert args.override[-1] == "trainer.num_epochs=2"
 
 
-def test_preflight_compiles_without_importing_pipeline(
+def test_preflight_uses_single_analysis_without_importing_pipeline(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    resolved = _resolved(tmp_path)
-    monkeypatch.setattr(preflight, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path)
+    monkeypatch.setattr(preflight, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         preflight.importlib.util,
         "find_spec",
@@ -84,6 +108,7 @@ def test_preflight_compiles_without_importing_pipeline(
 
     assert result["status"] == "passed"
     assert result["pipeline"] == "Pipeline_01_Fault_Diagnosis"
+    assert result["effective_config_sha256"] == analysis.effective_config_sha256
     assert len(result["run_spec_sha256"]) == 64
     assert not (tmp_path / "new").exists()
 
@@ -92,9 +117,8 @@ def test_preflight_requires_output_dir(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    resolved = _resolved(tmp_path)
-    resolved.data["environment"] = {}
-    monkeypatch.setattr(preflight, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path, output=False)
+    monkeypatch.setattr(preflight, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         preflight.importlib.util,
         "find_spec",

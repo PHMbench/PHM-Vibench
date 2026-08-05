@@ -16,7 +16,7 @@ _STATUS_ICON = {"ready": "✓", "warning": "!", "blocked": "×"}
 
 
 def template_option_label(template_id: str, profile: TemplateProfile) -> str:
-    """Keep the select box readable while exposing the experiment intent."""
+    """Keep the select box readable while exposing experiment intent."""
 
     return f"{profile.title} — {template_id}"
 
@@ -26,7 +26,7 @@ def render_readiness_sidebar(report: ReadinessReport) -> None:
     if report.can_execute and not report.warnings:
         st.sidebar.success("CPU smoke prerequisites look ready.")
     elif report.can_execute:
-        st.sidebar.warning("Ready with a machine-local configuration warning.")
+        st.sidebar.warning("Ready with non-blocking environment warnings.")
     else:
         st.sidebar.error(f"{len(report.blocked)} prerequisite(s) need attention.")
 
@@ -49,8 +49,8 @@ def render_readiness_banner(report: ReadinessReport) -> None:
         )
     elif report.warnings:
         st.warning(
-            "The environment is runnable, but configs/local/local.yaml is active. "
-            "Review it before treating the smoke run as a clean baseline."
+            "The environment is runnable, but one or more non-blocking checks should "
+            "be reviewed before launch."
         )
     else:
         st.success("Environment ready for the repository-shipped CPU smoke experiment.")

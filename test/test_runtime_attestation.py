@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ResolvedConfig
+from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
 from phmfactory.runtime import (
     AttestationError,
     AttestationWriteError,
@@ -33,6 +33,22 @@ def _resolved(tmp_path: Path) -> ResolvedConfig:
     )
 
 
+def _analysis(tmp_path: Path) -> ConfigAnalysis:
+    resolved = _resolved(tmp_path)
+    return ConfigAnalysis(
+        requested=resolved.requested,
+        path=resolved.path,
+        effective_config=resolved.data,
+        pipeline=resolved.pipeline,
+        overrides=resolved.overrides,
+        local_config_path=None,
+        source_files=(resolved.path,),
+        sources={},
+        diagnostics=(),
+        effective_config_sha256=semantic_config_sha256(resolved.data),
+    )
+
+
 def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -45,6 +61,10 @@ def test_prepare_writes_pending_manifest_atomically(tmp_path: Path) -> None:
     payload = _load(attestation.manifest_path)
     assert payload["status"] == "pending"
     assert payload["run_spec"]["sha256"] == spec.sha256
+    assert (
+        payload["run_spec"]["effective_config_sha256"]
+        == spec.effective_config_sha256
+    )
     assert payload["failure"] is None
     assert not list(attestation.manifest_path.parent.glob("*.tmp"))
 
@@ -115,19 +135,29 @@ def test_failed_atomic_replace_leaves_previous_manifest_valid(
 
 
 def test_cli_writes_success_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    resolved = _resolved(tmp_path)
-    monkeypatch.setattr(cli, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path)
+    monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
         lambda name: SimpleNamespace(pipeline=lambda args: ["ok"]),
     )
-    args = argparse.Namespace(config="smoke", config_path=None, notes="", override=None)
+    args = argparse.Namespace(
+        config="smoke",
+        config_path=None,
+        local_config=None,
+        notes="",
+        override=None,
+    )
 
     assert cli.run(args) == ["ok"]
     payload = _load(Path(args.run_manifest_path))
     assert payload["run_id"] == args.run_id
     assert payload["status"] == "succeeded"
+    assert (
+        payload["run_spec"]["effective_config_sha256"]
+        == analysis.effective_config_sha256
+    )
     assert args.execution_envelope.status is ExecutionStatus.SUCCEEDED
 
 
@@ -135,8 +165,8 @@ def test_cli_writes_failed_manifest_and_reraises(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    resolved = _resolved(tmp_path)
-    monkeypatch.setattr(cli, "resolve_config", lambda *args, **kwargs: resolved)
+    analysis = _analysis(tmp_path)
+    monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
 
     def fail(args):
         raise ValueError("bad pipeline")
@@ -146,7 +176,13 @@ def test_cli_writes_failed_manifest_and_reraises(
         "import_module",
         lambda name: SimpleNamespace(pipeline=fail),
     )
-    args = argparse.Namespace(config="smoke", config_path=None, notes="", override=None)
+    args = argparse.Namespace(
+        config="smoke",
+        config_path=None,
+        local_config=None,
+        notes="",
+        override=None,
+    )
 
     with pytest.raises(ValueError, match="bad pipeline"):
         cli.run(args)

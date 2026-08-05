@@ -1,8 +1,8 @@
-"""Runtime configuration policy shared by the Streamlit UI layers.
+"""Streamlit adapters for PHMFactory's explicit configuration policy.
 
-PHM-Vibench applies ``configs/local/local.yaml`` inside the core loader. The UI
-therefore keeps editable YAML portable (resolved without that local layer) and
-lets validation/execution apply the local layer exactly once.
+The public resolver never discovers ``configs/local/local.yaml``.  Template inspection,
+edited YAML inspection, CLI preflight, and real execution therefore share the same
+precedence unless the user explicitly supplies a local config through the CLI.
 """
 
 from __future__ import annotations
@@ -28,18 +28,9 @@ def inspect_portable_config(
     *,
     timeout: float = 90.0,
 ) -> ValidationReport:
-    """Resolve a template while suppressing the default machine-local layer."""
+    """Inspect a template through the same explicit public precedence chain."""
 
-    with tempfile.TemporaryDirectory(prefix="phm_vibench_streamlit_") as temp_dir:
-        empty_local = Path(temp_dir) / "empty_local.yaml"
-        empty_local.write_text("{}\n", encoding="utf-8")
-        return inspect_config(
-            repo_root,
-            config_path,
-            overrides,
-            timeout=timeout,
-            local_config_path=empty_local,
-        )
+    return inspect_config(repo_root, config_path, overrides, timeout=timeout)
 
 
 def inspect_execution_yaml(
@@ -49,10 +40,10 @@ def inspect_execution_yaml(
     *,
     timeout: float = 90.0,
 ) -> ValidationReport:
-    """Validate portable YAML through the normal core precedence chain."""
+    """Validate edited standalone YAML without hidden machine-local inputs."""
 
     parse_yaml_text(yaml_text)
-    with tempfile.TemporaryDirectory(prefix="phm_vibench_streamlit_") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="phmfactory_streamlit_") as temp_dir:
         config_path = Path(temp_dir) / "execution.yaml"
         config_path.write_text(yaml_text, encoding="utf-8")
         return inspect_config(repo_root, config_path, overrides, timeout=timeout)

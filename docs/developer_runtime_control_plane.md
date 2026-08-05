@@ -1,66 +1,205 @@
 # Runtime control plane
 
-PHMFactory's maintained entrypoints compile user intent before protected runtime code is
-imported:
+PHMFactory separates user intent, execution, and run records so one command cannot be
+silently reinterpreted by a downstream Pipeline.
+
+## Maintained public path
 
 ```text
-config or preset + CLI overrides
-  -> phmfactory.config.resolve_config
-  -> phmfactory.runtime.CompiledRunSpec
-  -> phmfactory.runtime.ExecutionEnvelope
-  -> phmfactory.runtime.RunAttestation (pending)
+preset or YAML
++ optional explicit --local-config
++ CLI --override values
+  -> phmfactory.config.analyze_config
+  -> ConfigAnalysis
+  -> CompiledRunSpec
+  -> RunAttestation (pending)
   -> Pipeline maturity gate
-  -> canonical Pipeline adapter
+  -> canonical Pipeline module or narrow adapter
   -> protected src runtime
-  -> evidence registration
+  -> Pipeline-specific evidence registration
   -> RunAttestation (succeeded or failed)
 ```
 
-`CompiledRunSpec` contains the fully composed configuration, canonical Pipeline
-identifier, explicit overrides, and a deterministic semantic SHA-256. Its hash excludes
-the absolute installation path, so an identical packaged preset has the same identity
-outside a repository checkout.
+The public path has one configuration authority. Validators, inspectors, preflight, the
+CLI, support generation, Pipeline 06, and the optional Streamlit workspace all consume the
+same effective mapping.
 
-`ExecutionEnvelope` is the public invocation boundary. It records pending, running,
-succeeded, or failed state and rejects ambiguous outcomes. A Pipeline module must expose
-a callable `pipeline(args)` and a successful invocation must return an explicit result.
-Returning `None`, omitting the entrypoint, or attempting to execute the same envelope
-twice is a contract error. Exceptions retain their original traceback while the envelope
-records the failure stage, type, and message.
+## `ConfigAnalysis`: one configuration truth
 
-The public CLI prints the completion message only after the envelope reaches
-`succeeded`. A failed Pipeline therefore produces a non-zero process outcome rather than
-`print + return` followed by apparent success.
-
-## Mandatory invocation manifest
-
-After configuration compilation and before Pipeline import, the CLI creates:
+`ConfigAnalysis` records:
 
 ```text
-<environment.output_dir>/.phmfactory/runs/<run_id>/run_manifest.json
+requested source or preset
+resolved YAML path
+fully effective configuration
+canonical Pipeline
+explicit overrides
+optional explicit local-config path
+ordered source files
+last source of each leaf field
+diagnostics
+effective_config_sha256
 ```
 
-The first atomic version has `status: pending`. The same path is atomically replaced with
-`succeeded` or `failed` after execution. Each manifest contains the run ID, run-spec hash,
-canonical Pipeline and module, config source, explicit overrides, code revision when
-available, Python/platform summary, execution timestamps, and structured failure data.
+The maintained precedence is:
 
-Manifest writes use a same-directory temporary file, flush and `fsync`, followed by
-`os.replace`. If the pending manifest cannot be created, the Pipeline is not imported. If
-the final succeeded manifest cannot be written, the public invocation fails and no
-completion message is printed. This makes the minimum attestation mandatory rather than
-best effort.
+```text
+base_configs
+< selected experiment YAML
+< explicit --local-config YAML
+< CLI --override values
+```
 
-Protected Pipeline code must consume `compiled_run_spec.runtime_config()` instead of
-reparsing the source YAML or automatically discovering machine-local files. Until a
-Pipeline is migrated, the legacy loader remains a compatibility implementation, not a
-second public configuration authority.
+No public component automatically searches for `configs/local/local.yaml`. Hidden files
+would make the same visible command execute different experiments on different machines.
+
+The effective hash includes only the canonical effective mapping. It deliberately excludes
+preset spelling, source path, installation path, and provenance metadata. Consequently:
+
+```text
+--config smoke
+```
+
+and:
+
+```text
+--config configs/demo/00_smoke/dummy_dg.yaml
+```
+
+share `effective_config_sha256` when their final mappings are equal.
+
+## `CompiledRunSpec`: runtime and invocation identity
+
+`CompiledRunSpec` contains a deep-copied runtime mapping and two hashes:
+
+```text
+effective_config_sha256
+  identifies the scientific configuration semantics
+
+sha256 / run_spec_sha256
+  identifies this invocation, including requested source and explicit overrides
+```
+
+Runtime adapters call `compiled_run_spec.runtime_config()` to obtain a mutable copy. They
+must not re-read the source YAML or reapply CLI overrides.
+
+The absolute resolved config path remains available for diagnostics but is excluded from
+both identities. An installed preset therefore behaves consistently across checkout and
+wheel locations.
+
+## Execution boundary
+
+`ExecutionEnvelope` records the finite states:
+
+```text
+pending -> running -> succeeded
+                   -> failed
+```
+
+A Pipeline module must expose `pipeline(args)` and return an explicit result. Returning
+`None`, omitting the callable, or executing one envelope twice is a contract error.
+Exceptions keep their traceback while the envelope records failure stage, type, and
+message.
+
+The public process prints the completion message only after execution, evidence
+registration, and final manifest writing succeed. A printed warning followed by `return
+None` cannot become a successful command.
+
+## Mandatory run manifest
+
+Before Pipeline import, PHMFactory creates:
+
+```text
+<environment.output_dir>/.phmfactory/runs/<run-id>/run_manifest.json
+```
+
+The pending file is atomically replaced with the terminal state. The manifest includes:
+
+```text
+run ID and status
+run_spec_sha256
+effective_config_sha256
+canonical Pipeline and imported module
+requested source, resolved path, and overrides
+code revision when available
+Python/platform summary
+execution timestamps
+structured failure information
+indexed artifacts and evidence sections
+```
+
+Writes use a same-directory temporary file, flush, `fsync`, and `os.replace`. Failure to
+create the pending manifest prevents Pipeline import. Failure to write the final success
+state prevents a success claim.
+
+## Shared classification runtime
+
+Pipeline 01 and Pipeline 05 use one lifecycle under `src.runtime.classification`:
+
+```text
+consume compiled config
+-> validate required blocks
+-> build data/model/task/trainer
+-> fit
+-> restore best checkpoint
+-> test and write metrics
+-> close data and logging resources in finally
+```
+
+Pipeline 01 is a thin default adapter. Pipeline 05 adds only explainability hooks. Hooks
+must not duplicate config loading, factory construction, training, testing, or cleanup.
+
+Pipeline 02 chooses exactly one mode before execution:
+
+```text
+compiled config without stages -> shared classification runtime
+compiled config with stages    -> unified multi-stage orchestrator
+explicit legacy_dual_yaml       -> compatibility adapter + orchestrator
+```
+
+An exception never changes the selected algorithm.
+
+## Pipeline 06 compiled-config adapter
+
+The train/sample/eval science remains in:
+
+```text
+src.Pipeline_06_Generative_Modeling
+```
+
+The public descriptor imports the narrow adapter:
+
+```text
+phmfactory.runtime.pipeline06_adapter
+```
+
+Its only responsibilities are:
+
+1. require the compiled Pipeline to be `Pipeline_06_Generative_Modeling`;
+2. convert `compiled_run_spec.runtime_config()` to the namespace shape expected by the
+   protected implementation;
+3. dispatch the already selected `train`, `sample`, or `eval` stage;
+4. preserve stage-ledger failure handling.
+
+It does not re-read YAML, apply overrides a second time, discover local files, or alter
+the generative algorithm. Direct imports of the historical `src` function keep an
+explicit compatibility loader, but that path is not the maintained CLI authority.
+
+## Streamlit boundary
+
+The optional UI edits values and calls the public inspector. It does not merge base
+configs in Python UI code, discover a local YAML, import a Pipeline, or construct a
+Trainer.
+
+The UI receives the same `effective_config_sha256` as CLI preflight. The displayed
+reproduction command is the command passed to the public runtime. Edited Advanced YAML is
+a standalone effective config and contains no invisible local layer.
 
 ## Evidence convergence
 
-`RunAttestation` is the only top-level run identity. Existing metrics, configuration
-snapshots, explainability files, stage ledgers, synthetic manifests, checkpoints, and
-evaluation manifests remain separate files, but they are indexed through two APIs:
+`RunAttestation` is the only invocation-level run identity. Metrics, checkpoints,
+explainability files, stage ledgers, synthetic manifests, and evaluation reports remain
+separate artifacts indexed through:
 
 ```python
 run_attestation.register_artifact(role=..., path=..., sha256=..., metadata=...)
@@ -68,105 +207,33 @@ run_attestation.set_evidence(section, value)
 run_attestation.append_evidence(section, value)
 ```
 
-Artifact registration accepts existing files only. Repeating an identical registration
-is idempotent; a conflicting role/path record fails. Evidence values must be JSON
-serializable, and a scalar/mapping section cannot be silently overwritten with a
-different value.
+A Pipeline-specific file extends the run; it does not create another top-level run
+identity. Missing required evidence changes the invocation to failed even when model code
+completed.
 
-The shared classification runtime registers each `test_result_<iteration>.csv`, the
-iteration seed/run directory, and the final `all_results.csv`. Pipeline 05 registers its
-config snapshot, metadata snapshot, eligibility record, and compatibility explain/report
-manifest as role-labelled artifacts. Those files no longer define an independent run
-identity.
+## Pipeline maturity
 
-Pipeline 06 is indexed after its explicit train, sample, or eval invocation returns. The
-control-plane adapter records the stage result, indexes any returned path/SHA records,
-and requires the existing `stage_ledger.json`. Missing or conflicting evidence changes
-the execution to `failed` with `failure.stage: evidence_finalize`; successful model
-execution alone is insufficient for a successful public invocation.
-
-## Shared classification runtime
-
-Pipeline 01 and Pipeline 05 use one lifecycle implementation under
-`src.runtime.classification`:
-
-```text
-load compiled config
-  -> validate required sections
-  -> construct data/model/task/trainer
-  -> fit
-  -> restore best checkpoint
-  -> test and write result CSV
-  -> close data and logging resources in finally
-```
-
-The Pipeline modules remain intentionally thin. Pipeline 01 selects the default shared
-runtime. Pipeline 05 selects the same runtime plus `ExplainabilityHooks`, which own only
-the UXFD-specific configuration snapshot, metadata snapshot, eligibility, and manifest
-refresh. Hooks must represent genuine extensions; they must not duplicate configuration
-loading, factory construction, training, testing, or cleanup.
-
-Direct imports of the old Pipeline functions retain an explicit compatibility fallback
-to the legacy config loader. The maintained public CLI path always uses the compiled
-contract and therefore applies base configs and CLI overrides exactly once.
-
-## Pipeline 02 mode selection
-
-Pipeline 02 has exactly three recognizable inputs and never changes mode after an error:
-
-```text
-compiled config without stages -> shared single-stage classification runtime
-compiled config with stages    -> one unified multi-stage orchestrator
-explicit legacy_dual_yaml       -> isolated dual-YAML adapter + one orchestrator
-```
-
-The maintained public demo currently has no `stages` list and therefore uses the same
-classification lifecycle as Pipeline 01/05. A non-empty `stages` list selects the
-orchestrator before execution. Orchestrator errors are propagated; they do not activate a
-manual pretrain/few-shot implementation or another algorithm.
-
-The historical `fs_config_path` input is rejected unless direct legacy callers also set
-`pipeline_mode=legacy_dual_yaml`. The public CLI does not expose this mode. Manual
-`run_stage`, `run_pretraining_stage`, `run_fewshot_stage`, and duplicate single-stage
-functions are no longer maintained entrypoints.
-
-## Pipeline maturity gate
-
-`phmfactory.pipelines.PIPELINE_DESCRIPTORS` separates discoverability from default
-execution and release support. The maturity gate runs after the pending manifest is
-created and before the Pipeline module is imported.
-
-Pipeline 03 and Pipeline 04 require explicit public opt-in:
+`phmfactory.pipelines.PIPELINE_DESCRIPTORS` separates discoverability, opt-in execution,
+and release support. Pipeline 03 and Pipeline 04 require:
 
 ```bash
 phmfactory --config <yaml> --allow-experimental
 ```
 
-Without that flag, the CLI writes a failed manifest with `failure.stage: maturity` and
-does not import the module. The flag is an acknowledgement of maturity, not a support
-promotion. Pipeline 03 remains experimental because no maintained smoke combination
-exists and its legacy implementation contains error/checkpoint paths that have not been
-normalized. Pipeline 04 remains `experimental_blocked` because it additionally contains
-environment-specific paths, `sys.path` mutation, broad fallback, and unverified partial
-checkpoint loading.
+The flag acknowledges maturity; it does not promote support. Pipeline 01 and the
+maintained single-stage Pipeline 02 path remain the release-supported surface. Pipeline
+05, Pipeline 06, and Pipeline_ID remain outside the maintained combination table unless
+current evidence promotes an exact configuration.
 
-Pipeline 01 and the maintained single-stage Pipeline 02 path remain the release-supported
-surface. Pipeline 05, Pipeline 06, and Pipeline_ID remain discoverable under their
-compatibility or experimental-contract descriptors; their presence is not a
-release-support claim. The user-facing distinction is recorded in
-`SUPPORTED_COMPONENTS.md`.
+## Invariants for future changes
 
-The following invariants govern later refactors:
-
-1. the public config is compiled exactly once;
-2. local configuration is an explicit input;
-3. the selected Pipeline and executed configuration share one contract;
-4. runtime code receives a mutable copy and cannot mutate the compiled contract;
-5. missing sections, invalid iterations, invalid factory results, `None` Pipeline
-   results, and execution failures raise rather than printing success;
-6. data and logging resources are closed through a shared `finally` boundary;
-7. every compiled invocation creates one mandatory minimal attestation;
-8. Pipeline-specific evidence extends the invocation manifest instead of redefining it;
-9. an exception never changes the selected execution mode or activates a fallback;
-10. discoverability, explicit experimental execution, and release support remain separate
-    machine-readable claims.
+1. Public configuration composition has one implementation.
+2. Machine-local YAML is an explicit input.
+3. Run, preflight, inspect, validate, UI, and Pipeline 06 share the effective hash.
+4. Overrides are applied exactly once.
+5. Runtime code receives a copy and cannot mutate the compiled contract.
+6. Errors propagate from their source; no exception activates another algorithm.
+7. `None` is not a successful Pipeline result.
+8. Resources close through `finally` boundaries.
+9. Every public run creates one mandatory terminal manifest.
+10. Discoverable, runnable, supported, and benchmark-valid remain distinct claims.

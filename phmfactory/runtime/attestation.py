@@ -183,7 +183,7 @@ class RunAttestation:
             raise AttestationError("evidence section must be non-empty")
         normalized = _json_copy(value, label=f"evidence section {key!r}")
         existing = self.evidence.get(key)
-        if existing not in (None, {}, [] ) and existing != normalized:
+        if existing not in (None, {}, []) and existing != normalized:
             raise AttestationError(f"conflicting evidence section: {key!r}")
         self.evidence[key] = normalized
 
@@ -209,6 +209,7 @@ class RunAttestation:
             "created_at": self.created_at,
             "run_spec": {
                 "sha256": self.spec.sha256,
+                "effective_config_sha256": self.spec.effective_config_sha256,
                 "pipeline": self.spec.pipeline,
                 "pipeline_module": self.pipeline_module,
                 "requested_config": self.spec.requested_config,

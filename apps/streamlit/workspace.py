@@ -1,4 +1,9 @@
-"""Application orchestration for the PHM-Vibench Streamlit workspace."""
+"""Application orchestration for the optional PHMFactory Streamlit workspace.
+
+The UI edits user intent and delegates configuration semantics to the same public
+inspector used by CLI preflight.  It does not auto-discover machine-local YAML, import a
+Pipeline, or define a second training framework.
+"""
 
 from __future__ import annotations
 
@@ -39,7 +44,7 @@ try:
         profile_for,
     )
     from .run_service import RunConflictError, RunRequest, RunServiceError, start_run
-    from .runtime_policy import inspect_execution_yaml, inspect_portable_config
+    from .runtime_policy import inspect_execution_yaml
     from .ui_onboarding import (
         render_launch_blockers,
         render_readiness_banner,
@@ -60,7 +65,7 @@ try:
         _render_template_summary,
         _render_validation,
     )
-except ImportError:  # pragma: no cover
+except ImportError:  # pragma: no cover - Streamlit may execute app.py as a script.
     from config_service import (  # type: ignore
         Catalog,
         ConfigServiceError,
@@ -96,7 +101,7 @@ except ImportError:  # pragma: no cover
         RunServiceError,
         start_run,
     )
-    from runtime_policy import inspect_execution_yaml, inspect_portable_config  # type: ignore
+    from runtime_policy import inspect_execution_yaml  # type: ignore
     from ui_onboarding import (  # type: ignore
         render_launch_blockers,
         render_readiness_banner,
@@ -141,28 +146,17 @@ def _cached_inspection(
     repo_root: str,
     config_path: str,
     overrides: Tuple[Tuple[str, Any], ...],
-    apply_local: bool,
 ) -> ValidationReport:
-    if apply_local:
-        return inspect_config(Path(repo_root), Path(config_path), overrides)
-    return inspect_portable_config(Path(repo_root), Path(config_path), overrides)
+    """Inspect a template through the single public config authority."""
+
+    return inspect_config(Path(repo_root), Path(config_path), overrides)
 
 
 def _signature(mode: str, source: str, overrides: Sequence[Tuple[str, Any]]) -> str:
+    """Identify the visible UI inputs that were validated."""
+
     payload = repr((mode, source, tuple(overrides))).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
-
-
-def _local_config_fingerprint(repo_root: Path) -> str:
-    """Invalidate preflight when the machine-local configuration changes."""
-
-    path = repo_root / "configs" / "local" / "local.yaml"
-    if not path.is_file():
-        return "missing"
-    try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as exc:
-        return f"unreadable:{type(exc).__name__}"
 
 
 def _initialize_state() -> None:
@@ -190,7 +184,7 @@ def _safe_smoke_reset(default_template_id: str) -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="PHM-Vibench Experiment Workspace",
+        page_title="PHMFactory Experiment Workspace",
         page_icon="⚙️",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -204,8 +198,8 @@ def main() -> None:
         catalog = _cached_catalog(str(APP_DIR / "field_catalog.yaml"))
         profiles = _cached_profiles(str(APP_DIR / "template_profiles.yaml"))
         registry = _cached_registry(str(repo_root))
-    except (ConfigServiceError, OnboardingError) as exc:
-        _render_error("The application contract could not be loaded.", exc)
+    except (ConfigServiceError, OnboardingError) as error:
+        _render_error("The application contract could not be loaded.", error)
         st.stop()
 
     default_profile = profile_for(profiles, catalog.default_template_id)
@@ -217,7 +211,7 @@ def main() -> None:
         "Use safe CPU smoke defaults",
         type="primary",
         use_container_width=True,
-        help="Return to Quick Start, the bundled dummy template, CPU, and one epoch.",
+        help="Return to Quick Start, bundled Dummy data, CPU, and one epoch.",
     ):
         _safe_smoke_reset(catalog.default_template_id)
     render_readiness_sidebar(readiness)
@@ -229,8 +223,8 @@ def main() -> None:
         ("Quick Start", "Advanced"),
         key="ui_mode",
         help=(
-            "Quick Start exposes the smallest safe surface. Advanced adds "
-            "full YAML and raw overrides."
+            "Quick Start exposes the smallest safe surface. Advanced adds a "
+            "standalone YAML editor and explicit raw overrides."
         ),
     )
     selected_run = _render_run_selector(repo_root)
@@ -273,38 +267,26 @@ def main() -> None:
 
     try:
         config_path = resolve_repo_path(repo_root, entry.path, yaml_only=True)
-    except (ConfigServiceError, OSError) as exc:
-        _render_error("The selected registry entry is not usable.", exc)
+    except (ConfigServiceError, OSError) as error:
+        _render_error("The selected registry entry is not usable.", error)
         st.stop()
 
-    with st.spinner("Resolving template through the repository inspector..."):
-        runtime_report = _cached_inspection(str(repo_root), str(config_path), (), True)
-    if not runtime_report.resolved:
+    with st.spinner("Resolving the template through PHMFactory's public inspector..."):
+        template_report = _cached_inspection(str(repo_root), str(config_path), ())
+    if not template_report.resolved:
         _render_error(
             "The template could not be fully resolved.",
-            RuntimeError(runtime_report.error or "Unknown inspector failure."),
-            details=runtime_report.stderr,
+            RuntimeError(template_report.error or "Unknown inspector failure."),
+            details=template_report.stderr,
         )
         st.stop()
 
-    with st.spinner("Preparing a portable standalone YAML before local overrides..."):
-        portable_report = _cached_inspection(str(repo_root), str(config_path), (), False)
-    if not portable_report.resolved:
-        _render_error(
-            "The portable source configuration could not be resolved.",
-            RuntimeError(portable_report.error or "Unknown inspector failure."),
-            details=portable_report.stderr,
-        )
-        st.stop()
-
-    baseline_resolved: Mapping[str, Any] = (
-        portable_report.resolved if mode == "Advanced" else runtime_report.resolved
-    )
-    portable_yaml_text = dump_yaml(portable_report.resolved)
+    baseline_resolved: Mapping[str, Any] = template_report.resolved
+    standalone_yaml = dump_yaml(template_report.resolved)
 
     st.header("2. 修改参数 | Configure safely")
     advanced_yaml_text = ""
-    execution_yaml_text = portable_yaml_text
+    execution_yaml_text = standalone_yaml
     configuration_has_error = False
     if mode == "Quick Start":
         st.info("Quick Start exposes only catalog-approved onboarding fields.")
@@ -314,7 +296,7 @@ def main() -> None:
             selected_id,
             quick_only=True,
         )
-        source_for_signature = portable_yaml_text
+        source_for_signature = standalone_yaml
     else:
         _ensure_advanced_yaml(selected_id, baseline_resolved)
         tabs = st.tabs(("Safe fields", "Full YAML", "Raw overrides"))
@@ -326,17 +308,16 @@ def main() -> None:
                 quick_only=False,
             )
             st.caption(
-                "Field aliases are declarative; no model-specific UI branches "
-                "are required."
+                "Field aliases are declarative; no model-specific UI branches are used."
             )
         with tabs[1]:
             advanced_yaml_text = st.text_area(
-                "Portable standalone YAML",
+                "Standalone effective YAML",
                 height=520,
                 key="advanced_yaml_text",
                 help=(
-                    "Machine-local configuration is applied exactly once during "
-                    "validation and execution."
+                    "This YAML has no hidden local layer. Machine-specific values must "
+                    "be edited here or supplied as explicit overrides."
                 ),
             )
             _render_diff(dump_yaml(baseline_resolved), advanced_yaml_text)
@@ -347,14 +328,14 @@ def main() -> None:
                 placeholder="data.data_dir=/path/to/data\ntrainer.num_epochs=1",
             )
             st.caption(
-                "Raw overrides have highest precedence and remain argv tokens, "
-                "never shell text."
+                "Raw overrides have highest precedence and remain argv tokens, never "
+                "shell text."
             )
         try:
             raw_overrides = parse_override_lines(override_text)
             overrides = normalize_overrides((*safe_overrides, *raw_overrides))
-        except ConfigServiceError as exc:
-            _render_error("Raw overrides are invalid.", exc)
+        except ConfigServiceError as error:
+            _render_error("Raw overrides are invalid.", error)
             overrides = safe_overrides
             configuration_has_error = True
         source_for_signature = advanced_yaml_text
@@ -372,8 +353,8 @@ def main() -> None:
         )
         try:
             preview_config = apply_overrides(parse_yaml_text(advanced_yaml_text), overrides)
-        except ConfigServiceError as exc:
-            st.error(str(exc))
+        except ConfigServiceError as error:
+            st.error(str(error))
             preview_config = {}
             configuration_has_error = True
 
@@ -397,18 +378,13 @@ def main() -> None:
     summary_cols[3].metric("Template status", entry.status or "unspecified")
     st.markdown("**Planned reproduction command**")
     st.code(format_command(command), language="bash")
-    with st.expander("Execution source preview"):
+    with st.expander("Effective configuration preview"):
         if preview_config:
             st.code(dump_yaml(preview_config), language="yaml")
         else:
             st.warning("Fix the configuration before validation.")
 
-    signature_source = (
-        source_for_signature
-        + "\n# local-config-sha256="
-        + _local_config_fingerprint(repo_root)
-    )
-    current_signature = _signature(mode, signature_source, overrides)
+    current_signature = _signature(mode, source_for_signature, overrides)
     validate_col, download_col, run_col = st.columns(3)
     if validate_col.button(
         "Validate configuration",
@@ -417,7 +393,7 @@ def main() -> None:
         use_container_width=True,
     ):
         try:
-            with st.spinner("Running repository config inspection..."):
+            with st.spinner("Running the public config analysis..."):
                 report = (
                     inspect_config(repo_root, config_path, overrides)
                     if mode == "Quick Start"
@@ -425,10 +401,10 @@ def main() -> None:
                 )
             st.session_state.validation_report = report
             st.session_state.validation_signature = current_signature
-        except ConfigServiceError as exc:
+        except ConfigServiceError as error:
             st.session_state.validation_report = None
             st.session_state.validation_signature = ""
-            _render_error("Validation could not start.", exc)
+            _render_error("Validation could not start.", error)
 
     report = st.session_state.validation_report
     report_is_current = (
@@ -442,9 +418,7 @@ def main() -> None:
             "The configuration changed after validation. Validate it again before running."
         )
 
-    can_download = bool(
-        report_is_current and report.ok and not configuration_has_error
-    )
+    can_download = bool(report_is_current and report.ok and not configuration_has_error)
     can_run = bool(can_download and readiness.can_execute and data_status.ready)
     render_launch_blockers(readiness, data_status)
 
@@ -452,7 +426,7 @@ def main() -> None:
         download_col.download_button(
             "Download execution YAML",
             data=execution_yaml_text,
-            file_name="phm_vibench_config.yaml",
+            file_name="phmfactory_config.yaml",
             mime="application/x-yaml",
             use_container_width=True,
         )
@@ -469,8 +443,8 @@ def main() -> None:
         disabled=not can_run,
         use_container_width=True,
         help=(
-            "Runs the public main.py --config contract after environment, data, "
-            "and configuration checks pass."
+            "Runs the public main.py --config contract after environment, data, and "
+            "configuration checks pass."
         ),
     ):
         assert isinstance(report, ValidationReport)
@@ -499,8 +473,8 @@ def main() -> None:
             st.session_state.selected_run_id = launched.run_id
             st.toast("Experiment started. Live logs are available below.")
             st.rerun()
-        except (RunServiceError, RunConflictError) as exc:
-            _render_error("The experiment could not start.", exc)
+        except (RunServiceError, RunConflictError) as error:
+            _render_error("The experiment could not start.", error)
 
     st.header("4. 运行与结果 | Live run and evidence")
     run_id = (
@@ -512,7 +486,7 @@ def main() -> None:
         _render_live_run(str(repo_root), run_id)
     else:
         st.info(
-            "Validate the CPU smoke template and start an experiment. This area "
-            "will show live logs, headline metrics, images, artifacts, and the "
-            "immutable reproduction command."
+            "Validate the CPU smoke template and start an experiment. This area will "
+            "show live logs, headline metrics, images, artifacts, and the immutable "
+            "reproduction command."
         )
