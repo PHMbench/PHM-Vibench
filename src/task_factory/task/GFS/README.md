@@ -1,50 +1,37 @@
-# GFS Task
+# GFS Task Compatibility Path
 
-`GFS` contains generalized few-shot task implementations for base/novel class
-experiments. The maintained demo exercises `GFS/classification` through the
-cross-system configuration below.
+`GFS` currently selects a hierarchical sampler and the ordinary
+`GFS/classification` cross-entropy task. The maintained path is not generalized
+few-shot learning.
 
 ## Current Surface
 
-| Task type | Task name | Module | Status |
+| Task type | Task name | Module | Current status |
 |---|---|---|---|
-| `GFS` | `classification` | `classification.py` | Maintained demo path |
-| `GFS` | `matching` | `matching.py` | Registered implementation; not release-supported by the demo matrix |
+| `GFS` | `classification` | `classification.py` | Execution-smoke path; sampled CE classification |
+| `GFS` | `matching` | `matching.py` | Registered historical implementation; no maintained protocol |
 
-Maintained demo:
+Maintained compatibility config:
 
 - `configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml`
 
-Its resolved model is `ISFM/M_01_ISFM` with `E_01_HSE` and `B_04_Dlinear`. The task
-README does not infer a model family from a historical filename.
+The current sampler groups indices by system, domain and label and selects K+Q samples
+per selected label. DataLoader then emits one ordinary `x/y/file_id` batch. The task
+applies standard cross-entropy to all samples.
 
-The task registry authority is `src/task_factory/task_registry.csv`; the release-support
-authority is generated from `configs/config_registry.csv` and resolved configs.
+## What Is Not Implemented
 
-## Configuration Notes
-
-Inspect the maintained demo before copying it:
-
-```bash
-python -m scripts.config_inspect \
-  --config configs/demo/04_cross_system_fewshot/gfs_dlinear.yaml \
-  --override trainer.num_epochs=1
+```text
+support/query markers
+base/novel class definitions
+episode-local adaptation
+generalized query evaluation
+base accuracy / novel accuracy / harmonic mean
 ```
 
-Typical task fields live in `configs/base/task/cddg_fewshot.yaml`:
+`num_support` and `num_query` currently influence the number of sampled items, not a
+support/query learning objective. `num_systems` is fixed to `1` because the current
+sampler selects one system per episode.
 
-- `task.type: "GFS"`
-- `task.name`
-- `task.target_system_id`
-- `task.num_episodes`
-- `task.num_support`
-- `task.num_query`
-
-## Boundaries
-
-- This module README does not claim knowledge distillation, MMD feature alignment,
-  adaptive weighting, continual learning, MAML, memory banks, or progressive training.
-- A registered implementation is discoverable, not automatically runnable or supported.
-- Do not document a GFS option as supported until it is implemented, registered,
-  validated, and smoke-tested through a maintained config.
-- Benchmark validity must be established by run evidence, not by module-level examples.
+A registered implementation or one successful smoke run must not be presented as a
+generalized few-shot benchmark.
