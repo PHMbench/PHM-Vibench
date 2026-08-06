@@ -247,7 +247,8 @@ jobs:
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
             test/test_runtime_evidence.py \
-            test/test_split_scientific_truth.py
+            test/test_split_scientific_truth.py \
+            test/test_transform_truth.py
           python -m pytest \
             test/test_classification_runtime.py \
             test/test_data_cache_contract.py \
@@ -256,6 +257,7 @@ jobs:
             test/test_pipeline02_runtime.py \
             test/test_runtime_evidence.py \
             test/test_split_scientific_truth.py \
+            test/test_transform_truth.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
       - name: Diagnose the installed environment

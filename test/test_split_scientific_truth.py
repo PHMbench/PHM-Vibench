@@ -9,15 +9,16 @@ from src.data_factory.explicit_data_factory import _summarize_split_assignments
 def _data_args():
     return SimpleNamespace(
         window_size=8,
-        stride=1,
         num_window=5,
         window_sampling_strategy="evenly_spaced",
         window_sampling_seed=0,
         train_ratio=0.4,
         val_ratio=0.2,
         test_ratio=0.4,
+        unused_ratio=0.0,
         normalization="none",
-        noise_snr=None,
+        train_noise_snr=None,
+        evaluation_noise_snr=None,
     )
 
 

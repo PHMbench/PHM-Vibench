@@ -1,8 +1,9 @@
 # Experiment 7 (CDDG, Two-Stage): Noise Robustness with HSE-Prompt
 #
 # 说明：
-# - Stage1：在固定 SNR 条件下进行 HSE-Prompt 对比预训练（通过 data.noise_snr 控制 AWGN）；
-# - Stage2：在不同 SNR 条件下进行 CDDG 分类评估，用于量化噪声鲁棒性。
+# - Stage1：在固定 SNR 条件下进行 HSE-Prompt 对比预训练；
+# - Stage2：在不同 SNR 条件下进行 CDDG 分类评估；
+# - train_noise_snr 与 evaluation_noise_snr 分别控制训练增强和评估污染。
 
 environment:
   VBENCH_HOME: "/home/user/LQ/B_Signal/Signal_foundation_model/Vbench"
@@ -20,9 +21,10 @@ data:
   train_ratio: 0.8
   val_ratio: 0.1
   test_ratio: 0.1
-  normalization: "standardization"
+  unused_ratio: 0.0
+  normalization: "per_window_standardization"
   window_size: 4096
-  stride: 5
+  window_sampling_strategy: "evenly_spaced"
   num_window: 64
   dtype: "float32"
   pin_memory: true
@@ -91,7 +93,7 @@ trainer:
 
 stages:
   - name: "pretraining"
-    description: "Stage1: HSE-Prompt 对比预训练（固定 SNR，例如 20dB AWGN）"
+    description: "Stage1: HSE-Prompt 对比预训练（训练与评估均使用固定 20dB AWGN）"
     overrides:
       task:
         type: "pretrain"
@@ -109,11 +111,12 @@ stages:
         early_stopping: false
       data:
         num_window: 64
-        stride: 5
-        noise_snr: 20  # 默认预训练使用 20dB AWGN，可通过 CLI override 修改
+        train_noise_snr: 20
+        evaluation_noise_snr: 20
+        evaluation_noise_seed: 42
 
   - name: "finetuning"
-    description: "Stage2: CDDG 分类微调，在不同 SNR 条件下评估噪声鲁棒性"
+    description: "Stage2: CDDG 分类微调，在显式训练/评估 SNR 条件下量化鲁棒性"
     overrides:
       task:
         type: "CDDG"
@@ -131,9 +134,9 @@ stages:
         patience: 10
       data:
         num_window: 64
-        stride: 5
-        noise_snr: 20  # 将在脚本中通过 CLI override 设置为 20/10/5/0 等不同值
+        train_noise_snr: 20
+        evaluation_noise_snr: 20
+        evaluation_noise_seed: 42
 
 pipeline:
   name: "Pipeline_02_Pretraining_Few_Shot"
-
