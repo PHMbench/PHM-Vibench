@@ -22,9 +22,9 @@ data:
   batch_size: 32
   num_workers: 32
   train_ratio: 0.8
-  normalization: true
+  normalization: "per_window_standardization"
   window_size: 4096
-  stride: 5
+  window_sampling_strategy: "evenly_spaced"
   truncate_lenth: 100
   dtype: float32
   num_window: 64
@@ -84,7 +84,3 @@ trainer:
   early_stopping: true
   patience: 5
   device: 'cuda'
-
-
-
-
