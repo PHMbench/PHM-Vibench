@@ -7,12 +7,13 @@ import h5py
 import numpy as np
 import pytest
 
-from src.data_factory import ExplicitDataFactory
+from src.data_factory import ExplicitDataFactory, build_data
 from src.data_factory.contracts import (
     format_loader_summary,
     require_nonempty_dataloaders,
 )
 from src.data_factory.data_factory import data_factory as BaseDataFactory
+from src.data_factory.reader.CSV_Signal import read as read_csv_signal
 
 
 def _factory(metadata):
@@ -235,3 +236,86 @@ def test_explicit_factory_checks_loaders_after_base_construction(
 
     output = capsys.readouterr().out
     assert "train=2 batches, val=1 batch, test=1 batch" in output
+
+
+def _write_signal_csv(path: Path, offset: float) -> None:
+    rows = ["time,sensor_a,sensor_b"]
+    for index in range(16):
+        rows.append(f"{index},{offset + index},{offset + 2 * index}")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def test_csv_signal_reader_requires_explicit_numeric_columns(tmp_path: Path) -> None:
+    signal_path = tmp_path / "signal.csv"
+    _write_signal_csv(signal_path, 0.0)
+    args_data = SimpleNamespace(
+        csv_signal_columns=["sensor_a", "sensor_b"],
+        csv_delimiter=",",
+        dtype="float32",
+    )
+
+    signal = read_csv_signal(signal_path, args_data)
+    assert signal.shape == (16, 2)
+    assert signal.dtype == np.float32
+    assert np.array_equal(signal[0], np.array([0.0, 0.0], dtype=np.float32))
+
+    args_data.csv_signal_columns = ["sensor_a", "missing"]
+    with pytest.raises(ValueError, match="missing configured column"):
+        read_csv_signal(signal_path, args_data)
+
+
+def test_compatible_csv_dataset_uses_existing_data_and_task_contracts(
+    tmp_path: Path,
+) -> None:
+    raw_dir = tmp_path / "raw" / "CSV_Signal"
+    raw_dir.mkdir(parents=True)
+    _write_signal_csv(raw_dir / "source.csv", 0.0)
+    _write_signal_csv(raw_dir / "target.csv", 100.0)
+    (tmp_path / "metadata.csv").write_text(
+        "Id,Name,File,Dataset_id,Domain_id,Label,Sample_Rate\n"
+        "1,CSV_Signal,source.csv,0,0,0,1000\n"
+        "2,CSV_Signal,target.csv,0,1,0,1000\n",
+        encoding="utf-8",
+    )
+
+    args_data = SimpleNamespace(
+        factory_name="default",
+        data_dir=str(tmp_path),
+        metadata_file="metadata.csv",
+        batch_size=1,
+        num_workers=0,
+        train_ratio=0.5,
+        val_ratio=0.25,
+        test_ratio=0.25,
+        unused_ratio=0.0,
+        normalization="none",
+        window_size=4,
+        window_sampling_strategy="evenly_spaced",
+        num_window=4,
+        window_sampling_seed=0,
+        dtype="float32",
+        pin_memory=False,
+        csv_signal_columns=["sensor_a", "sensor_b"],
+    )
+    args_task = SimpleNamespace(
+        type="DG",
+        name="classification",
+        target_system_id=[0],
+        source_domain_id=[0],
+        target_domain_id=[1],
+    )
+
+    factory = build_data(args_data, args_task)
+    try:
+        train_batch = next(iter(factory.train_loader))
+        val_batch = next(iter(factory.val_loader))
+        test_batch = next(iter(factory.test_loader))
+
+        assert train_batch["x"].shape == (1, 4, 2)
+        assert val_batch["x"].shape == (1, 4, 2)
+        assert test_batch["x"].shape == (1, 4, 2)
+        assert train_batch["file_id"].tolist() == [1]
+        assert test_batch["file_id"].tolist() == [2]
+        assert factory.split_summary["file_overlap"]["train_test"] == []
+    finally:
+        factory.data.close()
