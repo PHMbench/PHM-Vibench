@@ -231,6 +231,7 @@ jobs:
           python -m py_compile \
             phmfactory/runtime/evidence.py \
             src/data_factory/explicit_data_factory.py \
+            src/data_factory/dataset_task/Default_dataset.py \
             src/model_factory/ISFM/system_utils.py \
             src/model_factory/ISFM/task_head/H_01_Linear_cla.py \
             src/task_factory/Default_task.py \
@@ -245,7 +246,8 @@ jobs:
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
-            test/test_runtime_evidence.py
+            test/test_runtime_evidence.py \
+            test/test_split_scientific_truth.py
           python -m pytest \
             test/test_classification_runtime.py \
             test/test_data_cache_contract.py \
@@ -253,6 +255,7 @@ jobs:
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
             test/test_runtime_evidence.py \
+            test/test_split_scientific_truth.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
       - name: Diagnose the installed environment
