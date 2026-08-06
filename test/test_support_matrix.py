@@ -6,7 +6,7 @@ from scripts.gen_config_atlas import read_registry
 from scripts.gen_support_matrix import (
     render_combinations,
     render_components,
-    supported_demos,
+    verified_demos,
 )
 
 
@@ -14,17 +14,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _demos():
-    return supported_demos(read_registry(ROOT / "configs/config_registry.csv"))
+    return verified_demos(read_registry(ROOT / "configs/config_registry.csv"))
 
 
-def test_all_sanity_ok_demos_resolve_into_support_records() -> None:
+def test_all_sanity_ok_demos_have_independent_protocol_status() -> None:
     demos = _demos()
     assert len(demos) == 7
-    assert {demo.status for demo in demos} == {"sanity_ok"}
+    assert {demo.execution_status for demo in demos} == {"sanity_ok"}
+    assert {demo.protocol_status for demo in demos} == {"smoke_only"}
     assert all((ROOT / demo.path).is_file() for demo in demos)
 
 
-def test_gfs_demo_name_matches_resolved_dlinear_contract() -> None:
+def test_gfs_demo_resolves_without_implying_protocol_validity() -> None:
     demo = next(
         item for item in _demos() if item.config_id == "demo_04_cross_system_fewshot"
     )
@@ -33,8 +34,8 @@ def test_gfs_demo_name_matches_resolved_dlinear_contract() -> None:
     assert demo.embedding == "E_01_HSE"
     assert demo.backbone == "B_04_Dlinear"
     assert demo.task == "GFS/classification"
-    assert "tspn" not in demo.path.casefold()
-    assert "tspn" not in demo.description.casefold()
+    assert demo.execution_status == "sanity_ok"
+    assert demo.protocol_status == "smoke_only"
 
 
 def test_committed_support_documents_are_generated() -> None:
@@ -47,8 +48,11 @@ def test_committed_support_documents_are_generated() -> None:
     )
 
 
-def test_support_table_uses_resolved_not_filename_inference() -> None:
+def test_support_table_does_not_promote_smoke_to_scientific_support() -> None:
     combinations = render_combinations(_demos())
-    assert "`GFS/classification`" in combinations
-    assert "`ISFM/M_01_ISFM`" in combinations
-    assert "cross_system_tspn" not in combinations
+    assert "Execution evidence" in combinations
+    assert "Protocol status" in combinations
+    assert "`sanity_ok`" in combinations
+    assert "`smoke_only`" in combinations
+    assert "release-supported only when" not in combinations
+    assert "benchmark validity" in combinations

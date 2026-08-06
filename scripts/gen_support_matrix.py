@@ -11,7 +11,7 @@ from scripts.gen_config_atlas import RegistryRow, read_registry
 
 
 @dataclass(frozen=True)
-class SupportedDemo:
+class VerifiedDemo:
     config_id: str
     path: str
     description: str
@@ -23,7 +23,8 @@ class SupportedDemo:
     task_head: str
     task: str
     trainer: str
-    status: str
+    execution_status: str
+    protocol_status: str
 
 
 def _value(mapping: dict[str, Any], key: str, default: str = "-") -> str:
@@ -31,11 +32,16 @@ def _value(mapping: dict[str, Any], key: str, default: str = "-") -> str:
     return str(value) if value not in (None, "") else default
 
 
-def supported_demos(rows: Iterable[RegistryRow]) -> list[SupportedDemo]:
-    result: list[SupportedDemo] = []
+def verified_demos(rows: Iterable[RegistryRow]) -> list[VerifiedDemo]:
+    result: list[VerifiedDemo] = []
     for row in rows:
         if row.category != "demo" or row.status != "sanity_ok":
             continue
+        if not row.protocol_status:
+            raise ValueError(
+                f"demo {row.config_id} is missing protocol_status; "
+                "execution smoke evidence must not imply scientific validity"
+            )
         resolved = resolve_config(row.path)
         if resolved.pipeline != row.pipeline:
             raise ValueError(
@@ -46,7 +52,7 @@ def supported_demos(rows: Iterable[RegistryRow]) -> list[SupportedDemo]:
         task = resolved.data.get("task") or {}
         trainer = resolved.data.get("trainer") or {}
         result.append(
-            SupportedDemo(
+            VerifiedDemo(
                 config_id=row.config_id,
                 path=row.path,
                 description=row.description,
@@ -58,7 +64,8 @@ def supported_demos(rows: Iterable[RegistryRow]) -> list[SupportedDemo]:
                 task_head=_value(model, "task_head"),
                 task=f"{_value(task, 'type')}/{_value(task, 'name')}",
                 trainer=_value(trainer, "name"),
-                status=row.status,
+                execution_status=row.status,
+                protocol_status=row.protocol_status,
             )
         )
     if not result:
@@ -70,9 +77,9 @@ def _code_list(values: Iterable[str]) -> str:
     return ", ".join(f"`{value}`" for value in sorted(set(values)))
 
 
-def render_components(demos: list[SupportedDemo]) -> str:
+def render_components(demos: list[VerifiedDemo]) -> str:
     lines = [
-        "# Supported Components for the PHMFactory v0.3 Pre-release",
+        "# Execution-Verified Components for the PHMFactory v0.3 Pre-release",
         "",
         "> Generated from `phmfactory.pipelines.PIPELINE_DESCRIPTORS`, "
         "`configs/config_registry.csv`, and resolved maintained configs.",
@@ -83,22 +90,23 @@ def render_components(demos: list[SupportedDemo]) -> str:
         "python -m scripts.gen_support_matrix",
         "```",
         "",
-        "PHMFactory distinguishes three claims:",
+        "PHMFactory separates software execution evidence from scientific protocol validity:",
         "",
         "```text",
-        "discoverable  = a canonical Pipeline or registry entry exists",
-        "runnable      = the public control plane permits execution",
-        "supported     = a maintained combination has current smoke evidence",
+        "discoverable     = a canonical Pipeline or registry entry exists",
+        "runnable         = the public control plane permits execution",
+        "smoke-verified   = the exact maintained command has bounded execution evidence",
+        "protocol-valid   = the complete data/split/task/metric combination satisfies its scientific protocol",
         "```",
         "",
-        "The required relationship is:",
+        "The software relationship is:",
         "",
         "```text",
-        "supported ⊆ runnable ⊆ discoverable",
+        "smoke-verified ⊆ runnable ⊆ discoverable",
         "```",
         "",
-        "A source file, importable module, registry row, or explicit experimental "
-        "opt-in is not a release-support claim.",
+        "Protocol validity is a separate property of a complete experiment combination. "
+        "It is not inferred from component importability, Pipeline maturity, or a successful smoke run.",
         "",
         "## Pipeline maturity",
         "",
@@ -115,7 +123,7 @@ def render_components(demos: list[SupportedDemo]) -> str:
     lines.extend(
         [
             "",
-            "## Evidence-derived maintained surface",
+            "## Execution-verified maintained surface",
             "",
             "| Surface | Values derived from `sanity_ok` demos |",
             "|---|---|",
@@ -127,27 +135,27 @@ def render_components(demos: list[SupportedDemo]) -> str:
             f"| Task heads | {_code_list(d.task_head for d in demos)} |",
             f"| Tasks | {_code_list(d.task for d in demos)} |",
             f"| Trainers | {_code_list(d.trainer for d in demos)} |",
+            f"| Protocol statuses | {_code_list(d.protocol_status for d in demos)} |",
             "",
-            "Exact supported executions are generated in `SUPPORTED_COMBINATIONS.md`.",
+            "Exact execution-smoke combinations are generated in `SUPPORTED_COMBINATIONS.md`.",
             "",
-            "## Support boundaries",
+            "## Boundaries",
             "",
-            "- `sanity_ok` is bounded smoke evidence, not benchmark performance.",
+            "- `sanity_ok` means bounded execution smoke only.",
+            "- `protocol_status=smoke_only` forbids benchmark or algorithm-validity claims.",
             "- Model/task registry discovery does not imply Cartesian-product compatibility.",
-            "- Pipeline 03 and Pipeline 04 are not release-supported.",
-            "- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside the maintained "
-            "release combination table unless a `sanity_ok` demo is added.",
+            "- Pipeline 03 and Pipeline 04 remain experimental rather than maintained execution paths.",
+            "- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact smoke table unless a reviewed demo is added.",
             "- Historical and paper-only configs are not promoted by this generator.",
-            "- External dataset redistribution and availability are separate source-license "
-            "questions.",
+            "- External dataset redistribution and availability are separate source-license questions.",
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
 
 
-def render_combinations(demos: list[SupportedDemo]) -> str:
+def render_combinations(demos: list[VerifiedDemo]) -> str:
     lines = [
-        "# Supported Combinations for the PHMFactory v0.3 Pre-release",
+        "# Execution-Verified Combinations for the PHMFactory v0.3 Pre-release",
         "",
         "> Generated from `configs/config_registry.csv` rows with "
         "`category=demo,status=sanity_ok` and their fully resolved configurations.",
@@ -158,29 +166,31 @@ def render_combinations(demos: list[SupportedDemo]) -> str:
         "python -m scripts.gen_support_matrix",
         "```",
         "",
-        "| Registry id | Config | Pipeline | Data base | Model | Task | Trainer | Evidence |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Registry id | Config | Pipeline | Data base | Model | Task | Trainer | Execution evidence | Protocol status |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for demo in demos:
         lines.append(
             f"| `{demo.config_id}` | `{demo.path}` | `{demo.pipeline}` | "
             f"`{demo.data_base}` | `{demo.model}` | `{demo.task}` | "
-            f"`{demo.trainer}` | `{demo.status}` |"
+            f"`{demo.trainer}` | `{demo.execution_status}` | "
+            f"`{demo.protocol_status}` |"
         )
     lines.extend(
         [
             "",
-            "Current evidence is one-epoch or otherwise bounded smoke evidence for the "
+            "Current evidence is one-epoch or otherwise bounded execution evidence for the "
             "exact registered path. It validates configuration resolution, factory "
             "assembly, runtime execution, checkpoint/test flow where applicable, and the "
-            "current invocation manifest contract. It does not claim benchmark performance.",
+            "current run-record contract. It does not establish benchmark validity.",
             "",
             "## Interpretation",
             "",
-            "A combination is release-supported only when the registry row remains "
-            "`sanity_ok`, the path resolves, the registry Pipeline matches the resolved "
-            "Pipeline, and repository gates continue to pass. Any unlisted combination is "
-            "discoverable or experimental at most until it receives its own reviewed evidence.",
+            "`execution_status=sanity_ok` says that the exact command has current smoke "
+            "evidence. `protocol_status=smoke_only` says that its split, statistical "
+            "independence, task semantics, and metric protocol have not yet been promoted "
+            "to a scientific baseline. The two statuses are independent and must not be "
+            "collapsed into one support claim.",
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
@@ -194,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     rows = read_registry(Path(args.registry))
-    demos = supported_demos(rows)
+    demos = verified_demos(rows)
     Path(args.components_out).write_text(render_components(demos), encoding="utf-8")
     Path(args.combinations_out).write_text(render_combinations(demos), encoding="utf-8")
     return 0

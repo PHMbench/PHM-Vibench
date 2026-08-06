@@ -1,4 +1,4 @@
-# Supported Components for the PHMFactory v0.3 Pre-release
+# Execution-Verified Components for the PHMFactory v0.3 Pre-release
 
 > Generated from `phmfactory.pipelines.PIPELINE_DESCRIPTORS`, `configs/config_registry.csv`, and resolved maintained configs.
 
@@ -8,21 +8,22 @@ Re-generate:
 python -m scripts.gen_support_matrix
 ```
 
-PHMFactory distinguishes three claims:
+PHMFactory separates software execution evidence from scientific protocol validity:
 
 ```text
-discoverable  = a canonical Pipeline or registry entry exists
-runnable      = the public control plane permits execution
-supported     = a maintained combination has current smoke evidence
+discoverable     = a canonical Pipeline or registry entry exists
+runnable         = the public control plane permits execution
+smoke-verified   = the exact maintained command has bounded execution evidence
+protocol-valid   = the complete data/split/task/metric combination satisfies its scientific protocol
 ```
 
-The required relationship is:
+The software relationship is:
 
 ```text
-supported ⊆ runnable ⊆ discoverable
+smoke-verified ⊆ runnable ⊆ discoverable
 ```
 
-A source file, importable module, registry row, or explicit experimental opt-in is not a release-support claim.
+Protocol validity is a separate property of a complete experiment combination. It is not inferred from component importability, Pipeline maturity, or a successful smoke run.
 
 ## Pipeline maturity
 
@@ -36,7 +37,7 @@ A source file, importable module, registry row, or explicit experimental opt-in 
 | `Pipeline_06_Generative_Modeling` | `experimental_contract` | yes | guarded CFM contract evidence; no release-supported benchmark claim |
 | `Pipeline_ID` | `compatibility` | yes | legacy research entrypoint outside the maintained demo matrix |
 
-## Evidence-derived maintained surface
+## Execution-verified maintained surface
 
 | Surface | Values derived from `sanity_ok` demos |
 |---|---|
@@ -48,14 +49,16 @@ A source file, importable module, registry row, or explicit experimental opt-in 
 | Task heads | `H_01_Linear_cla` |
 | Tasks | `CDDG/classification`, `DG/classification`, `FS/classification`, `GFS/classification`, `pretrain/hse_contrastive` |
 | Trainers | `Default_trainer` |
+| Protocol statuses | `smoke_only` |
 
-Exact supported executions are generated in `SUPPORTED_COMBINATIONS.md`.
+Exact execution-smoke combinations are generated in `SUPPORTED_COMBINATIONS.md`.
 
-## Support boundaries
+## Boundaries
 
-- `sanity_ok` is bounded smoke evidence, not benchmark performance.
+- `sanity_ok` means bounded execution smoke only.
+- `protocol_status=smoke_only` forbids benchmark or algorithm-validity claims.
 - Model/task registry discovery does not imply Cartesian-product compatibility.
-- Pipeline 03 and Pipeline 04 are not release-supported.
-- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside the maintained release combination table unless a `sanity_ok` demo is added.
+- Pipeline 03 and Pipeline 04 remain experimental rather than maintained execution paths.
+- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact smoke table unless a reviewed demo is added.
 - Historical and paper-only configs are not promoted by this generator.
 - External dataset redistribution and availability are separate source-license questions.
