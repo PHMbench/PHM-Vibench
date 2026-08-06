@@ -17,7 +17,7 @@ environment:
 
 data:
   train_ratio: 0.7
-  stride: 10
+  unused_ratio: 0.1
 
 # 模型配置全部由 base_configs.model (backbone_dlinear.yaml) 提供
 
