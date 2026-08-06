@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import pytest
 import torch
 
 from phmfactory.config import resolve_config
@@ -78,17 +79,15 @@ def test_existing_factory_supports_config_only_model_replacement_and_backward():
 
 
 def test_baseline_model_rejects_incompatible_input_without_padding_or_fallback():
-    args = SimpleNamespace(input_dim=2, num_classes=2)
-    model = build_model(args=SimpleNamespace(
-        type="Baseline",
-        name="GlobalAverageLinear",
-        input_dim=2,
-        num_classes=2,
-    ), metadata=_METADATA)
+    model = build_model(
+        SimpleNamespace(
+            type="Baseline",
+            name="GlobalAverageLinear",
+            input_dim=2,
+            num_classes=2,
+        ),
+        metadata=_METADATA,
+    )
 
-    try:
+    with pytest.raises(ValueError, match="channel mismatch"):
         model(torch.randn(2, 128, 1))
-    except ValueError as exc:
-        assert "channel mismatch" in str(exc)
-    else:
-        raise AssertionError("channel mismatch must fail before classification")
