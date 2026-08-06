@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from phmfactory.config import resolve_config
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
 
 
@@ -29,6 +30,21 @@ def _args(**overrides):
     }
     values.update(overrides)
     return SimpleNamespace(**values)
+
+
+def test_maintained_smoke_declares_consumed_transform_fields():
+    data = resolve_config("configs/demo/00_smoke/dummy_dg.yaml").data["data"]
+
+    assert data["window_sampling_strategy"] == "evenly_spaced"
+    assert "stride" not in data
+    assert data["normalization"] == "per_window_standardization"
+    assert (
+        data["train_ratio"]
+        + data["val_ratio"]
+        + data["test_ratio"]
+        + data["unused_ratio"]
+        == 1.0
+    )
 
 
 def test_stride_is_only_valid_for_sequential_sampling():
