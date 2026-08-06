@@ -84,3 +84,28 @@ def test_distinct_files_and_unseen_test_class_are_reported():
         "test": [1],
     }
     assert summary["test_classes_seen_in_train"] is False
+
+
+def test_missing_optional_split_metadata_is_reported_as_unavailable():
+    metadata = {
+        1: {"Label": 0},
+        2: {"Label": 0},
+        3: {"Label": 0},
+    }
+    dataset = lambda interval: SimpleNamespace(window_intervals=[interval])
+
+    summary = _summarize_split_assignments(
+        {
+            "train": {1: dataset((0, 8))},
+            "val": {2: dataset((0, 8))},
+            "test": {3: dataset((0, 8))},
+        },
+        metadata,
+    )
+
+    assert summary["domain_overlap"] == {
+        "train_val": None,
+        "train_test": None,
+        "val_test": None,
+    }
+    assert summary["test_classes_seen_in_train"] is True
