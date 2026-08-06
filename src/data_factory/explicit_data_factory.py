@@ -21,10 +21,7 @@ def _plain_values(value: Any) -> set[Any]:
     """Return scalar metadata values without imposing a new metadata schema."""
     if hasattr(value, "tolist"):
         value = value.tolist()
-    if isinstance(value, (list, tuple, set)):
-        values = value
-    else:
-        values = [value]
+    values = value if isinstance(value, (list, tuple, set)) else [value]
 
     result: set[Any] = set()
     for item in values:
@@ -34,17 +31,18 @@ def _plain_values(value: Any) -> set[Any]:
     return result
 
 
-def _metadata_values(metadata: Any, file_ids: set[Any], field: str) -> set[Any]:
+def _metadata_values(
+    metadata: Any,
+    file_ids: set[Any],
+    field: str,
+) -> set[Any] | None:
+    """Return split metadata values, or ``None`` when the optional fact is unavailable."""
     values: set[Any] = set()
     for file_id in file_ids:
-        row = metadata[file_id]
         try:
-            raw = row[field]
-        except (KeyError, TypeError, IndexError) as exc:
-            raise KeyError(
-                f"Cannot summarize data splits: metadata field {field!r} is "
-                f"missing for file_id={file_id!r}."
-            ) from exc
+            raw = metadata[file_id][field]
+        except (KeyError, TypeError, IndexError):
+            return None
         values.update(_plain_values(raw))
     return values
 
@@ -78,6 +76,15 @@ def _raw_interval_overlap(
             if max(left_start, right_start) < min(left_end, right_end):
                 return True
     return False
+
+
+def _set_overlap(
+    left: set[Any] | None,
+    right: set[Any] | None,
+) -> list[Any] | None:
+    if left is None or right is None:
+        return None
+    return sorted(left & right, key=str)
 
 
 def _summarize_split_assignments(
@@ -118,24 +125,30 @@ def _summarize_split_assignments(
         for left, right in pairs
     }
     domain_overlap = {
-        f"{left}_{right}": sorted(
-            split_domains[left] & split_domains[right],
-            key=str,
+        f"{left}_{right}": _set_overlap(
+            split_domains[left],
+            split_domains[right],
         )
         for left, right in pairs
     }
+    classes = {
+        split: None if values is None else sorted(values, key=str)
+        for split, values in split_labels.items()
+    }
+    train_labels = split_labels["train"]
+    test_labels = split_labels["test"]
+    test_classes_seen = (
+        None
+        if train_labels is None or test_labels is None
+        else test_labels.issubset(train_labels)
+    )
 
     return {
         "raw_interval_overlap": raw_overlap,
         "file_overlap": file_overlap,
         "domain_overlap": domain_overlap,
-        "classes": {
-            split: sorted(values, key=str)
-            for split, values in split_labels.items()
-        },
-        "test_classes_seen_in_train": split_labels["test"].issubset(
-            split_labels["train"]
-        ),
+        "classes": classes,
+        "test_classes_seen_in_train": test_classes_seen,
     }
 
 
