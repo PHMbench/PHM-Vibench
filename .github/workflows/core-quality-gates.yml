@@ -231,6 +231,9 @@ jobs:
           python -m py_compile \
             phmfactory/runtime/evidence.py \
             src/data_factory/explicit_data_factory.py \
+            src/model_factory/ISFM/system_utils.py \
+            src/model_factory/ISFM/task_head/H_01_Linear_cla.py \
+            src/task_factory/Default_task.py \
             src/runtime/classification.py \
             src/runtime/explainability.py \
             src/Pipeline_01_Fault_Diagnosis.py \
@@ -238,11 +241,13 @@ jobs:
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
             test/test_classification_runtime.py \
             test/test_data_cache_contract.py \
+            test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
             test/test_runtime_evidence.py
           python -m pytest \
             test/test_classification_runtime.py \
             test/test_data_cache_contract.py \
+            test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
             test/test_runtime_evidence.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
