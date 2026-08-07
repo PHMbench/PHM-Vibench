@@ -87,11 +87,10 @@ class ExecutionEnvelope:
         return result
 
     def as_dict(self) -> dict[str, Any]:
-        """Return the minimal state consumed by the run-attestation writer."""
+        """Return the minimal execution state consumed by the run-manifest writer."""
 
         return {
             "schema_version": self.schema_version,
-            "run_spec_sha256": self.spec.sha256,
             "pipeline": self.spec.pipeline,
             "pipeline_module": self.pipeline_module,
             "status": self.status.value,
