@@ -117,8 +117,6 @@ def test_run_dispatches_analyzed_canonical_module(
         observed["config_analysis"] = args.config_analysis
         observed["compiled_run_spec"] = args.compiled_run_spec
         observed["resolved_config_data"] = args.resolved_config_data
-        observed["effective_config_sha256"] = args.effective_config_sha256
-        observed["run_spec_sha256"] = args.run_spec_sha256
         observed["notes"] = args.notes
         return "sentinel"
 
@@ -146,11 +144,9 @@ def test_run_dispatches_analyzed_canonical_module(
     assert cli.run(args) == "sentinel"
     compiled = observed.pop("compiled_run_spec")
     resolved_data = observed.pop("resolved_config_data")
-    run_spec_sha256 = observed.pop("run_spec_sha256")
     config_analysis = observed.pop("config_analysis")
     assert compiled.pipeline == "Pipeline_04_Unified_Evaluation"
     assert resolved_data == analysis.effective_config
-    assert run_spec_sha256 == compiled.sha256
     assert config_analysis is analysis
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
@@ -158,7 +154,6 @@ def test_run_dispatches_analyzed_canonical_module(
         "config_path": str(analysis.path),
         "resolved_config_path": str(analysis.path),
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
-        "effective_config_sha256": analysis.effective_config_sha256,
         "notes": "entrypoint-parity",
     }
     assert Path(args.run_manifest_path).is_file()
@@ -175,7 +170,7 @@ def test_run_passes_maintained_preset_path_to_runtime(
     def pipeline(args: argparse.Namespace) -> bool:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
-        observed["effective_config_sha256"] = args.effective_config_sha256
+        observed["resolved_pipeline"] = args.resolved_pipeline
         return True
 
     monkeypatch.setattr(
@@ -194,7 +189,7 @@ def test_run_passes_maintained_preset_path_to_runtime(
     assert cli.run(args) is True
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
-    assert len(str(observed["effective_config_sha256"])) == 64
+    assert observed["resolved_pipeline"]
     assert Path(args.run_manifest_path).is_file()
 
 
@@ -273,7 +268,8 @@ def test_python_process_entrypoints_return_zero_for_preflight(
     )
     assert completed.returncode == 0, completed.stderr
     assert "status=passed" in completed.stdout
-    assert "effective_config_sha256=" in completed.stdout
+    assert "pipeline=Pipeline_01_Fault_Diagnosis" in completed.stdout
+    assert "effective_config_sha256=" not in completed.stdout
     assert not target.exists()
 
 
