@@ -108,8 +108,9 @@ def test_preflight_uses_single_analysis_without_importing_pipeline(
 
     assert result["status"] == "passed"
     assert result["pipeline"] == "Pipeline_01_Fault_Diagnosis"
-    assert result["effective_config_sha256"] == analysis.effective_config_sha256
-    assert len(result["run_spec_sha256"]) == 64
+    assert result["resolved_config_path"] == str(analysis.path)
+    assert "effective_config_sha256" not in result
+    assert "run_spec_sha256" not in result
     assert not (tmp_path / "new").exists()
 
 
