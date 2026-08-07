@@ -4,16 +4,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from hashlib import sha256
-import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from phmfactory.config import ResolvedConfig, semantic_config_sha256
+from phmfactory.config import ResolvedConfig
 
 
 def _plain(value: Any) -> Any:
-    """Return a deterministic JSON-compatible representation."""
+    """Return a JSON-compatible representation for runtime handoff."""
 
     if isinstance(value, Mapping):
         return {str(key): _plain(item) for key, item in value.items()}
@@ -29,25 +27,13 @@ def _plain(value: Any) -> Any:
     )
 
 
-def _digest(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        _plain(payload),
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return sha256(encoded).hexdigest()
-
-
 @dataclass(frozen=True)
 class CompiledRunSpec:
-    """Immutable runtime contract for one public invocation.
+    """Immutable configuration-to-runtime handoff for one public invocation.
 
-    ``effective_config_sha256`` identifies only the canonical effective configuration
-    and therefore compares equal across preset names, equivalent override spellings, and
-    installation paths. ``sha256`` retains the invocation contract identity, including
-    the requested source and explicit overrides. Runtime adapters use
-    :meth:`runtime_config` rather than reparsing YAML.
+    The spec freezes the already resolved configuration and request information. Runtime
+    adapters consume :meth:`runtime_config` rather than reparsing YAML or rebuilding a
+    second identity for the same experiment.
     """
 
     schema_version: int
@@ -56,32 +42,18 @@ class CompiledRunSpec:
     pipeline: str
     config: dict[str, Any]
     overrides: dict[str, Any]
-    effective_config_sha256: str
-    sha256: str
 
     @classmethod
     def compile(cls, resolved: ResolvedConfig) -> "CompiledRunSpec":
         """Compile a compatibility ``ResolvedConfig`` without changing its semantics."""
 
-        config = _plain(deepcopy(resolved.data))
-        overrides = _plain(deepcopy(resolved.overrides))
-        effective_digest = semantic_config_sha256(config)
-        invocation_payload = {
-            "schema_version": 1,
-            "requested_config": resolved.requested,
-            "pipeline": resolved.pipeline,
-            "effective_config_sha256": effective_digest,
-            "overrides": overrides,
-        }
         return cls(
             schema_version=1,
             requested_config=resolved.requested,
             resolved_config_path=str(resolved.path),
             pipeline=resolved.pipeline,
-            config=config,
-            overrides=overrides,
-            effective_config_sha256=effective_digest,
-            sha256=_digest(invocation_payload),
+            config=_plain(deepcopy(resolved.data)),
+            overrides=_plain(deepcopy(resolved.overrides)),
         )
 
     def runtime_config(self) -> dict[str, Any]:
@@ -90,7 +62,7 @@ class CompiledRunSpec:
         return deepcopy(self.config)
 
     def as_dict(self) -> dict[str, Any]:
-        """Return a serializable representation of both configuration identities."""
+        """Return the serializable runtime handoff."""
 
         return {
             "schema_version": self.schema_version,
@@ -99,6 +71,4 @@ class CompiledRunSpec:
             "pipeline": self.pipeline,
             "config": self.runtime_config(),
             "overrides": deepcopy(self.overrides),
-            "effective_config_sha256": self.effective_config_sha256,
-            "sha256": self.sha256,
         }
