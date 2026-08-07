@@ -3,11 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from phmfactory.commands import preflight
-from phmfactory.config import (
-    analyze_config,
-    resolve_config,
-    semantic_config_sha256,
-)
+from phmfactory.config import analyze_config, resolve_config
 from scripts.config_inspect import inspect_config
 from scripts.validate_configs import validate_one
 
@@ -32,15 +28,15 @@ def _minimal_config(path: Path, *, epochs: int) -> None:
     )
 
 
-def test_preset_and_explicit_path_have_same_effective_identity() -> None:
+def test_preset_and_explicit_path_have_same_effective_config() -> None:
     preset = analyze_config("smoke")
     explicit = analyze_config(SMOKE_CONFIG)
 
     assert preset.effective_config == explicit.effective_config
-    assert preset.effective_config_sha256 == explicit.effective_config_sha256
+    assert preset.pipeline == explicit.pipeline
 
 
-def test_equivalent_yaml_and_cli_override_have_same_effective_identity(
+def test_equivalent_yaml_and_cli_override_have_same_effective_config(
     tmp_path: Path,
 ) -> None:
     direct = tmp_path / "direct.yaml"
@@ -55,10 +51,7 @@ def test_equivalent_yaml_and_cli_override_have_same_effective_identity(
     )
 
     assert direct_analysis.effective_config == override_analysis.effective_config
-    assert (
-        direct_analysis.effective_config_sha256
-        == override_analysis.effective_config_sha256
-    )
+    assert direct_analysis.pipeline == override_analysis.pipeline
 
 
 def test_precedence_is_base_then_config_then_explicit_local_then_cli(
@@ -129,7 +122,7 @@ def test_resolve_config_is_a_compatibility_view_of_analysis() -> None:
     assert resolved.path == analysis.path
 
 
-def test_inspector_and_public_analysis_return_same_config_and_hash(
+def test_inspector_and_public_analysis_return_same_effective_config(
     tmp_path: Path,
 ) -> None:
     override = f"environment.output_dir={tmp_path / 'output'}"
@@ -137,14 +130,14 @@ def test_inspector_and_public_analysis_return_same_config_and_hash(
     inspected = inspect_config("smoke", overrides=[override])
 
     assert inspected.resolved == analysis.effective_config
-    assert inspected.effective_config_sha256 == analysis.effective_config_sha256
+    assert inspected.local_config_path is None
 
 
 def test_validator_accepts_the_same_maintained_smoke_config() -> None:
     assert validate_one(SMOKE_CONFIG) == []
 
 
-def test_preflight_reports_the_same_effective_hash(
+def test_preflight_reports_the_same_execution_inputs(
     tmp_path: Path,
 ) -> None:
     override = f"environment.output_dir={tmp_path / 'preflight'}"
@@ -152,12 +145,8 @@ def test_preflight_reports_the_same_effective_hash(
 
     report = preflight.run(["--config", "smoke", "--override", override])
 
-    assert report["effective_config_sha256"] == expected.effective_config_sha256
     assert report["pipeline"] == expected.pipeline
+    assert report["resolved_config_path"] == str(expected.path)
+    assert "effective_config_sha256" not in report
+    assert "run_spec_sha256" not in report
     assert not (tmp_path / "preflight").exists()
-
-
-def test_semantic_hash_is_stable_for_mapping_order() -> None:
-    left = {"pipeline": "P", "trainer": {"device": "cpu", "epochs": 1}}
-    right = {"trainer": {"epochs": 1, "device": "cpu"}, "pipeline": "P"}
-    assert semantic_config_sha256(left) == semantic_config_sha256(right)
