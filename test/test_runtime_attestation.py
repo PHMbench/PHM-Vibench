@@ -11,13 +11,11 @@ from phmfactory import cli
 from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
 from phmfactory.runtime import (
     AttestationError,
-    AttestationWriteError,
     CompiledRunSpec,
     ExecutionEnvelope,
     ExecutionStatus,
     RunAttestation,
 )
-from phmfactory.runtime import attestation as attestation_module
 
 
 def _resolved(tmp_path: Path) -> ResolvedConfig:
@@ -53,30 +51,29 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_prepare_writes_pending_manifest_atomically(tmp_path: Path) -> None:
+def test_prepare_writes_minimal_pending_manifest(tmp_path: Path) -> None:
     spec = CompiledRunSpec.compile(_resolved(tmp_path))
     envelope = ExecutionEnvelope(spec=spec, pipeline_module="src.pipeline")
-    attestation = RunAttestation.prepare(spec, "src.pipeline", envelope)
+    manifest = RunAttestation.prepare(spec, "src.pipeline", envelope)
 
-    payload = _load(attestation.manifest_path)
+    payload = _load(manifest.manifest_path)
     assert payload["status"] == "pending"
-    assert payload["run_spec"]["sha256"] == spec.sha256
-    assert (
-        payload["run_spec"]["effective_config_sha256"]
-        == spec.effective_config_sha256
-    )
+    assert payload["run_spec"]["pipeline"] == spec.pipeline
+    assert payload["run_spec"]["requested_config"] == spec.requested_config
+    assert "sha256" not in payload["run_spec"]
+    assert "artifacts" not in payload
+    assert "evidence" not in payload
     assert payload["failure"] is None
-    assert not list(attestation.manifest_path.parent.glob("*.tmp"))
 
 
-def test_success_replaces_pending_manifest(tmp_path: Path) -> None:
+def test_success_replaces_pending_status(tmp_path: Path) -> None:
     spec = CompiledRunSpec.compile(_resolved(tmp_path))
     envelope = ExecutionEnvelope(spec=spec, pipeline_module="src.pipeline")
-    attestation = RunAttestation.prepare(spec, "src.pipeline", envelope)
+    manifest = RunAttestation.prepare(spec, "src.pipeline", envelope)
     envelope.execute(SimpleNamespace(pipeline=lambda args: {"metric": 1.0}), object())
-    attestation.write(envelope)
+    manifest.write(envelope)
 
-    payload = _load(attestation.manifest_path)
+    payload = _load(manifest.manifest_path)
     assert payload["status"] == "succeeded"
     assert payload["execution"]["status"] == "succeeded"
     assert payload["execution"]["finished_at"] is not None
@@ -85,16 +82,16 @@ def test_success_replaces_pending_manifest(tmp_path: Path) -> None:
 def test_failure_manifest_preserves_stage_and_error(tmp_path: Path) -> None:
     spec = CompiledRunSpec.compile(_resolved(tmp_path))
     envelope = ExecutionEnvelope(spec=spec, pipeline_module="src.pipeline")
-    attestation = RunAttestation.prepare(spec, "src.pipeline", envelope)
+    manifest = RunAttestation.prepare(spec, "src.pipeline", envelope)
 
     def fail(args):
         raise RuntimeError("training failed")
 
     with pytest.raises(RuntimeError, match="training failed"):
         envelope.execute(SimpleNamespace(pipeline=fail), object())
-    attestation.write(envelope)
+    manifest.write(envelope)
 
-    payload = _load(attestation.manifest_path)
+    payload = _load(manifest.manifest_path)
     assert payload["status"] == "failed"
     assert payload["failure"] == {
         "stage": "pipeline",
@@ -111,27 +108,6 @@ def test_missing_output_dir_blocks_before_execution(tmp_path: Path) -> None:
 
     with pytest.raises(AttestationError, match="environment.output_dir"):
         RunAttestation.prepare(spec, "src.pipeline", envelope)
-
-
-def test_failed_atomic_replace_leaves_previous_manifest_valid(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    spec = CompiledRunSpec.compile(_resolved(tmp_path))
-    envelope = ExecutionEnvelope(spec=spec, pipeline_module="src.pipeline")
-    attestation = RunAttestation.prepare(spec, "src.pipeline", envelope)
-    before = _load(attestation.manifest_path)
-    envelope.execute(SimpleNamespace(pipeline=lambda args: True), object())
-
-    monkeypatch.setattr(
-        attestation_module.os,
-        "replace",
-        lambda *args: (_ for _ in ()).throw(OSError("replace denied")),
-    )
-    with pytest.raises(AttestationWriteError, match="replace denied"):
-        attestation.write(envelope)
-
-    assert _load(attestation.manifest_path) == before
 
 
 def test_cli_writes_success_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -154,10 +130,7 @@ def test_cli_writes_success_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyP
     payload = _load(Path(args.run_manifest_path))
     assert payload["run_id"] == args.run_id
     assert payload["status"] == "succeeded"
-    assert (
-        payload["run_spec"]["effective_config_sha256"]
-        == analysis.effective_config_sha256
-    )
+    assert "effective_config_sha256" not in payload["run_spec"]
     assert args.execution_envelope.status is ExecutionStatus.SUCCEEDED
 
 
