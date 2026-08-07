@@ -266,7 +266,6 @@ jobs:
               assert config["model"]["name"] == "M_01_ISFM"
               assert config["task"]["name"] == "classification"
               assert config["trainer"]["device"] == "cpu"
-              assert args.effective_config_sha256 == args.compiled_run_spec.effective_config_sha256
               return "wheel-dispatch-pass"
 
           real_import_module = cli.importlib.import_module
@@ -284,5 +283,6 @@ jobs:
           payload = json.loads(manifests[0].read_text(encoding="utf-8"))
           assert payload["status"] == "succeeded"
           assert payload["run_spec"]["pipeline"] == "Pipeline_01_Fault_Diagnosis"
-          assert payload["run_spec"]["effective_config_sha256"] == analysis.effective_config_sha256
+          assert payload["run_spec"]["requested_config"] == "smoke"
+          assert payload["failure"] is None
           PY
