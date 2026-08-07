@@ -1,6 +1,6 @@
 """Public command routing and process entrypoints for PHMFactory.
 
-This module exposes a programmatic API and an operating-system process boundary.  Both
+This module exposes a programmatic API and an operating-system process boundary. Both
 consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML or
 searches for machine-local configuration after compilation.
 """
@@ -62,23 +62,23 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     ).pipeline
 
 
-def _write_failed_attestation(
-    attestation: RunAttestation,
+def _write_failed_manifest(
+    manifest: RunAttestation,
     envelope: ExecutionEnvelope,
     original_error: BaseException,
 ) -> None:
     """Persist terminal failure state without replacing the original exception."""
 
     try:
-        attestation.write(envelope)
+        manifest.write(envelope)
     except AttestationWriteError as write_error:
         raise write_error from original_error
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Analyze, record, authorize, execute, and index one Pipeline invocation.
+    """Analyze, record, authorize, execute, and record one Pipeline invocation.
 
-    Configuration composition occurs exactly once in :func:`analyze_config`.  Protected
+    Configuration composition occurs exactly once in :func:`analyze_config`. Protected
     runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
     The function returns the Pipeline's explicit Python result for programmatic callers;
     process exit handling is owned by :func:`entrypoint`.
@@ -106,14 +106,14 @@ def run(args: argparse.Namespace) -> Any:
     args.execution_envelope = envelope
 
     try:
-        attestation = RunAttestation.prepare(compiled, module_name, envelope)
+        manifest = RunAttestation.prepare(compiled, module_name, envelope)
     except BaseException as error:
-        envelope.record_failure(error, stage="attestation_prepare")
+        envelope.record_failure(error, stage="manifest_prepare")
         raise
 
-    args.run_attestation = attestation
-    args.run_id = attestation.run_id
-    args.run_manifest_path = str(attestation.manifest_path)
+    args.run_attestation = manifest  # compatibility for existing external hooks
+    args.run_id = manifest.run_id
+    args.run_manifest_path = str(manifest.manifest_path)
 
     try:
         descriptor = require_pipeline_access(
@@ -123,7 +123,7 @@ def run(args: argparse.Namespace) -> Any:
         )
     except BaseException as error:
         envelope.record_failure(error, stage="maturity")
-        _write_failed_attestation(attestation, envelope, error)
+        _write_failed_manifest(manifest, envelope, error)
         raise
     args.pipeline_descriptor = descriptor
 
@@ -131,22 +131,22 @@ def run(args: argparse.Namespace) -> Any:
         pipeline_module = importlib.import_module(module_name)
     except BaseException as error:
         envelope.record_failure(error, stage="import")
-        _write_failed_attestation(attestation, envelope, error)
+        _write_failed_manifest(manifest, envelope, error)
         raise
 
     try:
         result = envelope.execute(pipeline_module, args)
     except BaseException as error:
-        _write_failed_attestation(attestation, envelope, error)
+        _write_failed_manifest(manifest, envelope, error)
         raise
 
     try:
-        attestation.write(envelope)
+        manifest.write(envelope)
     except AttestationWriteError as error:
-        envelope.record_failure(error, stage="attestation_finalize")
+        envelope.record_failure(error, stage="manifest_finalize")
         raise
 
-    print(f"run_manifest={attestation.manifest_path}")
+    print(f"run_manifest={manifest.manifest_path}")
     print("完成所有实验！")
     return result
 
