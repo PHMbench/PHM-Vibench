@@ -101,8 +101,6 @@ def run(args: argparse.Namespace) -> Any:
     args.config_analysis = analysis
     args.compiled_run_spec = compiled
     args.resolved_config_data = compiled.runtime_config()
-    args.effective_config_sha256 = analysis.effective_config_sha256
-    args.run_spec_sha256 = compiled.sha256
 
     module_name = pipeline_module_name(analysis.pipeline, warn=False)
     envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
