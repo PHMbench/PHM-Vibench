@@ -26,7 +26,6 @@ from phmfactory.runtime import (
     ExecutionEnvelope,
     RunAttestation,
 )
-from phmfactory.runtime.evidence import register_pipeline_result_evidence
 
 
 COMMANDS = ("data", "doctor", "demo", "preflight")
@@ -138,13 +137,6 @@ def run(args: argparse.Namespace) -> Any:
     try:
         result = envelope.execute(pipeline_module, args)
     except BaseException as error:
-        _write_failed_attestation(attestation, envelope, error)
-        raise
-
-    try:
-        register_pipeline_result_evidence(attestation, compiled, result)
-    except BaseException as error:
-        envelope.record_failure(error, stage="evidence_finalize")
         _write_failed_attestation(attestation, envelope, error)
         raise
 
