@@ -10,9 +10,6 @@ import yaml
 from apps.streamlit import config_service as cs
 
 
-DIGEST = "a" * 64
-
-
 def _repo(tmp_path: Path) -> Path:
     (tmp_path / "main.py").write_text("# test\n", encoding="utf-8")
     (tmp_path / "configs" / "demo").mkdir(parents=True)
@@ -25,7 +22,6 @@ def _write_registry(root: Path, body: str) -> None:
 
 def _inspector_payload() -> dict:
     return {
-        "effective_config_sha256": DIGEST,
         "local_config_path": None,
         "resolved": {block: {} for block in cs.CONFIG_BLOCKS},
         "sources": {},
@@ -226,7 +222,6 @@ def test_inspect_config_parses_success(
 
     assert report.ok is True
     assert report.resolved == payload["resolved"]
-    assert report.effective_config_sha256 == DIGEST
     assert report.local_config_path is None
 
 
