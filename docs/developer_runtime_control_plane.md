@@ -1,7 +1,7 @@
 # Runtime control plane
 
-PHMFactory separates user intent, execution, and run records so one command cannot be
-silently reinterpreted by a downstream Pipeline.
+PHMFactory separates configuration resolution, execution, and minimal run recording so a
+user command cannot be silently reinterpreted by a downstream Pipeline.
 
 ## Maintained public path
 
@@ -12,21 +12,19 @@ preset or YAML
   -> phmfactory.config.analyze_config
   -> ConfigAnalysis
   -> CompiledRunSpec
-  -> RunAttestation (pending)
   -> Pipeline maturity gate
   -> canonical Pipeline module or narrow adapter
   -> protected src runtime
-  -> Pipeline-specific evidence registration
-  -> RunAttestation (succeeded or failed)
+  -> run_manifest.json
 ```
 
-The public path has one configuration authority. Validators, inspectors, preflight, the
-CLI, support generation, Pipeline 06, and the optional Streamlit workspace all consume the
-same effective mapping.
+The public path has one configuration authority. Run, preflight, inspection, validation,
+support generation, Pipeline 06, and the optional Streamlit workspace consume the same
+effective mapping.
 
 ## `ConfigAnalysis`: one configuration truth
 
-`ConfigAnalysis` records:
+`ConfigAnalysis` resolves:
 
 ```text
 requested source or preset
@@ -38,7 +36,6 @@ optional explicit local-config path
 ordered source files
 last source of each leaf field
 diagnostics
-effective_config_sha256
 ```
 
 The maintained precedence is:
@@ -50,42 +47,34 @@ base_configs
 < CLI --override values
 ```
 
-No public component automatically searches for `configs/local/local.yaml`. Hidden files
-would make the same visible command execute different experiments on different machines.
+No public component automatically searches for `configs/local/local.yaml`. Hidden local
+files would make the same visible command execute different experiments on different
+machines.
 
-The effective hash includes only the canonical effective mapping. It deliberately excludes
-preset spelling, source path, installation path, and provenance metadata. Consequently:
+Correctness is checked by comparing the resolved configuration itself and the behavior it
+produces. Runtime correctness does not depend on a configuration digest.
 
-```text
---config smoke
+## `CompiledRunSpec`: configuration-to-runtime handoff
+
+`CompiledRunSpec` owns a deep-copied runtime mapping plus the request information needed
+for execution. Runtime adapters call:
+
+```python
+compiled_run_spec.runtime_config()
 ```
 
-and:
+They must not re-read source YAML, rediscover local configuration, or reapply CLI
+overrides.
+
+The important contract is therefore:
 
 ```text
---config configs/demo/00_smoke/dummy_dg.yaml
+configuration resolution ends
+-> CompiledRunSpec
+-> execution consumes that configuration
 ```
 
-share `effective_config_sha256` when their final mappings are equal.
-
-## `CompiledRunSpec`: runtime and invocation identity
-
-`CompiledRunSpec` contains a deep-copied runtime mapping and two hashes:
-
-```text
-effective_config_sha256
-  identifies the scientific configuration semantics
-
-sha256 / run_spec_sha256
-  identifies this invocation, including requested source and explicit overrides
-```
-
-Runtime adapters call `compiled_run_spec.runtime_config()` to obtain a mutable copy. They
-must not re-read the source YAML or reapply CLI overrides.
-
-The absolute resolved config path remains available for diagnostics but is excluded from
-both identities. An installed preset therefore behaves consistently across checkout and
-wheel locations.
+not a second identity or verification system.
 
 ## Execution boundary
 
@@ -101,36 +90,34 @@ A Pipeline module must expose `pipeline(args)` and return an explicit result. Re
 Exceptions keep their traceback while the envelope records failure stage, type, and
 message.
 
-The public process prints the completion message only after execution, evidence
-registration, and final manifest writing succeed. A printed warning followed by `return
-None` cannot become a successful command.
+No exception may switch to another Pipeline, model, dataset adapter, task, or objective.
 
-## Mandatory run manifest
+## Minimal run manifest
 
-Before Pipeline import, PHMFactory creates:
+Each public experiment writes:
 
 ```text
 <environment.output_dir>/.phmfactory/runs/<run-id>/run_manifest.json
 ```
 
-The pending file is atomically replaced with the terminal state. The manifest includes:
+The manifest is deliberately small. It records only information useful for understanding
+whether the requested run completed:
 
 ```text
 run ID and status
-run_spec_sha256
-effective_config_sha256
 canonical Pipeline and imported module
-requested source, resolved path, and overrides
-code revision when available
-Python/platform summary
+requested config and resolved config path
+explicit overrides
 execution timestamps
 structured failure information
-indexed artifacts and evidence sections
 ```
 
-Writes use a same-directory temporary file, flush, `fsync`, and `os.replace`. Failure to
-create the pending manifest prevents Pipeline import. Failure to write the final success
-state prevents a success claim.
+Metrics, checkpoints, figures, generated signals, and other scientific outputs stay in
+their owning experiment directories. The runtime does not build a second artifact index,
+hash chain, evidence ledger, or attestation hierarchy around them.
+
+A successful experiment is determined by the actual Pipeline lifecycle and evaluation,
+not by post-hoc evidence registration.
 
 ## Shared classification runtime
 
@@ -149,6 +136,8 @@ consume compiled config
 Pipeline 01 is a thin default adapter. Pipeline 05 adds only explainability hooks. Hooks
 must not duplicate config loading, factory construction, training, testing, or cleanup.
 
+## Pipeline 02
+
 Pipeline 02 chooses exactly one mode before execution:
 
 ```text
@@ -157,7 +146,9 @@ compiled config with stages    -> unified multi-stage orchestrator
 explicit legacy_dual_yaml       -> compatibility adapter + orchestrator
 ```
 
-An exception never changes the selected algorithm.
+An exception never changes the selected mode or algorithm. A completed stage must have a
+valid checkpoint and a valid evaluation result; evaluation failure must propagate rather
+than becoming an empty-metrics success.
 
 ## Pipeline 06 compiled-config adapter
 
@@ -173,43 +164,24 @@ The public descriptor imports the narrow adapter:
 phmfactory.runtime.pipeline06_adapter
 ```
 
-Its only responsibilities are:
+Its responsibilities are limited to:
 
 1. require the compiled Pipeline to be `Pipeline_06_Generative_Modeling`;
 2. convert `compiled_run_spec.runtime_config()` to the namespace shape expected by the
    protected implementation;
 3. dispatch the already selected `train`, `sample`, or `eval` stage;
-4. preserve stage-ledger failure handling.
+4. preserve the Pipeline's own stage failure handling.
 
-It does not re-read YAML, apply overrides a second time, discover local files, or alter
-the generative algorithm. Direct imports of the historical `src` function keep an
-explicit compatibility loader, but that path is not the maintained CLI authority.
+The public runtime does not re-index Pipeline 06 outputs into a second evidence system.
 
 ## Streamlit boundary
 
-The optional UI edits values and calls the public inspector. It does not merge base
-configs in Python UI code, discover a local YAML, import a Pipeline, or construct a
+The optional UI edits values and calls the public configuration tools. It does not merge
+base configs independently, discover a local YAML, import a Pipeline, or construct a
 Trainer.
 
-The UI receives the same `effective_config_sha256` as CLI preflight. The displayed
-reproduction command is the command passed to the public runtime. Edited Advanced YAML is
-a standalone effective config and contains no invisible local layer.
-
-## Evidence convergence
-
-`RunAttestation` is the only invocation-level run identity. Metrics, checkpoints,
-explainability files, stage ledgers, synthetic manifests, and evaluation reports remain
-separate artifacts indexed through:
-
-```python
-run_attestation.register_artifact(role=..., path=..., sha256=..., metadata=...)
-run_attestation.set_evidence(section, value)
-run_attestation.append_evidence(section, value)
-```
-
-A Pipeline-specific file extends the run; it does not create another top-level run
-identity. Missing required evidence changes the invocation to failed even when model code
-completed.
+The displayed reproduction command is the command passed to the public runtime. Edited
+Advanced YAML is a standalone effective config and contains no invisible local layer.
 
 ## Pipeline maturity
 
@@ -220,20 +192,20 @@ and release support. Pipeline 03 and Pipeline 04 require:
 phmfactory --config <yaml> --allow-experimental
 ```
 
-The flag acknowledges maturity; it does not promote support. Pipeline 01 and the
-maintained single-stage Pipeline 02 path remain the release-supported surface. Pipeline
-05, Pipeline 06, and Pipeline_ID remain outside the maintained combination table unless
-current evidence promotes an exact configuration.
+The flag acknowledges maturity; it does not promote support. Execution smoke and
+scientific protocol validity remain separate claims.
 
 ## Invariants for future changes
 
 1. Public configuration composition has one implementation.
 2. Machine-local YAML is an explicit input.
-3. Run, preflight, inspect, validate, UI, and Pipeline 06 share the effective hash.
+3. Run, preflight, inspect, validate, UI, and Pipeline adapters use the same effective
+   configuration, not separate hash-based identities.
 4. Overrides are applied exactly once.
 5. Runtime code receives a copy and cannot mutate the compiled contract.
 6. Errors propagate from their source; no exception activates another algorithm.
 7. `None` is not a successful Pipeline result.
 8. Resources close through `finally` boundaries.
-9. Every public run creates one mandatory terminal manifest.
-10. Discoverable, runnable, supported, and benchmark-valid remain distinct claims.
+9. Each public run keeps one minimal terminal run manifest.
+10. Discoverable, runnable, supported, baseline-valid, and benchmark-ready remain distinct
+    claims.
