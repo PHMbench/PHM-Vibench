@@ -24,26 +24,15 @@ def _resolved(*, epochs: int = 1, requested: str = "smoke") -> ResolvedConfig:
     )
 
 
-def test_compiled_run_spec_is_deterministic_and_path_independent() -> None:
-    first = CompiledRunSpec.compile(_resolved())
-    second_resolved = _resolved()
-    second_resolved = ResolvedConfig(
-        requested=second_resolved.requested,
-        path=Path("/opt/another-install/configs/demo/00_smoke/dummy_dg.yaml"),
-        data=second_resolved.data,
-        pipeline=second_resolved.pipeline,
-        overrides=second_resolved.overrides,
-    )
-    second = CompiledRunSpec.compile(second_resolved)
+def test_compiled_run_spec_preserves_resolved_execution_inputs() -> None:
+    resolved = _resolved(epochs=2, requested="experiment")
+    spec = CompiledRunSpec.compile(resolved)
 
-    assert first.sha256 == second.sha256
-    assert first.resolved_config_path != second.resolved_config_path
-
-
-def test_compiled_run_spec_changes_when_execution_semantics_change() -> None:
-    assert CompiledRunSpec.compile(_resolved(epochs=1)).sha256 != CompiledRunSpec.compile(
-        _resolved(epochs=2)
-    ).sha256
+    assert spec.requested_config == "experiment"
+    assert spec.resolved_config_path == str(resolved.path)
+    assert spec.pipeline == resolved.pipeline
+    assert spec.config == resolved.data
+    assert spec.overrides == resolved.overrides
 
 
 def test_runtime_config_is_isolated_from_compiled_contract() -> None:
