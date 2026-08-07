@@ -102,7 +102,6 @@ class ValidationReport:
     sources: Mapping[str, str] = field(default_factory=dict)
     targets: Mapping[str, Any] = field(default_factory=dict)
     sanity: Tuple[Mapping[str, Any], ...] = ()
-    effective_config_sha256: str = ""
     local_config_path: str | None = None
     stdout: str = ""
     stderr: str = ""
@@ -533,7 +532,7 @@ def inspect_config(
     python_executable: Optional[str] = None,
     local_config_path: Optional[Path] = None,
 ) -> ValidationReport:
-    """Invoke the public inspector and preserve its effective config identity."""
+    """Invoke the public inspector and return its resolved configuration semantics."""
 
     command = [
         python_executable or sys.executable,
@@ -603,12 +602,7 @@ def inspect_config(
         )
     resolved = payload.get("resolved") or {}
     sanity_raw = payload.get("sanity") or []
-    digest = str(payload.get("effective_config_sha256") or "")
-    if (
-        not isinstance(resolved, dict)
-        or not isinstance(sanity_raw, list)
-        or len(digest) != 64
-    ):
+    if not isinstance(resolved, dict) or not isinstance(sanity_raw, list):
         return ValidationReport(
             False,
             tuple(command),
@@ -625,7 +619,6 @@ def inspect_config(
         sources=payload.get("sources") or {},
         targets=payload.get("targets") or {},
         sanity=sanity,
-        effective_config_sha256=digest,
         local_config_path=payload.get("local_config_path"),
         stdout=completed.stdout,
         stderr=completed.stderr,
