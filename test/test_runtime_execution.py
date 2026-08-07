@@ -40,7 +40,7 @@ def test_envelope_records_success() -> None:
     assert envelope.started_at is not None
     assert envelope.finished_at is not None
     assert envelope.error_type is None
-    assert envelope.as_dict()["run_spec_sha256"] == envelope.spec.sha256
+    assert envelope.as_dict()["pipeline"] == "Pipeline_01_Fault_Diagnosis"
 
 
 def test_envelope_rejects_none_as_ambiguous_success() -> None:
