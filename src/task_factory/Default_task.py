@@ -60,6 +60,11 @@ class Default_task(pl.LightningModule):
             and bool(gpus)
             and torch.cuda.is_available()
         )
+        if requested_device in {"cuda", "gpu"} and bool(gpus) and not use_cuda:
+            raise RuntimeError(
+                "CUDA was explicitly requested but is unavailable; evidence-bearing "
+                "runs must not fall back to CPU"
+            )
         if use_cuda and hasattr(network, "cuda"):
             self.network = network.cuda()
         else:
@@ -110,7 +115,21 @@ class Default_task(pl.LightningModule):
         x = batch['x']
         file_id = batch['file_id']
         task_id = batch['task_id'] if 'task_id' in batch else None
-
+        if getattr(self.network, "requires_physical_metadata", False):
+            canonical_fields = (
+                "sample_rate_hz",
+                "rotation_speed_rpm",
+                "load_hp",
+            )
+            explicit_metadata = {
+                field: batch[field] for field in canonical_fields if field in batch
+            }
+            return self.network(
+                x,
+                file_id,
+                task_id,
+                physical_metadata=explicit_metadata or None,
+            )
         return self.network(x, file_id, task_id)
 
     # def _forward_pass(self, batch) -> torch.Tensor:
@@ -183,6 +202,21 @@ class Default_task(pl.LightningModule):
             raise KeyError(
                 f"Unable to resolve metadata Name for file_id={first_file_id!r}."
             ) from exc
+        if getattr(self.network, "requires_physical_metadata", False):
+            names = []
+            for current_file_id in file_ids:
+                try:
+                    names.append(self.metadata[current_file_id]['Name'])
+                except (KeyError, IndexError, TypeError) as exc:
+                    raise KeyError(
+                        "Unable to resolve metadata Name for "
+                        f"file_id={current_file_id!r}."
+                    ) from exc
+            if any(name != data_name for name in names):
+                raise ValueError(
+                    "decisive P04 batches cannot mix dataset Names because metric "
+                    "and physical metadata authority would be ambiguous"
+                )
 
         # 1. 前向传播。保留原始逐样本 file_id，不得用首个文件覆盖整批。
         y_hat = self.forward(batch)
