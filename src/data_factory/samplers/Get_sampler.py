@@ -1,6 +1,19 @@
 """Task-aware batch sampler selection."""
 
+from collections.abc import Mapping
+
+import pandas as pd
+
 from .Sampler import HierarchicalFewShotSampler, Same_system_Sampler
+
+
+def _missing_dataset_id(metadata_entry) -> bool:
+    if not isinstance(metadata_entry, Mapping) or "Dataset_id" not in metadata_entry:
+        return True
+    value = metadata_entry["Dataset_id"]
+    if isinstance(value, (list, tuple, set, dict)):
+        return True
+    return bool(pd.isna(value))
 
 
 def _require_metadata_coverage(dataset) -> None:
@@ -24,8 +37,7 @@ def _require_metadata_coverage(dataset) -> None:
     missing_systems = [
         file_id
         for file_id in selected_file_ids
-        if "Dataset_id" not in metadata[file_id]
-        or metadata[file_id]["Dataset_id"] is None
+        if _missing_dataset_id(metadata[file_id])
     ]
     if missing_systems:
         raise ValueError(
