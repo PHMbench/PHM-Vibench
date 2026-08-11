@@ -160,8 +160,11 @@ def test_label_contract_fails_closed(
         )
 
 
-def test_three_logit_objective_backpropagates_after_mapping() -> None:
-    task = _task()
+@pytest.mark.parametrize("condition", ["M1", "M2"])
+def test_three_logit_objective_backpropagates_only_through_declared_branch(
+    condition: str,
+) -> None:
+    task = _task(condition)
     batch = {
         "x": torch.randn(3, 256, 2),
         "y": torch.tensor([1, 2, 3]),
@@ -169,14 +172,37 @@ def test_three_logit_objective_backpropagates_after_mapping() -> None:
     }
 
     metrics = task._shared_step(batch, "train")
+    assert torch.equal(metrics["train_total_loss"], metrics["train_loss"])
     metrics["train_total_loss"].backward()
 
     assert torch.isfinite(metrics["train_total_loss"])
-    assert any(
-        parameter.grad is not None
-        for parameter in task.network.parameters()
+    gradients = {
+        name: parameter.grad
+        for name, parameter in task.network.named_parameters()
         if parameter.requires_grad
+    }
+    active_prefixes = (
+        ("encoder_1d.", "project_1d.", "head.")
+        if condition == "M1"
+        else ("encoder_2d.", "project_2d.", "head.")
     )
+    forbidden_prefixes = (
+        ("encoder_2d.", "project_2d.")
+        if condition == "M1"
+        else ("encoder_1d.", "project_1d.")
+    )
+    assert gradients
+    assert all(any(name.startswith(prefix) for prefix in active_prefixes) for name in gradients)
+    assert not any(
+        name.startswith(prefix)
+        for name in gradients
+        for prefix in forbidden_prefixes
+    )
+    for prefix in active_prefixes:
+        assert any(
+            name.startswith(prefix) and gradient is not None
+            for name, gradient in gradients.items()
+        )
 
 
 def test_m1_m2_consume_only_the_declared_view_and_match_heads() -> None:
