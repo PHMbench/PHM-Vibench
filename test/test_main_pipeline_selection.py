@@ -1,12 +1,16 @@
 from types import SimpleNamespace
 
-import main as main_module
 from phmfactory import cli
 
 
 def test_main_pipeline_override_selects_canonical_pipeline(tmp_path, monkeypatch) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text("pipeline: Pipeline_01_Fault_Diagnosis\n", encoding="utf-8")
+    config.write_text(
+        "pipeline: Pipeline_01_Fault_Diagnosis\n"
+        "environment:\n"
+        f"  output_dir: {tmp_path / 'runs'}\n",
+        encoding="utf-8",
+    )
 
     imported: list[str] = []
 
@@ -26,5 +30,5 @@ def test_main_pipeline_override_selects_canonical_pipeline(tmp_path, monkeypatch
     )
     monkeypatch.setattr(cli.importlib, "import_module", fake_import_module)
 
-    assert main_module.main() == str(config)
+    assert cli.main() == str(config)
     assert imported == ["src.Pipeline_02_Pretraining_Few_Shot"]

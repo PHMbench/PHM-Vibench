@@ -1,4 +1,5 @@
-# Cross-system few-shot demo: TSPN-style (v0.1.0 draft)
+# Compatibility filename: this demo uses hierarchical system/domain/label sampling
+# followed by ordinary CE classification. It is not generalized few-shot learning.
 
 pipeline: "Pipeline_01_Fault_Diagnosis"
 
@@ -10,15 +11,14 @@ base_configs:
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 
 environment:
-  project: "demo_cross_system_fewshot_tspn"
+  project: "demo_hierarchical_sampled_classification"
   seed: 0
-  output_dir: "results/demo/cross_system_fewshot_tspn"
-  notes: "Cross-system few-shot TSPN demo."
+  output_dir: "results/demo/hierarchical_sampled_classification"
+  notes: "Hierarchically sampled cross-system classification with CE; no support/query adaptation or base/novel evaluation."
 
 data: {}
 
 task:
-  # 使用 GFS 任务，选择两个典型系统做跨系统 few-shot 示例
   target_system_id: [1, 6]
   target_domain_num: 1
 

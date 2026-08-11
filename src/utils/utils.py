@@ -1,5 +1,6 @@
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+import os
 import torch
 try: 
     import wandb
@@ -24,40 +25,54 @@ def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -
 
 
 def load_best_model_checkpoint(model: LightningModule, trainer: Trainer) -> LightningModule:
+    """Load the best checkpoint produced by ``trainer`` before evaluation.
+
+    Evaluation must stop when no ``ModelCheckpoint`` callback exists, no best
+    path was recorded, the recorded file is missing, or the checkpoint does not
+    contain a Lightning ``state_dict``. Continuing with the current in-memory
+    model would misrepresent the experiment as best-checkpoint evaluation.
     """
-    加载训练过程中保存的最佳模型检查点。
-
-    参数:
-    - model: 要加载检查点权重的模型实例。
-    - trainer: 用于训练模型的训练器实例。
-
-    返回:
-    - 加载了最佳检查点权重的模型实例。
-    """
-    # 从trainer的callbacks中找到ModelCheckpoint实例，并获取best_model_path
-    model_checkpoint = None
-    for callback in trainer.callbacks:
-        if isinstance(callback, ModelCheckpoint):
-            model_checkpoint = callback
-            break
-
+    model_checkpoint = next(
+        (
+            callback
+            for callback in trainer.callbacks
+            if isinstance(callback, ModelCheckpoint)
+        ),
+        None,
+    )
     if model_checkpoint is None:
-        raise ValueError("ModelCheckpoint callback not found in trainer's callbacks.")
+        raise ValueError("ModelCheckpoint callback not found in trainer callbacks.")
 
     best_model_path = model_checkpoint.best_model_path
-    print(f"Best model path: {best_model_path}")
-
-    # 确保最佳模型路径不是空的
     if not best_model_path:
-        print("No best model path found. Please check if the training process saved checkpoints.")
-    else:
-    # 加载最佳检查点
-    # pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, [1mdo those steps only if you trust the source of the checkpoint[0m. 
-    # 	(1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.
-    # 	(2) Alternatively, to load with `weights_only=True` please check the recommended steps in the following error message.
-    # 	WeightsUnpickler error: Unsupported global: GLOBAL numpy._core.multiarray.scalar was not an allowed global by default. Please use `torch.serialization.add_safe_globals([scalar])` or the `torch.serialization.safe_globals([scalar])` context manager to allowlist this global if you trust this class/function.
-        state_dict = torch.load(best_model_path,weights_only =False)
-        model.load_state_dict(state_dict['state_dict'])
+        raise RuntimeError(
+            "Training did not produce a best checkpoint. Check the checkpoint "
+            "monitor, validation metrics, and save configuration before evaluation."
+        )
+    if not os.path.isfile(best_model_path):
+        raise FileNotFoundError(
+            f"Best checkpoint does not exist or is not a file: {best_model_path}"
+        )
+
+    try:
+        checkpoint = torch.load(
+            best_model_path,
+            map_location="cpu",
+            weights_only=False,
+        )
+        if not isinstance(checkpoint, dict) or not isinstance(
+            checkpoint.get("state_dict"), dict
+        ):
+            raise TypeError(
+                "Expected a Lightning checkpoint containing a mapping at "
+                "'state_dict'."
+            )
+        model.load_state_dict(checkpoint["state_dict"], strict=True)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to load best checkpoint '{best_model_path}': {exc}"
+        ) from exc
+
     return model
 
 

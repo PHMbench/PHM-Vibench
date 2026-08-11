@@ -1,8 +1,10 @@
 task:
-  name: "classification"
+  # Compatibility selector for the existing GFS sampler. The maintained task
+  # consumes the resulting batch with ordinary cross-entropy classification;
+  # it does not expose support/query masks or base/novel class semantics.
   type: "GFS"
+  name: "classification"
 
-  # CDDG/GFS few-shot 任务基础配置（参考 experiment_1_gfs_hse.yaml）
   target_system_id: [1, 13, 6, 12, 19]
   target_domain_num: 1
 
@@ -15,7 +17,8 @@ task:
   loss: "CE"
   metrics: ["acc", "f1", "precision", "recall"]
 
-  # GFS sampler 所需参数
+  # These fields control hierarchical batch sampling only. The current sampler
+  # selects one system per episode and emits one ordinary x/y batch.
   num_episodes: 100
   num_systems: 1
   num_domains: 1

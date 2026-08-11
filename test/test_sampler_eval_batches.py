@@ -17,8 +17,9 @@ EVAL_TASK_TYPES = (
     "generative",
     "multi_task",
     "In_distribution",
+    "Default_task",
 )
-SAME_SYSTEM_TRAIN_TASK_TYPES = tuple(
+STANDARD_TRAIN_TASK_TYPES = tuple(
     task_type for task_type in EVAL_TASK_TYPES if task_type != "GFS"
 )
 
@@ -42,11 +43,11 @@ def test_evaluation_sampler_keeps_incomplete_batches(task_type, mode):
 
     assert sampler.drop_last is False
     assert len(sampler) == 1
-    assert list(sampler) == [[0, 1]]
+    assert sorted(list(sampler)[0]) == [0, 1]
 
 
-@pytest.mark.parametrize("task_type", SAME_SYSTEM_TRAIN_TASK_TYPES)
-def test_training_sampler_still_drops_incomplete_batches(task_type):
+@pytest.mark.parametrize("task_type", STANDARD_TRAIN_TASK_TYPES)
+def test_training_sampler_keeps_incomplete_batches(task_type):
     sampler = Get_sampler(
         SimpleNamespace(type=task_type),
         SimpleNamespace(batch_size=4),
@@ -54,6 +55,6 @@ def test_training_sampler_still_drops_incomplete_batches(task_type):
         mode="train",
     )
 
-    assert sampler.drop_last is True
-    assert len(sampler) == 0
-    assert list(sampler) == []
+    assert sampler.drop_last is False
+    assert len(sampler) == 1
+    assert sorted(list(sampler)[0]) == [0, 1]

@@ -21,7 +21,6 @@ data:
   batch_size: 4
   num_workers: 0
   window_size: 128
-  stride: 16
   num_window: 8
 
 task:

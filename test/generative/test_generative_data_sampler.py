@@ -8,13 +8,16 @@ def test_generative_task_uses_standard_factory_sampler(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(
         sampler_module,
-        "_get_pretrain_sampler",
-        lambda args_data, dataset, mode: (
-            calls.append((args_data, dataset, mode)) or expected
+        "_get_standard_sampler",
+        lambda args_data, dataset, mode, task_name: (
+            calls.append((args_data, dataset, mode, task_name)) or expected
         ),
     )
     args_data = SimpleNamespace(batch_size=2)
-    dataset = object()
+    dataset = SimpleNamespace(
+        file_windows_list=[{"file_id": 1}],
+        metadata={1: {"Dataset_id": 0}},
+    )
 
     result = sampler_module.Get_sampler(
         SimpleNamespace(type="generative"),
@@ -24,4 +27,4 @@ def test_generative_task_uses_standard_factory_sampler(monkeypatch) -> None:
     )
 
     assert result is expected
-    assert calls == [(args_data, dataset, "train")]
+    assert calls == [(args_data, dataset, "train", "Pretrain")]

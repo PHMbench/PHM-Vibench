@@ -191,7 +191,7 @@ def _task_args():
     return SimpleNamespace(
         type="Default_task",
         name="classification",
-        target_system_id=None,
+        target_system_id=[1],
     )
 
 
