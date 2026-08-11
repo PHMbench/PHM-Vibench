@@ -1,0 +1,32 @@
+# Shared C03 execution/fairness smoke. Run an arm config, not this file.
+# This inherits the frozen C01 data boundary and C02 label/metric contract.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c02: "configs/experiments/p01/p01_c02_common.yaml"
+
+environment:
+  project: "p01_c03_generic_fusion_controls"
+  output_dir: "results/p01/c03_common_do_not_run"
+  notes: >-
+    C03 one-seed execution/fairness smoke only. It cannot establish comparative
+    performance, complementarity, or an alignment mechanism.
+
+task:
+  scheduler: null
+  grouped_evaluation:
+    goal_id: "C03"
+    run_stage: "smoke"
+    source_validation_tuning_trials: 0
+    forward_compute:
+      method: "torch.utils.flop_counter.FlopCounterMode_cpu_plus_explicit_two_token_attention_qk_av"
+      reference_condition: "M5"
+      batch_size: 1
+      parameter_relative_tolerance: 0.05
+      learned_forward_supported_flops_relative_tolerance: 0.10
+      c1_adjustment: "none_required_existing_M4_within_tolerances"
+
+trainer:
+  num_epochs: 1
+  early_stopping: false

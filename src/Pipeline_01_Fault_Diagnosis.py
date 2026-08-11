@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from copy import deepcopy
 import json
 import math
 import os
@@ -10,7 +11,9 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from torch.utils.flop_counter import FlopCounterMode
 
+from src.model_factory import build_model
 from src.runtime import (
     ClassificationContext,
     ClassificationHooks,
@@ -171,6 +174,181 @@ def _p01_parameter_counts(model: Any) -> dict[str, int]:
     return counts
 
 
+def _profile_p01_learned_forward_flops(
+    model: Any,
+    *,
+    window_size: int,
+    batch_size: int,
+) -> dict[str, Any]:
+    """Count supported learned-forward FLOPs on one fixed CPU input."""
+
+    if window_size < 1 or batch_size < 1:
+        raise ValueError("P01 forward profile dimensions must be positive")
+    profile_model = deepcopy(model).cpu().eval()
+    in_channels = int(getattr(profile_model, "in_channels", 0))
+    if in_channels < 1:
+        raise ValueError("P01 forward profile requires model.in_channels")
+    sample = torch.zeros(batch_size, window_size, in_channels, dtype=torch.float32)
+    previous_fastpath = torch.backends.mha.get_fastpath_enabled()
+    torch.backends.mha.set_fastpath_enabled(False)
+    try:
+        counter = FlopCounterMode(display=False)
+        with torch.inference_mode(), counter:
+            logits = profile_model(sample)
+    finally:
+        torch.backends.mha.set_fastpath_enabled(previous_fastpath)
+    if logits.shape != (batch_size, int(getattr(profile_model, "num_classes", 0))):
+        raise RuntimeError(
+            "P01 forward profile produced an unexpected output shape "
+            f"{tuple(logits.shape)}"
+        )
+    raw_counts = counter.get_flop_counts().get("Global", {})
+    by_operator = {
+        str(operator): int(value)
+        for operator, value in raw_counts.items()
+        if int(value) > 0
+    }
+    attention_interaction_flops = 0
+    attention = getattr(profile_model, "attention", None)
+    if attention is not None:
+        tokens = 2
+        heads = int(attention.num_heads)
+        head_dim = int(attention.embed_dim) // heads
+        # Two matrix multiplications (QK^T and attention-weighted V), using the
+        # two-FLOPs-per-MAC convention. FlopCounterMode accounts for the Q/K/V
+        # and output Linear projections but not these native-MHA interactions.
+        attention_interaction_flops = (
+            4 * batch_size * heads * tokens * tokens * head_dim
+        )
+        by_operator["explicit_two_token_attention_qk_av"] = (
+            attention_interaction_flops
+        )
+    total = int(counter.get_total_flops()) + attention_interaction_flops
+    if total <= 0:
+        raise RuntimeError("P01 forward FLOP counter reported no supported operations")
+    renderer = getattr(profile_model, "renderer", None)
+    rendered_shape: list[int] | None = None
+    if renderer is not None:
+        with torch.inference_mode():
+            rendered_shape = list(profile_model.render_2d_view(sample).shape)
+    return {
+        "learned_forward_supported_flops": total,
+        "by_operator": dict(sorted(by_operator.items())),
+        "batch_size": batch_size,
+        "window_size": window_size,
+        "input_shape": [batch_size, window_size, in_channels],
+        "output_shape": list(logits.shape),
+        "renderer_output_shape": rendered_shape,
+        "torch_version": torch.__version__,
+        "method": (
+            "torch.utils.flop_counter.FlopCounterMode_cpu_plus_"
+            "explicit_two_token_attention_qk_av"
+        ),
+        "scope": (
+            "one float32 eval/inference model forward; the deterministic renderer "
+            "executes, while its Hann/STFT/abs/log1p and unsupported normalization, "
+            "activation, pooling, and softmax operations are excluded; counted "
+            "learned operators use two FLOPs per MAC"
+        ),
+    }
+
+
+def build_p01_forward_compute_profile(
+    model: Any,
+    args_model: Any,
+    args_data: Any,
+    grouped_evaluation: Any,
+    *,
+    condition_id: str,
+) -> dict[str, Any]:
+    """Compare one C03 control forward with the matched M5 reference."""
+
+    profile_config = getattr(grouped_evaluation, "forward_compute", None)
+    if profile_config is None:
+        raise ValueError("C03 requires task.grouped_evaluation.forward_compute")
+    method = str(getattr(profile_config, "method", ""))
+    expected_method = (
+        "torch.utils.flop_counter.FlopCounterMode_cpu_plus_"
+        "explicit_two_token_attention_qk_av"
+    )
+    if method != expected_method:
+        raise ValueError(
+            f"C03 forward_compute.method must be {expected_method!r}"
+        )
+    reference_condition = str(
+        getattr(profile_config, "reference_condition", "")
+    )
+    if reference_condition != "M5":
+        raise ValueError("C03 forward-compute reference_condition must be M5")
+    batch_size = int(getattr(profile_config, "batch_size", 0))
+    window_size = int(getattr(args_data, "window_size", 0))
+    parameter_tolerance = float(
+        getattr(profile_config, "parameter_relative_tolerance", -1.0)
+    )
+    flops_tolerance = float(
+        getattr(
+            profile_config,
+            "learned_forward_supported_flops_relative_tolerance",
+            -1.0,
+        )
+    )
+    if parameter_tolerance != 0.05 or flops_tolerance != 0.10:
+        raise ValueError(
+            "C03 requires the frozen 5% parameter and 10% forward-FLOP tolerances"
+        )
+
+    observed = _profile_p01_learned_forward_flops(
+        model, window_size=window_size, batch_size=batch_size
+    )
+    reference_args = deepcopy(args_model)
+    reference_args.condition = reference_condition
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(0)
+        reference_model = build_model(reference_args, metadata=None)
+    reference = _profile_p01_learned_forward_flops(
+        reference_model, window_size=window_size, batch_size=batch_size
+    )
+
+    observed_parameters = _trainable_parameters(model)
+    reference_parameters = _trainable_parameters(reference_model)
+    parameter_deviation = abs(observed_parameters - reference_parameters) / float(
+        reference_parameters
+    )
+    observed_flops = int(observed["learned_forward_supported_flops"])
+    reference_flops = int(reference["learned_forward_supported_flops"])
+    flops_deviation = abs(observed_flops - reference_flops) / float(
+        reference_flops
+    )
+    matched = (
+        parameter_deviation <= parameter_tolerance
+        and flops_deviation <= flops_tolerance
+    )
+    if condition_id == "C1":
+        adjustment = str(getattr(profile_config, "c1_adjustment", ""))
+        if adjustment != "none_required_existing_M4_within_tolerances":
+            raise ValueError("C1 requires the frozen zero-adjustment identity")
+        if str(getattr(args_model, "condition", "")) != "M4":
+            raise ValueError("C1 must execute the unchanged M4 model condition")
+        if not matched:
+            raise RuntimeError(
+                "C1 fails the frozen parameter/forward-FLOP matching tolerances"
+            )
+
+    return {
+        "condition_id": condition_id,
+        "model_condition": str(getattr(args_model, "condition", "")),
+        "observed": observed,
+        "m5_reference": reference,
+        "observed_trainable_parameters": observed_parameters,
+        "m5_reference_trainable_parameters": reference_parameters,
+        "parameter_relative_deviation": parameter_deviation,
+        "learned_forward_supported_flops_relative_deviation": flops_deviation,
+        "parameter_relative_tolerance": parameter_tolerance,
+        "learned_forward_supported_flops_relative_tolerance": flops_tolerance,
+        "within_tolerances": matched,
+    }
+
+
 def _macro_f1(
     truth: list[int], predictions: list[int], label_order: tuple[int, ...]
 ) -> float:
@@ -213,8 +391,10 @@ def _best_checkpoint_path(trainer: Any) -> str:
 
 def build_p01_grouped_result_rows(
     context: ClassificationContext,
+    *,
+    forward_compute_profile: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build C02 rows from frozen-checkpoint predictions at the group boundary."""
+    """Build P01 rows from frozen-checkpoint predictions at the group boundary."""
     grouped_evaluation = getattr(
         context.args_task, "grouped_evaluation", None
     )
@@ -225,39 +405,88 @@ def build_p01_grouped_result_rows(
             raise RuntimeError("P01 result rows require trainer.test output")
         return [dict(context.result)]
 
+    goal_id = str(getattr(grouped_evaluation, "goal_id", "C02"))
     condition = str(getattr(context.args_model, "condition", ""))
-    if condition not in {"M1", "M2"}:
-        raise ValueError(
-            "C02 grouped evaluation admits only the M1 and M2 conditions"
-        )
+    condition_id = str(
+        getattr(grouped_evaluation, "condition_id", condition)
+    )
+    if goal_id == "C02":
+        if condition not in {"M1", "M2"} or condition_id != condition:
+            raise ValueError(
+                "C02 grouped evaluation admits only matching M1/M2 identities"
+            )
+    elif goal_id == "C03":
+        expected_model_condition = {"M3": "M3", "M4": "M4", "C1": "M4"}
+        if expected_model_condition.get(condition_id) != condition:
+            raise ValueError(
+                "C03 condition identity/model mismatch: "
+                f"condition_id={condition_id!r}, model.condition={condition!r}"
+            )
+    else:
+        raise ValueError(f"Unsupported P01 grouped-evaluation goal {goal_id!r}")
     model = context.model
-    if condition == "M1":
+    if condition_id == "M1":
         forbidden = ("renderer", "encoder_2d", "project_2d")
         view_path = "waveform_1d_encoder_only"
         renderer_identity: Any = {
             "status": "not_applicable",
             "reason": "M1 has no 2D renderer or 2D encoder branch",
         }
-    else:
+    elif condition_id == "M2":
         forbidden = ("encoder_1d", "project_1d")
         view_path = "deterministic_renderer_then_2d_encoder_only"
+        renderer_identity = getattr(model, "renderer_identity")()
+    elif condition_id == "M3":
+        forbidden = ("attention",)
+        view_path = "waveform_1d_plus_deterministic_renderer_2d_concatenation"
+        renderer_identity = getattr(model, "renderer_identity")()
+    else:
+        forbidden = ()
+        view_path = (
+            "waveform_1d_plus_deterministic_renderer_2d_two_token_self_attention"
+        )
         renderer_identity = getattr(model, "renderer_identity")()
     present = [name for name in forbidden if getattr(model, name, None) is not None]
     if present:
         raise RuntimeError(
             f"Condition {condition} unexpectedly contains forbidden branch(es) {present}"
         )
+    if goal_id == "C03":
+        required = (
+            "encoder_1d",
+            "project_1d",
+            "renderer",
+            "encoder_2d",
+            "project_2d",
+        )
+        missing = [name for name in required if getattr(model, name, None) is None]
+        if missing:
+            raise RuntimeError(
+                f"C03 condition {condition_id} is missing paired component(s) {missing}"
+            )
+        expects_attention = condition_id in {"M4", "C1"}
+        if (getattr(model, "attention", None) is not None) is not expects_attention:
+            raise RuntimeError(
+                f"C03 condition {condition_id} has the wrong attention identity"
+            )
+        if bool(getattr(model, "uses_alignment_objective", False)):
+            raise RuntimeError(f"C03 condition {condition_id} cannot consume alignment")
+        alignment_identity = getattr(model, "alignment_identity", None)
+        if callable(alignment_identity) and alignment_identity() is not None:
+            raise RuntimeError(
+                f"C03 condition {condition_id} unexpectedly has alignment configuration"
+            )
 
     identity_reader = getattr(context.task, "label_contract_identity", None)
     label_identity = identity_reader() if callable(identity_reader) else None
     if not isinstance(label_identity, dict):
-        raise RuntimeError("C02 grouped evaluation requires a label contract")
+        raise RuntimeError("P01 grouped evaluation requires a label contract")
     raw_label_order = tuple(int(value) for value in label_identity["raw_labels"])
     training_indices = tuple(
         int(value) for value in label_identity["training_indices"]
     )
     if training_indices != tuple(range(len(raw_label_order))):
-        raise RuntimeError("C02 training indices must be contiguous from zero")
+        raise RuntimeError("P01 training indices must be contiguous from zero")
 
     expected_aggregation = (
         "mean_softmax_windows_then_argmax_per_domain_condition_block"
@@ -271,7 +500,7 @@ def build_p01_grouped_result_rows(
     metric_name = str(getattr(grouped_evaluation, "primary_metric", ""))
     if metric_name != "condition_block_macro_f1":
         raise ValueError(
-            "C02 grouped evaluation primary_metric must be "
+            "P01 grouped evaluation primary_metric must be "
             "'condition_block_macro_f1'"
         )
 
@@ -286,7 +515,7 @@ def build_p01_grouped_result_rows(
         int(value) for value in getattr(context.args_task, "target_domain_id", [])
     )
     if len(target_domains) != 2 or len(set(target_domains)) != 2:
-        raise ValueError("C02 requires exactly two distinct target domains")
+        raise ValueError("P01 requires exactly two distinct target domains")
     observed_domains = {int(record["domain_id"]) for record in records}
     if observed_domains != set(target_domains):
         raise ValueError(
@@ -319,7 +548,7 @@ def build_p01_grouped_result_rows(
         getattr(grouped_evaluation, "required_windows_per_group_domain", 0)
     )
     if min(expected_groups, expected_per_class, expected_windows) <= 0:
-        raise ValueError("C02 grouped support requirements must be positive")
+        raise ValueError("P01 grouped support requirements must be positive")
 
     parameter_counts = _p01_parameter_counts(model)
     checkpoint_path = _best_checkpoint_path(context.trainer)
@@ -327,11 +556,16 @@ def build_p01_grouped_result_rows(
     grouped_split = getattr(context.args_task, "grouped_split", None)
     group_key = str(getattr(grouped_split, "group_key", ""))
     if not group_key:
-        raise ValueError("C02 grouped evaluation requires grouped_split.group_key")
+        raise ValueError("P01 grouped evaluation requires grouped_split.group_key")
 
     common = {
-        "run_scope": "C02_unimodal_reference_exploratory",
-        "condition_id": condition,
+        "run_scope": (
+            "C02_unimodal_reference_exploratory"
+            if goal_id == "C02"
+            else "C03_generic_fusion_control_exploratory"
+        ),
+        "condition_id": condition_id,
+        "model_condition": condition,
         "run_stage": str(getattr(grouped_evaluation, "run_stage", "")),
         "dataset": "CWRU",
         "seed": seed,
@@ -366,11 +600,89 @@ def build_p01_grouped_result_rows(
             _json_ready(context.result or {}), sort_keys=True, separators=(",", ":")
         ),
         "scientific_boundary": (
-            "single-seed exploratory held-condition/load-domain reference; "
-            "windows, files, batches, and load domains are not independent "
-            "repetitions and this row cannot promote a paper claim"
+            (
+                "single-seed exploratory held-condition/load-domain reference"
+                if goal_id == "C02"
+                else "single-seed C03 execution/fairness smoke, not comparative evidence"
+            )
+            + "; windows, files, batches, load domains, and repeated control "
+            "identities are not independent repetitions and this row cannot "
+            "promote a paper claim"
         ),
     }
+    if goal_id == "C03":
+        if not isinstance(forward_compute_profile, dict):
+            raise RuntimeError("C03 result rows require a forward-compute profile")
+        if forward_compute_profile.get("condition_id") != condition_id:
+            raise RuntimeError("C03 forward-compute profile condition mismatch")
+        observed_profile = forward_compute_profile["observed"]
+        reference_profile = forward_compute_profile["m5_reference"]
+        tuning_trials = int(
+            getattr(grouped_evaluation, "source_validation_tuning_trials", -1)
+        )
+        if tuning_trials != 0:
+            raise ValueError("C03 freezes source-validation tuning trials at zero")
+        scheduler_config = getattr(context.args_task, "scheduler", None)
+        if scheduler_config is not None:
+            raise ValueError("C03 freezes the learning-rate scheduler as none")
+        common.update(
+            {
+                "alignment_terms_consumed": "none",
+                "data_access": "source_domains_0_1_train_val_then_target_domains_2_3_post_checkpoint",
+                "source_validation_tuning_trials": tuning_trials,
+                "scheduler": "none",
+                "early_stopping": bool(context.args_trainer.early_stopping),
+                "learned_forward_supported_flops": int(
+                    observed_profile["learned_forward_supported_flops"]
+                ),
+                "forward_profile_method": str(observed_profile["method"]),
+                "forward_profile_scope": str(observed_profile["scope"]),
+                "forward_profile_input_shape_json": json.dumps(
+                    observed_profile["input_shape"], separators=(",", ":")
+                ),
+                "forward_profile_output_shape_json": json.dumps(
+                    observed_profile["output_shape"], separators=(",", ":")
+                ),
+                "renderer_output_shape_json": json.dumps(
+                    observed_profile["renderer_output_shape"], separators=(",", ":")
+                ),
+                "forward_profile_torch_version": str(
+                    observed_profile["torch_version"]
+                ),
+                "forward_profile_operators_json": json.dumps(
+                    observed_profile["by_operator"],
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "m5_reference_trainable_parameters": int(
+                    forward_compute_profile["m5_reference_trainable_parameters"]
+                ),
+                "m5_reference_learned_forward_supported_flops": int(
+                    reference_profile["learned_forward_supported_flops"]
+                ),
+                "parameter_relative_deviation_from_m5": float(
+                    forward_compute_profile["parameter_relative_deviation"]
+                ),
+                "learned_forward_supported_flops_relative_deviation_from_m5": float(
+                    forward_compute_profile[
+                        "learned_forward_supported_flops_relative_deviation"
+                    ]
+                ),
+                "parameter_relative_tolerance": float(
+                    forward_compute_profile["parameter_relative_tolerance"]
+                ),
+                "learned_forward_supported_flops_relative_tolerance": float(
+                    forward_compute_profile[
+                        "learned_forward_supported_flops_relative_tolerance"
+                    ]
+                ),
+                "capacity_compute_match_status": (
+                    "within_frozen_tolerances"
+                    if bool(forward_compute_profile["within_tolerances"])
+                    else "outside_frozen_tolerances"
+                ),
+            }
+        )
 
     rows: list[dict[str, Any]] = []
     domain_values: list[float] = []
@@ -500,6 +812,9 @@ def build_p01_grouped_result_rows(
 
 
 class _P01DataProtocolHooks(ClassificationHooks):
+    def __init__(self) -> None:
+        self._forward_compute_profiles: dict[int, dict[str, Any]] = {}
+
     def on_iteration_start(self, context: ClassificationContext) -> None:
         grouped_evaluation = getattr(
             context.args_task, "grouped_evaluation", None
@@ -539,11 +854,36 @@ class _P01DataProtocolHooks(ClassificationHooks):
             model=context.model,
         )
         print(f"[P01 DATA PROTOCOL] {path}")
+        grouped_evaluation = getattr(
+            context.args_task, "grouped_evaluation", None
+        )
+        if str(getattr(grouped_evaluation, "goal_id", "C02")) == "C03":
+            condition_id = str(
+                getattr(
+                    grouped_evaluation,
+                    "condition_id",
+                    getattr(context.args_model, "condition", ""),
+                )
+            )
+            self._forward_compute_profiles[context.iteration] = (
+                build_p01_forward_compute_profile(
+                    context.model,
+                    context.args_model,
+                    context.args_data,
+                    grouped_evaluation,
+                    condition_id=condition_id,
+                )
+            )
 
     def build_result_rows(
         self, context: ClassificationContext
     ) -> list[dict[str, Any]]:
-        return build_p01_grouped_result_rows(context)
+        return build_p01_grouped_result_rows(
+            context,
+            forward_compute_profile=self._forward_compute_profiles.get(
+                context.iteration
+            ),
+        )
 
 
 def pipeline(args: Any) -> list[dict[str, Any]]:

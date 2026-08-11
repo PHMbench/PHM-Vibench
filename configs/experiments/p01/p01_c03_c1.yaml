@@ -1,0 +1,23 @@
+# C1: capacity/compute-control identity. The unchanged M4 already falls within
+# the frozen 5% parameter and 10% learned-forward supported-FLOP tolerances of
+# M5, so no width/head adjustment is scientifically warranted.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c03: "configs/experiments/p01/p01_c03_common.yaml"
+
+environment:
+  project: "p01_c03_c1_capacity_compute_control"
+  output_dir: "results/p01/c03_c1_smoke"
+  notes: >-
+    C03 C1 is the unchanged M4 model under a distinct control identity because
+    M4 already meets both frozen matching tolerances. Its repeated run is not
+    an independent control replicate and cannot promote a manuscript claim.
+
+model:
+  condition: "M4"
+
+task:
+  grouped_evaluation:
+    condition_id: "C1"
