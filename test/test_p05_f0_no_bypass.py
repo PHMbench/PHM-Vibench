@@ -21,6 +21,7 @@ def _model_args() -> SimpleNamespace:
         out_channels=4,
         scale=1,
         skip_connection=True,
+        internal_instance_normalization=False,
         signal_processing_configs={"layer1": ["I"]},
         feature_extractor_configs=["Mean", "Std"],
         in_dim=128,
@@ -179,3 +180,27 @@ def test_f0_rejects_missing_or_invalid_rule_mapping(mapping: torch.Tensor) -> No
             rule_to_class=mapping,
             conflict_threshold=0.5,
         )
+
+
+def test_p05_backbone_forward_is_non_mutating_and_gradients_are_finite() -> None:
+    torch.manual_seed(20260801)
+    model = TSPNUXFD(_model_args()).train()
+    x = torch.randn(4, 128, 2)
+    y = torch.tensor([0, 1, 0, 1])
+    parameters_before = {
+        name: parameter.detach().clone()
+        for name, parameter in model.named_parameters()
+    }
+
+    logits = model(x)
+    torch.nn.functional.cross_entropy(logits, y).backward()
+
+    for name, parameter in model.named_parameters():
+        assert torch.equal(parameter, parameters_before[name]), name
+    gradients = [
+        parameter.grad
+        for parameter in model.parameters()
+        if parameter.grad is not None
+    ]
+    assert gradients
+    assert all(torch.isfinite(gradient).all() for gradient in gradients)
