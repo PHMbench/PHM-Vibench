@@ -403,6 +403,13 @@ def test_frozen_config_hash_mismatch_fails_closed_without_publication(
     assert not staging.exists()
 
 
+def test_shared_data_base_is_validated_semantically_not_byte_frozen() -> None:
+    assert (
+        "configs/base/data/base_cross_domain.yaml"
+        not in preparer.FROZEN_CONFIG_SHA256
+    )
+
+
 def test_finalize_meta_writes_complete_packager_contract_exclusively(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -72,8 +72,10 @@ GENERATOR_MANIFEST = DATA_ROOT / "generator_manifest.json"
 METADATA_FILE = DATA_ROOT / "metadata.csv"
 LOCAL_OVERRIDE = VIBENCH_ROOT / "configs/local/local.yaml"
 
-# These byte hashes make a protocol/config edit an explicit code change rather
-# than a silent launch-time mutation.  All paths are relative to VIBENCH_ROOT.
+# These byte hashes cover P04-owned protocol inputs. Shared base configs are
+# deliberately excluded: they are allowed to evolve on ``dev`` and are checked
+# through the resolved semantic contract in ``_validate_resolved_config``.
+# All paths are relative to VIBENCH_ROOT.
 FROZEN_CONFIG_SHA256: dict[str, str] = {
     "configs/experiments/p04/decisive_full.yaml": (
         "e60b0f00be3d60d989253eb23d7f16491cb3f821af5b8d286699ed1a252f032a"
@@ -86,9 +88,6 @@ FROZEN_CONFIG_SHA256: dict[str, str] = {
     ),
     "configs/base/environment/base.yaml": (
         "c10982a67e87c1293d1a44ba7fc3fc10202fee33e9fd1f03aa05b1d762afa514"
-    ),
-    "configs/base/data/base_cross_domain.yaml": (
-        "3ae561b1c8206d10159f5425e7337d6b9a3d8f82f35aedd9dc02d4c2d4a5547f"
     ),
     "configs/base/model/role_constrained_moe.yaml": (
         "61e9ec95717f2141f7d2c1abc15b145560728f3eabf03a680ae53a18fce49fd3"
