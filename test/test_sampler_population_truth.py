@@ -53,8 +53,12 @@ def test_sampler_rejects_missing_metadata_row() -> None:
         Get_sampler(args_task, args_data, dataset, mode="train")
 
 
-def test_sampler_rejects_missing_dataset_id() -> None:
-    dataset = IdIncludedDataset({1: DictDataset(2)}, metadata={1: {}})
+@pytest.mark.parametrize("dataset_id", [None, float("nan"), [10]])
+def test_sampler_rejects_missing_or_non_scalar_dataset_id(dataset_id) -> None:
+    dataset = IdIncludedDataset(
+        {1: DictDataset(2)},
+        metadata={1: {"Dataset_id": dataset_id}},
+    )
     args_task, args_data = _args()
 
     with pytest.raises(ValueError, match="missing Dataset_id"):
