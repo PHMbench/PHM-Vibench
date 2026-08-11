@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Any, Mapping, Tuple
 from .Components.loss import get_loss_fn
 from .Components.metrics import get_metrics
 from .Components.regularization import calculate_regularization
+from .Components.gradient_constraints import FisherGradientConstraint
 
 
 @register_task("Default_task", "Default_task")
@@ -50,8 +51,20 @@ class Default_task(pl.LightningModule):
             gpus = getattr(args_trainer, "devices", 1)
             setattr(args_trainer, "gpus", gpus)
 
-        # 将网络移动到 GPU（仅在 CUDA 可用且配置要求使用 GPU 时）
-        use_cuda = bool(gpus) and torch.cuda.is_available()
+        # 将网络移动到 GPU（仅在配置明确请求 CUDA/GPU 且 CUDA 可用时）。
+        # ``gpus`` 在旧配置里也被 Lightning 当作 CPU devices 使用，因此
+        # 不能仅凭其非零就覆盖 ``trainer.device: cpu``。
+        requested_device = str(getattr(args_trainer, "device", "cpu")).lower()
+        use_cuda = (
+            requested_device in {"cuda", "gpu"}
+            and bool(gpus)
+            and torch.cuda.is_available()
+        )
+        if requested_device in {"cuda", "gpu"} and bool(gpus) and not use_cuda:
+            raise RuntimeError(
+                "CUDA was explicitly requested but is unavailable; evidence-bearing "
+                "runs must not fall back to CPU"
+            )
         if use_cuda and hasattr(network, "cuda"):
             self.network = network.cuda()
         else:
@@ -75,6 +88,31 @@ class Default_task(pl.LightningModule):
             else False
         )
         self._grouped_test_records: list[dict[str, Any]] = []
+
+        gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
+        self.gradient_constraint = None
+        if gradient_constraint:
+            if isinstance(gradient_constraint, dict):
+                constraint_name = gradient_constraint.get("name")
+                epsilon = gradient_constraint.get("epsilon", 2.0)
+            else:
+                constraint_name = getattr(gradient_constraint, "name", None)
+                epsilon = getattr(gradient_constraint, "epsilon", 2.0)
+            if str(constraint_name).lower() != "fic":
+                raise ValueError(
+                    f"unsupported task.gradient_constraint.name {constraint_name!r}"
+                )
+            if str(getattr(self.args_task, "loss", "")).upper() != "CE":
+                raise ValueError("FIC gradient_constraint currently requires task.loss=CE")
+            self.gradient_constraint = FisherGradientConstraint(epsilon=float(epsilon))
+        if (
+            bool(getattr(self.network, "uses_alignment_objective", False))
+            and self.gradient_constraint is not None
+        ):
+            raise ValueError(
+                "P01 M5 forbids a post-backward gradient constraint outside its "
+                "frozen classification + physical + semantic + geometric objective"
+            )
 
         # 使用组件配置损失和指标
         self.loss_fn = get_loss_fn(self.args_task.loss)
@@ -154,7 +192,7 @@ class Default_task(pl.LightningModule):
 
     def encode_raw_labels(self, labels: torch.Tensor) -> torch.Tensor:
         """Map raw dataset labels to contiguous indices without mutating metadata."""
-        if self._raw_label_order is None:
+        if getattr(self, "_raw_label_order", None) is None:
             return labels
         encoded = torch.empty_like(labels, dtype=torch.long)
         matched = torch.zeros_like(labels, dtype=torch.bool)
@@ -192,7 +230,21 @@ class Default_task(pl.LightningModule):
         x = batch['x']
         file_id = batch['file_id']
         task_id = batch['task_id'] if 'task_id' in batch else None
-
+        if getattr(self.network, "requires_physical_metadata", False):
+            canonical_fields = (
+                "sample_rate_hz",
+                "rotation_speed_rpm",
+                "load_hp",
+            )
+            explicit_metadata = {
+                field: batch[field] for field in canonical_fields if field in batch
+            }
+            return self.network(
+                x,
+                file_id,
+                task_id,
+                physical_metadata=explicit_metadata or None,
+            )
         return self.network(x, file_id, task_id)
 
     # def _forward_pass(self, batch) -> torch.Tensor:
@@ -265,9 +317,24 @@ class Default_task(pl.LightningModule):
             raise KeyError(
                 f"Unable to resolve metadata Name for file_id={first_file_id!r}."
             ) from exc
+        if getattr(self.network, "requires_physical_metadata", False):
+            names = []
+            for current_file_id in file_ids:
+                try:
+                    names.append(self.metadata[current_file_id]['Name'])
+                except (KeyError, IndexError, TypeError) as exc:
+                    raise KeyError(
+                        "Unable to resolve metadata Name for "
+                        f"file_id={current_file_id!r}."
+                    ) from exc
+            if any(name != data_name for name in names):
+                raise ValueError(
+                    "decisive P04 batches cannot mix dataset Names because metric "
+                    "and physical metadata authority would be ambiguous"
+                )
 
         raw_y = batch['y']
-        y = self.encode_raw_labels(raw_y)
+        y = Default_task.encode_raw_labels(self, raw_y)
 
         # 1. 前向传播。M5 在训练阶段显式返回对齐项；验证/测试从不把
         # 标签送入对齐目标。保留原始逐样本 file_id，不得用首个文件覆盖整批。
@@ -292,12 +359,13 @@ class Default_task(pl.LightningModule):
         else:
             y_hat = self.forward(batch)
 
-        if self._raw_label_order is not None and (
-            y_hat.ndim != 2 or y_hat.shape[1] != len(self._raw_label_order)
+        raw_label_order = getattr(self, "_raw_label_order", None)
+        if raw_label_order is not None and (
+            y_hat.ndim != 2 or y_hat.shape[1] != len(raw_label_order)
         ):
             raise ValueError(
                 "Model output width does not match task.label_contract: "
-                f"shape={tuple(y_hat.shape)}, labels={self._raw_label_order}"
+                f"shape={tuple(y_hat.shape)}, labels={raw_label_order}"
             )
 
         # 2. 计算任务损失
@@ -316,8 +384,26 @@ class Default_task(pl.LightningModule):
             if reg_type != 'total':
                 step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
 
-        # 5. 计算总损失。M5 的唯一允许标量是 classification 加三个
-        # a_k * lambda_k * L_k 项；通用正则项若非零必须明确失败。
+        # 5. Consume optional model-defined auxiliary losses exactly once.
+        # Models without this explicit hook retain the existing behavior.
+        model_auxiliary = {}
+        consume_auxiliary = getattr(self.network, 'consume_auxiliary_losses', None)
+        if callable(consume_auxiliary):
+            model_auxiliary = consume_auxiliary()
+            if not isinstance(model_auxiliary, dict):
+                raise TypeError("network.consume_auxiliary_losses() must return a dict")
+            for name, value in model_auxiliary.items():
+                if not isinstance(value, torch.Tensor) or value.ndim != 0:
+                    raise ValueError(
+                        f"model auxiliary loss {name!r} must be a scalar tensor"
+                    )
+                if not bool(torch.isfinite(value).item()):
+                    raise ValueError(f"model auxiliary loss {name!r} is not finite")
+                step_metrics[f"{stage}_{name}_loss"] = value
+
+        # 6. M5's sole allowed scalar is classification plus the three
+        # a_k * lambda_k * L_k terms. Other models retain generic regularization
+        # and their explicitly exposed auxiliary losses.
         regularization_total = reg_dict.get(
             'total', torch.tensor(0.0, device=loss.device)
         )
@@ -325,6 +411,11 @@ class Default_task(pl.LightningModule):
             if int(torch.count_nonzero(regularization_total.detach()).item()) != 0:
                 raise ValueError(
                     "P01 M5 forbids generic regularization outside the frozen "
+                    "classification + physical + semantic + geometric objective"
+                )
+            if model_auxiliary:
+                raise ValueError(
+                    "P01 M5 forbids model auxiliary losses outside the frozen "
                     "classification + physical + semantic + geometric objective"
                 )
             compose_objective = getattr(
@@ -343,10 +434,15 @@ class Default_task(pl.LightningModule):
                     f"{stage}_{objective_name}_loss"
                 ] = objective_value
         else:
-            total_loss = loss + regularization_total
+            auxiliary_total = sum(
+                model_auxiliary.values(), torch.tensor(0.0, device=loss.device)
+            )
+            total_loss = loss + regularization_total + auxiliary_total
         step_metrics[f"{stage}_total_loss"] = total_loss
 
-        if stage == "test" and self._grouped_evaluation_enabled:
+        if stage == "test" and bool(
+            getattr(self, "_grouped_evaluation_enabled", False)
+        ):
             step_metrics["_grouped_logits"] = y_hat.detach()
             step_metrics["_grouped_labels"] = y.detach()
 
@@ -565,3 +661,28 @@ class Default_task(pl.LightningModule):
 
         # 对于非 ReduceLROnPlateau 的调度器，返回列表形式
         return [optimizer], [{'scheduler': scheduler, 'interval': 'epoch', 'frequency': 1}]
+
+    def on_before_optimizer_step(self, optimizer) -> None:
+        """Apply an optional post-backward gradient constraint before the update."""
+        del optimizer
+        if self.gradient_constraint is None:
+            return
+        result = self.gradient_constraint.apply(self.parameters())
+        self.log(
+            "train_fic_norm",
+            result.norm,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )
+        self.log(
+            "train_fic_scale",
+            result.scale,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )

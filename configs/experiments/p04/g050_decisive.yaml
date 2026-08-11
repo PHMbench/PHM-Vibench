@@ -1,0 +1,148 @@
+protocol:
+  paper_id: P04
+  goal_id: P04-G050
+  experiment_id: E-PILOT
+  contract_id: P04-CWRU12K-DE-v1
+  arms: [P0, P1, P2]
+  seeds: [20, 21, 22]
+  semantic_alignment:
+    P0: [0, 1, 2, 3]
+    P1: [0, 1, 2, 3]
+    P2: [1, 2, 3, 0]
+  slot_permutation_by_seed:
+    20: [2, 0, 3, 1]
+    21: [0, 2, 3, 1]
+    22: [3, 2, 0, 1]
+  independent_unit: one_mat_recording
+  decision_values: [continue, reposition, stop_or_merge]
+
+data:
+  raw_root: /home/user/data/a_bearing/a_001_CWRU_raw
+  metadata_path: data/metadata.xlsx
+  dataset_id: 1
+  dataset_name: RM_001_CWRU
+  sample_rate_hz: 12000
+  signal_key_format: X{file_id:03d}_DE_time
+  signal_key_fallback: forbidden
+  channel: DE
+  label_map:
+    0: normal
+    1: inner_race
+    2: ball
+    3: outer_race
+  selection:
+    normal_source: baseline
+    fault_diameter_in: 0.007
+    outer_race_position: 6_o_clock
+  nominal_rpm_by_domain:
+    0: 1797
+    1: 1772
+    2: 1750
+    3: 1730
+  speed:
+    mode: nominal_by_domain
+    raw_rpm_use: diagnostic_only
+    missing_raw_rpm_files: [98, 99]
+  partition_by_domain:
+    0: train
+    1: validation
+    2: P_match
+    3: P_eval
+  sources:
+    - {file_id: 97, label: 0, domain: 0}
+    - {file_id: 98, label: 0, domain: 1}
+    - {file_id: 99, label: 0, domain: 2}
+    - {file_id: 100, label: 0, domain: 3}
+    - {file_id: 105, label: 1, domain: 0}
+    - {file_id: 106, label: 1, domain: 1}
+    - {file_id: 107, label: 1, domain: 2}
+    - {file_id: 108, label: 1, domain: 3}
+    - {file_id: 118, label: 2, domain: 0}
+    - {file_id: 119, label: 2, domain: 1}
+    - {file_id: 120, label: 2, domain: 2}
+    - {file_id: 121, label: 2, domain: 3}
+    - {file_id: 130, label: 3, domain: 0}
+    - {file_id: 131, label: 3, domain: 1}
+    - {file_id: 132, label: 3, domain: 2}
+    - {file_id: 133, label: 3, domain: 3}
+  windowing:
+    length_samples: 4096
+    windows_per_source: 29
+    start_formula: floor(i*(N-length)/(count-1))
+    overlap: false
+  normalization:
+    method: train_partition_global_zscore
+    fit_partition: train
+    refit_per_arm_or_seed: false
+    per_window_refit: forbidden
+
+model:
+  input_dim: 1
+  num_classes: 4
+  feature_dim: 32
+  expert_hidden_channels: 16
+  router_hidden_dim: 16
+  dropout: 0.10
+  routing_temperature: 1.0
+  compatibility_alpha: 1.0
+  low_order_cutoff: 4.0
+  envelope_order_band: [8.0, 120.0]
+  filter_transition_order: 0.25
+  harmonic_order_max: 12
+  harmonic_order_bandwidth: 0.18
+  load_reference_hp: 3.0
+  speed_reference_rpm: 1750.0
+  speed_scale_rpm: 100.0
+  load_balance_weight: 0.01
+  physical_loss_weight: 0.0
+  entropy_floor_weight: 0.0
+
+training:
+  epochs: 15
+  smoke_epochs: 1
+  batch_size: 29
+  optimizer: adamw
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  checkpoint_rule: minimum_validation_cross_entropy_tie_earliest_epoch
+  device: cuda
+  visible_physical_gpu: 5
+  cublas_workspace_config: ":4096:8"
+  data_workers: 0
+
+probes:
+  relative_rms: 0.20
+  match:
+    - {id: m-low-1x, role_id: 0, transform: low_order, order: 1.0}
+    - {id: m-low-2x, role_id: 0, transform: low_order, order: 2.0}
+    - {id: m-harm-3x6x, role_id: 1, transform: harmonic_comb, orders: [3.0, 6.0]}
+    - {id: m-harm-4x8x, role_id: 1, transform: harmonic_comb, orders: [4.0, 8.0]}
+    - {id: m-imp-5x, role_id: 2, transform: periodic_impulse, order: 5.0}
+    - {id: m-imp-7x, role_id: 2, transform: periodic_impulse, order: 7.0}
+    - {id: m-broad-401, role_id: 3, transform: broadband, noise_seed: 401}
+    - {id: m-broad-409, role_id: 3, transform: broadband, noise_seed: 409}
+  eval:
+    - {id: e-low-1p5x, role_id: 0, transform: low_order, order: 1.5}
+    - {id: e-low-2p5x, role_id: 0, transform: low_order, order: 2.5}
+    - {id: e-harm-5x10x, role_id: 1, transform: harmonic_comb, orders: [5.0, 10.0]}
+    - {id: e-harm-6x12x, role_id: 1, transform: harmonic_comb, orders: [6.0, 12.0]}
+    - {id: e-imp-9x, role_id: 2, transform: periodic_impulse, order: 9.0}
+    - {id: e-imp-11x, role_id: 2, transform: periodic_impulse, order: 11.0}
+    - {id: e-broad-503, role_id: 3, transform: broadband, noise_seed: 503}
+    - {id: e-broad-509, role_id: 3, transform: broadband, noise_seed: 509}
+  controls:
+    - {id: c-time-roll, transform: time_roll, shift_samples: 137}
+    - {id: c-sign-invert, transform: sign_invert}
+  match_standardization: fit_three_response_components_on_P_match_only
+  matching: hungarian_maximum_cosine_similarity
+  null_repetitions: 100
+
+decision:
+  continue_requires:
+    - P0_RID_exceeds_P1_P2_and_null
+    - P0_targeted_knockout_exceeds_mismatched
+    - no_single_seed_pair_driver
+    - no_dominant_expert_or_collapse_explanation
+  reposition_when:
+    - routing_stable_but_roles_not_recoverable_or_interventionally_invalid
+  otherwise: stop_or_merge

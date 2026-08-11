@@ -19,6 +19,7 @@ from src.runtime import (
     ClassificationHooks,
     run_classification_pipeline,
 )
+from src.runtime.classification import _write_aggregate_outputs
 
 
 _RENDERER_FIELDS = (
@@ -884,8 +885,6 @@ class _P01DataProtocolHooks(ClassificationHooks):
                 context.iteration
             ),
         )
-
-
 def pipeline(args: Any) -> list[dict[str, Any]]:
     """Run the standard classification train/test lifecycle."""
     return run_classification_pipeline(args, hooks=_P01DataProtocolHooks())

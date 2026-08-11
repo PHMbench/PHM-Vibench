@@ -32,7 +32,6 @@ data:
   test_ratio: 0.0
   normalization: "standardization"
   window_size: 128
-  stride: 16
   num_window: 4
   dtype: "float32"
   pin_memory: false

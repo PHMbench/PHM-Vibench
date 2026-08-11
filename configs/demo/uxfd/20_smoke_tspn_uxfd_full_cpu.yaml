@@ -1,0 +1,60 @@
+# UXFD CPU smoke for the #61 core contract.
+#
+# This config only exercises the existing opt-in modules. It is not evidence
+# that the P01/P05/P06/P07 scientific contracts have been satisfied.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/tspn_uxfd.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_uxfd_tspn_uxfd_full_cpu"
+  seed: 0
+  output_dir: "results/demo/uxfd/tspn_uxfd_full_cpu"
+  notes: "CPU smoke only; no benchmark, claim, or submission status."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  num_window: 8
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
+
+model:
+  device: "cpu"
+  uxfd:
+    enable_sp2d: true
+    sp2d:
+      n_fft: 32
+      hop_length: 16
+      magnitude: true
+    fusion:
+      type: "gated"
+    fuzzy:
+      enable: true
+      logit_scale: 0.5
+    operator_attention:
+      enable: true
+      operators: ["I", "FFT"]
+      hidden_dim: 32
+      temperature: 1.0
+    logic:
+      enable: true
+      hidden_dim: 32
+      logit_scale: 0.5

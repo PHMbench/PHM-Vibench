@@ -1,0 +1,81 @@
+# P04 - Baseline comparator: CNN.ResNet1D in-domain (CWRU / XJTU / THU_006).
+# ADDITIVE config under configs/experiments/p04/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml (single-dataset DG base).
+#
+# Status: ready (CNN.ResNet1D is registered in src/model_factory/model_registry.csv).
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu. Raise both for the full run.
+#
+# Sweep policy:
+#   for ds in {1=CWRU, 2=XJTU, 6=THU_006}; for seed in {42,123,456,789,1024}:
+#     python main.py --config configs/experiments/p04/baseline_resnet1d_indomain.yaml \
+#       --override task.target_system_id=[<ds>] --override environment.seed=<seed> \
+#       --override trainer.num_epochs=<full_epochs> --override trainer.device=cuda \
+#       --override data.data_dir=/home/user/data/PHMbenchdata/PHM-Vibench \
+#       --override data.split.strategy=grouped_metadata --override data.split.group_key=Bearing_id \
+#       --override data.split.test_policy=partition
+#
+# Supports: comparator side of CLAIM-C-GATE-98.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"   # overridden block-by-block below
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p04_baseline_resnet1d_indomain"
+  seed: 42
+  output_dir: "results/experiments/p04/baseline_resnet1d_indomain"
+  notes: "P04 baseline comparator: CNN.ResNet1D on CWRU/XJTU/THU_006 (sweep target_system_id)."
+
+# Data defaults are smoke-friendly (repo dummy metadata). For the real run, override
+# data.data_dir, data.metadata_file, and data.split.* on the CLI (see header).
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+  # Leakage-safe split (launch default; engine writes manifest_path).
+  # metadata.xlsx has NO 'Bearing_id' column -> use Domain_id (CWRU: 4 domains).
+  # For dummy-data wiring smoke, override: data.split.strategy=legacy_windows.
+  split:
+    strategy: grouped_metadata
+    group_key: Domain_id
+    test_policy: partition        # in-domain; bound to task.type=Default_task
+    fractions: {train: 0.7, val: 0.15, test: 0.15}
+    seed: 42
+    manifest_path: results/experiments/p04/_split_manifest_resnet.csv
+
+model:
+  # Replaces the ISFM block from backbone_dlinear.yaml with the registered CNN baseline.
+  type: "CNN"
+  name: "ResNet1D"
+  input_dim: 2              # channels; runtime may override per dataset
+  num_classes: 10           # auto-inferred from metadata if omitted; default for smoke
+  block_type: "basic"
+  layers: [2, 2, 2, 2]
+  initial_channels: 32
+
+task:
+  # partition test_policy REQUIRES Default_task (binding: partition<->Default_task|pretrain).
+  # DG/CDDG would require test_policy=task_defined.
+  type: Default_task
+  name: Default_task
+  loss: CE
+  metrics: [acc, f1_macro]
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 10
+  target_system_id: [1]     # CWRU default; sweep [1]/[2]/[6] per dataset
+
+trainer:
+  num_epochs: 1
+  device: "cpu"             # smoke; raise to cuda + epochs for the full run
+  gpus: 1

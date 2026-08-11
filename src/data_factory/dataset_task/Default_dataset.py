@@ -32,6 +32,15 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         self.data = data[self.key]
         self.args_data = args_data
         self.args_task = args_task
+        split_config = getattr(args_data, "split", None)
+        self.split_strategy = str(
+            getattr(split_config, "strategy", "legacy_windows")
+        )
+        if self.split_strategy not in {"legacy_windows", "grouped_metadata"}:
+            raise ValueError(
+                "Unknown data.split.strategy "
+                f"{self.split_strategy!r}; choose legacy_windows or grouped_metadata."
+            )
 
         requested_mode = str(mode).lower()
         if requested_mode == "valid":
@@ -53,6 +62,11 @@ class Default_dataset(Dataset):  # THU_006or018_basic
             if grouped_split is not None
             else False
         )
+        if self.grouped_partition and self.split_strategy != "legacy_windows":
+            raise ValueError(
+                "task.grouped_split and data.split.grouped_metadata are distinct "
+                "split authorities and cannot be enabled together"
+            )
 
         self.window_size = int(args_data.window_size)
         self.num_window = int(args_data.num_window)
@@ -172,6 +186,7 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         if (
             self.mode in {"train", "val", "test_holdout"}
             and not self.grouped_partition
+            and self.split_strategy == "legacy_windows"
         ):
             self._split_data_for_mode()
 

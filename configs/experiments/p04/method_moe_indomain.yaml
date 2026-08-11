@@ -1,0 +1,94 @@
+# P04 v5 wiring config for M_04_RoleConstrainedMoE.
+#
+# The checked-in defaults are a CPU/dummy-data wiring smoke only. They are not
+# paper evidence. Real CWRU/XJTU runs must use the commands and grouped split
+# contract in paper/experiments/config_bridge.yaml.
+#
+# The current runtime does not carry shaft speed per sample. Consequently this
+# implementation uses normalized FFT frequency, not shaft order. No order-domain
+# claim is permitted until a verified speed field and task/data interface exist.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/role_constrained_moe.yaml"
+  task: "configs/base/task/classification.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p04_g030_role_constrained_moe_smoke"
+  seed: 42
+  iterations: 1
+  output_dir: "results/experiments/p04/g030_role_constrained_moe_smoke"
+  notes: "CPU wiring smoke only; never cite as C1 evidence."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  normalization: "standardization"
+  window_size: 128
+  stride: 16
+  num_window: 8
+  split:
+    # Switch only to grouped_metadata for real data. The remaining fields are
+    # already the full-run contract and therefore cannot be silently omitted.
+    strategy: "legacy_windows"
+    group_key: "Split_group"
+    stratify_key: "Split_stratum"
+    seed: 7
+    test_policy: "partition"
+    fractions: {train: 0.60, val: 0.20, test: 0.20}
+    manifest_path: "results/experiments/p04/v5/splits/dummy/grouped_seed7.json"
+
+model:
+  type: "MoE"
+  name: "M_04_RoleConstrainedMoE"
+  input_dim: 2
+  # num_classes is intentionally omitted and must be inferred from the selected
+  # dataset metadata; CWRU and XJTU do not share a class count.
+  feature_dim: 64
+  expert_hidden_channels: 32
+  router_hidden_dim: 32
+  dropout: 0.10
+  routing_temperature: 1.0
+  router_mode: "learned_prior"
+
+  # Frequencies are normalized by Nyquist and therefore portable across the
+  # 12/48 kHz CWRU and 25.6 kHz XJTU sampling rates.
+  low_cutoff: 0.12
+  envelope_band: [0.20, 0.80]
+  filter_transition: 0.03
+
+  # The coefficient is learned through a sigmoid and cannot exceed the maximum.
+  role_prior_strength: 0.50
+  role_prior_max: 1.00
+  role_prior_permutation: [0, 1, 2, 3]
+
+  # Safeguards, not evidence of specialization. Remove separately in ablations.
+  load_balance_weight: 0.01
+  entropy_floor_weight: 0.01
+  entropy_floor: 0.25
+
+task:
+  type: "Default_task"
+  name: "Default_task"
+  loss: "CE"
+  # Wiring-smoke metric only. Paper macro-F1/ECE are computed from held-out
+  # logits by the governed evaluator specified in config_bridge.yaml.
+  metrics: ["acc"]
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 10
+  target_system_id: [0]  # dummy smoke; override with [1] CWRU or [2] XJTU
+
+trainer:
+  name: "Default_trainer"
+  num_epochs: 1
+  device: "cpu"
+  # Legacy field name: Default_trainer passes this value to Lightning devices.
+  gpus: 1

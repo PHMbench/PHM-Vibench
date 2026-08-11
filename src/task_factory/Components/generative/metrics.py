@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import torch
+
+from .population import PopulationCorrelationMMD
 
 
 REQUIRED_METRICS = (
@@ -222,6 +224,7 @@ def evaluate_smoke_metrics(
     fake_domains: torch.Tensor | None = None,
     duplicate_threshold: float = 1e-6,
     training_wall_clock_seconds: float | None = None,
+    population_rbf_bandwidths: Sequence[float] = (0.1, 0.5, 1.0, 2.0),
 ) -> dict[str, Any]:
     """Compute the eight required structured Pipeline 06 smoke metrics."""
 
@@ -239,6 +242,14 @@ def evaluate_smoke_metrics(
             lambda: _spectral_distance(real_tensor, fake_tensor)
         ),
     }
+    metrics["population_dependency_mmd"] = _safe_metric(
+        lambda: float(
+            PopulationCorrelationMMD(population_rbf_bandwidths)(
+                real_tensor,
+                fake_tensor,
+            ).item()
+        )
+    )
 
     if any(
         value is None
@@ -307,6 +318,7 @@ def evaluate_smoke_metrics(
     )
     metrics["summary"] = {
         "required": list(REQUIRED_METRICS),
+        "optional": ["population_dependency_mmd"],
         "ok": sum(
             metrics[name]["status"] == "ok" for name in REQUIRED_METRICS
         ),
