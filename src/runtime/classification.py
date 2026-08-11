@@ -46,6 +46,7 @@ class ClassificationContext:
     task: Any = None
     trainer: Any = None
     result: dict[str, Any] | None = None
+    result_rows: list[dict[str, Any]] | None = None
 
 
 class ClassificationHooks:
@@ -56,6 +57,14 @@ class ClassificationHooks:
 
     def after_stack_built(self, context: ClassificationContext) -> None:
         """Run after data/model/task/trainer construction and before fitting."""
+
+    def build_result_rows(
+        self, context: ClassificationContext
+    ) -> list[dict[str, Any]]:
+        """Return rows written to the existing test and aggregate CSV files."""
+        if context.result is None:
+            raise RuntimeError("Result rows require a completed trainer.test call")
+        return [dict(context.result)]
 
     def after_test(self, context: ClassificationContext) -> None:
         """Run after the result CSV is written and before cleanup."""
@@ -264,11 +273,21 @@ def run_classification_pipeline(
                     context.data_factory.get_dataloader("test"),
                 )
             )
-            all_results.append(context.result)
+            context.result_rows = hooks.build_result_rows(context)
+            if (
+                not isinstance(context.result_rows, list)
+                or not context.result_rows
+                or not all(isinstance(row, dict) for row in context.result_rows)
+            ):
+                raise RuntimeError(
+                    "ClassificationHooks.build_result_rows must return a "
+                    "non-empty list of mappings"
+                )
+            all_results.extend(context.result_rows)
 
             print("[INFO] 保存测试结果...")
             metrics_path = path / f"test_result_{iteration}.csv"
-            pd.DataFrame([context.result]).to_csv(metrics_path, index=False)
+            pd.DataFrame(context.result_rows).to_csv(metrics_path, index=False)
             _register_iteration_evidence(
                 args,
                 iteration=iteration,

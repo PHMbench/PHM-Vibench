@@ -1,0 +1,16 @@
+# M1: waveform-only reference. The model constructs no renderer or 2D branch.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c02: "configs/experiments/p01/p01_c02_common.yaml"
+
+environment:
+  project: "p01_c02_m1_waveform_reference"
+  output_dir: "results/p01/c02_m1_pilot"
+  notes: >-
+    C02 M1 waveform-only, seed 31, fixed ten-epoch exploratory pilot. No tuning
+    and no manuscript claim promotion.
+
+model:
+  condition: "M1"

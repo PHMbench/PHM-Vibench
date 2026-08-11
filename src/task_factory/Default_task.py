@@ -63,10 +63,32 @@ class Default_task(pl.LightningModule):
         self.args_trainer = args_trainer
         self.args_environment = args_environment
 
+        self._raw_label_order = self._build_label_contract()
+        self._raw_label_to_index = {
+            raw_label: index
+            for index, raw_label in enumerate(self._raw_label_order or ())
+        }
+        grouped_evaluation = getattr(self.args_task, "grouped_evaluation", None)
+        self._grouped_evaluation_enabled = bool(
+            getattr(grouped_evaluation, "enabled", False)
+            if grouped_evaluation is not None
+            else False
+        )
+        self._grouped_test_records: list[dict[str, Any]] = []
+
         # 使用组件配置损失和指标
         self.loss_fn = get_loss_fn(self.args_task.loss)
-        # 假设 get_metrics 需要数据配置来确定任务类型和类别数
-        self.metrics = get_metrics(self.args_task.metrics, self.metadata)
+        metric_num_classes = (
+            len(self._raw_label_order)
+            if self._raw_label_order is not None
+            else None
+        )
+        self.metrics = get_metrics(
+            self.args_task.metrics,
+            self.metadata,
+            num_classes=metric_num_classes,
+            average=getattr(self.args_task, "metric_average", None),
+        )
 
         # 保存超参数 (确保 Namespace 可以转换为字典)
         hparams_dict = {**vars(self.args_task),
@@ -78,6 +100,91 @@ class Default_task(pl.LightningModule):
                             # 'metadata': metadata
                             }
         self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
+
+    def _build_label_contract(self) -> tuple[int, ...] | None:
+        """Validate an optional raw-label to contiguous-index contract."""
+        contract = getattr(self.args_task, "label_contract", None)
+        if contract is None:
+            return None
+        raw_labels = getattr(contract, "raw_labels", None)
+        if not isinstance(raw_labels, (list, tuple)) or len(raw_labels) < 2:
+            raise ValueError(
+                "task.label_contract.raw_labels must contain at least two labels"
+            )
+        try:
+            ordered = tuple(int(label) for label in raw_labels)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "task.label_contract.raw_labels must contain integer labels"
+            ) from exc
+        if len(set(ordered)) != len(ordered):
+            raise ValueError(
+                "task.label_contract.raw_labels must not contain duplicates"
+            )
+
+        grouped_split = getattr(self.args_task, "grouped_split", None)
+        admitted = (
+            getattr(grouped_split, "admitted_labels", None)
+            if grouped_split is not None
+            else None
+        )
+        if admitted is not None and tuple(int(label) for label in admitted) != ordered:
+            raise ValueError(
+                "task.label_contract.raw_labels must exactly match "
+                "task.grouped_split.admitted_labels in canonical order"
+            )
+
+        output_classes = getattr(self.network, "num_classes", None)
+        if output_classes is None or int(output_classes) != len(ordered):
+            raise ValueError(
+                "network.num_classes must equal the length of "
+                "task.label_contract.raw_labels"
+            )
+        return ordered
+
+    def label_contract_identity(self) -> dict[str, Any] | None:
+        """Return the pre-outcome label mapping used by the training objective."""
+        if self._raw_label_order is None:
+            return None
+        return {
+            "raw_labels": list(self._raw_label_order),
+            "training_indices": list(range(len(self._raw_label_order))),
+            "raw_to_training_index": dict(self._raw_label_to_index),
+        }
+
+    def encode_raw_labels(self, labels: torch.Tensor) -> torch.Tensor:
+        """Map raw dataset labels to contiguous indices without mutating metadata."""
+        if self._raw_label_order is None:
+            return labels
+        encoded = torch.empty_like(labels, dtype=torch.long)
+        matched = torch.zeros_like(labels, dtype=torch.bool)
+        for raw_label, index in self._raw_label_to_index.items():
+            mask = labels == raw_label
+            encoded[mask] = index
+            matched |= mask
+        if not bool(matched.all().item()):
+            unknown = torch.unique(labels[~matched]).detach().cpu().tolist()
+            raise ValueError(
+                "Batch contains raw label(s) outside task.label_contract: "
+                f"{unknown}"
+            )
+        return encoded
+
+    def decode_training_indices(self, indices: torch.Tensor) -> torch.Tensor:
+        """Invert the configured mapping for result reporting."""
+        if self._raw_label_order is None:
+            return indices
+        if indices.numel() and (
+            int(indices.min().item()) < 0
+            or int(indices.max().item()) >= len(self._raw_label_order)
+        ):
+            raise ValueError("Training index is outside the configured label contract")
+        raw = torch.as_tensor(
+            self._raw_label_order,
+            dtype=torch.long,
+            device=indices.device,
+        )
+        return raw[indices.long()]
 
 
     def forward(self, batch):
@@ -159,7 +266,8 @@ class Default_task(pl.LightningModule):
                 f"Unable to resolve metadata Name for file_id={first_file_id!r}."
             ) from exc
 
-        y = batch['y']
+        raw_y = batch['y']
+        y = self.encode_raw_labels(raw_y)
 
         # 1. 前向传播。M5 在训练阶段显式返回对齐项；验证/测试从不把
         # 标签送入对齐目标。保留原始逐样本 file_id，不得用首个文件覆盖整批。
@@ -183,6 +291,14 @@ class Default_task(pl.LightningModule):
             )
         else:
             y_hat = self.forward(batch)
+
+        if self._raw_label_order is not None and (
+            y_hat.ndim != 2 or y_hat.shape[1] != len(self._raw_label_order)
+        ):
+            raise ValueError(
+                "Model output width does not match task.label_contract: "
+                f"shape={tuple(y_hat.shape)}, labels={self._raw_label_order}"
+            )
 
         # 2. 计算任务损失
         loss = self._compute_loss(y_hat, y)
@@ -230,6 +346,10 @@ class Default_task(pl.LightningModule):
             total_loss = loss + regularization_total
         step_metrics[f"{stage}_total_loss"] = total_loss
 
+        if stage == "test" and self._grouped_evaluation_enabled:
+            step_metrics["_grouped_logits"] = y_hat.detach()
+            step_metrics["_grouped_labels"] = y.detach()
+
         # 添加 batch size 用于日志记录
         # step_metrics[f"{stage}_batch_size"] = torch.tensor(x.shape[0], dtype=torch.float, device=loss.device)
 
@@ -254,9 +374,103 @@ class Default_task(pl.LightningModule):
     def test_step(self, batch: dict, *args, **kwargs) -> None:
         """测试步骤"""
         metrics = self._shared_step(batch, "test")
+        grouped_logits = metrics.pop("_grouped_logits", None)
+        grouped_labels = metrics.pop("_grouped_labels", None)
+        if grouped_logits is not None:
+            if grouped_labels is None:
+                raise RuntimeError("Grouped evaluation is missing encoded labels")
+            self._record_grouped_test_batch(
+                batch,
+                logits=grouped_logits,
+                encoded_labels=grouped_labels,
+            )
         
         self._log_metrics(metrics, "test")
         # test_step 通常不返回损失
+
+    @staticmethod
+    def _batch_values(value: Any, *, name: str, batch_size: int) -> list[Any]:
+        if isinstance(value, torch.Tensor):
+            values = value.detach().cpu().reshape(-1).tolist()
+        elif isinstance(value, np.ndarray):
+            values = value.reshape(-1).tolist()
+        elif isinstance(value, (list, tuple)):
+            values = list(value)
+        else:
+            values = [value]
+        if len(values) != batch_size:
+            raise ValueError(
+                f"Grouped evaluation requires one {name} per sample; "
+                f"got {len(values)} for batch_size={batch_size}"
+            )
+        return values
+
+    def on_test_epoch_start(self) -> None:
+        if self._grouped_evaluation_enabled:
+            self._grouped_test_records.clear()
+
+    def _record_grouped_test_batch(
+        self,
+        batch: Mapping[str, Any],
+        *,
+        logits: torch.Tensor,
+        encoded_labels: torch.Tensor,
+    ) -> None:
+        if not self._grouped_evaluation_enabled:
+            return
+        if logits.ndim != 2 or not bool(torch.isfinite(logits).all().item()):
+            raise ValueError("Grouped evaluation requires finite rank-2 logits")
+        batch_size = int(logits.shape[0])
+        file_ids = self._batch_values(
+            batch.get("file_id"), name="file_id", batch_size=batch_size
+        )
+        group_ids = self._batch_values(
+            batch.get("physical_group_id"),
+            name="physical_group_id",
+            batch_size=batch_size,
+        )
+        raw_labels = self._batch_values(
+            batch.get("y"), name="raw label", batch_size=batch_size
+        )
+        training_labels = self._batch_values(
+            encoded_labels, name="training label", batch_size=batch_size
+        )
+        logits_cpu = logits.detach().cpu()
+
+        for index, (file_id, group_id, raw_label, training_label) in enumerate(
+            zip(file_ids, group_ids, raw_labels, training_labels)
+        ):
+            try:
+                metadata_row = self.metadata[file_id]
+                metadata_label = int(metadata_row["Label"])
+                domain_id = int(metadata_row["Domain_id"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Grouped evaluation cannot resolve metadata for file_id={file_id!r}"
+                ) from exc
+            if not isinstance(group_id, str) or not group_id:
+                raise ValueError(
+                    "Grouped evaluation requires a non-empty physical_group_id"
+                )
+            if int(raw_label) != metadata_label:
+                raise ValueError(
+                    "Batch raw label differs from immutable metadata for "
+                    f"file_id={file_id!r}"
+                )
+            self._grouped_test_records.append(
+                {
+                    "file_id": file_id,
+                    "physical_group_id": group_id,
+                    "domain_id": domain_id,
+                    "raw_label": metadata_label,
+                    "training_label": int(training_label),
+                    "logits": logits_cpu[index].tolist(),
+                }
+            )
+
+    def grouped_evaluation_records(self) -> list[dict[str, Any]]:
+        """Return a copy of post-checkpoint test records for P01 aggregation."""
+        return [dict(record) for record in self._grouped_test_records]
 
     def _log_metrics(self, metrics: Dict[str, torch.Tensor], stage: str) -> None:
         """统一日志记录"""
