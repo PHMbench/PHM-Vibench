@@ -64,6 +64,35 @@ class FuzzyTrace:
         return self.normalized_rule_firing.max(dim=1).values
 
 
+@dataclass(frozen=True)
+class P05F0Decision:
+    """No-bypass F0 decision and the exact tensors it consumed.
+
+    ``issued_class`` is ``-1`` for abstention. Neural logits and learned vector
+    consequents are intentionally absent from this record.
+    """
+
+    reduced_features: torch.Tensor
+    membership_values: torch.Tensor
+    antecedent_probabilities: torch.Tensor
+    antecedent_memberships: torch.Tensor
+    rule_activations: torch.Tensor
+    rule_mask: torch.Tensor
+    rule_to_class: torch.Tensor
+    class_supports: torch.Tensor
+    top_support: torch.Tensor
+    second_support: torch.Tensor
+    conflict: torch.Tensor
+    candidate_class: torch.Tensor
+    accepted: torch.Tensor
+    issued_class: torch.Tensor
+    conflict_threshold: float
+
+    @property
+    def abstained(self) -> torch.Tensor:
+        return ~self.accepted
+
+
 class FuzzyReasoner(nn.Module):
     """Additive Takagi--Sugeno-style fuzzy head over learned features.
 
@@ -78,6 +107,7 @@ class FuzzyReasoner(nn.Module):
         super().__init__()
         self.cfg = cfg or FuzzyConfig()
         self._validate_config(dim_in=dim_in, num_classes=num_classes)
+        self.num_classes = int(num_classes)
 
         num_features = int(self.cfg.num_fuzzy_features)
         num_memberships = int(self.cfg.num_membership_functions)
@@ -211,6 +241,86 @@ class FuzzyReasoner(nn.Module):
             consequent_permutation=permutation,
         )
 
+    def forward_f0(
+        self,
+        features: torch.Tensor,
+        *,
+        rule_to_class: torch.Tensor,
+        conflict_threshold: float,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_override: Optional[torch.Tensor] = None,
+    ) -> P05F0Decision:
+        """Issue class/abstention using only the declared fuzzy-rule path.
+
+        ``rule_to_class`` is the frozen training-only consequent mapping.
+        ``consequent_override`` is an explicit intervention and never a
+        fallback. An all-false mask is valid and produces abstention.
+        """
+
+        if self.num_classes < 2:
+            raise ValueError("P05 F0 requires at least two classes.")
+        threshold = self._validate_conflict_threshold(conflict_threshold)
+
+        # This call records the same memberships and learned antecedent mixtures
+        # used by the active fuzzy branch. F0 below does not consume its
+        # geometric-mean firing, normalization, or learned vector consequents.
+        trace = self.forward_with_trace(features)
+        batch_size = int(features.shape[0])
+        mask = self._normalize_f0_rule_mask(
+            rule_mask,
+            batch_size=batch_size,
+            device=features.device,
+        )
+        effective_mapping = self._normalize_rule_to_class(
+            consequent_override if consequent_override is not None else rule_to_class,
+            batch_size=batch_size,
+            device=features.device,
+        )
+
+        raw_activations = trace.antecedent_memberships.amin(dim=-1)
+        rule_activations = raw_activations.masked_fill(~mask, 0.0)
+        class_supports = torch.stack(
+            [
+                rule_activations.masked_fill(
+                    effective_mapping.ne(class_id),
+                    0.0,
+                ).max(dim=1).values
+                for class_id in range(self.num_classes)
+            ],
+            dim=1,
+        )
+
+        top_support, candidate_class = class_supports.max(dim=1)
+        second_support = class_supports.topk(k=2, dim=1).values[:, 1]
+        epsilon = float(self.cfg.firing_epsilon)
+        conflict = (second_support + epsilon) / (top_support + epsilon)
+        no_support = top_support <= 0.0
+        conflict = torch.where(no_support, torch.ones_like(conflict), conflict)
+        accepted = (~no_support) & (conflict <= threshold)
+        issued_class = torch.where(
+            accepted,
+            candidate_class,
+            torch.full_like(candidate_class, -1),
+        )
+
+        return P05F0Decision(
+            reduced_features=trace.reduced_features,
+            membership_values=trace.membership_values,
+            antecedent_probabilities=trace.antecedent_probabilities,
+            antecedent_memberships=trace.antecedent_memberships,
+            rule_activations=rule_activations,
+            rule_mask=mask,
+            rule_to_class=effective_mapping,
+            class_supports=class_supports,
+            top_support=top_support,
+            second_support=second_support,
+            conflict=conflict,
+            candidate_class=candidate_class,
+            accepted=accepted,
+            issued_class=issued_class,
+            conflict_threshold=threshold,
+        )
+
     def _ordered_centers(self) -> torch.Tensor:
         if self.center_deltas_unconstrained is None:
             return self.center_origin
@@ -263,6 +373,75 @@ class FuzzyReasoner(nn.Module):
             raise ValueError("rule_mask must retain at least one rule for every sample.")
         return mask
 
+    def _normalize_f0_rule_mask(
+        self,
+        rule_mask: Optional[torch.Tensor],
+        *,
+        batch_size: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        num_rules = int(self.cfg.num_rules)
+        if rule_mask is None:
+            return torch.ones(
+                (batch_size, num_rules),
+                dtype=torch.bool,
+                device=device,
+            )
+
+        mask = torch.as_tensor(rule_mask, device=device)
+        if mask.ndim == 1:
+            if tuple(mask.shape) != (num_rules,):
+                raise ValueError(
+                    "rule_mask with one dimension must have shape "
+                    f"({num_rules},), got {tuple(mask.shape)}."
+                )
+            mask = mask.unsqueeze(0).expand(batch_size, -1)
+        elif tuple(mask.shape) != (batch_size, num_rules):
+            raise ValueError(
+                "rule_mask must have shape "
+                f"({num_rules},) or ({batch_size}, {num_rules}), "
+                f"got {tuple(mask.shape)}."
+            )
+        return mask.to(dtype=torch.bool)
+
+    def _normalize_rule_to_class(
+        self,
+        mapping: torch.Tensor,
+        *,
+        batch_size: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        num_rules = int(self.cfg.num_rules)
+        raw_values = torch.as_tensor(mapping, device=device)
+        if raw_values.dtype == torch.bool:
+            raise TypeError("rule_to_class must contain integer class IDs, not booleans.")
+        if raw_values.is_floating_point():
+            if not bool(torch.isfinite(raw_values).all()) or not torch.equal(
+                raw_values,
+                raw_values.round(),
+            ):
+                raise ValueError("rule_to_class must contain finite integer class IDs.")
+        values = raw_values.to(dtype=torch.long)
+        if values.ndim == 1:
+            if tuple(values.shape) != (num_rules,):
+                raise ValueError(
+                    f"rule_to_class must have shape ({num_rules},), "
+                    f"got {tuple(values.shape)}."
+                )
+            values = values.unsqueeze(0).expand(batch_size, -1)
+        elif tuple(values.shape) != (batch_size, num_rules):
+            raise ValueError(
+                "rule_to_class must have shape "
+                f"({num_rules},) or ({batch_size}, {num_rules}), "
+                f"got {tuple(values.shape)}."
+            )
+        if bool(((values < 0) | (values >= self.num_classes)).any()):
+            raise ValueError(
+                "rule_to_class must map every rule to a class in "
+                f"[0, {self.num_classes})."
+            )
+        return values
+
     def _normalize_consequent_permutation(
         self,
         consequent_permutation: Optional[torch.Tensor],
@@ -301,6 +480,15 @@ class FuzzyReasoner(nn.Module):
                 "each consequent_permutation row must contain every rule index exactly once."
             )
         return permutation
+
+    @staticmethod
+    def _validate_conflict_threshold(value: float) -> float:
+        if isinstance(value, bool):
+            raise TypeError("conflict_threshold must be a finite float in [0, 1].")
+        threshold = float(value)
+        if not math.isfinite(threshold) or not 0.0 <= threshold <= 1.0:
+            raise ValueError("conflict_threshold must be a finite float in [0, 1].")
+        return threshold
 
     def _validate_config(self, *, dim_in: int, num_classes: int) -> None:
         integer_fields = {

@@ -22,7 +22,7 @@ import torch.nn as nn
 
 from .TSPN import Model as _TSPNModel
 from .UXFD.fusion import FusionConfig, build_fusion
-from .UXFD.fuzzy import FuzzyConfig, FuzzyReasoner, FuzzyTrace
+from .UXFD.fuzzy import FuzzyConfig, FuzzyReasoner, FuzzyTrace, P05F0Decision
 from .UXFD.neurosymbolic import LogicConfig, LogicReasoner
 from .UXFD.operator_attention import OperatorAttention1D, OperatorAttentionConfig
 from .UXFD.p05_b1_neural_residual import (
@@ -287,6 +287,30 @@ class Model(_TSPNModel):
             non_fuzzy_logits=non_fuzzy_logits,
             fuzzy_scale=float(self._uxfd_fuzzy_scale),
             fuzzy_trace=fuzzy_trace,
+        )
+
+    def forward_f0(
+        self,
+        x: torch.Tensor,
+        *,
+        rule_to_class: torch.Tensor,
+        conflict_threshold: float,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_override: Optional[torch.Tensor] = None,
+        data_id=None,
+        task_id=None,
+    ) -> P05F0Decision:
+        """Issue F0 from the fuzzy-rule path without calling neural heads."""
+
+        if not self._uxfd_enable_fuzzy or self._uxfd_fuzzy is None:
+            raise RuntimeError("forward_f0 requires model.uxfd.fuzzy.enable=true.")
+        features = self._forward_features(x)
+        return self._uxfd_fuzzy.forward_f0(
+            features,
+            rule_to_class=rule_to_class,
+            conflict_threshold=conflict_threshold,
+            rule_mask=rule_mask,
+            consequent_override=consequent_override,
         )
 
     def forward_with_anfis_trace(self, x: torch.Tensor) -> P05B3ANFISTrace:
