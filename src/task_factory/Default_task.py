@@ -51,8 +51,20 @@ class Default_task(pl.LightningModule):
             gpus = getattr(args_trainer, "devices", 1)
             setattr(args_trainer, "gpus", gpus)
 
-        # 将网络移动到 GPU（仅在 CUDA 可用且配置要求使用 GPU 时）
-        use_cuda = bool(gpus) and torch.cuda.is_available()
+        # 将网络移动到 GPU（仅在配置明确请求 CUDA/GPU 且 CUDA 可用时）。
+        # ``gpus`` 在旧配置里也被 Lightning 当作 CPU devices 使用，因此
+        # 不能仅凭其非零就覆盖 ``trainer.device: cpu``。
+        requested_device = str(getattr(args_trainer, "device", "cpu")).lower()
+        use_cuda = (
+            requested_device in {"cuda", "gpu"}
+            and bool(gpus)
+            and torch.cuda.is_available()
+        )
+        if requested_device in {"cuda", "gpu"} and bool(gpus) and not use_cuda:
+            raise RuntimeError(
+                "CUDA was explicitly requested but is unavailable; evidence-bearing "
+                "runs must not fall back to CPU"
+            )
         if use_cuda and hasattr(network, "cuda"):
             self.network = network.cuda()
         else:
@@ -103,7 +115,21 @@ class Default_task(pl.LightningModule):
         x = batch['x']
         file_id = batch['file_id']
         task_id = batch['task_id'] if 'task_id' in batch else None
-
+        if getattr(self.network, "requires_physical_metadata", False):
+            canonical_fields = (
+                "sample_rate_hz",
+                "rotation_speed_rpm",
+                "load_hp",
+            )
+            explicit_metadata = {
+                field: batch[field] for field in canonical_fields if field in batch
+            }
+            return self.network(
+                x,
+                file_id,
+                task_id,
+                physical_metadata=explicit_metadata or None,
+            )
         return self.network(x, file_id, task_id)
 
     # def _forward_pass(self, batch) -> torch.Tensor:
@@ -176,6 +202,21 @@ class Default_task(pl.LightningModule):
             raise KeyError(
                 f"Unable to resolve metadata Name for file_id={first_file_id!r}."
             ) from exc
+        if getattr(self.network, "requires_physical_metadata", False):
+            names = []
+            for current_file_id in file_ids:
+                try:
+                    names.append(self.metadata[current_file_id]['Name'])
+                except (KeyError, IndexError, TypeError) as exc:
+                    raise KeyError(
+                        "Unable to resolve metadata Name for "
+                        f"file_id={current_file_id!r}."
+                    ) from exc
+            if any(name != data_name for name in names):
+                raise ValueError(
+                    "decisive P04 batches cannot mix dataset Names because metric "
+                    "and physical metadata authority would be ambiguous"
+                )
 
         # 1. 前向传播。保留原始逐样本 file_id，不得用首个文件覆盖整批。
         y_hat = self.forward(batch)
@@ -197,8 +238,30 @@ class Default_task(pl.LightningModule):
             if reg_type != 'total':
                 step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
 
-        # 5. 计算总损失
-        total_loss = loss + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
+        # 5. Consume optional model-defined auxiliary losses exactly once.
+        # Models without this explicit hook retain the existing behavior.
+        model_auxiliary = {}
+        consume_auxiliary = getattr(self.network, 'consume_auxiliary_losses', None)
+        if callable(consume_auxiliary):
+            model_auxiliary = consume_auxiliary()
+            if not isinstance(model_auxiliary, dict):
+                raise TypeError("network.consume_auxiliary_losses() must return a dict")
+            for name, value in model_auxiliary.items():
+                if not isinstance(value, torch.Tensor) or value.ndim != 0:
+                    raise ValueError(f"model auxiliary loss {name!r} must be a scalar tensor")
+                if not torch.isfinite(value):
+                    raise ValueError(f"model auxiliary loss {name!r} is not finite")
+                step_metrics[f"{stage}_{name}_loss"] = value
+
+        # 6. 计算总损失
+        auxiliary_total = sum(
+            model_auxiliary.values(), torch.tensor(0.0, device=loss.device)
+        )
+        total_loss = (
+            loss
+            + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
+            + auxiliary_total
+        )
         step_metrics[f"{stage}_total_loss"] = total_loss
 
         # 添加 batch size 用于日志记录

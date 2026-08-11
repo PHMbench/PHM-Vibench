@@ -49,6 +49,7 @@ class _TaskHarness:
     metadata = _METADATA
 
     def __init__(self):
+        self.network = SimpleNamespace()
         self.seen_file_ids = None
         self.seen_sample_rates = None
 
@@ -199,3 +200,54 @@ def test_baseline_model_rejects_incompatible_input_without_padding_or_fallback()
 
     with pytest.raises(ValueError, match="channel mismatch"):
         model(torch.randn(2, 128, 1))
+
+
+def test_default_task_forwards_explicit_physical_vectors_to_decisive_model():
+    class Network:
+        requires_physical_metadata = True
+
+        def __init__(self):
+            self.received = None
+
+        def __call__(self, x, file_id, task_id, *, physical_metadata=None):
+            self.received = (x, file_id, task_id, physical_metadata)
+            return x
+
+    network = Network()
+    task = SimpleNamespace(network=network)
+    batch = {
+        "x": torch.zeros(2, 16, 1),
+        "file_id": torch.tensor([101, 102]),
+        "task_id": "classification",
+        "sample_rate_hz": torch.tensor([12_000.0, 48_000.0]),
+        "rotation_speed_rpm": torch.tensor([1_797.0, 1_772.0]),
+        "load_hp": torch.tensor([0.0, 1.0]),
+    }
+
+    Default_task.forward(task, batch)
+
+    assert network.received is not None
+    _, received_ids, received_task, physical = network.received
+    assert torch.equal(received_ids, batch["file_id"])
+    assert received_task == "classification"
+    assert set(physical) == {
+        "sample_rate_hz",
+        "rotation_speed_rpm",
+        "load_hp",
+    }
+
+
+def test_default_task_rejects_cuda_fallback(monkeypatch):  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    with pytest.raises(RuntimeError, match="must not fall back to CPU"):
+        Default_task(
+            network=torch.nn.Linear(2, 2),
+            args_data=SimpleNamespace(normalization="none"),
+            args_model=SimpleNamespace(type="test", name="cuda_required"),
+            args_task=SimpleNamespace(
+                loss="CE", metrics=["acc"], optimizer="adam", lr=1e-3
+            ),
+            args_trainer=SimpleNamespace(device="cuda", gpus=1),
+            args_environment=SimpleNamespace(project="p04_cuda_fail_fast"),
+            metadata={0: {"Name": "Dummy", "Label": 0}},
+        )
