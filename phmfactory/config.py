@@ -140,7 +140,8 @@ def parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
     Raises
     ------
     ValueError
-        If a token is missing ``=`` or attempts to traverse a non-mapping field.
+        If a token is missing ``=``, has an empty key/value, contains malformed YAML,
+        or attempts to traverse a non-mapping field.
     """
 
     parsed: dict[str, Any] = {}
@@ -151,10 +152,18 @@ def parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
         key = key.strip()
         if not key:
             raise ValueError("Override key must be non-empty")
+        value_text = raw_value.strip()
+        if not value_text:
+            raise ValueError(
+                f"Override value for {key!r} must be non-empty. "
+                "Use `null` explicitly when a null value is intended."
+            )
         try:
-            value = yaml.safe_load(raw_value.strip())
-        except yaml.YAMLError:
-            value = raw_value.strip()
+            value = yaml.safe_load(value_text)
+        except yaml.YAMLError as exc:
+            raise ValueError(
+                f"Invalid YAML value for override {key!r}: {raw_value!r}"
+            ) from exc
         _set_dotted(parsed, key, value)
     return parsed
 
@@ -196,7 +205,7 @@ def analyze_config(
 
     Raises
     ------
-    FileNotFoundError, TypeError, ValueError, yaml.YAMLError
+    FileNotFoundError, TypeError, ValueError, UnicodeError, yaml.YAMLError
         The original configuration error is propagated; there is no fallback to another
         config or Pipeline.
     """
@@ -225,12 +234,17 @@ def analyze_config(
     _deep_merge(data, overrides)
     _mark_leaf_sources(sources, overrides, "cli:--override")
 
-    raw_pipeline = data.get("pipeline", DEFAULT_PIPELINE)
+    if "pipeline" not in data:
+        raise ValueError(
+            "The effective configuration must declare `pipeline`. Add it to the "
+            "selected YAML, an explicit --local-config file, or an explicit "
+            "--override pipeline=<canonical-name>."
+        )
+    raw_pipeline = data["pipeline"]
     if not isinstance(raw_pipeline, str) or not raw_pipeline.strip():
         raise ValueError("pipeline must be a non-empty string")
     pipeline = canonical_pipeline_name(raw_pipeline.strip())
     data["pipeline"] = pipeline
-    sources.setdefault("pipeline", "default:Pipeline_01_Fault_Diagnosis")
 
     effective = _json_compatible(deepcopy(data))
     return ConfigAnalysis(
@@ -375,11 +389,12 @@ def _load_recursive_with_sources(
 
 def _read_yaml_mapping(path: Path) -> dict[str, Any]:
     try:
-        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except UnicodeDecodeError:
-        payload = yaml.safe_load(
-            path.read_text(encoding="gb18030", errors="ignore")
-        ) or {}
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise UnicodeError(
+            f"Configuration file must be valid UTF-8: {path}"
+        ) from exc
+    payload = yaml.safe_load(text) or {}
     if not isinstance(payload, dict):
         raise TypeError(f"Top-level YAML object must be a mapping: {path}")
     return payload
