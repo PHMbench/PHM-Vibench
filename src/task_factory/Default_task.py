@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from .Components.loss import get_loss_fn
 from .Components.metrics import get_metrics
 from .Components.regularization import calculate_regularization
+from .Components.gradient_constraints import FisherGradientConstraint
 
 
 @register_task("Default_task", "Default_task")
@@ -62,6 +63,23 @@ class Default_task(pl.LightningModule):
         self.metadata = metadata # 存储 metadata
         self.args_trainer = args_trainer
         self.args_environment = args_environment
+
+        gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
+        self.gradient_constraint = None
+        if gradient_constraint:
+            if isinstance(gradient_constraint, dict):
+                constraint_name = gradient_constraint.get("name")
+                epsilon = gradient_constraint.get("epsilon", 2.0)
+            else:
+                constraint_name = getattr(gradient_constraint, "name", None)
+                epsilon = getattr(gradient_constraint, "epsilon", 2.0)
+            if str(constraint_name).lower() != "fic":
+                raise ValueError(
+                    f"unsupported task.gradient_constraint.name {constraint_name!r}"
+                )
+            if str(getattr(self.args_task, "loss", "")).upper() != "CE":
+                raise ValueError("FIC gradient_constraint currently requires task.loss=CE")
+            self.gradient_constraint = FisherGradientConstraint(epsilon=float(epsilon))
 
         # 使用组件配置损失和指标
         self.loss_fn = get_loss_fn(self.args_task.loss)
@@ -304,3 +322,28 @@ class Default_task(pl.LightningModule):
 
         # 对于非 ReduceLROnPlateau 的调度器，返回列表形式
         return [optimizer], [{'scheduler': scheduler, 'interval': 'epoch', 'frequency': 1}]
+
+    def on_before_optimizer_step(self, optimizer) -> None:
+        """Apply an optional post-backward gradient constraint before the update."""
+        del optimizer
+        if self.gradient_constraint is None:
+            return
+        result = self.gradient_constraint.apply(self.parameters())
+        self.log(
+            "train_fic_norm",
+            result.norm,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )
+        self.log(
+            "train_fic_scale",
+            result.scale,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )

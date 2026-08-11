@@ -15,6 +15,7 @@ from .contracts import format_loader_summary, require_nonempty_dataloaders
 from .data_factory import data_factory
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .dataset_task.adapters import resolve_dataset_adapter
+from .splitting import resolve_data_splits
 
 
 def _plain_values(value: Any) -> set[Any]:
@@ -359,7 +360,14 @@ class ExplicitDataFactory(data_factory):
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
-        train_val_ids, test_ids = self.search_id()
+        train_val_ids, task_test_ids = self.search_id()
+        self.split_result = resolve_data_splits(
+            self.target_metadata,
+            self.args_data,
+            self.args_task,
+            train_val_ids,
+            task_test_ids,
+        )
 
         print(
             "Initializing datasets with explicit adapter "
@@ -367,8 +375,8 @@ class ExplicitDataFactory(data_factory):
             f"for {task_type}/{task_name}."
         )
         for file_id in tqdm(
-            train_val_ids,
-            desc="Creating train/val datasets",
+            self.split_result.train_ids,
+            desc="Creating train datasets",
         ):
             file_data = {file_id: self.data[file_id]}
             train_dataset[file_id] = dataset_cls(
@@ -378,15 +386,22 @@ class ExplicitDataFactory(data_factory):
                 self.args_task,
                 "train",
             )
+        for file_id in tqdm(
+            self.split_result.val_ids,
+            desc="Creating val datasets",
+        ):
             val_dataset[file_id] = dataset_cls(
-                file_data,
+                {file_id: self.data[file_id]},
                 self.target_metadata,
                 self.args_data,
                 self.args_task,
                 "val",
             )
 
-        for file_id in tqdm(test_ids, desc="Creating test datasets"):
+        for file_id in tqdm(
+            self.split_result.test_ids,
+            desc="Creating test datasets",
+        ):
             test_dataset[file_id] = dataset_cls(
                 {file_id: self.data[file_id]},
                 self.target_metadata,

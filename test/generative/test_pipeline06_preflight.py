@@ -40,6 +40,16 @@ def test_unknown_mode_is_rejected_before_runtime_dispatch() -> None:
         pipeline06._resolve_mode(_configs(mode="paperpack"))
 
 
+def test_population_bandwidths_are_read_from_task_config() -> None:
+    args_task = SimpleNamespace(
+        population_regularization=SimpleNamespace(
+            rbf_bandwidths=[7, 1.5],
+        )
+    )
+
+    assert pipeline06._population_rbf_bandwidths(args_task) == (7.0, 1.5)
+
+
 def test_sample_requires_checkpoint_by_default() -> None:
     config = _configs(mode="sample")
 

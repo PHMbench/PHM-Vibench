@@ -32,6 +32,15 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         self.data = data[self.key]
         self.args_data = args_data
         self.args_task = args_task
+        split_config = getattr(args_data, "split", None)
+        self.split_strategy = str(
+            getattr(split_config, "strategy", "legacy_windows")
+        )
+        if self.split_strategy not in {"legacy_windows", "grouped_metadata"}:
+            raise ValueError(
+                "Unknown data.split.strategy "
+                f"{self.split_strategy!r}; choose legacy_windows or grouped_metadata."
+            )
 
         requested_mode = str(mode).lower()
         if requested_mode == "valid":
@@ -163,7 +172,10 @@ class Default_dataset(Dataset):  # THU_006or018_basic
     def prepare_data(self, metadata=None):
         """Create windows, normalize them, and select the requested split."""
         self._process_single_data(self.data)
-        if self.mode in {"train", "val", "test_holdout"}:
+        if (
+            self.mode in {"train", "val", "test_holdout"}
+            and self.split_strategy == "legacy_windows"
+        ):
             self._split_data_for_mode()
 
         self.total_samples = len(self.processed_data)

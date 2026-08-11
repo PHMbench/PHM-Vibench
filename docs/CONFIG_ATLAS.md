@@ -12,6 +12,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - [BASE](#base)
 - [Pipeline_01_Fault_Diagnosis](#pipeline-01-fault-diagnosis)
 - [Pipeline_02_Pretraining_Few_Shot](#pipeline-02-pretraining-few-shot)
+- [Pipeline_06_Generative_Modeling](#pipeline-06-generative-modeling)
 
 ## BASE
 
@@ -98,6 +99,28 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/README.md`, `configs/base/model/README.md`, `src/model_factory/README.md`
 - Status: `/`
 
+#### `base_model_tspn_uxfd`
+- Path: `configs/base/model/tspn_uxfd.yaml`
+- Description: TSPN_UXFD #61 core base; optional modules disabled by default
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`, `model.uxfd.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/20_smoke_tspn_uxfd_full_cpu.yaml`
+- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `src/model_factory/X_model/UXFD/FACT_TABLE.md`, `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md`
+- Status: `/`
+
+#### `base_model_xoan_operator_path`
+- Path: `configs/base/model/xoan_operator_path.yaml`
+- Description: P07 standalone typed executable operator-path software base
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`, `model.operator_path.*`
+- Minimal run: `python main.py --config configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
+- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
+- Status: `/`
+
 ### base_task
 
 #### `base_task_cddg`
@@ -177,6 +200,19 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/trainer/README.md`, `src/trainer_factory/README.md`
+- Status: `/`
+
+### protocol
+
+#### `p07_g040_protocol_preflight`
+- Path: `configs/experiments/p07_xoan_operator_attention/g040_protocol.yaml`
+- Description: P07-G040 standalone check-only protocol preflight; approval false and never claim evidence
+- Owner code: `scripts/p07_protocol_preflight.py:main`
+- Keyspace: `protocol.*`, `runtime.*`, `manifests.*`, `cwru.*`, `seeds.*`, `budgets.*`, `thresholds.*`
+- Minimal run: `python scripts/p07_protocol_preflight.py --config configs/experiments/p07_xoan_operator_attention/g040_protocol.yaml --protocol-sha256 <sha256> --metadata-path <metadata> --raw-dir <raw> --reader-source-path <reader> --preprocessing-source-path <preprocessing>`
+- Common overrides: `--device=cpu (default)`, `CUDA requires one of physical GPU 0 or 1`, `optional --emit-dir=<new-derived-dir>`
+- Outputs: `stdout canonical JSON; explicit --emit-dir derived manifests only`
+- Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
 - Status: `/`
 
 
@@ -286,6 +322,36 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/demo/README.md`, `configs/demo/06_pretrain_cddg/README.md`
 - Status: `sanity_ok`
 
+#### `demo_uxfd_full_cpu`
+- Path: `configs/demo/uxfd/20_smoke_tspn_uxfd_full_cpu.yaml`
+- Description: UXFD #61 full-module CPU smoke; no benchmark or claim status
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/tspn_uxfd.yaml`
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `model.uxfd.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/uxfd/20_smoke_tspn_uxfd_full_cpu.yaml`
+- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Outputs: `results/demo/uxfd/tspn_uxfd_full_cpu/{experiment_name}/iter_{i}/`
+- Related docs: `src/model_factory/X_model/UXFD/FACT_TABLE.md`, `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md`
+- Status: `needs_smoke`
+
+### experiment
+
+#### `p07_g030_xoan_operator_path_smoke`
+- Path: `configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
+- Description: P07-G030 CPU software smoke; explicitly not C6-C9 evidence
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `model.operator_path.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
+- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Outputs: `results/experiments/p07/g030_executable_operator_path_smoke/{experiment_name}/iter_{i}/`
+- Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
+- Status: `sanity_ok`
+
 
 ## Pipeline_02_Pretraining_Few_Shot
 
@@ -307,3 +373,25 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Outputs: `results/demo/pretrain_hse_then_fewshot/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/05_pretrain_fewshot/README.md`
 - Status: `sanity_ok`
+
+
+## Pipeline_06_Generative_Modeling
+
+### demo
+
+#### `demo_10_generative_cfm`
+- Path: `configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Description: Conditional Flow Matching CPU candidate smoke; promotion requires a fresh locked-dev E-chain
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/generative_cfm.yaml`
+  - task: `configs/base/task/generative_cfm.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_06_Generative_Modeling.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/demo/dummy_generative_cfm/stage_ledger.json`
+- Related docs: `configs/demo/10_generative/README.md`, `docs/PIPELINE_06_GENERATIVE_MIGRATION.md`
+- Status: `needs_smoke`

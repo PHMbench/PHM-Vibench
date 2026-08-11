@@ -7,6 +7,14 @@ task:
   optimizer: "adamw"
   t_eps: 0.001
 
+  population_regularization:
+    enabled: false
+    weight: 0.1
+    dependency: "pearson_correlation"
+    estimator: "biased"
+    rbf_bandwidths: [0.1, 0.5, 1.0, 2.0]
+    same_time_per_batch: true
+
   generative:
     mode: "train"
     source_split: "train"

@@ -20,6 +20,7 @@ Transformer,Informer,src/model_factory/Transformer/Informer.py,"enc_in, dec_in, 
 Transformer,Linformer,src/model_factory/Transformer/Linformer.py,"input_dim, d_model, n_heads, num_layers, k, seq_len, num_classes/output_dim","linear-complexity transformer variant","/"
 Transformer,ConvTransformer,src/model_factory/Transformer/ConvTransformer.py,"input_dim, d_model, n_heads, num_layers, kernel_size, num_classes/output_dim","hybrid convolutional transformer","/"
 Transformer,Transformer_Dummy,src/model_factory/Transformer/Transformer_Dummy.py,"input_dim, d_model, n_heads, num_layers, num_classes/output_dim","simple transformer baseline / sanity check","/"
+Transformer,TSLTransformer,src/model_factory/Transformer/TSLTransformer.py,"input_dim, seq_len, patch_size, d_model, n_heads, num_layers, d_ff, lstm_hidden_dim, dropout, num_classes","clean-room TSL-style Transformer/LSTM classifier; classification only","/"
 MLP,ResNetMLP,src/model_factory/MLP/ResNetMLP.py,"input_dim, hidden_dim, num_layers, activation, dropout, num_classes","MLP with residual connections for time series","/"
 MLP,MLPMixer,src/model_factory/MLP/MLPMixer.py,"input_dim, patch_size, hidden_dim, num_layers, mlp_ratio, dropout, num_classes","token- and channel-mixing MLP architecture","/"
 MLP,gMLP,src/model_factory/MLP/gMLP.py,"input_dim, hidden_dim, num_layers, seq_len, dropout, num_classes","gated MLP with spatial gating units","/"
@@ -33,4 +34,5 @@ NO,WaveletNO,src/model_factory/NO/WaveletNO.py,"input_dim, hidden_dim, num_layer
 X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"input_dim, num_windows, kernel_size, num_classes/output_dim","multi-window attention CNN for auxiliary analysis","/"
 X_model,TSPN,src/model_factory/X_model/TSPN.py,"input_dim, hidden_dim, num_prototypes, num_classes/output_dim","time-series prototype/explainability network","/"
 X_model,TSPN_UXFD,src/model_factory/X_model/TSPN_UXFD.py,"signal_processing_configs, feature_extractor_configs, in_channels, num_classes/output_dim","UXFD-aligned TSPN wrapper (stable name for paper submodules)","/"
+X_model,XOANOperatorPath,src/model_factory/X_model/XOANOperatorPath.py,"in_channels, num_classes, classifier_hidden_dim, dropout, inference_mode, operator_path.*","P07 standalone typed sparse executable operator-path classifier; G030 software status only","pass"
 X_model,BASE_ExplainableCNN,src/model_factory/X_model/BASE_ExplainableCNN.py,"in_channels, width, dropout, num_classes/output_dim","torch-only 1D CNN baseline for UXFD comparisons","/"
