@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
+from numbers import Real
 from typing import Any
 
 from src.configs.config_utils import load_config
@@ -36,12 +38,39 @@ def _has_stages(config: Any) -> bool:
     return isinstance(stages, (list, tuple)) and bool(stages)
 
 
+def _metric_scalar(value: Any, *, stage_name: str, metric_name: str) -> float:
+    """Return one finite scalar metric without guessing non-scalar reductions."""
+
+    if hasattr(value, "item"):
+        try:
+            value = value.item()
+        except (RuntimeError, TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"Pipeline 02 stage {stage_name!r} metric {metric_name!r} must be "
+                "a scalar value."
+            ) from exc
+
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise RuntimeError(
+            f"Pipeline 02 stage {stage_name!r} metric {metric_name!r} must be "
+            f"a numeric scalar, got {type(value).__name__}."
+        )
+
+    scalar = float(value)
+    if not math.isfinite(scalar):
+        raise FloatingPointError(
+            f"Pipeline 02 stage {stage_name!r} metric {metric_name!r} is not finite: "
+            f"{scalar!r}."
+        )
+    return scalar
+
+
 def _require_completed_stage_evaluation(result: Any, mode: str) -> Any:
-    """Reject multi-stage success when a stage has no completed evaluation metrics.
+    """Reject multi-stage success without finite evaluation metrics for every stage.
 
     The current Pipeline 02 multi-stage contract always calls ``trainer.test`` after
-    each trained stage. An empty metric mapping therefore means evaluation did not
-    complete and the public run must fail rather than report stage success.
+    each trained stage. Empty, non-scalar, or non-finite metrics therefore mean
+    evaluation did not complete successfully and the public run must fail.
     """
     if not isinstance(result, Mapping) or not result:
         raise RuntimeError(
@@ -63,6 +92,12 @@ def _require_completed_stage_evaluation(result: Any, mode: str) -> Any:
             raise RuntimeError(
                 f"Pipeline 02 stage {stage_name!r} did not complete evaluation: "
                 "expected a non-empty metrics mapping from trainer.test."
+            )
+        for metric_name, value in metrics.items():
+            _metric_scalar(
+                value,
+                stage_name=str(stage_name),
+                metric_name=str(metric_name),
             )
 
     if stage_count == 0:
@@ -117,7 +152,7 @@ def pipeline(args: Any) -> Any:
     - a compiled config containing non-empty ``stages`` uses the unified orchestrator;
     - a config without ``stages`` uses the shared classification runtime.
 
-    Multi-stage success requires a non-empty evaluation metric mapping for every stage.
+    Multi-stage success requires non-empty finite evaluation metrics for every stage.
     No exception changes the selected mode or activates a second implementation.
     """
 
