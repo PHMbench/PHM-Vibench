@@ -1675,10 +1675,19 @@ def _run_pilot(
             for seed in SEEDS
         },
     )
+    completed_at = _utc_now()
+    completed_execution = dict(execution_context)
+    completed_execution.update(
+        {
+            "execution_status": "complete",
+            "completed_at": completed_at,
+        }
+    )
     run_index.update(
         {
             "execution_status": "complete",
-            "completed_at": _utc_now(),
+            "completed_at": completed_at,
+            "execution": completed_execution,
             "delta_rid": matching["delta_rid"],
             "delta_int": interventions["delta_int"],
             "decision": decision["decision"],
@@ -1745,6 +1754,8 @@ def main() -> int:
     _write_json(output_root / "semantic_gate.json", gate_payload)
     execution_context["semantic_gate_execution"] = observed_gate
     if observed_gate["status"] != "passed":
+        execution_context["execution_status"] = "failed_semantic_gate"
+        execution_context["completed_at"] = _utc_now()
         _write_json(
             output_root / "run_index.json",
             {
@@ -1790,12 +1801,14 @@ def main() -> int:
     if args.mode in {"pilot", "all"}:
         _run_pilot(config, data, output_root, device, execution_context)
     elif args.mode == "smoke":
+        execution_context["execution_status"] = "smoke_complete"
+        execution_context["completed_at"] = _utc_now()
         _write_json(
             output_root / "run_index.json",
             {
                 "experiment_id": config["protocol"]["experiment_id"],
                 "execution_status": "smoke_complete",
-                "completed_at": _utc_now(),
+                "completed_at": execution_context["completed_at"],
                 "execution": execution_context,
                 "runs": [],
             },
