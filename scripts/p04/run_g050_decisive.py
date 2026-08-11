@@ -1500,12 +1500,16 @@ def _run_smoke(
         batch_size=batch_size,
         device=device,
     )
+    portable_record = dict(record)
+    portable_record["checkpoint"] = str(
+        Path(record["checkpoint"]).relative_to(output_root)
+    )
     _write_json(
         smoke_root / "smoke.json",
         {
             "paper_evidence": False,
             "purpose": "loading/metadata/gradient/checkpoint/permutation/probe/intervention plumbing",
-            "run": record,
+            "run": portable_record,
             "recovered_role_to_slot": role_map,
             "irrelevant_control_signatures": control_payload,
             "intervention_plumbing": intervention,
@@ -1579,11 +1583,11 @@ def _run_pilot(
 
     missing = [key for key, value in run_records.items() if "probe_match" not in value]
     run_summaries = [
-        {
+        dict({
             key: item
             for key, item in value.items()
             if key not in {"probe_match", "probe_eval", "probe_controls"}
-        }
+        }, checkpoint=str(Path(value["checkpoint"]).relative_to(output_root)))
         for value in run_records.values()
     ]
     run_index = {
@@ -1718,8 +1722,9 @@ def main() -> int:
         "started_at": _utc_now(),
         "command": [sys.executable, *sys.argv],
         "config_path": str(config_path),
-        "resolved_config_path": str(output_root / "resolved_config.yaml"),
-        "output_root": str(output_root),
+        "resolved_config_path": "resolved_config.yaml",
+        "artifact_root_at_execution": str(output_root),
+        "artifact_paths_relative_to_result_root": True,
         "runtime_git": runtime_provenance,
     }
     _write_json(
