@@ -194,7 +194,7 @@ def test_pipeline_wrappers_only_select_hooks(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(
         pipeline_01,
         "run_classification_pipeline",
-        lambda args: calls.append(("p01", args)) or [],
+        lambda args, hooks: calls.append(("p01", args, type(hooks).__name__)) or [],
     )
     monkeypatch.setattr(
         pipeline_05,
@@ -205,7 +205,10 @@ def test_pipeline_wrappers_only_select_hooks(monkeypatch: pytest.MonkeyPatch) ->
     marker = object()
     assert pipeline_01.pipeline(marker) == []
     assert pipeline_05.pipeline(marker) == []
-    assert calls == [("p01", marker), ("p05", marker, "ExplainabilityHooks")]
+    assert calls == [
+        ("p01", marker, "_P01DataProtocolHooks"),
+        ("p05", marker, "ExplainabilityHooks"),
+    ]
 
 
 def test_same_file_fewshot_windows_are_disjoint_across_splits() -> None:

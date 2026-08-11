@@ -47,6 +47,12 @@ class Default_dataset(Dataset):  # THU_006or018_basic
                 f"got {mode!r}"
             )
         self.mode = requested_mode
+        grouped_split = getattr(args_task, "grouped_split", None)
+        self.grouped_partition = bool(
+            getattr(grouped_split, "enabled", False)
+            if grouped_split is not None
+            else False
+        )
 
         self.window_size = int(args_data.window_size)
         self.num_window = int(args_data.num_window)
@@ -163,7 +169,10 @@ class Default_dataset(Dataset):  # THU_006or018_basic
     def prepare_data(self, metadata=None):
         """Create windows, normalize them, and select the requested split."""
         self._process_single_data(self.data)
-        if self.mode in {"train", "val", "test_holdout"}:
+        if (
+            self.mode in {"train", "val", "test_holdout"}
+            and not self.grouped_partition
+        ):
             self._split_data_for_mode()
 
         self.total_samples = len(self.processed_data)

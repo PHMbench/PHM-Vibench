@@ -92,6 +92,62 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
             f"task.target_system_id={list(target_system_id)!r} matched no metadata rows."
         )
 
+    selected_files = getattr(args_task, "selected_files", None)
+    grouped_split = getattr(args_task, "grouped_split", None)
+    grouped_enabled = bool(getattr(grouped_split, "enabled", False))
+    if selected_files is None and grouped_enabled:
+        raw_groups = getattr(grouped_split, "groups", None)
+        if not isinstance(raw_groups, (list, tuple)) or not raw_groups:
+            raise ValueError(
+                "task.grouped_split.groups must declare the selected files."
+            )
+        selected_files = []
+        for group in raw_groups:
+            files = getattr(group, "files", None)
+            if not isinstance(files, (list, tuple)) or not files:
+                raise ValueError(
+                    "Every task.grouped_split group must declare files."
+                )
+            selected_files.extend(files)
+    if selected_files is not None:
+        if isinstance(selected_files, (str, bytes)):
+            selected_files = [selected_files]
+        else:
+            selected_files = list(selected_files)
+        if not selected_files:
+            raise ValueError("task.selected_files must contain at least one file.")
+        if any(
+            not isinstance(value, str) or not value.strip()
+            for value in selected_files
+        ):
+            raise ValueError(
+                "task.selected_files must contain only non-empty file names."
+            )
+        if len(set(selected_files)) != len(selected_files):
+            raise ValueError("task.selected_files contains duplicate file names.")
+        if "File" not in filtered_df.columns:
+            raise ValueError(
+                "task.selected_files requires metadata column 'File'."
+            )
+
+        selected_set = set(selected_files)
+        available_counts = filtered_df["File"].value_counts(dropna=False)
+        missing = sorted(selected_set - set(available_counts.index), key=str)
+        if missing:
+            raise ValueError(
+                "task.selected_files contains file(s) absent from the selected "
+                f"system metadata: {missing}."
+            )
+        ambiguous = sorted(
+            value for value in selected_set if int(available_counts[value]) != 1
+        )
+        if ambiguous:
+            raise ValueError(
+                "task.selected_files must identify exactly one metadata row per "
+                f"file; ambiguous file(s): {ambiguous}."
+            )
+        filtered_df = filtered_df[filtered_df["File"].isin(selected_set)].copy()
+
     if task_type in _SUPERVISED_TASK_TYPES:
         if "Label" not in filtered_df.columns:
             raise ValueError(
