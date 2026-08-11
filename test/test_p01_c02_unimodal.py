@@ -319,7 +319,7 @@ def test_grouped_rows_are_domain_specific_and_report_capacity(
     rows = build_p01_grouped_result_rows(_context(condition))
 
     assert [row["target_domain"] for row in rows] == [2, 3, "mean_2_3"]
-    assert all(row["status"] == "completed" for row in rows)
+    assert all(row["status"] == "succeeded" for row in rows)
     assert all(row["seed"] == 31 for row in rows)
     assert all(
         row["primary_metric_name"] == "condition_block_macro_f1"

@@ -570,7 +570,7 @@ def build_p01_grouped_result_rows(
         "dataset": "CWRU",
         "seed": seed,
         "iteration": int(context.iteration),
-        "status": "completed",
+        "status": "succeeded",
         "primary_metric_name": metric_name,
         "independent_group_key": group_key,
         "aggregation": aggregation,

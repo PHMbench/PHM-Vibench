@@ -328,7 +328,7 @@ def test_c03_grouped_rows_bind_fairness_and_control_identity(
         row["capacity_compute_match_status"] == "within_frozen_tolerances"
         for row in rows
     )
-    assert all(row["status"] == "completed" for row in rows)
+    assert all(row["status"] == "succeeded" for row in rows)
     assert all(row["primary_metric_value"] == pytest.approx(1.0) for row in rows)
     assert "not comparative evidence" in rows[0]["scientific_boundary"]
 
