@@ -10,6 +10,7 @@ from src.explain_factory.p05_selective_risk import (
     operational_wording_gate,
     retrospective_selective_metrics,
     select_validation_threshold,
+    trace_risk_features,
 )
 
 
@@ -67,6 +68,28 @@ def test_validation_bundle_fits_all_registered_scores_without_test_inputs():
     assert set(bundle.thresholds) == {"trace", "R0", "R1", "R2", "R3"}
     assert 0.05 <= bundle.temperature <= 20.0
     assert all(np.isfinite(value) for value in bundle.thresholds.values())
+
+
+def test_trace_risk_accepts_and_normalizes_float32_softmax_row_drift():
+    logits = np.asarray([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
+    firing = np.asarray(
+        [
+            [0.10000001, 0.20000002, 0.70000005],
+            [0.33333334, 0.33333334, 0.33333334],
+        ],
+        dtype=np.float32,
+    )
+    features = trace_risk_features(logits, firing)
+    assert features.shape == (2, 3)
+    assert np.isfinite(features).all()
+
+
+def test_trace_risk_still_rejects_materially_unnormalized_firing():
+    with pytest.raises(ValueError, match="sum to one"):
+        trace_risk_features(
+            np.asarray([[1.0, 0.0]], dtype=np.float32),
+            np.asarray([[0.2, 0.2, 0.2]], dtype=np.float32),
+        )
 
 
 def test_validation_threshold_includes_all_exact_score_ties():

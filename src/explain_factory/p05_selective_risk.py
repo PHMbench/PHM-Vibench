@@ -105,8 +105,12 @@ def trace_risk_features(logits: np.ndarray, firing: np.ndarray) -> np.ndarray:
     if np.any(firing_values < 0.0):
         raise ValueError("normalized rule firing cannot be negative")
     row_sums = firing_values.sum(axis=1)
-    if not np.allclose(row_sums, 1.0, rtol=0.0, atol=1e-10):
+    # The registered trace is emitted in float32 and converted to float64 for
+    # offline statistics.  Accept only its frozen reconstruction tolerance,
+    # then remove harmless float32 row-sum drift before entropy is evaluated.
+    if not np.allclose(row_sums, 1.0, rtol=1e-6, atol=1e-6):
         raise ValueError("rule firing rows must sum to one")
+    firing_values = firing_values / row_sums[:, None]
     entropy = -np.sum(
         firing_values
         * np.log(np.clip(firing_values, np.finfo(np.float64).tiny, 1.0)),
