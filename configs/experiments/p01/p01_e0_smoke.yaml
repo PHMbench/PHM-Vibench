@@ -1,0 +1,63 @@
+# Non-paper E0 executable-semantic smoke on repository-shipped dummy data.
+# This config validates the real train -> checkpoint -> test path only. It is
+# neither a scientific dataset protocol nor evidence for an alignment claim.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_classification.yaml"
+  model: "configs/base/model/p01_alignment.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p01_e0_semantic_smoke"
+  seed: 31
+  iterations: 1
+  output_dir: "results/p01/e0_smoke"
+  notes: "Non-paper E0 smoke for executable M5 alignment semantics."
+  wandb: false
+  swanlab: false
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 32
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  unused_ratio: 0.0
+  normalization: "per_window_standardization"
+  window_size: 128
+  window_sampling_strategy: "evenly_spaced"
+  num_window: 10
+  dtype: "float32"
+  pin_memory: false
+
+model:
+  condition: "M5"
+  num_classes: 2
+  in_channels: 2
+
+task:
+  type: "pretrain"
+  name: "classification"
+  loss: "CE"
+  metrics:
+    - "acc"
+  optimizer: "adam"
+  lr: 0.001
+  weight_decay: 0.0
+
+trainer:
+  name: "Default_trainer"
+  monitor: "val_loss"
+  num_epochs: 1
+  gpus: 1
+  device: "cuda"
+  early_stopping: false
+  pruning: 0.0
+  save_top_k: 1
+  log_every_n_steps: 1

@@ -33,5 +33,5 @@ NO,WaveletNO,src/model_factory/NO/WaveletNO.py,"input_dim, hidden_dim, num_layer
 X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"input_dim, num_windows, kernel_size, num_classes/output_dim","multi-window attention CNN for auxiliary analysis","/"
 X_model,TSPN,src/model_factory/X_model/TSPN.py,"input_dim, hidden_dim, num_prototypes, num_classes/output_dim","time-series prototype/explainability network","/"
 X_model,TSPN_UXFD,src/model_factory/X_model/TSPN_UXFD.py,"signal_processing_configs, feature_extractor_configs, in_channels, num_classes/output_dim","UXFD-aligned TSPN wrapper (stable name for paper submodules)","/"
-X_model,P01Alignment,src/model_factory/X_model/P01Alignment.py,"condition, in_channels, encoder_dim, latent_dim, renderer, num_classes","P01 forward-only M1-M5 alignment conditions with one frozen 1D-to-2D renderer","/"
+X_model,P01Alignment,src/model_factory/X_model/P01Alignment.py,"condition, in_channels, encoder_dim, latent_dim, renderer, alignment, num_classes","P01 M1-M5 conditions with one frozen 1D-to-2D renderer and the executable M5 alignment objective","/"
 X_model,BASE_ExplainableCNN,src/model_factory/X_model/BASE_ExplainableCNN.py,"in_channels, width, dropout, num_classes/output_dim","torch-only 1D CNN baseline for UXFD comparisons","/"
