@@ -1,69 +1,113 @@
-import pandas as pd
+from __future__ import annotations
+
 from ..data_utils import MetadataAccessor
-from .Get_id import Get_DG_ids, Get_CDDG_ids # ,Get_GFS_ids
+from .Get_id import Get_CDDG_ids, Get_DG_ids
+
+
+_ALL_ID_TASK_TYPES = frozenset(
+    {
+        "FS",
+        "GFS",
+        "pretrain",
+        "Pretrain",
+        "generative",
+        "multi_task",
+        "In_distribution",
+    }
+)
+_TASKS_ALLOWING_ALL_SYSTEMS = frozenset({"pretrain", "Pretrain", "generative"})
+_SUPERVISED_TASK_TYPES = frozenset(
+    {"DG", "CDDG", "FS", "GFS", "multi_task", "In_distribution"}
+)
 
 
 def search_ids_for_task(metadata_accessor, args_task):
-    """
-    根据任务参数从元数据中搜索训练/验证和测试ID。
-    """
-    train_val_ids = []
-    test_ids = []
+    """Return the exact train/validation and test IDs for one known task type."""
 
-    if args_task.target_system_id is not None:
-        if args_task.type == 'DG':
-            train_val_ids, test_ids = Get_DG_ids(metadata_accessor, args_task)
-        elif args_task.type == 'CDDG':
-            train_val_ids, test_ids = Get_CDDG_ids(metadata_accessor, args_task)
-        elif args_task.type == 'FS':
-            # Few-shot 学习：在筛选出的目标系统范围内，直接使用全部 ID
-            train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
-        elif args_task.type == 'GFS':
-            train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
-        elif args_task.type in ['pretrain', 'Pretrain']:
-            # 对于预训练任务，通常使用全部可用 ID
-            train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
-        # Add other task types here if needed
-        # elif args_task.type == 'SOME_OTHER_TYPE':
-        #     train_val_ids, test_ids = get_some_other_type_ids(metadata_accessor, args_task)
-        else:
-            # Default or error handling if task type is unknown or not specified for ID searching
-            print(f"Warning: Task type {args_task.type} not specifically handled for ID searching. Defaulting to all keys.")
-            train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
+    task_type = str(getattr(args_task, "type", "") or "").strip()
+    if not task_type:
+        raise ValueError("task.type must be a non-empty string before selecting data IDs.")
 
+    target_system_id = getattr(args_task, "target_system_id", None)
+    if not target_system_id and task_type not in _TASKS_ALLOWING_ALL_SYSTEMS:
+        raise ValueError(
+            f"task.type={task_type!r} requires a non-empty task.target_system_id. "
+            "Declare the intended system population instead of using all metadata rows."
+        )
+
+    if task_type == "DG":
+        train_val_ids, test_ids = Get_DG_ids(metadata_accessor, args_task)
+    elif task_type == "CDDG":
+        train_val_ids, test_ids = Get_CDDG_ids(metadata_accessor, args_task)
+    elif task_type in _ALL_ID_TASK_TYPES:
+        # These maintained compatibility paths intentionally reuse the selected
+        # metadata population. Their scientific support/query semantics are reviewed
+        # separately; this function must not invent another split.
+        selected_ids = list(metadata_accessor.keys())
+        train_val_ids, test_ids = selected_ids, list(selected_ids)
     else:
-        train_val_ids, test_ids = list(metadata_accessor.keys()), list(metadata_accessor.keys())
-    
+        supported = sorted({"DG", "CDDG", *_ALL_ID_TASK_TYPES})
+        raise ValueError(
+            f"Unknown task.type={task_type!r} for data ID selection. "
+            f"Supported task types: {', '.join(supported)}."
+        )
+
+    if not train_val_ids:
+        raise ValueError(
+            f"task.type={task_type!r} selected no training/validation IDs. "
+            "Check target_system_id, domain settings, labels, and metadata."
+        )
+    if task_type in {"DG", "CDDG"} and not test_ids:
+        raise ValueError(
+            f"task.type={task_type!r} selected no test IDs. "
+            "The requested domain protocol cannot be executed."
+        )
+
     return train_val_ids, test_ids
 
+
 def search_target_dataset_metadata(metadata_accessor, args_task):
-    """
-    根据任务参数筛选目标数据集的元数据。
-    """
-    # 某些任务（如部分 pretrain 配置）可能未显式指定 target_system_id，此时直接返回全部元数据
-    if not hasattr(args_task, 'target_system_id') or not args_task.target_system_id:
-        print("未指定目标数据集ID，返回全部元数据")
-        return metadata_accessor
-    
+    """Select the declared system population without dropping invalid rows silently."""
+
+    task_type = str(getattr(args_task, "type", "") or "").strip()
+    target_system_id = getattr(args_task, "target_system_id", None)
+
+    if not target_system_id:
+        if task_type in _TASKS_ALLOWING_ALL_SYSTEMS:
+            return metadata_accessor
+        raise ValueError(
+            f"task.type={task_type!r} requires task.target_system_id before metadata "
+            "selection."
+        )
+
+    if "Dataset_id" not in metadata_accessor.df.columns:
+        raise ValueError("Metadata must contain a 'Dataset_id' column.")
+
     filtered_df = metadata_accessor.df[
-        metadata_accessor.df['Dataset_id'].isin(args_task.target_system_id)].copy()
-    
+        metadata_accessor.df["Dataset_id"].isin(target_system_id)
+    ].copy()
 
-    # 检查Label是否有空值 
-    filtered_df = filtered_df[filtered_df['Label'].notna()]
+    if filtered_df.empty:
+        raise ValueError(
+            f"task.target_system_id={list(target_system_id)!r} matched no metadata rows."
+        )
 
-    # 检查Label是否有-1
-    filtered_df = filtered_df[filtered_df['Label'] != -1]
+    if task_type in _SUPERVISED_TASK_TYPES:
+        if "Label" not in filtered_df.columns:
+            raise ValueError(
+                f"Supervised task.type={task_type!r} requires metadata column 'Label'."
+            )
+        invalid = filtered_df[filtered_df["Label"].isna() | (filtered_df["Label"] == -1)]
+        if not invalid.empty:
+            invalid_ids = (
+                invalid["Id"].tolist()
+                if "Id" in invalid.columns
+                else invalid.index.tolist()
+            )
+            raise ValueError(
+                "Supervised metadata contains missing or -1 labels for ID(s) "
+                f"{invalid_ids}. Fix the metadata instead of dropping rows."
+            )
 
-    # # 检查是否visiable？
-    # filtered_df = filtered_df[filtered_df['Visible'] == True]
-
-    print(f"筛选前元数据行数: {len(metadata_accessor.df)}")
-    print(f"筛选后元数据行数: {len(filtered_df)}")
-    
-    if len(filtered_df) == 0:
-        print(f"警告: 目标数据集ID {args_task.target_system_id} 没有匹配的记录")
-    
     filtered_df.reset_index(drop=True, inplace=True)
-    target_metadata = MetadataAccessor(filtered_df, key_column=metadata_accessor.key_column)
-    return target_metadata
+    return MetadataAccessor(filtered_df, key_column=metadata_accessor.key_column)
