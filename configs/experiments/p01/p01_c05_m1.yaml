@@ -1,0 +1,21 @@
+# RUN-0019: waveform-only C05 matrix cell.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c05_m1_waveform_reference"
+  output_dir: "results/p01/c05_m1_pilot"
+  notes: >-
+    RUN-0019; C05 M1, seed 31, fixed ten epochs, source-validation checkpoint,
+    zero C05 tuning, and no manuscript claim promotion.
+
+model:
+  condition: "M1"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0019"
+    condition_id: "M1"

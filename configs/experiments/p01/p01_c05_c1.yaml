@@ -1,0 +1,21 @@
+# RUN-0024: unchanged M4 under the frozen capacity/compute-control identity.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c05_c1_capacity_compute_control"
+  output_dir: "results/p01/c05_c1_pilot"
+  notes: >-
+    RUN-0024; C05 C1 is unchanged M4 under a distinct control identity, seed 31,
+    fixed ten epochs, no tuning, and not an independent replicate or claim.
+
+model:
+  condition: "M4"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0024"
+    condition_id: "C1"

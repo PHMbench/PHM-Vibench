@@ -1,0 +1,21 @@
+# RUN-0023: synchronized full-alignment C05 matrix cell.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c05_m5_full_alignment"
+  output_dir: "results/p01/c05_m5_pilot"
+  notes: >-
+    RUN-0023; C05 M5, seed 31, fixed ten epochs, source-validation checkpoint,
+    frozen E0 coefficients, zero C05 tuning, and no claim promotion.
+
+model:
+  condition: "M5"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0023"
+    condition_id: "M5"

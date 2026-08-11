@@ -1,0 +1,25 @@
+# RUN-0025: M5 with only target-side alignment slots deranged.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c05_c2_permuted_alignment_targets"
+  output_dir: "results/p01/c05_c2_pilot"
+  notes: >-
+    RUN-0025; C05 C2, seed 31, fixed ten epochs, frozen Sattolo target-slot
+    null and loss scale, zero C05 tuning, and no claim promotion.
+
+model:
+  condition: "M5"
+
+task:
+  alignment_target_control:
+    mode: "seeded_sattolo_derangement_after_batching"
+    seed: 31042
+    seed_key: "base_seed_plus_epoch_times_1000003_plus_batch_index"
+  grouped_evaluation:
+    run_id: "RUN-0025"
+    condition_id: "C2"

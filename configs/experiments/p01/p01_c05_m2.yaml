@@ -1,0 +1,21 @@
+# RUN-0020: deterministic time-frequency-only C05 matrix cell.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c05_m2_time_frequency_reference"
+  output_dir: "results/p01/c05_m2_pilot"
+  notes: >-
+    RUN-0020; C05 M2, seed 31, fixed ten epochs, source-validation checkpoint,
+    zero C05 tuning, and no manuscript claim promotion.
+
+model:
+  condition: "M2"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0020"
+    condition_id: "M2"

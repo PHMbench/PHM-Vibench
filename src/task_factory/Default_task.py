@@ -94,6 +94,7 @@ class Default_task(pl.LightningModule):
         self._alignment_training_batch_count = 0
         self._last_alignment_target_permutation: torch.Tensor | None = None
         self._alignment_target_derived_seeds: list[int] = []
+        self._c05_view_gradient_observation: dict[str, Any] | None = None
 
         gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
         self.gradient_constraint = None
@@ -158,11 +159,12 @@ class Default_task(pl.LightningModule):
         )
         if (
             grouped is None
-            or str(getattr(grouped, "goal_id", "")) != "C04"
+            or str(getattr(grouped, "goal_id", "")) not in {"C04", "C05"}
             or str(getattr(grouped, "condition_id", "")) != "C2"
         ):
             raise ValueError(
-                "task.alignment_target_control is admitted only for C04 condition C2"
+                "task.alignment_target_control is admitted only for C04/C05 "
+                "condition C2"
             )
         mode = str(getattr(control, "mode", ""))
         expected_mode = "seeded_sattolo_derangement_after_batching"
@@ -238,7 +240,7 @@ class Default_task(pl.LightningModule):
         self._alignment_target_derived_seeds.append(derived_seed)
         return permutation
 
-    def _record_c04_training_objective(
+    def _record_p01_training_objective(
         self,
         objective: Mapping[str, torch.Tensor],
         *,
@@ -247,7 +249,8 @@ class Default_task(pl.LightningModule):
         grouped = getattr(
             getattr(self, "args_task", None), "grouped_evaluation", None
         )
-        if str(getattr(grouped, "goal_id", "")) != "C04":
+        goal_id = str(getattr(grouped, "goal_id", ""))
+        if goal_id not in {"C04", "C05"}:
             return
         names = (
             "classification",
@@ -268,15 +271,15 @@ class Default_task(pl.LightningModule):
             if name in objective
         }
         if not observed:
-            raise RuntimeError("C04 training objective summary is empty")
+            raise RuntimeError(f"{goal_id} training objective summary is empty")
         if self._alignment_training_sums and set(observed) != set(
             self._alignment_training_sums
         ):
-            raise RuntimeError("C04 objective fields changed between batches")
+            raise RuntimeError(f"{goal_id} objective fields changed between batches")
         for name, value in observed.items():
             if not np.isfinite(value):
                 raise FloatingPointError(
-                    f"C04 training summary field {name!r} is not finite"
+                    f"{goal_id} training summary field {name!r} is not finite"
                 )
             self._alignment_training_sums[name] = (
                 self._alignment_training_sums.get(name, 0.0)
@@ -286,12 +289,115 @@ class Default_task(pl.LightningModule):
         self._alignment_training_batch_count += 1
 
     def on_train_start(self) -> None:
-        """Start a fresh, current-fit-only C04 objective summary."""
+        """Start fresh current-fit objective and C05 view-use observations."""
         self._alignment_training_sums.clear()
         self._alignment_training_sample_count = 0
         self._alignment_training_batch_count = 0
         self._last_alignment_target_permutation = None
         self._alignment_target_derived_seeds.clear()
+        self._c05_view_gradient_observation = None
+
+    def on_after_backward(self) -> None:
+        """Fail closed when a required C05 branch is unused on the first batch."""
+        grouped = getattr(self.args_task, "grouped_evaluation", None)
+        if (
+            str(getattr(grouped, "goal_id", "")) != "C05"
+            or self._c05_view_gradient_observation is not None
+        ):
+            return
+        condition_id = str(
+            getattr(grouped, "condition_id", getattr(self.args_model, "condition", ""))
+        )
+        required_groups = {
+            "M1": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "classifier_head": ("head.",),
+            },
+            "M2": {
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "M3": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "M4": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "fusion_attention": ("attention.",),
+                "classifier_head": ("head.",),
+            },
+            "M5": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "C1": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "fusion_attention": ("attention.",),
+                "classifier_head": ("head.",),
+            },
+            "C2": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "C3": {
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "duplicate_time_frequency_2d": (
+                    "encoder_duplicate_2d.",
+                    "project_duplicate_2d.",
+                ),
+                "classifier_head": ("head.",),
+            },
+        }.get(condition_id)
+        if required_groups is None:
+            raise RuntimeError(f"C05 has no view-gradient contract for {condition_id!r}")
+
+        named_parameters = tuple(self.network.named_parameters())
+        threshold = 1.0e-12
+        norms: dict[str, float] = {}
+        for group_name, prefixes in required_groups.items():
+            parameters = [
+                parameter
+                for name, parameter in named_parameters
+                if parameter.requires_grad and name.startswith(prefixes)
+            ]
+            if not parameters:
+                raise RuntimeError(
+                    f"C05 {condition_id} gradient group {group_name!r} has no parameters"
+                )
+            squared_norm: torch.Tensor | None = None
+            for parameter in parameters:
+                if parameter.grad is None:
+                    continue
+                term = parameter.grad.detach().float().square().sum()
+                squared_norm = term if squared_norm is None else squared_norm + term
+            norm = 0.0 if squared_norm is None else float(squared_norm.sqrt().cpu().item())
+            if not np.isfinite(norm) or norm <= threshold:
+                raise RuntimeError(
+                    f"C05 {condition_id} required gradient group {group_name!r} "
+                    f"has norm {norm}, threshold {threshold}"
+                )
+            norms[group_name] = norm
+        self._c05_view_gradient_observation = {
+            "scope": "first_source_training_batch_after_backward_before_optimizer_step",
+            "condition_id": condition_id,
+            "required_gradient_norm_threshold": threshold,
+            "gradient_norms": dict(sorted(norms.items())),
+            "status": "passed",
+        }
+
+    def view_gradient_summary(self) -> dict[str, Any] | None:
+        observation = self._c05_view_gradient_observation
+        if observation is None:
+            return None
+        return {
+            **observation,
+            "gradient_norms": dict(observation["gradient_norms"]),
+        }
 
     def training_objective_summary(self) -> dict[str, Any] | None:
         if self._alignment_training_sample_count == 0:
@@ -332,7 +438,7 @@ class Default_task(pl.LightningModule):
         return summary
 
     def alignment_training_summary(self) -> dict[str, Any] | None:
-        """Backward-compatible reader for the C04 objective summary."""
+        """Backward-compatible reader for the P01 objective summary."""
         return self.training_objective_summary()
 
     def _build_label_contract(self) -> tuple[int, ...] | None:
@@ -631,7 +737,7 @@ class Default_task(pl.LightningModule):
                 )
             objective = compose_objective(loss, alignment_losses)
             total_loss = objective["total"]
-            Default_task._record_c04_training_objective(
+            Default_task._record_p01_training_objective(
                 self,
                 objective,
                 batch_size=batch_size,
@@ -648,7 +754,7 @@ class Default_task(pl.LightningModule):
             )
             total_loss = loss + regularization_total + auxiliary_total
             if stage == "train":
-                Default_task._record_c04_training_objective(
+                Default_task._record_p01_training_objective(
                     self,
                     {"classification": loss, "total": total_loss},
                     batch_size=batch_size,

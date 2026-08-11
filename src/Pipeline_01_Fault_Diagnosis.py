@@ -78,6 +78,30 @@ _C3_SELECTION_IDENTITY = {
     "c1_parameter_tolerance_status": "both_outside_five_percent",
 }
 
+_C05_MODEL_CONDITIONS = {
+    "M1": "M1",
+    "M2": "M2",
+    "M3": "M3",
+    "M4": "M4",
+    "M5": "M5",
+    "C1": "M4",
+    "C2": "M5",
+    "C3": "C3",
+}
+
+_C05_RUN_IDENTITIES = {
+    "RUN-0019": ("M1", "matrix_cell", ""),
+    "RUN-0020": ("M2", "matrix_cell", ""),
+    "RUN-0021": ("M3", "matrix_cell", ""),
+    "RUN-0022": ("M4", "matrix_cell", ""),
+    "RUN-0023": ("M5", "matrix_cell", ""),
+    "RUN-0024": ("C1", "matrix_cell", ""),
+    "RUN-0025": ("C2", "matrix_cell", ""),
+    "RUN-0026": ("C3", "matrix_cell", ""),
+    "RUN-0027": ("M1", "fresh_process_reproduction", "RUN-0019"),
+    "RUN-0028": ("C2", "fresh_process_reproduction", "RUN-0025"),
+}
+
 
 def _json_ready(value: Any) -> Any:
     if isinstance(value, dict):
@@ -305,12 +329,14 @@ def build_p01_forward_compute_profile(
     *,
     condition_id: str,
 ) -> dict[str, Any]:
-    """Compare one C03/C04 forward with frozen M5 and optional M4/C1 references."""
+    """Compare one admitted P01 forward with frozen M5/M4 references."""
 
     profile_config = getattr(grouped_evaluation, "forward_compute", None)
     goal_id = str(getattr(grouped_evaluation, "goal_id", ""))
-    if goal_id not in {"C03", "C04"}:
-        raise ValueError("P01 forward-compute profiling is admitted only for C03/C04")
+    if goal_id not in {"C03", "C04", "C05"}:
+        raise ValueError(
+            "P01 forward-compute profiling is admitted only for C03/C04/C05"
+        )
     if profile_config is None:
         raise ValueError(f"{goal_id} requires task.grouped_evaluation.forward_compute")
     method = str(getattr(profile_config, "method", ""))
@@ -394,12 +420,14 @@ def build_p01_forward_compute_profile(
         "learned_forward_supported_flops_relative_tolerance": flops_tolerance,
         "within_tolerances": matched,
     }
-    if goal_id == "C04":
+    if goal_id in {"C04", "C05"}:
         comparison_condition = str(
             getattr(profile_config, "comparison_condition", "")
         )
         if comparison_condition != "M4":
-            raise ValueError("C04 forward-compute comparison_condition must be M4")
+            raise ValueError(
+                f"{goal_id} forward-compute comparison_condition must be M4"
+            )
         comparison_args = deepcopy(args_model)
         comparison_args.condition = comparison_condition
         with torch.random.fork_rng(devices=[]):
@@ -482,6 +510,7 @@ def build_p01_grouped_result_rows(
     *,
     forward_compute_profile: dict[str, Any] | None = None,
     training_objective_summary: dict[str, Any] | None = None,
+    view_gradient_summary: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Build P01 rows from frozen-checkpoint predictions at the group boundary."""
     grouped_evaluation = getattr(
@@ -523,6 +552,24 @@ def build_p01_grouped_result_rows(
             condition_id
         ]:
             raise ValueError(f"C04 condition {condition_id} run_id mismatch")
+    elif goal_id == "C05":
+        if _C05_MODEL_CONDITIONS.get(condition_id) != condition:
+            raise ValueError(
+                "C05 condition identity/model mismatch: "
+                f"condition_id={condition_id!r}, model.condition={condition!r}"
+            )
+        run_id = str(getattr(grouped_evaluation, "run_id", ""))
+        run_role = str(getattr(grouped_evaluation, "run_role", ""))
+        reproduction_of = str(
+            getattr(grouped_evaluation, "reproduction_of", "")
+        )
+        expected_identity = _C05_RUN_IDENTITIES.get(run_id)
+        if expected_identity != (condition_id, run_role, reproduction_of):
+            raise ValueError(
+                "C05 run identity mismatch: "
+                f"run_id={run_id!r}, condition_id={condition_id!r}, "
+                f"run_role={run_role!r}, reproduction_of={reproduction_of!r}"
+            )
     else:
         raise ValueError(f"Unsupported P01 grouped-evaluation goal {goal_id!r}")
     model = context.model
@@ -568,7 +615,7 @@ def build_p01_grouped_result_rows(
         raise RuntimeError(
             f"Condition {condition} unexpectedly contains forbidden branch(es) {present}"
         )
-    if goal_id == "C03":
+    if goal_id in {"C03", "C05"} and condition_id in {"M3", "M4", "C1"}:
         required = (
             "encoder_1d",
             "project_1d",
@@ -579,21 +626,33 @@ def build_p01_grouped_result_rows(
         missing = [name for name in required if getattr(model, name, None) is None]
         if missing:
             raise RuntimeError(
-                f"C03 condition {condition_id} is missing paired component(s) {missing}"
+                f"{goal_id} condition {condition_id} is missing paired component(s) {missing}"
             )
         expects_attention = condition_id in {"M4", "C1"}
         if (getattr(model, "attention", None) is not None) is not expects_attention:
             raise RuntimeError(
-                f"C03 condition {condition_id} has the wrong attention identity"
+                f"{goal_id} condition {condition_id} has the wrong attention identity"
             )
         if bool(getattr(model, "uses_alignment_objective", False)):
-            raise RuntimeError(f"C03 condition {condition_id} cannot consume alignment")
+            raise RuntimeError(
+                f"{goal_id} condition {condition_id} cannot consume alignment"
+            )
         alignment_identity = getattr(model, "alignment_identity", None)
         if callable(alignment_identity) and alignment_identity() is not None:
             raise RuntimeError(
-                f"C03 condition {condition_id} unexpectedly has alignment configuration"
+                f"{goal_id} condition {condition_id} unexpectedly has alignment configuration"
             )
-    if goal_id == "C04":
+    if goal_id == "C05" and condition_id in {"M1", "M2"}:
+        if bool(getattr(model, "uses_alignment_objective", False)):
+            raise RuntimeError(
+                f"C05 condition {condition_id} cannot consume alignment"
+            )
+        alignment_identity = getattr(model, "alignment_identity", None)
+        if callable(alignment_identity) and alignment_identity() is not None:
+            raise RuntimeError(
+                f"C05 condition {condition_id} unexpectedly has alignment configuration"
+            )
+    if goal_id in {"C04", "C05"} and condition_id in {"M5", "C2", "C3"}:
         control_reader = getattr(context.task, "alignment_target_control_identity", None)
         control_identity = control_reader() if callable(control_reader) else None
         if condition_id in {"M5", "C2"}:
@@ -607,24 +666,26 @@ def build_p01_grouped_result_rows(
             missing = [name for name in required if getattr(model, name, None) is None]
             if missing:
                 raise RuntimeError(
-                    f"C04 condition {condition_id} is missing paired component(s) {missing}"
+                    f"{goal_id} condition {condition_id} is missing paired component(s) {missing}"
                 )
             if not bool(getattr(model, "uses_alignment_objective", False)):
-                raise RuntimeError(f"C04 condition {condition_id} must consume alignment")
+                raise RuntimeError(
+                    f"{goal_id} condition {condition_id} must consume alignment"
+                )
             if not isinstance(getattr(model, "alignment_identity")(), dict):
                 raise RuntimeError(
-                    f"C04 condition {condition_id} requires alignment coefficients"
+                    f"{goal_id} condition {condition_id} requires alignment coefficients"
                 )
             expected_control = (
                 _C2_TARGET_CONTROL_IDENTITY if condition_id == "C2" else None
             )
             if control_identity != expected_control:
                 raise RuntimeError(
-                    f"C04 condition {condition_id} target-control identity mismatch"
+                    f"{goal_id} condition {condition_id} target-control identity mismatch"
                 )
             if not isinstance(training_objective_summary, dict):
                 raise RuntimeError(
-                    f"C04 condition {condition_id} requires an observed objective summary"
+                    f"{goal_id} condition {condition_id} requires an observed objective summary"
                 )
         else:
             required = (
@@ -739,7 +800,11 @@ def build_p01_grouped_result_rows(
             else (
                 "C03_generic_fusion_control_exploratory"
                 if goal_id == "C03"
-                else "C04_alignment_and_negative_control_execution_smoke"
+                else (
+                    "C04_alignment_and_negative_control_execution_smoke"
+                    if goal_id == "C04"
+                    else "C05_one_seed_minimum_admission_pilot"
+                )
             )
         ),
         "condition_id": condition_id,
@@ -784,7 +849,11 @@ def build_p01_grouped_result_rows(
                 else (
                     "single-seed C03 execution/fairness smoke, not comparative evidence"
                     if goal_id == "C03"
-                    else "single-seed one-epoch C04 execution/control smoke, not mechanism evidence"
+                    else (
+                        "single-seed one-epoch C04 execution/control smoke, not mechanism evidence"
+                        if goal_id == "C04"
+                        else "single-seed fixed-ten-epoch C05 admission pilot, not paper evidence"
+                    )
                 )
             )
             + "; windows, files, batches, load domains, and repeated control "
@@ -792,7 +861,7 @@ def build_p01_grouped_result_rows(
             "promote a paper claim"
         ),
     }
-    if goal_id in {"C03", "C04"}:
+    if goal_id in {"C03", "C04", "C05"}:
         if not isinstance(forward_compute_profile, dict):
             raise RuntimeError(f"{goal_id} result rows require a forward-compute profile")
         if forward_compute_profile.get("condition_id") != condition_id:
@@ -811,7 +880,8 @@ def build_p01_grouped_result_rows(
             {
                 "alignment_terms_consumed": (
                     "physical|semantic|geometric"
-                    if goal_id == "C04" and condition_id in {"M5", "C2"}
+                    if goal_id in {"C04", "C05"}
+                    and condition_id in {"M5", "C2"}
                     else "none"
                 ),
                 "data_access": "source_domains_0_1_train_val_then_target_domains_2_3_post_checkpoint",
@@ -869,24 +939,32 @@ def build_p01_grouped_result_rows(
                 ),
             }
         )
-    if goal_id == "C04":
+    if goal_id in {"C04", "C05"}:
         common["run_id"] = str(grouped_evaluation.run_id)
         alignment_identity = getattr(model, "alignment_identity")()
         if not isinstance(training_objective_summary, dict):
-            raise RuntimeError("C04 requires a current-fit training objective summary")
+            raise RuntimeError(
+                f"{goal_id} requires a current-fit training objective summary"
+            )
         if training_objective_summary.get("scope") != (
             "source_train_current_fit_not_checkpoint_persistent"
         ):
-            raise RuntimeError("C04 training objective summary scope mismatch")
+            raise RuntimeError(
+                f"{goal_id} training objective summary scope mismatch"
+            )
         if training_objective_summary.get("aggregation") != (
             "batch_scalar_mean_weighted_by_batch_size"
         ):
-            raise RuntimeError("C04 training objective aggregation mismatch")
+            raise RuntimeError(f"{goal_id} training objective aggregation mismatch")
         if training_objective_summary.get("alignment_coefficients") != alignment_identity:
-            raise RuntimeError("C04 objective summary/alignment coefficients mismatch")
+            raise RuntimeError(
+                f"{goal_id} objective summary/alignment coefficients mismatch"
+            )
         means = training_objective_summary.get("means", {})
         if not isinstance(means, dict):
-            raise RuntimeError("C04 training objective means must be a mapping")
+            raise RuntimeError(
+                f"{goal_id} training objective means must be a mapping"
+            )
         if condition_id in {"M5", "C2"}:
             required_means = {
                 "classification",
@@ -901,13 +979,13 @@ def build_p01_grouped_result_rows(
             missing_means = sorted(required_means - set(means))
             if missing_means:
                 raise RuntimeError(
-                    f"C04 alignment objective summary is missing {missing_means}"
+                    f"{goal_id} alignment objective summary is missing {missing_means}"
                 )
         else:
             missing_means = sorted({"classification", "total"} - set(means))
             if missing_means:
                 raise RuntimeError(
-                    f"C3 classification objective summary is missing {missing_means}"
+                    f"{condition_id} classification objective summary is missing {missing_means}"
                 )
         reconstruction_residual = training_objective_summary.get(
             "objective_reconstruction_residual"
@@ -915,9 +993,13 @@ def build_p01_grouped_result_rows(
         if not isinstance(reconstruction_residual, (int, float)) or not math.isfinite(
             reconstruction_residual
         ):
-            raise RuntimeError("C04 objective reconstruction residual is not finite")
+            raise RuntimeError(
+                f"{goal_id} objective reconstruction residual is not finite"
+            )
         if abs(float(reconstruction_residual)) > 1.0e-6:
-            raise RuntimeError("C04 objective summary does not reconstruct total loss")
+            raise RuntimeError(
+                f"{goal_id} objective summary does not reconstruct total loss"
+            )
 
         if condition_id == "C2":
             observation = training_objective_summary.get(
@@ -967,10 +1049,15 @@ def build_p01_grouped_result_rows(
                 "classification_pairing": "synchronized_original_views",
                 "alignment_target_pairing": "synchronized_original_views",
             }
-        else:
+        elif condition_id == "C3":
             reported_control_identity = {
                 "mode": "not_applicable",
                 "reason": "classification_only_duplicate_rendering_control",
+            }
+        else:
+            reported_control_identity = {
+                "mode": "not_applicable",
+                "reason": "classification_only_non_alignment_condition",
             }
         reported_duplicate_identity = (
             duplicate_identity
@@ -982,7 +1069,9 @@ def build_p01_grouped_result_rows(
         )
         comparison_profile = forward_compute_profile.get("m4_c1_reference")
         if not isinstance(comparison_profile, dict):
-            raise RuntimeError("C04 profile is missing the M4/C1 comparison")
+            raise RuntimeError(
+                f"{goal_id} profile is missing the M4/C1 comparison"
+            )
         capacity_comparison = {
             "observed": {
                 "trainable_parameters": int(
@@ -1075,6 +1164,40 @@ def build_p01_grouped_result_rows(
                 ),
             }
         )
+        if goal_id == "C05":
+            if not isinstance(view_gradient_summary, dict):
+                raise RuntimeError("C05 requires a first-batch view-gradient summary")
+            if (
+                view_gradient_summary.get("status") != "passed"
+                or view_gradient_summary.get("condition_id") != condition_id
+                or view_gradient_summary.get("scope")
+                != "first_source_training_batch_after_backward_before_optimizer_step"
+            ):
+                raise RuntimeError("C05 view-gradient summary identity mismatch")
+            gradient_norms = view_gradient_summary.get("gradient_norms")
+            if not isinstance(gradient_norms, dict) or not gradient_norms:
+                raise RuntimeError("C05 view-gradient summary has no observed norms")
+            threshold = float(
+                view_gradient_summary.get("required_gradient_norm_threshold", -1.0)
+            )
+            if threshold != 1.0e-12 or any(
+                not math.isfinite(float(value)) or float(value) <= threshold
+                for value in gradient_norms.values()
+            ):
+                raise RuntimeError("C05 required view-gradient group is inactive")
+            common.update(
+                {
+                    "run_role": str(grouped_evaluation.run_role),
+                    "reproduction_of": str(
+                        getattr(grouped_evaluation, "reproduction_of", "")
+                    ),
+                    "view_gradient_summary_json": json.dumps(
+                        _json_ready(view_gradient_summary),
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                }
+            )
 
     rows: list[dict[str, Any]] = []
     domain_values: list[float] = []
@@ -1251,9 +1374,9 @@ class _P01DataProtocolHooks(ClassificationHooks):
             context.args_task, "grouped_evaluation", None
         )
         goal_id = str(getattr(grouped_evaluation, "goal_id", "C02"))
-        if goal_id == "C04":
+        if goal_id in {"C04", "C05"}:
             self._trained_tasks[context.iteration] = context.task
-        if goal_id in {"C03", "C04"}:
+        if goal_id in {"C03", "C04", "C05"}:
             condition_id = str(
                 getattr(
                     grouped_evaluation,
@@ -1279,6 +1402,10 @@ class _P01DataProtocolHooks(ClassificationHooks):
         training_objective_summary = (
             summary_reader() if callable(summary_reader) else None
         )
+        gradient_reader = getattr(trained_task, "view_gradient_summary", None)
+        view_gradient_summary = (
+            gradient_reader() if callable(gradient_reader) else None
+        )
         try:
             return build_p01_grouped_result_rows(
                 context,
@@ -1286,6 +1413,7 @@ class _P01DataProtocolHooks(ClassificationHooks):
                     context.iteration
                 ),
                 training_objective_summary=training_objective_summary,
+                view_gradient_summary=view_gradient_summary,
             )
         finally:
             self._trained_tasks.pop(context.iteration, None)
