@@ -1,6 +1,49 @@
 """Task-aware batch sampler selection."""
 
+from collections.abc import Mapping
+
+import pandas as pd
+
 from .Sampler import HierarchicalFewShotSampler, Same_system_Sampler
+
+
+def _missing_dataset_id(metadata_entry) -> bool:
+    if not isinstance(metadata_entry, Mapping) or "Dataset_id" not in metadata_entry:
+        return True
+    value = metadata_entry["Dataset_id"]
+    if isinstance(value, (list, tuple, set, dict)):
+        return True
+    return bool(pd.isna(value))
+
+
+def _require_metadata_coverage(dataset) -> None:
+    """Require every selected sample to resolve one explicit Dataset_id."""
+
+    windows = getattr(dataset, "file_windows_list", None)
+    if not isinstance(windows, list) or not windows:
+        raise ValueError("Sampler requires a non-empty IdIncludedDataset population.")
+    metadata = getattr(dataset, "metadata", None)
+    if metadata is None:
+        raise ValueError("Sampler requires metadata for every selected file ID.")
+
+    selected_file_ids = {item["file_id"] for item in windows}
+    missing_rows = [file_id for file_id in selected_file_ids if file_id not in metadata]
+    if missing_rows:
+        raise ValueError(
+            "Sampler metadata is missing selected file ID(s) "
+            f"{sorted(missing_rows, key=str)}."
+        )
+
+    missing_systems = [
+        file_id
+        for file_id in selected_file_ids
+        if _missing_dataset_id(metadata[file_id])
+    ]
+    if missing_systems:
+        raise ValueError(
+            "Sampler metadata is missing Dataset_id for selected file ID(s) "
+            f"{sorted(missing_systems, key=str)}."
+        )
 
 
 def _evaluation_sampler(args_data, dataset):
@@ -35,7 +78,7 @@ def _get_standard_sampler(args_data, dataset, mode, task_name):
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=True,
-            drop_last=True,
+            drop_last=False,
         )
     if mode in {"val", "test"}:
         return _evaluation_sampler(args_data, dataset)
@@ -43,7 +86,9 @@ def _get_standard_sampler(args_data, dataset, mode, task_name):
 
 
 def Get_sampler(args_task, args_data, dataset, mode="train"):
-    """Return the sampler for one explicit task type and split."""
+    """Return the sampler for one explicit task type and complete sample population."""
+
+    _require_metadata_coverage(dataset)
     task_type = args_task.type
 
     if task_type == "GFS":
