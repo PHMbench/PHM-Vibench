@@ -1,18 +1,19 @@
-"""Forward-only M1--M5 conditions for the P01 alignment study.
+"""Maintained M1--M5 conditions and executable P01 alignment objective.
 
-This module establishes the maintained representations and frozen rendering
-operator only.  The physical, semantic, and geometric training objective is
-deliberately deferred to the executable-semantic gate (G02).
+M1--M4 expose the frozen reference forwards.  M5 keeps the same forward
+parameterization as M3 and differs only because the maintained task consumes the
+physical, semantic, and geometric losses defined here.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from numbers import Integral, Real
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 CONDITIONS = ("M1", "M2", "M3", "M4", "M5")
@@ -65,6 +66,20 @@ def _required_str(obj: Any, dotted: str) -> str:
     value = _required(obj, dotted)
     if not isinstance(value, str) or not value:
         raise ValueError(f"model.{dotted} must be a non-empty string")
+    return value
+
+
+def _required_switch(obj: Any, dotted: str) -> int:
+    value = _required(obj, dotted)
+    if isinstance(value, bool) or not isinstance(value, Integral) or value not in (0, 1):
+        raise ValueError(f"model.{dotted} must be the integer 0 or 1")
+    return int(value)
+
+
+def _required_positive_float(obj: Any, dotted: str) -> float:
+    value = _required_float(obj, dotted)
+    if value <= 0.0:
+        raise ValueError(f"model.{dotted} must be positive")
     return value
 
 
@@ -145,6 +160,24 @@ class RendererConfig:
     normalization: str
 
 
+@dataclass(frozen=True)
+class AlignmentConfig:
+    """Frozen M5 objective coefficients and E0 audit threshold."""
+
+    a_p: int
+    a_s: int
+    a_g: int
+    lambda_p: float
+    lambda_s: float
+    lambda_g: float
+    physical_energy_weight: float
+    physical_spectral_weight: float
+    physical_parseval_weight: float
+    semantic_temperature: float
+    eps: float
+    gradient_min_norm: float
+
+
 class DeterministicTimeFrequencyRenderer(nn.Module):
     """Render ``(B,L,C)`` waveforms as frozen log-magnitude Hann STFT views."""
 
@@ -180,7 +213,7 @@ class DeterministicTimeFrequencyRenderer(nn.Module):
     def identity(self) -> Dict[str, Any]:
         return asdict(self.config)
 
-    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+    def _flatten_waveform(self, waveform: torch.Tensor) -> Tuple[torch.Tensor, int, int]:
         if waveform.ndim != 3:
             raise ValueError(
                 f"Renderer expects waveform shape (B,L,C), got {tuple(waveform.shape)}"
@@ -193,6 +226,20 @@ class DeterministicTimeFrequencyRenderer(nn.Module):
         flattened = waveform.permute(0, 2, 1).contiguous().view(
             batch * channels, length
         )
+        return flattened, batch, channels
+
+    def _window(self, waveform: torch.Tensor) -> torch.Tensor:
+        return torch.hann_window(
+            self.config.win_length,
+            periodic=self.config.window_periodic,
+            dtype=waveform.dtype,
+            device=waveform.device,
+        )
+
+    def stft_magnitude(self, waveform: torch.Tensor) -> torch.Tensor:
+        """Return the pre-log magnitude used by the frozen renderer."""
+
+        flattened, batch, channels = self._flatten_waveform(waveform)
         window = torch.hann_window(
             self.config.win_length,
             periodic=self.config.window_periodic,
@@ -211,11 +258,67 @@ class DeterministicTimeFrequencyRenderer(nn.Module):
             onesided=self.config.onesided,
             return_complex=True,
         )
-        magnitude = spectrum.abs()
-        rendered = torch.log1p(magnitude)
-        return rendered.view(
-            batch, channels, rendered.shape[-2], rendered.shape[-1]
+        magnitude = spectrum.abs().view(
+            batch, channels, spectrum.shape[-2], spectrum.shape[-1]
         )
+        return magnitude
+
+    def parseval_residual(
+        self, waveform: torch.Tensor, *, eps: float
+    ) -> torch.Tensor:
+        """Audit frame-wise Parseval equality before magnitude ``log1p`` scaling.
+
+        The published renderer is log-magnitude STFT, so Parseval equality is not
+        claimed for its final pixels.  This component compares each Hann-windowed
+        time frame with the corresponding pre-log, one-sided spectrum using the
+        exact FFT normalization.  It is an input/transform diagnostic; the other
+        physical components provide the trainable shared-space gradient.
+        """
+
+        if self.config.win_length != self.config.n_fft:
+            raise ValueError(
+                "Parseval audit requires renderer.win_length == renderer.n_fft"
+            )
+        flattened, _, _ = self._flatten_waveform(waveform)
+        if self.config.center:
+            pad = self.config.n_fft // 2
+            flattened_for_frames = F.pad(
+                flattened.unsqueeze(1),
+                (pad, pad),
+                mode=self.config.pad_mode,
+            ).squeeze(1)
+        else:
+            flattened_for_frames = flattened
+        frames = flattened_for_frames.unfold(
+            -1, self.config.n_fft, self.config.hop_length
+        )
+        windowed = frames * self._window(waveform)
+        time_energy = windowed.square().sum(dim=-1)
+
+        magnitude = self.stft_magnitude(waveform).flatten(0, 1)
+        frequency_weights = torch.ones(
+            magnitude.shape[1], dtype=waveform.dtype, device=waveform.device
+        )
+        if self.config.n_fft % 2 == 0:
+            frequency_weights[1:-1] = 2.0
+        else:
+            frequency_weights[1:] = 2.0
+        spectral_energy = (
+            magnitude.square() * frequency_weights.view(1, -1, 1)
+        ).sum(dim=1)
+        if not self.config.normalized:
+            spectral_energy = spectral_energy / float(self.config.n_fft)
+        if spectral_energy.shape != time_energy.shape:
+            raise RuntimeError(
+                "Renderer Parseval frame mismatch: "
+                f"time={tuple(time_energy.shape)}, spectrum={tuple(spectral_energy.shape)}"
+            )
+        relative_error = (spectral_energy - time_energy) / time_energy.clamp_min(eps)
+        return relative_error.square().mean()
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        magnitude = self.stft_magnitude(waveform)
+        return torch.log1p(magnitude)
 
 
 class Model(nn.Module):
@@ -234,6 +337,7 @@ class Model(nn.Module):
             raise ValueError("P01Alignment requires integer model.num_classes")
         if int(num_classes) < 2:
             raise ValueError("P01Alignment requires at least two classes")
+        self.num_classes = int(num_classes)
 
         self.condition = _required_str(args, "condition")
         if self.condition not in CONDITIONS:
@@ -259,6 +363,33 @@ class Model(nn.Module):
             raise ValueError("model.dropout must be in [0,1)")
         if attention_heads < 1 or self.latent_dim % attention_heads != 0:
             raise ValueError("model.latent_dim must be divisible by attention_heads")
+
+        self.alignment_config: AlignmentConfig | None = None
+        if self.condition == "M5":
+            self.alignment_config = AlignmentConfig(
+                a_p=_required_switch(args, "alignment.a_p"),
+                a_s=_required_switch(args, "alignment.a_s"),
+                a_g=_required_switch(args, "alignment.a_g"),
+                lambda_p=_required_positive_float(args, "alignment.lambda_p"),
+                lambda_s=_required_positive_float(args, "alignment.lambda_s"),
+                lambda_g=_required_positive_float(args, "alignment.lambda_g"),
+                physical_energy_weight=_required_positive_float(
+                    args, "alignment.physical_energy_weight"
+                ),
+                physical_spectral_weight=_required_positive_float(
+                    args, "alignment.physical_spectral_weight"
+                ),
+                physical_parseval_weight=_required_positive_float(
+                    args, "alignment.physical_parseval_weight"
+                ),
+                semantic_temperature=_required_positive_float(
+                    args, "alignment.semantic_temperature"
+                ),
+                eps=_required_positive_float(args, "alignment.eps"),
+                gradient_min_norm=_required_positive_float(
+                    args, "alignment.gradient_min_norm"
+                ),
+            )
 
         uses_1d = self.condition != "M2"
         uses_2d = self.condition != "M1"
@@ -318,9 +449,20 @@ class Model(nn.Module):
             nn.Linear(fused_dim, self.head_hidden),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(self.head_hidden, int(num_classes)),
+            nn.Linear(self.head_hidden, self.num_classes),
         )
         self._last_representation_state: Dict[str, torch.Tensor] | None = None
+
+    @property
+    def uses_alignment_objective(self) -> bool:
+        return self.condition == "M5"
+
+    def alignment_identity(self) -> Dict[str, Any] | None:
+        return (
+            None
+            if self.alignment_config is None
+            else asdict(self.alignment_config)
+        )
 
     def renderer_identity(self) -> Dict[str, Any] | None:
         return None if self.renderer is None else self.renderer.identity()
@@ -343,13 +485,13 @@ class Model(nn.Module):
             task_id=task_id,
         )
 
-    def forward_paired_views(
+    def _forward_paired_views(
         self,
         waveform: torch.Tensor,
         renderer_source: torch.Tensor,
         data_id: Any = None,
         task_id: Any = None,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         del data_id, task_id
         if waveform.ndim != 3 or renderer_source.ndim != 3:
             raise ValueError("P01Alignment expects paired sources shaped (B,L,C)")
@@ -401,8 +543,293 @@ class Model(nn.Module):
                 raise RuntimeError(f"{self.condition} paired path was not constructed")
             fused = torch.cat((z_1, z_2), dim=1)
         state["fused"] = fused
+        logits = self.head(fused)
+        return logits, state
+
+    def forward_paired_views(
+        self,
+        waveform: torch.Tensor,
+        renderer_source: torch.Tensor,
+        data_id: Any = None,
+        task_id: Any = None,
+    ) -> torch.Tensor:
+        logits, state = self._forward_paired_views(
+            waveform,
+            renderer_source,
+            data_id=data_id,
+            task_id=task_id,
+        )
         self._last_representation_state = state
-        return self.head(fused)
+        return logits
+
+    def forward_with_alignment(
+        self,
+        waveform: torch.Tensor,
+        labels: torch.Tensor,
+        data_id: Any = None,
+        task_id: Any = None,
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """Run the synchronized M5 forward and return raw alignment terms."""
+
+        if not self.uses_alignment_objective:
+            raise RuntimeError(
+                f"Condition {self.condition} does not admit alignment-objective consumption"
+            )
+        logits, state = self._forward_paired_views(
+            waveform,
+            waveform,
+            data_id=data_id,
+            task_id=task_id,
+        )
+        self._last_representation_state = state
+        return logits, self.compute_alignment_losses(waveform, labels, state)
+
+    @staticmethod
+    def _energy_distribution(features: torch.Tensor, eps: float) -> torch.Tensor:
+        energy = features.square().clamp_min(eps)
+        return energy / energy.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+    @staticmethod
+    def _jensen_shannon(
+        first: torch.Tensor, second: torch.Tensor, eps: float
+    ) -> torch.Tensor:
+        midpoint = 0.5 * (first + second)
+        first_term = first * (
+            first.clamp_min(eps).log() - midpoint.clamp_min(eps).log()
+        )
+        second_term = second * (
+            second.clamp_min(eps).log() - midpoint.clamp_min(eps).log()
+        )
+        return 0.5 * (first_term.sum(dim=-1) + second_term.sum(dim=-1)).mean()
+
+    def _physical_alignment(
+        self,
+        waveform: torch.Tensor,
+        z_1: torch.Tensor,
+        z_2: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        config = self.alignment_config
+        if config is None or self.renderer is None:
+            raise RuntimeError("Physical alignment requires the configured M5 renderer")
+        if z_1.shape != z_2.shape or z_1.ndim != 2:
+            raise ValueError(
+                "Physical alignment requires z_1 and z_2 with identical (B,q) shapes"
+            )
+
+        energy_1 = self._energy_distribution(z_1, config.eps)
+        energy_2 = self._energy_distribution(z_2, config.eps)
+        energy_loss = self._jensen_shannon(energy_1, energy_2, config.eps)
+
+        spectrum_1 = torch.fft.rfft(z_1, dim=-1, norm="ortho").abs().square()
+        spectrum_2 = torch.fft.rfft(z_2, dim=-1, norm="ortho").abs().square()
+        spectrum_1 = spectrum_1 / spectrum_1.sum(
+            dim=-1, keepdim=True
+        ).clamp_min(config.eps)
+        spectrum_2 = spectrum_2 / spectrum_2.sum(
+            dim=-1, keepdim=True
+        ).clamp_min(config.eps)
+        spectral_loss = F.mse_loss(spectrum_1, spectrum_2)
+
+        parseval_loss = self.renderer.parseval_residual(
+            waveform, eps=config.eps
+        )
+        total = (
+            config.physical_energy_weight * energy_loss
+            + config.physical_spectral_weight * spectral_loss
+            + config.physical_parseval_weight * parseval_loss
+        )
+        return {
+            "physical": total,
+            "physical_energy": energy_loss,
+            "physical_spectral": spectral_loss,
+            "physical_parseval": parseval_loss,
+        }
+
+    def semantic_pair_masks(
+        self, labels: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
+        """Return synchronized positives and different-class negatives only."""
+
+        if labels.ndim != 1:
+            raise ValueError(
+                f"Semantic alignment labels must have shape (B,), got {tuple(labels.shape)}"
+            )
+        if labels.numel() < 2:
+            raise ValueError("Semantic alignment requires at least two samples")
+        integer_dtypes = {
+            torch.int8,
+            torch.int16,
+            torch.int32,
+            torch.int64,
+            torch.uint8,
+        }
+        if labels.dtype not in integer_dtypes:
+            raise ValueError("Semantic alignment labels must use an integer dtype")
+        if int(labels.min().item()) < 0 or int(labels.max().item()) >= self.num_classes:
+            raise ValueError(
+                f"Semantic alignment labels must be within [0,{self.num_classes})"
+            )
+        positive = torch.eye(
+            labels.numel(), device=labels.device, dtype=torch.bool
+        )
+        different_class = labels[:, None] != labels[None, :]
+        negative = different_class & ~positive
+        if not bool(negative.any(dim=1).all().item()):
+            raise ValueError(
+                "Every semantic anchor requires at least one different-class negative"
+            )
+        return {
+            "positive": positive,
+            "negative": negative,
+            "admissible": positive | negative,
+        }
+
+    def _semantic_alignment(
+        self,
+        z_1: torch.Tensor,
+        z_2: torch.Tensor,
+        labels: torch.Tensor,
+    ) -> torch.Tensor:
+        config = self.alignment_config
+        if config is None:
+            raise RuntimeError("Semantic alignment requires M5 alignment config")
+        if z_1.shape != z_2.shape or z_1.ndim != 2:
+            raise ValueError(
+                "Semantic alignment requires z_1 and z_2 with identical (B,q) shapes"
+            )
+        if labels.shape[0] != z_1.shape[0]:
+            raise ValueError(
+                "Semantic alignment requires one training label per paired sample"
+            )
+        masks = self.semantic_pair_masks(labels)
+        similarity = F.normalize(z_1, dim=-1) @ F.normalize(z_2, dim=-1).T
+        similarity = similarity / config.semantic_temperature
+        masked = similarity.masked_fill(~masks["admissible"], -torch.inf)
+        diagonal = similarity.diagonal()
+        loss_1_to_2 = -diagonal + torch.logsumexp(masked, dim=1)
+        loss_2_to_1 = -diagonal + torch.logsumexp(masked, dim=0)
+        return 0.5 * (loss_1_to_2.mean() + loss_2_to_1.mean())
+
+    def _normalized_pairwise_distances(
+        self, features: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        config = self.alignment_config
+        if config is None:
+            raise RuntimeError("Geometric alignment requires M5 alignment config")
+        if features.ndim != 2 or features.shape[0] < 3:
+            raise ValueError(
+                "Geometric alignment requires features shaped (B,q) with B >= 3"
+            )
+        distances = torch.cdist(features, features, p=2)
+        off_diagonal = ~torch.eye(
+            features.shape[0], device=features.device, dtype=torch.bool
+        )
+        scale = distances[off_diagonal].mean()
+        if not bool(torch.isfinite(scale).item()) or float(scale.detach()) <= config.eps:
+            raise ValueError(
+                "Geometric alignment requires finite, non-collapsed off-diagonal distances"
+            )
+        return distances / scale, off_diagonal
+
+    def _geometric_alignment(
+        self, z_1: torch.Tensor, z_2: torch.Tensor
+    ) -> torch.Tensor:
+        if z_1.shape != z_2.shape:
+            raise ValueError(
+                "Geometric alignment requires z_1 and z_2 with identical shapes"
+            )
+        distances_1, mask_1 = self._normalized_pairwise_distances(z_1)
+        distances_2, mask_2 = self._normalized_pairwise_distances(z_2)
+        if not torch.equal(mask_1, mask_2):
+            raise RuntimeError("Geometric alignment pair masks differ")
+        return (distances_1[mask_1] - distances_2[mask_2]).square().mean()
+
+    def compute_alignment_losses(
+        self,
+        waveform: torch.Tensor,
+        labels: torch.Tensor,
+        state: Mapping[str, torch.Tensor],
+    ) -> Dict[str, torch.Tensor]:
+        """Compute the three raw M5 losses without applying switches/lambdas."""
+
+        if not self.uses_alignment_objective or self.alignment_config is None:
+            raise RuntimeError("Alignment losses are defined only for condition M5")
+        try:
+            z_1 = state["z_1"]
+            z_2 = state["z_2"]
+        except KeyError as exc:
+            raise RuntimeError("M5 alignment state is missing z_1 or z_2") from exc
+        if not bool(torch.isfinite(waveform).all().item()):
+            raise ValueError("M5 alignment waveform contains NaN or Inf")
+        if not bool(torch.isfinite(z_1).all().item()) or not bool(
+            torch.isfinite(z_2).all().item()
+        ):
+            raise ValueError("M5 shared representation contains NaN or Inf")
+
+        components = self._physical_alignment(waveform, z_1, z_2)
+        components["semantic"] = self._semantic_alignment(z_1, z_2, labels)
+        components["geometric"] = self._geometric_alignment(z_1, z_2)
+        for name, value in components.items():
+            if value.ndim != 0 or not bool(torch.isfinite(value).item()):
+                raise FloatingPointError(
+                    f"Alignment component {name!r} must be one finite scalar"
+                )
+        return components
+
+    def compose_training_objective(
+        self,
+        classification_loss: torch.Tensor,
+        alignment_losses: Mapping[str, torch.Tensor],
+    ) -> Dict[str, torch.Tensor]:
+        """Apply only ``a_k lambda_k`` and expose an exact reconstruction."""
+
+        config = self.alignment_config
+        if config is None or not self.uses_alignment_objective:
+            raise RuntimeError("Training alignment objective is defined only for M5")
+        if classification_loss.ndim != 0 or not bool(
+            torch.isfinite(classification_loss).item()
+        ):
+            raise ValueError("classification_loss must be one finite scalar")
+        required = {"physical", "semantic", "geometric"}
+        missing = sorted(required - set(alignment_losses))
+        if missing:
+            raise KeyError(f"Missing alignment loss component(s): {missing}")
+
+        weighted_physical = (
+            config.a_p * config.lambda_p * alignment_losses["physical"]
+        )
+        weighted_semantic = (
+            config.a_s * config.lambda_s * alignment_losses["semantic"]
+        )
+        weighted_geometric = (
+            config.a_g * config.lambda_g * alignment_losses["geometric"]
+        )
+        total = (
+            classification_loss
+            + weighted_physical
+            + weighted_semantic
+            + weighted_geometric
+        )
+        result = {
+            "classification": classification_loss,
+            "physical": alignment_losses["physical"],
+            "semantic": alignment_losses["semantic"],
+            "geometric": alignment_losses["geometric"],
+            "weighted_physical": weighted_physical,
+            "weighted_semantic": weighted_semantic,
+            "weighted_geometric": weighted_geometric,
+            "total": total,
+        }
+        for name in (
+            "physical_energy",
+            "physical_spectral",
+            "physical_parseval",
+        ):
+            if name in alignment_losses:
+                result[name] = alignment_losses[name]
+        if not bool(torch.isfinite(total).item()):
+            raise FloatingPointError("M5 training objective is not finite")
+        return result
 
     def get_representation_state(
         self, *, detach: bool = True

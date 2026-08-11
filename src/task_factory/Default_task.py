@@ -3,7 +3,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
 from src.task_factory import register_task
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Mapping, Tuple
 
 # 导入解耦后的组件
 from .Components.loss import get_loss_fn
@@ -159,11 +159,32 @@ class Default_task(pl.LightningModule):
                 f"Unable to resolve metadata Name for file_id={first_file_id!r}."
             ) from exc
 
-        # 1. 前向传播。保留原始逐样本 file_id，不得用首个文件覆盖整批。
-        y_hat = self.forward(batch)
+        y = batch['y']
+
+        # 1. 前向传播。M5 在训练阶段显式返回对齐项；验证/测试从不把
+        # 标签送入对齐目标。保留原始逐样本 file_id，不得用首个文件覆盖整批。
+        alignment_losses: Optional[Mapping[str, torch.Tensor]] = None
+        network = getattr(self, "network", None)
+        if stage == "train" and bool(
+            getattr(network, "uses_alignment_objective", False)
+        ):
+            forward_with_alignment = getattr(
+                network, "forward_with_alignment", None
+            )
+            if not callable(forward_with_alignment):
+                raise RuntimeError(
+                    "An alignment-enabled network must expose forward_with_alignment"
+                )
+            y_hat, alignment_losses = forward_with_alignment(
+                batch['x'],
+                y,
+                data_id=batch['file_id'],
+                task_id=batch['task_id'],
+            )
+        else:
+            y_hat = self.forward(batch)
 
         # 2. 计算任务损失
-        y = batch['y']
         loss = self._compute_loss(y_hat, y)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
@@ -179,8 +200,34 @@ class Default_task(pl.LightningModule):
             if reg_type != 'total':
                 step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
 
-        # 5. 计算总损失
-        total_loss = loss + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
+        # 5. 计算总损失。M5 的唯一允许标量是 classification 加三个
+        # a_k * lambda_k * L_k 项；通用正则项若非零必须明确失败。
+        regularization_total = reg_dict.get(
+            'total', torch.tensor(0.0, device=loss.device)
+        )
+        if alignment_losses is not None:
+            if int(torch.count_nonzero(regularization_total.detach()).item()) != 0:
+                raise ValueError(
+                    "P01 M5 forbids generic regularization outside the frozen "
+                    "classification + physical + semantic + geometric objective"
+                )
+            compose_objective = getattr(
+                network, "compose_training_objective", None
+            )
+            if not callable(compose_objective):
+                raise RuntimeError(
+                    "An alignment-enabled network must expose compose_training_objective"
+                )
+            objective = compose_objective(loss, alignment_losses)
+            total_loss = objective["total"]
+            for objective_name, objective_value in objective.items():
+                if objective_name == "total":
+                    continue
+                step_metrics[
+                    f"{stage}_{objective_name}_loss"
+                ] = objective_value
+        else:
+            total_loss = loss + regularization_total
         step_metrics[f"{stage}_total_loss"] = total_loss
 
         # 添加 batch size 用于日志记录

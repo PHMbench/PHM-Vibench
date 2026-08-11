@@ -1,4 +1,4 @@
-# Forward-only P01 M1--M5 base. Alignment objective terms are added in G02.
+# P01 M1--M5 base. Coefficients below are for E0 smoke only, not tuned paper values.
 model:
   type: X_model
   name: P01Alignment
@@ -25,3 +25,16 @@ model:
     scaling: log1p
     resize: none
     normalization: none
+  alignment:
+    a_p: 1
+    a_s: 1
+    a_g: 1
+    lambda_p: 0.1
+    lambda_s: 0.1
+    lambda_g: 0.1
+    physical_energy_weight: 1.0
+    physical_spectral_weight: 0.5
+    physical_parseval_weight: 0.25
+    semantic_temperature: 0.1
+    eps: 1.0e-8
+    gradient_min_norm: 1.0e-8
