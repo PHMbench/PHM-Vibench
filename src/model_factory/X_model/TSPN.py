@@ -42,6 +42,9 @@ class Model(nn.Module):
         self.signal_processing_modules, self.feature_extractor_modules = self.config_network(args)
         self.layer_num = len(self.signal_processing_modules)
         self.args = args
+        self.internal_instance_normalization = bool(
+            getattr(args, "internal_instance_normalization", True)
+        )
 
         self.init_signal_processing_layers()
         self.init_feature_extractor_layers()
@@ -82,8 +85,9 @@ class Model(nn.Module):
         for i in range(self.layer_num):
             self.signal_processing_layers.append(SignalProcessingLayer(self.signal_processing_modules[i],
                                                                        in_channels,
-                                                                         out_channels,
-                                                                         self.args.skip_connection).to(self.args.device))
+                                                                       out_channels,
+                                                                       self.args.skip_connection,
+                                                                       self.internal_instance_normalization).to(self.args.device))
             in_channels = out_channels 
             assert out_channels % self.signal_processing_layers[i].module_num == 0 
             # out_channels = int(out_channels * self.args.scale)
@@ -91,7 +95,12 @@ class Model(nn.Module):
 
     def init_feature_extractor_layers(self):
         print('# build feature extractor layers')
-        self.feature_extractor_layers = FeatureExtractorlayer(self.feature_extractor_modules,self.channel_for_feature,self.channel_for_feature).to(self.args.device)
+        self.feature_extractor_layers = FeatureExtractorlayer(
+            self.feature_extractor_modules,
+            self.channel_for_feature,
+            self.channel_for_feature,
+            self.internal_instance_normalization,
+        ).to(self.args.device)
         len_feature = len(self.feature_extractor_modules)
         self.channel_for_classifier = self.channel_for_feature * len_feature
 
@@ -146,9 +155,20 @@ class CustomBatchNorm(nn.Module):
 
 class SignalProcessingLayer(nn.Module):
     # TODO op first then weight connection -> attention
-    def __init__(self, signal_processing_modules, input_channels, output_channels,skip_connection=True):
+    def __init__(
+        self,
+        signal_processing_modules,
+        input_channels,
+        output_channels,
+        skip_connection=True,
+        internal_instance_normalization=True,
+    ):
         super(SignalProcessingLayer, self).__init__()
-        self.norm = nn.InstanceNorm1d(input_channels)
+        self.norm = (
+            nn.InstanceNorm1d(input_channels)
+            if internal_instance_normalization
+            else nn.Identity()
+        )
         self.weight_connection = nn.Linear(input_channels, output_channels)
         self.signal_processing_modules = signal_processing_modules
         self.module_num = len(signal_processing_modules)
@@ -163,9 +183,14 @@ class SignalProcessingLayer(nn.Module):
         normed_x = rearrange(normed_x, 'b c l -> b l c')
         # 通过线性层
         
-        self.weight_connection.weight.data = F.softmax((1.0 / self.temperature) *
-                                                       self.weight_connection.weight.data, dim=0)
-        x = self.weight_connection(normed_x)
+        # Normalize for this forward without mutating the parameter. In-place
+        # ``weight.data`` replacement made consecutive interventions consume
+        # different backbones and bypassed autograd's actual parameter path.
+        normalized_weight = F.softmax(
+            self.weight_connection.weight / self.temperature,
+            dim=0,
+        )
+        x = F.linear(normed_x, normalized_weight, self.weight_connection.bias)
 
         # 按模块数拆分
         splits = torch.split(x, x.size(2) // self.module_num, dim=2)
@@ -183,14 +208,24 @@ class SignalProcessingLayer(nn.Module):
         return x
     
 class FeatureExtractorlayer(nn.Module):
-    def __init__(self, feature_extractor_modules,in_channels=1, out_channels=1):
+    def __init__(
+        self,
+        feature_extractor_modules,
+        in_channels=1,
+        out_channels=1,
+        internal_instance_normalization=True,
+    ):
         super(FeatureExtractorlayer, self).__init__()
         self.weight_connection = nn.Linear(in_channels, out_channels)
         self.feature_extractor_modules = feature_extractor_modules
         
         out_channels = int(len(feature_extractor_modules) * out_channels)
         
-        self.pre_norm = nn.InstanceNorm1d(in_channels)
+        self.pre_norm = (
+            nn.InstanceNorm1d(in_channels)
+            if internal_instance_normalization
+            else nn.Identity()
+        )
         self.norm = CustomBatchNorm(out_channels)
         
         # self.temperature = 1
@@ -213,7 +248,7 @@ class FeatureExtractorlayer(nn.Module):
         outputs = []
         for module in self.feature_extractor_modules.values():
             outputs.append(module(x))
-        res = torch.cat(outputs, dim=1).squeeze() # B,C
+        res = torch.cat(outputs, dim=1).squeeze(-1) # B,C
         return self.norm(res)
 
 class Classifier(nn.Module):
