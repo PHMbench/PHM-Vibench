@@ -105,7 +105,7 @@ def _run_pipeline(
     monkeypatch.setattr(
         runtime_module,
         "_write_aggregate_outputs",
-        lambda *args: aggregate_calls.append(args),
+        lambda *args, **_kwargs: aggregate_calls.append(args),
     )
 
     args = SimpleNamespace(

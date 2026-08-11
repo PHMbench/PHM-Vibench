@@ -28,7 +28,7 @@ C04_CONFIGS = {
     "C3": Path("configs/experiments/p01/p01_c04_c3.yaml"),
 }
 MODEL_CONDITIONS = {"M5": "M5", "C2": "M5", "C3": "C3"}
-RUN_IDS = {"M5": "RUN-0013", "C2": "RUN-0014", "C3": "RUN-0015"}
+RUN_IDS = {"M5": "RUN-0016", "C2": "RUN-0017", "C3": "RUN-0018"}
 EXPECTED_PARAMETERS = {"M5": 47_235, "C2": 47_235, "C3": 55_555}
 EXPECTED_SUPPORTED_FLOPS = {
     "M5": 45_991_424,

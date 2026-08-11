@@ -11,7 +11,7 @@ environment:
   project: "p01_c04_c3_duplicate_rendering"
   output_dir: "results/p01/c04_c3_smoke"
   notes: >-
-    RUN-0015; C04 C3 duplicate-2D control, seed 31, one epoch, zero C04
+    RUN-0018; C04 C3 duplicate-2D control, seed 31, one epoch, zero C04
     tuning. It is the closest admitted tied candidate, not a model within the
     frozen C1 parameter tolerance, and cannot promote a mechanism claim.
 
@@ -20,7 +20,7 @@ model:
 
 task:
   grouped_evaluation:
-    run_id: "RUN-0015"
+    run_id: "RUN-0018"
     condition_id: "C3"
     c3_selection:
       selected_encoder_family: "time_frequency_2d"

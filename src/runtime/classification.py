@@ -67,6 +67,12 @@ class ClassificationHooks:
             raise RuntimeError("Result rows require a completed trainer.test call")
         return [dict(context.result)]
 
+    def build_summary_row(self, context: ClassificationContext) -> dict[str, Any]:
+        """Return exactly one independent run-level row for repeated-run summary."""
+        if context.result is None:
+            raise RuntimeError("Summary rows require a completed trainer.test call")
+        return dict(context.result)
+
     def after_test(self, context: ClassificationContext) -> None:
         """Run after the result CSV is written and before cleanup."""
 
@@ -146,6 +152,8 @@ def _write_aggregate_outputs(
     all_results: list[dict[str, Any]],
     run_seeds: list[int],
     configs: Any,
+    *,
+    summary_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Write repeated-run metrics and their deterministic summary."""
 
@@ -157,9 +165,10 @@ def _write_aggregate_outputs(
     results = pd.DataFrame(all_results)
     results.to_csv(iteration_path / "all_results.csv", index=False)
     results.to_csv(run_root_path / "all_results.csv", index=False)
+    run_level_results = all_results if summary_results is None else summary_results
     return write_run_summary(
         run_root_path / "run_summary.json",
-        results=all_results,
+        results=run_level_results,
         seeds=run_seeds,
         config=configs,
     )
@@ -224,6 +233,7 @@ def run_classification_pipeline(
     _set_environment(args_environment)
 
     all_results: list[dict[str, Any]] = []
+    summary_results: list[dict[str, Any]] = []
     run_seeds: list[int] = []
     final_path: Path | None = None
 
@@ -321,6 +331,13 @@ def run_classification_pipeline(
                     "non-empty list of mappings"
                 )
             all_results.extend(context.result_rows)
+            summary_row = hooks.build_summary_row(context)
+            if not isinstance(summary_row, dict) or not summary_row:
+                raise RuntimeError(
+                    "ClassificationHooks.build_summary_row must return one "
+                    "non-empty mapping"
+                )
+            summary_results.append(summary_row)
 
             print("[INFO] 保存测试结果...")
             metrics_path = path / f"test_result_{iteration}.csv"
@@ -350,6 +367,7 @@ def run_classification_pipeline(
         all_results,
         run_seeds,
         configs,
+        summary_results=summary_results,
     )
     aggregate_path = final_path / "all_results.csv"
     attestation = getattr(args, "run_attestation", None)

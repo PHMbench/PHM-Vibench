@@ -9,7 +9,7 @@ environment:
   project: "p01_c04_m5_full_alignment"
   output_dir: "results/p01/c04_m5_smoke"
   notes: >-
-    RUN-0013; C04 M5 synchronized full-objective smoke, seed 31, one epoch,
+    RUN-0016; C04 M5 synchronized full-objective smoke, seed 31, one epoch,
     zero C04 tuning, no target-label adaptation, and no claim promotion.
 
 model:
@@ -17,5 +17,5 @@ model:
 
 task:
   grouped_evaluation:
-    run_id: "RUN-0013"
+    run_id: "RUN-0016"
     condition_id: "M5"

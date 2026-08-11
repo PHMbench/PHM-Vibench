@@ -518,7 +518,7 @@ def build_p01_grouped_result_rows(
                 "C04 condition identity/model mismatch: "
                 f"condition_id={condition_id!r}, model.condition={condition!r}"
             )
-        expected_run_id = {"M5": "RUN-0013", "C2": "RUN-0014", "C3": "RUN-0015"}
+        expected_run_id = {"M5": "RUN-0016", "C2": "RUN-0017", "C3": "RUN-0018"}
         if str(getattr(grouped_evaluation, "run_id", "")) != expected_run_id[
             condition_id
         ]:
@@ -1290,6 +1290,28 @@ class _P01DataProtocolHooks(ClassificationHooks):
         finally:
             self._trained_tasks.pop(context.iteration, None)
             self._forward_compute_profiles.pop(context.iteration, None)
+
+    def build_summary_row(self, context: ClassificationContext) -> dict[str, Any]:
+        grouped_evaluation = getattr(
+            context.args_task, "grouped_evaluation", None
+        )
+        if grouped_evaluation is None or not bool(
+            getattr(grouped_evaluation, "enabled", False)
+        ):
+            return super().build_summary_row(context)
+        rows = context.result_rows
+        if not isinstance(rows, list):
+            raise RuntimeError("P01 grouped summary requires constructed result rows")
+        summary_rows = [
+            row
+            for row in rows
+            if row.get("target_environment") == "mean_across_target_load_domains"
+        ]
+        if len(summary_rows) != 1:
+            raise RuntimeError(
+                "P01 grouped summary requires exactly one cross-domain mean row"
+            )
+        return dict(summary_rows[0])
 
 
 def pipeline(args: Any) -> list[dict[str, Any]]:
