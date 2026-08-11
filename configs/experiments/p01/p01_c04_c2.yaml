@@ -1,0 +1,25 @@
+# C2: M5 architecture/objective with only target-side alignment slots deranged.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c04: "configs/experiments/p01/p01_c04_common.yaml"
+
+environment:
+  project: "p01_c04_c2_permuted_alignment_targets"
+  output_dir: "results/p01/c04_c2_smoke"
+  notes: >-
+    RUN-0014; C04 C2 seeded Sattolo target-slot null, seed 31, one epoch,
+    fixed loss scale, zero C04 tuning, and no claim promotion.
+
+model:
+  condition: "M5"
+
+task:
+  alignment_target_control:
+    mode: "seeded_sattolo_derangement_after_batching"
+    seed: 31042
+    seed_key: "base_seed_plus_epoch_times_1000003_plus_batch_index"
+  grouped_evaluation:
+    run_id: "RUN-0014"
+    condition_id: "C2"

@@ -38,6 +38,46 @@ _RENDERER_FIELDS = (
     "normalization",
 )
 
+_C2_TARGET_CONTROL_IDENTITY = {
+    "mode": "seeded_sattolo_derangement_after_batching",
+    "seed": 31042,
+    "algorithm": "sattolo_single_cycle",
+    "stage": "train_after_batching",
+    "operand": "alignment_target_z2_only",
+    "affected_terms": [
+        "physical_energy",
+        "physical_spectral",
+        "semantic",
+        "geometric",
+    ],
+    "unaffected_terms": ["classification", "physical_parseval"],
+    "classification_pairing": "synchronized_original_views",
+    "semantic_mask_basis": "original_label_and_index_slots",
+    "seed_key": "base_seed_plus_epoch_times_1000003_plus_batch_index",
+    "rng_scope": "dedicated_cpu_generator_no_global_rng_mutation",
+    "fixed_point_policy": "forbidden",
+}
+
+_C3_SELECTION_IDENTITY = {
+    "selected_encoder_family": "time_frequency_2d",
+    "selected_representation": "frozen_log_magnitude_hann_stft",
+    "selection_rule": (
+        "equal_absolute_parameter_and_supported_flop_deviation_from_m5_"
+        "then_direct_rendering_tie_break"
+    ),
+    "tie_breaker": "directly_tests_the_deterministic_rendering_explanation",
+    "duplicate_1d_parameters": 38_915,
+    "duplicate_1d_supported_flops": 45_646_208,
+    "duplicate_1d_flops_evidence": "derived_from_measured_m1_m2_m3_cpu_profiles",
+    "duplicate_2d_parameters": 55_555,
+    "duplicate_2d_supported_flops": 46_336_640,
+    "duplicate_2d_flops_evidence": "measured_executed_c3_cpu_profile",
+    "m5_parameters": 47_235,
+    "m5_supported_flops": 45_991_424,
+    "absolute_parameter_difference_tie": 8_320,
+    "c1_parameter_tolerance_status": "both_outside_five_percent",
+}
+
 
 def _json_ready(value: Any) -> Any:
     if isinstance(value, dict):
@@ -156,7 +196,7 @@ def _trainable_parameters(module: Any) -> int:
 
 
 def _p01_parameter_counts(model: Any) -> dict[str, int]:
-    names = (
+    names = [
         "encoder_1d",
         "project_1d",
         "renderer",
@@ -164,7 +204,10 @@ def _p01_parameter_counts(model: Any) -> dict[str, int]:
         "project_2d",
         "attention",
         "head",
-    )
+    ]
+    duplicate_names = ("encoder_duplicate_2d", "project_duplicate_2d")
+    if any(getattr(model, name, None) is not None for name in duplicate_names):
+        names[5:5] = duplicate_names
     counts = {
         name: _trainable_parameters(getattr(model, name, None))
         for name in names
@@ -262,11 +305,14 @@ def build_p01_forward_compute_profile(
     *,
     condition_id: str,
 ) -> dict[str, Any]:
-    """Compare one C03 control forward with the matched M5 reference."""
+    """Compare one C03/C04 forward with frozen M5 and optional M4/C1 references."""
 
     profile_config = getattr(grouped_evaluation, "forward_compute", None)
+    goal_id = str(getattr(grouped_evaluation, "goal_id", ""))
+    if goal_id not in {"C03", "C04"}:
+        raise ValueError("P01 forward-compute profiling is admitted only for C03/C04")
     if profile_config is None:
-        raise ValueError("C03 requires task.grouped_evaluation.forward_compute")
+        raise ValueError(f"{goal_id} requires task.grouped_evaluation.forward_compute")
     method = str(getattr(profile_config, "method", ""))
     expected_method = (
         "torch.utils.flop_counter.FlopCounterMode_cpu_plus_"
@@ -274,13 +320,13 @@ def build_p01_forward_compute_profile(
     )
     if method != expected_method:
         raise ValueError(
-            f"C03 forward_compute.method must be {expected_method!r}"
+            f"{goal_id} forward_compute.method must be {expected_method!r}"
         )
     reference_condition = str(
         getattr(profile_config, "reference_condition", "")
     )
     if reference_condition != "M5":
-        raise ValueError("C03 forward-compute reference_condition must be M5")
+        raise ValueError(f"{goal_id} forward-compute reference_condition must be M5")
     batch_size = int(getattr(profile_config, "batch_size", 0))
     window_size = int(getattr(args_data, "window_size", 0))
     parameter_tolerance = float(
@@ -295,7 +341,7 @@ def build_p01_forward_compute_profile(
     )
     if parameter_tolerance != 0.05 or flops_tolerance != 0.10:
         raise ValueError(
-            "C03 requires the frozen 5% parameter and 10% forward-FLOP tolerances"
+            f"{goal_id} requires the frozen 5% parameter and 10% forward-FLOP tolerances"
         )
 
     observed = _profile_p01_learned_forward_flops(
@@ -335,7 +381,7 @@ def build_p01_forward_compute_profile(
                 "C1 fails the frozen parameter/forward-FLOP matching tolerances"
             )
 
-    return {
+    result = {
         "condition_id": condition_id,
         "model_condition": str(getattr(args_model, "condition", "")),
         "observed": observed,
@@ -348,6 +394,47 @@ def build_p01_forward_compute_profile(
         "learned_forward_supported_flops_relative_tolerance": flops_tolerance,
         "within_tolerances": matched,
     }
+    if goal_id == "C04":
+        comparison_condition = str(
+            getattr(profile_config, "comparison_condition", "")
+        )
+        if comparison_condition != "M4":
+            raise ValueError("C04 forward-compute comparison_condition must be M4")
+        comparison_args = deepcopy(args_model)
+        comparison_args.condition = comparison_condition
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(0)
+            comparison_model = build_model(comparison_args, metadata=None)
+        comparison = _profile_p01_learned_forward_flops(
+            comparison_model,
+            window_size=window_size,
+            batch_size=batch_size,
+        )
+        comparison_parameters = _trainable_parameters(comparison_model)
+        comparison_flops = int(comparison["learned_forward_supported_flops"])
+        result.update(
+            {
+                "m4_c1_reference": comparison,
+                "m4_c1_reference_trainable_parameters": comparison_parameters,
+                "parameter_signed_deviation_from_m4_c1": (
+                    observed_parameters - comparison_parameters
+                )
+                / float(comparison_parameters),
+                "learned_forward_supported_flops_signed_deviation_from_m4_c1": (
+                    observed_flops - comparison_flops
+                )
+                / float(comparison_flops),
+                "parameter_relative_deviation_from_m4_c1": abs(
+                    observed_parameters - comparison_parameters
+                )
+                / float(comparison_parameters),
+                "learned_forward_supported_flops_relative_deviation_from_m4_c1": abs(
+                    observed_flops - comparison_flops
+                )
+                / float(comparison_flops),
+            }
+        )
+    return result
 
 
 def _macro_f1(
@@ -394,6 +481,7 @@ def build_p01_grouped_result_rows(
     context: ClassificationContext,
     *,
     forward_compute_profile: dict[str, Any] | None = None,
+    training_objective_summary: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Build P01 rows from frozen-checkpoint predictions at the group boundary."""
     grouped_evaluation = getattr(
@@ -423,6 +511,18 @@ def build_p01_grouped_result_rows(
                 "C03 condition identity/model mismatch: "
                 f"condition_id={condition_id!r}, model.condition={condition!r}"
             )
+    elif goal_id == "C04":
+        expected_model_condition = {"M5": "M5", "C2": "M5", "C3": "C3"}
+        if expected_model_condition.get(condition_id) != condition:
+            raise ValueError(
+                "C04 condition identity/model mismatch: "
+                f"condition_id={condition_id!r}, model.condition={condition!r}"
+            )
+        expected_run_id = {"M5": "RUN-0013", "C2": "RUN-0014", "C3": "RUN-0015"}
+        if str(getattr(grouped_evaluation, "run_id", "")) != expected_run_id[
+            condition_id
+        ]:
+            raise ValueError(f"C04 condition {condition_id} run_id mismatch")
     else:
         raise ValueError(f"Unsupported P01 grouped-evaluation goal {goal_id!r}")
     model = context.model
@@ -441,12 +541,28 @@ def build_p01_grouped_result_rows(
         forbidden = ("attention",)
         view_path = "waveform_1d_plus_deterministic_renderer_2d_concatenation"
         renderer_identity = getattr(model, "renderer_identity")()
-    else:
+    elif condition_id in {"M4", "C1"}:
         forbidden = ()
         view_path = (
             "waveform_1d_plus_deterministic_renderer_2d_two_token_self_attention"
         )
         renderer_identity = getattr(model, "renderer_identity")()
+    elif condition_id in {"M5", "C2"}:
+        forbidden = ("attention", "encoder_duplicate_2d", "project_duplicate_2d")
+        view_path = (
+            "waveform_1d_plus_deterministic_renderer_2d_concatenation_"
+            "with_three_level_alignment_objective"
+        )
+        renderer_identity = getattr(model, "renderer_identity")()
+    elif condition_id == "C3":
+        forbidden = ("encoder_1d", "project_1d", "attention")
+        view_path = (
+            "one_frozen_deterministic_renderer_output_fed_to_two_independent_"
+            "2d_encoder_projection_copies"
+        )
+        renderer_identity = getattr(model, "renderer_identity")()
+    else:
+        raise ValueError(f"Unsupported P01 condition_id {condition_id!r}")
     present = [name for name in forbidden if getattr(model, name, None) is not None]
     if present:
         raise RuntimeError(
@@ -477,6 +593,63 @@ def build_p01_grouped_result_rows(
             raise RuntimeError(
                 f"C03 condition {condition_id} unexpectedly has alignment configuration"
             )
+    if goal_id == "C04":
+        control_reader = getattr(context.task, "alignment_target_control_identity", None)
+        control_identity = control_reader() if callable(control_reader) else None
+        if condition_id in {"M5", "C2"}:
+            required = (
+                "encoder_1d",
+                "project_1d",
+                "renderer",
+                "encoder_2d",
+                "project_2d",
+            )
+            missing = [name for name in required if getattr(model, name, None) is None]
+            if missing:
+                raise RuntimeError(
+                    f"C04 condition {condition_id} is missing paired component(s) {missing}"
+                )
+            if not bool(getattr(model, "uses_alignment_objective", False)):
+                raise RuntimeError(f"C04 condition {condition_id} must consume alignment")
+            if not isinstance(getattr(model, "alignment_identity")(), dict):
+                raise RuntimeError(
+                    f"C04 condition {condition_id} requires alignment coefficients"
+                )
+            expected_control = (
+                _C2_TARGET_CONTROL_IDENTITY if condition_id == "C2" else None
+            )
+            if control_identity != expected_control:
+                raise RuntimeError(
+                    f"C04 condition {condition_id} target-control identity mismatch"
+                )
+            if not isinstance(training_objective_summary, dict):
+                raise RuntimeError(
+                    f"C04 condition {condition_id} requires an observed objective summary"
+                )
+        else:
+            required = (
+                "renderer",
+                "encoder_2d",
+                "project_2d",
+                "encoder_duplicate_2d",
+                "project_duplicate_2d",
+            )
+            missing = [name for name in required if getattr(model, name, None) is None]
+            if missing:
+                raise RuntimeError(f"C3 is missing duplicate-rendering component(s) {missing}")
+            if bool(getattr(model, "uses_alignment_objective", False)):
+                raise RuntimeError("C3 cannot consume alignment losses")
+            if control_identity is not None:
+                raise RuntimeError("C3 cannot carry an alignment target control")
+            if not isinstance(training_objective_summary, dict):
+                raise RuntimeError("C3 requires an observed classification objective summary")
+            if (
+                model.encoder_2d is model.encoder_duplicate_2d
+                or model.project_2d is model.project_duplicate_2d
+            ):
+                raise RuntimeError("C3 requires two independent 2D module copies")
+    else:
+        control_identity = None
 
     identity_reader = getattr(context.task, "label_contract_identity", None)
     label_identity = identity_reader() if callable(identity_reader) else None
@@ -563,7 +736,11 @@ def build_p01_grouped_result_rows(
         "run_scope": (
             "C02_unimodal_reference_exploratory"
             if goal_id == "C02"
-            else "C03_generic_fusion_control_exploratory"
+            else (
+                "C03_generic_fusion_control_exploratory"
+                if goal_id == "C03"
+                else "C04_alignment_and_negative_control_execution_smoke"
+            )
         ),
         "condition_id": condition_id,
         "model_condition": condition,
@@ -604,31 +781,39 @@ def build_p01_grouped_result_rows(
             (
                 "single-seed exploratory held-condition/load-domain reference"
                 if goal_id == "C02"
-                else "single-seed C03 execution/fairness smoke, not comparative evidence"
+                else (
+                    "single-seed C03 execution/fairness smoke, not comparative evidence"
+                    if goal_id == "C03"
+                    else "single-seed one-epoch C04 execution/control smoke, not mechanism evidence"
+                )
             )
             + "; windows, files, batches, load domains, and repeated control "
             "identities are not independent repetitions and this row cannot "
             "promote a paper claim"
         ),
     }
-    if goal_id == "C03":
+    if goal_id in {"C03", "C04"}:
         if not isinstance(forward_compute_profile, dict):
-            raise RuntimeError("C03 result rows require a forward-compute profile")
+            raise RuntimeError(f"{goal_id} result rows require a forward-compute profile")
         if forward_compute_profile.get("condition_id") != condition_id:
-            raise RuntimeError("C03 forward-compute profile condition mismatch")
+            raise RuntimeError(f"{goal_id} forward-compute profile condition mismatch")
         observed_profile = forward_compute_profile["observed"]
         reference_profile = forward_compute_profile["m5_reference"]
         tuning_trials = int(
             getattr(grouped_evaluation, "source_validation_tuning_trials", -1)
         )
         if tuning_trials != 0:
-            raise ValueError("C03 freezes source-validation tuning trials at zero")
+            raise ValueError(f"{goal_id} freezes source-validation tuning trials at zero")
         scheduler_config = getattr(context.args_task, "scheduler", None)
         if scheduler_config is not None:
-            raise ValueError("C03 freezes the learning-rate scheduler as none")
+            raise ValueError(f"{goal_id} freezes the learning-rate scheduler as none")
         common.update(
             {
-                "alignment_terms_consumed": "none",
+                "alignment_terms_consumed": (
+                    "physical|semantic|geometric"
+                    if goal_id == "C04" and condition_id in {"M5", "C2"}
+                    else "none"
+                ),
                 "data_access": "source_domains_0_1_train_val_then_target_domains_2_3_post_checkpoint",
                 "source_validation_tuning_trials": tuning_trials,
                 "scheduler": "none",
@@ -681,6 +866,212 @@ def build_p01_grouped_result_rows(
                     "within_frozen_tolerances"
                     if bool(forward_compute_profile["within_tolerances"])
                     else "outside_frozen_tolerances"
+                ),
+            }
+        )
+    if goal_id == "C04":
+        common["run_id"] = str(grouped_evaluation.run_id)
+        alignment_identity = getattr(model, "alignment_identity")()
+        if not isinstance(training_objective_summary, dict):
+            raise RuntimeError("C04 requires a current-fit training objective summary")
+        if training_objective_summary.get("scope") != (
+            "source_train_current_fit_not_checkpoint_persistent"
+        ):
+            raise RuntimeError("C04 training objective summary scope mismatch")
+        if training_objective_summary.get("aggregation") != (
+            "batch_scalar_mean_weighted_by_batch_size"
+        ):
+            raise RuntimeError("C04 training objective aggregation mismatch")
+        if training_objective_summary.get("alignment_coefficients") != alignment_identity:
+            raise RuntimeError("C04 objective summary/alignment coefficients mismatch")
+        means = training_objective_summary.get("means", {})
+        if not isinstance(means, dict):
+            raise RuntimeError("C04 training objective means must be a mapping")
+        if condition_id in {"M5", "C2"}:
+            required_means = {
+                "classification",
+                "physical",
+                "semantic",
+                "geometric",
+                "weighted_physical",
+                "weighted_semantic",
+                "weighted_geometric",
+                "total",
+            }
+            missing_means = sorted(required_means - set(means))
+            if missing_means:
+                raise RuntimeError(
+                    f"C04 alignment objective summary is missing {missing_means}"
+                )
+        else:
+            missing_means = sorted({"classification", "total"} - set(means))
+            if missing_means:
+                raise RuntimeError(
+                    f"C3 classification objective summary is missing {missing_means}"
+                )
+        reconstruction_residual = training_objective_summary.get(
+            "objective_reconstruction_residual"
+        )
+        if not isinstance(reconstruction_residual, (int, float)) or not math.isfinite(
+            reconstruction_residual
+        ):
+            raise RuntimeError("C04 objective reconstruction residual is not finite")
+        if abs(float(reconstruction_residual)) > 1.0e-6:
+            raise RuntimeError("C04 objective summary does not reconstruct total loss")
+
+        if condition_id == "C2":
+            observation = training_objective_summary.get(
+                "target_permutation_observation"
+            )
+            if not isinstance(observation, dict):
+                raise RuntimeError("C2 objective summary lacks permutation observations")
+            if (
+                int(observation.get("observed_permutations", -1))
+                != int(training_objective_summary.get("observed_batches", -2))
+                or int(observation.get("unique_derived_seeds", -1))
+                != int(training_objective_summary.get("observed_batches", -2))
+                or int(observation.get("observed_fixed_points", -1)) != 0
+            ):
+                raise RuntimeError("C2 observed permutation schedule violates its contract")
+
+        c3_selection = _json_ready(
+            getattr(grouped_evaluation, "c3_selection", None)
+        )
+        duplicate_reader = getattr(model, "duplicate_control_identity", None)
+        duplicate_identity = duplicate_reader() if callable(duplicate_reader) else None
+        if condition_id == "C3":
+            if c3_selection != _C3_SELECTION_IDENTITY:
+                raise ValueError("C3 predeclared candidate-selection identity mismatch")
+            if not isinstance(duplicate_identity, dict):
+                raise RuntimeError("C3 executed duplicate-control identity is missing")
+            if (
+                int(forward_compute_profile["observed_trainable_parameters"])
+                != _C3_SELECTION_IDENTITY["duplicate_2d_parameters"]
+                or int(observed_profile["learned_forward_supported_flops"])
+                != _C3_SELECTION_IDENTITY["duplicate_2d_supported_flops"]
+                or int(forward_compute_profile["m5_reference_trainable_parameters"])
+                != _C3_SELECTION_IDENTITY["m5_parameters"]
+                or int(reference_profile["learned_forward_supported_flops"])
+                != _C3_SELECTION_IDENTITY["m5_supported_flops"]
+            ):
+                raise RuntimeError("C3 executed profile differs from predeclared selection")
+        else:
+            if c3_selection is not None or duplicate_identity is not None:
+                raise RuntimeError(f"{condition_id} cannot carry C3 control identity")
+
+        if condition_id == "C2":
+            reported_control_identity: dict[str, Any] = dict(control_identity)
+        elif condition_id == "M5":
+            reported_control_identity = {
+                "mode": "matched_no_permutation",
+                "classification_pairing": "synchronized_original_views",
+                "alignment_target_pairing": "synchronized_original_views",
+            }
+        else:
+            reported_control_identity = {
+                "mode": "not_applicable",
+                "reason": "classification_only_duplicate_rendering_control",
+            }
+        reported_duplicate_identity = (
+            duplicate_identity
+            if duplicate_identity is not None
+            else {
+                "status": "not_applicable",
+                "reason": "condition_is_not_duplicate_rendering_control",
+            }
+        )
+        comparison_profile = forward_compute_profile.get("m4_c1_reference")
+        if not isinstance(comparison_profile, dict):
+            raise RuntimeError("C04 profile is missing the M4/C1 comparison")
+        capacity_comparison = {
+            "observed": {
+                "trainable_parameters": int(
+                    forward_compute_profile["observed_trainable_parameters"]
+                ),
+                "learned_forward_supported_flops": int(
+                    observed_profile["learned_forward_supported_flops"]
+                ),
+            },
+            "m5_reference": {
+                "trainable_parameters": int(
+                    forward_compute_profile["m5_reference_trainable_parameters"]
+                ),
+                "learned_forward_supported_flops": int(
+                    reference_profile["learned_forward_supported_flops"]
+                ),
+                "parameter_relative_deviation": float(
+                    forward_compute_profile["parameter_relative_deviation"]
+                ),
+                "learned_forward_supported_flops_relative_deviation": float(
+                    forward_compute_profile[
+                        "learned_forward_supported_flops_relative_deviation"
+                    ]
+                ),
+            },
+            "m4_c1_reference": {
+                "trainable_parameters": int(
+                    forward_compute_profile[
+                        "m4_c1_reference_trainable_parameters"
+                    ]
+                ),
+                "learned_forward_supported_flops": int(
+                    comparison_profile["learned_forward_supported_flops"]
+                ),
+                "parameter_signed_deviation": float(
+                    forward_compute_profile[
+                        "parameter_signed_deviation_from_m4_c1"
+                    ]
+                ),
+                "parameter_relative_deviation": float(
+                    forward_compute_profile[
+                        "parameter_relative_deviation_from_m4_c1"
+                    ]
+                ),
+                "learned_forward_supported_flops_signed_deviation": float(
+                    forward_compute_profile[
+                        "learned_forward_supported_flops_signed_deviation_from_m4_c1"
+                    ]
+                ),
+                "learned_forward_supported_flops_relative_deviation": float(
+                    forward_compute_profile[
+                        "learned_forward_supported_flops_relative_deviation_from_m4_c1"
+                    ]
+                ),
+            },
+            "m5_tolerance_status": (
+                "within_frozen_tolerances"
+                if bool(forward_compute_profile["within_tolerances"])
+                else "outside_frozen_tolerances"
+            ),
+        }
+        common.update(
+            {
+                "training_objective_summary_json": json.dumps(
+                    _json_ready(training_objective_summary),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "alignment_target_control_identity_json": json.dumps(
+                    _json_ready(reported_control_identity),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "duplicate_control_identity_json": json.dumps(
+                    _json_ready(reported_duplicate_identity),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "capacity_compute_comparison_json": json.dumps(
+                    capacity_comparison,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "loss_scale_retuned": False,
+                "target_control_retuned": False,
+                "c3_selection_json": json.dumps(
+                    _json_ready(c3_selection or {}),
+                    sort_keys=True,
+                    separators=(",", ":"),
                 ),
             }
         )
@@ -815,6 +1206,7 @@ def build_p01_grouped_result_rows(
 class _P01DataProtocolHooks(ClassificationHooks):
     def __init__(self) -> None:
         self._forward_compute_profiles: dict[int, dict[str, Any]] = {}
+        self._trained_tasks: dict[int, Any] = {}
 
     def on_iteration_start(self, context: ClassificationContext) -> None:
         grouped_evaluation = getattr(
@@ -858,7 +1250,10 @@ class _P01DataProtocolHooks(ClassificationHooks):
         grouped_evaluation = getattr(
             context.args_task, "grouped_evaluation", None
         )
-        if str(getattr(grouped_evaluation, "goal_id", "C02")) == "C03":
+        goal_id = str(getattr(grouped_evaluation, "goal_id", "C02"))
+        if goal_id == "C04":
+            self._trained_tasks[context.iteration] = context.task
+        if goal_id in {"C03", "C04"}:
             condition_id = str(
                 getattr(
                     grouped_evaluation,
@@ -879,12 +1274,24 @@ class _P01DataProtocolHooks(ClassificationHooks):
     def build_result_rows(
         self, context: ClassificationContext
     ) -> list[dict[str, Any]]:
-        return build_p01_grouped_result_rows(
-            context,
-            forward_compute_profile=self._forward_compute_profiles.get(
-                context.iteration
-            ),
+        trained_task = self._trained_tasks.get(context.iteration)
+        summary_reader = getattr(trained_task, "training_objective_summary", None)
+        training_objective_summary = (
+            summary_reader() if callable(summary_reader) else None
         )
+        try:
+            return build_p01_grouped_result_rows(
+                context,
+                forward_compute_profile=self._forward_compute_profiles.get(
+                    context.iteration
+                ),
+                training_objective_summary=training_objective_summary,
+            )
+        finally:
+            self._trained_tasks.pop(context.iteration, None)
+            self._forward_compute_profiles.pop(context.iteration, None)
+
+
 def pipeline(args: Any) -> list[dict[str, Any]]:
     """Run the standard classification train/test lifecycle."""
     return run_classification_pipeline(args, hooks=_P01DataProtocolHooks())

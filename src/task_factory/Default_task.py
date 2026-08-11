@@ -88,6 +88,12 @@ class Default_task(pl.LightningModule):
             else False
         )
         self._grouped_test_records: list[dict[str, Any]] = []
+        self._alignment_target_control = self._build_alignment_target_control()
+        self._alignment_training_sums: dict[str, float] = {}
+        self._alignment_training_sample_count = 0
+        self._alignment_training_batch_count = 0
+        self._last_alignment_target_permutation: torch.Tensor | None = None
+        self._alignment_target_derived_seeds: list[int] = []
 
         gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
         self.gradient_constraint = None
@@ -138,6 +144,196 @@ class Default_task(pl.LightningModule):
                             # 'metadata': metadata
                             }
         self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
+
+    def _build_alignment_target_control(self) -> dict[str, Any] | None:
+        control = getattr(self.args_task, "alignment_target_control", None)
+        if control is None:
+            return None
+        if not bool(getattr(self.network, "uses_alignment_objective", False)):
+            raise ValueError(
+                "task.alignment_target_control requires an alignment-enabled model"
+            )
+        grouped = getattr(
+            getattr(self, "args_task", None), "grouped_evaluation", None
+        )
+        if (
+            grouped is None
+            or str(getattr(grouped, "goal_id", "")) != "C04"
+            or str(getattr(grouped, "condition_id", "")) != "C2"
+        ):
+            raise ValueError(
+                "task.alignment_target_control is admitted only for C04 condition C2"
+            )
+        mode = str(getattr(control, "mode", ""))
+        expected_mode = "seeded_sattolo_derangement_after_batching"
+        if mode != expected_mode:
+            raise ValueError(
+                f"C2 alignment target mode must be {expected_mode!r}"
+            )
+        seed = getattr(control, "seed", None)
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            raise ValueError("C2 alignment target seed must be a non-negative integer")
+        seed_key = str(getattr(control, "seed_key", ""))
+        expected_seed_key = "base_seed_plus_epoch_times_1000003_plus_batch_index"
+        if seed_key != expected_seed_key:
+            raise ValueError(f"C2 alignment target seed_key must be {expected_seed_key!r}")
+        return {
+            "mode": mode,
+            "seed": seed,
+            "algorithm": "sattolo_single_cycle",
+            "stage": "train_after_batching",
+            "operand": "alignment_target_z2_only",
+            "affected_terms": [
+                "physical_energy",
+                "physical_spectral",
+                "semantic",
+                "geometric",
+            ],
+            "unaffected_terms": ["classification", "physical_parseval"],
+            "classification_pairing": "synchronized_original_views",
+            "semantic_mask_basis": "original_label_and_index_slots",
+            "seed_key": seed_key,
+            "rng_scope": "dedicated_cpu_generator_no_global_rng_mutation",
+            "fixed_point_policy": "forbidden",
+        }
+
+    def alignment_target_control_identity(self) -> dict[str, Any] | None:
+        return (
+            None
+            if self._alignment_target_control is None
+            else dict(self._alignment_target_control)
+        )
+
+    def _alignment_target_permutation(
+        self,
+        *,
+        batch_size: int,
+        device: torch.device,
+        batch_index: int,
+    ) -> torch.Tensor | None:
+        control = self._alignment_target_control
+        if control is None:
+            return None
+        if batch_size < 2:
+            raise ValueError("C2 target derangement requires batch_size >= 2")
+        if isinstance(batch_index, bool) or not isinstance(batch_index, int):
+            raise TypeError("C2 target derangement batch_index must be an integer")
+        if batch_index < 0:
+            raise ValueError("C2 target derangement batch_index must be non-negative")
+        epoch = int(getattr(getattr(self, "_trainer", None), "current_epoch", 0))
+        derived_seed = int(control["seed"]) + epoch * 1_000_003 + batch_index
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(derived_seed)
+        values = list(range(batch_size))
+        for index in range(batch_size - 1, 0, -1):
+            swap_index = int(
+                torch.randint(index, (1,), generator=generator).item()
+            )
+            values[index], values[swap_index] = values[swap_index], values[index]
+        permutation = torch.tensor(values, dtype=torch.long, device=device)
+        expected = torch.arange(batch_size, device=device)
+        if bool(torch.eq(permutation, expected).any().item()):
+            raise RuntimeError("Sattolo target construction produced a fixed point")
+        self._last_alignment_target_permutation = permutation.detach().cpu()
+        self._alignment_target_derived_seeds.append(derived_seed)
+        return permutation
+
+    def _record_c04_training_objective(
+        self,
+        objective: Mapping[str, torch.Tensor],
+        *,
+        batch_size: int,
+    ) -> None:
+        grouped = getattr(
+            getattr(self, "args_task", None), "grouped_evaluation", None
+        )
+        if str(getattr(grouped, "goal_id", "")) != "C04":
+            return
+        names = (
+            "classification",
+            "physical",
+            "semantic",
+            "geometric",
+            "weighted_physical",
+            "weighted_semantic",
+            "weighted_geometric",
+            "total",
+            "physical_energy",
+            "physical_spectral",
+            "physical_parseval",
+        )
+        observed = {
+            name: float(objective[name].detach().cpu().item())
+            for name in names
+            if name in objective
+        }
+        if not observed:
+            raise RuntimeError("C04 training objective summary is empty")
+        if self._alignment_training_sums and set(observed) != set(
+            self._alignment_training_sums
+        ):
+            raise RuntimeError("C04 objective fields changed between batches")
+        for name, value in observed.items():
+            if not np.isfinite(value):
+                raise FloatingPointError(
+                    f"C04 training summary field {name!r} is not finite"
+                )
+            self._alignment_training_sums[name] = (
+                self._alignment_training_sums.get(name, 0.0)
+                + value * batch_size
+            )
+        self._alignment_training_sample_count += batch_size
+        self._alignment_training_batch_count += 1
+
+    def on_train_start(self) -> None:
+        """Start a fresh, current-fit-only C04 objective summary."""
+        self._alignment_training_sums.clear()
+        self._alignment_training_sample_count = 0
+        self._alignment_training_batch_count = 0
+        self._last_alignment_target_permutation = None
+        self._alignment_target_derived_seeds.clear()
+
+    def training_objective_summary(self) -> dict[str, Any] | None:
+        if self._alignment_training_sample_count == 0:
+            return None
+        count = self._alignment_training_sample_count
+        means = {
+            name: value / count
+            for name, value in sorted(self._alignment_training_sums.items())
+        }
+        reconstructed = means["classification"] + sum(
+            means.get(name, 0.0)
+            for name in (
+                "weighted_physical",
+                "weighted_semantic",
+                "weighted_geometric",
+            )
+        )
+        summary: dict[str, Any] = {
+            "scope": "source_train_current_fit_not_checkpoint_persistent",
+            "aggregation": "batch_scalar_mean_weighted_by_batch_size",
+            "observed_samples": count,
+            "observed_batches": self._alignment_training_batch_count,
+            "means": means,
+            "objective_reconstruction_residual": means["total"] - reconstructed,
+            "alignment_coefficients": getattr(
+                self.network, "alignment_identity", lambda: None
+            )(),
+        }
+        if self._alignment_target_control is not None:
+            seeds = self._alignment_target_derived_seeds
+            summary["target_permutation_observation"] = {
+                "observed_permutations": len(seeds),
+                "observed_fixed_points": 0,
+                "derived_seed_min": min(seeds) if seeds else None,
+                "derived_seed_max": max(seeds) if seeds else None,
+                "unique_derived_seeds": len(set(seeds)),
+            }
+        return summary
+
+    def alignment_training_summary(self) -> dict[str, Any] | None:
+        """Backward-compatible reader for the C04 objective summary."""
+        return self.training_objective_summary()
 
     def _build_label_contract(self) -> tuple[int, ...] | None:
         """Validate an optional raw-label to contiguous-index contract."""
@@ -288,7 +484,9 @@ class Default_task(pl.LightningModule):
 
     def _shared_step(self, batch: Tuple,
                      stage: str,
-                     task_id = False) -> Dict[str, torch.Tensor]:
+                     task_id = False,
+                     *,
+                     batch_index: int = 0) -> Dict[str, torch.Tensor]:
         """
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
@@ -350,11 +548,17 @@ class Default_task(pl.LightningModule):
                 raise RuntimeError(
                     "An alignment-enabled network must expose forward_with_alignment"
                 )
+            alignment_target_permutation = self._alignment_target_permutation(
+                batch_size=batch_size,
+                device=batch['x'].device,
+                batch_index=batch_index,
+            )
             y_hat, alignment_losses = forward_with_alignment(
                 batch['x'],
                 y,
                 data_id=batch['file_id'],
                 task_id=batch['task_id'],
+                alignment_target_permutation=alignment_target_permutation,
             )
         else:
             y_hat = self.forward(batch)
@@ -427,6 +631,11 @@ class Default_task(pl.LightningModule):
                 )
             objective = compose_objective(loss, alignment_losses)
             total_loss = objective["total"]
+            Default_task._record_c04_training_objective(
+                self,
+                objective,
+                batch_size=batch_size,
+            )
             for objective_name, objective_value in objective.items():
                 if objective_name == "total":
                     continue
@@ -438,6 +647,12 @@ class Default_task(pl.LightningModule):
                 model_auxiliary.values(), torch.tensor(0.0, device=loss.device)
             )
             total_loss = loss + regularization_total + auxiliary_total
+            if stage == "train":
+                Default_task._record_c04_training_objective(
+                    self,
+                    {"classification": loss, "total": total_loss},
+                    batch_size=batch_size,
+                )
         step_metrics[f"{stage}_total_loss"] = total_loss
 
         if stage == "test" and bool(
@@ -453,7 +668,14 @@ class Default_task(pl.LightningModule):
 
     def training_step(self, batch: dict, *args, **kwargs) -> torch.Tensor:
         """训练步骤"""
-        metrics = self._shared_step(batch, "train")
+        raw_batch_index = args[0] if args else kwargs.get("batch_idx", 0)
+        if isinstance(raw_batch_index, bool) or not isinstance(raw_batch_index, int):
+            raise TypeError("training_step batch_idx must be an integer")
+        metrics = self._shared_step(
+            batch,
+            "train",
+            batch_index=raw_batch_index,
+        )
         # 使用 _log_metrics 记录 (确保 batch_size 传递正确)
       
         self._log_metrics(metrics, "train")

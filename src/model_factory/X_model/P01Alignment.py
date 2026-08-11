@@ -1,4 +1,4 @@
-"""Maintained M1--M5 conditions and executable P01 alignment objective.
+"""Maintained M1--M5 conditions, C3, and the executable P01 objective.
 
 M1--M4 expose the frozen reference forwards.  M5 keeps the same forward
 parameterization as M3 and differs only because the maintained task consumes the
@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-CONDITIONS = ("M1", "M2", "M3", "M4", "M5")
+CONDITIONS = ("M1", "M2", "M3", "M4", "M5", "C3")
 _MISSING = object()
 
 
@@ -391,7 +391,7 @@ class Model(nn.Module):
                 ),
             )
 
-        uses_1d = self.condition != "M2"
+        uses_1d = self.condition not in {"M2", "C3"}
         uses_2d = self.condition != "M1"
         self.encoder_1d: nn.Module | None = (
             _SignalEncoder1D(self.in_channels, self.encoder_dim) if uses_1d else None
@@ -406,6 +406,16 @@ class Model(nn.Module):
         )
         self.project_2d: nn.Module | None = (
             _projection(self.encoder_dim, self.latent_dim) if uses_2d else None
+        )
+        self.encoder_duplicate_2d: nn.Module | None = (
+            _TimeFrequencyEncoder2D(self.in_channels, self.encoder_dim)
+            if self.condition == "C3"
+            else None
+        )
+        self.project_duplicate_2d: nn.Module | None = (
+            _projection(self.encoder_dim, self.latent_dim)
+            if self.condition == "C3"
+            else None
         )
 
         if uses_2d:
@@ -442,7 +452,7 @@ class Model(nn.Module):
             self.attention = None
             fused_dim = (
                 2 * self.latent_dim
-                if self.condition in {"M3", "M5"}
+                if self.condition in {"M3", "M5", "C3"}
                 else self.latent_dim
             )
         self.head = nn.Sequential(
@@ -466,6 +476,42 @@ class Model(nn.Module):
 
     def renderer_identity(self) -> Dict[str, Any] | None:
         return None if self.renderer is None else self.renderer.identity()
+
+    def duplicate_control_identity(self) -> Dict[str, Any] | None:
+        """Describe and verify the executed C3 duplicate-rendering control."""
+        if self.condition != "C3":
+            return None
+        modules = (
+            self.encoder_2d,
+            self.project_2d,
+            self.encoder_duplicate_2d,
+            self.project_duplicate_2d,
+        )
+        if any(module is None for module in modules):
+            raise RuntimeError("C3 duplicate control is missing a required module")
+        first_parameters = {
+            parameter.data_ptr()
+            for module in (self.encoder_2d, self.project_2d)
+            for parameter in module.parameters()
+        }
+        second_parameters = {
+            parameter.data_ptr()
+            for module in (self.encoder_duplicate_2d, self.project_duplicate_2d)
+            for parameter in module.parameters()
+        }
+        if first_parameters & second_parameters:
+            raise RuntimeError("C3 duplicate branches unexpectedly share parameter storage")
+        return {
+            "representation": "frozen_log_magnitude_hann_stft",
+            "renderer_execution": "single_call_shared_tensor_object",
+            "branch_family": "time_frequency_2d",
+            "branch_count": 2,
+            "encoder_topology": "identical",
+            "projection_topology": "identical",
+            "parameter_storage": "independent_no_weight_sharing",
+            "fusion": "concatenation_with_m5_shaped_head",
+            "alignment_terms_consumed": "none",
+        }
 
     def render_2d_view(self, waveform: torch.Tensor) -> torch.Tensor:
         if self.renderer is None:
@@ -500,6 +546,11 @@ class Model(nn.Module):
                 "P01Alignment paired sources must have identical shapes, got "
                 f"{tuple(waveform.shape)} and {tuple(renderer_source.shape)}"
             )
+        if self.condition == "C3" and not torch.equal(waveform, renderer_source):
+            raise ValueError(
+                "C3 requires both nominal views to receive the identical "
+                "deterministic source tensor"
+            )
         if waveform.shape[-1] != self.in_channels:
             raise ValueError(
                 f"Configured in_channels={self.in_channels}, got {waveform.shape[-1]}"
@@ -519,8 +570,27 @@ class Model(nn.Module):
         ):
             rendered_2d = self.renderer(renderer_source)
             encoded_2d = self.encoder_2d(rendered_2d)
-            z_2 = self.project_2d(encoded_2d)
-            state.update({"encoded_2d": encoded_2d, "z_2": z_2})
+            projected_2d = self.project_2d(encoded_2d)
+            if self.condition == "C3":
+                if (
+                    self.encoder_duplicate_2d is None
+                    or self.project_duplicate_2d is None
+                ):
+                    raise RuntimeError("C3 duplicate 2D branch was not constructed")
+                encoded_duplicate_2d = self.encoder_duplicate_2d(rendered_2d)
+                z_1 = projected_2d
+                z_2 = self.project_duplicate_2d(encoded_duplicate_2d)
+                state.update(
+                    {
+                        "encoded_2d": encoded_2d,
+                        "encoded_duplicate_2d": encoded_duplicate_2d,
+                        "z_1": z_1,
+                        "z_2": z_2,
+                    }
+                )
+            else:
+                z_2 = projected_2d
+                state.update({"encoded_2d": encoded_2d, "z_2": z_2})
 
         if self.condition == "M1":
             if z_1 is None:
@@ -538,10 +608,12 @@ class Model(nn.Module):
                 tokens, tokens, tokens, need_weights=False
             )
             fused = attended.mean(dim=1)
-        else:
+        elif self.condition in {"M3", "M5", "C3"}:
             if z_1 is None or z_2 is None:
                 raise RuntimeError(f"{self.condition} paired path was not constructed")
             fused = torch.cat((z_1, z_2), dim=1)
+        else:
+            raise RuntimeError(f"Unsupported P01 condition {self.condition!r}")
         state["fused"] = fused
         logits = self.head(fused)
         return logits, state
@@ -568,6 +640,7 @@ class Model(nn.Module):
         labels: torch.Tensor,
         data_id: Any = None,
         task_id: Any = None,
+        alignment_target_permutation: torch.Tensor | None = None,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Run the synchronized M5 forward and return raw alignment terms."""
 
@@ -581,8 +654,44 @@ class Model(nn.Module):
             data_id=data_id,
             task_id=task_id,
         )
+        if alignment_target_permutation is not None:
+            state["alignment_target_permutation"] = alignment_target_permutation
         self._last_representation_state = state
-        return logits, self.compute_alignment_losses(waveform, labels, state)
+        return logits, self.compute_alignment_losses(
+            waveform,
+            labels,
+            state,
+            target_permutation=alignment_target_permutation,
+        )
+
+    @staticmethod
+    def _validated_target_permutation(
+        permutation: torch.Tensor,
+        *,
+        batch_size: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        if not isinstance(permutation, torch.Tensor):
+            raise TypeError("Alignment target permutation must be a tensor")
+        if permutation.ndim != 1 or permutation.shape[0] != batch_size:
+            raise ValueError(
+                "Alignment target permutation must have shape (B,), got "
+                f"{tuple(permutation.shape)} for B={batch_size}"
+            )
+        if permutation.dtype != torch.long:
+            raise ValueError("Alignment target permutation must use torch.long")
+        permutation = permutation.to(device=device)
+        expected = torch.arange(batch_size, device=device)
+        if not torch.equal(torch.sort(permutation).values, expected):
+            raise ValueError(
+                "Alignment target permutation must contain every batch index once"
+            )
+        if bool(torch.eq(permutation, expected).any().item()):
+            raise ValueError(
+                "Alignment target permutation must be a derangement with no "
+                "synchronized pair left unchanged"
+            )
+        return permutation
 
     @staticmethod
     def _energy_distribution(features: torch.Tensor, eps: float) -> torch.Tensor:
@@ -749,6 +858,8 @@ class Model(nn.Module):
         waveform: torch.Tensor,
         labels: torch.Tensor,
         state: Mapping[str, torch.Tensor],
+        *,
+        target_permutation: torch.Tensor | None = None,
     ) -> Dict[str, torch.Tensor]:
         """Compute the three raw M5 losses without applying switches/lambdas."""
 
@@ -759,6 +870,13 @@ class Model(nn.Module):
             z_2 = state["z_2"]
         except KeyError as exc:
             raise RuntimeError("M5 alignment state is missing z_1 or z_2") from exc
+        if target_permutation is not None:
+            permutation = self._validated_target_permutation(
+                target_permutation,
+                batch_size=int(z_2.shape[0]),
+                device=z_2.device,
+            )
+            z_2 = z_2.index_select(0, permutation)
         if not bool(torch.isfinite(waveform).all().item()):
             raise ValueError("M5 alignment waveform contains NaN or Inf")
         if not bool(torch.isfinite(z_1).all().item()) or not bool(
