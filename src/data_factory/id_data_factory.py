@@ -11,7 +11,6 @@ from .H5DataDict import H5DataDict
 from .dataset_task.ID_dataset import set_dataset as ID_dataset_cls
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
-from .splitting import resolve_data_splits
 from torch.utils.data import DataLoader
 from typing import Any, Dict, Tuple, Optional
 import logging
@@ -87,69 +86,45 @@ class id_data_factory(data_factory):
 
         # Get target metadata and split IDs
         self.target_metadata = search_target_dataset_metadata(self.metadata, self.args_task)
-        train_val_ids, task_test_ids = search_ids_for_task(
-            self.target_metadata,
-            self.args_task,
-        )
-        self.split_result = resolve_data_splits(
-            self.target_metadata,
-            self.args_data,
-            self.args_task,
-            train_val_ids,
-            task_test_ids,
-        )
+        train_val_ids, test_ids = search_ids_for_task(self.target_metadata, self.args_task)
 
-        logger.info(
-            "Dataset split: %d train IDs, %d val IDs, %d test IDs",
-            len(self.split_result.train_ids),
-            len(self.split_result.val_ids),
-            len(self.split_result.test_ids),
-        )
+        logger.info(f"Dataset split: {len(train_val_ids)} train/val IDs, {len(test_ids)} test IDs")
 
         # Initialize dataset containers
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
 
-        logger.info("Creating training datasets...")
-        for sample_id in tqdm(
-            self.split_result.train_ids,
-            desc="Creating train datasets",
-        ):
+        # Create train/val datasets with progress tracking
+        logger.info("Creating train/validation datasets...")
+        for sample_id in tqdm(train_val_ids, desc="Creating train/val datasets"):
             try:
+                # Create datasets with only metadata (no data loading)
                 train_dataset[sample_id] = ID_dataset_cls(
-                    data=None,
-                    metadata={sample_id: self.target_metadata[sample_id]},
+                    data=None,  # No data loading at this stage
+                    metadata=self.target_metadata,
                     args_data=self.args_data,
                     args_task=self.args_task,
                     mode='train'
                 )
-            except Exception as e:
-                logger.warning(f"Failed to create train dataset for ID {sample_id}: {e}")
-
-        logger.info("Creating validation datasets...")
-        for sample_id in tqdm(
-            self.split_result.val_ids,
-            desc="Creating val datasets",
-        ):
-            try:
                 val_dataset[sample_id] = ID_dataset_cls(
-                    data=None,
-                    metadata={sample_id: self.target_metadata[sample_id]},
+                    data=None,  # No data loading at this stage
+                    metadata=self.target_metadata,
                     args_data=self.args_data,
                     args_task=self.args_task,
                     mode='val'
                 )
             except Exception as e:
-                logger.warning(f"Failed to create val dataset for ID {sample_id}: {e}")
+                logger.warning(f"Failed to create dataset for ID {sample_id}: {e}")
+                continue
 
         # Create test datasets with progress tracking
         logger.info("Creating test datasets...")
-        for sample_id in tqdm(self.split_result.test_ids, desc="Creating test datasets"):
+        for sample_id in tqdm(test_ids, desc="Creating test datasets"):
             try:
                 test_dataset[sample_id] = ID_dataset_cls(
-                    data=None,
-                    metadata={sample_id: self.target_metadata[sample_id]},
+                    data=None,  # No data loading at this stage
+                    metadata=self.target_metadata,
                     args_data=self.args_data,
                     args_task=self.args_task,
                     mode='test'

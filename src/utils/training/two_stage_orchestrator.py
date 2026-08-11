@@ -32,6 +32,7 @@ from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
+from src.utils.pipeline_config.base_utils import load_pretrained_weights
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 
 from pytorch_lightning import seed_everything
@@ -511,10 +512,6 @@ class MultiStageOrchestrator:
     def run_adapt(self, stage_cfg: Any, checkpoint_path: Optional[str] = None, iteration: int = 0) -> Dict[str, Any]:
         env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
 
-        # feed ckpt from previous stage if provided
-        if checkpoint_path:
-            setattr(model, 'weights_path', checkpoint_path)
-
         seed = getattr(env, 'seed', 42) + int(iteration)
         seed_everything(seed)
 
@@ -538,6 +535,8 @@ class MultiStageOrchestrator:
 
         data_factory = build_data(data, task)
         net = build_model(model, metadata=data_factory.get_metadata())
+        if checkpoint_path:
+            load_pretrained_weights(net, checkpoint_path, strict=False)
         lightning_task = build_task(
             args_task=task,
             network=net,

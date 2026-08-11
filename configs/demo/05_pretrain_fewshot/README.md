@@ -1,8 +1,13 @@
-# Demo: Pretrain (HSE) (`demo_05_pretrain_fewshot`)
+# Demo: HSE Pretraining Smoke (`demo_05_pretrain_fewshot`)
 
 ## Purpose
 
-Pipeline_02 pretrain/few-shot pipeline: current demo runs in single-stage mode (no `stages:`).
+Run the maintained single-stage `pretrain/hse_contrastive` path through Pipeline 02.
+The current YAML has no `stages:` block, so it does not perform downstream few-shot
+adaptation or a second-stage evaluation.
+
+The filename `pretrain_hse_then_fewshot.yaml` is retained temporarily as a compatibility
+path; the effective experiment is single-stage HSE contrastive pretraining.
 
 ## Minimal Run
 
@@ -11,8 +16,11 @@ python main.py --config configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewsh
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-## Common Pitfalls
+## Boundary
 
-1) Assuming it is a true two-stage run without adding `stages`.
-2) Confusing paper-only pipeline03 scripts with this repo demo.
+```text
+current demo = one pretraining stage
+future two-stage path = pretraining checkpoint + explicit adaptation task + independent evaluation
+```
 
+No two-stage or few-shot claim should be derived from this smoke run.

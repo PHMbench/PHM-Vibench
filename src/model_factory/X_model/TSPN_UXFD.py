@@ -13,7 +13,7 @@ Implementation note:
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from numbers import Integral
 from typing import Any, Dict, Optional
 
@@ -22,11 +22,43 @@ import torch.nn as nn
 
 from .TSPN import Model as _TSPNModel
 from .UXFD.fusion import FusionConfig, build_fusion
-from .UXFD.fuzzy import FuzzyConfig, FuzzyReasoner
+from .UXFD.fuzzy import (
+    FuzzyConfig,
+    FuzzyReasoner,
+    FuzzyTrace,
+    P05F0Decision,
+)
 from .UXFD.neurosymbolic import LogicConfig, LogicReasoner
 from .UXFD.operator_attention import OperatorAttention1D, OperatorAttentionConfig
 from .UXFD.signal_processing_2d import STFTTimeFrequency
 from .UXFD.signal_processing_2d.stft_tfr import STFTConfig
+
+
+@dataclass(frozen=True)
+class FuzzyTraceOutput:
+    """Complete same-forward reconstruction record for the additive control."""
+
+    logits: torch.Tensor
+    non_fuzzy_logits: torch.Tensor
+    fuzzy_scale: float
+    fuzzy_trace: FuzzyTrace
+
+    def scaled_rule_contributions(self) -> torch.Tensor:
+        return self.fuzzy_trace.rule_contributions * float(self.fuzzy_scale)
+
+    def reconstruct_logits(self) -> torch.Tensor:
+        return self.non_fuzzy_logits + self.scaled_rule_contributions().sum(dim=1)
+
+    def reconstruction_residual(self) -> torch.Tensor:
+        return self.logits - self.reconstruct_logits()
+
+
+@dataclass(frozen=True)
+class P05FeatureLogitOutput:
+    """Features and additive-control logits from one shared model forward."""
+
+    reduced_features: torch.Tensor
+    logits: torch.Tensor
 
 
 class Model(_TSPNModel):
@@ -106,30 +138,113 @@ class Model(_TSPNModel):
             self._uxfd_logic_scale = float(getattr(logic_cfg, "logit_scale", 1.0))
 
     def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        features_1d = self._forward_1d_features(x)  # (B, D)
-        features = features_1d
+        return self.forward_with_features(
+            x,
+            data_id=data_id,
+            task_id=task_id,
+        ).logits
 
-        if self._uxfd_enable_sp2d:
-            assert self._uxfd_sp2d is not None
-            assert self._uxfd_2d_proj is not None
-            assert self._uxfd_fusion is not None
+    def forward_with_features(
+        self,
+        x: torch.Tensor,
+        data_id=None,
+        task_id=None,
+    ) -> P05FeatureLogitOutput:
+        """Return the shared feature tensor and additive-control logits."""
 
-            x2d = self._uxfd_sp2d(x)  # (B, T, F, C) magnitude
-            pooled = x2d.mean(dim=(1, 2))  # (B, C)
-            proj = self._uxfd_2d_proj(pooled)  # (B, D)
-            features = self._uxfd_fusion(features_1d, proj)  # (B, D)
+        features = self._forward_features(x)
+        logits = self._forward_logits_from_features(features)
+        return P05FeatureLogitOutput(
+            reduced_features=features,
+            logits=logits,
+        )
 
-        base_logits = self.clf(features)
-        logits = base_logits
+    def _forward_logits_from_features(self, features: torch.Tensor) -> torch.Tensor:
+        logits = self._forward_non_fuzzy_logits(features)
         if self._uxfd_enable_fuzzy:
             assert self._uxfd_fuzzy is not None
             fuzzy_logits = self._uxfd_fuzzy(features)
             logits = logits + self._uxfd_fuzzy_scale * fuzzy_logits
+        return logits
+
+    def forward_with_fuzzy_trace(
+        self,
+        x: torch.Tensor,
+        *,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_permutation: Optional[torch.Tensor] = None,
+        data_id=None,
+        task_id=None,
+    ) -> FuzzyTraceOutput:
+        """Return the additive-control prediction and exact fuzzy trace."""
+
+        if not self._uxfd_enable_fuzzy or self._uxfd_fuzzy is None:
+            raise RuntimeError(
+                "forward_with_fuzzy_trace requires model.uxfd.fuzzy.enable=true."
+            )
+        features = self._forward_features(x)
+        non_fuzzy_logits = self._forward_non_fuzzy_logits(features)
+        fuzzy_trace = self._uxfd_fuzzy.forward_with_trace(
+            features,
+            rule_mask=rule_mask,
+            consequent_permutation=consequent_permutation,
+        )
+        logits = non_fuzzy_logits + self._uxfd_fuzzy_scale * fuzzy_trace.fuzzy_logits
+        return FuzzyTraceOutput(
+            logits=logits,
+            non_fuzzy_logits=non_fuzzy_logits,
+            fuzzy_scale=float(self._uxfd_fuzzy_scale),
+            fuzzy_trace=fuzzy_trace,
+        )
+
+    def forward_f0(
+        self,
+        x: torch.Tensor,
+        *,
+        rule_to_class: torch.Tensor,
+        conflict_threshold: float,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_override: Optional[torch.Tensor] = None,
+        data_id=None,
+        task_id=None,
+    ) -> P05F0Decision:
+        """Issue P05 F0 directly from memberships and minimum-t-norm rules.
+
+        The classifier and logic heads are deliberately not called. They remain
+        available to the additive control path used by B0/B1-style comparisons.
+        """
+
+        if not self._uxfd_enable_fuzzy or self._uxfd_fuzzy is None:
+            raise RuntimeError("forward_f0 requires model.uxfd.fuzzy.enable=true.")
+        features = self._forward_features(x)
+        return self._uxfd_fuzzy.forward_f0(
+            features,
+            rule_to_class=rule_to_class,
+            conflict_threshold=conflict_threshold,
+            rule_mask=rule_mask,
+            consequent_override=consequent_override,
+        )
+
+    def _forward_non_fuzzy_logits(self, features: torch.Tensor) -> torch.Tensor:
+        logits = self.clf(features)
         if self._uxfd_enable_logic:
             assert self._uxfd_logic is not None
             logic_logits = self._uxfd_logic(features)
             logits = logits + self._uxfd_logic_scale * logic_logits
         return logits
+
+    def _forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        features_1d = self._forward_1d_features(x)
+        if not self._uxfd_enable_sp2d:
+            return features_1d
+
+        assert self._uxfd_sp2d is not None
+        assert self._uxfd_2d_proj is not None
+        assert self._uxfd_fusion is not None
+        x2d = self._uxfd_sp2d(x)
+        pooled = x2d.mean(dim=(1, 2))
+        projected = self._uxfd_2d_proj(pooled)
+        return self._uxfd_fusion(features_1d, projected)
 
     def _forward_1d_features(self, x: torch.Tensor) -> torch.Tensor:
         if self._uxfd_enable_operator_attention:

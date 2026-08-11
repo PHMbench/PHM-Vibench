@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -23,44 +22,6 @@ class EnvironmentConfig(BaseModel):
         return self
 
 
-class DataSplitConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    strategy: Literal["legacy_windows", "grouped_metadata"] = "legacy_windows"
-    group_key: Optional[str] = None
-    stratify_key: Optional[str] = None
-    seed: int = 42
-    test_policy: Literal["partition", "task_defined"] = "partition"
-    fractions: Optional[Dict[Literal["train", "val", "test"], float]] = None
-    manifest_path: Optional[str] = None
-
-    @model_validator(mode="after")
-    def _check_grouped_protocol(self) -> "DataSplitConfig":
-        if self.strategy == "legacy_windows":
-            return self
-        if not self.group_key:
-            raise ValueError("data.split.group_key is required for grouped_metadata")
-        if not self.manifest_path:
-            raise ValueError("data.split.manifest_path is required for grouped_metadata")
-        expected = (
-            {"train", "val", "test"}
-            if self.test_policy == "partition"
-            else {"train", "val"}
-        )
-        fractions = self.fractions or {}
-        if set(fractions) != expected:
-            raise ValueError(
-                f"data.split.fractions must contain exactly {sorted(expected)} "
-                f"for {self.test_policy}"
-            )
-        values = list(fractions.values())
-        if any(not math.isfinite(value) or value <= 0.0 for value in values):
-            raise ValueError("data.split.fractions values must be finite and positive")
-        if not math.isclose(sum(values), 1.0, rel_tol=0.0, abs_tol=1e-8):
-            raise ValueError("data.split.fractions must sum to 1.0")
-        return self
-
-
 class DataConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -68,7 +29,6 @@ class DataConfig(BaseModel):
     metadata_file: str = Field(..., description="Metadata filename relative to data_dir (xlsx/csv).")
     batch_size: Optional[int] = Field(None, ge=1)
     num_workers: Optional[int] = Field(None, ge=0)
-    split: Optional[DataSplitConfig] = None
 
 
 class ModelConfig(BaseModel):
@@ -90,49 +50,7 @@ class ModelConfig(BaseModel):
         return self
 
 
-TaskType = Literal[
-    "DG",
-    "CDDG",
-    "FS",
-    "GFS",
-    "pretrain",
-    "Default_task",
-    "generative",
-]
-
-
-class GradientConstraintConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: Literal["fic"]
-    epsilon: float = Field(2.0, gt=0.0)
-
-
-class PopulationRegularizationConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    enabled: bool = False
-    weight: float = Field(0.1, gt=0.0)
-    dependency: Literal["pearson_correlation"] = "pearson_correlation"
-    estimator: Literal["biased"] = "biased"
-    rbf_bandwidths: List[float] = Field(
-        default_factory=lambda: [0.1, 0.5, 1.0, 2.0]
-    )
-    same_time_per_batch: bool = True
-
-    @model_validator(mode="after")
-    def _check_population_contract(self) -> "PopulationRegularizationConfig":
-        if not self.rbf_bandwidths or any(
-            value <= 0.0 for value in self.rbf_bandwidths
-        ):
-            raise ValueError(
-                "task.population_regularization.rbf_bandwidths must be positive"
-            )
-        if self.enabled and not self.same_time_per_batch:
-            raise ValueError(
-                "enabled population regularization requires same_time_per_batch=true"
-            )
-        return self
+TaskType = Literal["DG", "CDDG", "FS", "GFS", "pretrain", "Default_task"]
 
 
 class TaskConfig(BaseModel):
@@ -142,21 +60,12 @@ class TaskConfig(BaseModel):
     name: str = Field(..., description="Task name under task.type.")
 
     target_system_id: Optional[List[int]] = None
-    loss: Optional[str] = None
-    gradient_constraint: Optional[GradientConstraintConfig] = None
-    population_regularization: Optional[PopulationRegularizationConfig] = None
 
     @model_validator(mode="after")
     def _check_target_system_id(self) -> "TaskConfig":
         if self.target_system_id is not None:
             if not self.target_system_id:
                 raise ValueError("task.target_system_id must not be empty when provided")
-        return self
-
-    @model_validator(mode="after")
-    def _check_gradient_constraint(self) -> "TaskConfig":
-        if self.gradient_constraint is not None and (self.loss or "").upper() != "CE":
-            raise ValueError("task.gradient_constraint.name=fic requires task.loss=CE")
         return self
 
 
@@ -188,32 +97,4 @@ class ExperimentConfig(BaseModel):
     def _basic_coupling_checks(self) -> "ExperimentConfig":
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
-        split = self.data.split
-        if split and split.strategy == "grouped_metadata":
-            if self.task.type in {"FS", "GFS"}:
-                raise ValueError(
-                    f"grouped_metadata does not define episode-safe splitting for {self.task.type}"
-                )
-            if self.task.type in {"DG", "CDDG"} and split.test_policy != "task_defined":
-                raise ValueError(f"task.type={self.task.type} requires test_policy=task_defined")
-            if self.task.type not in {"DG", "CDDG"} and split.test_policy == "task_defined":
-                raise ValueError("test_policy=task_defined is only supported for DG and CDDG")
-        population = self.task.population_regularization
-        if population is not None and population.enabled:
-            if (
-                self.task.type != "generative"
-                or self.task.name != "conditional_flow_matching"
-            ):
-                raise ValueError(
-                    "population_regularization is supported only by "
-                    "conditional_flow_matching"
-                )
-            if int(getattr(self.model, "in_channels", 0)) < 2:
-                raise ValueError(
-                    "population_regularization requires model.in_channels >= 2"
-                )
-            if self.data.batch_size is None or self.data.batch_size < 2:
-                raise ValueError(
-                    "population_regularization requires data.batch_size >= 2"
-                )
         return self

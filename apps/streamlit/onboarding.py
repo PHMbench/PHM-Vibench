@@ -1,8 +1,8 @@
 """First-run readiness and template guidance for the Streamlit workspace.
 
-This module deliberately has no Streamlit dependency. It converts repository,
-Python-environment, and selected-template facts into immutable reports that the
-UI can render without duplicating runtime logic.
+The module has no Streamlit dependency. It converts repository, Python-environment, and
+selected-template facts into immutable reports. Configuration composition remains owned
+by the public PHMFactory inspector; no machine-local YAML is discovered here.
 """
 
 from __future__ import annotations
@@ -106,12 +106,12 @@ _DEPENDENCIES = (
 def _read_yaml_mapping(path: Path) -> Mapping[str, Any]:
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except FileNotFoundError as exc:
-        raise OnboardingError(f"Template profile file does not exist: {path}") from exc
-    except (OSError, UnicodeDecodeError) as exc:
-        raise OnboardingError(f"Could not read template profile file: {path}") from exc
-    except yaml.YAMLError as exc:
-        raise OnboardingError(f"Invalid YAML in template profile file: {path}") from exc
+    except FileNotFoundError as error:
+        raise OnboardingError(f"Template profile file does not exist: {path}") from error
+    except (OSError, UnicodeDecodeError) as error:
+        raise OnboardingError(f"Could not read template profile file: {path}") from error
+    except yaml.YAMLError as error:
+        raise OnboardingError(f"Invalid YAML in template profile file: {path}") from error
     if not isinstance(value, dict):
         raise OnboardingError("Template profile YAML root must be a mapping.")
     return value
@@ -179,7 +179,8 @@ def load_template_profiles(path: Path) -> Mapping[str, TemplateProfile]:
 
 
 def profile_for(
-    profiles: Mapping[str, TemplateProfile], template_id: str
+    profiles: Mapping[str, TemplateProfile],
+    template_id: str,
 ) -> TemplateProfile:
     """Return explicit metadata or a conservative generic profile."""
 
@@ -201,7 +202,8 @@ def profile_for(
 
 
 def apply_safe_defaults(
-    state: MutableMapping[str, Any], default_template_id: str
+    state: MutableMapping[str, Any],
+    default_template_id: str,
 ) -> None:
     """Reset only configuration UI state; never discard run history."""
 
@@ -265,7 +267,7 @@ def collect_environment_readiness(
             "ready" if repository_ready else "blocked",
             "main.py and configs/ are available."
             if repository_ready
-            else "The app is not running from a PHM-Vibench checkout.",
+            else "The app is not running from a PHMFactory checkout.",
             "Start Streamlit from the repository root."
             if not repository_ready
             else "",
@@ -321,18 +323,13 @@ def collect_environment_readiness(
         )
     )
 
-    local_config = root / "configs" / "local" / "local.yaml"
     checks.append(
         ReadinessCheck(
-            "local-config",
-            "Machine-local override",
-            "warning" if local_config.is_file() else "ready",
-            "configs/local/local.yaml is active and can change smoke defaults."
-            if local_config.is_file()
-            else "No machine-local override is active.",
-            "Review configs/local/local.yaml before the first run."
-            if local_config.is_file()
-            else "",
+            "config-inputs",
+            "Configuration inputs",
+            "ready",
+            "Only the selected template, visible edits, and explicit overrides are active.",
+            "",
         )
     )
     return ReadinessReport(tuple(checks))
@@ -345,7 +342,8 @@ def _expanded_path(repo_root: Path, raw: str) -> Path:
 
 
 def _resolved_data_paths(
-    repo_root: Path, resolved: Mapping[str, Any]
+    repo_root: Path,
+    resolved: Mapping[str, Any],
 ) -> Tuple[Path, Path] | None:
     data = resolved.get("data") if isinstance(resolved.get("data"), Mapping) else {}
     data_dir = data.get("data_dir") if isinstance(data, Mapping) else None
@@ -370,7 +368,7 @@ def assess_template_data(
     resolved: Mapping[str, Any],
     profile: TemplateProfile,
 ) -> TemplateDataStatus:
-    """Resolve the final selected-template data and return an actionable status."""
+    """Resolve selected-template data and return an actionable status."""
 
     root = Path(repo_root).resolve()
     missing_required = [
@@ -388,7 +386,7 @@ def assess_template_data(
         return TemplateDataStatus(
             False,
             "The selected configuration needs data.data_dir and data.metadata_file.",
-            "Set the missing data fields in Advanced mode or configs/local/local.yaml.",
+            "Set the fields in Advanced mode or add explicit raw overrides.",
         )
     data_root, metadata_path = resolved_paths
 
@@ -402,7 +400,7 @@ def assess_template_data(
         return TemplateDataStatus(
             False,
             f"{kind} is not ready. Missing: " + ", ".join(missing),
-            "Set data.data_dir in Advanced mode or configs/local/local.yaml, then validate again.",
+            "Set data.data_dir in Advanced mode or add an explicit override, then validate again.",
             data_root=str(data_root),
             metadata_path=str(metadata_path),
         )

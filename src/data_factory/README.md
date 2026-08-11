@@ -1,82 +1,148 @@
 # Data Factory (`src/data_factory/`)
 
-The Data Factory builds datasets and `DataLoader`s from `config.data` + `config.task`.
+The Data Factory converts a resolved `data` + `task` configuration into three usable `DataLoader`s:
 
-This README is the canonical “how to use” doc. For architecture/change guidance (extension rules, invariants), see
-[@CLAUDE.md].
+```text
+metadata + raw/prebuilt data
+→ complete cache
+→ explicit dataset adapter
+→ train / val / test datasets
+→ non-empty DataLoaders
+```
 
-## Purpose
+The public entry point is:
 
-- Select a dataset reader (`reader/`) based on metadata/config
-- Apply task-specific dataset wrappers (`dataset_task/`)
-- Create `DataLoader`s (optionally with custom samplers under `samplers/`)
+```python
+from src.data_factory import build_data
 
-## Module Structure
+data_factory = build_data(args_data, args_task)
+train_loader = data_factory.get_dataloader("train")
+```
 
-| File / Directory | Role |
-|---|---|
-| `__init__.py` | Public API (`build_data`, registry helpers) |
-| `data_factory.py` | Default factory implementation |
-| `id_data_factory.py` | ID-based (lazy/on-demand) factory implementation |
-| `H5DataDict.py` | H5-backed data access utilities |
-| `reader/` | Dataset readers (e.g. `RM_001_CWRU.py`) |
-| `dataset_task/` | Task-oriented dataset wrappers (DG/CDDG/FS/GFS/pretrain/ID/...) |
-| `samplers/` | Custom sampling strategies (e.g. episodic FS samplers) |
-| `ID/` | Utilities for querying/filtering sample IDs from metadata |
-| `data_utils.py` | Common preprocessing helpers |
-| `datainfo.py` | Helper to scan a raw directory and draft metadata |
+A successful call returns a usable factory. Missing data, unknown adapters, incomplete caches, and empty loaders raise at the data boundary with a repair message.
 
-## Configuration Interface
-
-The data factory is controlled by the `data` block in YAML.
-
-Key fields you will see across configs:
-- `data.factory_name`: `"default"` (eager) or `"id"` (lazy/on-demand)
-- `data.data_dir`: root data directory (often machine-local via `configs/local/local.yaml`)
-- `data.metadata_file`: metadata file name/path (Excel/CSV depending on dataset)
-- `data.batch_size`, `data.num_workers`, `data.pin_memory`: DataLoader settings
-
-Minimal example:
+## Maintained configuration
 
 ```yaml
 data:
   factory_name: "default"
-  data_dir: "/path/to/PHM-Vibench_data"
+  data_dir: "/path/to/phm-data"
   metadata_file: "metadata.xlsx"
   batch_size: 32
   num_workers: 4
+  window_size: 4096
+  stride: 128
+  num_window: 64
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  normalization: "standardization"
 ```
 
-## Default vs ID-based Factory
-
-- `factory_name: "default"`: builds datasets up front (traditional eager loading)
-- `factory_name: "id"`: defers heavy work and can return ID-enriched batches for on-demand processing in tasks
-
-If you enable the ID-based path, ensure the corresponding task expects dictionary-style batches (e.g. `batch["x"]`,
-`batch["y"]`, and potentially `batch["file_id"]`).
-
-## Data Components (mental model)
-
-Most datasets in this benchmark can be thought of as:
-
-1. `metadata.xlsx` (or CSV): the sample index and labels; keyed by `Id`
-2. `*.h5`: signal cache keyed by `Id` (each item typically shaped `(L, C)`)
-3. (optional) `corpus.xlsx`: text annotations keyed by `Id`
-
-## Smoke Demo Note (`Dummy_Data`)
-
-The repo-shipped smoke config `configs/demo/00_smoke/dummy_dg.yaml` uses `Name=Dummy_Data`.
-For offline runs, `src/data_factory/reader/Dummy_Data.py` generates synthetic data if raw CSV files are not present
-under `data/raw/Dummy_Data/`.
-
-## Adding a New Dataset (quick checklist)
-
-1. Add raw files under `data/raw/<dataset_name>/` (or document how to obtain them).
-2. Implement a reader in `src/data_factory/reader/` (see existing `RM_*.py`).
-3. Register the reader (follow the patterns in `src/data_factory/data_factory.py` and/or package init exports).
-4. Add/update a smoke-friendly demo config under `configs/demo/` and validate it:
+Machine-specific values are applied only through an explicit local file:
 
 ```bash
-python -m scripts.config_inspect --config configs/demo/00_smoke/dummy_dg.yaml
-python -m scripts.validate_configs
+phmfactory preflight --config <yaml> --local-config /path/to/local.yaml
+phmfactory run --config <yaml> --local-config /path/to/local.yaml
 ```
+
+PHMFactory does not auto-discover `configs/local/local.yaml`.
+
+## Runtime contracts
+
+### Explicit dataset adapter
+
+The default factory resolves exactly one adapter from:
+
+```text
+(task.type, task.name)
+```
+
+The runtime mapping lives in:
+
+```text
+src/data_factory/dataset_task/adapters.py
+```
+
+Unknown combinations fail. Import errors do not fall back to `Default_dataset`.
+
+### Complete cache
+
+Published `Name.h5` and `cache.h5` files contain every selected ID. A failed rebuild leaves the previous published cache unchanged. An already complete `cache.h5` is reused without copying the underlying data again.
+
+### Truthful splits
+
+- `val` and legacy `valid` refer to the same validation split.
+- DG/CDDG test IDs use their complete test files.
+- FS/GFS/pretrain tasks that reuse file IDs use disjoint train/val/test window slices.
+- Validation and test retain the final short batch.
+
+### Usable loaders
+
+The default factory checks `len(train_loader)`, `len(val_loader)`, and `len(test_loader)` before model construction. It does not consume a batch or impose a universal tensor schema.
+
+## Adding a new raw dataset
+
+1. Add a metadata row for every file. At minimum, current readers and tasks commonly use:
+
+```text
+Id, Dataset_id, Name, File, Label, Domain_id
+```
+
+2. Implement a reader:
+
+```python
+# src/data_factory/reader/MyDataset.py
+
+def read(file_path, args_data):
+    # Return a NumPy array shaped [length, channels].
+    ...
+```
+
+3. Set metadata `Name` to the reader module name, for example `MyDataset`.
+4. Use an existing task adapter or register a new one.
+5. Run a one-epoch smoke before adding the combination to the supported matrix.
+
+Reader numerical behavior is dataset-specific. Do not change channel order, axes, normalization, or source-field selection as part of unrelated cleanup.
+
+## Adding a task-specific dataset adapter
+
+Implement a dataset class with the historical constructor:
+
+```python
+class set_dataset:
+    def __init__(self, data, metadata, args_data, args_task, mode="train"):
+        ...
+```
+
+Register it explicitly:
+
+```python
+from src.data_factory import register_dataset_adapter
+
+register_dataset_adapter(
+    "MyTaskType",
+    "my_task",
+    "my_package.dataset_adapter",
+)
+```
+
+There is no filename guessing. Duplicate registrations fail immediately.
+
+## Factory choices
+
+- `factory_name: default`: maintained explicit-adapter path.
+- `factory_name: department`: compatibility subclass of the historical factory.
+- `factory_name: id`: compatibility research path; it is not part of the maintained release combination table.
+
+New development should use `default` unless the alternative path has its own reviewed smoke.
+
+## Validate an extension
+
+```bash
+python -m scripts.config_inspect --config <your-config.yaml> --dump targets
+python -m scripts.validate_configs
+python main.py --config <your-config.yaml> --override trainer.num_epochs=1 data.num_workers=0
+```
+
+A source file, registry entry, or importable reader is discoverable—not automatically release-supported. Add a `sanity_ok` demo only after the exact configuration completes its bounded smoke.

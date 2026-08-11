@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from phmfactory.config import (
-    DEFAULT_PIPELINE,
     MAINTAINED_PRESETS,
     load_config_dict,
     parse_overrides,
@@ -22,6 +21,16 @@ def test_parse_overrides_expands_dotted_keys_and_yaml_types() -> None:
         "task": {"enabled": True},
         "labels": [1, 2],
     }
+
+
+def test_parse_overrides_rejects_malformed_yaml_value() -> None:
+    with pytest.raises(ValueError, match="Invalid YAML value"):
+        parse_overrides(["labels=[1, 2"])
+
+
+def test_parse_overrides_rejects_empty_value() -> None:
+    with pytest.raises(ValueError, match="must be non-empty"):
+        parse_overrides(["trainer.device="])
 
 
 def test_recursive_base_config_merge_is_ordered(tmp_path: Path) -> None:
@@ -68,6 +77,37 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
     assert resolved.path == config.resolve()
 
 
+def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must declare `pipeline`"):
+        resolve_config(config)
+
+
+def test_pipeline_may_be_supplied_by_explicit_override(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+
+    resolved = resolve_config(
+        config,
+        override_values=["pipeline=Pipeline_01_Fault_Diagnosis"],
+    )
+
+    assert resolved.pipeline == "Pipeline_01_Fault_Diagnosis"
+    assert resolved.data["pipeline"] == "Pipeline_01_Fault_Diagnosis"
+
+
+def test_non_utf8_config_fails_without_encoding_fallback(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_bytes(
+        b"pipeline: Pipeline_01_Fault_Diagnosis\nnotes: \xff\n"
+    )
+
+    with pytest.raises(UnicodeError, match="must be valid UTF-8"):
+        resolve_config(config)
+
+
 def test_resolve_config_rejects_missing_source(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         resolve_config(tmp_path / "missing.yaml")
@@ -83,7 +123,6 @@ def test_maintained_presets_point_to_tracked_configs(
     assert resolve_config_path(preset) == expected
 
 
-
 def test_installed_style_resolution_works_outside_repository(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -95,6 +134,7 @@ def test_installed_style_resolution_works_outside_repository(
     assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
     assert resolved.data["trainer"]["device"] == "cpu"
 
+
 def test_cycle_detection(tmp_path: Path) -> None:
     first = tmp_path / "first.yaml"
     second = tmp_path / "second.yaml"
@@ -103,9 +143,3 @@ def test_cycle_detection(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Cyclic base_configs"):
         load_config_dict(first)
-
-
-def test_pipeline_defaults_when_omitted(tmp_path: Path) -> None:
-    config = tmp_path / "config.yaml"
-    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
-    assert resolve_config(config).pipeline == DEFAULT_PIPELINE

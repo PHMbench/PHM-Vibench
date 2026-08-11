@@ -1,0 +1,26 @@
+# Compatibility filename: this demo uses hierarchical system/domain/label sampling
+# followed by ordinary CE classification. It is not generalized few-shot learning.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg_fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "demo_hierarchical_sampled_classification"
+  seed: 0
+  output_dir: "results/demo/hierarchical_sampled_classification"
+  notes: "Hierarchically sampled cross-system classification with CE; no support/query adaptation or base/novel evaluation."
+
+data: {}
+
+task:
+  target_system_id: [1, 6]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 1

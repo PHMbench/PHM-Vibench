@@ -18,7 +18,12 @@ class Default_dataset(Dataset):  # THU_006or018_basic
     the full file for tasks whose test IDs are distinct from training IDs. For
     FS/GFS/pretrain tasks, where the current ID search intentionally reuses the
     same files, ``mode="test"`` selects the held-out tail of the window sequence.
+
+    ``window_intervals`` records the raw ``[start, end)`` interval for every
+    retained window. It is used to report whether different splits share raw
+    samples; it does not change the sampling or split algorithm.
     """
+
     def __init__(self, data, metadata, args_data, args_task, mode="train"):
         if not data:
             raise ValueError("dataset input must contain one file ID")
@@ -27,8 +32,6 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         self.data = data[self.key]
         self.args_data = args_data
         self.args_task = args_task
-        split_cfg = getattr(args_data, "split", None)
-        self.split_strategy = getattr(split_cfg, "strategy", "legacy_windows")
 
         requested_mode = str(mode).lower()
         if requested_mode == "valid":
@@ -94,7 +97,7 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         )
 
         self.processed_data = []
-        self.window_intervals = []
+        self.window_intervals: list[tuple[int, int]] = []
         self.prepare_data(metadata)
 
     def _validate_window_config(self, raw_stride) -> None:
@@ -160,14 +163,21 @@ class Default_dataset(Dataset):  # THU_006or018_basic
     def prepare_data(self, metadata=None):
         """Create windows, normalize them, and select the requested split."""
         self._process_single_data(self.data)
-        if (
-            self.mode in {"train", "val", "test_holdout"}
-            and self.split_strategy == "legacy_windows"
-        ):
+        if self.mode in {"train", "val", "test_holdout"}:
             self._split_data_for_mode()
 
         self.total_samples = len(self.processed_data)
         self.label = metadata[self.key]["Label"]
+
+    def _append_window(
+        self,
+        sample_data: np.ndarray,
+        start_idx: int,
+        end_idx: int,
+    ) -> None:
+        """Append one window and its exact raw-sample interval."""
+        self.processed_data.append(sample_data[start_idx:end_idx])
+        self.window_intervals.append((int(start_idx), int(end_idx)))
 
     def _sequential_sampling(self, sample_data, data_length):
         """Create windows from left to right."""
@@ -180,14 +190,12 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         for index in range(num_samples):
             start_idx = index * self.stride
             end_idx = start_idx + self.window_size
-            self.processed_data.append(sample_data[start_idx:end_idx])
-            self.window_intervals.append((start_idx, end_idx))
+            self._append_window(sample_data, start_idx, end_idx)
 
     def _random_sampling(self, sample_data, data_length):
         """Create a deterministic random window set shared by every split mode."""
         if data_length == self.window_size:
-            self.processed_data.append(sample_data)
-            self.window_intervals.append((0, data_length))
+            self._append_window(sample_data, 0, self.window_size)
             return
 
         possible_starts = np.arange(data_length - self.window_size + 1)
@@ -203,21 +211,20 @@ class Default_dataset(Dataset):  # THU_006or018_basic
             selected_starts.sort()
 
         for start_idx in selected_starts:
-            start_idx = int(start_idx)
             end_idx = start_idx + self.window_size
-            self.processed_data.append(sample_data[start_idx:end_idx])
-            self.window_intervals.append((start_idx, end_idx))
+            self._append_window(sample_data, int(start_idx), int(end_idx))
 
     def _evenly_spaced_sampling(self, sample_data, data_length):
         """Create windows distributed across the complete file."""
         if data_length == self.window_size:
-            self.processed_data.append(sample_data)
-            self.window_intervals.append((0, data_length))
+            self._append_window(sample_data, 0, self.window_size)
         elif self.num_window == 1:
             start_idx = (data_length - self.window_size) // 2
-            end_idx = start_idx + self.window_size
-            self.processed_data.append(sample_data[start_idx:end_idx])
-            self.window_intervals.append((start_idx, end_idx))
+            self._append_window(
+                sample_data,
+                start_idx,
+                start_idx + self.window_size,
+            )
         else:
             effective_length = data_length - self.window_size
             if effective_length < 0:
@@ -228,9 +235,11 @@ class Default_dataset(Dataset):  # THU_006or018_basic
                     int(round(index * step)),
                     data_length - self.window_size,
                 )
-                end_idx = start_idx + self.window_size
-                self.processed_data.append(sample_data[start_idx:end_idx])
-                self.window_intervals.append((start_idx, end_idx))
+                self._append_window(
+                    sample_data,
+                    start_idx,
+                    start_idx + self.window_size,
+                )
 
     def _process_single_data(self, sample_data):
         """Validate one raw array and apply the configured windowing strategy."""
@@ -361,7 +370,7 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         return window + noise
 
     def _split_data_for_mode(self):
-        """Select a non-overlapping split from one deterministic window list."""
+        """Select a non-overlapping window-list split and retain its intervals."""
         if not self.processed_data:
             return
 
@@ -385,14 +394,14 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         test_end = min(max(test_end, val_end), total_samples)
 
         if self.mode == "train":
-            self.processed_data = self.processed_data[:train_end]
-            self.window_intervals = self.window_intervals[:train_end]
+            selection = slice(None, train_end)
         elif self.mode == "val":
-            self.processed_data = self.processed_data[train_end:val_end]
-            self.window_intervals = self.window_intervals[train_end:val_end]
-        elif self.mode == "test_holdout":
-            self.processed_data = self.processed_data[val_end:test_end]
-            self.window_intervals = self.window_intervals[val_end:test_end]
+            selection = slice(train_end, val_end)
+        else:
+            selection = slice(val_end, test_end)
+
+        self.processed_data = self.processed_data[selection]
+        self.window_intervals = self.window_intervals[selection]
 
     def __len__(self):
         return self.total_samples

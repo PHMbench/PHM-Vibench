@@ -79,7 +79,6 @@ def trainer(args_e, args_t, args_d, path):
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
         strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else "auto",
-        deterministic=getattr(args_t, "deterministic", None),
     )
     return trainer
 
@@ -180,7 +179,7 @@ def create_early_stopping_callback(args):
     """创建并返回早期停止回调。"""
     return EarlyStopping(
         monitor=args.monitor,
-        min_delta=float(getattr(args, "min_delta", 0.0)),
+        min_delta=0.00,
         patience=getattr(args, "patience", 10),
         verbose=True,
         mode="min",

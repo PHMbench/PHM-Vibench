@@ -4,8 +4,11 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+from phmfactory.config import resolve_config
+from src.model_factory import build_model, resolve_model_module
 from src.model_factory.ISFM.system_utils import normalize_fs, resolve_batch_metadata
 from src.model_factory.ISFM.task_head.H_01_Linear_cla import H_01_Linear_cla
+from src.task_factory import build_task
 from src.task_factory.Default_task import Default_task
 
 
@@ -24,12 +27,28 @@ _METADATA = {
     },
 }
 
+_EXTENSION_METADATA = {
+    1: {
+        "Name": "Dummy_Data",
+        "Dataset_id": 0,
+        "Domain_id": 0,
+        "Sample_Rate": 1000,
+        "Label": 0,
+    },
+    2: {
+        "Name": "Dummy_Data",
+        "Dataset_id": 0,
+        "Domain_id": 1,
+        "Sample_Rate": 2000,
+        "Label": 1,
+    },
+}
+
 
 class _TaskHarness:
     metadata = _METADATA
 
     def __init__(self):
-        self.network = SimpleNamespace()
         self.seen_file_ids = None
         self.seen_sample_rates = None
 
@@ -120,52 +139,63 @@ def test_linear_head_requires_one_system_per_batch():
         head(features, system_id=torch.tensor([1, 2]))
 
 
-def test_default_task_forwards_explicit_physical_vectors_to_decisive_model():
-    class Network:
-        requires_physical_metadata = True
+def test_existing_factory_supports_config_only_model_replacement_and_backward():
+    resolved = resolve_config(
+        "smoke",
+        override_values=(
+            "model.type=Baseline",
+            "model.name=GlobalAverageLinear",
+            "model.input_dim=2",
+            "model.num_classes=2",
+        ),
+    )
+    config = resolved.data
+    args_environment = SimpleNamespace(**config["environment"])
+    args_data = SimpleNamespace(**config["data"])
+    args_model = SimpleNamespace(**config["model"])
+    args_task = SimpleNamespace(**config["task"])
+    args_trainer = SimpleNamespace(**config["trainer"])
 
-        def __init__(self):
-            self.received = None
+    assert resolve_model_module(args_model) == (
+        "src.model_factory.Baseline.GlobalAverageLinear"
+    )
 
-        def __call__(self, x, file_id, task_id, *, physical_metadata=None):
-            self.received = (x, file_id, task_id, physical_metadata)
-            return x
+    model = build_model(args_model, metadata=_EXTENSION_METADATA)
+    task = build_task(
+        args_task=args_task,
+        network=model,
+        args_data=args_data,
+        args_model=args_model,
+        args_trainer=args_trainer,
+        args_environment=args_environment,
+        metadata=_EXTENSION_METADATA,
+    )
 
-    network = Network()
-    task = SimpleNamespace(network=network)
     batch = {
-        "x": torch.zeros(2, 16, 1),
-        "file_id": torch.tensor([101, 102]),
-        "task_id": "classification",
-        "sample_rate_hz": torch.tensor([12_000.0, 48_000.0]),
-        "rotation_speed_rpm": torch.tensor([1_797.0, 1_772.0]),
-        "load_hp": torch.tensor([0.0, 1.0]),
+        "x": torch.randn(2, 128, 2),
+        "y": torch.tensor([0, 1]),
+        "file_id": torch.tensor([1, 2]),
     }
+    loss = task._shared_step(batch, "train")["train_total_loss"]
 
-    Default_task.forward(task, batch)
-
-    assert network.received is not None
-    _, received_ids, received_task, physical = network.received
-    assert torch.equal(received_ids, batch["file_id"])
-    assert received_task == "classification"
-    assert set(physical) == {
-        "sample_rate_hz",
-        "rotation_speed_rpm",
-        "load_hp",
-    }
+    assert loss.shape == ()
+    assert torch.isfinite(loss)
+    assert loss.requires_grad
+    loss.backward()
+    assert model.classifier.weight.grad is not None
+    assert torch.isfinite(model.classifier.weight.grad).all()
 
 
-def test_default_task_rejects_cuda_fallback(monkeypatch):  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
-    with pytest.raises(RuntimeError, match="must not fall back to CPU"):
-        Default_task(
-            network=torch.nn.Linear(2, 2),
-            args_data=SimpleNamespace(normalization="none"),
-            args_model=SimpleNamespace(type="test", name="cuda_required"),
-            args_task=SimpleNamespace(
-                loss="CE", metrics=["acc"], optimizer="adam", lr=1e-3
-            ),
-            args_trainer=SimpleNamespace(device="cuda", gpus=1),
-            args_environment=SimpleNamespace(project="p04_cuda_fail_fast"),
-            metadata={0: {"Name": "Dummy", "Label": 0}},
-        )
+def test_baseline_model_rejects_incompatible_input_without_padding_or_fallback():
+    model = build_model(
+        SimpleNamespace(
+            type="Baseline",
+            name="GlobalAverageLinear",
+            input_dim=2,
+            num_classes=2,
+        ),
+        metadata=_EXTENSION_METADATA,
+    )
+
+    with pytest.raises(ValueError, match="channel mismatch"):
+        model(torch.randn(2, 128, 1))

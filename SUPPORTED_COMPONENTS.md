@@ -1,42 +1,64 @@
-# Supported Components for v0.2.0
+# Execution-Verified Components for the PHMFactory v0.3 Pre-release
 
-## Release-Supported Components
+> Generated from `phmfactory.pipelines.PIPELINE_DESCRIPTORS`, `configs/config_registry.csv`, and resolved maintained configs.
 
-These components are covered by the maintained demo matrix and current cycle-03
-evidence.
+Re-generate:
 
-| Surface | Supported values |
+```bash
+python -m scripts.gen_support_matrix
+```
+
+PHMFactory separates software execution evidence from scientific protocol validity:
+
+```text
+discoverable     = a canonical Pipeline or registry entry exists
+runnable         = the public control plane permits execution
+smoke-verified   = the exact maintained command has bounded execution evidence
+protocol-valid   = the complete data/split/task/metric combination satisfies its scientific protocol
+```
+
+The software relationship is:
+
+```text
+smoke-verified ⊆ runnable ⊆ discoverable
+```
+
+Protocol validity is a separate property of a complete experiment combination. It is not inferred from component importability, Pipeline maturity, or a successful smoke run.
+
+## Pipeline maturity
+
+| Pipeline | Maturity | Default public access | Reason |
+|---|---|---:|---|
+| `Pipeline_01_Fault_Diagnosis` | `supported` | yes | - |
+| `Pipeline_02_Pretraining_Few_Shot` | `supported_limited` | yes | release support is limited to the maintained single-stage demo |
+| `Pipeline_03_Multitask_Pretraining_Finetuning` | `experimental` | explicit opt-in | no maintained smoke combination; legacy implementation catches stage errors and contains unverified checkpoint compatibility paths |
+| `Pipeline_04_Unified_Evaluation` | `experimental_blocked` | explicit opt-in | legacy implementation contains environment-specific paths, sys.path mutation, broad fallback, and unverified partial checkpoint loading |
+| `Pipeline_05_Explainable_Fault_Diagnosis` | `compatibility` | yes | UXFD focused contract exists; no release-supported demo combination |
+| `Pipeline_06_Generative_Modeling` | `experimental_contract` | yes | guarded CFM contract evidence; no release-supported benchmark claim |
+| `Pipeline_ID` | `compatibility` | yes | legacy research entrypoint outside the maintained demo matrix |
+
+## Execution-verified maintained surface
+
+| Surface | Values derived from `sanity_ok` demos |
 |---|---|
-| Pipelines | `Pipeline_01_Fault_Diagnosis`, `Pipeline_02_Pretraining_Few_Shot` single-stage demo |
-| Data entry | repo dummy data; PHM-Vibench metadata/raw data via `data.data_dir` |
-| Model | `ISFM/M_01_ISFM` |
-| ISFM embedding | `E_01_HSE` |
-| ISFM backbone | `B_04_Dlinear` |
-| ISFM task head | `H_01_Linear_cla` |
-| Tasks | `DG/classification`, `CDDG/classification`, `FS/classification`, `GFS/classification`, `pretrain/hse_contrastive` |
-| Trainer | `Default_trainer` |
+| Pipelines | `Pipeline_01_Fault_Diagnosis`, `Pipeline_02_Pretraining_Few_Shot` |
+| Data bases | `base_classification`, `base_cross_domain`, `base_cross_system`, `base_cross_system_fewshot`, `base_fewshot` |
+| Models | `ISFM/M_01_ISFM` |
+| Embeddings | `E_01_HSE` |
+| Backbones | `B_04_Dlinear` |
+| Task heads | `H_01_Linear_cla` |
+| Tasks | `CDDG/classification`, `DG/classification`, `FS/classification`, `GFS/classification`, `pretrain/hse_contrastive` |
+| Trainers | `Default_trainer` |
+| Protocol statuses | `smoke_only` |
 
-## Code-Derived Sampler Routes
+Exact execution-smoke combinations are generated in `SUPPORTED_COMBINATIONS.md`.
 
-| Task type | Runtime sampler route |
-|---|---|
-| `DG` | `Same_system_Sampler` |
-| `CDDG` | `Same_system_Sampler` |
-| `FS` | `Same_system_Sampler` |
-| `GFS` | `HierarchicalFewShotSampler` for train; `Same_system_Sampler` for val/test |
-| `pretrain` | `Same_system_Sampler` |
+## Boundaries
 
-## Registry-Discovered Only
-
-`src/model_factory/model_registry.csv` and `src/task_factory/task_registry.csv`
-contain more models and tasks than the release-supported demo surface. Those
-entries are inventoried, but they are not v0.2.0 release-supported unless they
-also appear in `SUPPORTED_COMBINATIONS.md` with runtime evidence.
-
-## Excluded From v0.2.0 Support
-
-- `Pipeline_03` public support.
-- Full model/task Cartesian-product compatibility.
-- Paper-only or historical configs under `configs/reference/`, `configs/v0.0.9/`,
-  or research/history archives outside the maintained documentation surface.
-- Performance claims across datasets or algorithms.
+- `sanity_ok` means bounded execution smoke only.
+- `protocol_status=smoke_only` forbids benchmark or algorithm-validity claims.
+- Model/task registry discovery does not imply Cartesian-product compatibility.
+- Pipeline 03 and Pipeline 04 remain experimental rather than maintained execution paths.
+- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact smoke table unless a reviewed demo is added.
+- Historical and paper-only configs are not promoted by this generator.
+- External dataset redistribution and availability are separate source-license questions.
