@@ -13,7 +13,6 @@ environment:
 data:
   metadata_file: metadata.xlsx
   window_size: 4096
-  stride: 5
   batch_size: 64
   num_workers: 0
   normalization: standardization

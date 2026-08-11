@@ -21,7 +21,6 @@ data:
   data_dir: "data"
   metadata_file: "metadata_dummy.csv"
   window_size: 128
-  stride: 16
   batch_size: 4
   num_workers: 0
 

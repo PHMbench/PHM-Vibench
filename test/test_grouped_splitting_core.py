@@ -8,6 +8,7 @@ import pytest
 from src.data_factory.data_utils import MetadataAccessor
 from src.data_factory.data_factory import data_factory
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
+from src.data_factory.explicit_data_factory import ExplicitDataFactory
 from src.data_factory.id_data_factory import id_data_factory
 from src.data_factory.splitting import resolve_data_splits
 
@@ -190,6 +191,14 @@ def _factory_args(manifest_path):
 def _task_args():
     return SimpleNamespace(
         type="Default_task",
+        name="Default_task",
+        target_system_id=[1],
+    )
+
+
+def _id_task_args():
+    return SimpleNamespace(
+        type="pretrain",
         name="classification",
         target_system_id=None,
     )
@@ -221,6 +230,13 @@ def test_default_dataset_uses_group_split_instead_of_window_split():
     assert len(Default_dataset(data, metadata, legacy, SimpleNamespace(), "val")) == 4
     assert len(Default_dataset(data, metadata, grouped, SimpleNamespace(), "train")) == 10
     assert len(Default_dataset(data, metadata, grouped, SimpleNamespace(), "val")) == 10
+
+    invalid = SimpleNamespace(
+        **common,
+        split=SimpleNamespace(strategy="unknown"),
+    )
+    with pytest.raises(ValueError, match="Unknown data.split.strategy"):
+        Default_dataset(data, metadata, invalid, SimpleNamespace(), "train")
 
 
 def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
@@ -264,9 +280,30 @@ def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
     second._init_dataset()
     assert second.split_result == first.split_result
 
+    explicit = ExplicitDataFactory.__new__(ExplicitDataFactory)
+    explicit.args_data = args_data
+    explicit.args_task = args_task
+    explicit.target_metadata = metadata
+    explicit.data = raw_data
+    explicit.search_id = lambda: (candidate_ids, [])
+    explicit_train, explicit_val, explicit_test = explicit._init_dataset()
+    assert _dataset_ids(explicit_train) == explicit.split_result.train_ids
+    assert _dataset_ids(explicit_val) == explicit.split_result.val_ids
+    assert _dataset_ids(explicit_test) == explicit.split_result.test_ids
+    assert all(
+        len(per_id_dataset) == args_data.num_window
+        for split_dataset in (explicit_train, explicit_val, explicit_test)
+        for per_id_dataset in split_dataset.dataset_dict.values()
+    )
+    assert explicit.split_summary["file_overlap"] == {
+        "train_val": [],
+        "train_test": [],
+        "val_test": [],
+    }
+
     id_factory = id_data_factory.__new__(id_data_factory)
     id_factory.args_data = args_data
-    id_factory.args_task = args_task
+    id_factory.args_task = _id_task_args()
     id_factory.metadata = metadata
     id_train, id_val, id_test = id_factory._init_dataset()
     assert _dataset_ids(id_train) == id_factory.split_result.train_ids

@@ -10,6 +10,9 @@ import yaml
 from apps.streamlit import config_service as cs
 
 
+DIGEST = "a" * 64
+
+
 def _repo(tmp_path: Path) -> Path:
     (tmp_path / "main.py").write_text("# test\n", encoding="utf-8")
     (tmp_path / "configs" / "demo").mkdir(parents=True)
@@ -18,6 +21,17 @@ def _repo(tmp_path: Path) -> Path:
 
 def _write_registry(root: Path, body: str) -> None:
     (root / "configs" / "config_registry.csv").write_text(body, encoding="utf-8")
+
+
+def _inspector_payload() -> dict:
+    return {
+        "effective_config_sha256": DIGEST,
+        "local_config_path": None,
+        "resolved": {block: {} for block in cs.CONFIG_BLOCKS},
+        "sources": {},
+        "targets": {},
+        "sanity": [{"check": "ok", "ok": True, "message": "pass"}],
+    }
 
 
 def test_load_registry_preserves_unknown_columns(tmp_path: Path) -> None:
@@ -194,17 +208,13 @@ def test_apply_overrides_does_not_mutate_input() -> None:
 
 
 def test_inspect_config_parses_success(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     root = _repo(tmp_path)
     config = root / "configs" / "demo" / "demo.yaml"
     config.write_text("environment: {}\n", encoding="utf-8")
-    payload = {
-        "resolved": {block: {} for block in cs.CONFIG_BLOCKS},
-        "sources": {},
-        "targets": {},
-        "sanity": [{"check": "ok", "ok": True, "message": "pass"}],
-    }
+    payload = _inspector_payload()
 
     def fake_run(command, **kwargs):
         assert kwargs["cwd"] == str(root)
@@ -216,10 +226,13 @@ def test_inspect_config_parses_success(
 
     assert report.ok is True
     assert report.resolved == payload["resolved"]
+    assert report.effective_config_sha256 == DIGEST
+    assert report.local_config_path is None
 
 
 def test_inspect_config_reports_subprocess_failure(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     root = _repo(tmp_path)
     config = root / "configs" / "demo" / "demo.yaml"
@@ -229,7 +242,9 @@ def test_inspect_config_reports_subprocess_failure(
         cs.subprocess,
         "run",
         lambda *args, **kwargs: SimpleNamespace(
-            returncode=1, stdout="", stderr="ModuleNotFoundError: torch"
+            returncode=1,
+            stdout="",
+            stderr="ModuleNotFoundError: torch",
         ),
     )
     report = cs.inspect_config(root, config)
@@ -294,8 +309,9 @@ def test_catalog_aliases_match_maintained_smoke_keyspace() -> None:
     assert paths["epochs"] == "trainer.num_epochs"
 
 
-def test_inspect_yaml_text_uses_external_temporary_directory(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_inspect_yaml_text_uses_external_temp_without_local_layer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     root = _repo(tmp_path)
     seen = {}
@@ -311,8 +327,7 @@ def test_inspect_yaml_text_uses_external_temporary_directory(
         seen["local"] = local_config_path
         assert repo_root == root
         assert config_path.is_file()
-        assert local_config_path is not None
-        assert local_config_path.read_text(encoding="utf-8") == "{}\n"
+        assert local_config_path is None
         with pytest.raises(ValueError):
             config_path.resolve().relative_to(root.resolve())
         return cs.ValidationReport(ok=True, command=("python",))
@@ -323,32 +338,30 @@ def test_inspect_yaml_text_uses_external_temporary_directory(
     report = cs.inspect_yaml_text(root, yaml_text)
 
     assert report.ok is True
+    assert seen["local"] is None
     assert not seen["path"].exists()
-    assert not seen["local"].exists()
     assert not (root / ".streamlit").exists()
 
 
-def test_inspect_config_can_explicitly_disable_default_local_override(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_inspect_config_passes_only_an_explicit_local_config(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     root = _repo(tmp_path)
     config = root / "configs" / "demo" / "demo.yaml"
     config.write_text("environment: {}\n", encoding="utf-8")
-    empty_local = tmp_path / "empty.yaml"
-    empty_local.write_text("{}\n", encoding="utf-8")
-    payload = {
-        "resolved": {block: {} for block in cs.CONFIG_BLOCKS},
-        "sources": {},
-        "targets": {},
-        "sanity": [{"check": "ok", "ok": True, "message": "pass"}],
-    }
+    local = tmp_path / "machine.yaml"
+    local.write_text("trainer: {device: cpu}\n", encoding="utf-8")
+    payload = _inspector_payload()
+    payload["local_config_path"] = str(local.resolve())
 
     def fake_run(command, **kwargs):
-        index = command.index("--local_config")
-        assert command[index + 1] == str(empty_local.resolve())
+        index = command.index("--local-config")
+        assert command[index + 1] == str(local.resolve())
         return SimpleNamespace(returncode=0, stdout=json.dumps(payload), stderr="")
 
     monkeypatch.setattr(cs.subprocess, "run", fake_run)
-    report = cs.inspect_config(root, config, local_config_path=empty_local)
+    report = cs.inspect_config(root, config, local_config_path=local)
 
     assert report.ok is True
+    assert report.local_config_path == str(local.resolve())

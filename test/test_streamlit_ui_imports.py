@@ -45,17 +45,32 @@ def test_legacy_root_streamlit_launcher_is_removed() -> None:
     assert find_spec("streamlit_app") is None
 
 
-def test_local_config_fingerprint_changes_with_file(monkeypatch, tmp_path):
+def test_validation_signature_uses_only_visible_ui_inputs(monkeypatch, tmp_path):
+    """An unmentioned local YAML must not invalidate or alter UI validation."""
+
     _install_streamlit_stub(monkeypatch)
     sys.modules.pop("apps.streamlit.workspace", None)
     workspace = importlib.import_module("apps.streamlit.workspace")
 
-    assert workspace._local_config_fingerprint(tmp_path) == "missing"
+    visible = workspace._signature(
+        "Quick Start",
+        "effective yaml",
+        (("trainer.device", "cpu"),),
+    )
     local_dir = tmp_path / "configs" / "local"
     local_dir.mkdir(parents=True)
     local_path = local_dir / "local.yaml"
-    local_path.write_text("trainer:\n  device: cpu\n", encoding="utf-8")
-    first = workspace._local_config_fingerprint(tmp_path)
     local_path.write_text("trainer:\n  device: cuda\n", encoding="utf-8")
-    second = workspace._local_config_fingerprint(tmp_path)
-    assert first != second
+    after_hidden_file = workspace._signature(
+        "Quick Start",
+        "effective yaml",
+        (("trainer.device", "cpu"),),
+    )
+    changed_visible_input = workspace._signature(
+        "Quick Start",
+        "effective yaml",
+        (("trainer.device", "cuda"),),
+    )
+
+    assert visible == after_hidden_file
+    assert visible != changed_visible_input

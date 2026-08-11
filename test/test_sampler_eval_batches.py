@@ -40,13 +40,15 @@ def test_evaluation_sampler_keeps_incomplete_batches(task_type, mode):
         mode=mode,
     )
 
+    batches = list(sampler)
     assert sampler.drop_last is False
     assert len(sampler) == 1
-    assert list(sampler) == [[0, 1]]
+    assert sorted(len(batch) for batch in batches) == [2]
+    assert sorted(index for batch in batches for index in batch) == [0, 1]
 
 
 @pytest.mark.parametrize("task_type", SAME_SYSTEM_TRAIN_TASK_TYPES)
-def test_training_sampler_still_drops_incomplete_batches(task_type):
+def test_training_sampler_keeps_complete_selected_population(task_type):
     sampler = Get_sampler(
         SimpleNamespace(type=task_type),
         SimpleNamespace(batch_size=4),
@@ -54,6 +56,8 @@ def test_training_sampler_still_drops_incomplete_batches(task_type):
         mode="train",
     )
 
-    assert sampler.drop_last is True
-    assert len(sampler) == 0
-    assert list(sampler) == []
+    batches = list(sampler)
+    assert sampler.drop_last is False
+    assert len(sampler) == 1
+    assert sorted(len(batch) for batch in batches) == [2]
+    assert sorted(index for batch in batches for index in batch) == [0, 1]

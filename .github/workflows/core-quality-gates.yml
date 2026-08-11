@@ -32,7 +32,7 @@ jobs:
       - name: Install config-tooling dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "PyYAML>=6.0" "pydantic>=2.0"
+          python -m pip install "PyYAML>=6.0" "pydantic>=2.0" "pytest>=7"
 
       - name: Validate documentation
         run: python -m scripts.validate_docs
@@ -40,10 +40,26 @@ jobs:
       - name: Validate maintained configurations
         run: python -m scripts.validate_configs
 
+      - name: Verify one config truth across public tools
+        run: |
+          python -m py_compile \
+            phmfactory/config.py \
+            scripts/config_inspect.py \
+            scripts/validate_configs.py \
+            test/test_config_analysis_parity.py
+          python -m pytest test/test_config_analysis_parity.py -q
+
       - name: Verify generated configuration atlas
         run: |
           python -m scripts.gen_config_atlas
           git diff --exit-code docs/CONFIG_ATLAS.md
+
+      - name: Verify generated support authority
+        run: |
+          python -m py_compile scripts/gen_support_matrix.py test/test_support_matrix.py
+          python -m pytest test/test_support_matrix.py -q
+          python -m scripts.gen_support_matrix
+          git diff --exit-code SUPPORTED_COMPONENTS.md SUPPORTED_COMBINATIONS.md
 
       - name: Check whitespace errors
         run: git diff --check
@@ -65,15 +81,17 @@ jobs:
       - name: Install focused test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "pytest>=7"
+          python -m pip install "pytest>=7" "PyYAML>=6"
 
-      - name: Compile Pipeline 06 shell and tests
+      - name: Compile Pipeline 06 adapter, shell, and tests
         run: |
           python -m py_compile \
+            phmfactory/runtime/pipeline06_adapter.py \
             src/Pipeline_06_Generative_Modeling.py \
             test/generative/test_pipeline06_import.py \
             test/generative/test_pipeline06_preflight.py \
-            test/generative/test_pipeline06_dispatch.py
+            test/generative/test_pipeline06_dispatch.py \
+            test/generative/test_pipeline06_compiled_config.py
 
       - name: Record focused environment
         run: python -m pip freeze > pipeline06-shell-environment.txt
@@ -86,6 +104,7 @@ jobs:
             test/generative/test_pipeline06_import.py \
             test/generative/test_pipeline06_preflight.py \
             test/generative/test_pipeline06_dispatch.py \
+            test/generative/test_pipeline06_compiled_config.py \
             2>&1 | tee pipeline06-shell-pytest.log
 
       - name: Upload focused diagnostics
@@ -160,7 +179,7 @@ jobs:
           retention-days: 7
 
   offline-smoke:
-    name: Offline config-first smoke
+    name: Offline user-first smoke
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -196,28 +215,108 @@ jobs:
             "PyYAML>=6.0" \
             "matplotlib" \
             "tensorboard" \
-            "openpyxl"
+            "openpyxl" \
+            "pytest>=7"
+
+      - name: Install editable PHMFactory command
+        run: python -m pip install --no-deps -e .
 
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
 
-      - name: Run repository-shipped dummy smoke
+      - name: Run shared runtime, data, evidence, and Pipeline 02 contract tests
         shell: bash
         run: |
           set -o pipefail
-          python main.py \
-            --config configs/demo/00_smoke/dummy_dg.yaml \
-            --override trainer.num_epochs=1 \
-            --override data.num_workers=0 \
-            2>&1 | tee offline-smoke.log
+          python -m py_compile \
+            phmfactory/runtime/evidence.py \
+            src/data_factory/explicit_data_factory.py \
+            src/data_factory/dataset_task/Default_dataset.py \
+            src/model_factory/ISFM/system_utils.py \
+            src/model_factory/ISFM/task_head/H_01_Linear_cla.py \
+            src/task_factory/Default_task.py \
+            src/task_factory/task/pretrain/hse_contrastive.py \
+            src/runtime/classification.py \
+            src/runtime/explainability.py \
+            src/Pipeline_01_Fault_Diagnosis.py \
+            src/Pipeline_02_Pretraining_Few_Shot.py \
+            src/Pipeline_05_Explainable_Fault_Diagnosis.py \
+            test/test_classification_runtime.py \
+            test/test_data_cache_contract.py \
+            test/test_hse_objective_contract.py \
+            test/test_per_sample_metadata.py \
+            test/test_pipeline02_runtime.py \
+            test/test_runtime_evidence.py \
+            test/test_split_scientific_truth.py \
+            test/test_transform_truth.py
+          python -m pytest \
+            test/test_classification_runtime.py \
+            test/test_data_cache_contract.py \
+            test/test_hse_objective_contract.py \
+            test/test_per_sample_metadata.py \
+            test/test_pipeline02_runtime.py \
+            test/test_runtime_evidence.py \
+            test/test_split_scientific_truth.py \
+            test/test_transform_truth.py \
+            -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
+
+      - name: Diagnose the installed environment
+        shell: bash
+        run: |
+          set -o pipefail
+          phmfactory doctor 2>&1 | tee offline-doctor.log
+
+      - name: Preflight the exact offline demo without training
+        shell: bash
+        run: |
+          set -o pipefail
+          phmfactory preflight --config smoke 2>&1 | tee offline-preflight.log
+          grep -E '^effective_config_sha256=[0-9a-f]{64}$' offline-preflight.log
+          test ! -e results/demo/dummy_dg_smoke
+
+      - name: Run the documented offline demo command
+        shell: bash
+        run: |
+          set -o pipefail
+          phmfactory demo 2>&1 | tee offline-smoke.log
+
+      - name: Verify Dummy run evidence index
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path("results/demo/dummy_dg_smoke/.phmfactory/runs")
+          manifests = sorted(root.glob("*/run_manifest.json"))
+          assert len(manifests) == 1, manifests
+          payload = json.loads(manifests[0].read_text(encoding="utf-8"))
+          assert payload["status"] == "succeeded"
+          assert re.fullmatch(
+              r"[0-9a-f]{64}",
+              payload["run_spec"]["effective_config_sha256"],
+          )
+          roles = {item["role"] for item in payload["artifacts"]}
+          assert "classification_test_metrics" in roles, roles
+          assert "classification_aggregate_metrics" in roles, roles
+          iterations = payload["evidence"].get("classification_iterations")
+          assert isinstance(iterations, list) and len(iterations) == 1, iterations
+          assert iterations[0]["iteration"] == 0
+          assert iterations[0]["metrics_artifact"]["role"] == "classification_test_metrics"
+          PY
 
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: offline-smoke-diagnostics
+          name: offline-user-first-smoke-diagnostics
           path: |
+            runtime-contracts-pytest.log
+            offline-doctor.log
+            offline-preflight.log
             offline-smoke.log
             offline-smoke-environment.txt
+            results/demo/dummy_dg_smoke/.phmfactory/runs/**/run_manifest.json
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 7

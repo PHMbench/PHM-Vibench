@@ -1,7 +1,8 @@
-"""Public API for the trainer factory package."""
+"""Public API for trainer construction and registration."""
 
 from argparse import Namespace
-from typing import Any
+
+import pytorch_lightning as pl
 
 from .trainer_factory import (
     TRAINER_REGISTRY,
@@ -16,25 +17,9 @@ def build_trainer(
     args_trainer: Namespace,
     args_data: Namespace,
     path: str,
-) -> Any:
-    """Instantiate a trainer via :mod:`trainer_factory`.
+) -> pl.Trainer:
+    """Build one trainer; import and construction failures are raised."""
 
-    Parameters
-    ----------
-    args_environment : Namespace
-        Environment configuration.
-    args_trainer : Namespace
-        Trainer configuration namespace.
-    args_data : Namespace
-        Dataset configuration.
-    path : str
-        Output directory for checkpoints/logs.
-
-    Returns
-    -------
-    Any
-        Instantiated trainer object or ``None`` on failure.
-    """
     return trainer_factory(
         args_environment,
         args_trainer,
@@ -43,8 +28,6 @@ def build_trainer(
     )
 
 
-
-# public exports
 __all__ = [
     "build_trainer",
     "resolve_trainer_module",

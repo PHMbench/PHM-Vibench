@@ -152,19 +152,32 @@ class Default_task(pl.LightningModule):
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
         """
-        try:
-            # x, y, id = batch['x'], batch['y'], batch['id']
-            # Ensure a default task identifier if not provided
-            batch.setdefault('task_id', 'classification')
-            # Convert tensor-based ID to a Python int for indexing metadata
-            file_id = batch['file_id'][0].item()
-            data_name = self.metadata[file_id]['Name']# .values
-            # dataset_id = self.metadata[file_id]['Dataset_id'].item() 
-            batch.update({'file_id': file_id})
-        except (ValueError, TypeError) as e:
-            raise ValueError(f" Error: {e}")
+        batch.setdefault('task_id', 'classification')
 
-        # 1. 前向传播
+        batch_size = int(batch['x'].shape[0])
+        raw_file_ids = batch['file_id']
+        if isinstance(raw_file_ids, torch.Tensor):
+            file_ids = [value.item() for value in raw_file_ids.view(-1)]
+        elif isinstance(raw_file_ids, (list, tuple)):
+            file_ids = list(raw_file_ids)
+        else:
+            file_ids = [raw_file_ids]
+
+        if len(file_ids) not in (1, batch_size):
+            raise ValueError(
+                "batch['file_id'] must contain one ID or one ID per sample: "
+                f"received {len(file_ids)} IDs for batch_size={batch_size}."
+            )
+
+        first_file_id = file_ids[0]
+        try:
+            data_name = self.metadata[first_file_id]['Name']
+        except (KeyError, IndexError, TypeError) as exc:
+            raise KeyError(
+                f"Unable to resolve metadata Name for file_id={first_file_id!r}."
+            ) from exc
+
+        # 1. 前向传播。保留原始逐样本 file_id，不得用首个文件覆盖整批。
         y_hat = self.forward(batch)
 
         # 2. 计算任务损失
