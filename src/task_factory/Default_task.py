@@ -752,6 +752,7 @@ class Default_task(pl.LightningModule):
         期望 batch 格式: ((x, y), data_name)
         """
         batch.setdefault('task_id', 'classification')
+        p05_evidence_mode = bool(getattr(self, "p05_evidence_mode", False))
 
         batch_size = int(batch['x'].shape[0])
         raw_file_ids = batch['file_id']
@@ -833,7 +834,7 @@ class Default_task(pl.LightningModule):
             )
 
         # 2. 计算任务损失
-        if self.p05_evidence_mode:
+        if p05_evidence_mode:
             sample_weight = self._p05_sample_weight(batch, stage)
             per_sample_loss = self._p05_unreduced_loss(y_hat, y)
             loss = weighted_mean_loss(per_sample_loss, sample_weight)
@@ -846,7 +847,7 @@ class Default_task(pl.LightningModule):
             loss = self._compute_loss(y_hat, y)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
-        if self.p05_evidence_mode:
+        if p05_evidence_mode:
             self.p05_epoch_metrics[f"{stage}_epoch"].update(y_argmax, y, sample_weight)
 
         # 3. 计算和记录指标
@@ -923,7 +924,7 @@ class Default_task(pl.LightningModule):
                 )
             else:
                 auxiliary_total, auxiliary_components = (
-                    self._compute_auxiliary_loss(loss)
+                    Default_task._compute_auxiliary_loss(self, loss)
                 )
                 for name, component in auxiliary_components.items():
                     step_metrics[f"{stage}_aux_{name}_loss"] = component
