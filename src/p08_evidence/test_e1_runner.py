@@ -123,11 +123,8 @@ class E1RunnerTests(unittest.TestCase):
         self.assertEqual(len(digest), 64)
         self.assertEqual(config["candidate_selection"]["total_fits_per_seed"], 8)
         self.assertEqual(len(_bg_candidates(config)), 3)
-        approved, approved_digest = _load_config(
-            Path(DEFAULT_CONFIG), require_approved=True
-        )
-        self.assertEqual(approved["protocol"]["id"], "P08-LOSO-v1.1")
-        self.assertEqual(approved_digest, digest)
+        with self.assertRaisesRegex(RuntimeError, "explicit paper authority root"):
+            _load_config(Path(DEFAULT_CONFIG), require_approved=True)
 
     def test_bg_uses_exact_rationals_and_frozen_center_crop_lengths(self) -> None:
         records = _raw_records()

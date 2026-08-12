@@ -1,544 +1,517 @@
+"""Physical-duration and Nyquist-aware heterogeneous signal embedding.
+
+The P08 method deliberately excludes dataset identity.  A signal is represented
+by fixed-duration patches, an explicit shared/private spectral split, and a
+continuous prompt derived from measurable acquisition quantities only.
 """
-HSE_prompt: Simplified Heterogeneous Signal Embedding with System Prompts
 
-This is a simplified version that combines Heterogeneous Signal Embedding (HSE)
-with lightweight system-specific learnable prompts for industrial fault diagnosis.
+from __future__ import annotations
 
-Key Features:
-- Heterogeneous signal processing for different lengths and sampling rates
-- Simple Dataset_id → learnable prompt mapping
-- Direct signal + prompt combination (no complex fusion strategies)
-- Lightweight and easy to understand
-- Fallback to signal-only processing when metadata unavailable
-
-Architecture:
-Signal → HSE Processing → Prompt Combination → Output
-
-Author: PHM-Vibench Team
-Date: 2025-01-23
-License: MIT
-"""
+import math
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import rearrange, repeat
-from typing import Optional, Union
 
 from src.model_factory.ISFM.system_utils import normalize_fs
 
-# Import simplified prompt encoder
-from ..components.SimpleSystemPromptEncoder import SimpleSystemPromptEncoder
-
 
 class HSE_prompt(nn.Module):
+    """Embed heterogeneous signals without dataset-identity features.
+
+    Parameters are read from the model config.  ``physical_patch_duration_s``
+    fixes the physical support of every token, while
+    ``physical_patch_points`` fixes the neural input size after interpolation.
+    ``shared_band_hz`` is a source-derived cutoff supplied by the fold protocol.
     """
-    Simplified Heterogeneous Signal Embedding with System Prompts.
 
-    This model combines the core HSE functionality with lightweight system-specific
-    prompts for enhanced cross-system generalization in industrial fault diagnosis.
-
-    Architecture:
-    1. Patch-based heterogeneous signal processing
-    2. Dataset_id → learnable prompt mapping
-    3. Simple signal + prompt combination
-    4. Output normalized embeddings
-
-    Simplified from E_01_HSE_v2:
-    - Removed complex fusion strategies
-    - Removed multi-level prompt encoding
-    - Kept core HSE signal processing
-    - Lightweight prompt mechanism
-    """
+    _PROMPT_FEATURES = (
+        "log_sampling_rate",
+        "log_window_duration",
+        "log_nyquist",
+        "observable_shared_fraction",
+    )
 
     def __init__(self, args):
-        """
-        Initialize HSE_prompt.
+        super().__init__()
 
-        Args:
-            args: Configuration object with model parameters
-                Required attributes:
-                - patch_size_L: Patch length for signal processing
-                - patch_size_C: Patch channel size
-                - num_patches: Number of patches to extract
-                - output_dim: Output embedding dimension
+        self.physical_patch_duration_s = float(
+            getattr(args, "physical_patch_duration_s", 0.01)
+        )
+        self.physical_patch_points = int(
+            getattr(args, "physical_patch_points", getattr(args, "patch_size_L", 256))
+        )
+        self.use_physical_duration = bool(
+            getattr(args, "use_physical_duration", True)
+        )
+        self.fixed_raw_token_points = int(
+            getattr(args, "fixed_raw_token_points", self.physical_patch_points)
+        )
+        # Preserve the historical attribute used by model introspection.
+        self.patch_size_L = self.physical_patch_points
+        self.patch_size_C = int(getattr(args, "patch_size_C", 1))
+        self.num_patches = int(getattr(args, "num_patches", 64))
+        self.output_dim = int(getattr(args, "output_dim", 128))
 
-                Optional prompt-related attributes:
-                - use_prompt: Enable prompt functionality (default: True)
-                - prompt_dim: Prompt vector dimension (default: 64)
-                - max_dataset_ids: Maximum dataset IDs to support (default: 50)
-                - prompt_combination: How to combine signal and prompt ('add'/'concat', default: 'add')
-        """
-        super(HSE_prompt, self).__init__()
-
-        # Core HSE parameters
-        self.patch_size_L = getattr(args, 'patch_size_L', 16)
-        self.patch_size_C = getattr(args, 'patch_size_C', 1)
-        self.num_patches = getattr(args, 'num_patches', 64)
-        self.output_dim = getattr(args, 'output_dim', 128)
-
-        # Prompt configuration
-        self.use_prompt = getattr(args, 'use_prompt', True)
-        self.prompt_dim = getattr(args, 'prompt_dim', 64)
-        self.max_dataset_ids = getattr(args, 'max_dataset_ids', 50)
-        self.prompt_combination = getattr(args, 'prompt_combination', 'add')
-
-        # Validate prompt combination mode
-        if self.prompt_combination not in ['add', 'concat']:
-            raise ValueError(f"prompt_combination must be 'add' or 'concat', got '{self.prompt_combination}'")
-
-        # Patch processing layers
-        patch_input_dim = self.patch_size_L * (self.patch_size_C + 1)  # +1 for time embedding
-        self.patch_linear1 = nn.Linear(patch_input_dim, self.output_dim)
-        self.patch_linear2 = nn.Linear(self.output_dim, self.output_dim)
-
-        # Simple prompt system
-        if self.use_prompt:
-            self.prompt_encoder = SimpleSystemPromptEncoder(
-                prompt_dim=self.prompt_dim,
-                max_dataset_ids=self.max_dataset_ids
+        self.shared_band_hz = float(getattr(args, "shared_band_hz", 5000.0))
+        self.use_band_projection = bool(
+            getattr(args, "use_band_projection", True)
+        )
+        self.prompt_reference_fs_hz = float(
+            getattr(args, "prompt_reference_fs_hz", 10000.0)
+        )
+        self.prompt_reference_duration_s = float(
+            getattr(
+                args,
+                "prompt_reference_duration_s",
+                self.physical_patch_duration_s,
             )
+        )
 
-            # Handle different combination methods
-            if self.prompt_combination == 'add':
-                if self.prompt_dim != self.output_dim:
-                    # Project prompt to match signal dimension
-                    self.prompt_proj = nn.Linear(self.prompt_dim, self.output_dim)
-                else:
-                    self.prompt_proj = nn.Identity()
-            elif self.prompt_combination == 'concat':
-                # Project concatenated features back to output_dim
-                self.concat_proj = nn.Linear(self.output_dim + self.prompt_dim, self.output_dim)
+        self.use_prompt = bool(getattr(args, "use_prompt", True))
+        self.prompt_dim = int(getattr(args, "prompt_dim", 64))
+        self.prompt_combination = str(getattr(args, "prompt_combination", "add"))
+        self.freeze_prompts_in_finetuning = bool(
+            getattr(args, "freeze_prompts_in_finetuning", False)
+        )
 
-        # Final processing
+        self._validate_config()
+
+        patch_input_dim = self.physical_patch_points * (self.patch_size_C + 1)
+        self.patch_encoder = nn.Sequential(
+            nn.Linear(patch_input_dim, self.output_dim),
+            nn.SiLU(),
+            nn.Linear(self.output_dim, self.output_dim),
+        )
+        self.band_encoder = nn.Sequential(
+            nn.Linear(2, self.output_dim),
+            nn.SiLU(),
+            nn.Linear(self.output_dim, self.output_dim),
+        )
+
+        if self.use_prompt:
+            self.prompt_encoder = nn.Sequential(
+                nn.Linear(len(self._PROMPT_FEATURES), self.prompt_dim),
+                nn.SiLU(),
+                nn.LayerNorm(self.prompt_dim),
+                nn.Linear(self.prompt_dim, self.prompt_dim),
+            )
+            if self.prompt_combination == "add":
+                self.prompt_proj = (
+                    nn.Identity()
+                    if self.prompt_dim == self.output_dim
+                    else nn.Linear(self.prompt_dim, self.output_dim)
+                )
+            else:
+                self.concat_proj = nn.Linear(
+                    self.output_dim + self.prompt_dim, self.output_dim
+                )
+
         self.final_norm = nn.LayerNorm(self.output_dim)
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(float(getattr(args, "dropout", 0.1)))
 
-        # Initialize parameters
+        # Diagnostics are detached snapshots for tests and run manifests.  They
+        # are not consumed by the forward computation.
+        self.last_raw_patch_points: Optional[torch.Tensor] = None
+        self.last_patch_starts: Optional[torch.Tensor] = None
+        self.last_band_fractions: Optional[torch.Tensor] = None
+        self.last_prompt_features: Optional[torch.Tensor] = None
+
         self._init_parameters()
 
-    def _init_parameters(self):
-        """Initialize model parameters."""
+    def _validate_config(self) -> None:
+        if self.physical_patch_duration_s <= 0:
+            raise ValueError("physical_patch_duration_s must be positive")
+        if self.physical_patch_points < 2:
+            raise ValueError("physical_patch_points must be at least 2")
+        if self.fixed_raw_token_points < 2:
+            raise ValueError("fixed_raw_token_points must be at least 2")
+        if self.patch_size_C < 1 or self.num_patches < 1 or self.output_dim < 1:
+            raise ValueError("patch_size_C, num_patches, and output_dim must be positive")
+        if self.shared_band_hz <= 0:
+            raise ValueError("shared_band_hz must be positive")
+        if self.prompt_reference_fs_hz <= 0 or self.prompt_reference_duration_s <= 0:
+            raise ValueError("continuous-prompt reference scales must be positive")
+        if self.prompt_combination not in {"add", "concat"}:
+            raise ValueError("prompt_combination must be 'add' or 'concat'")
+        if self.use_prompt and self.prompt_dim < 1:
+            raise ValueError("prompt_dim must be positive when use_prompt is true")
+
+    def _init_parameters(self) -> None:
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
 
-    def set_training_stage(self, stage: str):
-        """
-        Set training stage and handle prompt freezing.
-
-        Args:
-            stage: Training stage ('pretraining' or 'finetuning')
-        """
+    def set_training_stage(self, stage: str) -> None:
         stage = stage.lower()
         if stage in {"pretraining", "pretrain"}:
             stage = "pretrain"
         elif stage in {"finetuning", "finetune"}:
             stage = "finetune"
+        else:
+            raise ValueError(f"unsupported training stage: {stage}")
 
         self.training_stage = stage
+        if self.use_prompt:
+            requires_grad = not (
+                stage == "finetune" and self.freeze_prompts_in_finetuning
+            )
+            for parameter in self.prompt_encoder.parameters():
+                parameter.requires_grad = requires_grad
 
-        if self.use_prompt and hasattr(self, 'prompt_encoder'):
-            if stage == 'finetuning' and self.freeze_prompts_in_finetuning:
-                # Freeze prompt encoder parameters during finetuning
-                for param in self.prompt_encoder.parameters():
-                    param.requires_grad = False
-                print(f"✓ Prompt encoder frozen for finetuning stage")
+    def forward(
+        self,
+        x: torch.Tensor,
+        fs: Union[torch.Tensor, float],
+        dataset_ids: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Return ``[batch, num_patches, output_dim]`` embeddings.
+
+        ``dataset_ids`` remains in the signature only to detect legacy callers.
+        Passing it is an error, which prevents silent reintroduction of the
+        forbidden dataset-ID prompt.
+        """
+        if dataset_ids is not None:
+            raise ValueError(
+                "dataset_ids are forbidden inputs for the P08 continuous-metadata prompt"
+            )
+        if x.ndim != 3:
+            raise ValueError(f"x must have shape [B, L, C], got {tuple(x.shape)}")
+        if not torch.is_floating_point(x):
+            raise TypeError("x must be a floating-point tensor")
+
+        batch_size, signal_length, _ = x.shape
+        fs_tensor = normalize_fs(
+            fs, batch_size=batch_size, device=x.device, as_column=False
+        ).to(dtype=x.dtype)
+        if not torch.isfinite(fs_tensor).all() or torch.any(fs_tensor <= 0):
+            raise ValueError("all sampling rates must be finite and positive")
+
+        signal_embeddings, band_fractions, raw_points = self._process_signal_patches(
+            x, fs_tensor
+        )
+        if self.use_band_projection:
+            signal_embeddings = signal_embeddings + self.band_encoder(band_fractions)
+
+        prompt_features = self._continuous_prompt_features(
+            fs_tensor, signal_length=signal_length
+        )
+        if self.use_prompt:
+            prompt_vectors = self.prompt_encoder(prompt_features)
+            if self.prompt_combination == "add":
+                signal_embeddings = signal_embeddings + self.prompt_proj(
+                    prompt_vectors
+                ).unsqueeze(1)
             else:
-                # Unfreeze all parameters
-                for param in self.prompt_encoder.parameters():
-                    param.requires_grad = True
-                print(f"✓ Prompt encoder active for {stage} stage")
+                expanded = prompt_vectors.unsqueeze(1).expand(
+                    -1, self.num_patches, -1
+                )
+                signal_embeddings = self.concat_proj(
+                    torch.cat((signal_embeddings, expanded), dim=-1)
+                )
 
-    def forward(self,
-                x: torch.Tensor,
-                fs: Union[torch.Tensor, float],
-                dataset_ids: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """
-        Forward pass through HSE_prompt.
+        output = self.dropout(self.final_norm(signal_embeddings))
+        if not torch.isfinite(output).all():
+            raise FloatingPointError("HSE_prompt produced non-finite embeddings")
 
-        Args:
-            x: Input signal tensor of shape (B, L, C)
-            fs: Sampling frequency (tensor or scalar)
-            dataset_ids: Dataset identifiers for prompt processing (B,)
-
-        Returns:
-            Embedded signal tensor of shape (B, num_patches, output_dim)
-        """
-        # Step 1: Heterogeneous signal processing
-        signal_embeddings = self._process_signal_patches(x, fs)
-
-        # Step 2: Enhanced prompt combination with stability checks
-        if self.use_prompt and dataset_ids is not None:
-            try:
-                # Enhanced dataset_ids processing with intelligent mapping
-                if not torch.is_tensor(dataset_ids):
-                    dataset_ids = torch.tensor(dataset_ids, dtype=torch.long, device=x.device)
-                else:
-                    dataset_ids = dataset_ids.long()
-
-                # Ensure device consistency
-                if dataset_ids.device != x.device:
-                    dataset_ids = dataset_ids.to(x.device)
-
-                # Intelligent dataset_id mapping for multi-system compatibility
-                max_dataset_id = self.prompt_encoder.num_embeddings - 1
-
-                # Handle multi-system dataset_id ranges (e.g., [0-3], [4-8], etc.)
-                if dataset_ids.max() > max_dataset_id:
-                    # Strategy 1: Intelligent range mapping
-                    unique_ids = torch.unique(dataset_ids)
-                    id_mapping = {}
-
-                    for uid in unique_ids:
-                        if uid <= max_dataset_id:
-                            id_mapping[uid.item()] = uid.item()
-                        else:
-                            # Map out-of-range IDs to available range using modulo
-                            mapped_id = uid % (max_dataset_id + 1)
-                            id_mapping[uid.item()] = mapped_id.item()
-
-                            # Only warn once per unique out-of-range ID
-                            if not hasattr(self, '_warned_ids'):
-                                self._warned_ids = set()
-                            if uid.item() not in self._warned_ids:
-                                print(f"[HSE_prompt] Mapping dataset_id {uid.item()} → {mapped_id.item()} (range [0, {max_dataset_id}])")
-                                self._warned_ids.add(uid.item())
-
-                    # Apply mapping
-                    mapped_ids = torch.tensor([id_mapping[id.item()] for id in dataset_ids],
-                                              dtype=torch.long, device=x.device)
-                    dataset_ids = mapped_ids
-
-                elif dataset_ids.min() < 0:
-                    # Handle negative IDs (should not happen, but defensive)
-                    dataset_ids = torch.clamp(dataset_ids, 0, max_dataset_id)
-                    print(f"[HSE_prompt] Clamped negative dataset_ids to [0, {max_dataset_id}]")
-
-                # Get prompt vectors with error checking
-                prompt_vectors = self.prompt_encoder(dataset_ids)  # (B, prompt_dim)
-
-                # Numerical stability: limit prompt vector norms
-                prompt_norms = prompt_vectors.norm(dim=-1, keepdim=True)
-                max_norm = 10.0  # Prevent numerical explosion
-                scale_factors = torch.clamp(max_norm / (prompt_norms + 1e-8), max=1.0)
-                prompt_vectors = prompt_vectors * scale_factors
-
-                # Combine signal and prompt with stability checks
-                if self.prompt_combination == 'add':
-                    # Project prompt to match signal dimension if needed
-                    prompt_projected = self.prompt_proj(prompt_vectors)  # (B, output_dim)
-                    prompt_projected = prompt_projected.unsqueeze(1)  # (B, 1, output_dim)
-
-                    # Check for numerical issues before addition
-                    if torch.isnan(prompt_projected).any() or torch.isinf(prompt_projected).any():
-                        print("Warning: NaN/Inf in prompt_projected, using signal-only")
-                        raise ValueError("Numerical instability in prompt projection")
-
-                    # Stable addition with gradient clipping
-                    combined_embeddings = signal_embeddings + prompt_projected
-
-                    # Gradient stability check
-                    if combined_embeddings.abs().max() > 100:
-                        combined_embeddings = torch.clamp(combined_embeddings, -100, 100)
-                        print("Warning: Combined embeddings clipped to prevent instability")
-
-                elif self.prompt_combination == 'concat':
-                    # Expand prompt to match number of patches
-                    prompt_expanded = prompt_vectors.unsqueeze(1).expand(-1, self.num_patches, -1)  # (B, num_patches, prompt_dim)
-
-                    # Numerical check before concatenation
-                    if torch.isnan(prompt_expanded).any() or torch.isinf(prompt_expanded).any():
-                        print("Warning: NaN/Inf in prompt_expanded, using signal-only")
-                        raise ValueError("Numerical instability in prompt expansion")
-
-                    # Concatenate and project
-                    concatenated = torch.cat([signal_embeddings, prompt_expanded], dim=-1)  # (B, num_patches, output_dim + prompt_dim)
-                    combined_embeddings = self.concat_proj(concatenated)
-
-                    # Final stability check
-                    if torch.isnan(combined_embeddings).any() or torch.isinf(combined_embeddings).any():
-                        print("Warning: NaN/Inf after concat projection, using signal-only")
-                        raise ValueError("Numerical instability in concat projection")
-
-                signal_embeddings = combined_embeddings
-
-            except Exception as e:
-                # Enhanced error logging and graceful fallback
-                print(f"Warning: Prompt processing failed ({e}), falling back to signal-only processing")
-                # Ensure signal_embeddings remains valid
-                if torch.isnan(signal_embeddings).any() or torch.isinf(signal_embeddings).any():
-                    print("Critical: Signal embeddings also corrupted, attempting recovery")
-                    signal_embeddings = torch.clamp(signal_embeddings, -10, 10)
-                    if torch.isnan(signal_embeddings).any():
-                        # Last resort: zero embeddings with small noise
-                        signal_embeddings = torch.randn_like(signal_embeddings) * 0.01
-
-        # Step 3: Final processing
-        output = self.final_norm(signal_embeddings)
-        output = self.dropout(output)
-
+        self.last_raw_patch_points = raw_points.detach()
+        self.last_band_fractions = band_fractions.detach()
+        self.last_prompt_features = prompt_features.detach()
         return output
 
-    def _process_signal_patches(self, x: torch.Tensor, fs: Union[torch.Tensor, float]) -> torch.Tensor:
-        """
-        Process heterogeneous signal into patches.
+    def _continuous_prompt_features(
+        self, fs_tensor: torch.Tensor, signal_length: int
+    ) -> torch.Tensor:
+        eps = torch.finfo(fs_tensor.dtype).eps
+        nyquist_hz = fs_tensor / 2.0
+        window_duration_s = signal_length / fs_tensor
+        shared_hz = torch.minimum(
+            nyquist_hz,
+            torch.full_like(nyquist_hz, self.shared_band_hz),
+        )
+        features = torch.stack(
+            (
+                torch.log(fs_tensor.clamp_min(eps) / self.prompt_reference_fs_hz),
+                torch.log(
+                    window_duration_s.clamp_min(eps)
+                    / self.prompt_reference_duration_s
+                ),
+                torch.log(nyquist_hz.clamp_min(eps) / self.shared_band_hz),
+                shared_hz / nyquist_hz.clamp_min(eps),
+            ),
+            dim=-1,
+        )
+        if not torch.isfinite(features).all():
+            raise FloatingPointError("continuous prompt features are non-finite")
+        return features
 
-        Args:
-            x: Input signal tensor (B, L, C)
-            fs: Sampling frequency
+    def _select_channels(self, x: torch.Tensor) -> torch.Tensor:
+        channels = x.shape[-1]
+        if channels >= self.patch_size_C:
+            return x[..., : self.patch_size_C]
+        repeats = (self.patch_size_C + channels - 1) // channels
+        return x.repeat(1, 1, repeats)[..., : self.patch_size_C]
 
-        Returns:
-            Processed signal embeddings (B, num_patches, output_dim)
-        """
-        B, L, C = x.size()
-        device = x.device
+    def _process_signal_patches(
+        self, x: torch.Tensor, fs_tensor: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        batch_size, signal_length, _ = x.shape
+        selected = self._select_channels(x)
+        token_rows = []
+        band_rows = []
+        raw_point_counts = []
+        start_rows = []
 
-        # Handle sampling frequency (统一为 [B])
-        fs_tensor = normalize_fs(fs, batch_size=B, device=device, as_column=False)  # [B]
-        T = 1.0 / fs_tensor  # [B]
+        if self.use_physical_duration:
+            time_seconds = torch.linspace(
+                0.0,
+                self.physical_patch_duration_s,
+                self.physical_patch_points,
+                device=x.device,
+                dtype=x.dtype,
+            )
+            normalized_time = time_seconds / self.prompt_reference_duration_s
+        else:
+            # Fixed-point controls must not receive a hidden physical-duration
+            # coordinate.  Keeping a zero column preserves the patch encoder
+            # shape without leaking sampling-rate information.
+            normalized_time = torch.zeros(
+                self.physical_patch_points, device=x.device, dtype=x.dtype
+            )
 
-        # Generate time embeddings
-        time_idx = torch.arange(L, device=device, dtype=torch.float32).unsqueeze(0)  # (1, L)
-        time_emb = time_idx * T.unsqueeze(1)  # (B, L)
+        if torch.all(fs_tensor == fs_tensor[0]):
+            return self._process_uniform_rate_patches(
+                selected=selected,
+                fs_value=float(fs_tensor[0].detach().cpu().item()),
+                normalized_time=normalized_time,
+            )
 
-        # Handle input size constraints
-        if self.patch_size_L > L:
-            repeat_factor = (self.patch_size_L + L - 1) // L
-            x = repeat(x, 'b l c -> b (l r) c', r=repeat_factor)
-            time_emb = repeat(time_emb, 'b l -> b (l r)', r=repeat_factor)
-            L = x.size(1)
+        for batch_index in range(batch_size):
+            fs_value = float(fs_tensor[batch_index].detach().cpu().item())
+            if self.use_physical_duration:
+                raw_points = max(
+                    2,
+                    int(
+                        math.floor(
+                            self.physical_patch_duration_s * fs_value + 0.5
+                        )
+                    ),
+                )
+            else:
+                raw_points = self.fixed_raw_token_points
+            if raw_points > signal_length:
+                raise ValueError(
+                    "physical patch exceeds the available signal window: "
+                    f"duration={self.physical_patch_duration_s}s, fs={fs_value}Hz, "
+                    f"requires={raw_points}, available={signal_length}"
+                )
+            raw_point_counts.append(raw_points)
 
-        if self.patch_size_C > C:
-            repeat_factor = (self.patch_size_C + C - 1) // C
-            x = repeat(x, 'b l c -> b l (c r)', r=repeat_factor)
-            C = x.size(2)
+            max_start = signal_length - raw_points
+            if self.num_patches == 1:
+                starts = torch.tensor(
+                    [max_start // 2], dtype=torch.long, device=x.device
+                )
+            else:
+                available_starts = max_start + 1
+                if self.num_patches > available_starts:
+                    raise ValueError(
+                        "unique physical-patch starts are impossible: "
+                        f"requested={self.num_patches}, available={available_starts}, "
+                        f"raw_points={raw_points}, signal_length={signal_length}"
+                    )
+                indices = torch.arange(
+                    self.num_patches, dtype=torch.long, device=x.device
+                )
+                denominator = 2 * (self.num_patches - 1)
+                starts = (
+                    2 * indices * max_start + (self.num_patches - 1)
+                ) // denominator
 
-        # Random patch sampling
-        max_start_L = L - self.patch_size_L
-        max_start_C = C - self.patch_size_C
+            if torch.unique(starts).numel() != self.num_patches:
+                raise RuntimeError("physical-patch start construction is not unique")
+            start_rows.append(starts)
 
-        start_L = torch.randint(0, max_start_L + 1, (B, self.num_patches), device=device)
-        start_C = torch.randint(0, max_start_C + 1, (B, self.num_patches), device=device)
+            sample_tokens = []
+            sample_bands = []
+            for start in starts.tolist():
+                raw_patch = selected[
+                    batch_index, start : start + raw_points, :
+                ]
+                resampled = F.interpolate(
+                    raw_patch.transpose(0, 1).unsqueeze(0),
+                    size=self.physical_patch_points,
+                    mode="linear",
+                    align_corners=False,
+                ).squeeze(0).transpose(0, 1)
+                time_column = normalized_time.unsqueeze(-1)
+                patch_with_time = torch.cat((resampled, time_column), dim=-1)
+                sample_tokens.append(patch_with_time.flatten())
+                if self.use_band_projection:
+                    sample_bands.append(
+                        self._band_fractions(raw_patch, fs_hz=fs_value)
+                    )
+                else:
+                    sample_bands.append(
+                        torch.zeros(2, device=x.device, dtype=x.dtype)
+                    )
 
-        # Create patch indices
-        offset_L = torch.arange(self.patch_size_L, device=device)
-        offset_C = torch.arange(self.patch_size_C, device=device)
+            token_rows.append(torch.stack(sample_tokens, dim=0))
+            band_rows.append(torch.stack(sample_bands, dim=0))
 
-        patch_idx_L = (start_L.unsqueeze(-1) + offset_L) % L  # (B, num_patches, patch_size_L)
-        patch_idx_C = (start_C.unsqueeze(-1) + offset_C) % C  # (B, num_patches, patch_size_C)
+        flat_tokens = torch.stack(token_rows, dim=0)
+        band_fractions = torch.stack(band_rows, dim=0)
+        embeddings = self.patch_encoder(flat_tokens)
+        raw_points_tensor = torch.tensor(
+            raw_point_counts, dtype=torch.long, device=x.device
+        )
+        self.last_patch_starts = torch.stack(start_rows, dim=0).detach()
+        return embeddings, band_fractions, raw_points_tensor
 
-        # Extract patches
-        patch_idx_L = patch_idx_L.unsqueeze(-1)  # (B, num_patches, patch_size_L, 1)
-        patch_idx_C = patch_idx_C.unsqueeze(-2)  # (B, num_patches, 1, patch_size_C)
+    def _process_uniform_rate_patches(
+        self,
+        selected: torch.Tensor,
+        fs_value: float,
+        normalized_time: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Vectorized evidence path for an exact-rate bucket."""
+        batch_size, signal_length, _ = selected.shape
+        if self.use_physical_duration:
+            raw_points = max(
+                2,
+                int(
+                    math.floor(
+                        self.physical_patch_duration_s * fs_value + 0.5
+                    )
+                ),
+            )
+        else:
+            raw_points = self.fixed_raw_token_points
+        if raw_points > signal_length:
+            raise ValueError(
+                "physical patch exceeds the available signal window: "
+                f"duration={self.physical_patch_duration_s}s, fs={fs_value}Hz, "
+                f"requires={raw_points}, available={signal_length}"
+            )
 
-        # Gather signal patches
-        x_expanded = x.unsqueeze(1).expand(-1, self.num_patches, -1, -1)
-        signal_patches = x_expanded.gather(2, patch_idx_L.expand(-1, -1, -1, C))
-        signal_patches = signal_patches.gather(3, patch_idx_C.expand(-1, -1, self.patch_size_L, -1))
+        max_start = signal_length - raw_points
+        if self.num_patches == 1:
+            starts = torch.tensor(
+                [max_start // 2], dtype=torch.long, device=selected.device
+            )
+        else:
+            available_starts = max_start + 1
+            if self.num_patches > available_starts:
+                raise ValueError(
+                    "unique physical-patch starts are impossible: "
+                    f"requested={self.num_patches}, available={available_starts}, "
+                    f"raw_points={raw_points}, signal_length={signal_length}"
+                )
+            indices = torch.arange(
+                self.num_patches, dtype=torch.long, device=selected.device
+            )
+            denominator = 2 * (self.num_patches - 1)
+            starts = (
+                2 * indices * max_start + (self.num_patches - 1)
+            ) // denominator
+        if torch.unique(starts).numel() != self.num_patches:
+            raise RuntimeError("physical-patch start construction is not unique")
 
-        # Gather time patches
-        time_expanded = time_emb.unsqueeze(1).expand(-1, self.num_patches, -1)
-        time_patches = time_expanded.gather(2, patch_idx_L.squeeze(-1))
-        time_patches = time_patches.unsqueeze(-1).expand(-1, -1, -1, self.patch_size_C)
+        offsets = torch.arange(raw_points, device=selected.device)
+        gather_indices = starts.unsqueeze(1) + offsets.unsqueeze(0)
+        raw_patches = selected[:, gather_indices, :]
+        flat_patches = raw_patches.permute(0, 1, 3, 2).reshape(
+            batch_size * self.num_patches, self.patch_size_C, raw_points
+        )
+        resampled = F.interpolate(
+            flat_patches,
+            size=self.physical_patch_points,
+            mode="linear",
+            align_corners=False,
+        ).reshape(
+            batch_size,
+            self.num_patches,
+            self.patch_size_C,
+            self.physical_patch_points,
+        ).permute(0, 1, 3, 2)
+        time_column = normalized_time.view(1, 1, -1, 1).expand(
+            batch_size, self.num_patches, -1, -1
+        )
+        flat_tokens = torch.cat((resampled, time_column), dim=-1).flatten(2)
 
-        # Concatenate signal and time
-        patches = torch.cat([signal_patches, time_patches], dim=-1)  # (B, num_patches, patch_size_L, patch_size_C+1)
+        if self.use_band_projection:
+            spectrum = torch.fft.rfft(raw_patches, dim=2)
+            power = spectrum.abs().square().mean(dim=-1)
+            frequencies = torch.fft.rfftfreq(
+                raw_points, d=1.0 / fs_value, device=selected.device
+            ).to(dtype=selected.dtype)
+            shared_mask = frequencies <= min(self.shared_band_hz, fs_value / 2.0)
+            eps = torch.finfo(power.dtype).eps
+            total = power.sum(dim=-1).clamp_min(eps)
+            shared = power[..., shared_mask].sum(dim=-1) / total
+            private = power[..., ~shared_mask].sum(dim=-1) / total
+            band_fractions = torch.stack((shared, private), dim=-1)
+        else:
+            band_fractions = torch.zeros(
+                batch_size,
+                self.num_patches,
+                2,
+                device=selected.device,
+                dtype=selected.dtype,
+            )
 
-        # Process patches through linear layers
-        patches_flat = rearrange(patches, 'b p l c -> b p (l c)')
-        embeddings = self.patch_linear1(patches_flat)
-        embeddings = F.silu(embeddings)
-        embeddings = self.patch_linear2(embeddings)
+        self.last_patch_starts = starts.unsqueeze(0).expand(
+            batch_size, -1
+        ).detach()
+        raw_points_tensor = torch.full(
+            (batch_size,), raw_points, dtype=torch.long, device=selected.device
+        )
+        return self.patch_encoder(flat_tokens), band_fractions, raw_points_tensor
 
-        return embeddings
+    def _band_fractions(self, raw_patch: torch.Tensor, fs_hz: float) -> torch.Tensor:
+        spectrum = torch.fft.rfft(raw_patch, dim=0)
+        power = spectrum.abs().square().mean(dim=-1)
+        frequencies = torch.fft.rfftfreq(
+            raw_patch.shape[0], d=1.0 / fs_hz, device=raw_patch.device
+        ).to(dtype=raw_patch.dtype)
+        observable_shared_hz = min(self.shared_band_hz, fs_hz / 2.0)
+        shared_mask = frequencies <= observable_shared_hz
+        private_mask = ~shared_mask
+        eps = torch.finfo(power.dtype).eps
+        total_power = power.sum().clamp_min(eps)
+        shared_fraction = power[shared_mask].sum() / total_power
+        private_fraction = power[private_mask].sum() / total_power
+        return torch.stack((shared_fraction, private_fraction))
 
     def get_model_info(self) -> dict:
-        """
-        Get information about the current model configuration.
-
-        Returns:
-            Dictionary with model configuration details
-        """
         info = {
-            'model_type': 'HSE_prompt',
-            'patch_size_L': self.patch_size_L,
-            'patch_size_C': self.patch_size_C,
-            'num_patches': self.num_patches,
-            'output_dim': self.output_dim,
-            'use_prompt': self.use_prompt,
-            'total_parameters': sum(p.numel() for p in self.parameters())
+            "model_type": "HSE_prompt_physical_duration_nyquist",
+            "physical_patch_duration_s": self.physical_patch_duration_s,
+            "physical_patch_points": self.physical_patch_points,
+            "use_physical_duration": self.use_physical_duration,
+            "fixed_raw_token_points": self.fixed_raw_token_points,
+            "patch_size_C": self.patch_size_C,
+            "num_patches": self.num_patches,
+            "output_dim": self.output_dim,
+            "shared_band_hz": self.shared_band_hz,
+            "shared_band_policy": "source_fold_min_nyquist",
+            "use_band_projection": self.use_band_projection,
+            "use_prompt": self.use_prompt,
+            "prompt_features": list(self._PROMPT_FEATURES),
+            "dataset_identity_consumed": False,
+            "total_parameters": sum(p.numel() for p in self.parameters()),
         }
-
         if self.use_prompt:
-            info.update({
-                'prompt_dim': self.prompt_dim,
-                'max_dataset_ids': self.max_dataset_ids,
-                'prompt_combination': self.prompt_combination,
-                'prompt_parameters': sum(p.numel() for p in self.prompt_encoder.parameters())
-            })
-
+            info.update(
+                {
+                    "prompt_dim": self.prompt_dim,
+                    "prompt_combination": self.prompt_combination,
+                    "prompt_parameters": sum(
+                        p.numel() for p in self.prompt_encoder.parameters()
+                    ),
+                }
+            )
         return info
-
-
-if __name__ == '__main__':
-    """Comprehensive self-test for HSE_prompt."""
-
-    print("=== HSE_prompt Self-Test ===")
-
-    # Test configuration
-    class MockArgs:
-        def __init__(self):
-            # HSE parameters
-            self.patch_size_L = 16
-            self.patch_size_C = 1
-            self.num_patches = 64
-            self.output_dim = 128
-
-            # Prompt parameters
-            self.use_prompt = True
-            self.prompt_dim = 64
-            self.max_dataset_ids = 20
-            self.prompt_combination = 'add'  # Test 'add' mode
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    args = MockArgs()
-
-    # Test 1: Basic functionality with prompts
-    print("\n--- Test 1: Basic Functionality with Prompts ---")
-
-    model = HSE_prompt(args).to(device)
-    print(f"✓ Initialized HSE_prompt on {device}")
-    print(f"✓ Model info: {model.get_model_info()}")
-
-    # Test data
-    batch_size = 4
-    seq_length = 1024
-    channels = 1
-
-    signal = torch.randn(batch_size, seq_length, channels, device=device)
-    fs = torch.tensor([1000.0, 2000.0, 1500.0, 2500.0], device=device)
-    dataset_ids = torch.tensor([1, 6, 13, 19], device=device)
-
-    # Forward pass with prompts
-    model.eval()
-    with torch.no_grad():
-        output = model(signal, fs, dataset_ids)
-
-    expected_shape = (batch_size, args.num_patches, args.output_dim)
-    assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
-    print(f"✓ Output shape correct: {output.shape}")
-
-    # Test 2: Signal-only processing (no prompts)
-    print("\n--- Test 2: Signal-only Processing ---")
-
-    with torch.no_grad():
-        output_no_prompt = model(signal, fs, dataset_ids=None)
-
-    assert output_no_prompt.shape == expected_shape
-    print("✓ Signal-only processing works correctly")
-
-    # Test 3: Different combination methods
-    print("\n--- Test 3: Different Combination Methods ---")
-
-    for combination in ['add', 'concat']:
-        args.prompt_combination = combination
-        test_model = HSE_prompt(args).to(device)
-        test_model.eval()
-
-        with torch.no_grad():
-            test_output = test_model(signal, fs, dataset_ids)
-
-        assert test_output.shape == expected_shape
-        print(f"✓ {combination} combination working")
-
-    # Test 4: Gradient flow
-    print("\n--- Test 4: Gradient Flow ---")
-
-    model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-
-    for i in range(3):
-        optimizer.zero_grad()
-        output = model(signal, fs, dataset_ids)
-        loss = output.sum()
-        loss.backward()
-
-        # Check gradients exist
-        grad_norm = sum(p.grad.norm().item() for p in model.parameters() if p.grad is not None)
-        assert grad_norm > 0, "No gradients computed"
-
-        optimizer.step()
-
-    print("✓ Gradient flow working correctly")
-
-    # Test 5: Different input sizes
-    print("\n--- Test 5: Input Size Flexibility ---")
-
-    test_cases = [
-        (2, 512, 1),   # Small batch
-        (8, 2048, 1),  # Large sequence
-        (1, 256, 2),   # Multiple channels
-        (16, 128, 1)   # Large batch
-    ]
-
-    for B, L, C in test_cases:
-        test_signal = torch.randn(B, L, C, device=device)
-        test_fs = torch.rand(B, device=device) * 2000 + 500  # Random fs 500-2500
-        test_dataset_ids = torch.randint(0, args.max_dataset_ids, (B,), device=device)
-
-        with torch.no_grad():
-            test_output = model(test_signal, test_fs, test_dataset_ids)
-
-        expected = (B, args.num_patches, args.output_dim)
-        assert test_output.shape == expected, f"Size test failed: {test_output.shape} != {expected}"
-
-    print("✓ All input size flexibility tests passed")
-
-    # Test 6: Error handling
-    print("\n--- Test 6: Error Handling ---")
-
-    try:
-        # Test invalid dataset_ids
-        invalid_ids = torch.tensor([args.max_dataset_ids], device=device)
-        model(signal, fs, invalid_ids)
-        assert False, "Should have raised error"
-    except (ValueError, RuntimeError):
-        print("✓ Correctly handles invalid dataset_ids")
-
-    try:
-        # Test invalid combination method
-        args.prompt_combination = 'invalid'
-        HSE_prompt(args)
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        print("✓ Correctly rejects invalid combination method")
-
-    # Test 7: Memory efficiency
-    print("\n--- Test 7: Memory Efficiency ---")
-
-    if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
-
-        # Large scale test
-        large_signal = torch.randn(32, 1024, 1, device=device)
-        large_fs = torch.rand(32, device=device) * 2000 + 500
-        large_dataset_ids = torch.randint(0, args.max_dataset_ids, (32,), device=device)
-
-        with torch.no_grad():
-            large_output = model(large_signal, large_fs, large_dataset_ids)
-
-        peak_memory = torch.cuda.max_memory_allocated() / (1024**3)
-        print(f"✓ Large-scale processing completed, peak GPU memory: {peak_memory:.2f}GB")
-
-    print("\n=== All HSE_prompt Tests Passed! ===")
-    print("✅ Key Features Verified:")
-    print("  • Heterogeneous signal processing (different lengths, sampling rates)")
-    print("  • Simple Dataset_id → learnable prompt mapping")
-    print("  • Direct signal + prompt combination (add/concat)")
-    print("  • Graceful fallback to signal-only processing")
-    print("  • Flexible input size support")
-    print("  • Memory efficient for large-scale applications")
-    print("  • Ready for industrial fault diagnosis tasks")

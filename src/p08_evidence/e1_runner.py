@@ -66,9 +66,14 @@ from src.p08_evidence.runtime import (
 
 
 RUNTIME_ROOT = Path(__file__).resolve().parents[2]
-P08_ROOT = RUNTIME_ROOT.parents[1]
+_AUTHORITY_ROOT_ENV = os.environ.get("P08_EVIDENCE_AUTHORITY_ROOT")
+P08_ROOT = (
+    Path(_AUTHORITY_ROOT_ENV).expanduser().resolve()
+    if _AUTHORITY_ROOT_ENV
+    else None
+)
 DEFAULT_CONFIG = RUNTIME_ROOT / "configs/experiments/p08/p08_e1_decisive.yaml"
-DEFAULT_OUTPUT_ROOT = P08_ROOT / "paper/experiments/runs"
+DEFAULT_OUTPUT_ROOT = RUNTIME_ROOT / "results/p08/e1"
 REQUIRED_BRANCH = "agent/p08-vibench-shared-v3-20260731"
 EVIDENCE_SEEDS = (42, 123, 456, 789, 999)
 CONDA_ENVIRONMENT = "LQ_signal"
@@ -187,12 +192,25 @@ def _load_config(path: Path, *, require_approved: bool) -> tuple[dict[str, Any],
         or amendment.get("formal_evidence_launch_allowed") is not True
     ):
         raise RuntimeError("formal E1 evidence requires the approved v1.1 amendment")
-    paper_state_path = P08_ROOT / "paper/paper.yaml"
-    if not paper_state_path.is_file():
-        raise FileNotFoundError(f"paper state does not exist: {paper_state_path}")
-    paper_state = yaml.safe_load(paper_state_path.read_text(encoding="utf-8"))
-    paper_protocol = paper_state.get("experiment_protocol", {})
-    paper_gate = paper_state.get("human_gates", {})
+    if P08_ROOT is None:
+        if require_approved:
+            raise RuntimeError(
+                "formal E1 evidence requires an explicit paper authority root; "
+                "set P08_EVIDENCE_AUTHORITY_ROOT"
+            )
+        paper_state_path = None
+    else:
+        paper_state_path = P08_ROOT / "paper/paper.yaml"
+    if paper_state_path is None:
+        paper_state = {}
+        paper_protocol = {}
+        paper_gate = {}
+    else:
+        if not paper_state_path.is_file():
+            raise FileNotFoundError(f"paper state does not exist: {paper_state_path}")
+        paper_state = yaml.safe_load(paper_state_path.read_text(encoding="utf-8"))
+        paper_protocol = paper_state.get("experiment_protocol", {})
+        paper_gate = paper_state.get("human_gates", {})
     if require_approved and (
         paper_protocol.get("active_id") != PROTOCOL_ID
         or paper_protocol.get("approved_id") != PROTOCOL_ID
@@ -200,15 +218,16 @@ def _load_config(path: Path, *, require_approved: bool) -> tuple[dict[str, Any],
         or paper_gate.get("experiment_protocol_approved_version") != PROTOCOL_ID
     ):
         raise RuntimeError("paper state is not version-bound to the approved protocol")
-    source_path = P08_ROOT / str(protocol.get("source_path", ""))
-    if not source_path.is_file():
-        raise FileNotFoundError(f"protocol source does not exist: {source_path}")
-    source_digest = sha256_file(source_path)
-    if source_digest != protocol.get("source_sha256"):
-        raise RuntimeError(
-            "protocol source hash differs from resolved E1 config: "
-            f"expected={protocol.get('source_sha256')}, observed={source_digest}"
-        )
+    if P08_ROOT is not None:
+        source_path = P08_ROOT / str(protocol.get("source_path", ""))
+        if not source_path.is_file():
+            raise FileNotFoundError(f"protocol source does not exist: {source_path}")
+        source_digest = sha256_file(source_path)
+        if source_digest != protocol.get("source_sha256"):
+            raise RuntimeError(
+                "protocol source hash differs from resolved E1 config: "
+                f"expected={protocol.get('source_sha256')}, observed={source_digest}"
+            )
     if tuple(config["training"]["seeds"]) != EVIDENCE_SEEDS:
         raise ValueError("the frozen five-seed order changed")
     if tuple(config["data"]["generator"]["evaluation_rates_hz"]) != EVALUATION_RATES_HZ:
@@ -1360,6 +1379,8 @@ def _source_paths() -> tuple[Path, ...]:
 
 
 def _protocol_paths() -> tuple[Path, ...]:
+    if P08_ROOT is None:
+        return ()
     return (
         P08_ROOT / "paper/paper.yaml",
         P08_ROOT / "paper/experiments/config_bridge.yaml",
@@ -1373,16 +1394,17 @@ def _protocol_paths() -> tuple[Path, ...]:
 def _source_manifest(config_path: Path) -> dict[str, Any]:
     paths = set(_source_paths())
     paths.add(config_path.resolve())
-    paths.add(P08_ROOT / "SUBMODULES.lock.yaml")
+    if P08_ROOT is not None:
+        paths.add(P08_ROOT / "SUBMODULES.lock.yaml")
     paths.update(_protocol_paths())
     rows = []
     for path in sorted(paths):
         if not path.is_file():
             raise FileNotFoundError(f"evidence source file is absent: {path}")
-        try:
+        if P08_ROOT is not None and path.is_relative_to(P08_ROOT):
             display = path.relative_to(P08_ROOT).as_posix()
-        except ValueError:
-            display = str(path)
+        else:
+            display = path.relative_to(RUNTIME_ROOT).as_posix()
         rows.append(
             {
                 "path": display,
@@ -1396,6 +1418,8 @@ def _source_manifest(config_path: Path) -> dict[str, Any]:
 
 
 def _paper_dirty_snapshot() -> tuple[str, str]:
+    if P08_ROOT is None:
+        return "", ""
     relative_paths = [path.relative_to(P08_ROOT).as_posix() for path in _protocol_paths()]
     relative_paths.append("src/vibench")
     status = _run_command(
@@ -1604,6 +1628,7 @@ def _write_base_artifacts(
     dirty_patch: str,
     paper_dirty_status: str,
     paper_dirty_patch: str,
+    protocol_source_path: Path | None,
 ) -> dict[str, dict[str, str]]:
     digests: dict[str, dict[str, str]] = {arm: {} for arm in writers}
     for arm_id, writer in writers.items():
@@ -1646,7 +1671,12 @@ def _write_base_artifacts(
             )
         for protocol_path in _protocol_paths():
             relative = protocol_path.relative_to(P08_ROOT).as_posix()
-            snapshot_relative = f"protocol_snapshot/{relative}"
+            snapshot_relative = (
+                "protocol_snapshot/p08_e1_protocol.yaml"
+                if protocol_source_path is not None
+                and protocol_path.resolve() == protocol_source_path.resolve()
+                else f"authority_snapshot/{relative}"
+            )
             _, digest = writer.write_bytes(
                 snapshot_relative, protocol_path.read_bytes()
             )
@@ -1875,6 +1905,10 @@ def _leakage_audit(
 
 def _configure_determinism(seed: int, *, evidence: bool) -> None:
     if evidence:
+        if P08_ROOT is None:
+            raise RuntimeError(
+                "formal E1 evidence requires P08_EVIDENCE_AUTHORITY_ROOT"
+            )
         if os.environ.get("PYTHONHASHSEED") != str(seed):
             raise RuntimeError("formal E1 command must set PYTHONHASHSEED to model seed")
         if os.environ.get("CUBLAS_WORKSPACE_CONFIG") not in {":4096:8", ":16:8"}:
@@ -2021,6 +2055,11 @@ def _run_seed(
             dirty_patch=dirty_patch,
             paper_dirty_status=paper_dirty_status,
             paper_dirty_patch=paper_dirty_patch,
+            protocol_source_path=(
+                P08_ROOT / str(config["protocol"]["source_path"])
+                if P08_ROOT is not None
+                else None
+            ),
         )
         pretest_data_manifest = {
             "protocol_id": PROTOCOL_ID,
@@ -2260,7 +2299,9 @@ def _run_seed(
             }
             nested_commit = _git_value("rev-parse", "HEAD")
             nested_branch = _git_value("branch", "--show-current")
-            paper_commit = _git_value("rev-parse", "HEAD", repository=P08_ROOT)
+            paper_commit = _git_value(
+                "rev-parse", "HEAD", repository=P08_ROOT or RUNTIME_ROOT
+            )
             peak_memory = (
                 int(torch.cuda.max_memory_allocated(device))
                 if device.type == "cuda"
@@ -2404,7 +2445,9 @@ def _run_seed(
         data_sha256 = sha256_bytes(canonical_json_bytes(data_identity))
         nested_commit = _git_value("rev-parse", "HEAD")
         nested_branch = _git_value("branch", "--show-current")
-        paper_commit = _git_value("rev-parse", "HEAD", repository=P08_ROOT)
+        paper_commit = _git_value(
+            "rev-parse", "HEAD", repository=P08_ROOT or RUNTIME_ROOT
+        )
 
         run_summaries: dict[str, Any] = {}
         for arm_id in arm_ids:

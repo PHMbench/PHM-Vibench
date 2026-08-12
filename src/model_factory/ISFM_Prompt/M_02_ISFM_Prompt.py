@@ -1,26 +1,8 @@
-"""
-M_02_ISFM_Prompt: Simplified Prompt-guided Industrial Signal Foundation Model
+"""Prompt-guided industrial signal model used by the P08 method.
 
-This model implements a simplified version of prompt-guided industrial signal processing
-with HSE (Heterogeneous Signal Embedding) and lightweight system-specific learnable prompts.
-
-Key Features:
-- Heterogeneous Signal Embedding with system prompts
-- Simple Dataset_id → learnable prompt mapping
-- Direct signal + prompt combination (add/concat)
-- Two-stage training support (pretrain/finetune)
-- Full backward compatibility with non-prompt modes
-- Integration with existing PHM-Vibench components
-
-Simplified from original complex design:
-- Removed complex prompt library and selector
-- Removed multi-level prompt encoding
-- Kept core HSE + prompt functionality
-- Lightweight and easy to understand
-
-Author: PHM-Vibench Team
-Date: 2025-01-23
-License: MIT
+The HSE_prompt path uses physical-duration tokens, explicit Nyquist-aware
+shared/private bands, and continuous acquisition metadata.  Dataset identity is
+not passed to the embedding and the P08 configuration uses one unified head.
 """
 
 import torch
@@ -40,7 +22,7 @@ from .embedding.E_01_HSE_v2 import E_01_HSE_v2
 
 # Define available components for the simplified Prompt-guided ISFM
 PromptEmbedding_dict = {
-    'HSE_prompt': HSE_prompt,                   # NEW: Simplified HSE with system prompts
+    'HSE_prompt': HSE_prompt,
     'E_01_HSE': E_01_HSE,                       # Fallback to original HSE
     'E_01_HSE_v2': E_01_HSE_v2,                 # Enhanced HSE with prompt support
 }
@@ -63,6 +45,7 @@ PromptTaskHead_dict = {
     'H_03_Linear_pred': H_03_Linear_pred,       # Prediction head
     'H_09_multiple_task': H_09_multiple_task,   # Multi-task head
     'H_10_ProjectionHead': H_10_ProjectionHead,  # Contrastive learning projection
+    'H_11_Unified_cla': H_11_Unified_cla,       # Dataset-identity-free classification
 }
 
 
@@ -70,19 +53,17 @@ class Model(nn.Module):
     """
     Simplified Prompt-guided Industrial Signal Foundation Model (M_02_ISFM_Prompt).
 
-    This model integrates lightweight system-specific learnable prompts with heterogeneous
-    signal embedding for enhanced cross-system generalization in industrial fault diagnosis.
+    This model integrates continuous physical-metadata prompts with heterogeneous
+    signal embedding for cross-system industrial fault diagnosis.
 
     Simplified Architecture:
-    1. HSE_prompt: Process heterogeneous signals with system prompts
+    1. HSE_prompt: Process fixed-duration signal support and observable bands
     2. Backbone Network: Process embeddings through transformer/CNN architectures
     3. Task Head: Generate task-specific outputs (classification/prediction)
 
-    Key Simplifications:
-    - Removed complex prompt library and selector
-    - Simplified to Dataset_id → learnable prompt mapping
-    - Direct signal + prompt combination (add/concat)
-    - Lightweight and easy to understand
+    For the P08 path, sampling rate is looked up from metadata while the returned
+    dataset ID is discarded.  Classification uses ``H_11_Unified_cla`` so no
+    system selector enters the decision path.
     """
     
     def __init__(self, args_m, metadata=None):
@@ -94,7 +75,7 @@ class Model(nn.Module):
                 Required attributes:
                 - embedding: Embedding layer type (e.g., 'HSE_prompt')
                 - backbone: Backbone network type (e.g., 'B_08_PatchTST')
-                - task_head: Task head type (e.g., 'H_01_Linear_cla')
+                - task_head: Task head type (P08 uses 'H_11_Unified_cla')
 
                 Optional prompt-related attributes:
                 - use_prompt: Enable prompt functionality (default: True)
@@ -131,7 +112,7 @@ class Model(nn.Module):
         else:
             self.task_head = nn.Identity()
         
-        # Simplified: No complex prompt components
+        # No separate prompt library or dataset-specific prompt state.
         self.last_prompt_vector: Optional[torch.Tensor] = None
 
         # Set training stage
@@ -201,7 +182,12 @@ class Model(nn.Module):
         # 其他标量（int/str 等）
         return file_id
     
-    def _embed(self, x: torch.Tensor, file_id: Optional[Any] = None) -> torch.Tensor:
+    def _embed(
+        self,
+        x: torch.Tensor,
+        file_id: Optional[Any] = None,
+        sampling_rate_hz: Optional[Union[torch.Tensor, list, tuple]] = None,
+    ) -> torch.Tensor:
         """
         Signal embedding stage with simplified prompt integration.
 
@@ -213,22 +199,31 @@ class Model(nn.Module):
             Embedded signal tensor (B, num_patches, signal_dim)
         """
         if self.args_m.embedding == 'HSE_prompt':
-            # NEW: Simplified HSE with system prompts
-            if file_id is not None and self.metadata is not None:
-                # 统一解析 batch 元数据，避免直接在 CUDA tensor 上调用 NumPy
-                system_ids, sample_rates = resolve_batch_metadata(
+            if sampling_rate_hz is not None:
+                sample_rates = torch.as_tensor(
+                    sampling_rate_hz, device=x.device, dtype=x.dtype
+                ).reshape(-1)
+                if sample_rates.numel() != x.shape[0]:
+                    raise ValueError(
+                        "explicit sampling_rate_hz length must equal batch size; "
+                        f"got {sample_rates.numel()} for batch {x.shape[0]}"
+                    )
+                signal_emb = self.embedding(x, sample_rates)
+            elif file_id is not None and self.metadata is not None:
+                # Resolve the measurable sampling rate only.  The dataset-ID
+                # return value is deliberately discarded.
+                _, sample_rates = resolve_batch_metadata(
                     self.metadata, file_id_batch=file_id, device=x.device
                 )
-                # HSE_prompt 当前设计假设单系统 batch，取第一个 system_id
-                dataset_id = int(system_ids[0].item())
-                fs = sample_rates  # shape [B]，交给 HSE_prompt 内部的 normalize_fs 处理
-
-                dataset_ids = system_ids  # [B]
-                signal_emb = self.embedding(x, fs, dataset_ids)
+                signal_emb = self.embedding(x, sample_rates)
             else:
-                # Fallback mode without metadata
-                fs = 1000.0
-                signal_emb = self.embedding(x, fs, dataset_ids=None)
+                default_fs = getattr(self.args_m, 'default_sampling_rate_hz', None)
+                if default_fs is None:
+                    raise ValueError(
+                        "HSE_prompt requires per-sample sampling-rate metadata; "
+                        "set default_sampling_rate_hz only for an explicit synthetic test"
+                    )
+                signal_emb = self.embedding(x, float(default_fs))
 
         elif self.args_m.embedding == 'E_01_HSE':
             # Traditional HSE embeddings need sampling frequency
@@ -277,7 +272,10 @@ class Model(nn.Module):
         Returns:
             Task-specific outputs or features
         """
-        if file_id is not None and self.metadata is not None:
+        unified_head = getattr(self.args_m, 'task_head', None) == 'H_11_Unified_cla'
+        if unified_head:
+            system_id = None
+        elif file_id is not None and self.metadata is not None:
             # 使用统一的批量解析逻辑，避免 file_id 为 CUDA tensor 时触发 NumPy 错误
             system_ids_tensor, _ = resolve_batch_metadata(
                 self.metadata, file_id_batch=file_id, device=x.device
@@ -308,7 +306,9 @@ class Model(nn.Module):
                 x: torch.Tensor,
                 file_id: Optional[Any] = None,
                 task_id: Optional[str] = None,
-                return_feature: bool = False) -> torch.Tensor:
+                return_feature: bool = False,
+                sampling_rate_hz: Optional[Union[torch.Tensor, list, tuple]] = None,
+                ) -> torch.Tensor:
         """
         Simplified forward pass through M_02_ISFM_Prompt model.
 
@@ -324,7 +324,9 @@ class Model(nn.Module):
         self.shape = x.shape  # Store for prediction tasks
 
         # Stage 1: Signal embedding with simplified prompt integration
-        signal_emb = self._embed(x, file_id)
+        signal_emb = self._embed(
+            x, file_id=file_id, sampling_rate_hz=sampling_rate_hz
+        )
 
         # Stage 2: Backbone encoding
         encoded_features = self._encode(signal_emb)
@@ -364,7 +366,7 @@ class Model(nn.Module):
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
 
         info = {
-            'model_name': 'M_02_ISFM_Prompt_Simplified',
+            'model_name': 'M_02_ISFM_Prompt_PhysicalNyquist',
             'use_prompt': self.use_prompt,
             'training_stage': self.training_stage,
             'total_parameters': total_params,
@@ -382,9 +384,16 @@ class Model(nn.Module):
             embedding_info = self.embedding.get_model_info()
             info['prompt_config'] = {
                 'prompt_dim': embedding_info.get('prompt_dim', 'unknown'),
-                'max_dataset_ids': embedding_info.get('max_dataset_ids', 'unknown'),
                 'prompt_combination': embedding_info.get('prompt_combination', 'unknown'),
-                'prompt_parameters': embedding_info.get('prompt_parameters', 0)
+                'prompt_parameters': embedding_info.get('prompt_parameters', 0),
+                'prompt_features': embedding_info.get('prompt_features', []),
+                'dataset_identity_consumed': embedding_info.get(
+                    'dataset_identity_consumed', True
+                ),
+                'physical_patch_duration_s': embedding_info.get(
+                    'physical_patch_duration_s'
+                ),
+                'shared_band_hz': embedding_info.get('shared_band_hz'),
             }
 
         return info

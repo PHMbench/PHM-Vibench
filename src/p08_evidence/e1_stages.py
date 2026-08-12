@@ -68,10 +68,10 @@ from src.p08_evidence.runtime import (
 
 
 RUNTIME_ROOT = Path(__file__).resolve().parents[2]
-P08_ROOT = RUNTIME_ROOT.parents[1]
-DEFAULT_RUN_ROOT = P08_ROOT / "paper/experiments/runs"
+P08_ROOT = RUNTIME_ROOT
+DEFAULT_RUN_ROOT = RUNTIME_ROOT / "results/p08/e1"
 DEFAULT_BROKER_ROOT = DEFAULT_RUN_ROOT / "P08-E1-target-broker"
-DEFAULT_SEALED_ROOT = P08_ROOT / "paper/experiments/sealed/P08-E1-target"
+DEFAULT_SEALED_ROOT = RUNTIME_ROOT / "results/p08/e1-sealed/P08-E1-target"
 SEEDS = (42, 123, 456, 789, 999)
 ARMS = tuple(ARM_IDS)
 EXPERIMENT_ID = "P08-E1"

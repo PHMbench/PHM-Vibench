@@ -1,7 +1,97 @@
 from __future__ import annotations
 
+import pandas as pd
+
 from ..data_utils import MetadataAccessor
 from .Get_id import Get_CDDG_ids, Get_DG_ids
+
+
+def _config_get(container, key, default=None):
+    """Read a key from dict-, namespace-, or OmegaConf-like containers."""
+    if container is None:
+        return default
+    if isinstance(container, dict):
+        return container.get(key, default)
+    getter = getattr(container, "get", None)
+    if callable(getter):
+        value = getter(key, default)
+        return default if value is None else value
+    return getattr(container, key, default)
+
+
+def _integer_mapping(container):
+    if container is None:
+        return {}
+    items = container.items() if hasattr(container, "items") else []
+    return {int(key): int(value) for key, value in items}
+
+
+def apply_label_ontology(frame, args_task):
+    """Map dataset-local labels into a prespecified shared semantic space."""
+    ontology = _config_get(args_task, "label_ontology")
+    if ontology is None:
+        return frame
+
+    mappings = _config_get(ontology, "mappings")
+    if mappings is None:
+        raise ValueError("label_ontology.mappings is required")
+    excluded = _config_get(ontology, "excluded_labels", {})
+    num_classes = int(_config_get(ontology, "num_classes", 0))
+    if num_classes < 2:
+        raise ValueError("label_ontology.num_classes must be at least 2")
+
+    mapped = frame.copy()
+    mapped["Raw_Label"] = mapped["Label"].astype(int)
+    keep_mask = pd.Series(True, index=mapped.index)
+    common_labels = pd.Series(index=mapped.index, dtype="float64")
+
+    for dataset_id in sorted(mapped["Dataset_id"].astype(int).unique()):
+        dataset_mask = mapped["Dataset_id"].astype(int) == dataset_id
+        raw_to_common = _integer_mapping(_config_get(mappings, str(dataset_id)))
+        if not raw_to_common:
+            raw_to_common = _integer_mapping(_config_get(mappings, dataset_id))
+        if not raw_to_common:
+            raise ValueError(
+                f"label ontology has no mapping for Dataset_id {dataset_id}"
+            )
+
+        excluded_values = _config_get(excluded, str(dataset_id), [])
+        if not excluded_values:
+            excluded_values = _config_get(excluded, dataset_id, [])
+        excluded_set = {int(value) for value in excluded_values}
+        if excluded_set:
+            keep_mask &= ~(
+                dataset_mask & mapped["Raw_Label"].isin(excluded_set)
+            )
+
+        eligible = dataset_mask & keep_mask
+        common_labels.loc[eligible] = mapped.loc[eligible, "Raw_Label"].map(
+            raw_to_common
+        )
+
+    mapped = mapped.loc[keep_mask].copy()
+    mapped_labels = common_labels.loc[keep_mask]
+    if mapped_labels.isna().any():
+        missing_rows = mapped.loc[mapped_labels.isna(), ["Dataset_id", "Raw_Label"]]
+        missing = sorted(
+            {tuple(row) for row in missing_rows.astype(int).to_numpy().tolist()}
+        )
+        raise ValueError(f"unmapped raw labels in shared ontology: {missing}")
+
+    mapped["Label"] = mapped_labels.astype(int)
+    invalid = mapped[(mapped["Label"] < 0) | (mapped["Label"] >= num_classes)]
+    if not invalid.empty:
+        pairs = sorted(
+            {
+                tuple(row)
+                for row in invalid[["Dataset_id", "Label"]]
+                .astype(int)
+                .to_numpy()
+                .tolist()
+            }
+        )
+        raise ValueError(f"mapped labels outside configured ontology: {pairs}")
+    return mapped
 
 
 _ALL_ID_TASK_TYPES = frozenset(
@@ -189,5 +279,6 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
                 f"{invalid_ids}. Fix the metadata instead of dropping rows."
             )
 
+    filtered_df = apply_label_ontology(filtered_df, args_task)
     filtered_df.reset_index(drop=True, inplace=True)
     return MetadataAccessor(filtered_df, key_column=metadata_accessor.key_column)

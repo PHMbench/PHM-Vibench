@@ -484,11 +484,7 @@ def _build_complete_fixture(root: Path) -> dict[str, object]:
         "counts": {"loaded_modules": 4},
     }
     _write_json(root / "environment.yml", environment_document)
-    protocol_source = (
-        Path(__file__).resolve().parents[4]
-        / "paper/experiments/config_bridge.yaml"
-    )
-    protocol_bytes = protocol_source.read_bytes()
+    protocol_bytes = e1_audit.PROTOCOL_FIXTURE_BYTES
     if sha256_bytes(protocol_bytes) != e1_audit.PROTOCOL_SOURCE_SHA256:
         raise RuntimeError("test fixture protocol source hash changed")
     protocol_snapshot = root / e1_audit.PROTOCOL_SNAPSHOT_PATH

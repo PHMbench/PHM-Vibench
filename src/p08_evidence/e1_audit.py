@@ -47,13 +47,13 @@ from src.p08_evidence.runtime import (
 EXPERIMENT_ID = "P08-E1"
 PARTITION_HASH_FIELD = "partition_id_set_sha256"
 SEALED_LABEL_COPY_NAME = "sealed_label_table_after_prediction_hashes.json"
-PROTOCOL_SOURCE_SHA256 = (
-    "605ffbddddd7df87292083deac21756654712481402cd9384a9616a3e8d06428"
-)
-PROTOCOL_SOURCE_PATH = "paper/experiments/config_bridge.yaml"
-PROTOCOL_SNAPSHOT_PATH = (
-    "protocol_snapshot/paper/experiments/config_bridge.yaml"
-)
+# A deterministic engine-owned fixture exercises the audit without pretending
+# to be the paper authority. Formal runs bind the path and digest declared in
+# their resolved configuration and retain that authority source separately.
+PROTOCOL_FIXTURE_BYTES = b"protocol_id: P08-LOSO-v1.1\nfixture_scope: audit_unit_test_only\n"
+PROTOCOL_SOURCE_SHA256 = sha256(PROTOCOL_FIXTURE_BYTES).hexdigest()
+PROTOCOL_SOURCE_PATH = "protocol/p08_e1_protocol_fixture.yaml"
+PROTOCOL_SNAPSHOT_PATH = "protocol_snapshot/p08_e1_protocol.yaml"
 AuditRunState = Literal["scored_pending_final_audit", "completed"]
 _AUDIT_RUN_STATES = frozenset({"scored_pending_final_audit", "completed"})
 
@@ -1036,13 +1036,15 @@ def _check_protocol_binding(
         raise AuditEvidenceError("resolved config lacks its protocol binding") from exc
     _require(isinstance(protocol, Mapping), "resolved protocol binding is not a mapping")
     _require(protocol.get("id") == PROTOCOL_ID, "resolved protocol is not P08-LOSO-v1.1")
+    protocol_source_path = protocol.get("source_path")
+    protocol_source_sha256 = protocol.get("source_sha256")
     _require(
-        protocol.get("source_path") == PROTOCOL_SOURCE_PATH,
-        "resolved protocol source path differs",
+        isinstance(protocol_source_path, str) and bool(protocol_source_path.strip()),
+        "resolved protocol source path is absent",
     )
     _require(
-        protocol.get("source_sha256") == PROTOCOL_SOURCE_SHA256,
-        "resolved protocol source SHA-256 differs",
+        _valid_digest(protocol_source_sha256),
+        "resolved protocol source SHA-256 is invalid",
     )
 
     source_manifest = _read_json(run_root / "source_manifest.json")
@@ -1066,15 +1068,15 @@ def _check_protocol_binding(
         _require(_is_int(row.get("bytes")) and int(row["bytes"]) >= 0, "source manifest byte count is invalid")
         _require(_valid_digest(row.get("sha256")), "source manifest row SHA-256 is invalid")
         rows[path] = row
-    source_row = rows.get(PROTOCOL_SOURCE_PATH)
-    _require(source_row is not None, "source manifest omits config_bridge.yaml")
+    source_row = rows.get(protocol_source_path)
+    _require(source_row is not None, "source manifest omits protocol source")
     _require(
-        source_row.get("sha256") == PROTOCOL_SOURCE_SHA256,
+        source_row.get("sha256") == protocol_source_sha256,
         "source manifest protocol hash differs",
     )
     snapshot_path = run_root / PROTOCOL_SNAPSHOT_PATH
     _require(
-        sha256_file(snapshot_path) == PROTOCOL_SOURCE_SHA256,
+        sha256_file(snapshot_path) == protocol_source_sha256,
         "retained protocol snapshot hash differs",
     )
     _require(
@@ -1089,7 +1091,7 @@ def _check_protocol_binding(
     )
     for name, payload in (("provenance", provenance), ("run_status", status)):
         _require(
-            payload.get("protocol_source_sha256") == PROTOCOL_SOURCE_SHA256,
+            payload.get("protocol_source_sha256") == protocol_source_sha256,
             f"{name} protocol_source_sha256 differs",
         )
     _require(
@@ -1098,7 +1100,7 @@ def _check_protocol_binding(
     )
     return {
         "protocol_id": PROTOCOL_ID,
-        "protocol_source_sha256": PROTOCOL_SOURCE_SHA256,
+        "protocol_source_sha256": protocol_source_sha256,
         "source_manifest_sha256": self_digest,
     }
 

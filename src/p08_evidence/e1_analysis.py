@@ -34,9 +34,9 @@ from src.p08_evidence.runtime import (
 
 
 RUNTIME_ROOT = Path(__file__).resolve().parents[2]
-P08_ROOT = RUNTIME_ROOT.parents[1]
-DEFAULT_RUN_ROOT = P08_ROOT / "paper/experiments/runs"
-DEFAULT_OUTPUT = P08_ROOT / "paper/experiments/decisive_result.yaml"
+P08_ROOT = RUNTIME_ROOT
+DEFAULT_RUN_ROOT = RUNTIME_ROOT / "results/p08/e1"
+DEFAULT_OUTPUT = RUNTIME_ROOT / "results/p08/e1/decisive_result.yaml"
 ARMS = ("P08-DN", "P08-M", "P08-BG", "P08-NC")
 SEEDS = (42, 123, 456, 789, 999)
 PROTOCOL_SOURCE_SHA256 = (

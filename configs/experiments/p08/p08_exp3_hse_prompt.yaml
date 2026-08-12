@@ -1,0 +1,113 @@
+# P08 Exp-3: physical-duration/Nyquist HSE-Prompt smoke configuration.
+# Derives from legacy configs/CDDG_config/experiment_3_cddg_hse_prompt.yaml
+# and demo configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml.
+# Evidence launches must replace the split and source-derived band cutoff through
+# the locked per-fold manifests created by P08-G040.
+
+pipeline: "Pipeline_02_pretrain_fewshot"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/pretrain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p08_exp3_hse_prompt"
+  seed: 42
+  output_dir: "results/p08/exp3_hse_prompt"
+  notes: "P08 method smoke only; not admissible claim evidence without a locked LOSO fold manifest."
+
+# Registered ISFM_Prompt model with a single shared semantic classifier.
+model:
+  name: "M_02_ISFM_Prompt"
+  type: "ISFM_Prompt"
+  embedding: "HSE_prompt"
+  backbone: "B_04_Dlinear"
+  task_head: "H_11_Unified_cla"
+  num_classes: 4
+  unified_num_classes: 4
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  num_heads: 8
+  num_layers: 4
+  e_layers: 4
+  d_ff: 512
+  patch_size_L: 256
+  physical_patch_duration_s: 0.01
+  physical_patch_points: 256
+  use_physical_duration: true
+  fixed_raw_token_points: 128
+  patch_size_C: 1
+  num_patches: 64
+  shared_band_hz: 5000.0
+  shared_band_policy: "source_fold_min_nyquist"
+  use_band_projection: true
+  use_prompt: true
+  prompt_dim: 128
+  fusion_type: "attention"
+  prompt_combination: "add"
+  prompt_reference_fs_hz: 10000.0
+  prompt_reference_duration_s: 0.01
+  freeze_prompts_in_finetuning: false
+  dataset_identity_input: false
+
+stages:
+  - name: "pretraining"
+    description: "Physical/Nyquist HSE-Prompt smoke pretraining on a harmonized four-class label space"
+    overrides:
+      task:
+        type: "pretrain"
+        name: "hse_contrastive"
+        label_ontology: &bearing_fault_location_v1
+          name: "bearing_fault_location_v1"
+          num_classes: 4
+          class_names: [normal, inner_race, rolling_element, outer_race]
+          mappings:
+            "1": {"0": 0, "1": 1, "2": 2, "3": 3}
+            "6": {"0": 0, "1": 1, "2": 2, "3": 3}
+            "12": {"0": 0, "1": 1, "2": 3, "3": 2}
+            "13": {"0": 0, "1": 1, "2": 3}
+            "19": {"0": 0, "1": 2, "3": 1, "4": 3, "5": 2, "7": 1, "8": 3}
+          excluded_labels:
+            "19": [2, 6]
+        loss: "INFONCE"
+        contrast_loss: "INFONCE"
+        contrast_weight: 0.4
+        classification_weight: 0.1
+        temperature: 0.07
+        target_system_id: [1, 13, 6, 12, 19]
+        target_domain_num: 1
+        lr: 0.0005
+        weight_decay: 0.0001
+        optimizer: "adamw"
+        metrics: ["acc", "f1", "precision", "recall"]
+      trainer:
+        num_epochs: 1   # smoke default; real launch overrides (legacy used 30)
+        save_dir: "results/p08/exp3_hse_prompt/pretrain"
+      data:
+        num_window: 64
+        stride: 5
+
+  - name: "finetuning"
+    description: "Shared-head classification smoke stage after HSE-Prompt pretraining"
+    overrides:
+      task:
+        type: "CDDG"
+        name: "classification"
+        label_ontology: *bearing_fault_location_v1
+        loss: "CE"
+        target_system_id: [1, 13, 6, 12, 19]
+        target_domain_num: 1
+        lr: 0.0001
+        weight_decay: 0.0001
+        optimizer: "adamw"
+        metrics: ["acc", "f1", "precision", "recall"]
+      trainer:
+        num_epochs: 1   # smoke default; real launch overrides (legacy used 20)
+        save_dir: "results/p08/exp3_hse_prompt/finetune"
+      data:
+        num_window: 64
+        stride: 5
