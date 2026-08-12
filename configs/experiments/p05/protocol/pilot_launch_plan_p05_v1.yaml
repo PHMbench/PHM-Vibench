@@ -1,0 +1,66 @@
+schema_version: 1
+kind: p05_frozen_pilot_launch_plan
+paper_id: P05
+protocol_id: P05-G040-v3.2
+matrix_id: P05-PILOT-v1
+status: frozen_awaiting_physical_gpu_uuid_binding
+evidence_eligible: false
+claim_support: forbidden
+
+runtime:
+  conda_environment: LQ_signal
+  one_process_per_job: true
+  one_gpu_per_process: true
+  distributed_execution: forbidden
+  allowed_physical_gpu_indices: [0, 1]
+  forbidden_physical_gpu_indices: [2]
+  expected_uuid_by_physical_index:
+    0: __REQUIRED_GPU0_UUID_AT_LAUNCH__
+    1: __REQUIRED_GPU1_UUID_AT_LAUNCH__
+  uuid_identity_source: nvidia-smi_index_uuid
+  missing_or_mismatched_uuid: hard_stop
+
+blocking:
+  factor: dataset
+  rationale: keep_P05_M_and_P05_B0_for_each_dataset_on_the_same_physical_GPU
+  blocks:
+    - block_id: P05-PILOT-BLOCK-CWRU-GPU0
+      dataset: CWRU
+      physical_gpu_index: 0
+      ordered_jobs:
+        - P05-PILOT-B0-CWRU
+        - P05-PILOT-M-CWRU
+    - block_id: P05-PILOT-BLOCK-XJTU-GPU1
+      dataset: XJTU
+      physical_gpu_index: 1
+      ordered_jobs:
+        - P05-PILOT-M-XJTU
+        - P05-PILOT-B0-XJTU
+  order_balance: B0_first_in_one_dataset_block_and_M_first_in_the_other
+  interpretation: engineering_resource_forecast_only
+
+execution_waves:
+  - wave: 1
+    concurrent_jobs:
+      - job_id: P05-PILOT-B0-CWRU
+        physical_gpu_index: 0
+      - job_id: P05-PILOT-M-XJTU
+        physical_gpu_index: 1
+  - wave: 2
+    concurrent_jobs:
+      - job_id: P05-PILOT-M-CWRU
+        physical_gpu_index: 0
+      - job_id: P05-PILOT-B0-XJTU
+        physical_gpu_index: 1
+
+launch_command_contract:
+  executable_prefix: conda run -n LQ_signal python main.py --config
+  environment_binding: CUDA_VISIBLE_DEVICES_must_equal_the_registered_physical_index_before_process_start
+  scientific_cli_overrides: forbidden
+  permitted_materialization_binding: trainer.expected_gpu_uuid_only
+  output_collision: hard_stop_create_only
+
+unresolved_launch_inputs:
+  - physical_GPU0_UUID
+  - physical_GPU1_UUID
+  - four_create_only_materialized_config_packages_and_hashes

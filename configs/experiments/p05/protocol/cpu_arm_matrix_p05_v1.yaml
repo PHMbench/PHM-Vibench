@@ -1,0 +1,216 @@
+schema_version: 1
+kind: p05_frozen_cpu_arm_execution_matrix
+paper_id: P05
+protocol_id: P05-G040-v3.2
+matrix_id: P05-CPU-ARMS-v1
+status: frozen_declarative_awaiting_artifact_hash_binding
+
+budget:
+  device_class: cpu
+  total_fit_ceiling: 12
+  arm_fit_ceiling:
+    P05-B2: 10
+    P05-B4: 2
+  ceiling_exceeded: hard_error
+
+runtime:
+  conda_environment: LQ_signal
+  command_prefix: [conda, run, -n, LQ_signal, python]
+  one_process_per_fit: true
+  gpu_use: forbidden
+  network_use: forbidden
+  automatic_download: forbidden
+  materializer: scripts/materialize_p05_cpu_arm_job.py
+  output_collision: atomic_create_only_hard_error
+
+outputs:
+  execution_status_on_materialization: not_started
+  evidence_status: unadjudicated
+  claim_support_before_ledger_and_audit: forbidden
+  result_reuse_across_neural_model_seeds: forbidden
+
+arms:
+  P05-B2:
+    role: posthoc_fuzzy_surrogate
+    implementation_callable: src.explain_factory.p05_posthoc_surrogate.train_p05_b2_posthoc_surrogate
+    fit_count: 10
+    fit_axis: dataset_times_corresponding_registered_B0_model_seed
+    registered_b0_model_seeds: [42, 123, 456, 789, 1024]
+    required_dataset_artifacts:
+      - train_weights
+      - validation_weights
+      - channel_normalization
+      - split_manifest
+      - signal_cache_manifest
+    required_b0_artifacts: [checkpoint, run_manifest, predictions]
+    output_kind: selected_surrogate_checkpoint_package
+  P05-B4:
+    role: classical_fuzzy
+    implementation_callable: src.explain_factory.p05_classical_fuzzy.run_p05_b4_classical_fuzzy
+    fit_count: 2
+    fit_axis: dataset_only
+    fits_per_dataset: 1
+    deterministic_fcm_initialization_seed: 20260801
+    model_seed_axis: forbidden
+    model_seed_repetition: forbidden_as_redundant_deterministic_fit
+    required_dataset_artifacts:
+      - train_weights
+      - channel_normalization
+      - split_manifest
+      - signal_cache_manifest
+    required_b0_artifacts: []
+    output_kind: model_and_prediction_package
+
+datasets:
+  CWRU:
+    dataset_id: 1
+    num_classes: 4
+    artifacts:
+      train_weights:
+        path: __REQUIRED_CWRU_TRAIN_WEIGHTS_PATH__
+        sha256: __REQUIRED_CWRU_TRAIN_WEIGHTS_SHA256__
+      validation_weights:
+        path: __REQUIRED_CWRU_VALIDATION_WEIGHTS_PATH__
+        sha256: __REQUIRED_CWRU_VALIDATION_WEIGHTS_SHA256__
+      channel_normalization:
+        path: __REQUIRED_CWRU_CHANNEL_NORMALIZATION_PATH__
+        sha256: __REQUIRED_CWRU_CHANNEL_NORMALIZATION_SHA256__
+      split_manifest:
+        path: __REQUIRED_CWRU_SPLIT_MANIFEST_PATH__
+        sha256: __REQUIRED_CWRU_SPLIT_MANIFEST_SHA256__
+      signal_cache_manifest:
+        path: __REQUIRED_CWRU_SIGNAL_CACHE_MANIFEST_PATH__
+        sha256: __REQUIRED_CWRU_SIGNAL_CACHE_MANIFEST_SHA256__
+  XJTU:
+    dataset_id: 2
+    num_classes: 2
+    artifacts:
+      train_weights:
+        path: __REQUIRED_XJTU_TRAIN_WEIGHTS_PATH__
+        sha256: __REQUIRED_XJTU_TRAIN_WEIGHTS_SHA256__
+      validation_weights:
+        path: __REQUIRED_XJTU_VALIDATION_WEIGHTS_PATH__
+        sha256: __REQUIRED_XJTU_VALIDATION_WEIGHTS_SHA256__
+      channel_normalization:
+        path: __REQUIRED_XJTU_CHANNEL_NORMALIZATION_PATH__
+        sha256: __REQUIRED_XJTU_CHANNEL_NORMALIZATION_SHA256__
+      split_manifest:
+        path: __REQUIRED_XJTU_SPLIT_MANIFEST_PATH__
+        sha256: __REQUIRED_XJTU_SPLIT_MANIFEST_SHA256__
+      signal_cache_manifest:
+        path: __REQUIRED_XJTU_SIGNAL_CACHE_MANIFEST_PATH__
+        sha256: __REQUIRED_XJTU_SIGNAL_CACHE_MANIFEST_SHA256__
+
+jobs:
+  - id: P05-CPU-B2-CWRU-S42
+    arm: P05-B2
+    dataset: CWRU
+    b0_model_seed: 42
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_CWRU_B0_S42_CHECKPOINT_PATH__, sha256: __REQUIRED_CWRU_B0_S42_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_CWRU_B0_S42_RUN_MANIFEST_PATH__, sha256: __REQUIRED_CWRU_B0_S42_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_CWRU_B0_S42_PREDICTIONS_PATH__, sha256: __REQUIRED_CWRU_B0_S42_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-CWRU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-CWRU-S42 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-CWRU-S123
+    arm: P05-B2
+    dataset: CWRU
+    b0_model_seed: 123
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_CWRU_B0_S123_CHECKPOINT_PATH__, sha256: __REQUIRED_CWRU_B0_S123_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_CWRU_B0_S123_RUN_MANIFEST_PATH__, sha256: __REQUIRED_CWRU_B0_S123_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_CWRU_B0_S123_PREDICTIONS_PATH__, sha256: __REQUIRED_CWRU_B0_S123_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-CWRU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-CWRU-S123 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-CWRU-S456
+    arm: P05-B2
+    dataset: CWRU
+    b0_model_seed: 456
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_CWRU_B0_S456_CHECKPOINT_PATH__, sha256: __REQUIRED_CWRU_B0_S456_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_CWRU_B0_S456_RUN_MANIFEST_PATH__, sha256: __REQUIRED_CWRU_B0_S456_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_CWRU_B0_S456_PREDICTIONS_PATH__, sha256: __REQUIRED_CWRU_B0_S456_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-CWRU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-CWRU-S456 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-CWRU-S789
+    arm: P05-B2
+    dataset: CWRU
+    b0_model_seed: 789
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_CWRU_B0_S789_CHECKPOINT_PATH__, sha256: __REQUIRED_CWRU_B0_S789_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_CWRU_B0_S789_RUN_MANIFEST_PATH__, sha256: __REQUIRED_CWRU_B0_S789_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_CWRU_B0_S789_PREDICTIONS_PATH__, sha256: __REQUIRED_CWRU_B0_S789_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-CWRU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-CWRU-S789 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-CWRU-S1024
+    arm: P05-B2
+    dataset: CWRU
+    b0_model_seed: 1024
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_CWRU_B0_S1024_CHECKPOINT_PATH__, sha256: __REQUIRED_CWRU_B0_S1024_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_CWRU_B0_S1024_RUN_MANIFEST_PATH__, sha256: __REQUIRED_CWRU_B0_S1024_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_CWRU_B0_S1024_PREDICTIONS_PATH__, sha256: __REQUIRED_CWRU_B0_S1024_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-CWRU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-CWRU-S1024 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-XJTU-S42
+    arm: P05-B2
+    dataset: XJTU
+    b0_model_seed: 42
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_XJTU_B0_S42_CHECKPOINT_PATH__, sha256: __REQUIRED_XJTU_B0_S42_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_XJTU_B0_S42_RUN_MANIFEST_PATH__, sha256: __REQUIRED_XJTU_B0_S42_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_XJTU_B0_S42_PREDICTIONS_PATH__, sha256: __REQUIRED_XJTU_B0_S42_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-XJTU-S42
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-XJTU-S42 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-XJTU-S123
+    arm: P05-B2
+    dataset: XJTU
+    b0_model_seed: 123
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_XJTU_B0_S123_CHECKPOINT_PATH__, sha256: __REQUIRED_XJTU_B0_S123_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_XJTU_B0_S123_RUN_MANIFEST_PATH__, sha256: __REQUIRED_XJTU_B0_S123_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_XJTU_B0_S123_PREDICTIONS_PATH__, sha256: __REQUIRED_XJTU_B0_S123_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-XJTU-S123
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-XJTU-S123 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-XJTU-S456
+    arm: P05-B2
+    dataset: XJTU
+    b0_model_seed: 456
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_XJTU_B0_S456_CHECKPOINT_PATH__, sha256: __REQUIRED_XJTU_B0_S456_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_XJTU_B0_S456_RUN_MANIFEST_PATH__, sha256: __REQUIRED_XJTU_B0_S456_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_XJTU_B0_S456_PREDICTIONS_PATH__, sha256: __REQUIRED_XJTU_B0_S456_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-XJTU-S456
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-XJTU-S456 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-XJTU-S789
+    arm: P05-B2
+    dataset: XJTU
+    b0_model_seed: 789
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_XJTU_B0_S789_CHECKPOINT_PATH__, sha256: __REQUIRED_XJTU_B0_S789_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_XJTU_B0_S789_RUN_MANIFEST_PATH__, sha256: __REQUIRED_XJTU_B0_S789_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_XJTU_B0_S789_PREDICTIONS_PATH__, sha256: __REQUIRED_XJTU_B0_S789_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-XJTU-S789
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-XJTU-S789 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B2-XJTU-S1024
+    arm: P05-B2
+    dataset: XJTU
+    b0_model_seed: 1024
+    b0_artifacts:
+      checkpoint: {path: __REQUIRED_XJTU_B0_S1024_CHECKPOINT_PATH__, sha256: __REQUIRED_XJTU_B0_S1024_CHECKPOINT_SHA256__}
+      run_manifest: {path: __REQUIRED_XJTU_B0_S1024_RUN_MANIFEST_PATH__, sha256: __REQUIRED_XJTU_B0_S1024_RUN_MANIFEST_SHA256__}
+      predictions: {path: __REQUIRED_XJTU_B0_S1024_PREDICTIONS_PATH__, sha256: __REQUIRED_XJTU_B0_S1024_PREDICTIONS_SHA256__}
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B2-XJTU-S1024
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B2-XJTU-S1024 --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B4-CWRU
+    arm: P05-B4
+    dataset: CWRU
+    fit_identity: dataset_only_no_model_seed
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B4-CWRU
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B4-CWRU --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-CPU-B4-XJTU
+    arm: P05-B4
+    dataset: XJTU
+    fit_identity: dataset_only_no_model_seed
+    output_dir: results/experiments/p05/cpu_arms/P05-CPU-B4-XJTU
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_cpu_arm_job.py --job-id P05-CPU-B4-XJTU --bindings-json BINDINGS_JSON_PATH --output-package CREATE_ONLY_PACKAGE_PATH

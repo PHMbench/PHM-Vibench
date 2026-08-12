@@ -1,0 +1,69 @@
+# P05 - BASELINE comparator (PLACEHOLDER): classical ML (SVM / RF / XGBoost).
+# ADDITIVE config under configs/experiments/p05/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# STATUS: needs_new_component.
+# The legacy draft's classical baselines (SVM 58.3%, RF 54.7%, XGBoost 56.9%)
+# were driven by an unregistered RUN-SMOKE-B07 "classical fuzzy dummy" path and a
+# reviewer script. No classical-ML model (SVM/RF/XGBoost over handcrafted stat
+# features) is registered in src/model_factory/model_registry.csv, and no
+# task_factory task emits a scikit-learn-style training loop.
+# Phase-2 must:
+#   1) add a registered classical-ML head (e.g. H_0X_StatFeature_cla) that takes
+#      the same statistical feature vector the fuzzy reasoner consumes, AND
+#   2) wire a sklearn-backed trainer path (or a torch-wrapper) so SVM/RF/XGBoost
+#      run under the same protocol/split/seed as the method arm.
+# This stub mirrors the method-arm data/task blocks so the only delta needed
+# after the new component is the `model.*` block.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Supports (once unblocked): CLAIM-BASELINE-001 (SVM/RF/XGB rows),
+#   CLAIM-IMP-001 (vs the legacy "20% baseline" — itself only the dummy
+#   RUN-SMOKE-B07 result; must be re-measured honestly).
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_baseline_classical_indomain"
+  seed: 42
+  output_dir: "results/experiments/p05/baseline_classical_indomain"
+  notes: "P05 classical baseline (PLACEHOLDER). needs_new_component: SVM/RF/XGBoost not registered."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # --- BEGIN needs_new_component block ---
+  # Provisional registry id. Phase-2 must add a row:
+  #   Classical,H_0X_StatFeature_cla,src/model_factory/Classical/H_0X_StatFeature_cla.py,...
+  # exposing an `estimator` arg in {svm, random_forest, xgboost} and a
+  # statistical-feature extractor compatible with the fuzzy reasoner input.
+  type: "Classical"
+  name: "H_0X_StatFeature_cla"
+  estimator: "svm"                  # sweep {svm, random_forest, xgboost}
+  num_classes: 10
+  # --- END needs_new_component block ---
+
+task:
+  target_system_id: [1]              # CWRU default; sweep [1]/[2]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

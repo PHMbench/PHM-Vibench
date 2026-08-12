@@ -1,0 +1,270 @@
+schema_version: 1
+kind: p05_frozen_neural_tuning_execution_matrix
+paper_id: P05
+protocol_id: P05-G040-v3.2
+matrix_id: P05-NEURAL-TUNING-v1
+status: frozen_declarative_awaiting_gpu_uuid_binding
+
+pilot_common_contract:
+  path: configs/experiments/p05/protocol/pilot_matrix_p05_v1.yaml
+  sha256: 2920bf24053579c0fbe192f780c07f0c2d59401be84a5b5c8c4bae6a3b3fb138
+  selector: common_config
+  reused_sections: [common_config, datasets.CWRU.config, datasets.XJTU.config]
+  hash_mismatch: hard_error
+
+stage_contract:
+  phase: tuning
+  factors:
+    arms: [P05-M, P05-B0, P05-B1, P05-B3]
+    datasets: [CWRU, XJTU]
+    learning_rates: [0.001, 0.0003]
+  job_count: 16
+  seed: 20260801
+  environment_stage: fit_validate_only
+  maximum_epochs: 60
+  early_stopping: true
+  patience: 10
+  optimizer: adam
+  weight_decay: 0.0001
+  scheduler: null
+  checkpoint_selection: minimum_validation_loss
+  learning_rate_selection:
+    primary: maximum_checkpoint_validation_macro_f1
+    tie_tolerance: 0.0001
+    tie_breakers: [lower_validation_loss, lower_learning_rate]
+  test_dataset_construction: forbidden
+  test_cache_access: forbidden
+  test_metric_access: forbidden
+  trace_export: false_for_every_arm
+
+runtime:
+  conda_environment: LQ_signal
+  command_prefix: [conda, run, -n, LQ_signal, python]
+  materializer: scripts/materialize_p05_neural_job.py
+  allowed_physical_gpu_indices: [0, 1]
+  forbidden_physical_gpu_indices: [2]
+  maximum_concurrent_processes_per_gpu: 1
+  one_gpu_per_process: true
+  distributed_execution: forbidden
+  gpu_uuid_binding: required_at_materialization
+  network_use: forbidden
+  automatic_download: forbidden
+  output_collision: atomic_create_only_hard_error
+
+outputs:
+  materialization_status: created-not-executed
+  execution_status: not_started
+  evidence_status: unadjudicated
+  claim_support_before_ledger_and_audit: forbidden
+
+arms:
+  P05-M:
+    role: proposed_fuzzy_head
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: true}
+          neural_residual: {enable: false}
+          anfis: {enable: false}
+      task: {p05_arm_id: P05-M, p05_trace_export: false}
+  P05-B0:
+    role: same_backbone_no_fuzzy_head
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: false}
+          neural_residual: {enable: false}
+          anfis: {enable: false}
+      task: {p05_arm_id: P05-B0, p05_trace_export: false}
+  P05-B1:
+    role: parameter_matched_neural_residual
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: false}
+          neural_residual: {enable: true}
+          anfis: {enable: false}
+      task: {p05_arm_id: P05-B1, p05_trace_export: false}
+    dataset_config:
+      CWRU:
+        model:
+          uxfd:
+            neural_residual: {hidden_dim: 26}
+      XJTU:
+        model:
+          uxfd:
+            neural_residual: {hidden_dim: 29}
+  P05-B3:
+    role: anfis_complete_logits_head
+    config:
+      model:
+        uxfd:
+          fuzzy: {enable: false}
+          neural_residual: {enable: false}
+          anfis:
+            enable: true
+            num_features: 8
+            num_membership_functions: 3
+            num_rules: 10
+            antecedent_temperature: 1.0
+            min_width: 0.0001
+            firing_epsilon: 1.0e-12
+      task: {p05_arm_id: P05-B3, p05_trace_export: false}
+
+datasets:
+  CWRU:
+    pilot_dataset_key: CWRU
+    dataset_id: 1
+    num_classes: 4
+  XJTU:
+    pilot_dataset_key: XJTU
+    dataset_id: 2
+    num_classes: 2
+
+jobs:
+  - id: P05-TUNE-M-CWRU-LR1E3
+    arm: P05-M
+    dataset: CWRU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-M-CWRU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-M-CWRU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-M-CWRU-LR3E4
+    arm: P05-M
+    dataset: CWRU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-M-CWRU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-M-CWRU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-M-XJTU-LR1E3
+    arm: P05-M
+    dataset: XJTU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-M-XJTU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-M-XJTU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-M-XJTU-LR3E4
+    arm: P05-M
+    dataset: XJTU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-M-XJTU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-M-XJTU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B0-CWRU-LR1E3
+    arm: P05-B0
+    dataset: CWRU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B0-CWRU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B0-CWRU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B0-CWRU-LR3E4
+    arm: P05-B0
+    dataset: CWRU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B0-CWRU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B0-CWRU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B0-XJTU-LR1E3
+    arm: P05-B0
+    dataset: XJTU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B0-XJTU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B0-XJTU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B0-XJTU-LR3E4
+    arm: P05-B0
+    dataset: XJTU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B0-XJTU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B0-XJTU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B1-CWRU-LR1E3
+    arm: P05-B1
+    dataset: CWRU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B1-CWRU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B1-CWRU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B1-CWRU-LR3E4
+    arm: P05-B1
+    dataset: CWRU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B1-CWRU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B1-CWRU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B1-XJTU-LR1E3
+    arm: P05-B1
+    dataset: XJTU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B1-XJTU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B1-XJTU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B1-XJTU-LR3E4
+    arm: P05-B1
+    dataset: XJTU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B1-XJTU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B1-XJTU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B3-CWRU-LR1E3
+    arm: P05-B3
+    dataset: CWRU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B3-CWRU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B3-CWRU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B3-CWRU-LR3E4
+    arm: P05-B3
+    dataset: CWRU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B3-CWRU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B3-CWRU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B3-XJTU-LR1E3
+    arm: P05-B3
+    dataset: XJTU
+    learning_rate: 0.001
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B3-XJTU-LR1E3
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B3-XJTU-LR1E3 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+  - id: P05-TUNE-B3-XJTU-LR3E4
+    arm: P05-B3
+    dataset: XJTU
+    learning_rate: 0.0003
+    seed: 20260801
+    output_dir: results/experiments/p05/tuning/P05-TUNE-B3-XJTU-LR3E4
+    materialize_command: conda run -n LQ_signal python scripts/materialize_p05_neural_job.py --stage tuning --job-id P05-TUNE-B3-XJTU-LR3E4 --gpu-uuid GPU_UUID_AT_LAUNCH --output-package CREATE_ONLY_PACKAGE_PATH
+
+execution_waves:
+  - wave: 1
+    concurrent_jobs:
+      - {job_id: P05-TUNE-M-CWRU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-M-CWRU-LR3E4, physical_gpu_index: 1}
+  - wave: 2
+    concurrent_jobs:
+      - {job_id: P05-TUNE-M-XJTU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-M-XJTU-LR3E4, physical_gpu_index: 1}
+  - wave: 3
+    concurrent_jobs:
+      - {job_id: P05-TUNE-B0-CWRU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-B0-CWRU-LR3E4, physical_gpu_index: 1}
+  - wave: 4
+    concurrent_jobs:
+      - {job_id: P05-TUNE-B0-XJTU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-B0-XJTU-LR3E4, physical_gpu_index: 1}
+  - wave: 5
+    concurrent_jobs:
+      - {job_id: P05-TUNE-B1-CWRU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-B1-CWRU-LR3E4, physical_gpu_index: 1}
+  - wave: 6
+    concurrent_jobs:
+      - {job_id: P05-TUNE-B1-XJTU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-B1-XJTU-LR3E4, physical_gpu_index: 1}
+  - wave: 7
+    concurrent_jobs:
+      - {job_id: P05-TUNE-B3-CWRU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-B3-CWRU-LR3E4, physical_gpu_index: 1}
+  - wave: 8
+    concurrent_jobs:
+      - {job_id: P05-TUNE-B3-XJTU-LR1E3, physical_gpu_index: 0}
+      - {job_id: P05-TUNE-B3-XJTU-LR3E4, physical_gpu_index: 1}

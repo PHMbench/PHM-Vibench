@@ -8,6 +8,13 @@ import math
 import numpy as np
 from torch.utils.data import Dataset
 
+from ..p05_weighting import WeightPlan
+from ..protocol_transforms import (
+    ChannelStandardizationPlan,
+    apply_train_channel_standardization,
+    exact_evenly_spaced_spans,
+    protocol_sample_id,
+)
 
 _WITHIN_ID_TEST_TASK_TYPES = frozenset({"FS", "GFS", "pretrain", "Pretrain"})
 
@@ -39,7 +46,11 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         else:
             split_strategy = getattr(split_config, "strategy", "legacy_windows")
         self.split_strategy = str(split_strategy)
-        if self.split_strategy not in {"legacy_windows", "grouped_metadata"}:
+        if self.split_strategy not in {
+            "legacy_windows",
+            "grouped_metadata",
+            "preassigned_metadata",
+        }:
             raise ValueError(
                 "Unknown data.split.strategy "
                 f"{self.split_strategy!r}; choose legacy_windows or grouped_metadata."
@@ -122,7 +133,61 @@ class Default_dataset(Dataset):  # THU_006or018_basic
 
         self.processed_data = []
         self.window_intervals: list[tuple[int, int]] = []
+        self.window_spans = []
+        self.metadata_row = metadata[self.key]
+        self.protocol_window_contract = self.split_strategy == "preassigned_metadata"
+        self.p05_evidence_mode = getattr(args_data, "p05_evidence_mode", False)
+        if not isinstance(self.p05_evidence_mode, bool):
+            raise TypeError("data.p05_evidence_mode must be a boolean")
+        if self.p05_evidence_mode and not self.protocol_window_contract:
+            raise ValueError("P05 evidence datasets require preassigned_metadata")
+        if self.protocol_window_contract:
+            group = self.metadata_row.get("Protocol_Group")
+            if not isinstance(group, str) or not group:
+                raise ValueError(
+                    "preassigned_metadata requires a non-empty Protocol_Group"
+                )
+            self.protocol_group = group
+        self.sample_weight = None
+        if self.p05_evidence_mode:
+            role_by_mode = {
+                "train": "train",
+                "val": "val",
+                "test": "test",
+            }
+            if self.mode not in role_by_mode:
+                raise ValueError(f"unknown P05 dataset mode {self.mode!r}")
+            plans = getattr(args_data, "p05_weight_plans", None)
+            role = role_by_mode[self.mode]
+            if not isinstance(plans, dict) or role not in plans:
+                raise ValueError(f"P05 weight plan is missing for mode {self.mode!r}")
+            weight_plan = plans[role]
+            if not isinstance(weight_plan, WeightPlan):
+                raise TypeError("P05 weight plans must be WeightPlan instances")
+            expected_role = "validation" if self.mode == "val" else self.mode
+            if weight_plan.role != expected_role:
+                raise ValueError(
+                    f"P05 weight plan role {weight_plan.role!r} does not match "
+                    f"mode {self.mode!r}"
+                )
+            if weight_plan.windows_per_record != self.num_window:
+                raise ValueError(
+                    "P05 weight plan window count does not match data.num_window"
+                )
+            if weight_plan.dataset_id != int(self.metadata_row["Dataset_id"]):
+                raise ValueError("P05 weight plan dataset does not match metadata")
+            self.sample_weight = np.float64(weight_plan.weight_for(self.key))
         self.prepare_data(metadata)
+        if self.protocol_window_contract:
+            # Protocol records can be several GiB in a complete run. Preserve
+            # only independently owned windows, then release the raw record.
+            self.processed_data = [
+                window.copy(order="C")
+                if np.shares_memory(window, self.data)
+                else window
+                for window in self.processed_data
+            ]
+            self.data = None
         self.mode = "valid" if self.mode == "val" else self.mode
 
     def _validate_window_config(self, raw_stride) -> None:
@@ -147,11 +212,16 @@ class Default_dataset(Dataset):  # THU_006or018_basic
                     "data.stride must be a positive integer when "
                     "window_sampling_strategy='sequential'."
                 )
-        elif raw_stride is not None:
+        elif raw_stride is not None and self.split_strategy != "preassigned_metadata":
             raise ValueError(
                 "data.stride is only consumed by "
                 "window_sampling_strategy='sequential'. Remove stride or select "
                 "the sequential strategy."
+            )
+        elif raw_stride is not None and self.stride <= 0:
+            raise ValueError(
+                "data.stride must be positive when it is declared by a "
+                "preassigned_metadata protocol."
             )
 
     @staticmethod
@@ -190,6 +260,7 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         self._process_single_data(self.data)
         if (
             self.split_strategy == "legacy_windows"
+            and not self.grouped_partition
             and self.mode in {"train", "val", "test_holdout"}
         ):
             self._split_data_for_mode()
@@ -206,7 +277,6 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         """Append one window and its exact raw-sample interval."""
         self.processed_data.append(sample_data[start_idx:end_idx])
         self.window_intervals.append((int(start_idx), int(end_idx)))
-
     def _sequential_sampling(self, sample_data, data_length):
         """Create windows from left to right."""
         num_samples = max(
@@ -244,6 +314,17 @@ class Default_dataset(Dataset):  # THU_006or018_basic
 
     def _evenly_spaced_sampling(self, sample_data, data_length):
         """Create windows distributed across the complete file."""
+        if self.protocol_window_contract:
+            self.window_spans = list(
+                exact_evenly_spaced_spans(
+                    data_length=data_length,
+                    window_size=self.window_size,
+                    count=self.num_window,
+                )
+            )
+            for span in self.window_spans:
+                self._append_window(sample_data, span.start, span.end)
+            return
         if data_length == self.window_size:
             self._append_window(sample_data, 0, self.window_size)
         elif self.num_window == 1:
@@ -274,12 +355,24 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         if not isinstance(sample_data, np.ndarray):
             sample_data = np.asarray(sample_data)
 
+        normalization = str(
+            getattr(self.args_data, "normalization", "standardization")
+        ).lower()
+        defer_protocol_cast = (
+            self.p05_evidence_mode
+            and normalization == "train_channel_standardization"
+        )
         dtype = getattr(self.args_data, "dtype", None)
-        if dtype == "float32":
+        if dtype == "float32" and not defer_protocol_cast:
             sample_data = sample_data.astype(np.float32)
-        elif dtype == "float64":
+        elif dtype == "float64" and not defer_protocol_cast:
             sample_data = sample_data.astype(np.float64)
-
+        if self.protocol_window_contract:
+            if sample_data.ndim != 3 or sample_data.shape[1:] != (2, 1):
+                raise ValueError(
+                    "P05 cached records must have exact raw shape (L, 2, 1); "
+                    f"got {sample_data.shape}"
+                )
         if sample_data.ndim == 3:
             sample_data = sample_data.reshape(sample_data.shape[0], -1)
         if sample_data.ndim not in {1, 2}:
@@ -355,6 +448,20 @@ class Default_dataset(Dataset):  # THU_006or018_basic
             result = (window - mean_vals) / (std_vals + 1e-8)
         elif normalization == "none":
             result = window
+        elif normalization == "train_channel_standardization":
+            plan = getattr(self.args_data, "p05_normalization_plan", None)
+            if not isinstance(plan, ChannelStandardizationPlan):
+                raise ValueError(
+                    "train_channel_standardization requires a frozen P05 plan"
+                )
+            if plan.dataset_id != int(self.metadata_row["Dataset_id"]):
+                raise ValueError("normalization plan dataset does not match metadata")
+            configured_dtype = np.dtype(getattr(self.args_data, "dtype", "float32"))
+            result = apply_train_channel_standardization(
+                window,
+                plan,
+                output_dtype=configured_dtype,
+            )
         else:
             raise ValueError(
                 "Unknown normalization method "
@@ -430,7 +537,6 @@ class Default_dataset(Dataset):  # THU_006or018_basic
 
         self.processed_data = self.processed_data[selection]
         self.window_intervals = self.window_intervals[selection]
-
     def __len__(self):
         return self.total_samples
 
@@ -438,10 +544,25 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         if idx < 0 or idx >= self.total_samples:
             raise IndexError(f"索引 {idx} 超出范围")
 
-        return {
+        out = {
             "x": self.processed_data[idx],
             "y": self.label,
         }
+        if self.protocol_window_contract:
+            span = self.window_spans[idx]
+            out.update(
+                {
+                    "sample_id": protocol_sample_id(self.key, span),
+                    "record_id": str(self.key),
+                    "group_id": self.protocol_group,
+                    "window_index": span.index,
+                    "window_start": span.start,
+                    "window_end": span.end,
+                }
+            )
+        if self.p05_evidence_mode:
+            out["sample_weight"] = self.sample_weight
+        return out
 
 
 class classification_dataset(Default_dataset):

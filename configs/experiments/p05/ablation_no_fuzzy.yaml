@@ -1,0 +1,68 @@
+# P05 - ABLATION A01: no fuzzy rules (uxfd.fuzzy.enable=false).
+# ADDITIVE sibling of configs/experiments/p05/method_fuzzy_indomain.yaml.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: ready (only changes model.uxfd.fuzzy.enable vs the method arm).
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Sweep policy: identical seed/dataset policy to method_fuzzy_indomain.yaml
+#   (only `model.uxfd.fuzzy.enable` differs — pure A/B).
+#
+# Supports: CLAIM-ABL-001, CLAIM-ABL-NARR-001 (delta vs method arm under the
+#   SAME protocol/split/seed). Run together with method_fuzzy_indomain.yaml.
+
+pipeline: "Pipeline_05_default_w_explain"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_ablation_no_fuzzy"
+  seed: 42
+  output_dir: "results/experiments/p05/ablation_no_fuzzy"
+  notes: "P05 A01 ablation: disable fuzzy residual head (pure TSPN_UXFD backbone)."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # Required TSPN.__init__ args (src/model_factory/X_model/TSPN.py): in_dim,
+  # out_dim, in_channels, out_channels (divisible by len(signal_processing_configs.layer1)),
+  # scale, skip_connection, device, num_classes. Matches configs/base/model/tspn_uxfd.yaml.
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  device: "cpu"
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    fuzzy:
+      enable: false                  # A01: remove the fuzzy rule head
+
+task:
+  target_system_id: [1]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

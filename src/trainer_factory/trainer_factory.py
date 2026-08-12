@@ -8,6 +8,7 @@ from argparse import Namespace
 import pytorch_lightning as pl
 
 from ..utils.registry import Registry
+from .p05_runtime import p05_evidence_mode_enabled
 
 TRAINER_REGISTRY = Registry()
 
@@ -74,8 +75,21 @@ def trainer_factory(
     path: str,
 ) -> pl.Trainer:
     """Instantiate one trainer or raise at the trainer factory boundary."""
+    p05_evidence_mode = p05_evidence_mode_enabled(args_trainer)
 
-    name, trainer_function = _resolve_trainer_function(args_trainer)
+    try:
+        name, trainer_function = _resolve_trainer_function(args_trainer)
+    except (ImportError, AttributeError) as exc:
+        if p05_evidence_mode:
+            name = getattr(
+                args_trainer,
+                "name",
+                getattr(args_trainer, "trainer_name", "Default_trainer"),
+            )
+            raise RuntimeError(
+                f"P05 evidence mode failed to import trainer {name!r}: {exc}"
+            ) from exc
+        raise
     try:
         return trainer_function(
             args_e=args_environment,
@@ -89,6 +103,10 @@ def trainer_factory(
             "__name__",
             type(trainer_function).__name__,
         )
+        if p05_evidence_mode:
+            raise RuntimeError(
+                f"P05 evidence mode failed to create trainer {name!r}: {exc}"
+            ) from exc
         raise RuntimeError(
             f"Cannot construct trainer {name!r} with {function_name}: {exc}. "
             "Check trainer settings, device availability, and output path."

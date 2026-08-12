@@ -13,6 +13,12 @@ class EnvironmentConfig(BaseModel):
     seed: int = Field(42, description="Global random seed.")
     output_dir: str = Field(..., description="Base output directory (prefer repo-relative).")
     iterations: int = Field(1, ge=1, description="Repeat runs with different seeds.")
+    stage: Literal["fit_validate_only", "fit_validate_test"] = Field(
+        "fit_validate_test",
+        description=(
+            "Execution stage. The default preserves the legacy fit/validate/test behavior."
+        ),
+    )
     notes: str = Field("", description="Free-form notes.")
 
     @model_validator(mode="after")
@@ -26,17 +32,81 @@ class EnvironmentConfig(BaseModel):
 class DataSplitConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    strategy: Literal["legacy_windows", "grouped_metadata"] = "legacy_windows"
+    strategy: Literal[
+        "legacy_windows",
+        "grouped_metadata",
+        "grouped_kfold",
+        "preassigned_metadata",
+    ] = "legacy_windows"
     group_key: Optional[str] = None
     stratify_key: Optional[str] = None
+    split_key: Optional[str] = None
     seed: int = 42
+    outer_folds: Optional[int] = Field(None, ge=3)
+    outer_fold: Optional[int] = Field(None, ge=0)
+    validation_offset: Optional[int] = Field(None, ge=1)
+    expected_manifest_payload_sha256: Optional[str] = None
     test_policy: Literal["partition", "task_defined"] = "partition"
     fractions: Optional[Dict[Literal["train", "val", "test"], float]] = None
     manifest_path: Optional[str] = None
 
     @model_validator(mode="after")
-    def _check_grouped_protocol(self) -> "DataSplitConfig":
+    def _check_split_protocol(self) -> "DataSplitConfig":
         if self.strategy == "legacy_windows":
+            return self
+        if self.strategy == "preassigned_metadata":
+            if not self.split_key:
+                raise ValueError(
+                    "data.split.split_key is required for preassigned_metadata"
+                )
+            if not self.group_key:
+                raise ValueError(
+                    "data.split.group_key is required for preassigned_metadata"
+                )
+            if not self.manifest_path:
+                raise ValueError(
+                    "data.split.manifest_path is required for preassigned_metadata"
+                )
+            if self.test_policy != "partition":
+                raise ValueError(
+                    "preassigned_metadata requires test_policy=partition"
+                )
+            if self.fractions is not None:
+                raise ValueError(
+                    "data.split.fractions must be omitted for preassigned_metadata"
+                )
+            return self
+        if self.strategy == "grouped_kfold":
+            if not self.group_key:
+                raise ValueError("data.split.group_key is required for grouped_kfold")
+            if not self.stratify_key:
+                raise ValueError(
+                    "data.split.stratify_key is required for grouped_kfold"
+                )
+            if not self.manifest_path:
+                raise ValueError("data.split.manifest_path is required for grouped_kfold")
+            if self.outer_folds is None:
+                raise ValueError("data.split.outer_folds is required for grouped_kfold")
+            if self.outer_fold is None or self.outer_fold >= self.outer_folds:
+                raise ValueError(
+                    "data.split.outer_fold must be in [0, outer_folds) for grouped_kfold"
+                )
+            if self.validation_offset is None or self.validation_offset >= self.outer_folds:
+                raise ValueError(
+                    "data.split.validation_offset must be in [1, outer_folds) "
+                    "for grouped_kfold"
+                )
+            if not self.expected_manifest_payload_sha256:
+                raise ValueError(
+                    "data.split.expected_manifest_payload_sha256 is required for "
+                    "grouped_kfold"
+                )
+            if self.test_policy != "partition":
+                raise ValueError("grouped_kfold requires test_policy=partition")
+            if self.fractions is not None:
+                raise ValueError(
+                    "data.split.fractions must be omitted for grouped_kfold"
+                )
             return self
         if not self.group_key:
             raise ValueError("data.split.group_key is required for grouped_metadata")
@@ -71,6 +141,13 @@ class DataConfig(BaseModel):
     metadata_file: Optional[str] = Field(
         None, description="Metadata filename relative to data_dir (xlsx/csv)."
     )
+    metadata_path: Optional[str] = Field(
+        None,
+        description=(
+            "Explicit metadata path. It is canonicalized to metadata_file for "
+            "the legacy data factory."
+        ),
+    )
     phm_data_config: Optional[str] = Field(
         None,
         description="Configuration path for the optional phm-data-factory backend.",
@@ -78,7 +155,34 @@ class DataConfig(BaseModel):
     dataset_name: Optional[str] = None
     batch_size: Optional[int] = Field(None, ge=1)
     num_workers: Optional[int] = Field(None, ge=0)
+    split_strategy: Optional[
+        Literal[
+            "legacy_windows",
+            "grouped_metadata",
+            "grouped_kfold",
+            "preassigned_metadata",
+        ]
+    ] = None
     split: Optional[DataSplitConfig] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _canonicalize_legacy_aliases(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        metadata_path = data.get("metadata_path")
+        metadata_file = data.get("metadata_file")
+        if metadata_path is not None:
+            if not isinstance(metadata_path, str) or not metadata_path.strip():
+                raise ValueError("data.metadata_path must be a non-empty path")
+            if metadata_file is not None and str(metadata_file) != metadata_path:
+                raise ValueError(
+                    "data.metadata_path and data.metadata_file must agree when both "
+                    "are provided"
+                )
+            data["metadata_file"] = metadata_path
+        return data
 
     @model_validator(mode="after")
     def _check_factory_fields(self) -> "DataConfig":
@@ -90,6 +194,14 @@ class DataConfig(BaseModel):
         elif not self.data_dir or not self.metadata_file:
             raise ValueError(
                 "data.data_dir and data.metadata_file are required for legacy factories"
+            )
+        if (
+            self.split_strategy is not None
+            and self.split is not None
+            and self.split_strategy != self.split.strategy
+        ):
+            raise ValueError(
+                "data.split_strategy must match data.split.strategy when both are provided"
             )
         return self
 
@@ -249,7 +361,6 @@ class GradientConstraintConfig(BaseModel):
 
     name: Literal["fic"]
     epsilon: float = Field(2.0, gt=0.0)
-
 
 class PopulationRegularizationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")

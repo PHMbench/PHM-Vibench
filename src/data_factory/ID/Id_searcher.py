@@ -16,7 +16,9 @@ _ALL_ID_TASK_TYPES = frozenset(
         "Default_task",
     }
 )
-_TASKS_ALLOWING_ALL_SYSTEMS = frozenset({"pretrain", "Pretrain", "generative"})
+_TASKS_ALLOWING_ALL_SYSTEMS = frozenset(
+    {"pretrain", "Pretrain", "generative", "Default_task"}
+)
 _SUPERVISED_TASK_TYPES = frozenset(
     {
         "DG",

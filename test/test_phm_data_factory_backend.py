@@ -80,10 +80,31 @@ def _end_to_end_backend_config(tmp_path: Path) -> Path:
 def test_data_config_requires_factory_specific_fields() -> None:
     DataConfig(factory_name="phm_data", phm_data_config="backend.yaml")
     DataConfig(data_dir="data", metadata_file="metadata.csv")
+    path_alias = DataConfig(data_dir="data", metadata_path="metadata.csv")
+    assert path_alias.metadata_file == "metadata.csv"
     with pytest.raises(ValueError, match="phm_data_config"):
         DataConfig(factory_name="phm_data")
     with pytest.raises(ValueError, match="data.data_dir"):
         DataConfig()
+
+
+def test_data_config_rejects_conflicting_legacy_aliases() -> None:
+    with pytest.raises(ValueError, match="must agree"):
+        DataConfig(
+            data_dir="data",
+            metadata_path="metadata.csv",
+            metadata_file="different.csv",
+        )
+
+
+def test_data_config_rejects_conflicting_split_aliases() -> None:
+    with pytest.raises(ValueError, match="split_strategy must match"):
+        DataConfig(
+            data_dir="data",
+            metadata_path="metadata.csv",
+            split_strategy="preassigned_metadata",
+            split={"strategy": "legacy_windows"},
+        )
 
 
 def test_legacy_config_loader_applies_same_conditional_contract() -> None:

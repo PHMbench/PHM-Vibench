@@ -1,0 +1,71 @@
+# P05 FuzzyTrace contract arm.
+#
+# This checked-in default is a one-epoch CPU/dummy wiring smoke. It is not paper
+# evidence. Real CWRU/XJTU split, window, epoch, tuning, and device overrides are
+# intentionally deferred to the human-approved P05-G040 protocol lock.
+#
+# The registered X_model.TSPN_UXFD path exposes an additive fuzzy rule head:
+# ordered Gaussian memberships -> explicit soft antecedents -> rule firing ->
+# normalized firing -> class consequents -> per-rule class contributions.
+# forward_with_fuzzy_trace records every tensor needed to reconstruct total
+# logits and supports rule deletion and consequent-permutation interventions.
+
+pipeline: "Pipeline_05_Explainable_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_method_fuzzy_indomain"
+  seed: 42
+  output_dir: "results/experiments/p05/method_fuzzy_indomain"
+  notes: "P05 FuzzyTrace CPU/dummy contract smoke only; never use as paper evidence."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  internal_instance_normalization: false
+  device: "cpu"
+  num_classes: 2
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 8
+      num_membership_functions: 3
+      num_rules: 10
+      logit_scale: 0.5
+      antecedent_temperature: 1.0
+      min_width: 0.0001
+      firing_epsilon: 1.0e-12
+
+task:
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

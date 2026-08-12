@@ -9,7 +9,7 @@ from .contrastive_losses import (
     BarlowTwinsLoss, VICRegLoss
 )
 
-def get_loss_fn(loss_name: str) -> nn.Module:
+def get_loss_fn(loss_name: str, *, reduction: str | None = None) -> nn.Module:
     """Return a loss module according to ``loss_name``.
 
     Parameters
@@ -18,8 +18,32 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         Key identifying the loss type. Supported values include standard losses
         (``CE``, ``MSE``, ``MAE``, ``BCE``, ``NLL``) and SOTA contrastive losses
         (``INFONCE``, ``TRIPLET``, ``SUPCON``, ``PROTOTYPICAL``, ``BARLOWTWINS``, ``VICREG``).
+    reduction: str, optional
+        Explicit reduction for cross-entropy. Omitting it preserves the legacy
+        mean-reduced behavior. Other loss families reject this argument so an
+        evidence-mode request cannot silently change semantics.
     """
     # loss_name = args.loss
+    key = loss_name.upper()
+    if reduction is not None:
+        if key not in {"CE", "CE_WEIGHTED"}:
+            raise ValueError(
+                "explicit reduction is currently supported only for CE/CE_weighted"
+            )
+        if key == "CE_WEIGHTED" and reduction != "none":
+            raise ValueError(
+                "CE_weighted requires reduction='none'; sample weights are applied "
+                "by the evidence task"
+            )
+        if reduction not in {"none", "mean", "sum"}:
+            raise ValueError(f"unsupported CE reduction: {reduction!r}")
+        return nn.CrossEntropyLoss(reduction=reduction)
+
+    if key == "CE_WEIGHTED":
+        raise ValueError(
+            "CE_weighted requires an explicit unreduced loss and external sample weights"
+        )
+
     loss_mapping = {
         "CE": nn.CrossEntropyLoss(),
         "MSE": nn.MSELoss(),
@@ -37,7 +61,6 @@ def get_loss_fn(loss_name: str) -> nn.Module:
         "VICREG": VICRegLoss(),
     }
 
-    key = loss_name.upper()
     if key not in loss_mapping:
         raise ValueError(
             f"不支持的损失函数类型: {loss_name}，可选类型: {list(loss_mapping.keys())}"

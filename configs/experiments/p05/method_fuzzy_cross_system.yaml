@@ -1,0 +1,78 @@
+# P05 - CROSS-DATASET transfer (CDDG): XJTU -> CWRU with the fuzzy method.
+# ADDITIVE config under configs/experiments/p05/.
+# Derives from configs/demo/02_cross_system/multi_system_cddg.yaml (multi-system CDDG base).
+#
+# Status: ready (data + model + task paths are registered; the CDDG task path
+#   uses task_registry row 4: CDDG/classification).
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu, dummy data.
+#
+# Sweep policy:
+#   for tgt in {1=CWRU, 2=XJTU}; for seed in {42,123,456,789,1024}:
+#     python main.py --config configs/experiments/p05/method_fuzzy_cross_system.yaml \
+#       --override task.target_system_id=[<tgt>] --override environment.seed=<seed> \
+#       --override trainer.num_epochs=<full> --override trainer.device=cuda \
+#       --override data.data_dir=/home/user/data/PHMbenchdata/PHM-Vibench \
+#       --override data.metadata_file=metadata.xlsx
+#   (source systems are the complement of the target; confirm at protocol lock.)
+#
+# Supports: CLAIM-XDAT-001 (cross-dataset drop vs in-domain), CLAIM-CASE-* (rail/
+#   aviation cases require a separate safety-case collector — see ablation
+#   no_safety_fallback.yaml notes), CLAIM-ARCH-FOUR-LAYER (cross-system evidence).
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/cddg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_method_fuzzy_cross_system"
+  seed: 42
+  output_dir: "results/experiments/p05/method_fuzzy_cross_system"
+  notes: "P05 cross-dataset transfer: X_model.TSPN_UXFD + uxfd.fuzzy, CWRU<->XJTU CDDG."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # Required TSPN.__init__ args (src/model_factory/X_model/TSPN.py): in_dim,
+  # out_dim, in_channels, out_channels, scale, skip_connection, device, num_classes.
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  device: "cpu"
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 32
+      num_membership_functions: 3
+      num_rules: 10
+      logit_scale: 0.5
+
+task:
+  target_system_id: [1]              # default target = CWRU (source = XJTU and others); sweep to [2]
+  target_domain_num: 1
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

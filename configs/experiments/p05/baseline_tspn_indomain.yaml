@@ -1,0 +1,70 @@
+# P05 - BASELINE comparator: X_model.TSPN (no fuzzy) in-domain.
+# ADDITIVE config under configs/experiments/p05/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: ready (X_model.TSPN is registered in model_registry.csv).
+# This is the registered, non-fuzzy TSPN — the closest registered comparator to
+# the legacy draft's "TSPN 76K params / 65.2%" baseline. The legacy draft itself
+# never produced an accepted TSPN run, so this baseline column must be produced
+# under the SAME protocol/split/seed as method_fuzzy_indomain.yaml.
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Sweep policy: identical seed/dataset policy to method_fuzzy_indomain.yaml.
+#
+# Supports: CLAIM-BASELINE-001 (TSPN row), CLAIM-IMP-001 (param/acc comparison),
+#           CLAIM-SPEED-001 (inference profile comparator).
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_baseline_tspn_indomain"
+  seed: 42
+  output_dir: "results/experiments/p05/baseline_tspn_indomain"
+  notes: "P05 baseline comparator: registered X_model.TSPN on CWRU/XJTU."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  # Required TSPN.__init__ args (src/model_factory/X_model/TSPN.py): in_dim,
+  # out_dim, in_channels, out_channels (divisible by len(signal_processing_configs.layer1)),
+  # scale, skip_connection, device, num_classes. The original block used
+  # input_dim/hidden_dim/num_prototypes which are NOT read by TSPN.__init__
+  # (it reads signal_processing_configs/in_dim/out_dim/out_channels/scale/...).
+  type: "X_model"
+  name: "TSPN"
+  in_dim: 128
+  out_dim: 128
+  in_channels: 2
+  out_channels: 4
+  scale: 1
+  skip_connection: true
+  device: "cpu"
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+
+task:
+  target_system_id: [1]              # CWRU default; sweep [1]/[2]
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

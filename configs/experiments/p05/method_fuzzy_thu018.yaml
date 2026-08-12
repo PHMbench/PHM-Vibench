@@ -1,0 +1,80 @@
+# P05 - METHOD arm on the legacy headline dataset THU_018 (RM_018_THU24).
+# ADDITIVE config under configs/experiments/p05/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: needs_data (THU_018 = RM_018_THU24 = Dataset_id 14).
+# IMPORTANT traceability note: the legacy draft's "THU_018" is reader
+#   RM_018_THU24, which is Dataset_id **14** in metadata.xlsx (NOT 18). The
+#   legacy manuscript never bound an accepted run to this id. Phase-2 must:
+#   1) confirm the THU_018 raw data is on disk under data.data_dir/RM_018_THU24/...
+#      (or its .h5), AND
+#   2) bind task.target_system_id=[14] under the locked protocol.
+#   Until the THU_018 raw files are confirmed present, this config is run on
+#   dummy data only (wiring smoke).
+#
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu, dummy data.
+#
+# Sweep policy (after data confirmed + protocol lock P05-G040):
+#   for seed in {42,123,456,789,1024}:
+#     python main.py --config configs/experiments/p05/method_fuzzy_thu018.yaml \
+#       --override environment.seed=<seed> \
+#       --override trainer.num_epochs=<full> --override trainer.device=cuda \
+#       --override data.data_dir=/home/user/data/PHMbenchdata/PHM-Vibench \
+#       --override data.metadata_file=metadata.xlsx \
+#       --override data.split.strategy=grouped_metadata --override data.split.group_key=Domain_id \
+#       --override data.split.test_policy=partition
+#
+# Supports: CLAIM-ACC-001 (re-measured on the real THU_018), CLAIM-PER-001
+#   (per-class confusion matrix regenerated from an accepted run — NOT from the
+#   legacy Figure3_ConfusionMatrix.pdf which has no source data), CLAIM-IMP-001,
+#   CLAIM-COV-001, CLAIM-RULE-002 (rule activations), CLAIM-FEAT-001.
+
+pipeline: "Pipeline_05_default_w_explain"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p05_method_fuzzy_thu018"
+  seed: 42
+  output_dir: "results/experiments/p05/method_fuzzy_thu018"
+  notes: "P05 method arm on THU_018 = RM_018_THU24 = Dataset_id 14. needs_data (raw files unconfirmed)."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+
+model:
+  type: "X_model"
+  name: "TSPN_UXFD"
+  in_channels: 2
+  num_classes: 10
+  signal_processing_configs:
+    layer1: ["I"]
+  feature_extractor_configs: ["Mean", "Std"]
+  uxfd:
+    fuzzy:
+      enable: true
+      num_fuzzy_features: 32
+      num_membership_functions: 3
+      num_rules: 10
+      logit_scale: 0.5
+
+task:
+  target_system_id: [14]             # RM_018_THU24 (= legacy "THU_018")
+  source_domain_id: [0, 1, 2]
+  target_domain_id: [3]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1
