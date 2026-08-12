@@ -1,0 +1,18 @@
+# Base for P01's parameter-audited comparison family.
+model:
+  type: X_model
+  name: P01Baselines
+  device: cpu
+  variant: generic_attention
+  in_channels: 2
+  encoder_dim: 72
+  head_hidden: 256
+  projection_dim: 32
+  contrastive_temperature: 0.1
+  attention_heads: 4
+  dropout: 0.1
+  time_frequency:
+    n_fft: 128
+    hop_length: 32
+    center: true
+    normalized: false

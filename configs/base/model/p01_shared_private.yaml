@@ -1,0 +1,18 @@
+# Base model for P01's paired raw/STFT shared-private method.
+model:
+  type: X_model
+  name: P01SharedPrivate
+  device: cpu
+  in_channels: 2
+  encoder_dim: 64
+  latent_dim: 32
+  dropout: 0.1
+  time_frequency:
+    n_fft: 128
+    hop_length: 32
+    center: true
+    normalized: false
+  pairing:
+    mode: paired
+  objective:
+    variance_floor: 0.1

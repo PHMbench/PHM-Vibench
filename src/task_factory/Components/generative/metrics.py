@@ -227,6 +227,7 @@ def evaluate_smoke_metrics(
     duplicate_threshold: float = 1e-6,
     training_wall_clock_seconds: float | None = None,
     population_rbf_bandwidths: Sequence[float] = (0.1, 0.5, 1.0, 2.0),
+    population_regularization_enabled: bool = False,
 ) -> dict[str, Any]:
     """Compute the eight required structured Pipeline 06 smoke metrics."""
 
@@ -235,6 +236,9 @@ def evaluate_smoke_metrics(
     fake_labels = _label_vector(fake_labels, fake_tensor.shape[0])
     real_domains = _label_vector(real_domains, real_tensor.shape[0])
     fake_domains = _label_vector(fake_domains, fake_tensor.shape[0])
+    method_required_metrics: list[str] = []
+    if population_regularization_enabled:
+        method_required_metrics.append(POPULATION_DEPENDENCY_METRIC)
 
     metrics: dict[str, Any] = {
         "time_domain_statistics_distance": _safe_metric(

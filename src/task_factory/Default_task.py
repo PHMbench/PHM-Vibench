@@ -592,6 +592,50 @@ class Default_task(pl.LightningModule):
             self.parameters() # 只对当前 LightningModule 的参数计算正则化
         )
 
+    def _compute_auxiliary_loss(
+        self, reference_loss: torch.Tensor
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """Collect and explicitly weight model-provided representation losses."""
+
+        provider = getattr(self.network, "get_auxiliary_losses", None)
+        if not callable(provider):
+            return reference_loss.new_zeros(()), {}
+        components = provider()
+        if not isinstance(components, dict):
+            raise ValueError("get_auxiliary_losses must return a dict")
+        configured = getattr(self.args_task, "auxiliary_loss_weights", None)
+        if isinstance(configured, dict):
+            weights = configured
+        elif hasattr(configured, "__dict__"):
+            weights = vars(configured)
+        elif components:
+            raise ValueError(
+                "A model with auxiliary losses requires task.auxiliary_loss_weights"
+            )
+        else:
+            return reference_loss.new_zeros(()), {}
+        missing = sorted(set(components) - set(weights))
+        unknown = sorted(set(weights) - set(components))
+        if missing or unknown:
+            raise ValueError(
+                f"Auxiliary loss/weight mismatch: missing={missing}, unknown={unknown}"
+            )
+        total = reference_loss.new_zeros(())
+        checked = {}
+        for name, component in components.items():
+            if not isinstance(component, torch.Tensor) or component.numel() != 1:
+                raise ValueError(f"Auxiliary loss '{name}' must be a scalar tensor")
+            if not bool(torch.isfinite(component).all()):
+                raise FloatingPointError(f"Auxiliary loss '{name}' is not finite")
+            weight = float(weights[name])
+            if weight < 0.0:
+                raise ValueError(
+                    f"Auxiliary loss weight '{name}' must be non-negative"
+                )
+            checked[name] = component
+            total = total + weight * component
+        return total, checked
+
     def _shared_step(self, batch: Tuple,
                      stage: str,
                      task_id = False,
@@ -753,9 +797,19 @@ class Default_task(pl.LightningModule):
                     f"{stage}_{objective_name}_loss"
                 ] = objective_value
         else:
-            auxiliary_total = sum(
-                model_auxiliary.values(), torch.tensor(0.0, device=loss.device)
-            )
+            if model_auxiliary:
+                auxiliary_total = sum(
+                    model_auxiliary.values(),
+                    torch.tensor(0.0, device=loss.device),
+                )
+            else:
+                auxiliary_total, auxiliary_components = (
+                    self._compute_auxiliary_loss(loss)
+                )
+                for name, component in auxiliary_components.items():
+                    step_metrics[f"{stage}_aux_{name}_loss"] = component
+                if auxiliary_components:
+                    step_metrics[f"{stage}_aux_total_loss"] = auxiliary_total
             total_loss = loss + regularization_total + auxiliary_total
             if stage == "train":
                 Default_task._record_p01_training_objective(

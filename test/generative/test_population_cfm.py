@@ -143,6 +143,22 @@ def test_population_metric_is_optional_but_structured() -> None:
 
     assert metrics["population_dependency_mmd"]["status"] == "ok"
     assert "population_dependency_mmd" in metrics["summary"]["optional"]
+    assert "required_for_method" not in metrics["summary"]
+
+
+def test_population_metric_is_required_when_regularization_is_enabled() -> None:
+    real = torch.randn(3, 2, 16)
+    fake = torch.randn(3, 2, 16)
+    metrics = evaluate_smoke_metrics(
+        real,
+        fake,
+        population_regularization_enabled=True,
+    )
+
+    assert metrics["summary"]["required_for_method"] == [
+        "population_dependency_mmd"
+    ]
+    assert metrics["summary"]["method_required_ok"] is True
 
 
 def test_population_metric_uses_requested_bandwidths() -> None:

@@ -80,6 +80,19 @@ class DataConfig(BaseModel):
     num_workers: Optional[int] = Field(None, ge=0)
     split: Optional[DataSplitConfig] = None
 
+    @model_validator(mode="after")
+    def _check_factory_fields(self) -> "DataConfig":
+        if self.factory_name == "phm_data":
+            if not self.phm_data_config:
+                raise ValueError(
+                    "data.factory_name=phm_data requires data.phm_data_config"
+                )
+        elif not self.data_dir or not self.metadata_file:
+            raise ValueError(
+                "data.data_dir and data.metadata_file are required for legacy factories"
+            )
+        return self
+
 
 OperatorName = Literal[
     "I",
@@ -167,20 +180,6 @@ class XOANOperatorPathConfig(BaseModel):
         if self.entropy_weight + self.export_gap_weight <= 0:
             raise ValueError("at least one insufficiency-score weight must be positive")
         return self
-
-    @model_validator(mode="after")
-    def _check_factory_fields(self) -> "DataConfig":
-        if self.factory_name == "phm_data":
-            if not self.phm_data_config:
-                raise ValueError(
-                    "data.factory_name=phm_data requires data.phm_data_config"
-                )
-        elif not self.data_dir or not self.metadata_file:
-            raise ValueError(
-                "data.data_dir and data.metadata_file are required for legacy factories"
-            )
-        return self
-
 
 class ModelConfig(BaseModel):
     model_config = ConfigDict(extra="allow")

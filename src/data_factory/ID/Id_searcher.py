@@ -157,6 +157,19 @@ def search_target_dataset_metadata(metadata_accessor, args_task):
             )
         filtered_df = filtered_df[filtered_df["File"].isin(selected_set)].copy()
 
+    label_policy = str(getattr(args_task, "label_policy", "native"))
+    if label_policy == "binary_fault":
+        if "Label" not in filtered_df.columns:
+            raise ValueError("binary_fault label policy requires metadata column 'Label'.")
+        filtered_df = filtered_df[
+            filtered_df["Label"].notna() & (filtered_df["Label"] != -1)
+        ].copy()
+        filtered_df["Label"] = (
+            filtered_df["Label"].astype(float) > 0.0
+        ).astype(int)
+    elif label_policy != "native":
+        raise ValueError(f"Unknown task.label_policy: {label_policy}")
+
     if task_type in _SUPERVISED_TASK_TYPES:
         if "Label" not in filtered_df.columns:
             raise ValueError(
