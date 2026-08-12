@@ -123,6 +123,7 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         self.processed_data = []
         self.window_intervals: list[tuple[int, int]] = []
         self.prepare_data(metadata)
+        self.mode = "valid" if self.mode == "val" else self.mode
 
     def _validate_window_config(self, raw_stride) -> None:
         if self.window_size <= 0:

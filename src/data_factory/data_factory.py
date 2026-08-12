@@ -22,25 +22,130 @@ from .samplers.Sampler import GroupedIdBatchSampler, BalancedIdSampler
 from .data_utils import smart_read_csv, MetadataAccessor, download_data
 from .samplers.Get_sampler import Get_sampler
 from .ID.Id_searcher import search_ids_for_task, search_target_dataset_metadata
-from .splitting import resolve_data_splits
+from .splitting import SplitResult, resolve_data_splits
 from .grouped_split import build_grouped_split, write_frozen_json
 from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
 
 
-def resolve_dataset_class(task_type, task_name):
-    """Resolve a task-specific dataset, falling back only on a missing module."""
+class SplitContractError(RuntimeError):
+    """Raised before I/O when a configured split cannot be enforced safely."""
 
-    try:
-        module = importlib.import_module(
+
+class DatasetResolutionError(RuntimeError):
+    """Raised when the configured dataset implementation cannot be resolved."""
+
+
+def _config_value(config, key, default=None):
+    if isinstance(config, dict):
+        return config.get(key, default)
+    return getattr(config, key, default)
+
+
+def validate_split_preflight(args_data):
+    """Reject declared split contracts that cannot be consumed before data I/O."""
+
+    split_config = _config_value(args_data, "split")
+    if split_config is None:
+        return
+    strategy = _config_value(split_config, "strategy")
+    if not isinstance(strategy, str) or not strategy.strip():
+        raise SplitContractError("data.split.strategy is required")
+    if strategy == "legacy_windows":
+        return
+    if strategy not in {
+        "grouped_metadata",
+        "grouped_kfold",
+        "preassigned_metadata",
+    }:
+        raise SplitContractError(
+            f"Unsupported data.split.strategy {strategy!r}; refusing to ignore it"
+        )
+    group_key = _config_value(split_config, "group_key")
+    if not isinstance(group_key, str) or not group_key.strip():
+        raise SplitContractError(f"data.split.group_key is required for {strategy}")
+    manifest_path = _config_value(split_config, "manifest_path")
+    if not isinstance(manifest_path, str) or not manifest_path.strip():
+        raise SplitContractError(
+            f"data.split.manifest_path is required for {strategy}"
+        )
+    if strategy == "grouped_metadata" and _config_value(
+        split_config, "fractions"
+    ) is None:
+        raise SplitContractError(
+            "grouped_metadata without explicit split fractions is not implemented; "
+            "refusing to load data with an inert split contract"
+        )
+    if strategy == "preassigned_metadata":
+        split_key = _config_value(split_config, "split_key")
+        if not isinstance(split_key, str) or not split_key.strip():
+            raise SplitContractError(
+                "data.split.split_key is required for preassigned_metadata"
+            )
+
+
+def resolve_dataset_class(task_type, task_name):
+    """Resolve exactly one configured dataset module without silent fallback."""
+
+    if not isinstance(task_type, str) or not task_type.isidentifier():
+        raise DatasetResolutionError(f"Invalid task type {task_type!r}")
+    if not isinstance(task_name, str) or not task_name.isidentifier():
+        raise DatasetResolutionError(f"Invalid task name {task_name!r}")
+    if task_type == "Default_task":
+        module_name = (
             f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset"
         )
-    except ImportError:
-        from .dataset_task.Default_dataset import Default_dataset
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError:
+            from .dataset_task.Default_dataset import Default_dataset
 
-        return Default_dataset
-    return module.set_dataset
+            return Default_dataset
+        dataset_class = getattr(module, "set_dataset", None)
+        if dataset_class is None:
+            raise DatasetResolutionError(
+                f"Configured dataset module {module_name} has no set_dataset"
+            )
+        return dataset_class
+
+    task_root = Path(__file__).resolve().parent / "dataset_task"
+    task_dirs = sorted(
+        path
+        for path in task_root.iterdir()
+        if path.is_dir() and path.name.casefold() == task_type.casefold()
+    )
+    if len(task_dirs) != 1:
+        raise DatasetResolutionError(
+            f"Expected exactly one dataset task directory for {task_type!r}, "
+            f"found {[path.name for path in task_dirs]}"
+        )
+    expected_stem = f"{task_name}_dataset".casefold()
+    module_files = sorted(
+        path
+        for path in task_dirs[0].glob("*.py")
+        if path.stem.casefold() == expected_stem
+    )
+    if len(module_files) != 1:
+        raise DatasetResolutionError(
+            f"Expected exactly one dataset module for {task_type}.{task_name}, "
+            f"found {[path.name for path in module_files]}"
+        )
+    module_name = (
+        f"{__package__}.dataset_task.{task_dirs[0].name}.{module_files[0].stem}"
+    )
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError as exc:
+        raise DatasetResolutionError(
+            f"Failed to import configured dataset module {module_name}"
+        ) from exc
+    dataset_class = getattr(module, "set_dataset", None)
+    if dataset_class is None:
+        raise DatasetResolutionError(
+            f"Configured dataset module {module_name} has no set_dataset"
+        )
+    return dataset_class
 
 
 def _cache_directory(args_data):
@@ -381,6 +486,13 @@ class data_factory:
                 "test_policy=partition"
             )
         split = build_grouped_split(self.target_metadata, split_cfg)
+        self.split_result = SplitResult(
+            train_ids=tuple(split.train_ids),
+            val_ids=tuple(split.val_ids),
+            test_ids=tuple(split.test_ids),
+            strategy=str(getattr(split_cfg, "strategy", "grouped_metadata")),
+            manifest_path=str(getattr(split_cfg, "manifest_path", "")) or None,
+        )
         expected_sha = getattr(
             split_cfg, "expected_manifest_payload_sha256", None
         )
@@ -487,6 +599,12 @@ class data_factory:
         return datasets["train"], datasets["val"], datasets["test"]
 
     def _record_data_fingerprint(self, identifier, value):
+        records = getattr(self, "_data_fingerprint_records", None)
+        if records is None:
+            records = {}
+            self._data_fingerprint_records = records
+        elif not isinstance(records, dict):
+            raise TypeError("data fingerprint record collection must be a dictionary")
         array = np.asarray(value)
         if array.dtype.hasobject:
             raise ValueError("Evidence data fingerprints reject object-dtype arrays")
@@ -498,10 +616,10 @@ class data_factory:
             "dtype": str(contiguous.dtype),
             "nbytes": int(contiguous.nbytes),
         }
-        existing = self._data_fingerprint_records.get(key)
+        existing = records.get(key)
         if existing is not None and existing != record:
             raise RuntimeError(f"Data content drift detected within run for ID {key}")
-        self._data_fingerprint_records[key] = record
+        records[key] = record
 
     def get_data_fingerprint(self):
         expected_ids = {str(identifier) for identifier in self.target_metadata.keys()}
