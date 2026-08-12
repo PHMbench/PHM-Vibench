@@ -1,0 +1,56 @@
+# Default configuration for PathAnalysis Explainer
+# This method tracks signal transformations through model layers
+
+# Analysis options
+include_frequency_analysis: true
+include_energy_analysis: true
+include_statistical_analysis: true
+
+# Signal processing parameters
+sampling_rate: 1024.0  # Hz
+
+# Path analysis settings
+max_path_depth: 10
+importance_threshold: 0.1
+
+# Physical interpretations for different operators
+# Example mappings (can be extended):
+physical_interpretations:
+  # FFT-related operators
+  "fft": "Frequency domain transformation"
+  "fft_layer": "Fourier transform analysis"
+  "spectral": "Spectral decomposition"
+
+  # Wavelet-related operators
+  "wavelet": "Time-frequency analysis"
+  "wf": "Wavelet filtering"
+  "cwt": "Continuous wavelet transform"
+
+  # Hilbert transform
+  "hilbert": "Analytical signal computation"
+  "ht": "Envelope analysis"
+
+  # Convolution
+  "conv": "Feature extraction"
+  "conv1d": "1D convolution filtering"
+  "conv2d": "2D convolution filtering"
+
+  # Attention mechanisms
+  "attention": "Importance weighting"
+  "self_attention": "Self-attention mechanism"
+
+  # Normalization
+  "norm": "Signal normalization"
+  "batch_norm": "Batch normalization"
+
+  # Linear layers
+  "linear": "Linear transformation"
+  "fc": "Fully connected layer"
+
+# Visualization options
+visualization_modes:
+  - "auto"       # Automatic best visualization
+  - "path"       # Signal transformation path
+  - "importance" # Layer importance scores
+  - "energy"     # Energy distribution
+  - "frequency"  # Frequency analysis

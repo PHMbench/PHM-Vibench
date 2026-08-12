@@ -1,0 +1,66 @@
+schema_version: p02.measurement-conformance.v1
+contract_mode: conformance_only
+evidence_eligible: false
+metric_registry_sha256: a70589728c3a15258e3724f72e0dcd7ef7f5b0b6aa710692c6c85534829516a6
+
+measurement_fixture:
+  adapter:
+    adapter_id: numeric-attribution-reference
+    adapter_version: 1.0.0
+    adapter_sha256: "5555555555555555555555555555555555555555555555555555555555555555"
+    input_kind: sibling_numeric_attribution
+    output_kind: temporal_attribution
+    capabilities: [dense_attribution, deletion, paired_stability, topk_support, timing, memory]
+  source:
+    paper_id: FIXTURE
+    method_id: fixture-method
+    model_id: fixture-model
+    dataset_id: fixture-dataset
+    split_id: fixture-test
+    seed: 0
+    hardware_id: conformance-fixture-cpu
+    score_id: fixed_target_raw_score.v1
+    source_artifact_sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+    model_artifact_sha256: "6666666666666666666666666666666666666666666666666666666666666666"
+    config_sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+    environment_sha256: "3333333333333333333333333333333333333333333333333333333333333333"
+    code_sha256: "4444444444444444444444444444444444444444444444444444444444444444"
+  values:
+    - [0.9, 0.1, 0.4, 0.2]
+  sample_ids: [fixture-sample-0]
+  axes: [sample, time]
+  axis_units: [id, index]
+  coordinate_map_sha256: "8888888888888888888888888888888888888888888888888888888888888888"
+  value_semantics: signed_target_attribution
+  locator: fixtures/non_evidence/attribution.npy
+  target_id: class:fixture
+
+metric_fixture:
+  input_values: [4.0, 3.0, 2.0, 1.0]
+  attributions_first: [0.9, 0.1, 0.4, 0.2]
+  attributions_second: [0.8, 0.2, 0.3, 0.1]
+  deletion_fractions: [0.25, 0.5, 1.0]
+  deletion_query_fraction: 0.5
+  baseline: 0.0
+  top_k: 2
+  ranking_first: [0.9, 0.7, 0.5]
+  ranking_second: [0.6, 0.8, 0.4]
+  practical_margin_first: 0.0
+  practical_margin_second: 0.0
+  activation_threshold: 0.25
+  timing_start_ns: 1000000
+  timing_end_ns: 2500000
+  baseline_memory_bytes: 1024
+  peak_memory_bytes: 1049600
+  protocol_sha256: "7777777777777777777777777777777777777777777777777777777777777777"
+  absolute_tolerance: 1.0e-12
+  expected:
+    deletion_at_fraction: 6.0
+    aopc: 6.666666666666667
+    spearman_attribution: 0.8
+    topk_iou: 1.0
+    kendall_tau_b: 0.3333333333333333
+    pairwise_reversal_rate: 0.3333333333333333
+    activation_ratio: 0.5
+    elapsed_time_ms: 1.5
+    peak_memory_mib: 1.0

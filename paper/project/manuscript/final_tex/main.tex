@@ -1,0 +1,126 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{url}
+
+\title{An Evidence-Bound Explainable Fault Diagnosis Toolkit Checkpoint}
+
+\author{PHM-Vibench UXFD Authors%
+\thanks{This checkpoint binds the Toolkit manuscript entrypoint to current
+repository artifacts. It is not a final submission-ready manuscript.}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This checkpoint records the current submission-readiness state of the
+Explainable Fault Diagnosis Toolkit paper. The repository exposes a
+PHM-Vibench minimal reproduction config, six command-bound diagnostic baseline
+smokes, schema-valid historical Toolkit artifacts, and non-accepted smoke
+artifacts for schema, metric-family, manifest, snapshot, and post-hoc-only
+ablation surfaces. These artifacts remove the previous generic manuscript
+placeholder, but they do not support IEEE Transactions submission readiness.
+Accepted CWRU/XJTU or industrial multi-seed results, same-protocol Toolkit
+ablations, TOP representative artifacts, complete local RTX 4090 metadata, and
+SOTA infrastructure claims remain blocked.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Explainable fault diagnosis, benchmark toolkit, evidence contract,
+artifact schema, PHM-Vibench.
+\end{IEEEkeywords}
+
+\section{Scope}
+
+This manuscript entrypoint is an evidence checkpoint. It replaces the previous
+generic title, abstract, method, discussion, and conclusion placeholders with
+the exact claims currently allowed by the repository. It intentionally avoids
+claiming accepted performance, accepted TOP-method reproduction, GPU
+feasibility, or SOTA.
+
+\section{Current Evidence}
+
+The source of truth for the current comparison surface is
+\url{submission_prep/baseline_ablation_matrix.yaml}. It records one proposed
+Toolkit smoke entry, six diagnostic baseline entries, and six ablation entries.
+All PHM-Vibench runs in this checkpoint are dummy-data wiring checks, not
+accepted benchmark evidence.
+
+The repository also contains schema-valid historical Toolkit artifacts under
+\url{outputs/RM_MULTI_CWRU_XJTU/ToolkitBenchmark/seed_0/20260319_090111} and a
+benchmark excerpt under
+\url{results/autoresearch/20260319_090111/benchmark}. These artifacts are useful
+for manuscript wiring, but they lack the complete local two-RTX-4090 metadata
+required by the current goal package.
+
+\begin{table}[t]
+\centering
+\caption{Current Toolkit benchmark excerpt. This is not a same-protocol six-baseline result.}
+\label{tab:toolkit-excerpt}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Model & Explainer & Overall & Faithfulness & Time (ms) \\
+\midrule
+Fusion1D2D & intrinsic & 0.959 & 0.984 & 1.25 \\
+TSPN & intrinsic & 0.912 & 0.811 & 1.11 \\
+FuzzyLogic & intrinsic & 0.891 & 0.813 & 3.37 \\
+MoE & intrinsic & 0.824 & 0.701 & 1.89 \\
+OperatorAttention & intrinsic & 0.672 & 0.613 & 2.36 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\IfFileExists{results/autoresearch/20260319_090111/benchmark/overall_scores_comparison.png}{%
+  \includegraphics[width=\linewidth]{results/autoresearch/20260319_090111/benchmark/overall_scores_comparison.png}%
+}{%
+  \fbox{\parbox{0.9\linewidth}{Toolkit benchmark figure missing. The expected
+  checkpoint path is
+  \texttt{results/autoresearch/20260319\_090111/benchmark/overall\_scores\_comparison.png}.}}%
+}
+\caption{Existing Toolkit benchmark visualization bound for checkpoint wiring
+only. It does not satisfy the current six-baseline, TOP, GPU, or SOTA gates.}
+\label{fig:toolkit-score}
+\end{figure}
+
+\section{Ablation Checkpoint}
+
+The Toolkit ablation smoke runner binds the reviewer-facing ablation surfaces to
+concrete commands:
+\begin{itemize}
+  \item schema validation disabled;
+  \item faithfulness/stability metric-family subset disabled;
+  \item standardized manifest disabled;
+  \item fixed seed and config snapshot disabled;
+  \item post-hoc-only comparator mode.
+\end{itemize}
+
+The runner writes smoke-level \texttt{run\_meta.yaml} and \texttt{metrics.json}
+artifacts with \texttt{accepted\_evidence=false}. These outputs prove artifact
+shape and command binding only. They do not replace same-protocol accepted
+ablation artifacts.
+
+\section{Blocked Claims}
+
+The paper remains non-submission-ready. The current blockers are:
+\begin{itemize}
+  \item no accepted CWRU/XJTU or industrial multi-seed six-baseline table;
+  \item no accepted same-protocol Toolkit ablation table;
+  \item no accepted TOP representative command, log, and artifact mapping;
+  \item incomplete local RTX 4090 metadata in existing schema-valid packs;
+  \item no accepted SOTA or submission-ready infrastructure claim.
+\end{itemize}
+
+\section{Conclusion}
+
+This checkpoint makes the canonical Toolkit TeX entrypoint concrete and
+traceable. The next accepted-evidence milestone is still experimental rather
+than editorial: run the six-baseline and Toolkit-ablation matrices under the
+same dataset split, seed protocol, preprocessing, metrics, TOP representative
+policy, and local GPU metadata contract.
+
+\end{document}

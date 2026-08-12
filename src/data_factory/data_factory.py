@@ -5,6 +5,7 @@
 import os
 import importlib
 import glob
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import h5py
@@ -55,6 +56,10 @@ class data_factory:
         Args:
             args_data: 包含data_dir和metadata_file的字典或命名空间
         """
+        # A declared split must be enforceable before any metadata download,
+        # cache creation, or raw-data access can occur.
+        validate_split_preflight(args_data)
+
         # parameters    
         self.args_data = args_data
         self.args_task = args_task
@@ -296,15 +301,7 @@ class data_factory:
     def _init_dataset(self):
         task_name = self.args_task.name
         task_type = self.args_task.type
-        try:
-            mod = importlib.import_module(
-                f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset"
-            )
-            dataset_cls = mod.set_dataset
-        except ImportError as e:
-            print("Using Default datasets")
-            from .dataset_task.Default_dataset import Default_dataset
-            dataset_cls = Default_dataset
+        dataset_cls = resolve_dataset_class(task_type, task_name)
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}

@@ -1,0 +1,38 @@
+{
+  "schema_version": "paper2_schema_v1",
+  "paper_id": "paper1",
+  "dataset_id": "RM_001_CWRU",
+  "model_id": "Fusion1D2D",
+  "seed": 42,
+  "task": "classification",
+  "split_metrics": {
+    "test": {
+      "accuracy": 0.9957,
+      "f1_macro": 0.9949
+    }
+  },
+  "explainability": {
+    "faithfulness": {
+      "del_k_auc": 0.87,
+      "curve_path": "artifacts/figures/faithfulness_del_k.png"
+    },
+    "stability": {
+      "spearman_mean": 0.92,
+      "curve_path": "artifacts/figures/stability_noise.png"
+    },
+    "efficiency": {
+      "time_ms_per_sample": 12.3
+    }
+  },
+  "artifacts": {
+    "figures": [
+      "artifacts/figures/main_errorbar.png"
+    ],
+    "tables": [
+      "artifacts/tables/table_main.csv"
+    ],
+    "logs": [
+      "artifacts/logs/train.log"
+    ]
+  }
+}

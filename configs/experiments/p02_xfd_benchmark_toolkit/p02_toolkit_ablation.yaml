@@ -1,0 +1,38 @@
+# P02 - XFD Benchmark Toolkit: planned ablation matrix entrypoint.
+# ADDITIVE config under configs/experiments/p02_xfd_benchmark_toolkit/.
+# Status: planned - the ablation runner does NOT exist yet.
+#
+# This config is for traceability only. It does not modify configs/base,
+# configs/demo, or configs/reference.
+
+experiment:
+  paper_id: P02
+  experiment_id: E-ABLATION
+  status: planned
+  comparison_protocol_sha256: TODO
+
+runner:
+  script: paper/UXFD_paper/Explainable_FD_Toolkit/scripts/run_toolkit_ablations.py  # TODO: does not exist
+  output_dir: paper/UXFD_paper/Explainable_FD_Toolkit/results/autoresearch/<run_id>/toolkit_ablation_matrix
+
+ablation_hooks:
+  - schema_validation_off
+  - metric_family_subset_off      # drop faithfulness/stability/efficiency in turn
+  - standardized_manifest_off
+  - fixed_seed_and_config_snapshot_off
+  - posthoc_only_comparator_mode
+
+matrix:
+  datasets: [CWRU, XJTU]
+  seeds: [0, 1, 2]
+
+acceptance:
+  - every ablation produces a schema-valid run_meta.yaml + metrics.json
+  - delta_overall_score recorded per ablation
+  - complete local RTX 4090 compute metadata
+
+notes: >
+  Today only a dummy-smoke ablation binding exists (see legacy
+  submission_prep/baseline_ablation_matrix.yaml). This YAML records the
+  intended protocol for the real runner once scripts/run_toolkit_ablations.py
+  is implemented.

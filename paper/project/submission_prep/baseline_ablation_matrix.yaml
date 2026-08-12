@@ -1,0 +1,190 @@
+status_date: "2026-05-11"
+paper_id: "Explainable_FD_Toolkit"
+scope: "Command-bound baseline matrix and Toolkit ablation blocker map for Paper 01."
+evidence_level: "baseline config-target validated; Toolkit ablation smoke and manuscript checkpoint bound"
+submission_ready: false
+base_config: "paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml"
+validation_note: >
+  The commands below validate Toolkit comparison entrypoints on dummy data only.
+  They do not satisfy the IEEE Transactions gate because accepted CWRU/XJTU or
+  industrial multi-seed artifacts, accepted Toolkit ablations, TOP
+  representatives, and 2x4090 GPU metadata are still missing. A deterministic
+  Toolkit ablation smoke runner exists for artifact-shape validation only and
+  marks all outputs accepted_evidence=false. The canonical manuscript now
+  compiles as an evidence checkpoint, but it is not final IEEE Transactions
+  text.
+
+common_policy:
+  devices: "local RTX 4090 GPUs 0,1 only"
+  default_binding: "CUDA_VISIBLE_DEVICES=0"
+  scheduler: "one GPU per run; at most two concurrent single-GPU jobs"
+  required_metadata:
+    - "CUDA_VISIBLE_DEVICES"
+    - "GPU model"
+    - "seed"
+    - "batch size"
+    - "precision"
+    - "runtime"
+    - "dataset split"
+    - "OOM or failure reason"
+
+manuscript:
+  entrypoint: "manuscript/final_tex/main.tex"
+  compile_command: "pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/tmp/uxfd_paper01_tex manuscript/final_tex/main.tex"
+  compile_status: "pass after two pdflatex runs from the submodule root; output /tmp/uxfd_paper01_tex/main.pdf"
+  evidence_status: "evidence checkpoint only; accepted six-baseline matrix, same-protocol Toolkit ablations, TOP representative artifacts, GPU metadata, and SOTA remain blocked"
+
+proposed:
+  id: "P00"
+  label: "Toolkit NSN smoke with explain extension"
+  command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.num_epochs=1 --override data.num_workers=0"
+  config_target_validated: true
+  dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+  dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+  accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial GPU run"
+
+existing_toolkit_evidence:
+  - label: "benchmark bootstrap"
+    artifact: "outputs/RM_MULTI_CWRU_XJTU/ToolkitBenchmark/seed_0/20260319_090111"
+    status: "schema-valid partial evidence; strict 2x4090 metadata incomplete"
+  - label: "five-model unified matrix"
+    artifact: "results/autoresearch/20260319_162507/unified_model_matrix/benchmark_results_table.csv"
+    status: "partial evidence; only five diagnostic models"
+  - label: "Captum comparison"
+    artifact: "outputs/RM_COMPETITOR_SYNTH/ToolkitVsCaptum/seed_0/20260319_162715"
+    status: "schema-valid synthetic comparison only"
+  - label: "SHAP/LIME comparison"
+    artifact: "outputs/RM_COMPETITOR_SYNTH/ToolkitVsShapLime/seed_0/20260319_163123"
+    status: "schema-valid synthetic comparison only"
+
+baselines:
+  - id: "B01"
+    label: "NSN/TSPN_UXFD baseline"
+    goal_mapping: "transparent signal-processing baseline"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=NSN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "same run as P00; pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial run"
+  - id: "B02"
+    label: "ResNet baseline"
+    goal_mapping: "CNN.ResNet1D / X_model.Resnet"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Resnet --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=1.1218299865722656, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial run"
+  - id: "B03"
+    label: "SincNet baseline"
+    goal_mapping: "X_model.Sincnet"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=Sincnet --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=4.801812171936035, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial run"
+  - id: "B04"
+    label: "TFN baseline"
+    goal_mapping: "X_model.TFN"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=TFN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.8415476679801941, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial run"
+  - id: "B05"
+    label: "WKN baseline"
+    goal_mapping: "X_model.WKN"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.name=WKN --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.6259610652923584, test_acc_Dummy_Data=0.625"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial run"
+  - id: "B06"
+    label: "ConvTransformer baseline"
+    goal_mapping: "Transformer.ConvTransformer"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override model.type=Transformer --override model.name=ConvTransformer --override model.input_dim=2 --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=7.736400604248047, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol CWRU/XJTU or industrial run"
+
+ablations:
+  - id: "A01"
+    label: "disable PHM-Vibench explain extension"
+    goal_mapping: "Toolkit manifest/explain extension on/off"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    dummy_smoke_status: "pass in LQ_signal on dummy data; CPU fallback because GPU/NVML unavailable"
+    dummy_smoke_metric: "test_loss=0.7205665111541748, test_acc_Dummy_Data=0.0"
+    accepted_evidence_status: "pending same-protocol Toolkit ablation artifact"
+  - id: "A02"
+    label: "schema removal"
+    goal_mapping: "Remove schema validation from Toolkit evidence chain"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.schema_validation=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; schema validation disabled and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted same-protocol Toolkit schema ablation artifacts"
+  - id: "A03"
+    label: "faithfulness/stability metric-family removal"
+    goal_mapping: "Remove metric-family subsets"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.metric_families='[\"latency\"]' --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; faithfulness/stability proxy disabled and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted same-protocol metric-family ablation artifacts"
+  - id: "A04"
+    label: "standardized manifest off"
+    goal_mapping: "Disable standardized run manifest"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.report.enable=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; manifest proxy disabled and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted same-protocol manifest ablation artifacts"
+  - id: "A05"
+    label: "fixed seed/config snapshot off"
+    goal_mapping: "Remove reproducibility snapshot"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.predictions.save_config_snapshot=false --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; snapshot proxy disabled and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted same-protocol reproducibility snapshot ablation artifacts"
+  - id: "A06"
+    label: "post-hoc comparator only"
+    goal_mapping: "Compare Toolkit intrinsic stack against SHAP/LIME/Captum-only mode"
+    command: "CUDA_VISIBLE_DEVICES=0 python main.py --config paper/UXFD_paper/Explainable_FD_Toolkit/configs/vibench/min.yaml --override trainer.extensions.explain.explainer=gradcam_xfd --override trainer.num_epochs=1 --override data.num_workers=0"
+    config_target_validated: true
+    evidence_status: "pass as non-accepted smoke runner; post-hoc comparator proxy and accepted_evidence=false"
+    accepted_evidence_status: "pending accepted same-protocol SHAP/LIME/Captum comparator artifacts"
+
+top_recent_work:
+  - id: "RWTOP2024-TIMEXPP"
+    paper_goal_role: "time-series explanation baseline for faithfulness and stability"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2024-MOMENT"
+    paper_goal_role: "foundation representation comparator"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2025-DADA"
+    paper_goal_role: "bottleneck/anomaly representative"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2025-CFCBM"
+    paper_goal_role: "counterfactual concept-bottleneck comparator"
+    status: "literature-only until FD concepts and local protocol exist"
+    exact_reproduction_status: "resource-blocked until concept labels and compute-feasible protocol exist"
+  - id: "RWTOP2026-TIMESEG"
+    paper_goal_role: "segment-wise explanation comparator for temporal faithfulness"
+    status: "parent queue maps this to representative local proxy entries P00, A02, A03, and A06; accepted artifacts pending"
+    exact_reproduction_status: "not exact; representative only until external code/config is integrated"
+  - id: "RWTOP2026-TIMESLIVER"
+    paper_goal_role: "symbolic-linear attribution comparator for Toolkit reporting"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+  - id: "RWTOP2026-TSPULSE"
+    paper_goal_role: "compact pretrained representation comparator under the 2x4090 budget"
+    status: "representative command not yet bound"
+    exact_reproduction_status: "pending 2x4090 feasibility check"
+
+strict_blockers:
+  - "No accepted CWRU/XJTU or industrial multi-seed six-baseline table yet."
+  - "Only smoke Toolkit ablation runner artifacts exist; no accepted same-protocol Toolkit ablation artifacts exist yet."
+  - "No accepted TOP representative command/log/artifact mapping yet."
+  - "Existing schema-valid packs lack complete local 2x4090 metadata."
+  - "No SOTA or submission-ready infrastructure claim is allowed from this matrix alone."
