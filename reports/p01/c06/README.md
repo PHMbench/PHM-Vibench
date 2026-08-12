@@ -29,6 +29,9 @@ matrix, and parser were frozen at
   exact frozen contrasts.
 - `c06_contrast_summary.csv`: per-domain mean, sample SD, range, sign counts,
   and frozen stable-positive decision for every contrast.
+- `c06_reproduction_summary.csv`: the ordered seed-42 fresh-process M4/M5/C3
+  check required before G13. These checks reuse the reference run identities
+  and add zero independent matrix observations.
 
 ## Direct and independent validation
 
@@ -53,3 +56,16 @@ equivalence, mechanism, causality, nuisance suppression, physical-frequency
 semantics, independent modalities, or population generalization. C07--C09 are
 not admitted by the frozen C06 gate; no outcome-driven tuning or rescue sweep is
 allowed.
+
+## Ordered fresh-process reproduction before G13
+
+After the C06 route was locked, the first seed in the frozen order (42) was
+selected by order rather than performance for the required M4/M5/C3 path
+check. Three new output roots were executed sequentially on physical GPU 3.
+For each condition, every result field other than its output-dependent
+checkpoint path, the complete data-protocol object, selected epoch/global step,
+and every checkpoint `state_dict` tensor exactly reproduced the corresponding
+matrix cell. M4/M5/C3 domain-2 metrics were respectively
+0.388889/0.655556/0.444444 (the domain-3 values were identical). These reruns
+verify execution reproducibility only; they do not alter contrasts, increase
+the seed count, replace a cell, or rescue the negative route.
