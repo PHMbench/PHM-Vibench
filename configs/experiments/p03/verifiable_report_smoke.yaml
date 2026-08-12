@@ -1,0 +1,130 @@
+schema_version: 1
+experiment_id: P03-G030-METHOD-SMOKE
+scientific_status: smoke_only
+evidence_tier: T1
+output_path: results/p03/method_smoke/verification.json
+
+graph:
+  schema_version: 1
+  graph_id: p03-method-smoke
+  nodes:
+    - id: SRC-01
+      type: source
+      payload:
+        record_id: synthetic-bearing-case-01
+        immutable: true
+    - id: TEST-01
+      type: test
+      payload:
+        name: synthetic_spectral_rule
+        version: 1
+    - id: RESULT-01
+      type: result
+      payload:
+        result_type: categorical
+    - id: RESULT-02
+      type: result
+      payload:
+        result_type: causal_indicator
+    - id: RESULT-03
+      type: result
+      payload:
+        result_type: causal_indicator
+    - id: EVID-01
+      type: evidence
+      payload:
+        finding:
+          fault_type: inner_race
+    - id: EVID-02
+      type: evidence
+      payload:
+        finding:
+          cause: misalignment
+    - id: EVID-03
+      type: evidence
+      payload:
+        finding:
+          cause: imbalance
+    - id: CLAIM-DIAG
+      type: claim
+      payload:
+        claim_type: diagnosis
+        assertion:
+          subject: bearing
+          predicate: fault_type
+          object: inner_race
+    - id: CLAIM-CAUSE
+      type: claim
+      payload:
+        claim_type: causal
+        assertion:
+          subject: anomaly
+          predicate: caused_by
+          object: misalignment
+    - id: CLAIM-ACTION
+      type: claim
+      payload:
+        claim_type: recommendation
+        assertion:
+          subject: machine
+          predicate: recommended_action
+          object: inspect_lubrication
+  relations:
+    - {id: REL-01, type: derived_from, from: EVID-01, to: RESULT-01}
+    - {id: REL-02, type: produced_by, from: RESULT-01, to: TEST-01}
+    - {id: REL-03, type: recorded_in, from: RESULT-01, to: SRC-01}
+    - {id: REL-04, type: derived_from, from: EVID-02, to: RESULT-02}
+    - {id: REL-05, type: produced_by, from: RESULT-02, to: TEST-01}
+    - {id: REL-06, type: recorded_in, from: RESULT-02, to: SRC-01}
+    - {id: REL-07, type: derived_from, from: EVID-03, to: RESULT-03}
+    - {id: REL-08, type: produced_by, from: RESULT-03, to: TEST-01}
+    - {id: REL-09, type: recorded_in, from: RESULT-03, to: SRC-01}
+    - id: REL-10
+      type: supports
+      from: EVID-01
+      to: CLAIM-DIAG
+      rule: {path: finding.fault_type, operator: eq, expected: inner_race}
+    - id: REL-11
+      type: supports
+      from: EVID-02
+      to: CLAIM-CAUSE
+      rule: {path: finding.cause, operator: eq, expected: misalignment}
+    - id: REL-12
+      type: contradicts
+      from: EVID-03
+      to: CLAIM-CAUSE
+      rule: {path: finding.cause, operator: neq, expected: misalignment}
+
+report:
+  schema_version: 1
+  report_id: p03-method-smoke-report
+  claims:
+    - claim_id: CLAIM-DIAG
+      assertion:
+        subject: bearing
+        predicate: fault_type
+        object: inner_race
+      evidence_ids: [EVID-01]
+    - claim_id: CLAIM-CAUSE
+      assertion:
+        subject: anomaly
+        predicate: caused_by
+        object: misalignment
+      evidence_ids: [EVID-02]
+    - claim_id: CLAIM-UNKNOWN
+      assertion:
+        subject: bearing
+        predicate: remaining_life_hours
+        value: 120
+      evidence_ids: []
+  abstentions:
+    - claim_id: CLAIM-ACTION
+      reason: insufficient_evidence
+
+expected:
+  metrics.emitted_claims: 3
+  metrics.supported_claims: 1
+  metrics.contradicted_claims: 0
+  metrics.insufficient_claims: 2
+  metrics.expected_abstentions: 2
+  metrics.correct_abstentions: 1

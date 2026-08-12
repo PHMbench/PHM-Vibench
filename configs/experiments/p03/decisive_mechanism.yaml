@@ -1,0 +1,95 @@
+schema_version: 1
+experiment_id: P03-G050-MECHANISM
+run_id: RUN-0003
+scientific_scope: controlled_fixture_mechanism_only
+evidence_tier: T2
+accepted_for_c1: false
+
+hypothesis: >-
+  On byte-identical structured candidate reports, enforcing the typed
+  claim--evidence verifier reduces oracle-scored unsupported and contradictory
+  emitted claims relative to no verification, whereas computing verdicts but
+  failing open does not.
+
+single_change:
+  baseline_to_proposed: fail_closed_typed_verifier_enforcement
+  baseline_to_negative_control: verifier_computed_but_output_fails_open
+
+design:
+  seeds: [42, 123, 2024, 7, 99]
+  base_cases_per_seed: 5
+  evidence_regimes:
+    - complete
+    - missing
+    - noisy
+    - conflicting
+    - fluent_but_unsupported
+  claim_types:
+    - numeric
+    - diagnosis
+    - causal
+    - recommendation
+    - uncertainty
+  conditions:
+    - structured_no_verifier
+    - typed_verifier
+    - fail_open_negative_control
+  candidate_input_identity_required: true
+
+execution:
+  conda_environment: LQ_signal
+  command: >-
+    conda run -n LQ_signal python -m src.utils.p03_decisive_experiment
+    --config configs/experiments/p03/decisive_mechanism.yaml
+    --output ../../paper/experiments/artifacts/p03_g050_decisive.json
+    --log ../../paper/experiments/artifacts/p03_g050_decisive.stdout.log
+  physical_gpu_indices: []
+  multi_gpu: false
+  device: cpu
+  maximum_wall_time_seconds: 300
+  maximum_runs: 1
+
+metric:
+  primary: [unsupported_claim_rate, contradiction_rate]
+  independent_oracle: manifest_rule_not_verifier_verdict
+  primary_denominator: fixed_claim_opportunities
+  guardrails:
+    minimum_coverage_each_regime: 0.50
+    minimum_abstention_precision: 0.80
+    minimum_abstention_recall: 0.80
+    maximum_verifier_p95_ms: 100.0
+
+expected_contract_signal:
+  structured_no_verifier:
+    unsupported_claim_rate: 0.24
+    contradiction_rate: 0.08
+    coverage: 1.0
+  typed_verifier:
+    unsupported_claim_rate: 0.0
+    contradiction_rate: 0.0
+    coverage: 0.76
+  fail_open_negative_control:
+    unsupported_claim_rate: 0.24
+    contradiction_rate: 0.08
+    coverage: 1.0
+  negative_control_matches_baseline: true
+
+outputs:
+  artifact_path: ../../paper/experiments/artifacts/p03_g050_decisive.json
+  log_path: ../../paper/experiments/artifacts/p03_g050_decisive.stdout.log
+
+claim_impact:
+  claim_ids: [C1]
+  decision_if_contract_signal_present: >-
+    Mechanism supported on controlled fixtures only; C1 remains inconclusive
+    until matched LLM renderer evidence is executed and audited.
+  decision_if_contract_signal_absent: >-
+    Central verifier mechanism is refuted at minimum scale; stop before full E1.
+
+stop_conditions:
+  - candidate_hash_mismatch
+  - negative_control_differs_from_baseline
+  - independent_oracle_failure
+  - metric_contract_mismatch
+  - budget_exhausted
+  - artifact_missing

@@ -1,0 +1,162 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{cite}
+
+\title{LLM-Enhanced Explainable Fault Diagnosis Toolkit: An Evidence-Grounded Draft for IEEE Transactions Review}
+
+\author{Li~Qi%
+\thanks{This draft is a submission-readiness checkpoint for the UXFD paper family. Quantitative performance, human-study, TOP-baseline, and SOTA claims are intentionally withheld until accepted run artifacts are available.}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Industrial fault diagnosis systems increasingly combine signal-processing models
+with natural-language interfaces. This paper draft describes an
+LLM-enhanced explainable fault diagnosis toolkit that converts structured
+diagnostic evidence into auditable text and dialogue responses. The current
+IEEE package defines the intended architecture, evidence contract, baseline
+surface, and reviewer-facing limitations. It does not claim submission-ready
+performance: accepted multi-seed experiments, run metadata, latency metrics,
+unsupported-claim rates, TOP representative artifacts, and GPU provenance are
+still required before any SOTA or human-centered decision-support claim can be
+made.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Explainable fault diagnosis, large language models, evidence grounding,
+industrial AI, human-centered decision support.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{I}{ndustrial} diagnostic models can classify fault states from
+vibration and other condition-monitoring signals, but their outputs often remain
+difficult for engineers to inspect, question, and reuse in maintenance
+decisions. A language interface can reduce this gap only if generated text is
+grounded in structured diagnostic evidence. Ungrounded prose is unsafe for
+industrial diagnosis because it may overstate model confidence, invent causal
+explanations, or hide uncertainty.
+This evidence-first position is consistent with established local explanation
+work such as LIME and SHAP~\cite{ribeiro2016why,lundberg2017unified}, and with
+the need to distinguish attention-style representations from verified
+diagnostic evidence~\cite{vaswani2017attention}.
+
+This draft frames the LLM-enhanced explainable fault diagnosis toolkit as an
+evidence-grounded reporting layer. The toolkit consumes structured model
+outputs, maps them into an intermediate representation, and generates natural
+language responses whose claims must be traceable to signal statistics,
+diagnostic predictions, model explanations, or a controlled knowledge base. The
+draft is deliberately conservative: all numerical performance and user-study
+claims from earlier Markdown drafts are excluded until accepted artifacts exist.
+
+\section{Method Overview}
+\subsection{Structured Evidence Interface}
+The toolkit is designed around an intermediate representation containing fault
+type, confidence, signal statistics, frequency features, processing-path
+information, and optional operator or attribution evidence. This representation
+is the only allowed source for generated diagnostic statements. The evidence
+interface supports transparent signal-processing models, post-hoc feature
+summaries, and rule-based explanation modules.
+
+\subsection{Local Template and LLM Backends}
+The current package includes a deterministic local template backend for
+offline smoke testing. External LLM providers can be integrated through the
+provider manager, but accepted paper evidence must record provider settings,
+prompt versions, failure modes, and whether the generated text is exact LLM
+output or a local proxy. This separation is necessary for fair baseline
+comparison and reproducibility, especially when comparing against recent
+time-series foundation or LLM adaptation methods such as Time-LLM and
+MOMENT~\cite{jin2024timellm,goswami2024moment}.
+
+\subsection{Dialogue and Safety Constraints}
+The interactive interface supports common diagnostic intents such as cause
+analysis, severity assessment, maintenance guidance, monitoring advice, and
+technical-detail queries. Each response must preserve the fault label,
+confidence, and evidence scope from the current diagnostic context. Unsupported
+claims, missing evidence fields, and unavailable retrieval context must be
+reported as limitations rather than silently filled by generated text.
+
+\section{Submission Evidence Protocol}
+Accepted evidence must live under a paper-local
+\texttt{results/llm\_evidence/} directory. Each run directory must include a
+\texttt{run\_meta.yaml} file and a \texttt{metrics.json} file. The metadata
+must record the command, working directory, seed, prompt set, model or template
+backend, precision or quantization mode, runtime, artifact paths, and local
+device provenance. If a run is blocked by hardware, data, dependency, or policy
+constraints, the failure reason must be recorded explicitly.
+
+The required metrics include diagnostic or proxy-task accuracy, explanation
+quality, evidence consistency, unsupported-claim rate, latency p50 and p95,
+failure rate, sample count, and seed. These metrics are not optional because
+the paper's central claim concerns reliable decision support rather than text
+fluency alone.
+
+\section{Baseline and Ablation Plan}
+At least six same-protocol baselines are required before any comparative claim
+is allowed: a template-only report, a generic LLM prompt without evidence
+grounding, a retrieval-augmented prompt using the same knowledge base, a
+structured report without dialogue, a rule-based natural-language explanation,
+and a post-hoc feature-importance text summary. A human-written report subset
+may be used as an upper-reference comparator if the data protocol permits it.
+
+The ablation suite must remove evidence grounding, retrieval context, dialogue
+state tracking, hallucination checking, multi-turn dialogue, and explanation
+length controls. The same prompt set, seeds, metrics, and output schema must
+be used across all baselines and ablations.
+
+\section{Current Checkpoint Status}
+The current code checkpoint passes package-level smoke tests for the local
+template path and can run the package-based minimal LLM demo. These checks
+prove importability and workflow wiring only. They are not accepted evidence
+for manuscript claims because they do not yet emit the required
+\texttt{run\_meta.yaml}, \texttt{metrics.json}, latency table, unsupported-claim
+table, TOP representative artifacts, or local RTX 4090 provenance.
+
+\begin{table}[!t]
+\caption{Current Paper 03 Readiness State}
+\label{tab:readiness}
+\centering
+\begin{tabular}{lll}
+\toprule
+Gate & Current state & Submission use \\
+\midrule
+Package import & Passes smoke tests & Wiring only \\
+Template demo & Passes local demo & Wiring only \\
+IEEE entrypoint & This file & Compile gate \\
+Accepted metrics & Missing & Blocker \\
+GPU provenance & Missing & Blocker \\
+TOP representative & Pending & Blocker \\
+SOTA claim & Not allowed & Blocker \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Limitations and Next Steps}
+The main limitations are currently procedural rather than cosmetic. First, the
+paper lacks accepted multi-seed evidence packages. Second, hallucination,
+retrieval, and latency ablation runners are still missing. Third, TOP recent
+work is citation-mapped but not reproduced or represented by accepted local
+artifacts. Fourth, current session GPU checks report no visible CUDA devices,
+so no accepted local RTX 4090 evidence can be generated from this environment.
+
+The next milestone is to emit accepted evidence packages for the local template
+and package-based demo paths, then extend them to same-protocol baselines and
+ablations. Only after those artifacts pass the parent artifact and submission
+gates should the paper restore quantitative performance, user-study, or SOTA
+claims.
+
+\section{Conclusion}
+This IEEE Transactions draft establishes a conservative manuscript entrypoint
+and evidence contract for the LLM-enhanced explainable fault diagnosis toolkit.
+The package is compile-oriented and suitable for readiness review, but it is
+not yet a submission-ready paper. Final claims require accepted evidence
+packages, same-protocol baselines, ablations, TOP representative artifacts, and
+local GPU provenance.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

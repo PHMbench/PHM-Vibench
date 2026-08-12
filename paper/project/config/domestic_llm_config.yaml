@@ -1,0 +1,257 @@
+# Domestic LLM Configuration for Fault Diagnosis Explanation
+# 专注支持国产大语言模型：Deepseek 和 GLM-4
+
+# ==========================================
+# 国产大语言模型配置
+# ==========================================
+
+api_providers:
+  # Deepseek 配置 - 高性价比国产模型
+  deepseek:
+    api_key: "${DEEPSEEK_API_KEY}"
+    model: "deepseek-chat"
+    base_url: "https://api.deepseek.com"
+    max_tokens: 1500
+    temperature: 0.3
+    top_p: 0.95
+    timeout: 30
+    description: "Deepseek 国产大模型，性价比高，中文优秀"
+    advantages:
+      - "成本效益高，适合大规模部署"
+      - "中文理解能力强，适合国内应用"
+      - "API 兼容 OpenAI 格式，集成简单"
+      - "响应速度快，服务稳定"
+
+  # GLM-4 配置 - 智谱AI专业模型
+  glm:
+    api_key: "${GLM_API_KEY}"
+    model: "glm-4"
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    max_tokens: 1500
+    temperature: 0.3
+    top_p: 0.95
+    timeout: 30
+    description: "智谱 GLM-4，技术理解强，专业性好"
+    advantages:
+      - "智谱 AI 专业支持，服务稳定可靠"
+      - "GLM-4 在技术文档理解方面表现优异"
+      - "支持多种行业场景，包括工业诊断"
+      - "持续更新优化，功能不断完善"
+
+  # 模板化备用方案
+  template:
+    enabled: true
+    description: "模板化备用方案，无需API密钥"
+    advantages:
+      - "无需API成本，完全免费"
+      - "响应速度快，稳定性高"
+      - "支持多种输出风格"
+      - "可离线使用"
+
+# ==========================================
+# 系统设置
+# ==========================================
+
+settings:
+  # 主要使用的提供商
+  primary_provider: "template"  # 默认模板，可改为 "deepseek" 或 "glm"
+
+  # 备用提供商
+  fallback_provider: "template"
+
+  # 超时和重试设置
+  timeout: 30
+  retry_attempts: 3
+
+  # 缓存设置
+  cache_enabled: true
+  cache_size: 100
+  cache_ttl: 3600  # 1小时
+
+  # 批处理设置
+  batch_size: 5
+  concurrent_requests: 3
+
+# ==========================================
+# 统一 Baseline 集成配置
+# ==========================================
+
+unified_baseline:
+  # 数据来源配置
+  data_sources:
+    tspn:
+      model_path: "save/task_THU_018_basic/model_TSPN"
+      description: "透明信号处理网络，92% 准确率"
+      explanation_source: "Explainable_FD_Toolkit"
+
+    fusion1d2d:
+      model_path: "save/task_THU_018_basic/model_Fusion1D2D"
+      description: "1D-2D融合网络，97.16% 平均准确率"
+      explanation_source: "Explainable_FD_Toolkit"
+
+    moe:
+      model_path: "save/task_THU_018_basic/model_MoE"
+      description: "专家混合模型，63.04% 准确率"
+      explanation_source: "Explainable_FD_Toolkit"
+
+    operator_attention:
+      model_path: "save/task_THU_018_basic/model_OperatorAttention"
+      description: "算子注意力网络，20% 准确率"
+      explanation_source: "Explainable_FD_Toolkit"
+
+  # 数据集信息
+  dataset:
+    name: "THU_018_basic"
+    description: "轴承故障诊断数据集"
+    num_classes: 5
+    fault_types:
+      - "正常状态"
+      - "内圈故障"
+      - "外圈故障"
+      - "滚动体故障"
+      - "保持架故障"
+
+# ==========================================
+# 解释风格配置
+# ==========================================
+
+explanation_styles:
+  standard:
+    name: "标准技术解释"
+    description: "平衡专业性和可读性，适合一般技术人员"
+    prompt_template: "请提供标准的技术解释，包含故障原因和可能的影响"
+
+  simple:
+    name: "简易解释"
+    description: "通俗易懂，适合设备操作人员"
+    prompt_template: "请用简单易懂的语言解释故障情况，适合非技术人员理解"
+
+  detailed:
+    name: "详细分析"
+    description: "包含技术细节和诊断过程"
+    prompt_template: "请提供详细的技术分析，包含具体的信号特征和诊断依据"
+
+  formal:
+    name: "正式报告"
+    description: "适合工程文档和正式报告"
+    prompt_template: "请提供正式的故障诊断报告，适合工程文档使用"
+
+  technical:
+    name: "技术专家"
+    description: "高度专业化，使用精准技术术语"
+    prompt_template: "请提供高度技术性的解释，包含专业术语和分析方法"
+
+  concise:
+    name: "简洁总结"
+    description: "突出关键信息，适合快速了解"
+    prompt_template: "请提供简洁的故障总结，突出关键信息"
+
+# ==========================================
+# 性能和质量控制
+# ==========================================
+
+quality_control:
+  # 响应时间限制
+  max_response_time: 15  # 秒
+
+  # 质量评估指标
+  metrics:
+    - "relevance"          # 相关性
+    - "accuracy"          # 准确性
+    - "clarity"           # 清晰度
+    - "completeness"      # 完整性
+    - "professionalism"   # 专业性
+
+  # 自动质量检查
+  auto_quality_check: true
+  min_quality_score: 0.7
+
+# ==========================================
+# 成本控制
+# ==========================================
+
+cost_control:
+  # 预算设置
+  daily_budget: 100.0    # 每日预算（元）
+  monthly_budget: 2000.0 # 每月预算（元）
+
+  # 成本监控
+  enable_cost_tracking: true
+  cost_alert_threshold: 0.8  # 80% 时预警
+
+  # 成本优化
+  prefer_cache: true
+  batch_optimization: true
+
+  # 国产模型成本优势
+  domestic_model_discount:
+    deepseek_vs_openai: 0.2    # 仅为 OpenAI 的 20%
+    glm_vs_claude: 0.3        # 仅为 Claude 的 30%
+
+# ==========================================
+# 安全和合规
+# ==========================================
+
+security:
+  # 数据隐私
+  data_privacy:
+    anonymization: true
+    local_processing: true
+    no_external_storage: true
+
+  # API 安全
+  api_security:
+    key_rotation: true
+    rate_limiting: true
+    request_logging: true
+
+  # 合规要求
+  compliance:
+    data_residency: "domestic"    # 数据存储在境内
+    security_standards: ["GB/T 35273", "GDPR_ready"]
+
+# ==========================================
+# 监控和日志
+# ==========================================
+
+monitoring:
+  # 性能监控
+  performance_metrics:
+    - "response_time"
+    - "success_rate"
+    - "error_rate"
+    - "api_usage"
+
+  # 日志配置
+  logging:
+    level: "INFO"
+    file_path: "./logs/domestic_llm.log"
+    max_file_size: "100MB"
+    backup_count: 5
+
+  # 告警配置
+  alerts:
+    - "high_error_rate"
+    - "slow_response"
+    - "budget_exceeded"
+    - "api_failure"
+
+# ==========================================
+# 开发和调试
+# ==========================================
+
+development:
+  # 调试模式
+  debug_mode: false
+
+  # 模拟模式（不调用真实API）
+  mock_mode: false
+
+  # 测试配置
+  test_cases:
+    - fault_type: 1
+      confidence: 0.95
+      style: "standard"
+    - fault_type: 2
+      confidence: 0.87
+      style: "detailed"
