@@ -514,10 +514,13 @@ def _write_metrics_csv(path: Path, metrics: dict[str, Any]) -> str:
     from src.utils.generative_evidence import sha256_file
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    method_required = list(metrics.get("summary", {}).get("required_for_method", []))
+    metric_names = list(REQUIRED_METRICS)
+    metric_names.extend(name for name in method_required if name not in metric_names)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["metric", "value", "status", "reason"])
         writer.writeheader()
-        for name in REQUIRED_METRICS:
+        for name in metric_names:
             result = metrics[name]
             writer.writerow(
                 {
@@ -697,6 +700,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             channels,
             max_samples=num_samples,
         )
+        population_bandwidths = _population_rbf_bandwidths(args_task)
         leakage_bundle = evaluate_smoke_metrics(
             real,
             samples,
@@ -829,6 +833,24 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             )
         )
         synthetic_manifest, synthetic_manifest_hash = load_hashed_json(manifest_path)
+        population_bandwidths = _population_rbf_bandwidths(args_task)
+        expected_method_id = (
+            "population_aware_cfm"
+            if population_bandwidths is not None
+            else "conditional_flow_matching"
+        )
+        manifest_method_id = str(
+            _get_attr(
+                _get_attr(synthetic_manifest, "method", {}),
+                "method_id",
+                "",
+            )
+        )
+        if manifest_method_id != expected_method_id:
+            raise ValueError(
+                "evaluation config population mode does not match the synthetic "
+                f"manifest: expected {expected_method_id!r}, got {manifest_method_id!r}"
+            )
         expected_samples_hash = _get_attr(
             _get_attr(synthetic_manifest, "generated_artifact", {}),
             "sha256",

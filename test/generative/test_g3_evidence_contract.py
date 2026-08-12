@@ -7,7 +7,11 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.task_factory.Components.generative.manifests import build_synthetic_manifest
+from src.task_factory.Components.generative import (
+    REQUIRED_METRICS,
+    build_evaluation_manifest,
+    build_synthetic_manifest,
+)
 from src.task_factory.Components.generative.normalization import (
     build_normalization_evidence,
     load_normalization_evidence,

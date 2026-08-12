@@ -115,7 +115,7 @@ def build_synthetic_manifest(
         evidence["population_metrics"] = population_ok
     missing = [name for name, passed in evidence.items() if not passed]
 
-    return {
+    manifest = {
         "schema_version": "0.2.1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "synthetic_dataset_id": synthetic_dataset_id,
@@ -161,6 +161,9 @@ def build_synthetic_manifest(
             "paper_ready": False,
         },
     }
+    if population_required:
+        manifest["population"] = population_metrics
+    return manifest
 
 
 def build_evaluation_manifest(
@@ -182,9 +185,16 @@ def build_evaluation_manifest(
             "test-reference evaluation is not eligible in the maintained smoke contract"
         )
 
+    method_required_metrics = list(
+        metrics.get("summary", {}).get("required_for_method", [])
+    )
+    metric_names = list(REQUIRED_METRICS)
+    metric_names.extend(
+        name for name in method_required_metrics if name not in metric_names
+    )
     statuses = {
         name: str(metrics.get(name, {}).get("status", "missing"))
-        for name in REQUIRED_METRICS
+        for name in metric_names
     }
     missing_status = [
         name for name, status in statuses.items() if status == "missing"
@@ -216,7 +226,7 @@ def build_evaluation_manifest(
     )
     paper_smoke_metric_eligible = runtime_smoke_eligible and not not_computable
 
-    return {
+    manifest = {
         "schema_version": "0.2.1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "generated_artifact": {
@@ -259,3 +269,8 @@ def build_evaluation_manifest(
             ),
         },
     }
+    if method_required_metrics:
+        manifest["metric_summary"][
+            "required_for_method"
+        ] = method_required_metrics
+    return manifest

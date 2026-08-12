@@ -24,3 +24,13 @@ and maintained tests, and green post-merge CI.
 
 `sanity_ok` is functional smoke evidence. It is not benchmark-performance or
 scientific-validity evidence.
+
+Available CFM contracts:
+
+- `dummy_generative_cfm.yaml` keeps the baseline velocity-MSE objective;
+- `dummy_generative_cfm_population.yaml` adds a same-time population-correlation
+  MMD regularizer.
+
+The population variant is a PHM CFM adaptation, not a full PaD-TS or DDPM
+implementation. Its population dependency metric is emitted only when the
+regularizer is enabled and remains exploratory evidence.

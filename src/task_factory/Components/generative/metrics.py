@@ -19,6 +19,8 @@ REQUIRED_METRICS = (
     "training_wall_clock_seconds",
 )
 
+POPULATION_DEPENDENCY_METRIC = "population_dependency_mmd"
+
 
 def _metric_result(
     value: float | None,
@@ -330,4 +332,9 @@ def evaluate_smoke_metrics(
             metrics[name]["status"] == "failed" for name in REQUIRED_METRICS
         ),
     }
+    if method_required_metrics:
+        metrics["summary"]["required_for_method"] = method_required_metrics
+        metrics["summary"]["method_required_ok"] = all(
+            metrics[name]["status"] == "ok" for name in method_required_metrics
+        )
     return metrics

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -23,6 +24,12 @@ def _flatten_values(value: Any) -> list[Any]:
             flattened.extend(_flatten_values(item))
         return flattened
     return [value]
+
+
+def _get_value(value: Any, key: str, default: Any = None) -> Any:
+    if isinstance(value, Mapping):
+        return value.get(key, default)
+    return getattr(value, key, default)
 
 
 class ConditionalFlowMatchingTask(pl.LightningModule):
