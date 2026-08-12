@@ -94,7 +94,7 @@ class Default_task(pl.LightningModule):
         self._alignment_training_batch_count = 0
         self._last_alignment_target_permutation: torch.Tensor | None = None
         self._alignment_target_derived_seeds: list[int] = []
-        self._c05_view_gradient_observation: dict[str, Any] | None = None
+        self._p01_view_gradient_observation: dict[str, Any] | None = None
 
         gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
         self.gradient_constraint = None
@@ -159,11 +159,11 @@ class Default_task(pl.LightningModule):
         )
         if (
             grouped is None
-            or str(getattr(grouped, "goal_id", "")) not in {"C04", "C05"}
+            or str(getattr(grouped, "goal_id", "")) not in {"C04", "C05", "C06"}
             or str(getattr(grouped, "condition_id", "")) != "C2"
         ):
             raise ValueError(
-                "task.alignment_target_control is admitted only for C04/C05 "
+                "task.alignment_target_control is admitted only for C04/C05/C06 "
                 "condition C2"
             )
         mode = str(getattr(control, "mode", ""))
@@ -250,7 +250,7 @@ class Default_task(pl.LightningModule):
             getattr(self, "args_task", None), "grouped_evaluation", None
         )
         goal_id = str(getattr(grouped, "goal_id", ""))
-        if goal_id not in {"C04", "C05"}:
+        if goal_id not in {"C04", "C05", "C06"}:
             return
         names = (
             "classification",
@@ -289,20 +289,21 @@ class Default_task(pl.LightningModule):
         self._alignment_training_batch_count += 1
 
     def on_train_start(self) -> None:
-        """Start fresh current-fit objective and C05 view-use observations."""
+        """Start fresh current-fit objective and decisive P01 view-use observations."""
         self._alignment_training_sums.clear()
         self._alignment_training_sample_count = 0
         self._alignment_training_batch_count = 0
         self._last_alignment_target_permutation = None
         self._alignment_target_derived_seeds.clear()
-        self._c05_view_gradient_observation = None
+        self._p01_view_gradient_observation = None
 
     def on_after_backward(self) -> None:
-        """Fail closed when a required C05 branch is unused on the first batch."""
+        """Fail closed when a required P01 branch is unused on the first batch."""
         grouped = getattr(self.args_task, "grouped_evaluation", None)
+        goal_id = str(getattr(grouped, "goal_id", ""))
         if (
-            str(getattr(grouped, "goal_id", "")) != "C05"
-            or self._c05_view_gradient_observation is not None
+            goal_id not in {"C05", "C06"}
+            or self._p01_view_gradient_observation is not None
         ):
             return
         condition_id = str(
@@ -354,7 +355,9 @@ class Default_task(pl.LightningModule):
             },
         }.get(condition_id)
         if required_groups is None:
-            raise RuntimeError(f"C05 has no view-gradient contract for {condition_id!r}")
+            raise RuntimeError(
+                f"{goal_id} has no view-gradient contract for {condition_id!r}"
+            )
 
         named_parameters = tuple(self.network.named_parameters())
         threshold = 1.0e-12
@@ -367,7 +370,8 @@ class Default_task(pl.LightningModule):
             ]
             if not parameters:
                 raise RuntimeError(
-                    f"C05 {condition_id} gradient group {group_name!r} has no parameters"
+                    f"{goal_id} {condition_id} gradient group {group_name!r} "
+                    "has no parameters"
                 )
             squared_norm: torch.Tensor | None = None
             for parameter in parameters:
@@ -378,11 +382,11 @@ class Default_task(pl.LightningModule):
             norm = 0.0 if squared_norm is None else float(squared_norm.sqrt().cpu().item())
             if not np.isfinite(norm) or norm <= threshold:
                 raise RuntimeError(
-                    f"C05 {condition_id} required gradient group {group_name!r} "
+                    f"{goal_id} {condition_id} required gradient group {group_name!r} "
                     f"has norm {norm}, threshold {threshold}"
                 )
             norms[group_name] = norm
-        self._c05_view_gradient_observation = {
+        self._p01_view_gradient_observation = {
             "scope": "first_source_training_batch_after_backward_before_optimizer_step",
             "condition_id": condition_id,
             "required_gradient_norm_threshold": threshold,
@@ -391,7 +395,7 @@ class Default_task(pl.LightningModule):
         }
 
     def view_gradient_summary(self) -> dict[str, Any] | None:
-        observation = self._c05_view_gradient_observation
+        observation = self._p01_view_gradient_observation
         if observation is None:
             return None
         return {

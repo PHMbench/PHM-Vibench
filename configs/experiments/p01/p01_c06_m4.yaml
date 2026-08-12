@@ -1,0 +1,13 @@
+# RUN-0032 base cell; later frozen seeds override only seed/output/run identity.
+pipeline: "Pipeline_01_Fault_Diagnosis"
+base_configs:
+  c06: "configs/experiments/p01/p01_c06_common.yaml"
+environment:
+  project: "p01_c06_m4_generic_attention"
+  output_dir: "results/p01/c06_m4_seed42"
+model:
+  condition: "M4"
+task:
+  grouped_evaluation:
+    run_id: "RUN-0032"
+    condition_id: "M4"

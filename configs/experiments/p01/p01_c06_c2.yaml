@@ -1,0 +1,17 @@
+# RUN-0035 base cell; target-slot RNG remains frozen at 31042 for all seeds.
+pipeline: "Pipeline_01_Fault_Diagnosis"
+base_configs:
+  c06: "configs/experiments/p01/p01_c06_common.yaml"
+environment:
+  project: "p01_c06_c2_permuted_alignment_targets"
+  output_dir: "results/p01/c06_c2_seed42"
+model:
+  condition: "M5"
+task:
+  alignment_target_control:
+    mode: "seeded_sattolo_derangement_after_batching"
+    seed: 31042
+    seed_key: "base_seed_plus_epoch_times_1000003_plus_batch_index"
+  grouped_evaluation:
+    run_id: "RUN-0035"
+    condition_id: "C2"

@@ -102,6 +102,39 @@ _C05_RUN_IDENTITIES = {
     "RUN-0028": ("C2", "fresh_process_reproduction", "RUN-0025"),
 }
 
+_C06_RUN_IDENTITIES = {
+    f"RUN-{run_number:04d}": (condition_id, seed)
+    for run_number, seed, condition_id in (
+        (29, 42, "M1"),
+        (30, 42, "M2"),
+        (31, 42, "M3"),
+        (32, 42, "M4"),
+        (33, 42, "M5"),
+        (34, 42, "C1"),
+        (35, 42, "C2"),
+        (36, 42, "C3"),
+        (37, 123, "M1"),
+        (38, 123, "M2"),
+        (39, 123, "M3"),
+        (40, 123, "M4"),
+        (41, 123, "M5"),
+        (42, 123, "C1"),
+        (43, 123, "C2"),
+        (44, 123, "C3"),
+        (45, 456, "M1"),
+        (46, 456, "M2"),
+        (47, 456, "M3"),
+        (48, 456, "M4"),
+        (49, 456, "M5"),
+        (50, 456, "C1"),
+        (51, 456, "C2"),
+        (52, 456, "C3"),
+    )
+}
+
+_C06_PREDECLARED_SEEDS = (42, 123, 456)
+_C06_PREDECLARED_TARGET_DOMAINS = (2, 3)
+
 
 def _json_ready(value: Any) -> Any:
     if isinstance(value, dict):
@@ -333,9 +366,9 @@ def build_p01_forward_compute_profile(
 
     profile_config = getattr(grouped_evaluation, "forward_compute", None)
     goal_id = str(getattr(grouped_evaluation, "goal_id", ""))
-    if goal_id not in {"C03", "C04", "C05"}:
+    if goal_id not in {"C03", "C04", "C05", "C06"}:
         raise ValueError(
-            "P01 forward-compute profiling is admitted only for C03/C04/C05"
+            "P01 forward-compute profiling is admitted only for C03/C04/C05/C06"
         )
     if profile_config is None:
         raise ValueError(f"{goal_id} requires task.grouped_evaluation.forward_compute")
@@ -420,7 +453,7 @@ def build_p01_forward_compute_profile(
         "learned_forward_supported_flops_relative_tolerance": flops_tolerance,
         "within_tolerances": matched,
     }
-    if goal_id in {"C04", "C05"}:
+    if goal_id in {"C04", "C05", "C06"}:
         comparison_condition = str(
             getattr(profile_config, "comparison_condition", "")
         )
@@ -570,6 +603,53 @@ def build_p01_grouped_result_rows(
                 f"run_id={run_id!r}, condition_id={condition_id!r}, "
                 f"run_role={run_role!r}, reproduction_of={reproduction_of!r}"
             )
+    elif goal_id == "C06":
+        if _C05_MODEL_CONDITIONS.get(condition_id) != condition:
+            raise ValueError(
+                "C06 condition identity/model mismatch: "
+                f"condition_id={condition_id!r}, model.condition={condition!r}"
+            )
+        run_id = str(getattr(grouped_evaluation, "run_id", ""))
+        run_role = str(getattr(grouped_evaluation, "run_role", ""))
+        reproduction_of = str(getattr(grouped_evaluation, "reproduction_of", ""))
+        expected_identity = _C06_RUN_IDENTITIES.get(run_id)
+        observed_seed = int(context.args_environment.seed) + int(context.iteration)
+        if (
+            expected_identity != (condition_id, observed_seed)
+            or run_role != "matrix_cell"
+            or reproduction_of
+        ):
+            raise ValueError(
+                "C06 run identity mismatch: "
+                f"run_id={run_id!r}, condition_id={condition_id!r}, "
+                f"seed={observed_seed}, run_role={run_role!r}, "
+                f"reproduction_of={reproduction_of!r}"
+            )
+        predeclared_seeds = tuple(
+            int(value)
+            for value in getattr(grouped_evaluation, "predeclared_seeds", ())
+        )
+        if predeclared_seeds != _C06_PREDECLARED_SEEDS:
+            raise ValueError(
+                "C06 predeclared seeds must be exactly "
+                f"{list(_C06_PREDECLARED_SEEDS)}"
+            )
+        if observed_seed not in _C06_PREDECLARED_SEEDS:
+            raise ValueError(
+                f"C06 observed seed {observed_seed} is outside the frozen set "
+                f"{list(_C06_PREDECLARED_SEEDS)}"
+            )
+        predeclared_domains = tuple(
+            int(value)
+            for value in getattr(
+                grouped_evaluation, "predeclared_target_domains", ()
+            )
+        )
+        if predeclared_domains != _C06_PREDECLARED_TARGET_DOMAINS:
+            raise ValueError(
+                "C06 predeclared target domains must be exactly "
+                f"{list(_C06_PREDECLARED_TARGET_DOMAINS)}"
+            )
     else:
         raise ValueError(f"Unsupported P01 grouped-evaluation goal {goal_id!r}")
     model = context.model
@@ -615,7 +695,7 @@ def build_p01_grouped_result_rows(
         raise RuntimeError(
             f"Condition {condition} unexpectedly contains forbidden branch(es) {present}"
         )
-    if goal_id in {"C03", "C05"} and condition_id in {"M3", "M4", "C1"}:
+    if goal_id in {"C03", "C05", "C06"} and condition_id in {"M3", "M4", "C1"}:
         required = (
             "encoder_1d",
             "project_1d",
@@ -642,17 +722,17 @@ def build_p01_grouped_result_rows(
             raise RuntimeError(
                 f"{goal_id} condition {condition_id} unexpectedly has alignment configuration"
             )
-    if goal_id == "C05" and condition_id in {"M1", "M2"}:
+    if goal_id in {"C05", "C06"} and condition_id in {"M1", "M2"}:
         if bool(getattr(model, "uses_alignment_objective", False)):
             raise RuntimeError(
-                f"C05 condition {condition_id} cannot consume alignment"
+                f"{goal_id} condition {condition_id} cannot consume alignment"
             )
         alignment_identity = getattr(model, "alignment_identity", None)
         if callable(alignment_identity) and alignment_identity() is not None:
             raise RuntimeError(
-                f"C05 condition {condition_id} unexpectedly has alignment configuration"
+                f"{goal_id} condition {condition_id} unexpectedly has alignment configuration"
             )
-    if goal_id in {"C04", "C05"} and condition_id in {"M5", "C2", "C3"}:
+    if goal_id in {"C04", "C05", "C06"} and condition_id in {"M5", "C2", "C3"}:
         control_reader = getattr(context.task, "alignment_target_control_identity", None)
         control_identity = control_reader() if callable(control_reader) else None
         if condition_id in {"M5", "C2"}:
@@ -803,7 +883,11 @@ def build_p01_grouped_result_rows(
                 else (
                     "C04_alignment_and_negative_control_execution_smoke"
                     if goal_id == "C04"
-                    else "C05_one_seed_minimum_admission_pilot"
+                    else (
+                        "C05_one_seed_minimum_admission_pilot"
+                        if goal_id == "C05"
+                        else "C06_three_seed_two_environment_decisive_pilot"
+                    )
                 )
             )
         ),
@@ -852,16 +936,31 @@ def build_p01_grouped_result_rows(
                     else (
                         "single-seed one-epoch C04 execution/control smoke, not mechanism evidence"
                         if goal_id == "C04"
-                        else "single-seed fixed-ten-epoch C05 admission pilot, not paper evidence"
+                        else (
+                            "single-seed fixed-ten-epoch C05 admission pilot, not paper evidence"
+                            if goal_id == "C05"
+                            else (
+                                "three predeclared optimization seeds under one frozen "
+                                "held-condition/two-load-domain C06 protocol; first "
+                                "performance-route evidence, not mechanism evidence"
+                            )
+                        )
                     )
                 )
             )
-            + "; windows, files, batches, load domains, and repeated control "
-            "identities are not independent repetitions and this row cannot "
-            "promote a paper claim"
+            + (
+                "; windows, files, batches, load domains, and repeated control "
+                "identities are not independent repetitions; C06 may support "
+                "only its predeclared performance-route decision and is "
+                "insufficient for a mechanism claim"
+                if goal_id == "C06"
+                else "; windows, files, batches, load domains, and repeated control "
+                "identities are not independent repetitions and this row cannot "
+                "promote a paper claim"
+            )
         ),
     }
-    if goal_id in {"C03", "C04", "C05"}:
+    if goal_id in {"C03", "C04", "C05", "C06"}:
         if not isinstance(forward_compute_profile, dict):
             raise RuntimeError(f"{goal_id} result rows require a forward-compute profile")
         if forward_compute_profile.get("condition_id") != condition_id:
@@ -880,7 +979,7 @@ def build_p01_grouped_result_rows(
             {
                 "alignment_terms_consumed": (
                     "physical|semantic|geometric"
-                    if goal_id in {"C04", "C05"}
+                    if goal_id in {"C04", "C05", "C06"}
                     and condition_id in {"M5", "C2"}
                     else "none"
                 ),
@@ -939,7 +1038,7 @@ def build_p01_grouped_result_rows(
                 ),
             }
         )
-    if goal_id in {"C04", "C05"}:
+    if goal_id in {"C04", "C05", "C06"}:
         common["run_id"] = str(grouped_evaluation.run_id)
         alignment_identity = getattr(model, "alignment_identity")()
         if not isinstance(training_objective_summary, dict):
@@ -1164,19 +1263,25 @@ def build_p01_grouped_result_rows(
                 ),
             }
         )
-        if goal_id == "C05":
+        if goal_id in {"C05", "C06"}:
             if not isinstance(view_gradient_summary, dict):
-                raise RuntimeError("C05 requires a first-batch view-gradient summary")
+                raise RuntimeError(
+                    f"{goal_id} requires a first-batch view-gradient summary"
+                )
             if (
                 view_gradient_summary.get("status") != "passed"
                 or view_gradient_summary.get("condition_id") != condition_id
                 or view_gradient_summary.get("scope")
                 != "first_source_training_batch_after_backward_before_optimizer_step"
             ):
-                raise RuntimeError("C05 view-gradient summary identity mismatch")
+                raise RuntimeError(
+                    f"{goal_id} view-gradient summary identity mismatch"
+                )
             gradient_norms = view_gradient_summary.get("gradient_norms")
             if not isinstance(gradient_norms, dict) or not gradient_norms:
-                raise RuntimeError("C05 view-gradient summary has no observed norms")
+                raise RuntimeError(
+                    f"{goal_id} view-gradient summary has no observed norms"
+                )
             threshold = float(
                 view_gradient_summary.get("required_gradient_norm_threshold", -1.0)
             )
@@ -1184,7 +1289,9 @@ def build_p01_grouped_result_rows(
                 not math.isfinite(float(value)) or float(value) <= threshold
                 for value in gradient_norms.values()
             ):
-                raise RuntimeError("C05 required view-gradient group is inactive")
+                raise RuntimeError(
+                    f"{goal_id} required view-gradient group is inactive"
+                )
             common.update(
                 {
                     "run_role": str(grouped_evaluation.run_role),
@@ -1374,9 +1481,9 @@ class _P01DataProtocolHooks(ClassificationHooks):
             context.args_task, "grouped_evaluation", None
         )
         goal_id = str(getattr(grouped_evaluation, "goal_id", "C02"))
-        if goal_id in {"C04", "C05"}:
+        if goal_id in {"C04", "C05", "C06"}:
             self._trained_tasks[context.iteration] = context.task
-        if goal_id in {"C03", "C04", "C05"}:
+        if goal_id in {"C03", "C04", "C05", "C06"}:
             condition_id = str(
                 getattr(
                     grouped_evaluation,
