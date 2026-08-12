@@ -41,8 +41,8 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         self.split_strategy = str(split_strategy)
         if self.split_strategy not in {"legacy_windows", "grouped_metadata"}:
             raise ValueError(
-                "data.split.strategy must be 'legacy_windows' or "
-                f"'grouped_metadata', got {self.split_strategy!r}"
+                "Unknown data.split.strategy "
+                f"{self.split_strategy!r}; choose legacy_windows or grouped_metadata."
             )
 
         requested_mode = str(mode).lower()

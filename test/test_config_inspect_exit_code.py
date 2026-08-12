@@ -16,7 +16,7 @@ def test_config_inspect_returns_nonzero_when_sanity_fails(monkeypatch, capsys) -
                 "fix": "install the missing dependency",
             }
         ],
-        effective_config_sha256="",
+        effective_config_sha256="0" * 64,
         local_config_path=None,
     )
     monkeypatch.setattr(config_inspect, "inspect_config", lambda *args, **kwargs: result)
@@ -40,7 +40,7 @@ def test_config_inspect_returns_zero_when_sanity_passes(monkeypatch) -> None:
                 "fix": "",
             }
         ],
-        effective_config_sha256="",
+        effective_config_sha256="0" * 64,
         local_config_path=None,
     )
     monkeypatch.setattr(config_inspect, "inspect_config", lambda *args, **kwargs: result)

@@ -110,6 +110,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `src/model_factory/X_model/UXFD/FACT_TABLE.md`, `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md`
 - Status: `/`
 
+#### `base_model_xoan_operator_path`
+- Path: `configs/base/model/xoan_operator_path.yaml`
+- Description: P07 standalone typed executable operator-path software base
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`, `model.operator_path.*`
+- Minimal run: `python main.py --config configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
+- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
+- Status: `/`
+
 ### base_task
 
 #### `base_task_cddg`
@@ -189,6 +200,19 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/trainer/README.md`, `src/trainer_factory/README.md`
+- Status: `/`
+
+### protocol
+
+#### `p07_g040_protocol_preflight`
+- Path: `configs/experiments/p07_xoan_operator_attention/g040_protocol.yaml`
+- Description: P07-G040 standalone check-only protocol preflight; approval false and never claim evidence
+- Owner code: `scripts/p07_protocol_preflight.py:main`
+- Keyspace: `protocol.*`, `runtime.*`, `manifests.*`, `cwru.*`, `seeds.*`, `budgets.*`, `thresholds.*`
+- Minimal run: `python scripts/p07_protocol_preflight.py --config configs/experiments/p07_xoan_operator_attention/g040_protocol.yaml --protocol-sha256 <sha256> --metadata-path <metadata> --raw-dir <raw> --reader-source-path <reader> --preprocessing-source-path <preprocessing>`
+- Common overrides: `--device=cpu (default)`, `CUDA requires one of physical GPU 0 or 1`, `optional --emit-dir=<new-derived-dir>`
+- Outputs: `stdout canonical JSON; explicit --emit-dir derived manifests only`
+- Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
 - Status: `/`
 
 
@@ -314,6 +338,19 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Outputs: `results/demo/uxfd/tspn_uxfd_full_cpu/{experiment_name}/iter_{i}/`
 - Related docs: `src/model_factory/X_model/UXFD/FACT_TABLE.md`, `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md`
 - Status: `needs_smoke`
+
+### experiment
+
+#### `p07_g030_xoan_operator_path_smoke`
+- Path: `configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
+- Description: P07-G030 CPU software smoke; explicitly not C6-C9 evidence
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `model.operator_path.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
+- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Outputs: `results/experiments/p07/g030_executable_operator_path_smoke/{experiment_name}/iter_{i}/`
+- Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
+- Status: `sanity_ok`
 
 
 ## Pipeline_02_Pretraining_Few_Shot

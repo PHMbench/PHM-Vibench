@@ -1,5 +1,9 @@
 from types import SimpleNamespace
 
+import torch
+from torch.utils.data import TensorDataset
+
+from src.data_factory.dataset_task.Dataset_cluster import IdIncludedDataset
 import src.data_factory.samplers.Get_sampler as sampler_module
 
 
@@ -14,8 +18,8 @@ def test_generative_task_uses_standard_factory_sampler(monkeypatch) -> None:
         ),
     )
     args_data = SimpleNamespace(batch_size=2)
-    dataset = SimpleNamespace(
-        file_windows_list=[{"file_id": 1}],
+    dataset = IdIncludedDataset(
+        {1: TensorDataset(torch.arange(2))},
         metadata={1: {"Dataset_id": 0}},
     )
 

@@ -1,4 +1,5 @@
 import json
+import hashlib
 from types import SimpleNamespace
 
 import numpy as np
@@ -8,6 +9,7 @@ import pytest
 from src.data_factory.data_utils import MetadataAccessor
 from src.data_factory.data_factory import data_factory
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
+from src.data_factory.explicit_data_factory import ExplicitDataFactory
 from src.data_factory.id_data_factory import id_data_factory
 from src.data_factory.splitting import resolve_data_splits
 
@@ -190,6 +192,14 @@ def _factory_args(manifest_path):
 def _task_args():
     return SimpleNamespace(
         type="Default_task",
+        name="Default_task",
+        target_system_id=[1],
+    )
+
+
+def _id_task_args():
+    return SimpleNamespace(
+        type="pretrain",
         name="classification",
         target_system_id=[1],
     )
@@ -221,6 +231,13 @@ def test_default_dataset_uses_group_split_instead_of_window_split():
     assert len(Default_dataset(data, metadata, legacy, SimpleNamespace(), "val")) == 4
     assert len(Default_dataset(data, metadata, grouped, SimpleNamespace(), "train")) == 10
     assert len(Default_dataset(data, metadata, grouped, SimpleNamespace(), "val")) == 10
+
+    invalid = SimpleNamespace(
+        **common,
+        split=SimpleNamespace(strategy="unknown"),
+    )
+    with pytest.raises(ValueError, match="Unknown data.split.strategy"):
+        Default_dataset(data, metadata, invalid, SimpleNamespace(), "train")
 
 
 def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
@@ -264,9 +281,30 @@ def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
     second._init_dataset()
     assert second.split_result == first.split_result
 
+    explicit = ExplicitDataFactory.__new__(ExplicitDataFactory)
+    explicit.args_data = args_data
+    explicit.args_task = args_task
+    explicit.target_metadata = metadata
+    explicit.data = raw_data
+    explicit.search_id = lambda: (candidate_ids, [])
+    explicit_train, explicit_val, explicit_test = explicit._init_dataset()
+    assert _dataset_ids(explicit_train) == explicit.split_result.train_ids
+    assert _dataset_ids(explicit_val) == explicit.split_result.val_ids
+    assert _dataset_ids(explicit_test) == explicit.split_result.test_ids
+    assert all(
+        len(per_id_dataset) == args_data.num_window
+        for split_dataset in (explicit_train, explicit_val, explicit_test)
+        for per_id_dataset in split_dataset.dataset_dict.values()
+    )
+    assert explicit.split_summary["file_overlap"] == {
+        "train_val": [],
+        "train_test": [],
+        "val_test": [],
+    }
+
     id_factory = id_data_factory.__new__(id_data_factory)
     id_factory.args_data = args_data
-    id_factory.args_task = args_task
+    id_factory.args_task = _id_task_args()
     id_factory.metadata = metadata
     id_train, id_val, id_test = id_factory._init_dataset()
     assert _dataset_ids(id_train) == id_factory.split_result.train_ids
@@ -277,3 +315,97 @@ def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
         for split_dataset in (id_train, id_val, id_test)
         for sample_id, child in split_dataset.dataset_dict.items()
     )
+
+
+def _write_frozen_manifest_fixture(tmp_path):
+    frame = pd.DataFrame(
+        [
+            {
+                "Id": f"id-{index}",
+                "Split_group": f"cell-{index}",
+                "Split_stratum": index % 2,
+                "Label": index % 2,
+                "Dataset_id": 904,
+                "Domain_id": 0,
+            }
+            for index in range(8)
+        ]
+    )
+    metadata_path = tmp_path / "metadata.csv"
+    frame.to_csv(metadata_path, index=False)
+    partitions = {
+        "train": ["id-0", "id-1", "id-2", "id-3"],
+        "optimization_validation": ["id-4"],
+        "identification": ["id-5"],
+        "intervention": ["id-6", "id-7"],
+    }
+    payload = {
+        "schema_version": 1,
+        "strategy": "frozen_partitions",
+        "group_key": "Split_group",
+        "stratify_key": "Split_stratum",
+        "metadata_file_sha256": hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
+        "partitions": {
+            name: {
+                "ids": ids,
+                "groups": [f"cell-{sample_id.split('-')[-1]}" for sample_id in ids],
+            }
+            for name, ids in partitions.items()
+        },
+    }
+    manifest_path = tmp_path / "partition_manifest.json"
+    manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    args = SimpleNamespace(
+        data_dir=str(tmp_path),
+        metadata_file="metadata.csv",
+        normalization="none",
+        split=SimpleNamespace(
+            strategy="grouped_metadata",
+            group_key="Split_group",
+            stratify_key="Split_stratum",
+            seed=240401,
+            test_policy="partition",
+            manifest_path=str(manifest_path),
+            manifest_mode="read_only",
+            manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+            partition_map={
+                "train": "train",
+                "val": "optimization_validation",
+                "test": "intervention",
+            },
+        ),
+    )
+    return MetadataAccessor(frame, key_column="Id"), args, manifest_path
+
+
+def test_read_only_manifest_consumes_four_frozen_partitions_without_rewrite(tmp_path):
+    metadata, args, manifest_path = _write_frozen_manifest_fixture(tmp_path)
+    before = manifest_path.read_bytes()
+
+    result = resolve_data_splits(
+        metadata,
+        args,
+        SimpleNamespace(type="Default_task"),
+        metadata.keys(),
+        metadata.keys(),
+    )
+
+    assert result.train_ids == ("id-0", "id-1", "id-2", "id-3")
+    assert result.val_ids == ("id-4",)
+    assert result.test_ids == ("id-6", "id-7")
+    assert result.strategy == "grouped_metadata_read_only"
+    assert manifest_path.read_bytes() == before
+
+
+def test_read_only_manifest_rejects_hash_mismatch(tmp_path):
+    metadata, args, _ = _write_frozen_manifest_fixture(tmp_path)
+    args.split.manifest_sha256 = "0" * 64
+
+    with pytest.raises(ValueError, match="manifest SHA-256"):
+        resolve_data_splits(
+            metadata,
+            args,
+            SimpleNamespace(type="Default_task"),
+            metadata.keys(),
+            metadata.keys(),
+        )

@@ -24,6 +24,19 @@ from ..utils.registry import Registry
 
 DATA_FACTORY_REGISTRY = Registry()
 
+
+def _cache_directory(args_data):
+    """Return the writable cache root without changing raw-data lookup paths.
+
+    ``data_dir`` remains the source of metadata and raw samples.  Evidence
+    datasets may additionally set ``cache_dir`` so generated HDF5 files never
+    mutate an immutable, hash-ledgered data snapshot.  Existing configurations
+    retain their historical behavior when ``cache_dir`` is absent or empty.
+    """
+
+    configured = getattr(args_data, "cache_dir", None)
+    return os.fspath(configured) if configured else os.fspath(args_data.data_dir)
+
 def register_data_factory(name: str):
     """Decorator to register a data factory implementation."""
     return DATA_FACTORY_REGISTRY.register(name)
@@ -136,7 +149,8 @@ class data_factory:
             to be fetched from raw files.
         """
         ids_to_fetch = {}
-        os.makedirs(args_data.data_dir, exist_ok=True)
+        cache_directory = _cache_directory(args_data)
+        os.makedirs(cache_directory, exist_ok=True)
         for id_key in tqdm(task_meta.keys(), desc="检查 Name.h5 缓存", disable=not list(task_meta.keys())):
             try:
                 meta = self.metadata[id_key]
@@ -145,7 +159,7 @@ class data_factory:
             name = meta.get('Name')
             if not name:
                 continue
-            name_cache_file = os.path.join(args_data.data_dir, f"{name}.h5")
+            name_cache_file = os.path.join(cache_directory, f"{name}.h5")
             h5_key = str(id_key)
             need = False
             if not use_cache or not os.path.exists(name_cache_file):
@@ -174,7 +188,9 @@ class data_factory:
         """
         if not ids:
             return
-        name_cache_file = os.path.join(args_data.data_dir, f"{name}.h5")
+        name_cache_file = os.path.join(
+            _cache_directory(args_data), f"{name}.h5"
+        )
         id_meta_pairs = []
         for id_k in ids:
             meta = self.metadata[id_k]
@@ -213,7 +229,8 @@ class data_factory:
         str
             Path to the consolidated ``cache.h5`` file.
         """
-        final_cache_path = os.path.join(args_data.data_dir, "cache.h5")
+        cache_directory = _cache_directory(args_data)
+        final_cache_path = os.path.join(cache_directory, "cache.h5")
         os.makedirs(os.path.dirname(final_cache_path), exist_ok=True)
         missing_keys = []
         if use_cache and os.path.exists(final_cache_path):
@@ -228,7 +245,7 @@ class data_factory:
                 for id_key in tqdm(missing_keys, desc="整合 cache.h5"):
                     meta = self.metadata[id_key]
                     name = meta['Name']
-                    name_cache_file = os.path.join(args_data.data_dir, f"{name}.h5")
+                    name_cache_file = os.path.join(cache_directory, f"{name}.h5")
                     if not os.path.exists(name_cache_file):
                         continue
                     with h5py.File(name_cache_file, 'r') as h5f_name:

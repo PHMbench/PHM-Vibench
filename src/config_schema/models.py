@@ -71,6 +71,94 @@ class DataConfig(BaseModel):
     split: Optional[DataSplitConfig] = None
 
 
+OperatorName = Literal[
+    "I",
+    "D1",
+    "ABS",
+    "SQUARE",
+    "MA3",
+    "MA5",
+    "HT",
+    "FFT_MAG",
+    "F_ID",
+]
+
+
+class XOANOperatorPathConfig(BaseModel):
+    """Fail-closed scientific controls for the standalone P07 method."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    dictionary_id: str = Field(..., min_length=1)
+    dictionary_version: str = Field(..., min_length=1)
+    stage_operators: List[List[OperatorName]] = Field(..., min_length=1, max_length=8)
+    addable_stage_operators: List[List[OperatorName]] = Field(
+        ..., min_length=1, max_length=8
+    )
+    hidden_dim: int = Field(64, ge=1)
+    temperature: float = Field(1.0, gt=0.0)
+    relaxation: Literal["sparsemax"] = "sparsemax"
+    relaxation_version: Literal["sparsemax-euclidean-projection-1"] = (
+        "sparsemax-euclidean-projection-1"
+    )
+    support_tolerance: float = Field(1e-8, ge=0.0, le=1e-4)
+    execution_mode: Literal["relaxed"] = "relaxed"
+    tie_break_rule: Literal["registry_order"] = "registry_order"
+    input_kind: Literal["blc_real_series"] = "blc_real_series"
+    entropy_weight: float = Field(0.5, ge=0.0)
+    export_gap_weight: float = Field(0.5, ge=0.0)
+    eps: float = Field(1e-8, gt=0.0, lt=1.0)
+
+    @model_validator(mode="after")
+    def _check_typed_dictionary(self) -> "XOANOperatorPathConfig":
+        if len(self.addable_stage_operators) != len(self.stage_operators):
+            raise ValueError(
+                "model.operator_path.addable_stage_operators must have the same "
+                "number of stages as stage_operators"
+            )
+        current_kind = "blc_real_series"
+        signatures = {
+            "I": ("blc_real_series", "blc_real_series"),
+            "D1": ("blc_real_series", "blc_real_series"),
+            "ABS": ("blc_real_series", "blc_real_series"),
+            "SQUARE": ("blc_real_series", "blc_real_series"),
+            "MA3": ("blc_real_series", "blc_real_series"),
+            "MA5": ("blc_real_series", "blc_real_series"),
+            "HT": ("blc_real_series", "blc_real_series"),
+            "FFT_MAG": ("blc_real_series", "blc_frequency_magnitude"),
+            "F_ID": ("blc_frequency_magnitude", "blc_frequency_magnitude"),
+        }
+        for stage, (operators, addable) in enumerate(
+            zip(self.stage_operators, self.addable_stage_operators)
+        ):
+            if not operators:
+                raise ValueError(f"model.operator_path.stage_operators[{stage}] is empty")
+            if len(set(operators)) != len(operators):
+                raise ValueError(
+                    f"model.operator_path.stage_operators[{stage}] contains duplicates"
+                )
+            if len(set(addable)) != len(addable):
+                raise ValueError(
+                    f"model.operator_path.addable_stage_operators[{stage}] contains duplicates"
+                )
+            overlap = set(operators).intersection(addable)
+            if overlap:
+                raise ValueError(
+                    f"model.operator_path stage {stage} active/addable dictionaries overlap"
+                )
+            candidates = operators + addable
+            inputs = {signatures[name][0] for name in candidates}
+            outputs = {signatures[name][1] for name in candidates}
+            if inputs != {current_kind} or len(outputs) != 1:
+                raise ValueError(
+                    f"model.operator_path stage {stage} has incompatible type signatures"
+                )
+            current_kind = next(iter(outputs))
+        if self.entropy_weight + self.export_gap_weight <= 0:
+            raise ValueError("at least one insufficiency-score weight must be positive")
+        return self
+
+
 class ModelConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -80,6 +168,7 @@ class ModelConfig(BaseModel):
     embedding: Optional[str] = None
     backbone: Optional[str] = None
     task_head: Optional[str] = None
+    operator_path: Optional[XOANOperatorPathConfig] = None
 
     @model_validator(mode="after")
     def _check_isfm_components(self) -> "ModelConfig":
@@ -87,6 +176,38 @@ class ModelConfig(BaseModel):
             missing = [k for k in ["embedding", "backbone", "task_head"] if not getattr(self, k)]
             if missing:
                 raise ValueError(f"model.type=ISFM requires: {', '.join(missing)}")
+        return self
+
+    @model_validator(mode="after")
+    def _check_xoan_operator_path(self) -> "ModelConfig":
+        if self.type != "X_model" or self.name != "XOANOperatorPath":
+            return self
+        if self.operator_path is None:
+            raise ValueError("X_model/XOANOperatorPath requires model.operator_path")
+        allowed_extra = {
+            "device",
+            "in_channels",
+            "num_classes",
+            "classifier_hidden_dim",
+            "dropout",
+            "inference_mode",
+        }
+        unexpected = sorted(set(self.model_extra or {}).difference(allowed_extra))
+        if unexpected:
+            raise ValueError(
+                f"X_model/XOANOperatorPath has unsupported model fields: {unexpected}"
+            )
+        for name in ("in_channels", "num_classes", "classifier_hidden_dim"):
+            value = getattr(self, name, None)
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"X_model/XOANOperatorPath requires positive model.{name}")
+        dropout = getattr(self, "dropout", None)
+        if isinstance(dropout, bool) or not isinstance(dropout, (int, float)):
+            raise ValueError("X_model/XOANOperatorPath requires numeric model.dropout")
+        if not math.isfinite(float(dropout)) or not 0.0 <= float(dropout) < 1.0:
+            raise ValueError("model.dropout must be finite and in [0, 1)")
+        if getattr(self, "inference_mode", None) not in {"relaxed", "discrete"}:
+            raise ValueError("model.inference_mode must be relaxed or discrete")
         return self
 
 

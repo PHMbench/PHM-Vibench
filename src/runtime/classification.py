@@ -21,6 +21,7 @@ from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
+from src.utils.run_summary import write_run_summary
 from src.utils.utils import close_lab, init_lab, load_best_model_checkpoint
 
 
@@ -130,6 +131,31 @@ def _result_row(result: Any) -> dict[str, Any]:
     return dict(result[0])
 
 
+def _write_aggregate_outputs(
+    run_root: str | Path,
+    last_iteration_path: str | Path | None,
+    all_results: list[dict[str, Any]],
+    run_seeds: list[int],
+    configs: Any,
+) -> dict[str, Any]:
+    """Write repeated-run metrics and their deterministic summary."""
+
+    if last_iteration_path is None or not all_results:
+        raise ValueError("aggregate outputs require at least one completed iteration")
+
+    run_root_path = Path(run_root)
+    iteration_path = Path(last_iteration_path)
+    results = pd.DataFrame(all_results)
+    results.to_csv(iteration_path / "all_results.csv", index=False)
+    results.to_csv(run_root_path / "all_results.csv", index=False)
+    return write_run_summary(
+        run_root_path / "run_summary.json",
+        results=all_results,
+        seeds=run_seeds,
+        config=configs,
+    )
+
+
 def _register_iteration_evidence(
     args: Any,
     *,
@@ -182,9 +208,15 @@ def run_classification_pipeline(
     if iterations <= 0:
         raise ValueError(f"environment.iterations must be positive, got {iterations}")
     base_seed = int(getattr(args_environment, "seed", 0))
+    test_after_fit = getattr(args_trainer, "test_after_fit", True)
+    if not isinstance(test_after_fit, bool):
+        raise TypeError(
+            "trainer.test_after_fit must be a boolean when it is provided"
+        )
     _set_environment(args_environment)
 
     all_results: list[dict[str, Any]] = []
+    run_seeds: list[int] = []
     final_path: Path | None = None
 
     for iteration in range(iterations):
@@ -200,6 +232,7 @@ def run_classification_pipeline(
         args_trainer.logger_name = name
 
         current_seed = base_seed + iteration
+        run_seeds.append(current_seed)
         seed_everything(current_seed)
         print(f"[INFO] 设置随机种子: {current_seed}")
 
@@ -258,6 +291,8 @@ def run_classification_pipeline(
 
             print("[INFO] 加载最佳模型并测试...")
             context.task = load_best_model_checkpoint(context.task, context.trainer)
+            if not test_after_fit:
+                continue
             context.result = _result_row(
                 context.trainer.test(
                     context.task,
@@ -285,8 +320,17 @@ def run_classification_pipeline(
 
     if final_path is None:
         raise RuntimeError("classification Pipeline produced no iteration path")
+    if not test_after_fit:
+        print(f"\n{'=' * 50}\n[INFO] 训练完成；配置禁止测试\n{'=' * 50}")
+        return []
+    _write_aggregate_outputs(
+        final_path.parent,
+        final_path,
+        all_results,
+        run_seeds,
+        configs,
+    )
     aggregate_path = final_path / "all_results.csv"
-    pd.DataFrame(all_results).to_csv(aggregate_path, index=False)
     attestation = getattr(args, "run_attestation", None)
     if attestation is not None:
         attestation.register_artifact(

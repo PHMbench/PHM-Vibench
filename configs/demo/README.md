@@ -35,7 +35,8 @@ python main.py --config configs/demo/00_smoke/dummy_dg.yaml
 | `04_cross_system_fewshot/` | Hierarchically sampled CE classification | `gfs_dlinear.yaml` |
 | `05_pretrain_fewshot/` | Single-stage HSE contrastive pretraining | `pretrain_hse_then_fewshot.yaml` |
 | `06_pretrain_cddg/` | Single-stage HSE contrastive pretraining view | `pretrain_hse_cddg.yaml` |
-| `10_generative/` | Candidate Conditional Flow Matching smoke | `dummy_generative_cfm.yaml` |
+| `10_generative/` | Conditional Flow Matching CPU candidate smoke | `dummy_generative_cfm.yaml` |
+| `uxfd/` | UXFD compatibility smoke; no benchmark or claim status | `20_smoke_tspn_uxfd_full_cpu.yaml` |
 
 Several filenames are retained temporarily for compatibility. The YAML content and its
 README are authoritative about what is actually executed. A filename must not be used
