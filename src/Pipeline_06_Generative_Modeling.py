@@ -31,8 +31,10 @@ def _get_attr(value: Any, key: str, default: Any = None) -> Any:
     return getattr(value, key, default)
 
 
-def _population_rbf_bandwidths(args_task: Any) -> tuple[float, ...]:
+def _population_rbf_bandwidths(args_task: Any) -> tuple[float, ...] | None:
     population_cfg = _get_attr(args_task, "population_regularization", None)
+    if population_cfg is None or _get_attr(population_cfg, "enabled", None) is False:
+        return None
     values = _get_attr(
         population_cfg,
         "rbf_bandwidths",

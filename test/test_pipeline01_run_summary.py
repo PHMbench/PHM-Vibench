@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from src.Pipeline_01_Fault_Diagnosis import _P01DataProtocolHooks
 from src.runtime.classification import _write_aggregate_outputs
 
 

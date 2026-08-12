@@ -9,10 +9,38 @@ import pytest
 import yaml
 
 from scripts.p04 import prepare_decisive_run as preparer
+from scripts.p04.generate_synthetic import generate_dataset
 from scripts.p04.package_decisive_run import REQUIRED_RUN_META_FIELDS
 
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _immutable_synthetic_runtime(tmp_path_factory: pytest.TempPathFactory):
+    """Materialize the frozen deterministic P04 inputs outside the repository."""
+
+    root = tmp_path_factory.mktemp("p04-run-preparer") / "synthetic_v1"
+    result = generate_dataset(root)
+    cache_root = root.parent / "cache"
+    cache_root.mkdir()
+
+    patcher = pytest.MonkeyPatch()
+    patcher.setattr(preparer, "DATA_ROOT", root)
+    patcher.setattr(preparer, "DATA_CACHE_ROOT", cache_root)
+    patcher.setattr(preparer, "PARTITION_MANIFEST", root / "partition_manifest.json")
+    patcher.setattr(preparer, "GENERATOR_MANIFEST", root / "generator_manifest.json")
+    patcher.setattr(preparer, "METADATA_FILE", root / "metadata.csv")
+    assert result["partition_manifest_sha256"] == preparer.EXPECTED_RUNTIME_BINDINGS[
+        "partition_manifest_sha256"
+    ]
+    assert result["generator_manifest_sha256"] == preparer.EXPECTED_RUNTIME_BINDINGS[
+        "generator_manifest_sha256"
+    ]
+    try:
+        yield
+    finally:
+        patcher.undo()
 
 
 def _sha256(path: Path) -> str:
