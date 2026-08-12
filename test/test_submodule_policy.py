@@ -52,6 +52,19 @@ def test_unconfigured_raw_gitlink_is_rejected(monkeypatch) -> None:
     )
 
 
+def test_gitlinks_reads_the_staged_index(monkeypatch) -> None:
+    output = (
+        "100644 " + "1" * 40 + " 0\tREADME.md\n"
+        "160000 " + "2" * 40 + " 0\tpackages/provider\n"
+    )
+    monkeypatch.setattr(
+        policy.subprocess,
+        "run",
+        lambda *args, **kwargs: type("Result", (), {"stdout": output})(),
+    )
+    assert policy._gitlinks() == {"packages/provider": "2" * 40}
+
+
 def test_personal_backend_url_is_not_allowlisted(monkeypatch) -> None:
     allowlist = policy._load_allowlist()
     candidate = dict(allowlist["allowed_submodules"][0])
@@ -65,6 +78,12 @@ def test_personal_backend_url_is_not_allowlisted(monkeypatch) -> None:
 
 
 def test_deferred_backend_must_be_absent(monkeypatch) -> None:
+    allowlist = policy._load_allowlist()
+    candidate = dict(allowlist["allowed_submodules"][0])
+    candidate.update(status="deferred_to_v0.3.1", pinned_commit=None)
+    changed = dict(allowlist)
+    changed["allowed_submodules"] = [candidate]
+    monkeypatch.setattr(policy, "_load_allowlist", lambda: changed)
     monkeypatch.setattr(
         policy,
         "_configured_submodules",
@@ -88,7 +107,11 @@ def test_deferred_backend_must_be_absent(monkeypatch) -> None:
 def test_approved_backend_requires_exact_gitlink(monkeypatch) -> None:
     allowlist = policy._load_allowlist()
     candidate = dict(allowlist["allowed_submodules"][0])
-    candidate.update(status="approved", pinned_commit="b" * 40)
+    candidate.update(
+        status="approved",
+        reviewed_source_tree_commit=policy.TARGET_BACKEND_COMMIT,
+        pinned_commit=policy.TARGET_BACKEND_COMMIT,
+    )
     changed = dict(allowlist)
     changed["allowed_submodules"] = [candidate]
     monkeypatch.setattr(policy, "_load_allowlist", lambda: changed)
@@ -110,3 +133,23 @@ def test_approved_backend_requires_exact_gitlink(monkeypatch) -> None:
 
     findings = policy.collect_findings()
     assert any(finding.code == "BACKEND_GITLINK_MISMATCH" for finding in findings)
+
+
+def test_approved_backend_requires_released_commit(monkeypatch) -> None:
+    allowlist = policy._load_allowlist()
+    candidate = dict(allowlist["allowed_submodules"][0])
+    candidate.update(
+        status="approved",
+        reviewed_source_tree_commit="b" * 40,
+        pinned_commit="b" * 40,
+    )
+    changed = dict(allowlist)
+    changed["allowed_submodules"] = [candidate]
+    monkeypatch.setattr(policy, "_load_allowlist", lambda: changed)
+    monkeypatch.setattr(policy, "_configured_submodules", lambda: {})
+    monkeypatch.setattr(policy, "_gitlinks", lambda: {})
+
+    findings = policy.collect_findings()
+    codes = {finding.code for finding in findings}
+    assert "BACKEND_REVIEWED_COMMIT_INVALID" in codes
+    assert "BACKEND_PIN_INVALID" in codes

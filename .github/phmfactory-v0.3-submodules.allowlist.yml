@@ -4,21 +4,28 @@ runtime_baseline_commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
 
 allowed_submodules:
   - name: phm-data-factory
-    status: deferred_to_v0.3.1
+    status: approved
     optional: true
     path: packages/phm-data-factory
     target_url: https://github.com/PHMbench/phm-data-factory.git
-    reviewed_source_tree_commit: 5580fafec2ea5615f6d3276d95e1e5a948cc0f13
-    pinned_commit: null
+    reviewed_source_tree_commit: 16180b5fd9ca31d79fe65efd29b11439c1e54186
+    pinned_commit: 16180b5fd9ca31d79fe65efd29b11439c1e54186
+    release_tag: v0.2.0
+    package_version: 0.2.0
+    api_schema_version: 1.0.0
+    capability_schema_version: 1.0.0
     license: Apache-2.0
     expected_owner: PHMbench
-    approved_integration_pr: null
-    deferral_contract: docs/releases/v0.3.0-backend-deferral.yaml
+    approved_integration_pr: 148
+    v0.3.0_deferral_contract: docs/releases/v0.3.0-backend-deferral.yaml
     ownership_transfer:
-      status: open
+      status: completed
       source_issue_number: 5
       target_repository: PHMbench/phm-data-factory
-    baseline_consumers: []
+    baseline_consumers:
+      - src/data_factory/phm_data_factory.py
+      - src/data_factory/standalone.py
+      - src/data_factory/__init__.py
     permitted_new_consumers:
       - src/data_factory/phm_data_factory.py
       - src/data_factory/standalone.py

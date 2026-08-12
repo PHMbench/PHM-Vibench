@@ -64,8 +64,18 @@ class DataSplitConfig(BaseModel):
 class DataConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    data_dir: str = Field(..., description="Dataset root dir containing metadata and processed files.")
-    metadata_file: str = Field(..., description="Metadata filename relative to data_dir (xlsx/csv).")
+    factory_name: str = Field("default", description="Registered data-factory name.")
+    data_dir: Optional[str] = Field(
+        None, description="Dataset root dir containing metadata and processed files."
+    )
+    metadata_file: Optional[str] = Field(
+        None, description="Metadata filename relative to data_dir (xlsx/csv)."
+    )
+    phm_data_config: Optional[str] = Field(
+        None,
+        description="Configuration path for the optional phm-data-factory backend.",
+    )
+    dataset_name: Optional[str] = None
     batch_size: Optional[int] = Field(None, ge=1)
     num_workers: Optional[int] = Field(None, ge=0)
     split: Optional[DataSplitConfig] = None
@@ -156,6 +166,19 @@ class XOANOperatorPathConfig(BaseModel):
             current_kind = next(iter(outputs))
         if self.entropy_weight + self.export_gap_weight <= 0:
             raise ValueError("at least one insufficiency-score weight must be positive")
+        return self
+
+    @model_validator(mode="after")
+    def _check_factory_fields(self) -> "DataConfig":
+        if self.factory_name == "phm_data":
+            if not self.phm_data_config:
+                raise ValueError(
+                    "data.factory_name=phm_data requires data.phm_data_config"
+                )
+        elif not self.data_dir or not self.metadata_file:
+            raise ValueError(
+                "data.data_dir and data.metadata_file are required for legacy factories"
+            )
         return self
 
 

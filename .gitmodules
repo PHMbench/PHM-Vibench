@@ -1,0 +1,3 @@
+[submodule "packages/phm-data-factory"]
+	path = packages/phm-data-factory
+	url = https://github.com/PHMbench/phm-data-factory.git

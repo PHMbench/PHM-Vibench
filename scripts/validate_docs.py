@@ -6,6 +6,7 @@ links resolve and that per-directory AI docs defer shared content to README.md.
 
 from __future__ import annotations
 
+import configparser
 import re
 import sys
 from dataclasses import dataclass
@@ -27,7 +28,25 @@ SKIP_TOP_DIRS = {
 SKIP_DIR_NAMES = {"__pycache__"}
 
 
-def is_skipped_path(rel: Path) -> bool:
+def configured_submodule_paths(repo_root: Path) -> tuple[Path, ...]:
+    gitmodules = repo_root / ".gitmodules"
+    if not gitmodules.is_file():
+        return ()
+    parser = configparser.ConfigParser(interpolation=None, strict=True)
+    parser.read(gitmodules, encoding="utf-8")
+    paths: list[Path] = []
+    for section in parser.sections():
+        if not section.startswith('submodule "'):
+            continue
+        value = parser.get(section, "path", fallback="").strip()
+        if value:
+            paths.append(Path(value))
+    return tuple(paths)
+
+
+def is_skipped_path(rel: Path, submodule_paths: tuple[Path, ...] = ()) -> bool:
+    if any(rel == path or path in rel.parents for path in submodule_paths):
+        return True
     if rel.parts and rel.parts[0] in SKIP_TOP_DIRS:
         return True
     if len(rel.parts) >= 2 and rel.parts[:2] == (".claude", "handoffs"):
@@ -51,6 +70,7 @@ class Issue:
 
 
 def iter_doc_files(repo_root: Path) -> Iterable[Path]:
+    submodule_paths = configured_submodule_paths(repo_root)
     patterns = [
         "README.md",
         "CLAUDE.md",
@@ -61,7 +81,7 @@ def iter_doc_files(repo_root: Path) -> Iterable[Path]:
     for pattern in patterns:
         for path in repo_root.rglob(pattern):
             rel = path.relative_to(repo_root)
-            if is_skipped_path(rel):
+            if is_skipped_path(rel, submodule_paths):
                 continue
             yield path
 
@@ -107,10 +127,11 @@ def first_n_lines(path: Path, n: int = 40) -> str:
 
 def check_ai_docs_point_to_readme(repo_root: Path) -> list[Issue]:
     issues: list[Issue] = []
+    submodule_paths = configured_submodule_paths(repo_root)
     for doc_name in ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]:
         for path in repo_root.rglob(doc_name):
             rel = path.relative_to(repo_root)
-            if is_skipped_path(rel):
+            if is_skipped_path(rel, submodule_paths):
                 continue
             readme = path.parent / "README.md"
             if not readme.exists():

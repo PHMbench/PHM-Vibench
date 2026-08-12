@@ -26,6 +26,35 @@ The deny-by-default candidate record remains in:
 
 This preserves the future integration contract without advertising an unavailable backend as part of v0.3.0.
 
+## v0.3.1 integration authority
+
+The v0.3.0 deferral remains a historical release fact. The bounded v0.3.1
+integration is now authorized against one public, immutable provider release:
+
+```text
+integration status: draft_pr_148
+provider repository: https://github.com/PHMbench/phm-data-factory.git
+provider release: v0.2.0
+provider commit: 16180b5fd9ca31d79fe65efd29b11439c1e54186
+provider package: phm-data-factory 0.2.0
+provider API schema: 1.0.0
+provider capability schema: 1.0.0
+license: Apache-2.0
+```
+
+The provider repository is organization-owned and public, its `v0.2.0` tag
+peels to the reviewed merge commit above, and its release publishes a wheel,
+source archive, and checksums. This satisfies the ownership, licensing, and
+immutable-source entry gates; the remaining gates belong to the bounded
+PHMFactory adapter PR and its validation.
+
+The bounded implementation is tracked in
+[PHM-Vibench PR #148](https://github.com/PHMbench/PHM-Vibench/pull/148).
+
+This authority does not make the backend part of the default installation and
+does not authorize claims about real-dataset accuracy, throughput, live IoTDB
+operation inside PHMFactory, or additional signal modalities.
+
 ## Why deferral is the correct v0.3 boundary
 
 The reviewed backend source tree exists at:
@@ -101,16 +130,20 @@ A bounded v0.3.1 integration may review changes to:
 .gitmodules
 packages/phm-data-factory
 .github/phmfactory-v0.3-submodules.allowlist.yml
+.github/workflows/phm-data-factory-backend.yml
 src/data_factory/phm_data_factory.py
 src/data_factory/standalone.py
 src/data_factory/__init__.py
 src/config_schema/models.py
 src/configs/config_utils.py
 scripts/validate_docs.py
+tools/repo/check_submodule_policy.py
 test/test_phm_data_factory_backend.py
+test/test_submodule_policy.py
 test/test_validate_docs_scope.py
 docs/PHM_DATA_FACTORY_BACKEND_V0_3.md
 KNOWN_LIMITATIONS.md
+README.md
 ```
 
 The following remain protected and require a separate compatibility PR if a real defect is found:
@@ -126,9 +159,35 @@ src/trainer_factory/**
 src/Pipeline_*.py
 ```
 
-## Import and failure contract for v0.3.1
+## Configuration and import contract for v0.3.1
 
-The future adapter may lazily import an installed `phm_data_factory` package only when explicitly selected. It must not mutate `sys.path`, initialize a submodule automatically, or silently fall back to the existing backend.
+The adapter lazily imports the installed `phm_data_factory` package only when
+explicitly selected. It does not mutate `sys.path`, initialize a submodule
+automatically, or silently fall back to the existing backend.
+
+Initialize and install the exact optional provider explicitly:
+
+```bash
+git submodule update --init packages/phm-data-factory
+python -m pip install -e 'packages/phm-data-factory[legacy,yaml]'
+```
+
+Select it in a PHMFactory configuration:
+
+```yaml
+data:
+  factory_name: phm_data
+  phm_data_config: configs/data/phm-data.yaml
+  dataset_name: CWRU
+  batch_size: 32
+  num_workers: 4
+```
+
+`phm_data_config` is resolved from the process working directory and is passed
+to provider `connect()`. The adapter consumes trusted typed metadata through
+`metadata_frame("phm_vibench_v1")` and dense arrays through `read_signal()`.
+PHMFactory continues to own filtering, splits, windowing, normalization,
+Dataset/DataLoader construction, tasks, models, and trainers.
 
 Expected unavailable-backend behavior:
 
@@ -149,3 +208,14 @@ performance_claim_authorized: false
 ```
 
 These boundaries are release facts, not temporary documentation language. Changing them requires new implementation and validation evidence in v0.3.1 or later.
+
+For the v0.3.1 integration under review:
+
+```text
+optional_adapter_implemented: true
+default_install_requires_backend: false
+silent_fallback_allowed: false
+protected_runtime_rewritten: false
+real_dataset_or_performance_claim_authorized: false
+live_iotdb_claim_authorized: false
+```

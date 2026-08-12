@@ -1,0 +1,108 @@
+name: phm-data-factory backend
+
+on:
+  pull_request:
+    paths:
+      - ".gitmodules"
+      - "packages/phm-data-factory"
+      - ".github/phmfactory-v0.3-submodules.allowlist.yml"
+      - ".github/workflows/phm-data-factory-backend.yml"
+      - "src/config_schema/models.py"
+      - "src/configs/config_utils.py"
+      - "src/data_factory/__init__.py"
+      - "src/data_factory/phm_data_factory.py"
+      - "src/data_factory/standalone.py"
+      - "scripts/validate_docs.py"
+      - "tools/repo/check_submodule_policy.py"
+      - "test/test_phm_data_factory_backend.py"
+      - "test/test_submodule_policy.py"
+      - "test/test_validate_docs_scope.py"
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - ".gitmodules"
+      - "packages/phm-data-factory"
+      - ".github/phmfactory-v0.3-submodules.allowlist.yml"
+      - ".github/workflows/phm-data-factory-backend.yml"
+      - "src/config_schema/models.py"
+      - "src/configs/config_utils.py"
+      - "src/data_factory/**"
+      - "scripts/validate_docs.py"
+      - "tools/repo/check_submodule_policy.py"
+      - "test/test_phm_data_factory_backend.py"
+      - "test/test_submodule_policy.py"
+      - "test/test_validate_docs_scope.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phm-data-factory-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-contract:
+    name: Exact optional backend contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      MPLCONFIGDIR: /tmp/phmfactory-matplotlib
+
+    steps:
+      - name: Check out exact provider gitlink
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install focused runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0"
+          python -m pip install "pytest>=7" "pydantic>=2.0" "PyYAML>=6.0" "pytorch-lightning>=1.5"
+          python -m pip install -e "packages/phm-data-factory[legacy,yaml]"
+
+      - name: Verify provider identity
+        run: |
+          test "$(git -C packages/phm-data-factory rev-parse HEAD)" = "16180b5fd9ca31d79fe65efd29b11439c1e54186"
+          python - <<'PY'
+          from pathlib import Path
+          import phm_data_factory
+
+          expected = (Path.cwd() / "packages/phm-data-factory/src").resolve()
+          origin = Path(phm_data_factory.__file__).resolve()
+          assert expected in origin.parents, (expected, origin)
+          assert phm_data_factory.__version__ == "0.2.0"
+          manifest = phm_data_factory.agent_contract_manifest()
+          assert manifest["api_schema_version"] == "1.0.0"
+          assert manifest["capability_schema_version"] == "1.0.0"
+          PY
+
+      - name: Validate governed gitlink
+        run: python tools/repo/check_submodule_policy.py --mode release
+
+      - name: Compile adapter surface
+        run: >-
+          python -m py_compile
+          src/data_factory/standalone.py
+          src/data_factory/phm_data_factory.py
+          src/data_factory/__init__.py
+          src/config_schema/models.py
+          src/configs/config_utils.py
+
+      - name: Run focused contracts
+        run: >-
+          python -m pytest -q
+          test/test_phm_data_factory_backend.py
+          test/test_submodule_policy.py
+          test/test_validate_docs_scope.py
