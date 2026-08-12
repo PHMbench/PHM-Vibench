@@ -3,7 +3,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
 from src.task_factory import register_task
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Mapping, Tuple
 
 # 导入解耦后的组件
 from .Components.loss import get_loss_fn
@@ -76,6 +76,26 @@ class Default_task(pl.LightningModule):
         self.args_trainer = args_trainer
         self.args_environment = args_environment
 
+        self._raw_label_order = self._build_label_contract()
+        self._raw_label_to_index = {
+            raw_label: index
+            for index, raw_label in enumerate(self._raw_label_order or ())
+        }
+        grouped_evaluation = getattr(self.args_task, "grouped_evaluation", None)
+        self._grouped_evaluation_enabled = bool(
+            getattr(grouped_evaluation, "enabled", False)
+            if grouped_evaluation is not None
+            else False
+        )
+        self._grouped_test_records: list[dict[str, Any]] = []
+        self._alignment_target_control = self._build_alignment_target_control()
+        self._alignment_training_sums: dict[str, float] = {}
+        self._alignment_training_sample_count = 0
+        self._alignment_training_batch_count = 0
+        self._last_alignment_target_permutation: torch.Tensor | None = None
+        self._alignment_target_derived_seeds: list[int] = []
+        self._p01_view_gradient_observation: dict[str, Any] | None = None
+
         gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
         self.gradient_constraint = None
         if gradient_constraint:
@@ -92,11 +112,28 @@ class Default_task(pl.LightningModule):
             if str(getattr(self.args_task, "loss", "")).upper() != "CE":
                 raise ValueError("FIC gradient_constraint currently requires task.loss=CE")
             self.gradient_constraint = FisherGradientConstraint(epsilon=float(epsilon))
+        if (
+            bool(getattr(self.network, "uses_alignment_objective", False))
+            and self.gradient_constraint is not None
+        ):
+            raise ValueError(
+                "P01 M5 forbids a post-backward gradient constraint outside its "
+                "frozen classification + physical + semantic + geometric objective"
+            )
 
         # 使用组件配置损失和指标
         self.loss_fn = get_loss_fn(self.args_task.loss)
-        # 假设 get_metrics 需要数据配置来确定任务类型和类别数
-        self.metrics = get_metrics(self.args_task.metrics, self.metadata)
+        metric_num_classes = (
+            len(self._raw_label_order)
+            if self._raw_label_order is not None
+            else None
+        )
+        self.metrics = get_metrics(
+            self.args_task.metrics,
+            self.metadata,
+            num_classes=metric_num_classes,
+            average=getattr(self.args_task, "metric_average", None),
+        )
 
         # 保存超参数 (确保 Namespace 可以转换为字典)
         hparams_dict = {**vars(self.args_task),
@@ -108,6 +145,390 @@ class Default_task(pl.LightningModule):
                             # 'metadata': metadata
                             }
         self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
+
+    def _build_alignment_target_control(self) -> dict[str, Any] | None:
+        control = getattr(self.args_task, "alignment_target_control", None)
+        if control is None:
+            return None
+        if not bool(getattr(self.network, "uses_alignment_objective", False)):
+            raise ValueError(
+                "task.alignment_target_control requires an alignment-enabled model"
+            )
+        grouped = getattr(
+            getattr(self, "args_task", None), "grouped_evaluation", None
+        )
+        if (
+            grouped is None
+            or str(getattr(grouped, "goal_id", "")) not in {"C04", "C05", "C06"}
+            or str(getattr(grouped, "condition_id", "")) != "C2"
+        ):
+            raise ValueError(
+                "task.alignment_target_control is admitted only for C04/C05/C06 "
+                "condition C2"
+            )
+        mode = str(getattr(control, "mode", ""))
+        expected_mode = "seeded_sattolo_derangement_after_batching"
+        if mode != expected_mode:
+            raise ValueError(
+                f"C2 alignment target mode must be {expected_mode!r}"
+            )
+        seed = getattr(control, "seed", None)
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            raise ValueError("C2 alignment target seed must be a non-negative integer")
+        seed_key = str(getattr(control, "seed_key", ""))
+        expected_seed_key = "base_seed_plus_epoch_times_1000003_plus_batch_index"
+        if seed_key != expected_seed_key:
+            raise ValueError(f"C2 alignment target seed_key must be {expected_seed_key!r}")
+        return {
+            "mode": mode,
+            "seed": seed,
+            "algorithm": "sattolo_single_cycle",
+            "stage": "train_after_batching",
+            "operand": "alignment_target_z2_only",
+            "affected_terms": [
+                "physical_energy",
+                "physical_spectral",
+                "semantic",
+                "geometric",
+            ],
+            "unaffected_terms": ["classification", "physical_parseval"],
+            "classification_pairing": "synchronized_original_views",
+            "semantic_mask_basis": "original_label_and_index_slots",
+            "seed_key": seed_key,
+            "rng_scope": "dedicated_cpu_generator_no_global_rng_mutation",
+            "fixed_point_policy": "forbidden",
+        }
+
+    def alignment_target_control_identity(self) -> dict[str, Any] | None:
+        return (
+            None
+            if self._alignment_target_control is None
+            else dict(self._alignment_target_control)
+        )
+
+    def _alignment_target_permutation(
+        self,
+        *,
+        batch_size: int,
+        device: torch.device,
+        batch_index: int,
+    ) -> torch.Tensor | None:
+        control = self._alignment_target_control
+        if control is None:
+            return None
+        if batch_size < 2:
+            raise ValueError("C2 target derangement requires batch_size >= 2")
+        if isinstance(batch_index, bool) or not isinstance(batch_index, int):
+            raise TypeError("C2 target derangement batch_index must be an integer")
+        if batch_index < 0:
+            raise ValueError("C2 target derangement batch_index must be non-negative")
+        epoch = int(getattr(getattr(self, "_trainer", None), "current_epoch", 0))
+        derived_seed = int(control["seed"]) + epoch * 1_000_003 + batch_index
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(derived_seed)
+        values = list(range(batch_size))
+        for index in range(batch_size - 1, 0, -1):
+            swap_index = int(
+                torch.randint(index, (1,), generator=generator).item()
+            )
+            values[index], values[swap_index] = values[swap_index], values[index]
+        permutation = torch.tensor(values, dtype=torch.long, device=device)
+        expected = torch.arange(batch_size, device=device)
+        if bool(torch.eq(permutation, expected).any().item()):
+            raise RuntimeError("Sattolo target construction produced a fixed point")
+        self._last_alignment_target_permutation = permutation.detach().cpu()
+        self._alignment_target_derived_seeds.append(derived_seed)
+        return permutation
+
+    def _record_p01_training_objective(
+        self,
+        objective: Mapping[str, torch.Tensor],
+        *,
+        batch_size: int,
+    ) -> None:
+        grouped = getattr(
+            getattr(self, "args_task", None), "grouped_evaluation", None
+        )
+        goal_id = str(getattr(grouped, "goal_id", ""))
+        if goal_id not in {"C04", "C05", "C06"}:
+            return
+        names = (
+            "classification",
+            "physical",
+            "semantic",
+            "geometric",
+            "weighted_physical",
+            "weighted_semantic",
+            "weighted_geometric",
+            "total",
+            "physical_energy",
+            "physical_spectral",
+            "physical_parseval",
+        )
+        observed = {
+            name: float(objective[name].detach().cpu().item())
+            for name in names
+            if name in objective
+        }
+        if not observed:
+            raise RuntimeError(f"{goal_id} training objective summary is empty")
+        if self._alignment_training_sums and set(observed) != set(
+            self._alignment_training_sums
+        ):
+            raise RuntimeError(f"{goal_id} objective fields changed between batches")
+        for name, value in observed.items():
+            if not np.isfinite(value):
+                raise FloatingPointError(
+                    f"{goal_id} training summary field {name!r} is not finite"
+                )
+            self._alignment_training_sums[name] = (
+                self._alignment_training_sums.get(name, 0.0)
+                + value * batch_size
+            )
+        self._alignment_training_sample_count += batch_size
+        self._alignment_training_batch_count += 1
+
+    def on_train_start(self) -> None:
+        """Start fresh current-fit objective and decisive P01 view-use observations."""
+        self._alignment_training_sums.clear()
+        self._alignment_training_sample_count = 0
+        self._alignment_training_batch_count = 0
+        self._last_alignment_target_permutation = None
+        self._alignment_target_derived_seeds.clear()
+        self._p01_view_gradient_observation = None
+
+    def on_after_backward(self) -> None:
+        """Fail closed when a required P01 branch is unused on the first batch."""
+        grouped = getattr(self.args_task, "grouped_evaluation", None)
+        goal_id = str(getattr(grouped, "goal_id", ""))
+        if (
+            goal_id not in {"C05", "C06"}
+            or self._p01_view_gradient_observation is not None
+        ):
+            return
+        condition_id = str(
+            getattr(grouped, "condition_id", getattr(self.args_model, "condition", ""))
+        )
+        required_groups = {
+            "M1": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "classifier_head": ("head.",),
+            },
+            "M2": {
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "M3": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "M4": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "fusion_attention": ("attention.",),
+                "classifier_head": ("head.",),
+            },
+            "M5": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "C1": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "fusion_attention": ("attention.",),
+                "classifier_head": ("head.",),
+            },
+            "C2": {
+                "waveform_1d": ("encoder_1d.", "project_1d."),
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "classifier_head": ("head.",),
+            },
+            "C3": {
+                "time_frequency_2d": ("encoder_2d.", "project_2d."),
+                "duplicate_time_frequency_2d": (
+                    "encoder_duplicate_2d.",
+                    "project_duplicate_2d.",
+                ),
+                "classifier_head": ("head.",),
+            },
+        }.get(condition_id)
+        if required_groups is None:
+            raise RuntimeError(
+                f"{goal_id} has no view-gradient contract for {condition_id!r}"
+            )
+
+        named_parameters = tuple(self.network.named_parameters())
+        threshold = 1.0e-12
+        norms: dict[str, float] = {}
+        for group_name, prefixes in required_groups.items():
+            parameters = [
+                parameter
+                for name, parameter in named_parameters
+                if parameter.requires_grad and name.startswith(prefixes)
+            ]
+            if not parameters:
+                raise RuntimeError(
+                    f"{goal_id} {condition_id} gradient group {group_name!r} "
+                    "has no parameters"
+                )
+            squared_norm: torch.Tensor | None = None
+            for parameter in parameters:
+                if parameter.grad is None:
+                    continue
+                term = parameter.grad.detach().float().square().sum()
+                squared_norm = term if squared_norm is None else squared_norm + term
+            norm = 0.0 if squared_norm is None else float(squared_norm.sqrt().cpu().item())
+            if not np.isfinite(norm) or norm <= threshold:
+                raise RuntimeError(
+                    f"{goal_id} {condition_id} required gradient group {group_name!r} "
+                    f"has norm {norm}, threshold {threshold}"
+                )
+            norms[group_name] = norm
+        self._p01_view_gradient_observation = {
+            "scope": "first_source_training_batch_after_backward_before_optimizer_step",
+            "condition_id": condition_id,
+            "required_gradient_norm_threshold": threshold,
+            "gradient_norms": dict(sorted(norms.items())),
+            "status": "passed",
+        }
+
+    def view_gradient_summary(self) -> dict[str, Any] | None:
+        observation = self._p01_view_gradient_observation
+        if observation is None:
+            return None
+        return {
+            **observation,
+            "gradient_norms": dict(observation["gradient_norms"]),
+        }
+
+    def training_objective_summary(self) -> dict[str, Any] | None:
+        if self._alignment_training_sample_count == 0:
+            return None
+        count = self._alignment_training_sample_count
+        means = {
+            name: value / count
+            for name, value in sorted(self._alignment_training_sums.items())
+        }
+        reconstructed = means["classification"] + sum(
+            means.get(name, 0.0)
+            for name in (
+                "weighted_physical",
+                "weighted_semantic",
+                "weighted_geometric",
+            )
+        )
+        summary: dict[str, Any] = {
+            "scope": "source_train_current_fit_not_checkpoint_persistent",
+            "aggregation": "batch_scalar_mean_weighted_by_batch_size",
+            "observed_samples": count,
+            "observed_batches": self._alignment_training_batch_count,
+            "means": means,
+            "objective_reconstruction_residual": means["total"] - reconstructed,
+            "alignment_coefficients": getattr(
+                self.network, "alignment_identity", lambda: None
+            )(),
+        }
+        if self._alignment_target_control is not None:
+            seeds = self._alignment_target_derived_seeds
+            summary["target_permutation_observation"] = {
+                "observed_permutations": len(seeds),
+                "observed_fixed_points": 0,
+                "derived_seed_min": min(seeds) if seeds else None,
+                "derived_seed_max": max(seeds) if seeds else None,
+                "unique_derived_seeds": len(set(seeds)),
+            }
+        return summary
+
+    def alignment_training_summary(self) -> dict[str, Any] | None:
+        """Backward-compatible reader for the P01 objective summary."""
+        return self.training_objective_summary()
+
+    def _build_label_contract(self) -> tuple[int, ...] | None:
+        """Validate an optional raw-label to contiguous-index contract."""
+        contract = getattr(self.args_task, "label_contract", None)
+        if contract is None:
+            return None
+        raw_labels = getattr(contract, "raw_labels", None)
+        if not isinstance(raw_labels, (list, tuple)) or len(raw_labels) < 2:
+            raise ValueError(
+                "task.label_contract.raw_labels must contain at least two labels"
+            )
+        try:
+            ordered = tuple(int(label) for label in raw_labels)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "task.label_contract.raw_labels must contain integer labels"
+            ) from exc
+        if len(set(ordered)) != len(ordered):
+            raise ValueError(
+                "task.label_contract.raw_labels must not contain duplicates"
+            )
+
+        grouped_split = getattr(self.args_task, "grouped_split", None)
+        admitted = (
+            getattr(grouped_split, "admitted_labels", None)
+            if grouped_split is not None
+            else None
+        )
+        if admitted is not None and tuple(int(label) for label in admitted) != ordered:
+            raise ValueError(
+                "task.label_contract.raw_labels must exactly match "
+                "task.grouped_split.admitted_labels in canonical order"
+            )
+
+        output_classes = getattr(self.network, "num_classes", None)
+        if output_classes is None or int(output_classes) != len(ordered):
+            raise ValueError(
+                "network.num_classes must equal the length of "
+                "task.label_contract.raw_labels"
+            )
+        return ordered
+
+    def label_contract_identity(self) -> dict[str, Any] | None:
+        """Return the pre-outcome label mapping used by the training objective."""
+        if self._raw_label_order is None:
+            return None
+        return {
+            "raw_labels": list(self._raw_label_order),
+            "training_indices": list(range(len(self._raw_label_order))),
+            "raw_to_training_index": dict(self._raw_label_to_index),
+        }
+
+    def encode_raw_labels(self, labels: torch.Tensor) -> torch.Tensor:
+        """Map raw dataset labels to contiguous indices without mutating metadata."""
+        if getattr(self, "_raw_label_order", None) is None:
+            return labels
+        encoded = torch.empty_like(labels, dtype=torch.long)
+        matched = torch.zeros_like(labels, dtype=torch.bool)
+        for raw_label, index in self._raw_label_to_index.items():
+            mask = labels == raw_label
+            encoded[mask] = index
+            matched |= mask
+        if not bool(matched.all().item()):
+            unknown = torch.unique(labels[~matched]).detach().cpu().tolist()
+            raise ValueError(
+                "Batch contains raw label(s) outside task.label_contract: "
+                f"{unknown}"
+            )
+        return encoded
+
+    def decode_training_indices(self, indices: torch.Tensor) -> torch.Tensor:
+        """Invert the configured mapping for result reporting."""
+        if self._raw_label_order is None:
+            return indices
+        if indices.numel() and (
+            int(indices.min().item()) < 0
+            or int(indices.max().item()) >= len(self._raw_label_order)
+        ):
+            raise ValueError("Training index is outside the configured label contract")
+        raw = torch.as_tensor(
+            self._raw_label_order,
+            dtype=torch.long,
+            device=indices.device,
+        )
+        return raw[indices.long()]
 
 
     def forward(self, batch):
@@ -173,7 +594,9 @@ class Default_task(pl.LightningModule):
 
     def _shared_step(self, batch: Tuple,
                      stage: str,
-                     task_id = False) -> Dict[str, torch.Tensor]:
+                     task_id = False,
+                     *,
+                     batch_index: int = 0) -> Dict[str, torch.Tensor]:
         """
         通用处理步骤 (已重构)
         期望 batch 格式: ((x, y), data_name)
@@ -218,11 +641,48 @@ class Default_task(pl.LightningModule):
                     "and physical metadata authority would be ambiguous"
                 )
 
-        # 1. 前向传播。保留原始逐样本 file_id，不得用首个文件覆盖整批。
-        y_hat = self.forward(batch)
+        raw_y = batch['y']
+        y = Default_task.encode_raw_labels(self, raw_y)
+
+        # 1. 前向传播。M5 在训练阶段显式返回对齐项；验证/测试从不把
+        # 标签送入对齐目标。保留原始逐样本 file_id，不得用首个文件覆盖整批。
+        alignment_losses: Optional[Mapping[str, torch.Tensor]] = None
+        network = getattr(self, "network", None)
+        if stage == "train" and bool(
+            getattr(network, "uses_alignment_objective", False)
+        ):
+            forward_with_alignment = getattr(
+                network, "forward_with_alignment", None
+            )
+            if not callable(forward_with_alignment):
+                raise RuntimeError(
+                    "An alignment-enabled network must expose forward_with_alignment"
+                )
+            alignment_target_permutation = self._alignment_target_permutation(
+                batch_size=batch_size,
+                device=batch['x'].device,
+                batch_index=batch_index,
+            )
+            y_hat, alignment_losses = forward_with_alignment(
+                batch['x'],
+                y,
+                data_id=batch['file_id'],
+                task_id=batch['task_id'],
+                alignment_target_permutation=alignment_target_permutation,
+            )
+        else:
+            y_hat = self.forward(batch)
+
+        raw_label_order = getattr(self, "_raw_label_order", None)
+        if raw_label_order is not None and (
+            y_hat.ndim != 2 or y_hat.shape[1] != len(raw_label_order)
+        ):
+            raise ValueError(
+                "Model output width does not match task.label_contract: "
+                f"shape={tuple(y_hat.shape)}, labels={raw_label_order}"
+            )
 
         # 2. 计算任务损失
-        y = batch['y']
         loss = self._compute_loss(y_hat, y)
         y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
@@ -248,21 +708,68 @@ class Default_task(pl.LightningModule):
                 raise TypeError("network.consume_auxiliary_losses() must return a dict")
             for name, value in model_auxiliary.items():
                 if not isinstance(value, torch.Tensor) or value.ndim != 0:
-                    raise ValueError(f"model auxiliary loss {name!r} must be a scalar tensor")
-                if not torch.isfinite(value):
+                    raise ValueError(
+                        f"model auxiliary loss {name!r} must be a scalar tensor"
+                    )
+                if not bool(torch.isfinite(value).item()):
                     raise ValueError(f"model auxiliary loss {name!r} is not finite")
                 step_metrics[f"{stage}_{name}_loss"] = value
 
-        # 6. 计算总损失
-        auxiliary_total = sum(
-            model_auxiliary.values(), torch.tensor(0.0, device=loss.device)
+        # 6. M5's sole allowed scalar is classification plus the three
+        # a_k * lambda_k * L_k terms. Other models retain generic regularization
+        # and their explicitly exposed auxiliary losses.
+        regularization_total = reg_dict.get(
+            'total', torch.tensor(0.0, device=loss.device)
         )
-        total_loss = (
-            loss
-            + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
-            + auxiliary_total
-        )
+        if alignment_losses is not None:
+            if int(torch.count_nonzero(regularization_total.detach()).item()) != 0:
+                raise ValueError(
+                    "P01 M5 forbids generic regularization outside the frozen "
+                    "classification + physical + semantic + geometric objective"
+                )
+            if model_auxiliary:
+                raise ValueError(
+                    "P01 M5 forbids model auxiliary losses outside the frozen "
+                    "classification + physical + semantic + geometric objective"
+                )
+            compose_objective = getattr(
+                network, "compose_training_objective", None
+            )
+            if not callable(compose_objective):
+                raise RuntimeError(
+                    "An alignment-enabled network must expose compose_training_objective"
+                )
+            objective = compose_objective(loss, alignment_losses)
+            total_loss = objective["total"]
+            Default_task._record_p01_training_objective(
+                self,
+                objective,
+                batch_size=batch_size,
+            )
+            for objective_name, objective_value in objective.items():
+                if objective_name == "total":
+                    continue
+                step_metrics[
+                    f"{stage}_{objective_name}_loss"
+                ] = objective_value
+        else:
+            auxiliary_total = sum(
+                model_auxiliary.values(), torch.tensor(0.0, device=loss.device)
+            )
+            total_loss = loss + regularization_total + auxiliary_total
+            if stage == "train":
+                Default_task._record_p01_training_objective(
+                    self,
+                    {"classification": loss, "total": total_loss},
+                    batch_size=batch_size,
+                )
         step_metrics[f"{stage}_total_loss"] = total_loss
+
+        if stage == "test" and bool(
+            getattr(self, "_grouped_evaluation_enabled", False)
+        ):
+            step_metrics["_grouped_logits"] = y_hat.detach()
+            step_metrics["_grouped_labels"] = y.detach()
 
         # 添加 batch size 用于日志记录
         # step_metrics[f"{stage}_batch_size"] = torch.tensor(x.shape[0], dtype=torch.float, device=loss.device)
@@ -271,7 +778,14 @@ class Default_task(pl.LightningModule):
 
     def training_step(self, batch: dict, *args, **kwargs) -> torch.Tensor:
         """训练步骤"""
-        metrics = self._shared_step(batch, "train")
+        raw_batch_index = args[0] if args else kwargs.get("batch_idx", 0)
+        if isinstance(raw_batch_index, bool) or not isinstance(raw_batch_index, int):
+            raise TypeError("training_step batch_idx must be an integer")
+        metrics = self._shared_step(
+            batch,
+            "train",
+            batch_index=raw_batch_index,
+        )
         # 使用 _log_metrics 记录 (确保 batch_size 传递正确)
       
         self._log_metrics(metrics, "train")
@@ -288,9 +802,103 @@ class Default_task(pl.LightningModule):
     def test_step(self, batch: dict, *args, **kwargs) -> None:
         """测试步骤"""
         metrics = self._shared_step(batch, "test")
+        grouped_logits = metrics.pop("_grouped_logits", None)
+        grouped_labels = metrics.pop("_grouped_labels", None)
+        if grouped_logits is not None:
+            if grouped_labels is None:
+                raise RuntimeError("Grouped evaluation is missing encoded labels")
+            self._record_grouped_test_batch(
+                batch,
+                logits=grouped_logits,
+                encoded_labels=grouped_labels,
+            )
         
         self._log_metrics(metrics, "test")
         # test_step 通常不返回损失
+
+    @staticmethod
+    def _batch_values(value: Any, *, name: str, batch_size: int) -> list[Any]:
+        if isinstance(value, torch.Tensor):
+            values = value.detach().cpu().reshape(-1).tolist()
+        elif isinstance(value, np.ndarray):
+            values = value.reshape(-1).tolist()
+        elif isinstance(value, (list, tuple)):
+            values = list(value)
+        else:
+            values = [value]
+        if len(values) != batch_size:
+            raise ValueError(
+                f"Grouped evaluation requires one {name} per sample; "
+                f"got {len(values)} for batch_size={batch_size}"
+            )
+        return values
+
+    def on_test_epoch_start(self) -> None:
+        if self._grouped_evaluation_enabled:
+            self._grouped_test_records.clear()
+
+    def _record_grouped_test_batch(
+        self,
+        batch: Mapping[str, Any],
+        *,
+        logits: torch.Tensor,
+        encoded_labels: torch.Tensor,
+    ) -> None:
+        if not self._grouped_evaluation_enabled:
+            return
+        if logits.ndim != 2 or not bool(torch.isfinite(logits).all().item()):
+            raise ValueError("Grouped evaluation requires finite rank-2 logits")
+        batch_size = int(logits.shape[0])
+        file_ids = self._batch_values(
+            batch.get("file_id"), name="file_id", batch_size=batch_size
+        )
+        group_ids = self._batch_values(
+            batch.get("physical_group_id"),
+            name="physical_group_id",
+            batch_size=batch_size,
+        )
+        raw_labels = self._batch_values(
+            batch.get("y"), name="raw label", batch_size=batch_size
+        )
+        training_labels = self._batch_values(
+            encoded_labels, name="training label", batch_size=batch_size
+        )
+        logits_cpu = logits.detach().cpu()
+
+        for index, (file_id, group_id, raw_label, training_label) in enumerate(
+            zip(file_ids, group_ids, raw_labels, training_labels)
+        ):
+            try:
+                metadata_row = self.metadata[file_id]
+                metadata_label = int(metadata_row["Label"])
+                domain_id = int(metadata_row["Domain_id"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Grouped evaluation cannot resolve metadata for file_id={file_id!r}"
+                ) from exc
+            if not isinstance(group_id, str) or not group_id:
+                raise ValueError(
+                    "Grouped evaluation requires a non-empty physical_group_id"
+                )
+            if int(raw_label) != metadata_label:
+                raise ValueError(
+                    "Batch raw label differs from immutable metadata for "
+                    f"file_id={file_id!r}"
+                )
+            self._grouped_test_records.append(
+                {
+                    "file_id": file_id,
+                    "physical_group_id": group_id,
+                    "domain_id": domain_id,
+                    "raw_label": metadata_label,
+                    "training_label": int(training_label),
+                    "logits": logits_cpu[index].tolist(),
+                }
+            )
+
+    def grouped_evaluation_records(self) -> list[dict[str, Any]]:
+        """Return a copy of post-checkpoint test records for P01 aggregation."""
+        return [dict(record) for record in self._grouped_test_records]
 
     def _log_metrics(self, metrics: Dict[str, torch.Tensor], stage: str) -> None:
         """统一日志记录"""

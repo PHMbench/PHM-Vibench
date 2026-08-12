@@ -60,6 +60,17 @@ class Default_dataset(Dataset):  # THU_006or018_basic
                 f"got {mode!r}"
             )
         self.mode = requested_mode
+        grouped_split = getattr(args_task, "grouped_split", None)
+        self.grouped_partition = bool(
+            getattr(grouped_split, "enabled", False)
+            if grouped_split is not None
+            else False
+        )
+        if self.grouped_partition and self.split_strategy != "legacy_windows":
+            raise ValueError(
+                "task.grouped_split and data.split.grouped_metadata are distinct "
+                "split authorities and cannot be enabled together"
+            )
 
         self.window_size = int(args_data.window_size)
         self.num_window = int(args_data.num_window)

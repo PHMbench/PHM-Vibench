@@ -1,0 +1,21 @@
+# RUN-0022: generic two-token attention C05 matrix cell.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c05_m4_generic_attention"
+  output_dir: "results/p01/c05_m4_pilot"
+  notes: >-
+    RUN-0022; C05 M4, seed 31, fixed ten epochs, source-validation checkpoint,
+    zero C05 tuning, classification only, and no claim promotion.
+
+model:
+  condition: "M4"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0022"
+    condition_id: "M4"

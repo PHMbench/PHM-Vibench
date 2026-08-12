@@ -1,0 +1,17 @@
+# M2: deterministic time-frequency-view reference. The model constructs no
+# direct raw-waveform encoder or projection branch.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c02: "configs/experiments/p01/p01_c02_common.yaml"
+
+environment:
+  project: "p01_c02_m2_time_frequency_reference"
+  output_dir: "results/p01/c02_m2_pilot"
+  notes: >-
+    C02 M2 deterministic-renderer 2D reference, seed 31, fixed ten-epoch
+    exploratory pilot. No tuning and no manuscript claim promotion.
+
+model:
+  condition: "M2"

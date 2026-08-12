@@ -1,0 +1,50 @@
+# Shared C04 execution/control smoke. Run an arm config, not this file.
+# This inherits the frozen C01 data boundary and C02 optimization/metric contract.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c02: "configs/experiments/p01/p01_c02_common.yaml"
+
+environment:
+  project: "p01_c04_alignment_negative_controls"
+  output_dir: "results/p01/c04_common_do_not_run"
+  notes: >-
+    C04 single-seed, one-epoch executability/control smoke only. It cannot
+    establish performance, conditional complementarity, or mechanism.
+
+model:
+  condition: "M5"
+  alignment:
+    a_p: 1
+    a_s: 1
+    a_g: 1
+    lambda_p: 0.1
+    lambda_s: 0.1
+    lambda_g: 0.1
+    physical_energy_weight: 1.0
+    physical_spectral_weight: 0.5
+    physical_parseval_weight: 0.25
+    semantic_temperature: 0.1
+    eps: 1.0e-8
+    gradient_min_norm: 1.0e-8
+
+task:
+  scheduler: null
+  grouped_evaluation:
+    goal_id: "C04"
+    run_stage: "smoke"
+    source_validation_tuning_trials: 0
+    alignment_coefficient_origin: "e0_verified_pre_c04_no_outcome_retuning"
+    alignment_coefficient_source_validation_trials: 0
+    forward_compute:
+      method: "torch.utils.flop_counter.FlopCounterMode_cpu_plus_explicit_two_token_attention_qk_av"
+      reference_condition: "M5"
+      comparison_condition: "M4"
+      batch_size: 1
+      parameter_relative_tolerance: 0.05
+      learned_forward_supported_flops_relative_tolerance: 0.10
+
+trainer:
+  num_epochs: 1
+  early_stopping: false

@@ -1,0 +1,36 @@
+# Shared C05 one-seed minimum-admission contract. Run an arm config, not this file.
+# It inherits the frozen C01 data boundary and the admitted C04 control semantics.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c04: "configs/experiments/p01/p01_c04_common.yaml"
+
+environment:
+  project: "p01_c05_minimum_admission"
+  output_dir: "results/p01/c05_common_do_not_run"
+  notes: >-
+    C05 one-seed, fixed-ten-epoch minimum-admission pilot. This matrix tests
+    protocol execution and gross confounds only and cannot promote a paper claim.
+
+task:
+  scheduler: null
+  grouped_evaluation:
+    goal_id: "C05"
+    run_stage: "minimum_admission_pilot"
+    run_role: "matrix_cell"
+    source_validation_tuning_trials: 0
+    alignment_coefficient_origin: "e0_verified_pre_c04_no_outcome_retuning"
+    alignment_coefficient_source_validation_trials: 0
+    forward_compute:
+      method: "torch.utils.flop_counter.FlopCounterMode_cpu_plus_explicit_two_token_attention_qk_av"
+      reference_condition: "M5"
+      comparison_condition: "M4"
+      batch_size: 1
+      parameter_relative_tolerance: 0.05
+      learned_forward_supported_flops_relative_tolerance: 0.10
+      c1_adjustment: "none_required_existing_M4_within_tolerances"
+
+trainer:
+  num_epochs: 10
+  early_stopping: false

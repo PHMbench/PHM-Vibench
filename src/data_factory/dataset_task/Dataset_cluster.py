@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 class IdIncludedDataset(Dataset):
     """Flatten per-file datasets while preserving every sample's source file ID."""
 
-    def __init__(self, dataset_dict, metadata=None):
+    def __init__(self, dataset_dict, metadata=None, physical_group_by_id=None):
         if not isinstance(dataset_dict, Mapping) or not dataset_dict:
             raise ValueError(
                 "IdIncludedDataset requires a non-empty mapping of file IDs to datasets."
@@ -17,6 +17,18 @@ class IdIncludedDataset(Dataset):
         self.dataset_dict = dict(dataset_dict)
         self.file_windows_list: list[dict[str, object]] = []
         self.metadata = metadata
+        self.physical_group_by_id = physical_group_by_id
+
+        if physical_group_by_id is not None:
+            missing_groups = sorted(
+                set(self.dataset_dict) - set(physical_group_by_id),
+                key=str,
+            )
+            if missing_groups:
+                raise ValueError(
+                    "Physical group identity is missing for selected file ID(s) "
+                    f"{missing_groups}."
+                )
 
         for file_id, original_dataset in self.dataset_dict.items():
             if original_dataset is None:
@@ -68,4 +80,6 @@ class IdIncludedDataset(Dataset):
 
         result = dict(output)
         result["file_id"] = file_id
+        if self.physical_group_by_id is not None:
+            result["physical_group_id"] = self.physical_group_by_id[file_id]
         return result

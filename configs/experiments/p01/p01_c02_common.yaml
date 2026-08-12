@@ -1,0 +1,53 @@
+# Shared C02 contract. Run an arm config, not this file directly.
+# The label bijection and grouped primary metric were frozen before observing
+# any C02 performance outcome.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  protocol: "configs/experiments/p01/p01_c01_grouped_protocol.yaml"
+
+environment:
+  project: "p01_c02_unimodal_reference"
+  seed: 31
+  iterations: 1
+  output_dir: "results/p01/c02_common_do_not_run"
+  notes: >-
+    C02 one-seed exploratory unimodal reference under the frozen C01 grouped
+    split. This run cannot promote a manuscript claim.
+  wandb: false
+  swanlab: false
+
+model:
+  num_classes: 3
+
+task:
+  loss: "CE"
+  metrics: ["acc", "f1"]
+  metric_average: "macro"
+  optimizer: "adam"
+  lr: 0.001
+  weight_decay: 0.0001
+  label_contract:
+    raw_labels: [1, 2, 3]
+  grouped_evaluation:
+    enabled: true
+    run_stage: "pilot"
+    primary_metric: "condition_block_macro_f1"
+    aggregation: "mean_softmax_windows_then_argmax_per_domain_condition_block"
+    checkpoint_selection: "lowest_validation_loss_within_fixed_budget"
+    required_groups_per_domain: 6
+    required_groups_per_class_domain: 2
+    required_windows_per_group_domain: 64
+    required_cuda_visible_devices: "3"
+
+trainer:
+  name: "Default_trainer"
+  monitor: "val_loss"
+  num_epochs: 10
+  gpus: 1
+  device: "cuda"
+  early_stopping: false
+  pruning: 0.0
+  save_top_k: 1
+  log_every_n_steps: 10

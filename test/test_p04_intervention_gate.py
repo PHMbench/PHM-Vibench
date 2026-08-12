@@ -106,7 +106,7 @@ def _run_pipeline(
     monkeypatch.setattr(
         runtime_module,
         "_write_aggregate_outputs",
-        lambda *args: aggregate_calls.append(args),
+        lambda *args, **_kwargs: aggregate_calls.append(args),
     )
 
     args = SimpleNamespace(
@@ -115,7 +115,7 @@ def _run_pipeline(
         override=None,
         notes="",
     )
-    result = pipeline_module.pipeline(args)
+    result = runtime_module.run_classification_pipeline(args)
     return {
         "result": result,
         "data_factory": data_factory,

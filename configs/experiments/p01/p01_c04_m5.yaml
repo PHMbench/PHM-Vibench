@@ -1,0 +1,21 @@
+# M5: synchronized waveform/rendering with the frozen three-level objective.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c04: "configs/experiments/p01/p01_c04_common.yaml"
+
+environment:
+  project: "p01_c04_m5_full_alignment"
+  output_dir: "results/p01/c04_m5_smoke"
+  notes: >-
+    RUN-0016; C04 M5 synchronized full-objective smoke, seed 31, one epoch,
+    zero C04 tuning, no target-label adaptation, and no claim promotion.
+
+model:
+  condition: "M5"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0016"
+    condition_id: "M5"

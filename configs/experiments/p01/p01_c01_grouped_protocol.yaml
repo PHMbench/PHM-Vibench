@@ -1,0 +1,218 @@
+# C01 data-protocol validation only. Do not use this config to claim performance.
+# The endpoint keeps canonical labels 1/2/3 (inner race / ball / outer race)
+# without remapping. Normal label 0 is excluded because the official CWRU table
+# provides only one normal baseline bearing condition, which cannot support a
+# three-way physical-group split.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_classification.yaml"
+  model: "configs/base/model/p01_alignment.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p01_c01_grouped_protocol"
+  seed: 31
+  iterations: 1
+  output_dir: "results/p01/c01_protocol"
+  notes: >-
+    Loader-only C01 validation of official CWRU fault-condition groups; no
+    training and no performance claim.
+
+data:
+  data_dir: "/home/user/data/PHMbenchdata/PHM-Vibench"
+  metadata_file: "metadata.xlsx"
+  batch_size: 16
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  unused_ratio: 0.0
+  normalization: "none"
+  window_size: 4096
+  window_sampling_strategy: "evenly_spaced"
+  num_window: 64
+  window_sampling_seed: 31
+  dtype: "float32"
+  pin_memory: false
+
+model:
+  condition: "M5"
+  num_classes: 4
+  in_channels: 2
+
+task:
+  type: "DG"
+  name: "classification"
+  target_system_id: [1]
+  source_domain_id: [0, 1]
+  target_domain_id: [2, 3]
+  target_domain_num: 0
+  loss: "CE"
+  metrics: ["acc"]
+  grouped_split:
+    enabled: true
+    assignment_method: "explicit_official_documented_condition_table"
+    group_key: "cwru_official_documented_fault_condition_block"
+    group_meaning: >-
+      One CWRU documented seeded-fault condition defined by bearing end, fault
+      location, fault diameter, and outer-race clock position. Its four
+      motor-load File/run records are conservatively blocked into one partition.
+      This key is not a verified bearing serial or specimen identity.
+    inferential_unit: "official_documented_fault_condition_block"
+    verified_run_identity: "metadata.File"
+    observation_hierarchy: "window < File/run < documented fault-condition block"
+    identity_limit: >-
+      CWRU publishes condition and run tables but no bearing serial/specimen key.
+      Results may support held-condition/load-domain evaluation only, not
+      specimen-, machine-population-, or cross-dataset independence.
+    official_sources:
+      overview: "https://engineering.case.edu/bearingdatacenter/welcome"
+      apparatus: "https://engineering.case.edu/bearingdatacenter/apparatus-and-procedures"
+      drive_end_12k: "https://engineering.case.edu/bearingdatacenter/12k-drive-end-bearing-fault-data"
+      fan_end_12k: "https://engineering.case.edu/bearingdatacenter/12k-fan-end-bearing-fault-data"
+    non_authoritative_metadata_fields: ["Fault_level"]
+    metadata_limit: >-
+      Local CWRU Fault_level values are inconsistent for some officially mapped
+      fan-end records (including 270--273.mat and 282--285.mat). Fault_level is
+      recorded for audit but never used for identity, grouping, labels, or split.
+    endpoint: "fault_location_labels_1_2_3_only"
+    admitted_labels: [1, 2, 3]
+    excluded_label_0_reason: >-
+      The official normal baseline supplies one documented normal condition and
+      therefore cannot support three disjoint condition blocks.
+    target_label_access_boundary: >-
+      Target labels are accessed once before any performance outcome only to
+      verify the predeclared official mapping, endpoint, and class coverage and
+      to freeze this split. They may not affect training, hyperparameters,
+      control selection, stopping, or protocol revision; target metrics and
+      swaps remain post-checkpoint-freeze operations.
+    source_environment_meaning:
+      "0": "0 HP motor load"
+      "1": "1 HP motor load"
+    target_environment_meaning:
+      "2": "2 HP motor load"
+      "3": "3 HP motor load"
+    domain_order: [0, 1, 2, 3]
+    expected_sample_rate: 12000
+    min_groups_per_class_domain: 2
+    groups:
+      - group_id: "cwru_de12_ir007"
+        partition: "train"
+        expected_label: 1
+        official_condition: {bearing_end: "drive_end", fault_location: "inner_race", fault_diameter_mils: 7, outer_race_position: "not_applicable"}
+        official_records: ["IR007_0", "IR007_1", "IR007_2", "IR007_3"]
+        files: ["105.mat", "106.mat", "107.mat", "108.mat"]
+      - group_id: "cwru_fe12_ir021"
+        partition: "train"
+        expected_label: 1
+        official_condition: {bearing_end: "fan_end", fault_location: "inner_race", fault_diameter_mils: 21, outer_race_position: "not_applicable"}
+        official_records: ["IR021_0", "IR021_1", "IR021_2", "IR021_3"]
+        files: ["270.mat", "271.mat", "272.mat", "273.mat"]
+      - group_id: "cwru_de12_ball007"
+        partition: "train"
+        expected_label: 2
+        official_condition: {bearing_end: "drive_end", fault_location: "ball", fault_diameter_mils: 7, outer_race_position: "not_applicable"}
+        official_records: ["B007_0", "B007_1", "B007_2", "B007_3"]
+        files: ["118.mat", "119.mat", "120.mat", "121.mat"]
+      - group_id: "cwru_fe12_ball021"
+        partition: "train"
+        expected_label: 2
+        official_condition: {bearing_end: "fan_end", fault_location: "ball", fault_diameter_mils: 21, outer_race_position: "not_applicable"}
+        official_records: ["B021_0", "B021_1", "B021_2", "B021_3"]
+        files: ["290.mat", "291.mat", "292.mat", "293.mat"]
+      - group_id: "cwru_de12_or007_at6"
+        partition: "train"
+        expected_label: 3
+        official_condition: {bearing_end: "drive_end", fault_location: "outer_race", fault_diameter_mils: 7, outer_race_position: "6_oclock"}
+        official_records: ["OR007@6_0", "OR007@6_1", "OR007@6_2", "OR007@6_3"]
+        files: ["130.mat", "131.mat", "132.mat", "133.mat"]
+      - group_id: "cwru_de12_or021_at6"
+        partition: "train"
+        expected_label: 3
+        official_condition: {bearing_end: "drive_end", fault_location: "outer_race", fault_diameter_mils: 21, outer_race_position: "6_oclock"}
+        official_records: ["OR021@6_0", "OR021@6_1", "OR021@6_2", "OR021@6_3"]
+        files: ["234.mat", "235.mat", "236.mat", "237.mat"]
+
+      - group_id: "cwru_de12_ir014"
+        partition: "val"
+        expected_label: 1
+        official_condition: {bearing_end: "drive_end", fault_location: "inner_race", fault_diameter_mils: 14, outer_race_position: "not_applicable"}
+        official_records: ["IR014_0", "IR014_1", "IR014_2", "IR014_3"]
+        files: ["169.mat", "170.mat", "171.mat", "172.mat"]
+      - group_id: "cwru_fe12_ir014"
+        partition: "val"
+        expected_label: 1
+        official_condition: {bearing_end: "fan_end", fault_location: "inner_race", fault_diameter_mils: 14, outer_race_position: "not_applicable"}
+        official_records: ["IR014_0", "IR014_1", "IR014_2", "IR014_3"]
+        files: ["274.mat", "275.mat", "276.mat", "277.mat"]
+      - group_id: "cwru_de12_ball014"
+        partition: "val"
+        expected_label: 2
+        official_condition: {bearing_end: "drive_end", fault_location: "ball", fault_diameter_mils: 14, outer_race_position: "not_applicable"}
+        official_records: ["B014_0", "B014_1", "B014_2", "B014_3"]
+        files: ["185.mat", "186.mat", "187.mat", "188.mat"]
+      - group_id: "cwru_fe12_ball014"
+        partition: "val"
+        expected_label: 2
+        official_condition: {bearing_end: "fan_end", fault_location: "ball", fault_diameter_mils: 14, outer_race_position: "not_applicable"}
+        official_records: ["B014_0", "B014_1", "B014_2", "B014_3"]
+        files: ["286.mat", "287.mat", "288.mat", "289.mat"]
+      - group_id: "cwru_de12_or007_at3"
+        partition: "val"
+        expected_label: 3
+        official_condition: {bearing_end: "drive_end", fault_location: "outer_race", fault_diameter_mils: 7, outer_race_position: "3_oclock"}
+        official_records: ["OR007@3_0", "OR007@3_1", "OR007@3_2", "OR007@3_3"]
+        files: ["144.mat", "145.mat", "146.mat", "147.mat"]
+      - group_id: "cwru_de12_or021_at3"
+        partition: "val"
+        expected_label: 3
+        official_condition: {bearing_end: "drive_end", fault_location: "outer_race", fault_diameter_mils: 21, outer_race_position: "3_oclock"}
+        official_records: ["OR021@3_0", "OR021@3_1", "OR021@3_2", "OR021@3_3"]
+        files: ["246.mat", "247.mat", "248.mat", "249.mat"]
+
+      - group_id: "cwru_de12_ir021"
+        partition: "test"
+        expected_label: 1
+        official_condition: {bearing_end: "drive_end", fault_location: "inner_race", fault_diameter_mils: 21, outer_race_position: "not_applicable"}
+        official_records: ["IR021_0", "IR021_1", "IR021_2", "IR021_3"]
+        files: ["209.mat", "210.mat", "211.mat", "212.mat"]
+      - group_id: "cwru_fe12_ir007"
+        partition: "test"
+        expected_label: 1
+        official_condition: {bearing_end: "fan_end", fault_location: "inner_race", fault_diameter_mils: 7, outer_race_position: "not_applicable"}
+        official_records: ["IR007_0", "IR007_1", "IR007_2", "IR007_3"]
+        files: ["278.mat", "279.mat", "280.mat", "281.mat"]
+      - group_id: "cwru_de12_ball021"
+        partition: "test"
+        expected_label: 2
+        official_condition: {bearing_end: "drive_end", fault_location: "ball", fault_diameter_mils: 21, outer_race_position: "not_applicable"}
+        official_records: ["B021_0", "B021_1", "B021_2", "B021_3"]
+        files: ["222.mat", "223.mat", "224.mat", "225.mat"]
+      - group_id: "cwru_fe12_ball007"
+        partition: "test"
+        expected_label: 2
+        official_condition: {bearing_end: "fan_end", fault_location: "ball", fault_diameter_mils: 7, outer_race_position: "not_applicable"}
+        official_records: ["B007_0", "B007_1", "B007_2", "B007_3"]
+        files: ["282.mat", "283.mat", "284.mat", "285.mat"]
+      - group_id: "cwru_de12_or007_at12"
+        partition: "test"
+        expected_label: 3
+        official_condition: {bearing_end: "drive_end", fault_location: "outer_race", fault_diameter_mils: 7, outer_race_position: "12_oclock"}
+        official_records: ["OR007@12_0", "OR007@12_1", "OR007@12_2", "OR007@12_3"]
+        files: ["156.mat", "158.mat", "159.mat", "160.mat"]
+      - group_id: "cwru_de12_or014_at6"
+        partition: "test"
+        expected_label: 3
+        official_condition: {bearing_end: "drive_end", fault_location: "outer_race", fault_diameter_mils: 14, outer_race_position: "6_oclock"}
+        official_records: ["OR014@6_0", "OR014@6_1", "OR014@6_2", "OR014@6_3"]
+        files: ["197.mat", "198.mat", "199.mat", "200.mat"]
+
+trainer:
+  device: "cpu"
+  gpus: 0
+  num_epochs: 1
+  early_stopping: false

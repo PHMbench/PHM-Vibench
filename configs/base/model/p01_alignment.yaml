@@ -1,0 +1,40 @@
+# P01 M1--M5 base. Coefficients below are for E0 smoke only, not tuned paper values.
+model:
+  type: X_model
+  name: P01Alignment
+  device: cpu
+  condition: M5
+  num_classes: 4
+  in_channels: 2
+  encoder_dim: 64
+  latent_dim: 32
+  head_hidden: 64
+  attention_heads: 4
+  dropout: 0.1
+  renderer:
+    n_fft: 128
+    hop_length: 32
+    win_length: 128
+    window: hann
+    window_periodic: true
+    center: true
+    pad_mode: reflect
+    normalized: false
+    onesided: true
+    representation: magnitude
+    scaling: log1p
+    resize: none
+    normalization: none
+  alignment:
+    a_p: 1
+    a_s: 1
+    a_g: 1
+    lambda_p: 0.1
+    lambda_s: 0.1
+    lambda_g: 0.1
+    physical_energy_weight: 1.0
+    physical_spectral_weight: 0.5
+    physical_parseval_weight: 0.25
+    semantic_temperature: 0.1
+    eps: 1.0e-8
+    gradient_min_norm: 1.0e-8

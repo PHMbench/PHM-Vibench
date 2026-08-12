@@ -1,0 +1,63 @@
+# Shared C06 three-seed decisive contract. Run a seed/condition matrix cell,
+# never this common file directly. The seed set comes from the pre-existing
+# paper seed policy and was frozen before any C06 outcome was produced.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c05: "configs/experiments/p01/p01_c05_common.yaml"
+
+environment:
+  project: "p01_c06_three_seed_decisive_pilot"
+  seed: 42
+  iterations: 1
+  output_dir: "results/p01/c06_common_do_not_run"
+  notes: >-
+    C06 fixed-ten-epoch decisive matrix cell. Seeds 42, 123, and 456 are the
+    pre-existing three-seed paper policy; each seed/condition runs in its own
+    process. No C06 outcome may change this protocol or admit a rescue sweep.
+
+task:
+  scheduler: null
+  grouped_evaluation:
+    goal_id: "C06"
+    run_stage: "three_seed_two_environment_decisive_pilot"
+    run_role: "matrix_cell"
+    reproduction_of: ""
+    predeclared_seeds: [42, 123, 456]
+    seed_selection_basis: "pre_existing_paper_seed_policy_not_c05_or_c06_outcomes"
+    legacy_seed_outcome_exposure: true
+    predeclared_target_domains: [2, 3]
+    source_validation_tuning_trials: 0
+    alignment_coefficient_origin: "e0_verified_pre_c04_no_outcome_retuning"
+    alignment_coefficient_source_validation_trials: 0
+    c2_target_seed_policy: "fixed_31042_across_optimization_seeds"
+    estimand_contract:
+      primary_metric: "condition_block_macro_f1"
+      fusion_baseline: "max_M3_M4_after_exact_C1_M4_identity_check"
+      alignment_gain: "M5_minus_fusion_baseline"
+      multimodal_synergy: "M5_minus_max_M1_M2"
+      c2_residual: "M5_minus_C2"
+      c3_residual: "M5_minus_C3"
+      c2_gain: "C2_minus_fusion_baseline"
+      c3_gain: "C3_minus_fusion_baseline"
+      c1_policy: "verify_exact_identity_with_M4_then_count_M4_once"
+    route_rule:
+      stable_positive: >-
+        mean across seeds is strictly positive in each target domain and mean
+        across domains is strictly positive for at least two of three seeds
+      ties: "nonpositive"
+      continue_if: >-
+        alignment_gain, multimodal_synergy, c2_residual, and c3_residual are
+        stable_positive while neither c2_gain nor c3_gain is stable_positive
+      otherwise: "boundary_or_bounded_stop_without_rescue_sweep"
+      mechanism_claim_from_c06_alone: false
+    failure_policy:
+      missing_or_failed_cell: "retain_and_mark_partial"
+      invalid_protocol_cell: "retain_and_mark_invalid"
+      replacement_seed: "forbidden"
+      post_outcome_tuning: "forbidden"
+
+trainer:
+  num_epochs: 10
+  early_stopping: false

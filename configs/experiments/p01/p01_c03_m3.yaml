@@ -1,0 +1,20 @@
+# M3: both frozen encoders, concatenation, matched M5 head, no alignment terms.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c03: "configs/experiments/p01/p01_c03_common.yaml"
+
+environment:
+  project: "p01_c03_m3_concatenation"
+  output_dir: "results/p01/c03_m3_smoke"
+  notes: >-
+    C03 M3 concatenation execution/fairness smoke, seed 31, one epoch, no
+    tuning, no alignment objective, and no manuscript claim promotion.
+
+model:
+  condition: "M3"
+
+task:
+  grouped_evaluation:
+    condition_id: "M3"

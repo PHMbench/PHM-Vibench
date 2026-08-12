@@ -1,0 +1,39 @@
+# C3: one frozen rendered tensor through two independent 2D encoder copies.
+# The fixed 1D/2D duplicate candidates tie in absolute distance from M5. The
+# 2D candidate is preselected because it directly tests duplicate rendering.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  c04: "configs/experiments/p01/p01_c04_common.yaml"
+
+environment:
+  project: "p01_c04_c3_duplicate_rendering"
+  output_dir: "results/p01/c04_c3_smoke"
+  notes: >-
+    RUN-0018; C04 C3 duplicate-2D control, seed 31, one epoch, zero C04
+    tuning. It is the closest admitted tied candidate, not a model within the
+    frozen C1 parameter tolerance, and cannot promote a mechanism claim.
+
+model:
+  condition: "C3"
+
+task:
+  grouped_evaluation:
+    run_id: "RUN-0018"
+    condition_id: "C3"
+    c3_selection:
+      selected_encoder_family: "time_frequency_2d"
+      selected_representation: "frozen_log_magnitude_hann_stft"
+      selection_rule: "equal_absolute_parameter_and_supported_flop_deviation_from_m5_then_direct_rendering_tie_break"
+      tie_breaker: "directly_tests_the_deterministic_rendering_explanation"
+      duplicate_1d_parameters: 38915
+      duplicate_1d_supported_flops: 45646208
+      duplicate_1d_flops_evidence: "derived_from_measured_m1_m2_m3_cpu_profiles"
+      duplicate_2d_parameters: 55555
+      duplicate_2d_supported_flops: 46336640
+      duplicate_2d_flops_evidence: "measured_executed_c3_cpu_profile"
+      m5_parameters: 47235
+      m5_supported_flops: 45991424
+      absolute_parameter_difference_tie: 8320
+      c1_parameter_tolerance_status: "both_outside_five_percent"

@@ -2,10 +2,16 @@
 
 import torch.nn as nn
 import torchmetrics
-from typing import List, Any
+from typing import List, Any, Optional
 
 
-def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
+def get_metrics(
+    metric_names: List[str],
+    metadata: Any,
+    *,
+    num_classes: Optional[int] = None,
+    average: Optional[str] = None,
+) -> nn.ModuleDict:
     """Create metrics according to ``metric_names`` for each dataset.
 
     Parameters
@@ -14,6 +20,12 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
         Metric identifiers such as ``acc`` or ``f1``.
     metadata : Any
         Dataset metadata used to infer the number of classes.
+    num_classes : int, optional
+        Explicit output width for tasks that map raw labels to contiguous
+        training indices. When omitted, preserve the historical metadata-based
+        inference.
+    average : str, optional
+        Explicit reduction for multiclass F1/precision/recall/AUROC.
     """
     metric_classes = {
         # Classification metrics
@@ -42,11 +54,21 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
                 if data_id not in max_labels or current_label > max_labels[data_id]:
                     max_labels[data_id] = current_label
 
+    if num_classes is not None and int(num_classes) < 2:
+        raise ValueError("num_classes must be at least 2")
+
     for data_name, n_class in max_labels.items():
         if n_class is None:
             raise ValueError(f"数据集 '{data_name}' 的配置缺少 'n_classes'")
 
-        task_type = "multiclass" if n_class >= 2 else "binary" # fix
+        resolved_num_classes = (
+            int(num_classes) if num_classes is not None else int(n_class) + 1
+        )
+        task_type = (
+            "multiclass"
+            if num_classes is not None or n_class >= 2
+            else "binary"
+        )
         data_metrics = nn.ModuleDict()
         for stage in ["train", "val", "test"]:
             for metric_name in metric_names:
@@ -54,9 +76,19 @@ def get_metrics(metric_names: List[str], metadata: Any) -> nn.ModuleDict:
                 if key in metric_classes:
                     # Classification metrics need task and num_classes
                     if key in ["acc", "f1", "precision", "recall", "auroc"]:
+                        metric_kwargs = {
+                            "task": task_type,
+                            "num_classes": resolved_num_classes,
+                        }
+                        if average is not None and key in {
+                            "f1",
+                            "precision",
+                            "recall",
+                            "auroc",
+                        }:
+                            metric_kwargs["average"] = average
                         data_metrics[f"{stage}_{key}"] = metric_classes[key](
-                            task=task_type,
-                            num_classes=int(n_class) + 1,
+                            **metric_kwargs
                         )
                     # Regression metrics don't need these parameters
                     else:
