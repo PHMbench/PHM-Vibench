@@ -130,3 +130,30 @@ def test_main_records_data_failure_as_terminal_state(
         "type": "ValueError",
     }
     assert index["runs"] == []
+
+
+def test_pilot_preserves_each_failed_run_before_failing_matrix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = runner._load_config(runner.G050_CONFIG_PATH)
+    context: dict[str, object] = {"execution_status": "running"}
+
+    def fail_training(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise RuntimeError("sentinel training failure")
+
+    monkeypatch.setattr(runner, "_train_run", fail_training)
+    with pytest.raises(RuntimeError, match="no seed substitution"):
+        runner._run_pilot(
+            config,
+            data=None,  # type: ignore[arg-type]
+            output_root=tmp_path,
+            device=torch.device("cpu"),
+            execution_context=context,  # type: ignore[arg-type]
+        )
+
+    assert context["execution_stage"] == "train_matrix_validation"
+    index = json.loads((tmp_path / "run_index.json").read_text(encoding="utf-8"))
+    assert index["execution_status"] == "failed"
+    assert len(index["runs"]) == 9
+    assert all(run["status"] == "failed" for run in index["runs"])

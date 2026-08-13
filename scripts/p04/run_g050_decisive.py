@@ -1531,13 +1531,14 @@ def _run_pilot(
     data: AdmittedData,
     output_root: Path,
     device: torch.device,
-    execution_context: Mapping[str, Any],
+    execution_context: dict[str, Any],
 ) -> None:
     batch_size = int(config["training"]["batch_size"])
     relative_rms = float(config["probes"]["relative_rms"])
     run_records: dict[tuple[str, int], dict[str, Any]] = {}
     for arm in ARMS:
         for seed in SEEDS:
+            execution_context["execution_stage"] = f"train:{arm}:seed{seed}"
             checkpoint = output_root / "checkpoints" / f"{arm.lower()}_seed{seed}.pt"
             key = (arm, seed)
             try:
@@ -1606,14 +1607,18 @@ def _run_pilot(
         "all_runs_evaluable": not missing,
         "runs": run_summaries,
     }
+    execution_context["execution_stage"] = "write_run_index"
     _write_json(output_root / "run_index.json", run_index)
     if missing:
+        execution_context["execution_stage"] = "train_matrix_validation"
         raise RuntimeError(f"pilot contains non-evaluable runs; no seed substitution allowed: {missing}")
 
+    execution_context["execution_stage"] = "matching"
     matching, role_maps = _aggregate_matching(config, run_records, data)
     intervention_runs = {}
     for arm in ARMS:
         for seed in SEEDS:
+            execution_context["execution_stage"] = f"intervention:{arm}:seed{seed}"
             model = _load_checkpoint_strict(
                 Path(run_records[(arm, seed)]["checkpoint"]),
                 config,
@@ -1643,6 +1648,7 @@ def _run_pilot(
         "runs": intervention_runs,
         "delta_int": p0_delta_int,
     }
+    execution_context["execution_stage"] = "decision"
     decision = _decision(matching, interventions, run_records)
     metrics = {
         "delta_rid": matching["delta_rid"],
@@ -1667,6 +1673,7 @@ def _run_pilot(
             for seed in SEEDS
         },
     }
+    execution_context["execution_stage"] = "write_outputs"
     _write_json(output_root / "role_matching.json", matching)
     _write_json(output_root / "interventions.json", interventions)
     _write_json(output_root / "metrics.json", metrics)
