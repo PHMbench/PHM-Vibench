@@ -28,7 +28,15 @@ def _make_args(
 ) -> SimpleNamespace:
     uxfd = _ns(
         enable_sp2d=enable_sp2d,
-        sp2d=_ns(n_fft=128, hop_length=64),
+        sp2d=_ns(
+            n_fft=128,
+            hop_length=64,
+            win_length=128,
+            center=True,
+            normalized=False,
+            onesided=True,
+            magnitude=True,
+        ),
         fusion=_ns(type=fusion_type),
         fuzzy=_ns(enable=enable_fuzzy, logit_scale=fuzzy_logit_scale),
         operator_attention=_ns(
@@ -73,6 +81,40 @@ def test_tspn_uxfd_rejects_complex_sp2d_output() -> None:
     args.uxfd.sp2d.magnitude = False
 
     with pytest.raises(ValueError, match="requires uxfd.sp2d.magnitude=true"):
+        TSPNUXFD(args)
+
+
+def test_tspn_uxfd_requires_complete_sp2d_config() -> None:
+    args = _make_args(enable_sp2d=True)
+    del args.uxfd.sp2d.center
+
+    with pytest.raises(ValueError, match="Missing explicit uxfd.sp2d fields"):
+        TSPNUXFD(args)
+
+
+def test_tspn_uxfd_rejects_unknown_sp2d_fields() -> None:
+    args = _make_args(enable_sp2d=True)
+    args.uxfd.sp2d.window = "hann"
+
+    with pytest.raises(ValueError, match="Unknown uxfd.sp2d fields"):
+        TSPNUXFD(args)
+
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        ("n_fft", 256, "n_fft must be in"),
+        ("hop_length", 129, "hop_length must be in"),
+        ("win_length", 129, "win_length must be in"),
+    ],
+)
+def test_tspn_uxfd_rejects_out_of_range_sp2d_values(
+    field: str, value: int, match: str
+) -> None:
+    args = _make_args(enable_sp2d=True)
+    setattr(args.uxfd.sp2d, field, value)
+
+    with pytest.raises(ValueError, match=match):
         TSPNUXFD(args)
 
 
