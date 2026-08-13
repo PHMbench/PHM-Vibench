@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from types import SimpleNamespace
 
 import numpy as np
@@ -13,6 +14,9 @@ from src.data_factory.data_factory import (
     validate_split_preflight,
 )
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
+
+
+data_factory_module = importlib.import_module("src.data_factory.data_factory")
 
 
 def _split_config(**overrides: object) -> SimpleNamespace:
@@ -55,6 +59,24 @@ def test_dataset_import_resolves_repository_case_without_fallback() -> None:
     dataset_class = resolve_dataset_class("DG", "classification")
 
     assert dataset_class.__module__.endswith("DG.Classification_dataset")
+
+
+def test_default_dataset_requires_the_explicit_default_task_identity() -> None:
+    assert resolve_dataset_class("Default_task", "Default_task") is Default_dataset
+    with pytest.raises(DatasetResolutionError, match="dataset task directory"):
+        resolve_dataset_class("Default_task", "classification")
+
+
+def test_dataset_internal_import_error_preserves_its_cause(monkeypatch) -> None:
+    dependency_error = ModuleNotFoundError("configured dependency is missing")
+
+    def fail_import(_module_name: str):
+        raise dependency_error
+
+    monkeypatch.setattr(data_factory_module.importlib, "import_module", fail_import)
+    with pytest.raises(DatasetResolutionError, match="Failed to import") as captured:
+        resolve_dataset_class("DG", "classification")
+    assert captured.value.__cause__ is dependency_error
 
 
 def test_val_mode_cannot_bypass_split() -> None:

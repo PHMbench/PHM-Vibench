@@ -272,7 +272,7 @@ def _synthetic_factory(
         data_factory_module.data_factory
     )
     factory.args_data = args_data
-    factory.args_task = _ns(name="Synthetic", type="Default_task")
+    factory.args_task = _ns(name="Classification", type="DG")
     factory.target_metadata = metadata
     factory.data = {
         row["Id"]: np.full((8, 2), float(row["Id"]), dtype=np.float32)

@@ -105,22 +105,10 @@ def resolve_dataset_class(task_type, task_name):
     if not isinstance(task_name, str) or not task_name.isidentifier():
         raise DatasetResolutionError(f"Invalid task name {task_name!r}")
 
-    if task_type == "Default_task":
-        module_name = (
-            f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset"
-        )
-        try:
-            module = importlib.import_module(module_name)
-        except ImportError:
-            from .dataset_task.Default_dataset import Default_dataset
+    if (task_type, task_name) == ("Default_task", "Default_task"):
+        from .dataset_task.Default_dataset import Default_dataset
 
-            return Default_dataset
-        dataset_class = getattr(module, "set_dataset", None)
-        if dataset_class is None:
-            raise DatasetResolutionError(
-                f"Configured dataset module {module_name} has no set_dataset"
-            )
-        return dataset_class
+        return Default_dataset
 
     task_root = Path(__file__).resolve().parent / "dataset_task"
     task_dirs = sorted(
