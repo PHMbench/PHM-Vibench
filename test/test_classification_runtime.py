@@ -334,6 +334,40 @@ def test_task_import_failure_preserves_requested_module_and_cause(
     assert isinstance(captured.value.__cause__, ModuleNotFoundError)
 
 
+def test_task_module_execution_error_keeps_its_original_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_factory_module.TASK_REGISTRY,
+        "get",
+        _raise_key_error,
+    )
+
+    execution_error = RuntimeError("task module initialization failed")
+
+    def fail_during_module_execution(path: str):
+        raise execution_error
+
+    monkeypatch.setattr(
+        task_factory_module.importlib,
+        "import_module",
+        fail_during_module_execution,
+    )
+
+    with pytest.raises(RuntimeError, match="task module initialization failed") as captured:
+        task_factory_module.task_factory(
+            args_task=SimpleNamespace(type="DG", name="broken_module"),
+            network=object(),
+            args_data=SimpleNamespace(),
+            args_model=SimpleNamespace(),
+            args_trainer=SimpleNamespace(),
+            args_environment=SimpleNamespace(),
+            metadata={},
+        )
+
+    assert captured.value is execution_error
+
+
 def test_task_module_requires_registration_or_task_symbol(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -45,7 +45,7 @@ def _resolve_task_class(args_task: Namespace):
     module_path = resolve_task_module(args_task)
     try:
         task_module = importlib.import_module(module_path)
-    except Exception as exc:
+    except ImportError as exc:
         raise ImportError(
             f"Cannot import task {key!r} from {module_path!r}: {exc}. "
             "Check task.type, task.name, the module path, and optional "
