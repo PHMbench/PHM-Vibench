@@ -90,7 +90,9 @@ def _resolve_existing_config_path(source: str | Path, *, relative_to: Path | Non
 
 def resolve_config_path(source: str | Path | None) -> Path:
     """Resolve a public preset or YAML path from a checkout or installed wheel."""
-    requested = str(source or DEFAULT_CONFIG)
+    if source is None or not str(source).strip():
+        raise ValueError("An explicit configuration preset or path is required")
+    requested = str(source)
     mapped = MAINTAINED_PRESETS.get(requested, requested)
     try:
         return _resolve_existing_config_path(mapped)
@@ -112,7 +114,9 @@ def resolve_config(
     override_values: Sequence[str] | None = None,
 ) -> ResolvedConfig:
     """Resolve path, base configs, overrides, and canonical Pipeline name."""
-    requested = str(source or DEFAULT_CONFIG)
+    if source is None or not str(source).strip():
+        raise ValueError("An explicit configuration preset or path is required")
+    requested = str(source)
     path = resolve_config_path(source)
     data = load_config_dict(path)
     overrides = parse_overrides(override_values)
@@ -135,10 +139,7 @@ def _load_recursive(path: Path, *, stack: tuple[Path, ...]) -> dict[str, Any]:
     if path in stack:
         chain = " -> ".join(str(item) for item in (*stack, path))
         raise ValueError(f"Cyclic base_configs reference: {chain}")
-    try:
-        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except UnicodeDecodeError:
-        payload = yaml.safe_load(path.read_text(encoding="gb18030", errors="ignore")) or {}
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(payload, dict):
         raise TypeError(f"Top-level YAML object must be a mapping: {path}")
 

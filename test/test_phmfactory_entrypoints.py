@@ -41,6 +41,18 @@ def test_config_takes_precedence_over_legacy_alias() -> None:
     assert cli._resolve_config_path(args) == "public.yaml"
 
 
+def test_cli_requires_explicit_config_or_preset() -> None:
+    args = argparse.Namespace(
+        config=None,
+        config_path=None,
+        notes="",
+        override=None,
+    )
+
+    with pytest.raises(ValueError, match="explicit --config"):
+        cli._resolve_config_path(args)
+
+
 def test_run_dispatches_resolved_canonical_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

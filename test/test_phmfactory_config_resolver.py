@@ -73,6 +73,20 @@ def test_resolve_config_rejects_missing_source(tmp_path: Path) -> None:
         resolve_config(tmp_path / "missing.yaml")
 
 
+@pytest.mark.parametrize("source", (None, "", "   "))
+def test_resolve_config_requires_explicit_source(source: str | None) -> None:
+    with pytest.raises(ValueError, match="explicit configuration"):
+        resolve_config(source)
+
+
+def test_load_config_rejects_non_utf8_input(tmp_path: Path) -> None:
+    config = tmp_path / "invalid.yaml"
+    config.write_bytes(b"pipeline: Pipeline_01_default\ncomment: \xff\n")
+
+    with pytest.raises(UnicodeDecodeError):
+        load_config_dict(config)
+
+
 @pytest.mark.parametrize("preset, relative_path", sorted(MAINTAINED_PRESETS.items()))
 def test_maintained_presets_point_to_tracked_configs(
     preset: str,

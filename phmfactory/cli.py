@@ -8,7 +8,7 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from phmfactory.config import DEFAULT_CONFIG, resolve_config
+from phmfactory.config import resolve_config
 from phmfactory.pipelines import pipeline_module_name
 
 
@@ -82,15 +82,7 @@ def _resolve_config_path(args: argparse.Namespace) -> str:
         return args.config
     if args.config_path is not None:
         return args.config_path
-    return DEFAULT_CONFIG
-
-
-def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
-    """Resolve the canonical Pipeline through the public config API."""
-    return resolve_config(
-        config_path,
-        override_values=args.override,
-    ).pipeline
+    raise ValueError("An explicit --config preset or path is required")
 
 
 def run(args: argparse.Namespace) -> Any:
