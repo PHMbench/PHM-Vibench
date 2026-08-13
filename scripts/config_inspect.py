@@ -65,11 +65,12 @@ class InspectResult:
 
 
 def _find_local_override_path(explicit: Optional[str]) -> Optional[Path]:
-    if explicit:
-        p = Path(explicit)
-        return p if p.exists() else None
-    default_local = Path("configs/local/local.yaml")
-    return default_local if default_local.exists() else None
+    if explicit is None:
+        return None
+    path = Path(explicit)
+    if not path.is_file():
+        raise FileNotFoundError(f"--local-config not found: {explicit}")
+    return path
 
 
 def _collect_sources(
@@ -391,7 +392,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Inspect a config: resolved config + sources + targets + sanity")
     parser.add_argument("--config", required=True, help="YAML config path")
     parser.add_argument("--override", action="append", default=None, help="Override key=value (repeatable)")
-    parser.add_argument("--local_config", default=None, help="Optional machine-local override YAML")
+    parser.add_argument(
+        "--local-config",
+        "--local_config",
+        dest="local_config",
+        default=None,
+        help="Explicit machine-local override YAML",
+    )
     parser.add_argument("--dump", choices=["resolved", "sources", "targets", "all"], default="all")
     parser.add_argument("--format", choices=["yaml", "json", "md"], default="md")
     args = parser.parse_args(argv)
