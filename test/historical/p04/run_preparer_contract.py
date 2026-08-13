@@ -387,7 +387,7 @@ def test_path_overlap_is_rejected_without_creating_either_path(
 def test_frozen_config_hash_mismatch_fails_closed_without_publication(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    relative = "configs/experiments/p04/decisive_full.yaml"
+    relative = "configs/reference/p04_retired_synthetic/decisive_full.yaml"
     monkeypatch.setitem(preparer.FROZEN_CONFIG_SHA256, relative, "0" * 64)
     staging = tmp_path / "staging"
 

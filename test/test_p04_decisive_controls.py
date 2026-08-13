@@ -13,7 +13,7 @@ from src.trainer_factory.Default_trainer import create_early_stopping_callback
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CONFIG_ROOT = REPO_ROOT / "configs" / "experiments" / "p04"
+CONFIG_ROOT = REPO_ROOT / "configs" / "reference" / "p04_retired_synthetic"
 CONFIG_PATHS = {
     "FULL": CONFIG_ROOT / "decisive_full.yaml",
     "HOMO": CONFIG_ROOT / "decisive_homogeneous.yaml",
