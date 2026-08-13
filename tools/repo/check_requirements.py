@@ -42,6 +42,7 @@ REQUIRED_IN_CORE = {
     "pydantic",
     "pyyaml",
     "torch",
+    "tqdm",
 }
 
 PROHIBITED_REFERENCE_MARKERS = (
