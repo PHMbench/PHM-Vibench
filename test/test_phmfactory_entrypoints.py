@@ -12,7 +12,12 @@ import pytest
 from phmfactory import __version__
 from phmfactory import cli
 from examples import cwru_quickstart
-from phmfactory.config import MAINTAINED_PRESETS, ResolvedConfig, resolve_config_path
+from phmfactory.config import (
+    MAINTAINED_PRESETS,
+    ResolvedConfig,
+    resolve_config,
+    resolve_config_path,
+)
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
@@ -29,6 +34,23 @@ def test_parser_preserves_legacy_config_path_alias() -> None:
     assert args.config is None
     assert args.config_path == "legacy.yaml"
     assert args.notes == "compat"
+
+
+def test_parser_requires_an_explicit_config() -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args([])
+
+
+def test_config_resolver_rejects_an_implicit_default() -> None:
+    with pytest.raises(ValueError, match="explicit configuration"):
+        resolve_config(None)  # type: ignore[arg-type]
+
+
+def test_pipeline05_rejects_an_unresolved_configuration() -> None:
+    from src import Pipeline_05_Explainable_Fault_Diagnosis as pipeline05
+
+    with pytest.raises(ValueError, match="requires the configuration resolved"):
+        pipeline05.pipeline(SimpleNamespace())
 
 
 def test_config_takes_precedence_over_legacy_alias() -> None:
@@ -51,6 +73,7 @@ def test_run_dispatches_resolved_canonical_module(
         observed["config_path"] = args.config_path
         observed["resolved_config_path"] = args.resolved_config_path
         observed["resolved_pipeline"] = args.resolved_pipeline
+        observed["resolved_config"] = args.resolved_config
         observed["notes"] = args.notes
         return "sentinel"
 
@@ -85,6 +108,7 @@ def test_run_dispatches_resolved_canonical_module(
         "config_path": "/tmp/missing.yaml",
         "resolved_config_path": "/tmp/missing.yaml",
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
+        "resolved_config": {"pipeline": "Pipeline_04_Unified_Evaluation"},
         "notes": "entrypoint-parity",
     }
 

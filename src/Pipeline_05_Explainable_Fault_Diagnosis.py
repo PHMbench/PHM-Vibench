@@ -1,21 +1,12 @@
-import argparse
 import os
-import sys
-from datetime import datetime
 from pathlib import Path
-from pprint import pprint
 
-import numpy as np
 import pandas as pd
 import torch
-import yaml
-import matplotlib.pyplot as plt
 from pytorch_lightning import seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import (
-    load_config,
-    merge_with_local_override,
+    dict_to_namespace,
     path_name,
     save_config,
     transfer_namespace,
@@ -26,7 +17,6 @@ from src.explain_factory.metadata_reader import (
     snapshot_metadata,
     write_metadata_snapshot,
 )
-from src.utils.config_utils import parse_overrides, apply_overrides_to_config
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
 from src.data_factory import build_data
 from src.model_factory import build_model
@@ -47,25 +37,19 @@ def pipeline(args):
     # -----------------------
     # 1. 加载配置文件
     # -----------------------
-    config_path = args.config_path
-    print(f"[INFO] 加载配置文件: {config_path}")
-    # 支持机器特定的本地覆盖 YAML（方案B）
-    # 优先顺序：命令行 --local_config > configs/local/{hostname}.yaml > configs/local/local.yaml > configs/local/default.yaml
-    configs = merge_with_local_override(config_path, getattr(args, 'local_config', None))
-
-    # 应用CLI override参数（最高优先级）
-    if hasattr(args, 'override') and args.override:
-        print(f"[INFO] 应用CLI override参数: {args.override}")
-        overrides = parse_overrides(args.override)
-        configs = apply_overrides_to_config(configs, overrides)
-        print(f"[INFO] 已应用 {len(overrides)} 个override参数")
+    resolved_config = getattr(args, "resolved_config", None)
+    if not isinstance(resolved_config, dict):
+        raise ValueError(
+            "Pipeline 05 requires the configuration resolved by phmfactory.cli"
+        )
+    configs = dict_to_namespace(resolved_config)
+    print(f"[INFO] 使用已解析配置: {args.resolved_config_path}")
 
     # 确保配置中包含必要的部分
     required_sections = ['data', 'model', 'task', 'trainer', 'environment']
     for section in required_sections:
         if not hasattr(configs, section):
-            print(f"[ERROR] 配置文件中缺少 {section} 部分")
-            return
+            raise ValueError(f"配置文件中缺少 {section} 部分")
     
     # 设置环境变量和命名空间
     args_environment = transfer_namespace(configs.environment if hasattr(configs, 'environment') else {})
@@ -250,25 +234,6 @@ def pipeline(args):
 
 
 if __name__ == "__main__":
-    # 解析命令行参数
-    parser = argparse.ArgumentParser(description="领域泛化(DG)任务流水线")
-    
-    parser.add_argument('--config_path', 
-                        type=str, 
-                        default='/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/configs/demo/Single_DG/CWRU.yaml',
-                        help='配置文件路径')
-    parser.add_argument('--notes', 
-                        type=str, 
-                        default='',
-                        help='实验备注')
-    parser.add_argument('--local_config',
-                        type=str,
-                        default=None,
-                        help='本机覆盖配置路径（可选）')
+    from phmfactory.cli import main
 
-    
-    args = parser.parse_args()
-    
-    # 执行DG流水线
-    results = pipeline(args)
-    print(f"完成所有实验！")
+    main()

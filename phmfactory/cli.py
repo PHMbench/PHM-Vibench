@@ -8,7 +8,7 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from phmfactory.config import DEFAULT_CONFIG, resolve_config
+from phmfactory.config import resolve_config
 from phmfactory.pipelines import pipeline_module_name
 
 
@@ -18,13 +18,14 @@ def build_parser() -> argparse.ArgumentParser:
         prog="phmfactory",
         description="PHMFactory task pipeline",
     )
-    parser.add_argument(
+    config_group = parser.add_mutually_exclusive_group(required=True)
+    config_group.add_argument(
         "--config",
         type=str,
         default=None,
         help="Configuration path or maintained preset name.",
     )
-    parser.add_argument(
+    config_group.add_argument(
         "--config_path",
         type=str,
         default=None,
@@ -82,7 +83,7 @@ def _resolve_config_path(args: argparse.Namespace) -> str:
         return args.config
     if args.config_path is not None:
         return args.config_path
-    return DEFAULT_CONFIG
+    raise ValueError("An explicit --config or --config_path is required")
 
 
 def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
@@ -104,6 +105,7 @@ def run(args: argparse.Namespace) -> Any:
     args.config_path = str(resolved.path)
     args.resolved_config_path = str(resolved.path)
     args.resolved_pipeline = resolved.pipeline
+    args.resolved_config = resolved.data
 
     pipeline_module = importlib.import_module(
         pipeline_module_name(resolved.pipeline, warn=False)

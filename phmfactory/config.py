@@ -88,9 +88,11 @@ def _resolve_existing_config_path(source: str | Path, *, relative_to: Path | Non
         return packaged
     raise FileNotFoundError(requested)
 
-def resolve_config_path(source: str | Path | None) -> Path:
+def resolve_config_path(source: str | Path) -> Path:
     """Resolve a public preset or YAML path from a checkout or installed wheel."""
-    requested = str(source or DEFAULT_CONFIG)
+    if source is None or not str(source).strip():
+        raise ValueError("An explicit configuration path or preset is required")
+    requested = str(source)
     mapped = MAINTAINED_PRESETS.get(requested, requested)
     try:
         return _resolve_existing_config_path(mapped)
@@ -107,12 +109,14 @@ def load_config_dict(path: str | Path) -> dict[str, Any]:
 
 
 def resolve_config(
-    source: str | Path | None = None,
+    source: str | Path,
     *,
     override_values: Sequence[str] | None = None,
 ) -> ResolvedConfig:
     """Resolve path, base configs, overrides, and canonical Pipeline name."""
-    requested = str(source or DEFAULT_CONFIG)
+    if source is None or not str(source).strip():
+        raise ValueError("An explicit configuration path or preset is required")
+    requested = str(source)
     path = resolve_config_path(source)
     data = load_config_dict(path)
     overrides = parse_overrides(override_values)
