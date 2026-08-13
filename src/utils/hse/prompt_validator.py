@@ -1,12 +1,11 @@
 """
 HSE Prompt Configuration Validator for PHM-Vibench.
 
-Enhanced P1 version with comprehensive validation and fixing utilities for HSE prompt-guided
-training configurations, including Pipeline_03 integration support and ablation study validation.
+Enhanced P1 version with read-only validation for HSE prompt-guided training
+configurations, including Pipeline_03 integration and ablation study validation.
 
 Features:
 - Enhanced configuration validation with detailed error reporting
-- Automatic configuration fixing with clear explanations
 - Pipeline_03 integration validation
 - Ablation study configuration support
 - Parameter range checking and optimization suggestions
@@ -20,16 +19,7 @@ License: MIT
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, Any, Union, Optional, List, Tuple
-
-try:
-    from ..config.path_standardizer import PathStandardizer
-except ImportError:
-    # When running as main, use absolute import
-    import sys
-    sys.path.insert(0, '.')
-    from src.utils.config.path_standardizer import PathStandardizer
-
+from typing import Dict, Any, Union, List, Tuple
 
 class HSPPromptValidator:
     """Enhanced configuration validator for HSE prompt-guided contrastive learning."""
@@ -60,14 +50,8 @@ class HSPPromptValidator:
     # Standard datasets for unified metric learning
     STANDARD_DATASETS = ['CWRU', 'XJTU', 'THU', 'Ottawa', 'JNU']
     
-    def __init__(self, data_root: Optional[str] = None):
-        """
-        Initialize HSE prompt configuration validator.
-        
-        Args:
-            data_root: Root directory for data paths
-        """
-        self.path_standardizer = PathStandardizer(data_root)
+    def __init__(self) -> None:
+        """Initialize the read-only HSE prompt configuration validator."""
         self.validation_errors = []
         self.validation_warnings = []
     
@@ -119,36 +103,6 @@ class HSPPromptValidator:
 
         is_valid = len(self.validation_errors) == 0
         return is_valid, self.validation_errors, self.validation_warnings
-    
-    def fix_config(self, config: Dict[str, Any], config_type: str = 'general') -> Dict[str, Any]:
-        """
-        Automatically fix common configuration issues.
-        
-        Args:
-            config: Configuration dictionary
-            config_type: Type of config ('pretraining', 'finetuning', 'general')
-            
-        Returns:
-            Fixed configuration dictionary
-        """
-        fixed_config = config.copy()
-        
-        # Fix paths
-        fixed_config = self.path_standardizer.standardize_config_paths(fixed_config)
-        
-        # Fix model configuration
-        fixed_config = self._fix_model_config(fixed_config)
-        
-        # Fix task configuration
-        fixed_config = self._fix_task_config(fixed_config)
-        
-        # Fix trainer configuration
-        fixed_config = self._fix_trainer_config(fixed_config)
-        
-        # Fix HSE prompt specific settings
-        fixed_config = self._fix_hse_prompt_config(fixed_config)
-        
-        return fixed_config
     
     def _validate_basic_structure(self, config: Dict[str, Any]) -> None:
         """Validate basic configuration structure."""
@@ -331,88 +285,6 @@ class HSPPromptValidator:
                         f"{dim_param} must be a positive integer, got: {dim}"
                     )
     
-    def _fix_model_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Fix model configuration issues."""
-        if 'model' not in config:
-            config['model'] = {}
-        
-        model_config = config['model']
-        
-        # Set default embedding if missing or incorrect
-        if 'embedding' not in model_config:
-            model_config['embedding'] = 'E_01_HSE_v2'
-            
-        # Set default fusion strategy
-        if 'fusion_strategy' not in model_config:
-            model_config['fusion_strategy'] = 'attention'
-        elif model_config['fusion_strategy'] not in self.VALID_FUSION_STRATEGIES:
-            model_config['fusion_strategy'] = 'attention'
-        
-        # Set default training stage
-        if 'training_stage' not in model_config:
-            model_config['training_stage'] = 'pretrain'
-        
-        return config
-    
-    def _fix_task_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Fix task configuration issues."""
-        if 'task' not in config:
-            config['task'] = {}
-        
-        task_config = config['task']
-        
-        # Set default contrastive loss
-        if 'contrast_loss' not in task_config:
-            task_config['contrast_loss'] = 'INFONCE'
-        elif task_config['contrast_loss'] not in self.VALID_CONTRASTIVE_LOSSES:
-            task_config['contrast_loss'] = 'INFONCE'
-        
-        # Set default contrast weight
-        if 'contrast_weight' not in task_config:
-            task_config['contrast_weight'] = 0.15
-        
-        # Set default temperature
-        if 'temperature' not in task_config:
-            task_config['temperature'] = 0.07
-        
-        # Set default prompt similarity weight
-        if 'prompt_similarity_weight' not in task_config:
-            task_config['prompt_similarity_weight'] = 0.1
-        
-        return config
-    
-    def _fix_trainer_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Fix trainer configuration issues."""
-        if 'trainer' not in config:
-            config['trainer'] = {}
-        
-        trainer_config = config['trainer']
-        
-        # Set default max_epochs
-        if 'max_epochs' not in trainer_config:
-            trainer_config['max_epochs'] = 100
-        
-        return config
-    
-    def _fix_hse_prompt_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Fix HSE prompt specific configuration."""
-        if 'model' not in config:
-            config['model'] = {}
-        
-        model_config = config['model']
-        
-        # Set default prompt dimensions
-        if 'prompt_dim' not in model_config:
-            model_config['prompt_dim'] = 64
-        
-        if 'system_prompt_dim' not in model_config:
-            model_config['system_prompt_dim'] = 32
-        
-        if 'sample_prompt_dim' not in model_config:
-            model_config['sample_prompt_dim'] = 32
-
-        return config
-
     def _validate_parameter_ranges(self, config: Dict[str, Any]) -> None:
         """Validate parameter values against reasonable ranges."""
         all_config = {}
@@ -756,62 +628,26 @@ class HSPPromptValidator:
         except Exception as e:
             return False, [f"Error reading configuration file: {e}"], []
     
-    def fix_yaml_file(self, yaml_path: Union[str, Path], 
-                     output_path: Optional[Union[str, Path]] = None,
-                     config_type: str = 'general',
-                     backup: bool = True) -> None:
-        """
-        Fix a YAML configuration file.
-        
-        Args:
-            yaml_path: Path to YAML file
-            output_path: Output path (if None, overwrites input)
-            config_type: Type of config ('pretraining', 'finetuning', 'general')
-            backup: Whether to create backup of original file
-        """
-        yaml_path = Path(yaml_path)
-        output_path = Path(output_path) if output_path else yaml_path
-        
-        # Create backup if requested
-        if backup and output_path == yaml_path:
-            backup_path = yaml_path.with_suffix(yaml_path.suffix + '.bak')
-            if yaml_path.exists():
-                yaml_path.rename(backup_path)
-                yaml_path = backup_path
-        
-        # Load configuration
-        with open(yaml_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-        
-        # Fix configuration
-        fixed_config = self.fix_config(config, config_type)
-        
-        # Save fixed configuration
-        with open(output_path, 'w', encoding='utf-8') as f:
-            yaml.dump(fixed_config, f, default_flow_style=False, sort_keys=False,
-                     allow_unicode=True, indent=2)
-
 # Backward compatibility alias
 HSEPromptConfigValidator = HSPPromptValidator
 __all__ = ['HSPPromptValidator', 'HSEPromptConfigValidator', 'validate_hse_prompt_directory']
 
 
-def validate_hse_prompt_directory(config_dir: Union[str, Path],
-                                 data_root: Optional[str] = None,
-                                  pattern: str = "*.yaml") -> Dict[str, Tuple[bool, List[str], List[str]]]:
+def validate_hse_prompt_directory(
+    config_dir: Union[str, Path], pattern: str = "*.yaml"
+) -> Dict[str, Tuple[bool, List[str], List[str]]]:
     """
     Validate all HSE prompt configuration files in a directory.
     
     Args:
         config_dir: Directory containing configuration files
-        data_root: Root directory for data paths
         pattern: File pattern to match (default: "*.yaml")
         
     Returns:
         Dictionary mapping file paths to validation results
     """
     config_dir = Path(config_dir)
-    validator = HSPPromptValidator(data_root)
+    validator = HSPPromptValidator()
     results = {}
     
     for yaml_file in config_dir.glob(pattern):
@@ -889,20 +725,7 @@ if __name__ == '__main__':
     for warning in warnings[:5]:  # Show first 5 warnings
         print(f"     - {warning}")
     
-    print("\n2. Testing configuration fixing:")
-    # Create invalid config
-    invalid_config = {
-        'data': {'batch_size': -1},
-        'model': {'fusion_strategy': 'invalid'},
-        'task': {'contrast_weight': 2.0}
-    }
-    
-    fixed_config = validator.fix_config(invalid_config)
-    print(f"   Fixed batch_size: {fixed_config['data'].get('batch_size')}")
-    print(f"   Fixed fusion_strategy: {fixed_config['model'].get('fusion_strategy')}")
-    print(f"   Fixed contrast_weight: {fixed_config['task'].get('contrast_weight')}")
-    
-    print("\n3. Testing YAML file validation:")
+    print("\n2. Testing YAML file validation:")
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         yaml.dump(test_config, f, default_flow_style=False)
         test_yaml = f.name
@@ -917,7 +740,7 @@ if __name__ == '__main__':
     finally:
         os.unlink(test_yaml)
     
-    print("\n4. Testing invalid configurations:")
+    print("\n3. Testing invalid configurations:")
     test_cases = [
         ({'model': {'fusion_strategy': 'invalid'}}, "Invalid fusion strategy"),
         ({'task': {'contrast_loss': 'UNKNOWN'}}, "Invalid contrast loss"),
