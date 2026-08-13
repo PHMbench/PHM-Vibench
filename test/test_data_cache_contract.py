@@ -29,6 +29,21 @@ def _args(tmp_path: Path) -> SimpleNamespace:
     )
 
 
+def test_atomic_cache_implementation_is_owned_by_base_factory() -> None:
+    assert "_update_name_cache" not in ExplicitDataFactory.__dict__
+    assert "_build_final_cache" not in ExplicitDataFactory.__dict__
+    assert ExplicitDataFactory._update_name_cache is BaseDataFactory._update_name_cache
+    assert ExplicitDataFactory._build_final_cache is BaseDataFactory._build_final_cache
+
+
+def test_base_factory_rejects_unknown_dataset_adapter() -> None:
+    factory = BaseDataFactory.__new__(BaseDataFactory)
+    factory.args_task = SimpleNamespace(type="unknown", name="unknown")
+
+    with pytest.raises(ValueError, match="No dataset adapter is registered"):
+        factory._init_dataset()
+
+
 def _write_h5(path: Path, values: dict[str, float]) -> None:
     with h5py.File(path, "w") as h5_file:
         for key, value in values.items():
@@ -115,6 +130,32 @@ def test_successful_dataset_cache_replaces_only_after_all_ids_exist(
     cache_path = tmp_path / "Demo.h5"
     assert _keys(cache_path) == {"1", "2"}
     assert not (tmp_path / ".Demo.h5.tmp").exists()
+
+
+def test_generated_cache_uses_explicit_cache_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_directory = tmp_path / "raw-data"
+    cache_directory = tmp_path / "runtime-cache"
+    metadata = {1: {"Name": "Demo", "File": "one.csv"}}
+    factory = _factory(metadata)
+    args = _args(raw_directory)
+    args.cache_dir = str(cache_directory)
+    monkeypatch.setattr(
+        factory,
+        "_read_single_data",
+        lambda file_id, meta, args_data: (
+            file_id,
+            np.ones((4, 1), dtype=np.float32),
+            None,
+        ),
+    )
+
+    factory._update_name_cache("Demo", [1], args, 1)
+
+    assert _keys(cache_directory / "Demo.h5") == {"1"}
+    assert not (raw_directory / "Demo.h5").exists()
 
 
 def test_complete_published_cache_is_reused_without_source_cache(

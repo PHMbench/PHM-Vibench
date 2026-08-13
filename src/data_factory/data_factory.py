@@ -5,11 +5,14 @@
 import os
 import importlib
 import glob
+from pathlib import Path
+import shutil
 import pandas as pd
 import numpy as np
 import h5py
 from .H5DataDict import H5DataDict
 from .dataset_task.Dataset_cluster import IdIncludedDataset # ,Balanced_DataLoader_Dict_Iterator # TODO del balanced_data_loader
+from .dataset_task.adapters import resolve_dataset_adapter
 from torch.utils.data import DataLoader
 import copy
 import concurrent.futures
@@ -173,86 +176,164 @@ class data_factory:
         return ids_to_fetch
 
     def _update_name_cache(self, name, ids, args_data, max_workers):
-        """Read raw files for one dataset name and update its cache.
-
-        Parameters
-        ----------
-        name : str
-            Dataset name such as ``"CWRU"``.
-        ids : List[str]
-            ID keys that belong to this dataset.
-        args_data : Namespace
-            Supplies ``data_dir`` and ``metadata_file``.
-        max_workers : int
-            Thread pool size for reading files.
-        """
+        """Read all requested IDs and atomically update one dataset cache."""
         if not ids:
             return
-        name_cache_file = os.path.join(
-            _cache_directory(args_data), f"{name}.h5"
-        )
+
         id_meta_pairs = []
-        for id_k in ids:
-            meta = self.metadata[id_k]
-            if 'File' not in meta:
+        missing_metadata = []
+        for file_id in ids:
+            meta = self.metadata[file_id]
+            if not meta.get("File"):
+                missing_metadata.append(str(file_id))
                 continue
-            id_meta_pairs.append((id_k, meta))
+            id_meta_pairs.append((file_id, meta))
+
+        if missing_metadata:
+            raise RuntimeError(
+                f"Cannot build cache for dataset {name!r}: metadata is missing "
+                f"File for ID(s) {', '.join(missing_metadata)}. Fix the metadata "
+                "before rerunning."
+            )
+
         results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(self._read_single_data, id_k, meta, args_data) for id_k, meta in id_meta_pairs]
-            for fut in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc=f"并行读取 {name}"):
-                results.append(fut.result())
-        os.makedirs(os.path.dirname(name_cache_file), exist_ok=True)
-        with h5py.File(name_cache_file, 'a') as h5f:
-            for id_res, data_res, _ in results:
-                if data_res is None:
-                    continue
-                key = str(id_res)
-                if key in h5f:
-                    del h5f[key]
-                h5f.create_dataset(key, data=data_res)
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+            futures = [
+                executor.submit(
+                    self._read_single_data,
+                    file_id,
+                    meta,
+                    args_data,
+                )
+                for file_id, meta in id_meta_pairs
+            ]
+            for future in tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(futures),
+                desc=f"并行读取 {name}",
+            ):
+                results.append(future.result())
+
+        failures = [
+            (str(file_id), error or "reader returned no data")
+            for file_id, data, error in results
+            if data is None
+        ]
+        if failures:
+            details = "; ".join(
+                f"ID {file_id}: {reason}" for file_id, reason in failures
+            )
+            raise RuntimeError(
+                f"Cannot publish cache for dataset {name!r}; raw-data reading "
+                f"failed. {details}"
+            )
+
+        cache_path = Path(_cache_directory(args_data)) / f"{name}.h5"
+        temp_path = cache_path.with_name(f".{cache_path.name}.tmp")
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path.unlink(missing_ok=True)
+
+        try:
+            if cache_path.is_file():
+                shutil.copy2(cache_path, temp_path)
+            with h5py.File(temp_path, "a") as h5_file:
+                for file_id, data, _ in results:
+                    key = str(file_id)
+                    if key in h5_file:
+                        del h5_file[key]
+                    h5_file.create_dataset(key, data=data)
+
+                missing_ids = [
+                    str(file_id)
+                    for file_id in ids
+                    if str(file_id) not in h5_file
+                ]
+                if missing_ids:
+                    raise RuntimeError(
+                        f"Temporary cache {temp_path} is missing ID(s) "
+                        f"{', '.join(missing_ids)}."
+                    )
+
+            os.replace(temp_path, cache_path)
+        except Exception:
+            temp_path.unlink(missing_ok=True)
+            raise
 
     def _build_final_cache(self, task_meta, args_data, use_cache):
-        """Combine all ``Name.h5`` files into ``cache.h5``.
+        """Reuse a complete task cache or rebuild it before atomic publication."""
+        expected_ids = list(task_meta.keys())
+        if not expected_ids:
+            raise ValueError(
+                "The selected task contains no data IDs. Check task.target_system_id, "
+                "domain selection, labels, and metadata."
+            )
 
-        Parameters
-        ----------
-        task_meta : MetadataAccessor
-            Metadata for IDs used in this run.
-        args_data : Namespace
-            Provides ``data_dir`` where caches reside.
-        use_cache : bool
-            If ``False`` rebuild all entries regardless of existing cache.
+        expected_keys = {str(file_id) for file_id in expected_ids}
+        cache_directory = Path(_cache_directory(args_data))
+        cache_path = cache_directory / "cache.h5"
+        temp_path = cache_directory / ".cache.h5.tmp"
+        cache_directory.mkdir(parents=True, exist_ok=True)
 
-        Returns
-        -------
-        str
-            Path to the consolidated ``cache.h5`` file.
-        """
-        cache_directory = _cache_directory(args_data)
-        final_cache_path = os.path.join(cache_directory, "cache.h5")
-        os.makedirs(os.path.dirname(final_cache_path), exist_ok=True)
-        missing_keys = []
-        if use_cache and os.path.exists(final_cache_path):
-            with h5py.File(final_cache_path, 'r') as h5f:
-                for id_key in task_meta.keys():
-                    if str(id_key) not in h5f:
-                        missing_keys.append(id_key)
-        else:
-            missing_keys = list(task_meta.keys())
-        if missing_keys:
-            with h5py.File(final_cache_path, 'a') as h5f_consolidated:
-                for id_key in tqdm(missing_keys, desc="整合 cache.h5"):
-                    meta = self.metadata[id_key]
-                    name = meta['Name']
-                    name_cache_file = os.path.join(cache_directory, f"{name}.h5")
-                    if not os.path.exists(name_cache_file):
+        if use_cache and cache_path.is_file():
+            try:
+                with h5py.File(cache_path, "r") as published_cache:
+                    if expected_keys.issubset(published_cache.keys()):
+                        return str(cache_path)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Existing cache cannot be opened: {cache_path}. Delete this "
+                    "cache and rerun so PHMFactory can rebuild it."
+                ) from exc
+
+        temp_path.unlink(missing_ok=True)
+        missing = []
+        try:
+            with h5py.File(temp_path, "w") as output_cache:
+                for file_id in tqdm(expected_ids, desc="整合 cache.h5"):
+                    meta = self.metadata[file_id]
+                    dataset_name = meta.get("Name")
+                    if not dataset_name:
+                        missing.append(
+                            (str(file_id), "metadata field Name is missing")
+                        )
                         continue
-                    with h5py.File(name_cache_file, 'r') as h5f_name:
-                        if str(id_key) in h5f_name:
-                            data_arr = h5f_name[str(id_key)][()]
-                            h5f_consolidated.create_dataset(str(id_key), data=data_arr)
-        return final_cache_path
+
+                    source_path = cache_directory / f"{dataset_name}.h5"
+                    if not source_path.is_file():
+                        missing.append(
+                            (str(file_id), f"dataset cache not found: {source_path}")
+                        )
+                        continue
+
+                    key = str(file_id)
+                    with h5py.File(source_path, "r") as source_cache:
+                        if key not in source_cache:
+                            missing.append(
+                                (
+                                    key,
+                                    f"ID is absent from dataset cache {source_path}",
+                                )
+                            )
+                            continue
+                        source_cache.copy(key, output_cache, name=key)
+
+            if missing:
+                details = "; ".join(
+                    f"ID {file_id}: {reason}" for file_id, reason in missing
+                )
+                raise RuntimeError(
+                    "Cannot publish cache.h5 because the selected data is "
+                    f"incomplete. {details}"
+                )
+
+            os.replace(temp_path, cache_path)
+        except Exception:
+            temp_path.unlink(missing_ok=True)
+            raise
+
+        return str(cache_path)
 
     def _init_data(self, args_data, use_cache=True, max_workers=32):
         """Prepare cache files and return a :class:`H5DataDict`.
@@ -296,15 +377,7 @@ class data_factory:
     def _init_dataset(self):
         task_name = self.args_task.name
         task_type = self.args_task.type
-        try:
-            mod = importlib.import_module(
-                f"src.data_factory.dataset_task.{task_type}.{task_name}_dataset"
-            )
-            dataset_cls = mod.set_dataset
-        except ImportError as e:
-            print("Using Default datasets")
-            from .dataset_task.Default_dataset import Default_dataset
-            dataset_cls = Default_dataset
+        dataset_cls = resolve_dataset_adapter(task_type, task_name)
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}

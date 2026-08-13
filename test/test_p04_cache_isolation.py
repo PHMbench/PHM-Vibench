@@ -50,7 +50,7 @@ def test_cache_dir_keeps_hash_ledgered_source_tree_immutable(tmp_path, monkeypat
     monkeypatch.setattr(module.importlib, "import_module", lambda module_name: reader)
     factory = data_factory.__new__(data_factory)
     factory.metadata = metadata
-    factory.args_task = SimpleNamespace(target_system_id=None)
+    factory.args_task = SimpleNamespace(type="generative", target_system_id=None)
     before = _inventory(source)
 
     data = factory._init_data(args, use_cache=True, max_workers=1)
