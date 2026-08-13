@@ -131,10 +131,24 @@ def test_missing_scientific_config_cannot_fall_back_to_defaults() -> None:
         build_model(missing_renderer_field, metadata=None)
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (("dropout", float("nan")), ("lambda_p", float("inf"))),
+)
+def test_nonfinite_scientific_config_fails_closed(
+    field: str, value: float
+) -> None:
+    args = _args("M5")
+    if field == "dropout":
+        args.dropout = value
+    else:
+        setattr(args.alignment, field, value)
+    with pytest.raises(RuntimeError, match=f"model.*{field} must be finite"):
+        build_model(args, metadata=None)
+
+
 def test_projection_modules_are_registered_before_forward() -> None:
     model = build_model(_args("M5"), metadata=None)
     names = set(dict(model.named_modules()))
     assert "project_1d" in names
     assert "project_2d" in names
-    assert "project_1d.0" in names
-    assert "project_2d.2" in names

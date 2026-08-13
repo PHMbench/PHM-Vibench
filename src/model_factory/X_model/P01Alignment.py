@@ -8,6 +8,7 @@ physical, semantic, and geometric losses defined here.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import math
 from numbers import Integral, Real
 from typing import Any, Dict, Mapping, Tuple
 
@@ -52,7 +53,10 @@ def _required_float(obj: Any, dotted: str) -> float:
     value = _required(obj, dotted)
     if isinstance(value, bool) or not isinstance(value, Real):
         raise ValueError(f"model.{dotted} must be numeric")
-    return float(value)
+    numeric = float(value)
+    if not math.isfinite(numeric):
+        raise ValueError(f"model.{dotted} must be finite")
+    return numeric
 
 
 def _required_bool(obj: Any, dotted: str) -> bool:
@@ -240,18 +244,12 @@ class DeterministicTimeFrequencyRenderer(nn.Module):
         """Return the pre-log magnitude used by the frozen renderer."""
 
         flattened, batch, channels = self._flatten_waveform(waveform)
-        window = torch.hann_window(
-            self.config.win_length,
-            periodic=self.config.window_periodic,
-            dtype=waveform.dtype,
-            device=waveform.device,
-        )
         spectrum = torch.stft(
             flattened,
             n_fft=self.config.n_fft,
             hop_length=self.config.hop_length,
             win_length=self.config.win_length,
-            window=window,
+            window=self._window(waveform),
             center=self.config.center,
             pad_mode=self.config.pad_mode,
             normalized=self.config.normalized,
