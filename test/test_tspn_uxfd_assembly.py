@@ -8,7 +8,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.model_factory.X_model.TSPN_UXFD import Model as TSPNUXFD
+from src.model_factory.X_model.TSPN_UXFD import Model as TSPNUXFD, _build_stft_cfg
 
 
 def _ns(**kwargs):  # type: ignore[no-untyped-def]
@@ -77,6 +77,42 @@ def test_tspn_uxfd_rejects_complex_sp2d_output() -> None:
 
     with pytest.raises(ValueError, match="requires uxfd.sp2d.magnitude=true"):
         TSPNUXFD(args)
+
+
+def test_tspn_uxfd_sp2d_requires_explicit_config() -> None:
+    args = _make_args(enable_sp2d=True)
+    del args.uxfd.sp2d
+
+    with pytest.raises(ValueError, match="requires explicit uxfd.sp2d"):
+        TSPNUXFD(args)
+
+
+def test_tspn_uxfd_sp2d_rejects_unknown_fields() -> None:
+    args = _make_args(enable_sp2d=True)
+    args.uxfd.sp2d.auto_pad = True
+
+    with pytest.raises(ValueError, match="Unknown uxfd.sp2d field.*auto_pad"):
+        _build_stft_cfg(args)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("n_fft", 129, "n_fft must be in"),
+        ("hop_length", 129, "hop_length must be in"),
+        ("win_length", 129, "win_length must be in"),
+    ),
+)
+def test_tspn_uxfd_sp2d_rejects_out_of_range_values(
+    field: str,
+    value: int,
+    message: str,
+) -> None:
+    args = _make_args(enable_sp2d=True)
+    setattr(args.uxfd.sp2d, field, value)
+
+    with pytest.raises(ValueError, match=message):
+        _build_stft_cfg(args)
 
 
 def test_tspn_uxfd_preserves_internal_instance_normalization_by_default() -> None:

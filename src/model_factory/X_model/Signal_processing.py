@@ -3,14 +3,8 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as Fs
-import sys
 import numpy as np
-import os
 from einops import rearrange
-# 获取当前脚本所在目录
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# 将当前目录添加到 sys.path
-sys.path.append(current_dir)
 # from utils import convlutional_operator, signal_filter_, FRE # TODO
 # base class for signal processing modules
 class SignalProcessingBase(torch.nn.Module):

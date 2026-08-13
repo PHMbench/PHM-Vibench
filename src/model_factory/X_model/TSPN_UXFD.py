@@ -8,12 +8,12 @@ This model intentionally stays close to the upstream UXFD `TSPN.py` structure:
 Implementation note:
 - Default behavior reuses the existing `src/model_factory/X_model/TSPN.py` code path.
 - When enabled via `model.uxfd.*` config, it assembles optional UXFD modules under
-  `src/model_factory/X_model/UXFD/` (best-effort; keeps the entrypoint stable).
+  `src/model_factory/X_model/UXFD/` from explicit, validated settings.
 """
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from numbers import Integral
 from typing import Any, Dict, Optional
 
@@ -408,28 +408,66 @@ def _validate_num_classes(args: Any) -> None:
 
 
 def _build_stft_cfg(args: Any) -> STFTConfig:
-    # Prefer explicit config, otherwise derive a safe default from `in_dim`.
-    in_dim = int(getattr(args, "in_dim", 256) or 256)
-    default_n_fft = max(16, min(256, in_dim))
-    default_hop = max(1, default_n_fft // 2)
+    """Build SP2D STFT settings without inference, clamping, or ignored fields."""
 
+    in_dim = getattr(args, "in_dim", None)
+    if isinstance(in_dim, bool) or not isinstance(in_dim, Integral) or int(in_dim) <= 0:
+        raise ValueError("TSPN_UXFD SP2D requires a positive integer model.in_dim")
+    in_dim = int(in_dim)
     sp2d_cfg = _get_attr(args, "uxfd.sp2d", None)
     if sp2d_cfg is None:
-        return STFTConfig(n_fft=default_n_fft, hop_length=default_hop)
+        raise ValueError(
+            "TSPN_UXFD SP2D requires explicit uxfd.sp2d.n_fft and hop_length"
+        )
 
-    cfg_dict = {}
-    if hasattr(sp2d_cfg, "__dict__"):
-        cfg_dict = dict(sp2d_cfg.__dict__)
-    elif isinstance(sp2d_cfg, dict):
+    if isinstance(sp2d_cfg, dict):
         cfg_dict = dict(sp2d_cfg)
+    elif hasattr(sp2d_cfg, "__dict__"):
+        cfg_dict = dict(vars(sp2d_cfg))
+    else:
+        raise TypeError("uxfd.sp2d must be a mapping or namespace")
 
-    merged = dict(asdict(STFTConfig(n_fft=default_n_fft, hop_length=default_hop)))
+    merged = dict(STFTConfig().__dict__)
     allowed = set(merged.keys())
-    merged.update({k: v for k, v in cfg_dict.items() if k in allowed and v is not None})
-    merged["n_fft"] = max(16, min(int(merged["n_fft"]), in_dim))
-    merged["hop_length"] = max(1, min(int(merged["hop_length"]), merged["n_fft"]))
-    if merged.get("win_length") is not None:
-        merged["win_length"] = max(1, min(int(merged["win_length"]), merged["n_fft"]))
+    unknown = sorted(set(cfg_dict) - allowed)
+    if unknown:
+        raise ValueError(f"Unknown uxfd.sp2d field(s): {', '.join(unknown)}")
+    for required in ("n_fft", "hop_length"):
+        if required not in cfg_dict or cfg_dict[required] is None:
+            raise ValueError(f"uxfd.sp2d.{required} must be specified explicitly")
+
+    merged.update(cfg_dict)
+    for field in ("n_fft", "hop_length"):
+        value = merged[field]
+        if isinstance(value, bool) or not isinstance(value, Integral):
+            raise TypeError(f"uxfd.sp2d.{field} must be an integer")
+        merged[field] = int(value)
+    win_length = merged.get("win_length")
+    if win_length is not None:
+        if isinstance(win_length, bool) or not isinstance(win_length, Integral):
+            raise TypeError("uxfd.sp2d.win_length must be an integer or null")
+        merged["win_length"] = int(win_length)
+    for field in ("center", "normalized", "onesided", "magnitude"):
+        if not isinstance(merged[field], bool):
+            raise TypeError(f"uxfd.sp2d.{field} must be boolean")
+
+    if not 1 <= merged["n_fft"] <= in_dim:
+        raise ValueError(
+            f"uxfd.sp2d.n_fft must be in [1, model.in_dim={in_dim}], "
+            f"got {merged['n_fft']}"
+        )
+    if not 1 <= merged["hop_length"] <= merged["n_fft"]:
+        raise ValueError(
+            "uxfd.sp2d.hop_length must be in [1, n_fft], "
+            f"got {merged['hop_length']}"
+        )
+    if merged["win_length"] is not None and not (
+        1 <= merged["win_length"] <= merged["n_fft"]
+    ):
+        raise ValueError(
+            "uxfd.sp2d.win_length must be in [1, n_fft] or null, "
+            f"got {merged['win_length']}"
+        )
     return STFTConfig(**merged)
 
 
