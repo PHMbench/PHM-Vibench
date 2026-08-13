@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import pandas as pd
-import torch
 from pytorch_lightning import seed_everything
 
 from src.configs.config_utils import (
@@ -17,11 +16,53 @@ from src.explain_factory.metadata_reader import (
     snapshot_metadata,
     write_metadata_snapshot,
 )
-from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab, get_num_classes
+from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
+
+
+def _write_explain_preflight(data_factory, args_trainer, artifacts_dir: Path) -> None:
+    extensions = getattr(args_trainer, "extensions", None)
+    explain_cfg = getattr(extensions, "explain", None)
+    if not bool(getattr(explain_cfg, "enable", False)):
+        return
+
+    explainer_id = str(getattr(explain_cfg, "explainer", "") or "")
+    required_meta_keys = (
+        ["sampling_rate"] if explainer_id in {"timefreq", "time_freq"} else []
+    )
+    batch = next(iter(data_factory.get_dataloader("test")))
+    x0, y0, batch_meta, meta_source = read_meta_from_batch(batch)
+    if hasattr(x0, "shape"):
+        batch_meta.setdefault("x_shape", [int(value) for value in x0.shape])
+    if hasattr(y0, "shape"):
+        batch_meta.setdefault("y_shape", [int(value) for value in y0.shape])
+
+    snapshot = snapshot_metadata(
+        meta=batch_meta,
+        meta_source=meta_source,
+        required_keys=tuple(required_meta_keys),
+    )
+    ready = explain_ready(
+        explainer_id=explainer_id,
+        meta=batch_meta,
+        required_meta_keys=required_meta_keys,
+        meta_source=meta_source,
+        degraded=snapshot.degraded,
+    )
+    write_metadata_snapshot(
+        artifacts_dir / "data_metadata_snapshot.json",
+        snapshot,
+    )
+    write_eligibility(
+        artifacts_dir / "explain" / "eligibility.json",
+        ready,
+    )
+    if not ready.ok:
+        codes = ", ".join(reason.code for reason in ready.reasons)
+        raise ValueError(f"Explainability preflight failed: {codes}")
 
 
 
@@ -127,56 +168,8 @@ def pipeline(args):
             path
         )
 
-        # UXFD merge: always write a data metadata snapshot from the test dataloader (best-effort).
         artifacts_dir = Path(path) / "artifacts"
-        meta_snapshot_path = artifacts_dir / "data_metadata_snapshot.json"
-        batch_meta: dict = {}
-        meta_source = "default"
-        degraded = True
-        try:
-            test_loader = data_factory.get_dataloader("test")
-            batch = next(iter(test_loader))
-            x0, y0, meta0, meta_source = read_meta_from_batch(batch)
-            if isinstance(meta0, dict):
-                batch_meta.update(meta0)
-            # attach shapes for traceability (safe even if meta is empty)
-            if hasattr(x0, "shape"):
-                batch_meta.setdefault("x_shape", [int(v) for v in x0.shape])
-            if hasattr(y0, "shape"):
-                batch_meta.setdefault("y_shape", [int(v) for v in y0.shape])
-
-            snapshot = snapshot_metadata(meta=batch_meta, meta_source=meta_source)
-            degraded = snapshot.degraded
-            write_metadata_snapshot(meta_snapshot_path, snapshot)
-        except Exception as e:
-            print(f"[WARN] 写入 data_metadata_snapshot.json 失败: {e}")
-            try:
-                snapshot = snapshot_metadata(meta={}, meta_source="default")
-                write_metadata_snapshot(meta_snapshot_path, snapshot)
-            except Exception:
-                pass
-
-        # UXFD merge: if explain enabled, write eligibility.json (never crash).
-        try:
-            extensions = getattr(args_trainer, "extensions", None)
-            explain_cfg = getattr(extensions, "explain", None) if extensions is not None else None
-            explain_enable = bool(getattr(explain_cfg, "enable", False)) if explain_cfg is not None else False
-            if explain_enable:
-                explainer_id = str(getattr(explain_cfg, "explainer", "") or "unknown")
-                eligibility_path = artifacts_dir / "explain" / "eligibility.json"
-                required_meta_keys = []
-                if explainer_id in {"timefreq", "time_freq"}:
-                    required_meta_keys = ["sampling_rate"]
-                ready = explain_ready(
-                    explainer_id=explainer_id,
-                    meta=batch_meta,
-                    required_meta_keys=required_meta_keys,
-                    meta_source=str(meta_source),
-                    degraded=bool(degraded),
-                )
-                write_eligibility(eligibility_path, ready)
-        except Exception as e:
-            print(f"[WARN] 写入 explain eligibility 失败: {e}")
+        _write_explain_preflight(data_factory, args_trainer, artifacts_dir)
         
         # 执行训练
         print("[INFO] 开始训练...")

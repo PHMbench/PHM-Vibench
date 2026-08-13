@@ -44,6 +44,13 @@ def explain_ready(
 
     missing = [k for k in required if k not in meta or meta.get(k) in (None, "")]
     reasons: List[ExplainEligibility] = []
+    if not explainer_id.strip() or explainer_id == "unknown":
+        reasons.append(
+            ExplainEligibility(
+                code="MISSING_EXPLAINER",
+                message="An explicit explainer identifier is required.",
+            )
+        )
     if missing:
         reasons.append(
             ExplainEligibility(
@@ -51,6 +58,14 @@ def explain_ready(
                 message="Missing required data metadata for explainer.",
                 suggestion="Provide the required metadata keys via dataset/batch metadata.",
                 missing_keys=missing,
+            )
+        )
+    if degraded:
+        reasons.append(
+            ExplainEligibility(
+                code="DEGRADED_METADATA",
+                message="Degraded metadata cannot support an explainability run.",
+                suggestion="Provide batch metadata required by the selected explainer.",
             )
         )
 
