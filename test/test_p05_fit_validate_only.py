@@ -52,7 +52,7 @@ class _NoTestData(dict):
 def test_fit_validate_only_constructs_no_test_dataset(monkeypatch):
     factory = data_factory.__new__(data_factory)
     factory.args_data = SimpleNamespace()
-    factory.args_task = SimpleNamespace(name="classification", type="Default_task")
+    factory.args_task = SimpleNamespace(name="Classification", type="DG")
     factory.execution_stage = "fit_validate_only"
     factory.target_metadata = _metadata()
     factory.split_result = SplitResult(
