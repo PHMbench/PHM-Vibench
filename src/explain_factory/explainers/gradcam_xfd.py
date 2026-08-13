@@ -41,11 +41,17 @@ class GradCAM1D:
         cam = cam / (cam.max(dim=1, keepdim=True).values + 1e-8)
         return cam
 
-    def generate_cam(self, input_tensor: torch.Tensor, class_idx: Optional[int] = None) -> np.ndarray:
+    def generate_cam(self, input_tensor: torch.Tensor, class_idx: int) -> np.ndarray:
         self.model.zero_grad(set_to_none=True)
         output = self.model(input_tensor)
-        if class_idx is None:
-            class_idx = int(output.argmax(dim=1)[0].item())
+        if not isinstance(class_idx, int):
+            raise TypeError("class_idx must be an explicit integer")
+        if output.ndim != 2:
+            raise ValueError("GradCAM requires model output shaped [batch, classes]")
+        if not 0 <= class_idx < output.shape[1]:
+            raise ValueError(
+                f"class_idx {class_idx} is outside [0, {output.shape[1] - 1}]"
+            )
 
         one_hot = torch.zeros_like(output)
         one_hot[:, class_idx] = 1.0
@@ -77,26 +83,27 @@ class GradCAMResult:
 class GradCAM1DExplainer:
     """File-output wrapper to integrate GradCAM into explain_factory."""
 
-    def __init__(self, target_layer: str = ""):
+    def __init__(self, target_layer: str):
+        if not target_layer.strip():
+            raise ValueError("target_layer must be provided explicitly")
         self.target_layer = target_layer
 
-    def explain(self, model: nn.Module, x: torch.Tensor, out_dir: Path, class_idx: Optional[int] = None) -> GradCAMResult:
+    def explain(
+        self,
+        model: nn.Module,
+        x: torch.Tensor,
+        out_dir: Path,
+        class_idx: int,
+    ) -> GradCAMResult:
         out_dir.mkdir(parents=True, exist_ok=True)
-        target_layer = self.target_layer or self._guess_target_layer(model)
-        cam_engine = GradCAM1D(model=model, target_layer=target_layer)
+        cam_engine = GradCAM1D(model=model, target_layer=self.target_layer)
         cam = cam_engine.generate_cam(x, class_idx=class_idx)
         cam_path = out_dir / "gradcam_1d.npy"
         np.save(cam_path, cam)
-        result = GradCAMResult(target_layer=target_layer, class_idx=int(class_idx or 0), cam_path=str(cam_path))
+        result = GradCAMResult(
+            target_layer=self.target_layer,
+            class_idx=class_idx,
+            cam_path=str(cam_path),
+        )
         (out_dir / "gradcam_1d.json").write_text(json.dumps(asdict(result), indent=2), encoding="utf-8")
         return result
-
-    def _guess_target_layer(self, model: nn.Module) -> str:
-        last_conv = ""
-        for name, module in model.named_modules():
-            if isinstance(module, (nn.Conv1d,)):
-                last_conv = name
-        if not last_conv:
-            raise ValueError("Could not auto-detect a Conv1d layer for GradCAM; set target_layer explicitly.")
-        return last_conv
-
