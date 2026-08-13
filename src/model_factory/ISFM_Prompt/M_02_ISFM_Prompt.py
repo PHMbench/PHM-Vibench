@@ -23,47 +23,79 @@ Date: 2025-01-23
 License: MIT
 """
 
+from importlib import import_module
+from typing import Any, Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Optional, Dict, Any, Union
 
-# Import existing PHM-Vibench components for reuse
-from src.model_factory.ISFM.embedding import *
-from src.model_factory.ISFM.backbone import *
-from src.model_factory.ISFM.task_head import *
 from src.model_factory.ISFM.system_utils import resolve_batch_metadata
 
-# Import simplified prompt components
-from .embedding.HSE_prompt import HSE_prompt
-from .embedding.E_01_HSE_v2 import E_01_HSE_v2
-
-
-# Define available components for the simplified Prompt-guided ISFM
+# Config-facing component IDs resolve to one exact module and symbol. Loading only
+# the selected component avoids importing unrelated optional backbones.
 PromptEmbedding_dict = {
-    'HSE_prompt': HSE_prompt,                   # NEW: Simplified HSE with system prompts
-    'E_01_HSE': E_01_HSE,                       # Fallback to original HSE
-    'E_01_HSE_v2': E_01_HSE_v2,                 # Enhanced HSE with prompt support
+    'HSE_prompt': (
+        'src.model_factory.ISFM_Prompt.embedding.HSE_prompt',
+        'HSE_prompt',
+    ),
+    'E_01_HSE': (
+        'src.model_factory.ISFM.embedding.E_01_HSE',
+        'E_01_HSE',
+    ),
+    'E_01_HSE_v2': (
+        'src.model_factory.ISFM_Prompt.embedding.E_01_HSE_v2',
+        'E_01_HSE_v2',
+    ),
 }
 
-# Reuse existing backbones - they work with any embedding output
 PromptBackbone_dict = {
-    'B_01_basic_transformer': B_01_basic_transformer,
-    'B_04_Dlinear': B_04_Dlinear,
-    'B_05_Mamba': B_05_Mamba,
-    'B_06_TimesNet': B_06_TimesNet,
-    'B_08_PatchTST': B_08_PatchTST,            # Recommended for Prompt fusion
-    'B_09_FNO': B_09_FNO,
-    'B_11_MomentumEncoder': B_11_MomentumEncoder,  # For contrastive learning
+    name: (f'src.model_factory.ISFM.backbone.{name}', name)
+    for name in (
+        'B_01_basic_transformer',
+        'B_04_Dlinear',
+        'B_05_Mamba',
+        'B_06_TimesNet',
+        'B_08_PatchTST',
+        'B_09_FNO',
+        'B_11_MomentumEncoder',
+    )
 }
 
-# Reuse existing task heads + add contrastive learning projection head
 PromptTaskHead_dict = {
-    'H_01_Linear_cla': H_01_Linear_cla,         # Standard classification
-    'H_02_distance_cla': H_02_distance_cla,     # Distance-based classification
-    'H_03_Linear_pred': H_03_Linear_pred,       # Prediction head
-    'H_09_multiple_task': H_09_multiple_task,   # Multi-task head
-    'H_10_ProjectionHead': H_10_ProjectionHead,  # Contrastive learning projection
+    name: (f'src.model_factory.ISFM.task_head.{name}', name)
+    for name in (
+        'H_01_Linear_cla',
+        'H_02_distance_cla',
+        'H_03_Linear_pred',
+        'H_09_multiple_task',
+        'H_10_ProjectionHead',
+    )
 }
+
+
+def _required_component_id(args_m: Any, field: str) -> str:
+    component_id = getattr(args_m, field, None)
+    if not isinstance(component_id, str) or not component_id.strip():
+        raise ValueError(f"model.{field} must be explicitly configured")
+    return component_id
+
+
+def _load_component(
+    components: dict[str, tuple[str, str]],
+    component_id: str,
+    kind: str,
+) -> Any:
+    try:
+        module_path, symbol = components[component_id]
+    except KeyError as exc:
+        available = ", ".join(sorted(components))
+        raise ValueError(
+            f"Unknown ISFM_Prompt {kind} {component_id!r}. "
+            f"Available values: {available}"
+        ) from exc
+
+    module = import_module(module_path)
+    return getattr(module, symbol)
 
 
 class Model(nn.Module):
@@ -104,6 +136,12 @@ class Model(nn.Module):
         """
         super().__init__()
 
+        if metadata is None:
+            raise ValueError(
+                "M_02_ISFM_Prompt requires metadata with Dataset_id and "
+                "Sample_rate for every file_id"
+            )
+
         self.metadata = metadata
         self.args_m = args_m
 
@@ -112,24 +150,26 @@ class Model(nn.Module):
         self.training_stage = getattr(args_m, 'training_stage', 'pretrain')
         self.freeze_prompt = getattr(args_m, 'freeze_prompt', False)
         
-        # Initialize core ISFM components following PHM-Vibench pattern
-        self.embedding = PromptEmbedding_dict[args_m.embedding](args_m)
-        
-        # Initialize backbone (works with any embedding output)
-        if hasattr(args_m, 'backbone') and args_m.backbone:
-            self.backbone = PromptBackbone_dict[args_m.backbone](args_m)
-        else:
-            self.backbone = nn.Identity()
+        embedding_id = _required_component_id(args_m, 'embedding')
+        backbone_id = _required_component_id(args_m, 'backbone')
+        task_head_id = _required_component_id(args_m, 'task_head')
+
+        embedding_cls = _load_component(
+            PromptEmbedding_dict, embedding_id, 'embedding'
+        )
+        backbone_cls = _load_component(PromptBackbone_dict, backbone_id, 'backbone')
+        task_head_cls = _load_component(
+            PromptTaskHead_dict, task_head_id, 'task head'
+        )
+
+        self.embedding = embedding_cls(args_m)
+        self.backbone = backbone_cls(args_m)
         
         # Get number of classes from metadata (following M_01_ISFM pattern)
         # self.num_classes = get_num_classes(self.metadata)  # Simplified: use config value
         # args_m.num_classes = self.num_classes
         
-        # Initialize task head
-        if hasattr(args_m, 'task_head') and args_m.task_head:
-            self.task_head = PromptTaskHead_dict[args_m.task_head](args_m)
-        else:
-            self.task_head = nn.Identity()
+        self.task_head = task_head_cls(args_m)
         
         # Simplified: No complex prompt components
         self.last_prompt_vector: Optional[torch.Tensor] = None
@@ -170,36 +210,35 @@ class Model(nn.Module):
         if hasattr(self.embedding, 'set_training_stage'):
             self.embedding.set_training_stage(stage)
 
-    def _normalize_single_file_id(self, file_id: Optional[Any]) -> Optional[Any]:
-        """
-        将批量或张量形式的 file_id 归一化为单个标量 key，
-        用于 metadata 索引。
-
-        支持:
-        - list/tuple: 取第一个元素（Same_system_Sampler 下 batch 内同一系统）;
-        - torch.Tensor: 取第一个元素并转为 Python 标量（避免 CUDA→NumPy 错误）;
-        - 其他标量类型: 原样返回。
-        """
+    def _resolve_metadata(
+        self,
+        x: torch.Tensor,
+        file_id: Any,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if file_id is None:
-            return None
+            raise ValueError(
+                "file_id is required to resolve Dataset_id and Sample_rate metadata"
+            )
 
-        import torch
-
-        # 批量场景：DataLoader 默认会把 file_id 聚合为 list
-        if isinstance(file_id, (list, tuple)):
-            if not file_id:
-                return None
-            fid0 = file_id[0]
-            if isinstance(fid0, torch.Tensor):
-                return fid0.view(-1)[0].item()
-            return fid0
-
-        # 单个张量 ID（可能已被 Lightning 移到 CUDA）
-        if isinstance(file_id, torch.Tensor):
-            return file_id.view(-1)[0].item()
-
-        # 其他标量（int/str 等）
-        return file_id
+        system_ids, sample_rates = resolve_batch_metadata(
+            self.metadata, file_id_batch=file_id, device=x.device
+        )
+        batch_size = x.shape[0]
+        if system_ids.numel() == 1:
+            system_ids = system_ids.expand(batch_size)
+        elif system_ids.numel() != batch_size:
+            raise ValueError(
+                "file_id metadata must resolve to one system ID or one ID per "
+                f"sample; got {system_ids.numel()} for batch_size={batch_size}"
+            )
+        if sample_rates.numel() == 1:
+            sample_rates = sample_rates.expand(batch_size)
+        elif sample_rates.numel() != batch_size:
+            raise ValueError(
+                "file_id metadata must resolve to one sampling frequency or one "
+                f"per sample; got {sample_rates.numel()} for batch_size={batch_size}"
+            )
+        return system_ids, sample_rates
     
     def _embed(self, x: torch.Tensor, file_id: Optional[Any] = None) -> torch.Tensor:
         """
@@ -212,41 +251,18 @@ class Model(nn.Module):
         Returns:
             Embedded signal tensor (B, num_patches, signal_dim)
         """
+        system_ids, sample_rates = self._resolve_metadata(x, file_id)
         if self.args_m.embedding == 'HSE_prompt':
-            # NEW: Simplified HSE with system prompts
-            if file_id is not None and self.metadata is not None:
-                # 统一解析 batch 元数据，避免直接在 CUDA tensor 上调用 NumPy
-                system_ids, sample_rates = resolve_batch_metadata(
-                    self.metadata, file_id_batch=file_id, device=x.device
-                )
-                # HSE_prompt 当前设计假设单系统 batch，取第一个 system_id
-                dataset_id = int(system_ids[0].item())
-                fs = sample_rates  # shape [B]，交给 HSE_prompt 内部的 normalize_fs 处理
-
-                dataset_ids = system_ids  # [B]
-                signal_emb = self.embedding(x, fs, dataset_ids)
-            else:
-                # Fallback mode without metadata
-                fs = 1000.0
-                signal_emb = self.embedding(x, fs, dataset_ids=None)
-
-        elif self.args_m.embedding == 'E_01_HSE':
-            # Traditional HSE embeddings need sampling frequency
-            if file_id is not None and self.metadata is not None:
-                _, sample_rates = resolve_batch_metadata(
-                    self.metadata, file_id_batch=file_id, device=x.device
-                )
-                fs = sample_rates  # [B]
-            else:
-                fs = 1000.0  # Default sampling frequency
-
-            signal_emb = self.embedding(x, fs)
-
-        else:
-            # Other embedding types
-            signal_emb = self.embedding(x)
-
-        return signal_emb
+            return self.embedding(x, sample_rates, system_ids)
+        if self.args_m.embedding == 'E_01_HSE':
+            return self.embedding(x, sample_rates)
+        if self.args_m.embedding == 'E_01_HSE_v2':
+            raise ValueError(
+                "E_01_HSE_v2 requires explicit Domain_id metadata and is not "
+                "supported by the simplified M_02_ISFM_Prompt contract; use "
+                "HSE_prompt or a model that declares the full metadata interface"
+            )
+        raise ValueError(f"Unsupported embedding {self.args_m.embedding!r}")
 
     def _encode(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -277,32 +293,24 @@ class Model(nn.Module):
         Returns:
             Task-specific outputs or features
         """
-        if file_id is not None and self.metadata is not None:
-            # 使用统一的批量解析逻辑，避免 file_id 为 CUDA tensor 时触发 NumPy 错误
-            system_ids_tensor, _ = resolve_batch_metadata(
-                self.metadata, file_id_batch=file_id, device=x.device
-            )
-            # 当前实现假设 Same_system_Sampler 保证单系统 per batch，取第一个 system_id
-            system_id = int(system_ids_tensor[0].item())
-        else:
-            # Use a valid default system_id from common target systems
-            system_id = 1  # Default to CWRU (system_id 1) instead of 0
+        system_ids, _ = self._resolve_metadata(x, file_id)
         
         if task_id == 'classification':
-            return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
+            return self.task_head(
+                x,
+                system_id=system_ids,
+                return_feature=return_feature,
+                task_id=task_id,
+            )
         elif task_id == 'prediction':
             shape = (self.shape[1], self.shape[2]) if len(self.shape) > 2 else (self.shape[1],)
             return self.task_head(x, return_feature=return_feature, task_id=task_id, shape=shape)
-        else:
-            # Default behavior for other task types
-            if hasattr(self.task_head, 'forward'):
-                try:
-                    return self.task_head(x, system_id=system_id, return_feature=return_feature, task_id=task_id)
-                except TypeError:
-                    # Fallback if task head doesn't support all arguments
-                    return self.task_head(x)
-            else:
-                return x
+        return self.task_head(
+            x,
+            system_id=system_ids,
+            return_feature=return_feature,
+            task_id=task_id,
+        )
     
     def forward(self,
                 x: torch.Tensor,

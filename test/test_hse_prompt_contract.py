@@ -4,8 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+import torch.nn as nn
 
 from src.model_factory.ISFM_Prompt.embedding.HSE_prompt import HSE_prompt
+from src.model_factory.ISFM_Prompt.M_02_ISFM_Prompt import Model
 
 
 def _hse_args(**overrides) -> SimpleNamespace:
@@ -29,6 +31,26 @@ def _inputs() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         torch.tensor([1000.0, 1200.0]),
         torch.tensor([1, 2]),
     )
+
+
+class _Metadata:
+    def __getitem__(self, file_id: int) -> dict[str, float | int]:
+        return {"Dataset_id": 1, "Sample_rate": 1000.0}
+
+
+def _model_args(**overrides) -> SimpleNamespace:
+    values = vars(_hse_args()).copy()
+    values.update(
+        {
+            "embedding": "HSE_prompt",
+            "backbone": "B_04_Dlinear",
+            "task_head": "H_01_Linear_cla",
+            "training_stage": "pretrain",
+            "num_classes": {1: 3},
+        }
+    )
+    values.update(overrides)
+    return SimpleNamespace(**values)
 
 
 @pytest.mark.parametrize(
@@ -80,3 +102,44 @@ def test_prompt_disabled_path_allows_explicit_signal_only_mode() -> None:
         output = model(signal, fs, dataset_ids=None)
 
     assert output.shape == (2, 5, 8)
+
+
+def test_model_requires_metadata_and_explicit_components() -> None:
+    with pytest.raises(ValueError, match="requires metadata"):
+        Model(_model_args(), metadata=None)
+
+    for field in ("embedding", "backbone", "task_head"):
+        values = vars(_model_args()).copy()
+        del values[field]
+        with pytest.raises(ValueError, match=rf"model\.{field} must be explicitly"):
+            Model(SimpleNamespace(**values), metadata=_Metadata())
+
+
+def test_model_requires_file_id_for_metadata_resolution() -> None:
+    model = Model(_model_args(), metadata=_Metadata())
+    signal = torch.randn(2, 16, 1)
+
+    with pytest.raises(ValueError, match="file_id is required"):
+        model(signal, file_id=None, task_id="classification")
+
+
+def test_model_uses_explicit_metadata_for_prompt_and_head() -> None:
+    model = Model(_model_args(), metadata=_Metadata()).eval()
+    signal = torch.randn(2, 16, 1)
+
+    with torch.no_grad():
+        logits = model(signal, file_id=7, task_id="classification")
+
+    assert logits.shape == (2, 3)
+
+
+def test_task_head_type_error_is_not_retried_with_changed_arguments() -> None:
+    model = Model(_model_args(), metadata=_Metadata())
+
+    class _BrokenHead(nn.Module):
+        def forward(self, x, **kwargs):
+            raise TypeError("head contract mismatch")
+
+    model.task_head = _BrokenHead()
+    with pytest.raises(TypeError, match="head contract mismatch"):
+        model(torch.randn(2, 16, 1), file_id=7, task_id="classification")
