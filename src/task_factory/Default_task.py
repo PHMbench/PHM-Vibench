@@ -509,6 +509,11 @@ class Default_task(pl.LightningModule):
         """Validate an optional raw-label to contiguous-index contract."""
         contract = getattr(self.args_task, "label_contract", None)
         if contract is None:
+            grouped = getattr(self.args_task, "grouped_evaluation", None)
+            if grouped is not None and bool(getattr(grouped, "enabled", False)):
+                raise ValueError(
+                    "P01 grouped evaluation requires task.label_contract"
+                )
             return None
         raw_labels = getattr(contract, "raw_labels", None)
         if not isinstance(raw_labels, (list, tuple)) or len(raw_labels) < 2:

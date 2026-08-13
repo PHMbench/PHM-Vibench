@@ -10,7 +10,10 @@ import torch
 import yaml
 
 from phmfactory.config import resolve_config
-from src.Pipeline_01_Fault_Diagnosis import build_p01_grouped_result_rows
+from src.Pipeline_01_Fault_Diagnosis import (
+    _P01DataProtocolHooks,
+    build_p01_grouped_result_rows,
+)
 from src.model_factory import build_model
 from src.runtime import ClassificationContext
 from src.task_factory.Default_task import Default_task
@@ -41,7 +44,7 @@ def _model(condition: str):
     return build_model(_namespace(payload), metadata=None)
 
 
-def _task_args(*, windows: int = 2) -> SimpleNamespace:
+def _task_args(*, condition: str = "M1", windows: int = 2) -> SimpleNamespace:
     return SimpleNamespace(
         type="DG",
         name="classification",
@@ -60,6 +63,8 @@ def _task_args(*, windows: int = 2) -> SimpleNamespace:
         ),
         grouped_evaluation=SimpleNamespace(
             enabled=True,
+            goal_id="C02",
+            condition_id=condition,
             run_stage="targeted_test",
             primary_metric="condition_block_macro_f1",
             aggregation=(
@@ -87,7 +92,7 @@ def _task(condition: str = "M1", *, windows: int = 2) -> Default_task:
         network=_model(condition),
         args_data=SimpleNamespace(),
         args_model=SimpleNamespace(condition=condition),
-        args_task=_task_args(windows=windows),
+        args_task=_task_args(condition=condition, windows=windows),
         args_trainer=SimpleNamespace(gpus=0, num_epochs=10),
         args_environment=SimpleNamespace(seed=31),
         metadata=_metadata(),
@@ -130,6 +135,23 @@ def test_label_contract_maps_raw_labels_and_rejects_unknowns() -> None:
     assert task.metrics["CWRU"]["test_f1"].average == "macro"
     with pytest.raises(ValueError, match="outside task.label_contract"):
         task.encode_raw_labels(torch.tensor([0, 1]))
+
+
+def test_grouped_task_requires_an_explicit_label_contract() -> None:
+    args_task = _task_args()
+    del args_task.label_contract
+    with pytest.raises(
+        ValueError, match="grouped evaluation requires task.label_contract"
+    ):
+        Default_task(
+            network=_model("M1"),
+            args_data=SimpleNamespace(),
+            args_model=SimpleNamespace(condition="M1"),
+            args_task=args_task,
+            args_trainer=SimpleNamespace(gpus=0, num_epochs=10),
+            args_environment=SimpleNamespace(seed=31),
+            metadata=_metadata(),
+        )
 
 
 @pytest.mark.parametrize(
@@ -289,7 +311,13 @@ def _context(condition: str = "M1", *, windows: int = 2) -> ClassificationContex
     model = task.network
     args_task = task.args_task
     args_model = SimpleNamespace(condition=condition)
-    args_trainer = SimpleNamespace(num_epochs=10)
+    args_trainer = SimpleNamespace(
+        test_after_fit=True,
+        num_epochs=10,
+        device="cuda",
+        gpus=1,
+        early_stopping=False,
+    )
     return ClassificationContext(
         args=SimpleNamespace(),
         configs=SimpleNamespace(),
@@ -308,6 +336,25 @@ def _context(condition: str = "M1", *, windows: int = 2) -> ClassificationContex
         ),
         result={"test_acc_CWRU": 1.0},
     )
+
+
+@pytest.mark.parametrize("field", ["goal_id", "condition_id"])
+def test_grouped_rows_require_explicit_identity(field: str) -> None:
+    context = _context()
+    delattr(context.args_task.grouped_evaluation, field)
+    with pytest.raises(ValueError, match=f"explicit field.*{field}"):
+        build_p01_grouped_result_rows(context)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["test_after_fit", "num_epochs", "device", "gpus", "early_stopping"],
+)
+def test_grouped_hook_requires_explicit_trainer_contract(field: str) -> None:
+    context = _context()
+    delattr(context.args_trainer, field)
+    with pytest.raises(ValueError, match=f"explicit trainer field.*{field}"):
+        _P01DataProtocolHooks().on_iteration_start(context)
 
 
 @pytest.mark.parametrize(

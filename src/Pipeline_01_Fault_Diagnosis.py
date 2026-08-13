@@ -544,6 +544,25 @@ def _best_checkpoint_path(trainer: Any) -> str:
     return paths[0]
 
 
+def _require_p01_grouped_identity(grouped_evaluation: Any) -> tuple[str, str]:
+    """Return the explicit governed goal and condition identity."""
+    missing = [
+        name
+        for name in ("goal_id", "condition_id")
+        if not hasattr(grouped_evaluation, name)
+        or not str(getattr(grouped_evaluation, name)).strip()
+    ]
+    if missing:
+        raise ValueError(
+            "P01 grouped evaluation requires explicit field(s): "
+            + ", ".join(missing)
+        )
+    return (
+        str(grouped_evaluation.goal_id),
+        str(grouped_evaluation.condition_id),
+    )
+
+
 def build_p01_grouped_result_rows(
     context: ClassificationContext,
     *,
@@ -562,11 +581,8 @@ def build_p01_grouped_result_rows(
             raise RuntimeError("P01 result rows require trainer.test output")
         return [dict(context.result)]
 
-    goal_id = str(getattr(grouped_evaluation, "goal_id", "C02"))
+    goal_id, condition_id = _require_p01_grouped_identity(grouped_evaluation)
     condition = str(getattr(context.args_model, "condition", ""))
-    condition_id = str(
-        getattr(grouped_evaluation, "condition_id", condition)
-    )
     if goal_id == "C02":
         if condition not in {"M1", "M2"} or condition_id != condition:
             raise ValueError(
@@ -1452,6 +1468,37 @@ class _P01DataProtocolHooks(ClassificationHooks):
             getattr(grouped_evaluation, "enabled", False)
         ):
             return
+        _require_p01_grouped_identity(grouped_evaluation)
+        required_trainer_fields = (
+            "test_after_fit",
+            "num_epochs",
+            "device",
+            "gpus",
+            "early_stopping",
+        )
+        missing_trainer_fields = [
+            name
+            for name in required_trainer_fields
+            if not hasattr(context.args_trainer, name)
+        ]
+        if missing_trainer_fields:
+            raise ValueError(
+                "P01 grouped evaluation requires explicit trainer field(s): "
+                + ", ".join(missing_trainer_fields)
+            )
+        if context.args_trainer.test_after_fit is not True:
+            raise ValueError(
+                "P01 grouped evaluation requires trainer.test_after_fit=true"
+            )
+        if (
+            isinstance(context.args_trainer.num_epochs, bool)
+            or not isinstance(context.args_trainer.num_epochs, int)
+            or context.args_trainer.num_epochs <= 0
+        ):
+            raise ValueError(
+                "P01 grouped evaluation requires a positive integer "
+                "trainer.num_epochs"
+            )
         expected_devices = str(
             getattr(grouped_evaluation, "required_cuda_visible_devices", "")
         )
@@ -1486,17 +1533,10 @@ class _P01DataProtocolHooks(ClassificationHooks):
         grouped_evaluation = getattr(
             context.args_task, "grouped_evaluation", None
         )
-        goal_id = str(getattr(grouped_evaluation, "goal_id", "C02"))
+        goal_id, condition_id = _require_p01_grouped_identity(grouped_evaluation)
         if goal_id in {"C04", "C05", "C06"}:
             self._trained_tasks[context.iteration] = context.task
         if goal_id in {"C03", "C04", "C05", "C06"}:
-            condition_id = str(
-                getattr(
-                    grouped_evaluation,
-                    "condition_id",
-                    getattr(context.args_model, "condition", ""),
-                )
-            )
             self._forward_compute_profiles[context.iteration] = (
                 build_p01_forward_compute_profile(
                     context.model,
