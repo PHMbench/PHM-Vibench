@@ -1,9 +1,12 @@
-"""Prepare, validate, and publish one P04 decisive-run launch contract.
+"""Reproduce the retired synthetic P04 decisive-run preparation contract.
 
-This command is deliberately non-executing.  It resolves the maintained arm
+This historical command is deliberately non-executing.  It resolves the frozen arm
 configuration through PHMFactory's public merge/override path, validates the
-frozen protocol and local governed artifacts, and atomically publishes exactly
+retired protocol and local governed artifacts, and atomically publishes exactly
 two preparation artifacts: ``resolved_config.yaml`` and ``launch_plan.json``.
+
+It is not the active P04 G050 entry point.  The active CWRU protocol is
+``scripts/p04/run_g050_decisive.py`` with its canonical versioned config.
 
 S2 is evidence-intent and refuses both an existing training output path and an
 existing staging path.  S1 is an engineering-only compatibility mode for the
@@ -61,9 +64,9 @@ S1_ENGINEERING_RANDOM_ROLE_PERMUTATION = [1, 2, 3, 0]
 
 VIBENCH_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATHS: dict[str, Path] = {
-    "FULL": VIBENCH_ROOT / "configs/experiments/p04/decisive_full.yaml",
-    "HOMO": VIBENCH_ROOT / "configs/experiments/p04/decisive_homogeneous.yaml",
-    "RAND": VIBENCH_ROOT / "configs/experiments/p04/decisive_random_role.yaml",
+    "FULL": VIBENCH_ROOT / "configs/reference/p04_retired_synthetic/decisive_full.yaml",
+    "HOMO": VIBENCH_ROOT / "configs/reference/p04_retired_synthetic/decisive_homogeneous.yaml",
+    "RAND": VIBENCH_ROOT / "configs/reference/p04_retired_synthetic/decisive_random_role.yaml",
 }
 DATA_ROOT = VIBENCH_ROOT / "data/derived/p04/synthetic_v1"
 DATA_CACHE_ROOT = VIBENCH_ROOT / "data/cache/p04/synthetic_v1"
@@ -77,13 +80,13 @@ LOCAL_OVERRIDE = VIBENCH_ROOT / "configs/local/local.yaml"
 # through the resolved semantic contract in ``_validate_resolved_config``.
 # All paths are relative to VIBENCH_ROOT.
 FROZEN_CONFIG_SHA256: dict[str, str] = {
-    "configs/experiments/p04/decisive_full.yaml": (
+    "configs/reference/p04_retired_synthetic/decisive_full.yaml": (
         "e60b0f00be3d60d989253eb23d7f16491cb3f821af5b8d286699ed1a252f032a"
     ),
-    "configs/experiments/p04/decisive_homogeneous.yaml": (
+    "configs/reference/p04_retired_synthetic/decisive_homogeneous.yaml": (
         "2f5e6caf024920acf95786a01cd5a4ab8d876cfffba8384e42c72bea13eb8610"
     ),
-    "configs/experiments/p04/decisive_random_role.yaml": (
+    "configs/reference/p04_retired_synthetic/decisive_random_role.yaml": (
         "8fde7467db5f7af90e17b70a76cc263fdcafac99977b6fd1834e6f0b541d4968"
     ),
     "configs/base/environment/base.yaml": (
