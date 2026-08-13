@@ -38,6 +38,16 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
+def _stage_seed(environment: Any, iteration: int) -> int:
+    """Return the explicit seed for one stage iteration."""
+    if not hasattr(environment, "seed"):
+        raise ValueError("environment.seed is required for every training stage")
+    seed = environment.seed
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise TypeError("environment.seed must be an integer")
+    return seed + int(iteration)
+
+
 def deep_merge(base: dict, override: dict) -> dict:
     """递归合并配置，只更新叶子节点，避免破坏嵌套结构
 
@@ -449,7 +459,7 @@ class MultiStageOrchestrator:
         env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
 
         # seed
-        seed = getattr(env, 'seed', 42) + int(iteration)
+        seed = _stage_seed(env, iteration)
         seed_everything(seed)
 
         # path and logging（包含 environment，允许使用 environment.output_dir 控制结果根目录）
@@ -515,7 +525,7 @@ class MultiStageOrchestrator:
         if checkpoint_path:
             setattr(model, 'weights_path', checkpoint_path)
 
-        seed = getattr(env, 'seed', 42) + int(iteration)
+        seed = _stage_seed(env, iteration)
         seed_everything(seed)
 
         cfg_for_path = ConfigWrapper(

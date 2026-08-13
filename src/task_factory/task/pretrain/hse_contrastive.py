@@ -72,13 +72,8 @@ class task(Default_task):
                 "margin": getattr(args_task, "margin", 0.3),
                 "barlow_lambda": getattr(args_task, "barlow_lambda", 5e-3),
             }
-            try:
-                self.strategy_manager = create_contrastive_strategy(contrastive_config)
-                logger.info(f"[hse_contrastive] Enabled contrastive strategy: {loss_type}")
-            except Exception as exc:  # pragma: no cover - runtime safeguard
-                logger.error(f"[hse_contrastive] Failed to init contrastive strategy: {exc}")
-                self.strategy_manager = None
-                self.contrast_weight = 0.0
+            self.strategy_manager = create_contrastive_strategy(contrastive_config)
+            logger.info(f"[hse_contrastive] Enabled contrastive strategy: {loss_type}")
 
     # ------------------------------------------------------------------
     # Lightning hooks
