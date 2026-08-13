@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from argparse import Namespace
-from typing import Any, Optional
+from typing import Any
 
 import pytorch_lightning as pl
 import torch.nn as nn
@@ -36,7 +36,7 @@ def task_factory(
     args_trainer: Namespace,
     args_environment: Namespace,
     metadata: Any,
-) -> Optional[pl.LightningModule]:
+) -> pl.LightningModule:
     """Instantiate a task module using configuration namespaces."""
     key = f"{args_task.type}.{args_task.name}"
     try:
@@ -73,9 +73,10 @@ def task_factory(
                     f"(tried: registry, {class_name_from_file}, {standard_name}, task)"
                 )
 
-        except Exception as exc:  # pragma: no cover - runtime safeguard
-            print(f"Failed to import task from {module_path}: {exc}")
-            return None
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to resolve task {key!r} from {module_path!r}"
+            ) from exc
 
     try:
         return task_cls(
@@ -87,10 +88,8 @@ def task_factory(
             args_environment=args_environment,
             metadata=metadata,
         )
-    except Exception as exc:  # pragma: no cover - runtime safeguard
-        print(f"Failed to create task {key}: {exc}")
-        return None
-
+    except Exception as exc:
+        raise RuntimeError(f"Failed to create task {key!r}") from exc
 
 
 
