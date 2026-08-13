@@ -50,6 +50,7 @@ ARMS = ("P0", "P1", "P2")
 SEEDS = (20, 21, 22)
 ROLE_IDS = (0, 1, 2, 3)
 PARTITIONS = ("train", "validation", "P_match", "P_eval")
+G050_CONFIG_PATH = REPO_ROOT / "configs/experiments/p04/g050_decisive.yaml"
 
 
 @dataclass(frozen=True)
@@ -101,11 +102,11 @@ class AdmittedData:
 
 def _plain(value: Any) -> Any:
     if isinstance(value, torch.Tensor):
-        return value.detach().cpu().tolist()
+        return _plain(value.detach().cpu().tolist())
     if isinstance(value, np.ndarray):
-        return value.tolist()
+        return _plain(value.tolist())
     if isinstance(value, np.generic):
-        return value.item()
+        return _plain(value.item())
     if isinstance(value, Path):
         return str(value)
     if isinstance(value, Mapping):
@@ -113,14 +114,21 @@ def _plain(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_plain(item) for item in value]
     if isinstance(value, float) and not math.isfinite(value):
-        return None
+        raise ValueError("JSON artifacts cannot contain NaN or infinity")
     return value
 
 
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(_plain(payload), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            _plain(payload),
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            allow_nan=False,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -239,7 +247,7 @@ def _run_semantic_gate_tests() -> dict[str, Any]:
         "test/test_p04_g050_semantics.py",
         "test/test_p04_g050_data_contract.py",
         "test/test_p04_role_constrained_moe.py",
-        "test/test_p04_decisive_controls.py",
+        "test/test_p04_g050_runner.py",
         "test/test_per_sample_metadata.py",
         "test/test_transform_truth.py",
     ]
@@ -1696,30 +1704,70 @@ def _run_pilot(
     _write_json(output_root / "run_index.json", run_index)
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=REPO_ROOT / "configs/experiments/p04/g050_decisive.yaml",
-    )
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--raw-root", type=Path)
-    parser.add_argument("--mode", choices=("smoke", "pilot", "all"), default="all")
-    return parser.parse_args()
+    parser.add_argument(
+        "--mode", choices=("smoke", "pilot", "all"), required=True
+    )
+    return parser.parse_args(arguments)
+
+
+def _record_terminal_failure(
+    output_root: Path,
+    config: Mapping[str, Any],
+    execution_context: Mapping[str, Any],
+    error: Exception,
+) -> None:
+    """Persist one truthful terminal state without discarding completed runs."""
+
+    index_path = output_root / "run_index.json"
+    previous: dict[str, Any] = {}
+    previous_read_error: str | None = None
+    if index_path.is_file():
+        try:
+            loaded = json.loads(index_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                previous = loaded
+            else:
+                previous_read_error = "existing run_index.json is not a JSON object"
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            previous_read_error = f"{type(exc).__name__}: {exc}"
+
+    terminal_context = dict(execution_context)
+    prior_status = str(terminal_context.get("execution_status", ""))
+    terminal_status = prior_status if prior_status.startswith("failed") else "failed"
+    terminal_context.update(
+        {
+            "execution_status": terminal_status,
+            "completed_at": _utc_now(),
+        }
+    )
+    failure = {
+        "stage": terminal_context.get("execution_stage", "unknown"),
+        "type": type(error).__name__,
+        "message": str(error),
+    }
+    if previous_read_error is not None:
+        failure["previous_run_index_error"] = previous_read_error
+    previous.update(
+        {
+            "experiment_id": config["protocol"]["experiment_id"],
+            "execution_status": terminal_status,
+            "completed_at": terminal_context["completed_at"],
+            "execution": terminal_context,
+            "failure": failure,
+        }
+    )
+    previous.setdefault("runs", [])
+    _write_json(index_path, previous)
 
 
 def main() -> int:
     args = _parse_args()
-    config_path = args.config.resolve()
+    config_path = G050_CONFIG_PATH.resolve()
     config = _load_config(config_path)
-    device = _require_gpu5()
-    runtime_provenance = _runtime_git_provenance()
-    if runtime_provenance["dirty"]:
-        raise RuntimeError(
-            "evidence-bearing execution requires a clean versioned runtime; "
-            f"changed paths: {runtime_provenance['changed_paths']}"
-        )
     output_root = args.output_root.resolve()
     if output_root.exists() and any(output_root.iterdir()):
         raise FileExistsError(
@@ -1734,7 +1782,7 @@ def main() -> int:
         "resolved_config_path": "resolved_config.yaml",
         "artifact_root_at_execution": str(output_root),
         "artifact_paths_relative_to_result_root": True,
-        "runtime_git": runtime_provenance,
+        "execution_stage": "runtime_preflight",
     }
     _write_json(
         output_root / "run_index.json",
@@ -1745,74 +1793,92 @@ def main() -> int:
             "runs": [],
         },
     )
-    (output_root / "resolved_config.yaml").write_text(
-        yaml.safe_dump(_plain(config), sort_keys=False, allow_unicode=True),
-        encoding="utf-8",
-    )
-    observed_gate = _run_semantic_gate_tests()
-    gate_payload = _semantic_gate_payload(observed_gate)
-    _write_json(output_root / "semantic_gate.json", gate_payload)
-    execution_context["semantic_gate_execution"] = observed_gate
-    if observed_gate["status"] != "passed":
-        execution_context["execution_status"] = "failed_semantic_gate"
-        execution_context["completed_at"] = _utc_now()
+    try:
+        device = _require_gpu5()
+        runtime_provenance = _runtime_git_provenance()
+        execution_context["runtime_git"] = runtime_provenance
+        if runtime_provenance["dirty"]:
+            raise RuntimeError(
+                "evidence-bearing execution requires a clean versioned runtime; "
+                f"changed paths: {runtime_provenance['changed_paths']}"
+            )
+        (output_root / "resolved_config.yaml").write_text(
+            yaml.safe_dump(_plain(config), sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+
+        execution_context["execution_stage"] = "semantic_gate"
+        observed_gate = _run_semantic_gate_tests()
+        gate_payload = _semantic_gate_payload(observed_gate)
+        _write_json(output_root / "semantic_gate.json", gate_payload)
+        execution_context["semantic_gate_execution"] = observed_gate
+        if observed_gate["status"] != "passed":
+            execution_context["execution_status"] = "failed_semantic_gate"
+            raise RuntimeError(
+                "targeted semantic gate tests failed; pilot was not launched"
+            )
+
+        execution_context["execution_stage"] = "load_data"
+        data = _load_admitted_data(config, args.raw_root)
+        _write_json(output_root / "data_contract.json", data.contract)
+        (output_root / "probe_spec.yaml").write_text(
+            yaml.safe_dump(
+                _plain(_probe_spec(config, data)), sort_keys=False, allow_unicode=True
+            ),
+            encoding="utf-8",
+        )
         _write_json(
-            output_root / "run_index.json",
+            output_root / "environment.json",
             {
-                "experiment_id": config["protocol"]["experiment_id"],
-                "execution_status": "failed_semantic_gate",
-                "execution": execution_context,
-                "runs": [],
+                "python": sys.executable,
+                "python_version": sys.version,
+                "torch": torch.__version__,
+                "torch_cuda": torch.version.cuda,
+                "numpy": np.__version__,
+                "scipy": scipy.__version__,
+                "openpyxl": openpyxl.__version__,
+                "pyyaml": yaml.__version__,
+                "cuda_available": torch.cuda.is_available(),
+                "visible_device_count": torch.cuda.device_count(),
+                "visible_device_name": torch.cuda.get_device_name(0),
+                "CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES"),
+                "CUBLAS_WORKSPACE_CONFIG": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
+                "requested_physical_gpu": 5,
+                "multi_gpu": False,
+                "ddp": False,
+                "data_parallel": False,
+                "cpu_fallback": False,
+                "runtime_git": runtime_provenance,
             },
         )
-        raise RuntimeError("targeted semantic gate tests failed; pilot was not launched")
-    data = _load_admitted_data(config, args.raw_root)
-    _write_json(output_root / "data_contract.json", data.contract)
-    (output_root / "probe_spec.yaml").write_text(
-        yaml.safe_dump(_plain(_probe_spec(config, data)), sort_keys=False, allow_unicode=True),
-        encoding="utf-8",
-    )
-    _write_json(
-        output_root / "environment.json",
-        {
-            "python": sys.executable,
-            "python_version": sys.version,
-            "torch": torch.__version__,
-            "torch_cuda": torch.version.cuda,
-            "numpy": np.__version__,
-            "scipy": scipy.__version__,
-            "openpyxl": openpyxl.__version__,
-            "pyyaml": yaml.__version__,
-            "cuda_available": torch.cuda.is_available(),
-            "visible_device_count": torch.cuda.device_count(),
-            "visible_device_name": torch.cuda.get_device_name(0),
-            "CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES"),
-            "CUBLAS_WORKSPACE_CONFIG": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
-            "requested_physical_gpu": 5,
-            "multi_gpu": False,
-            "ddp": False,
-            "data_parallel": False,
-            "cpu_fallback": False,
-            "runtime_git": runtime_provenance,
-        },
-    )
-    if args.mode in {"smoke", "all"}:
-        _run_smoke(config, data, output_root, device)
-    if args.mode in {"pilot", "all"}:
-        _run_pilot(config, data, output_root, device, execution_context)
-    elif args.mode == "smoke":
-        execution_context["execution_status"] = "smoke_complete"
-        execution_context["completed_at"] = _utc_now()
-        _write_json(
-            output_root / "run_index.json",
-            {
-                "experiment_id": config["protocol"]["experiment_id"],
-                "execution_status": "smoke_complete",
-                "completed_at": execution_context["completed_at"],
-                "execution": execution_context,
-                "runs": [],
-            },
-        )
+        if args.mode in {"smoke", "all"}:
+            execution_context["execution_stage"] = "smoke"
+            _run_smoke(config, data, output_root, device)
+        if args.mode in {"pilot", "all"}:
+            execution_context["execution_stage"] = "pilot"
+            _run_pilot(config, data, output_root, device, execution_context)
+        elif args.mode == "smoke":
+            execution_context["execution_status"] = "smoke_complete"
+            execution_context["completed_at"] = _utc_now()
+            _write_json(
+                output_root / "run_index.json",
+                {
+                    "experiment_id": config["protocol"]["experiment_id"],
+                    "execution_status": "smoke_complete",
+                    "completed_at": execution_context["completed_at"],
+                    "execution": execution_context,
+                    "runs": [],
+                },
+            )
+    except Exception as exc:
+        try:
+            _record_terminal_failure(output_root, config, execution_context, exc)
+        except Exception as state_error:
+            raise RuntimeError(
+                "G050 failed and its terminal state could not be written: "
+                f"original={type(exc).__name__}: {exc}"
+            ) from state_error
+        raise
     print(f"G050 {args.mode} complete: {output_root}", flush=True)
     return 0
 

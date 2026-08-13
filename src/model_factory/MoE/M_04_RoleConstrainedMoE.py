@@ -30,6 +30,36 @@ EXPERT_REPRESENTATION_MODES: Tuple[str, ...] = (
     "homogeneous_raw",
 )
 
+DECISIVE_REQUIRED_ARGUMENTS: Tuple[str, ...] = (
+    "input_dim",
+    "num_classes",
+    "feature_dim",
+    "expert_hidden_channels",
+    "router_hidden_dim",
+    "dropout",
+    "routing_temperature",
+    "low_order_cutoff",
+    "envelope_order_band",
+    "filter_transition_order",
+    "harmonic_order_max",
+    "harmonic_order_bandwidth",
+    "load_reference_hp",
+    "speed_reference_rpm",
+    "speed_scale_rpm",
+    "router_mode",
+    "expert_representation_mode",
+    "role_prior_assignment",
+    "role_prior_max",
+    "load_balance_weight",
+    "physical_loss_weight",
+    "entropy_floor_weight",
+    "entropy_floor",
+    "compatibility_alpha",
+    "role_prior_strength",
+    "role_prior_permutation",
+    "semantic_alignment",
+)
+
 
 def _group_count(channels: int) -> int:
     for groups in (8, 4, 2):
@@ -102,8 +132,19 @@ class Model(nn.Module):
         self.scientific_arm = (
             str(requested_arm).upper() if requested_arm is not None else None
         )
+        if requested_arm is not None and self.scientific_arm not in {"P0", "P1", "P2"}:
+            raise ValueError("model.scientific_arm must be P0, P1, or P2")
         self.is_decisive_protocol = self.scientific_arm in {"P0", "P1", "P2"}
         self.requires_physical_metadata = self.is_decisive_protocol
+        if self.is_decisive_protocol:
+            missing = [
+                name for name in DECISIVE_REQUIRED_ARGUMENTS if not hasattr(args, name)
+            ]
+            if missing:
+                raise ValueError(
+                    "decisive P04 model requires explicit arguments: "
+                    + ", ".join(missing)
+                )
 
         self.input_dim = int(getattr(args, "input_dim", 1))
         self.num_classes = getattr(args, "num_classes", None)
@@ -1119,7 +1160,7 @@ class Model(nn.Module):
         expert_representations = self._expert_representations(
             normalized, role_representations
         )
-        mode = router_mode or self.router_mode
+        mode = self.router_mode if router_mode is None else router_mode
         weights, learned_logits, prior_logits, combined_logits = self._routing(
             router_features, role_cues, mode
         )
