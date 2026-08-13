@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import importlib
-import os
+from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -50,21 +51,11 @@ def model_factory(args_model: Any, metadata: Any):
     model_module = importlib.import_module(module_path)
     model_cls = model_module.Model
 
-    try:
-        model = model_cls(args_model, metadata)
-        
-        if hasattr(args_model, "weights_path") and args_model.weights_path:
-            weights_path = args_model.weights_path
-            if os.path.exists(weights_path):
-                try:
-                    load_ckpt(model, weights_path)
-                except Exception as e:  # pragma: no cover - runtime safeguard
-                    print(f"加载权重时出错: {e}")
-        
-        return model
-    
-    except Exception as e:
-        raise RuntimeError(f"创建模型实例时出错: {str(e)}")
+    model = model_cls(args_model, metadata)
+    weights_path = getattr(args_model, "weights_path", None)
+    if weights_path:
+        load_ckpt(model, weights_path)
+    return model
     
 
 def load_ckpt(model, ckpt_path):
@@ -77,22 +68,13 @@ def load_ckpt(model, ckpt_path):
     ckpt_path : str
         Path to a PyTorch checkpoint file.
     """
-    if not os.path.exists(ckpt_path):
-        raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")
-    state_dict = torch.load(ckpt_path, map_location='cpu', weights_only=False)
-    model_dict = model.state_dict()
-    matched_dict = {}
-    skipped = []
-    for name, param in state_dict.items():
-        if name in model_dict:
-            matched_dict[name] = param
-        else:
-            skipped.append((name, "not in model"))
-    # 加载匹配的权重
-    model.load_state_dict(matched_dict, strict=False)
-    # 打印跳过的参数
-    if skipped:
-        print("跳过以下不匹配的参数：")
-        for name, model_sz in skipped:
-            print(f"  {name}: checkpoint vs model {model_sz}")
-    print(f"已加载匹配的权重: {ckpt_path}")
+    path = Path(ckpt_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Checkpoint file {path} does not exist.")
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    if not isinstance(payload, Mapping):
+        raise TypeError(f"Checkpoint payload must be a state mapping: {path}")
+    state_dict = payload.get("state_dict", payload)
+    if not isinstance(state_dict, Mapping):
+        raise TypeError(f"Checkpoint state_dict must be a mapping: {path}")
+    model.load_state_dict(state_dict, strict=True)
