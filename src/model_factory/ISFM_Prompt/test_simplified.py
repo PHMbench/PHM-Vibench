@@ -67,7 +67,7 @@ def _make_model_args() -> SimpleNamespace:
 
 
 def test_hse_prompt_forward(device: torch.device) -> None:
-    """HSE_prompt：fs 向量 + dataset_ids 的前向与 fallback。"""
+    """HSE_prompt：fs 向量 + dataset_ids 的显式前向契约。"""
     args = _make_hse_args()
     model = HSE_prompt(args).to(device)
 
@@ -81,10 +81,14 @@ def test_hse_prompt_forward(device: torch.device) -> None:
         out = model(signal, fs_vec, dataset_ids)
     assert out.shape == (B, args.num_patches, args.output_dim), f"Unexpected shape: {out.shape}"
 
-    # signal-only 路径（不传 dataset_ids）
-    with torch.no_grad():
-        out_no_prompt = model(signal, fs_vec, dataset_ids=None)
-    assert out_no_prompt.shape == out.shape, "Signal-only path returns different shape"
+    # Prompt-enabled 路径不得在缺少 metadata 时改走 signal-only。
+    try:
+        with torch.no_grad():
+            model(signal, fs_vec, dataset_ids=None)
+    except ValueError as exc:
+        assert "dataset_ids are required" in str(exc)
+    else:
+        raise AssertionError("Prompt-enabled path accepted missing dataset_ids")
 
 
 def test_hse_prompt_fs_scalar(device: torch.device) -> None:
@@ -147,4 +151,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
