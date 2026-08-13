@@ -79,6 +79,13 @@ def test_config_takes_precedence_over_legacy_alias() -> None:
     assert cli._resolve_config_path(args) == "public.yaml"
 
 
+def test_experiment_entrypoint_requires_explicit_config_choice() -> None:
+    args = cli.build_parser().parse_args([])
+
+    with pytest.raises(ValueError, match="experiment configuration is required"):
+        cli._resolve_config_path(args)
+
+
 def test_process_entrypoint_discards_structured_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

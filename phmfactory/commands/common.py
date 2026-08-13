@@ -11,9 +11,6 @@ import argparse
 from pathlib import Path
 from uuid import uuid4
 
-from phmfactory.config import DEFAULT_CONFIG
-
-
 def add_config_arguments(
     parser: argparse.ArgumentParser,
     *,
@@ -26,7 +23,7 @@ def add_config_arguments(
         "--config",
         type=str,
         default=None,
-        help="Configuration path or maintained preset name.",
+        help="Required configuration path or maintained preset name.",
     )
     parser.add_argument(
         "--config_path",
@@ -66,7 +63,10 @@ def requested_config(args: argparse.Namespace) -> str:
         return str(args.config)
     if getattr(args, "config_path", None) is not None:
         return str(args.config_path)
-    return DEFAULT_CONFIG
+    raise ValueError(
+        "An experiment configuration is required. Pass --config <yaml-or-preset>, "
+        "use the deprecated --config_path alias, or run `phmfactory demo`."
+    )
 
 
 def requested_local_config(args: argparse.Namespace) -> str | None:
