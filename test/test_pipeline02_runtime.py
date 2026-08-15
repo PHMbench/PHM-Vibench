@@ -91,6 +91,12 @@ def test_compiled_stages_select_one_unified_orchestrator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
+    expected = {
+        "stage_1": {
+            "checkpoint_path": "stage1.ckpt",
+            "metrics": {"test_loss": 1.0},
+        }
+    }
 
     class Orchestrator:
         def __init__(self, config, cli_overrides):
@@ -98,7 +104,7 @@ def test_compiled_stages_select_one_unified_orchestrator(
             observed["overrides"] = cli_overrides
 
         def run_complete(self):
-            return {"stages": 2}
+            return expected
 
     monkeypatch.setattr(pipeline02, "TwoStageOrchestrator", Orchestrator)
     monkeypatch.setattr(
@@ -114,9 +120,26 @@ def test_compiled_stages_select_one_unified_orchestrator(
         ],
     )
 
-    assert pipeline02.pipeline(args) == {"stages": 2}
+    assert pipeline02.pipeline(args) == expected
     assert observed["overrides"] == []
     assert observed["config"]["stages"][0]["name"] == "pretrain"
+
+
+def test_multistage_rejects_stage_without_evaluation_metrics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Orchestrator:
+        def __init__(self, config, cli_overrides):
+            pass
+
+        def run_complete(self):
+            return {"stage_1": {"checkpoint_path": "stage1.ckpt", "metrics": {}}}
+
+    monkeypatch.setattr(pipeline02, "TwoStageOrchestrator", Orchestrator)
+
+    with pytest.raises(RuntimeError, match="did not complete evaluation"):
+        pipeline02.pipeline(_args(tmp_path, stages=[{"overrides": {}}]))
 
 
 def test_orchestrator_error_is_not_converted_to_single_stage(
@@ -161,13 +184,19 @@ def test_explicit_legacy_dual_yaml_uses_only_adapter_and_orchestrator(
         )
         or unified,
     )
+    expected = {
+        "stage_1": {
+            "checkpoint_path": "stage1.ckpt",
+            "metrics": {"test_loss": 1.0},
+        }
+    }
 
     class Orchestrator:
         def __init__(self, config):
             assert config is unified
 
         def run_complete(self):
-            return {"legacy": True}
+            return expected
 
     monkeypatch.setattr(pipeline02, "TwoStageOrchestrator", Orchestrator)
     args = _args(
@@ -178,7 +207,7 @@ def test_explicit_legacy_dual_yaml_uses_only_adapter_and_orchestrator(
         override=None,
     )
 
-    assert pipeline02.pipeline(args) == {"legacy": True}
+    assert pipeline02.pipeline(args) == expected
     assert observed == {
         "pretrain": str(tmp_path / "pipeline02.yaml"),
         "fewshot": "fewshot.yaml",
@@ -244,6 +273,142 @@ def test_load_ckpt_non_strict_rejects_zero_matches(tmp_path: Path) -> None:
         )
 
 
+def _stage_orchestrator(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    test_result=None,
+    test_error: Exception | None = None,
+):
+    orchestrator = orchestrator_module.MultiStageOrchestrator.__new__(
+        orchestrator_module.MultiStageOrchestrator
+    )
+    orchestrator.cfg = SimpleNamespace()
+    orchestrator.dry_run = False
+
+    env = SimpleNamespace(seed=1)
+    data = SimpleNamespace()
+    model = SimpleNamespace()
+    task = SimpleNamespace()
+    trainer_config = SimpleNamespace()
+    monkeypatch.setattr(
+        orchestrator,
+        "_stage_to_namespaces",
+        lambda stage_cfg: (env, data, model, task, trainer_config),
+    )
+    monkeypatch.setattr(
+        orchestrator_module,
+        "path_name",
+        lambda config: (str(tmp_path), "stage"),
+    )
+    monkeypatch.setattr(orchestrator_module, "seed_everything", lambda seed: None)
+
+    close_events: list[str] = []
+    monkeypatch.setattr(orchestrator_module, "init_lab", lambda *args: None)
+    monkeypatch.setattr(
+        orchestrator_module,
+        "close_lab",
+        lambda: close_events.append("lab"),
+    )
+
+    class DataResource:
+        def close(self):
+            close_events.append("data")
+
+    class DataFactory:
+        data = DataResource()
+
+        def get_metadata(self):
+            return None
+
+        def get_dataloader(self, split):
+            return split
+
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_data",
+        lambda args_data, args_task: DataFactory(),
+    )
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_model",
+        lambda args_model, metadata: TinyModel(),
+    )
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_task",
+        lambda **kwargs: SimpleNamespace(),
+    )
+
+    callback = ModelCheckpoint()
+    callback.best_model_path = str(tmp_path / "best.ckpt")
+
+    class Trainer:
+        callbacks = [callback]
+
+        def fit(self, *args):
+            return None
+
+        def test(self, *args):
+            if test_error is not None:
+                raise test_error
+            return test_result
+
+    monkeypatch.setattr(
+        orchestrator_module,
+        "build_trainer",
+        lambda *args: Trainer(),
+    )
+    monkeypatch.setattr(
+        orchestrator_module,
+        "load_best_model_checkpoint",
+        lambda lightning_task, trainer: lightning_task,
+    )
+    return orchestrator, close_events
+
+
+@pytest.mark.parametrize("method_name", ["run_pretrain", "run_adapt"])
+def test_stage_evaluation_error_propagates_and_resources_close(
+    method_name: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    orchestrator, close_events = _stage_orchestrator(
+        tmp_path,
+        monkeypatch,
+        test_error=RuntimeError("evaluation failed"),
+    )
+
+    method = getattr(orchestrator, method_name)
+    kwargs = (
+        {"stage_cfg": object()}
+        if method_name == "run_pretrain"
+        else {"stage_cfg": object(), "checkpoint_path": None}
+    )
+    with pytest.raises(RuntimeError, match="evaluation failed"):
+        method(**kwargs)
+
+    assert close_events == ["data", "lab"]
+
+
+@pytest.mark.parametrize("test_result", [[], [{}]])
+def test_stage_rejects_empty_test_metrics_and_resources_close(
+    test_result,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    orchestrator, close_events = _stage_orchestrator(
+        tmp_path,
+        monkeypatch,
+        test_result=test_result,
+    )
+
+    with pytest.raises(RuntimeError, match="non-empty metrics mapping"):
+        orchestrator.run_pretrain(stage_cfg=object())
+
+    assert close_events == ["data", "lab"]
+
+
 def test_pipeline02_adapt_uses_explicit_backbone_transfer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -271,11 +436,6 @@ def test_pipeline02_adapt_uses_explicit_backbone_transfer(
         orchestrator,
         "_stage_to_namespaces",
         lambda stage_cfg: (env, data, model, task, trainer_config),
-    )
-    monkeypatch.setattr(
-        orchestrator,
-        "_ensure_trainer_attributes",
-        lambda trainer, path: None,
     )
     monkeypatch.setattr(
         orchestrator_module,
