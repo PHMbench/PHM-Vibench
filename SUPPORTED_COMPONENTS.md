@@ -13,17 +13,17 @@ PHMFactory separates software execution evidence from scientific protocol validi
 ```text
 discoverable     = a canonical Pipeline or registry entry exists
 runnable         = the public control plane permits execution
-smoke-verified   = the exact maintained command has bounded execution evidence
-protocol-valid   = the complete data/split/task/metric combination satisfies its scientific protocol
+execution-verified = the exact maintained command has current bounded or baseline evidence
+baseline-valid   = the exact complete experiment passed its declared scientific protocol
 ```
 
 The software relationship is:
 
 ```text
-smoke-verified ⊆ runnable ⊆ discoverable
+execution-verified ⊆ runnable ⊆ discoverable
 ```
 
-Protocol validity is a separate property of a complete experiment combination. It is not inferred from component importability, Pipeline maturity, or a successful smoke run.
+`baseline-valid` is a separate property of one complete experiment combination. It is not inferred from component importability, Pipeline maturity, or another configuration's successful run.
 
 ## Pipeline maturity
 
@@ -39,26 +39,27 @@ Protocol validity is a separate property of a complete experiment combination. I
 
 ## Execution-verified maintained surface
 
-| Surface | Values derived from `sanity_ok` demos |
+| Surface | Values derived from `sanity_ok` maintained configs |
 |---|---|
 | Pipelines | `Pipeline_01_Fault_Diagnosis`, `Pipeline_02_Pretraining_Few_Shot` |
 | Data bases | `base_classification`, `base_cross_domain`, `base_cross_system`, `base_cross_system_fewshot`, `base_fewshot` |
-| Models | `ISFM/M_01_ISFM` |
+| Models | `Baseline/GlobalAverageLinear`, `ISFM/M_01_ISFM` |
 | Embeddings | `E_01_HSE` |
 | Backbones | `B_04_Dlinear` |
 | Task heads | `H_01_Linear_cla` |
 | Tasks | `CDDG/classification`, `DG/classification`, `FS/classification`, `GFS/classification`, `pretrain/hse_contrastive` |
 | Trainers | `Default_trainer` |
-| Protocol statuses | `smoke_only` |
+| Protocol statuses | `baseline_valid`, `smoke_only` |
 
-Exact execution-smoke combinations are generated in `SUPPORTED_COMBINATIONS.md`.
+Exact execution-verified combinations are generated in `SUPPORTED_COMBINATIONS.md`.
 
 ## Boundaries
 
-- `sanity_ok` means bounded execution smoke only.
+- `execution_status=sanity_ok` means the exact registered command has current evidence; its scientific scope is determined separately by `protocol_status`.
 - `protocol_status=smoke_only` forbids benchmark or algorithm-validity claims.
-- Model/task registry discovery does not imply Cartesian-product compatibility.
+- `protocol_status=baseline_valid` applies only to the exact data, split, model, task, checkpoint, seed, and estimator combination that passed review.
+- A baseline-valid result does not imply strong accuracy, state-of-the-art performance, or Cartesian-product support for its individual components.
 - Pipeline 03 and Pipeline 04 remain experimental rather than maintained execution paths.
-- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact smoke table unless a reviewed demo is added.
+- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact table unless a reviewed maintained config is added.
 - Historical and paper-only configs are not promoted by this generator.
-- External dataset redistribution and availability are separate source-license questions.
+- External dataset redistribution and availability remain separate source-license questions.
