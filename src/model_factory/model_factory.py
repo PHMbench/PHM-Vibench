@@ -24,16 +24,23 @@ def model_factory(args_model: Any, metadata: Any):
     loaded, model construction fails instead of continuing with random or partial
     initialization.
     """
-    # Validate any declared classification ontology even when num_classes was
-    # supplied manually. A configured output width must not hide labels such as
-    # {1, 2} or {0, 2} that change the mathematical classification problem.
-    validate_metadata_label_ontology(
-        metadata,
-        group_field="Dataset_id",
-        require_labels=False,
-    )
+    # Validate every label ontology that is actually supplied, even when
+    # num_classes was configured manually. Some isolated model/checkpoint uses
+    # intentionally provide no metadata and an explicit output width; in that
+    # case there is no ontology to validate or silently reinterpret.
+    if metadata is not None:
+        validate_metadata_label_ontology(
+            metadata,
+            group_field="Dataset_id",
+            require_labels=False,
+        )
 
     if not getattr(args_model, "num_classes", None):
+        if metadata is None:
+            raise ValueError(
+                "model.num_classes is required when model construction receives "
+                "no metadata"
+            )
         inferred = get_num_classes(metadata)
         if isinstance(inferred, dict):
             args_model.num_classes = (
