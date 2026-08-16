@@ -14,6 +14,7 @@ from src.data_factory.contracts import (
 )
 from src.data_factory.data_factory import data_factory as BaseDataFactory
 from src.data_factory.reader.CSV_Signal import read as read_csv_signal
+from src.data_factory.reader.Dummy_Data import read as read_dummy_signal
 
 
 def _factory(metadata):
@@ -319,3 +320,57 @@ def test_compatible_csv_dataset_uses_existing_data_and_task_contracts(
         assert factory.split_summary["file_overlap"]["train_test"] == []
     finally:
         factory.data.close()
+
+
+def _write_dummy_csv(path: Path) -> None:
+    path.write_text(
+        "index,ch1,ch2\n"
+        "0,0.0,1.0\n"
+        "1,0.5,0.5\n"
+        "2,1.0,0.0\n",
+        encoding="utf-8",
+    )
+
+
+def test_dummy_reader_consumes_exact_declared_columns(tmp_path: Path) -> None:
+    path = tmp_path / "dummy.csv"
+    _write_dummy_csv(path)
+
+    signal = read_dummy_signal(path)
+
+    assert signal.shape == (3, 2)
+    assert signal.dtype == np.float32
+    assert np.array_equal(
+        signal,
+        np.array(
+            [[0.0, 1.0], [0.5, 0.5], [1.0, 0.0]],
+            dtype=np.float32,
+        ),
+    )
+
+
+def test_dummy_reader_rejects_missing_file_without_synthetic_fallback(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError, match="does not synthesize fallback signals"):
+        read_dummy_signal(tmp_path / "missing.csv")
+
+
+def test_dummy_reader_rejects_malformed_or_nonfinite_channels(tmp_path: Path) -> None:
+    missing_column = tmp_path / "missing_column.csv"
+    missing_column.write_text("index,ch1\n0,1.0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing required column"):
+        read_dummy_signal(missing_column)
+
+    non_numeric = tmp_path / "non_numeric.csv"
+    non_numeric.write_text(
+        "index,ch1,ch2\n0,not-a-number,1.0\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="must contain only numeric"):
+        read_dummy_signal(non_numeric)
+
+    non_finite = tmp_path / "non_finite.csv"
+    non_finite.write_text("index,ch1,ch2\n0,NaN,1.0\n", encoding="utf-8")
+    with pytest.raises(FloatingPointError, match="contains NaN or Inf"):
+        read_dummy_signal(non_finite)
