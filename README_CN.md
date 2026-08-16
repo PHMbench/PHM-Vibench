@@ -59,7 +59,7 @@ PHMFactory 面向工业信号故障诊断及相关 PHM 实验，提供模块化�
 | 默认值在不知情时改变实验 | 显式解析配置，并在不满足条件时立即失败 |
 | 数据、模型、任务和训练器彼此耦合 | 四个 Factory 分工清晰，责任可以独立审查 |
 | 评价结果受无约束随机采样影响 | 维护路径中的验证与测试采用确定性边界 |
-| 源码文件存在就被误认为“已支持” | 自动生成支持表，区分可发现、可运行和维护证据 |
+| 源码文件存在就被误认为“已支持” | 自动生成支持表，区分可发现、可运行、执行证据与科学证据 |
 | 替换一个组件需要修改运行时 | 组件选择保持配置优先 |
 
 由此形成两条直接的设计规则：
@@ -83,6 +83,7 @@ PHMFactory 主要提供：
 - 清晰的数据、模型、任务与训练器边界；
 - 可执行的错误提示，而不是静默兜底；
 - 维护中的冒烟配置和自动生成的支持文档；
+- 一个具有明确声明边界、科学闭合的真实数据参考实验；
 - CLI 与可选 Streamlit 共用的同一运行时。
 
 PHMFactory 不宣称仓库中的所有实现都可以任意组合，也不因源码存在、import 成功或一次
@@ -137,7 +138,9 @@ demo
 results/demo/dummy_dg_smoke/
 ```
 
-终端会打印运行记录的位置。预期输出和故障排查见[快速开始](docs/quickstart.md)。
+当兼容运行记录可用时，终端会打印其路径。`run_manifest=unavailable` 警告不否定已经完成
+的训练、最佳 checkpoint 恢复、评价和有限指标。预期输出与故障排查见
+[快速开始](docs/quickstart.md)。
 
 ### 离线示例能够证明什么
 
@@ -182,6 +185,7 @@ fit → best checkpoint → evaluation → finite metrics
 | **确定性评价边界** | 维护中的验证与测试不依赖无约束的 patch 或增强随机性。 |
 | **离线首次运行** | `doctor`、`preflight` 和 `demo` 不需要下载外部数据。 |
 | **模块化替换** | 数据、模型、任务和训练器的选择显式且可以独立审查。 |
+| **配置级证据** | 自动生成的支持 authority 区分受控冒烟与精确 `baseline_valid` 协议。 |
 | **单一运行时** | CLI 是权威入口；Streamlit 只是同一命令的界面适配。 |
 
 ## 按任务选择文档
@@ -191,6 +195,7 @@ fit → best checkpoint → evaluation → finite metrics
 | 理解第一次运行及其输出 | [快速开始](docs/quickstart.md) |
 | 在 CPU、GPU、Linux、macOS 或 Windows 上安装 | [安装指南](docs/installation.md) |
 | 运行已有的维护实验 | [配置系统](configs/README.md) |
+| 准备并运行首个真实数据参考实验 | [MFPT 基线](configs/baselines/01_mfpt/README.md) |
 | 接入本地 PHM 数据 | [数据目录](data/README.md)和[自定义数据集](docs/custom_dataset.md) |
 | 选择或新增模型 | [模型工厂](src/model_factory/README_CN.md) |
 | 选择或新增任务 | [任务工厂](src/task_factory/README.md) |
@@ -219,7 +224,7 @@ trainer:      # 设备、epoch、精度、日志和 checkpoint 行为
   ...
 ```
 
-本地实验从 `configs/demo/` 中最接近的维护配置开始，研究变体放入
+本地实验从 `configs/demo/` 或 `configs/baselines/` 中最接近的维护配置开始，研究变体放入
 `configs/experiments/`，本机路径通过显式 override 传入：
 
 ```bash
@@ -268,30 +273,40 @@ phmfactory data --help
 
 ## 支持边界
 
-PHMFactory 明确区分三个层级：
+PHMFactory 明确区分四个术语：
 
 ```text
-discoverable  = 源码或注册表条目存在
-runnable      = 已建立经过审查的执行路径
-supported     = 维护配置具有当前功能冒烟证据
+discoverable       = 源码或注册表条目存在
+runnable           = 已建立经过审查的执行路径
+execution-verified = 精确维护命令具有当前执行证据
+baseline-valid     = 精确完整实验通过其声明的科学协议
 ```
 
-必须满足：
+软件层面的包含关系为：
 
 ```text
-supported ⊆ runnable ⊆ discoverable
+execution-verified ⊆ runnable ⊆ discoverable
 ```
 
-源码文件、注册表行或 import 成功都不是支持声明。当前维护范围由仓库配置和运行时描述
-自动生成：
+`baseline-valid` 是一个完整配置的独立属性，不能由组件可导入、Pipeline 成熟度或另一个配置
+运行成功推导出来。
+
+当前 authority 由仓库配置和运行时描述自动生成：
 
 - [支持组件](SUPPORTED_COMPONENTS.md)
 - [支持组合](SUPPORTED_COMBINATIONS.md)
 - [配置注册表](configs/config_registry.csv)
 - [配置图谱](docs/CONFIG_ATLAS.md)
 
-`sanity_ok` 只表示已有边界明确的功能冒烟，不表示 benchmark-valid、SOTA、允许任意重分发
-外部数据，或任意组件笛卡尔积都能组合。
+`execution_status=sanity_ok` 表示精确注册命令已有当前执行证据；
+`protocol_status=smoke_only` 禁止据此提出 benchmark 或算法有效性结论；
+`protocol_status=baseline_valid` 仅适用于经过审查的精确数据总体、划分、模型、任务、
+checkpoint 选择、随机种子与估计量组合。
+
+当前唯一 `baseline_valid` 参考是
+[MFPT + GlobalAverageLinear](configs/baselines/01_mfpt/README.md)。该模型被刻意设计得透明且
+较弱，其较低准确率被如实保留。该晋级证明的是协议闭合，不表示性能强、达到 SOTA、
+允许无限制重分发外部数据，或支持任意组件笛卡尔积组合。
 
 ## 可选 Streamlit 工作区
 
@@ -323,7 +338,7 @@ phmfactory 命令 / python -m phmfactory / main.py
 主要目录：
 
 - `phmfactory/`：公开包、命令、配置解析、Pipeline descriptor 和运行控制；
-- `configs/`：复用块、维护 demo、研究实验和配置注册表；
+- `configs/`：复用块、维护 demo、真实基线、研究实验和配置注册表；
 - `src/data_factory/`：metadata、reader、dataset、sampler 和数据装配；
 - `src/model_factory/`：模型家族和模型构造；
 - `src/task_factory/`：任务、目标函数、指标和任务构造；
@@ -352,10 +367,11 @@ python -m pytest test/ -q
 
 PHMFactory 仍是 alpha 阶段的 `0.3.0.dev0` 源码版本：
 
-- 只有 Dummy demo 完全离线并随仓库提供；
-- 大部分真实数据配置需要本地 metadata 和原始信号；
-- 尚无真实数据配置被提升为首个科学闭合的 `baseline_valid` 参考实验；
-- CWRU provider、reader 和最终 acceptance 条件仍在收敛；
+- Dummy demo 仍是唯一完全离线、随仓库提供的首次运行路径；
+- 当前已有一个精确真实数据参考达到 `baseline_valid`：MFPT + `GlobalAverageLinear`；
+- 该参考证明协议与估计量闭合，不表示故障诊断准确率较高；
+- 大部分其他真实数据配置仍需要本地 metadata 和原始信号，除非明确列出，否则仍为 `smoke_only`；
+- 更广泛的 SEU、PU 与最终 CWRU acceptance 尚未完成；
 - GitHub 仓库尚未改名；
 - 当前不宣称已有最终 `v0.3.0` tag 或正式包发布；
 - experimental Pipeline 和未列出的模型/任务组合不属于发布支持范围。
