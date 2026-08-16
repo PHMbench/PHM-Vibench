@@ -10,9 +10,13 @@ from phmfactory.pipelines import PIPELINE_DESCRIPTORS
 from scripts.gen_config_atlas import RegistryRow, read_registry
 
 
+_MAINTAINED_CATEGORIES = frozenset({"demo", "baseline"})
+
+
 @dataclass(frozen=True)
 class VerifiedDemo:
     config_id: str
+    category: str
     path: str
     description: str
     pipeline: str
@@ -33,14 +37,16 @@ def _value(mapping: dict[str, Any], key: str, default: str = "-") -> str:
 
 
 def verified_demos(rows: Iterable[RegistryRow]) -> list[VerifiedDemo]:
+    """Resolve every maintained config with current execution evidence."""
+
     result: list[VerifiedDemo] = []
     for row in rows:
-        if row.category != "demo" or row.status != "sanity_ok":
+        if row.category not in _MAINTAINED_CATEGORIES or row.status != "sanity_ok":
             continue
         if not row.protocol_status:
             raise ValueError(
-                f"demo {row.config_id} is missing protocol_status; "
-                "execution smoke evidence must not imply scientific validity"
+                f"maintained config {row.config_id} is missing protocol_status; "
+                "execution evidence must not imply scientific validity"
             )
         resolved = resolve_config(row.path)
         if resolved.pipeline != row.pipeline:
@@ -54,6 +60,7 @@ def verified_demos(rows: Iterable[RegistryRow]) -> list[VerifiedDemo]:
         result.append(
             VerifiedDemo(
                 config_id=row.config_id,
+                category=row.category,
                 path=row.path,
                 description=row.description,
                 pipeline=resolved.pipeline,
@@ -69,12 +76,17 @@ def verified_demos(rows: Iterable[RegistryRow]) -> list[VerifiedDemo]:
             )
         )
     if not result:
-        raise ValueError("no category=demo,status=sanity_ok rows found")
+        raise ValueError(
+            "no category in {demo, baseline}, status=sanity_ok rows found"
+        )
     return sorted(result, key=lambda item: item.config_id)
 
 
 def _code_list(values: Iterable[str]) -> str:
-    return ", ".join(f"`{value}`" for value in sorted(set(values)))
+    concrete = sorted({value for value in values if value not in ("", "-")})
+    if not concrete:
+        return "-"
+    return ", ".join(f"`{value}`" for value in concrete)
 
 
 def render_components(demos: list[VerifiedDemo]) -> str:
@@ -95,18 +107,19 @@ def render_components(demos: list[VerifiedDemo]) -> str:
         "```text",
         "discoverable     = a canonical Pipeline or registry entry exists",
         "runnable         = the public control plane permits execution",
-        "smoke-verified   = the exact maintained command has bounded execution evidence",
-        "protocol-valid   = the complete data/split/task/metric combination satisfies its scientific protocol",
+        "execution-verified = the exact maintained command has current bounded or baseline evidence",
+        "baseline-valid   = the exact complete experiment passed its declared scientific protocol",
         "```",
         "",
         "The software relationship is:",
         "",
         "```text",
-        "smoke-verified ⊆ runnable ⊆ discoverable",
+        "execution-verified ⊆ runnable ⊆ discoverable",
         "```",
         "",
-        "Protocol validity is a separate property of a complete experiment combination. "
-        "It is not inferred from component importability, Pipeline maturity, or a successful smoke run.",
+        "`baseline-valid` is a separate property of one complete experiment combination. "
+        "It is not inferred from component importability, Pipeline maturity, or another "
+        "configuration's successful run.",
         "",
         "## Pipeline maturity",
         "",
@@ -125,7 +138,7 @@ def render_components(demos: list[VerifiedDemo]) -> str:
             "",
             "## Execution-verified maintained surface",
             "",
-            "| Surface | Values derived from `sanity_ok` demos |",
+            "| Surface | Values derived from `sanity_ok` maintained configs |",
             "|---|---|",
             f"| Pipelines | {_code_list(d.pipeline for d in demos)} |",
             f"| Data bases | {_code_list(d.data_base for d in demos)} |",
@@ -137,17 +150,18 @@ def render_components(demos: list[VerifiedDemo]) -> str:
             f"| Trainers | {_code_list(d.trainer for d in demos)} |",
             f"| Protocol statuses | {_code_list(d.protocol_status for d in demos)} |",
             "",
-            "Exact execution-smoke combinations are generated in `SUPPORTED_COMBINATIONS.md`.",
+            "Exact execution-verified combinations are generated in `SUPPORTED_COMBINATIONS.md`.",
             "",
             "## Boundaries",
             "",
-            "- `sanity_ok` means bounded execution smoke only.",
+            "- `execution_status=sanity_ok` means the exact registered command has current evidence; its scientific scope is determined separately by `protocol_status`.",
             "- `protocol_status=smoke_only` forbids benchmark or algorithm-validity claims.",
-            "- Model/task registry discovery does not imply Cartesian-product compatibility.",
+            "- `protocol_status=baseline_valid` applies only to the exact data, split, model, task, checkpoint, seed, and estimator combination that passed review.",
+            "- A baseline-valid result does not imply strong accuracy, state-of-the-art performance, or Cartesian-product support for its individual components.",
             "- Pipeline 03 and Pipeline 04 remain experimental rather than maintained execution paths.",
-            "- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact smoke table unless a reviewed demo is added.",
+            "- Pipeline 05, Pipeline 06, and Pipeline_ID remain outside this exact table unless a reviewed maintained config is added.",
             "- Historical and paper-only configs are not promoted by this generator.",
-            "- External dataset redistribution and availability are separate source-license questions.",
+            "- External dataset redistribution and availability remain separate source-license questions.",
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
@@ -158,7 +172,8 @@ def render_combinations(demos: list[VerifiedDemo]) -> str:
         "# Execution-Verified Combinations for the PHMFactory v0.3 Pre-release",
         "",
         "> Generated from `configs/config_registry.csv` rows with "
-        "`category=demo,status=sanity_ok` and their fully resolved configurations.",
+        "`category in {demo, baseline}` and `status=sanity_ok`, plus their fully "
+        "resolved configurations.",
         "",
         "Re-generate:",
         "",
@@ -166,31 +181,32 @@ def render_combinations(demos: list[VerifiedDemo]) -> str:
         "python -m scripts.gen_support_matrix",
         "```",
         "",
-        "| Registry id | Config | Pipeline | Data base | Model | Task | Trainer | Execution evidence | Protocol status |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Registry id | Kind | Config | Pipeline | Data base | Model | Task | Trainer | Execution evidence | Protocol status |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for demo in demos:
         lines.append(
-            f"| `{demo.config_id}` | `{demo.path}` | `{demo.pipeline}` | "
-            f"`{demo.data_base}` | `{demo.model}` | `{demo.task}` | "
-            f"`{demo.trainer}` | `{demo.execution_status}` | "
+            f"| `{demo.config_id}` | `{demo.category}` | `{demo.path}` | "
+            f"`{demo.pipeline}` | `{demo.data_base}` | `{demo.model}` | "
+            f"`{demo.task}` | `{demo.trainer}` | `{demo.execution_status}` | "
             f"`{demo.protocol_status}` |"
         )
     lines.extend(
         [
             "",
-            "Current evidence is one-epoch or otherwise bounded execution evidence for the "
-            "exact registered path. It validates configuration resolution, factory "
-            "assembly, runtime execution, checkpoint/test flow where applicable, and the "
-            "current run-record contract. It does not establish benchmark validity.",
+            "Evidence scope is configuration-specific. Smoke rows establish bounded "
+            "execution only. A `baseline_valid` row additionally establishes the "
+            "declared data population, disjoint split, objective, checkpoint-selection, "
+            "repeated-seed, and estimator contract for that exact configuration.",
             "",
             "## Interpretation",
             "",
-            "`execution_status=sanity_ok` says that the exact command has current smoke "
-            "evidence. `protocol_status=smoke_only` says that its split, statistical "
-            "independence, task semantics, and metric protocol have not yet been promoted "
-            "to a scientific baseline. The two statuses are independent and must not be "
-            "collapsed into one support claim.",
+            "`execution_status=sanity_ok` says that the exact command has current "
+            "execution evidence. `protocol_status=smoke_only` says that its scientific "
+            "protocol has not been promoted. `protocol_status=baseline_valid` says that "
+            "the exact complete experiment passed its declared scientific gates; it does "
+            "not say that the model is accurate, state of the art, or transferable to "
+            "other component combinations.",
         ]
     )
     return "\n".join(lines).rstrip() + "\n"

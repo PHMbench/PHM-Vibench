@@ -14,21 +14,45 @@ from scripts.gen_support_matrix import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _demos():
+def _maintained():
     return verified_demos(read_registry(ROOT / "configs/config_registry.csv"))
 
 
-def test_all_sanity_ok_demos_have_independent_protocol_status() -> None:
-    demos = _demos()
-    assert len(demos) == 7
-    assert {demo.execution_status for demo in demos} == {"sanity_ok"}
-    assert {demo.protocol_status for demo in demos} == {"smoke_only"}
-    assert all((ROOT / demo.path).is_file() for demo in demos)
+def test_all_sanity_ok_maintained_configs_have_protocol_status() -> None:
+    maintained = _maintained()
+    assert len(maintained) == 8
+    assert {item.execution_status for item in maintained} == {"sanity_ok"}
+    assert {item.category for item in maintained} == {"demo", "baseline"}
+    assert {item.protocol_status for item in maintained} == {
+        "smoke_only",
+        "baseline_valid",
+    }
+    assert all((ROOT / item.path).is_file() for item in maintained)
+
+
+def test_mfpt_baseline_is_the_only_baseline_valid_combination() -> None:
+    baseline_valid = [
+        item for item in _maintained() if item.protocol_status == "baseline_valid"
+    ]
+    assert len(baseline_valid) == 1
+    baseline = baseline_valid[0]
+    assert baseline.config_id == "baseline_01_mfpt_global_average_linear"
+    assert baseline.category == "baseline"
+    assert baseline.path.endswith("/mfpt_global_average_linear.yaml")
+    assert baseline.pipeline == "Pipeline_01_Fault_Diagnosis"
+    assert baseline.model == "Baseline/GlobalAverageLinear"
+    assert baseline.embedding == "-"
+    assert baseline.backbone == "-"
+    assert baseline.task_head == "-"
+    assert baseline.task == "DG/classification"
+    assert baseline.execution_status == "sanity_ok"
 
 
 def test_gfs_demo_resolves_without_implying_protocol_validity() -> None:
     demo = next(
-        item for item in _demos() if item.config_id == "demo_04_cross_system_fewshot"
+        item
+        for item in _maintained()
+        if item.config_id == "demo_04_cross_system_fewshot"
     )
     assert demo.path.endswith("/gfs_dlinear.yaml")
     assert demo.model == "ISFM/M_01_ISFM"
@@ -40,23 +64,24 @@ def test_gfs_demo_resolves_without_implying_protocol_validity() -> None:
 
 
 def test_committed_support_documents_are_generated() -> None:
-    demos = _demos()
+    maintained = _maintained()
     assert (ROOT / "SUPPORTED_COMPONENTS.md").read_text(encoding="utf-8") == (
-        render_components(demos)
+        render_components(maintained)
     )
     assert (ROOT / "SUPPORTED_COMBINATIONS.md").read_text(encoding="utf-8") == (
-        render_combinations(demos)
+        render_combinations(maintained)
     )
 
 
-def test_support_table_does_not_promote_smoke_to_scientific_support() -> None:
-    combinations = render_combinations(_demos())
+def test_support_table_keeps_smoke_and_baseline_claims_separate() -> None:
+    combinations = render_combinations(_maintained())
     assert "Execution evidence" in combinations
     assert "Protocol status" in combinations
     assert "`sanity_ok`" in combinations
     assert "`smoke_only`" in combinations
+    assert "`baseline_valid`" in combinations
+    assert "state of the art" in combinations
     assert "release-supported only when" not in combinations
-    assert "benchmark validity" in combinations
 
 
 def test_fs_compatibility_demo_is_non_episodic_supervised_classification() -> None:

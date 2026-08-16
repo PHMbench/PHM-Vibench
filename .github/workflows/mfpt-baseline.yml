@@ -1,0 +1,179 @@
+name: MFPT real-data baseline
+
+on:
+  pull_request:
+    paths:
+      - "src/data_factory/reader/RM_007_MFPT.py"
+      - "src/model_factory/Baseline/GlobalAverageLinear.py"
+      - "configs/base/model/global_average_linear.yaml"
+      - "configs/baselines/01_mfpt/**"
+      - "scripts/prepare_mfpt_baseline.py"
+      - "test/test_mfpt_baseline.py"
+      - "docs/index.md"
+      - "README.md"
+      - "README_CN.md"
+      - ".github/workflows/mfpt-baseline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfpt-baseline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mfpt-baseline:
+    name: Pinned MFPT three-seed baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      MPLBACKEND: Agg
+      WANDB_MODE: disabled
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install CPU runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0"
+          python -m pip install \
+            "numpy>=1.20" \
+            "pandas>=1.3" \
+            "scipy" \
+            "scikit-learn>=1.0" \
+            "h5py" \
+            "einops" \
+            "sympy" \
+            "pytorch-lightning>=1.5" \
+            "torchmetrics>=1.0" \
+            "PyYAML>=6.0" \
+            "matplotlib" \
+            "tensorboard" \
+            "openpyxl" \
+            "pytest>=7"
+          python -m pip install --no-deps -e .
+
+      - name: Compile and test the MFPT contract
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m py_compile \
+            src/data_factory/reader/RM_007_MFPT.py \
+            scripts/prepare_mfpt_baseline.py \
+            test/test_mfpt_baseline.py
+          python -m pytest test/test_mfpt_baseline.py -vv --tb=long \
+            2>&1 | tee mfpt-contracts.log
+
+      - name: Prepare pinned public MFPT files
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf /tmp/phmfactory-mfpt /tmp/phmfactory-mfpt-results
+          python -m scripts.prepare_mfpt_baseline \
+            --output /tmp/phmfactory-mfpt \
+            2>&1 | tee mfpt-preparation.log
+
+      - name: Preflight the exact baseline
+        shell: bash
+        run: |
+          set -o pipefail
+          phmfactory preflight \
+            --config configs/baselines/01_mfpt/mfpt_global_average_linear.yaml \
+            --override data.data_dir=/tmp/phmfactory-mfpt \
+            --override environment.output_dir=/tmp/phmfactory-mfpt-results \
+            --override data.split.manifest_path=/tmp/phmfactory-mfpt-results/split_manifest.json \
+            2>&1 | tee mfpt-preflight.log
+
+      - name: Run three explicit seeds on CPU
+        shell: bash
+        run: |
+          set -o pipefail
+          phmfactory \
+            --config configs/baselines/01_mfpt/mfpt_global_average_linear.yaml \
+            --override data.data_dir=/tmp/phmfactory-mfpt \
+            --override environment.output_dir=/tmp/phmfactory-mfpt-results \
+            --override data.split.manifest_path=/tmp/phmfactory-mfpt-results/split_manifest.json \
+            2>&1 | tee mfpt-baseline.log
+
+      - name: Verify scientific closure
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import math
+          from pathlib import Path
+
+          data_root = Path("/tmp/phmfactory-mfpt")
+          result_root = Path("/tmp/phmfactory-mfpt-results")
+
+          with (data_root / "metadata_mfpt.csv").open(encoding="utf-8", newline="") as handle:
+              rows = list(csv.DictReader(handle))
+          assert len(rows) == 20, len(rows)
+          assert sum(row["Provider_Split"] == "train" for row in rows) == 14
+          assert sum(row["Provider_Split"] == "test" for row in rows) == 6
+          assert {int(row["Label"]) for row in rows} == {0, 1, 2}
+          assert {int(row["Channels"]) for row in rows} == {1}
+          assert {row["Source_Revision"] for row in rows} == {
+              "d3efefb6ce84fa1ee6c0311f80f7c89cf903ad1d"
+          }
+
+          summaries = list(result_root.rglob("run_summary.json"))
+          assert len(summaries) == 1, summaries
+          summary = json.loads(summaries[0].read_text(encoding="utf-8"))
+          assert summary["iterations"] == 3
+          assert summary["seeds"] == [17, 18, 19]
+          test_metrics = {
+              name: values
+              for name, values in summary["metrics"].items()
+              if name.startswith("test_")
+          }
+          assert test_metrics, summary["metrics"]
+          assert any("acc" in name for name in test_metrics), test_metrics
+          for name, values in test_metrics.items():
+              assert values["count"] == 3, (name, values)
+              assert math.isfinite(float(values["mean"])), (name, values)
+              assert math.isfinite(float(values["sample_std"])), (name, values)
+
+          split_path = result_root / "split_manifest.json"
+          split = json.loads(split_path.read_text(encoding="utf-8"))
+          groups = {
+              name: set(split["splits"][name]["groups"])
+              for name in ("train", "val", "test")
+          }
+          assert groups["train"] and groups["val"] and groups["test"]
+          assert len(groups["train"] | groups["val"]) == 14
+          assert len(groups["test"]) == 6
+          assert not (groups["train"] & groups["val"])
+          assert not (groups["train"] & groups["test"])
+          assert not (groups["val"] & groups["test"])
+
+          result_tables = list(result_root.rglob("all_results.csv"))
+          assert result_tables, result_tables
+          checkpoints = list(result_root.rglob("*.ckpt"))
+          assert len(checkpoints) >= 3, checkpoints
+          PY
+
+      - name: Upload bounded diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfpt-baseline-diagnostics
+          path: |
+            mfpt-contracts.log
+            mfpt-preparation.log
+            mfpt-preflight.log
+            mfpt-baseline.log
+            /tmp/phmfactory-mfpt/metadata_mfpt.csv
+            /tmp/phmfactory-mfpt-results/**/run_summary.json
+            /tmp/phmfactory-mfpt-results/**/all_results.csv
+            /tmp/phmfactory-mfpt-results/split_manifest.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,71 @@
+# First real-data baseline candidate.
+# Protocol: official provider train/test files; file-grouped train/validation split;
+# transparent one-channel temporal-mean linear classifier; three explicit seeds.
+
+pipeline: "Pipeline_01_Fault_Diagnosis"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/global_average_linear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "baseline_mfpt_global_average_linear_v1"
+  seed: 17
+  iterations: 3
+  output_dir: "results/baselines/mfpt_global_average_linear_v1"
+  notes: >-
+    MFPT official provider train/test partition with file-grouped validation,
+    GlobalAverageLinear, CPU execution, and seeds 17/18/19.
+
+data:
+  data_dir: "data/mfpt"
+  metadata_file: "metadata_mfpt.csv"
+  batch_size: 32
+  num_workers: 0
+  pin_memory: false
+  dtype: "float32"
+  normalization: "none"
+  window_size: 2048
+  window_sampling_strategy: "evenly_spaced"
+  num_window: 16
+  window_sampling_seed: 17
+  train_noise_snr: null
+  evaluation_noise_snr: null
+  split:
+    strategy: "grouped_metadata"
+    group_key: "File"
+    stratify_key: "Label"
+    seed: 17
+    test_policy: "task_defined"
+    fractions:
+      train: 0.75
+      val: 0.25
+    manifest_path: "results/baselines/mfpt_global_average_linear_v1/split_manifest.json"
+
+model:
+  input_dim: 1
+
+task:
+  type: "DG"
+  name: "classification"
+  target_system_id: [7]
+  source_domain_id: [0]
+  target_domain_id: [1]
+  loss: "CE"
+  metrics: ["acc", "f1"]
+  optimizer: "adam"
+  lr: 0.001
+  weight_decay: 0.0001
+
+trainer:
+  name: "Default_trainer"
+  device: "cpu"
+  gpus: 1
+  num_epochs: 5
+  early_stopping: true
+  patience: 3
+  monitor: "val_loss"
+  log_every_n_steps: 1
