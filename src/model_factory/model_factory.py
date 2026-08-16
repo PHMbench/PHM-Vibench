@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 import torch
 
+from ..utils.label_ontology import validate_metadata_label_ontology
 from ..utils.utils import get_num_classes
 
 
@@ -23,7 +24,23 @@ def model_factory(args_model: Any, metadata: Any):
     loaded, model construction fails instead of continuing with random or partial
     initialization.
     """
+    # Validate every label ontology that is actually supplied, even when
+    # num_classes was configured manually. Some isolated model/checkpoint uses
+    # intentionally provide no metadata and an explicit output width; in that
+    # case there is no ontology to validate or silently reinterpret.
+    if metadata is not None:
+        validate_metadata_label_ontology(
+            metadata,
+            group_field="Dataset_id",
+            require_labels=False,
+        )
+
     if not getattr(args_model, "num_classes", None):
+        if metadata is None:
+            raise ValueError(
+                "model.num_classes is required when model construction receives "
+                "no metadata"
+            )
         inferred = get_num_classes(metadata)
         if isinstance(inferred, dict):
             args_model.num_classes = (
