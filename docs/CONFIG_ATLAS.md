@@ -88,6 +88,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 
 ### base_model
 
+#### `base_model_global_average_linear`
+- Path: `configs/base/model/global_average_linear.yaml`
+- Description: Transparent temporal-mean linear classification baseline
+- Owner code: `src/model_factory/__init__.py:build_model`
+- Keyspace: `model.*`
+- Minimal run: `python main.py --config configs/demo/00_smoke/dummy_global_average_linear.yaml`
+- Common overrides: `trainer.num_epochs=1`, `model.input_dim=2`
+- Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
+- Related docs: `configs/base/model/README.md`, `src/model_factory/README.md`
+- Status: `/`
+
 #### `base_model_isfm_hse`
 - Path: `configs/base/model/backbone_dlinear.yaml`
 - Description: M_01_ISFM + E_01_HSE + B_04_Dlinear + H_01_Linear_cla
@@ -217,6 +228,25 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 
 
 ## Pipeline_01_Fault_Diagnosis
+
+### baseline
+
+#### `baseline_01_mfpt_global_average_linear`
+- Path: `configs/baselines/01_mfpt/mfpt_global_average_linear.yaml`
+- Description: MFPT official train/test, file-grouped validation, three-seed transparent baseline
+- Base configs:
+  - environment: `configs/base/environment/base.yaml`
+  - data: `configs/base/data/base_cross_domain.yaml`
+  - model: `configs/base/model/global_average_linear.yaml`
+  - task: `configs/base/task/dg.yaml`
+  - trainer: `configs/base/trainer/default_single_gpu.yaml`
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/baselines/01_mfpt/mfpt_global_average_linear.yaml`
+- Common overrides: `data.data_dir=/absolute/path/to/mfpt`, `environment.output_dir=/absolute/path/to/results`, `data.split.manifest_path=/absolute/path/to/results/split_manifest.json`
+- Outputs: `results/baselines/mfpt_global_average_linear_v1/{experiment_name}/iter_{i}/`
+- Related docs: `configs/baselines/01_mfpt/README.md`, `configs/base/model/README.md`
+- Status: `sanity_ok`
 
 ### demo
 
@@ -359,7 +389,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 
 #### `demo_05_pretrain_fewshot`
 - Path: `configs/demo/05_pretrain_fewshot/pretrain_hse_then_fewshot.yaml`
-- Description: Pretrain + few-shot two-stage demo（当前为单阶段 HSE 对比预训练示例）
+- Description: Pretrain + few-shot two-stage demo（当前为单阶段 HSE 对比预训练视角）
 - Base configs:
   - environment: `configs/base/environment/base.yaml`
   - data: `configs/base/data/base_classification.yaml`
