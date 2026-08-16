@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 import torch
 
+from ..utils.label_ontology import validate_metadata_label_ontology
 from ..utils.utils import get_num_classes
 
 
@@ -23,6 +24,15 @@ def model_factory(args_model: Any, metadata: Any):
     loaded, model construction fails instead of continuing with random or partial
     initialization.
     """
+    # Validate any declared classification ontology even when num_classes was
+    # supplied manually. A configured output width must not hide labels such as
+    # {1, 2} or {0, 2} that change the mathematical classification problem.
+    validate_metadata_label_ontology(
+        metadata,
+        group_field="Dataset_id",
+        require_labels=False,
+    )
+
     if not getattr(args_model, "num_classes", None):
         inferred = get_num_classes(metadata)
         if isinstance(inferred, dict):
