@@ -224,7 +224,7 @@ jobs:
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
 
-      - name: Run shared runtime, data, evidence, and Pipeline 02 contract tests
+      - name: Run shared runtime, data, device, and Pipeline 02 contract tests
         shell: bash
         run: |
           set -o pipefail
@@ -236,6 +236,7 @@ jobs:
             src/model_factory/ISFM/task_head/H_01_Linear_cla.py \
             src/task_factory/Default_task.py \
             src/task_factory/task/pretrain/hse_contrastive.py \
+            src/trainer_factory/Default_trainer.py \
             src/runtime/classification.py \
             src/runtime/explainability.py \
             src/Pipeline_01_Fault_Diagnosis.py \
@@ -243,6 +244,7 @@ jobs:
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
             test/test_classification_runtime.py \
             test/test_data_cache_contract.py \
+            test/test_device_authority.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
@@ -252,6 +254,7 @@ jobs:
           python -m pytest \
             test/test_classification_runtime.py \
             test/test_data_cache_contract.py \
+            test/test_device_authority.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
