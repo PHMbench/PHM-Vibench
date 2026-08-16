@@ -44,7 +44,6 @@ data:
       train: 0.75
       val: 0.25
     manifest_path: "results/baselines/mfpt_global_average_linear_v1/split_manifest.json"
-    manifest_mode: "generate"
 
 model:
   input_dim: 1
