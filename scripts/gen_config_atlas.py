@@ -142,7 +142,7 @@ def render_atlas(rows: List[RegistryRow], registry_path: Path) -> str:
                 lines.append(f"#### `{row.config_id}`")
                 lines.append(f"- Path: `{row.path}`")
                 lines.append(f"- Description: {row.description}")
-                if row.category == "demo":
+                if row.category in {"demo", "baseline"}:
                     lines.append("- Base configs:")
                     lines.append(f"  - environment: `{row.base_environment}`")
                     lines.append(f"  - data: `{row.base_data}`")
