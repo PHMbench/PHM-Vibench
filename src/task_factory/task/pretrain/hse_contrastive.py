@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 class task(Default_task):
     """Feature-level HSE contrastive learning with an optional CE objective."""
 
+    _EVAL_AUGMENTATION_STAGE_OFFSETS = {
+        "val": 1_000_003,
+        "test": 2_000_003,
+    }
+
     def __init__(
         self,
         network,
@@ -40,6 +45,7 @@ class task(Default_task):
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
+        self.args_environment = args_environment
         self.metadata = metadata
 
         self.contrast_weight = self._validated_weight(
@@ -144,7 +150,12 @@ class task(Default_task):
 
         contrastive_loss = x.new_zeros(())
         if self.contrast_weight > 0:
-            contrastive_loss = self._run_contrastive_flow(features, y)
+            contrastive_loss = self._run_contrastive_flow(
+                features,
+                y,
+                stage=stage,
+                batch_idx=batch_idx,
+            )
             self._require_valid_loss(contrastive_loss, "contrastive objective", stage)
 
         total_loss = (
@@ -291,6 +302,9 @@ class task(Default_task):
         self,
         features: torch.Tensor,
         y: torch.Tensor,
+        *,
+        stage: str = "train",
+        batch_idx: int = 0,
     ) -> torch.Tensor:
         if self.strategy_manager is None:
             raise RuntimeError(
@@ -327,7 +341,11 @@ class task(Default_task):
             labels_ext = torch.cat([y, y], dim=0)
 
         z1 = features
-        z2 = self._create_augmented_view(features)
+        z2 = self._create_augmented_view(
+            features,
+            stage=stage,
+            batch_idx=batch_idx,
+        )
         z = torch.cat([z1, z2], dim=0)
 
         result = self.strategy_manager.compute_loss(
@@ -343,7 +361,41 @@ class task(Default_task):
             )
         return result["loss"]
 
-    def _create_augmented_view(self, features: torch.Tensor) -> torch.Tensor:
+    def _augmentation_generator(
+        self,
+        features: torch.Tensor,
+        *,
+        stage: str,
+        batch_idx: int,
+    ) -> Optional[torch.Generator]:
+        if stage == "train":
+            return None
+        if stage not in self._EVAL_AUGMENTATION_STAGE_OFFSETS:
+            raise ValueError(
+                f"unsupported HSE stage {stage!r}; expected train, val, or test"
+            )
+        if isinstance(batch_idx, bool) or int(batch_idx) != batch_idx or batch_idx < 0:
+            raise ValueError(
+                f"HSE evaluation batch_idx must be a non-negative integer, got {batch_idx!r}"
+            )
+
+        base_seed = int(getattr(self.args_environment, "seed", 0))
+        seed = (
+            base_seed
+            + self._EVAL_AUGMENTATION_STAGE_OFFSETS[stage]
+            + int(batch_idx)
+        ) % (2**63 - 1)
+        generator = torch.Generator(device=features.device)
+        generator.manual_seed(seed)
+        return generator
+
+    def _create_augmented_view(
+        self,
+        features: torch.Tensor,
+        *,
+        stage: str = "train",
+        batch_idx: int = 0,
+    ) -> torch.Tensor:
         aug_type = str(getattr(self.args_task, "augmentation_type", "noise")).lower()
         allowed = {"none", "noise", "scaling", "dropout", "mixed"}
         if aug_type not in allowed:
@@ -362,31 +414,57 @@ class task(Default_task):
         if not math.isfinite(dropout_p) or not 0 <= dropout_p < 1:
             raise ValueError("task.augmentation_dropout_p must satisfy 0 <= p < 1.")
 
+        generator = self._augmentation_generator(
+            features,
+            stage=stage,
+            batch_idx=batch_idx,
+        )
         if aug_type == "none":
             augmented = features.clone()
         else:
             if aug_type == "mixed":
                 candidates = ("noise", "scaling", "dropout")
-                index = torch.randint(len(candidates), (1,), device=features.device).item()
+                index = torch.randint(
+                    len(candidates),
+                    (1,),
+                    device=features.device,
+                    generator=generator,
+                ).item()
                 aug_type = candidates[index]
 
             if aug_type == "dropout":
                 if dropout_p == 0:
                     augmented = features.clone()
                 else:
-                    mask = (torch.rand_like(features) >= dropout_p).to(features.dtype)
-                    augmented = features * mask
+                    mask = torch.rand(
+                        features.shape,
+                        device=features.device,
+                        dtype=features.dtype,
+                        generator=generator,
+                    )
+                    augmented = features * (mask >= dropout_p).to(features.dtype)
             elif aug_type == "scaling":
                 if scale_std == 0:
                     augmented = features.clone()
                 else:
-                    scale = 1.0 + torch.randn_like(features) * scale_std
+                    scale = 1.0 + torch.randn(
+                        features.shape,
+                        device=features.device,
+                        dtype=features.dtype,
+                        generator=generator,
+                    ) * scale_std
                     augmented = features * scale
             else:
                 if noise_std == 0:
                     augmented = features.clone()
                 else:
-                    augmented = features + torch.randn_like(features) * noise_std
+                    noise = torch.randn(
+                        features.shape,
+                        device=features.device,
+                        dtype=features.dtype,
+                        generator=generator,
+                    )
+                    augmented = features + noise * noise_std
 
         if not torch.isfinite(augmented).all():
             raise FloatingPointError("HSE augmentation produced NaN or Inf values.")
