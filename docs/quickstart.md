@@ -13,7 +13,7 @@ By the end of this page you will have:
 1. checked the Python environment;
 2. checked one exact effective configuration without training;
 3. completed one offline train/test run;
-4. located metrics and the run record;
+4. located metrics, checkpoints, and the optional diagnostic run record;
 5. understood how to supply local paths explicitly.
 
 ## 1. Install the source checkout
@@ -91,11 +91,13 @@ maturity=supported
 output_dir=.../results/demo/dummy_dg_smoke
 ```
 
-The two hashes have different purposes:
+These identities support configuration-parity diagnosis:
 
-- `effective_config_sha256` identifies the final resolved experiment semantics;
-- `run_spec_sha256` preserves this invocation, including requested source and explicit
-  overrides.
+- `effective_config_sha256` identifies the final resolved configuration mapping;
+- `run_spec_sha256` identifies the explicit invocation source and overrides.
+
+They are not security proofs and do not determine whether training or evaluation
+succeeded.
 
 Preflight does not:
 
@@ -144,10 +146,15 @@ A successful run should:
 
 - initialize Dummy data from repository files;
 - construct the maintained model, task, and trainer;
-- train and test without downloading an external dataset;
-- print `run_manifest=<path>`;
+- fit, restore the best checkpoint, and test without downloading an external dataset;
+- print `run_manifest=<path>` when the compatibility diagnostic record is available, or
+  `run_manifest=unavailable` when only that optional write failed;
 - print the completion message;
 - exit with status code `0`.
+
+The scientific result is governed by fit, checkpoint restoration, evaluation, and finite
+metrics. A warning about the optional diagnostic manifest or evidence index does not
+invalidate a completed Pipeline.
 
 ## 5. Find the results
 
@@ -164,20 +171,21 @@ Get-ChildItem results/demo/dummy_dg_smoke -Recurse -File |
   Select-Object -ExpandProperty FullName
 ```
 
-The output normally contains:
+Required scientific outputs normally include:
 
 - per-iteration test metrics such as `test_result_0.csv`;
 - aggregate metrics such as `all_results.csv`;
-- checkpoints and logger outputs;
-- one `run_manifest.json` under `.phmfactory/runs/<run-id>/`.
+- `run_summary.json` for repeated-run estimators;
+- the best checkpoint and logger outputs.
 
-The manifest records both config hashes, selected Pipeline, overrides, status,
-timestamps, code revision when available, and indexed artifacts. You do not need to
-understand its internal schema to complete this quickstart.
+When diagnostic recording is available, one compatibility `run_manifest.json` also
+appears under `.phmfactory/runs/<run-id>/`. It may index config identities and artifacts,
+but it is not the authority for scientific success. A failed manifest write produces a
+warning rather than changing a completed experiment to failed.
 
 ## 6. Verify compatible entrypoints
 
-These commands should report the same effective config hash and process status:
+These commands should report the same effective config identity and process status:
 
 ```bash
 phmfactory preflight --config smoke
@@ -199,8 +207,11 @@ print(report["effective_config_sha256"])
 
 ## 7. Run a maintained config with local data
 
-Only the Dummy smoke is fully offline. Keep machine paths out of maintained YAML and pass
-them explicitly:
+The Dummy smoke is fully offline. The first real-data reference uses MFPT and has its own
+preparation guide under `configs/baselines/01_mfpt/README.md`. Other real-data configs
+require local metadata and raw signals.
+
+Keep machine paths out of maintained YAML and pass them explicitly:
 
 ```bash
 phmfactory preflight \
@@ -243,12 +254,13 @@ Read [data/README.md](../data/README.md) for layout and
 
 ## 8. Create a local experiment variant
 
-1. Copy the nearest file from `configs/demo/` to `configs/experiments/`.
+1. Copy the nearest file from `configs/demo/` or `configs/baselines/` to
+   `configs/experiments/`.
 2. Change only values required by the experiment.
 3. Keep machine paths in explicit overrides or an explicit `--local-config` file.
 4. Run `phmfactory preflight --config <your-yaml>` with the same extra inputs as the run.
 5. Run the smallest applicable test or one-epoch smoke.
-6. Record the commit, effective config hash, command, data source, seed, and environment.
+6. Record the commit, config, command, data source, split, seed, and environment.
 
 Do not add a local variant to `configs/config_registry.csv` unless it is being reviewed
 for promotion to the maintained surface.
@@ -260,6 +272,13 @@ for promotion to the maintained surface.
 Use the same config, `--local-config`, and overrides in both commands. If visible inputs
 are identical but hashes differ, report both commands, both hashes, installed package
 location, stdout, and stderr. That is a config-parity bug.
+
+### The run prints `run_manifest=unavailable`
+
+First verify that training, best-checkpoint restoration, test metrics, and shell exit code
+all succeeded. The message means the optional compatibility record could not be prepared
+or finalized. Preserve stderr for diagnosis, but do not rerun or change the scientific
+experiment solely to make that diagnostic file appear.
 
 ### A command prints useful output but the shell reports exit code `1`
 
@@ -302,6 +321,6 @@ requires the same code, data, split, seed, protocol, and environment. See
 
 ## Developer details
 
-Developers working on config compilation, execution, or evidence should read
+Developers working on config compilation, execution, or diagnostic records should read
 [Runtime control plane](developer_runtime_control_plane.md). First-time users do not need
 those internals to run an experiment.
