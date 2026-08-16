@@ -53,6 +53,7 @@ def test_default_task_preserves_model_device_and_trainer_config(
         args_data=Namespace(),
         args_model=Namespace(),
         args_task=Namespace(
+            name="classification",
             loss="CE",
             metrics=[],
             optimizer="adam",
