@@ -1,6 +1,6 @@
 """Public command routing and process entrypoints for PHMFactory.
 
-This module exposes a programmatic API and an operating-system process boundary.  Both
+This module exposes a programmatic API and an operating-system process boundary. Both
 consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML or
 searches for machine-local configuration after compilation.
 """
@@ -63,26 +63,58 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     ).pipeline
 
 
-def _write_failed_attestation(
-    attestation: RunAttestation,
+def _record_warning(context: str, error: Exception) -> None:
+    """Report a non-authoritative run-record failure without hiding the run result."""
+
+    print(
+        f"[WARNING] {context} could not be recorded: "
+        f"{type(error).__name__}: {error}",
+        file=sys.stderr,
+    )
+
+
+def _prepare_optional_attestation(
+    compiled: CompiledRunSpec,
+    module_name: str,
     envelope: ExecutionEnvelope,
-    original_error: BaseException,
-) -> None:
-    """Persist terminal failure state without replacing the original exception."""
+) -> RunAttestation | None:
+    """Prepare the legacy diagnostic manifest without making it a run gate."""
 
     try:
+        return RunAttestation.prepare(compiled, module_name, envelope)
+    except Exception as error:
+        _record_warning("pending run manifest", error)
+        return None
+
+
+def _write_optional_attestation(
+    attestation: RunAttestation | None,
+    envelope: ExecutionEnvelope,
+    *,
+    context: str,
+) -> bool:
+    """Best-effort manifest update that never replaces the scientific outcome."""
+
+    if attestation is None:
+        return False
+    try:
         attestation.write(envelope)
-    except AttestationWriteError as write_error:
-        raise write_error from original_error
+    except AttestationWriteError as error:
+        _record_warning(context, error)
+        return False
+    return True
 
 
 def run(args: argparse.Namespace) -> Any:
-    """Analyze, record, authorize, execute, and index one Pipeline invocation.
+    """Analyze, authorize, execute, and return one Pipeline invocation.
 
-    Configuration composition occurs exactly once in :func:`analyze_config`.  Protected
+    Configuration composition occurs exactly once in :func:`analyze_config`. Protected
     runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
-    The function returns the Pipeline's explicit Python result for programmatic callers;
-    process exit handling is owned by :func:`entrypoint`.
+
+    The Pipeline result and exception are authoritative. The historical run manifest and
+    Pipeline-specific evidence index are retained as optional diagnostics during the v0.3
+    migration; inability to prepare, enrich, or finalize them cannot convert a completed
+    fit/checkpoint/evaluation path into a failed scientific run.
     """
 
     requested = requested_config(args)
@@ -108,15 +140,12 @@ def run(args: argparse.Namespace) -> Any:
     envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
     args.execution_envelope = envelope
 
-    try:
-        attestation = RunAttestation.prepare(compiled, module_name, envelope)
-    except BaseException as error:
-        envelope.record_failure(error, stage="attestation_prepare")
-        raise
-
+    attestation = _prepare_optional_attestation(compiled, module_name, envelope)
     args.run_attestation = attestation
-    args.run_id = attestation.run_id
-    args.run_manifest_path = str(attestation.manifest_path)
+    args.run_id = attestation.run_id if attestation is not None else None
+    args.run_manifest_path = (
+        str(attestation.manifest_path) if attestation is not None else None
+    )
 
     try:
         descriptor = require_pipeline_access(
@@ -126,7 +155,11 @@ def run(args: argparse.Namespace) -> Any:
         )
     except BaseException as error:
         envelope.record_failure(error, stage="maturity")
-        _write_failed_attestation(attestation, envelope, error)
+        _write_optional_attestation(
+            attestation,
+            envelope,
+            context="failed run manifest",
+        )
         raise
     args.pipeline_descriptor = descriptor
 
@@ -134,29 +167,38 @@ def run(args: argparse.Namespace) -> Any:
         pipeline_module = importlib.import_module(module_name)
     except BaseException as error:
         envelope.record_failure(error, stage="import")
-        _write_failed_attestation(attestation, envelope, error)
+        _write_optional_attestation(
+            attestation,
+            envelope,
+            context="failed run manifest",
+        )
         raise
 
     try:
         result = envelope.execute(pipeline_module, args)
-    except BaseException as error:
-        _write_failed_attestation(attestation, envelope, error)
+    except BaseException:
+        _write_optional_attestation(
+            attestation,
+            envelope,
+            context="failed run manifest",
+        )
         raise
 
-    try:
-        register_pipeline_result_evidence(attestation, compiled, result)
-    except BaseException as error:
-        envelope.record_failure(error, stage="evidence_finalize")
-        _write_failed_attestation(attestation, envelope, error)
-        raise
+    if attestation is not None:
+        try:
+            register_pipeline_result_evidence(attestation, compiled, result)
+        except Exception as error:
+            _record_warning("optional Pipeline evidence", error)
 
-    try:
-        attestation.write(envelope)
-    except AttestationWriteError as error:
-        envelope.record_failure(error, stage="attestation_finalize")
-        raise
-
-    print(f"run_manifest={attestation.manifest_path}")
+    manifest_written = _write_optional_attestation(
+        attestation,
+        envelope,
+        context="terminal run manifest",
+    )
+    if manifest_written and attestation is not None:
+        print(f"run_manifest={attestation.manifest_path}")
+    else:
+        print("run_manifest=unavailable")
     print("完成所有实验！")
     return result
 
