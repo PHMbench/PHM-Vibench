@@ -1,92 +1,74 @@
-import pandas as pd
-import numpy as np
+"""Strict reader for the repository-shipped Dummy_Data CSV fixtures."""
+
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
 
-def _make_synthetic(args_data=None, seed: int = 0) -> np.ndarray:
-    window_size = int(getattr(args_data, "window_size", 128)) if args_data is not None else 128
-    num_window = int(getattr(args_data, "num_window", 8)) if args_data is not None else 8
-    stride = int(getattr(args_data, "stride", 16)) if args_data is not None else 16
-
-    min_len = window_size + max(0, num_window - 1) * stride
-    length = max(min_len, 2048)
-
-    rng = np.random.default_rng(seed)
-    t = np.linspace(0, 10, length, dtype=np.float32)
-    s1 = np.sin(2 * np.pi * 5.0 * t) + 0.1 * rng.standard_normal(length, dtype=np.float32)
-    s2 = np.sin(2 * np.pi * 13.0 * t + 0.3) + 0.1 * rng.standard_normal(length, dtype=np.float32)
-    return np.stack([s1, s2], axis=1)
+import numpy as np
+import pandas as pd
 
 
-def read(file_path, *args):
+_SIGNAL_COLUMNS = ("ch1", "ch2")
+
+
+def read(file_path: str | Path, args_data: Any = None) -> np.ndarray:
+    """Read one Dummy_Data CSV as a ``[length, 2]`` float32 signal.
+
+    The offline demo is valid only when it consumes the CSV files shipped with the
+    repository or wheel. Missing or malformed inputs fail at the reader boundary;
+    this reader never generates substitute signals, pads channels, or guesses columns.
     """
-    Reads data from a CSV file specified by file_path.
 
-    Args:
-        args_data: Data configuration arguments (currently unused).
-        file_path (str): Path to the CSV data file (e.g., Vbench/data/Dummy_Dataset/dummy1.csv).
+    del args_data
+    path = Path(file_path)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Dummy_Data signal file not found: {path}. The offline demo requires "
+            "the repository-shipped data/raw/Dummy_Data/*.csv files and does not "
+            "synthesize fallback signals. Reinstall the package or restore the "
+            "missing fixture."
+        )
 
-    Returns:
-        numpyarray: dimention as lenth \times channel
-    """
     try:
-        args_data = args[0] if args else None
-        file_path = str(file_path)
-        if not Path(file_path).exists():
-            # Repo-shipped smoke/demo mode: generate deterministic synthetic data.
-            seed = abs(hash(file_path)) % (2**32)
-            data = _make_synthetic(args_data=args_data, seed=int(seed))
-            print(f"[Dummy_Data] raw file missing; generated synthetic data for: {file_path}")
-            return data
+        frame = pd.read_csv(path)
+    except pd.errors.EmptyDataError as exc:
+        raise ValueError(f"Dummy_Data signal file is empty: {path}") from exc
+    except (OSError, UnicodeError, pd.errors.ParserError) as exc:
+        raise ValueError(f"Unable to parse Dummy_Data CSV file {path}: {exc}") from exc
 
-        # Read the CSV file into a pandas DataFrame
-        df = pd.read_csv(file_path)
-        # Depending on downstream requirements, you might want to convert
-        # the DataFrame to a NumPy array, e.g., return df.values
-        # For now, returning the DataFrame is flexible.
-        print(f"Successfully read data from: {file_path}")
-        # 💯这里加对应数据的各种读取
-        # Extract columns 2-5 (indices 1-4 in zero-based indexing)
-        df = df.iloc[:, 1:3]
-        print(f"Selected columns 2-5 from the dataset.")
+    missing = [column for column in _SIGNAL_COLUMNS if column not in frame.columns]
+    if missing:
+        raise ValueError(
+            f"Dummy_Data signal file {path} is missing required column(s) {missing}. "
+            f"Expected channel order {list(_SIGNAL_COLUMNS)}; available columns are "
+            f"{list(frame.columns)}."
+        )
 
-        return df.values.astype(np.float32)
-    
-    
-    except FileNotFoundError:
-        args_data = args[0] if args else None
-        seed = abs(hash(str(file_path))) % (2**32)
-        data = _make_synthetic(args_data=args_data, seed=int(seed))
-        print(f"[Dummy_Data] file not found; generated synthetic data for: {file_path}")
-        return data
-    except pd.errors.EmptyDataError:
-        print(f"Error: The file at {file_path} is empty.")
-        return None
-    except Exception as e:
-        print(f"An error occurred while reading {file_path}: {e}")
-        return None
-    
-    # 加入更多的异常处理
-    # 例如：处理文件格式错误、数据解析错误等
+    selected = frame.loc[:, list(_SIGNAL_COLUMNS)]
+    try:
+        numeric = selected.apply(pd.to_numeric, errors="raise")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Dummy_Data columns {list(_SIGNAL_COLUMNS)} must contain only numeric "
+            f"signal values: {path}."
+        ) from exc
 
-def get_dataset(args_data, file_path):
-    """
-    Reads data from a CSV file specified by file_path.
+    signal = numeric.to_numpy(dtype=np.float32, copy=True)
+    if signal.ndim != 2 or signal.shape[0] == 0 or signal.shape[1] != len(_SIGNAL_COLUMNS):
+        raise ValueError(
+            f"Dummy_Data signal file {path} produced invalid shape {signal.shape}; "
+            f"expected [length, {len(_SIGNAL_COLUMNS)}] with at least one row."
+        )
+    if not np.isfinite(signal).all():
+        raise FloatingPointError(
+            f"Dummy_Data signal file {path} contains NaN or Inf in "
+            f"{list(_SIGNAL_COLUMNS)}."
+        )
+    return signal
 
-    Args:
-        args_data: Data configuration arguments (currently unused).
-        file_path (str): Path to the CSV data file (e.g., Vbench/data/Dummy_Dataset/dummy1.csv).
 
-    Returns:
-        numpyarray: dimention as lenth \times channel
-    """
-    # 读取数据
-    data = read(args_data, file_path)
-    
-    # 处理数据
-    if data is not None:
-        # 这里可以添加数据预处理的代码
-        print(f"Data shape: {data.shape}")
-        return data
-    else:
-        print("No data to process.")
-        return None
+def get_dataset(args_data: Any, file_path: str | Path) -> np.ndarray:
+    """Compatibility helper using the same strict reader contract."""
+
+    return read(file_path, args_data)
