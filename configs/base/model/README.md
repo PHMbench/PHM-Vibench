@@ -1,12 +1,45 @@
 # `configs/base/model/`
 
-## 1) What This Block Controls
+The `model` block selects the implementation constructed by Model Factory. Model Factory
+owns model identity, construction, and explicitly requested external weights. It does not
+read data, select a task, move a model to a device, or repair incompatible input shapes.
 
-`model` controls:
-- model family (`model.type`) and implementation (`model.name`)
-- (for ISFM) subcomponents: `embedding`, `backbone`, `task_head`
+## Transparent baseline
 
-## 2) Minimal Example (YAML Snippet)
+Use the global-average linear classifier when checking data, label, split, metric, and
+Factory wiring before introducing a more complex representation:
+
+```yaml
+base_configs:
+  model: "configs/base/model/global_average_linear.yaml"
+
+model:
+  input_dim: 2
+```
+
+The implementation computes:
+
+```text
+[B, L, C] --mean over L--> [B, C] --linear--> [B, K]
+```
+
+`K` is derived from the validated metadata label ontology unless `model.num_classes` is
+explicitly supplied. A channel mismatch fails; the model does not pad, truncate, repeat,
+or select a different channel count.
+
+Runnable example:
+
+```bash
+phmfactory preflight \
+  --config configs/demo/00_smoke/dummy_global_average_linear.yaml
+
+phmfactory \
+  --config configs/demo/00_smoke/dummy_global_average_linear.yaml
+```
+
+This example changes only the model base relative to the packaged Dummy ISFM smoke.
+
+## ISFM example
 
 ```yaml
 model:
@@ -17,38 +50,29 @@ model:
   task_head: "H_01_Linear_cla"
 ```
 
-## 3) Key Fields
+ISFM components must be shape-compatible. HSE patch sizes must fit the actual input; the
+embedding does not repeat time or channels to satisfy an invalid configuration.
 
-| Field | Type | Notes |
-|---|---:|---|
-| `model.type` | str | Top-level family used by model_factory. |
-| `model.name` | str | Concrete implementation under `model.type`. |
-| `model.embedding` | str | ISFM component id (see `src/model_factory/ISFM/isfm_components.csv`). |
-| `model.backbone` | str | ISFM backbone id. |
-| `model.task_head` | str | ISFM head id. |
+## Core fields
 
-## 4) Typical Overrides
+| Field | Meaning |
+| --- | --- |
+| `model.type` | Top-level family used by Model Factory. |
+| `model.name` | Concrete implementation under that family. |
+| `model.input_dim` | Declared input channel count where consumed. |
+| `model.num_classes` | Optional explicit output classes; otherwise derived from valid metadata. |
+| `model.weights_path` | Optional external checkpoint; missing or incompatible files fail. |
+| `model.weights_strict` | Defaults to strict loading; set false only for explicit transfer learning. |
+| `model.embedding/backbone/task_head` | Required component IDs for `model.type=ISFM`. |
 
-```bash
-python main.py --config <yaml> --override model.backbone=B_08_PatchTST
-python main.py --config <yaml> --override model.embedding=E_03_Patch
-```
+## Extension rule
 
-## 5) Coupling Notes
+A new model should require only:
 
-- Resolved by `src/model_factory/__init__.py:build_model`.
-- Valid `model.type/model.name` combinations are indexed in `src/model_factory/model_registry.csv`.
+1. one implementation under `src/model_factory/<TYPE>/`;
+2. one configuration under this directory or an experiment directory;
+3. one row in `src/model_factory/model_registry.csv`;
+4. a focused forward/backward contract test.
 
-## 6) How to Extend
-
-1) Add a model implementation under `src/model_factory/<TYPE>/`.
-2) Update `src/model_factory/model_registry.csv` with `model.type/model.name/module_path`.
-
-## 7) Common Pitfalls
-
-1) `model.type/model.name` mismatch to filesystem/module.
-2) ISFM missing `embedding/backbone/task_head` ids.
-3) `output_dim` mismatch across embedding/backbone/head (inspect with `scripts/config_inspect.py`).
-4) Using a GPU-only model on CPU without guarding (set trainer.device=cpu and choose compatible model).
-5) Copying paper-only component ids that are not in this repo.
-
+Do not modify `main.py`, Data Factory, Task Factory, Trainer Factory, or Pipeline code merely
+to select the model. A valid replacement changes the model block and nothing else.
