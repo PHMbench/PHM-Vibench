@@ -13,6 +13,7 @@ from phmfactory.runtime import (
     AttestationError,
     CompiledRunSpec,
     ExecutionEnvelope,
+    ExecutionStatus,
     RunAttestation,
 )
 from phmfactory.runtime.evidence import register_pipeline_result_evidence
@@ -170,7 +171,9 @@ def test_pipeline06_result_indexes_existing_stage_artifacts(tmp_path: Path) -> N
     assert attestation.evidence["generative_stages"][0]["stage"] == "eval"
 
 
-def test_pipeline06_missing_ledger_invalidates_evidence(tmp_path: Path) -> None:
+def test_legacy_pipeline06_evidence_adapter_reports_missing_ledger(
+    tmp_path: Path,
+) -> None:
     spec, _, attestation = _attestation(tmp_path, "Pipeline_06_Generative_Modeling")
     with pytest.raises(AttestationError, match="stage ledger is missing"):
         register_pipeline_result_evidence(
@@ -180,21 +183,21 @@ def test_pipeline06_missing_ledger_invalidates_evidence(tmp_path: Path) -> None:
         )
 
 
-def test_cli_records_evidence_finalize_failure(
+def test_cli_does_not_fail_a_completed_pipeline_when_optional_evidence_is_missing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     pipeline = "Pipeline_06_Generative_Modeling"
     analysis = _analysis(tmp_path, pipeline)
     monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
+    expected = [
+        {"stage": "train", "status": "completed", "run_dir": str(tmp_path)}
+    ]
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
-        lambda name: SimpleNamespace(
-            pipeline=lambda args: [
-                {"stage": "train", "status": "completed", "run_dir": str(tmp_path)}
-            ]
-        ),
+        lambda name: SimpleNamespace(pipeline=lambda args: expected),
     )
     args = argparse.Namespace(
         config="generative",
@@ -205,9 +208,13 @@ def test_cli_records_evidence_finalize_failure(
         allow_experimental=False,
     )
 
-    with pytest.raises(AttestationError, match="stage ledger is missing"):
-        cli.run(args)
+    assert cli.run(args) == expected
 
     payload = json.loads(Path(args.run_manifest_path).read_text(encoding="utf-8"))
-    assert payload["status"] == "failed"
-    assert payload["failure"]["stage"] == "evidence_finalize"
+    assert payload["status"] == "succeeded"
+    assert payload["failure"] is None
+    assert args.execution_envelope.status is ExecutionStatus.SUCCEEDED
+    captured = capsys.readouterr()
+    assert "optional Pipeline evidence could not be recorded" in captured.err
+    assert "stage ledger is missing" in captured.err
+    assert "完成所有实验" in captured.out
