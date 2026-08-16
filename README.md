@@ -61,7 +61,7 @@ device, objective, or estimator than the user intended.
 | Configuration defaults silently change the experiment | Explicit configuration resolution and fail-fast validation |
 | Data, model, task, and trainer logic are entangled | Four factories with narrow, reviewable responsibilities |
 | Evaluation depends on uncontrolled random sampling | Deterministic validation and test behavior on maintained paths |
-| A source file is mistaken for a supported capability | Generated support tables distinguish discovery, execution, and maintained evidence |
+| A source file is mistaken for a supported capability | Generated support tables distinguish discovery, execution, and scientific evidence |
 | Replacing one component requires editing the runtime | Component selection remains configuration-first |
 
 Two practical design rules follow:
@@ -85,6 +85,7 @@ PHMFactory is intended to provide:
 - explicit data, model, task, and trainer boundaries;
 - actionable failures rather than silent fallback;
 - maintained smoke configurations and generated support documentation;
+- one scientifically closed real-data reference with an explicit claim boundary;
 - a common runtime for CLI and optional Streamlit usage.
 
 PHMFactory does not claim that every implementation in the repository is mutually
@@ -140,8 +141,10 @@ A successful run writes below:
 results/demo/dummy_dg_smoke/
 ```
 
-and prints the location of the run record. For expected output and failure diagnosis, see
-[Quickstart](docs/quickstart.md).
+The terminal prints the compatibility run-record path when that optional diagnostic is
+available. A `run_manifest=unavailable` warning does not invalidate completed fitting,
+best-checkpoint restoration, evaluation, or finite metrics. For expected output and
+failure diagnosis, see [Quickstart](docs/quickstart.md).
 
 ### What the offline demo proves
 
@@ -187,6 +190,7 @@ normally extend their own factory rather than add special cases to `main.py`.
 | **Deterministic evaluation boundaries** | Maintained validation and test paths do not depend on uncontrolled patch or augmentation randomness. |
 | **Offline first-run path** | `doctor`, `preflight`, and `demo` work without downloading an external dataset. |
 | **Modular replacement** | Data, model, task, and trainer choices remain explicit and independently reviewable. |
+| **Configuration-specific evidence** | Generated support authority separates bounded smokes from an exact `baseline_valid` protocol. |
 | **One runtime, optional interfaces** | The CLI is authoritative; Streamlit adapts the same command rather than creating a second training system. |
 
 ## Choose your path
@@ -196,6 +200,7 @@ normally extend their own factory rather than add special cases to `main.py`.
 | Understand the first run and its outputs | [Quickstart](docs/quickstart.md) |
 | Install on CPU, GPU, Linux, macOS, or Windows | [Installation](docs/installation.md) |
 | Run an existing maintained experiment | [Configuration guide](configs/README.md) |
+| Prepare and run the first real-data reference | [MFPT baseline](configs/baselines/01_mfpt/README.md) |
 | Connect local PHM data | [Data layout](data/README.md) and [custom dataset guide](docs/custom_dataset.md) |
 | Select or add a model | [Model Factory](src/model_factory/README.md) |
 | Select or add a task | [Task Factory](src/task_factory/README.md) |
@@ -224,8 +229,9 @@ trainer:      # device, epochs, precision, logging, checkpoint behavior
   ...
 ```
 
-Start from the nearest maintained file under `configs/demo/`. Put research variants under
-`configs/experiments/`, and pass machine-specific paths explicitly:
+Start from the nearest maintained file under `configs/demo/` or `configs/baselines/`.
+Put research variants under `configs/experiments/`, and pass machine-specific paths
+explicitly:
 
 ```bash
 phmfactory preflight \
@@ -274,31 +280,42 @@ phmfactory data --help
 
 ## Support boundary
 
-PHMFactory distinguishes three levels:
+PHMFactory distinguishes four terms:
 
 ```text
-discoverable  = an implementation or registry entry exists
-runnable      = a reviewed execution path exists
-supported     = a maintained configuration has current smoke evidence
+discoverable       = an implementation or registry entry exists
+runnable           = a reviewed execution path exists
+execution-verified = the exact maintained command has current execution evidence
+baseline-valid     = the exact complete experiment passed its declared scientific protocol
 ```
 
-The required relation is:
+The software relationship is:
 
 ```text
-supported ⊆ runnable ⊆ discoverable
+execution-verified ⊆ runnable ⊆ discoverable
 ```
 
-A file, registry row, or successful import is not a support claim. Current maintained
-surfaces are generated from repository configuration and runtime descriptors:
+`baseline-valid` is a separate property of one complete configuration. It is not inferred
+from component importability, Pipeline maturity, or another configuration's successful
+run.
+
+Current authority is generated from repository configuration and runtime descriptors:
 
 - [Supported components](SUPPORTED_COMPONENTS.md)
 - [Supported combinations](SUPPORTED_COMBINATIONS.md)
 - [Configuration registry](configs/config_registry.csv)
 - [Configuration Atlas](docs/CONFIG_ATLAS.md)
 
-`sanity_ok` means bounded functional evidence exists. It does not mean benchmark-valid
-performance, state-of-the-art results, unrestricted dataset redistribution, or arbitrary
-Cartesian-product compatibility.
+`execution_status=sanity_ok` means that the exact registered command has current evidence.
+`protocol_status=smoke_only` forbids benchmark or algorithm-validity claims.
+`protocol_status=baseline_valid` applies only to the exact data population, split, model,
+task, checkpoint-selection, seed, and estimator combination that passed review.
+
+The current `baseline_valid` reference is
+[MFPT + GlobalAverageLinear](configs/baselines/01_mfpt/README.md). Its deliberately weak
+model produced low accuracy, which is retained as an honest result. The promotion proves
+protocol closure, not strong performance, state-of-the-art results, unrestricted dataset
+redistribution, or arbitrary Cartesian-product compatibility.
 
 ## Optional Streamlit workspace
 
@@ -331,7 +348,7 @@ phmfactory command / python -m phmfactory / main.py
 Primary paths:
 
 - `phmfactory/` — public package, commands, configuration resolver, Pipeline descriptors, and run control;
-- `configs/` — reusable blocks, maintained demos, research experiments, and registry;
+- `configs/` — reusable blocks, maintained demos, baselines, research experiments, and registry;
 - `src/data_factory/` — metadata, readers, datasets, samplers, and data assembly;
 - `src/model_factory/` — model families and model construction;
 - `src/task_factory/` — tasks, objectives, metrics, and task construction;
@@ -360,10 +377,11 @@ See [docs/testing.md](docs/testing.md) for focused gates and test terminology.
 
 PHMFactory remains an alpha `0.3.0.dev0` source release:
 
-- only the Dummy demo is fully offline and repository-shipped;
-- most real-data configurations require local metadata and raw signals;
-- no real-data configuration has yet been promoted as the first scientifically closed `baseline_valid` reference;
-- CWRU provider, reader, and final acceptance conditions are still being finalized;
+- the Dummy demo is the only fully offline, repository-shipped first-run path;
+- one exact real-data reference is now `baseline_valid`: MFPT + `GlobalAverageLinear`;
+- that reference establishes protocol and estimator closure, not strong diagnostic accuracy;
+- most other real-data configurations still require local metadata and raw signals and remain `smoke_only` unless explicitly listed otherwise;
+- broader SEU, PU, and final CWRU acceptance are not yet complete;
 - the GitHub repository has not been renamed;
 - no final `v0.3.0` tag or package publication is claimed;
 - experimental Pipelines and unlisted model/task combinations are not release-supported.
