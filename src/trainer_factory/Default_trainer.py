@@ -1,6 +1,8 @@
 import os
+from numbers import Integral
 
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelPruning
 from pytorch_lightning.loggers import CSVLogger, WandbLogger
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -20,6 +22,51 @@ if "LOCAL_RANK" in os.environ:
     is_main_process = local_rank == 0
 
 
+DEVICE_MODES = ("cpu", "cuda", "auto")
+
+
+def _resolve_device_request(args_t):
+    """Resolve the explicit trainer device request without hardware fallback."""
+
+    if not hasattr(args_t, "device"):
+        raise ValueError(
+            "trainer.device is required and must be one of: cpu, cuda, auto"
+        )
+    requested = str(args_t.device).strip().lower()
+    if requested not in DEVICE_MODES:
+        raise ValueError(
+            f"unsupported trainer.device {args_t.device!r}; expected one of: "
+            + ", ".join(DEVICE_MODES)
+        )
+
+    devices = getattr(args_t, "devices", getattr(args_t, "gpus", 1))
+    if isinstance(devices, bool) or not isinstance(devices, Integral) or devices < 1:
+        raise ValueError(
+            "trainer.devices/trainer.gpus must be a positive integer, "
+            f"got {devices!r}"
+        )
+    devices = int(devices)
+
+    if requested == "cpu":
+        return "cpu", devices
+    if requested == "auto":
+        return "auto", devices
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "trainer.device='cuda' was requested, but CUDA is unavailable. "
+            "Set trainer.device=cpu or repair the CUDA runtime; no CPU fallback "
+            "was applied."
+        )
+    available_devices = int(torch.cuda.device_count())
+    if devices > available_devices:
+        raise RuntimeError(
+            "trainer.device='cuda' requested more devices than are available: "
+            f"requested={devices}, available={available_devices}."
+        )
+    return "gpu", devices
+
+
 @register_trainer("Default_trainer")
 def trainer(args_e, args_t, args_d, path):
     """
@@ -33,13 +80,13 @@ def trainer(args_e, args_t, args_d, path):
     返回:
     - trainer: 训练器对象
     """
-    # 为兼容旧配置，填充 num_epochs / gpus / pruning 的合理默认值
+    # 为兼容旧配置，填充 num_epochs / pruning 的合理默认值
     if not hasattr(args_t, "num_epochs"):
         setattr(args_t, "num_epochs", getattr(args_t, "max_epochs", 1))
-    if not hasattr(args_t, "gpus"):
-        setattr(args_t, "gpus", getattr(args_t, "devices", 1))
     if not hasattr(args_t, "pruning"):
         setattr(args_t, "pruning", 0.0)
+
+    accelerator, devices = _resolve_device_request(args_t)
 
     # 获取回调列表
     callback_list = call_backs(args_t, path)
@@ -63,22 +110,19 @@ def trainer(args_e, args_t, args_d, path):
         swanlab_logger = SwanLabLogger(project=args_e.project)
         log_list.append(swanlab_logger)
 
-    # 设置设备类型：CPU 或自动选择
-    accelerate_type = "cpu" if args_t.device == "cpu" else "auto"
-
     # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
     if not getattr(args_t, "log_every_n_steps", None):
         args_t.log_every_n_steps = 50
 
-    # 初始化训练器
+    # 初始化训练器。Lightning Trainer 是唯一的设备放置 authority。
     trainer = pl.Trainer(
         callbacks=callback_list,
-        accelerator=accelerate_type,
+        accelerator=accelerator,
         max_epochs=args_t.num_epochs,
-        devices=args_t.gpus,
+        devices=devices,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-        strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else "auto",
+        strategy="ddp_find_unused_parameters_true" if devices > 1 else "auto",
         deterministic=getattr(args_t, "deterministic", None),
     )
     return trainer
@@ -141,7 +185,7 @@ def call_backs(args, path):
 
 def Prune_callback(args):
     """
-    根据训练配置，返回模型修剪回调函数。
+    根据训练配置，返回训练器的模型修剪回调。
 
     参数:
     - args: 包含训练配置的对象
