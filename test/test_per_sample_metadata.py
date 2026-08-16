@@ -1,10 +1,15 @@
+from __future__ import annotations
+
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 import torch.nn.functional as F
 
+from phmfactory import cli
 from phmfactory.config import resolve_config
+from src.data_factory import build_data
 from src.model_factory import build_model, resolve_model_module
 from src.model_factory.ISFM.system_utils import normalize_fs, resolve_batch_metadata
 from src.model_factory.ISFM.task_head.H_01_Linear_cla import H_01_Linear_cla
@@ -349,3 +354,189 @@ def test_regularization_consumes_the_complete_parameter_set():
 
     with pytest.raises(ValueError, match="Unknown regularization method"):
         calculate_regularization({"elastic": 1.0}, iter([first, second]))
+
+
+def _write_decoupling_signal(path: Path, reader_name: str, offset: float) -> None:
+    if reader_name == "Dummy_Data":
+        header = "index,ch1,ch2"
+    else:
+        header = "time,sensor_a,sensor_b"
+    rows = [header]
+    for index in range(64):
+        rows.append(
+            f"{index},{offset + 0.01 * index},{offset + 0.02 * index}"
+        )
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def _decoupling_data(
+    tmp_path: Path,
+    reader_name: str,
+    dataset_id: int,
+) -> tuple[SimpleNamespace, SimpleNamespace]:
+    raw_dir = tmp_path / "raw" / reader_name
+    raw_dir.mkdir(parents=True)
+    files = (
+        (1, "source_normal.csv", 0, 0, 0.0),
+        (2, "source_fault.csv", 0, 1, 1.0),
+        (3, "target_normal.csv", 1, 0, 2.0),
+        (4, "target_fault.csv", 1, 1, 3.0),
+    )
+    for _, filename, _, _, offset in files:
+        _write_decoupling_signal(raw_dir / filename, reader_name, offset)
+
+    metadata_lines = [
+        "Id,Name,File,Dataset_id,Domain_id,Label,Sample_Rate"
+    ]
+    for file_id, filename, domain_id, label, _ in files:
+        metadata_lines.append(
+            f"{file_id},{reader_name},{filename},{dataset_id},"
+            f"{domain_id},{label},1000"
+        )
+    (tmp_path / "metadata.csv").write_text(
+        "\n".join(metadata_lines) + "\n",
+        encoding="utf-8",
+    )
+
+    data_values = {
+        "factory_name": "default",
+        "data_dir": str(tmp_path),
+        "metadata_file": "metadata.csv",
+        "batch_size": 2,
+        "num_workers": 0,
+        "train_ratio": 0.5,
+        "val_ratio": 0.5,
+        "test_ratio": 0.0,
+        "unused_ratio": 0.0,
+        "normalization": "none",
+        "window_size": 16,
+        "window_sampling_strategy": "evenly_spaced",
+        "num_window": 4,
+        "window_sampling_seed": 0,
+        "dtype": "float32",
+        "pin_memory": False,
+    }
+    if reader_name == "CSV_Signal":
+        data_values["csv_signal_columns"] = ["sensor_a", "sensor_b"]
+        data_values["csv_delimiter"] = ","
+
+    args_task = SimpleNamespace(
+        type="DG",
+        name="classification",
+        target_system_id=[dataset_id],
+        source_domain_id=[0],
+        target_domain_id=[1],
+        loss="CE",
+        metrics=["acc"],
+        optimizer="adam",
+        lr=1e-3,
+        weight_decay=0.0,
+    )
+    return SimpleNamespace(**data_values), args_task
+
+
+def _decoupling_model(model_kind: str) -> SimpleNamespace:
+    if model_kind == "linear":
+        return SimpleNamespace(
+            type="Baseline",
+            name="GlobalAverageLinear",
+            input_dim=2,
+        )
+    return SimpleNamespace(
+        type="ISFM",
+        name="M_01_ISFM",
+        embedding="E_01_HSE",
+        backbone="B_04_Dlinear",
+        task_head="H_01_Linear_cla",
+        input_dim=2,
+        d_model=16,
+        output_dim=8,
+        num_heads=2,
+        num_layers=1,
+        e_layers=1,
+        d_ff=16,
+        dropout=0.0,
+        activation="relu",
+        patch_size_L=4,
+        patch_size_C=1,
+        num_patches=4,
+        use_prompt=False,
+        prompt_dim=0,
+    )
+
+
+@pytest.mark.parametrize(
+    ("reader_name", "dataset_id"),
+    (("Dummy_Data", 21), ("CSV_Signal", 22)),
+)
+@pytest.mark.parametrize("model_kind", ("linear", "isfm"))
+def test_two_by_two_data_model_factory_matrix_backpropagates(
+    tmp_path: Path,
+    reader_name: str,
+    dataset_id: int,
+    model_kind: str,
+) -> None:
+    case_root = tmp_path / f"{reader_name}_{model_kind}"
+    args_data, args_task = _decoupling_data(
+        case_root,
+        reader_name,
+        dataset_id,
+    )
+    data_factory = build_data(args_data, args_task)
+    try:
+        metadata = data_factory.get_metadata()
+        args_model = _decoupling_model(model_kind)
+        model = build_model(args_model, metadata=metadata)
+        task = build_task(
+            args_task=args_task,
+            network=model,
+            args_data=args_data,
+            args_model=args_model,
+            args_trainer=SimpleNamespace(device="cpu", gpus=1),
+            args_environment=SimpleNamespace(seed=0, project="factory_matrix"),
+            metadata=metadata,
+        )
+
+        batch = next(iter(data_factory.get_dataloader("train")))
+        loss = task._shared_step(batch, "train")["train_total_loss"]
+
+        assert loss.shape == ()
+        assert torch.isfinite(loss)
+        assert loss.requires_grad
+        loss.backward()
+        gradients = [
+            parameter.grad
+            for parameter in model.parameters()
+            if parameter.requires_grad and parameter.grad is not None
+        ]
+        assert gradients
+        assert all(torch.isfinite(gradient).all() for gradient in gradients)
+        assert data_factory.split_summary["file_overlap"]["train_test"] == []
+    finally:
+        data_factory.data.close()
+
+
+def test_transparent_dummy_config_runs_full_cpu_lifecycle(tmp_path: Path) -> None:
+    result = cli.main(
+        [
+            "--config",
+            "configs/demo/00_smoke/dummy_global_average_linear.yaml",
+            "--override",
+            f"environment.output_dir={tmp_path / 'outputs'}",
+            "--override",
+            "environment.iterations=1",
+            "--override",
+            "trainer.num_epochs=1",
+        ]
+    )
+
+    assert isinstance(result, list) and len(result) == 1
+    numeric = [
+        float(value)
+        for value in result[0].values()
+        if not isinstance(value, bool) and isinstance(value, (int, float))
+    ]
+    assert numeric
+    assert all(torch.isfinite(torch.tensor(value)) for value in numeric)
+    assert list((tmp_path / "outputs").rglob("*.ckpt"))
+    assert list((tmp_path / "outputs").rglob("run_summary.json"))
