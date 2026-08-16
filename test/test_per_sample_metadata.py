@@ -237,17 +237,27 @@ def test_default_task_forwards_explicit_physical_vectors_to_decisive_model():
     }
 
 
-def test_default_task_rejects_cuda_fallback(monkeypatch):  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
-    with pytest.raises(RuntimeError, match="must not fall back to CPU"):
-        Default_task(
-            network=torch.nn.Linear(2, 2),
-            args_data=SimpleNamespace(normalization="none"),
-            args_model=SimpleNamespace(type="test", name="cuda_required"),
-            args_task=SimpleNamespace(
-                loss="CE", metrics=["acc"], optimizer="adam", lr=1e-3
-            ),
-            args_trainer=SimpleNamespace(device="cuda", gpus=1),
-            args_environment=SimpleNamespace(project="p04_cuda_fail_fast"),
-            metadata={0: {"Name": "Dummy", "Label": 0}},
-        )
+def test_default_task_delegates_cuda_validation_to_trainer(monkeypatch):  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(
+        torch.cuda,
+        "is_available",
+        lambda: pytest.fail("Task construction must not inspect CUDA availability"),
+    )
+    network = torch.nn.Linear(2, 2)
+    args_trainer = SimpleNamespace(device="cuda", gpus=1)
+
+    task = Default_task(
+        network=network,
+        args_data=SimpleNamespace(normalization="none"),
+        args_model=SimpleNamespace(type="test", name="cuda_required"),
+        args_task=SimpleNamespace(
+            loss="CE", metrics=["acc"], optimizer="adam", lr=1e-3
+        ),
+        args_trainer=args_trainer,
+        args_environment=SimpleNamespace(project="p04_cuda_fail_fast"),
+        metadata={0: {"Name": "Dummy", "Label": 0}},
+    )
+
+    assert task.network is network
+    assert next(task.network.parameters()).device.type == "cpu"
+    assert vars(args_trainer) == {"device": "cuda", "gpus": 1}

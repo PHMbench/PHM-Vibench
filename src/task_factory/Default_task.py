@@ -45,30 +45,9 @@ class Default_task(pl.LightningModule):
         """
         super().__init__()
 
-        # 兼容旧配置：为 gpus 提供合理默认值，避免缺少属性导致崩溃
-        gpus = getattr(args_trainer, "gpus", None)
-        if gpus is None:
-            gpus = getattr(args_trainer, "devices", 1)
-            setattr(args_trainer, "gpus", gpus)
-
-        # 将网络移动到 GPU（仅在配置明确请求 CUDA/GPU 且 CUDA 可用时）。
-        # ``gpus`` 在旧配置里也被 Lightning 当作 CPU devices 使用，因此
-        # 不能仅凭其非零就覆盖 ``trainer.device: cpu``。
-        requested_device = str(getattr(args_trainer, "device", "cpu")).lower()
-        use_cuda = (
-            requested_device in {"cuda", "gpu"}
-            and bool(gpus)
-            and torch.cuda.is_available()
-        )
-        if requested_device in {"cuda", "gpu"} and bool(gpus) and not use_cuda:
-            raise RuntimeError(
-                "CUDA was explicitly requested but is unavailable; evidence-bearing "
-                "runs must not fall back to CPU"
-            )
-        if use_cuda and hasattr(network, "cuda"):
-            self.network = network.cuda()
-        else:
-            self.network = network  # 在当前环境（无 GPU）下保持 CPU 训练
+        # Device placement belongs exclusively to the Lightning Trainer.  Task
+        # construction must preserve the model exactly as returned by Model Factory.
+        self.network = network
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data

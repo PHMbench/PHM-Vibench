@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+from argparse import Namespace
+import importlib
+
+import pytest
+import torch
+import torch.nn as nn
+
+
+def _default_task_module():
+    return importlib.import_module("src.task_factory.Default_task")
+
+
+def _default_trainer_module():
+    return importlib.import_module("src.trainer_factory.Default_trainer")
+
+
+class TrackingNetwork(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.linear = nn.Linear(2, 2)
+        self.cuda_calls = 0
+
+    def cuda(self, *args, **kwargs):
+        del args, kwargs
+        self.cuda_calls += 1
+        raise AssertionError("Task construction must not call network.cuda()")
+
+    def forward(self, x, file_id, task_id):
+        del file_id, task_id
+        return self.linear(x)
+
+
+def test_default_task_preserves_model_device_and_trainer_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _default_task_module()
+    monkeypatch.setattr(module, "get_loss_fn", lambda name: nn.CrossEntropyLoss())
+    monkeypatch.setattr(module, "get_metrics", lambda metrics, metadata: {})
+    monkeypatch.setattr(
+        module.torch.cuda,
+        "is_available",
+        lambda: pytest.fail("Task construction must not inspect CUDA availability"),
+    )
+
+    network = TrackingNetwork()
+    args_trainer = Namespace(device="cuda", gpus=1)
+    trainer_config_before = vars(args_trainer).copy()
+
+    task = module.Default_task(
+        network=network,
+        args_data=Namespace(),
+        args_model=Namespace(),
+        args_task=Namespace(
+            loss="CE",
+            metrics=[],
+            optimizer="adam",
+            lr=1e-3,
+        ),
+        args_trainer=args_trainer,
+        args_environment=Namespace(),
+        metadata={0: {"Name": "dummy", "Label": 0}},
+    )
+
+    assert task.network is network
+    assert network.cuda_calls == 0
+    assert next(task.network.parameters()).device.type == "cpu"
+    assert vars(args_trainer) == trainer_config_before
+
+
+@pytest.mark.parametrize(
+    ("device", "devices", "expected"),
+    [
+        ("cpu", 1, ("cpu", 1)),
+        ("cpu", 3, ("cpu", 3)),
+    ],
+)
+def test_device_resolver_honors_explicit_cpu(
+    device: str,
+    devices: int,
+    expected: tuple[str, int],
+) -> None:
+    module = _default_trainer_module()
+    assert module._resolve_device_request(
+        Namespace(device=device, gpus=devices)
+    ) == expected
+
+
+def test_device_resolver_uses_auto_only_when_explicit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _default_trainer_module()
+    monkeypatch.setattr(
+        module.torch.cuda,
+        "is_available",
+        lambda: pytest.fail("explicit auto must be delegated to Lightning"),
+    )
+
+    assert module._resolve_device_request(
+        Namespace(device="auto", devices=2)
+    ) == ("auto", 2)
+
+
+def test_device_resolver_rejects_unavailable_cuda_without_cpu_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _default_trainer_module()
+    monkeypatch.setattr(module.torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(
+        module.torch.cuda,
+        "device_count",
+        lambda: pytest.fail("device_count is irrelevant when CUDA is unavailable"),
+    )
+
+    with pytest.raises(RuntimeError, match="no CPU fallback"):
+        module._resolve_device_request(Namespace(device="cuda", gpus=1))
+
+
+def test_device_resolver_accepts_available_cuda(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _default_trainer_module()
+    monkeypatch.setattr(module.torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(module.torch.cuda, "device_count", lambda: 2)
+
+    assert module._resolve_device_request(
+        Namespace(device="cuda", gpus=2)
+    ) == ("gpu", 2)
+
+
+def test_device_resolver_rejects_excess_cuda_devices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _default_trainer_module()
+    monkeypatch.setattr(module.torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(module.torch.cuda, "device_count", lambda: 1)
+
+    with pytest.raises(RuntimeError, match="requested=2, available=1"):
+        module._resolve_device_request(Namespace(device="cuda", gpus=2))
+
+
+@pytest.mark.parametrize(
+    "args_trainer",
+    [
+        Namespace(gpus=1),
+        Namespace(device="gpu", gpus=1),
+        Namespace(device="cuda", gpus=0),
+        Namespace(device="cpu", devices=True),
+    ],
+)
+def test_device_resolver_rejects_ambiguous_or_invalid_requests(
+    args_trainer: Namespace,
+) -> None:
+    module = _default_trainer_module()
+    with pytest.raises(ValueError):
+        module._resolve_device_request(args_trainer)
+
+
+def test_default_trainer_passes_resolved_cpu_request_to_lightning(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    module = _default_trainer_module()
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr(module, "call_backs", lambda args, path: [])
+    monkeypatch.setattr(module, "CSVLogger", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        module.pl,
+        "Trainer",
+        lambda **kwargs: observed.update(kwargs) or kwargs,
+    )
+
+    result = module.trainer(
+        args_e=Namespace(wandb=False, swanlab=False),
+        args_t=Namespace(
+            device="cpu",
+            gpus=1,
+            num_epochs=1,
+            pruning=0.0,
+            monitor="val_loss",
+            log_every_n_steps=1,
+        ),
+        args_d=Namespace(),
+        path=str(tmp_path),
+    )
+
+    assert result["accelerator"] == "cpu"
+    assert result["devices"] == 1
+    assert result["strategy"] == "auto"
+    assert observed["accelerator"] == "cpu"
