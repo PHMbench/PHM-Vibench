@@ -48,8 +48,8 @@ def _analysis(
     )
 
 
-def test_public_version_is_v030_development_release() -> None:
-    assert __version__ == "0.3.0.dev0"
+def test_public_version_is_v030_rc1() -> None:
+    assert __version__ == "0.3.0rc1"
 
 
 def test_parser_preserves_legacy_config_path_alias() -> None:
