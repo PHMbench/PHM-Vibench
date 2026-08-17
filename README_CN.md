@@ -12,8 +12,8 @@
   <p><em>用一份配置贯通数据、模型、任务、训练与评价，不用隐式兜底改变实验。</em></p>
 
   <p>
-    <img src="https://img.shields.io/badge/状态-alpha-orange" alt="状态：alpha"/>
-    <img src="https://img.shields.io/badge/版本-0.3.0.dev0-blue" alt="版本 0.3.0.dev0"/>
+    <img src="https://img.shields.io/badge/状态-RC1-blue" alt="状态：RC1 源码候选"/>
+    <img src="https://img.shields.io/badge/版本-0.3.0rc1-blue" alt="版本 0.3.0rc1"/>
     <img src="https://img.shields.io/badge/Python-%3E%3D3.10-3776AB" alt="Python 3.10 或更高版本"/>
     <a href="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml"><img src="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml/badge.svg" alt="核心质量门禁"/></a>
     <img src="https://img.shields.io/badge/许可-Apache%202.0-green" alt="Apache 2.0 许可"/>
@@ -31,10 +31,11 @@
 
 ---
 
-> **当前仓库身份。** 项目名称和 Python 包名已经统一为 **PHMFactory**。在 v0.3
-> 预发布阶段，GitHub 仓库仍为
-> [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench)。在后续改名被明确
-> 公布之前，请始终使用这里给出的真实仓库地址。
+> **仓库与发布身份。** 项目名称和 Python 包名已经统一为 **PHMFactory**。当前源码版本为
+> **`0.3.0rc1`**，GitHub 仓库仍为
+> [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench)。该源码候选已通过
+> RC1 readiness gate，但当前不宣称已有 RC1 tag、GitHub Release、wheel 上传、源码包上传
+> 或包索引发布。
 
 PHMFactory 面向工业信号故障诊断及相关 PHM 实验，提供模块化、配置驱动的研究运行
 框架。一份解析完成的配置直接连接数据、模型、任务目标、训练器、checkpoint、评价与
@@ -363,17 +364,19 @@ python -m pytest test/ -q
 
 </details>
 
-## 当前预发布边界
+## 当前 RC1 源码候选边界
 
-PHMFactory 仍是 alpha 阶段的 `0.3.0.dev0` 源码版本：
+PHMFactory 当前是经过验证的 `0.3.0rc1` 源码候选：
 
+- 当前源码身份的 release readiness 为零 blocker；
+- wheel/sdist 构建、wheel 检查、干净安装、公共入口和离线 Dummy smoke 已通过；
 - Dummy demo 仍是唯一完全离线、随仓库提供的首次运行路径；
 - 当前已有一个精确真实数据参考达到 `baseline_valid`：MFPT + `GlobalAverageLinear`；
 - 该参考证明协议与估计量闭合，不表示故障诊断准确率较高；
 - 大部分其他真实数据配置仍需要本地 metadata 和原始信号，除非明确列出，否则仍为 `smoke_only`；
 - 更广泛的 SEU、PU 与最终 CWRU acceptance 尚未完成；
-- GitHub 仓库尚未改名；
-- 当前不宣称已有最终 `v0.3.0` tag 或正式包发布；
+- 当前仓库仍为 `PHMbench/PHM-Vibench`；
+- 当前不宣称已有 RC1 tag、最终 `v0.3.0` tag、GitHub Release 或正式包发布；
 - experimental Pipeline 和未列出的模型/任务组合不属于发布支持范围。
 
 进行发布或 benchmark 声明前，请阅读[已知限制](KNOWN_LIMITATIONS.md)和
