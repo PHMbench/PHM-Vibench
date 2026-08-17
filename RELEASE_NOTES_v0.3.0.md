@@ -1,8 +1,9 @@
 # PHMFactory v0.3.0 Release Notes
 
-> Status: **release-candidate preparation**  
-> The source version is still `0.3.0.dev0`. No RC1 tag, final tag, GitHub Release,
-> wheel publication, or package-index publication is claimed by this document.
+> Status: **`0.3.0rc1` source candidate**  
+> The source identity has been promoted and passes the machine-checked RC1 gate. No RC1
+> tag, final tag, GitHub Release, wheel publication, source-distribution publication, or
+> package-index publication is claimed by this document.
 
 ## Overview
 
@@ -29,12 +30,15 @@ RC1 gate is [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_R
 | Surface | v0.3 RC1 value |
 | --- | --- |
 | Project | `PHMFactory` |
+| Source version | `0.3.0rc1` |
 | Current repository | `PHMbench/PHM-Vibench` |
 | Distribution | `phmfactory` |
 | Import namespace | `phmfactory` |
 | Console command | `phmfactory` |
 | Root entrypoint | `python main.py` |
 | Module entrypoint | `python -m phmfactory` |
+| RC1 tag | not created |
+| Published artifacts | none |
 
 The three command forms share the same resolver and dispatcher:
 
@@ -78,7 +82,7 @@ modifying the other factories or the Pipeline.
 
 ### First real `baseline_valid` reference
 
-The repository now contains one exact real-data reference:
+The repository contains one exact real-data reference:
 
 ```text
 config:
@@ -207,37 +211,37 @@ silent fallback or scientific-semantic repair.
 
 ## Validation coverage
 
-The RC1 validation surface includes:
+The promoted `0.3.0rc1` source identity has passed:
 
+- release readiness with zero blockers;
+- public wheel/sdist build, wheel inspection, and clean installation;
+- public CLI, module, doctor, demo, preflight, and compiled-config dispatch checks;
 - documentation, maintained configs, generated Atlas, and support-authority checks;
 - offline Dummy install/preflight/train/test smoke;
-- strict MFPT reader and preparation tests;
-- a real public MFPT three-seed workflow;
 - Pipeline 02 evaluation, trainer-only device, HSE determinism, objective, label, metric,
   split, and sampler contracts;
 - Pipeline 06 shell/CFM and UXFD focused contracts;
-- public wheel/sdist build, wheel inspection, and clean installation;
-- repository layout and deny-by-default submodule policy.
+- CWRU compatibility-bundle semantics;
+- dependency ownership, repository layout, and deny-by-default submodule policy.
 
-Functional evidence validates exact software paths. Only the reviewed MFPT configuration
-is currently promoted to `baseline_valid`.
+The status-synchronization PR reruns the public MFPT three-seed workflow against the
+merged RC1 source identity. Functional evidence validates exact software paths. Only the
+reviewed MFPT configuration is currently promoted to `baseline_valid`.
 
 ## RC1 readiness status
 
-Before the bounded version-promotion PR, the expected release-readiness finding is:
+The source version has been promoted:
 
 ```text
-1 x VERSION_NOT_RC1
+pyproject.toml:          0.3.0rc1
+phmfactory.__version__:  0.3.0rc1
 ```
 
-The next PR changes:
+The machine-checked release result is:
 
 ```text
-0.3.0.dev0 -> 0.3.0rc1
+PHMFactory v0.3.0-rc1 readiness PASS: 0 blockers
 ```
-
-in `pyproject.toml` and `phmfactory/__init__.py` together. After that change, the RC1
-readiness checker must report zero blockers.
 
 The following are explicitly not RC1 blockers:
 
@@ -248,6 +252,6 @@ future repository rename
 optional manifest/evidence finalization
 ```
 
-No tag or publication follows automatically from a successful version-promotion PR.
-Creating an RC1 tag, GitHub Release, wheel upload, or package-index publication requires
-separate explicit authorization.
+No tag or publication follows automatically from a successful source promotion. Creating
+an RC1 tag, GitHub Release, wheel upload, source-distribution upload, or package-index
+publication requires separate explicit authorization.
