@@ -8,7 +8,7 @@ publication already exists.
 ## Current status
 
 ```text
-status: RC1_SOURCE_PROMOTED
+status: RC1_SOURCE_VALIDATED
 release target: v0.3.0-rc1
 current repository: PHMbench/PHM-Vibench
 package version: 0.3.0rc1
@@ -154,7 +154,9 @@ The following areas are complete and must not return as RC1 blockers:
 - formal deferral of optional `phm-data-factory` integration to v0.3.1;
 - synchronized package metadata and public `__version__` at `0.3.0rc1`;
 - wheel/sdist construction, wheel inspection, clean installation, public entrypoints, and
-  offline Dummy smoke on the RC1 source identity.
+  offline Dummy smoke on the RC1 source identity;
+- public MFPT three-seed preparation, preflight, best-checkpoint evaluation, and scientific
+  closure on the promoted RC1 source identity.
 
 The backend decision authority remains:
 
@@ -186,20 +188,18 @@ pyproject.toml:          0.3.0rc1
 phmfactory.__version__:  0.3.0rc1
 ```
 
-The version-promotion PR passed:
+The promoted source identity passed:
 
 ```text
 release readiness: PASS, 0 blockers
 public package build and clean installation: PASS
 offline Dummy smoke: PASS
+public MFPT three-seed baseline: PASS
 core quality gates: PASS
 CWRU bundle contract: PASS
 dependency ownership: PASS
 repository layout and submodule policy: PASS
 ```
-
-The user-facing status synchronization PR must additionally rerun the public MFPT
-three-seed workflow on the merged RC1 source identity.
 
 Version promotion does not itself create a tag, GitHub Release, or package-index
 publication.
@@ -213,7 +213,7 @@ publication.
 4. 0.3.0.dev0 -> 0.3.0rc1 in both authorities                   DONE
 5. release/public-package/core/repository gates rerun            DONE
 6. release-readiness PASS with zero blockers                     DONE
-7. user-facing status + MFPT revalidation on RC1 source          IN PROGRESS
+7. user-facing status + MFPT revalidation on RC1 source          DONE
 8. tag or publish only under separate explicit authorization     NOT AUTHORIZED
 ```
 

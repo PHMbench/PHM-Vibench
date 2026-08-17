@@ -105,14 +105,14 @@ release readiness: PASS, 0 blockers
 wheel/sdist build and wheel inspection: PASS
 clean installed public entrypoints: PASS
 offline Dummy smoke: PASS
+public MFPT three-seed baseline: PASS
 core quality gates: PASS
 CWRU bundle contract: PASS
 dependency, layout, and submodule policy: PASS
 ```
 
-The status-synchronization PR reruns the public MFPT three-seed workflow against the RC1
-source version. No RC1 tag, final tag, GitHub Release, wheel upload, source-distribution
-upload, or package-index publication is authorized by the source-version change.
+No RC1 tag, final tag, GitHub Release, wheel upload, source-distribution upload, or
+package-index publication is authorized by the source-version change.
 
 ## v0.2.0 Release Candidate - 2026-07-11
 

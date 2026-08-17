@@ -157,12 +157,10 @@ The promoted source identity has passed:
 release readiness: PASS, 0 blockers
 wheel/sdist build and clean installation: PASS
 offline Dummy smoke: PASS
+public MFPT three-seed baseline: PASS
 core quality gates: PASS
 CWRU, dependency, layout, and submodule contracts: PASS
 ```
-
-The status-synchronization PR reruns the public MFPT three-seed workflow against the
-merged `0.3.0rc1` source version.
 
 The candidate identity does not automatically create or publish an RC1 artifact. A final
 `v0.3.0` remains a later decision after RC1 review. Tagging and publication require
