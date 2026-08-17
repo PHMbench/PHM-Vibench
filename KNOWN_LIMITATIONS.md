@@ -1,14 +1,16 @@
-# Known Limitations for the PHMFactory v0.3 Pre-release
+# Known Limitations for the PHMFactory v0.3.0-rc1 Source Candidate
 
-This page describes the current maintained source state. It does not imply that an RC1 or
-final tag, GitHub Release, or package-index publication has occurred.
+This page describes the current maintained source candidate. It does not imply that an
+RC1 or final tag, GitHub Release, wheel upload, source-distribution upload, or
+package-index publication has occurred.
 
 ## Repository and installation state
 
 - The project and Python package are named PHMFactory; the current GitHub repository is
   `PHMbench/PHM-Vibench`.
-- The source version is `0.3.0.dev0` until the bounded RC1 version-promotion PR.
-- The maintained pre-release installation path is an editable checkout installation:
+- The source-version authorities are both `0.3.0rc1`.
+- The source candidate passes the machine-checked RC1 release gate with zero blockers.
+- The maintained source installation path is an editable checkout installation:
   `python -m pip install -e .`.
 - A package-index release is not claimed. Do not document `pip install phmfactory` as
   generally available until a real publication has been completed and verified.
@@ -34,7 +36,7 @@ final tag, GitHub Release, or package-index publication has occurred.
 
 ## Real-data baseline status
 
-PHMFactory now has one real-data `baseline_valid` reference:
+PHMFactory has one real-data `baseline_valid` reference:
 
 ```text
 configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
@@ -149,17 +151,22 @@ fit
 
 ## RC1 and final release boundary
 
-Before the RC1 version-promotion PR, the only expected machine-checked blocker is:
+The promoted source identity has passed:
 
 ```text
-VERSION_NOT_RC1
+release readiness: PASS, 0 blockers
+wheel/sdist build and clean installation: PASS
+offline Dummy smoke: PASS
+core quality gates: PASS
+CWRU, dependency, layout, and submodule contracts: PASS
 ```
 
-The promotion changes both version authorities from `0.3.0.dev0` to `0.3.0rc1` and must
-then pass all RC1 checks. This does not automatically create or publish an RC1 artifact.
+The status-synchronization PR reruns the public MFPT three-seed workflow against the
+merged `0.3.0rc1` source version.
 
-A final `v0.3.0` remains a later decision after RC1 review. Final tagging and publication
-require separate authorization and verification that the exact approved commit built the
+The candidate identity does not automatically create or publish an RC1 artifact. A final
+`v0.3.0` remains a later decision after RC1 review. Tagging and publication require
+separate authorization and verification that the exact approved commit built the
 published artifacts.
 
 The current authority is
