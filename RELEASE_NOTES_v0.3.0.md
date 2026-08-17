@@ -218,15 +218,16 @@ The promoted `0.3.0rc1` source identity has passed:
 - public CLI, module, doctor, demo, preflight, and compiled-config dispatch checks;
 - documentation, maintained configs, generated Atlas, and support-authority checks;
 - offline Dummy install/preflight/train/test smoke;
+- public MFPT three-seed data preparation, preflight, best-checkpoint evaluation, and
+  scientific closure;
 - Pipeline 02 evaluation, trainer-only device, HSE determinism, objective, label, metric,
   split, and sampler contracts;
 - Pipeline 06 shell/CFM and UXFD focused contracts;
 - CWRU compatibility-bundle semantics;
 - dependency ownership, repository layout, and deny-by-default submodule policy.
 
-The status-synchronization PR reruns the public MFPT three-seed workflow against the
-merged RC1 source identity. Functional evidence validates exact software paths. Only the
-reviewed MFPT configuration is currently promoted to `baseline_valid`.
+Functional evidence validates exact software paths. Only the reviewed MFPT configuration
+is currently promoted to `baseline_valid`.
 
 ## RC1 readiness status
 
