@@ -1,10 +1,11 @@
 # Changelog
 
-## v0.3.0 - Release Candidate Preparation
+## v0.3.0-rc1 - Source Candidate
 
-PHMFactory v0.3 is preparing its first release candidate from the current
-`PHMbench/PHM-Vibench` repository. This entry records the release delta; it does not claim
-that an RC1 or final tag has already been published.
+PHMFactory has promoted its source identity to `0.3.0rc1` in the current
+`PHMbench/PHM-Vibench` repository. This records the validated source candidate; it does
+not claim that an RC1 tag, GitHub Release, wheel upload, source-distribution upload, or
+package-index publication has occurred.
 
 - User-facing overview: [`RELEASE_NOTES_v0.3.0.md`](RELEASE_NOTES_v0.3.0.md)
 - Upgrade procedure: [`MIGRATION_v0.2_to_v0.3.md`](MIGRATION_v0.2_to_v0.3.md)
@@ -37,6 +38,7 @@ that an RC1 or final tag has already been published.
 
 - Public identity converges on `PHMFactory` / `phmfactory` while the current repository
   remains `PHMbench/PHM-Vibench`.
+- Source version authorities and their exact public test now agree on `0.3.0rc1`.
 - `main.py` remains a supported thin dispatcher over the public package.
 - Data, Model, Task, and Trainer Factory responsibilities are kept narrow; Pipeline code
   orchestrates rather than repairs their inputs.
@@ -94,22 +96,23 @@ performance claim.
 - Compatibility does not authorize reader, split, task, device, loss, metric, or
   checkpoint substitution.
 
-### RC1 status
+### RC1 validation status
 
-The current source version remains `0.3.0.dev0`. After the scientific-readiness authority
-is merged, the expected checker result is exactly:
+The promoted source identity passed:
 
 ```text
-1 x VERSION_NOT_RC1
+release readiness: PASS, 0 blockers
+wheel/sdist build and wheel inspection: PASS
+clean installed public entrypoints: PASS
+offline Dummy smoke: PASS
+core quality gates: PASS
+CWRU bundle contract: PASS
+dependency, layout, and submodule policy: PASS
 ```
 
-A bounded promotion PR changes both version authorities to `0.3.0rc1`. The promotion must
-then pass release readiness with zero blockers, package build and clean installation,
-offline Dummy smoke, the public MFPT three-seed workflow, core quality gates, repository
-layout, and submodule policy.
-
-No RC1 tag, final tag, GitHub Release, wheel upload, source-distribution upload, or
-package-index publication is authorized merely by changing the source version.
+The status-synchronization PR reruns the public MFPT three-seed workflow against the RC1
+source version. No RC1 tag, final tag, GitHub Release, wheel upload, source-distribution
+upload, or package-index publication is authorized by the source-version change.
 
 ## v0.2.0 Release Candidate - 2026-07-11
 
