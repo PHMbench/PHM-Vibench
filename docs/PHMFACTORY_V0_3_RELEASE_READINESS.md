@@ -1,27 +1,28 @@
 # PHMFactory v0.3.0-rc1 Release Readiness
 
 This document is the blocking contract for the first PHMFactory v0.3 release candidate.
-It describes the current repository state and the conditions for promoting the source
-version to `0.3.0rc1`; it does not claim that a tag or package publication already exists.
+The source identity has been promoted to `0.3.0rc1` on `dev`; this does not claim that an
+RC1 tag, GitHub Release, wheel upload, source-distribution upload, or package-index
+publication already exists.
 
 ## Current status
 
 ```text
-status: READY_FOR_RC1_VERSION_PROMOTION
+status: RC1_SOURCE_PROMOTED
 release target: v0.3.0-rc1
 current repository: PHMbench/PHM-Vibench
-package version: 0.3.0.dev0
+package version: 0.3.0rc1
+release-readiness blockers: 0
 current baseline_valid references: 1
+RC1 tag present: false
+published artifacts: false
 ```
 
-The expected finding set before the version-promotion PR is exactly:
+The machine-checked result for the promoted source identity is:
 
 ```text
-1 x VERSION_NOT_RC1
+PHMFactory v0.3.0-rc1 readiness PASS: 0 blockers
 ```
-
-After `pyproject.toml` and `phmfactory.__version__` are changed together to
-`0.3.0rc1`, release mode must report zero blockers.
 
 Audit commands:
 
@@ -150,7 +151,10 @@ The following areas are complete and must not return as RC1 blockers:
 - one real MFPT `baseline_valid` reference;
 - optional compatibility run records that cannot override Pipeline success or failure;
 - P01-P09 migration, zero legacy gitlinks, and deny-by-default submodule policy;
-- formal deferral of optional `phm-data-factory` integration to v0.3.1.
+- formal deferral of optional `phm-data-factory` integration to v0.3.1;
+- synchronized package metadata and public `__version__` at `0.3.0rc1`;
+- wheel/sdist construction, wheel inspection, clean installation, public entrypoints, and
+  offline Dummy smoke on the RC1 source identity.
 
 The backend decision authority remains:
 
@@ -175,50 +179,42 @@ not an RC1 blocker. A rename, when authorized, requires its own bounded migratio
 
 ## Version promotion
 
-The current source version remains:
+The two source-version authorities now agree:
 
 ```text
-0.3.0.dev0
+pyproject.toml:          0.3.0rc1
+phmfactory.__version__:  0.3.0rc1
 ```
 
-The next bounded PR changes both version authorities to:
-
-```text
-0.3.0rc1
-```
-
-Only these two values may be changed for version identity:
-
-```text
-pyproject.toml
-phmfactory/__init__.py
-```
-
-The version-promotion PR must then obtain:
+The version-promotion PR passed:
 
 ```text
 release readiness: PASS, 0 blockers
 public package build and clean installation: PASS
 offline Dummy smoke: PASS
-MFPT real-data three-seed workflow: PASS
 core quality gates: PASS
+CWRU bundle contract: PASS
+dependency ownership: PASS
 repository layout and submodule policy: PASS
 ```
+
+The user-facing status synchronization PR must additionally rerun the public MFPT
+three-seed workflow on the merged RC1 source identity.
 
 Version promotion does not itself create a tag, GitHub Release, or package-index
 publication.
 
-## RC1 promotion order
+## RC1 promotion state
 
 ```text
-1. merge this scientific-readiness authority
-2. confirm the audit reports only VERSION_NOT_RC1
-3. create a version-only RC1 promotion PR
-4. change 0.3.0.dev0 -> 0.3.0rc1 in both version authorities
-5. rerun all required checks
-6. require release-readiness PASS with zero blockers
-7. review the exact RC1 commit
-8. create an RC1 tag or publish artifacts only under separate explicit authorization
+1. scientific-readiness authority merged                         DONE
+2. pre-promotion audit isolated VERSION_NOT_RC1                  DONE
+3. version-only RC1 promotion PR created                         DONE
+4. 0.3.0.dev0 -> 0.3.0rc1 in both authorities                   DONE
+5. release/public-package/core/repository gates rerun            DONE
+6. release-readiness PASS with zero blockers                     DONE
+7. user-facing status + MFPT revalidation on RC1 source          IN PROGRESS
+8. tag or publish only under separate explicit authorization     NOT AUTHORIZED
 ```
 
 ## Final v0.3.0 boundary
@@ -236,6 +232,6 @@ semantics rather than substitute byte identity for experiment correctness.
 
 ## Rollback
 
-Before tagging, revert the version-promotion commit or retain `0.3.0.dev0`. After an RC1
-artifact is published, do not move or recreate the tag; issue a corrected release
-candidate instead.
+Before tagging, a reviewed revert may return both version authorities to `0.3.0.dev0` if
+the candidate is invalidated. After an RC1 artifact is published, do not move or recreate
+the tag; issue a corrected release candidate instead.
