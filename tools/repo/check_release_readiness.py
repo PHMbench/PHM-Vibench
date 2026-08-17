@@ -1,32 +1,40 @@
 #!/usr/bin/env python3
-"""Audit PHMFactory v0.3 release readiness without mutating repository state."""
+"""Audit PHMFactory v0.3.0-rc1 readiness without mutating repository state."""
 
 from __future__ import annotations
 
 import argparse
 import configparser
-import os
+import csv
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TARGET_VERSION = "0.3.0"
-TARGET_REPOSITORY = "PHMbench/phmfactory"
+TARGET_VERSION = "0.3.0rc1"
+TARGET_RELEASE_LABEL = "v0.3.0-rc1"
+TARGET_REPOSITORY = "PHMbench/PHM-Vibench"
 TARGET_BACKEND_PATH = "packages/phm-data-factory"
 TARGET_BACKEND_URL = "https://github.com/PHMbench/phm-data-factory.git"
-REQUIRED_BUNDLE_HASHES = ("metadata", "signals")
-FLOATING_REVISIONS = {"main", "master", "latest", "develop", "development", ""}
-SHA40 = re.compile(r"[0-9a-f]{40}")
 V020_PROVENANCE_PATH = "docs/releases/v0.2.0-rc-provenance.yaml"
 SUBMODULE_ALLOWLIST_PATH = ".github/phmfactory-v0.3-submodules.allowlist.yml"
 BACKEND_DEFERRAL_PATH = "docs/releases/v0.3.0-backend-deferral.yaml"
+BASELINE_REGISTRY_PATH = "configs/config_registry.csv"
+BASELINE_REGISTRY_ID = "baseline_01_mfpt_global_average_linear"
+BASELINE_CONFIG_PATH = "configs/baselines/01_mfpt/mfpt_global_average_linear.yaml"
+BASELINE_REQUIRED_PATHS = (
+    BASELINE_CONFIG_PATH,
+    "scripts/prepare_mfpt_baseline.py",
+    "src/data_factory/reader/RM_007_MFPT.py",
+    "test/test_mfpt_baseline.py",
+    ".github/workflows/mfpt-baseline.yml",
+)
 V020_BASELINE_COMMIT = "a331769d4005018bc833534ecf4efeb5e8a5a78d"
 V020_EXPECTED_PROVENANCE: dict[str, Any] = {
     "project_name": "PHM-Vibench",
@@ -38,6 +46,7 @@ V020_EXPECTED_PROVENANCE: dict[str, Any] = {
     "superseded_by": "v0.3.0",
 }
 DEFERRED_STATUS = "deferred_to_v0.3.1"
+SHA40 = re.compile(r"[0-9a-f]{40}")
 
 
 @dataclass(frozen=True)
@@ -92,10 +101,6 @@ def _gitlinks() -> dict[str, str]:
 
 def _gitlink(path: str) -> str:
     return _gitlinks().get(path, "")
-
-
-def _is_immutable_revision(value: str) -> bool:
-    return SHA40.fullmatch(value.casefold()) is not None
 
 
 def _configured_submodules() -> dict[str, dict[str, str]]:
@@ -289,6 +294,125 @@ def _submodule_findings() -> tuple[Finding, ...]:
     return tuple(findings)
 
 
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _nonempty(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _cwru_contract_errors(payload: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return scientific CWRU manifest errors without treating file hashes as semantics."""
+
+    errors: list[str] = []
+    if payload.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if payload.get("bundle_id") != "cwru-demo-v1":
+        errors.append("bundle_id must be 'cwru-demo-v1'")
+    if payload.get("dataset_name") != "CWRU":
+        errors.append("dataset_name must be 'CWRU'")
+
+    files = _mapping(payload.get("files"))
+    declared_files: dict[str, str] = {}
+    for logical_name in ("metadata", "signals"):
+        entry = _mapping(files.get(logical_name))
+        filename = entry.get("filename")
+        if not _nonempty(filename):
+            errors.append(f"files.{logical_name}.filename must be non-empty")
+        else:
+            declared_files[logical_name] = str(filename).strip()
+        if entry.get("required") is not True:
+            errors.append(f"files.{logical_name}.required must be true")
+
+    metadata = _mapping(payload.get("metadata"))
+    if not _nonempty(metadata.get("id_column")):
+        errors.append("metadata.id_column must be non-empty")
+    required_columns = {
+        str(value).strip()
+        for value in metadata.get("required_columns") or ()
+        if _nonempty(value)
+    }
+    missing_columns = sorted({"Dataset_id", "Label", "Domain_id"} - required_columns)
+    if missing_columns:
+        errors.append(f"metadata.required_columns missing {missing_columns}")
+
+    selector = _mapping(metadata.get("selector"))
+    if not _nonempty(selector.get("column")):
+        errors.append("metadata.selector.column must be non-empty")
+    selector_values = [
+        str(value).strip()
+        for value in selector.get("values") or ()
+        if _nonempty(value)
+    ]
+    if not selector_values:
+        errors.append("metadata.selector.values must be non-empty")
+
+    aliases = _mapping(metadata.get("column_aliases"))
+    for logical_name in ("sample_length", "channel_count"):
+        values = [
+            str(value).strip()
+            for value in aliases.get(logical_name) or ()
+            if _nonempty(value)
+        ]
+        if not values:
+            errors.append(f"metadata.column_aliases.{logical_name} must be non-empty")
+
+    providers = _mapping(payload.get("providers"))
+    if not providers:
+        errors.append("providers must contain at least one provider")
+    for provider_name, raw_provider in sorted(providers.items()):
+        provider = _mapping(raw_provider)
+        if not _nonempty(provider.get("repo_id")):
+            errors.append(f"providers.{provider_name}.repo_id must be non-empty")
+        if not _nonempty(provider.get("revision")):
+            errors.append(f"providers.{provider_name}.revision must be explicit")
+        provider_files = _mapping(provider.get("files"))
+        for logical_name in ("metadata", "signals"):
+            expected = declared_files.get(logical_name)
+            actual = provider_files.get(logical_name)
+            if expected and actual != expected:
+                errors.append(
+                    f"providers.{provider_name}.files.{logical_name}={actual!r}, "
+                    f"expected {expected!r}"
+                )
+
+    return tuple(errors)
+
+
+def _read_registry_rows(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        required = {"id", "category", "path", "pipeline", "status", "protocol_status"}
+        missing = required - set(reader.fieldnames or ())
+        if missing:
+            raise ValueError(f"{path} missing columns: {sorted(missing)}")
+        return [
+            {str(key): str(value or "").strip() for key, value in row.items()}
+            for row in reader
+        ]
+
+
+def _baseline_valid_error(rows: Iterable[Mapping[str, str]]) -> str:
+    matches = [row for row in rows if row.get("id") == BASELINE_REGISTRY_ID]
+    if len(matches) != 1:
+        return f"expected exactly one {BASELINE_REGISTRY_ID!r} row, found {len(matches)}"
+    row = matches[0]
+    expected = {
+        "category": "baseline",
+        "path": BASELINE_CONFIG_PATH,
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "status": "sanity_ok",
+        "protocol_status": "baseline_valid",
+    }
+    mismatches = [
+        f"{field}={row.get(field)!r}, expected {value!r}"
+        for field, value in expected.items()
+        if row.get(field) != value
+    ]
+    return "; ".join(mismatches)
+
+
 def collect_findings() -> tuple[Finding, ...]:
     findings: list[Finding] = []
 
@@ -297,7 +421,7 @@ def collect_findings() -> tuple[Finding, ...]:
     readme = _read("README.md")
     citation = _yaml_mapping("CITATION.cff")
     changelog = _read("CHANGELOG.md")
-    manifest = _yaml_mapping("phmfactory/data_sources/manifests/cwru-demo-v1.yaml")
+    cwru_manifest = _yaml_mapping("phmfactory/data_sources/manifests/cwru-demo-v1.yaml")
 
     project_version = _toml_version(pyproject)
     package_version = _python_version(package_init)
@@ -311,7 +435,7 @@ def collect_findings() -> tuple[Finding, ...]:
     if project_version != TARGET_VERSION:
         findings.append(
             Finding(
-                "VERSION_NOT_FINAL",
+                "VERSION_NOT_RC1",
                 f"expected {TARGET_VERSION!r}, found {project_version!r}",
             )
         )
@@ -338,41 +462,27 @@ def collect_findings() -> tuple[Finding, ...]:
             Finding("RELEASE_NOTES_V030_MISSING", "RELEASE_NOTES_v0.3.0.md absent")
         )
 
-    providers = manifest.get("providers") or {}
-    release_pin_required = manifest.get("release_pin_required") is True
-    for provider_name, provider in sorted(providers.items()):
-        revision = str((provider or {}).get("revision") or "")
-        if (
-            release_pin_required and not _is_immutable_revision(revision)
-        ) or revision.casefold() in FLOATING_REVISIONS:
-            findings.append(
-                Finding(
-                    "CWRU_REVISION_FLOATING",
-                    f"{provider_name} revision={revision!r}",
-                )
-            )
+    cwru_errors = _cwru_contract_errors(cwru_manifest)
+    if cwru_errors:
+        findings.append(Finding("CWRU_CONTRACT_INVALID", "; ".join(cwru_errors)))
 
-    expected_hashes = manifest.get("expected_sha256") or {}
-    filename_hash_keys = {
-        str((manifest.get("files") or {}).get(key, {}).get("filename") or "")
-        for key in REQUIRED_BUNDLE_HASHES
-    }
-    conflicting_filename_keys = sorted(
-        key for key in filename_hash_keys if key and expected_hashes.get(key)
-    )
-    if conflicting_filename_keys:
+    registry_path = ROOT / BASELINE_REGISTRY_PATH
+    if not registry_path.is_file():
+        findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", f"{registry_path} absent"))
+    else:
+        baseline_error = _baseline_valid_error(_read_registry_rows(registry_path))
+        if baseline_error:
+            findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", baseline_error))
+    missing_baseline_paths = [
+        path for path in BASELINE_REQUIRED_PATHS if not (ROOT / path).is_file()
+    ]
+    if missing_baseline_paths:
         findings.append(
             Finding(
-                "CWRU_HASH_KEY_CONFLICT",
-                f"filename hash keys are forbidden; use logical keys: {conflicting_filename_keys}",
+                "BASELINE_VALID_REFERENCE_INVALID",
+                "missing reviewed baseline path(s): " + ", ".join(missing_baseline_paths),
             )
         )
-    for key in REQUIRED_BUNDLE_HASHES:
-        value = str(expected_hashes.get(key) or "")
-        if not re.fullmatch(r"[0-9a-f]{64}", value):
-            findings.append(
-                Finding("CWRU_HASH_MISSING", f"expected_sha256.{key} is not pinned")
-            )
 
     findings.extend(_submodule_findings())
 
@@ -381,17 +491,13 @@ def collect_findings() -> tuple[Finding, ...]:
         provenance_error = _v020_provenance_error()
         if provenance_error:
             findings.append(Finding("V020_PROVENANCE_UNRESOLVED", provenance_error))
-    if any(tag in {"v0.3.0", "0.3.0"} for tag in tags):
-        findings.append(Finding("V030_TAG_ALREADY_EXISTS", "release tag exists before readiness pass"))
-
-    repository = os.environ.get("GITHUB_REPOSITORY", "")
-    if repository and repository != TARGET_REPOSITORY:
+    reserved_tags = {"v0.3.0rc1", "0.3.0rc1", "v0.3.0-rc1", "0.3.0-rc1"}
+    if any(tag in reserved_tags for tag in tags):
         findings.append(
-            Finding(
-                "REPOSITORY_RENAME_PENDING",
-                f"current={repository!r}, expected={TARGET_REPOSITORY!r}",
-            )
+            Finding("V030RC1_TAG_ALREADY_EXISTS", "release-candidate tag exists before readiness pass")
         )
+    if any(tag in {"v0.3.0", "0.3.0"} for tag in tags):
+        findings.append(Finding("V030_TAG_ALREADY_EXISTS", "final release tag already exists"))
 
     return tuple(sorted(findings, key=lambda item: (item.code, item.detail)))
 
@@ -399,9 +505,12 @@ def collect_findings() -> tuple[Finding, ...]:
 def _print_findings(findings: Iterable[Finding]) -> None:
     findings = tuple(findings)
     if not findings:
-        print("PHMFactory v0.3 release readiness PASS: 0 blockers")
+        print(f"PHMFactory {TARGET_RELEASE_LABEL} readiness PASS: 0 blockers")
         return
-    print(f"PHMFactory v0.3 release readiness BLOCKED: {len(findings)} blocker(s)")
+    print(
+        f"PHMFactory {TARGET_RELEASE_LABEL} readiness BLOCKED: "
+        f"{len(findings)} blocker(s)"
+    )
     for finding in findings:
         print(f"- {finding.code}: {finding.detail}")
 
@@ -417,6 +526,7 @@ def main() -> int:
         OSError,
         ValueError,
         configparser.Error,
+        csv.Error,
         yaml.YAMLError,
         subprocess.CalledProcessError,
     ) as exc:
