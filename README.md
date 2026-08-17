@@ -12,8 +12,8 @@
   <p><em>One configuration from data selection to evaluation, without hidden scientific fallbacks.</em></p>
 
   <p>
-    <img src="https://img.shields.io/badge/status-alpha-orange" alt="Status: alpha"/>
-    <img src="https://img.shields.io/badge/version-0.3.0.dev0-blue" alt="Version 0.3.0.dev0"/>
+    <img src="https://img.shields.io/badge/status-RC1-blue" alt="Status: RC1 source candidate"/>
+    <img src="https://img.shields.io/badge/version-0.3.0rc1-blue" alt="Version 0.3.0rc1"/>
     <img src="https://img.shields.io/badge/Python-%3E%3D3.10-3776AB" alt="Python 3.10 or newer"/>
     <a href="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml"><img src="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml/badge.svg" alt="Core quality gates"/></a>
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="Apache 2.0 license"/>
@@ -31,10 +31,11 @@
 
 ---
 
-> **Repository identity.** The project and Python package are named
-> **PHMFactory**. During the v0.3 pre-release, the GitHub repository remains
-> [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench). Use this
-> repository URL until a future rename is explicitly announced.
+> **Repository and release identity.** The project and Python package are named
+> **PHMFactory**. The current source version is **`0.3.0rc1`**, and the GitHub repository
+> remains [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench). The source
+> candidate passes the RC1 readiness gate, but no RC1 tag, GitHub Release, wheel upload,
+> source-distribution upload, or package-index publication is claimed.
 
 PHMFactory is a modular research framework for fault diagnosis and related PHM
 experiments on industrial signals. A single resolved configuration connects the data,
@@ -373,17 +374,19 @@ See [docs/testing.md](docs/testing.md) for focused gates and test terminology.
 
 </details>
 
-## Current pre-release limits
+## Current RC1 source-candidate limits
 
-PHMFactory remains an alpha `0.3.0.dev0` source release:
+PHMFactory is currently a validated `0.3.0rc1` source candidate:
 
-- the Dummy demo is the only fully offline, repository-shipped first-run path;
-- one exact real-data reference is now `baseline_valid`: MFPT + `GlobalAverageLinear`;
+- release readiness reports zero blockers for the current source identity;
+- wheel/sdist construction, wheel inspection, clean installation, public entrypoints, and the offline Dummy smoke have passed;
+- the Dummy demo remains the only fully offline, repository-shipped first-run path;
+- one exact real-data reference is `baseline_valid`: MFPT + `GlobalAverageLinear`;
 - that reference establishes protocol and estimator closure, not strong diagnostic accuracy;
 - most other real-data configurations still require local metadata and raw signals and remain `smoke_only` unless explicitly listed otherwise;
 - broader SEU, PU, and final CWRU acceptance are not yet complete;
-- the GitHub repository has not been renamed;
-- no final `v0.3.0` tag or package publication is claimed;
+- the current repository remains `PHMbench/PHM-Vibench`;
+- no RC1 tag, final `v0.3.0` tag, GitHub Release, or package publication is claimed;
 - experimental Pipelines and unlisted model/task combinations are not release-supported.
 
 Read [Known limitations](KNOWN_LIMITATIONS.md) and the
