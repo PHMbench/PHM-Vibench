@@ -7,8 +7,8 @@ title: PHMFactory
 type: software
 authors:
   - name: PHMFactory contributors
-repository-code: https://github.com/PHMbench/phmfactory
-url: https://github.com/PHMbench/phmfactory
+repository-code: https://github.com/PHMbench/PHM-Vibench
+url: https://github.com/PHMbench/PHM-Vibench
 license: Apache-2.0
 keywords:
   - prognostics and health management

@@ -1,56 +1,86 @@
 # Changelog
 
-## v0.3.0 - Unreleased
+## v0.3.0 - Release Candidate Preparation
 
-PHM-Vibench is being renamed to **PHMFactory**. This entry records the release delta only.
+PHMFactory v0.3 is preparing its first release candidate from the current
+`PHMbench/PHM-Vibench` repository. This entry records the release delta; it does not claim
+that an RC1 or final tag has already been published.
 
 - User-facing overview: [`RELEASE_NOTES_v0.3.0.md`](RELEASE_NOTES_v0.3.0.md)
 - Upgrade procedure: [`MIGRATION_v0.2_to_v0.3.md`](MIGRATION_v0.2_to_v0.3.md)
-- Current blockers: [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
+- Current RC1 gate: [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
 
 ### Added
 
-- Public `phmfactory` distribution and Python package.
-- Equivalent entrypoints: `python main.py`, `python -m phmfactory`, and `phmfactory`.
-- Public configuration resolver under `phmfactory.config`.
-- Canonical Pipeline registry and descriptive Pipeline 01–06 identifiers.
-- Provider-neutral CWRU bundle download, validation, comparison, and quickstart interfaces.
-- Subsystem-owned optional requirements and dependency-ownership checks.
-- Runtime/reader fingerprints, repository-boundary guards, release-readiness checks,
-  submodule policy, and paper-migration tracking.
+- Public `phmfactory` distribution, Python package, and installed command.
+- Equivalent entrypoints through `python main.py`, `python -m phmfactory`, and
+  `phmfactory`.
+- One public configuration authority shared by inspect, preflight, CLI execution, and
+  maintained Pipeline adapters.
+- Canonical Pipeline names and explicit maturity boundaries.
+- Strict experiment contracts for data population, task selection, device ownership,
+  objective construction, metrics, checkpoints, and evaluation.
+- Deterministic maintained HSE validation/test behavior and shape fail-fast checks.
+- Strict Dummy and MFPT readers with no substitute-signal fallback.
+- A 2 x 2 Data Factory x Model Factory replacement acceptance path.
+- The first real-data `baseline_valid` configuration:
+  `configs/baselines/01_mfpt/mfpt_global_average_linear.yaml`.
+- Public MFPT preparation command, focused reader/protocol tests, and a real three-seed
+  GitHub Actions workflow.
+- Generated support tables that separate execution evidence from protocol validity.
 - Explicit v0.2.0 release-candidate provenance anchored to
   `a331769d4005018bc833534ecf4efeb5e8a5a78d`.
-- Machine-readable `phm-data-factory` v0.3.0 exclusion and v0.3.1 deferral contract.
+- Machine-readable exclusion of optional `phm-data-factory` from v0.3 and deferral to
+  v0.3.1.
 
 ### Changed
 
-- Public identity converges on `PHMFactory` / `phmfactory`; the target repository is
-  `PHMbench/phmfactory`.
-- Six Pipeline files are renamed directly; no old-filename wrapper modules are added.
-- Maintained configs and documentation use canonical Pipeline names; legacy YAML values
-  remain explicit aliases with deprecation warnings.
-- Root `main.py` remains a supported thin dispatcher over the public package.
-- `apps/streamlit/app.py` becomes the only maintained web entrypoint.
-- Root `requirements.txt` remains the core authority; Streamlit, ModelScope, plotting,
-  and test dependencies live with their owning subsystems.
-- CWRU requires `metadata.xlsx` and `RM_001_CWRU.h5`; `corpus.xlsx` is optional for the
-  fault-diagnosis quickstart.
-- The mature `src.*` runtime remains in place behind the public façade.
-- Optional `phm-data-factory` integration is deferred to v0.3.1; v0.3.0 contains no
-  backend gitlink, runtime import, support claim, or live-IoTDB claim.
+- Public identity converges on `PHMFactory` / `phmfactory` while the current repository
+  remains `PHMbench/PHM-Vibench`.
+- `main.py` remains a supported thin dispatcher over the public package.
+- Data, Model, Task, and Trainer Factory responsibilities are kept narrow; Pipeline code
+  orchestrates rather than repairs their inputs.
+- Pipeline 02 propagates evaluation errors, rejects empty or non-finite metrics, and closes
+  resources through explicit lifecycle boundaries.
+- Trainer configuration is the sole device authority; Task and Model code do not silently
+  move the network or change an unavailable device request.
+- Unknown tasks, metrics, regularizers, invalid labels, impossible domain selections, and
+  missing sampler metadata now fail at their source.
+- Maintained classification runs restore the best checkpoint before testing.
+- Compatibility run manifests and Pipeline evidence indexes remain optional diagnostics;
+  their write/index failures cannot override the scientific Pipeline result.
+- CWRU release readiness is defined by provider declaration, metadata schema, unique IDs,
+  Id-to-signal coverage, `(L, C)` shape, and length/channel consistency. Per-file digests
+  and cross-provider byte identity are not scientific or RC1 gates.
+- `apps/streamlit/app.py` remains the maintained browser interface and delegates execution
+  to the same public CLI.
+
+### First real baseline result
+
+The transparent MFPT reference executes three explicit seeds:
+
+| Seed | Test accuracy | Test F1 | Test loss |
+| ---: | ---: | ---: | ---: |
+| 17 | 0.500000 | 0.500000 | 1.058720 |
+| 18 | 0.333333 | 0.333333 | 1.161241 |
+| 19 | 0.166667 | 0.166667 | 1.326827 |
+| **Mean +/- sample SD** | **0.333333 +/- 0.166667** | **0.333333 +/- 0.166667** | **1.182263 +/- 0.135284** |
+
+The low result is retained as the honest output of a deliberately weak temporal-mean
+linear model. It establishes a closed real-data execution and estimator contract, not a
+performance claim.
 
 ### Removed or migrated
 
 - Legacy `app/` and root `streamlit_app.py`.
-- Root/hidden Agent workspaces, `.archive/`, and `dev/`, after verified preservation.
+- Root/hidden Agent workspaces, `.archive/`, and historical development workspaces after
+  reviewed preservation.
 - Tracked `results/` and `metrics_reports/` placeholders.
-- Personal `data/Rotor_simulation` and `paper/LQ_vibench_fix` gitlinks after complete
-  fixed-commit preservation.
-- P01–P09 paper/research gitlinks after destination-level fixed-SHA preservation,
-  accepted Foundation partitioning, and machine-verifiable migration tracking.
+- Personal, paper, and research gitlinks after content-level preservation or migration.
 - `.gitmodules` after the final migrated gitlink was removed.
 - Case-colliding lowercase authority files.
-- Historical `docs/past/` and `docs/v0.1.0/` trees after provenance preservation.
+- Silent scientific fallbacks on the maintained user path.
+- Hash-based CWRU release blockers and the future repository rename as an RC1 blocker.
 
 ### Compatibility
 
@@ -61,23 +91,25 @@ PHM-Vibench is being renamed to **PHMFactory**. This entry records the release d
 - No `phm_factory` or `phm_vibench` namespace is introduced.
 - Direct Python imports of old Pipeline filenames must be updated; legacy YAML Pipeline
   values continue through explicit aliases.
-- Reader signatures, parsing, channel order, shape/dtype semantics, data splitting,
-  metrics, checkpoints, seeds, and Pipeline algorithms are not intentionally changed.
+- Compatibility does not authorize reader, split, task, device, loss, metric, or
+  checkpoint substitution.
 
-### Release status
+### RC1 status
 
-The paper/submodule migration and optional-backend decisions are complete. v0.3.0 remains
-unpublishable only while these machine-checked conditions remain:
+The current source version remains `0.3.0.dev0`. After the scientific-readiness authority
+is merged, the expected checker result is exactly:
 
 ```text
-2 x CWRU_HASH_MISSING
-2 x CWRU_REVISION_FLOATING
-1 x REPOSITORY_RENAME_PENDING
-1 x VERSION_NOT_FINAL
+1 x VERSION_NOT_RC1
 ```
 
-The package remains `0.3.0.dev0`; no final tag or release is authorized. The version is
-changed to `0.3.0` only in the final promotion after CWRU and repository identity are ready.
+A bounded promotion PR changes both version authorities to `0.3.0rc1`. The promotion must
+then pass release readiness with zero blockers, package build and clean installation,
+offline Dummy smoke, the public MFPT three-seed workflow, core quality gates, repository
+layout, and submodule policy.
+
+No RC1 tag, final tag, GitHub Release, wheel upload, source-distribution upload, or
+package-index publication is authorized merely by changing the source version.
 
 ## v0.2.0 Release Candidate - 2026-07-11
 
@@ -110,5 +142,4 @@ changed to `0.3.0` only in the final promotion after CWRU and repository identit
 
 - v0.2.0 support is limited to the maintained demo combinations listed in
   `SUPPORTED_COMBINATIONS.md`.
-- The evidence is functional smoke and contract evidence, not a performance
-  benchmark.
+- The evidence is functional smoke and contract evidence, not a performance benchmark.

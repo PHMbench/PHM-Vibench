@@ -1,151 +1,241 @@
-# PHMFactory v0.3 Release Readiness
+# PHMFactory v0.3.0-rc1 Release Readiness
 
-This document is the blocking contract for the final PHMFactory v0.3.0 release. It records the current tree, not an assertion that publication is already authorized.
+This document is the blocking contract for the first PHMFactory v0.3 release candidate.
+It describes the current repository state and the conditions for promoting the source
+version to `0.3.0rc1`; it does not claim that a tag or package publication already exists.
 
 ## Current status
 
 ```text
-status: BLOCKED
-release target: v0.3.0
+status: READY_FOR_RC1_VERSION_PROMOTION
+release target: v0.3.0-rc1
 current repository: PHMbench/PHM-Vibench
-target repository: PHMbench/phmfactory
 package version: 0.3.0.dev0
+current baseline_valid references: 1
 ```
+
+The expected finding set before the version-promotion PR is exactly:
+
+```text
+1 x VERSION_NOT_RC1
+```
+
+After `pyproject.toml` and `phmfactory.__version__` are changed together to
+`0.3.0rc1`, release mode must report zero blockers.
 
 Audit commands:
 
 ```bash
-python tools/repo/check_submodule_policy.py --mode policy
 python tools/repo/check_submodule_policy.py --mode release
 python tools/repo/check_release_readiness.py --mode audit
 python tools/repo/check_release_readiness.py --mode release
 ```
 
-The submodule release policy must now pass. The overall release command remains non-zero while any final release finding exists.
+## First-principles readiness contract
+
+A release candidate is scientifically ready only when its maintained user path executes a
+defined experiment rather than merely importing successfully:
+
+$$
+C_{\mathrm{RC1}}
+=
+C_{\mathrm{config}}
+\land
+C_{\mathrm{runtime}}
+\land
+C_{\mathrm{baseline}}
+\land
+C_{\mathrm{package}}
+\land
+C_{\mathrm{docs}}
+\land
+C_{\mathrm{repository}}.
+$$
+
+The factors mean:
+
+- `C_config`: one resolved configuration is used from preflight through Pipeline execution;
+- `C_runtime`: failures propagate from their source and no alternate algorithm is selected;
+- `C_baseline`: at least one exact real-data configuration has a closed data, split,
+  checkpoint, evaluation, metric, and repeated-run estimator contract;
+- `C_package`: wheel/source build and clean installed entrypoints work;
+- `C_docs`: user-facing claims match the generated support authority;
+- `C_repository`: repository and optional-submodule boundaries remain explicit.
+
+A file hash, receipt, ledger, or artifact index is not one of these scientific conditions.
+
+## Machine-checked scientific reference
+
+The RC1 authority requires exactly one reviewed registry row:
+
+```text
+id: baseline_01_mfpt_global_average_linear
+config: configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
+pipeline: Pipeline_01_Fault_Diagnosis
+execution status: sanity_ok
+protocol status: baseline_valid
+```
+
+The reference uses the public MFPT provider split, file-grouped and label-stratified
+training/validation groups, a held-out provider test population, the transparent
+`GlobalAverageLinear` model, best-checkpoint restoration, and explicit seeds 17, 18, and
+19. Its low accuracy is retained as the honest result of a deliberately weak transparent
+model. `baseline_valid` denotes protocol closure, not model superiority.
+
+The checker also requires the reviewed preparation command, strict MFPT reader, focused
+contract test, and real-data workflow to remain present. The workflow itself performs the
+real download and end-to-end scientific validation; the release checker does not replace
+that experiment with metadata bookkeeping.
+
+## CWRU compatibility boundary
+
+CWRU remains a compatibility bundle and a later local acceptance target. It is not the
+current `baseline_valid` reference and it does not block unrelated RC1 progress.
+
+The CWRU bundle contract is:
+
+$$
+C_{\mathrm{CWRU}}
+=
+C_{\mathrm{provider}}
+\land
+C_{\mathrm{schema}}
+\land
+C_{\mathrm{ID}}
+\land
+C_{\mathrm{shape}}
+\land
+C_{\mathrm{metadata}}.
+$$
+
+The executable validator checks:
+
+```text
+explicit provider and revision declaration
+required metadata.xlsx and RM_001_CWRU.h5 mappings
+required Dataset_id / Label / Domain_id fields
+non-empty selector and Id field
+unique selected Id values
+selected Id -> HDF5 signal coverage
+signal shape (L, C)
+metadata sample-length agreement
+metadata channel-count agreement
+optional corpus foreign-key validity
+```
+
+RC1 does **not** require:
+
+```text
+per-file SHA-256 pins
+cross-provider byte identity
+hash-chain or receipt construction
+artifact-integrity attestation
+```
+
+Those mechanisms may remain available as optional diagnostics for users who need them,
+but they do not establish reader semantics, label correctness, split validity, or
+benchmark validity.
 
 ## Resolved release areas
 
-The following areas are complete and must not return as blockers:
+The following areas are complete and must not return as RC1 blockers:
 
-- PHMFactory README and citation branding;
 - public `phmfactory` package, CLI, configuration resolver, and canonical Pipeline names;
-- explicit v0.2.0 release-candidate provenance anchored to `a331769d4005018bc833534ecf4efeb5e8a5a78d`;
-- P01–P09 content-level migration evidence;
-- Foundation 257-path partition with zero unassigned paths;
-- removal of every legacy mode-160000 paper, personal, and research gitlink;
-- removal of `.gitmodules` after the last gitlink was deleted;
-- deny-by-default submodule policy with zero submodule release blockers;
+- one configuration authority shared by inspect, preflight, CLI, and maintained runtime;
+- fail-fast data population, task, device, objective, metric, and checkpoint semantics on
+  maintained paths;
+- deterministic maintained evaluation boundaries;
+- strict Dummy and MFPT readers;
+- 2 x 2 Data Factory x Model Factory replacement acceptance;
+- one real MFPT `baseline_valid` reference;
+- optional compatibility run records that cannot override Pipeline success or failure;
+- P01-P09 migration, zero legacy gitlinks, and deny-by-default submodule policy;
 - formal deferral of optional `phm-data-factory` integration to v0.3.1.
 
-The backend decision authority is:
+The backend decision authority remains:
 
 ```text
 docs/releases/v0.3.0-backend-deferral.yaml
 ```
 
-A valid deferral means the backend is absent, optional, not imported by the v0.3.0 runtime, not claimed as supported, and not release-blocking.
+A valid deferral means the backend is absent, optional, not imported by the RC1 runtime,
+not claimed as supported, and not release-blocking.
 
-## Remaining machine-checked blockers
+## Repository identity
 
-The expected current finding set is exactly:
-
-```text
-2 x CWRU_REVISION_FLOATING
-2 x CWRU_HASH_MISSING
-1 x REPOSITORY_RENAME_PENDING
-1 x VERSION_NOT_FINAL
-```
-
-Total expected findings:
+The actual RC1 repository is:
 
 ```text
-6
+PHMbench/PHM-Vibench
 ```
 
-No other finding is authorized. In particular, these must remain absent:
+Documentation and citation metadata must use this real URL. A future rename to
+`PHMbench/phmfactory` is a product-governance decision, not a scientific-validity gate and
+not an RC1 blocker. A rename, when authorized, requires its own bounded migration PR.
+
+## Version promotion
+
+The current source version remains:
 
 ```text
-PHM_DATA_FACTORY_BACKEND_PENDING
-BACKEND_DEFERRAL_INVALID
-LEGACY_SUBMODULES_REMAIN
-UNKNOWN_SUBMODULES_PRESENT
-README_BRAND_PENDING
-CITATION_BRAND_PENDING
-CITATION_REPOSITORY_PENDING
-V020_PROVENANCE_UNRESOLVED
+0.3.0.dev0
 ```
 
-## Meaning of the remaining blockers
-
-### CWRU immutable publication
-
-Both Hugging Face and ModelScope currently use floating revisions, and the logical `metadata` and `signals` SHA-256 values are not pinned. This is intentionally deferred from the present change set.
-
-Release requires:
+The next bounded PR changes both version authorities to:
 
 ```text
-immutable provider revisions
-metadata SHA-256
-signals SHA-256
-byte-identical required files across providers
+0.3.0rc1
 ```
 
-### Repository identity
-
-GitHub still reports `PHMbench/PHM-Vibench`. The final release identity is `PHMbench/phmfactory`. The rename is intentionally deferred from the present change set.
-
-### Final version
-
-`pyproject.toml` and `phmfactory.__version__` must remain `0.3.0.dev0` until the CWRU and repository-identity gates are ready. The final promotion PR changes both to `0.3.0` exactly once, after the other release blockers are cleared.
-
-`VERSION_NOT_FINAL` is therefore a finalization gate, not a request to publish final metadata early.
-
-## Backend boundary
-
-`phm-data-factory` is deferred to v0.3.1 and must not be added to the v0.3.0 tree.
-
-For v0.3.0:
+Only these two values may be changed for version identity:
 
 ```text
-backend gitlink: absent
-runtime import: forbidden
-silent fallback: forbidden
-core dependency: false
-release blocker: false
-support claim: false
+pyproject.toml
+phmfactory/__init__.py
 ```
 
-A future v0.3.1 integration still requires an organization-owned public repository, compatible license, immutable reviewed commit, bounded adapter PR, explicit missing-backend failure, and proof that core paths pass without backend initialization.
-
-See [PHM_DATA_FACTORY_BACKEND_V0_3.md](PHM_DATA_FACTORY_BACKEND_V0_3.md).
-
-## Final release order
+The version-promotion PR must then obtain:
 
 ```text
-1. keep the merged migration and backend-deferral authorities unchanged
-2. publish and verify the dual-source immutable CWRU bundle
-3. update the CWRU manifest with immutable revisions and logical-key SHA-256 values
-4. rerun release-readiness and confirm only rename/version remain
-5. prepare the final promotion PR
-6. rename the GitHub repository to PHMbench/phmfactory
-7. change 0.3.0.dev0 to 0.3.0 in package metadata
-8. update changelog and release-note status from pre-release to final
-9. run full CI, wheel/sdist build, clean installation, CLI and smoke validation
-10. require release-readiness PASS with 0 blockers
-11. create tag v0.3.0 and publish the release
+release readiness: PASS, 0 blockers
+public package build and clean installation: PASS
+offline Dummy smoke: PASS
+MFPT real-data three-seed workflow: PASS
+core quality gates: PASS
+repository layout and submodule policy: PASS
 ```
 
-## Human review required before tagging
+Version promotion does not itself create a tag, GitHub Release, or package-index
+publication.
 
-The final tagged commit still requires confirmation that:
+## RC1 promotion order
 
-- branch protection and required checks are correct for the final repository identity;
-- Hugging Face and ModelScope expose the exact immutable bundle revisions;
-- required CWRU files are byte-identical across providers;
-- release notes accurately separate maintained software behavior from experimental or deferred components;
-- wheel and source distribution are built from the exact tagged commit;
-- clean installation, CLI entrypoints, offline Dummy smoke, Pipeline 06, UXFD, Streamlit, dependency ownership, repository layout, submodule policy, and CWRU validation all pass.
+```text
+1. merge this scientific-readiness authority
+2. confirm the audit reports only VERSION_NOT_RC1
+3. create a version-only RC1 promotion PR
+4. change 0.3.0.dev0 -> 0.3.0rc1 in both version authorities
+5. rerun all required checks
+6. require release-readiness PASS with zero blockers
+7. review the exact RC1 commit
+8. create an RC1 tag or publish artifacts only under separate explicit authorization
+```
+
+## Final v0.3.0 boundary
+
+The final `v0.3.0` release remains a later decision. Before a final tag, review:
+
+- whether RC1 user feedback requires code or documentation corrections;
+- whether the current repository name should remain or be changed;
+- whether wheels and source distributions are built from the exact approved commit;
+- whether supported combinations and known limitations remain accurate;
+- whether any additional real-data baseline is necessary for the final claim boundary.
+
+CWRU local acceptance may contribute to that review, but it must validate scientific data
+semantics rather than substitute byte identity for experiment correctness.
 
 ## Rollback
 
-Before tagging, revert the final promotion commit or retain `0.3.0.dev0`. After publication, do not move or recreate the tag; issue a corrective release instead.
+Before tagging, revert the version-promotion commit or retain `0.3.0.dev0`. After an RC1
+artifact is published, do not move or recreate the tag; issue a corrected release
+candidate instead.
