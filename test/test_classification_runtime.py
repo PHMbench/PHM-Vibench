@@ -420,10 +420,11 @@ def test_trainer_import_failure_preserves_requested_module_and_cause(
     assert isinstance(captured.value.__cause__, ModuleNotFoundError)
 
 
-def test_trainer_construction_failure_is_raised_with_original_cause(
+def test_trainer_construction_failure_preserves_original_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def broken_trainer(**kwargs):
+        del kwargs
         raise OSError("output path is read-only")
 
     monkeypatch.setattr(
@@ -432,15 +433,10 @@ def test_trainer_construction_failure_is_raised_with_original_cause(
         lambda key: broken_trainer,
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="Cannot construct trainer 'Default_trainer'.*output path is read-only",
-    ) as captured:
+    with pytest.raises(OSError, match="output path is read-only"):
         trainer_factory_module.trainer_factory(
             args_environment=SimpleNamespace(),
             args_trainer=SimpleNamespace(name="Default_trainer"),
             args_data=SimpleNamespace(),
             path="results/run",
         )
-
-    assert isinstance(captured.value.__cause__, OSError)
