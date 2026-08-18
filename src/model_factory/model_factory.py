@@ -20,10 +20,10 @@ def resolve_model_module(args_model: Any) -> str:
 def model_factory(args_model: Any, metadata: Any):
     """Instantiate a model by name and load an explicitly configured checkpoint.
 
-    Model import and construction failures retain their original exception type and
-    traceback. A configured checkpoint is part of the requested experiment. If it
-    cannot be loaded, model construction fails instead of continuing with random or
-    partial initialization.
+    Model import, construction, and checkpoint failures retain their original
+    exception type and traceback. A configured checkpoint is part of the requested
+    experiment. If it cannot be loaded, model construction fails instead of continuing
+    with random or partial initialization.
     """
     # Validate every label ontology that is actually supplied, even when
     # num_classes was configured manually. Some isolated model/checkpoint uses
@@ -58,20 +58,7 @@ def model_factory(args_model: Any, metadata: Any):
     weights_path = getattr(args_model, "weights_path", None)
     if weights_path:
         strict = bool(getattr(args_model, "weights_strict", True))
-        try:
-            load_ckpt(model, weights_path, strict=strict)
-        except FileNotFoundError:
-            raise
-        except Exception as exc:
-            suggestion = (
-                "Check that the checkpoint belongs to this model. "
-                "For intentional transfer learning with a compatible subset of "
-                "parameters, set model.weights_strict=false."
-            )
-            raise RuntimeError(
-                f"Failed to load checkpoint '{weights_path}' for model "
-                f"'{args_model.type}.{args_model.name}': {exc}. {suggestion}"
-            ) from exc
+        load_ckpt(model, weights_path, strict=strict)
 
     return model
 
