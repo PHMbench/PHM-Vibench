@@ -20,6 +20,10 @@ def _model_factory_module():
     return importlib.import_module("src.model_factory.model_factory")
 
 
+def _task_factory_module():
+    return importlib.import_module("src.task_factory.task_factory")
+
+
 class TrackingNetwork(nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -335,3 +339,37 @@ def test_model_factory_rejects_non_boolean_checkpoint_strictness(
         match="model.weights_strict must be a boolean",
     ):
         module.model_factory(args_model, metadata=None)
+
+
+def test_task_factory_preserves_constructor_exception_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _task_factory_module()
+
+    class TaskConstructorFailure(ValueError):
+        pass
+
+    class BrokenTask:
+        def __init__(self, **kwargs):
+            del kwargs
+            raise TaskConstructorFailure("invalid task objective")
+
+    monkeypatch.setattr(
+        module,
+        "_resolve_task_class",
+        lambda args_task: BrokenTask,
+    )
+
+    with pytest.raises(
+        TaskConstructorFailure,
+        match="invalid task objective",
+    ):
+        module.task_factory(
+            args_task=Namespace(type="DG", name="classification"),
+            network=nn.Identity(),
+            args_data=Namespace(),
+            args_model=Namespace(),
+            args_trainer=Namespace(),
+            args_environment=Namespace(),
+            metadata={},
+        )
