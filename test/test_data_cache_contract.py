@@ -591,3 +591,107 @@ def test_explicit_reader_raises_for_missing_declared_raw_file(tmp_path: Path) ->
 
     assert not (tmp_path / "CSV_Signal.h5").exists()
     assert not (tmp_path / ".CSV_Signal.h5.tmp").exists()
+
+
+def _reader_output_fixture(tmp_path: Path) -> tuple[ExplicitDataFactory, Path]:
+    raw_dir = tmp_path / "raw" / "CSV_Signal"
+    raw_dir.mkdir(parents=True)
+    raw_path = raw_dir / "signal.csv"
+    raw_path.write_text("placeholder\n", encoding="utf-8")
+    return (
+        _factory({1: {"Name": "CSV_Signal", "File": "signal.csv"}}),
+        raw_path,
+    )
+
+
+@pytest.mark.parametrize(
+    ("reader_value", "error_type", "message"),
+    [
+        (None, TypeError, "must return numpy.ndarray"),
+        ([1.0, 2.0], TypeError, "must return numpy.ndarray"),
+        (np.array(["bad"]), TypeError, "real numeric samples"),
+        (
+            np.array([[1.0 + 2.0j]], dtype=np.complex64),
+            TypeError,
+            "real numeric samples",
+        ),
+        (
+            np.empty((0, 1), dtype=np.float32),
+            ValueError,
+            "returned empty shape",
+        ),
+        (
+            np.ones((1, 1, 1, 1), dtype=np.float32),
+            ValueError,
+            "supported reader ranks",
+        ),
+        (
+            np.array([[np.nan]], dtype=np.float32),
+            FloatingPointError,
+            "returned NaN or Inf",
+        ),
+        (
+            np.array([[np.inf]], dtype=np.float32),
+            FloatingPointError,
+            "returned NaN or Inf",
+        ),
+    ],
+)
+def test_invalid_reader_outputs_fail_before_cache_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reader_value,
+    error_type: type[BaseException],
+    message: str,
+) -> None:
+    factory, _ = _reader_output_fixture(tmp_path)
+    monkeypatch.setattr(
+        csv_signal_reader,
+        "read",
+        lambda path, args_data: reader_value,
+    )
+
+    with pytest.raises(error_type, match=message):
+        factory._update_name_cache(
+            "CSV_Signal",
+            [1],
+            _args(tmp_path),
+            1,
+        )
+
+    assert not (tmp_path / "CSV_Signal.h5").exists()
+    assert not (tmp_path / ".CSV_Signal.h5.tmp").exists()
+
+
+@pytest.mark.parametrize(
+    ("reader_value", "expected_shape"),
+    [
+        (np.arange(4, dtype=np.float32), (4,)),
+        (np.ones((4, 2), dtype=np.float32), (4, 2, 1)),
+        (np.ones((4, 2, 1), dtype=np.float32), (4, 2, 1)),
+    ],
+)
+def test_valid_reader_ranks_preserve_existing_cache_representation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reader_value: np.ndarray,
+    expected_shape: tuple[int, ...],
+) -> None:
+    factory, raw_path = _reader_output_fixture(tmp_path)
+    monkeypatch.setattr(
+        csv_signal_reader,
+        "read",
+        lambda path, args_data: reader_value,
+    )
+
+    file_id, observed, error = factory._read_single_data(
+        1,
+        {"Name": "CSV_Signal", "File": "signal.csv"},
+        _args(tmp_path),
+    )
+
+    assert file_id == 1
+    assert error is None
+    assert observed.shape == expected_shape
+    assert observed.dtype == reader_value.dtype
+    assert raw_path.is_file()

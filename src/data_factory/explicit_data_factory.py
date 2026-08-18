@@ -171,6 +171,43 @@ def _format_split_summary(summary: dict[str, Any]) -> str:
     )
 
 
+def _validate_reader_output(
+    data: Any,
+    *,
+    file_id: Any,
+    file_path: Path,
+) -> np.ndarray:
+    """Validate one successful reader return before publishing derived data."""
+
+    if not isinstance(data, np.ndarray):
+        raise TypeError(
+            f"Reader for ID {file_id} ({file_path}) must return numpy.ndarray; "
+            f"got {type(data).__name__}."
+        )
+    if data.ndim not in {1, 2, 3}:
+        raise ValueError(
+            f"Reader for ID {file_id} ({file_path}) returned shape {data.shape}; "
+            "supported reader ranks are 1, 2, or 3."
+        )
+    if data.size == 0 or any(int(size) <= 0 for size in data.shape):
+        raise ValueError(
+            f"Reader for ID {file_id} ({file_path}) returned empty shape "
+            f"{data.shape}."
+        )
+    if not np.issubdtype(data.dtype, np.number) or np.iscomplexobj(data):
+        raise TypeError(
+            f"Reader for ID {file_id} ({file_path}) must return real numeric "
+            f"samples; got dtype {data.dtype}."
+        )
+    if not np.isfinite(data).all():
+        raise FloatingPointError(
+            f"Reader for ID {file_id} ({file_path}) returned NaN or Inf."
+        )
+    if data.ndim == 2:
+        return np.expand_dims(data, axis=-1)
+    return data
+
+
 class ExplicitDataFactory(data_factory):
     """Build data through explicit adapters and publish only usable data stacks.
 
@@ -208,9 +245,12 @@ class ExplicitDataFactory(data_factory):
             f"src.data_factory.reader.{dataset_name}"
         )
         data = reader.read(str(file_path), args_data)
-        if data.ndim == 2:
-            data = np.expand_dims(data, axis=-1)
-        return file_id, data, None
+        validated = _validate_reader_output(
+            data,
+            file_id=file_id,
+            file_path=file_path,
+        )
+        return file_id, validated, None
 
     def _init_data(self, args_data, use_cache=None, max_workers=32):
         """Read current raw inputs unless cache reuse is explicitly enabled.
