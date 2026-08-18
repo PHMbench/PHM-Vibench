@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 import pytest
 
+import src.data_factory.reader.CSV_Signal as csv_signal_reader
 from src.data_factory import ExplicitDataFactory, build_data
 from src.data_factory.contracts import (
     format_loader_summary,
@@ -527,3 +528,66 @@ def test_cache_dir_owns_all_derived_hdf5_files(
 
     with h5py.File(cache_root / "cache.h5", "r") as h5_file:
         assert set(h5_file.keys()) == {"1", "2"}
+
+
+class _ReaderFailure(ValueError):
+    pass
+
+
+def test_explicit_reader_preserves_original_exception_type(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_dir = tmp_path / "raw" / "CSV_Signal"
+    raw_dir.mkdir(parents=True)
+    (raw_dir / "signal.csv").write_text(
+        "time,sensor_a\n0,1.0\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "metadata.csv").write_text(
+        "Id,Name,File\n1,CSV_Signal,signal.csv\n",
+        encoding="utf-8",
+    )
+    factory = _factory(
+        {1: {"Name": "CSV_Signal", "File": "signal.csv"}}
+    )
+
+    def fail_reader(path, args_data):
+        raise _ReaderFailure("reader contract exploded")
+
+    monkeypatch.setattr(csv_signal_reader, "read", fail_reader)
+
+    with pytest.raises(_ReaderFailure, match="reader contract exploded"):
+        factory._update_name_cache(
+            "CSV_Signal",
+            [1],
+            _args(tmp_path),
+            1,
+        )
+
+    assert not (tmp_path / "CSV_Signal.h5").exists()
+    assert not (tmp_path / ".CSV_Signal.h5.tmp").exists()
+
+
+def test_explicit_reader_raises_for_missing_declared_raw_file(tmp_path: Path) -> None:
+    (tmp_path / "metadata.csv").write_text(
+        "Id,Name,File\n1,CSV_Signal,missing.csv\n",
+        encoding="utf-8",
+    )
+    factory = _factory(
+        {1: {"Name": "CSV_Signal", "File": "missing.csv"}}
+    )
+
+    with pytest.raises(
+        FileNotFoundError,
+        match=r"Raw data file not found for ID 1: .*missing\.csv",
+    ):
+        factory._update_name_cache(
+            "CSV_Signal",
+            [1],
+            _args(tmp_path),
+            1,
+        )
+
+    assert not (tmp_path / "CSV_Signal.h5").exists()
+    assert not (tmp_path / ".CSV_Signal.h5.tmp").exists()
