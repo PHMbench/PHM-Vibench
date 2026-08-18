@@ -20,9 +20,10 @@ def resolve_model_module(args_model: Any) -> str:
 def model_factory(args_model: Any, metadata: Any):
     """Instantiate a model by name and load an explicitly configured checkpoint.
 
-    A configured checkpoint is part of the requested experiment. If it cannot be
-    loaded, model construction fails instead of continuing with random or partial
-    initialization.
+    Model import and construction failures retain their original exception type and
+    traceback. A configured checkpoint is part of the requested experiment. If it
+    cannot be loaded, model construction fails instead of continuing with random or
+    partial initialization.
     """
     # Validate every label ontology that is actually supplied, even when
     # num_classes was configured manually. Some isolated model/checkpoint uses
@@ -52,13 +53,7 @@ def model_factory(args_model: Any, metadata: Any):
     module_path = resolve_model_module(args_model)
     model_module = importlib.import_module(module_path)
     model_cls = model_module.Model
-
-    try:
-        model = model_cls(args_model, metadata)
-    except Exception as exc:
-        raise RuntimeError(
-            f"Failed to create model '{args_model.type}.{args_model.name}': {exc}"
-        ) from exc
+    model = model_cls(args_model, metadata)
 
     weights_path = getattr(args_model, "weights_path", None)
     if weights_path:
