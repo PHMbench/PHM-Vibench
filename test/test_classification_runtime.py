@@ -363,11 +363,12 @@ def test_task_module_requires_registration_or_task_symbol(
         )
 
 
-def test_task_construction_failure_is_raised_with_original_cause(
+def test_task_construction_failure_preserves_original_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class BrokenTask:
         def __init__(self, **kwargs):
+            del kwargs
             raise ValueError("invalid task dimensions")
 
     monkeypatch.setattr(
@@ -376,10 +377,7 @@ def test_task_construction_failure_is_raised_with_original_cause(
         lambda key: BrokenTask,
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="Cannot construct task 'DG.classification'.*invalid task dimensions",
-    ) as captured:
+    with pytest.raises(ValueError, match="invalid task dimensions"):
         task_factory_module.task_factory(
             args_task=SimpleNamespace(type="DG", name="classification"),
             network=object(),
@@ -389,8 +387,6 @@ def test_task_construction_failure_is_raised_with_original_cause(
             args_environment=SimpleNamespace(),
             metadata={},
         )
-
-    assert isinstance(captured.value.__cause__, ValueError)
 
 
 def test_trainer_import_failure_preserves_requested_module_and_cause(
