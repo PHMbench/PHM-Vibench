@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import concurrent.futures
+import importlib
 import os
 from pathlib import Path
 import shutil
 from typing import Any
 
 import h5py
+import numpy as np
 from tqdm import tqdm
 
 from .contracts import format_loader_summary, require_nonempty_dataloaders
@@ -185,6 +187,30 @@ class ExplicitDataFactory(data_factory):
             args_data,
         )
         print(f"[SUCCESS] 数据加载器可用: {format_loader_summary(counts)}")
+
+    def _read_single_data(self, file_id, meta, args_data):
+        """Read one declared raw file without replacing reader exceptions."""
+
+        dataset_name = meta["Name"]
+        file_name = meta["File"]
+        file_path = (
+            Path(args_data.data_dir)
+            / "raw"
+            / str(dataset_name)
+            / str(file_name)
+        )
+        if not file_path.is_file():
+            raise FileNotFoundError(
+                f"Raw data file not found for ID {file_id}: {file_path}"
+            )
+
+        reader = importlib.import_module(
+            f"src.data_factory.reader.{dataset_name}"
+        )
+        data = reader.read(str(file_path), args_data)
+        if data.ndim == 2:
+            data = np.expand_dims(data, axis=-1)
+        return file_id, data, None
 
     def _init_data(self, args_data, use_cache=None, max_workers=32):
         """Read current raw inputs unless cache reuse is explicitly enabled.
