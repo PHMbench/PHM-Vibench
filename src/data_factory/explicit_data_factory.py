@@ -12,7 +12,7 @@ import h5py
 from tqdm import tqdm
 
 from .contracts import format_loader_summary, require_nonempty_dataloaders
-from .data_factory import data_factory
+from .data_factory import _cache_directory, data_factory
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .dataset_task.adapters import resolve_dataset_adapter
 from .splitting import resolve_data_splits
@@ -186,6 +186,30 @@ class ExplicitDataFactory(data_factory):
         )
         print(f"[SUCCESS] 数据加载器可用: {format_loader_summary(counts)}")
 
+    def _init_data(self, args_data, use_cache=None, max_workers=32):
+        """Read current raw inputs unless cache reuse is explicitly enabled.
+
+        Persistent HDF5 files are derived data, not an authority for the current
+        reader semantics. ``data.use_cache`` therefore defaults to ``False`` on
+        the maintained public path. Users may set it to ``True`` only when the
+        raw files, reader implementation, and reader-relevant configuration are
+        intentionally unchanged.
+        """
+
+        if use_cache is None:
+            use_cache = getattr(args_data, "use_cache", False)
+        if not isinstance(use_cache, bool):
+            raise TypeError(
+                "data.use_cache must be a boolean; omit it or set false to "
+                "re-read current raw inputs, or set true to reuse complete "
+                "derived HDF5 caches explicitly"
+            )
+        return super()._init_data(
+            args_data,
+            use_cache=use_cache,
+            max_workers=max_workers,
+        )
+
     def _update_name_cache(self, name, ids, args_data, max_workers):
         """Read all requested IDs and atomically update one dataset cache."""
         if not ids:
@@ -241,7 +265,8 @@ class ExplicitDataFactory(data_factory):
                 f"failed. {details}"
             )
 
-        cache_path = Path(args_data.data_dir) / f"{name}.h5"
+        cache_root = Path(_cache_directory(args_data))
+        cache_path = cache_root / f"{name}.h5"
         temp_path = cache_path.with_name(f".{cache_path.name}.tmp")
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         temp_path.unlink(missing_ok=True)
@@ -282,7 +307,8 @@ class ExplicitDataFactory(data_factory):
             )
 
         expected_keys = {str(file_id) for file_id in expected_ids}
-        cache_path = Path(args_data.data_dir) / "cache.h5"
+        cache_root = Path(_cache_directory(args_data))
+        cache_path = cache_root / "cache.h5"
         temp_path = cache_path.with_name(".cache.h5.tmp")
         cache_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -314,9 +340,7 @@ class ExplicitDataFactory(data_factory):
                         )
                         continue
 
-                    source_path = (
-                        Path(args_data.data_dir) / f"{dataset_name}.h5"
-                    )
+                    source_path = cache_root / f"{dataset_name}.h5"
                     if not source_path.is_file():
                         missing.append(
                             (str(file_id), f"dataset cache not found: {source_path}")

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "src/data_factory/reader/RM_007_MFPT.py"
+      - "src/data_factory/explicit_data_factory.py"
       - "src/model_factory/Baseline/GlobalAverageLinear.py"
       - "configs/base/model/global_average_linear.yaml"
       - "configs/baselines/01_mfpt/**"
