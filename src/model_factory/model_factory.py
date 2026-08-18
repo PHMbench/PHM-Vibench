@@ -57,7 +57,12 @@ def model_factory(args_model: Any, metadata: Any):
 
     weights_path = getattr(args_model, "weights_path", None)
     if weights_path:
-        strict = bool(getattr(args_model, "weights_strict", True))
+        strict = getattr(args_model, "weights_strict", True)
+        if not isinstance(strict, bool):
+            raise TypeError(
+                "model.weights_strict must be a boolean; use true for exact "
+                "checkpoint loading or false for an explicitly compatible subset"
+            )
         load_ckpt(model, weights_path, strict=strict)
 
     return model

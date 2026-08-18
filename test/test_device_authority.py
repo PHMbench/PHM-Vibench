@@ -264,3 +264,74 @@ def test_model_factory_preserves_checkpoint_exception_type(
         match="checkpoint tensor layout is invalid",
     ):
         module.model_factory(args_model, metadata=None)
+
+
+@pytest.mark.parametrize("strict", [True, False])
+def test_model_factory_passes_explicit_checkpoint_strictness(
+    monkeypatch: pytest.MonkeyPatch,
+    strict: bool,
+) -> None:
+    module = _model_factory_module()
+    observed: list[bool] = []
+
+    class ValidModel:
+        def __init__(self, args_model, metadata):
+            del args_model, metadata
+
+    monkeypatch.setattr(
+        module.importlib,
+        "import_module",
+        lambda path: Namespace(Model=ValidModel),
+    )
+    monkeypatch.setattr(
+        module,
+        "load_ckpt",
+        lambda model, path, *, strict: observed.append(strict),
+    )
+    args_model = Namespace(
+        type="Valid",
+        name="Model",
+        num_classes=2,
+        weights_path="requested.ckpt",
+        weights_strict=strict,
+    )
+
+    module.model_factory(args_model, metadata=None)
+
+    assert observed == [strict]
+
+
+def test_model_factory_rejects_non_boolean_checkpoint_strictness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _model_factory_module()
+
+    class ValidModel:
+        def __init__(self, args_model, metadata):
+            del args_model, metadata
+
+    monkeypatch.setattr(
+        module.importlib,
+        "import_module",
+        lambda path: Namespace(Model=ValidModel),
+    )
+    monkeypatch.setattr(
+        module,
+        "load_ckpt",
+        lambda *args, **kwargs: pytest.fail(
+            "checkpoint loading must not start for invalid weights_strict"
+        ),
+    )
+    args_model = Namespace(
+        type="Valid",
+        name="Model",
+        num_classes=2,
+        weights_path="requested.ckpt",
+        weights_strict="false",
+    )
+
+    with pytest.raises(
+        TypeError,
+        match="model.weights_strict must be a boolean",
+    ):
+        module.model_factory(args_model, metadata=None)
