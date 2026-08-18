@@ -227,3 +227,40 @@ def test_model_factory_preserves_constructor_exception_type(
         match="invalid model dimensions",
     ):
         module.model_factory(args_model, metadata=None)
+
+
+def test_model_factory_preserves_checkpoint_exception_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _model_factory_module()
+
+    class CheckpointLoadFailure(OSError):
+        pass
+
+    class ValidModel:
+        def __init__(self, args_model, metadata):
+            del args_model, metadata
+
+    def fail_checkpoint(model, path, *, strict):
+        del model, path, strict
+        raise CheckpointLoadFailure("checkpoint tensor layout is invalid")
+
+    monkeypatch.setattr(
+        module.importlib,
+        "import_module",
+        lambda path: Namespace(Model=ValidModel),
+    )
+    monkeypatch.setattr(module, "load_ckpt", fail_checkpoint)
+    args_model = Namespace(
+        type="Valid",
+        name="Model",
+        num_classes=2,
+        weights_path="requested.ckpt",
+        weights_strict=True,
+    )
+
+    with pytest.raises(
+        CheckpointLoadFailure,
+        match="checkpoint tensor layout is invalid",
+    ):
+        module.model_factory(args_model, metadata=None)
