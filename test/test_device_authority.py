@@ -16,6 +16,10 @@ def _default_trainer_module():
     return importlib.import_module("src.trainer_factory.Default_trainer")
 
 
+def _model_factory_module():
+    return importlib.import_module("src.model_factory.model_factory")
+
+
 class TrackingNetwork(nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -191,3 +195,35 @@ def test_default_trainer_passes_resolved_cpu_request_to_lightning(
     assert result["devices"] == 1
     assert result["strategy"] == "auto"
     assert observed["accelerator"] == "cpu"
+
+
+def test_model_factory_preserves_constructor_exception_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _model_factory_module()
+
+    class ModelConstructorFailure(ValueError):
+        pass
+
+    class BrokenModel:
+        def __init__(self, args_model, metadata):
+            del args_model, metadata
+            raise ModelConstructorFailure("invalid model dimensions")
+
+    monkeypatch.setattr(
+        module.importlib,
+        "import_module",
+        lambda path: Namespace(Model=BrokenModel),
+    )
+    args_model = Namespace(
+        type="Broken",
+        name="Model",
+        num_classes=2,
+        weights_path=None,
+    )
+
+    with pytest.raises(
+        ModelConstructorFailure,
+        match="invalid model dimensions",
+    ):
+        module.model_factory(args_model, metadata=None)
