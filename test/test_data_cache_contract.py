@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 import h5py
@@ -16,6 +18,9 @@ from src.data_factory.contracts import (
 from src.data_factory.data_factory import data_factory as BaseDataFactory
 from src.data_factory.reader.CSV_Signal import read as read_csv_signal
 from src.data_factory.reader.Dummy_Data import read as read_dummy_signal
+
+
+data_factory_module = importlib.import_module("src.data_factory.data_factory")
 
 
 def _factory(metadata):
@@ -323,7 +328,15 @@ def test_compatible_csv_dataset_uses_existing_data_and_task_contracts(
         factory.data.close()
 
 
-def _write_dummy_csv(path: Path) -> None:
+def _write_dummy_csv(path: Path, offset: float = 0.0, samples: int = 16) -> None:
+    rows = ["index,ch1,ch2"]
+    for index in range(samples):
+        rows.append(f"{index},{offset + index},{offset + 2 * index}")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def test_dummy_reader_consumes_exact_declared_columns(tmp_path: Path) -> None:
+    path = tmp_path / "dummy.csv"
     path.write_text(
         "index,ch1,ch2\n"
         "0,0.0,1.0\n"
@@ -331,11 +344,6 @@ def _write_dummy_csv(path: Path) -> None:
         "2,1.0,0.0\n",
         encoding="utf-8",
     )
-
-
-def test_dummy_reader_consumes_exact_declared_columns(tmp_path: Path) -> None:
-    path = tmp_path / "dummy.csv"
-    _write_dummy_csv(path)
 
     signal = read_dummy_signal(path)
 
@@ -695,3 +703,161 @@ def test_valid_reader_ranks_preserve_existing_cache_representation(
     assert observed.shape == expected_shape
     assert observed.dtype == reader_value.dtype
     assert raw_path.is_file()
+
+
+def test_missing_metadata_has_zero_remote_calls(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote_calls: list[tuple[tuple, dict]] = []
+
+    def forbidden_remote(*args, **kwargs):
+        remote_calls.append((args, kwargs))
+        raise AssertionError("normal local runs must not call download_data")
+
+    monkeypatch.setattr(data_factory_module, "download_data", forbidden_remote)
+    factory = ExplicitDataFactory.__new__(ExplicitDataFactory)
+
+    with pytest.raises(
+        FileNotFoundError,
+        match="Normal runs do not download replacement metadata",
+    ):
+        factory._init_metadata(
+            SimpleNamespace(
+                data_dir=str(tmp_path),
+                metadata_file="missing.csv",
+            )
+        )
+
+    assert remote_calls == []
+    assert not list(tmp_path.glob("*.h5"))
+
+
+def test_malformed_utf8_metadata_fails_before_cache_publication(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "metadata.csv"
+    path.write_bytes(
+        b"Id,Name,File,Dataset_id,Domain_id,Label,Sample_Rate\n"
+        b"1,Dummy_Data,dummy.csv,0,0,0,1000\xff\n"
+    )
+    factory = ExplicitDataFactory.__new__(ExplicitDataFactory)
+
+    with pytest.raises(UnicodeDecodeError):
+        factory._init_metadata(_args(tmp_path))
+
+    assert not list(tmp_path.glob("*.h5"))
+
+
+def test_tab_separated_content_named_csv_fails_schema_validation(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "metadata.csv").write_text(
+        "Id\tName\tFile\tDataset_id\tDomain_id\tLabel\tSample_Rate\n"
+        "1\tDummy_Data\tdummy.csv\t0\t0\t0\t1000\n",
+        encoding="utf-8",
+    )
+    factory = ExplicitDataFactory.__new__(ExplicitDataFactory)
+
+    with pytest.raises(ValueError, match="missing required column 'Id'"):
+        factory._init_metadata(_args(tmp_path))
+
+    assert not list(tmp_path.glob("*.h5"))
+
+
+def test_explicit_tsv_metadata_is_supported(tmp_path: Path) -> None:
+    (tmp_path / "metadata.tsv").write_text(
+        "Id\tName\tFile\tDataset_id\tDomain_id\tLabel\tSample_Rate\n"
+        "1\tDummy_Data\tdummy.csv\t0\t0\t0\t1000\n",
+        encoding="utf-8",
+    )
+    factory = ExplicitDataFactory.__new__(ExplicitDataFactory)
+
+    metadata = factory._init_metadata(
+        SimpleNamespace(
+            data_dir=str(tmp_path),
+            metadata_file="metadata.tsv",
+        )
+    )
+
+    assert metadata[1]["Name"] == "Dummy_Data"
+
+
+def _write_tiny_local_dummy_fixture(root: Path) -> None:
+    raw_dir = root / "raw" / "Dummy_Data"
+    raw_dir.mkdir(parents=True)
+    rows = [
+        (1, "source_c0.csv", 0, 0),
+        (2, "source_c1.csv", 0, 1),
+        (3, "target_c0.csv", 1, 0),
+        (4, "target_c1.csv", 1, 1),
+    ]
+    for file_id, file_name, domain_id, label in rows:
+        _write_dummy_csv(
+            raw_dir / file_name,
+            offset=float(file_id * 100),
+            samples=64,
+        )
+    (root / "metadata.csv").write_text(
+        "Id,Name,File,Dataset_id,Domain_id,Label,Sample_Rate\n"
+        "1,Dummy_Data,source_c0.csv,0,0,0,1000\n"
+        "2,Dummy_Data,source_c1.csv,0,0,1,1000\n"
+        "3,Dummy_Data,target_c0.csv,0,1,0,1000\n"
+        "4,Dummy_Data,target_c1.csv,0,1,1,1000\n",
+        encoding="utf-8",
+    )
+
+
+def test_tiny_local_dummy_builds_loaders_without_provider_imports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_tiny_local_dummy_fixture(tmp_path)
+    remote_calls: list[tuple[tuple, dict]] = []
+
+    def forbidden_remote(*args, **kwargs):
+        remote_calls.append((args, kwargs))
+        raise AssertionError("normal local runs must not call download_data")
+
+    monkeypatch.setattr(data_factory_module, "download_data", forbidden_remote)
+    before_modules = set(sys.modules)
+    args_data = SimpleNamespace(
+        factory_name="default",
+        data_dir=str(tmp_path),
+        metadata_file="metadata.csv",
+        batch_size=2,
+        num_workers=0,
+        train_ratio=0.5,
+        val_ratio=0.25,
+        test_ratio=0.25,
+        unused_ratio=0.0,
+        normalization="none",
+        window_size=8,
+        window_sampling_strategy="evenly_spaced",
+        num_window=4,
+        window_sampling_seed=0,
+        dtype="float32",
+        pin_memory=False,
+    )
+    args_task = SimpleNamespace(
+        type="DG",
+        name="classification",
+        target_system_id=[0],
+        source_domain_id=[0],
+        target_domain_id=[1],
+    )
+
+    factory = build_data(args_data, args_task)
+    try:
+        assert len(factory.train_loader) > 0
+        assert len(factory.val_loader) > 0
+        assert len(factory.test_loader) > 0
+        batch = next(iter(factory.train_loader))
+        assert batch["x"].shape[-2:] == (8, 2)
+    finally:
+        factory.data.close()
+
+    imported = set(sys.modules) - before_modules
+    assert remote_calls == []
+    assert "huggingface_hub" not in imported
+    assert not any(name == "modelscope" or name.startswith("modelscope.") for name in imported)
