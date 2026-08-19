@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from phmfactory.commands.common import (
@@ -30,6 +31,12 @@ from phmfactory.runtime.evidence import register_pipeline_result_evidence
 
 
 COMMANDS = ("data", "doctor", "demo", "preflight")
+DIRECT_OUTPUT_KEYS = (
+    "result_dir",
+    "best_checkpoint",
+    "test_metrics",
+    "run_summary",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="PHMFactory task pipeline",
         epilog=(
             "Commands: doctor, demo, preflight, data. "
-            "Compatible experiment form: phmfactory --config <yaml>."
+            "Run an experiment explicitly with phmfactory --config <yaml>."
         ),
     )
     add_config_arguments(parser, include_notes=True, include_experimental=True)
@@ -103,6 +110,28 @@ def _write_optional_attestation(
         _record_warning(context, error)
         return False
     return True
+
+
+def _print_direct_outputs(result: Any) -> None:
+    """Print canonical user outputs returned directly by a maintained Pipeline."""
+
+    if not isinstance(result, Mapping):
+        return
+    for key in DIRECT_OUTPUT_KEYS:
+        value = result.get(key)
+        if value is not None:
+            print(f"{key}={value}")
+    primary_metrics = result.get("primary_metrics")
+    if isinstance(primary_metrics, Mapping):
+        print(
+            "primary_metrics="
+            + json.dumps(
+                dict(primary_metrics),
+                sort_keys=True,
+                ensure_ascii=True,
+                allow_nan=False,
+            )
+        )
 
 
 def run(args: argparse.Namespace) -> Any:
@@ -199,6 +228,7 @@ def run(args: argparse.Namespace) -> Any:
         print(f"run_manifest={attestation.manifest_path}")
     else:
         print("run_manifest=unavailable")
+    _print_direct_outputs(result)
     print("完成所有实验！")
     return result
 
@@ -226,10 +256,13 @@ def _run_command(name: str, argv: Sequence[str]) -> Any:
 
 
 def main(argv: Sequence[str] | None = None) -> Any:
-    """Return the structured result of a named command or experiment."""
+    """Return the structured result of a named command or explicit experiment."""
 
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments[:1] and arguments[0] in COMMANDS:
+    if not arguments:
+        build_parser().print_help()
+        return {"status": "help"}
+    if arguments[0] in COMMANDS:
         return _run_command(arguments[0], arguments[1:])
     return run(build_parser().parse_args(arguments))
 
