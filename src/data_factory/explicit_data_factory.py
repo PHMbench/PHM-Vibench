@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 from .contracts import format_loader_summary, require_nonempty_dataloaders
 from .data_factory import _cache_directory, data_factory
+from .data_utils import MetadataAccessor, read_metadata_table
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .dataset_task.adapters import resolve_dataset_adapter
 from .splitting import resolve_data_splits
@@ -213,7 +214,8 @@ class ExplicitDataFactory(data_factory):
 
     Reader behavior, ID selection, windowing, samplers and DataLoaders remain in
     their existing modules. This class owns user-visible boundaries for explicit
-    adapters, complete caches, non-empty loaders, and observable split facts.
+    local metadata, explicit adapters, complete caches, non-empty loaders, and
+    observable split facts.
     """
 
     def __init__(self, args_data, args_task):
@@ -224,6 +226,21 @@ class ExplicitDataFactory(data_factory):
             args_data,
         )
         print(f"[SUCCESS] 数据加载器可用: {format_loader_summary(counts)}")
+
+    def _init_metadata(self, args_data):
+        """Read exactly the local metadata file declared by the user."""
+
+        metadata_path = Path(args_data.data_dir) / str(args_data.metadata_file)
+        metadata_frame = read_metadata_table(
+            metadata_path,
+            encoding=getattr(args_data, "metadata_encoding", None),
+        )
+        metadata = MetadataAccessor(metadata_frame, key_column="Id")
+        print(
+            f"[SUCCESS] 成功加载本地元数据: {metadata_path} "
+            f"({len(metadata)} 条记录)"
+        )
+        return metadata
 
     def _read_single_data(self, file_id, meta, args_data):
         """Read one declared raw file without replacing reader exceptions."""
