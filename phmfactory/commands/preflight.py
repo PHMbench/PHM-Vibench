@@ -1,4 +1,4 @@
-"""Validate one analyzed PHMFactory run without importing training code."""
+"""Validate one analyzed PHMFactory run without starting training."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from phmfactory.commands.common import (
 from phmfactory.config import analyze_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import CompiledRunSpec
+from src.trainer_factory.device import resolve_device_request
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +35,8 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
 
     The function uses the same :func:`phmfactory.config.analyze_config` call as the real
     runtime. It does not import the Pipeline implementation, construct factories, create
-    the configured output directory, or start a run.
+    the configured output directory, or start a run. Device resolution uses the same
+    Trainer Factory function as real Trainer construction.
     """
 
     args = build_parser().parse_args(list(argv))
@@ -64,6 +66,14 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
     if not isinstance(output_dir, str) or not output_dir.strip():
         raise ValueError("environment.output_dir is required for preflight")
     writable = check_writable_directory(output_dir)
+
+    trainer_config = analysis.effective_config.get("trainer")
+    if not isinstance(trainer_config, dict):
+        raise ValueError("trainer configuration must be a mapping for preflight")
+    accelerator, devices = resolve_device_request(
+        argparse.Namespace(**trainer_config)
+    )
+
     result = {
         "status": "passed",
         "requested_config": source,
@@ -79,6 +89,9 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
         "pipeline_module": module_name,
         "maturity": descriptor.maturity,
         "output_dir": str(writable),
+        "requested_device": str(trainer_config.get("device")),
+        "resolved_accelerator": accelerator,
+        "resolved_devices": devices,
     }
     for key, value in result.items():
         print(f"{key}={value}")
