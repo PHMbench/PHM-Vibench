@@ -1,8 +1,6 @@
 import os
-from numbers import Integral
 
 import pytorch_lightning as pl
-import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelPruning
 from pytorch_lightning.loggers import CSVLogger, WandbLogger
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -13,58 +11,17 @@ except ImportError:  # Optional experiment service; required only when enabled.
     SwanLabLogger = None
 
 from src.trainer_factory import register_trainer
+from src.trainer_factory.device import resolve_device_request
 from src.trainer_factory.extensions import ManifestWriterCallback
+
+# Compatibility name for focused tests and historical internal imports.
+_resolve_device_request = resolve_device_request
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
 if "LOCAL_RANK" in os.environ:
     local_rank = int(os.environ["LOCAL_RANK"])
     is_main_process = local_rank == 0
-
-
-DEVICE_MODES = ("cpu", "cuda", "auto")
-
-
-def _resolve_device_request(args_t):
-    """Resolve the explicit trainer device request without hardware fallback."""
-
-    if not hasattr(args_t, "device"):
-        raise ValueError(
-            "trainer.device is required and must be one of: cpu, cuda, auto"
-        )
-    requested = str(args_t.device).strip().lower()
-    if requested not in DEVICE_MODES:
-        raise ValueError(
-            f"unsupported trainer.device {args_t.device!r}; expected one of: "
-            + ", ".join(DEVICE_MODES)
-        )
-
-    devices = getattr(args_t, "devices", getattr(args_t, "gpus", 1))
-    if isinstance(devices, bool) or not isinstance(devices, Integral) or devices < 1:
-        raise ValueError(
-            "trainer.devices/trainer.gpus must be a positive integer, "
-            f"got {devices!r}"
-        )
-    devices = int(devices)
-
-    if requested == "cpu":
-        return "cpu", devices
-    if requested == "auto":
-        return "auto", devices
-
-    if not torch.cuda.is_available():
-        raise RuntimeError(
-            "trainer.device='cuda' was requested, but CUDA is unavailable. "
-            "Set trainer.device=cpu or repair the CUDA runtime; no CPU fallback "
-            "was applied."
-        )
-    available_devices = int(torch.cuda.device_count())
-    if devices > available_devices:
-        raise RuntimeError(
-            "trainer.device='cuda' requested more devices than are available: "
-            f"requested={devices}, available={available_devices}."
-        )
-    return "gpu", devices
 
 
 @register_trainer("Default_trainer")
@@ -86,7 +43,7 @@ def trainer(args_e, args_t, args_d, path):
     if not hasattr(args_t, "pruning"):
         setattr(args_t, "pruning", 0.0)
 
-    accelerator, devices = _resolve_device_request(args_t)
+    accelerator, devices = resolve_device_request(args_t)
 
     # 获取回调列表
     callback_list = call_backs(args_t, path)
@@ -185,13 +142,13 @@ def call_backs(args, path):
 
 def Prune_callback(args):
     """
-    根据训练配置，返回训练器的模型修剪回调。
+    根据训练配置，返回模型剪枝回调。
 
     参数:
     - args: 包含训练配置的对象
 
     返回:
-    - prune_callback: 配置好的修剪回调（如果有）
+    - prune_callback: 配置好的剪枝回调（如果有）
     """
 
     def compute_amount(epoch):
