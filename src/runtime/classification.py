@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 from pytorch_lightning import seed_everything
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import (
     dict_to_namespace,
@@ -131,6 +132,25 @@ def _result_row(result: Any) -> dict[str, Any]:
     return dict(result[0])
 
 
+def _best_checkpoint_path(trainer: Any) -> Path:
+    callback = next(
+        (
+            item
+            for item in getattr(trainer, "callbacks", ())
+            if isinstance(item, ModelCheckpoint)
+        ),
+        None,
+    )
+    if callback is None or not callback.best_model_path:
+        raise RuntimeError(
+            "best checkpoint path is unavailable after checkpoint restoration"
+        )
+    path = Path(callback.best_model_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Best checkpoint does not exist: {path}")
+    return path.resolve()
+
+
 def _write_aggregate_outputs(
     run_root: str | Path,
     last_iteration_path: str | Path | None,
@@ -183,12 +203,45 @@ def _register_iteration_evidence(
     )
 
 
+def _public_result(
+    *,
+    final_path: Path,
+    best_checkpoints: list[Path],
+    all_results: list[dict[str, Any]],
+    summary: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the direct user-facing outputs of one classification invocation."""
+
+    if not best_checkpoints:
+        raise RuntimeError("classification completed without a best checkpoint")
+
+    result_root = final_path.parent.resolve()
+    test_metrics = result_root / "all_results.csv"
+    run_summary = result_root / "run_summary.json"
+    if summary is not None:
+        if not test_metrics.is_file():
+            raise FileNotFoundError(f"aggregate test metrics are missing: {test_metrics}")
+        if not run_summary.is_file():
+            raise FileNotFoundError(f"run summary is missing: {run_summary}")
+
+    return {
+        "status": "succeeded",
+        "result_dir": str(result_root),
+        "best_checkpoint": str(best_checkpoints[-1]),
+        "best_checkpoints": [str(path) for path in best_checkpoints],
+        "test_metrics": str(test_metrics) if summary is not None else None,
+        "run_summary": str(run_summary) if summary is not None else None,
+        "primary_metrics": dict(summary.get("metrics", {})) if summary else {},
+        "iterations": [dict(item) for item in all_results],
+    }
+
+
 def run_classification_pipeline(
     args: Any,
     *,
     hooks: ClassificationHooks | None = None,
-) -> list[dict[str, Any]]:
-    """Execute the shared train/test lifecycle for Pipeline 01 and Pipeline 05."""
+) -> dict[str, Any]:
+    """Execute the shared train/test lifecycle and return direct output paths."""
 
     hooks = hooks or ClassificationHooks()
     configs = load_runtime_config(args)
@@ -217,6 +270,7 @@ def run_classification_pipeline(
 
     all_results: list[dict[str, Any]] = []
     run_seeds: list[int] = []
+    best_checkpoints: list[Path] = []
     final_path: Path | None = None
 
     for iteration in range(iterations):
@@ -291,6 +345,7 @@ def run_classification_pipeline(
 
             print("[INFO] 加载最佳模型并测试...")
             context.task = load_best_model_checkpoint(context.task, context.trainer)
+            best_checkpoints.append(_best_checkpoint_path(context.trainer))
             if not test_after_fit:
                 continue
             context.result = _result_row(
@@ -322,8 +377,14 @@ def run_classification_pipeline(
         raise RuntimeError("classification Pipeline produced no iteration path")
     if not test_after_fit:
         print(f"\n{'=' * 50}\n[INFO] 训练完成；配置禁止测试\n{'=' * 50}")
-        return []
-    _write_aggregate_outputs(
+        return _public_result(
+            final_path=final_path,
+            best_checkpoints=best_checkpoints,
+            all_results=all_results,
+            summary=None,
+        )
+
+    summary = _write_aggregate_outputs(
         final_path.parent,
         final_path,
         all_results,
@@ -339,4 +400,9 @@ def run_classification_pipeline(
             metadata={"iterations": iterations},
         )
     print(f"\n{'=' * 50}\n[INFO] 所有实验已完成\n{'=' * 50}")
-    return all_results
+    return _public_result(
+        final_path=final_path,
+        best_checkpoints=best_checkpoints,
+        all_results=all_results,
+        summary=summary,
+    )
