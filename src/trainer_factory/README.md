@@ -21,7 +21,9 @@ trainer = build_trainer(
 )
 ```
 
-A successful call returns `pl.Trainer`. Import and construction failures raise with the requested trainer, module path, original cause, and repair guidance. The factory does not print an error and return `None`.
+A successful call returns `pl.Trainer`. Import and construction failures raise with the
+requested trainer, module path, original cause, and repair guidance. The factory does not
+print an error and return `None`.
 
 ## Configuration
 
@@ -32,11 +34,25 @@ trainer:
   device: "cpu"
   gpus: 1
   monitor: "val_loss"
+  monitor_mode: "min"
   early_stopping: true
   patience: 5
 ```
 
-`trainer.name` is the maintained selector. `trainer.trainer_name` remains a compatibility fallback only when `name` is absent.
+`trainer.name` is the maintained selector. `trainer.trainer_name` remains a compatibility
+fallback only when `name` is absent.
+
+For `Default_trainer`, checkpoint selection is an explicit two-field contract:
+
+```text
+trainer.monitor
++
+trainer.monitor_mode ∈ {min, max}
+```
+
+The pair is shared by `ModelCheckpoint` and `EarlyStopping`. The Trainer Factory does not
+guess direction from names such as `loss`, `acc`, `score`, or `error`, and does not use a
+hard-coded `val_loss` placeholder in checkpoint filenames.
 
 ## Resolution order
 
@@ -45,7 +61,8 @@ For `Default_trainer`, the factory:
 1. checks `TRAINER_REGISTRY`;
 2. imports `src.trainer_factory.Default_trainer`;
 3. checks the registry again so module decorators can register the builder;
-4. accepts the historical exported function name `trainer` when the module is not decorator-registered.
+4. accepts the historical exported function name `trainer` when the module is not
+   decorator-registered.
 
 It does not scan the package or guess alternative builder names.
 
@@ -76,26 +93,31 @@ def trainer(*, args_e, args_t, args_d, path):
     ...
 ```
 
-The builder must either return a valid `pl.Trainer` or raise. It must not catch a construction failure and return `None`.
+The builder must either return a valid `pl.Trainer` or raise. It must not catch a
+construction failure and return `None`.
 
 ## Developer expectations
 
 A trainer builder owns:
 
 - device and accelerator selection;
+- checkpoint metric and optimization direction;
 - callbacks such as checkpointing and early stopping;
 - loggers;
 - output/checkpoint paths;
 - Lightning `Trainer` options.
 
-It should not reinterpret the experiment YAML, replace the selected task/model, or silently switch hardware after an error.
+It should not reinterpret the experiment YAML, replace the selected task/model, infer
+checkpoint direction, or silently switch hardware after an error.
 
 ## Minimal validation
 
 ```bash
 python -m scripts.config_inspect --config <yaml> --dump targets
 python main.py --config <yaml> \
-  --override trainer.num_epochs=1 trainer.device=cpu data.num_workers=0
+  --override trainer.num_epochs=1 \
+  --override trainer.device=cpu \
+  --override data.num_workers=0
 ```
 
 Use the repository-shipped Dummy demo as the final compatibility check:
@@ -106,6 +128,11 @@ phmfactory demo
 
 ## Failure examples
 
-- `Cannot import trainer ...`: verify `trainer.name`, module path, and optional dependencies.
-- `does not register ... and does not expose 'trainer'`: add `@register_trainer(...)` or export the historical `trainer` function.
-- `Cannot construct trainer ...`: inspect the preserved cause, device availability, callback settings, and output path permissions.
+- `Cannot import trainer ...`: verify `trainer.name`, module path, and optional
+  dependencies.
+- `does not register ... and does not expose 'trainer'`: add
+  `@register_trainer(...)` or export the historical `trainer` function.
+- missing `trainer.monitor`: name the validation scalar logged by the Task.
+- missing or invalid `trainer.monitor_mode`: declare `min` or `max` explicitly.
+- Trainer construction exception: inspect the preserved cause, device availability,
+  callback settings, selected metric, and output-path permissions.
