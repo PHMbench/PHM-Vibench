@@ -26,9 +26,15 @@ def _numeric_value(value: Any) -> float | None:
 def build_run_summary(
     results: Sequence[Mapping[str, Any]],
     seeds: Sequence[int],
+    config: Any = None,
 ) -> dict[str, Any]:
-    """Summarize exactly the completed repeated-run estimator."""
+    """Summarize exactly the completed repeated-run estimator.
 
+    ``config`` remains an ignored call-shape parameter for internal compatibility during
+    the RC transition. It is not serialized, hashed, or used to determine success.
+    """
+
+    del config
     if len(results) != len(seeds):
         raise ValueError("one seed must be recorded for every run result")
     if not results:
@@ -64,8 +70,9 @@ def write_run_summary(
     output_path: str | Path,
     results: Sequence[Mapping[str, Any]],
     seeds: Sequence[int],
+    config: Any = None,
 ) -> dict[str, Any]:
-    summary = build_run_summary(results=results, seeds=seeds)
+    summary = build_run_summary(results=results, seeds=seeds, config=config)
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
