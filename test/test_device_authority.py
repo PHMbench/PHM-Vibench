@@ -45,7 +45,11 @@ def test_default_task_preserves_model_device_and_trainer_config(
 ) -> None:
     module = _default_task_module()
     monkeypatch.setattr(module, "get_loss_fn", lambda name: nn.CrossEntropyLoss())
-    monkeypatch.setattr(module, "get_metrics", lambda metrics, metadata: {})
+    monkeypatch.setattr(
+        module,
+        "get_metrics",
+        lambda metrics, metadata, **kwargs: {},
+    )
     monkeypatch.setattr(
         module.torch.cuda,
         "is_available",
@@ -63,7 +67,7 @@ def test_default_task_preserves_model_device_and_trainer_config(
         args_task=Namespace(
             name="classification",
             loss="CE",
-            metrics=[],
+            metrics=["acc"],
             optimizer="adam",
             lr=1e-3,
         ),

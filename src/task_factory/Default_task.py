@@ -6,12 +6,17 @@ from typing import Any, Dict, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+from torchmetrics import Metric
 
+from phmfactory.task_semantics import (
+    normalize_loss_name,
+    validate_loss_metric_contract,
+)
 from src.task_factory import register_task
 
 from .Components.gradient_constraints import FisherGradientConstraint
-from .Components.loss import get_loss_fn
-from .Components.metrics import get_metrics
+from .Components.loss import compute_task_loss, get_loss_fn
+from .Components.metrics import get_metrics, prepare_metric_inputs
 from .Components.regularization import calculate_regularization
 
 
@@ -70,8 +75,17 @@ class Default_task(pl.LightningModule):
                 raise ValueError("FIC gradient_constraint currently requires task.loss=CE")
             self.gradient_constraint = FisherGradientConstraint(epsilon=float(epsilon))
 
-        self.loss_fn = get_loss_fn(self.args_task.loss)
-        self.metrics = get_metrics(self.args_task.metrics, self.metadata)
+        self.loss_name = normalize_loss_name(self.args_task.loss)
+        self.metric_names = validate_loss_metric_contract(
+            self.loss_name,
+            self.args_task.metrics,
+        )
+        self.loss_fn = get_loss_fn(self.loss_name)
+        self.metrics = get_metrics(
+            self.metric_names,
+            self.metadata,
+            loss_name=self.loss_name,
+        )
 
         hparams_dict = {
             **vars(self.args_task),
@@ -141,7 +155,12 @@ class Default_task(pl.LightningModule):
         return self.network(x, file_id, task_id)
 
     def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return self.loss_fn(y_hat, y.long() if y.dtype != torch.long else y)
+        return compute_task_loss(
+            self.loss_fn,
+            self.loss_name,
+            y_hat,
+            y,
+        )
 
     def _compute_metrics(
         self,
@@ -149,7 +168,15 @@ class Default_task(pl.LightningModule):
         y: torch.Tensor,
         data_name: str,
         stage: str,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> Dict[str, Metric]:
+        """Update every requested metric over the full stage population.
+
+        TorchMetrics objects remain registered in ``self.metrics``.  Each batch updates
+        their state with the estimator-specific prediction representation, while
+        Lightning computes and resets the logged objects at the epoch boundary.  This
+        avoids averaging batch F1/AUROC values into a different estimator.
+        """
+
         if data_name not in self.metrics:
             available = sorted(self.metrics.keys())
             raise KeyError(
@@ -158,10 +185,20 @@ class Default_task(pl.LightningModule):
                 "different dataset's metrics."
             )
 
-        metric_values = {}
+        metric_values: Dict[str, Metric] = {}
+        stage_prefix = f"{stage}_"
         for metric_key, metric_fn in self.metrics[data_name].items():
-            if metric_key.startswith(stage):
-                metric_values[f"{metric_key}_{data_name}"] = metric_fn(y_hat, y)
+            if not metric_key.startswith(stage_prefix):
+                continue
+            metric_name = metric_key[len(stage_prefix) :]
+            metric_predictions, metric_target = prepare_metric_inputs(
+                metric_name,
+                y_hat,
+                y,
+                loss_name=self.loss_name,
+            )
+            metric_fn.update(metric_predictions, metric_target)
+            metric_values[f"{metric_key}_{data_name}"] = metric_fn
         return metric_values
 
     def _compute_regularization(self) -> Dict[str, torch.Tensor]:
@@ -222,7 +259,7 @@ class Default_task(pl.LightningModule):
         batch: Tuple,
         stage: str,
         task_id=False,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> Dict[str, Any]:
         del task_id
         if not isinstance(batch, Mapping):
             raise TypeError(f"task batch must be a mapping, got {type(batch).__name__}")
@@ -240,14 +277,13 @@ class Default_task(pl.LightningModule):
 
         y = batch["y"]
         loss = self._compute_loss(y_hat, y)
-        y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
-        step_metrics = {
+        step_metrics: Dict[str, Any] = {
             f"{stage}_loss": loss,
             f"{stage}_{data_name}_loss": loss,
         }
         step_metrics.update(
-            self._compute_metrics(y_argmax, y, data_name, stage)
+            self._compute_metrics(y_hat, y, data_name, stage)
         )
 
         reg_dict = self._compute_regularization()
@@ -295,20 +331,36 @@ class Default_task(pl.LightningModule):
         metrics = self._shared_step(batch, "test")
         self._log_metrics(metrics, "test")
 
-    def _log_metrics(self, metrics: Dict[str, torch.Tensor], stage: str) -> None:
-        log_dict = {
-            key: value
-            for key, value in metrics.items()
-            if key.startswith(stage) and "batch_size" not in key
-        }
-        self.log_dict(
-            log_dict,
-            on_step=stage == "train",
-            on_epoch=True,
-            prog_bar=False,
-            logger=True,
-            sync_dist=True,
-        )
+    def _log_metrics(self, metrics: Mapping[str, Any], stage: str) -> None:
+        metric_objects: dict[str, Metric] = {}
+        scalar_values: dict[str, Any] = {}
+        for key, value in metrics.items():
+            if not key.startswith(stage) or "batch_size" in key:
+                continue
+            if isinstance(value, Metric):
+                metric_objects[key] = value
+            else:
+                scalar_values[key] = value
+
+        for key, metric in metric_objects.items():
+            self.log(
+                key,
+                metric,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=False,
+                logger=True,
+                sync_dist=False,
+            )
+        if scalar_values:
+            self.log_dict(
+                scalar_values,
+                on_step=stage == "train",
+                on_epoch=True,
+                prog_bar=False,
+                logger=True,
+                sync_dist=True,
+            )
 
     def configure_optimizers(self):
         optimizer_name = self.args_task.optimizer.lower()
