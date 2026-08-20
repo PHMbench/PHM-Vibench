@@ -5,10 +5,8 @@ from phmfactory.runtime.execution import (
     ExecutionStatus,
     PipelineContractError,
 )
-from phmfactory.runtime.spec import CompiledRunSpec
 
 __all__ = [
-    "CompiledRunSpec",
     "ExecutionEnvelope",
     "ExecutionStatus",
     "PipelineContractError",
