@@ -161,7 +161,8 @@ def test_run_dispatches_analyzed_canonical_module(
         "effective_config_sha256": analysis.effective_config_sha256,
         "notes": "entrypoint-parity",
     }
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "runs").exists()
 
 
 @pytest.mark.parametrize("preset", tuple(sorted(MAINTAINED_PRESETS)))
@@ -195,7 +196,8 @@ def test_run_passes_maintained_preset_path_to_runtime(
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
     assert len(str(observed["effective_config_sha256"])) == 64
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "runs").exists()
 
 
 def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
@@ -351,4 +353,5 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
         "task": "classification",
         "trainer": "cpu",
     }
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "results").exists()

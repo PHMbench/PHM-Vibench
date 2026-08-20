@@ -40,7 +40,6 @@ def test_envelope_records_success() -> None:
     assert envelope.started_at is not None
     assert envelope.finished_at is not None
     assert envelope.error_type is None
-    assert envelope.as_dict()["run_spec_sha256"] == envelope.spec.sha256
 
 
 def test_envelope_rejects_none_as_ambiguous_success() -> None:
@@ -129,4 +128,5 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
 
     assert "完成所有实验" not in capsys.readouterr().out
     assert args.execution_envelope.status is ExecutionStatus.FAILED
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "outputs").exists()

@@ -1,24 +1,13 @@
 # Quickstart
 
-This walkthrough proves that PHMFactory is installed correctly and can complete one
-fully offline experiment. It uses repository-shipped synthetic data, runs on CPU, and is
-intended to take only a few minutes after dependencies are installed.
+This walkthrough verifies a complete PHMFactory installation with one fully offline CPU
+experiment. It uses repository-shipped Dummy data and does not download a dataset or
+model.
 
-It is a software smoke test, not a benchmark-performance run.
+The Dummy run is a software smoke test. It is not a real-data benchmark or an algorithm
+performance claim.
 
-## What you will complete
-
-By the end of this page you will have:
-
-1. checked the Python environment;
-2. checked one exact effective configuration without training;
-3. completed one offline train/test run;
-4. located metrics, checkpoints, and the optional diagnostic run record;
-5. understood how to supply local paths explicitly.
-
-## 1. Install the source checkout
-
-Follow [Installation](installation.md), or use the maintained source path:
+## 1. Install
 
 ```bash
 git clone https://github.com/PHMbench/PHM-Vibench.git
@@ -30,97 +19,84 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-The current GitHub repository is `PHMbench/PHM-Vibench`. The project and package are
-named PHMFactory, but the repository has not yet been renamed.
+Python 3.10 or newer is required. Platform-specific notes are in
+[Installation](installation.md).
 
-## 2. Diagnose the environment
+## 2. Inspect the command surface
+
+```bash
+phmfactory
+```
+
+A bare invocation prints help and exits. It does not choose a config, read data, access
+the network, create an output directory, or start training.
+
+Run an experiment only through an explicit action such as:
+
+```bash
+phmfactory demo
+phmfactory --config <yaml>
+```
+
+## 3. Diagnose the installed environment
 
 ```bash
 phmfactory doctor
 ```
 
-Expected output shape:
+A successful check ends with:
 
 ```text
-PASS python: 3.10.x
-PASS import:yaml: imported version=...
-PASS import:torch: imported version=...
-PASS import:pandas: imported version=...
-PASS import:pytorch_lightning: imported version=...
-PASS config:smoke: .../configs/demo/00_smoke/dummy_dg.yaml
-PASS pipeline:smoke: src.Pipeline_01_Fault_Diagnosis
-PASS output:writable: .../results/demo/dummy_dg_smoke
-doctor=passed checks=8
+doctor=passed checks=...
 ```
 
-Exact versions and paths may differ. Every required line should start with `PASS`, and
-the command should exit with status code `0`.
+`doctor` performs real imports, verifies the packaged smoke config and Pipeline, and
+checks output writability. It does not install packages, modify configuration, download
+data, or train a model.
 
-`doctor` does not start training. It performs real imports, resolves the smoke config,
-checks Pipeline discoverability, and proves output writability.
+Use the reported exception type and message when a check fails. Do not modify framework
+source to hide a broken Python environment.
 
-### When `doctor` fails
-
-| Failure | Meaning | First action |
-| --- | --- | --- |
-| `import:torch` | PyTorch is missing or cannot load | Install a platform-compatible PyTorch build |
-| `import:pytorch_lightning` | Lightning or a dependency cannot load | Re-run `python -m pip install -e .` in the active environment |
-| `config:smoke` | Packaged config is missing or installation is stale | Reinstall from the repository root |
-| `pipeline:smoke` | Maintained Pipeline is not discoverable | Confirm the intended checkout and environment |
-| `output:writable` | Output parent cannot be written | Change directory or fix permissions |
-
-Use the reported exception type and message. Do not modify framework source to hide a
-broken Python environment.
-
-## 3. Check the experiment without training
+## 4. Preflight the exact experiment
 
 ```bash
 phmfactory preflight --config smoke
 ```
 
-Expected key lines:
+Expected key lines include:
 
 ```text
 status=passed
 requested_config=smoke
-local_config_path=none
-effective_config_sha256=<64-hex>
-run_spec_sha256=<64-hex>
 pipeline=Pipeline_01_Fault_Diagnosis
 maturity=supported
 output_dir=.../results/demo/dummy_dg_smoke
+requested_device=cpu
+resolved_accelerator=cpu
+resolved_devices=1
 ```
 
-These identities support configuration-parity diagnosis:
-
-- `effective_config_sha256` identifies the final resolved configuration mapping;
-- `run_spec_sha256` identifies the explicit invocation source and overrides.
-
-They are not security proofs and do not determine whether training or evaluation
-succeeded.
+The current RC1 compatibility output also includes configuration identity fields. They
+are diagnostic values, not security proofs and not run-success criteria.
 
 Preflight does not:
 
 - import or execute the training Pipeline;
 - construct data loaders, models, tasks, or trainers;
-- allocate a GPU;
 - create the configured output directory;
 - start a run.
 
-A passing preflight exits with status code `0`.
-
-Test an override without editing YAML:
+An explicit unavailable CUDA request fails before training:
 
 ```bash
 phmfactory preflight \
   --config smoke \
-  --override trainer.num_epochs=2
+  --override trainer.device=cuda
 ```
 
-Later overrides replace earlier values. Invalid paths, malformed overrides, unknown
-Pipelines, and unwritable outputs fail with a non-zero status.
+No CPU fallback is applied to an explicit CUDA request.
 
-## 4. Run the offline demo
+## 5. Run the offline Dummy experiment
 
 ```bash
 phmfactory demo
@@ -132,195 +108,167 @@ The command applies bounded defaults:
 preset: smoke
 trainer.num_epochs: 1
 trainer.device: cpu
-trainer.gpus: 1
 data.num_workers: 0
 ```
 
-An explicit user override still wins:
+A user override remains explicit and wins:
 
 ```bash
 phmfactory demo --override trainer.num_epochs=2
 ```
 
-A successful run should:
+A successful run completes:
 
-- initialize Dummy data from repository files;
-- construct the maintained model, task, and trainer;
-- fit, restore the best checkpoint, and test without downloading an external dataset;
-- print `run_manifest=<path>` when the compatibility diagnostic record is available, or
-  `run_manifest=unavailable` when only that optional write failed;
-- print the completion message;
-- exit with status code `0`.
+```text
+local Dummy files
+→ Data Factory
+→ Model Factory
+→ Task Factory
+→ Trainer Factory
+→ fit
+→ best-checkpoint restoration
+→ test
+→ finite metrics
+```
 
-The scientific result is governed by fit, checkpoint restoration, evaluation, and finite
-metrics. A warning about the optional diagnostic manifest or evidence index does not
-invalidate a completed Pipeline.
+The terminal prints the canonical outputs directly:
 
-## 5. Find the results
+```text
+result_dir=...
+best_checkpoint=...
+test_metrics=...
+run_summary=...
+primary_metrics={...}
+```
 
-Linux/macOS:
+The four path keys are stable, machine-readable result locations used by tests and user
+interfaces. `primary_metrics` is a JSON object derived from the same `run_summary.json`.
+These returned values are the result authority. PHMFactory does not require a parallel
+run manifest, attestation file, evidence index, receipt, or ledger for success.
+
+## 6. Inspect the outputs
+
+The direct paths normally point to:
+
+```text
+result_dir/
+├── all_results.csv
+├── run_summary.json
+└── iter_0/
+    ├── test_result_0.csv
+    ├── model-....ckpt
+    └── logs/
+```
+
+Required outcomes are:
+
+- the reported result directory exists;
+- the reported best checkpoint exists and was restored before test;
+- aggregate test metrics exist;
+- `run_summary.json` contains non-empty finite metrics;
+- the process exits with status code `0`.
+
+A Pipeline exception remains the run failure. PHMFactory does not replace it with a
+record-writing warning or mark a failed scientific lifecycle as successful.
+
+## 7. Run an explicit maintained configuration
+
+The Dummy smoke is fully offline. Real-data configurations require their declared local
+metadata and raw signals, or a documented preparation step.
+
+Use the same visible inputs for preflight and run:
 
 ```bash
-find results/demo/dummy_dg_smoke -maxdepth 7 -type f | sort
+phmfactory preflight \
+  --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override data.data_dir=/absolute/path/to/phm-data \
+  --override data.metadata_file=metadata.xlsx \
+  --override data.num_workers=0 \
+  --override trainer.num_epochs=1
+
+phmfactory \
+  --config configs/demo/01_cross_domain/cwru_dg.yaml \
+  --override data.data_dir=/absolute/path/to/phm-data \
+  --override data.metadata_file=metadata.xlsx \
+  --override data.num_workers=0 \
+  --override trainer.num_epochs=1
 ```
 
-Windows PowerShell:
-
-```powershell
-Get-ChildItem results/demo/dummy_dg_smoke -Recurse -File |
-  Select-Object -ExpandProperty FullName
-```
-
-Required scientific outputs normally include:
-
-- per-iteration test metrics such as `test_result_0.csv`;
-- aggregate metrics such as `all_results.csv`;
-- `run_summary.json` for repeated-run estimators;
-- the best checkpoint and logger outputs.
-
-When diagnostic recording is available, one compatibility `run_manifest.json` also
-appears under `.phmfactory/runs/<run-id>/`. It may index config identities and artifacts,
-but it is not the authority for scientific success. A failed manifest write produces a
-warning rather than changing a completed experiment to failed.
-
-## 6. Verify compatible entrypoints
-
-These commands should report the same effective config identity and process status:
+For several machine-specific values, create an untracked YAML and pass it explicitly:
 
 ```bash
-phmfactory preflight --config smoke
-python -m phmfactory preflight --config smoke
-python main.py preflight --config smoke
+phmfactory preflight \
+  --config configs/experiments/my_experiment.yaml \
+  --local-config configs/local/my_machine.yaml
+
+phmfactory \
+  --config configs/experiments/my_experiment.yaml \
+  --local-config configs/local/my_machine.yaml
 ```
 
-Use the first form after installation. `python main.py` is a repository compatibility
+PHMFactory does not automatically discover `configs/local/local.yaml` on the maintained
+public path.
+
+## 8. Compatible entrypoints
+
+These process entrypoints share the same public command router:
+
+```bash
+phmfactory --config <yaml>
+python -m phmfactory --config <yaml>
+python main.py --config <yaml>
+```
+
+Use `phmfactory` after installation. `python main.py` remains a repository compatibility
 launcher.
 
-Python code that needs a structured result may call:
+Python code can retain the structured result:
 
 ```python
 from phmfactory.cli import main
 
-report = main(["preflight", "--config", "smoke"])
-print(report["effective_config_sha256"])
+result = main(["demo"])
+print(result["result_dir"])
+print(result["best_checkpoint"])
+print(result["primary_metrics"])
 ```
-
-## 7. Run a maintained config with local data
-
-The Dummy smoke is fully offline. The first real-data reference uses MFPT and has its own
-preparation guide under `configs/baselines/01_mfpt/README.md`. Other real-data configs
-require local metadata and raw signals.
-
-Keep machine paths out of maintained YAML and pass them explicitly:
-
-```bash
-phmfactory preflight \
-  --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/phm-data \
-  --override data.metadata_file=metadata.xlsx \
-  --override data.num_workers=0 \
-  --override trainer.num_epochs=1
-```
-
-After preflight passes, run the same visible inputs:
-
-```bash
-phmfactory \
-  --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/phm-data \
-  --override data.metadata_file=metadata.xlsx \
-  --override data.num_workers=0 \
-  --override trainer.num_epochs=1
-```
-
-For several machine-specific values, create an untracked YAML and supply it explicitly:
-
-```bash
-phmfactory preflight \
-  --config configs/experiments/my_experiment.yaml \
-  --local-config configs/local/my_machine.yaml
-
-phmfactory \
-  --config configs/experiments/my_experiment.yaml \
-  --local-config configs/local/my_machine.yaml
-```
-
-PHMFactory does not automatically read `configs/local/local.yaml`. The local file must be
-visible in both commands. CLI overrides have higher precedence than the explicit local
-file.
-
-Read [data/README.md](../data/README.md) for layout and
-[Supported combinations](../SUPPORTED_COMBINATIONS.md) for the maintained surface.
-
-## 8. Create a local experiment variant
-
-1. Copy the nearest file from `configs/demo/` or `configs/baselines/` to
-   `configs/experiments/`.
-2. Change only values required by the experiment.
-3. Keep machine paths in explicit overrides or an explicit `--local-config` file.
-4. Run `phmfactory preflight --config <your-yaml>` with the same extra inputs as the run.
-5. Run the smallest applicable test or one-epoch smoke.
-6. Record the commit, config, command, data source, split, seed, and environment.
-
-Do not add a local variant to `configs/config_registry.csv` unless it is being reviewed
-for promotion to the maintained surface.
 
 ## Troubleshooting
 
-### Preflight and run report different effective hashes
+### Metadata or raw files are missing
 
-Use the same config, `--local-config`, and overrides in both commands. If visible inputs
-are identical but hashes differ, report both commands, both hashes, installed package
-location, stdout, and stderr. That is a config-parity bug.
+Normal runs do not download replacement metadata or signals. Check the complete path in
+the error, then correct `data.data_dir`, `data.metadata_file`, or the declared raw layout.
+Use `phmfactory demo` to separate installation problems from local-data problems.
 
-### The run prints `run_manifest=unavailable`
+### Metadata parsing fails
 
-First verify that training, best-checkpoint restoration, test metrics, and shell exit code
-all succeeded. The message means the optional compatibility record could not be prepared
-or finalized. Preserve stderr for diagnosis, but do not rerun or change the scientific
-experiment solely to make that diagnostic file appear.
+`.csv` means comma-separated UTF-8/UTF-8-SIG text; `.tsv` means tab-separated text.
+PHMFactory does not guess a delimiter or silently decode damaged bytes. Correct the file
+extension/content or explicitly configure a supported text encoding.
 
-### A command prints useful output but the shell reports exit code `1`
+### CUDA is unavailable
 
-```bash
-phmfactory preflight --config smoke
-echo $?
-```
+Run the CPU Dummy demo first. For a real GPU run, repair the PyTorch/driver environment
+or explicitly select `trainer.device=cpu`. An explicit CUDA request never silently
+falls back to CPU.
 
-A successful public process must exit with `0`. Report the exact entrypoint and complete
-output when display and status disagree.
+### No best checkpoint is reported
 
-### `preflight` cannot find the config
+Inspect the validation metric named by `trainer.monitor`, checkpoint callback settings,
+and training output. Evaluation does not continue with an unselected in-memory model.
 
-Use a maintained preset such as `smoke`, or a path relative to the repository root:
+### The process exits non-zero
 
-```bash
-phmfactory preflight --config configs/demo/00_smoke/dummy_dg.yaml
-```
+The original exception is authoritative. Preserve the complete stdout/stderr and fix the
+reported data, model, task, trainer, checkpoint, or Pipeline boundary. Do not add a
+catch-all fallback to force exit code `0`.
 
-### A local data path does not exist
+## Next documentation
 
-Return to `phmfactory demo` to separate installation from data availability. Then verify
-`data.data_dir`, `data.metadata_file`, and raw layout.
-
-### The demo fails during import
-
-Run `phmfactory doctor` again. An installed package can still fail during import because
-of a binary, driver, or transitive-dependency incompatibility.
-
-### CUDA initialization fails
-
-Use the CPU Dummy demo first. Verify PyTorch and the driver independently before changing
-PHMFactory code or config.
-
-### Metrics differ between runs
-
-The quickstart verifies execution, not fixed scientific metrics. Fair reproduction also
-requires the same code, data, split, seed, protocol, and environment. See
-[Known limitations](../KNOWN_LIMITATIONS.md).
-
-## Developer details
-
-Developers working on config compilation, execution, or diagnostic records should read
-[Runtime control plane](developer_runtime_control_plane.md). First-time users do not need
-those internals to run an experiment.
+- [Installation](installation.md)
+- [Configuration guide](../configs/README.md)
+- [Data layout](../data/README.md)
+- [MFPT real-data reference](../configs/baselines/01_mfpt/README.md)
+- [Supported combinations](../SUPPORTED_COMBINATIONS.md)
+- [Known limitations](../KNOWN_LIMITATIONS.md)

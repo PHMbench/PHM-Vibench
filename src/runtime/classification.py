@@ -176,33 +176,6 @@ def _write_aggregate_outputs(
     )
 
 
-def _register_iteration_evidence(
-    args: Any,
-    *,
-    iteration: int,
-    seed: int,
-    path: Path,
-    metrics_path: Path,
-) -> None:
-    attestation = getattr(args, "run_attestation", None)
-    if attestation is None:
-        return
-    artifact = attestation.register_artifact(
-        role="classification_test_metrics",
-        path=metrics_path,
-        metadata={"iteration": iteration, "run_dir": str(path)},
-    )
-    attestation.append_evidence(
-        "classification_iterations",
-        {
-            "iteration": iteration,
-            "seed": seed,
-            "run_dir": str(path),
-            "metrics_artifact": artifact,
-        },
-    )
-
-
 def _public_result(
     *,
     final_path: Path,
@@ -359,13 +332,6 @@ def run_classification_pipeline(
             print("[INFO] 保存测试结果...")
             metrics_path = path / f"test_result_{iteration}.csv"
             pd.DataFrame([context.result]).to_csv(metrics_path, index=False)
-            _register_iteration_evidence(
-                args,
-                iteration=iteration,
-                seed=current_seed,
-                path=path,
-                metrics_path=metrics_path,
-            )
             hooks.after_test(context)
         finally:
             if context.data_factory is not None:
@@ -391,14 +357,6 @@ def run_classification_pipeline(
         run_seeds,
         configs,
     )
-    aggregate_path = final_path / "all_results.csv"
-    attestation = getattr(args, "run_attestation", None)
-    if attestation is not None:
-        attestation.register_artifact(
-            role="classification_aggregate_metrics",
-            path=aggregate_path,
-            metadata={"iterations": iterations},
-        )
     print(f"\n{'=' * 50}\n[INFO] 所有实验已完成\n{'=' * 50}")
     return _public_result(
         final_path=final_path,

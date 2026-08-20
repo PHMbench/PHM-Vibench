@@ -7,6 +7,9 @@ on:
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
       - "src/configs/config_utils.py"
+      - "src/runtime/classification.py"
+      - "src/trainer_factory/Default_trainer.py"
+      - "src/trainer_factory/extensions/**"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
@@ -27,7 +30,6 @@ on:
       - "test/test_pipeline_maturity.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
-      - "test/test_runtime_attestation.py"
       - ".github/workflows/phmfactory-public-package.yml"
   push:
     branches:
@@ -37,6 +39,9 @@ on:
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
       - "src/configs/config_utils.py"
+      - "src/runtime/classification.py"
+      - "src/trainer_factory/Default_trainer.py"
+      - "src/trainer_factory/extensions/**"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
@@ -57,7 +62,6 @@ on:
       - "test/test_pipeline_maturity.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
-      - "test/test_runtime_attestation.py"
       - ".github/workflows/phmfactory-public-package.yml"
   workflow_dispatch:
 
@@ -102,7 +106,6 @@ jobs:
           test/test_pipeline_maturity.py
           test/test_runtime_control_plane.py
           test/test_runtime_execution.py
-          test/test_runtime_attestation.py
 
       - name: Run focused public API and config parity tests
         run: >-
@@ -116,7 +119,6 @@ jobs:
           test/test_pipeline_maturity.py
           test/test_runtime_control_plane.py
           test/test_runtime_execution.py
-          test/test_runtime_attestation.py
 
       - name: Upload focused pytest diagnostics
         if: always()
@@ -150,6 +152,7 @@ jobs:
               "phmfactory/__main__.py",
               "phmfactory/cli.py",
               "phmfactory/config.py",
+              "phmfactory/device.py",
               "phmfactory/pipelines.py",
               "phmfactory/commands/__init__.py",
               "phmfactory/commands/common.py",
@@ -160,7 +163,6 @@ jobs:
               "phmfactory/runtime/__init__.py",
               "phmfactory/runtime/spec.py",
               "phmfactory/runtime/execution.py",
-              "phmfactory/runtime/attestation.py",
               "phmfactory/runtime/pipeline06_adapter.py",
               "src/__init__.py",
               "src/configs/config_utils.py",
@@ -178,6 +180,8 @@ jobs:
           }
           missing = sorted(required - names)
           assert not missing, missing
+          assert "phmfactory/runtime/attestation.py" not in names
+          assert "phmfactory/runtime/evidence.py" not in names
           assert not any(name.startswith(("paper/", "dev/", "results/")) for name in names)
           PY
 
@@ -243,7 +247,6 @@ jobs:
           set -euxo pipefail
           cd /tmp
           /tmp/phmfactory-wheel/bin/python - <<'PY'
-          import json
           from pathlib import Path
           from types import SimpleNamespace
           from unittest.mock import patch
@@ -279,10 +282,5 @@ jobs:
           with patch.object(cli.importlib, "import_module", side_effect=fake_import):
               assert cli.main(["--config", "smoke"]) == "wheel-dispatch-pass"
 
-          manifests = list(Path("/tmp/results").rglob("run_manifest.json"))
-          assert len(manifests) == 1, manifests
-          payload = json.loads(manifests[0].read_text(encoding="utf-8"))
-          assert payload["status"] == "succeeded"
-          assert payload["run_spec"]["pipeline"] == "Pipeline_01_Fault_Diagnosis"
-          assert payload["run_spec"]["effective_config_sha256"] == analysis.effective_config_sha256
+          assert not Path("/tmp/results").exists()
           PY
