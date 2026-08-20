@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ConfigAnalysis, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis
 from phmfactory.pipelines import (
     PipelineMaturityError,
     pipeline_descriptor,
@@ -31,8 +31,6 @@ def _analysis(tmp_path: Path, pipeline: str) -> ConfigAnalysis:
         local_config_path=None,
         source_files=(path,),
         sources={},
-        diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(data),
     )
 
 
@@ -93,7 +91,7 @@ def test_cli_blocks_experimental_before_import(
     assert args.execution_envelope.status is ExecutionStatus.FAILED
     assert args.execution_envelope.failure_stage == "maturity"
     assert args.execution_envelope.error_type == "PipelineMaturityError"
-    assert not hasattr(args, "run_manifest_path")
+    assert args.resolved_config_data == analysis.effective_config
     assert not (tmp_path / "runs").exists()
 
 
@@ -120,7 +118,7 @@ def test_cli_explicit_opt_in_allows_experimental_import(
     assert cli.run(args) == {"experimental": True}
     assert args.pipeline_descriptor.maturity == "experimental"
     assert args.execution_envelope.status is ExecutionStatus.SUCCEEDED
-    assert not hasattr(args, "run_manifest_path")
+    assert args.resolved_config_data == analysis.effective_config
     assert not (tmp_path / "runs").exists()
 
 
