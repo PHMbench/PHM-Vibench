@@ -10,9 +10,15 @@ from phmfactory import cli
 from phmfactory.commands import demo, doctor, preflight
 from phmfactory.commands.common import check_writable_directory
 from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+import phmfactory.device as device_contract
 
 
-def _config(tmp_path: Path, *, output: bool = True) -> dict:
+def _config(
+    tmp_path: Path,
+    *,
+    output: bool = True,
+    device: str = "cpu",
+) -> dict:
     environment = {
         "seed": 0,
         "iterations": 1,
@@ -24,12 +30,17 @@ def _config(tmp_path: Path, *, output: bool = True) -> dict:
         "data": {},
         "model": {},
         "task": {},
-        "trainer": {},
+        "trainer": {"device": device, "gpus": 1},
     }
 
 
-def _analysis(tmp_path: Path, *, output: bool = True) -> ConfigAnalysis:
-    config = _config(tmp_path, output=output)
+def _analysis(
+    tmp_path: Path,
+    *,
+    output: bool = True,
+    device: str = "cpu",
+) -> ConfigAnalysis:
+    config = _config(tmp_path, output=output, device=device)
     path = tmp_path / "smoke.yaml"
     return ConfigAnalysis(
         requested="smoke",
@@ -69,6 +80,23 @@ def test_command_router_preserves_legacy_experiment_form(
     assert routed == [("doctor", []), ("experiment", "smoke")]
 
 
+def test_no_arguments_only_prints_help(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "run",
+        lambda args: pytest.fail("no-argument invocation must not start a run"),
+    )
+
+    assert cli.main([]) == {"status": "help"}
+
+    output = capsys.readouterr().out
+    assert "usage: phmfactory" in output
+    assert "Run an experiment explicitly" in output
+
+
 @pytest.mark.parametrize("command", ("doctor", "demo", "preflight", "data"))
 def test_named_command_help_is_standard_argparse(command: str) -> None:
     with pytest.raises(SystemExit) as error:
@@ -88,8 +116,9 @@ def test_demo_uses_offline_defaults_and_user_override_wins() -> None:
     assert args.config == "smoke"
     assert args.notes == "demo-test"
     assert args.allow_experimental is False
-    assert args.override[:4] == list(demo.DEFAULT_OVERRIDES)
+    assert args.override[:3] == list(demo.DEFAULT_OVERRIDES)
     assert args.override[-1] == "trainer.num_epochs=2"
+    assert "trainer.gpus=1" not in args.override
 
 
 def test_preflight_uses_single_analysis_without_importing_pipeline(
@@ -110,6 +139,34 @@ def test_preflight_uses_single_analysis_without_importing_pipeline(
     assert result["pipeline"] == "Pipeline_01_Fault_Diagnosis"
     assert result["effective_config_sha256"] == analysis.effective_config_sha256
     assert len(result["run_spec_sha256"]) == 64
+    assert result["requested_device"] == "cpu"
+    assert result["resolved_accelerator"] == "cpu"
+    assert result["resolved_devices"] == 1
+    assert not (tmp_path / "new").exists()
+
+
+def test_preflight_rejects_unavailable_cuda_before_training(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analysis = _analysis(tmp_path, device="cuda")
+    monkeypatch.setattr(preflight, "analyze_config", lambda *args, **kwargs: analysis)
+    monkeypatch.setattr(
+        preflight.importlib.util,
+        "find_spec",
+        lambda name: SimpleNamespace(name=name),
+    )
+    monkeypatch.setattr(
+        device_contract,
+        "_load_torch",
+        lambda: SimpleNamespace(
+            cuda=SimpleNamespace(is_available=lambda: False)
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="CUDA is unavailable.*no CPU fallback"):
+        preflight.run(["--config", "smoke"])
+
     assert not (tmp_path / "new").exists()
 
 
@@ -127,6 +184,29 @@ def test_preflight_requires_output_dir(
 
     with pytest.raises(ValueError, match="environment.output_dir"):
         preflight.run(["--config", "smoke"])
+
+
+def test_direct_outputs_are_machine_readable(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    cli._print_direct_outputs(
+        {
+            "result_dir": "/tmp/result",
+            "best_checkpoint": "/tmp/result/best.ckpt",
+            "test_metrics": "/tmp/result/all_results.csv",
+            "run_summary": "/tmp/result/run_summary.json",
+            "primary_metrics": {
+                "test_acc": {"count": 1, "mean": 0.75, "sample_std": None}
+            },
+        }
+    )
+
+    output = capsys.readouterr().out
+    assert "result_dir=/tmp/result" in output
+    assert "best_checkpoint=/tmp/result/best.ckpt" in output
+    assert "test_metrics=/tmp/result/all_results.csv" in output
+    assert "run_summary=/tmp/result/run_summary.json" in output
+    assert '"test_acc"' in output
 
 
 def test_doctor_exercises_real_imports(

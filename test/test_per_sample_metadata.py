@@ -530,13 +530,33 @@ def test_transparent_dummy_config_runs_full_cpu_lifecycle(tmp_path: Path) -> Non
         ]
     )
 
-    assert isinstance(result, list) and len(result) == 1
+    assert isinstance(result, dict)
+    assert result["status"] == "succeeded"
+    assert len(result["iterations"]) == 1
+
+    result_dir = Path(result["result_dir"])
+    best_checkpoint = Path(result["best_checkpoint"])
+    test_metrics = Path(result["test_metrics"])
+    run_summary = Path(result["run_summary"])
+
+    assert result_dir.is_dir()
+    assert best_checkpoint.is_file()
+    assert test_metrics.is_file()
+    assert run_summary.is_file()
+    assert best_checkpoint in {
+        Path(path) for path in result["best_checkpoints"]
+    }
+
     numeric = [
         float(value)
-        for value in result[0].values()
+        for value in result["iterations"][0].values()
         if not isinstance(value, bool) and isinstance(value, (int, float))
     ]
     assert numeric
     assert all(torch.isfinite(torch.tensor(value)) for value in numeric)
-    assert list((tmp_path / "outputs").rglob("*.ckpt"))
-    assert list((tmp_path / "outputs").rglob("run_summary.json"))
+
+    primary_metrics = result["primary_metrics"]
+    assert primary_metrics
+    for metric in primary_metrics.values():
+        assert metric["count"] == 1
+        assert torch.isfinite(torch.tensor(float(metric["mean"])))
