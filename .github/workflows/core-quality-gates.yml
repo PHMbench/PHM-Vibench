@@ -229,7 +229,7 @@ jobs:
         run: |
           set -o pipefail
           python -m py_compile \
-            phmfactory/runtime/evidence.py \
+            phmfactory/runtime/execution.py \
             src/data_factory/explicit_data_factory.py \
             src/data_factory/dataset_task/Default_dataset.py \
             src/model_factory/ISFM/system_utils.py \
@@ -248,7 +248,7 @@ jobs:
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
-            test/test_runtime_evidence.py \
+            test/test_runtime_execution.py \
             test/test_split_scientific_truth.py \
             test/test_transform_truth.py
           python -m pytest \
@@ -258,7 +258,7 @@ jobs:
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
-            test/test_runtime_evidence.py \
+            test/test_runtime_execution.py \
             test/test_split_scientific_truth.py \
             test/test_transform_truth.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
@@ -283,29 +283,47 @@ jobs:
           set -o pipefail
           phmfactory demo 2>&1 | tee offline-smoke.log
 
-      - name: Verify Dummy run evidence index
+      - name: Verify direct Dummy results
         run: |
           python - <<'PY'
           import json
-          import re
+          import math
           from pathlib import Path
 
-          root = Path("results/demo/dummy_dg_smoke/.phmfactory/runs")
-          manifests = sorted(root.glob("*/run_manifest.json"))
-          assert len(manifests) == 1, manifests
-          payload = json.loads(manifests[0].read_text(encoding="utf-8"))
-          assert payload["status"] == "succeeded"
-          assert re.fullmatch(
-              r"[0-9a-f]{64}",
-              payload["run_spec"]["effective_config_sha256"],
-          )
-          roles = {item["role"] for item in payload["artifacts"]}
-          assert "classification_test_metrics" in roles, roles
-          assert "classification_aggregate_metrics" in roles, roles
-          iterations = payload["evidence"].get("classification_iterations")
-          assert isinstance(iterations, list) and len(iterations) == 1, iterations
-          assert iterations[0]["iteration"] == 0
-          assert iterations[0]["metrics_artifact"]["role"] == "classification_test_metrics"
+          lines = Path("offline-smoke.log").read_text(encoding="utf-8").splitlines()
+          values = {}
+          for line in lines:
+              if "=" not in line:
+                  continue
+              key, value = line.split("=", 1)
+              if key in {"result_dir", "best_checkpoint", "test_metrics", "run_summary"}:
+                  values[key] = value.strip()
+
+          assert set(values) == {
+              "result_dir",
+              "best_checkpoint",
+              "test_metrics",
+              "run_summary",
+          }, values
+          result_dir = Path(values["result_dir"])
+          checkpoint = Path(values["best_checkpoint"])
+          metrics = Path(values["test_metrics"])
+          summary_path = Path(values["run_summary"])
+          assert result_dir.is_dir(), result_dir
+          assert checkpoint.is_file(), checkpoint
+          assert metrics.is_file(), metrics
+          assert summary_path.is_file(), summary_path
+
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          assert summary["iterations"] == 1
+          assert summary["metrics"], summary
+          for metric in summary["metrics"].values():
+              assert metric["count"] == 1
+              assert math.isfinite(float(metric["mean"]))
+
+          assert not list(result_dir.rglob(".phmfactory"))
+          assert not list(result_dir.rglob("run_manifest.json"))
+          assert not list(result_dir.rglob("artifacts/manifest.json"))
           PY
 
       - name: Upload smoke diagnostics
@@ -319,7 +337,8 @@ jobs:
             offline-preflight.log
             offline-smoke.log
             offline-smoke-environment.txt
-            results/demo/dummy_dg_smoke/.phmfactory/runs/**/run_manifest.json
+            results/demo/dummy_dg_smoke/**/run_summary.json
+            results/demo/dummy_dg_smoke/**/all_results.csv
+            results/demo/dummy_dg_smoke/**/test_result_*.csv
           if-no-files-found: warn
-          include-hidden-files: true
           retention-days: 7
