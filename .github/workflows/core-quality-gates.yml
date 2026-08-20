@@ -224,16 +224,19 @@ jobs:
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
 
-      - name: Run shared runtime, data, device, and Pipeline 02 contract tests
+      - name: Run shared runtime, data, task, device, and Pipeline 02 contract tests
         shell: bash
         run: |
           set -o pipefail
           python -m py_compile \
             phmfactory/runtime/execution.py \
+            phmfactory/task_semantics.py \
             src/data_factory/explicit_data_factory.py \
             src/data_factory/dataset_task/Default_dataset.py \
             src/model_factory/ISFM/system_utils.py \
             src/model_factory/ISFM/task_head/H_01_Linear_cla.py \
+            src/task_factory/Components/loss.py \
+            src/task_factory/Components/metrics.py \
             src/task_factory/Default_task.py \
             src/task_factory/task/pretrain/hse_contrastive.py \
             src/trainer_factory/Default_trainer.py \
@@ -250,6 +253,7 @@ jobs:
             test/test_pipeline02_runtime.py \
             test/test_runtime_execution.py \
             test/test_split_scientific_truth.py \
+            test/test_task_estimator_truth.py \
             test/test_transform_truth.py
           python -m pytest \
             test/test_classification_runtime.py \
@@ -260,6 +264,7 @@ jobs:
             test/test_pipeline02_runtime.py \
             test/test_runtime_execution.py \
             test/test_split_scientific_truth.py \
+            test/test_task_estimator_truth.py \
             test/test_transform_truth.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
