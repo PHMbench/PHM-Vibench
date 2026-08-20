@@ -11,12 +11,7 @@ import pytest
 
 from examples import cwru_quickstart
 from phmfactory import __version__, cli
-from phmfactory.config import (
-    MAINTAINED_PRESETS,
-    ConfigAnalysis,
-    resolve_config_path,
-    semantic_config_sha256,
-)
+from phmfactory.config import MAINTAINED_PRESETS, ConfigAnalysis, resolve_config_path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -43,8 +38,6 @@ def _analysis(
         local_config_path=None,
         source_files=(path,),
         sources={},
-        diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(config),
     )
 
 
@@ -115,10 +108,7 @@ def test_run_dispatches_analyzed_canonical_module(
         observed["resolved_config_path"] = args.resolved_config_path
         observed["resolved_pipeline"] = args.resolved_pipeline
         observed["config_analysis"] = args.config_analysis
-        observed["compiled_run_spec"] = args.compiled_run_spec
         observed["resolved_config_data"] = args.resolved_config_data
-        observed["effective_config_sha256"] = args.effective_config_sha256
-        observed["run_spec_sha256"] = args.run_spec_sha256
         observed["notes"] = args.notes
         return "sentinel"
 
@@ -144,13 +134,7 @@ def test_run_dispatches_analyzed_canonical_module(
     )
 
     assert cli.run(args) == "sentinel"
-    compiled = observed.pop("compiled_run_spec")
-    resolved_data = observed.pop("resolved_config_data")
-    run_spec_sha256 = observed.pop("run_spec_sha256")
     config_analysis = observed.pop("config_analysis")
-    assert compiled.pipeline == "Pipeline_04_Unified_Evaluation"
-    assert resolved_data == analysis.effective_config
-    assert run_spec_sha256 == compiled.sha256
     assert config_analysis is analysis
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
@@ -158,10 +142,12 @@ def test_run_dispatches_analyzed_canonical_module(
         "config_path": str(analysis.path),
         "resolved_config_path": str(analysis.path),
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
-        "effective_config_sha256": analysis.effective_config_sha256,
+        "resolved_config_data": analysis.effective_config,
         "notes": "entrypoint-parity",
     }
-    assert not hasattr(args, "run_manifest_path")
+    assert not hasattr(args, "compiled_run_spec")
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
     assert not (tmp_path / "runs").exists()
 
 
@@ -176,7 +162,7 @@ def test_run_passes_maintained_preset_path_to_runtime(
     def pipeline(args: argparse.Namespace) -> bool:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
-        observed["effective_config_sha256"] = args.effective_config_sha256
+        observed["resolved_config_data"] = args.resolved_config_data
         return True
 
     monkeypatch.setattr(
@@ -195,8 +181,7 @@ def test_run_passes_maintained_preset_path_to_runtime(
     assert cli.run(args) is True
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
-    assert len(str(observed["effective_config_sha256"])) == 64
-    assert not hasattr(args, "run_manifest_path")
+    assert observed["resolved_config_data"]["pipeline"].startswith("Pipeline_")
     assert not (tmp_path / "runs").exists()
 
 
@@ -275,7 +260,9 @@ def test_python_process_entrypoints_return_zero_for_preflight(
     )
     assert completed.returncode == 0, completed.stderr
     assert "status=passed" in completed.stdout
-    assert "effective_config_sha256=" in completed.stdout
+    assert "resolved_config_path=" in completed.stdout
+    assert "effective_config_sha256=" not in completed.stdout
+    assert "run_spec_sha256=" not in completed.stdout
     assert not target.exists()
 
 
@@ -322,7 +309,7 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
     observed: dict[str, object] = {}
 
     def pipeline(args: argparse.Namespace) -> str:
-        config = args.compiled_run_spec.runtime_config()
+        config = args.resolved_config_data
         observed["data"] = config["data"]["metadata_file"]
         observed["model"] = config["model"]["name"]
         observed["task"] = config["task"]["name"]
@@ -353,5 +340,5 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
         "task": "classification",
         "trainer": "cpu",
     }
-    assert not hasattr(args, "run_manifest_path")
+    assert not hasattr(args, "compiled_run_spec")
     assert not (tmp_path / "results").exists()
