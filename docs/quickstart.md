@@ -141,7 +141,9 @@ run_summary=...
 primary_metrics={...}
 ```
 
-These returned paths are the result authority. PHMFactory does not require a parallel
+The four path keys are stable, machine-readable result locations used by tests and user
+interfaces. `primary_metrics` is a JSON object derived from the same `run_summary.json`.
+These returned values are the result authority. PHMFactory does not require a parallel
 run manifest, attestation file, evidence index, receipt, or ledger for success.
 
 ## 6. Inspect the outputs
