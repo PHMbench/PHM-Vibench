@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -11,17 +13,11 @@ import pandas as pd
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from src.configs.config_utils import (
-    dict_to_namespace,
-    merge_with_local_override,
-    path_name,
-    transfer_namespace,
-)
+from src.configs.config_utils import dict_to_namespace, path_name, transfer_namespace
 from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
-from src.utils.config_utils import apply_overrides_to_config, parse_overrides
 from src.utils.run_summary import write_run_summary
 from src.utils.utils import close_lab, init_lab, load_best_model_checkpoint
 
@@ -72,34 +68,24 @@ def _required_sections(configs: Any) -> None:
 
 
 def load_runtime_config(args: Any) -> Any:
-    """Return the exact public compiled config or the explicit legacy fallback.
+    """Return the exact mapping resolved and schema-validated by the public CLI."""
 
-    Maintained public entrypoints attach ``compiled_run_spec`` and therefore never
-    reparse YAML or auto-discover ``configs/local/local.yaml`` here. Direct imports of
-    old Pipeline modules retain the historical loader as a compatibility boundary.
-    """
-
-    compiled = getattr(args, "compiled_run_spec", None)
-    if compiled is not None:
-        expected = getattr(args, "resolved_pipeline", compiled.pipeline)
-        if compiled.pipeline != expected:
-            raise ValueError(
-                "compiled Pipeline mismatch: "
-                f"spec={compiled.pipeline!r}, dispatch={expected!r}"
-            )
-        configs = dict_to_namespace(compiled.runtime_config())
-    else:
-        config_path = getattr(args, "config_path", None)
-        if not isinstance(config_path, str) or not config_path.strip():
-            raise ValueError("classification Pipeline requires args.config_path")
-        configs = merge_with_local_override(
-            config_path,
-            getattr(args, "local_config", None),
+    resolved = getattr(args, "resolved_config_data", None)
+    if not isinstance(resolved, Mapping):
+        raise ValueError(
+            "maintained classification Pipelines require args.resolved_config_data "
+            "from phmfactory.config.analyze_config; direct YAML reloading is not supported"
         )
-        overrides = getattr(args, "override", None)
-        if overrides:
-            configs = apply_overrides_to_config(configs, parse_overrides(overrides))
 
+    pipeline = resolved.get("pipeline")
+    expected = getattr(args, "resolved_pipeline", None)
+    if not isinstance(pipeline, str) or pipeline != expected:
+        raise ValueError(
+            "resolved Pipeline mismatch: "
+            f"config={pipeline!r}, dispatch={expected!r}"
+        )
+
+    configs = dict_to_namespace(deepcopy(dict(resolved)))
     _required_sections(configs)
     return configs
 
