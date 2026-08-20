@@ -17,7 +17,7 @@ def _default_trainer_module():
 
 
 def _device_module():
-    return importlib.import_module("src.trainer_factory.device")
+    return importlib.import_module("phmfactory.device")
 
 
 def _model_factory_module():
@@ -96,6 +96,21 @@ def test_device_resolver_honors_explicit_cpu(
     ) == expected
 
 
+def test_cpu_resolution_does_not_import_torch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _device_module()
+    monkeypatch.setattr(
+        module,
+        "_load_torch",
+        lambda: pytest.fail("CPU resolution must not import torch"),
+    )
+
+    assert module.resolve_device_request(
+        Namespace(device="cpu", devices=1)
+    ) == ("cpu", 1)
+
+
 def test_device_resolver_reports_actual_auto_cpu(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -144,9 +159,9 @@ def test_device_resolver_rejects_unavailable_cuda_without_cpu_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = _device_module()
-    monkeypatch.setattr(module.torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     monkeypatch.setattr(
-        module.torch.cuda,
+        torch.cuda,
         "device_count",
         lambda: pytest.fail("device_count is irrelevant when CUDA is unavailable"),
     )
@@ -159,8 +174,8 @@ def test_device_resolver_accepts_available_cuda(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = _device_module()
-    monkeypatch.setattr(module.torch.cuda, "is_available", lambda: True)
-    monkeypatch.setattr(module.torch.cuda, "device_count", lambda: 2)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
 
     assert module.resolve_device_request(
         Namespace(device="cuda", gpus=2)
@@ -171,8 +186,8 @@ def test_device_resolver_rejects_excess_cuda_devices(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = _device_module()
-    monkeypatch.setattr(module.torch.cuda, "is_available", lambda: True)
-    monkeypatch.setattr(module.torch.cuda, "device_count", lambda: 1)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
 
     with pytest.raises(RuntimeError, match="requested=2, available=1"):
         module.resolve_device_request(Namespace(device="cuda", gpus=2))
@@ -232,8 +247,11 @@ def test_default_trainer_passes_resolved_cpu_request_to_lightning(
 
 def test_default_trainer_and_preflight_share_device_function() -> None:
     trainer_module = _default_trainer_module()
+    preflight_module = importlib.import_module("phmfactory.commands.preflight")
     device_module = _device_module()
+
     assert trainer_module.resolve_device_request is device_module.resolve_device_request
+    assert preflight_module.resolve_device_request is device_module.resolve_device_request
 
 
 def test_model_factory_preserves_constructor_exception_type(
