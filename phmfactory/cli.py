@@ -1,8 +1,8 @@
 """Public command routing and process entrypoints for PHMFactory.
 
 This module exposes a programmatic API and an operating-system process boundary. Both
-consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML or
-searches for machine-local configuration after compilation.
+consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML nor
+searches for machine-local configuration after resolution.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from phmfactory.commands.common import (
 )
 from phmfactory.config import analyze_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
-from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
+from phmfactory.runtime import ExecutionEnvelope
 
 
 COMMANDS = ("data", "doctor", "demo", "preflight")
@@ -89,12 +89,10 @@ def _print_direct_outputs(result: Any) -> None:
 def run(args: argparse.Namespace) -> Any:
     """Analyze, authorize, execute, and return one Pipeline invocation.
 
-    Configuration composition occurs exactly once in :func:`analyze_config`. Protected
-    runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
-
-    The Pipeline result and exception are the public run authority. A successful run is
-    reported through direct result, checkpoint, metric, and summary paths returned by the
-    Pipeline; PHMFactory does not create a parallel attestation or evidence record.
+    Configuration composition and schema validation occur exactly once in
+    :func:`analyze_config`. The maintained Pipeline receives one mutable copy through
+    ``args.resolved_config_data``. No second config object, digest, or YAML loader is
+    involved in execution.
     """
 
     requested = requested_config(args)
@@ -103,20 +101,19 @@ def run(args: argparse.Namespace) -> Any:
         override_values=args.override,
         local_config=requested_local_config(args),
     )
-    compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
 
     args.requested_config = requested
     args.config_path = str(analysis.path)
     args.resolved_config_path = str(analysis.path)
     args.resolved_pipeline = analysis.pipeline
     args.config_analysis = analysis
-    args.compiled_run_spec = compiled
-    args.resolved_config_data = compiled.runtime_config()
-    args.effective_config_sha256 = analysis.effective_config_sha256
-    args.run_spec_sha256 = compiled.sha256
+    args.resolved_config_data = analysis.runtime_config()
 
     module_name = pipeline_module_name(analysis.pipeline, warn=False)
-    envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
+    envelope = ExecutionEnvelope(
+        pipeline=analysis.pipeline,
+        pipeline_module=module_name,
+    )
     args.execution_envelope = envelope
 
     try:
