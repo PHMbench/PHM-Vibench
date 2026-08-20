@@ -6,6 +6,7 @@ import importlib
 import pytest
 import torch
 import torch.nn as nn
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 
 def _default_task_module():
@@ -237,6 +238,7 @@ def test_default_trainer_passes_resolved_cpu_request_to_lightning(
             num_epochs=1,
             pruning=0.0,
             monitor="val_loss",
+            monitor_mode="min",
             log_every_n_steps=1,
         ),
         args_d=Namespace(),
@@ -396,3 +398,56 @@ def test_model_factory_rejects_non_boolean_checkpoint_strictness(
         match="model.weights_strict must be a boolean",
     ):
         module.model_factory(args_model, metadata=None)
+
+
+def test_checkpoint_and_early_stopping_share_explicit_direction(tmp_path) -> None:
+    module = _default_trainer_module()
+    callbacks = module.call_backs(
+        Namespace(
+            monitor="val_acc",
+            monitor_mode="max",
+            save_top_k=1,
+            pruning=0.0,
+            early_stopping=True,
+            patience=2,
+        ),
+        str(tmp_path),
+    )
+
+    checkpoint = next(item for item in callbacks if isinstance(item, ModelCheckpoint))
+    stopping = next(item for item in callbacks if isinstance(item, EarlyStopping))
+
+    assert checkpoint.monitor == stopping.monitor == "val_acc"
+    assert checkpoint.mode == stopping.mode == "max"
+    assert checkpoint.filename == "model-{epoch:02d}-{step}"
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (Namespace(monitor_mode="min"), "trainer.monitor is required"),
+        (Namespace(monitor="val_loss"), "trainer.monitor_mode is required"),
+        (
+            Namespace(monitor="val_loss", monitor_mode="auto"),
+            "unsupported trainer.monitor_mode",
+        ),
+    ],
+)
+def test_checkpoint_selection_requires_explicit_monitor_and_direction(
+    args: Namespace,
+    message: str,
+) -> None:
+    module = _default_trainer_module()
+    with pytest.raises(ValueError, match=message):
+        module.resolve_selection_contract(args)
+
+
+def test_checkpoint_direction_is_not_guessed_from_metric_name() -> None:
+    module = _default_trainer_module()
+
+    assert module.resolve_selection_contract(
+        Namespace(monitor="val_acc", monitor_mode="min")
+    ) == ("val_acc", "min")
+    assert module.resolve_selection_contract(
+        Namespace(monitor="val_loss", monitor_mode="max")
+    ) == ("val_loss", "max")
