@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+from copy import deepcopy
 import importlib
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,8 +9,6 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from phmfactory.config import ResolvedConfig
-from phmfactory.runtime import CompiledRunSpec
 from src.data_factory import ExplicitDataFactory, resolve_data_factory_class
 from src.data_factory.dataset_task.Dataset_cluster import IdIncludedDataset
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
@@ -27,9 +26,12 @@ trainer_factory_module = importlib.import_module(
 )
 
 
+PIPELINE = "Pipeline_01_Fault_Diagnosis"
+
+
 def _config(tmp_path: Path, *, iterations: int = 1) -> dict:
     return {
-        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "pipeline": PIPELINE,
         "environment": {
             "iterations": iterations,
             "seed": 7,
@@ -46,20 +48,12 @@ def _config(tmp_path: Path, *, iterations: int = 1) -> dict:
 
 
 def _args(tmp_path: Path, *, iterations: int = 1) -> Namespace:
-    resolved = ResolvedConfig(
-        requested="smoke",
-        path=tmp_path / "smoke.yaml",
-        data=_config(tmp_path, iterations=iterations),
-        pipeline="Pipeline_01_Fault_Diagnosis",
-        overrides={},
-    )
-    compiled = CompiledRunSpec.compile(resolved)
     return Namespace(
         config="smoke",
-        config_path=str(resolved.path),
+        config_path=str(tmp_path / "smoke.yaml"),
         requested_config="smoke",
-        resolved_pipeline=resolved.pipeline,
-        compiled_run_spec=compiled,
+        resolved_pipeline=PIPELINE,
+        resolved_config_data=_config(tmp_path, iterations=iterations),
         override=["trainer.num_epochs=99"],
         notes="",
     )
@@ -95,35 +89,33 @@ def _raise_module_not_found(message: str):
     raise ModuleNotFoundError(message)
 
 
-def test_compiled_config_bypasses_legacy_reparse(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    args = _args(tmp_path)
-    monkeypatch.setattr(
-        classification,
-        "merge_with_local_override",
-        lambda *a, **k: pytest.fail("legacy loader must not run"),
-    )
+def test_resolved_mapping_is_the_only_runtime_config() -> None:
+    args = _args(Path("/tmp"))
     configs = classification.load_runtime_config(args)
     assert configs.environment.seed == 7
     assert not hasattr(configs.trainer, "num_epochs")
 
 
+def test_runtime_rejects_missing_resolved_mapping() -> None:
+    with pytest.raises(ValueError, match="resolved_config_data"):
+        classification.load_runtime_config(
+            Namespace(config_path="legacy.yaml", resolved_pipeline=PIPELINE)
+        )
+
+
 def test_missing_required_section_fails_closed(tmp_path: Path) -> None:
     args = _args(tmp_path)
-    data = args.compiled_run_spec.runtime_config()
+    data = deepcopy(args.resolved_config_data)
     data.pop("task")
-    args.compiled_run_spec = CompiledRunSpec.compile(
-        ResolvedConfig(
-            requested="broken",
-            path=tmp_path / "broken.yaml",
-            data=data,
-            pipeline="Pipeline_01_Fault_Diagnosis",
-            overrides={},
-        )
-    )
+    args.resolved_config_data = data
     with pytest.raises(ValueError, match="missing required section.*task"):
+        classification.load_runtime_config(args)
+
+
+def test_resolved_pipeline_mismatch_fails_closed(tmp_path: Path) -> None:
+    args = _args(tmp_path)
+    args.resolved_config_data["pipeline"] = "Pipeline_05_Explainable_Fault_Diagnosis"
+    with pytest.raises(ValueError, match="resolved Pipeline mismatch"):
         classification.load_runtime_config(args)
 
 
