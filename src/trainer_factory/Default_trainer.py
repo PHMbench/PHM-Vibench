@@ -10,8 +10,8 @@ try:
 except ImportError:  # Optional experiment service; required only when enabled.
     SwanLabLogger = None
 
+from phmfactory.device import resolve_device_request
 from src.trainer_factory import register_trainer
-from src.trainer_factory.device import resolve_device_request
 from src.trainer_factory.extensions import ManifestWriterCallback
 
 # Compatibility name for focused tests and historical internal imports.
