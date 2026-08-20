@@ -7,32 +7,23 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis
 from phmfactory.runtime import (
-    CompiledRunSpec,
     ExecutionEnvelope,
     ExecutionStatus,
     PipelineContractError,
 )
 
 
-def _spec() -> CompiledRunSpec:
-    return CompiledRunSpec.compile(
-        ResolvedConfig(
-            requested="smoke",
-            path=Path("/tmp/smoke.yaml"),
-            data={"pipeline": "Pipeline_01_Fault_Diagnosis"},
-            pipeline="Pipeline_01_Fault_Diagnosis",
-            overrides={},
-        )
-    )
+PIPELINE = "Pipeline_01_Fault_Diagnosis"
+
+
+def _envelope(module: str = "src.Pipeline_01_Fault_Diagnosis") -> ExecutionEnvelope:
+    return ExecutionEnvelope(pipeline=PIPELINE, pipeline_module=module)
 
 
 def test_envelope_records_success() -> None:
-    envelope = ExecutionEnvelope(
-        spec=_spec(),
-        pipeline_module="src.Pipeline_01_Fault_Diagnosis",
-    )
+    envelope = _envelope()
     result = envelope.execute(SimpleNamespace(pipeline=lambda args: ["ok"]), object())
 
     assert result == ["ok"]
@@ -43,7 +34,7 @@ def test_envelope_records_success() -> None:
 
 
 def test_envelope_rejects_none_as_ambiguous_success() -> None:
-    envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.invalid")
+    envelope = _envelope("src.invalid")
 
     with pytest.raises(PipelineContractError, match="returned None"):
         envelope.execute(SimpleNamespace(pipeline=lambda args: None), object())
@@ -55,7 +46,7 @@ def test_envelope_rejects_none_as_ambiguous_success() -> None:
 
 
 def test_envelope_rejects_missing_entrypoint() -> None:
-    envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.invalid")
+    envelope = _envelope("src.invalid")
 
     with pytest.raises(PipelineContractError, match="no callable pipeline"):
         envelope.execute(SimpleNamespace(), object())
@@ -65,7 +56,7 @@ def test_envelope_rejects_missing_entrypoint() -> None:
 
 
 def test_envelope_records_and_reraises_pipeline_error() -> None:
-    envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.invalid")
+    envelope = _envelope("src.invalid")
 
     def fail(args):
         raise ValueError("invalid training state")
@@ -80,7 +71,7 @@ def test_envelope_records_and_reraises_pipeline_error() -> None:
 
 
 def test_envelope_cannot_execute_twice() -> None:
-    envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.valid")
+    envelope = _envelope("src.valid")
     envelope.execute(SimpleNamespace(pipeline=lambda args: True), object())
 
     with pytest.raises(PipelineContractError, match="cannot run from status"):
@@ -93,7 +84,7 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     data = {
-        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "pipeline": PIPELINE,
         "environment": {"output_dir": str(tmp_path / "outputs")},
     }
     path = tmp_path / "broken.yaml"
@@ -101,13 +92,11 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
         requested="broken",
         path=path,
         effective_config=data,
-        pipeline="Pipeline_01_Fault_Diagnosis",
+        pipeline=PIPELINE,
         overrides={},
         local_config_path=None,
         source_files=(path,),
         sources={},
-        diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(data),
     )
     monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
@@ -128,5 +117,5 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
 
     assert "完成所有实验" not in capsys.readouterr().out
     assert args.execution_envelope.status is ExecutionStatus.FAILED
-    assert not hasattr(args, "run_manifest_path")
+    assert args.resolved_config_data == data
     assert not (tmp_path / "outputs").exists()
