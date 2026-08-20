@@ -8,8 +8,6 @@ from enum import Enum
 from types import ModuleType
 from typing import Any, Callable
 
-from phmfactory.runtime.spec import CompiledRunSpec
-
 
 class ExecutionStatus(str, Enum):
     """Finite states for one public Pipeline invocation."""
@@ -30,9 +28,9 @@ def _utc_now() -> str:
 
 @dataclass
 class ExecutionEnvelope:
-    """Enforce one Pipeline lifecycle while retaining the original failure."""
+    """Enforce one resolved Pipeline lifecycle while retaining original failures."""
 
-    spec: CompiledRunSpec
+    pipeline: str
     pipeline_module: str
     status: ExecutionStatus = ExecutionStatus.PENDING
     started_at: str | None = None
@@ -74,7 +72,7 @@ class ExecutionEnvelope:
             result = entrypoint(args)
             if result is None:
                 raise PipelineContractError(
-                    f"Pipeline {self.spec.pipeline!r} returned None; "
+                    f"Pipeline {self.pipeline!r} returned None; "
                     "successful Pipelines must return an explicit result"
                 )
         except BaseException as error:
