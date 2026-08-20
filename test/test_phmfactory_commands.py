@@ -10,7 +10,7 @@ from phmfactory import cli
 from phmfactory.commands import demo, doctor, preflight
 from phmfactory.commands.common import check_writable_directory
 from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
-import src.trainer_factory.device as device_contract
+import phmfactory.device as device_contract
 
 
 def _config(
@@ -156,7 +156,13 @@ def test_preflight_rejects_unavailable_cuda_before_training(
         "find_spec",
         lambda name: SimpleNamespace(name=name),
     )
-    monkeypatch.setattr(device_contract.torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(
+        device_contract,
+        "_load_torch",
+        lambda: SimpleNamespace(
+            cuda=SimpleNamespace(is_available=lambda: False)
+        ),
+    )
 
     with pytest.raises(RuntimeError, match="CUDA is unavailable.*no CPU fallback"):
         preflight.run(["--config", "smoke"])
