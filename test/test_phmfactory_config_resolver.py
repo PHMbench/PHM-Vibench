@@ -13,11 +13,36 @@ from phmfactory.config import (
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
+def _full_yaml(*, pipeline: str = "Pipeline_01_default", epochs: int = 5) -> str:
+    return (
+        f"pipeline: {pipeline}\n"
+        "environment:\n"
+        "  project: resolver-test\n"
+        "  output_dir: results/test\n"
+        "  seed: 0\n"
+        "  iterations: 1\n"
+        "data:\n"
+        "  data_dir: data\n"
+        "  metadata_file: metadata_dummy.csv\n"
+        "model:\n"
+        "  type: Baseline\n"
+        "  name: GlobalAverageLinear\n"
+        "task:\n"
+        "  type: DG\n"
+        "  name: classification\n"
+        "  target_system_id: [0]\n"
+        "trainer:\n"
+        "  name: Default_trainer\n"
+        f"  num_epochs: {epochs}\n"
+        "  device: cpu\n"
+    )
+
+
 def test_parse_overrides_expands_dotted_keys_and_yaml_types() -> None:
     assert parse_overrides(
-        ["trainer.max_epochs=2", "task.enabled=true", "labels=[1, 2]"]
+        ["trainer.num_epochs=2", "task.enabled=true", "labels=[1, 2]"]
     ) == {
-        "trainer": {"max_epochs": 2},
+        "trainer": {"num_epochs": 2},
         "task": {"enabled": True},
         "labels": [1, 2],
     }
@@ -57,29 +82,26 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
     tmp_path: Path,
 ) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text(
-        "pipeline: Pipeline_01_default\ntrainer:\n  max_epochs: 5\n",
-        encoding="utf-8",
-    )
+    config.write_text(_full_yaml(), encoding="utf-8")
 
     with pytest.warns(PipelineNameDeprecationWarning):
         resolved = resolve_config(
             config,
             override_values=[
                 "pipeline=Pipeline_04_unified_metric",
-                "trainer.max_epochs=1",
+                "trainer.num_epochs=1",
             ],
         )
 
     assert resolved.pipeline == "Pipeline_04_Unified_Evaluation"
-    assert resolved.data["pipeline"] == "Pipeline_04_Unified_Evaluation"
-    assert resolved.data["trainer"]["max_epochs"] == 1
+    assert resolved.effective_config["pipeline"] == "Pipeline_04_Unified_Evaluation"
+    assert resolved.effective_config["trainer"]["num_epochs"] == 1
     assert resolved.path == config.resolve()
 
 
 def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+    config.write_text(_full_yaml().replace("pipeline: Pipeline_01_default\n", ""), encoding="utf-8")
 
     with pytest.raises(ValueError, match="must declare `pipeline`"):
         resolve_config(config)
@@ -87,7 +109,7 @@ def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
 
 def test_pipeline_may_be_supplied_by_explicit_override(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+    config.write_text(_full_yaml().replace("pipeline: Pipeline_01_default\n", ""), encoding="utf-8")
 
     resolved = resolve_config(
         config,
@@ -95,14 +117,12 @@ def test_pipeline_may_be_supplied_by_explicit_override(tmp_path: Path) -> None:
     )
 
     assert resolved.pipeline == "Pipeline_01_Fault_Diagnosis"
-    assert resolved.data["pipeline"] == "Pipeline_01_Fault_Diagnosis"
+    assert resolved.effective_config["pipeline"] == "Pipeline_01_Fault_Diagnosis"
 
 
 def test_non_utf8_config_fails_without_encoding_fallback(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    config.write_bytes(
-        b"pipeline: Pipeline_01_Fault_Diagnosis\nnotes: \xff\n"
-    )
+    config.write_bytes(b"pipeline: Pipeline_01_Fault_Diagnosis\nnotes: \xff\n")
 
     with pytest.raises(UnicodeError, match="must be valid UTF-8"):
         resolve_config(config)
@@ -131,8 +151,8 @@ def test_installed_style_resolution_works_outside_repository(
     resolved = resolve_config("smoke")
     assert resolved.path.is_file()
     assert resolved.path.as_posix().endswith("configs/demo/00_smoke/dummy_dg.yaml")
-    assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
-    assert resolved.data["trainer"]["device"] == "cpu"
+    assert resolved.effective_config["data"]["metadata_file"] == "metadata_dummy.csv"
+    assert resolved.effective_config["trainer"]["device"] == "cpu"
 
 
 def test_cycle_detection(tmp_path: Path) -> None:
