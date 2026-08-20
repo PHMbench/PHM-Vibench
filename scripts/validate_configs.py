@@ -1,8 +1,8 @@
-"""Validate maintained configs through PHMFactory's single public resolver.
+"""Validate maintained configs through PHMFactory's single public authority.
 
-The validator intentionally shares composition and override semantics with ``run`` and
-``preflight``.  It never calls the legacy namespace loader and never auto-discovers a
-machine-local YAML file.
+The validator shares composition, Pipeline canonicalization, override semantics, and
+Pydantic schema validation with ``run`` and ``preflight``. It never calls the legacy
+namespace loader and never auto-discovers a machine-local YAML file.
 """
 
 from __future__ import annotations
@@ -12,10 +12,7 @@ import csv
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
 
-from pydantic import ValidationError
-
 from phmfactory.config import analyze_config
-from src.config_schema import ExperimentConfig
 
 
 def iter_demo_configs() -> Iterable[Path]:
@@ -39,39 +36,18 @@ def iter_registry_active_configs(registry_path: Path) -> Iterable[Path]:
 
 
 def validate_one(path: Path) -> List[str]:
-    """Return user-readable resolution and schema failures for one config."""
+    """Return the exact public resolution or schema failure for one config."""
 
     try:
-        analysis = analyze_config(path)
+        analyze_config(path)
     except Exception as error:
-        return [f"- resolution: {type(error).__name__}: {error}"]
-
-    lines = [
-        (
-            f"- {item.field or 'config'}: {item.message} "
-            f"[{item.code}]"
-        )
-        for item in analysis.diagnostics
-        if item.severity == "error"
-    ]
-    if lines:
-        return lines
-
-    try:
-        ExperimentConfig.model_validate(analysis.effective_config)
-        return []
-    except ValidationError as error:
-        for item in error.errors():
-            location = ".".join(str(value) for value in item.get("loc", []))
-            message = item.get("msg", "")
-            error_type = item.get("type", "")
-            lines.append(f"- {location}: {message} ({error_type})")
-        return lines
+        return [f"- {type(error).__name__}: {error}"]
+    return []
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Validate maintained configs with the public resolver and schema"
+        description="Validate maintained configs with the public config authority"
     )
     parser.add_argument(
         "--registry",
@@ -108,9 +84,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(line)
         return 1
 
-    print(
-        f"[OK] {len(paths)}/{len(paths)} configs passed public resolution and schema validation."
-    )
+    print(f"[OK] {len(paths)}/{len(paths)} configs passed public validation.")
     return 0
 
 
