@@ -1,6 +1,7 @@
 trainer:
   name: "Default_trainer"
   monitor: "val_loss"
+  monitor_mode: "min"
   num_epochs: 10
   gpus: 1
   device: "cuda"
