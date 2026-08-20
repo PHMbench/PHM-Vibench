@@ -9,7 +9,7 @@ import pytest
 from phmfactory import cli
 from phmfactory.commands import demo, doctor, preflight
 from phmfactory.commands.common import check_writable_directory
-from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis
 import phmfactory.device as device_contract
 
 
@@ -51,16 +51,10 @@ def _analysis(
         local_config_path=None,
         source_files=(path,),
         sources={},
-        diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(config),
     )
 
 
-def _resolved(tmp_path: Path) -> ResolvedConfig:
-    return _analysis(tmp_path).to_resolved_config()
-
-
-def test_command_router_preserves_legacy_experiment_form(
+def test_command_router_preserves_explicit_experiment_form(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     routed: list[object] = []
@@ -121,7 +115,7 @@ def test_demo_uses_offline_defaults_and_user_override_wins() -> None:
     assert "trainer.gpus=1" not in args.override
 
 
-def test_preflight_uses_single_analysis_without_importing_pipeline(
+def test_preflight_uses_the_same_analysis_without_importing_pipeline(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -137,11 +131,12 @@ def test_preflight_uses_single_analysis_without_importing_pipeline(
 
     assert result["status"] == "passed"
     assert result["pipeline"] == "Pipeline_01_Fault_Diagnosis"
-    assert result["effective_config_sha256"] == analysis.effective_config_sha256
-    assert len(result["run_spec_sha256"]) == 64
+    assert result["resolved_config_path"] == str(analysis.path)
     assert result["requested_device"] == "cpu"
     assert result["resolved_accelerator"] == "cpu"
     assert result["resolved_devices"] == 1
+    assert "effective_config_sha256" not in result
+    assert "run_spec_sha256" not in result
     assert not (tmp_path / "new").exists()
 
 
@@ -159,9 +154,7 @@ def test_preflight_rejects_unavailable_cuda_before_training(
     monkeypatch.setattr(
         device_contract,
         "_load_torch",
-        lambda: SimpleNamespace(
-            cuda=SimpleNamespace(is_available=lambda: False)
-        ),
+        lambda: SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False)),
     )
 
     with pytest.raises(RuntimeError, match="CUDA is unavailable.*no CPU fallback"):
@@ -222,7 +215,7 @@ def test_doctor_exercises_real_imports(
         return SimpleNamespace(__version__="test")
 
     monkeypatch.setattr(doctor.importlib, "import_module", fake_import)
-    monkeypatch.setattr(doctor, "resolve_config", lambda source: _resolved(tmp_path))
+    monkeypatch.setattr(doctor, "analyze_config", lambda source: _analysis(tmp_path))
     monkeypatch.setattr(
         doctor.importlib.util,
         "find_spec",
