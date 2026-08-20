@@ -21,13 +21,7 @@ from phmfactory.commands.common import (
 )
 from phmfactory.config import analyze_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
-from phmfactory.runtime import (
-    AttestationWriteError,
-    CompiledRunSpec,
-    ExecutionEnvelope,
-    RunAttestation,
-)
-from phmfactory.runtime.evidence import register_pipeline_result_evidence
+from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
 
 
 COMMANDS = ("data", "doctor", "demo", "preflight")
@@ -70,48 +64,6 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     ).pipeline
 
 
-def _record_warning(context: str, error: Exception) -> None:
-    """Report a non-authoritative run-record failure without hiding the run result."""
-
-    print(
-        f"[WARNING] {context} could not be recorded: "
-        f"{type(error).__name__}: {error}",
-        file=sys.stderr,
-    )
-
-
-def _prepare_optional_attestation(
-    compiled: CompiledRunSpec,
-    module_name: str,
-    envelope: ExecutionEnvelope,
-) -> RunAttestation | None:
-    """Prepare the legacy diagnostic manifest without making it a run gate."""
-
-    try:
-        return RunAttestation.prepare(compiled, module_name, envelope)
-    except Exception as error:
-        _record_warning("pending run manifest", error)
-        return None
-
-
-def _write_optional_attestation(
-    attestation: RunAttestation | None,
-    envelope: ExecutionEnvelope,
-    *,
-    context: str,
-) -> bool:
-    """Best-effort manifest update that never replaces the scientific outcome."""
-
-    if attestation is None:
-        return False
-    try:
-        attestation.write(envelope)
-    except AttestationWriteError as error:
-        _record_warning(context, error)
-        return False
-    return True
-
-
 def _print_direct_outputs(result: Any) -> None:
     """Print canonical user outputs returned directly by a maintained Pipeline."""
 
@@ -140,10 +92,9 @@ def run(args: argparse.Namespace) -> Any:
     Configuration composition occurs exactly once in :func:`analyze_config`. Protected
     runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
 
-    The Pipeline result and exception are authoritative. The historical run manifest and
-    Pipeline-specific evidence index are retained as optional diagnostics during the v0.3
-    migration; inability to prepare, enrich, or finalize them cannot convert a completed
-    fit/checkpoint/evaluation path into a failed scientific run.
+    The Pipeline result and exception are the public run authority. A successful run is
+    reported through direct result, checkpoint, metric, and summary paths returned by the
+    Pipeline; PHMFactory does not create a parallel attestation or evidence record.
     """
 
     requested = requested_config(args)
@@ -152,8 +103,7 @@ def run(args: argparse.Namespace) -> Any:
         override_values=args.override,
         local_config=requested_local_config(args),
     )
-    resolved = analysis.to_resolved_config()
-    compiled = CompiledRunSpec.compile(resolved)
+    compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
 
     args.requested_config = requested
     args.config_path = str(analysis.path)
@@ -169,13 +119,6 @@ def run(args: argparse.Namespace) -> Any:
     envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
     args.execution_envelope = envelope
 
-    attestation = _prepare_optional_attestation(compiled, module_name, envelope)
-    args.run_attestation = attestation
-    args.run_id = attestation.run_id if attestation is not None else None
-    args.run_manifest_path = (
-        str(attestation.manifest_path) if attestation is not None else None
-    )
-
     try:
         descriptor = require_pipeline_access(
             analysis.pipeline,
@@ -184,11 +127,6 @@ def run(args: argparse.Namespace) -> Any:
         )
     except BaseException as error:
         envelope.record_failure(error, stage="maturity")
-        _write_optional_attestation(
-            attestation,
-            envelope,
-            context="failed run manifest",
-        )
         raise
     args.pipeline_descriptor = descriptor
 
@@ -196,38 +134,9 @@ def run(args: argparse.Namespace) -> Any:
         pipeline_module = importlib.import_module(module_name)
     except BaseException as error:
         envelope.record_failure(error, stage="import")
-        _write_optional_attestation(
-            attestation,
-            envelope,
-            context="failed run manifest",
-        )
         raise
 
-    try:
-        result = envelope.execute(pipeline_module, args)
-    except BaseException:
-        _write_optional_attestation(
-            attestation,
-            envelope,
-            context="failed run manifest",
-        )
-        raise
-
-    if attestation is not None:
-        try:
-            register_pipeline_result_evidence(attestation, compiled, result)
-        except Exception as error:
-            _record_warning("optional Pipeline evidence", error)
-
-    manifest_written = _write_optional_attestation(
-        attestation,
-        envelope,
-        context="terminal run manifest",
-    )
-    if manifest_written and attestation is not None:
-        print(f"run_manifest={attestation.manifest_path}")
-    else:
-        print("run_manifest=unavailable")
+    result = envelope.execute(pipeline_module, args)
     _print_direct_outputs(result)
     print("完成所有实验！")
     return result
