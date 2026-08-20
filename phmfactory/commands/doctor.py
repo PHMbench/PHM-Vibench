@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 
 from phmfactory.commands.common import check_writable_directory
-from phmfactory.config import resolve_config
+from phmfactory.config import analyze_config
 from phmfactory.pipelines import pipeline_module_name
 
 
@@ -69,15 +69,15 @@ def collect_checks() -> list[DoctorCheck]:
             )
 
     try:
-        resolved = resolve_config("smoke")
+        analysis = analyze_config("smoke")
     except Exception as error:
         checks.append(
             DoctorCheck("config:smoke", False, f"{type(error).__name__}: {error}")
         )
         return checks
 
-    checks.append(DoctorCheck("config:smoke", True, str(resolved.path)))
-    module_name = pipeline_module_name(resolved.pipeline, warn=False)
+    checks.append(DoctorCheck("config:smoke", True, str(analysis.path)))
+    module_name = pipeline_module_name(analysis.pipeline, warn=False)
     try:
         module_found = importlib.util.find_spec(module_name) is not None
     except (ImportError, AttributeError, ValueError) as error:
@@ -97,7 +97,7 @@ def collect_checks() -> list[DoctorCheck]:
             )
         )
 
-    environment = resolved.data.get("environment") or {}
+    environment = analysis.effective_config.get("environment") or {}
     output_dir = environment.get("output_dir")
     try:
         writable = check_writable_directory(str(output_dir))
