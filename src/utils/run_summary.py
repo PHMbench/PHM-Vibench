@@ -1,4 +1,4 @@
-"""Deterministic summaries for repeated experiment results."""
+"""Deterministic, complete summaries for repeated experiment results."""
 
 from __future__ import annotations
 
@@ -41,17 +41,67 @@ def resolved_config_sha256(config: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _numeric_value(value: Any) -> float | None:
+def _numeric_metric(value: Any, *, context: str) -> float:
+    """Return one finite scalar metric without silently dropping values."""
+
     if isinstance(value, bool):
-        return None
+        raise TypeError(f"{context} must be numeric, not boolean")
     if hasattr(value, "item"):
-        value = value.item()
-    if not isinstance(value, numbers.Real):
-        return None
+        try:
+            value = value.item()
+        except (RuntimeError, TypeError, ValueError) as exc:
+            raise TypeError(f"{context} must be a scalar numeric value") from exc
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise TypeError(
+            f"{context} must be a scalar real number, got {type(value).__name__}"
+        )
     number = float(value)
     if not math.isfinite(number):
-        raise ValueError("run results contain a non-finite numeric metric")
+        raise ValueError(f"{context} is not finite: {number!r}")
     return number
+
+
+def normalize_metric_result(
+    result: Mapping[str, Any],
+    *,
+    context: str = "run result",
+) -> dict[str, float]:
+    """Validate one complete metric mapping and return plain finite floats."""
+
+    if not isinstance(result, Mapping):
+        raise TypeError(f"{context} must be a metric mapping")
+    if not result:
+        raise ValueError(f"{context} must contain at least one metric")
+
+    normalized: dict[str, float] = {}
+    for raw_name, raw_value in result.items():
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            raise TypeError(
+                f"{context} metric names must be non-empty strings, got {raw_name!r}"
+            )
+        name = raw_name.strip()
+        if name != raw_name:
+            raise ValueError(
+                f"{context} metric name {raw_name!r} contains surrounding whitespace"
+            )
+        if name in normalized:
+            raise ValueError(f"{context} contains duplicate metric name {name!r}")
+        normalized[name] = _numeric_metric(
+            raw_value,
+            context=f"{context} metric {name!r}",
+        )
+    return normalized
+
+
+def _normalized_seeds(seeds: Sequence[int]) -> list[int]:
+    normalized: list[int] = []
+    for index, seed in enumerate(seeds):
+        if isinstance(seed, bool) or not isinstance(seed, numbers.Integral):
+            raise TypeError(
+                f"seed {index} must be an integer, got {seed!r}"
+            )
+        normalized.append(int(seed))
+    return normalized
 
 
 def build_run_summary(
@@ -59,34 +109,43 @@ def build_run_summary(
     seeds: Sequence[int],
     config: Any,
 ) -> dict[str, Any]:
+    """Summarize one identical finite metric set across every completed seed."""
+
     if len(results) != len(seeds):
         raise ValueError("one seed must be recorded for every run result")
     if not results:
         raise ValueError("at least one run result is required")
 
-    metric_names = sorted({str(key) for result in results for key in result})
+    normalized_results = [
+        normalize_metric_result(result, context=f"run result {index}")
+        for index, result in enumerate(results)
+    ]
+    expected_names = set(normalized_results[0])
+    for index, result in enumerate(normalized_results[1:], start=1):
+        observed_names = set(result)
+        if observed_names != expected_names:
+            missing = sorted(expected_names - observed_names)
+            unexpected = sorted(observed_names - expected_names)
+            raise ValueError(
+                "every seed must report the same metric set: "
+                f"run={index}, missing={missing}, unexpected={unexpected}"
+            )
+
     metrics: dict[str, dict[str, Any]] = {}
-    for name in metric_names:
-        values = []
-        for result in results:
-            if name not in result:
-                continue
-            value = _numeric_value(result[name])
-            if value is not None:
-                values.append(value)
-        if not values:
-            continue
+    for name in sorted(expected_names):
+        values = [result[name] for result in normalized_results]
         metrics[name] = {
             "count": len(values),
             "mean": statistics.fmean(values),
             "sample_std": statistics.stdev(values) if len(values) >= 2 else None,
         }
 
+    normalized_seeds = _normalized_seeds(seeds)
     return {
         "schema_version": 1,
         "config_sha256": resolved_config_sha256(config),
-        "iterations": len(results),
-        "seeds": [int(seed) for seed in seeds],
+        "iterations": len(normalized_results),
+        "seeds": normalized_seeds,
         "metrics": metrics,
     }
 
@@ -106,3 +165,11 @@ def write_run_summary(
         encoding="utf-8",
     )
     return summary
+
+
+__all__ = [
+    "build_run_summary",
+    "normalize_metric_result",
+    "resolved_config_sha256",
+    "write_run_summary",
+]
