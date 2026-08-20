@@ -14,9 +14,9 @@ from phmfactory.commands.common import (
     requested_local_config,
 )
 from phmfactory.config import analyze_config
+from phmfactory.device import resolve_device_request
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import CompiledRunSpec
-from src.trainer_factory.device import resolve_device_request
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,7 +36,7 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
     The function uses the same :func:`phmfactory.config.analyze_config` call as the real
     runtime. It does not import the Pipeline implementation, construct factories, create
     the configured output directory, or start a run. Device resolution uses the same
-    Trainer Factory function as real Trainer construction.
+    lightweight function as real Trainer construction.
     """
 
     args = build_parser().parse_args(list(argv))
