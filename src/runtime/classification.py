@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -22,7 +23,11 @@ from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
-from src.utils.run_summary import write_run_summary
+from src.utils.run_summary import (
+    build_run_summary,
+    normalize_metric_result,
+    write_run_summary,
+)
 from src.utils.utils import close_lab, init_lab, load_best_model_checkpoint
 
 
@@ -124,12 +129,30 @@ def _close_data_factory(data_factory: Any) -> None:
         close()
 
 
-def _result_row(result: Any) -> dict[str, Any]:
-    if not isinstance(result, list) or not result or not isinstance(result[0], dict):
+def _result_row(result: Any) -> dict[str, float]:
+    """Return one complete metric population from ``trainer.test``.
+
+    Lightning returns one mapping per test dataloader.  The maintained classification
+    estimator currently defines exactly one test population.  Multiple mappings are
+    therefore ambiguous and must be handled by an explicit multi-population protocol
+    rather than silently discarding every item after the first.
+    """
+
+    if not isinstance(result, (list, tuple)) or len(result) != 1:
+        observed = len(result) if isinstance(result, (list, tuple)) else type(result).__name__
         raise RuntimeError(
-            "trainer.test must return a non-empty list whose first item is a mapping"
+            "trainer.test must return exactly one metric mapping for the maintained "
+            f"classification test population, observed={observed}"
         )
-    return dict(result[0])
+    if not isinstance(result[0], Mapping):
+        raise RuntimeError(
+            "trainer.test result 0 must be a metric mapping, "
+            f"got {type(result[0]).__name__}"
+        )
+    return normalize_metric_result(
+        result[0],
+        context="trainer.test result 0",
+    )
 
 
 def _best_checkpoint_path(trainer: Any) -> Path:
@@ -158,10 +181,17 @@ def _write_aggregate_outputs(
     run_seeds: list[int],
     configs: Any,
 ) -> dict[str, Any]:
-    """Write repeated-run metrics and their deterministic summary."""
+    """Write repeated-run metrics only after the complete estimator validates."""
 
     if last_iteration_path is None or not all_results:
         raise ValueError("aggregate outputs require at least one completed iteration")
+
+    # Validate the complete repeated-run estimator before publishing aggregate CSVs.
+    build_run_summary(
+        results=all_results,
+        seeds=run_seeds,
+        config=configs,
+    )
 
     run_root_path = Path(run_root)
     iteration_path = Path(last_iteration_path)
