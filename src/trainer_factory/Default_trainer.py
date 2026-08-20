@@ -12,7 +12,6 @@ except ImportError:  # Optional experiment service; required only when enabled.
 
 from phmfactory.device import resolve_device_request
 from src.trainer_factory import register_trainer
-from src.trainer_factory.extensions import ManifestWriterCallback
 
 # Compatibility name for focused tests and historical internal imports.
 _resolve_device_request = resolve_device_request
@@ -45,7 +44,6 @@ def trainer(args_e, args_t, args_d, path):
 
     accelerator, devices = resolve_device_request(args_t)
 
-    # 获取回调列表
     callback_list = call_backs(args_t, path)
     log_list = [CSVLogger(path, name="logs")]
     use_wandb = getattr(args_e, "wandb", False)
@@ -67,11 +65,9 @@ def trainer(args_e, args_t, args_d, path):
         swanlab_logger = SwanLabLogger(project=args_e.project)
         log_list.append(swanlab_logger)
 
-    # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
     if not getattr(args_t, "log_every_n_steps", None):
         args_t.log_every_n_steps = 50
 
-    # 初始化训练器。Lightning Trainer 是唯一的设备放置 authority。
     trainer = pl.Trainer(
         callbacks=callback_list,
         accelerator=accelerator,
@@ -86,16 +82,8 @@ def trainer(args_e, args_t, args_d, path):
 
 
 def call_backs(args, path):
-    """
-    配置训练时所需的回调函数，包括检查点保存、模型修剪、早期停止等。
+    """Build only callbacks that participate in training or checkpoint selection."""
 
-    参数:
-    - args: 包含训练配置的对象
-    - path: 存储检查点的路径
-
-    返回:
-    - callback_list: 配置好的回调列表
-    """
     checkpoint_callback = ModelCheckpoint(
         monitor=args.monitor,
         filename="model-{epoch:02d}-{val_loss:.4f}",
@@ -106,33 +94,10 @@ def call_backs(args, path):
 
     callback_list = [checkpoint_callback]
 
-    # UXFD merge: always write an auditable manifest (safe no-op if not main process).
-    try:
-        extensions = getattr(args, "extensions", None)
-        report_cfg = getattr(extensions, "report", None) if extensions is not None else None
-        report_enable = getattr(report_cfg, "enable", True) if report_cfg is not None else True
-        manifest_enable = getattr(report_cfg, "manifest", True) if report_cfg is not None else True
-        enabled = bool(report_enable) and bool(manifest_enable)
-    except Exception:
-        enabled = True
-
-    callback_list.append(
-        ManifestWriterCallback(
-            run_dir=path,
-            paper_id=str(getattr(args, "paper_id", "") or ""),
-            preset_version=str(getattr(args, "preset_version", "") or ""),
-            run_id=str(getattr(args, "logger_name", "") or ""),
-            enabled=enabled,
-            is_main_process=is_main_process,
-        )
-    )
-
-    # 模型修剪回调（根据需求添加）
     if getattr(args, "pruning", 0.0):
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
 
-    # 早期停止回调（若未配置 early_stopping，则默认为不启用）
     if getattr(args, "early_stopping", False):
         early_stopping = create_early_stopping_callback(args)
         callback_list.append(early_stopping)
@@ -141,15 +106,7 @@ def call_backs(args, path):
 
 
 def Prune_callback(args):
-    """
-    根据训练配置，返回模型剪枝回调。
-
-    参数:
-    - args: 包含训练配置的对象
-
-    返回:
-    - prune_callback: 配置好的剪枝回调（如果有）
-    """
+    """根据训练配置，返回模型剪枝回调。"""
 
     def compute_amount(epoch):
         if epoch == args.num_epochs // 4:
