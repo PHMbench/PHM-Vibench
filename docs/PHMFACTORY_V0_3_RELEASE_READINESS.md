@@ -1,41 +1,33 @@
 # PHMFactory v0.3.0-rc1 Release Readiness
 
-This document is the blocking contract for the first PHMFactory v0.3 release candidate.
-The source identity has been promoted to `0.3.0rc1` on `dev`; this does not claim that an
-RC1 tag, GitHub Release, wheel upload, source-distribution upload, or package-index
-publication already exists.
+This page is the current release-claim authority for the `0.3.0rc1` source tree. It does
+not claim that an RC1 tag, GitHub Release, wheel upload, source-distribution upload, or
+package-index publication exists.
 
 ## Current status
 
 ```text
-status: RC1_SOURCE_VALIDATED
-release target: v0.3.0-rc1
-current repository: PHMbench/PHM-Vibench
-package version: 0.3.0rc1
-release-readiness blockers: 0
-current baseline_valid references: 1
-RC1 tag present: false
-published artifacts: false
+source version: 0.3.0rc1
+repository: PHMbench/PHM-Vibench
+release state: BLOCKED
+current baseline_valid references: 0
+published artifacts: none
 ```
 
-The machine-checked result for the promoted source identity is:
+The current blocker is intentional:
 
 ```text
-PHMFactory v0.3.0-rc1 readiness PASS: 0 blockers
+BASELINE_VALID_REFERENCE_INVALID
 ```
 
-Audit commands:
+The MFPT transparent reference was validated on an earlier source state. Subsequent
+changes modified metric lifecycle, checkpoint selection, and repeated-run aggregation.
+Until the exact MFPT protocol is rerun on the current source, it remains `smoke_only` and
+must not be presented as current `baseline_valid` evidence.
 
-```bash
-python tools/repo/check_submodule_policy.py --mode release
-python tools/repo/check_release_readiness.py --mode audit
-python tools/repo/check_release_readiness.py --mode release
-```
+## Readiness contract
 
-## First-principles readiness contract
-
-A release candidate is scientifically ready only when its maintained user path executes a
-defined experiment rather than merely importing successfully:
+A release candidate is ready only when:
 
 $$
 C_{\mathrm{RC1}}
@@ -48,190 +40,102 @@ C_{\mathrm{baseline}}
 \land
 C_{\mathrm{package}}
 \land
-C_{\mathrm{docs}}
-\land
-C_{\mathrm{repository}}.
+C_{\mathrm{docs}}.
 $$
 
-The factors mean:
+- `C_config`: inspect, preflight, and run resolve the same visible experiment.
+- `C_runtime`: failures remain failures; no alternate data, model, task, device, loss,
+  checkpoint, or estimator is selected silently.
+- `C_baseline`: at least one exact real-data configuration has current-source evidence for
+  its data population, split, objective, checkpoint selection, evaluation, declared
+  metrics, and repeated-run estimator.
+- `C_package`: the supported installation and offline first-run path work.
+- `C_docs`: public claims match the current registry and generated support tables.
 
-- `C_config`: one resolved configuration is used from preflight through Pipeline execution;
-- `C_runtime`: failures propagate from their source and no alternate algorithm is selected;
-- `C_baseline`: at least one exact real-data configuration has a closed data, split,
-  checkpoint, evaluation, metric, and repeated-run estimator contract;
-- `C_package`: wheel/source build and clean installed entrypoints work;
-- `C_docs`: user-facing claims match the generated support authority;
-- `C_repository`: repository and optional-submodule boundaries remain explicit.
+A hash, receipt, ledger, attestation, or artifact index is not a scientific readiness
+condition.
 
-A file hash, receipt, ledger, or artifact index is not one of these scientific conditions.
+## What is already established
 
-## Machine-checked scientific reference
+The current source retains the following reviewed behavior:
 
-The RC1 authority requires exactly one reviewed registry row:
+- the public `phmfactory` command and configuration-first execution path;
+- explicit Data, Model, Task, Trainer, and Pipeline responsibilities;
+- fail-fast task, device, objective, checkpoint, and evaluation boundaries on maintained
+  paths;
+- deterministic maintained HSE validation/test behavior;
+- strict local Dummy and MFPT reader contracts;
+- one fully offline Dummy first-run path;
+- current bounded smoke configurations listed in `SUPPORTED_COMBINATIONS.md`;
+- optional `phm-data-factory` integration deferred outside the v0.3 core runtime.
 
-```text
-id: baseline_01_mfpt_global_average_linear
-config: configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
-pipeline: Pipeline_01_Fault_Diagnosis
-execution status: sanity_ok
-protocol status: baseline_valid
-```
+These facts support software use and bounded smoke claims. They do not substitute for a
+current real-data `baseline_valid` experiment.
 
-The reference uses the public MFPT provider split, file-grouped and label-stratified
-training/validation groups, a held-out provider test population, the transparent
-`GlobalAverageLinear` model, best-checkpoint restoration, and explicit seeds 17, 18, and
-19. Its low accuracy is retained as the honest result of a deliberately weak transparent
-model. `baseline_valid` denotes protocol closure, not model superiority.
+## MFPT requalification gate
 
-The checker also requires the reviewed preparation command, strict MFPT reader, focused
-contract test, and real-data workflow to remain present. The workflow itself performs the
-real download and end-to-end scientific validation; the release checker does not replace
-that experiment with metadata bookkeeping.
-
-## CWRU compatibility boundary
-
-CWRU remains a compatibility bundle and a later local acceptance target. It is not the
-current `baseline_valid` reference and it does not block unrelated RC1 progress.
-
-The CWRU bundle contract is:
-
-$$
-C_{\mathrm{CWRU}}
-=
-C_{\mathrm{provider}}
-\land
-C_{\mathrm{schema}}
-\land
-C_{\mathrm{ID}}
-\land
-C_{\mathrm{shape}}
-\land
-C_{\mathrm{metadata}}.
-$$
-
-The executable validator checks:
+The candidate configuration remains:
 
 ```text
-explicit provider and revision declaration
-required metadata.xlsx and RM_001_CWRU.h5 mappings
-required Dataset_id / Label / Domain_id fields
-non-empty selector and Id field
-unique selected Id values
-selected Id -> HDF5 signal coverage
-signal shape (L, C)
-metadata sample-length agreement
-metadata channel-count agreement
-optional corpus foreign-key validity
+configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
 ```
 
-RC1 does **not** require:
+It may return to `protocol_status=baseline_valid` only after the unchanged protocol is run
+on the current source and all of the following hold:
 
 ```text
-per-file SHA-256 pins
-cross-provider byte identity
-hash-chain or receipt construction
-artifact-integrity attestation
+provider revision and 20-file population unchanged
+provider test files excluded from fit/validation/checkpoint selection
+seeds exactly 17, 18, 19
+one best checkpoint restored before each test
+declared acc and f1 reported for every seed
+non-empty finite metrics
+count=3 for every repeated-run metric
+finite mean and sample standard deviation
+independent workflow-only recomputation agrees with framework accuracy and macro-F1
 ```
 
-Those mechanisms may remain available as optional diagnostics for users who need them,
-but they do not establish reader semantics, label correctness, split validity, or
-benchmark validity.
+The requalification task must not change the data population, split, model, loss, metrics,
+optimizer, epochs, or seeds to recover a preferred result. A negative result is evidence
+and should leave the candidate unpromoted.
 
-## Resolved release areas
+## CWRU and optional backends
 
-The following areas are complete and must not return as RC1 blockers:
+CWRU is a later local acceptance target, not the current baseline claim. Its useful checks
+are provider declaration, required metadata, unique IDs, signal coverage, shape, sample
+length, channel count, labels, domains, and reader semantics. Per-file hashes or
+cross-provider byte identity are optional diagnostics, not release gates.
 
-- public `phmfactory` package, CLI, configuration resolver, and canonical Pipeline names;
-- one configuration authority shared by inspect, preflight, CLI, and maintained runtime;
-- fail-fast data population, task, device, objective, metric, and checkpoint semantics on
-  maintained paths;
-- deterministic maintained evaluation boundaries;
-- strict Dummy and MFPT readers;
-- 2 x 2 Data Factory x Model Factory replacement acceptance;
-- one real MFPT `baseline_valid` reference;
-- optional compatibility run records that cannot override Pipeline success or failure;
-- P01-P09 migration, zero legacy gitlinks, and deny-by-default submodule policy;
-- formal deferral of optional `phm-data-factory` integration to v0.3.1;
-- synchronized package metadata and public `__version__` at `0.3.0rc1`;
-- wheel/sdist construction, wheel inspection, clean installation, public entrypoints, and
-  offline Dummy smoke on the RC1 source identity;
-- public MFPT three-seed preparation, preflight, best-checkpoint evaluation, and scientific
-  closure on the promoted RC1 source identity.
+`phm-data-factory` and IoTDB remain optional and deferred. The v0.3 core path must install,
+preflight, and run its offline Dummy experiment without them. An unavailable optional
+backend must fail when explicitly selected; it must not fall back to local data.
 
-The backend decision authority remains:
+## Audit commands
+
+```bash
+python tools/repo/check_submodule_policy.py --mode release
+python tools/repo/check_release_readiness.py --mode audit
+python tools/repo/check_release_readiness.py --mode release
+```
+
+Expected current behavior:
 
 ```text
-docs/releases/v0.3.0-backend-deferral.yaml
+audit mode  -> reports the baseline-valid blocker
+release mode -> exits non-zero
 ```
 
-A valid deferral means the backend is absent, optional, not imported by the RC1 runtime,
-not claimed as supported, and not release-blocking.
+Release mode may pass only after a current-source `baseline_valid` registry row is restored
+through reviewed execution evidence.
 
-## Repository identity
+## Publication boundary
 
-The actual RC1 repository is:
-
-```text
-PHMbench/PHM-Vibench
-```
-
-Documentation and citation metadata must use this real URL. A future rename to
-`PHMbench/phmfactory` is a product-governance decision, not a scientific-validity gate and
-not an RC1 blocker. A rename, when authorized, requires its own bounded migration PR.
-
-## Version promotion
-
-The two source-version authorities now agree:
-
-```text
-pyproject.toml:          0.3.0rc1
-phmfactory.__version__:  0.3.0rc1
-```
-
-The promoted source identity passed:
-
-```text
-release readiness: PASS, 0 blockers
-public package build and clean installation: PASS
-offline Dummy smoke: PASS
-public MFPT three-seed baseline: PASS
-core quality gates: PASS
-CWRU bundle contract: PASS
-dependency ownership: PASS
-repository layout and submodule policy: PASS
-```
-
-Version promotion does not itself create a tag, GitHub Release, or package-index
-publication.
-
-## RC1 promotion state
-
-```text
-1. scientific-readiness authority merged                         DONE
-2. pre-promotion audit isolated VERSION_NOT_RC1                  DONE
-3. version-only RC1 promotion PR created                         DONE
-4. 0.3.0.dev0 -> 0.3.0rc1 in both authorities                   DONE
-5. release/public-package/core/repository gates rerun            DONE
-6. release-readiness PASS with zero blockers                     DONE
-7. user-facing status + MFPT revalidation on RC1 source          DONE
-8. tag or publish only under separate explicit authorization     NOT AUTHORIZED
-```
-
-## Final v0.3.0 boundary
-
-The final `v0.3.0` release remains a later decision. Before a final tag, review:
-
-- whether RC1 user feedback requires code or documentation corrections;
-- whether the current repository name should remain or be changed;
-- whether wheels and source distributions are built from the exact approved commit;
-- whether supported combinations and known limitations remain accurate;
-- whether any additional real-data baseline is necessary for the final claim boundary.
-
-CWRU local acceptance may contribute to that review, but it must validate scientific data
-semantics rather than substitute byte identity for experiment correctness.
+A future readiness pass still does not create a tag or publication automatically. Tagging,
+GitHub Release creation, wheel/source upload, and package-index publication require
+separate explicit authorization for the exact approved commit.
 
 ## Rollback
 
-Before tagging, a reviewed revert may return both version authorities to `0.3.0.dev0` if
-the candidate is invalidated. After an RC1 artifact is published, do not move or recreate
-the tag; issue a corrected release candidate instead.
+Each readiness change should be one bounded squash commit. Revert that commit if its
+contract is wrong. Do not restore a `baseline_valid` claim merely to make the release gate
+pass.

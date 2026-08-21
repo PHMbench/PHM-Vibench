@@ -1,10 +1,20 @@
-# MFPT + GlobalAverageLinear baseline v1
+# MFPT + GlobalAverageLinear baseline candidate
 
-This directory contains PHMFactory's first scientifically closed real-data baseline
-candidate. It is intentionally transparent: the model averages each one-channel window
-over time and applies one linear classifier.
+This directory contains a transparent real-data protocol candidate. The model averages
+each one-channel window over time and applies one linear classifier.
 
-## Protocol
+The candidate is currently:
+
+```text
+execution_status: sanity_ok
+protocol_status: smoke_only
+```
+
+It was previously promoted as `baseline_valid`, but recent changes altered metric
+lifecycle, checkpoint selection, and repeated-run aggregation. The exact experiment must
+be rerun on the current source before that claim can be restored.
+
+## Frozen protocol
 
 ```text
 provider: mathworks/RollingElementBearingFaultDiagnosis-Data
@@ -15,9 +25,11 @@ train/val split: grouped by source File, stratified by Label
 labels: 0 normal, 1 inner-race fault, 2 outer-race fault
 seeds: 17, 18, 19
 model: Baseline/GlobalAverageLinear
+loss: CE
+metrics: accuracy, macro-F1
 ```
 
-The provider test files never participate in fitting, validation, early stopping, or
+Provider test files must never participate in fitting, validation, early stopping, or
 checkpoint selection.
 
 ## Prepare data
@@ -26,8 +38,8 @@ checkpoint selection.
 python -m scripts.prepare_mfpt_baseline --output data/mfpt
 ```
 
-The command downloads the pinned provider revision, copies only the exact 20 public
-bearing-test-rig MAT files, validates each MAT payload, and creates:
+The command obtains the pinned provider revision, requires the exact 20 public MAT files,
+validates each payload, and creates:
 
 ```text
 data/mfpt/
@@ -37,9 +49,8 @@ data/mfpt/
     └── test_data/*.mat
 ```
 
-The output directory must not already exist. The command never overwrites user data.
-The dataset is provided under CC BY-NC-SA 4.0; review the provider license before use,
-especially for commercial work.
+The output directory must not already exist. The command never overwrites user data. The
+dataset is provided under CC BY-NC-SA 4.0; review the provider license before use.
 
 ## Preflight and run
 
@@ -51,7 +62,7 @@ phmfactory \
   --config configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
 ```
 
-Machine-specific locations remain explicit:
+Machine-specific paths remain explicit:
 
 ```bash
 phmfactory \
@@ -61,23 +72,31 @@ phmfactory \
   --override data.split.manifest_path=/absolute/path/to/results/split_manifest.json
 ```
 
-## Success criteria
+## Current-source promotion gate
 
-A baseline-valid execution requires all of the following:
+The candidate may return to `baseline_valid` only when the unchanged current-source run
+satisfies:
 
 ```text
 20 strict reader successes
-14 provider-train files partitioned into non-overlapping train/val file groups
+14 provider-train files partitioned into disjoint train/val file groups
 6 provider-test files used only for test
 three completed seeds: 17, 18, 19
-best checkpoint restored before every test
-non-empty finite test metrics for every seed
-run_summary.json with count=3 and finite mean/sample_std
+one best checkpoint restored before every test
+accuracy and macro-F1 present for every seed
+non-empty finite test metrics
+run_summary count=3 with finite mean and sample_std
+independent workflow-only accuracy/F1 recomputation agrees with framework output
 ```
+
+Do not change the data population, split, model, objective, metrics, epochs, or seeds to
+recover a preferred result. A failed requalification is evidence and must leave the
+candidate unpromoted.
 
 ## Claim boundary
 
-This baseline establishes a real-data execution and estimator contract. It does not claim
-state-of-the-art accuracy, a strong signal representation, or universal MFPT protocol
-superiority. `GlobalAverageLinear` deliberately ignores the available sampling-rate and
-fault-frequency metadata; those omissions are baseline limitations, not hidden behavior.
+Historical results remain useful protocol evidence, but they are not current-source
+promotion evidence. This candidate does not claim state-of-the-art accuracy, a strong
+signal representation, or universal MFPT protocol superiority. `GlobalAverageLinear`
+deliberately ignores sampling-rate and fault-frequency metadata; those omissions are
+visible baseline limitations.
