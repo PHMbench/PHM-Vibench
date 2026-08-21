@@ -286,6 +286,12 @@ class TrainerConfig(BaseModel):
 
     name: str = Field(..., description="Trainer implementation name under trainer_factory.")
     num_epochs: Optional[int] = Field(None, ge=1)
+    device: Optional[Literal["cpu", "cuda", "auto"]] = None
+    gpus: Optional[int] = Field(None, ge=1)
+    devices: Optional[int] = Field(None, ge=1)
+    test_after_fit: Optional[bool] = None
+    monitor: Optional[str] = None
+    monitor_mode: Optional[Literal["min", "max"]] = None
     extensions: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
