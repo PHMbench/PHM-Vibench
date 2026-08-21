@@ -49,7 +49,7 @@ execution-verified ⊆ runnable ⊆ discoverable
 | Task heads | `H_01_Linear_cla` |
 | Tasks | `CDDG/classification`, `DG/classification`, `FS/classification`, `GFS/classification`, `pretrain/hse_contrastive` |
 | Trainers | `Default_trainer` |
-| Protocol statuses | `baseline_valid`, `smoke_only` |
+| Protocol statuses | `smoke_only` |
 
 Exact execution-verified combinations are generated in `SUPPORTED_COMBINATIONS.md`.
 
