@@ -213,6 +213,7 @@ jobs:
             "pytorch-lightning>=1.5" \
             "torchmetrics>=1.0" \
             "PyYAML>=6.0" \
+            "pydantic>=2.0" \
             "matplotlib" \
             "tensorboard" \
             "openpyxl" \
