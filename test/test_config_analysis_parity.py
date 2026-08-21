@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 
+from pydantic import ValidationError
+import pytest
+
+from phmfactory import cli as public_cli
 from phmfactory.commands import preflight
 from phmfactory.config import (
     analyze_config,
+    load_config_dict,
     resolve_config,
     semantic_config_sha256,
+    validate_complete_experiment,
 )
 from scripts.config_inspect import inspect_config
 from scripts.validate_configs import validate_one
@@ -20,14 +27,29 @@ def _minimal_config(path: Path, *, epochs: int) -> None:
     path.write_text(
         "pipeline: Pipeline_01_Fault_Diagnosis\n"
         "environment:\n"
+        "  project: config-parity-test\n"
         "  seed: 0\n"
         "  iterations: 1\n"
         "  output_dir: results/test\n"
-        "data: {}\n"
-        "model: {}\n"
-        "task: {}\n"
+        "data:\n"
+        "  data_dir: data\n"
+        "  metadata_file: metadata_dummy.csv\n"
+        "model:\n"
+        "  type: Baseline\n"
+        "  name: GlobalAverageLinear\n"
+        "task:\n"
+        "  type: DG\n"
+        "  name: classification\n"
+        "  target_system_id: [0]\n"
+        "  loss: CE\n"
         "trainer:\n"
-        f"  num_epochs: {epochs}\n",
+        "  name: Default_trainer\n"
+        f"  num_epochs: {epochs}\n"
+        "  device: cpu\n"
+        "  gpus: 1\n"
+        "  monitor: val_loss\n"
+        "  monitor_mode: min\n"
+        "  test_after_fit: true\n",
         encoding="utf-8",
     )
 
@@ -68,9 +90,29 @@ def test_precedence_is_base_then_config_then_explicit_local_then_cli(
     config = tmp_path / "config.yaml"
     local = tmp_path / "machine.yaml"
     base.write_text(
-        "environment: {seed: 0, iterations: 1, output_dir: results/test}\n"
-        "data: {}\nmodel: {}\ntask: {}\n"
-        "trainer: {num_epochs: 1, device: cpu}\n",
+        "environment:\n"
+        "  project: config-precedence-test\n"
+        "  seed: 0\n"
+        "  iterations: 1\n"
+        "  output_dir: results/test\n"
+        "data:\n"
+        "  data_dir: data\n"
+        "  metadata_file: metadata_dummy.csv\n"
+        "model:\n"
+        "  type: Baseline\n"
+        "  name: GlobalAverageLinear\n"
+        "task:\n"
+        "  type: DG\n"
+        "  name: classification\n"
+        "  target_system_id: [0]\n"
+        "  loss: CE\n"
+        "trainer:\n"
+        "  name: Default_trainer\n"
+        "  num_epochs: 1\n"
+        "  device: cpu\n"
+        "  gpus: 1\n"
+        "  monitor: val_loss\n"
+        "  monitor_mode: min\n",
         encoding="utf-8",
     )
     config.write_text(
@@ -88,14 +130,10 @@ def test_precedence_is_base_then_config_then_explicit_local_then_cli(
         override_values=["trainer.num_epochs=4"],
     )
 
-    assert local_only.effective_config["trainer"] == {
-        "num_epochs": 3,
-        "device": "cuda",
-    }
-    assert final.effective_config["trainer"] == {
-        "num_epochs": 4,
-        "device": "cuda",
-    }
+    assert local_only.effective_config["trainer"]["num_epochs"] == 3
+    assert local_only.effective_config["trainer"]["device"] == "cuda"
+    assert final.effective_config["trainer"]["num_epochs"] == 4
+    assert final.effective_config["trainer"]["device"] == "cuda"
     assert final.sources["trainer.num_epochs"] == "cli:--override"
     assert final.sources["trainer.device"] == f"local:{local.resolve()}"
     assert final.local_config_path == local.resolve()
@@ -117,6 +155,22 @@ def test_unmentioned_local_yaml_is_not_an_input(
     assert analysis.local_config_path is None
     assert analysis.effective_config["trainer"]["num_epochs"] == 2
     assert hidden not in analysis.source_files
+
+
+def test_base_fragment_loader_remains_separate_from_complete_experiment_validation(
+    tmp_path: Path,
+) -> None:
+    fragment = tmp_path / "trainer.yaml"
+    fragment.write_text(
+        "trainer:\n  name: Default_trainer\n  num_epochs: 1\n",
+        encoding="utf-8",
+    )
+
+    assert load_config_dict(fragment) == {
+        "trainer": {"name": "Default_trainer", "num_epochs": 1}
+    }
+    with pytest.raises(ValueError, match="must declare `pipeline`"):
+        analyze_config(fragment)
 
 
 def test_resolve_config_is_a_compatibility_view_of_analysis() -> None:
@@ -155,6 +209,94 @@ def test_preflight_reports_the_same_effective_hash(
     assert report["effective_config_sha256"] == expected.effective_config_sha256
     assert report["pipeline"] == expected.pipeline
     assert not (tmp_path / "preflight").exists()
+
+
+def test_strict_validation_does_not_rewrite_the_visible_mapping() -> None:
+    config = analyze_config("smoke").runtime_config()
+    before = deepcopy(config)
+
+    validate_complete_experiment(config)
+
+    assert config == before
+
+
+@pytest.mark.parametrize(
+    "invalid_override",
+    [
+        'environment.iterations="1"',
+        'trainer.test_after_fit="false"',
+        'data.num_workers="0"',
+    ],
+)
+def test_public_entrypoints_share_strict_type_rejection_without_side_effects(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_override: str,
+) -> None:
+    output_dir = tmp_path / "must-not-exist"
+    output_override = f"environment.output_dir={output_dir}"
+    overrides = [output_override, invalid_override]
+
+    def fail_pipeline_import(*args, **kwargs):
+        del args, kwargs
+        pytest.fail("invalid config must fail before Pipeline import")
+
+    monkeypatch.setattr(public_cli.importlib, "import_module", fail_pipeline_import)
+
+    calls = [
+        lambda: analyze_config("smoke", override_values=overrides),
+        lambda: inspect_config("smoke", overrides=overrides),
+        lambda: preflight.run(
+            [
+                "--config",
+                "smoke",
+                "--override",
+                output_override,
+                "--override",
+                invalid_override,
+            ]
+        ),
+        lambda: public_cli.run(
+            public_cli.build_parser().parse_args(
+                [
+                    "--config",
+                    "smoke",
+                    "--override",
+                    output_override,
+                    "--override",
+                    invalid_override,
+                ]
+            )
+        ),
+    ]
+
+    for call in calls:
+        with pytest.raises(ValidationError):
+            call()
+
+    assert not output_dir.exists()
+
+
+def test_grouped_split_coupling_fails_at_the_shared_public_boundary(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "invalid-grouped.yaml"
+    _minimal_config(config, epochs=1)
+    with config.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "data:\n"
+            "  data_dir: data\n"
+            "  metadata_file: metadata_dummy.csv\n"
+            "  split:\n"
+            "    strategy: grouped_metadata\n"
+            "    group_key: File\n"
+            "    manifest_path: results/split.json\n"
+            "    test_policy: partition\n"
+            "    fractions: {train: 0.8, val: 0.1, test: 0.1}\n"
+        )
+
+    with pytest.raises(ValidationError, match="requires test_policy=task_defined"):
+        analyze_config(config)
 
 
 def test_semantic_hash_is_stable_for_mapping_order() -> None:
