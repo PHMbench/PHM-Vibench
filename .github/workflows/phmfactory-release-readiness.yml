@@ -80,7 +80,7 @@ jobs:
       - name: Record current RC1 blockers
         run: python tools/repo/check_release_readiness.py --mode audit | tee release-readiness.txt
 
-      - name: Require scientific RC1 readiness or the single version-promotion blocker
+      - name: Require only explicit current-source RC1 blockers
         shell: bash
         run: |
           set -euo pipefail
@@ -97,18 +97,20 @@ jobs:
             fi
           done
 
-          unexpected="$(grep '^- ' release-readiness.txt | grep -v 'VERSION_NOT_RC1' || true)"
+          expected_pattern='VERSION_NOT_RC1|BASELINE_VALID_REFERENCE_INVALID'
+          unexpected="$(grep '^- ' release-readiness.txt | grep -Ev "${expected_pattern}" || true)"
           if [ -n "${unexpected}" ]; then
             echo "Unexpected RC1 blocker(s):" >&2
             printf '%s\n' "${unexpected}" >&2
             exit 1
           fi
 
-          if grep -q 'VERSION_NOT_RC1' release-readiness.txt; then
-            grep -q 'PHMFactory v0.3.0-rc1 readiness BLOCKED: 1 blocker(s)' release-readiness.txt
-            test "$(grep -c 'VERSION_NOT_RC1' release-readiness.txt)" = 1
+          expected="$(grep '^- ' release-readiness.txt | grep -E "${expected_pattern}" || true)"
+          if [ -n "${expected}" ]; then
+            blocker_count="$(printf '%s\n' "${expected}" | grep -c '^- ')"
+            grep -q "PHMFactory v0.3.0-rc1 readiness BLOCKED: ${blocker_count} blocker(s)" release-readiness.txt
             if python tools/repo/check_release_readiness.py --mode release; then
-              echo "Release mode unexpectedly passed before the RC1 version promotion." >&2
+              echo "Release mode unexpectedly passed while current-source blocker(s) remain." >&2
               exit 1
             fi
           else

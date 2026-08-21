@@ -10,7 +10,7 @@ python -m scripts.gen_support_matrix
 
 | Registry id | Kind | Config | Pipeline | Data base | Model | Task | Trainer | Execution evidence | Protocol status |
 |---|---|---|---|---|---|---|---|---|---|
-| `baseline_01_mfpt_global_average_linear` | `baseline` | `configs/baselines/01_mfpt/mfpt_global_average_linear.yaml` | `Pipeline_01_Fault_Diagnosis` | `base_cross_domain` | `Baseline/GlobalAverageLinear` | `DG/classification` | `Default_trainer` | `sanity_ok` | `baseline_valid` |
+| `baseline_01_mfpt_global_average_linear` | `baseline` | `configs/baselines/01_mfpt/mfpt_global_average_linear.yaml` | `Pipeline_01_Fault_Diagnosis` | `base_cross_domain` | `Baseline/GlobalAverageLinear` | `DG/classification` | `Default_trainer` | `sanity_ok` | `smoke_only` |
 | `demo_00_smoke_dummy_dg` | `demo` | `configs/demo/00_smoke/dummy_dg.yaml` | `Pipeline_01_Fault_Diagnosis` | `base_cross_domain` | `ISFM/M_01_ISFM` | `DG/classification` | `Default_trainer` | `sanity_ok` | `smoke_only` |
 | `demo_01_cross_domain` | `demo` | `configs/demo/01_cross_domain/cwru_dg.yaml` | `Pipeline_01_Fault_Diagnosis` | `base_cross_domain` | `ISFM/M_01_ISFM` | `DG/classification` | `Default_trainer` | `sanity_ok` | `smoke_only` |
 | `demo_02_cross_system` | `demo` | `configs/demo/02_cross_system/multi_system_cddg.yaml` | `Pipeline_01_Fault_Diagnosis` | `base_cross_system` | `ISFM/M_01_ISFM` | `CDDG/classification` | `Default_trainer` | `sanity_ok` | `smoke_only` |

@@ -23,21 +23,15 @@ def test_all_sanity_ok_maintained_configs_have_protocol_status() -> None:
     assert len(maintained) == 8
     assert {item.execution_status for item in maintained} == {"sanity_ok"}
     assert {item.category for item in maintained} == {"demo", "baseline"}
-    assert {item.protocol_status for item in maintained} == {
-        "smoke_only",
-        "baseline_valid",
-    }
+    assert {item.protocol_status for item in maintained} == {"smoke_only"}
     assert all((ROOT / item.path).is_file() for item in maintained)
 
 
-def test_mfpt_baseline_is_the_only_baseline_valid_combination() -> None:
-    baseline_valid = [
-        item for item in _maintained() if item.protocol_status == "baseline_valid"
-    ]
-    assert len(baseline_valid) == 1
-    baseline = baseline_valid[0]
+def test_mfpt_baseline_candidate_is_not_currently_promoted() -> None:
+    baselines = [item for item in _maintained() if item.category == "baseline"]
+    assert len(baselines) == 1
+    baseline = baselines[0]
     assert baseline.config_id == "baseline_01_mfpt_global_average_linear"
-    assert baseline.category == "baseline"
     assert baseline.path.endswith("/mfpt_global_average_linear.yaml")
     assert baseline.pipeline == "Pipeline_01_Fault_Diagnosis"
     assert baseline.model == "Baseline/GlobalAverageLinear"
@@ -46,6 +40,10 @@ def test_mfpt_baseline_is_the_only_baseline_valid_combination() -> None:
     assert baseline.task_head == "-"
     assert baseline.task == "DG/classification"
     assert baseline.execution_status == "sanity_ok"
+    assert baseline.protocol_status == "smoke_only"
+    assert not [
+        item for item in _maintained() if item.protocol_status == "baseline_valid"
+    ]
 
 
 def test_gfs_demo_resolves_without_implying_protocol_validity() -> None:
@@ -73,7 +71,7 @@ def test_committed_support_documents_are_generated() -> None:
     )
 
 
-def test_support_table_keeps_smoke_and_baseline_claims_separate() -> None:
+def test_support_table_keeps_smoke_and_promotion_terms_separate() -> None:
     combinations = render_combinations(_maintained())
     assert "Execution evidence" in combinations
     assert "Protocol status" in combinations
