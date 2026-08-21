@@ -7,6 +7,7 @@ on:
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
       - "src/configs/config_utils.py"
+      - "src/config_schema/**"
       - "src/runtime/classification.py"
       - "src/trainer_factory/Default_trainer.py"
       - "src/trainer_factory/extensions/**"
@@ -39,6 +40,7 @@ on:
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
       - "src/configs/config_utils.py"
+      - "src/config_schema/**"
       - "src/runtime/classification.py"
       - "src/trainer_factory/Default_trainer.py"
       - "src/trainer_factory/extensions/**"
@@ -97,6 +99,7 @@ jobs:
           scripts/config_inspect.py
           scripts/validate_configs.py
           src/configs/config_utils.py
+          src/config_schema/*.py
           main.py
           test/test_config_analysis_parity.py
           test/test_phmfactory_commands.py
@@ -166,6 +169,8 @@ jobs:
               "phmfactory/runtime/pipeline06_adapter.py",
               "src/__init__.py",
               "src/configs/config_utils.py",
+              "src/config_schema/__init__.py",
+              "src/config_schema/models.py",
               "configs/__init__.py",
               "configs/demo/00_smoke/dummy_dg.yaml",
               "configs/base/environment/base.yaml",
@@ -196,7 +201,7 @@ jobs:
             /tmp/results
           python -m venv /tmp/phmfactory-wheel
           /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
-          /tmp/phmfactory-wheel/bin/python -m pip install PyYAML
+          /tmp/phmfactory-wheel/bin/python -m pip install "PyYAML>=6" "pydantic>=2"
           /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.commands, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
 
       - name: Verify clean installed root help
