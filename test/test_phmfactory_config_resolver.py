@@ -13,6 +13,45 @@ from phmfactory.config import (
 from phmfactory.pipelines import PipelineNameDeprecationWarning
 
 
+def _write_complete_experiment(
+    path: Path,
+    *,
+    pipeline: str | None,
+    max_epochs: int = 5,
+) -> None:
+    lines = []
+    if pipeline is not None:
+        lines.append(f"pipeline: {pipeline}")
+    lines.extend(
+        [
+            "environment:",
+            "  project: config-resolver-test",
+            "  seed: 0",
+            "  iterations: 1",
+            "  output_dir: results/test",
+            "data:",
+            "  data_dir: data",
+            "  metadata_file: metadata_dummy.csv",
+            "model:",
+            "  type: Baseline",
+            "  name: GlobalAverageLinear",
+            "task:",
+            "  type: DG",
+            "  name: classification",
+            "  target_system_id: [0]",
+            "  loss: CE",
+            "trainer:",
+            "  name: Default_trainer",
+            f"  max_epochs: {max_epochs}",
+            "  device: cpu",
+            "  gpus: 1",
+            "  monitor: val_loss",
+            "  monitor_mode: min",
+        ]
+    )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def test_parse_overrides_expands_dotted_keys_and_yaml_types() -> None:
     assert parse_overrides(
         ["trainer.max_epochs=2", "task.enabled=true", "labels=[1, 2]"]
@@ -57,9 +96,10 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
     tmp_path: Path,
 ) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text(
-        "pipeline: Pipeline_01_default\ntrainer:\n  max_epochs: 5\n",
-        encoding="utf-8",
+    _write_complete_experiment(
+        config,
+        pipeline="Pipeline_01_default",
+        max_epochs=5,
     )
 
     with pytest.warns(PipelineNameDeprecationWarning):
@@ -79,7 +119,7 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
 
 def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+    _write_complete_experiment(config, pipeline=None, max_epochs=1)
 
     with pytest.raises(ValueError, match="must declare `pipeline`"):
         resolve_config(config)
@@ -87,7 +127,7 @@ def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
 
 def test_pipeline_may_be_supplied_by_explicit_override(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    config.write_text("trainer:\n  max_epochs: 1\n", encoding="utf-8")
+    _write_complete_experiment(config, pipeline=None, max_epochs=1)
 
     resolved = resolve_config(
         config,
