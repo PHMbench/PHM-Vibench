@@ -252,8 +252,8 @@ Do not add consumerless hashes, silent fallback, broad future-oriented abstracti
 Factory/Manager/Registry nesting, or another config/runtime/result authority. One PR
 should protect one primary invariant and provide one user-observable outcome.
 
-Routine PRs start from current `dev` and target `dev`. Read [`CORE.md`](CORE.md),
-[`AGENTS.md`](AGENTS.md), and [`CONTRIBUTING.md`](CONTRIBUTING.md) before broad changes.
+Routine PRs start from current `dev` and target `dev`. Read [`CORE.md`](CORE.md) and
+[`CONTRIBUTING.md`](CONTRIBUTING.md) before broad changes.
 
 ## Citation and license
 

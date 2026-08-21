@@ -32,7 +32,6 @@ maintainer and historical material only when that work is relevant.
 - [Contributing](../CONTRIBUTING.md)
 - [Developer guide](developer_guide.md)
 - [Testing](testing.md)
-- [Agent instructions](../AGENTS.md)
 - [Data Factory contribution guide](../src/data_factory/contributing.md)
 - [Model Factory contribution guide](../src/model_factory/contributing.md)
 - [Task Factory contribution guide](../src/task_factory/contributing.md)

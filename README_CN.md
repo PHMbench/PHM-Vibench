@@ -242,8 +242,8 @@ DELETE → INLINE → MERGE → SIMPLIFY → DOCUMENT → ADD
 套娃或第二套 config/runtime/result authority。一个 PR 只保护一个主要不变量，并产生一个
 用户可观察结果。
 
-常规 PR 从最新 `dev` 创建并合入 `dev`。广泛修改前先阅读 [`CORE.md`](CORE.md)、
-[`AGENTS.md`](AGENTS.md)和[`CONTRIBUTING_CN.md`](CONTRIBUTING_CN.md)。
+常规 PR 从最新 `dev` 创建并合入 `dev`。广泛修改前先阅读 [`CORE.md`](CORE.md)和
+[`CONTRIBUTING_CN.md`](CONTRIBUTING_CN.md)。
 
 ## 引用与许可
 
