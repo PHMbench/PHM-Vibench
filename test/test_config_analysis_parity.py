@@ -117,6 +117,7 @@ def test_precedence_is_base_then_config_then_explicit_local_then_cli(
         "trainer:\n"
         "  name: Default_trainer\n"
         "  num_epochs: 1\n"
+        "  test_after_fit: true\n"
         "  device: cpu\n"
         "  gpus: 1\n"
         "  monitor: val_loss\n"
