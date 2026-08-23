@@ -41,7 +41,12 @@ def _config(tmp_path: Path, *, iterations: int = 1) -> dict:
         "data": {"data_dir": str(tmp_path), "metadata_file": "dummy.csv"},
         "model": {"name": "dummy", "type": "dummy"},
         "task": {"name": "classification", "type": "DG"},
-        "trainer": {"device": "cpu", "gpus": 1},
+        "trainer": {
+            "device": "cpu",
+            "gpus": 1,
+            "num_epochs": 1,
+            "test_after_fit": True,
+        },
     }
 
 
@@ -107,7 +112,8 @@ def test_compiled_config_bypasses_legacy_reparse(
     )
     configs = classification.load_runtime_config(args)
     assert configs.environment.seed == 7
-    assert not hasattr(configs.trainer, "num_epochs")
+    assert configs.trainer.num_epochs == 1
+    assert configs.trainer.test_after_fit is True
 
 
 def test_missing_required_section_fails_closed(tmp_path: Path) -> None:
@@ -352,6 +358,7 @@ def test_task_module_requires_registration_or_task_symbol(
         AttributeError,
         match="does not register.*does not expose.*'task'",
     ):
+        trainer_factory_module.trainer_factory
         task_factory_module.task_factory(
             args_task=SimpleNamespace(type="DG", name="empty_module"),
             network=object(),
