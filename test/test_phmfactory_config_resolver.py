@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from phmfactory.config import (
     MAINTAINED_PRESETS,
+    analyze_config,
     load_config_dict,
     parse_overrides,
     resolve_config,
@@ -151,6 +152,26 @@ def test_non_utf8_config_fails_without_encoding_fallback(tmp_path: Path) -> None
 def test_resolve_config_rejects_missing_source(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         resolve_config(tmp_path / "missing.yaml")
+
+
+def test_public_config_apis_reject_implicit_or_empty_source() -> None:
+    with pytest.raises(TypeError):
+        analyze_config()
+    with pytest.raises(TypeError):
+        resolve_config()
+    with pytest.raises(TypeError):
+        resolve_config_path()
+
+    for call in (
+        lambda: analyze_config(None),
+        lambda: resolve_config(None),
+        lambda: resolve_config_path(None),
+        lambda: analyze_config(""),
+        lambda: resolve_config(""),
+        lambda: resolve_config_path(""),
+    ):
+        with pytest.raises(ValueError, match="explicit|non-empty"):
+            call()
 
 
 @pytest.mark.parametrize("preset, relative_path", sorted(MAINTAINED_PRESETS.items()))
