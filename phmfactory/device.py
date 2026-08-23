@@ -38,32 +38,42 @@ def _available_auto_accelerator() -> tuple[str, int | None]:
 
 
 def resolve_device_request(args_trainer: Any) -> tuple[str, int]:
-    """Resolve one explicit trainer device request without silent fallback.
+    """Resolve one exact device mode and one exact positive device count.
 
-    ``cpu`` and ``cuda`` are exact requests. ``auto`` performs hardware inspection only
-    because the user explicitly selected it. A CPU request is resolved without importing
-    torch, which keeps config-only inspection independent of the training stack.
+    ``trainer.device`` and ``trainer.devices`` are the only maintained public fields.
+    The historical ``trainer.gpus`` alias is rejected rather than reconciled with a
+    second value. ``cpu`` and ``cuda`` are exact requests; ``auto`` performs hardware
+    inspection only because the user explicitly selected it.
     """
+
+    if hasattr(args_trainer, "gpus"):
+        raise ValueError(
+            "trainer.gpus is unsupported; use the single public field "
+            "trainer.devices"
+        )
 
     if not hasattr(args_trainer, "device"):
         raise ValueError(
             "trainer.device is required and must be one of: cpu, cuda, auto"
         )
-    requested = str(args_trainer.device).strip().lower()
+    requested = args_trainer.device
+    if not isinstance(requested, str):
+        raise TypeError(
+            "trainer.device must be a string chosen from: cpu, cuda, auto; "
+            f"got {type(requested).__name__}"
+        )
     if requested not in DEVICE_MODES:
         raise ValueError(
-            f"unsupported trainer.device {args_trainer.device!r}; expected one of: "
+            f"unsupported trainer.device {requested!r}; expected one of: "
             + ", ".join(DEVICE_MODES)
         )
 
-    devices = getattr(
-        args_trainer,
-        "devices",
-        getattr(args_trainer, "gpus", 1),
-    )
+    if not hasattr(args_trainer, "devices"):
+        raise ValueError("trainer.devices is required and must be a positive integer")
+    devices = args_trainer.devices
     if isinstance(devices, bool) or not isinstance(devices, Integral) or devices < 1:
         raise ValueError(
-            "trainer.devices/trainer.gpus must be a positive integer, "
+            "trainer.devices must be a positive integer, "
             f"got {devices!r}"
         )
     devices = int(devices)
