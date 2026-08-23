@@ -69,14 +69,26 @@ def test_parser_accepts_explicit_local_config() -> None:
     assert args.local_config == "machine.yaml"
 
 
-def test_config_takes_precedence_over_legacy_alias() -> None:
+def test_config_and_legacy_alias_are_mutually_exclusive() -> None:
     args = argparse.Namespace(
         config="public.yaml",
         config_path="legacy.yaml",
         notes="",
         override=None,
     )
-    assert cli._resolve_config_path(args) == "public.yaml"
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        cli._resolve_config_path(args)
+
+
+def test_legacy_alias_selection_emits_visible_warning() -> None:
+    args = argparse.Namespace(
+        config=None,
+        config_path="legacy.yaml",
+        notes="",
+        override=None,
+    )
+    with pytest.warns(FutureWarning, match="--config_path is deprecated"):
+        assert cli._resolve_config_path(args) == "legacy.yaml"
 
 
 def test_process_entrypoint_discards_structured_success(
@@ -300,6 +312,46 @@ def test_python_process_entrypoints_return_nonzero_for_invalid_config(
     )
     assert completed.returncode != 0
     assert "was not found" in completed.stderr
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["--notes", "missing-config"],
+        ["--allow-experimental"],
+        ["--override", "trainer.num_epochs=2"],
+        ["--config", "smoke", "--config_path", "smoke"],
+    ),
+)
+def test_root_experiment_selection_fails_before_analysis_or_import(
+    arguments: list[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / "must-not-exist"
+    analyzed = 0
+    imported = 0
+
+    def fail_analysis(*args, **kwargs):
+        nonlocal analyzed
+        analyzed += 1
+        pytest.fail("argument selection must fail before analyze_config")
+
+    def fail_import(*args, **kwargs):
+        nonlocal imported
+        imported += 1
+        pytest.fail("argument selection must fail before Pipeline import")
+
+    monkeypatch.setattr(cli, "analyze_config", fail_analysis)
+    monkeypatch.setattr(cli.importlib, "import_module", fail_import)
+
+    with pytest.raises(SystemExit) as error:
+        cli.main(arguments)
+
+    assert error.value.code == 2
+    assert analyzed == 0
+    assert imported == 0
+    assert not target.exists()
 
 
 def test_root_main_is_only_a_process_wrapper(
