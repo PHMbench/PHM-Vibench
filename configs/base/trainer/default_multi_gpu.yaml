@@ -2,7 +2,6 @@
 
 name: "Default_trainer"
 num_epochs: 10
-test_after_fit: true
 gpus: 2
 device: "cuda"
 early_stopping: true
