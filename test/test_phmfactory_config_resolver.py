@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import ValidationError
 import pytest
 from phmfactory.config import (
     MAINTAINED_PRESETS,
@@ -18,7 +19,7 @@ def _write_complete_experiment(
     path: Path,
     *,
     pipeline: str | None,
-    max_epochs: int = 5,
+    num_epochs: int = 5,
 ) -> None:
     lines = []
     if pipeline is not None:
@@ -43,7 +44,8 @@ def _write_complete_experiment(
             "  loss: CE",
             "trainer:",
             "  name: Default_trainer",
-            f"  max_epochs: {max_epochs}",
+            f"  num_epochs: {num_epochs}",
+            "  test_after_fit: true",
             "  device: cpu",
             "  gpus: 1",
             "  monitor: val_loss",
@@ -55,9 +57,9 @@ def _write_complete_experiment(
 
 def test_parse_overrides_expands_dotted_keys_and_yaml_types() -> None:
     assert parse_overrides(
-        ["trainer.max_epochs=2", "task.enabled=true", "labels=[1, 2]"]
+        ["trainer.num_epochs=2", "task.enabled=true", "labels=[1, 2]"]
     ) == {
-        "trainer": {"max_epochs": 2},
+        "trainer": {"num_epochs": 2},
         "task": {"enabled": True},
         "labels": [1, 2],
     }
@@ -100,7 +102,7 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
     _write_complete_experiment(
         config,
         pipeline="Pipeline_01_default",
-        max_epochs=5,
+        num_epochs=5,
     )
 
     with pytest.warns(PipelineNameDeprecationWarning):
@@ -108,19 +110,19 @@ def test_resolve_config_canonicalizes_pipeline_and_applies_override(
             config,
             override_values=[
                 "pipeline=Pipeline_04_unified_metric",
-                "trainer.max_epochs=1",
+                "trainer.num_epochs=1",
             ],
         )
 
     assert resolved.pipeline == "Pipeline_04_Unified_Evaluation"
     assert resolved.data["pipeline"] == "Pipeline_04_Unified_Evaluation"
-    assert resolved.data["trainer"]["max_epochs"] == 1
+    assert resolved.data["trainer"]["num_epochs"] == 1
     assert resolved.path == config.resolve()
 
 
 def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    _write_complete_experiment(config, pipeline=None, max_epochs=1)
+    _write_complete_experiment(config, pipeline=None, num_epochs=1)
 
     with pytest.raises(ValueError, match="must declare `pipeline`"):
         resolve_config(config)
@@ -128,7 +130,7 @@ def test_explicit_config_requires_pipeline(tmp_path: Path) -> None:
 
 def test_pipeline_may_be_supplied_by_explicit_override(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
-    _write_complete_experiment(config, pipeline=None, max_epochs=1)
+    _write_complete_experiment(config, pipeline=None, num_epochs=1)
 
     resolved = resolve_config(
         config,
@@ -137,6 +139,16 @@ def test_pipeline_may_be_supplied_by_explicit_override(tmp_path: Path) -> None:
 
     assert resolved.pipeline == "Pipeline_01_Fault_Diagnosis"
     assert resolved.data["pipeline"] == "Pipeline_01_Fault_Diagnosis"
+
+
+def test_legacy_max_epochs_is_rejected_at_complete_schema_boundary(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.yaml"
+    _write_complete_experiment(config, pipeline="Pipeline_01_Fault_Diagnosis")
+
+    with pytest.raises(ValidationError, match="trainer.max_epochs is unsupported"):
+        resolve_config(config, override_values=["trainer.max_epochs=2"])
 
 
 def test_non_utf8_config_fails_without_encoding_fallback(tmp_path: Path) -> None:
@@ -194,6 +206,8 @@ def test_installed_style_resolution_works_outside_repository(
     assert resolved.path.as_posix().endswith("configs/demo/00_smoke/dummy_dg.yaml")
     assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
     assert resolved.data["trainer"]["device"] == "cpu"
+    assert resolved.data["trainer"]["num_epochs"] == 1
+    assert resolved.data["trainer"]["test_after_fit"] is True
 
 
 def test_cycle_detection(tmp_path: Path) -> None:
