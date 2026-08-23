@@ -260,10 +260,26 @@ def run_classification_pipeline(
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list
 
-    iterations = int(getattr(args_environment, "iterations", 0))
+    if not hasattr(args_environment, "iterations"):
+        raise ValueError("environment.iterations is required")
+    iterations = args_environment.iterations
+    if isinstance(iterations, bool) or not isinstance(iterations, int):
+        raise TypeError(
+            "environment.iterations must be an integer, "
+            f"got {type(iterations).__name__}"
+        )
     if iterations <= 0:
         raise ValueError(f"environment.iterations must be positive, got {iterations}")
-    base_seed = int(getattr(args_environment, "seed", 0))
+
+    if not hasattr(args_environment, "seed"):
+        raise ValueError("environment.seed is required")
+    base_seed = args_environment.seed
+    if isinstance(base_seed, bool) or not isinstance(base_seed, int):
+        raise TypeError(
+            "environment.seed must be an integer, "
+            f"got {type(base_seed).__name__}"
+        )
+
     test_after_fit = getattr(args_trainer, "test_after_fit", True)
     if not isinstance(test_after_fit, bool):
         raise TypeError(
