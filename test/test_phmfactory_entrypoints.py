@@ -11,6 +11,7 @@ import pytest
 
 from examples import cwru_quickstart
 from phmfactory import __version__, cli
+from phmfactory.commands import preflight
 from phmfactory.config import (
     MAINTAINED_PRESETS,
     ConfigAnalysis,
@@ -321,6 +322,7 @@ def test_python_process_entrypoints_return_nonzero_for_invalid_config(
         ["--allow-experimental"],
         ["--override", "trainer.num_epochs=2"],
         ["--config", "smoke", "--config_path", "smoke"],
+        ["preflight"],
     ),
 )
 def test_root_experiment_selection_fails_before_analysis_or_import(
@@ -343,6 +345,7 @@ def test_root_experiment_selection_fails_before_analysis_or_import(
         pytest.fail("argument selection must fail before Pipeline import")
 
     monkeypatch.setattr(cli, "analyze_config", fail_analysis)
+    monkeypatch.setattr(preflight, "analyze_config", fail_analysis)
     monkeypatch.setattr(cli.importlib, "import_module", fail_import)
 
     with pytest.raises(SystemExit) as error:
