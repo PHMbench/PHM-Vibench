@@ -358,7 +358,6 @@ def test_task_module_requires_registration_or_task_symbol(
         AttributeError,
         match="does not register.*does not expose.*'task'",
     ):
-        trainer_factory_module.trainer_factory
         task_factory_module.task_factory(
             args_task=SimpleNamespace(type="DG", name="empty_module"),
             network=object(),
