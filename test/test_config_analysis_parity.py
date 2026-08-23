@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 from pydantic import ValidationError
 import pytest
@@ -17,6 +18,7 @@ from phmfactory.config import (
 )
 from scripts.config_inspect import inspect_config
 from scripts.validate_configs import validate_one
+from src.runtime import classification
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +54,14 @@ def _minimal_config(path: Path, *, epochs: int) -> None:
         "  test_after_fit: true\n",
         encoding="utf-8",
     )
+
+
+def _remove_yaml_field(path: Path, field: str) -> None:
+    prefix = f"  {field}:"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    kept = [line for line in lines if not line.startswith(prefix)]
+    assert len(kept) == len(lines) - 1, field
+    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
 
 def test_preset_and_explicit_path_have_same_effective_identity() -> None:
@@ -273,6 +283,123 @@ def test_public_entrypoints_share_strict_type_rejection_without_side_effects(
     for call in calls:
         with pytest.raises(ValidationError):
             call()
+
+    assert not output_dir.exists()
+
+
+@pytest.mark.parametrize("field", ("seed", "iterations"))
+def test_environment_execution_fields_are_required_at_the_shared_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+) -> None:
+    config = tmp_path / f"missing-{field}.yaml"
+    _minimal_config(config, epochs=1)
+    output_dir = tmp_path / "must-not-exist"
+    text = config.read_text(encoding="utf-8").replace(
+        "  output_dir: results/test",
+        f"  output_dir: {output_dir}",
+    )
+    config.write_text(text, encoding="utf-8")
+    _remove_yaml_field(config, field)
+
+    def fail_pipeline_import(*args, **kwargs):
+        del args, kwargs
+        pytest.fail("missing environment field must fail before Pipeline import")
+
+    monkeypatch.setattr(public_cli.importlib, "import_module", fail_pipeline_import)
+
+    validation_errors = validate_one(config)
+    assert validation_errors
+    assert f"environment.{field}" in "\n".join(validation_errors)
+
+    calls = [
+        lambda: analyze_config(config),
+        lambda: inspect_config(config),
+        lambda: preflight.run(["--config", str(config)]),
+        lambda: public_cli.run(
+            public_cli.build_parser().parse_args(["--config", str(config)])
+        ),
+    ]
+    for call in calls:
+        with pytest.raises(ValidationError):
+            call()
+
+    assert not output_dir.exists()
+
+
+@pytest.mark.parametrize("field", ("seed", "iterations"))
+def test_classification_runtime_has_no_missing_environment_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+) -> None:
+    output_dir = tmp_path / "must-not-exist"
+    environment = SimpleNamespace(
+        project="runtime-environment-contract",
+        seed=7,
+        iterations=1,
+        output_dir=str(output_dir),
+    )
+    delattr(environment, field)
+    configs = SimpleNamespace(
+        environment=environment,
+        data=SimpleNamespace(),
+        model=SimpleNamespace(),
+        task=SimpleNamespace(name="classification"),
+        trainer=SimpleNamespace(test_after_fit=True),
+    )
+    monkeypatch.setattr(classification, "load_runtime_config", lambda args: configs)
+    monkeypatch.setattr(
+        classification,
+        "build_data",
+        lambda *args, **kwargs: pytest.fail(
+            "missing environment field must fail before Data Factory construction"
+        ),
+    )
+
+    with pytest.raises(ValueError, match=rf"environment\.{field} is required"):
+        classification.run_classification_pipeline(object())
+
+    assert not output_dir.exists()
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    (("seed", "7"), ("iterations", "1")),
+)
+def test_classification_runtime_does_not_coerce_environment_strings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: str,
+) -> None:
+    output_dir = tmp_path / "must-not-exist"
+    environment = SimpleNamespace(
+        project="runtime-environment-contract",
+        seed=7,
+        iterations=1,
+        output_dir=str(output_dir),
+    )
+    setattr(environment, field, value)
+    configs = SimpleNamespace(
+        environment=environment,
+        data=SimpleNamespace(),
+        model=SimpleNamespace(),
+        task=SimpleNamespace(name="classification"),
+        trainer=SimpleNamespace(test_after_fit=True),
+    )
+    monkeypatch.setattr(classification, "load_runtime_config", lambda args: configs)
+    monkeypatch.setattr(
+        classification,
+        "build_data",
+        lambda *args, **kwargs: pytest.fail(
+            "invalid environment type must fail before Data Factory construction"
+        ),
+    )
+
+    with pytest.raises(TypeError, match=rf"environment\.{field} must be an integer"):
+        classification.run_classification_pipeline(object())
 
     assert not output_dir.exists()
 
