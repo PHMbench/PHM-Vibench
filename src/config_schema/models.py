@@ -10,9 +10,9 @@ class EnvironmentConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     project: str = Field(..., description="Experiment short name, used in output organization.")
-    seed: int = Field(42, description="Global random seed.")
+    seed: int = Field(..., description="Required global random seed.")
     output_dir: str = Field(..., description="Base output directory (prefer repo-relative).")
-    iterations: int = Field(1, ge=1, description="Repeat runs with different seeds.")
+    iterations: int = Field(..., ge=1, description="Required number of repeated runs.")
     notes: str = Field("", description="Free-form notes.")
 
     @model_validator(mode="after")

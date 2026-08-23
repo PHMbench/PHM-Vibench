@@ -248,6 +248,7 @@ jobs:
             src/Pipeline_02_Pretraining_Few_Shot.py \
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
             test/test_classification_runtime.py \
+            test/test_environment_execution_contract.py \
             test/test_data_cache_contract.py \
             test/test_device_authority.py \
             test/test_hse_objective_contract.py \
@@ -260,6 +261,7 @@ jobs:
             test/test_transform_truth.py
           python -m pytest \
             test/test_classification_runtime.py \
+            test/test_environment_execution_contract.py \
             test/test_data_cache_contract.py \
             test/test_device_authority.py \
             test/test_hse_objective_contract.py \

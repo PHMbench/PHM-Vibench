@@ -54,6 +54,14 @@ def _minimal_config(path: Path, *, epochs: int) -> None:
     )
 
 
+def _remove_yaml_field(path: Path, field: str) -> None:
+    prefix = f"  {field}:"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    kept = [line for line in lines if not line.startswith(prefix)]
+    assert len(kept) == len(lines) - 1, field
+    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+
+
 def test_preset_and_explicit_path_have_same_effective_identity() -> None:
     preset = analyze_config("smoke")
     explicit = analyze_config(SMOKE_CONFIG)
@@ -270,6 +278,47 @@ def test_public_entrypoints_share_strict_type_rejection_without_side_effects(
         ),
     ]
 
+    for call in calls:
+        with pytest.raises(ValidationError):
+            call()
+
+    assert not output_dir.exists()
+
+
+@pytest.mark.parametrize("field", ("seed", "iterations"))
+def test_environment_execution_fields_are_required_at_the_shared_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+) -> None:
+    config = tmp_path / f"missing-{field}.yaml"
+    _minimal_config(config, epochs=1)
+    output_dir = tmp_path / "must-not-exist"
+    text = config.read_text(encoding="utf-8").replace(
+        "  output_dir: results/test",
+        f"  output_dir: {output_dir}",
+    )
+    config.write_text(text, encoding="utf-8")
+    _remove_yaml_field(config, field)
+
+    def fail_pipeline_import(*args, **kwargs):
+        del args, kwargs
+        pytest.fail("missing environment field must fail before Pipeline import")
+
+    monkeypatch.setattr(public_cli.importlib, "import_module", fail_pipeline_import)
+
+    validation_errors = validate_one(config)
+    assert validation_errors
+    assert f"environment.{field}" in "\n".join(validation_errors)
+
+    calls = [
+        lambda: analyze_config(config),
+        lambda: inspect_config(config),
+        lambda: preflight.run(["--config", str(config)]),
+        lambda: public_cli.run(
+            public_cli.build_parser().parse_args(["--config", str(config)])
+        ),
+    ]
     for call in calls:
         with pytest.raises(ValidationError):
             call()
