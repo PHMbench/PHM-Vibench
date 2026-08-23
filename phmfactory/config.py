@@ -41,6 +41,22 @@ MAINTAINED_PRESETS: dict[str, str] = {
 }
 
 
+def _explicit_source(source: str | Path | None) -> str:
+    """Return one non-empty public config selector or fail without fallback."""
+
+    if source is None:
+        raise ValueError(
+            "An explicit experiment configuration is required. "
+            "Pass a maintained preset name or YAML path."
+        )
+    requested = str(source).strip()
+    if not requested:
+        raise ValueError(
+            "Experiment configuration source must be a non-empty preset name or YAML path."
+        )
+    return requested
+
+
 @dataclass(frozen=True)
 class ResolvedConfig:
     """Backward-compatible resolved configuration payload.
@@ -200,17 +216,17 @@ def validate_complete_experiment(config: Mapping[str, Any]) -> None:
 
 
 def analyze_config(
-    source: str | Path | None = None,
+    source: str | Path,
     *,
     override_values: Sequence[str] | None = None,
     local_config: str | Path | None = None,
 ) -> ConfigAnalysis:
-    """Resolve and strictly validate one public experiment.
+    """Resolve and strictly validate one explicitly selected public experiment.
 
     Parameters
     ----------
     source:
-        Maintained preset name or YAML path. ``None`` selects ``DEFAULT_CONFIG``.
+        Required maintained preset name or YAML path.
     override_values:
         Repeatable dotted ``key=value`` tokens applied last.
     local_config:
@@ -231,8 +247,8 @@ def analyze_config(
         creation, or Factory construction.
     """
 
-    requested = str(source or DEFAULT_CONFIG)
-    path = resolve_config_path(source)
+    requested = _explicit_source(source)
+    path = resolve_config_path(requested)
     data, sources, files = _load_recursive_with_sources(
         path,
         stack=(),
@@ -284,7 +300,7 @@ def analyze_config(
 
 
 def resolve_config(
-    source: str | Path | None = None,
+    source: str | Path,
     *,
     override_values: Sequence[str] | None = None,
     local_config: str | Path | None = None,
@@ -344,10 +360,10 @@ def _resolve_explicit_local_path(source: str | Path) -> Path:
     )
 
 
-def resolve_config_path(source: str | Path | None) -> Path:
-    """Resolve a public preset or YAML path from a checkout or installed wheel."""
+def resolve_config_path(source: str | Path) -> Path:
+    """Resolve one explicit public preset or YAML path from checkout or wheel."""
 
-    requested = str(source or DEFAULT_CONFIG)
+    requested = _explicit_source(source)
     mapped = MAINTAINED_PRESETS.get(requested, requested)
     try:
         return _resolve_existing_config_path(mapped)
