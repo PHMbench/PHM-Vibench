@@ -65,6 +65,7 @@ trainer:
   device: "cpu"
   gpus: 1
   num_epochs: 5
+  test_after_fit: true
   early_stopping: true
   patience: 3
   monitor: "val_loss"

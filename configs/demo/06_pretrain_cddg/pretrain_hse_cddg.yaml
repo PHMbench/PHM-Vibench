@@ -32,3 +32,4 @@ task:
 
 trainer:
   num_epochs: 50
+  test_after_fit: true

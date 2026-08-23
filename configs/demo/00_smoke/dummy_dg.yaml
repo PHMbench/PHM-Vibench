@@ -30,5 +30,6 @@ task:
 
 trainer:
   num_epochs: 1
+  test_after_fit: true
   device: "cpu"
   gpus: 1

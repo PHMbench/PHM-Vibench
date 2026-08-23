@@ -280,11 +280,13 @@ def run_classification_pipeline(
             f"got {type(base_seed).__name__}"
         )
 
-    test_after_fit = getattr(args_trainer, "test_after_fit", True)
-    if not isinstance(test_after_fit, bool):
-        raise TypeError(
-            "trainer.test_after_fit must be a boolean when it is provided"
+    if not hasattr(args_trainer, "test_after_fit"):
+        raise ValueError(
+            "trainer.test_after_fit is required for classification Pipelines"
         )
+    test_after_fit = args_trainer.test_after_fit
+    if not isinstance(test_after_fit, bool):
+        raise TypeError("trainer.test_after_fit must be a boolean")
     _set_environment(args_environment)
 
     all_results: list[dict[str, Any]] = []

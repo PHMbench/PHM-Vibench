@@ -285,7 +285,7 @@ class TrainerConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     name: str = Field(..., description="Trainer implementation name under trainer_factory.")
-    num_epochs: Optional[int] = Field(None, ge=1)
+    num_epochs: int = Field(..., ge=1)
     device: Optional[Literal["cpu", "cuda", "auto"]] = None
     gpus: Optional[int] = Field(None, ge=1)
     devices: Optional[int] = Field(None, ge=1)
@@ -299,6 +299,24 @@ class TrainerConfig(BaseModel):
             "hanging under trainer.extensions.*; must be safe to ignore when unsupported."
         ),
     )
+
+    @model_validator(mode="after")
+    def _reject_legacy_epoch_alias(self) -> "TrainerConfig":
+        if "max_epochs" in (self.model_extra or {}):
+            raise ValueError(
+                "trainer.max_epochs is unsupported; use the single public field "
+                "trainer.num_epochs"
+            )
+        return self
+
+
+_CLASSIFICATION_LIFECYCLE_PIPELINES = frozenset(
+    {
+        "Pipeline_01_Fault_Diagnosis",
+        "Pipeline_02_Pretraining_Few_Shot",
+        "Pipeline_05_Explainable_Fault_Diagnosis",
+    }
+)
 
 
 class ExperimentConfig(BaseModel):
@@ -315,6 +333,13 @@ class ExperimentConfig(BaseModel):
     def _basic_coupling_checks(self) -> "ExperimentConfig":
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
+        if (
+            self.pipeline in _CLASSIFICATION_LIFECYCLE_PIPELINES
+            and self.trainer.test_after_fit is None
+        ):
+            raise ValueError(
+                f"pipeline={self.pipeline} requires explicit trainer.test_after_fit"
+            )
         split = self.data.split
         if split and split.strategy == "grouped_metadata":
             if self.task.type in {"FS", "GFS"}:

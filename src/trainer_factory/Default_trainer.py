@@ -28,6 +28,27 @@ if "LOCAL_RANK" in os.environ:
 _SELECTION_MODES = frozenset({"min", "max"})
 
 
+def resolve_epoch_contract(args: Any) -> int:
+    """Return the single explicit positive epoch count without alias fallback."""
+
+    if hasattr(args, "max_epochs"):
+        raise ValueError(
+            "trainer.max_epochs is unsupported; use the single public field "
+            "trainer.num_epochs"
+        )
+    if not hasattr(args, "num_epochs"):
+        raise ValueError("trainer.num_epochs is required")
+    value = args.num_epochs
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            "trainer.num_epochs must be an integer, "
+            f"got {type(value).__name__}"
+        )
+    if value <= 0:
+        raise ValueError(f"trainer.num_epochs must be positive, got {value}")
+    return value
+
+
 def resolve_selection_contract(args: Any) -> tuple[str, str]:
     """Return the exact checkpoint metric and optimization direction.
 
@@ -60,11 +81,7 @@ def resolve_selection_contract(args: Any) -> tuple[str, str]:
 def trainer(args_e, args_t, args_d, path):
     """Build one Lightning Trainer from the explicit trainer configuration."""
 
-    # Historical spelling remains accepted, but the resulting value is explicit before
-    # Lightning construction.  This compatibility boundary does not choose a device,
-    # checkpoint metric, or selection direction.
-    if not hasattr(args_t, "num_epochs"):
-        setattr(args_t, "num_epochs", getattr(args_t, "max_epochs", 1))
+    num_epochs = resolve_epoch_contract(args_t)
     if not hasattr(args_t, "pruning"):
         setattr(args_t, "pruning", 0.0)
 
@@ -96,7 +113,7 @@ def trainer(args_e, args_t, args_d, path):
     return pl.Trainer(
         callbacks=callback_list,
         accelerator=accelerator,
-        max_epochs=args_t.num_epochs,
+        max_epochs=num_epochs,
         devices=devices,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
@@ -188,6 +205,7 @@ def create_early_stopping_callback(
 __all__ = [
     "call_backs",
     "create_early_stopping_callback",
+    "resolve_epoch_contract",
     "resolve_selection_contract",
     "trainer",
 ]

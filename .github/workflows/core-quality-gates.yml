@@ -46,8 +46,12 @@ jobs:
             phmfactory/config.py \
             scripts/config_inspect.py \
             scripts/validate_configs.py \
-            test/test_config_analysis_parity.py
-          python -m pytest test/test_config_analysis_parity.py -q
+            test/test_config_analysis_parity.py \
+            test/test_trainer_lifecycle_schema.py
+          python -m pytest \
+            test/test_config_analysis_parity.py \
+            test/test_trainer_lifecycle_schema.py \
+            -q
 
       - name: Verify generated configuration atlas
         run: |
@@ -249,6 +253,7 @@ jobs:
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
             test/test_classification_runtime.py \
             test/test_environment_execution_contract.py \
+            test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
             test/test_device_authority.py \
             test/test_hse_objective_contract.py \
@@ -262,6 +267,7 @@ jobs:
           python -m pytest \
             test/test_classification_runtime.py \
             test/test_environment_execution_contract.py \
+            test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
             test/test_device_authority.py \
             test/test_hse_objective_contract.py \
