@@ -30,7 +30,7 @@ def _config(
         "data": {},
         "model": {},
         "task": {},
-        "trainer": {"device": device, "gpus": 1},
+        "trainer": {"device": device, "devices": 1},
     }
 
 
