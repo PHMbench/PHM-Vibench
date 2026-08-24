@@ -67,6 +67,6 @@ trainer:
   num_epochs: 1
   test_after_fit: true
   device: "cpu"
-  gpus: 1
+  devices: 1
   paper_id: "P07"
   preset_version: "p07-g030-method-smoke-v1"
