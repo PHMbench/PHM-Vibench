@@ -58,8 +58,8 @@ def test_default_task_preserves_model_device_and_trainer_config(
     )
 
     network = TrackingNetwork()
-    args_trainer = Namespace(device="cuda", gpus=1)
-    trainer_config_before = vars(args_trainer).copy()
+    args_trainer = Namespace(device="cuda", devices=1)
+    before = vars(args_trainer).copy()
 
     task = module.Default_task(
         network=network,
@@ -80,25 +80,15 @@ def test_default_task_preserves_model_device_and_trainer_config(
     assert task.network is network
     assert network.cuda_calls == 0
     assert next(task.network.parameters()).device.type == "cpu"
-    assert vars(args_trainer) == trainer_config_before
+    assert vars(args_trainer) == before
 
 
-@pytest.mark.parametrize(
-    ("device", "devices", "expected"),
-    [
-        ("cpu", 1, ("cpu", 1)),
-        ("cpu", 3, ("cpu", 3)),
-    ],
-)
-def test_device_resolver_honors_explicit_cpu(
-    device: str,
-    devices: int,
-    expected: tuple[str, int],
-) -> None:
+@pytest.mark.parametrize("devices", [1, 3])
+def test_device_resolver_honors_explicit_cpu(devices: int) -> None:
     module = _device_module()
     assert module.resolve_device_request(
-        Namespace(device=device, gpus=devices)
-    ) == expected
+        Namespace(device="cpu", devices=devices)
+    ) == ("cpu", devices)
 
 
 def test_cpu_resolution_does_not_import_torch(
@@ -156,7 +146,7 @@ def test_device_resolver_rejects_excess_auto_devices(
         lambda: ("gpu", 1),
     )
 
-    with pytest.raises(RuntimeError, match="accelerator=gpu, requested=2, available=1"):
+    with pytest.raises(RuntimeError, match="requested=2, available=1"):
         module.resolve_device_request(Namespace(device="auto", devices=2))
 
 
@@ -172,7 +162,7 @@ def test_device_resolver_rejects_unavailable_cuda_without_cpu_fallback(
     )
 
     with pytest.raises(RuntimeError, match="no CPU fallback"):
-        module.resolve_device_request(Namespace(device="cuda", gpus=1))
+        module.resolve_device_request(Namespace(device="cuda", devices=1))
 
 
 def test_device_resolver_accepts_available_cuda(
@@ -183,7 +173,7 @@ def test_device_resolver_accepts_available_cuda(
     monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
 
     assert module.resolve_device_request(
-        Namespace(device="cuda", gpus=2)
+        Namespace(device="cuda", devices=2)
     ) == ("gpu", 2)
 
 
@@ -195,23 +185,32 @@ def test_device_resolver_rejects_excess_cuda_devices(
     monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
 
     with pytest.raises(RuntimeError, match="requested=2, available=1"):
-        module.resolve_device_request(Namespace(device="cuda", gpus=2))
+        module.resolve_device_request(Namespace(device="cuda", devices=2))
 
 
 @pytest.mark.parametrize(
-    "args_trainer",
+    ("args_trainer", "error_type", "message"),
     [
-        Namespace(gpus=1),
-        Namespace(device="gpu", gpus=1),
-        Namespace(device="cuda", gpus=0),
-        Namespace(device="cpu", devices=True),
+        (Namespace(devices=1), ValueError, "trainer.device is required"),
+        (Namespace(device="cpu"), ValueError, "trainer.devices is required"),
+        (Namespace(device="CPU", devices=1), ValueError, "unsupported trainer.device"),
+        (Namespace(device="cpu", devices="1"), TypeError, "must be an integer"),
+        (Namespace(device="cpu", devices=True), TypeError, "must be an integer"),
+        (Namespace(device="cpu", devices=0), ValueError, "must be positive"),
+        (
+            Namespace(device="cpu", devices=1, gpus=1),
+            ValueError,
+            "trainer.gpus is unsupported",
+        ),
     ],
 )
 def test_device_resolver_rejects_ambiguous_or_invalid_requests(
     args_trainer: Namespace,
+    error_type: type[Exception],
+    message: str,
 ) -> None:
     module = _device_module()
-    with pytest.raises(ValueError):
+    with pytest.raises(error_type, match=message):
         module.resolve_device_request(args_trainer)
 
 
@@ -234,12 +233,13 @@ def test_default_trainer_passes_resolved_cpu_request_to_lightning(
         args_e=Namespace(wandb=False, swanlab=False),
         args_t=Namespace(
             device="cpu",
-            gpus=1,
+            devices=1,
             num_epochs=1,
             pruning=0.0,
             monitor="val_loss",
             monitor_mode="min",
             log_every_n_steps=1,
+            deterministic=True,
         ),
         args_d=Namespace(),
         path=str(tmp_path),
@@ -285,10 +285,7 @@ def test_model_factory_preserves_constructor_exception_type(
         weights_path=None,
     )
 
-    with pytest.raises(
-        ModelConstructorFailure,
-        match="invalid model dimensions",
-    ):
+    with pytest.raises(ModelConstructorFailure, match="invalid model dimensions"):
         module.model_factory(args_model, metadata=None)
 
 
@@ -322,10 +319,7 @@ def test_model_factory_preserves_checkpoint_exception_type(
         weights_strict=True,
     )
 
-    with pytest.raises(
-        CheckpointLoadFailure,
-        match="checkpoint tensor layout is invalid",
-    ):
+    with pytest.raises(CheckpointLoadFailure, match="checkpoint tensor layout is invalid"):
         module.model_factory(args_model, metadata=None)
 
 
@@ -360,7 +354,6 @@ def test_model_factory_passes_explicit_checkpoint_strictness(
     )
 
     module.model_factory(args_model, metadata=None)
-
     assert observed == [strict]
 
 
@@ -393,10 +386,7 @@ def test_model_factory_rejects_non_boolean_checkpoint_strictness(
         weights_strict="false",
     )
 
-    with pytest.raises(
-        TypeError,
-        match="model.weights_strict must be a boolean",
-    ):
+    with pytest.raises(TypeError, match="model.weights_strict must be a boolean"):
         module.model_factory(args_model, metadata=None)
 
 
