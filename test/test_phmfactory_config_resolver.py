@@ -47,7 +47,7 @@ def _write_complete_experiment(
             f"  num_epochs: {num_epochs}",
             "  test_after_fit: true",
             "  device: cpu",
-            "  gpus: 1",
+            "  devices: 1",
             "  monitor: val_loss",
             "  monitor_mode: min",
         ]
@@ -206,6 +206,7 @@ def test_installed_style_resolution_works_outside_repository(
     assert resolved.path.as_posix().endswith("configs/demo/00_smoke/dummy_dg.yaml")
     assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
     assert resolved.data["trainer"]["device"] == "cpu"
+    assert resolved.data["trainer"]["devices"] == 1
     assert resolved.data["trainer"]["num_epochs"] == 1
     assert resolved.data["trainer"]["test_after_fit"] is True
 
