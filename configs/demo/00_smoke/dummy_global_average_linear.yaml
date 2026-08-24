@@ -1,5 +1,5 @@
-# Transparent-model smoke: same packaged Dummy data/task/trainer path as
-# dummy_dg.yaml, with only the Model Factory configuration replaced.
+# Transparent-model smoke on the same Dummy data, task, and Trainer path as dummy_dg.yaml.
+# Only the Model Factory configuration is replaced.
 
 pipeline: "Pipeline_01_Fault_Diagnosis"
 
@@ -37,4 +37,4 @@ trainer:
   num_epochs: 1
   test_after_fit: true
   device: "cpu"
-  gpus: 1
+  devices: 1
