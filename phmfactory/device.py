@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from numbers import Integral
 from typing import Any
+import warnings
 
 
 DEVICE_MODES = ("cpu", "cuda", "auto")
@@ -37,6 +38,48 @@ def _available_auto_accelerator() -> tuple[str, int | None]:
     return "cpu", None
 
 
+def _requested_device_count(args_trainer: Any) -> int:
+    """Return one explicit positive device count.
+
+    ``trainer.devices`` is the maintained public spelling. ``trainer.gpus`` remains a
+    direct-Python compatibility alias during the v0.3 migration, but it cannot coexist
+    with ``devices`` and there is no hidden default count.
+    """
+
+    has_devices = hasattr(args_trainer, "devices")
+    has_gpus = hasattr(args_trainer, "gpus")
+    if has_devices and has_gpus:
+        raise ValueError(
+            "trainer.devices and deprecated trainer.gpus are mutually exclusive; "
+            "use the single public field trainer.devices"
+        )
+    if not has_devices and not has_gpus:
+        raise ValueError(
+            "trainer.devices is required and must be a positive integer"
+        )
+
+    if has_devices:
+        raw_devices = args_trainer.devices
+    else:
+        warnings.warn(
+            "trainer.gpus is deprecated; use trainer.devices instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        raw_devices = args_trainer.gpus
+
+    if (
+        isinstance(raw_devices, bool)
+        or not isinstance(raw_devices, Integral)
+        or raw_devices < 1
+    ):
+        raise ValueError(
+            "trainer.devices must be a positive integer, "
+            f"got {raw_devices!r}"
+        )
+    return int(raw_devices)
+
+
 def resolve_device_request(args_trainer: Any) -> tuple[str, int]:
     """Resolve one explicit trainer device request without silent fallback.
 
@@ -49,24 +92,14 @@ def resolve_device_request(args_trainer: Any) -> tuple[str, int]:
         raise ValueError(
             "trainer.device is required and must be one of: cpu, cuda, auto"
         )
-    requested = str(args_trainer.device).strip().lower()
-    if requested not in DEVICE_MODES:
+    requested = args_trainer.device
+    if not isinstance(requested, str) or requested not in DEVICE_MODES:
         raise ValueError(
-            f"unsupported trainer.device {args_trainer.device!r}; expected one of: "
+            f"unsupported trainer.device {requested!r}; expected one of: "
             + ", ".join(DEVICE_MODES)
         )
 
-    devices = getattr(
-        args_trainer,
-        "devices",
-        getattr(args_trainer, "gpus", 1),
-    )
-    if isinstance(devices, bool) or not isinstance(devices, Integral) or devices < 1:
-        raise ValueError(
-            "trainer.devices/trainer.gpus must be a positive integer, "
-            f"got {devices!r}"
-        )
-    devices = int(devices)
+    devices = _requested_device_count(args_trainer)
 
     if requested == "cpu":
         return "cpu", devices
@@ -97,4 +130,8 @@ def resolve_device_request(args_trainer: Any) -> tuple[str, int]:
     return "gpu", devices
 
 
-__all__ = ["DEVICE_MODES", "resolve_device_request"]
+__all__ = [
+    "DEVICE_MODES",
+    "_requested_device_count",
+    "resolve_device_request",
+]
