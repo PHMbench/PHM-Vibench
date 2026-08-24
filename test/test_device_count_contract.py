@@ -57,6 +57,7 @@ def test_legacy_gpus_alias_is_direct_python_compatibility_only() -> None:
         "configs/base/trainer/default_multi_gpu.yaml",
         "configs/base/trainer/fast_debug.yaml",
         "configs/demo/00_smoke/dummy_dg.yaml",
+        "configs/demo/00_smoke/dummy_global_average_linear.yaml",
         "configs/demo/10_generative/dummy_generative_cfm.yaml",
         "configs/demo/uxfd/20_smoke_tspn_uxfd_full_cpu.yaml",
         "configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml",
