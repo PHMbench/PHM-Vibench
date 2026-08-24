@@ -233,8 +233,8 @@ def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
     cwru_quickstart.main()
 
     assert "trainer.device=cpu" in observed
-    assert "trainer.gpus=1" in observed
-    assert "trainer.gpus=0" not in observed
+    assert "trainer.devices=1" in observed
+    assert not any(value.startswith("trainer.gpus=") for value in observed)
 
 
 @pytest.mark.parametrize(
