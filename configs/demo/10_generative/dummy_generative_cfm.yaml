@@ -1,5 +1,5 @@
-# Candidate CPU CFM runtime smoke on repository Dummy_Data.
-# No historical artifact is accepted as evidence for this locked-dev rebuild.
+# Candidate CPU CFM smoke on repository Dummy data.
+# This is software verification, not benchmark or paper evidence.
 
 pipeline: "Pipeline_06_Generative_Modeling"
 
@@ -47,8 +47,8 @@ task:
 trainer:
   monitor: "val_loss"
   num_epochs: 1
-  gpus: 1
   device: "cpu"
+  devices: 1
   early_stopping: false
   log_every_n_steps: 1
   save_top_k: 1
