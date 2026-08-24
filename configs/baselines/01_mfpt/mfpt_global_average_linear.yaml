@@ -63,7 +63,7 @@ task:
 trainer:
   name: "Default_trainer"
   device: "cpu"
-  gpus: 1
+  devices: 1
   num_epochs: 5
   test_after_fit: true
   early_stopping: true
