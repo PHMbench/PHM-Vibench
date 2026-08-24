@@ -46,7 +46,7 @@ def _minimal_config(path: Path, *, epochs: int) -> None:
         "  name: Default_trainer\n"
         f"  num_epochs: {epochs}\n"
         "  device: cpu\n"
-        "  gpus: 1\n"
+        "  devices: 1\n"
         "  monitor: val_loss\n"
         "  monitor_mode: min\n"
         "  test_after_fit: true\n",
@@ -119,7 +119,7 @@ def test_precedence_is_base_then_config_then_explicit_local_then_cli(
         "  num_epochs: 1\n"
         "  test_after_fit: true\n"
         "  device: cpu\n"
-        "  gpus: 1\n"
+        "  devices: 1\n"
         "  monitor: val_loss\n"
         "  monitor_mode: min\n",
         encoding="utf-8",
@@ -234,6 +234,7 @@ def test_strict_validation_does_not_rewrite_the_visible_mapping() -> None:
     [
         'environment.iterations="1"',
         'trainer.test_after_fit="false"',
+        'trainer.devices="1"',
         'data.num_workers="0"',
     ],
 )
