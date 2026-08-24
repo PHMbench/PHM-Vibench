@@ -47,7 +47,7 @@ def _write_complete_experiment(
             f"  num_epochs: {num_epochs}",
             "  test_after_fit: true",
             "  device: cpu",
-            "  gpus: 1",
+            "  devices: 1",
             "  monitor: val_loss",
             "  monitor_mode: min",
         ]
@@ -151,6 +151,16 @@ def test_legacy_max_epochs_is_rejected_at_complete_schema_boundary(
         resolve_config(config, override_values=["trainer.max_epochs=2"])
 
 
+def test_legacy_gpus_is_rejected_at_complete_schema_boundary(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.yaml"
+    _write_complete_experiment(config, pipeline="Pipeline_01_Fault_Diagnosis")
+
+    with pytest.raises(ValidationError, match="trainer.gpus is unsupported"):
+        resolve_config(config, override_values=["trainer.gpus=1"])
+
+
 def test_non_utf8_config_fails_without_encoding_fallback(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
     config.write_bytes(
@@ -206,6 +216,7 @@ def test_installed_style_resolution_works_outside_repository(
     assert resolved.path.as_posix().endswith("configs/demo/00_smoke/dummy_dg.yaml")
     assert resolved.data["data"]["metadata_file"] == "metadata_dummy.csv"
     assert resolved.data["trainer"]["device"] == "cpu"
+    assert resolved.data["trainer"]["devices"] == 1
     assert resolved.data["trainer"]["num_epochs"] == 1
     assert resolved.data["trainer"]["test_after_fit"] is True
 
