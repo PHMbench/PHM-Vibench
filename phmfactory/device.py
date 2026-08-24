@@ -1,13 +1,12 @@
-"""Shared device-selection contract for preflight and Trainer construction.
+"""Resolve the one public device request used by preflight and Trainer creation.
 
-The module has no training-framework import at module load time. CPU-only preflight can
-therefore validate a configuration without importing PyTorch Lightning or the Trainer
-Factory package. Torch is loaded only when hardware inspection is actually required.
+CPU resolution does not import the training stack. CUDA and ``auto`` inspect hardware
+only because the user explicitly requested them. The resolver never changes the requested
+mode, falls back to another device, or reconciles legacy aliases.
 """
 
 from __future__ import annotations
 
-from numbers import Integral
 from typing import Any
 
 
@@ -15,7 +14,7 @@ DEVICE_MODES = ("cpu", "cuda", "auto")
 
 
 def _load_torch():
-    """Import torch only when CUDA/MPS inspection is required."""
+    """Import torch only when hardware inspection is required."""
 
     import torch
 
@@ -31,42 +30,53 @@ def _available_auto_accelerator() -> tuple[str, int | None]:
 
     mps = getattr(torch.backends, "mps", None)
     if mps is not None and callable(getattr(mps, "is_available", None)):
-        if bool(mps.is_available()):
+        if mps.is_available():
             return "mps", 1
 
     return "cpu", None
 
 
 def resolve_device_request(args_trainer: Any) -> tuple[str, int]:
-    """Resolve one explicit trainer device request without silent fallback.
+    """Resolve one exact device mode and one exact positive device count.
 
-    ``cpu`` and ``cuda`` are exact requests. ``auto`` performs hardware inspection only
-    because the user explicitly selected it. A CPU request is resolved without importing
-    torch, which keeps config-only inspection independent of the training stack.
+    Maintained configurations use only ``trainer.device`` and ``trainer.devices``.
+    ``trainer.gpus`` is rejected rather than translated, because translation would leave
+    two authorities for the same runtime decision.
     """
+
+    if hasattr(args_trainer, "gpus"):
+        raise ValueError(
+            "trainer.gpus is unsupported; replace it with trainer.devices"
+        )
 
     if not hasattr(args_trainer, "device"):
         raise ValueError(
             "trainer.device is required and must be one of: cpu, cuda, auto"
         )
-    requested = str(args_trainer.device).strip().lower()
+    requested = args_trainer.device
+    if not isinstance(requested, str):
+        raise TypeError(
+            "trainer.device must be a string chosen from: cpu, cuda, auto; "
+            f"got {type(requested).__name__}"
+        )
     if requested not in DEVICE_MODES:
         raise ValueError(
-            f"unsupported trainer.device {args_trainer.device!r}; expected one of: "
+            f"unsupported trainer.device {requested!r}; expected one of: "
             + ", ".join(DEVICE_MODES)
         )
 
-    devices = getattr(
-        args_trainer,
-        "devices",
-        getattr(args_trainer, "gpus", 1),
-    )
-    if isinstance(devices, bool) or not isinstance(devices, Integral) or devices < 1:
-        raise ValueError(
-            "trainer.devices/trainer.gpus must be a positive integer, "
-            f"got {devices!r}"
+    if not hasattr(args_trainer, "devices"):
+        raise ValueError("trainer.devices is required and must be a positive integer")
+    devices = args_trainer.devices
+    if isinstance(devices, bool) or not isinstance(devices, int):
+        raise TypeError(
+            "trainer.devices must be an integer, "
+            f"got {type(devices).__name__}"
         )
-    devices = int(devices)
+    if devices < 1:
+        raise ValueError(
+            f"trainer.devices must be positive, got {devices}"
+        )
 
     if requested == "cpu":
         return "cpu", devices

@@ -1,6 +1,6 @@
-# First real-data baseline candidate.
-# Protocol: official provider train/test files; file-grouped train/validation split;
-# transparent one-channel temporal-mean linear classifier; three explicit seeds.
+# Real-data baseline candidate.
+# Protocol: official provider train/test files, file-grouped train/validation split,
+# transparent one-channel temporal-mean linear classifier, and three explicit seeds.
 
 pipeline: "Pipeline_01_Fault_Diagnosis"
 
@@ -63,7 +63,7 @@ task:
 trainer:
   name: "Default_trainer"
   device: "cpu"
-  gpus: 1
+  devices: 1
   num_epochs: 5
   test_after_fit: true
   early_stopping: true

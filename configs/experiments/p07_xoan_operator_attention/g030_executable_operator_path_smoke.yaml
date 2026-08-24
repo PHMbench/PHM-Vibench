@@ -15,7 +15,7 @@ environment:
   notes: >-
     CPU-only method smoke for the typed continuous-sparsemax DAG, deterministic
     per-sample export, and independent discrete executor. It cannot support
-    C6-C9 because it uses dummy data, one seed, and no approved thresholds.
+    C6-C9 because it uses Dummy data, one seed, and no approved thresholds.
 
 data:
   data_dir: "data"
@@ -67,6 +67,6 @@ trainer:
   num_epochs: 1
   test_after_fit: true
   device: "cpu"
-  gpus: 1
+  devices: 1
   paper_id: "P07"
   preset_version: "p07-g030-method-smoke-v1"

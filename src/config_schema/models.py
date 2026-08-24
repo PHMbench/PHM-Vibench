@@ -286,9 +286,8 @@ class TrainerConfig(BaseModel):
 
     name: str = Field(..., description="Trainer implementation name under trainer_factory.")
     num_epochs: int = Field(..., ge=1)
-    device: Optional[Literal["cpu", "cuda", "auto"]] = None
-    gpus: Optional[int] = Field(None, ge=1)
-    devices: Optional[int] = Field(None, ge=1)
+    device: Literal["cpu", "cuda", "auto"] = Field(...)
+    devices: int = Field(..., ge=1)
     test_after_fit: Optional[bool] = None
     monitor: Optional[str] = None
     monitor_mode: Optional[Literal["min", "max"]] = None
@@ -301,11 +300,17 @@ class TrainerConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _reject_legacy_epoch_alias(self) -> "TrainerConfig":
-        if "max_epochs" in (self.model_extra or {}):
+    def _reject_legacy_aliases(self) -> "TrainerConfig":
+        extras = self.model_extra or {}
+        if "max_epochs" in extras:
             raise ValueError(
                 "trainer.max_epochs is unsupported; use the single public field "
                 "trainer.num_epochs"
+            )
+        if "gpus" in extras:
+            raise ValueError(
+                "trainer.gpus is unsupported; use the single public field "
+                "trainer.devices"
             )
         return self
 

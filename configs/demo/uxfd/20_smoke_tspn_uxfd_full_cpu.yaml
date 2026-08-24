@@ -1,7 +1,5 @@
 # UXFD CPU smoke for the #61 core contract.
-#
-# This config only exercises the existing opt-in modules. It is not evidence
-# that the P01/P05/P06/P07 scientific contracts have been satisfied.
+# This verifies the existing opt-in modules only; it is not benchmark or claim evidence.
 
 pipeline: "Pipeline_01_Fault_Diagnosis"
 
@@ -35,7 +33,7 @@ trainer:
   num_epochs: 1
   test_after_fit: true
   device: "cpu"
-  gpus: 1
+  devices: 1
 
 model:
   device: "cpu"
