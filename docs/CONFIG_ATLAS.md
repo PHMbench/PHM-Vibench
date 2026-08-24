@@ -116,7 +116,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/model_factory/__init__.py:build_model`
 - Keyspace: `model.*`, `model.uxfd.*`
 - Minimal run: `python main.py --config configs/demo/uxfd/20_smoke_tspn_uxfd_full_cpu.yaml`
-- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Common overrides: `trainer.device=cpu`, `trainer.devices=1`, `data.num_workers=0`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `src/model_factory/X_model/UXFD/FACT_TABLE.md`, `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md`
 - Status: `/`
@@ -127,7 +127,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/model_factory/__init__.py:build_model`
 - Keyspace: `model.*`, `model.operator_path.*`
 - Minimal run: `python main.py --config configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
-- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Common overrides: `trainer.device=cpu`, `trainer.devices=1`, `data.num_workers=0`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
 - Status: `/`
@@ -208,7 +208,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/trainer_factory/__init__.py:build_trainer`
 - Keyspace: `trainer.*`
 - Minimal run: `python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml`
-- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `trainer.devices=1`
 - Outputs: `{environment.output_dir}/{experiment_name}/iter_{i}/`
 - Related docs: `configs/README.md`, `configs/base/trainer/README.md`, `src/trainer_factory/README.md`
 - Status: `/`
@@ -262,7 +262,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/00_smoke/dummy_dg.yaml`
-- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `trainer.devices=1`, `data.num_workers=0`
 - Outputs: `results/demo/dummy_dg_smoke/{experiment_name}/iter_{i}/`
 - Related docs: `configs/demo/README.md`, `configs/demo/00_smoke/README.md`
 - Status: `sanity_ok`
@@ -364,7 +364,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `model.uxfd.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/uxfd/20_smoke_tspn_uxfd_full_cpu.yaml`
-- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Common overrides: `trainer.device=cpu`, `trainer.devices=1`, `data.num_workers=0`
 - Outputs: `results/demo/uxfd/tspn_uxfd_full_cpu/{experiment_name}/iter_{i}/`
 - Related docs: `src/model_factory/X_model/UXFD/FACT_TABLE.md`, `src/model_factory/X_model/UXFD/OPERATOR_CATALOG.md`
 - Status: `needs_smoke`
@@ -377,7 +377,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `model.operator_path.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml`
-- Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
+- Common overrides: `trainer.device=cpu`, `trainer.devices=1`, `data.num_workers=0`
 - Outputs: `results/experiments/p07/g030_executable_operator_path_smoke/{experiment_name}/iter_{i}/`
 - Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
 - Status: `sanity_ok`
@@ -421,7 +421,7 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Owner code: `src/Pipeline_06_Generative_Modeling.py:pipeline`
 - Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
 - Minimal run: `python main.py --config configs/demo/10_generative/dummy_generative_cfm.yaml`
-- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `trainer.devices=1`, `data.num_workers=0`
 - Outputs: `results/demo/dummy_generative_cfm/stage_ledger.json`
 - Related docs: `configs/demo/10_generative/README.md`, `docs/PIPELINE_06_GENERATIVE_MIGRATION.md`
 - Status: `needs_smoke`
