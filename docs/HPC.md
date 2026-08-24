@@ -23,7 +23,7 @@ or scheduler-provided overrides include:
 ```text
 data.data_dir
 trainer.device
-trainer.gpus
+trainer.devices
 data.num_workers
 environment.output_dir
 ```
@@ -38,6 +38,7 @@ python -m scripts.config_inspect \
 
 python main.py --config configs/demo/00_smoke/dummy_dg.yaml \
   --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1 \
   --override data.num_workers=0
 ```
