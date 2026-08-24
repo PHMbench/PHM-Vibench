@@ -234,6 +234,7 @@ jobs:
         run: |
           set -o pipefail
           python -m py_compile \
+            phmfactory/device.py \
             phmfactory/runtime/execution.py \
             phmfactory/task_semantics.py \
             src/data_factory/explicit_data_factory.py \
@@ -256,6 +257,7 @@ jobs:
             test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
             test/test_device_authority.py \
+            test/test_device_count_contract.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
@@ -270,6 +272,7 @@ jobs:
             test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
             test/test_device_authority.py \
+            test/test_device_count_contract.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
