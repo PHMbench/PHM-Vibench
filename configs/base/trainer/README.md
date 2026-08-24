@@ -23,7 +23,7 @@ trainer:
   num_epochs: 10
   test_after_fit: true
   device: "cpu"
-  gpus: 1
+  devices: 1
   monitor: "val_loss"
   monitor_mode: "min"
 ```
@@ -36,7 +36,7 @@ trainer:
   num_epochs: 10
   test_after_fit: true
   device: "cuda"
-  gpus: 1
+  devices: 1
   monitor: "val_loss"
   monitor_mode: "min"
 ```
@@ -49,7 +49,7 @@ trainer:
   num_epochs: 10
   test_after_fit: true
   device: "auto"
-  gpus: 1
+  devices: 1
   monitor: "val_loss"
   monitor_mode: "min"
 ```
@@ -66,6 +66,11 @@ field, so its configuration must not add it merely to satisfy a shared base.
 | `cpu` | Passes `accelerator="cpu"` to Lightning. CUDA availability is irrelevant. |
 | `cuda` | Passes `accelerator="gpu"`; fails before Trainer construction when CUDA or the requested device count is unavailable. |
 | `auto` | Selects from the hardware observed by PHMFactory only because the user explicitly wrote `auto`. |
+
+`trainer.devices` is the maintained positive-integer device-count field. There is no
+hidden default count. The historical `trainer.gpus` spelling is retained only for direct
+Python compatibility during the v0.3 migration; it cannot coexist with `devices` and
+must not appear in maintained YAML.
 
 There is no implicit `cuda -> cpu` fallback. A CUDA request that cannot be satisfied is
 an invalid run request and terminates with a corrective error.
@@ -113,8 +118,7 @@ Checkpoint filenames contain only epoch and step. They do not embed a hard-coded
 | `trainer.num_epochs` | positive int | Single public epoch-count authority; `max_epochs` is rejected. |
 | `trainer.test_after_fit` | bool | Required by maintained classification Pipelines; controls post-fit evaluation. |
 | `trainer.device` | str | Required: `cpu`, `cuda`, or `auto`. |
-| `trainer.gpus` | positive int | Compatibility name for the Lightning device count. |
-| `trainer.devices` | positive int | Preferred device-count spelling when present; takes precedence over `gpus`. |
+| `trainer.devices` | positive int | Maintained device-count spelling; must be explicit. |
 | `trainer.monitor` | non-empty str | Logged validation scalar used to select the checkpoint. |
 | `trainer.monitor_mode` | `min` or `max` | Explicit optimization direction; never inferred. |
 | `trainer.early_stopping` | bool | When true, stopping uses the same monitor pair as checkpointing. |
@@ -127,7 +131,7 @@ python main.py --config <yaml> --override trainer.num_epochs=1
 python main.py --config <yaml> --override trainer.test_after_fit=false
 python main.py --config <yaml> \
   --override trainer.device=cpu \
-  --override trainer.gpus=1
+  --override trainer.devices=1
 ```
 
 To select by validation accuracy:
@@ -143,7 +147,7 @@ A GPU run must be requested explicitly:
 ```bash
 python main.py --config <yaml> \
   --override trainer.device=cuda \
-  --override trainer.gpus=1
+  --override trainer.devices=1
 ```
 
 ## 7) Coupling Notes
@@ -153,7 +157,8 @@ python main.py --config <yaml> \
   `trainer.max_epochs`.
 - Classification Runtime consumes `trainer.test_after_fit` before creating an output
   path or Factory.
-- `Default_trainer` maps the explicit device request to the Lightning accelerator.
+- Preflight and `Default_trainer` call the same lightweight device resolver.
+- `Default_trainer` maps the exact device request to the Lightning accelerator.
 - `Default_trainer` owns checkpoint and early-stopping selection semantics.
 - Task constructors preserve the model returned by Model Factory and do not inspect
   CUDA availability.
@@ -170,10 +175,11 @@ python main.py --config <yaml> \
 1. `trainer.num_epochs` is absent, boolean, non-integral, or non-positive.
 2. Deprecated `trainer.max_epochs` is present as a second epoch authority.
 3. A maintained classification Pipeline omits `trainer.test_after_fit` or supplies a non-boolean value.
-4. `trainer.device` is absent or not one of `cpu`, `cuda`, `auto`.
-5. `trainer.device=cuda` is requested on a host without CUDA.
-6. The requested CUDA device count exceeds `torch.cuda.device_count()`.
-7. `trainer.gpus` or `trainer.devices` is zero, boolean, non-integral, or negative.
-8. `trainer.monitor` is absent, empty, or does not match a logged validation metric.
-9. `trainer.monitor_mode` is absent or is not exactly `min` or `max`.
-10. Early stopping and checkpoint selection are configured against a metric that the Task never logs.
+4. `trainer.device` is absent or not exactly one of `cpu`, `cuda`, `auto`.
+5. `trainer.devices` is absent, zero, boolean, non-integral, or negative.
+6. Both `trainer.devices` and deprecated `trainer.gpus` are supplied.
+7. `trainer.device=cuda` is requested on a host without CUDA.
+8. The requested CUDA device count exceeds `torch.cuda.device_count()`.
+9. `trainer.monitor` is absent, empty, or does not match a logged validation metric.
+10. `trainer.monitor_mode` is absent or is not exactly `min` or `max`.
+11. Early stopping and checkpoint selection are configured against a metric that the Task never logs.
