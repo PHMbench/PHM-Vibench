@@ -2,8 +2,7 @@
 
 name: "Default_trainer"
 num_epochs: 1
-gpus: 1
+devices: 1
 device: "cuda"
 early_stopping: false
 patience: 1
-
