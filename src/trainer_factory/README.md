@@ -32,7 +32,7 @@ trainer:
   name: "Default_trainer"
   num_epochs: 10
   device: "cpu"
-  gpus: 1
+  devices: 1
   monitor: "val_loss"
   monitor_mode: "min"
   early_stopping: true
@@ -41,6 +41,10 @@ trainer:
 
 `trainer.name` is the maintained selector. `trainer.trainer_name` remains a compatibility
 fallback only when `name` is absent.
+
+`trainer.devices` is the maintained device-count field and must be explicit. The
+historical `trainer.gpus` spelling is a direct-Python compatibility alias only; it must
+not coexist with `devices` and must not appear in maintained YAML.
 
 For `Default_trainer`, checkpoint selection is an explicit two-field contract:
 
@@ -117,6 +121,7 @@ python -m scripts.config_inspect --config <yaml> --dump targets
 python main.py --config <yaml> \
   --override trainer.num_epochs=1 \
   --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override data.num_workers=0
 ```
 
@@ -132,6 +137,9 @@ phmfactory demo
   dependencies.
 - `does not register ... and does not expose 'trainer'`: add
   `@register_trainer(...)` or export the historical `trainer` function.
+- missing `trainer.device`: declare `cpu`, `cuda`, or `auto` explicitly.
+- missing `trainer.devices`: declare one positive device count.
+- both `trainer.devices` and deprecated `trainer.gpus`: keep only `devices`.
 - missing `trainer.monitor`: name the validation scalar logged by the Task.
 - missing or invalid `trainer.monitor_mode`: declare `min` or `max` explicitly.
 - Trainer construction exception: inspect the preserved cause, device availability,
