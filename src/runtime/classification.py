@@ -132,10 +132,9 @@ def _close_data_factory(data_factory: Any) -> None:
 def _result_row(result: Any) -> dict[str, float]:
     """Return one complete metric population from ``trainer.test``.
 
-    Lightning returns one mapping per test dataloader.  The maintained classification
-    estimator currently defines exactly one test population.  Multiple mappings are
-    therefore ambiguous and must be handled by an explicit multi-population protocol
-    rather than silently discarding every item after the first.
+    Lightning returns one mapping per test dataloader. The maintained classification
+    estimator currently defines exactly one test population. Multiple mappings are
+    ambiguous and require an explicit multi-population protocol.
     """
 
     if not isinstance(result, (list, tuple)) or len(result) != 1:
@@ -149,10 +148,7 @@ def _result_row(result: Any) -> dict[str, float]:
             "trainer.test result 0 must be a metric mapping, "
             f"got {type(result[0]).__name__}"
         )
-    return normalize_metric_result(
-        result[0],
-        context="trainer.test result 0",
-    )
+    return normalize_metric_result(result[0], context="trainer.test result 0")
 
 
 def _best_checkpoint_path(trainer: Any) -> Path:
@@ -179,19 +175,13 @@ def _write_aggregate_outputs(
     last_iteration_path: str | Path | None,
     all_results: list[dict[str, Any]],
     run_seeds: list[int],
-    configs: Any,
 ) -> dict[str, Any]:
     """Write repeated-run metrics only after the complete estimator validates."""
 
     if last_iteration_path is None or not all_results:
         raise ValueError("aggregate outputs require at least one completed iteration")
 
-    # Validate the complete repeated-run estimator before publishing aggregate CSVs.
-    build_run_summary(
-        results=all_results,
-        seeds=run_seeds,
-        config=configs,
-    )
+    build_run_summary(results=all_results, seeds=run_seeds)
 
     run_root_path = Path(run_root)
     iteration_path = Path(last_iteration_path)
@@ -202,7 +192,6 @@ def _write_aggregate_outputs(
         run_root_path / "run_summary.json",
         results=all_results,
         seeds=run_seeds,
-        config=configs,
     )
 
 
@@ -403,7 +392,6 @@ def run_classification_pipeline(
         final_path,
         all_results,
         run_seeds,
-        configs,
     )
     print(f"\n{'=' * 50}\n[INFO] 所有实验已完成\n{'=' * 50}")
     return _public_result(
