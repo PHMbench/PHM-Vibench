@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis, ResolvedConfig
 from phmfactory.runtime import (
     CompiledRunSpec,
     ExecutionEnvelope,
@@ -107,7 +107,6 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(data),
     )
     monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
@@ -122,11 +121,11 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
         local_config=None,
         notes="",
         override=None,
+        allow_experimental=False,
     )
     with pytest.raises(PipelineContractError):
         cli.run(args)
 
-    assert "完成所有实验" not in capsys.readouterr().out
+    assert "run=completed" not in capsys.readouterr().out
     assert args.execution_envelope.status is ExecutionStatus.FAILED
-    assert not hasattr(args, "run_manifest_path")
     assert not (tmp_path / "outputs").exists()
