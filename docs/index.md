@@ -1,34 +1,32 @@
-# Documentation Index
+# Documentation
 
-This is the maintained navigation for PHMFactory. Start with the user path; consult
-maintainer and historical material only when that work is relevant.
+Use the shortest page that answers the current task. Historical plans and audits are not
+runtime or user guidance.
 
 ## Start here
 
-1. [README](../README.md) — product scope and shortest successful path.
-2. [Core contract](../CORE.md) — scientific semantics, Factory boundaries, and Occam rules.
-3. [Quickstart](quickstart.md) — complete offline first run.
-4. [Installation](installation.md) — platform and environment setup.
-5. [Configuration](../configs/README.md) — composition, overrides, and maintained configs.
-6. [Known limitations](../KNOWN_LIMITATIONS.md) — current unsupported or unresolved areas.
+1. [README](../README.md) — project scope and shortest successful path.
+2. [Quickstart](quickstart.md) — complete offline first run.
+3. [Installation](installation.md) — Python, PyTorch, and platform setup.
+4. [Configuration](../configs/README.md) — config composition and overrides.
+5. [Known limitations](../KNOWN_LIMITATIONS.md) — current unsupported or unresolved work.
 
 ## User tasks
 
-| Task | Authority |
+| Task | Document |
 | --- | --- |
 | Run the bundled offline experiment | [Quickstart](quickstart.md) |
-| Inspect maintained configurations | [Configuration Atlas](CONFIG_ATLAS.md) |
-| Check exact supported combinations | [SUPPORTED_COMBINATIONS.md](../SUPPORTED_COMBINATIONS.md) |
 | Prepare local data | [Data layout](../data/README.md) |
 | Add a compatible dataset | [Custom dataset guide](custom_dataset.md) |
 | Select or add a model | [Model Factory](../src/model_factory/README.md) |
 | Select or add a task | [Task Factory](../src/task_factory/README.md) |
 | Configure training | [Trainer Factory](../src/trainer_factory/README.md) |
-| Use the browser workspace | [Streamlit workspace](../apps/streamlit/README.md) |
+| Use the browser workspace | [Streamlit](../apps/streamlit/README.md) |
 | Inspect the MFPT candidate | [MFPT guide](../configs/baselines/01_mfpt/README.md) |
 
 ## Development
 
+- [Core contract](../CORE.md)
 - [Contributing](../CONTRIBUTING.md)
 - [Developer guide](developer_guide.md)
 - [Testing](testing.md)
@@ -37,63 +35,51 @@ maintainer and historical material only when that work is relevant.
 - [Task Factory contribution guide](../src/task_factory/contributing.md)
 - [Trainer Factory contribution guide](../src/trainer_factory/contributing.md)
 
-Development authority is intentionally small:
+Current behavior is defined by the latest code and tests. `CORE.md` records the stable
+engineering and scientific constraints. Do not create another plan hierarchy or repeat
+the same contract in new documents.
 
-```text
-latest dev code/tests
-→ CORE.md
-→ README/Quickstart
-→ config registry and generated support tables
-```
+## Support and release
 
-Do not create another goal registry, policy tree, manifest family, or documentation
-hierarchy to restate these sources.
-
-## Release and migration
-
-- [Current release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
-- [v0.3 release notes](../RELEASE_NOTES_v0.3.0.md)
+- [Configuration registry](../configs/config_registry.csv)
+- [Configuration Atlas](CONFIG_ATLAS.md)
+- [Supported combinations](../SUPPORTED_COMBINATIONS.md)
+- [Known limitations](../KNOWN_LIMITATIONS.md)
+- [Release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
 - [v0.2 to v0.3 migration](../MIGRATION_v0.2_to_v0.3.md)
-- [Backend deferral](releases/v0.3.0-backend-deferral.yaml)
-- [CWRU compatibility contract](CWRU_DEMO_V0_3.md)
 
-The source version is `0.3.0rc1`, but the current release gate is blocked until an exact
-real-data experiment is requalified as `baseline_valid` on the current source. Release
-documents do not imply a tag or publication.
+The source version is `0.3.0rc1`, but the release gate remains blocked until a current
+real-data experiment is requalified as `baseline_valid`.
 
-## Generated authority
+## Optional and experimental paths
 
-- [`docs/CONFIG_ATLAS.md`](CONFIG_ATLAS.md) is generated from
-  [`configs/config_registry.csv`](../configs/config_registry.csv).
-- [`SUPPORTED_COMPONENTS.md`](../SUPPORTED_COMPONENTS.md) and
-  [`SUPPORTED_COMBINATIONS.md`](../SUPPORTED_COMBINATIONS.md) are generated from the
-  registry and resolved maintained configurations.
+- [CWRU data bundle](CWRU_DEMO_V0_3.md)
+- [Dependency boundaries](DEPENDENCY_BOUNDARIES_V0_3.md)
+- [Deferred data backend](PHM_DATA_FACTORY_BACKEND_V0_3.md)
+- [Pipeline 06 migration](PIPELINE_06_GENERATIVE_MIGRATION.md)
+- [HPC notes](HPC.md)
 
-Update the source registry first; regenerate only the documents affected by that source.
-Do not hand-edit generated claims into a stronger status.
+These documents describe optional or experimental work. They do not change the default
+local-file path or the support status of an exact configuration.
 
 ## Historical material
 
-Historical audits and migration evidence live under [`docs/archive/`](archive/README.md).
-They preserve earlier facts but do not override current code, `CORE.md`, the registry,
-known limitations, or release readiness.
+Historical audits live under [`docs/archive/`](archive/README.md). Obsolete implementation
+plans are preserved by Git history rather than kept beside current user documentation.
 
-`configs/v0.0.9/` is historical compatibility material, not the maintained quickstart.
-Old release provenance, submodule inventories, and past task plans should not appear in the
-normal user reading path.
+`configs/v0.0.9/` is compatibility material, not the maintained quickstart.
 
 ## Single-authority map
 
-| Information | Authority |
+| Information | Source |
 | --- | --- |
-| Project positioning and first command | `README.md` |
-| Scientific/engineering invariants | `CORE.md` |
+| Product scope and first command | `README.md` |
 | First complete run | `docs/quickstart.md` |
 | Installation | `docs/installation.md` |
 | Configuration semantics | `configs/README.md` |
+| Scientific and engineering constraints | `CORE.md` |
 | Maintained config inventory | `configs/config_registry.csv` |
-| Supported components/combinations | generated support documents |
 | Current limitations | `KNOWN_LIMITATIONS.md` |
 | Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` |
 | Contribution and tests | `CONTRIBUTING.md`, `docs/testing.md` |
-| Optional Streamlit behavior | `apps/streamlit/README.md` |
+| Streamlit behavior | `apps/streamlit/README.md` |
