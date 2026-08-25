@@ -9,7 +9,7 @@ import pytest
 from phmfactory import cli
 from phmfactory.commands import demo, doctor, preflight
 from phmfactory.commands.common import check_writable_directory
-from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis, ResolvedConfig
 import phmfactory.device as device_contract
 
 
@@ -52,7 +52,6 @@ def _analysis(
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(config),
     )
 
 
@@ -137,8 +136,9 @@ def test_preflight_uses_single_analysis_without_importing_pipeline(
 
     assert result["status"] == "passed"
     assert result["pipeline"] == "Pipeline_01_Fault_Diagnosis"
-    assert result["effective_config_sha256"] == analysis.effective_config_sha256
-    assert len(result["run_spec_sha256"]) == 64
+    assert result["resolved_config_path"] == str(analysis.path)
+    assert "effective_config_sha256" not in result
+    assert "run_spec_sha256" not in result
     assert result["requested_device"] == "cpu"
     assert result["resolved_accelerator"] == "cpu"
     assert result["resolved_devices"] == 1
@@ -159,9 +159,7 @@ def test_preflight_rejects_unavailable_cuda_before_training(
     monkeypatch.setattr(
         device_contract,
         "_load_torch",
-        lambda: SimpleNamespace(
-            cuda=SimpleNamespace(is_available=lambda: False)
-        ),
+        lambda: SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False)),
     )
 
     with pytest.raises(RuntimeError, match="CUDA is unavailable.*no CPU fallback"):
