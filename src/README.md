@@ -1,45 +1,41 @@
-# PHMFactory protected runtime (`src/`)
+# PHMFactory runtime (`src/`)
 
-`src/` contains the established PHMFactory runtime engine. In v0.3.0 it remains a
-protected compatibility layer; the supported public Python namespace is
-`phmfactory`.
+`src/` contains the established runtime used by the public `phmfactory` package. New
+integrations should call `phmfactory`; direct `src.*` imports remain compatibility paths.
 
 ## Public entrypoints
 
 ```bash
-python main.py --config <yaml> [--override key=value ...]
-python -m phmfactory --config <yaml> [--override key=value ...]
 phmfactory --config <yaml> [--override key=value ...]
+python -m phmfactory --config <yaml> [--override key=value ...]
+python main.py --config <yaml> [--override key=value ...]
 ```
 
-All three entrypoints use the same public dispatcher. New downstream integrations
-should use `phmfactory.*` rather than adding new dependencies on `src.*` module
-paths.
+All three entrypoints use the same parser, configuration analysis, and dispatch path.
 
-## Runtime architecture
+## Runtime layout
 
 | Directory | Responsibility |
 | --- | --- |
-| `data_factory/` | Metadata, dataset readers, signal caches, sampling, and DataLoader construction |
-| `model_factory/` | Model registry, embeddings, backbones, heads, and model construction |
-| `task_factory/` | Task assembly, losses, metrics, optimization logic, and task-specific components |
-| `trainer_factory/` | PyTorch Lightning trainer, callbacks, loggers, and execution policy |
-| `configs/` | Legacy `ConfigWrapper` compatibility implementation |
-| `utils/` | Shared runtime utilities used by the protected engine |
+| `data_factory/` | metadata, readers, caches, sampling, datasets, DataLoaders |
+| `model_factory/` | model resolution and construction |
+| `task_factory/` | objectives, metrics, optimizer and scheduler logic |
+| `trainer_factory/` | device, callbacks, logging, checkpoint and Trainer construction |
+| `configs/` | legacy configuration compatibility code |
+| `utils/` | shared runtime utilities |
 
-The normal execution path is:
+Normal execution is:
 
 ```text
 public CLI
-  -> resolved YAML and canonical Pipeline
-  -> data factory
-  -> model factory
-  -> task factory
-  -> trainer factory
-  -> fit / test / artifacts
+→ resolved configuration
+→ canonical Pipeline
+→ Data → Model → Task → Trainer
+→ fit / selected checkpoint / test
+→ direct result paths
 ```
 
-## Canonical Pipeline modules
+## Pipeline modules
 
 ```text
 Pipeline_01_Fault_Diagnosis.py
@@ -50,12 +46,10 @@ Pipeline_05_Explainable_Fault_Diagnosis.py
 Pipeline_06_Generative_Modeling.py
 ```
 
-The existence of a module does not by itself establish release support. Use
-[`SUPPORTED_COMPONENTS.md`](../SUPPORTED_COMPONENTS.md),
-[`SUPPORTED_COMBINATIONS.md`](../SUPPORTED_COMBINATIONS.md), and the maintained
-configuration registry for the evidence-backed public surface.
+A module's presence does not establish support. Check the configuration registry and
+`SUPPORTED_COMBINATIONS.md` for the exact maintained surface.
 
-## Extension points
+## Extension guides
 
 - Data and readers: [`data_factory/README.md`](data_factory/README.md) and
   [`data_factory/contributing.md`](data_factory/contributing.md)
@@ -66,19 +60,13 @@ configuration registry for the evidence-backed public surface.
 - Trainers: [`trainer_factory/README.md`](trainer_factory/README.md) and
   [`trainer_factory/contributing.md`](trainer_factory/contributing.md)
 
-Dataset readers under `data_factory/reader/` are protected in v0.3.0. Do not move,
-rename, merge, or normalize reader implementations as part of repository cleanup.
-See the [reader preservation contract](../docs/PHMFACTORY_V0_3_READER_PRESERVATION.md).
+Do not move or normalize dataset readers as part of unrelated cleanup. A reader behavior
+change requires a focused bug report, a failing fixture, and before/after tests.
 
-## Run artifacts
+## Results
 
-Best-effort governed artifacts include:
+The public CLI returns the result root, selected checkpoint, test metrics, run summary,
+and primary metrics. These direct paths are the maintained result interface.
 
-- `<run_dir>/config_snapshot.yaml` — resolved configuration snapshot;
-- `<run_dir>/artifacts/manifest.json` — run evidence index;
-- `<run_dir>/artifacts/data_metadata_snapshot.json` — data/batch metadata snapshot;
-- `<run_dir>/artifacts/explain/eligibility.json` — explainability eligibility when
-  `trainer.extensions.explain.enable=true`.
-
-Use the root documentation index for current installation, configuration, testing,
-and release guidance: [`docs/index.md`](../docs/index.md).
+For installation, configuration, testing, and support status, use the
+[documentation index](../docs/index.md).

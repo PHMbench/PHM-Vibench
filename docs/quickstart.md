@@ -1,10 +1,8 @@
 # Quickstart
 
-This walkthrough verifies PHMFactory with one fully offline CPU experiment. It uses
-repository-shipped Dummy data and downloads no dataset or model.
-
-The Dummy run is a software smoke. It is not a real-data benchmark or an algorithm
-performance claim.
+This guide runs one offline CPU experiment with repository-shipped Dummy data. It checks
+the installed command, configuration path, training lifecycle, checkpoint restore, test,
+and result files. It is not a real-data benchmark.
 
 ## 1. Install
 
@@ -18,24 +16,16 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-Python 3.10 or newer is required. Platform notes are in
-[Installation](installation.md).
+Python 3.10 or newer is required. See [Installation](installation.md) for platform notes.
 
-## 2. Inspect the command
+## 2. Check the command
 
 ```bash
 phmfactory
 ```
 
-A bare invocation prints help and exits. It does not select an experiment, read data,
-access the network, create results, or start training.
-
-Experiments require an explicit action:
-
-```bash
-phmfactory demo
-phmfactory --config <yaml>
-```
+A bare command prints help and exits. It does not select an experiment, read data, create
+results, or start training.
 
 ## 3. Diagnose the environment
 
@@ -43,15 +33,14 @@ phmfactory --config <yaml>
 phmfactory doctor
 ```
 
-A successful check ends with:
+Success ends with:
 
 ```text
 doctor=passed checks=...
 ```
 
-`doctor` imports the bounded core runtime, resolves the packaged smoke configuration,
-checks its Pipeline, and checks output writability. It does not install packages, repair
-configuration, download data, or train.
+`doctor` checks the installed runtime, the `smoke` configuration, Pipeline discovery, and
+output writability. It does not install packages or train.
 
 ## 4. Preflight the exact experiment
 
@@ -59,48 +48,39 @@ configuration, download data, or train.
 phmfactory preflight --config smoke
 ```
 
-Expected lines include:
+Expected output includes:
 
 ```text
 status=passed
-requested_config=smoke
 pipeline=Pipeline_01_Fault_Diagnosis
-maturity=supported
 output_dir=.../results/demo/dummy_dg_smoke
 requested_device=cpu
 resolved_accelerator=cpu
 resolved_devices=1
 ```
 
-Preflight resolves the same visible configuration used by the run. It does not construct
-the data/model/task/trainer stack or create the configured output directory.
+Preflight uses the same visible configuration as execution. It does not build the
+Data/Model/Task/Trainer stack or create the configured result directory.
 
-An explicit unavailable CUDA request fails before training:
+An unavailable CUDA request fails before training:
 
 ```bash
 phmfactory preflight \
   --config smoke \
-  --override trainer.device=cuda
+  --override trainer.device=cuda \
+  --override trainer.devices=1
 ```
 
-No CPU fallback is applied.
+There is no CUDA-to-CPU fallback.
 
-## 5. Run the offline experiment
+## 5. Run the offline demo
 
 ```bash
 phmfactory demo
 ```
 
-The command applies bounded visible defaults:
-
-```text
-preset: smoke
-trainer.num_epochs: 1
-trainer.device: cpu
-data.num_workers: 0
-```
-
-An explicit user override wins:
+The command uses the `smoke` preset, CPU, one device, one epoch, and zero DataLoader
+workers. Explicit overrides remain visible:
 
 ```bash
 phmfactory demo --override trainer.num_epochs=2
@@ -109,7 +89,7 @@ phmfactory demo --override trainer.num_epochs=2
 A successful run completes:
 
 ```text
-local Dummy files
+Dummy files
 → Data Factory
 → Model Factory
 → Task Factory
@@ -117,10 +97,10 @@ local Dummy files
 → fit
 → selected checkpoint restore
 → test
-→ complete finite metrics
+→ finite metrics
 ```
 
-The terminal prints direct results:
+The terminal prints:
 
 ```text
 result_dir=...
@@ -130,12 +110,11 @@ run_summary=...
 primary_metrics={...}
 ```
 
-These returned paths are the result authority. PHMFactory does not require a parallel run
-manifest, attestation file, evidence index, receipt, ledger, or hash for success.
+Use these paths directly.
 
-## 6. Inspect the outputs
+## 6. Check the results
 
-The returned root normally contains:
+The result root normally contains:
 
 ```text
 result_dir/
@@ -147,23 +126,18 @@ result_dir/
     └── logs/
 ```
 
-Required outcomes:
+Check that:
 
-- the reported result directory exists;
-- the reported checkpoint exists and was selected before test;
+- `result_dir` exists;
+- `best_checkpoint` exists;
 - test metrics are non-empty and finite;
-- `run_summary.json` contains the completed repeated-run estimator;
-- the process exits with status `0`.
+- `run_summary.json` contains the completed repeated-run estimate;
+- the process exits with code `0`.
 
-A Pipeline exception remains the run failure. Record writing cannot turn a failed
-scientific lifecycle into success.
+## 7. Run a local-data experiment
 
-## 7. Run a maintained local-data configuration
-
-Real-data configurations require their declared local metadata/raw files or a documented
-preparation step.
-
-Use the same inputs for preflight and run:
+Real-data configurations require the declared metadata and raw files. Use the same inputs
+for preflight and execution:
 
 ```bash
 phmfactory preflight \
@@ -171,6 +145,8 @@ phmfactory preflight \
   --override data.data_dir=/absolute/path/to/phm-data \
   --override data.metadata_file=metadata.xlsx \
   --override data.num_workers=0 \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1
 
 phmfactory \
@@ -178,10 +154,12 @@ phmfactory \
   --override data.data_dir=/absolute/path/to/phm-data \
   --override data.metadata_file=metadata.xlsx \
   --override data.num_workers=0 \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1
 ```
 
-For several machine-specific values, pass an untracked file explicitly:
+For several machine-specific values, pass one untracked YAML file explicitly:
 
 ```bash
 phmfactory preflight \
@@ -193,30 +171,9 @@ phmfactory \
   --local-config configs/local/my_machine.yaml
 ```
 
-PHMFactory does not auto-discover `configs/local/local.yaml` on the maintained public
-path.
+The public path does not auto-discover `configs/local/local.yaml`.
 
-## 8. Understand the current evidence boundary
-
-The source version is `0.3.0rc1`, but release readiness is currently blocked. The MFPT
-transparent configuration remains a real-data candidate at `smoke_only` until its exact
-current-source metrics and independent requalification gates are complete.
-
-Do not interpret the Dummy smoke, historical MFPT result, or an importable component as a
-current benchmark-valid claim. See [Known limitations](../KNOWN_LIMITATIONS.md) and
-[Release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md).
-
-## Compatible entrypoints
-
-```bash
-phmfactory --config <yaml>
-python -m phmfactory --config <yaml>
-python main.py --config <yaml>
-```
-
-Use `phmfactory` after installation. `python main.py` remains a compatibility launcher.
-
-Python code can keep the structured result:
+## Python entrypoint
 
 ```python
 from phmfactory.cli import main
@@ -229,38 +186,53 @@ print(result["primary_metrics"])
 
 ## Troubleshooting
 
-### Metadata or raw files are missing
+### Command not found
 
-Normal runs do not download substitutes. Fix the complete path reported by the error:
-`data.data_dir`, `data.metadata_file`, or the declared raw layout. Use `phmfactory demo`
-to distinguish installation from local-data problems.
+Activate the intended environment and reinstall from the repository root:
 
-### Metadata parsing fails
+```bash
+python -m pip install -e .
+python -m phmfactory --help
+```
 
-`.csv` means comma-separated UTF-8/UTF-8-SIG text; `.tsv` means tab-separated text.
-PHMFactory does not guess delimiters or ignore damaged bytes.
+### Metadata or raw files missing
 
-### CUDA is unavailable
+Fix the path named in the error: `data.data_dir`, `data.metadata_file`, or the declared raw
+file. Normal execution does not download a substitute.
 
-Repair the PyTorch/driver environment or explicitly choose `trainer.device=cpu`. An
-explicit CUDA request never silently falls back to CPU.
+### Metadata parsing failed
 
-### No selected checkpoint is reported
+`.csv` is comma-separated UTF-8/UTF-8-SIG text; `.tsv` is tab-separated text. The reader
+does not guess delimiters or ignore damaged bytes.
+
+### CUDA unavailable
+
+Repair the PyTorch/driver environment or explicitly use:
+
+```bash
+--override trainer.device=cpu --override trainer.devices=1
+```
+
+### No selected checkpoint
 
 Check `trainer.monitor`, `trainer.monitor_mode`, validation metric names, and callback
 settings. Evaluation does not continue with an unselected in-memory model.
 
-### The process exits non-zero
+### Process exits non-zero
 
-The source exception is authoritative. Fix the reported data, model, task, trainer,
-checkpoint, or Pipeline boundary rather than adding a catch-all fallback.
+Fix the reported Data, Model, Task, Trainer, checkpoint, or Pipeline boundary. Do not add
+a catch-all fallback.
 
-## Next documentation
+## Current evidence boundary
 
-- [Core contract](../CORE.md)
+The source version is `0.3.0rc1`, but release readiness remains blocked. The MFPT
+transparent configuration is still `smoke_only` until its exact current-source protocol
+passes requalification.
+
+See:
+
 - [Installation](installation.md)
 - [Configuration](../configs/README.md)
 - [Data layout](../data/README.md)
-- [MFPT candidate](../configs/baselines/01_mfpt/README.md)
-- [Supported combinations](../SUPPORTED_COMBINATIONS.md)
 - [Known limitations](../KNOWN_LIMITATIONS.md)
+- [Release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
