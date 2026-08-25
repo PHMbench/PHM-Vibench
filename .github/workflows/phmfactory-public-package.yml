@@ -9,6 +9,7 @@ on:
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
       - "src/runtime/classification.py"
+      - "src/utils/run_summary.py"
       - "src/trainer_factory/Default_trainer.py"
       - "src/trainer_factory/extensions/**"
       - "main.py"
@@ -27,6 +28,7 @@ on:
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
+      - "test/test_pipeline01_run_summary.py"
       - "test/test_pipeline_name_migration.py"
       - "test/test_pipeline_maturity.py"
       - "test/test_runtime_control_plane.py"
@@ -42,6 +44,7 @@ on:
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
       - "src/runtime/classification.py"
+      - "src/utils/run_summary.py"
       - "src/trainer_factory/Default_trainer.py"
       - "src/trainer_factory/extensions/**"
       - "main.py"
@@ -60,6 +63,7 @@ on:
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
+      - "test/test_pipeline01_run_summary.py"
       - "test/test_pipeline_name_migration.py"
       - "test/test_pipeline_maturity.py"
       - "test/test_runtime_control_plane.py"
@@ -100,11 +104,14 @@ jobs:
           scripts/validate_configs.py
           src/configs/config_utils.py
           src/config_schema/*.py
+          src/runtime/classification.py
+          src/utils/run_summary.py
           main.py
           test/test_config_analysis_parity.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
+          test/test_pipeline01_run_summary.py
           test/test_pipeline_name_migration.py
           test/test_pipeline_maturity.py
           test/test_runtime_control_plane.py
@@ -118,6 +125,7 @@ jobs:
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
+          test/test_pipeline01_run_summary.py
           test/test_pipeline_name_migration.py
           test/test_pipeline_maturity.py
           test/test_runtime_control_plane.py
@@ -274,7 +282,10 @@ jobs:
               assert config["model"]["name"] == "M_01_ISFM"
               assert config["task"]["name"] == "classification"
               assert config["trainer"]["device"] == "cpu"
-              assert args.effective_config_sha256 == args.compiled_run_spec.effective_config_sha256
+              assert not hasattr(args, "effective_config_sha256")
+              assert not hasattr(args, "run_spec_sha256")
+              assert not hasattr(args.compiled_run_spec, "effective_config_sha256")
+              assert not hasattr(args.compiled_run_spec, "sha256")
               return "wheel-dispatch-pass"
 
           real_import_module = cli.importlib.import_module
