@@ -17,9 +17,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
-from hashlib import sha256
 from importlib import resources
-import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -62,7 +60,7 @@ class ResolvedConfig:
     """Backward-compatible resolved configuration payload.
 
     New public code should prefer :class:`ConfigAnalysis`, which also records field
-    provenance, diagnostics, source files, and the effective semantic hash.
+    provenance, diagnostics, and source files.
     """
 
     requested: str
@@ -96,12 +94,7 @@ class ConfigDiagnostic:
 
 @dataclass(frozen=True)
 class ConfigAnalysis:
-    """Immutable description of the exact effective configuration.
-
-    ``effective_config_sha256`` hashes only the canonical effective configuration. It
-    excludes the requested alias, source paths, installation path, and override spelling,
-    so semantically identical invocations compare equal across checkouts and entrypoints.
-    """
+    """Immutable description of the exact effective configuration."""
 
     requested: str
     path: Path
@@ -112,7 +105,6 @@ class ConfigAnalysis:
     source_files: tuple[Path, ...]
     sources: dict[str, str]
     diagnostics: tuple[ConfigDiagnostic, ...]
-    effective_config_sha256: str
 
     def runtime_config(self) -> dict[str, Any]:
         """Return a mutable copy for one runtime or inspection consumer."""
@@ -145,7 +137,6 @@ class ConfigAnalysis:
             "source_files": [str(path) for path in self.source_files],
             "sources": dict(self.sources),
             "diagnostics": [item.as_dict() for item in self.diagnostics],
-            "effective_config_sha256": self.effective_config_sha256,
         }
 
 
@@ -181,18 +172,6 @@ def parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
             ) from exc
         _set_dotted(parsed, key, value)
     return parsed
-
-
-def semantic_config_sha256(config: Mapping[str, Any]) -> str:
-    """Return the stable SHA-256 of one effective configuration mapping."""
-
-    payload = json.dumps(
-        _json_compatible(config),
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return sha256(payload).hexdigest()
 
 
 def validate_complete_experiment(config: Mapping[str, Any]) -> None:
@@ -236,7 +215,7 @@ def analyze_config(
     Returns
     -------
     ConfigAnalysis
-        Immutable effective configuration, provenance, diagnostics, and semantic hash.
+        Immutable effective configuration, provenance, diagnostics, and source files.
 
     Raises
     ------
@@ -295,7 +274,6 @@ def analyze_config(
         source_files=_unique_paths(files),
         sources=dict(sorted(sources.items())),
         diagnostics=_basic_diagnostics(effective),
-        effective_config_sha256=semantic_config_sha256(effective),
     )
 
 
