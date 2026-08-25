@@ -24,26 +24,25 @@ def _resolved(*, epochs: int = 1, requested: str = "smoke") -> ResolvedConfig:
     )
 
 
-def test_compiled_run_spec_is_deterministic_and_path_independent() -> None:
-    first = CompiledRunSpec.compile(_resolved())
-    second_resolved = _resolved()
-    second_resolved = ResolvedConfig(
-        requested=second_resolved.requested,
-        path=Path("/opt/another-install/configs/demo/00_smoke/dummy_dg.yaml"),
-        data=second_resolved.data,
-        pipeline=second_resolved.pipeline,
-        overrides=second_resolved.overrides,
-    )
-    second = CompiledRunSpec.compile(second_resolved)
+def test_compiled_run_spec_contains_only_executable_fields() -> None:
+    spec = CompiledRunSpec.compile(_resolved())
 
-    assert first.sha256 == second.sha256
-    assert first.resolved_config_path != second.resolved_config_path
+    assert spec.requested_config == "smoke"
+    assert spec.pipeline == "Pipeline_01_Fault_Diagnosis"
+    assert spec.resolved_config_path.endswith("dummy_dg.yaml")
+    assert spec.config["trainer"]["num_epochs"] == 1
+    assert spec.overrides == {"trainer": {"num_epochs": 1}}
+    assert "sha256" not in spec.as_dict()
+    assert "effective_config_sha256" not in spec.as_dict()
 
 
-def test_compiled_run_spec_changes_when_execution_semantics_change() -> None:
-    assert CompiledRunSpec.compile(_resolved(epochs=1)).sha256 != CompiledRunSpec.compile(
-        _resolved(epochs=2)
-    ).sha256
+def test_compiled_run_spec_preserves_visible_execution_changes() -> None:
+    first = CompiledRunSpec.compile(_resolved(epochs=1))
+    second = CompiledRunSpec.compile(_resolved(epochs=2))
+
+    assert first.config["trainer"]["num_epochs"] == 1
+    assert second.config["trainer"]["num_epochs"] == 2
+    assert first.config != second.config
 
 
 def test_runtime_config_is_isolated_from_compiled_contract() -> None:
