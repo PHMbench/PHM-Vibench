@@ -1,9 +1,4 @@
-"""Inspect a PHMFactory configuration without defining a second resolver.
-
-The script is a presentation adapter over :func:`phmfactory.config.analyze_config`.
-Composition, explicit local configuration, CLI overrides, canonical Pipeline naming, and
-the semantic hash therefore match the real runtime and ``phmfactory preflight``.
-"""
+"""Inspect one PHMFactory configuration through the public resolver."""
 
 from __future__ import annotations
 
@@ -27,13 +22,12 @@ OutFormat = Literal["yaml", "json", "md"]
 
 @dataclass(frozen=True)
 class InspectResult:
-    """Resolved config plus human-facing discovery and sanity information."""
+    """Resolved config plus discovery and sanity information."""
 
     resolved: Dict[str, Any]
     sources: Dict[str, str]
     targets: Dict[str, Any]
     sanity: List[Dict[str, Any]]
-    effective_config_sha256: str
     local_config_path: str | None
 
 
@@ -156,9 +150,7 @@ def _instantiation_targets(analysis: ConfigAnalysis) -> Dict[str, Any]:
         "registered": bool(task_info),
     }
 
-    trainer = (
-        resolved.get("trainer") if isinstance(resolved.get("trainer"), dict) else {}
-    )
+    trainer = resolved.get("trainer") if isinstance(resolved.get("trainer"), dict) else {}
     trainer_name = str(
         trainer.get("trainer_name") or trainer.get("name") or "Default_trainer"
     )
@@ -199,11 +191,7 @@ def _sanity_checks(
         "Correct the top-level pipeline value or install its required package.",
     )
 
-    environment = (
-        resolved.get("environment")
-        if isinstance(resolved.get("environment"), dict)
-        else {}
-    )
+    environment = resolved.get("environment") if isinstance(resolved.get("environment"), dict) else {}
     seed = environment.get("seed")
     add(
         "seed_type",
@@ -233,9 +221,7 @@ def _sanity_checks(
         f"task.type={task.get('type')!r}, task.name={task.get('name')!r}",
         "Set task.type and task.name.",
     )
-    trainer = (
-        resolved.get("trainer") if isinstance(resolved.get("trainer"), dict) else {}
-    )
+    trainer = resolved.get("trainer") if isinstance(resolved.get("trainer"), dict) else {}
     epochs = trainer.get("num_epochs")
     add(
         "num_epochs_int",
@@ -264,7 +250,6 @@ def inspect_config(
         sources=dict(analysis.sources),
         targets=targets,
         sanity=_sanity_checks(analysis, targets),
-        effective_config_sha256=analysis.effective_config_sha256,
         local_config_path=(
             str(analysis.local_config_path)
             if analysis.local_config_path is not None
@@ -279,7 +264,6 @@ def _has_failed_sanity(result: InspectResult) -> bool:
 
 def _payload(result: InspectResult, dump: DumpMode) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
-        "effective_config_sha256": result.effective_config_sha256,
         "local_config_path": result.local_config_path,
     }
     if dump in ("resolved", "all"):
@@ -295,7 +279,6 @@ def _payload(result: InspectResult, dump: DumpMode) -> Dict[str, Any]:
 
 def _render_md(result: InspectResult, dump: DumpMode) -> str:
     parts = [
-        f"effective_config_sha256: `{result.effective_config_sha256}`",
         f"explicit_local_config: `{result.local_config_path or 'none'}`",
         "",
     ]
