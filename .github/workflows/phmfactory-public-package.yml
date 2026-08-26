@@ -9,6 +9,7 @@ on:
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
       - "src/runtime/classification.py"
+      - "src/utils/run_summary.py"
       - "src/trainer_factory/Default_trainer.py"
       - "src/trainer_factory/extensions/**"
       - "main.py"
@@ -42,6 +43,7 @@ on:
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
       - "src/runtime/classification.py"
+      - "src/utils/run_summary.py"
       - "src/trainer_factory/Default_trainer.py"
       - "src/trainer_factory/extensions/**"
       - "main.py"
@@ -100,6 +102,7 @@ jobs:
           scripts/validate_configs.py
           src/configs/config_utils.py
           src/config_schema/*.py
+          src/utils/run_summary.py
           main.py
           test/test_config_analysis_parity.py
           test/test_phmfactory_commands.py
@@ -276,7 +279,8 @@ jobs:
               assert config["model"]["name"] == "M_01_ISFM"
               assert config["task"]["name"] == "classification"
               assert config["trainer"]["device"] == "cpu"
-              assert args.effective_config_sha256 == args.compiled_run_spec.effective_config_sha256
+              assert not hasattr(args, "effective_config_sha256")
+              assert not hasattr(args, "run_spec_sha256")
               return expected
 
           real_import_module = cli.importlib.import_module
