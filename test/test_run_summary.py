@@ -11,7 +11,6 @@ from src.runtime.classification import _result_row
 from src.utils.run_summary import (
     build_run_summary,
     normalize_metric_result,
-    resolved_config_sha256,
     write_run_summary,
 )
 
@@ -47,7 +46,7 @@ def test_summary_records_complete_seed_statistics():
     ]
     summary = build_run_summary(results, seeds=[42, 43], config=_config())
 
-    assert summary["config_sha256"] == resolved_config_sha256(_config())
+    assert "config_sha256" not in summary
     assert summary["iterations"] == 2
     assert summary["seeds"] == [42, 43]
     assert set(summary["metrics"]) == {"test_acc", "test_loss"}
@@ -64,6 +63,7 @@ def test_single_run_uses_null_std_and_writes_strict_json(tmp_path):
     assert payload["iterations"] == 1
     assert payload["metrics"]["test_acc"]["count"] == 1
     assert payload["metrics"]["test_acc"]["sample_std"] is None
+    assert "config_sha256" not in payload
     assert output.read_text(encoding="utf-8").endswith("\n")
 
 

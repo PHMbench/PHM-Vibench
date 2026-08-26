@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ConfigAnalysis, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis
 from phmfactory.pipelines import (
     PipelineMaturityError,
     pipeline_descriptor,
@@ -32,7 +32,7 @@ def _analysis(tmp_path: Path, pipeline: str) -> ConfigAnalysis:
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(data),
+        effective_config_sha256="internal-only",
     )
 
 
@@ -106,7 +106,9 @@ def test_cli_explicit_opt_in_allows_experimental_import(
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
-        lambda name: SimpleNamespace(pipeline=lambda args: {"experimental": True}),
+        lambda name: SimpleNamespace(
+            pipeline=lambda args: {"status": "succeeded", "experimental": True}
+        ),
     )
     args = argparse.Namespace(
         config="maturity-test",
@@ -117,7 +119,7 @@ def test_cli_explicit_opt_in_allows_experimental_import(
         allow_experimental=True,
     )
 
-    assert cli.run(args) == {"experimental": True}
+    assert cli.run(args) == {"status": "succeeded", "experimental": True}
     assert args.pipeline_descriptor.maturity == "experimental"
     assert args.execution_envelope.status is ExecutionStatus.SUCCEEDED
     assert not hasattr(args, "run_manifest_path")

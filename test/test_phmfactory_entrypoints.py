@@ -12,12 +12,7 @@ import pytest
 from examples import cwru_quickstart
 from phmfactory import __version__, cli
 from phmfactory.commands import preflight
-from phmfactory.config import (
-    MAINTAINED_PRESETS,
-    ConfigAnalysis,
-    resolve_config_path,
-    semantic_config_sha256,
-)
+from phmfactory.config import MAINTAINED_PRESETS, ConfigAnalysis, resolve_config_path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -45,7 +40,7 @@ def _analysis(
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(config),
+        effective_config_sha256="internal-only",
     )
 
 
@@ -131,8 +126,6 @@ def test_run_dispatches_analyzed_canonical_module(
         observed["config_analysis"] = args.config_analysis
         observed["compiled_run_spec"] = args.compiled_run_spec
         observed["resolved_config_data"] = args.resolved_config_data
-        observed["effective_config_sha256"] = args.effective_config_sha256
-        observed["run_spec_sha256"] = args.run_spec_sha256
         observed["notes"] = args.notes
         return expected
 
@@ -160,11 +153,9 @@ def test_run_dispatches_analyzed_canonical_module(
     assert cli.run(args) == expected
     compiled = observed.pop("compiled_run_spec")
     resolved_data = observed.pop("resolved_config_data")
-    run_spec_sha256 = observed.pop("run_spec_sha256")
     config_analysis = observed.pop("config_analysis")
     assert compiled.pipeline == "Pipeline_04_Unified_Evaluation"
     assert resolved_data == analysis.effective_config
-    assert run_spec_sha256 == compiled.sha256
     assert config_analysis is analysis
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
@@ -172,9 +163,10 @@ def test_run_dispatches_analyzed_canonical_module(
         "config_path": str(analysis.path),
         "resolved_config_path": str(analysis.path),
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
-        "effective_config_sha256": analysis.effective_config_sha256,
         "notes": "entrypoint-parity",
     }
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
     assert not hasattr(args, "run_manifest_path")
     assert not (tmp_path / "runs").exists()
 
@@ -191,7 +183,6 @@ def test_run_passes_maintained_preset_path_to_runtime(
     def pipeline(args: argparse.Namespace) -> dict[str, str]:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
-        observed["effective_config_sha256"] = args.effective_config_sha256
         return expected
 
     monkeypatch.setattr(
@@ -210,7 +201,8 @@ def test_run_passes_maintained_preset_path_to_runtime(
     assert cli.run(args) == expected
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
-    assert len(str(observed["effective_config_sha256"])) == 64
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
     assert not hasattr(args, "run_manifest_path")
     assert not (tmp_path / "runs").exists()
 
@@ -290,7 +282,7 @@ def test_python_process_entrypoints_return_zero_for_preflight(
     )
     assert completed.returncode == 0, completed.stderr
     assert "status=passed" in completed.stdout
-    assert "effective_config_sha256=" in completed.stdout
+    assert "sha256" not in completed.stdout.lower()
     assert not target.exists()
 
 
@@ -411,5 +403,7 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
         "task": "classification",
         "trainer": "cpu",
     }
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
     assert not hasattr(args, "run_manifest_path")
     assert not (tmp_path / "results").exists()
