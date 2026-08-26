@@ -291,7 +291,12 @@ jobs:
         run: |
           set -o pipefail
           phmfactory preflight --config smoke 2>&1 | tee offline-preflight.log
-          grep -E '^effective_config_sha256=[0-9a-f]{64}$' offline-preflight.log
+          grep -F 'status=passed' offline-preflight.log
+          grep -F 'pipeline=Pipeline_01_Fault_Diagnosis' offline-preflight.log
+          if grep -qi 'sha256' offline-preflight.log; then
+            echo 'preflight must not expose digest fields' >&2
+            exit 1
+          fi
           test ! -e results/demo/dummy_dg_smoke
 
       - name: Run the documented offline demo command
@@ -334,6 +339,7 @@ jobs:
           summary = json.loads(summary_path.read_text(encoding="utf-8"))
           assert summary["iterations"] == 1
           assert summary["metrics"], summary
+          assert "config_sha256" not in summary
           for metric in summary["metrics"].values():
               assert metric["count"] == summary["iterations"]
               assert math.isfinite(float(metric["mean"]))
