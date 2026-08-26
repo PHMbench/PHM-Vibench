@@ -17,7 +17,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from src.configs.config_utils import (
     dict_to_namespace,
     merge_with_local_override,
-    path_name,
     transfer_namespace,
 )
 from src.data_factory import build_data
@@ -220,31 +219,19 @@ def _write_aggregate_outputs(
     last_iteration_path: str | Path | None,
     all_results: list[dict[str, Any]],
     run_seeds: list[int],
-    configs: Any,
 ) -> dict[str, Any]:
-    """Write repeated-run metrics only after the complete estimator validates."""
+    """Validate once, then publish the complete repeated-run estimator."""
 
     if last_iteration_path is None or not all_results:
         raise ValueError("aggregate outputs require at least one completed iteration")
 
-    # Validate the complete repeated-run estimator before publishing aggregate CSVs.
-    build_run_summary(
-        results=all_results,
-        seeds=run_seeds,
-        config=configs,
-    )
-
+    summary = build_run_summary(results=all_results, seeds=run_seeds)
     run_root_path = Path(run_root)
     iteration_path = Path(last_iteration_path)
     results = pd.DataFrame(all_results)
     results.to_csv(iteration_path / "all_results.csv", index=False)
     results.to_csv(run_root_path / "all_results.csv", index=False)
-    return write_run_summary(
-        run_root_path / "run_summary.json",
-        results=all_results,
-        seeds=run_seeds,
-        config=configs,
-    )
+    return write_run_summary(run_root_path / "run_summary.json", summary)
 
 
 def _public_result(
@@ -445,7 +432,6 @@ def run_classification_pipeline(
         last_iteration_path,
         all_results,
         run_seeds,
-        configs,
     )
     print(f"\n{'=' * 50}\n[INFO] 所有实验已完成\n{'=' * 50}")
     return _public_result(
