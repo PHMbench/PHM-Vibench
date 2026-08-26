@@ -11,17 +11,8 @@ from src.runtime.classification import _result_row
 from src.utils.run_summary import (
     build_run_summary,
     normalize_metric_result,
-    resolved_config_sha256,
     write_run_summary,
 )
-
-
-def _config():
-    return SimpleNamespace(
-        pipeline="Pipeline_01_Fault_Diagnosis",
-        environment=SimpleNamespace(seed=42, iterations=2),
-        model=SimpleNamespace(type="Transformer", name="TSLTransformer"),
-    )
 
 
 def _runtime_config(tmp_path: Path, *, iterations: int = 3) -> SimpleNamespace:
@@ -45,9 +36,9 @@ def test_summary_records_complete_seed_statistics():
         {"test_acc": 0.5, "test_loss": 2.0},
         {"test_acc": 0.7, "test_loss": 4.0},
     ]
-    summary = build_run_summary(results, seeds=[42, 43], config=_config())
+    summary = build_run_summary(results, seeds=[42, 43])
 
-    assert summary["config_sha256"] == resolved_config_sha256(_config())
+    assert "config_sha256" not in summary
     assert summary["iterations"] == 2
     assert summary["seeds"] == [42, 43]
     assert set(summary["metrics"]) == {"test_acc", "test_loss"}
@@ -58,20 +49,22 @@ def test_summary_records_complete_seed_statistics():
 
 def test_single_run_uses_null_std_and_writes_strict_json(tmp_path):
     output = tmp_path / "run_summary.json"
-    write_run_summary(output, [{"test_acc": 0.5}], [42], _config())
+    summary = build_run_summary([{"test_acc": 0.5}], [42])
+    write_run_summary(output, summary)
     payload = json.loads(output.read_text(encoding="utf-8"))
 
     assert payload["iterations"] == 1
     assert payload["metrics"]["test_acc"]["count"] == 1
     assert payload["metrics"]["test_acc"]["sample_std"] is None
+    assert "config_sha256" not in payload
     assert output.read_text(encoding="utf-8").endswith("\n")
 
 
 def test_summary_rejects_missing_seed_and_nonfinite_metrics():
     with pytest.raises(ValueError, match="one seed"):
-        build_run_summary([{"value": 1.0}], [], _config())
+        build_run_summary([{"value": 1.0}], [])
     with pytest.raises(ValueError, match="not finite"):
-        build_run_summary([{"value": float("nan")}], [42], _config())
+        build_run_summary([{"value": float("nan")}], [42])
 
 
 def test_summary_rejects_metric_key_drift_across_seeds():
@@ -85,7 +78,6 @@ def test_summary_rejects_metric_key_drift_across_seeds():
                 {"test_acc": 0.7},
             ],
             seeds=[42, 43],
-            config=_config(),
         )
 
     with pytest.raises(
@@ -98,7 +90,6 @@ def test_summary_rejects_metric_key_drift_across_seeds():
                 {"test_acc": 0.7, "test_f1": 0.6},
             ],
             seeds=[42, 43],
-            config=_config(),
         )
 
 
@@ -120,9 +111,9 @@ def test_metric_result_rejects_empty_nonnumeric_boolean_and_nonscalar_values():
 
 def test_summary_rejects_noninteger_seed_values():
     with pytest.raises(TypeError, match="seed 0 must be an integer"):
-        build_run_summary([{"test_acc": 0.5}], [42.5], _config())
+        build_run_summary([{"test_acc": 0.5}], [42.5])
     with pytest.raises(TypeError, match="seed 0 must be an integer"):
-        build_run_summary([{"test_acc": 0.5}], [True], _config())
+        build_run_summary([{"test_acc": 0.5}], [True])
 
 
 def test_trainer_test_requires_exactly_one_explicit_population():
@@ -232,5 +223,7 @@ def test_pipeline_creates_one_root_for_all_iterations(
     ]
     assert (run_root / "all_results.csv").is_file()
     assert (run_root / "run_summary.json").is_file()
+    stored = json.loads((run_root / "run_summary.json").read_text(encoding="utf-8"))
+    assert "config_sha256" not in stored
     for checkpoint in result["best_checkpoints"]:
         Path(checkpoint).resolve().relative_to(run_root.resolve())
