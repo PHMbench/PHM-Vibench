@@ -192,7 +192,7 @@ def test_resolve_config_is_a_compatibility_view_of_analysis() -> None:
     assert resolved.path == analysis.path
 
 
-def test_inspector_and_public_analysis_return_same_config_and_hash(
+def test_inspector_and_public_analysis_return_same_config(
     tmp_path: Path,
 ) -> None:
     override = f"environment.output_dir={tmp_path / 'output'}"
@@ -200,14 +200,13 @@ def test_inspector_and_public_analysis_return_same_config_and_hash(
     inspected = inspect_config("smoke", overrides=[override])
 
     assert inspected.resolved == analysis.effective_config
-    assert inspected.effective_config_sha256 == analysis.effective_config_sha256
 
 
 def test_validator_accepts_the_same_maintained_smoke_config() -> None:
     assert validate_one(SMOKE_CONFIG) == []
 
 
-def test_preflight_reports_the_same_effective_hash(
+def test_preflight_reports_the_same_semantic_fields(
     tmp_path: Path,
 ) -> None:
     override = f"environment.output_dir={tmp_path / 'preflight'}"
@@ -215,8 +214,10 @@ def test_preflight_reports_the_same_effective_hash(
 
     report = preflight.run(["--config", "smoke", "--override", override])
 
-    assert report["effective_config_sha256"] == expected.effective_config_sha256
+    assert report["requested_config"] == "smoke"
+    assert report["resolved_config_path"] == str(expected.path)
     assert report["pipeline"] == expected.pipeline
+    assert not any("sha256" in key for key in report)
     assert not (tmp_path / "preflight").exists()
 
 
