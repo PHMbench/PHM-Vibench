@@ -2,43 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import numbers
 import statistics
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
-
-
-def _to_builtin(value: Any) -> Any:
-    if isinstance(value, SimpleNamespace):
-        return {key: _to_builtin(item) for key, item in vars(value).items()}
-    if isinstance(value, Mapping):
-        return {str(key): _to_builtin(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_to_builtin(item) for item in value]
-    if isinstance(value, Path):
-        return str(value)
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    if hasattr(value, "item"):
-        scalar = value.item()
-        if scalar is not value:
-            return _to_builtin(scalar)
-    raise TypeError(f"unsupported resolved config value: {type(value).__name__}")
-
-
-def resolved_config_sha256(config: Any) -> str:
-    payload = json.dumps(
-        _to_builtin(config),
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=True,
-        allow_nan=False,
-    ).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
 
 
 def _numeric_metric(value: Any, *, context: str) -> float:
@@ -97,9 +66,7 @@ def _normalized_seeds(seeds: Sequence[int]) -> list[int]:
     normalized: list[int] = []
     for index, seed in enumerate(seeds):
         if isinstance(seed, bool) or not isinstance(seed, numbers.Integral):
-            raise TypeError(
-                f"seed {index} must be an integer, got {seed!r}"
-            )
+            raise TypeError(f"seed {index} must be an integer, got {seed!r}")
         normalized.append(int(seed))
     return normalized
 
@@ -107,7 +74,6 @@ def _normalized_seeds(seeds: Sequence[int]) -> list[int]:
 def build_run_summary(
     results: Sequence[Mapping[str, Any]],
     seeds: Sequence[int],
-    config: Any,
 ) -> dict[str, Any]:
     """Summarize one identical finite metric set across every completed seed."""
 
@@ -140,36 +106,33 @@ def build_run_summary(
             "sample_std": statistics.stdev(values) if len(values) >= 2 else None,
         }
 
-    normalized_seeds = _normalized_seeds(seeds)
     return {
         "schema_version": 1,
-        "config_sha256": resolved_config_sha256(config),
         "iterations": len(normalized_results),
-        "seeds": normalized_seeds,
+        "seeds": _normalized_seeds(seeds),
         "metrics": metrics,
     }
 
 
 def write_run_summary(
     output_path: str | Path,
-    results: Sequence[Mapping[str, Any]],
-    seeds: Sequence[int],
-    config: Any,
+    summary: Mapping[str, Any],
 ) -> dict[str, Any]:
-    summary = build_run_summary(results=results, seeds=seeds, config=config)
+    """Write one already validated summary without recomputing it."""
+
+    payload = dict(summary)
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=True, allow_nan=False)
+        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True, allow_nan=False)
         + "\n",
         encoding="utf-8",
     )
-    return summary
+    return payload
 
 
 __all__ = [
     "build_run_summary",
     "normalize_metric_result",
-    "resolved_config_sha256",
     "write_run_summary",
 ]
