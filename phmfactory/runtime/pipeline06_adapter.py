@@ -1,13 +1,13 @@
 """Public compiled-config adapter for Pipeline 06.
 
 The scientific train/sample/eval implementation remains in
-``src.Pipeline_06_Generative_Modeling``.  This adapter owns only the public control-plane
+``src.Pipeline_06_Generative_Modeling``. This adapter owns only the public control-plane
 boundary: it consumes ``CompiledRunSpec.runtime_config()`` exactly once and delegates the
 selected stage without re-reading YAML, reapplying CLI overrides, or discovering a local
 machine file.
 
 Direct legacy imports of the original ``src`` module retain its explicit compatibility
-loader.  The maintained CLI resolves Pipeline 06 to this adapter.
+loader. The maintained CLI resolves Pipeline 06 to this adapter.
 """
 
 from __future__ import annotations
@@ -40,8 +40,8 @@ def _runtime_config(args: Any, implementation: Any) -> Any:
     return configs
 
 
-def pipeline(args: Any) -> list[Any]:
-    """Dispatch one explicit Pipeline 06 stage from the compiled config contract."""
+def pipeline(args: Any) -> dict[str, Any]:
+    """Dispatch one explicit Pipeline 06 stage and return a public result mapping."""
 
     import src.Pipeline_06_Generative_Modeling as implementation
 
@@ -74,4 +74,8 @@ def pipeline(args: Any) -> list[Any]:
             except Exception as ledger_error:
                 raise error from ledger_error
             raise
-    return results
+    return {
+        "status": "succeeded",
+        "stage": mode,
+        "iterations": results,
+    }
