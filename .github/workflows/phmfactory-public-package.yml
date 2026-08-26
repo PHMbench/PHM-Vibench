@@ -268,6 +268,8 @@ jobs:
           assert (data_root / "raw/Dummy_Data/dummy1.csv").is_file()
           assert (data_root / "raw/Dummy_Data/dummy2.csv").is_file()
 
+          expected = {"status": "succeeded", "dispatch": "wheel"}
+
           def pipeline(args):
               config = args.compiled_run_spec.runtime_config()
               assert config["data"]["metadata_file"] == "metadata_dummy.csv"
@@ -275,7 +277,7 @@ jobs:
               assert config["task"]["name"] == "classification"
               assert config["trainer"]["device"] == "cpu"
               assert args.effective_config_sha256 == args.compiled_run_spec.effective_config_sha256
-              return "wheel-dispatch-pass"
+              return expected
 
           real_import_module = cli.importlib.import_module
 
@@ -285,7 +287,7 @@ jobs:
               return real_import_module(name)
 
           with patch.object(cli.importlib, "import_module", side_effect=fake_import):
-              assert cli.main(["--config", "smoke"]) == "wheel-dispatch-pass"
+              assert cli.main(["--config", "smoke"]) == expected
 
           assert not Path("/tmp/results").exists()
           PY
