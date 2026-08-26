@@ -28,30 +28,61 @@ def _spec() -> CompiledRunSpec:
     )
 
 
-def test_envelope_records_success() -> None:
+def test_envelope_records_structured_success() -> None:
     envelope = ExecutionEnvelope(
         spec=_spec(),
         pipeline_module="src.Pipeline_01_Fault_Diagnosis",
     )
-    result = envelope.execute(SimpleNamespace(pipeline=lambda args: ["ok"]), object())
+    expected = {"status": "succeeded", "result_dir": "/tmp/run"}
+    result = envelope.execute(
+        SimpleNamespace(pipeline=lambda args: expected),
+        object(),
+    )
 
-    assert result == ["ok"]
+    assert result == expected
     assert envelope.status is ExecutionStatus.SUCCEEDED
     assert envelope.started_at is not None
     assert envelope.finished_at is not None
     assert envelope.error_type is None
 
 
-def test_envelope_rejects_none_as_ambiguous_success() -> None:
+@pytest.mark.parametrize(
+    "result",
+    (None, True, False, "success", [], (), {}),
+)
+def test_envelope_rejects_ambiguous_success_values(result) -> None:
     envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.invalid")
 
-    with pytest.raises(PipelineContractError, match="returned None"):
-        envelope.execute(SimpleNamespace(pipeline=lambda args: None), object())
+    with pytest.raises(PipelineContractError, match="must return|empty result"):
+        envelope.execute(
+            SimpleNamespace(pipeline=lambda args: result),
+            object(),
+        )
 
     assert envelope.status is ExecutionStatus.FAILED
     assert envelope.failure_stage == "pipeline"
     assert envelope.error_type == "PipelineContractError"
     assert envelope.finished_at is not None
+
+
+@pytest.mark.parametrize(
+    "result",
+    (
+        {"status": "failed", "error": "training failed"},
+        {"error": "training failed"},
+    ),
+)
+def test_envelope_rejects_returned_failure_mappings(result) -> None:
+    envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.invalid")
+
+    with pytest.raises(PipelineContractError, match="failures must raise"):
+        envelope.execute(
+            SimpleNamespace(pipeline=lambda args: result),
+            object(),
+        )
+
+    assert envelope.status is ExecutionStatus.FAILED
+    assert envelope.failure_stage == "pipeline"
 
 
 def test_envelope_rejects_missing_entrypoint() -> None:
@@ -81,13 +112,26 @@ def test_envelope_records_and_reraises_pipeline_error() -> None:
 
 def test_envelope_cannot_execute_twice() -> None:
     envelope = ExecutionEnvelope(spec=_spec(), pipeline_module="src.valid")
-    envelope.execute(SimpleNamespace(pipeline=lambda args: True), object())
+    envelope.execute(
+        SimpleNamespace(
+            pipeline=lambda args: {"status": "succeeded", "result_dir": "/tmp/run"}
+        ),
+        object(),
+    )
 
     with pytest.raises(PipelineContractError, match="cannot run from status"):
-        envelope.execute(SimpleNamespace(pipeline=lambda args: True), object())
+        envelope.execute(
+            SimpleNamespace(
+                pipeline=lambda args: {
+                    "status": "succeeded",
+                    "result_dir": "/tmp/run",
+                }
+            ),
+            object(),
+        )
 
 
-def test_cli_does_not_print_completion_when_pipeline_returns_none(
+def test_cli_does_not_print_completion_when_pipeline_result_is_invalid(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -113,7 +157,7 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
-        lambda name: SimpleNamespace(pipeline=lambda args: None),
+        lambda name: SimpleNamespace(pipeline=lambda args: "success"),
     )
 
     args = argparse.Namespace(
@@ -126,7 +170,9 @@ def test_cli_does_not_print_completion_when_pipeline_returns_none(
     with pytest.raises(PipelineContractError):
         cli.run(args)
 
-    assert "完成所有实验" not in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "run=completed" not in output
+    assert "完成所有实验" not in output
     assert args.execution_envelope.status is ExecutionStatus.FAILED
     assert not hasattr(args, "run_manifest_path")
     assert not (tmp_path / "outputs").exists()

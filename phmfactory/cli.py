@@ -64,11 +64,9 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     ).pipeline
 
 
-def _print_direct_outputs(result: Any) -> None:
+def _print_direct_outputs(result: Mapping[str, Any]) -> None:
     """Print canonical user outputs returned directly by a maintained Pipeline."""
 
-    if not isinstance(result, Mapping):
-        return
     for key in DIRECT_OUTPUT_KEYS:
         value = result.get(key)
         if value is not None:
@@ -86,7 +84,7 @@ def _print_direct_outputs(result: Any) -> None:
         )
 
 
-def run(args: argparse.Namespace) -> Any:
+def run(args: argparse.Namespace) -> Mapping[str, Any]:
     """Analyze, authorize, execute, and return one Pipeline invocation.
 
     Configuration composition occurs exactly once in :func:`analyze_config`. Protected
@@ -138,7 +136,7 @@ def run(args: argparse.Namespace) -> Any:
 
     result = envelope.execute(pipeline_module, args)
     _print_direct_outputs(result)
-    print("完成所有实验！")
+    print("run=completed")
     return result
 
 

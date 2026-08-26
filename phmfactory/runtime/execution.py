@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -28,6 +29,33 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _require_success_mapping(result: Any, *, pipeline: str) -> Mapping[str, Any]:
+    """Return one non-empty success mapping or reject an ambiguous result."""
+
+    if not isinstance(result, Mapping):
+        raise PipelineContractError(
+            f"Pipeline {pipeline!r} returned {type(result).__name__}; "
+            "successful Pipelines must return a non-empty result mapping"
+        )
+    if not result:
+        raise PipelineContractError(
+            f"Pipeline {pipeline!r} returned an empty result mapping"
+        )
+
+    status = result.get("status")
+    if status is not None and status != "succeeded":
+        raise PipelineContractError(
+            f"Pipeline {pipeline!r} returned status={status!r}; "
+            "failures must raise their original exception"
+        )
+    if "error" in result and status != "succeeded":
+        raise PipelineContractError(
+            f"Pipeline {pipeline!r} returned an error mapping; "
+            "failures must raise their original exception"
+        )
+    return result
+
+
 @dataclass
 class ExecutionEnvelope:
     """Enforce one Pipeline lifecycle while retaining the original failure."""
@@ -52,8 +80,8 @@ class ExecutionEnvelope:
         self.error_type = type(error).__name__
         self.error_message = str(error)
 
-    def execute(self, module: ModuleType | Any, args: Any) -> Any:
-        """Execute exactly once and reject missing or ambiguous success results."""
+    def execute(self, module: ModuleType | Any, args: Any) -> Mapping[str, Any]:
+        """Execute exactly once and require one structured success result."""
 
         if self.status is not ExecutionStatus.PENDING:
             raise PipelineContractError(
@@ -71,12 +99,10 @@ class ExecutionEnvelope:
         self.status = ExecutionStatus.RUNNING
         self.started_at = _utc_now()
         try:
-            result = entrypoint(args)
-            if result is None:
-                raise PipelineContractError(
-                    f"Pipeline {self.spec.pipeline!r} returned None; "
-                    "successful Pipelines must return an explicit result"
-                )
+            result = _require_success_mapping(
+                entrypoint(args),
+                pipeline=self.spec.pipeline,
+            )
         except BaseException as error:
             self.record_failure(error, stage="pipeline")
             raise
