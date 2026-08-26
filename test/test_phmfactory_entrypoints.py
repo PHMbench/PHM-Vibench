@@ -121,8 +121,9 @@ def test_run_dispatches_analyzed_canonical_module(
         pipeline="Pipeline_04_Unified_Evaluation",
         overrides={"pipeline": "Pipeline_04_unified_metric"},
     )
+    expected = {"status": "succeeded", "marker": "sentinel"}
 
-    def pipeline(args: argparse.Namespace) -> str:
+    def pipeline(args: argparse.Namespace) -> dict[str, str]:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
         observed["resolved_config_path"] = args.resolved_config_path
@@ -133,7 +134,7 @@ def test_run_dispatches_analyzed_canonical_module(
         observed["effective_config_sha256"] = args.effective_config_sha256
         observed["run_spec_sha256"] = args.run_spec_sha256
         observed["notes"] = args.notes
-        return "sentinel"
+        return expected
 
     def fake_import(name: str) -> SimpleNamespace:
         observed["module"] = name
@@ -156,7 +157,7 @@ def test_run_dispatches_analyzed_canonical_module(
         allow_experimental=True,
     )
 
-    assert cli.run(args) == "sentinel"
+    assert cli.run(args) == expected
     compiled = observed.pop("compiled_run_spec")
     resolved_data = observed.pop("resolved_config_data")
     run_spec_sha256 = observed.pop("run_spec_sha256")
@@ -185,12 +186,13 @@ def test_run_passes_maintained_preset_path_to_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
+    expected = {"status": "succeeded"}
 
-    def pipeline(args: argparse.Namespace) -> bool:
+    def pipeline(args: argparse.Namespace) -> dict[str, str]:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
         observed["effective_config_sha256"] = args.effective_config_sha256
-        return True
+        return expected
 
     monkeypatch.setattr(
         cli.importlib,
@@ -205,7 +207,7 @@ def test_run_passes_maintained_preset_path_to_runtime(
         override=[f"environment.output_dir={tmp_path / 'runs'}"],
     )
 
-    assert cli.run(args) is True
+    assert cli.run(args) == expected
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
     assert len(str(observed["effective_config_sha256"])) == 64
@@ -375,14 +377,15 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
+    expected = {"status": "succeeded", "dispatch": "packaged"}
 
-    def pipeline(args: argparse.Namespace) -> str:
+    def pipeline(args: argparse.Namespace) -> dict[str, str]:
         config = args.compiled_run_spec.runtime_config()
         observed["data"] = config["data"]["metadata_file"]
         observed["model"] = config["model"]["name"]
         observed["task"] = config["task"]["name"]
         observed["trainer"] = config["trainer"]["device"]
-        return "dispatched"
+        return expected
 
     real_import_module = cli.importlib.import_module
 
@@ -401,7 +404,7 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
         override=None,
     )
 
-    assert cli.run(args) == "dispatched"
+    assert cli.run(args) == expected
     assert observed == {
         "data": "metadata_dummy.csv",
         "model": "M_01_ISFM",
