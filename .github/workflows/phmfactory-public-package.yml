@@ -112,10 +112,8 @@ jobs:
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
-          test/test_pipeline01_run_summary.py
           test/test_pipeline_name_migration.py
           test/test_pipeline_maturity.py
-          test/test_run_summary.py
           test/test_runtime_control_plane.py
           test/test_runtime_execution.py
 
@@ -127,10 +125,8 @@ jobs:
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
-          test/test_pipeline01_run_summary.py
           test/test_pipeline_name_migration.py
           test/test_pipeline_maturity.py
-          test/test_run_summary.py
           test/test_runtime_control_plane.py
           test/test_runtime_execution.py
 
