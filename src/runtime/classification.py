@@ -261,14 +261,6 @@ def _public_result(
 
     result_root = run_root.resolve()
     resolved_checkpoints = [path.resolve() for path in best_checkpoints]
-    for checkpoint in resolved_checkpoints:
-        try:
-            checkpoint.relative_to(result_root)
-        except ValueError as exc:
-            raise RuntimeError(
-                f"best checkpoint is outside result_dir: {checkpoint}"
-            ) from exc
-
     test_metrics = result_root / "all_results.csv"
     run_summary = result_root / "run_summary.json"
     if summary is not None:
