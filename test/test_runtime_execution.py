@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ConfigAnalysis, ResolvedConfig, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis, ResolvedConfig
 from phmfactory.runtime import (
     CompiledRunSpec,
     ExecutionEnvelope,
@@ -151,7 +151,7 @@ def test_cli_does_not_print_completion_when_pipeline_result_is_invalid(
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(data),
+        effective_config_sha256="internal-only",
     )
     monkeypatch.setattr(cli, "analyze_config", lambda *args, **kwargs: analysis)
     monkeypatch.setattr(
