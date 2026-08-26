@@ -30,7 +30,6 @@ runtime or user guidance.
 - [Contributing](../CONTRIBUTING.md)
 - [Developer guide](developer_guide.md)
 - [Testing](testing.md)
-- [User-experience review prompts](USER_EXPERIENCE_REVIEW_PROMPTS.md)
 - [Data Factory contribution guide](../src/data_factory/contributing.md)
 - [Model Factory contribution guide](../src/model_factory/contributing.md)
 - [Task Factory contribution guide](../src/task_factory/contributing.md)
