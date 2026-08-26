@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pandas as pd
 from pytorch_lightning import seed_everything
@@ -122,6 +124,45 @@ def _set_environment(args_environment: Any) -> None:
             print(f"[INFO] 设置环境变量: {key}={value}")
 
 
+def _build_experiment_label(configs: Any) -> str:
+    """Return the human-readable directory prefix for one experiment."""
+
+    dataset_name = Path(str(configs.data.metadata_file)).name
+    model_name = str(configs.model.name)
+    task_name = f"{configs.task.type}{configs.task.name}"
+    if model_name == "ISFM":
+        model_name = (
+            f"ISFM_{configs.model.embedding}_"
+            f"{configs.model.backbone}_{configs.model.task_head}"
+        )
+    return f"{dataset_name}/M_{model_name}/T_{task_name}"
+
+
+def _create_invocation_root(configs: Any) -> tuple[Path, str]:
+    """Create the one result root owned by this public invocation."""
+
+    output_dir = getattr(configs.environment, "output_dir", None)
+    if not isinstance(output_dir, str) or not output_dir.strip():
+        raise ValueError("environment.output_dir must be a non-empty string")
+
+    label = _build_experiment_label(configs)
+    invocation_id = (
+        datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+        + "-"
+        + uuid4().hex[:8]
+    )
+    name = f"{label}/{invocation_id}"
+    root = Path(output_dir).expanduser() / name
+    root.mkdir(parents=True, exist_ok=False)
+    return root.resolve(), name
+
+
+def _iteration_path(run_root: str | Path, iteration: int) -> Path:
+    """Return one iteration directory below an existing invocation root."""
+
+    return Path(run_root) / f"iter_{iteration}"
+
+
 def _close_data_factory(data_factory: Any) -> None:
     data = getattr(data_factory, "data", None)
     close = getattr(data, "close", None)
@@ -132,8 +173,8 @@ def _close_data_factory(data_factory: Any) -> None:
 def _result_row(result: Any) -> dict[str, float]:
     """Return one complete metric population from ``trainer.test``.
 
-    Lightning returns one mapping per test dataloader.  The maintained classification
-    estimator currently defines exactly one test population.  Multiple mappings are
+    Lightning returns one mapping per test dataloader. The maintained classification
+    estimator currently defines exactly one test population. Multiple mappings are
     therefore ambiguous and must be handled by an explicit multi-population protocol
     rather than silently discarding every item after the first.
     """
@@ -208,7 +249,7 @@ def _write_aggregate_outputs(
 
 def _public_result(
     *,
-    final_path: Path,
+    run_root: Path,
     best_checkpoints: list[Path],
     all_results: list[dict[str, Any]],
     summary: dict[str, Any] | None,
@@ -218,7 +259,8 @@ def _public_result(
     if not best_checkpoints:
         raise RuntimeError("classification completed without a best checkpoint")
 
-    result_root = final_path.parent.resolve()
+    result_root = run_root.resolve()
+    resolved_checkpoints = [path.resolve() for path in best_checkpoints]
     test_metrics = result_root / "all_results.csv"
     run_summary = result_root / "run_summary.json"
     if summary is not None:
@@ -230,8 +272,8 @@ def _public_result(
     return {
         "status": "succeeded",
         "result_dir": str(result_root),
-        "best_checkpoint": str(best_checkpoints[-1]),
-        "best_checkpoints": [str(path) for path in best_checkpoints],
+        "best_checkpoint": str(resolved_checkpoints[-1]),
+        "best_checkpoints": [str(path) for path in resolved_checkpoints],
         "test_metrics": str(test_metrics) if summary is not None else None,
         "run_summary": str(run_summary) if summary is not None else None,
         "primary_metrics": dict(summary.get("metrics", {})) if summary else {},
@@ -289,10 +331,11 @@ def run_classification_pipeline(
         raise TypeError("trainer.test_after_fit must be a boolean")
     _set_environment(args_environment)
 
+    run_root, name = _create_invocation_root(configs)
     all_results: list[dict[str, Any]] = []
     run_seeds: list[int] = []
     best_checkpoints: list[Path] = []
-    final_path: Path | None = None
+    last_iteration_path: Path | None = None
 
     for iteration in range(iterations):
         print(
@@ -300,10 +343,9 @@ def run_classification_pipeline(
             f"[INFO] 开始实验迭代 {iteration + 1}/{iterations}\n"
             f"{'=' * 50}"
         )
-        raw_path, name = path_name(configs, iteration)
-        path = Path(raw_path)
-        path.mkdir(parents=True, exist_ok=True)
-        final_path = path
+        path = _iteration_path(run_root, iteration)
+        path.mkdir(exist_ok=False)
+        last_iteration_path = path
         args_trainer.logger_name = name
 
         current_seed = base_seed + iteration
@@ -321,7 +363,7 @@ def run_classification_pipeline(
             args_trainer=args_trainer,
             iteration=iteration,
             path=path,
-            name=str(name),
+            name=name,
         )
         lab_started = False
         try:
@@ -387,27 +429,27 @@ def run_classification_pipeline(
             if lab_started:
                 close_lab()
 
-    if final_path is None:
+    if last_iteration_path is None:
         raise RuntimeError("classification Pipeline produced no iteration path")
     if not test_after_fit:
         print(f"\n{'=' * 50}\n[INFO] 训练完成；配置禁止测试\n{'=' * 50}")
         return _public_result(
-            final_path=final_path,
+            run_root=run_root,
             best_checkpoints=best_checkpoints,
             all_results=all_results,
             summary=None,
         )
 
     summary = _write_aggregate_outputs(
-        final_path.parent,
-        final_path,
+        run_root,
+        last_iteration_path,
         all_results,
         run_seeds,
         configs,
     )
     print(f"\n{'=' * 50}\n[INFO] 所有实验已完成\n{'=' * 50}")
     return _public_result(
-        final_path=final_path,
+        run_root=run_root,
         best_checkpoints=best_checkpoints,
         all_results=all_results,
         summary=summary,

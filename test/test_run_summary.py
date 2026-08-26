@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from src.runtime import classification
 from src.runtime.classification import _result_row
 from src.utils.run_summary import (
     build_run_summary,
@@ -19,6 +21,22 @@ def _config():
         pipeline="Pipeline_01_Fault_Diagnosis",
         environment=SimpleNamespace(seed=42, iterations=2),
         model=SimpleNamespace(type="Transformer", name="TSLTransformer"),
+    )
+
+
+def _runtime_config(tmp_path: Path, *, iterations: int = 3) -> SimpleNamespace:
+    return SimpleNamespace(
+        pipeline="Pipeline_01_Fault_Diagnosis",
+        environment=SimpleNamespace(
+            project="runtime-test",
+            seed=7,
+            iterations=iterations,
+            output_dir=str(tmp_path),
+        ),
+        data=SimpleNamespace(data_dir=str(tmp_path), metadata_file="dummy.csv"),
+        model=SimpleNamespace(type="dummy", name="dummy"),
+        task=SimpleNamespace(type="DG", name="classification"),
+        trainer=SimpleNamespace(test_after_fit=True),
     )
 
 
@@ -118,3 +136,101 @@ def test_trainer_test_requires_exactly_one_explicit_population():
         _result_row([[0.5]])
     with pytest.raises(TypeError, match="scalar real number"):
         _result_row([{"test_acc": "0.5"}])
+
+
+def test_invocation_root_is_unique_and_owns_iteration_paths(tmp_path):
+    config = _runtime_config(tmp_path)
+
+    first_root, first_name = classification._create_invocation_root(config)
+    second_root, second_name = classification._create_invocation_root(config)
+
+    assert first_root.is_dir()
+    assert second_root.is_dir()
+    assert first_root != second_root
+    assert first_name != second_name
+    assert {
+        classification._iteration_path(first_root, index).parent
+        for index in range(3)
+    } == {first_root}
+
+
+def test_pipeline_creates_one_root_for_all_iterations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _runtime_config(tmp_path)
+    run_root = tmp_path / "one-run"
+    root_calls = 0
+    trainer_calls = 0
+
+    class DataFactory:
+        data = SimpleNamespace(close=lambda: None)
+
+        def get_metadata(self):
+            return {0: {"Label": 0, "Domain_id": 0}}
+
+        def get_dataloader(self, split: str):
+            return split
+
+    class Trainer:
+        def __init__(self, path: str, value: float):
+            self.value = value
+            self.checkpoint = Path(path) / "best.ckpt"
+            self.checkpoint.write_text("checkpoint\n", encoding="utf-8")
+
+        def fit(self, *args):
+            return None
+
+        def test(self, *args):
+            return [{"test_acc": self.value}]
+
+    def create_root(configs):
+        nonlocal root_calls
+        assert configs is config
+        root_calls += 1
+        run_root.mkdir()
+        return run_root, "one-run"
+
+    def build_trainer(*args):
+        nonlocal trainer_calls
+        trainer_calls += 1
+        return Trainer(args[-1], float(trainer_calls))
+
+    monkeypatch.setattr(classification, "load_runtime_config", lambda args: config)
+    monkeypatch.setattr(classification, "_create_invocation_root", create_root)
+    monkeypatch.setattr(classification, "seed_everything", lambda seed: None)
+    monkeypatch.setattr(classification, "init_lab", lambda *args: None)
+    monkeypatch.setattr(classification, "close_lab", lambda: None)
+    monkeypatch.setattr(classification, "build_data", lambda *args: DataFactory())
+    monkeypatch.setattr(
+        classification,
+        "build_model",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(classification, "build_task", lambda **kwargs: object())
+    monkeypatch.setattr(classification, "build_trainer", build_trainer)
+    monkeypatch.setattr(
+        classification,
+        "load_best_model_checkpoint",
+        lambda task, trainer: task,
+    )
+    monkeypatch.setattr(
+        classification,
+        "_best_checkpoint_path",
+        lambda trainer: trainer.checkpoint.resolve(),
+    )
+
+    result = classification.run_classification_pipeline(object())
+
+    assert root_calls == 1
+    assert trainer_calls == 3
+    assert result["result_dir"] == str(run_root.resolve())
+    assert [path.name for path in sorted(run_root.glob("iter_*"))] == [
+        "iter_0",
+        "iter_1",
+        "iter_2",
+    ]
+    assert (run_root / "all_results.csv").is_file()
+    assert (run_root / "run_summary.json").is_file()
+    for checkpoint in result["best_checkpoints"]:
+        Path(checkpoint).resolve().relative_to(run_root.resolve())
