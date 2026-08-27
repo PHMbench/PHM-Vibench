@@ -1,35 +1,26 @@
-"""Public API for the model factory package."""
+"""Public API for model construction.
+
+Importing a concrete model module must not initialize the full training stack.
+Factory internals are therefore loaded only when a public function is called.
+"""
+
+from __future__ import annotations
 
 from typing import Any
 
-from .model_factory import (
-    model_factory,
-    resolve_model_module,
-)
+
+def resolve_model_module(args_model: Any) -> str:
+    """Return the import path for the requested model module."""
+    from .model_factory import resolve_model_module as implementation
+
+    return implementation(args_model)
 
 
 def build_model(args: Any, metadata: Any = None) -> Any:
-    """Instantiate a model from configuration.
+    """Instantiate a configured model, optionally using dataset metadata."""
+    from .model_factory import model_factory as implementation
 
-    Parameters
-    ----------
-    args : Any
-        Namespace or dictionary with model options.
-    metadata : Any, optional
-        Dataset metadata used to compute ``num_classes``.
-
-    Returns
-    -------
-    Any
-        Instantiated model object.
-    """
-
-    return model_factory(args, metadata=metadata)
+    return implementation(args, metadata=metadata)
 
 
-
-# public exports
-__all__ = [
-    "build_model",
-    "resolve_model_module",
-]
+__all__ = ["build_model", "resolve_model_module"]
