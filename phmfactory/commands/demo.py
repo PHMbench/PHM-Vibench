@@ -42,8 +42,8 @@ def run(
         config_path=None,
         notes=args.notes,
         override=[
-            f"data.data_dir={packaged_data_dir}",
             *DEFAULT_OVERRIDES,
+            f"data.data_dir={packaged_data_dir}",
             *(args.override or ()),
         ],
         allow_experimental=False,
