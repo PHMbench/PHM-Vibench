@@ -19,7 +19,11 @@ def test_demo_uses_bundled_data_and_preserves_user_override_order() -> None:
     assert result == "ok"
     args = observed[0]
     packaged_data_dir = Path(str(resources.files("data"))).resolve()
+    packaged_override = f"data.data_dir={packaged_data_dir}"
+    user_override = f"data.data_dir={custom_data_dir}"
+
     assert (packaged_data_dir / "metadata_dummy.csv").is_file()
     assert (packaged_data_dir / "raw" / "Dummy_Data" / "dummy1.csv").is_file()
-    assert args.override[0] == f"data.data_dir={packaged_data_dir}"
-    assert args.override[-1] == f"data.data_dir={custom_data_dir}"
+    assert args.override[:3] == list(demo.DEFAULT_OVERRIDES)
+    assert args.override.index(packaged_override) < args.override.index(user_override)
+    assert args.override[-1] == user_override
