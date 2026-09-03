@@ -6,12 +6,16 @@ on:
       - "phmfactory/**"
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
+      - "src/Pipeline_01_Fault_Diagnosis.py"
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
+      - "src/data_factory/**"
+      - "src/model_factory/**"
       - "src/runtime/classification.py"
+      - "src/task_factory/**"
+      - "src/trainer_factory/**"
       - "src/utils/run_summary.py"
-      - "src/trainer_factory/Default_trainer.py"
-      - "src/trainer_factory/extensions/**"
+      - "src/utils/utils.py"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
@@ -25,6 +29,7 @@ on:
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
       - "test/test_config_analysis_parity.py"
+      - "test/test_demo_packaged_data.py"
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
@@ -42,12 +47,16 @@ on:
       - "phmfactory/**"
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
+      - "src/Pipeline_01_Fault_Diagnosis.py"
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
+      - "src/data_factory/**"
+      - "src/model_factory/**"
       - "src/runtime/classification.py"
+      - "src/task_factory/**"
+      - "src/trainer_factory/**"
       - "src/utils/run_summary.py"
-      - "src/trainer_factory/Default_trainer.py"
-      - "src/trainer_factory/extensions/**"
+      - "src/utils/utils.py"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
@@ -61,6 +70,7 @@ on:
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
       - "test/test_config_analysis_parity.py"
+      - "test/test_demo_packaged_data.py"
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
@@ -78,9 +88,9 @@ permissions:
 
 jobs:
   package-contract:
-    name: Public package and entrypoint contract
+    name: Public package and installed-wheel user path
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
 
     steps:
       - name: Check out repository
@@ -109,6 +119,7 @@ jobs:
           src/utils/run_summary.py
           main.py
           test/test_config_analysis_parity.py
+          test/test_demo_packaged_data.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
@@ -122,6 +133,7 @@ jobs:
           python -m pytest -vv
           --junitxml=pytest-public-package.xml
           test/test_config_analysis_parity.py
+          test/test_demo_packaged_data.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
@@ -197,7 +209,7 @@ jobs:
           assert not any(name.startswith(("paper/", "dev/", "results/")) for name in names)
           PY
 
-      - name: Install wheel in a clean environment
+      - name: Install wheel with normal dependency resolution
         shell: bash
         run: |
           set -euxo pipefail
@@ -205,45 +217,48 @@ jobs:
             /tmp/phmfactory-wheel \
             /tmp/phmfactory-console-preflight \
             /tmp/phmfactory-module-preflight \
+            /tmp/phmfactory-wheel-results \
             /tmp/results
           python -m venv /tmp/phmfactory-wheel
-          /tmp/phmfactory-wheel/bin/python -m pip install --no-deps dist/*.whl
-          /tmp/phmfactory-wheel/bin/python -m pip install "PyYAML>=6" "pydantic>=2"
-          /tmp/phmfactory-wheel/bin/python -c "import phmfactory, phmfactory.commands, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
+          /tmp/phmfactory-wheel/bin/python -m pip install --upgrade pip
+          /tmp/phmfactory-wheel/bin/python -m pip install \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==2.6.0" \
+            "torchvision==0.21.0" \
+            "torchaudio==2.6.0"
+          /tmp/phmfactory-wheel/bin/python -m pip install dist/*.whl
+          /tmp/phmfactory-wheel/bin/python -m pip check
+          /tmp/phmfactory-wheel/bin/python -c \
+            "import phmfactory, phmfactory.commands, phmfactory.config, phmfactory.runtime, src; print(phmfactory.__version__)"
 
-      - name: Verify clean installed root help
-        run: /tmp/phmfactory-wheel/bin/phmfactory --help
-
-      - name: Verify clean installed module help
-        run: /tmp/phmfactory-wheel/bin/python -m phmfactory --help
-
-      - name: Verify clean installed doctor help
-        run: /tmp/phmfactory-wheel/bin/phmfactory doctor --help
-
-      - name: Verify clean installed demo help
-        run: /tmp/phmfactory-wheel/bin/phmfactory demo --help
-
-      - name: Verify clean installed console preflight exits zero
-        run: >-
-          /tmp/phmfactory-wheel/bin/phmfactory preflight
-          --config smoke
-          --override environment.output_dir=/tmp/phmfactory-console-preflight
-
-      - name: Verify clean installed module preflight exits zero
-        run: >-
-          /tmp/phmfactory-wheel/bin/python -m phmfactory preflight
-          --config smoke
-          --override environment.output_dir=/tmp/phmfactory-module-preflight
-
-      - name: Verify preflight leaves configured targets absent
+      - name: Verify installed help and doctor outside the checkout
+        shell: bash
         run: |
+          set -euxo pipefail
+          cd /tmp
+          /tmp/phmfactory-wheel/bin/phmfactory --help
+          /tmp/phmfactory-wheel/bin/python -m phmfactory --help
+          /tmp/phmfactory-wheel/bin/phmfactory doctor
+
+      - name: Verify installed preflight has no runtime side effects
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd /tmp
+          /tmp/phmfactory-wheel/bin/phmfactory preflight \
+            --config smoke \
+            --override environment.output_dir=/tmp/phmfactory-console-preflight
+          /tmp/phmfactory-wheel/bin/python -m phmfactory preflight \
+            --config smoke \
+            --override environment.output_dir=/tmp/phmfactory-module-preflight
           test ! -e /tmp/phmfactory-console-preflight
           test ! -e /tmp/phmfactory-module-preflight
 
-      - name: Verify invalid clean installed preflight exits non-zero
+      - name: Verify invalid installed preflight exits non-zero
         shell: bash
         run: |
           set -euo pipefail
+          cd /tmp
           if /tmp/phmfactory-wheel/bin/phmfactory preflight \
             --config /tmp/phmfactory-does-not-exist.yaml \
             >/tmp/phmfactory-invalid-preflight.log 2>&1; then
@@ -253,49 +268,96 @@ jobs:
           fi
           grep -F "was not found" /tmp/phmfactory-invalid-preflight.log
 
-      - name: Verify clean installed experiment dispatch uses compiled config
+      - name: Run the real installed Dummy lifecycle outside the checkout
         shell: bash
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          WANDB_MODE: disabled
         run: |
           set -euxo pipefail
           cd /tmp
+          /tmp/phmfactory-wheel/bin/phmfactory demo \
+            --override environment.output_dir=/tmp/phmfactory-wheel-results \
+            2>&1 | tee /tmp/phmfactory-wheel-demo.log
+
+      - name: Verify installed Dummy direct results
+        run: |
           /tmp/phmfactory-wheel/bin/python - <<'PY'
+          import json
+          import math
           from pathlib import Path
-          from types import SimpleNamespace
-          from unittest.mock import patch
 
-          import data
-          from phmfactory import cli
-          from phmfactory.config import analyze_config
+          log_path = Path("/tmp/phmfactory-wheel-demo.log")
+          text = log_path.read_text(encoding="utf-8")
+          values = {}
+          for line in text.splitlines():
+              for key in (
+                  "result_dir",
+                  "best_checkpoint",
+                  "test_metrics",
+                  "run_summary",
+                  "primary_metrics",
+              ):
+                  prefix = f"{key}="
+                  if line.startswith(prefix):
+                      values[key] = line[len(prefix):]
 
-          analysis = analyze_config("smoke")
-          assert analysis.path.is_file(), analysis.path
-          assert analysis.effective_config["data"]["metadata_file"] == "metadata_dummy.csv"
-          data_root = Path(data.__file__).resolve().parent
-          assert (data_root / "metadata_dummy.csv").is_file()
-          assert (data_root / "raw/Dummy_Data/dummy1.csv").is_file()
-          assert (data_root / "raw/Dummy_Data/dummy2.csv").is_file()
+          missing = sorted(
+              key
+              for key in (
+                  "result_dir",
+                  "best_checkpoint",
+                  "test_metrics",
+                  "run_summary",
+                  "primary_metrics",
+              )
+              if key not in values
+          )
+          assert not missing, (missing, text[-4000:])
 
-          expected = {"status": "succeeded", "dispatch": "wheel"}
+          result_dir = Path(values["result_dir"]).resolve()
+          assert result_dir.is_dir(), result_dir
+          for key in ("best_checkpoint", "test_metrics", "run_summary"):
+              path = Path(values[key]).resolve()
+              assert path.is_file(), (key, path)
+              assert path == result_dir or result_dir in path.parents, (key, path, result_dir)
 
-          def pipeline(args):
-              config = args.compiled_run_spec.runtime_config()
-              assert config["data"]["metadata_file"] == "metadata_dummy.csv"
-              assert config["model"]["name"] == "M_01_ISFM"
-              assert config["task"]["name"] == "classification"
-              assert config["trainer"]["device"] == "cpu"
-              assert not hasattr(args, "effective_config_sha256")
-              assert not hasattr(args, "run_spec_sha256")
-              return expected
+          primary_metrics = json.loads(values["primary_metrics"])
+          assert primary_metrics, primary_metrics
 
-          real_import_module = cli.importlib.import_module
+          def require_finite(value):
+              if value is None:
+                  return
+              if isinstance(value, bool):
+                  raise AssertionError(f"boolean metric value: {value!r}")
+              if isinstance(value, (int, float)):
+                  assert math.isfinite(float(value)), value
+                  return
+              if isinstance(value, dict):
+                  for item in value.values():
+                      require_finite(item)
+                  return
+              if isinstance(value, list):
+                  for item in value:
+                      require_finite(item)
+                  return
+              raise AssertionError(f"unexpected metric value: {value!r}")
 
-          def fake_import(name):
-              if name == "src.Pipeline_01_Fault_Diagnosis":
-                  return SimpleNamespace(pipeline=pipeline)
-              return real_import_module(name)
-
-          with patch.object(cli.importlib, "import_module", side_effect=fake_import):
-              assert cli.main(["--config", "smoke"]) == expected
-
-          assert not Path("/tmp/results").exists()
+          require_finite(primary_metrics)
+          summary = json.loads(Path(values["run_summary"]).read_text(encoding="utf-8"))
+          assert summary.get("metrics"), summary
+          assert "sha256" not in text.lower()
           PY
+
+      - name: Upload installed-wheel diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-installed-wheel-user-path
+          path: |
+            /tmp/phmfactory-wheel-demo.log
+            /tmp/phmfactory-invalid-preflight.log
+            /tmp/phmfactory-wheel-results/**/run_summary.json
+            /tmp/phmfactory-wheel-results/**/all_results.csv
+          if-no-files-found: warn

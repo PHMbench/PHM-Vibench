@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable, Sequence
+from importlib import resources
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 
@@ -34,11 +37,18 @@ def run(
     experiment_runner: Callable[[argparse.Namespace], Any],
 ) -> Any:
     args = build_parser().parse_args(list(argv))
-    experiment_args = argparse.Namespace(
-        config="smoke",
-        config_path=None,
-        notes=args.notes,
-        override=[*DEFAULT_OVERRIDES, *(args.override or ())],
-        allow_experimental=False,
-    )
-    return experiment_runner(experiment_args)
+    packaged_data_dir = Path(str(resources.files("data"))).resolve()
+    with TemporaryDirectory(prefix="phmfactory-demo-cache-") as cache_dir:
+        experiment_args = argparse.Namespace(
+            config="smoke",
+            config_path=None,
+            notes=args.notes,
+            override=[
+                *DEFAULT_OVERRIDES,
+                f"data.data_dir={packaged_data_dir}",
+                f"data.cache_dir={cache_dir}",
+                *(args.override or ()),
+            ],
+            allow_experimental=False,
+        )
+        return experiment_runner(experiment_args)
