@@ -6,12 +6,16 @@ on:
       - "phmfactory/**"
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
+      - "src/Pipeline_01_Fault_Diagnosis.py"
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
+      - "src/data_factory/**"
+      - "src/model_factory/**"
       - "src/runtime/classification.py"
+      - "src/task_factory/**"
+      - "src/trainer_factory/**"
       - "src/utils/run_summary.py"
-      - "src/trainer_factory/Default_trainer.py"
-      - "src/trainer_factory/extensions/**"
+      - "src/utils/utils.py"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
@@ -25,6 +29,7 @@ on:
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
       - "test/test_config_analysis_parity.py"
+      - "test/test_demo_packaged_data.py"
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
@@ -42,12 +47,16 @@ on:
       - "phmfactory/**"
       - "scripts/config_inspect.py"
       - "scripts/validate_configs.py"
+      - "src/Pipeline_01_Fault_Diagnosis.py"
       - "src/configs/config_utils.py"
       - "src/config_schema/**"
+      - "src/data_factory/**"
+      - "src/model_factory/**"
       - "src/runtime/classification.py"
+      - "src/task_factory/**"
+      - "src/trainer_factory/**"
       - "src/utils/run_summary.py"
-      - "src/trainer_factory/Default_trainer.py"
-      - "src/trainer_factory/extensions/**"
+      - "src/utils/utils.py"
       - "main.py"
       - "pyproject.toml"
       - "requirements.txt"
@@ -61,6 +70,7 @@ on:
       - "data/metadata_dummy.csv"
       - "data/raw/Dummy_Data/**"
       - "test/test_config_analysis_parity.py"
+      - "test/test_demo_packaged_data.py"
       - "test/test_phmfactory_commands.py"
       - "test/test_phmfactory_entrypoints.py"
       - "test/test_phmfactory_config_resolver.py"
@@ -109,6 +119,7 @@ jobs:
           src/utils/run_summary.py
           main.py
           test/test_config_analysis_parity.py
+          test/test_demo_packaged_data.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
@@ -122,6 +133,7 @@ jobs:
           python -m pytest -vv
           --junitxml=pytest-public-package.xml
           test/test_config_analysis_parity.py
+          test/test_demo_packaged_data.py
           test/test_phmfactory_commands.py
           test/test_phmfactory_entrypoints.py
           test/test_phmfactory_config_resolver.py
