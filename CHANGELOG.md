@@ -64,6 +64,7 @@ See:
 ### Changed
 
 - `main.py` honors `--override pipeline=<PipelineName>` when selecting the Pipeline module.
+- `base_task_cddg_fewshot` registry text matches the actual `GFS` task type.
 
 ### Validation
 
