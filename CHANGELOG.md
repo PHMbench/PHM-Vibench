@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-05 — Plan A main-promotion preparation
+
+Upgrade scope, compatibility changes, and the existing THU validation boundary are
+recorded in [`doc/changelog/2026-09-05-dev-to-main.md`](doc/changelog/2026-09-05-dev-to-main.md).
+The maintainer has authorized promotion under Plan A. The stable-release conditions have
+not yet been established by the available THU execution evidence; main promotion and
+package publication are not claimed complete.
+
 ## v0.3.0-rc1 - Current source candidate
 
 PHMFactory remains versioned as `0.3.0rc1` in `PHMbench/PHM-Vibench`. This is a source
