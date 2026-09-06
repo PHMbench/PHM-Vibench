@@ -10,9 +10,10 @@ roots, and direct result paths.
 
 See [`doc/changelog/2026-09-05-dev-to-main.md`](doc/changelog/2026-09-05-dev-to-main.md)
 for the validation source, migration details, and scope. Research PR #223 is excluded.
-No dataset is re-downloaded, no experiment is rerun, and no numerical evidence is invented.
-The MFPT registry status and automated publication gate remain unchanged; this source
-merge does not create a tag, GitHub Release, or package-index publication.
+THU is not re-downloaded or rerun; existing regression checks still run on the promotion
+candidate. No numerical evidence is invented. The MFPT registry status and automated
+publication gate remain unchanged; this source merge does not create a tag, GitHub Release,
+or package-index publication.
 
 ## 2026-09-05 — Plan A upgrade preparation
 
