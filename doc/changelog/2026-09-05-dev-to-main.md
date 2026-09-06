@@ -8,7 +8,7 @@
 - 推广的 dev 快照：`9c0672f4beddd76cd58f50cc4efd0daaf8ad8923`，包含 PR #221 和 #224。
 - dev 在该快照上领先 main 117 个提交，main 是其祖先。
 - 使用 merge commit 保留历史，不对长期分支全量 squash，不强制推送。
-- 推广分支仅额外更新本文件和根目录 CHANGELOG.md，不修改运行时或实验配置。
+- 推广分支额外更新两份 Changelog，并修复审阅发现的两个构建／导入问题；不修改实验配置、数据、模型或指标定义。
 - 开放研究 PR #223 不在本次范围内。
 - 不创建版本标签、GitHub Release，不上传 wheel 或发布到包索引。
 
@@ -34,6 +34,12 @@ preflight 仅检查配置与早期运行条件，不代表训练或科学验证�
 - 维护分类路径恢复选中的 checkpoint 后评价，直接返回 checkpoint、指标和汇总路径。
 - 用户可见的配置／运行摘要 hash 已移除；不据此宣称内部相关清理已经全部完成。
 
+## 合并审阅中的最小修正
+
+- 修正 `src/trainer_factory/extensions/__init__.py` 未闭合的文档字符串。改动为补一个引号；已用原源码复现 SyntaxError，并验证修复后可编译、模块可执行且导出列表仍为空。
+- `pyproject.toml` 的 setuptools 下限由 69 改为 77.0.3，匹配现有 `license = "Apache-2.0"` SPDX 字段；保留许可证和运行依赖不变。依据为 [PyPA 构建配置说明](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)。
+- 未采纳“Registry.get 不抛 KeyError”的评论：当前对象是 `src.utils.registry.Registry`，而非内置 dict，源码明确在缺键时抛出 KeyError。没有为此新增检查或包装。
+
 ## 用户升级注意事项
 
 1. 使用 `trainer.devices`，不再使用公共配置字段 `trainer.gpus`。
@@ -46,7 +52,7 @@ preflight 仅检查配置与早期运行条件，不代表训练或科学验证�
 
 维护者于 2026-09-06 明确确认，THU 下载与验证已在[共享工作会话](https://chatgpt.com/share/6a9d5c2a-4b1c-83ee-ba19-22b9b1025dc5)完成，并据此批准本次 dev → main 合并。
 
-本次接受这一维护者验收，不重复下载 THU，不重跑已确认的实验，不再索取相同合并授权。执行环境未能取得共享页面正文，因此该项明确记录为维护者提供的验证确认，不声称本轮独立读取或复算了该会话中的数值。
+本次接受这一维护者验收，不重复下载 THU，不重跑已确认的 THU 实验，不再索取相同合并授权。执行环境未能取得共享页面正文，因此该项明确记录为维护者提供的验证确认，不声称本轮独立读取或复算了该会话中的数值。
 
 本次源码推广与 benchmark 自动晋级、公开发版分别记录：
 
