@@ -34,6 +34,24 @@ Base fields live in `configs/base/task/pretrain.yaml`; demo files may override
 `task.name`, contrastive weights, augmentation settings, and stage-specific
 fields.
 
+## HSE contrastive evaluation contract
+
+Configured HSE augmentation remains stochastic during training. Validation and
+test augmentation use a local generator derived from:
+
+```text
+environment.seed + evaluation stage + batch index
+```
+
+Consequently, repeated evaluation of the same checkpoint, ordered loader, and
+configuration produces the same augmented feature view without consuming or
+depending on the process-wide random-number state. Validation and test use
+different stage offsets, so they remain distinct evaluation streams.
+
+This contract does not change the training objective or augmentation family. It
+only prevents validation and test metrics from changing because unrelated code
+advanced the global RNG.
+
 ## Boundaries
 
 - This README does not promote every registered pretrain module to

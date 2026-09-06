@@ -1,17 +1,22 @@
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelPruning
 from pytorch_lightning.loggers import CSVLogger, WandbLogger
-from torch.utils.tensorboard.writer import SummaryWriter
 
 try:
     from swanlab.integration.pytorch_lightning import SwanLabLogger
 except ImportError:  # Optional experiment service; required only when enabled.
     SwanLabLogger = None
 
+from phmfactory.device import resolve_device_request
 from src.trainer_factory import register_trainer
-from src.trainer_factory.extensions import ManifestWriterCallback
+
+# Compatibility name for focused tests and historical internal imports.
+_resolve_device_request = resolve_device_request
 
 # 获取当前进程的排名
 is_main_process = True  # 默认为主进程
@@ -20,28 +25,67 @@ if "LOCAL_RANK" in os.environ:
     is_main_process = local_rank == 0
 
 
+_SELECTION_MODES = frozenset({"min", "max"})
+
+
+def resolve_epoch_contract(args: Any) -> int:
+    """Return the single explicit positive epoch count without alias fallback."""
+
+    if hasattr(args, "max_epochs"):
+        raise ValueError(
+            "trainer.max_epochs is unsupported; use the single public field "
+            "trainer.num_epochs"
+        )
+    if not hasattr(args, "num_epochs"):
+        raise ValueError("trainer.num_epochs is required")
+    value = args.num_epochs
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            "trainer.num_epochs must be an integer, "
+            f"got {type(value).__name__}"
+        )
+    if value <= 0:
+        raise ValueError(f"trainer.num_epochs must be positive, got {value}")
+    return value
+
+
+def resolve_selection_contract(args: Any) -> tuple[str, str]:
+    """Return the exact checkpoint metric and optimization direction.
+
+    PHMFactory never infers direction from a metric name.  The same explicit pair is
+    consumed by ModelCheckpoint and EarlyStopping so checkpoint restoration cannot use a
+    different estimator direction from stopping.
+    """
+
+    monitor = getattr(args, "monitor", None)
+    if not isinstance(monitor, str) or not monitor.strip():
+        raise ValueError(
+            "trainer.monitor is required and must name one logged validation metric"
+        )
+
+    raw_mode = getattr(args, "monitor_mode", None)
+    if not isinstance(raw_mode, str) or not raw_mode.strip():
+        raise ValueError(
+            "trainer.monitor_mode is required and must be 'min' or 'max'; "
+            "PHMFactory does not infer checkpoint direction from the metric name"
+        )
+    mode = raw_mode.strip().lower()
+    if mode not in _SELECTION_MODES:
+        raise ValueError(
+            f"unsupported trainer.monitor_mode {raw_mode!r}; expected min or max"
+        )
+    return monitor.strip(), mode
+
+
 @register_trainer("Default_trainer")
 def trainer(args_e, args_t, args_d, path):
-    """
-    设置训练器的配置，包括日志记录、回调函数和数据加载器等。
+    """Build one Lightning Trainer from the explicit trainer configuration."""
 
-    参数:
-    - args_t: 包含训练配置的对象
-    - args_d: 包含数据配置的对象
-    - path: 存储日志、检查点的路径
-
-    返回:
-    - trainer: 训练器对象
-    """
-    # 为兼容旧配置，填充 num_epochs / gpus / pruning 的合理默认值
-    if not hasattr(args_t, "num_epochs"):
-        setattr(args_t, "num_epochs", getattr(args_t, "max_epochs", 1))
-    if not hasattr(args_t, "gpus"):
-        setattr(args_t, "gpus", getattr(args_t, "devices", 1))
+    num_epochs = resolve_epoch_contract(args_t)
     if not hasattr(args_t, "pruning"):
         setattr(args_t, "pruning", 0.0)
 
-    # 获取回调列表
+    accelerator, devices = resolve_device_request(args_t)
     callback_list = call_backs(args_t, path)
     log_list = [CSVLogger(path, name="logs")]
     use_wandb = getattr(args_e, "wandb", False)
@@ -63,91 +107,56 @@ def trainer(args_e, args_t, args_d, path):
         swanlab_logger = SwanLabLogger(project=args_e.project)
         log_list.append(swanlab_logger)
 
-    # 设置设备类型：CPU 或自动选择
-    accelerate_type = "cpu" if args_t.device == "cpu" else "auto"
-
-    # 如果不存在log_every_n_steps，使用默认值50 # TODO @liq22
     if not getattr(args_t, "log_every_n_steps", None):
         args_t.log_every_n_steps = 50
 
-    # 初始化训练器
-    trainer = pl.Trainer(
+    return pl.Trainer(
         callbacks=callback_list,
-        accelerator=accelerate_type,
-        max_epochs=args_t.num_epochs,
-        devices=args_t.gpus,
+        accelerator=accelerator,
+        max_epochs=num_epochs,
+        devices=devices,
         logger=log_list,
         log_every_n_steps=args_t.log_every_n_steps,
-        strategy="ddp_find_unused_parameters_true" if args_t.gpus > 1 else "auto",
+        strategy="ddp_find_unused_parameters_true" if devices > 1 else "auto",
+        deterministic=getattr(args_t, "deterministic", None),
     )
-    return trainer
 
 
 def call_backs(args, path):
-    """
-    配置训练时所需的回调函数，包括检查点保存、模型修剪、早期停止等。
+    """Build checkpoint and stopping callbacks from one selection contract."""
 
-    参数:
-    - args: 包含训练配置的对象
-    - path: 存储检查点的路径
-
-    返回:
-    - callback_list: 配置好的回调列表
-    """
+    monitor, mode = resolve_selection_contract(args)
     checkpoint_callback = ModelCheckpoint(
-        monitor=args.monitor,
-        filename="model-{epoch:02d}-{val_loss:.4f}",
+        monitor=monitor,
+        # Do not embed a hard-coded metric such as val_loss in the filename.  The
+        # configured monitor may be any logged scalar and the callback itself owns the
+        # selected score.
+        filename="model-{epoch:02d}-{step}",
         save_top_k=getattr(args, "save_top_k", 1),
-        mode="min",
+        mode=mode,
         dirpath=path,
     )
 
     callback_list = [checkpoint_callback]
 
-    # UXFD merge: always write an auditable manifest (safe no-op if not main process).
-    try:
-        extensions = getattr(args, "extensions", None)
-        report_cfg = getattr(extensions, "report", None) if extensions is not None else None
-        report_enable = getattr(report_cfg, "enable", True) if report_cfg is not None else True
-        manifest_enable = getattr(report_cfg, "manifest", True) if report_cfg is not None else True
-        enabled = bool(report_enable) and bool(manifest_enable)
-    except Exception:
-        enabled = True
-
-    callback_list.append(
-        ManifestWriterCallback(
-            run_dir=path,
-            paper_id=str(getattr(args, "paper_id", "") or ""),
-            preset_version=str(getattr(args, "preset_version", "") or ""),
-            run_id=str(getattr(args, "logger_name", "") or ""),
-            enabled=enabled,
-            is_main_process=is_main_process,
-        )
-    )
-
-    # 模型修剪回调（根据需求添加）
     if getattr(args, "pruning", 0.0):
         prune_callback = Prune_callback(args)
         callback_list.append(prune_callback)
 
-    # 早期停止回调（若未配置 early_stopping，则默认为不启用）
     if getattr(args, "early_stopping", False):
-        early_stopping = create_early_stopping_callback(args)
-        callback_list.append(early_stopping)
+        callback_list.append(
+            create_early_stopping_callback(
+                args,
+                monitor=monitor,
+                mode=mode,
+            )
+        )
 
     return callback_list
 
 
 def Prune_callback(args):
-    """
-    根据训练配置，返回模型修剪回调函数。
-
-    参数:
-    - args: 包含训练配置的对象
-
-    返回:
-    - prune_callback: 配置好的修剪回调（如果有）
-    """
+    """根据训练配置，返回模型剪枝回调。"""
 
     def compute_amount(epoch):
         if epoch == args.num_epochs // 4:
@@ -159,29 +168,44 @@ def Prune_callback(args):
         return None
 
     if isinstance(args.pruning, (int, float)):
-        prune_callback = ModelPruning(
+        return ModelPruning(
             "l1_unstructured",
             parameter_names=["weight"],
             amount=args.pruning,
         )
-    elif isinstance(args.pruning, list):
-        prune_callback = ModelPruning(
+    if isinstance(args.pruning, list):
+        return ModelPruning(
             "l1_unstructured",
             parameter_names=["weight"],
             amount=compute_amount,
         )
-    else:
-        prune_callback = None
-    return prune_callback
+    return None
 
 
-def create_early_stopping_callback(args):
-    """创建并返回早期停止回调。"""
+def create_early_stopping_callback(
+    args,
+    *,
+    monitor: str | None = None,
+    mode: str | None = None,
+):
+    """Build EarlyStopping with the same explicit selection pair as checkpointing."""
+
+    if monitor is None or mode is None:
+        monitor, mode = resolve_selection_contract(args)
     return EarlyStopping(
-        monitor=args.monitor,
-        min_delta=0.00,
+        monitor=monitor,
+        min_delta=float(getattr(args, "min_delta", 0.0)),
         patience=getattr(args, "patience", 10),
         verbose=True,
-        mode="min",
+        mode=mode,
         check_finite=True,
     )
+
+
+__all__ = [
+    "call_backs",
+    "create_early_stopping_callback",
+    "resolve_epoch_contract",
+    "resolve_selection_contract",
+    "trainer",
+]

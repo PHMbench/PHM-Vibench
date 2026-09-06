@@ -1,0 +1,56 @@
+# P09 B3: ProtoNet episodic baseline, GFS.
+# Derives from demo configs/demo/03_fewshot/cwru_protonet.yaml and
+# configs/demo/04_cross_system_fewshot/cross_system_tspn.yaml.
+# Registered task: FS.prototypical_network (task_registry.csv row 10).
+# Charter requires episodic baselines in the GFS comparison (CLAIM-P09-C1).
+#
+# NOTE: the registered ProtoNet task is `task.type: FS` (episodic novel-only). For the GFS
+# harmonic-mean comparison (base + novel) we need a GFS-aware ProtoNet that also scores base
+# classes. The maintained GFS task is `GFS.classification`; whether the ProtoNet metric head
+# is wired into the GFS sampler is UNVERIFIED. If not, this arm is `needs_new_component`.
+# Flag at P09-G040 PROTOCOL_LOCK.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_system_fewshot.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/fewshot.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p09_b3_protonet"
+  seed: 42
+  output_dir: "results/p09/b3_protonet"
+  notes: "P09 baseline B3: ProtoNet episodic few-shot (registered FS task). GFS-aware evaluation pending G040."
+
+model:
+  name: "M_01_ISFM"
+  type: "ISFM"
+  embedding: "E_01_HSE"
+  backbone: "B_04_Dlinear"
+  task_head: "H_01_Linear_cla"
+  input_dim: 1
+  d_model: 256
+  output_dim: 128
+  use_prompt: false
+  prompt_dim: 0
+
+task:
+  type: "FS"
+  name: "prototypical_network"
+  target_system_id: [1, 13, 6, 12, 19]
+  n_way: 5
+  k_shot: 5
+  q_query: 15
+  episodes_per_epoch: 100
+  lr: 0.001
+  optimizer: "adamw"
+  weight_decay: 0.0001
+  loss: "CE"
+  metrics: ["acc", "f1", "precision", "recall"]
+
+trainer:
+  num_epochs: 1   # smoke default; real launch overrides
+  gpus: 1

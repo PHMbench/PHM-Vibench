@@ -1,4 +1,5 @@
-# Cross-system CDDG demo (edit target_system_id for multi-system) (v0.1.0 draft)
+# Compatibility filename: target_system_id contains one known system. This demo is
+# ordinary CE training with held-out domains, not unknown-system generalization.
 
 pipeline: "Pipeline_01_Fault_Diagnosis"
 
@@ -10,10 +11,13 @@ base_configs:
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 
 environment:
-  project: "demo_multi_system_cddg"
+  project: "demo_single_system_heldout_domain_erm"
   seed: 42
-  output_dir: "results/demo/multi_system_cddg"
-  notes: "Cross-system CDDG demo (edit target_system_id for multi-system)."
+  output_dir: "results/demo/single_system_heldout_domain_erm"
+  notes: "Known-system CE baseline with held-out domains. The configured system identity is available to the system-specific classification head."
 
 task:
   target_system_id: [1]
+
+trainer:
+  test_after_fit: true

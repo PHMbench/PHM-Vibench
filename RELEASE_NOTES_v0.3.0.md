@@ -1,177 +1,147 @@
 # PHMFactory v0.3.0 Release Notes
 
-> Status: **pre-release draft**  
-> Repository rename, final version, immutable CWRU pins, tag, and publication are not complete.
+> Status: **`0.3.0rc1` source, release blocked**  
+> No RC1 tag, final tag, GitHub Release, wheel/source publication, or package-index
+> publication is claimed.
 
 ## Overview
 
-PHM-Vibench becomes **PHMFactory** in v0.3.0. The release establishes a public package,
-CLI, configuration surface, reproducible CWRU bundle contract, and stricter repository
-boundaries while preserving the mature runtime under `src.*`.
+PHMFactory v0.3 provides a configuration-first runtime for industrial PHM experiments.
+The project and distribution are named `PHMFactory` and `phmfactory`; the repository
+remains `PHMbench/PHM-Vibench`.
 
-This document is the user-facing release summary. For step-by-step upgrade instructions,
-use [`MIGRATION_v0.2_to_v0.3.md`](MIGRATION_v0.2_to_v0.3.md). For the exact release gate,
-use [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md).
+The governing invariant is:
+
+```text
+requested experiment = executed experiment
+```
+
+Scientific correctness is defined by the data population, split, model, objective,
+checkpoint selection, evaluation, declared metrics, and estimator. Hashes, receipts,
+ledgers, attestations, and compatibility run records do not substitute for those
+semantics.
+
+## Current release boundary
+
+The source version is `0.3.0rc1`, but release readiness is currently blocked because no
+real-data configuration has been requalified as `baseline_valid` after recent changes to
+metric lifecycle, checkpoint selection, and repeated-run aggregation.
+
+The MFPT transparent reference remains a candidate at:
+
+```text
+configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
+```
+
+Its historical results are retained as evidence about the earlier protocol execution,
+not as current-source release evidence. The unchanged experiment must be rerun and
+independently checked before promotion can be restored.
+
+See:
+
+- [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
+- [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md)
+- [`MIGRATION_v0.2_to_v0.3.md`](MIGRATION_v0.2_to_v0.3.md)
 
 ## Public identity and entrypoints
 
-| Surface | v0.3 value |
+| Surface | Current value |
 | --- | --- |
 | Project | `PHMFactory` |
-| Target repository | `PHMbench/phmfactory` |
-| Distribution | `phmfactory` |
-| Import namespace | `phmfactory` |
+| Source version | `0.3.0rc1` |
+| Repository | `PHMbench/PHM-Vibench` |
+| Distribution/import | `phmfactory` |
 | Console command | `phmfactory` |
-| Root entrypoint | `python main.py` |
-| Module entrypoint | `python -m phmfactory` |
+| RC1 tag | not created |
+| Published artifacts | none |
 
-The three command forms share one parser and dispatcher:
-
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
-python -m phmfactory --config configs/demo/00_smoke/dummy_dg.yaml
-phmfactory --config configs/demo/00_smoke/dummy_dg.yaml
-```
-
-`--config` is preferred. `--config_path` remains a compatibility alias. No
-`phm_factory` or `phm_vibench` namespace is introduced.
-
-## Main changes
-
-### Public package and configuration
-
-- Added the root `phmfactory` package and installed CLI.
-- Added `phmfactory.config` for maintained preset/path resolution, ordered
-  `base_configs`, typed dotted overrides, Pipeline canonicalization, and cycle errors.
-- Kept root `main.py` as a thin compatibility dispatcher.
-
-### Pipeline names
-
-The six established Pipeline modules are renamed directly:
-
-| Previous | Canonical v0.3 name |
-| --- | --- |
-| `Pipeline_01_default` | `Pipeline_01_Fault_Diagnosis` |
-| `Pipeline_02_pretrain_fewshot` | `Pipeline_02_Pretraining_Few_Shot` |
-| `Pipeline_03_multitask_pretrain_finetune` | `Pipeline_03_Multitask_Pretraining_Finetuning` |
-| `Pipeline_04_unified_metric` | `Pipeline_04_Unified_Evaluation` |
-| `Pipeline_05_default_w_explain` | `Pipeline_05_Explainable_Fault_Diagnosis` |
-| `Pipeline_06_generative` | `Pipeline_06_Generative_Modeling` |
-
-Legacy YAML values remain explicit aliases with warnings. Direct Python imports of old
-module filenames must be updated. The rename does not intentionally change Pipeline
-function bodies, data splits, metrics, checkpoints, seeds, or reader behavior.
-
-### CWRU bundle
-
-The v0.3 bundle contract is:
-
-```text
-metadata.xlsx      required
-RM_001_CWRU.h5     required
-corpus.xlsx        optional
-```
-
-Available operations include selective Hugging Face/ModelScope download, local
-validation, cross-directory hash comparison, and a non-interactive quickstart. The
-online path is not release-ready until both providers use immutable revisions and the
-required files have matching SHA-256 values.
-
-### Dependencies and UI
-
-- Root `requirements.txt` remains the core dependency authority.
-- Streamlit, ModelScope, plotting, and test requirements are owned by their subsystems.
-- `apps/streamlit/app.py` is the only maintained web entrypoint.
-- The old `app/` prototype and root `streamlit_app.py` were archived and removed.
-
-### Repository boundary
-
-The public repository no longer carries root/hidden Agent workspaces, `.archive/`,
-`dev/`, tracked result placeholders, or the two personal Rotor/LQ-fix gitlinks. Historical
-and removed material remains recoverable from immutable Git history and the approved
-archive, which is not a runtime, build, test, data, or release dependency.
-
-One optional `phm-data-factory` backend may be integrated later only under the governed
-organization-owned target and an immutable gitlink. Eight paper/research gitlinks remain
-frozen until their content-level migration trackers permit removal.
-
-## Preserved compatibility boundary
-
-v0.3 intentionally preserves:
-
-```text
-src/data_factory/reader/
-src/data_factory/dataset_task/
-src/data_factory/samplers/
-src/data_factory/H5DataDict.py
-src/data_factory/data_factory.py
-src/model_factory/
-src/task_factory/
-src/trainer_factory/
-```
-
-Reader signatures, parsing, channel order, `(L, C)` signal semantics, dtype behavior,
-normalization, task/trainer logic, and Pipeline algorithms are not mechanically rewritten.
-New integrations should prefer `phmfactory.*`; `src.*` remains the packaged compatibility
-engine for this release.
-
-## v0.2 migration baseline
-
-The migration baseline is the recorded v0.2.0 release candidate:
-
-```text
-project:         PHM-Vibench
-status:          release_candidate
-formal release:  false
-baseline commit: a331769d4005018bc833534ecf4efeb5e8a5a78d
-tag present:     false
-```
-
-No retroactive final v0.2.0 tag is created. The machine-readable authority is
-`docs/releases/v0.2.0-rc-provenance.yaml`.
-
-## Validation coverage
-
-The canonical integration exercises:
-
-- documentation, maintained config, generated Atlas, and whitespace checks;
-- offline Dummy smoke, Pipeline 06 shell/CFM, and UXFD focused contracts;
-- public package tests, wheel/sdist build, wheel inspection, and clean installation;
-- dependency ownership and subsystem requirement boundaries;
-- offline CWRU validation and manifest packaging;
-- Streamlit tests on Ubuntu and Windows;
-- portable/case-insensitive path and Agent-boundary guards;
-- submodule policy, paper migration policy, and release-readiness auditing.
-
-Functional and smoke evidence validates software paths; it is not a performance benchmark
-or a universal compatibility claim.
-
-## Remaining release blockers
-
-The strict release gate currently reports:
-
-```text
-2 x CWRU_HASH_MISSING
-2 x CWRU_REVISION_FLOATING
-1 x LEGACY_SUBMODULES_REMAIN
-1 x PHM_DATA_FACTORY_BACKEND_PENDING
-1 x REPOSITORY_RENAME_PENDING
-1 x VERSION_NOT_FINAL
-```
-
-Until those conditions are cleared:
-
-- the version remains `0.3.0.dev0`;
-- the repository remains `PHMbench/PHM-Vibench`;
-- no `v0.3.0` tag, GitHub Release, wheel, or sdist publication is authorized;
-- no paper gitlink may be removed unless its tracker says `safe_to_remove: true`;
-- no CWRU online parity claim may be made.
-
-Audit commands:
+The maintained process entrypoints share the same public command router:
 
 ```bash
-python tools/repo/check_release_readiness.py --mode audit
-python tools/repo/check_release_readiness.py --mode release
+phmfactory --config <yaml> [--override key=value ...]
+python -m phmfactory --config <yaml> [--override key=value ...]
+python main.py --config <yaml> [--override key=value ...]
 ```
 
-The second command must remain non-zero until all release blockers are resolved.
+Use `phmfactory` for normal work. `python main.py` remains a repository compatibility
+launcher.
+
+## Main changes in v0.3
+
+### Configuration and failure semantics
+
+- One public configuration-first entry path.
+- Explicit local configuration and CLI overrides; no hidden local-file discovery.
+- Fail-fast handling for malformed configuration, unknown tasks/metrics/regularizers,
+  impossible domains, invalid labels, unavailable devices, missing checkpoints, and
+  invalid evaluation results.
+- Original model, task, trainer, and reader failures are preserved on maintained paths.
+
+### Factory responsibilities
+
+```text
+Data Factory    reader, metadata, selected IDs, datasets, samplers, loaders
+Model Factory   model identity, construction, explicit external weights
+Task Factory    task identity, objective, metric lifecycle
+Trainer Factory device, callbacks, checkpoints, fit/test lifecycle
+Pipeline        orchestration, success gating, direct result locations
+```
+
+The public runtime must not repair another boundary's inputs or substitute an easier
+experiment.
+
+### Objective, metric, and checkpoint truth
+
+- Classification and regression targets use task-appropriate dtype and shape contracts.
+- AUROC consumes scores rather than class indices.
+- Stateful metrics use an epoch-level update/compute/reset lifecycle.
+- Checkpoint and early-stopping direction are explicit through `monitor_mode`.
+- Repeated runs require one identical, non-empty, finite scalar metric set across seeds.
+- Multiple unnamed test populations are rejected instead of truncating to the first.
+
+### Data and evaluation boundaries
+
+- Maintained readers fail rather than synthesize replacement signals.
+- Invalid reader outputs are rejected before HDF5 publication.
+- Cache reuse is explicit.
+- HSE training may be stochastic; maintained validation/test patching and augmentation
+  are deterministic.
+- Patch sizes larger than the available signal or channel dimensions fail rather than
+  repeat or pad the input.
+
+### User path
+
+The first run is offline:
+
+```bash
+python -m pip install -e .
+phmfactory doctor
+phmfactory preflight --config smoke
+phmfactory demo
+```
+
+Successful runs return direct paths for the result directory, best checkpoint, test
+metrics, and run summary. A manifest, attestation, evidence index, receipt, or ledger is
+not required for success.
+
+## Known unfinished work
+
+Before a release claim can be restored, the project still needs:
+
+- current-source MFPT requalification;
+- shared strict schema validation across inspect, preflight, and run;
+- one immutable invocation root for all seeds of a run;
+- closure between configured and reported evaluation metrics;
+- fully explicit scheduler behavior;
+- removal of unsafe legacy Data Factory choices from the public config surface;
+- further dependency, Streamlit result-path, and consumerless-hash cleanup.
+
+These items should be addressed through bounded PRs, one scientific or user-facing
+invariant at a time. Do not add a new manager, registry, schema, or manifest system to
+solve them.
+
+## Publication
+
+A future readiness pass does not publish anything automatically. Tagging, GitHub Release
+creation, wheel/source upload, and package-index publication require separate explicit
+authorization for the exact approved commit.

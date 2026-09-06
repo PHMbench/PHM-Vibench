@@ -11,6 +11,7 @@ Multi-Stage / Two-Stage Orchestrator
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Dict, Optional
 from types import SimpleNamespace
 import logging
@@ -32,6 +33,7 @@ from src.data_factory import build_data
 from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
+from src.utils.pipeline_config.base_utils import load_pretrained_weights
 from src.utils.utils import load_best_model_checkpoint, init_lab, close_lab
 
 from pytorch_lightning import seed_everything
@@ -213,7 +215,7 @@ def _parse_value(value_str: str):
         return value_str.lower() == 'true'
     elif value_str.lower() in ['null', 'none']:
         return None
-    elif value_str.startswith(('\"', "'")) and value_str.endswith(('\"', "'")):
+    elif value_str.startswith(('"', "'")) and value_str.endswith(('"', "'")):
         return value_str[1:-1]  # 去掉引号
     else:
         return value_str  # 保持字符串
@@ -258,6 +260,31 @@ def apply_stage_overrides(stage_config, global_config, stage_overrides):
             merged_config = deep_merge(merged_config, stage_config.__dict__)
 
     return merged_config
+
+
+def _close_data_factory(data_factory: Any) -> None:
+    """Close the underlying data resource when the factory owns one."""
+
+    data = getattr(data_factory, "data", None)
+    close = getattr(data, "close", None)
+    if callable(close):
+        close()
+
+
+def _require_test_metrics(result: Any, stage_name: str) -> Dict[str, Any]:
+    """Return one non-empty test metric mapping or fail the stage."""
+
+    if (
+        not isinstance(result, (list, tuple))
+        or not result
+        or not isinstance(result[0], Mapping)
+        or not result[0]
+    ):
+        raise RuntimeError(
+            f"Pipeline 02 {stage_name} evaluation must return a non-empty "
+            "metrics mapping from trainer.test."
+        )
+    return deepcopy(dict(result[0]))
 
 
 class MultiStageOrchestrator:
@@ -404,30 +431,6 @@ class MultiStageOrchestrator:
             _validate_config_wrapper(stage_wrapped)
 
     # ------------------------ helpers ------------------------
-    def _ensure_trainer_attributes(self, trainer: Any, path: str) -> None:
-        """确保trainer配置包含所有必需的属性"""
-        if not hasattr(trainer, 'monitor'):
-            setattr(trainer, 'monitor', 'val_total_loss')
-        if not hasattr(trainer, 'save_dir'):
-            setattr(trainer, 'save_dir', path)
-
-        # 关键修复：处理device属性（Default_trainer需要）
-        if not hasattr(trainer, 'device'):
-            device = getattr(trainer, 'accelerator', 'cpu')
-            if device == 'gpu':
-                device = 'cuda'
-            setattr(trainer, 'device', device)
-
-        # 处理其他必需属性
-        if not hasattr(trainer, 'devices') and not hasattr(trainer, 'gpus'):
-            setattr(trainer, 'devices', 1)
-        if not hasattr(trainer, 'log_every_n_steps'):
-            setattr(trainer, 'log_every_n_steps', 50)
-
-        # 处理num_epochs/max_epochs
-        if not hasattr(trainer, 'num_epochs') and hasattr(trainer, 'max_epochs'):
-            setattr(trainer, 'num_epochs', trainer.max_epochs)
-
     def _stage_to_namespaces(self, stage_cfg: Any):
         # stage_cfg may be dict / ConfigWrapper / SimpleNamespace
         if isinstance(stage_cfg, dict):
@@ -448,11 +451,9 @@ class MultiStageOrchestrator:
     def run_pretrain(self, stage_cfg: Any, iteration: int = 0) -> Dict[str, Any]:
         env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
 
-        # seed
         seed = getattr(env, 'seed', 42) + int(iteration)
         seed_everything(seed)
 
-        # path and logging（包含 environment，允许使用 environment.output_dir 控制结果根目录）
         cfg_for_path = ConfigWrapper(
             environment=env,
             data=data,
@@ -462,59 +463,75 @@ class MultiStageOrchestrator:
         )
         path, name = path_name(cfg_for_path)
         trainer.logger_name = name
-        init_lab(env, self.cfg, name)
 
-        # Ensure trainer has required attributes for build_trainer
-        self._ensure_trainer_attributes(trainer, path)
-
-        if self.dry_run:
-            close_lab()
-            return {'checkpoint_path': None, 'metrics': {'dry_run': True}, 'path': path}
-
-        # build
-        data_factory = build_data(data, task)
-        net = build_model(model, metadata=data_factory.get_metadata())
-        lightning_task = build_task(
-            args_task=task,
-            network=net,
-            args_data=data,
-            args_model=model,
-            args_trainer=trainer,
-            args_environment=env,
-            metadata=data_factory.get_metadata(),
-        )
-        pl_trainer = build_trainer(env, trainer, data, path)
-
-        # train
-        pl_trainer.fit(lightning_task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
-
-        # best ckpt
-        lightning_task = load_best_model_checkpoint(lightning_task, pl_trainer)
-        ckpt_path = None
-        for cb in pl_trainer.callbacks:
-            if isinstance(cb, ModelCheckpoint):
-                ckpt_path = cb.best_model_path
-                break
-
-        # optional test
-        test_metrics: Dict[str, Any] = {}
+        data_factory = None
+        lab_started = False
         try:
-            result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
-            if result:
-                test_metrics = deepcopy(result[0])
-        except Exception:
-            pass
+            init_lab(env, self.cfg, name)
+            lab_started = True
 
-        close_lab()
-        return {'checkpoint_path': ckpt_path, 'metrics': test_metrics, 'path': path}
+            if self.dry_run:
+                return {
+                    'checkpoint_path': None,
+                    'metrics': {'dry_run': True},
+                    'path': path,
+                }
 
-    def run_adapt(self, stage_cfg: Any, checkpoint_path: Optional[str] = None, iteration: int = 0) -> Dict[str, Any]:
+            data_factory = build_data(data, task)
+            metadata = data_factory.get_metadata()
+            net = build_model(model, metadata=metadata)
+            lightning_task = build_task(
+                args_task=task,
+                network=net,
+                args_data=data,
+                args_model=model,
+                args_trainer=trainer,
+                args_environment=env,
+                metadata=metadata,
+            )
+            pl_trainer = build_trainer(env, trainer, data, path)
+
+            pl_trainer.fit(
+                lightning_task,
+                data_factory.get_dataloader('train'),
+                data_factory.get_dataloader('val'),
+            )
+
+            lightning_task = load_best_model_checkpoint(lightning_task, pl_trainer)
+            ckpt_path = next(
+                (
+                    cb.best_model_path
+                    for cb in pl_trainer.callbacks
+                    if isinstance(cb, ModelCheckpoint)
+                ),
+                None,
+            )
+            test_metrics = _require_test_metrics(
+                pl_trainer.test(
+                    lightning_task,
+                    data_factory.get_dataloader('test'),
+                ),
+                "pretrain",
+            )
+            return {
+                'checkpoint_path': ckpt_path,
+                'metrics': test_metrics,
+                'path': path,
+            }
+        finally:
+            if data_factory is not None:
+                _close_data_factory(data_factory)
+            if lab_started:
+                close_lab()
+
+    def run_adapt(
+        self,
+        stage_cfg: Any,
+        checkpoint_path: Optional[str] = None,
+        iteration: int = 0,
+    ) -> Dict[str, Any]:
         env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
 
-        # feed ckpt from previous stage if provided
-        if checkpoint_path:
-            setattr(model, 'weights_path', checkpoint_path)
-
         seed = getattr(env, 'seed', 42) + int(iteration)
         seed_everything(seed)
 
@@ -527,48 +544,67 @@ class MultiStageOrchestrator:
         )
         path, name = path_name(cfg_for_path)
         trainer.logger_name = name
-        init_lab(env, self.cfg, name)
 
-        # Ensure trainer has required attributes for build_trainer
-        self._ensure_trainer_attributes(trainer, path)
-
-        if self.dry_run:
-            close_lab()
-            return {'checkpoint_path': checkpoint_path, 'metrics': {'dry_run': True}, 'path': path}
-
-        data_factory = build_data(data, task)
-        net = build_model(model, metadata=data_factory.get_metadata())
-        lightning_task = build_task(
-            args_task=task,
-            network=net,
-            args_data=data,
-            args_model=model,
-            args_trainer=trainer,
-            args_environment=env,
-            metadata=data_factory.get_metadata(),
-        )
-        pl_trainer = build_trainer(env, trainer, data, path)
-        pl_trainer.fit(lightning_task, data_factory.get_dataloader('train'), data_factory.get_dataloader('val'))
-
-        # best ckpt for this stage
-        lightning_task = load_best_model_checkpoint(lightning_task, pl_trainer)
-        ckpt_path = None
-        for cb in pl_trainer.callbacks:
-            if isinstance(cb, ModelCheckpoint):
-                ckpt_path = cb.best_model_path
-                break
-
-        # test
-        test_metrics: Dict[str, Any] = {}
+        data_factory = None
+        lab_started = False
         try:
-            result = pl_trainer.test(lightning_task, data_factory.get_dataloader('test'))
-            if result:
-                test_metrics = deepcopy(result[0])
-        except Exception:
-            pass
+            init_lab(env, self.cfg, name)
+            lab_started = True
 
-        close_lab()
-        return {'checkpoint_path': ckpt_path, 'metrics': test_metrics, 'path': path}
+            if self.dry_run:
+                return {
+                    'checkpoint_path': checkpoint_path,
+                    'metrics': {'dry_run': True},
+                    'path': path,
+                }
+
+            data_factory = build_data(data, task)
+            metadata = data_factory.get_metadata()
+            net = build_model(model, metadata=metadata)
+            if checkpoint_path:
+                load_pretrained_weights(net, checkpoint_path, strict=False)
+            lightning_task = build_task(
+                args_task=task,
+                network=net,
+                args_data=data,
+                args_model=model,
+                args_trainer=trainer,
+                args_environment=env,
+                metadata=metadata,
+            )
+            pl_trainer = build_trainer(env, trainer, data, path)
+            pl_trainer.fit(
+                lightning_task,
+                data_factory.get_dataloader('train'),
+                data_factory.get_dataloader('val'),
+            )
+
+            lightning_task = load_best_model_checkpoint(lightning_task, pl_trainer)
+            ckpt_path = next(
+                (
+                    cb.best_model_path
+                    for cb in pl_trainer.callbacks
+                    if isinstance(cb, ModelCheckpoint)
+                ),
+                None,
+            )
+            test_metrics = _require_test_metrics(
+                pl_trainer.test(
+                    lightning_task,
+                    data_factory.get_dataloader('test'),
+                ),
+                "adapt",
+            )
+            return {
+                'checkpoint_path': ckpt_path,
+                'metrics': test_metrics,
+                'path': path,
+            }
+        finally:
+            if data_factory is not None:
+                _close_data_factory(data_factory)
+            if lab_started:
+                close_lab()
 
     # ------------------------ orchestrator APIs ------------------------
     def run_all_stages(self) -> Dict[str, Any]:

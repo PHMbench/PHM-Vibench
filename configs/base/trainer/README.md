@@ -1,53 +1,108 @@
-# `configs/base/trainer/`
+# Trainer configuration
 
-## 1) What This Block Controls
+The Trainer owns hardware selection, checkpoints, stopping, logging, and the fit/test
+lifecycle. Data, Model, and Task code must not move the model between devices or repair
+Trainer inputs.
 
-`trainer` configures PyTorch Lightning trainer behavior:
-- device / accelerator selection
-- epoch count
-- callbacks (checkpointing / early stopping) via trainer_factory
-
-## 2) Minimal Example (YAML Snippet)
+## Minimal maintained configuration
 
 ```yaml
 trainer:
   name: "Default_trainer"
   num_epochs: 10
-  device: "cuda"   # set to "cpu" for CPU-only runs
-  gpus: 1          # Lightning devices field
+  test_after_fit: true
+  device: "cpu"
+  devices: 1
+  monitor: "val_loss"
+  monitor_mode: "min"
+  early_stopping: true
+  patience: 5
 ```
 
-## 3) Key Fields
+Maintained classification Pipelines require explicit `num_epochs`, `test_after_fit`,
+`device`, and `devices` values. There is no hidden epoch count, evaluation policy, device
+mode, or device count.
 
-| Field | Type | Notes |
-|---|---:|---|
-| `trainer.name` | str | Trainer implementation in `src/trainer_factory/`. |
-| `trainer.num_epochs` | int | Epoch count (override for smoke tests). |
-| `trainer.device` | str | `"cpu"` or `"cuda"` (used by Default_trainer). |
-| `trainer.gpus` | int | Lightning devices count (use `1` for cpu). |
+## Device contract
 
-## 4) Typical Overrides
+| Field | Contract |
+|---|---|
+| `trainer.device` | Exactly `cpu`, `cuda`, or `auto`. |
+| `trainer.devices` | Positive integer passed to Lightning unchanged. |
+
+Behavior:
+
+```text
+device=cpu
+→ use CPU; CUDA is not inspected
+
+device=cuda
+→ require CUDA and the requested count; otherwise fail before Trainer creation
+
+device=auto
+→ inspect available hardware because the user explicitly requested automatic selection
+```
+
+`trainer.gpus` is no longer a public alias. Replace it with `trainer.devices`. PHMFactory
+does not compare, merge, or guess between two device-count fields, and a failed CUDA
+request never falls back to CPU.
+
+## Checkpoint selection
+
+The checkpoint metric and direction are explicit:
+
+```yaml
+trainer:
+  monitor: "val_loss"
+  monitor_mode: "min"
+```
+
+or:
+
+```yaml
+trainer:
+  monitor: "val_acc_Dummy_Data"
+  monitor_mode: "max"
+```
+
+`ModelCheckpoint` and `EarlyStopping` consume the same pair. PHMFactory does not infer the
+direction from the metric name.
+
+## Common commands
+
+Run one CPU epoch and evaluate:
 
 ```bash
-python main.py --config <yaml> --override trainer.num_epochs=1
-python main.py --config <yaml> --override trainer.device=cpu --override trainer.gpus=1
+phmfactory --config <yaml> \
+  --override trainer.num_epochs=1 \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
+  --override trainer.test_after_fit=true
 ```
 
-## 5) Coupling Notes
+Request CUDA explicitly:
 
-- Built by `src/trainer_factory/__init__.py:build_trainer`.
-- `Default_trainer` maps `trainer.device` to Lightning `accelerator`.
+```bash
+phmfactory --config <yaml> \
+  --override trainer.device=cuda \
+  --override trainer.devices=1
+```
 
-## 6) How to Extend
+## Failure cases
 
-1) Add a new trainer implementation under `src/trainer_factory/`.
-2) Point configs at it via `trainer.name`.
+PHMFactory fails before training when:
 
-## 7) Common Pitfalls
+- `trainer.device` or `trainer.devices` is missing;
+- `device` is not exactly `cpu`, `cuda`, or `auto`;
+- `devices` is boolean, non-integral, or non-positive;
+- the legacy `trainer.gpus` field is present;
+- CUDA is requested but unavailable;
+- the requested accelerator count exceeds the available count;
+- `monitor` or `monitor_mode` is absent or invalid.
 
-1) Leaving `trainer.device=cuda` on a CPU-only machine.
-2) Setting `trainer.gpus=0` (Lightning expects `devices>=1` in this repo’s wrapper).
-3) Using DDP settings with `gpus=1`.
-4) Conflicting early stopping monitor names.
-5) Forgetting to override `num_epochs` for smoke tests.
+## Extension rule
 
+A new Trainer implementation belongs under `src/trainer_factory/` and is selected through
+`trainer.name`. Keep device and checkpoint behavior inside the Trainer. Do not add `.cuda()`
+operations to Models or Tasks, and do not add another device selector to the CLI or a
+Factory wrapper.

@@ -21,6 +21,7 @@ class RegistryRow:
     base_task: str
     base_trainer: str
     status: str
+    protocol_status: str
     owner_code: str
     keyspace: str
     minimal_run: str
@@ -44,6 +45,7 @@ def read_registry(registry_path: Path) -> List[RegistryRow]:
             "base_task",
             "base_trainer",
             "status",
+            "protocol_status",
             "owner_code",
             "keyspace",
             "minimal_run",
@@ -77,6 +79,7 @@ def read_registry(registry_path: Path) -> List[RegistryRow]:
                     base_task=_cell("base_task"),
                     base_trainer=_cell("base_trainer"),
                     status=_cell("status"),
+                    protocol_status=_cell("protocol_status"),
                     owner_code=_cell("owner_code"),
                     keyspace=_cell("keyspace"),
                     minimal_run=_cell("minimal_run"),
@@ -139,7 +142,7 @@ def render_atlas(rows: List[RegistryRow], registry_path: Path) -> str:
                 lines.append(f"#### `{row.config_id}`")
                 lines.append(f"- Path: `{row.path}`")
                 lines.append(f"- Description: {row.description}")
-                if row.category == "demo":
+                if row.category in {"demo", "baseline"}:
                     lines.append("- Base configs:")
                     lines.append(f"  - environment: `{row.base_environment}`")
                     lines.append(f"  - data: `{row.base_data}`")

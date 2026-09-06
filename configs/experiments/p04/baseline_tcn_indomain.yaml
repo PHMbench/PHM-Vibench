@@ -1,0 +1,68 @@
+# P04 - Baseline comparator: CNN.TCN in-domain (CWRU / XJTU / THU_006).
+# ADDITIVE config under configs/experiments/p04/.
+# Derives from configs/demo/01_cross_domain/cwru_dg.yaml.
+#
+# Status: ready (CNN.TCN is registered in src/model_factory/model_registry.csv).
+# Stands in for the omitted SincNet/TFN/WKN baselines (which are not registered).
+# Smoke-friendly default: trainer.num_epochs=1, device=cpu.
+#
+# Supports: comparator side of CLAIM-C-GATE-98.
+
+pipeline: "Pipeline_01_default"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  model: "configs/base/model/backbone_dlinear.yaml"
+  task: "configs/base/task/dg.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "p04_baseline_tcn_indomain"
+  seed: 42
+  output_dir: "results/experiments/p04/baseline_tcn_indomain"
+  notes: "P04 baseline comparator: CNN.TCN on CWRU/XJTU/THU_006."
+
+data:
+  data_dir: "data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  stride: 16
+  num_window: 8
+  # Leakage-safe split (launch default). metadata.xlsx has no Bearing_id -> Domain_id.
+  # For dummy-data wiring smoke, override: data.split.strategy=legacy_windows.
+  split:
+    strategy: grouped_metadata
+    group_key: Domain_id
+    test_policy: partition
+    fractions: {train: 0.7, val: 0.15, test: 0.15}
+    seed: 42
+    manifest_path: results/experiments/p04/_split_manifest_tcn.csv
+
+model:
+  type: "CNN"
+  name: "TCN"
+  input_dim: 2
+  num_classes: 10
+  num_channels: [32, 64, 64, 64]
+  kernel_size: 7
+  dilation: 2
+
+task:
+  # partition test_policy REQUIRES Default_task.
+  type: Default_task
+  name: Default_task
+  loss: CE
+  metrics: [acc, f1_macro]
+  optimizer: adam
+  lr: 0.001
+  weight_decay: 0.0001
+  epochs: 10
+  target_system_id: [1]
+
+trainer:
+  num_epochs: 1
+  device: "cpu"
+  gpus: 1

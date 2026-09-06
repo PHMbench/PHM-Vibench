@@ -1,8 +1,14 @@
-# Demo: Few-shot (`demo_03_fewshot`)
+# Demo: Supervised Window Holdout (`demo_03_fewshot`)
 
 ## Purpose
 
-Single-system few-shot-style configuration using the FS task base.
+Run ordinary supervised CWRU classification through the existing `FS/classification`
+compatibility path. The data path uses held-out windows, while the task optimizes
+cross-entropy on an ordinary `x/y/file_id` batch.
+
+The compatibility filename `cwru_protonet.yaml` does not describe the current
+algorithm. This run has no support/query batch, prototype computation, episode-local
+label mapping, or query-only loss.
 
 ## Minimal Run
 
@@ -11,8 +17,13 @@ python main.py --config configs/demo/03_fewshot/cwru_protonet.yaml \
   --override trainer.num_epochs=1 --override data.num_workers=0
 ```
 
-## Common Pitfalls
+## What This Run Does Not Establish
 
-1) Confusing FS and GFS (different samplers/episodes semantics).
-2) Output directory may inherit from base environment if not overridden.
+```text
+few-shot adaptation
+ProtoNet
+N-way K-shot episodes
+episodic evaluation
+```
 
+A true ProtoNet path requires a separate dataset/sampler/task vertical slice.

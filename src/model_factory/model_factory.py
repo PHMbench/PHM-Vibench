@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import importlib
 import os
-from typing import Any
+from typing import Any, Mapping
 
 import torch
+
+from ..utils.label_ontology import validate_metadata_label_ontology
 from ..utils.utils import get_num_classes
-from ..utils.registry import Registry
-
-
 
 
 def resolve_model_module(args_model: Any) -> str:
@@ -19,80 +18,134 @@ def resolve_model_module(args_model: Any) -> str:
 
 
 def model_factory(args_model: Any, metadata: Any):
-    """Instantiate a model by name.
+    """Instantiate a model by name and load an explicitly configured checkpoint.
 
-    Parameters
-    ----------
-    args_model : Namespace
-        Configuration namespace with at least ``name`` and ``type``
-        fields. Other attributes are passed to the model's ``Model``
-        constructor.
-    metadata : Any
-        Dataset metadata, used here only to compute ``num_classes``.
-
-    Returns
-    -------
-    nn.Module
-        Instantiated model ready for training.
+    Model import, construction, and checkpoint failures retain their original
+    exception type and traceback. A configured checkpoint is part of the requested
+    experiment. If it cannot be loaded, model construction fails instead of continuing
+    with random or partial initialization.
     """
-    # Respect an explicit `num_classes` from config (common for classification models).
-    # Otherwise infer from metadata; if only one dataset_id is present, collapse to an int.
+    # Validate every label ontology that is actually supplied, even when
+    # num_classes was configured manually. Some isolated model/checkpoint uses
+    # intentionally provide no metadata and an explicit output width; in that
+    # case there is no ontology to validate or silently reinterpret.
+    if metadata is not None:
+        validate_metadata_label_ontology(
+            metadata,
+            group_field="Dataset_id",
+            require_labels=False,
+        )
+
     if not getattr(args_model, "num_classes", None):
+        if metadata is None:
+            raise ValueError(
+                "model.num_classes is required when model construction receives "
+                "no metadata"
+            )
         inferred = get_num_classes(metadata)
         if isinstance(inferred, dict):
-            args_model.num_classes = next(iter(inferred.values())) if len(inferred) == 1 else inferred
+            args_model.num_classes = (
+                next(iter(inferred.values())) if len(inferred) == 1 else inferred
+            )
         else:
             args_model.num_classes = inferred
-    # key = f"{args_model.type}.{args_model.name}"
-
 
     module_path = resolve_model_module(args_model)
     model_module = importlib.import_module(module_path)
     model_cls = model_module.Model
+    model = model_cls(args_model, metadata)
 
-    try:
-        model = model_cls(args_model, metadata)
-        
-        if hasattr(args_model, "weights_path") and args_model.weights_path:
-            weights_path = args_model.weights_path
-            if os.path.exists(weights_path):
-                try:
-                    load_ckpt(model, weights_path)
-                except Exception as e:  # pragma: no cover - runtime safeguard
-                    print(f"加载权重时出错: {e}")
-        
-        return model
-    
-    except Exception as e:
-        raise RuntimeError(f"创建模型实例时出错: {str(e)}")
-    
+    weights_path = getattr(args_model, "weights_path", None)
+    if weights_path:
+        strict = getattr(args_model, "weights_strict", True)
+        if not isinstance(strict, bool):
+            raise TypeError(
+                "model.weights_strict must be a boolean; use true for exact "
+                "checkpoint loading or false for an explicitly compatible subset"
+            )
+        load_ckpt(model, weights_path, strict=strict)
 
-def load_ckpt(model, ckpt_path):
-    """Load weights from ``ckpt_path`` into ``model``.
+    return model
 
-    Parameters
-    ----------
-    model : nn.Module
-        Model instance to be updated.
-    ckpt_path : str
-        Path to a PyTorch checkpoint file.
+
+def _extract_state_dict(checkpoint: Any, ckpt_path: str) -> Mapping[str, Any]:
+    """Return bare-model weights from a plain or PHMFactory Lightning checkpoint."""
+    if not isinstance(checkpoint, Mapping):
+        raise TypeError(
+            f"Checkpoint '{ckpt_path}' must contain a mapping, "
+            f"got {type(checkpoint).__name__}."
+        )
+
+    state_dict = checkpoint.get("state_dict", checkpoint)
+    if not isinstance(state_dict, Mapping):
+        raise TypeError(
+            f"Checkpoint '{ckpt_path}' contains a non-mapping state_dict."
+        )
+
+    # PHMFactory task modules register the bare model as ``self.network``.
+    # Support that one canonical Lightning key space without guessing unrelated
+    # prefixes such as module., model., backbone., or encoder.
+    network_state = {
+        key.removeprefix("network."): value
+        for key, value in state_dict.items()
+        if key.startswith("network.")
+    }
+    return network_state or state_dict
+
+
+def load_ckpt(model: Any, ckpt_path: str, *, strict: bool = True) -> None:
+    """Load ``ckpt_path`` into ``model``.
+
+    Strict loading is the default. Non-strict loading is intended only for
+    explicit transfer-learning use and still requires at least one compatible
+    parameter.
     """
-    if not os.path.exists(ckpt_path):
-        raise FileNotFoundError(f"Checkpoint file {ckpt_path} does not exist.")
-    state_dict = torch.load(ckpt_path, map_location='cpu', weights_only=False)
-    model_dict = model.state_dict()
-    matched_dict = {}
+    checkpoint_path = os.fspath(ckpt_path)
+    if not os.path.isfile(checkpoint_path):
+        raise FileNotFoundError(
+            f"Configured checkpoint does not exist or is not a file: "
+            f"{checkpoint_path}"
+        )
+
+    checkpoint = torch.load(
+        checkpoint_path,
+        map_location="cpu",
+        weights_only=False,
+    )
+    state_dict = _extract_state_dict(checkpoint, checkpoint_path)
+
+    if strict:
+        model.load_state_dict(state_dict, strict=True)
+        return
+
+    model_state = model.state_dict()
+    matched = {}
     skipped = []
-    for name, param in state_dict.items():
-        if name in model_dict:
-            matched_dict[name] = param
-        else:
-            skipped.append((name, "not in model"))
-    # 加载匹配的权重
-    model.load_state_dict(matched_dict, strict=False)
-    # 打印跳过的参数
+
+    for name, parameter in state_dict.items():
+        if name not in model_state:
+            skipped.append((name, "not present in model"))
+            continue
+
+        checkpoint_shape = getattr(parameter, "shape", None)
+        model_shape = getattr(model_state[name], "shape", None)
+        if checkpoint_shape != model_shape:
+            skipped.append(
+                (name, f"shape {checkpoint_shape} does not match {model_shape}")
+            )
+            continue
+
+        matched[name] = parameter
+
+    if not matched:
+        raise RuntimeError(
+            f"Checkpoint '{checkpoint_path}' matched zero model parameters."
+        )
+
+    model.load_state_dict(matched, strict=False)
+
     if skipped:
-        print("跳过以下不匹配的参数：")
-        for name, model_sz in skipped:
-            print(f"  {name}: checkpoint vs model {model_sz}")
-    print(f"已加载匹配的权重: {ckpt_path}")
+        print(
+            f"Loaded {len(matched)} compatible parameters from "
+            f"'{checkpoint_path}'; skipped {len(skipped)} incompatible entries."
+        )

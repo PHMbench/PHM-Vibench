@@ -1,58 +1,83 @@
+# Trainer Factory
 
-# Trainer Factory (`src/trainer_factory/`)
+`src.trainer_factory.build_trainer(...)` resolves `trainer.name` and returns one
+`pytorch_lightning.Trainer`. Import or construction failures raise; the factory never
+prints an error and returns `None`.
 
-The Trainer Factory constructs a `pytorch_lightning.Trainer` from `config.trainer` + `config.environment`.
+```python
+trainer = build_trainer(
+    args_environment,
+    args_trainer,
+    args_data,
+    run_path,
+)
+```
 
-This README is the canonical “how to use” doc. For architecture/change guidance, see [@CLAUDE.md].
-
-## Purpose
-
-- Centralize callbacks (checkpointing, early stopping, pruning)
-- Centralize loggers (CSV always, plus optional WandB / SwanLab / TensorBoard)
-- Centralize hardware settings (CPU/GPU, strategy, precision)
-
-## Module Structure
-
-| File | Role |
-|---|---|
-| `trainer_factory.py` | Entry point; resolves the trainer implementation and returns a `pl.Trainer` |
-| `Default_trainer.py` | Default trainer builder (callbacks/loggers/hardware wiring) |
-
-## Configuration (YAML)
-
-The trainer implementation is selected by `trainer.name`.
-
-Minimal example (aligned with `configs/base/trainer/default_single_gpu.yaml`):
+## Maintained configuration
 
 ```yaml
-environment:
-  project: "demo"
-
 trainer:
   name: "Default_trainer"
   num_epochs: 10
-  gpus: 1
-  device: "cuda"
+  test_after_fit: true
+  device: "cpu"
+  devices: 1
   monitor: "val_loss"
+  monitor_mode: "min"
   early_stopping: true
   patience: 5
 ```
 
-### Note on `trainer.trainer_name` (legacy/import fallback)
+`trainer.device` and `trainer.devices` are the only maintained hardware fields. The
+legacy `trainer.gpus` field is rejected. A CUDA request that cannot be satisfied fails;
+it never changes to CPU.
 
-Internally, `src/trainer_factory/trainer_factory.py` will:
+`trainer.monitor` and `trainer.monitor_mode` are consumed by both `ModelCheckpoint` and
+`EarlyStopping`. The direction is not inferred from the metric name.
 
-- Prefer `trainer.name` (registry / default implementation name)
-- If needed, fall back to importing a module named by `trainer.trainer_name` (defaults to `Default_trainer`)
+## Resolution
 
-In normal configs you should set only `trainer.name`.
+The factory uses a narrow resolution path:
 
-## Workflow (high-level)
+1. check `TRAINER_REGISTRY`;
+2. import `src.trainer_factory.<trainer.name>`;
+3. check the registry again for a decorator-registered builder;
+4. accept the historical exported `trainer` function only as a compatibility boundary.
 
-1. Pipeline loads YAML and builds `args_trainer` / `args_environment`.
-2. `trainer_factory(...)` resolves the trainer function.
-3. The trainer function configures callbacks/loggers/hardware and returns `pl.Trainer`.
+It does not scan packages, guess names, select another Trainer, or repair its inputs.
 
-## Output
+## Adding a Trainer
 
-Returns a configured `pytorch_lightning.Trainer` ready for `.fit(...)` / `.test(...)`.
+```python
+from src.trainer_factory import register_trainer
+
+
+@register_trainer("MyTrainer")
+def build_my_trainer(*, args_e, args_t, args_d, path):
+    ...
+```
+
+Place the implementation at `src/trainer_factory/MyTrainer.py`. A new Trainer owns device
+selection, callbacks, checkpoint selection, logging, and the Lightning lifecycle. It must
+not change the selected data, model, task, loss, or metric.
+
+## Validation
+
+```bash
+phmfactory preflight --config <yaml>
+phmfactory --config <yaml> \
+  --override trainer.num_epochs=1 \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
+  --override data.num_workers=0
+```
+
+For the packaged user path:
+
+```bash
+phmfactory demo
+```
+
+Common failures are missing or invalid `device`/`devices`, unavailable CUDA, an unknown
+Trainer module, an absent checkpoint monitor, or a monitor name that the Task never logs.
+The original error remains the primary diagnostic.

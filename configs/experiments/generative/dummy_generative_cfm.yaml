@@ -32,7 +32,6 @@ data:
   test_ratio: 0.0
   normalization: "standardization"
   window_size: 128
-  stride: 16
   num_window: 4
   dtype: "float32"
   pin_memory: false
@@ -51,7 +50,7 @@ task:
 trainer:
   monitor: "val_loss"
   num_epochs: 1
-  gpus: 1
+  devices: 1
   device: "cpu"
   early_stopping: false
   log_every_n_steps: 1

@@ -1,119 +1,141 @@
-# PHMFactory v0.3 Release Readiness
+# PHMFactory v0.3.0-rc1 Release Readiness
 
-This page is the blocking checklist for the final PHMFactory v0.3 release. It is an audit contract, not a claim that the release is already ready.
+This page is the current release-claim authority for the `0.3.0rc1` source tree. It does
+not claim that an RC1 tag, GitHub Release, wheel upload, source-distribution upload, or
+package-index publication exists.
 
 ## Current status
 
 ```text
-status: BLOCKED
-release target: v0.3.0
-repository target: PHMbench/phmfactory
+source version: 0.3.0rc1
+repository: PHMbench/PHM-Vibench
+release state: BLOCKED
+current baseline_valid references: 0
+published artifacts: none
 ```
 
-Run the audit with:
+The current blocker is intentional:
+
+```text
+BASELINE_VALID_REFERENCE_INVALID
+```
+
+The MFPT transparent reference was validated on an earlier source state. Subsequent
+changes modified metric lifecycle, checkpoint selection, and repeated-run aggregation.
+Until the exact MFPT protocol is rerun on the current source, it remains `smoke_only` and
+must not be presented as current `baseline_valid` evidence.
+
+## Readiness contract
+
+A release candidate is ready only when:
+
+$$
+C_{\mathrm{RC1}}
+=
+C_{\mathrm{config}}
+\land
+C_{\mathrm{runtime}}
+\land
+C_{\mathrm{baseline}}
+\land
+C_{\mathrm{package}}
+\land
+C_{\mathrm{docs}}.
+$$
+
+- `C_config`: inspect, preflight, and run resolve the same visible experiment.
+- `C_runtime`: failures remain failures; no alternate data, model, task, device, loss,
+  checkpoint, or estimator is selected silently.
+- `C_baseline`: at least one exact real-data configuration has current-source evidence for
+  its data population, split, objective, checkpoint selection, evaluation, declared
+  metrics, and repeated-run estimator.
+- `C_package`: the supported installation and offline first-run path work.
+- `C_docs`: public claims match the current registry and generated support tables.
+
+A hash, receipt, ledger, attestation, or artifact index is not a scientific readiness
+condition.
+
+## What is already established
+
+The current source retains the following reviewed behavior:
+
+- the public `phmfactory` command and configuration-first execution path;
+- explicit Data, Model, Task, Trainer, and Pipeline responsibilities;
+- fail-fast task, device, objective, checkpoint, and evaluation boundaries on maintained
+  paths;
+- deterministic maintained HSE validation/test behavior;
+- strict local Dummy and MFPT reader contracts;
+- one fully offline Dummy first-run path;
+- current bounded smoke configurations listed in `SUPPORTED_COMBINATIONS.md`;
+- optional `phm-data-factory` integration deferred outside the v0.3 core runtime.
+
+These facts support software use and bounded smoke claims. They do not substitute for a
+current real-data `baseline_valid` experiment.
+
+## MFPT requalification gate
+
+The candidate configuration remains:
+
+```text
+configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
+```
+
+It may return to `protocol_status=baseline_valid` only after the unchanged protocol is run
+on the current source and all of the following hold:
+
+```text
+provider revision and 20-file population unchanged
+provider test files excluded from fit/validation/checkpoint selection
+seeds exactly 17, 18, 19
+one best checkpoint restored before each test
+declared acc and f1 reported for every seed
+non-empty finite metrics
+count=3 for every repeated-run metric
+finite mean and sample standard deviation
+independent workflow-only recomputation agrees with framework accuracy and macro-F1
+```
+
+The requalification task must not change the data population, split, model, loss, metrics,
+optimizer, epochs, or seeds to recover a preferred result. A negative result is evidence
+and should leave the candidate unpromoted.
+
+## CWRU and optional backends
+
+CWRU is a later local acceptance target, not the current baseline claim. Its useful checks
+are provider declaration, required metadata, unique IDs, signal coverage, shape, sample
+length, channel count, labels, domains, and reader semantics. Per-file hashes or
+cross-provider byte identity are optional diagnostics, not release gates.
+
+`phm-data-factory` and IoTDB remain optional and deferred. The v0.3 core path must install,
+preflight, and run its offline Dummy experiment without them. An unavailable optional
+backend must fail when explicitly selected; it must not fall back to local data.
+
+## Audit commands
 
 ```bash
+python tools/repo/check_submodule_policy.py --mode release
 python tools/repo/check_release_readiness.py --mode audit
-```
-
-The release command must remain blocked while any finding exists:
-
-```bash
 python tools/repo/check_release_readiness.py --mode release
 ```
 
-Submodule policy can be inspected independently:
-
-```bash
-python tools/repo/check_submodule_policy.py --mode policy
-python tools/repo/check_submodule_policy.py --mode release
-```
-
-## Machine-checked blockers
-
-The checker currently evaluates:
-
-1. `pyproject.toml` and `phmfactory.__version__` agree and equal `0.3.0`;
-2. the public README heading uses `PHMFactory`;
-3. `CITATION.cff` uses the PHMFactory title and final repository URL;
-4. `CHANGELOG.md` contains a v0.3.0 section;
-5. `RELEASE_NOTES_v0.3.0.md` exists;
-6. Hugging Face and ModelScope CWRU revisions are immutable rather than `main` or `master`;
-7. required CWRU bundle SHA-256 values are populated;
-8. the governed `phm-data-factory` backend is organization-owned, approved, pinned, and present at the exact gitlink;
-9. all legacy paper/research submodules have completed content-level migration and are absent from `.gitmodules`;
-10. v0.2 provenance is resolved either by a visible historical tag or by the exact approved release-candidate provenance record;
-11. no v0.3.0 tag already exists before the release gate passes;
-12. when running in GitHub Actions, the repository has the final `PHMbench/phmfactory` identity.
-
-## Resolved staged records
-
-The staged v0.3 chain now includes:
-
-- PHMFactory README and citation branding;
-- a v0.3 changelog section and draft release notes;
-- an explicit v0.2.0 release-candidate provenance authority at
-  `docs/releases/v0.2.0-rc-provenance.yaml`;
-- the immutable v0.2 runtime baseline commit
-  `a331769d4005018bc833534ecf4efeb5e8a5a78d`;
-- an explicit decision not to create a retroactive final v0.2.0 tag;
-- a deny-by-default submodule allowlist with one neutral organization-owned backend target;
-- an explicit decision not to merge the old personal-URL backend integration directly.
-
-These records are only effective after their stacked PRs are reviewed and merged.
-
-## Current submodule state
-
-The `phm-data-factory` source tree has a reviewed Apache-2.0 commit, but its neutral
-organization-owned repository transfer has not completed. The allowlist therefore
-uses:
+Expected current behavior:
 
 ```text
-status: blocked_pending_org_transfer
-path: packages/phm-data-factory
-target: https://github.com/PHMbench/phm-data-factory.git
+audit mode  -> reports the baseline-valid blocker
+release mode -> exits non-zero
 ```
 
-The remaining paper gitlinks are still frozen because destination repository names
-alone do not prove content coverage. Both conditions remain release blockers.
+Release mode may pass only after a current-source `baseline_valid` registry row is restored
+through reviewed execution evidence.
 
-See [PHM_DATA_FACTORY_BACKEND_V0_3.md](PHM_DATA_FACTORY_BACKEND_V0_3.md).
+## Publication boundary
 
-## Human-reviewed blockers
-
-The following cannot be inferred safely from repository files alone:
-
-- all staged v0.3 PRs have been reviewed and merged in dependency order;
-- branch protection and required checks are configured for the final default branch;
-- public Hugging Face and ModelScope artifacts are available at the pinned immutable revisions;
-- the two providers return byte-identical required bundle files;
-- the backend organization transfer preserves the reviewed source tree or has verified replacement-tree parity;
-- the final backend adapter remains optional and does not modify protected Data Factory behavior;
-- every legacy paper gitlink has destination-level source/config/result verification;
-- the GitHub repository rename and redirect behavior have been verified;
-- release notes accurately separate compatibility guarantees from experimental features;
-- the final wheel and source distribution were built from the tagged commit;
-- installation, CLI, module entrypoint, offline smoke, Pipeline 06, UXFD, Streamlit, dependency ownership, repository-layout, submodule-policy, and CWRU gates all pass on the final release commit.
-
-## Release order
-
-```text
-1. merge the reviewed v0.3 PR stack in dependency order
-2. retain the approved v0.2 release-candidate provenance record
-3. transfer and integrate the organization-owned phm-data-factory backend
-4. complete content-level migration of the remaining paper gitlinks
-5. publish and pin the dual-source CWRU bundle
-6. finalize repository branding and citation metadata
-7. change versions from 0.3.0.dev0 to 0.3.0
-8. validate RELEASE_NOTES_v0.3.0.md against the final tree
-9. rename the GitHub repository to PHMbench/phmfactory
-10. rerun all required checks on the final repository identity
-11. build wheel and sdist from the final commit
-12. create tag v0.3.0 and publish the release
-```
-
-The repository rename, final version change, tag, and release publication must not occur before all blockers are cleared.
+A future readiness pass still does not create a tag or publication automatically. Tagging,
+GitHub Release creation, wheel/source upload, and package-index publication require
+separate explicit authorization for the exact approved commit.
 
 ## Rollback
 
-Before tagging, revert the release-preparation commit or keep the repository at `0.3.0.dev0`. After tagging, use a corrective release rather than moving or recreating the published tag.
+Each readiness change should be one bounded squash commit. Revert that commit if its
+contract is wrong. Do not restore a `baseline_valid` claim merely to make the release gate
+pass.

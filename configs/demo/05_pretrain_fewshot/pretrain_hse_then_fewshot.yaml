@@ -1,4 +1,5 @@
-# Two-stage demo: pretrain (HSE) + few-shot finetune (v0.1.0 draft)
+# Compatibility filename: this configuration contains no `stages` block and runs
+# one HSE contrastive pretraining stage. It does not perform few-shot adaptation.
 
 pipeline: "Pipeline_02_Pretraining_Few_Shot"
 
@@ -10,20 +11,17 @@ base_configs:
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 
 environment:
-  project: "demo_pretrain_hse_then_fewshot"
+  project: "demo_hse_pretraining_smoke"
   seed: 42
-  output_dir: "results/demo/pretrain_hse_then_fewshot"
-  notes: "Two-stage pretrain (HSE) + few-shot finetune demo."
+  output_dir: "results/demo/hse_pretraining_smoke"
+  notes: "Single-stage HSE contrastive pretraining smoke through Pipeline 02. No few-shot adaptation stage is configured."
 
-# 模型配置全部由 base_configs.model (backbone_dlinear.yaml) 提供
-
-# 当前版本将此 demo 视作单阶段 HSE 对比预训练示例（后续可通过 stages 扩展为真正的两阶段：pretrain + few-shot）
 task:
   type: "pretrain"
   name: "hse_contrastive"
-  # 预训练阶段在 CDDG 视角下，默认覆盖多个系统
   target_system_id: [1, 13, 6, 12, 19]
   target_domain_num: 1
 
 trainer:
   num_epochs: 20
+  test_after_fit: true

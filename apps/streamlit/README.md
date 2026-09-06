@@ -1,187 +1,176 @@
 # PHMFactory Streamlit Experiment Workspace
 
-This directory contains the optional, configuration-first web workspace for
-PHMFactory. It is a user-facing adapter around the maintained CLI, not a second
+This optional browser workspace helps users select a maintained template, edit a bounded
+parameter surface, validate the exact configuration, launch the public CLI, and inspect
+logs and artifacts.
+
+It is an adapter around PHMFactory—not a second configuration parser, scheduler, or
 training framework.
-
-```text
-validated registry template
-+ first-run readiness checks
-+ portable YAML snapshot
-+ typed CLI overrides
-+ managed main.py process
-+ bounded result discovery
-```
-
-The experiment contract remains:
-
-```bash
-python main.py --config <yaml> [--override key=value ...]
-```
-
-The application never imports a Pipeline function, does not modify `main.py`, and
-does not change the five-block configuration schema.
 
 ## Install and start
 
-Install the core environment first, then the optional UI layer:
+Install the core source checkout first, then the optional UI dependencies:
 
 ```bash
-pip install -r requirements.txt
-pip install -r apps/streamlit/requirements.txt
+python -m pip install -e .
+python -m pip install -r apps/streamlit/requirements.txt
 streamlit run apps/streamlit/app.py
 ```
 
-`apps/streamlit/app.py` is the only maintained UI entrypoint. The historical
-`app/` prototype and root compatibility launcher were archived outside the public
-framework before removal.
-
-Run the command from the repository root. Streamlit 1.37 or newer is required for
-independent live-log refresh through `st.fragment`.
+Run the command from the repository root. `apps/streamlit/app.py` is the only maintained
+web entrypoint.
 
 ## First experiment
 
-Use the sidebar action **Use safe CPU smoke defaults**. It resets only the
-configuration editor; existing run history is preserved.
-
-The safe defaults are:
+Use **Use safe CPU smoke defaults** in the sidebar. It selects:
 
 ```text
 Template: demo_00_smoke_dummy_dg
 Mode:     Quick Start
 Device:   cpu
 Epochs:   1
+Data:     repository-shipped Dummy files
 ```
 
-The template uses repository-shipped dummy data and is the recommended way to
-verify the environment before selecting an external dataset or GPU.
+The workspace then guides the user through four steps:
 
-The workspace now checks, before launch:
+1. select a maintained template;
+2. change only the parameters needed for this run;
+3. validate the exact effective configuration and launch it;
+4. inspect live logs, metrics, files, and the reproduction command.
 
-- repository entrypoint and config directory;
-- Streamlit, PyYAML, PyTorch, and Lightning availability;
-- repository-shipped smoke assets;
-- write access for `outputs/streamlit/`;
-- whether `configs/local/local.yaml` is changing machine-local defaults;
-- whether the selected template's data directory and metadata file exist.
+## One configuration truth
 
-A failed readiness check does not prevent users from inspecting or downloading a
-valid configuration, but the **Run experiment** action stays disabled until the
-environment and selected data are ready.
-
-The workspace guides the user through four steps:
-
-1. select a maintained registry template;
-2. adjust a small catalog-approved parameter surface;
-3. validate and launch the public CLI;
-4. inspect live logs, metrics, images, artifacts, and the immutable command.
-
-## Template guidance
-
-User-facing template guidance is declarative in `template_profiles.yaml`. Each
-maintained demo can describe:
-
-- difficulty;
-- bundled or external data requirements;
-- recommended device;
-- honest runtime guidance;
-- onboarding badges and the next action.
-
-Adding a new template profile must not add model-specific branches to
-`workspace.py`. Unknown registry templates receive a conservative generic profile.
-
-## Experience modes
-
-### Quick Start
-
-Quick Start exposes only onboarding-safe fields. The selected template is resolved
-into a portable standalone YAML before execution. Machine-local configuration is
-not baked into that snapshot.
-
-### Advanced
-
-Advanced adds:
-
-- catalog-defined safe fields and ordered legacy aliases;
-- a portable full-YAML editor;
-- one typed `key=value` override per line;
-- a configuration diff;
-- the exact planned and actual reproduction commands.
-
-The precedence model is explicit:
+Streamlit delegates composition and validation to the same public inspector used by:
 
 ```text
-portable YAML
-< configs/local/local.yaml (when present)
-< catalog-safe CLI overrides
-< raw CLI overrides
+phmfactory preflight
+phmfactory run
+scripts.validate_configs
+scripts.config_inspect
 ```
 
-Overrides are passed as argv elements. The application never builds a
-`shell=True` command.
+The UI does not implement `base_configs` merging, Pipeline canonicalization, or hidden
+machine overrides itself.
+
+The public precedence is:
+
+```text
+base_configs
+< selected experiment YAML
+< explicit local config, only when supplied by a CLI user
+< explicit overrides
+```
+
+The current UI intentionally does not auto-discover or silently apply
+`configs/local/local.yaml`. Quick Start and Advanced mode therefore have no invisible
+machine-local layer. Machine-specific values are edited in the standalone YAML or entered
+as explicit overrides. The planned command shown by the UI is the command that is
+launched.
+
+A successful validation report carries the same `effective_config_sha256` that CLI
+preflight and the final run manifest record. If the visible YAML or overrides change, the
+validation becomes stale and the Run button is disabled until validation runs again.
+
+## Quick Start mode
+
+Quick Start exposes only catalog-approved fields. The selected template is resolved once
+through the public inspector. UI values are converted into typed `key=value` argv tokens.
+
+Use this mode for:
+
+- the first offline smoke;
+- common epoch, device, worker, seed, or data-path changes;
+- users who do not need to edit the full YAML.
+
+## Advanced mode
+
+Advanced mode adds:
+
+- the same safe field catalog;
+- a standalone effective-YAML editor;
+- one typed override per line;
+- a configuration diff;
+- exact planned and actual reproduction commands.
+
+The YAML shown in this mode already contains the fully resolved base configuration. It
+has no hidden local layer. Raw overrides remain highest precedence and are passed as argv
+elements; the UI never builds a `shell=True` command.
+
+## Readiness and launch blockers
+
+Before launch, the workspace checks:
+
+- the repository entrypoint and configuration inventory;
+- required Python imports;
+- repository-shipped smoke assets;
+- output-directory writability;
+- selected template data and metadata availability;
+- public config inspection and sanity checks.
+
+A failed readiness check does not prevent users from inspecting the template or editing
+YAML, but execution remains disabled until the relevant environment, data, or config
+problem is fixed.
 
 ## Run lifecycle
 
-Each run creates a durable workspace:
+Each UI run creates a managed workspace:
 
 ```text
-outputs/streamlit/<run_id>/
+outputs/streamlit/<run-id>/
 ├── execution.yaml
 ├── run.json
 └── run.log
 ```
 
-`run.json` is written atomically and records the template, mode, command,
-overrides, PID, timestamps, exit status, validation signature, output root, and
-restart ancestry.
+The process then invokes the public command contract. PHMFactory's own runtime writes the
+invocation manifest below the configured experiment output directory:
+
+```text
+<environment.output_dir>/.phmfactory/runs/<run-id>/run_manifest.json
+```
 
 The UI supports:
 
-- **Run** — start one managed experiment process;
+- **Run** — start one experiment process;
 - **Cancel** — terminate the process group, then force-kill after a grace period;
-- **Restart same run** — launch from the immutable YAML and override snapshot.
+- **Restart same run** — reuse the immutable YAML and override snapshot.
 
-Pause/resume is intentionally not implemented. It is not portable across Windows,
-CUDA workers, and data-loader subprocesses.
-
-A single Streamlit worker manages one active experiment at a time. This keeps the
-optional UI simple and prevents it from becoming an implicit scheduler.
+Pause/resume is intentionally absent because it is not portable across Windows, CUDA,
+and data-loader subprocesses. One Streamlit worker manages one active experiment at a
+time; the workspace is not an implicit cluster scheduler.
 
 ## Results
 
-Result discovery is bounded by directory depth, entry count, file count, metric
-file size, and metric row count. Symbolic links are skipped.
+Result discovery is bounded by directory depth, entry count, file count, metric file
+size, and row count. Symbolic links are skipped.
 
-The result tabs provide:
+The result views provide:
 
 - **Overview** — actual command, output roots, run metadata;
-- **Metrics** — headline values plus CSV/JSON tables;
-- **Artifacts** — images, file inventory, small-file downloads;
+- **Metrics** — headline values plus small CSV/JSON tables;
+- **Artifacts** — images, file inventory, and small-file downloads;
 - **Logs** — live tail and full-log download.
 
-Missing or malformed optional artifacts never invalidate a completed run. The user
-still receives the process status, command, manifest, and raw log.
+Malformed optional artifacts do not erase the process status, command, run manifest, or
+raw log.
 
-## Compatibility and extension boundary
+## Extension boundaries
 
-- `configs/config_registry.csv` remains the source of template identity/status.
-- `field_catalog.yaml` remains the source of editable fields, aliases, widgets,
-  and template groups.
-- `template_profiles.yaml` remains the source of user-facing difficulty, data,
-  device, and first-action guidance.
-- Unknown future registry columns are retained as metadata.
-- Key migrations should add an alias in `field_catalog.yaml`, not a model-specific
-  conditional in `app.py`.
-- Process lifecycle is isolated in `run_service.py`.
-- Artifact parsing is isolated in `result_service.py`.
-- Runtime/local-config precedence is isolated in `runtime_policy.py`.
-- First-run checks and template data resolution are isolated in `onboarding.py`.
-- Visual components and live-run views are isolated in `ui_theme.py`,
-  `ui_onboarding.py`, and `ui_runtime.py`.
+Use declarative files rather than model-specific UI branches:
 
-New metric formats should be added to `result_service.py`; new safe user-facing
-fields should be added to `field_catalog.yaml`; new user guidance should be added
-to `template_profiles.yaml`.
+- `configs/config_registry.csv` — maintained template identity and status;
+- `field_catalog.yaml` — editable fields, aliases, widgets, and template groups;
+- `template_profiles.yaml` — difficulty, data, device, and first-action guidance;
+- `config_service.py` — UI-safe serialization and public-inspector adapter;
+- `runtime_policy.py` — temporary standalone YAML inspection;
+- `run_service.py` — process lifecycle;
+- `result_service.py` — bounded artifact parsing;
+- `onboarding.py` — environment and data readiness;
+- `ui_*.py` — visual components only.
+
+New config semantics belong in `phmfactory.config`, not in Streamlit. New metrics formats
+belong in `result_service.py`. New safe fields belong in `field_catalog.yaml`.
 
 ## Validation
 
@@ -196,44 +185,45 @@ python -m pytest \
   test/test_streamlit_ui_imports.py
 python -m scripts.validate_configs
 python -m scripts.validate_docs
-python -m scripts.config_inspect \
-  --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1
-python main.py \
-  --config configs/demo/00_smoke/dummy_dg.yaml \
-  --override trainer.num_epochs=1 \
-  --override data.num_workers=0
+phmfactory preflight --config smoke
+phmfactory demo
 ```
 
-The focused Streamlit service tests run on Linux and Windows through
+Focused UI tests run on both Linux and Windows through
 `.github/workflows/streamlit-quality-gates.yml`.
 
 ## Troubleshooting
 
-### The inspector reports a missing module
+### Validation and the CLI disagree
 
-Install the repository's core dependencies. The optional UI requirements do not
-replace the training environment. The readiness panel lists the missing module and
-the relevant installation action.
+Copy the planned command from the UI and run it in the same environment. Report:
 
-### A data path does not exist
+```text
+exact command
+UI effective_config_sha256
+CLI preflight effective_config_sha256
+complete stderr
+```
 
-The selected template card displays the resolved data root and metadata path. Use
-the offline CPU smoke template, edit `data.data_dir` in Advanced mode, or put the
-machine-specific path in `configs/local/local.yaml`.
+Different hashes for the same visible YAML and overrides are a configuration-parity bug.
 
-### A GPU run fails
+### A local path is missing
 
-Return to **Use safe CPU smoke defaults**, verify the offline run, then validate
-CUDA and PyTorch independently.
+Use the offline smoke template to separate installation from external data availability.
+In Advanced mode, edit `data.data_dir` in the standalone YAML or add an explicit raw
+override. The UI does not read a hidden local file.
 
-### The worker restarted during a run
+### A dependency import fails
 
-On POSIX, a still-live process is marked `detached` and automatic cancellation is
-disabled to avoid killing a reused PID. Use the operating-system process manager,
-then start a new run.
+Run `phmfactory doctor` in the same environment. The optional UI requirements do not
+replace the core training environment.
+
+### CUDA initialization fails
+
+Return to CPU smoke, then verify the installed PyTorch build, driver, and device outside
+PHMFactory before changing experiment code.
 
 ### No structured metrics appear
 
-The run can still be inspected through `run.log`, `run.json`, and the output file
-inventory. Optional artifact parsing is deliberately failure-tolerant.
+Inspect `run.log`, `run.json`, and the PHMFactory `run_manifest.json`. Optional parser
+failure does not invalidate those primary records.

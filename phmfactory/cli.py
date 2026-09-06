@@ -1,168 +1,184 @@
-"""Public command-line interface for PHMFactory."""
+"""Public command routing and process entrypoints for PHMFactory.
+
+This module exposes a programmatic API and an operating-system process boundary. Both
+consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML or
+searches for machine-local configuration after compilation.
+"""
 
 from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-from phmfactory.config import DEFAULT_CONFIG, resolve_config
-from phmfactory.pipelines import pipeline_module_name
+from phmfactory.commands.common import (
+    add_config_arguments,
+    requested_config,
+    requested_local_config,
+)
+from phmfactory.config import analyze_config
+from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
+from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
+
+
+COMMANDS = ("data", "doctor", "demo", "preflight")
+DIRECT_OUTPUT_KEYS = (
+    "result_dir",
+    "best_checkpoint",
+    "test_metrics",
+    "run_summary",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the parser shared by the three experiment entrypoints."""
+    """Build the backward-compatible experiment parser."""
+
     parser = argparse.ArgumentParser(
         prog="phmfactory",
         description="PHMFactory task pipeline",
+        epilog=(
+            "Commands: doctor, demo, preflight, data. "
+            "Run an experiment explicitly with phmfactory --config <yaml>."
+        ),
     )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Configuration path or maintained preset name.",
-    )
-    parser.add_argument(
-        "--config_path",
-        type=str,
-        default=None,
-        help="Deprecated alias for --config.",
-    )
-    parser.add_argument(
-        "--notes",
-        type=str,
-        default="",
-        help="Experiment notes.",
-    )
-    parser.add_argument(
-        "--override",
-        action="append",
-        help="Configuration override in key=value form; may be repeated.",
-    )
-    return parser
-
-
-def build_data_parser() -> argparse.ArgumentParser:
-    """Build the bounded dataset-bundle management command surface."""
-    parser = argparse.ArgumentParser(
-        prog="phmfactory data",
-        description="Download and validate PHMFactory dataset bundles.",
-    )
-    commands = parser.add_subparsers(dest="data_command", required=True)
-
-    download = commands.add_parser("download", help="Download one versioned bundle.")
-    download.add_argument("--bundle", default="cwru-demo-v1")
-    download.add_argument(
-        "--source",
-        choices=("huggingface", "modelscope"),
-        default="huggingface",
-    )
-    download.add_argument("--destination", default=None)
-    download.add_argument("--revision", default=None)
-    download.add_argument("--force", action="store_true")
-
-    validate = commands.add_parser("validate", help="Validate a local bundle.")
-    validate.add_argument("--bundle", default="cwru-demo-v1")
-    validate.add_argument("--path", required=True)
-
-    compare = commands.add_parser(
-        "compare",
-        help="Require identical core-file hashes for two local bundles.",
-    )
-    compare.add_argument("--bundle", default="cwru-demo-v1")
-    compare.add_argument("--left", required=True)
-    compare.add_argument("--right", required=True)
+    add_config_arguments(parser, include_notes=True, include_experimental=True)
     return parser
 
 
 def _resolve_config_path(args: argparse.Namespace) -> str:
-    if args.config is not None:
-        return args.config
-    if args.config_path is not None:
-        return args.config_path
-    return DEFAULT_CONFIG
+    """Return the selected config while preserving the deprecated alias."""
+
+    return requested_config(args)
 
 
 def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
-    """Resolve the canonical Pipeline through the public config API."""
-    return resolve_config(
+    """Resolve the canonical Pipeline through the public config authority."""
+
+    return analyze_config(
         config_path,
         override_values=args.override,
+        local_config=requested_local_config(args),
     ).pipeline
 
 
-def run(args: argparse.Namespace) -> Any:
-    """Dispatch a parsed argument namespace to the protected runtime."""
-    requested_config = _resolve_config_path(args)
-    resolved = resolve_config(requested_config, override_values=args.override)
+def _print_direct_outputs(result: Mapping[str, Any]) -> None:
+    """Print canonical user outputs returned directly by a maintained Pipeline."""
 
-    # Keep the user's source for provenance, but pass the resolved file path to
-    # the protected runtime so public presets never fall into legacy aliases.
-    args.requested_config = requested_config
-    args.config_path = str(resolved.path)
-    args.resolved_config_path = str(resolved.path)
-    args.resolved_pipeline = resolved.pipeline
+    for key in DIRECT_OUTPUT_KEYS:
+        value = result.get(key)
+        if value is not None:
+            print(f"{key}={value}")
+    primary_metrics = result.get("primary_metrics")
+    if isinstance(primary_metrics, Mapping):
+        print(
+            "primary_metrics="
+            + json.dumps(
+                dict(primary_metrics),
+                sort_keys=True,
+                ensure_ascii=True,
+                allow_nan=False,
+            )
+        )
 
-    pipeline_module = importlib.import_module(
-        pipeline_module_name(resolved.pipeline, warn=False)
+
+def run(args: argparse.Namespace) -> Mapping[str, Any]:
+    """Analyze, authorize, execute, and return one Pipeline invocation.
+
+    Configuration composition occurs exactly once in :func:`analyze_config`. Protected
+    runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
+
+    The Pipeline result and exception are the public run authority. A successful run is
+    reported through direct result, checkpoint, metric, and summary paths returned by the
+    Pipeline; PHMFactory does not create a parallel attestation or evidence record.
+    """
+
+    requested = requested_config(args)
+    analysis = analyze_config(
+        requested,
+        override_values=args.override,
+        local_config=requested_local_config(args),
     )
-    result = pipeline_module.pipeline(args)
-    print("完成所有实验！")
+    compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
+
+    args.requested_config = requested
+    args.config_path = str(analysis.path)
+    args.resolved_config_path = str(analysis.path)
+    args.resolved_pipeline = analysis.pipeline
+    args.config_analysis = analysis
+    args.compiled_run_spec = compiled
+    args.resolved_config_data = compiled.runtime_config()
+
+    module_name = pipeline_module_name(analysis.pipeline, warn=False)
+    envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
+    args.execution_envelope = envelope
+
+    try:
+        descriptor = require_pipeline_access(
+            analysis.pipeline,
+            allow_experimental=bool(getattr(args, "allow_experimental", False)),
+            warn=False,
+        )
+    except BaseException as error:
+        envelope.record_failure(error, stage="maturity")
+        raise
+    args.pipeline_descriptor = descriptor
+
+    try:
+        pipeline_module = importlib.import_module(module_name)
+    except BaseException as error:
+        envelope.record_failure(error, stage="import")
+        raise
+
+    result = envelope.execute(pipeline_module, args)
+    _print_direct_outputs(result)
+    print("run=completed")
     return result
 
 
-def _run_data_command(argv: Sequence[str]) -> Any:
-    from phmfactory.data_sources import (
-        compare_bundle_hashes,
-        download_bundle,
-        load_bundle_spec,
-        validate_bundle,
-    )
+def _run_command(name: str, argv: Sequence[str]) -> Any:
+    """Load one small command module only when selected."""
 
-    parser = build_data_parser()
-    args = parser.parse_args(list(argv))
-    spec = load_bundle_spec(args.bundle)
+    if name == "data":
+        from phmfactory.commands import data
 
-    if args.data_command == "download":
-        result = download_bundle(
-            args.bundle,
-            source=args.source,
-            destination=args.destination,
-            revision=args.revision,
-            force=args.force,
-        )
-        validation = result.validation
-        print(f"bundle={validation.spec.bundle_id}")
-        print(f"provider={result.provider}")
-        print(f"revision={result.requested_revision}")
-        print(f"path={result.directory}")
-        print(f"selected_rows={validation.selected_rows}")
-        print(f"corpus_present={str(validation.corpus_present).lower()}")
-        return result
+        return data.run(argv)
+    if name == "doctor":
+        from phmfactory.commands import doctor
 
-    if args.data_command == "validate":
-        validation = validate_bundle(args.path, spec=spec)
-        print(f"bundle={validation.spec.bundle_id}")
-        print(f"path={validation.directory}")
-        print(f"metadata_rows={validation.metadata_rows}")
-        print(f"selected_rows={validation.selected_rows}")
-        print(f"signal_keys={validation.signal_keys}")
-        print(f"corpus_present={str(validation.corpus_present).lower()}")
-        return validation
+        return doctor.run(argv)
+    if name == "preflight":
+        from phmfactory.commands import preflight
 
-    hashes = compare_bundle_hashes(args.left, args.right, spec=spec)
-    for name, digest in hashes.items():
-        print(f"{name}={digest}")
-    return hashes
+        return preflight.run(argv)
+    if name == "demo":
+        from phmfactory.commands import demo
+
+        return demo.run(argv, experiment_runner=run)
+    raise ValueError(f"unknown PHMFactory command: {name!r}")
 
 
 def main(argv: Sequence[str] | None = None) -> Any:
-    """Execute a data subcommand or the backward-compatible experiment CLI."""
+    """Return the structured result of a named command or explicit experiment."""
+
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments[:1] == ["data"]:
-        return _run_data_command(arguments[1:])
-    parser = build_parser()
-    args = parser.parse_args(arguments)
-    return run(args)
+    if not arguments:
+        build_parser().print_help()
+        return {"status": "help"}
+    if arguments[0] in COMMANDS:
+        return _run_command(arguments[0], arguments[1:])
+    return run(build_parser().parse_args(arguments))
+
+
+def entrypoint(argv: Sequence[str] | None = None) -> int:
+    """Execute the public process contract and return integer status code ``0``.
+
+    Successful structured results are discarded at the process boundary. ``argparse``
+    exits and runtime exceptions are deliberately not caught, preserving non-zero status
+    and the original diagnostic.
+    """
+
+    main(argv)
+    return 0

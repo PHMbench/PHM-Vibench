@@ -1,8 +1,64 @@
+"""Task-aware batch sampler selection."""
+
+from collections.abc import Mapping
+
+import pandas as pd
+
 from .Sampler import HierarchicalFewShotSampler, Same_system_Sampler
 
+
+def _missing_dataset_id(metadata_entry) -> bool:
+    if not isinstance(metadata_entry, Mapping) or "Dataset_id" not in metadata_entry:
+        return True
+    value = metadata_entry["Dataset_id"]
+    if isinstance(value, (list, tuple, set, dict)):
+        return True
+    return bool(pd.isna(value))
+
+
+def _require_metadata_coverage(dataset) -> None:
+    """Require every selected sample to resolve one explicit Dataset_id."""
+
+    windows = getattr(dataset, "file_windows_list", None)
+    if not isinstance(windows, list) or not windows:
+        raise ValueError("Sampler requires a non-empty IdIncludedDataset population.")
+    metadata = getattr(dataset, "metadata", None)
+    if metadata is None:
+        raise ValueError("Sampler requires metadata for every selected file ID.")
+
+    selected_file_ids = {item["file_id"] for item in windows}
+    missing_rows = [file_id for file_id in selected_file_ids if file_id not in metadata]
+    if missing_rows:
+        raise ValueError(
+            "Sampler metadata is missing selected file ID(s) "
+            f"{sorted(missing_rows, key=str)}."
+        )
+
+    missing_systems = [
+        file_id
+        for file_id in selected_file_ids
+        if _missing_dataset_id(metadata[file_id])
+    ]
+    if missing_systems:
+        raise ValueError(
+            "Sampler metadata is missing Dataset_id for selected file ID(s) "
+            f"{sorted(missing_systems, key=str)}."
+        )
+
+
+def _evaluation_sampler(args_data, dataset):
+    """Keep every validation/test sample, including a final short batch."""
+    return Same_system_Sampler(
+        dataset=dataset,
+        batch_size=args_data.batch_size,
+        shuffle=False,
+        drop_last=False,
+    )
+
+
 def _get_gfs_sampler(args_task, args_data, dataset, mode):
-    if mode == 'train':
-        sampler = HierarchicalFewShotSampler(
+    if mode == "train":
+        return HierarchicalFewShotSampler(
             dataset=dataset,
             num_episodes=args_task.num_episodes,
             num_systems_per_episode=args_task.num_systems,
@@ -11,122 +67,55 @@ def _get_gfs_sampler(args_task, args_data, dataset, mode):
             num_support_per_label=args_task.num_support,
             num_query_per_label=args_task.num_query,
         )
-    elif mode == 'test' or mode == 'val':
-        sampler = Same_system_Sampler(
-            dataset=dataset,
-            batch_size=args_data.batch_size,
-            shuffle=False,
-            drop_last=True,
-        )
-    else:
-        raise ValueError(f"Unknown mode for GFS sampler: {mode}")
-    return sampler
+    if mode in {"val", "test"}:
+        return _evaluation_sampler(args_data, dataset)
+    raise ValueError(f"Unknown mode for GFS sampler: {mode}")
 
-def _get_cddg_sampler(args_data, dataset, mode):
-    if mode == 'train':
-        sampler = Same_system_Sampler(
+
+def _get_standard_sampler(args_data, dataset, mode, task_name):
+    if mode == "train":
+        return Same_system_Sampler(
             dataset=dataset,
             batch_size=args_data.batch_size,
             shuffle=True,
-            drop_last=True,
+            drop_last=False,
         )
-    elif mode == 'val' or mode == 'test':
-        sampler = Same_system_Sampler(
-            dataset=dataset,
-            batch_size=args_data.batch_size,
-            shuffle=False,
-            drop_last=True
-        )
-    else:
-        raise ValueError(f"Unknown mode for CDDG sampler: {mode}")
-    return sampler
+    if mode in {"val", "test"}:
+        return _evaluation_sampler(args_data, dataset)
+    raise ValueError(f"Unknown mode for {task_name} sampler: {mode}")
 
-def _get_dg_sampler(args_data, dataset, mode):
-    if mode == 'train':
-        sampler = Same_system_Sampler(
-            dataset, 
-            batch_size=args_data.batch_size,
-            shuffle=True,
-            drop_last=True
-        )
-    elif mode == 'val' or mode == 'test':
-        sampler = Same_system_Sampler(
+
+def Get_sampler(args_task, args_data, dataset, mode="train"):
+    """Return the sampler for one explicit task type and complete sample population."""
+
+    _require_metadata_coverage(dataset)
+    task_type = args_task.type
+
+    if task_type == "GFS":
+        return _get_gfs_sampler(args_task, args_data, dataset, mode)
+    if task_type == "FS":
+        return _get_standard_sampler(args_data, dataset, mode, "FS")
+    if task_type in {"pretrain", "generative"}:
+        return _get_standard_sampler(args_data, dataset, mode, "Pretrain")
+    if task_type == "CDDG":
+        return _get_standard_sampler(args_data, dataset, mode, "CDDG")
+    if task_type == "DG":
+        return _get_standard_sampler(args_data, dataset, mode, "DG")
+    if task_type == "multi_task":
+        return _get_standard_sampler(args_data, dataset, mode, "multi_task")
+    if task_type == "In_distribution":
+        return _get_standard_sampler(
+            args_data,
             dataset,
-            batch_size=args_data.batch_size,
-            shuffle=False,
-            drop_last=True
+            mode,
+            "In_distribution",
         )
-    else:
-        raise ValueError(f"Unknown mode for DG sampler: {mode}")
-    return sampler
-
-def _get_pretrain_sampler(args_data, dataset, mode):
-    if mode == 'train':
-        sampler = Same_system_Sampler(
-            dataset=dataset,
-            batch_size=args_data.batch_size,
-            shuffle=True,
-            drop_last=True,
+    if task_type == "Default_task":
+        return _get_standard_sampler(
+            args_data,
+            dataset,
+            mode,
+            "Default_task",
         )
-    elif mode == 'val' or mode == 'test':
-        sampler = Same_system_Sampler(
-            dataset=dataset,
-            batch_size=args_data.batch_size,
-            shuffle=False,
-            drop_last=True
-        )
-    else:
-        raise ValueError(f"Unknown mode for Pretrain sampler: {mode}")
-    return sampler
 
-
-def Get_sampler(args_task, args_data, dataset, mode='train'):
-    """
-    Initializes and returns a sampler based on the task type and mode.
-
-    Args:
-        args_task: Task-specific arguments.
-        args_data: Data-specific arguments.
-        dataset: The dataset for which the sampler is to be created.
-        mode: 'train', 'val', or 'test'.
-
-    Returns:
-        A sampler instance or None for 'FS' type.
-    """
-    sampler = None # Initialize sampler to None
-    if args_task.type == 'GFS': # Generalized Few-Shot Learning
-        sampler = _get_gfs_sampler(args_task, args_data, dataset, mode)
-    elif args_task.type == 'FS':
-        # FS 视作单系统 few-shot 场景，先复用 Same_system_Sampler，
-        # 保持与 DG/CDDG 一致的按系统分组 batch 行为。
-        if mode == 'train':
-            sampler = Same_system_Sampler(
-                dataset=dataset,
-                batch_size=args_data.batch_size,
-                shuffle=True,
-                drop_last=True,
-            )
-        elif mode == 'val' or mode == 'test':
-            sampler = Same_system_Sampler(
-                dataset=dataset,
-                batch_size=args_data.batch_size,
-                shuffle=False,
-                drop_last=True,
-            )
-        else:
-            raise ValueError(f"Unknown mode for FS sampler: {mode}")
-    elif args_task.type in {'pretrain', 'generative'}:
-        sampler = _get_pretrain_sampler(args_data, dataset, mode)
-    elif args_task.type == 'CDDG':
-        sampler = _get_cddg_sampler(args_data, dataset, mode)
-    elif args_task.type == 'DG':
-        sampler = _get_dg_sampler(args_data, dataset, mode)
-    elif args_task.type == 'multi_task':
-        # Multi-task learning uses standard batch sampling
-        sampler = _get_pretrain_sampler(args_data, dataset, mode)  # Reuse pretrain sampler
-    elif args_task.type == 'In_distribution':
-        sampler = _get_pretrain_sampler(args_data, dataset, mode)
-    else:
-        raise ValueError(f"Unknown task type for sampler: {args_task.type}")
-        
-    return sampler
+    raise ValueError(f"Unknown task type for sampler: {task_type}")

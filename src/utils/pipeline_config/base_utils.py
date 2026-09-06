@@ -14,62 +14,71 @@ import os
 
 
 def load_pretrained_weights(model, checkpoint_path: str, strict: bool = False) -> bool:
+    """Load pretrained backbone weights into ``model``.
+
+    ``strict=False`` is the intentional stage-transfer mode. A configured
+    checkpoint must exist, contain a Lightning ``state_dict``, and provide at
+    least one compatible ``network.`` backbone parameter. Failures propagate to
+    the caller; successful loading returns ``True`` for compatibility.
     """
-    Load pretrained weights into a model.
-    
-    Parameters
-    ----------
-    model : nn.Module
-        Model to load weights into
-    checkpoint_path : str
-        Path to the checkpoint file
-    strict : bool, optional
-        Whether to strictly enforce that the keys in state_dict match
-        
-    Returns
-    -------
-    bool
-        True if weights were loaded successfully, False otherwise
-    """
-    import torch
-    import os
-    
-    if not checkpoint_path or not os.path.exists(checkpoint_path):
-        print(f"Warning: Checkpoint path does not exist: {checkpoint_path}")
-        return False
-    
+    checkpoint_file = os.fspath(checkpoint_path or "")
+    if not checkpoint_file or not os.path.isfile(checkpoint_file):
+        raise FileNotFoundError(
+            "Configured pretrained checkpoint does not exist or is not a file: "
+            f"{checkpoint_file or '<empty>'}"
+        )
+
     try:
-        print(f"Loading pretrained weights from: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location='cpu')
-        
-        # Extract backbone weights from checkpoint
-        if 'state_dict' in checkpoint:
-            state_dict = checkpoint['state_dict']
-            # Filter backbone weights (exclude task head weights)
-            backbone_weights = {
-                k.replace('network.', ''): v for k, v in state_dict.items() 
-                if k.startswith('network.') and not k.startswith('network.task_head')
-            }
-            
-            # Load backbone weights with strict=False to allow missing task head weights
-            missing_keys, unexpected_keys = model.load_state_dict(backbone_weights, strict=strict)
-            
-            if not strict and (missing_keys or unexpected_keys):
-                print(f"Loaded pretrained weights with {len(missing_keys)} missing keys and {len(unexpected_keys)} unexpected keys")
-                if missing_keys:
-                    print(f"Missing keys: {missing_keys[:5]}...")  # Show first 5
-                if unexpected_keys:
-                    print(f"Unexpected keys: {unexpected_keys[:5]}...")  # Show first 5
-            
-            print("✓ Pretrained backbone weights loaded successfully")
-            return True
-        else:
-            print("Warning: No 'state_dict' found in checkpoint")
-            return False
-            
-    except Exception as e:
-        print(f"Error loading pretrained weights: {e}")
-        return False
+        checkpoint = torch.load(
+            checkpoint_file,
+            map_location="cpu",
+            weights_only=False,
+        )
+        if not isinstance(checkpoint, dict) or not isinstance(
+            checkpoint.get("state_dict"), dict
+        ):
+            raise TypeError(
+                "Expected a Lightning checkpoint containing a mapping at "
+                "'state_dict'."
+            )
+
+        state_dict = checkpoint["state_dict"]
+        backbone_weights = {
+            key.replace("network.", "", 1): value
+            for key, value in state_dict.items()
+            if key.startswith("network.")
+            and not key.startswith("network.task_head")
+        }
+        if not backbone_weights:
+            raise RuntimeError(
+                "Checkpoint contains no transferable 'network.' backbone "
+                "parameters."
+            )
+
+        incompatible = model.load_state_dict(backbone_weights, strict=strict)
+        if not strict:
+            missing_keys = list(incompatible.missing_keys)
+            unexpected_keys = list(incompatible.unexpected_keys)
+            loaded_count = len(backbone_weights) - len(unexpected_keys)
+            if loaded_count <= 0:
+                raise RuntimeError(
+                    "Checkpoint matched zero model parameters after backbone "
+                    "filtering."
+                )
+            if missing_keys or unexpected_keys:
+                print(
+                    f"Loaded pretrained backbone from '{checkpoint_file}' with "
+                    f"{len(missing_keys)} missing and "
+                    f"{len(unexpected_keys)} unexpected keys."
+                )
+
+        return True
+    except Exception as exc:
+        if isinstance(exc, FileNotFoundError):
+            raise
+        raise RuntimeError(
+            f"Failed to load pretrained checkpoint '{checkpoint_file}': {exc}"
+        ) from exc
 
 
 def generate_pipeline_summary(checkpoint_paths: Dict[str, str], finetuning_results: Dict) -> Dict:

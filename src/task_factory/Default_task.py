@@ -1,293 +1,471 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, Dict, Tuple
+
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
-import numpy as np
-from src.task_factory import register_task
-from typing import Dict, List, Optional, Any, Tuple
+from torchmetrics import Metric
 
-# 导入解耦后的组件
-from .Components.loss import get_loss_fn
-from .Components.metrics import get_metrics
+from phmfactory.task_semantics import (
+    normalize_loss_name,
+    validate_loss_metric_contract,
+)
+from src.task_factory import register_task
+
+from .Components.gradient_constraints import FisherGradientConstraint
+from .Components.loss import compute_task_loss, get_loss_fn
+from .Components.metrics import get_metrics, prepare_metric_inputs
 from .Components.regularization import calculate_regularization
 
 
 @register_task("Default_task", "Default_task")
 class Default_task(pl.LightningModule):
-    """
-    通用 PyTorch Lightning 任务模块 (已重构)
-
-    Features:
-    - 通过组件配置损失函数和评估指标
-    - 通过组件配置正则化方法
-    - 灵活的优化器和调度器配置
-    - 期望 batch 格式为 ((x, y), data_name)
-    """
+    """General Lightning task with explicit objective and metric semantics."""
 
     def __init__(
         self,
         network: nn.Module,
-        args_data: Any,  # Data args (Namespace)
-        args_model: Any,  # Model args (Namespace)
-        args_task: Any,  # Training args (Namespace)
-        args_trainer: Any,  # Trainer args (Namespace)
-        args_environment: Any,  # Environment args (Namespace)
-        metadata: Any # Metadata object/dict
+        args_data: Any,
+        args_model: Any,
+        args_task: Any,
+        args_trainer: Any,
+        args_environment: Any,
+        metadata: Any,
     ):
-        """
-        初始化训练模块
-
-        :param network: 待训练的主干网络
-        :param args_t: 训练参数配置对象 (Namespace)
-        :param args_m: 模型参数配置对象 (Namespace)
-        :param args_d: 数据参数配置对象 (Namespace)
-        :param metadata: 数据元信息
-        """
         super().__init__()
 
-        # 兼容旧配置：为 gpus 提供合理默认值，避免缺少属性导致崩溃
-        gpus = getattr(args_trainer, "gpus", None)
-        if gpus is None:
-            gpus = getattr(args_trainer, "devices", 1)
-            setattr(args_trainer, "gpus", gpus)
-
-        # 将网络移动到 GPU（仅在 CUDA 可用且配置要求使用 GPU 时）
-        use_cuda = bool(gpus) and torch.cuda.is_available()
-        if use_cuda and hasattr(network, "cuda"):
-            self.network = network.cuda()
-        else:
-            self.network = network  # 在当前环境（无 GPU）下保持 CPU 训练
+        # Device placement belongs exclusively to Trainer Factory. Task
+        # construction preserves the model returned by Model Factory.
+        self.network = network
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
-        self.metadata = metadata # 存储 metadata
+        self.metadata = metadata
         self.args_trainer = args_trainer
         self.args_environment = args_environment
 
-        # 使用组件配置损失和指标
-        self.loss_fn = get_loss_fn(self.args_task.loss)
-        # 假设 get_metrics 需要数据配置来确定任务类型和类别数
-        self.metrics = get_metrics(self.args_task.metrics, self.metadata)
+        configured_task_id = getattr(
+            args_task,
+            "model_task_id",
+            getattr(args_task, "name", None),
+        )
+        if not isinstance(configured_task_id, str) or not configured_task_id.strip():
+            raise ValueError(
+                "task.model_task_id or task.name must explicitly identify the "
+                "model task head"
+            )
+        self.model_task_id = configured_task_id.strip()
 
-        # 保存超参数 (确保 Namespace 可以转换为字典)
-        hparams_dict = {**vars(self.args_task),
-                            **vars(self.args_model),
-                            **vars(self.args_data),
-                            **vars(self.args_trainer),
-                            **vars(self.args_environment),
-                            # metadata 可能包含复杂对象，选择性保存或忽略
-                            # 'metadata': metadata
-                            }
-        self.save_hyperparameters(hparams_dict, ignore=['network', 'metadata'])
+        gradient_constraint = getattr(self.args_task, "gradient_constraint", None)
+        self.gradient_constraint = None
+        if gradient_constraint:
+            if isinstance(gradient_constraint, dict):
+                constraint_name = gradient_constraint.get("name")
+                epsilon = gradient_constraint.get("epsilon", 2.0)
+            else:
+                constraint_name = getattr(gradient_constraint, "name", None)
+                epsilon = getattr(gradient_constraint, "epsilon", 2.0)
+            if str(constraint_name).lower() != "fic":
+                raise ValueError(
+                    f"unsupported task.gradient_constraint.name {constraint_name!r}"
+                )
+            if str(getattr(self.args_task, "loss", "")).upper() != "CE":
+                raise ValueError("FIC gradient_constraint currently requires task.loss=CE")
+            self.gradient_constraint = FisherGradientConstraint(epsilon=float(epsilon))
 
+        self.loss_name = normalize_loss_name(self.args_task.loss)
+        self.metric_names = validate_loss_metric_contract(
+            self.loss_name,
+            self.args_task.metrics,
+        )
+        self.loss_fn = get_loss_fn(self.loss_name)
+        self.metrics = get_metrics(
+            self.metric_names,
+            self.metadata,
+            loss_name=self.loss_name,
+        )
+
+        hparams_dict = {
+            **vars(self.args_task),
+            **vars(self.args_model),
+            **vars(self.args_data),
+            **vars(self.args_trainer),
+            **vars(self.args_environment),
+        }
+        self.save_hyperparameters(hparams_dict, ignore=["network", "metadata"])
+
+    def _resolve_model_task_id(self, batch: Mapping[str, Any]) -> str:
+        """Return the configured task head and reject batch-level overrides."""
+
+        if "task_id" not in batch:
+            return self.model_task_id
+
+        raw_task_id = batch["task_id"]
+        if isinstance(raw_task_id, str):
+            observed = [raw_task_id]
+        elif isinstance(raw_task_id, (list, tuple)):
+            observed = list(raw_task_id)
+        else:
+            raise TypeError(
+                "batch['task_id'] must be a string or a sequence of strings, "
+                f"got {type(raw_task_id).__name__}"
+            )
+
+        if not observed or any(not isinstance(value, str) for value in observed):
+            raise TypeError("batch['task_id'] must contain non-empty string values")
+        unique = {value.strip() for value in observed if value.strip()}
+        if len(unique) != 1:
+            raise ValueError(
+                f"one batch cannot mix model task IDs, observed={sorted(unique)}"
+            )
+        observed_task_id = next(iter(unique))
+        if observed_task_id != self.model_task_id:
+            raise ValueError(
+                "batch task identity conflicts with the configured Task Factory "
+                f"semantics: configured={self.model_task_id!r}, "
+                f"observed={observed_task_id!r}"
+            )
+        return self.model_task_id
 
     def forward(self, batch):
-        """模型前向传播"""
-        x = batch['x']
-        file_id = batch['file_id']
-        task_id = batch['task_id'] if 'task_id' in batch else None
+        """Forward one batch through the explicitly configured model task head."""
 
+        if not isinstance(batch, Mapping):
+            raise TypeError(f"task batch must be a mapping, got {type(batch).__name__}")
+        x = batch["x"]
+        file_id = batch["file_id"]
+        task_id = self._resolve_model_task_id(batch)
+        if getattr(self.network, "requires_physical_metadata", False):
+            canonical_fields = (
+                "sample_rate_hz",
+                "rotation_speed_rpm",
+                "load_hp",
+            )
+            explicit_metadata = {
+                field: batch[field] for field in canonical_fields if field in batch
+            }
+            return self.network(
+                x,
+                file_id,
+                task_id,
+                physical_metadata=explicit_metadata or None,
+            )
         return self.network(x, file_id, task_id)
 
-    # def _forward_pass(self, batch) -> torch.Tensor:
-    #     """执行前向传播"""
-    #     return self(batch)
-
     def _compute_loss(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """计算任务损失"""
-        # 确保 y 是 long 类型用于分类损失        
-        return self.loss_fn(y_hat, y.long() if y.dtype != torch.long else y)
+        return compute_task_loss(
+            self.loss_fn,
+            self.loss_name,
+            y_hat,
+            y,
+        )
 
-    def _compute_metrics(self, y_hat: torch.Tensor, y: torch.Tensor, data_name: str, stage: str) -> Dict[str, torch.Tensor]:
-        """计算并更新评估指标"""
-        metric_values = {}
-        # print(f"计算 {stage} 阶段的指标: {data_name}")
-        if data_name in self.metrics:
-            for metric_key, metric_fn in self.metrics[data_name].items():
-                if metric_key.startswith(stage):
-                    # metric_fn 是 torchmetrics 对象，调用会更新内部状态并返回值
-                    value = metric_fn(y_hat, y)
-                    # 记录当前 step 的值 (注意：torchmetrics 通常在 epoch 结束时计算最终值)
-                    # 为了日志记录，我们可能需要记录瞬时值或累计值
-                    # 这里记录瞬时值，log_dict 会在 epoch 结束时聚合
-                    metric_values[f"{metric_key}_{data_name}"] = value
-        else:
-            # 仅在第一次遇到未知 data_name 时打印警告，避免刷屏
-            if not hasattr(self, '_warned_missing_metrics') or data_name not in self._warned_missing_metrics:
-                 print(f"警告: 在 metrics 中未找到数据名称 '{data_name}' 的指标配置。")
-                 if not hasattr(self, '_warned_missing_metrics'):
-                     self._warned_missing_metrics = set()
-                 self._warned_missing_metrics.add(data_name)
+    def _compute_metrics(
+        self,
+        y_hat: torch.Tensor,
+        y: torch.Tensor,
+        data_name: str,
+        stage: str,
+    ) -> Dict[str, Metric]:
+        """Update every requested metric over the full stage population.
 
+        TorchMetrics objects remain registered in ``self.metrics``.  Each batch updates
+        their state with the estimator-specific prediction representation, while
+        Lightning computes and resets the logged objects at the epoch boundary.  This
+        avoids averaging batch F1/AUROC values into a different estimator.
+        """
+
+        if data_name not in self.metrics:
+            available = sorted(self.metrics.keys())
+            raise KeyError(
+                f"No metric lifecycle exists for dataset Name={data_name!r}; "
+                f"available={available}. The batch cannot be evaluated with a "
+                "different dataset's metrics."
+            )
+
+        metric_values: Dict[str, Metric] = {}
+        stage_prefix = f"{stage}_"
+        for metric_key, metric_fn in self.metrics[data_name].items():
+            if not metric_key.startswith(stage_prefix):
+                continue
+            metric_name = metric_key[len(stage_prefix) :]
+            metric_predictions, metric_target = prepare_metric_inputs(
+                metric_name,
+                y_hat,
+                y,
+                loss_name=self.loss_name,
+            )
+            metric_fn.update(metric_predictions, metric_target)
+            metric_values[f"{metric_key}_{data_name}"] = metric_fn
         return metric_values
 
     def _compute_regularization(self) -> Dict[str, torch.Tensor]:
-        """计算正则化损失"""
         return calculate_regularization(
-            getattr(self.args_task, 'regularization', {}),
-            self.parameters() # 只对当前 LightningModule 的参数计算正则化
+            getattr(self.args_task, "regularization", {}),
+            self.parameters(),
         )
 
-    def _shared_step(self, batch: Tuple,
-                     stage: str,
-                     task_id = False) -> Dict[str, torch.Tensor]:
-        """
-        通用处理步骤 (已重构)
-        期望 batch 格式: ((x, y), data_name)
-        """
-        try:
-            # x, y, id = batch['x'], batch['y'], batch['id']
-            # Ensure a default task identifier if not provided
-            batch.setdefault('task_id', 'classification')
-            # Convert tensor-based ID to a Python int for indexing metadata
-            file_id = batch['file_id'][0].item()
-            data_name = self.metadata[file_id]['Name']# .values
-            # dataset_id = self.metadata[file_id]['Dataset_id'].item() 
-            batch.update({'file_id': file_id})
-        except (ValueError, TypeError) as e:
-            raise ValueError(f" Error: {e}")
+    @staticmethod
+    def _file_id_values(raw_file_ids: Any) -> list[Any]:
+        if isinstance(raw_file_ids, torch.Tensor):
+            return [value.item() for value in raw_file_ids.view(-1)]
+        if isinstance(raw_file_ids, (list, tuple)):
+            return list(raw_file_ids)
+        return [raw_file_ids]
 
-        # 1. 前向传播
+    def _resolve_batch_identity(
+        self,
+        batch: Mapping[str, Any],
+        batch_size: int,
+    ) -> tuple[str, Any, list[Any]]:
+        """Require one metadata dataset identity for the complete batch."""
+
+        file_ids = self._file_id_values(batch["file_id"])
+        if len(file_ids) not in (1, batch_size):
+            raise ValueError(
+                "batch['file_id'] must contain one ID or one ID per sample: "
+                f"received {len(file_ids)} IDs for batch_size={batch_size}."
+            )
+
+        names: list[Any] = []
+        dataset_ids: list[Any] = []
+        for current_file_id in file_ids:
+            try:
+                row = self.metadata[current_file_id]
+                names.append(row["Name"])
+                dataset_ids.append(row["Dataset_id"])
+            except (KeyError, IndexError, TypeError) as exc:
+                raise KeyError(
+                    "Unable to resolve metadata Name and Dataset_id for "
+                    f"file_id={current_file_id!r}."
+                ) from exc
+
+        unique_names = {str(name) for name in names}
+        unique_dataset_ids = {str(dataset_id) for dataset_id in dataset_ids}
+        if len(unique_names) != 1 or len(unique_dataset_ids) != 1:
+            raise ValueError(
+                "one batch cannot mix dataset identities because model heads and "
+                "metric states would be ambiguous: "
+                f"Names={sorted(unique_names)}, "
+                f"Dataset_ids={sorted(unique_dataset_ids)}. Use a "
+                "dataset-homogeneous sampler."
+            )
+        return str(names[0]), dataset_ids[0], file_ids
+
+    def _shared_step(
+        self,
+        batch: Tuple,
+        stage: str,
+        task_id=False,
+    ) -> Dict[str, Any]:
+        del task_id
+        if not isinstance(batch, Mapping):
+            raise TypeError(f"task batch must be a mapping, got {type(batch).__name__}")
+
+        batch_size = int(batch["x"].shape[0])
+        data_name, _, _ = Default_task._resolve_batch_identity(
+            self,
+            batch,
+            batch_size,
+        )
+
+        # Preserve the original per-sample file IDs. The task does not rewrite
+        # the batch or inject an implicit classification task.
         y_hat = self.forward(batch)
 
-        # 2. 计算任务损失
-        y = batch['y']
+        y = batch["y"]
         loss = self._compute_loss(y_hat, y)
-        y_argmax = torch.argmax(y_hat, dim=1) if y_hat.ndim > 1 else y_hat
 
-        # 3. 计算和记录指标
-        step_metrics = {f"{stage}_loss": loss}
-        step_metrics[f"{stage}_{data_name}_loss"] = loss # 记录特定数据集的损失
-        metric_values = self._compute_metrics(y_argmax, y, data_name, stage)
-        step_metrics.update(metric_values)
+        step_metrics: Dict[str, Any] = {
+            f"{stage}_loss": loss,
+            f"{stage}_{data_name}_loss": loss,
+        }
+        step_metrics.update(
+            self._compute_metrics(y_hat, y, data_name, stage)
+        )
 
-        # 4. 计算正则化损失
         reg_dict = self._compute_regularization()
         for reg_type, reg_loss_val in reg_dict.items():
-            if reg_type != 'total':
+            if reg_type != "total":
                 step_metrics[f"{stage}_{reg_type}_reg_loss"] = reg_loss_val
 
-        # 5. 计算总损失
-        total_loss = loss + reg_dict.get('total', torch.tensor(0.0, device=loss.device))
+        model_auxiliary = {}
+        consume_auxiliary = getattr(self.network, "consume_auxiliary_losses", None)
+        if callable(consume_auxiliary):
+            model_auxiliary = consume_auxiliary()
+            if not isinstance(model_auxiliary, dict):
+                raise TypeError("network.consume_auxiliary_losses() must return a dict")
+            for name, value in model_auxiliary.items():
+                if not isinstance(value, torch.Tensor) or value.ndim != 0:
+                    raise ValueError(
+                        f"model auxiliary loss {name!r} must be a scalar tensor"
+                    )
+                if not torch.isfinite(value):
+                    raise ValueError(f"model auxiliary loss {name!r} is not finite")
+                step_metrics[f"{stage}_{name}_loss"] = value
+
+        auxiliary_total = sum(
+            model_auxiliary.values(),
+            torch.tensor(0.0, device=loss.device),
+        )
+        total_loss = (
+            loss
+            + reg_dict.get("total", torch.tensor(0.0, device=loss.device))
+            + auxiliary_total
+        )
         step_metrics[f"{stage}_total_loss"] = total_loss
-
-        # 添加 batch size 用于日志记录
-        # step_metrics[f"{stage}_batch_size"] = torch.tensor(x.shape[0], dtype=torch.float, device=loss.device)
-
         return step_metrics
 
     def training_step(self, batch: dict, *args, **kwargs) -> torch.Tensor:
-        """训练步骤"""
         metrics = self._shared_step(batch, "train")
-        # 使用 _log_metrics 记录 (确保 batch_size 传递正确)
-      
         self._log_metrics(metrics, "train")
-        # 返回用于反向传播的总损失
         return metrics["train_total_loss"]
 
     def validation_step(self, batch: dict, *args, **kwargs) -> None:
-        """验证步骤"""
         metrics = self._shared_step(batch, "val")
-      
         self._log_metrics(metrics, "val")
-        # validation_step 通常不返回损失
 
     def test_step(self, batch: dict, *args, **kwargs) -> None:
-        """测试步骤"""
         metrics = self._shared_step(batch, "test")
-        
         self._log_metrics(metrics, "test")
-        # test_step 通常不返回损失
 
-    def _log_metrics(self, metrics: Dict[str, torch.Tensor], stage: str) -> None:
-        """统一日志记录"""
-        log_dict = {}
-        prog_bar_metrics = {}
-        for k, v in metrics.items():
-            # 过滤掉非当前阶段或 batch_size 的指标
-            if k.startswith(stage) and "batch_size" not in k:
-                log_dict[k] = v
-                # 选择要在进度条上显示的指标
-                if any(prog_key in k for prog_key in ['loss', 'acc', 'f1']): # 简化进度条显示
-                    # 只显示不带数据集名称的总指标或第一个数据集的指标
-                    if f"{stage}_loss" == k or f"{stage}_acc_" in k or f"{stage}_f1_" in k:
-                         prog_bar_metrics[k.replace(f"_{stage}", "")] = v # 简化显示名称
+    def _log_metrics(self, metrics: Mapping[str, Any], stage: str) -> None:
+        metric_objects: dict[str, Metric] = {}
+        scalar_values: dict[str, Any] = {}
+        for key, value in metrics.items():
+            if not key.startswith(stage) or "batch_size" in key:
+                continue
+            if isinstance(value, Metric):
+                metric_objects[key] = value
+            else:
+                scalar_values[key] = value
 
-
-        self.log_dict(
-            log_dict,
-            on_step= (stage == "train"), # 训练时可以记录 step 级别的 loss
-            on_epoch=True,
-            prog_bar=False, # 单独控制进度条
-            logger=True,
-            sync_dist=True,
-        )
-        # 单独记录需要在进度条显示的指标 (只在 epoch 结束时显示聚合值)
-        # self.log_dict(
-        #     prog_bar_metrics,
-        #     on_step=False,
-        #     on_epoch=True,
-        #     prog_bar=True,
-        #     logger=False, # 避免重复记录
-        #     sync_dist=True,
-        # )
+        for key, metric in metric_objects.items():
+            self.log(
+                key,
+                metric,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=False,
+                logger=True,
+                sync_dist=False,
+            )
+        if scalar_values:
+            self.log_dict(
+                scalar_values,
+                on_step=stage == "train",
+                on_epoch=True,
+                prog_bar=False,
+                logger=True,
+                sync_dist=True,
+            )
 
     def configure_optimizers(self):
-        """配置优化器和学习率调度器 (保持不变或根据需要调整)"""
         optimizer_name = self.args_task.optimizer.lower()
         lr = self.args_task.lr
-        weight_decay = getattr(self.args_task, 'weight_decay', 0.0) # 提供默认值
+        weight_decay = getattr(self.args_task, "weight_decay", 0.0)
 
-        # 选择优化器
-        if optimizer_name == 'adam':
-            optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_name == 'adamw':
-            optimizer = torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_name == 'sgd':
-            momentum = getattr(self.args_task, 'momentum', 0.9) # SGD momentum
-            optimizer = torch.optim.SGD(self.parameters(), lr=lr, weight_decay=weight_decay, momentum=momentum)
+        if optimizer_name == "adam":
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=lr, weight_decay=weight_decay
+            )
+        elif optimizer_name == "adamw":
+            optimizer = torch.optim.AdamW(
+                self.parameters(), lr=lr, weight_decay=weight_decay
+            )
+        elif optimizer_name == "sgd":
+            momentum = getattr(self.args_task, "momentum", 0.9)
+            optimizer = torch.optim.SGD(
+                self.parameters(),
+                lr=lr,
+                weight_decay=weight_decay,
+                momentum=momentum,
+            )
         else:
             raise ValueError(f"不支持的优化器: {optimizer_name}")
 
-        # 配置学习率调度器 (如果指定)
-        scheduler_config = getattr(self.args_task, 'scheduler', None)
-        if not scheduler_config or not isinstance(scheduler_config, dict) or not scheduler_config.get('name'):
-            return optimizer # 只返回优化器
+        scheduler_config = getattr(self.args_task, "scheduler", None)
+        if (
+            not scheduler_config
+            or not isinstance(scheduler_config, dict)
+            or not scheduler_config.get("name")
+        ):
+            return optimizer
 
-        scheduler_name = scheduler_config['name'].lower()
-        scheduler_options = scheduler_config.get('options', {}) # 获取调度器特定参数
+        scheduler_name = scheduler_config["name"].lower()
+        scheduler_options = scheduler_config.get("options", {})
 
-        if scheduler_name == 'reduceonplateau':
-            # 确保 monitor 指标存在
-            monitor_metric = getattr(self.args_task, 'monitor', 'val_total_loss')
-            # 可以在这里添加检查，确保 monitor_metric 会被记录
-            # if monitor_metric not in self.metrics... (但这比较复杂，因为指标是动态生成的)
-            patience = scheduler_options.get('patience', getattr(self.args_task, 'patience', 10) // 2 if hasattr(self.args_task, 'patience') else 5)
-            factor = scheduler_options.get('factor', 0.1)
-            mode = scheduler_options.get('mode', 'min')
+        if scheduler_name == "reduceonplateau":
+            monitor_metric = getattr(self.args_task, "monitor", "val_total_loss")
+            patience = scheduler_options.get(
+                "patience",
+                getattr(self.args_task, "patience", 10) // 2
+                if hasattr(self.args_task, "patience")
+                else 5,
+            )
+            factor = scheduler_options.get("factor", 0.1)
+            mode = scheduler_options.get("mode", "min")
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, mode=mode, factor=factor, patience=patience
+                optimizer,
+                mode=mode,
+                factor=factor,
+                patience=patience,
             )
             return {
-                'optimizer': optimizer,
-                'lr_scheduler': {
-                    'scheduler': scheduler,
-                    'monitor': monitor_metric, # 指定监控的指标
-                    'interval': 'epoch', # 通常在 epoch 结束时调整
-                    'frequency': 1
-                }
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": monitor_metric,
+                    "interval": "epoch",
+                    "frequency": 1,
+                },
             }
-        elif scheduler_name == 'cosine':
-            # 尝试从 trainer 获取 max_epochs，否则从 args_task 获取
-            max_epochs = getattr(self.trainer, 'max_epochs', None) or getattr(self.args_task, 'max_epochs', 100)
-            t_max = scheduler_options.get('T_max', max_epochs)
-            eta_min = scheduler_options.get('eta_min', 0)
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max, eta_min=eta_min)
-        elif scheduler_name == 'step':
-            step_size = scheduler_options.get('step_size', 10)
-            gamma = scheduler_options.get('gamma', 0.1)
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+        if scheduler_name == "cosine":
+            max_epochs = getattr(self.trainer, "max_epochs", None) or getattr(
+                self.args_task,
+                "max_epochs",
+                100,
+            )
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=scheduler_options.get("T_max", max_epochs),
+                eta_min=scheduler_options.get("eta_min", 0),
+            )
+        elif scheduler_name == "step":
+            scheduler = torch.optim.lr_scheduler.StepLR(
+                optimizer,
+                step_size=scheduler_options.get("step_size", 10),
+                gamma=scheduler_options.get("gamma", 0.1),
+            )
         else:
             raise ValueError(f"不支持的调度器: {scheduler_name}")
 
-        # 对于非 ReduceLROnPlateau 的调度器，返回列表形式
-        return [optimizer], [{'scheduler': scheduler, 'interval': 'epoch', 'frequency': 1}]
+        return [optimizer], [
+            {"scheduler": scheduler, "interval": "epoch", "frequency": 1}
+        ]
+
+    def on_before_optimizer_step(self, optimizer) -> None:
+        del optimizer
+        if self.gradient_constraint is None:
+            return
+        result = self.gradient_constraint.apply(self.parameters())
+        self.log(
+            "train_fic_norm",
+            result.norm,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )
+        self.log(
+            "train_fic_scale",
+            result.scale,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )

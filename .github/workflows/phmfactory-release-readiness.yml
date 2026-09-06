@@ -10,16 +10,24 @@ on:
       - "CITATION.cff"
       - "CHANGELOG.md"
       - "RELEASE_NOTES_v0.3.0.md"
+      - "KNOWN_LIMITATIONS.md"
+      - "configs/config_registry.csv"
+      - "configs/baselines/01_mfpt/**"
+      - "scripts/prepare_mfpt_baseline.py"
+      - "src/data_factory/reader/RM_007_MFPT.py"
       - "phmfactory/data_sources/manifests/cwru-demo-v1.yaml"
       - ".gitmodules"
       - ".github/phmfactory-v0.3-submodules.allowlist.yml"
+      - ".github/workflows/mfpt-baseline.yml"
       - "docs/PHMFACTORY_V0_3_RELEASE_READINESS.md"
       - "docs/PHM_DATA_FACTORY_BACKEND_V0_3.md"
+      - "docs/releases/v0.3.0-backend-deferral.yaml"
       - "docs/releases/v0.2.0-rc-provenance.yaml"
       - "docs/releases/v0.2.0-rc-provenance.md"
       - "docs/index.md"
       - "tools/repo/check_release_readiness.py"
       - "tools/repo/check_submodule_policy.py"
+      - "test/test_mfpt_baseline.py"
       - "test/test_release_readiness.py"
       - "test/test_submodule_policy.py"
       - ".github/workflows/phmfactory-release-readiness.yml"
@@ -33,7 +41,7 @@ permissions:
 
 jobs:
   readiness-audit:
-    name: Audit v0.3 release blockers
+    name: Audit v0.3.0-rc1 readiness
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -60,56 +68,59 @@ jobs:
           test/test_release_readiness.py
           test/test_submodule_policy.py
 
-      - name: Run release and submodule negative tests
+      - name: Run release and submodule tests
         run: >-
           python -m pytest -vv
           test/test_release_readiness.py
           test/test_submodule_policy.py
 
       - name: Enforce deny-by-default submodule policy
-        run: python tools/repo/check_submodule_policy.py --mode policy
+        run: python tools/repo/check_submodule_policy.py --mode release
 
-      - name: Record current blockers
+      - name: Record current RC1 blockers
         run: python tools/repo/check_release_readiness.py --mode audit | tee release-readiness.txt
 
-      - name: Require only the remaining pre-release blockers
+      - name: Require only explicit current-source RC1 blockers
         shell: bash
         run: |
           set -euo pipefail
-          if python tools/repo/check_release_readiness.py --mode release; then
-            echo "Release mode unexpectedly passed before final release preparation." >&2
-            exit 1
-          fi
 
-          for blocker in \
-            VERSION_NOT_FINAL \
-            CWRU_REVISION_FLOATING \
+          for obsolete in \
             CWRU_HASH_MISSING \
-            PHM_DATA_FACTORY_BACKEND_PENDING \
-            LEGACY_SUBMODULES_REMAIN \
+            CWRU_HASH_KEY_CONFLICT \
+            CWRU_REVISION_FLOATING \
             REPOSITORY_RENAME_PENDING
           do
-            grep -q "${blocker}" release-readiness.txt
-          done
-
-          for resolved in \
-            README_BRAND_PENDING \
-            CITATION_BRAND_PENDING \
-            CITATION_REPOSITORY_PENDING \
-            CHANGELOG_V030_MISSING \
-            RELEASE_NOTES_V030_MISSING \
-            V020_PROVENANCE_UNRESOLVED \
-            UNKNOWN_SUBMODULES_PRESENT
-          do
-            if grep -q "${resolved}" release-readiness.txt; then
-              echo "Resolved or unexpected blocker returned: ${resolved}" >&2
+            if grep -q "${obsolete}" release-readiness.txt; then
+              echo "Obsolete non-scientific blocker returned: ${obsolete}" >&2
               exit 1
             fi
           done
 
+          expected_pattern='VERSION_NOT_RC1|BASELINE_VALID_REFERENCE_INVALID'
+          unexpected="$(grep '^- ' release-readiness.txt | grep -Ev "${expected_pattern}" || true)"
+          if [ -n "${unexpected}" ]; then
+            echo "Unexpected RC1 blocker(s):" >&2
+            printf '%s\n' "${unexpected}" >&2
+            exit 1
+          fi
+
+          expected="$(grep '^- ' release-readiness.txt | grep -E "${expected_pattern}" || true)"
+          if [ -n "${expected}" ]; then
+            blocker_count="$(printf '%s\n' "${expected}" | grep -c '^- ')"
+            grep -q "PHMFactory v0.3.0-rc1 readiness BLOCKED: ${blocker_count} blocker(s)" release-readiness.txt
+            if python tools/repo/check_release_readiness.py --mode release; then
+              echo "Release mode unexpectedly passed while current-source blocker(s) remain." >&2
+              exit 1
+            fi
+          else
+            grep -q 'PHMFactory v0.3.0-rc1 readiness PASS: 0 blockers' release-readiness.txt
+            python tools/repo/check_release_readiness.py --mode release
+          fi
+
       - name: Upload readiness report
         uses: actions/upload-artifact@v4
         with:
-          name: phmfactory-v030-release-readiness
+          name: phmfactory-v030rc1-release-readiness
           path: release-readiness.txt
           if-no-files-found: error

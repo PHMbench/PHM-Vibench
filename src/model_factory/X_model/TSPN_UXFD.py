@@ -13,7 +13,7 @@ Implementation note:
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from numbers import Integral
 from typing import Any, Dict, Optional
 
@@ -22,11 +22,88 @@ import torch.nn as nn
 
 from .TSPN import Model as _TSPNModel
 from .UXFD.fusion import FusionConfig, build_fusion
-from .UXFD.fuzzy import FuzzyConfig, FuzzyReasoner
+from .UXFD.fuzzy import FuzzyConfig, FuzzyReasoner, FuzzyTrace, P05F0Decision
 from .UXFD.neurosymbolic import LogicConfig, LogicReasoner
 from .UXFD.operator_attention import OperatorAttention1D, OperatorAttentionConfig
+from .UXFD.p05_b1_neural_residual import (
+    P05B1NeuralResidual,
+    P05B1NeuralResidualConfig,
+)
+from .UXFD.p05_b3_anfis import (
+    P05B3ANFISConfig,
+    P05B3ANFISHead,
+    P05B3ANFISTrace,
+)
 from .UXFD.signal_processing_2d import STFTTimeFrequency
 from .UXFD.signal_processing_2d.stft_tfr import STFTConfig
+
+
+@dataclass(frozen=True)
+class FuzzyTraceOutput:
+    """Complete same-forward-pass reconstruction record for P05."""
+
+    logits: torch.Tensor
+    non_fuzzy_logits: torch.Tensor
+    fuzzy_scale: float
+    fuzzy_trace: FuzzyTrace
+
+    def scaled_rule_contributions(self) -> torch.Tensor:
+        return self.fuzzy_trace.rule_contributions * float(self.fuzzy_scale)
+
+    def reconstruct_logits(self) -> torch.Tensor:
+        return self.non_fuzzy_logits + self.scaled_rule_contributions().sum(dim=1)
+
+    def reconstruction_residual(self) -> torch.Tensor:
+        return self.logits - self.reconstruct_logits()
+
+    def risk_features(self) -> torch.Tensor:
+        """Return features to be calibrated on validation data only.
+
+        Columns are confidence risk, normalized rule-firing entropy, and rule
+        fragmentation. This method does not fit a calibrator or choose an
+        abstention threshold.
+        """
+
+        confidence_risk = 1.0 - torch.softmax(self.logits, dim=-1).max(dim=-1).values
+        firing_entropy = self.fuzzy_trace.normalized_firing_entropy()
+        fragmentation = 1.0 - self.fuzzy_trace.top_rule_share()
+        return torch.stack((confidence_risk, firing_entropy, fragmentation), dim=-1)
+
+    def calibrated_risk(
+        self,
+        coefficients: torch.Tensor,
+        intercept: torch.Tensor | float,
+    ) -> torch.Tensor:
+        """Apply externally fitted validation-only logistic calibration."""
+
+        features = self.risk_features()
+        weights = torch.as_tensor(
+            coefficients,
+            dtype=features.dtype,
+            device=features.device,
+        )
+        if tuple(weights.shape) != (int(features.shape[1]),):
+            raise ValueError(
+                f"coefficients must have shape ({features.shape[1]},), got {tuple(weights.shape)}."
+            )
+        bias = torch.as_tensor(intercept, dtype=features.dtype, device=features.device)
+        if bias.numel() != 1:
+            raise ValueError("intercept must be scalar.")
+        return torch.sigmoid(features @ weights + bias.reshape(()))
+
+
+@dataclass(frozen=True)
+class P05FeatureLogitOutput:
+    """Same-forward prediction output used by immutable P05 window exports.
+
+    ``reduced_features`` is the post-feature-extractor tensor supplied to the
+    registered decision head.  Under the frozen P05 backbone it has exactly
+    eight columns; returning it here avoids a second, potentially divergent
+    model forward when B0 features/logits or B1 predictions are exported.
+    """
+
+    reduced_features: torch.Tensor
+    logits: torch.Tensor
 
 
 class Model(_TSPNModel):
@@ -47,19 +124,45 @@ class Model(_TSPNModel):
 
     def __init__(self, args: Any, metadata: Any = None):
         _validate_num_classes(args)
+        enable_fuzzy = bool(_get_attr(args, "uxfd.fuzzy.enable", False))
+        enable_neural_residual = bool(
+            _get_attr(args, "uxfd.neural_residual.enable", False)
+        )
+        enable_anfis = bool(_get_attr(args, "uxfd.anfis.enable", False))
+        enable_logic = bool(_get_attr(args, "uxfd.logic.enable", False))
+        if enable_fuzzy and enable_neural_residual:
+            raise ValueError(
+                "P05 forbids enabling fuzzy and neural residual branches together"
+            )
+        if enable_anfis and (enable_fuzzy or enable_neural_residual):
+            raise ValueError(
+                "P05 ANFIS, fuzzy, and neural residual heads are mutually exclusive"
+            )
+        if enable_anfis and enable_logic:
+            raise ValueError(
+                "P05-B3 forbids logic or other non-ANFIS logit residuals"
+            )
         super().__init__(args, metadata)
+        if enable_anfis:
+            # B3 is the complete logits head. Removing the inherited classifier
+            # prevents a dormant non-fuzzy residual from becoming unused state.
+            self.clf = nn.Identity()
         self._uxfd_enable_sp2d = bool(_get_attr(args, "uxfd.enable_sp2d", False))
-        self._uxfd_enable_fuzzy = bool(_get_attr(args, "uxfd.fuzzy.enable", False))
+        self._uxfd_enable_fuzzy = enable_fuzzy
+        self._uxfd_enable_neural_residual = enable_neural_residual
+        self._uxfd_enable_anfis = enable_anfis
         self._uxfd_enable_operator_attention = bool(
             _get_attr(args, "uxfd.operator_attention.enable", False)
         )
-        self._uxfd_enable_logic = bool(_get_attr(args, "uxfd.logic.enable", False))
+        self._uxfd_enable_logic = enable_logic
 
         self._uxfd_sp2d: Optional[nn.Module] = None
         self._uxfd_2d_proj: Optional[nn.Module] = None
         self._uxfd_fusion: Optional[nn.Module] = None
         self._uxfd_fuzzy: Optional[nn.Module] = None
         self._uxfd_fuzzy_scale: float = 1.0
+        self._uxfd_neural_residual: Optional[nn.Module] = None
+        self._uxfd_anfis: Optional[nn.Module] = None
         self._uxfd_operator_attention: Optional[nn.Module] = None
         self._uxfd_logic: Optional[nn.Module] = None
         self._uxfd_logic_scale: float = 1.0
@@ -89,6 +192,22 @@ class Model(_TSPNModel):
             ).to(self.args.device)
             self._uxfd_fuzzy_scale = float(getattr(fuzzy_cfg, "logit_scale", 1.0))
 
+        if self._uxfd_enable_neural_residual:
+            neural_cfg = _build_p05_b1_neural_residual_cfg(args)
+            self._uxfd_neural_residual = P05B1NeuralResidual(
+                input_dim=int(self.channel_for_classifier),
+                num_classes=int(self.args.num_classes),
+                cfg=neural_cfg,
+            ).to(self.args.device)
+
+        if self._uxfd_enable_anfis:
+            anfis_cfg = _build_p05_b3_anfis_cfg(args)
+            self._uxfd_anfis = P05B3ANFISHead(
+                input_dim=int(self.channel_for_classifier),
+                num_classes=int(self.args.num_classes),
+                cfg=anfis_cfg,
+            ).to(self.args.device)
+
         if self._uxfd_enable_operator_attention:
             op_cfg = _build_operator_attention_cfg(args)
             self._uxfd_operator_attention = OperatorAttention1D(
@@ -106,30 +225,129 @@ class Model(_TSPNModel):
             self._uxfd_logic_scale = float(getattr(logic_cfg, "logit_scale", 1.0))
 
     def forward(self, x: torch.Tensor, data_id=None, task_id=None) -> torch.Tensor:
-        features_1d = self._forward_1d_features(x)  # (B, D)
-        features = features_1d
+        return self.forward_with_features(
+            x,
+            data_id=data_id,
+            task_id=task_id,
+        ).logits
 
-        if self._uxfd_enable_sp2d:
-            assert self._uxfd_sp2d is not None
-            assert self._uxfd_2d_proj is not None
-            assert self._uxfd_fusion is not None
+    def forward_with_features(
+        self,
+        x: torch.Tensor,
+        data_id=None,
+        task_id=None,
+    ) -> P05FeatureLogitOutput:
+        """Return the decision-head input and logits from one model forward."""
 
-            x2d = self._uxfd_sp2d(x)  # (B, T, F, C) magnitude
-            pooled = x2d.mean(dim=(1, 2))  # (B, C)
-            proj = self._uxfd_2d_proj(pooled)  # (B, D)
-            features = self._uxfd_fusion(features_1d, proj)  # (B, D)
+        features = self._forward_features(x)
+        logits = self._forward_logits_from_features(features)
+        return P05FeatureLogitOutput(
+            reduced_features=features,
+            logits=logits,
+        )
 
-        base_logits = self.clf(features)
-        logits = base_logits
+    def _forward_logits_from_features(self, features: torch.Tensor) -> torch.Tensor:
+        if self._uxfd_enable_anfis:
+            assert self._uxfd_anfis is not None
+            return self._uxfd_anfis(features)
+        logits = self._forward_non_fuzzy_logits(features)
         if self._uxfd_enable_fuzzy:
             assert self._uxfd_fuzzy is not None
             fuzzy_logits = self._uxfd_fuzzy(features)
             logits = logits + self._uxfd_fuzzy_scale * fuzzy_logits
+        if self._uxfd_enable_neural_residual:
+            assert self._uxfd_neural_residual is not None
+            logits = logits + self._uxfd_neural_residual(features)
+        return logits
+
+    def forward_with_fuzzy_trace(
+        self,
+        x: torch.Tensor,
+        *,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_permutation: Optional[torch.Tensor] = None,
+        data_id=None,
+        task_id=None,
+    ) -> FuzzyTraceOutput:
+        """Run the model and return the complete additive FuzzyTrace."""
+
+        if not self._uxfd_enable_fuzzy or self._uxfd_fuzzy is None:
+            raise RuntimeError("forward_with_fuzzy_trace requires model.uxfd.fuzzy.enable=true.")
+
+        features = self._forward_features(x)
+        non_fuzzy_logits = self._forward_non_fuzzy_logits(features)
+        fuzzy_trace = self._uxfd_fuzzy.forward_with_trace(
+            features,
+            rule_mask=rule_mask,
+            consequent_permutation=consequent_permutation,
+        )
+        logits = non_fuzzy_logits + self._uxfd_fuzzy_scale * fuzzy_trace.fuzzy_logits
+        return FuzzyTraceOutput(
+            logits=logits,
+            non_fuzzy_logits=non_fuzzy_logits,
+            fuzzy_scale=float(self._uxfd_fuzzy_scale),
+            fuzzy_trace=fuzzy_trace,
+        )
+
+    def forward_f0(
+        self,
+        x: torch.Tensor,
+        *,
+        rule_to_class: torch.Tensor,
+        conflict_threshold: float,
+        rule_mask: Optional[torch.Tensor] = None,
+        consequent_override: Optional[torch.Tensor] = None,
+        data_id=None,
+        task_id=None,
+    ) -> P05F0Decision:
+        """Issue F0 directly from memberships and minimum-t-norm rules.
+
+        Classifier, logic, neural-residual, and additive-logit heads are not
+        consulted. They remain available only to the registered control arms.
+        """
+
+        if not self._uxfd_enable_fuzzy or self._uxfd_fuzzy is None:
+            raise RuntimeError("forward_f0 requires model.uxfd.fuzzy.enable=true.")
+        features = self._forward_features(x)
+        return self._uxfd_fuzzy.forward_f0(
+            features,
+            rule_to_class=rule_to_class,
+            conflict_threshold=conflict_threshold,
+            rule_mask=rule_mask,
+            consequent_override=consequent_override,
+        )
+
+    def forward_with_anfis_trace(self, x: torch.Tensor) -> P05B3ANFISTrace:
+        """Return B3's reconstruction-only trace without risk coupling."""
+
+        if not self._uxfd_enable_anfis or self._uxfd_anfis is None:
+            raise RuntimeError(
+                "forward_with_anfis_trace requires model.uxfd.anfis.enable=true"
+            )
+        features = self._forward_features(x)
+        return self._uxfd_anfis.forward_with_trace(features)
+
+    def _forward_non_fuzzy_logits(self, features: torch.Tensor) -> torch.Tensor:
+        logits = self.clf(features)
         if self._uxfd_enable_logic:
             assert self._uxfd_logic is not None
             logic_logits = self._uxfd_logic(features)
             logits = logits + self._uxfd_logic_scale * logic_logits
         return logits
+
+    def _forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        features_1d = self._forward_1d_features(x)
+        if not self._uxfd_enable_sp2d:
+            return features_1d
+
+        assert self._uxfd_sp2d is not None
+        assert self._uxfd_2d_proj is not None
+        assert self._uxfd_fusion is not None
+
+        x2d = self._uxfd_sp2d(x)
+        pooled = x2d.mean(dim=(1, 2))
+        proj = self._uxfd_2d_proj(pooled)
+        return self._uxfd_fusion(features_1d, proj)
 
     def _forward_1d_features(self, x: torch.Tensor) -> torch.Tensor:
         if self._uxfd_enable_operator_attention:
@@ -143,6 +361,8 @@ class Model(_TSPNModel):
         state: Dict[str, Any] = {
             "enable_sp2d": bool(self._uxfd_enable_sp2d),
             "enable_fuzzy": bool(self._uxfd_enable_fuzzy),
+            "enable_neural_residual": bool(self._uxfd_enable_neural_residual),
+            "enable_anfis": bool(self._uxfd_enable_anfis),
             "enable_operator_attention": bool(self._uxfd_enable_operator_attention),
             "enable_logic": bool(self._uxfd_enable_logic),
         }
@@ -245,6 +465,38 @@ def _build_fuzzy_cfg(args: Any) -> FuzzyConfig:
     allowed = set(base.__dict__.keys())
     merged = {k: v for k, v in cfg_dict.items() if k in allowed and v is not None}
     return FuzzyConfig(**{**base.__dict__, **merged})
+
+
+def _build_p05_b1_neural_residual_cfg(args: Any) -> P05B1NeuralResidualConfig:
+    residual_obj = _get_attr(args, "uxfd.neural_residual", None)
+    if residual_obj is None:
+        return P05B1NeuralResidualConfig()
+
+    cfg_dict = {}
+    if hasattr(residual_obj, "__dict__"):
+        cfg_dict = dict(residual_obj.__dict__)
+    elif isinstance(residual_obj, dict):
+        cfg_dict = dict(residual_obj)
+
+    hidden_dim = cfg_dict.get("hidden_dim")
+    return P05B1NeuralResidualConfig(hidden_dim=hidden_dim)
+
+
+def _build_p05_b3_anfis_cfg(args: Any) -> P05B3ANFISConfig:
+    anfis_obj = _get_attr(args, "uxfd.anfis", None)
+    if anfis_obj is None:
+        return P05B3ANFISConfig()
+
+    cfg_dict = {}
+    if hasattr(anfis_obj, "__dict__"):
+        cfg_dict = dict(anfis_obj.__dict__)
+    elif isinstance(anfis_obj, dict):
+        cfg_dict = dict(anfis_obj)
+
+    base = P05B3ANFISConfig()
+    allowed = set(base.__dict__)
+    merged = {key: value for key, value in cfg_dict.items() if key in allowed}
+    return P05B3ANFISConfig(**{**base.__dict__, **merged})
 
 
 def _build_operator_attention_cfg(args: Any) -> OperatorAttentionConfig:

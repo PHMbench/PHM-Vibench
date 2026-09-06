@@ -1,39 +1,43 @@
 # Legacy configuration compatibility layer
 
-`src/configs/` is the protected v0.3 compatibility implementation used by existing
-Pipelines and historical scripts. It is not the primary public configuration API.
+`src/configs/` is the protected compatibility implementation used by direct historical
+Pipeline calls and older scripts. It is **not** a second public configuration authority.
 
-Use the maintained public surfaces for new integrations:
+New code must use:
 
 ```python
-from phmfactory.config import resolve_config
+from phmfactory.config import analyze_config
 ```
+
+or a public command:
 
 ```bash
-python main.py --config <yaml> [--override key=value ...]
+phmfactory preflight --config <preset-or-yaml>
+phmfactory --config <preset-or-yaml>
 ```
 
-The authoritative configuration documentation is
-[`configs/README.md`](../../configs/README.md). Maintained examples live under
-`configs/demo/`, compose reusable blocks through `base_configs`, and are inventoried
-in `configs/config_registry.csv`.
+The maintained semantics are documented in [`configs/README.md`](../../configs/README.md).
 
 ## Compatibility API
 
-The existing internal API remains available to the protected runtime:
+The historical API remains available:
 
 ```python
 from src.configs import load_config
 ```
 
-`load_config(...)` accepts the legacy input forms implemented by
-`src/configs/config_utils.py` and returns a `ConfigWrapper` compatible with current
-Pipeline code. Do not remove or redesign this layer as part of repository cleanup.
+`load_config(...)` accepts legacy input forms and returns `ConfigWrapper`, which supports
+attribute and mapping-style access. Keep it only where a protected direct-call path still
+requires that interface.
+
+Do not use this loader in new validators, inspectors, UI code, support generation, or
+public Pipeline adapters. Those paths must consume `ConfigAnalysis` or
+`CompiledRunSpec.runtime_config()` so base configs and overrides are not applied twice.
 
 ## Historical presets
 
-`PRESET_TEMPLATES` still maps the following names to files under
-`configs/v0.0.9/` for historical-script compatibility:
+`PRESET_TEMPLATES` still maps these names to `configs/v0.0.9/` for historical-script
+compatibility:
 
 ```text
 quickstart
@@ -44,27 +48,32 @@ pretrain
 id
 ```
 
-Those presets are not the maintained PHMFactory v0.3 quickstart surface. New code
-should select a maintained YAML file or public preset through `phmfactory.config`.
+They are not the PHMFactory v0.3 maintained presets. New callers should use public
+presets such as `smoke` or a maintained YAML path through `phmfactory.config`.
 
-`configs/v0.0.9/` must remain while these compatibility mappings exist. Removing it
-requires a separate migration with zero runtime references and explicit downstream
-evidence.
+`configs/v0.0.9/` remains while compatibility references exist. Removing it requires a
+separate migration with zero runtime references and downstream validation.
 
-## Scope boundary
+## Machine-local values
 
-Do not add new public presets, machine-specific paths, or credentials here. New
-configuration behavior belongs in the public resolver and maintained root
-configuration tree; machine-specific values belong in `configs/local/local.yaml` or
-CLI overrides.
+Do not add personal paths or credentials to this compatibility package. Public machine
+inputs are explicit:
 
-Validation and inspection commands:
+```bash
+phmfactory \
+  --config configs/experiments/my_experiment.yaml \
+  --local-config configs/local/my_machine.yaml
+```
+
+No public command automatically reads `configs/local/local.yaml`. CLI overrides remain
+the highest-precedence input.
+
+## Validation
 
 ```bash
 python -m scripts.validate_configs
 python -m scripts.config_inspect --config <yaml>
-python -m scripts.gen_config_atlas
+python -m pytest test/test_config_analysis_parity.py -q
 ```
 
-The previous long-form v5 compatibility guide is preserved in immutable Git history
-and in the approved personal-fork archive used for the v0.3 repository migration.
+These commands use the public resolver, not this compatibility loader.

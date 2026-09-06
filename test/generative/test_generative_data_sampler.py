@@ -1,5 +1,9 @@
 from types import SimpleNamespace
 
+import torch
+from torch.utils.data import TensorDataset
+
+from src.data_factory.dataset_task.Dataset_cluster import IdIncludedDataset
 import src.data_factory.samplers.Get_sampler as sampler_module
 
 
@@ -8,13 +12,16 @@ def test_generative_task_uses_standard_factory_sampler(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(
         sampler_module,
-        "_get_pretrain_sampler",
-        lambda args_data, dataset, mode: (
-            calls.append((args_data, dataset, mode)) or expected
+        "_get_standard_sampler",
+        lambda args_data, dataset, mode, task_name: (
+            calls.append((args_data, dataset, mode, task_name)) or expected
         ),
     )
     args_data = SimpleNamespace(batch_size=2)
-    dataset = object()
+    dataset = IdIncludedDataset(
+        {1: TensorDataset(torch.arange(2))},
+        metadata={1: {"Dataset_id": 0}},
+    )
 
     result = sampler_module.Get_sampler(
         SimpleNamespace(type="generative"),
@@ -24,4 +31,4 @@ def test_generative_task_uses_standard_factory_sampler(monkeypatch) -> None:
     )
 
     assert result is expected
-    assert calls == [(args_data, dataset, "train")]
+    assert calls == [(args_data, dataset, "train", "Pretrain")]

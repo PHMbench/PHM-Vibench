@@ -1,36 +1,12 @@
 # Data Factory Readers
 
-Dataset reader modules convert one metadata-addressed raw file into a NumPy
-signal array. This page documents the behavior implemented by the current data
-factory; it is not a redesign of the reader runtime.
+A reader converts one metadata-addressed raw file into a signal array. Reader output is
+scientific input: a read failure remains a failure, and an invalid return is rejected
+before any HDF5 cache is published.
 
-## Current runtime contract
+## Runtime resolution
 
-The maintained data factory reads each metadata row's `Name` field and imports:
-
-```text
-src.data_factory.reader.<Name>
-```
-
-The imported module must expose a callable compatible with:
-
-```python
-def read(file_path, args_data):
-    """Return one sample as a NumPy array."""
-```
-
-Several historical readers accept `*args` rather than naming `args_data`, but
-the current factory calls every reader with both `file_path` and `args_data`.
-A new reader should therefore accept those two arguments explicitly unless a
-reviewed compatibility reason requires a broader signature.
-
-Reader modules are resolved by module name. They are **not** currently
-registered as `BaseReader` subclasses, and `reader/__init__.py` is not a reader
-registry.
-
-## Metadata and raw-file resolution
-
-The factory requires each selected metadata row to provide at least:
+Each selected metadata row requires:
 
 ```text
 Id
@@ -38,118 +14,145 @@ Name
 File
 ```
 
-It constructs the raw path as:
+The public Data Factory resolves:
 
 ```text
-<data.data_dir>/raw/<Name>/<File>
+raw file:      <data.data_dir>/raw/<Name>/<File>
+reader module: src.data_factory.reader.<Name>
 ```
 
-Example:
+The module must expose:
+
+```python
+def read(file_path, args_data) -> np.ndarray:
+    ...
+```
+
+Historical readers may accept `*args`, but the factory supplies the resolved raw path and
+the current `data` configuration.
+
+## Failure contract
 
 ```text
-metadata Name: RM_001_CWRU
-metadata File: 98.mat
-resolved path: <data_dir>/raw/RM_001_CWRU/98.mat
-reader module: src.data_factory.reader.RM_001_CWRU
+missing raw file
+→ FileNotFoundError with Id and resolved path
+
+reader raises a source-format or domain error
+→ preserve the same exception type and traceback
+
+any reader failure
+→ do not publish a new cache
 ```
 
-Other metadata fields such as labels, domains, sampling rate, sample length,
-channel count, and task flags are consumed by metadata selection and task
-adapters rather than being returned in a reader dictionary.
+Readers should fail where source fields, channel order, units, or numeric assumptions are
+violated. They must not return `None`, an empty array, or substitute data to keep the run
+alive.
 
-## Signal return value
+## Return contract
 
-A reader returns a NumPy signal array, normally with shape:
+A successful reader returns a `numpy.ndarray` with:
 
 ```text
-(L, C)
+rank ∈ {1, 2, 3}
+all dimensions > 0
+real numeric dtype
+all values finite
 ```
 
-where `L` is signal length and `C` is channel count. The current data factory
-expands a two-dimensional reader result before writing its runtime cache, so
-reader implementations must not add an extra singleton dimension merely to
-anticipate that factory behavior.
+New maintained readers should normally return `(L, C)`, where `L` is signal length and
+`C` is channel count. Rank-1 and rank-3 arrays remain accepted for compatibility only when
+the documented source format requires them.
 
-Document for every maintained reader:
+The Data Factory does not:
 
-- accepted source format and required source keys or columns;
-- returned shape and channel ordering;
+- convert lists or arbitrary objects into arrays;
+- coerce string/object samples to numbers;
+- discard NaN or Inf;
+- take real parts of complex signals;
+- pad, repeat, copy, or guess channels;
+- squeeze an unexpected rank into a supported one.
+
+The historical cache representation remains:
+
+```text
+reader rank 1 → cached unchanged
+reader rank 2 → singleton axis appended before caching
+reader rank 3 → cached unchanged
+```
+
+The Dataset layer validates the signal again before windowing. Reader validation prevents
+invalid derived data from being published; it does not replace Dataset-level checks.
+
+## Documenting a reader
+
+Record:
+
+- accepted source format and required fields or columns;
+- returned shape and channel order;
 - dtype and physical units when known;
 - truncation, alignment, resampling, normalization, or byte-order handling;
-- missing-channel and malformed-input behavior.
+- malformed-input and missing-channel behavior.
 
-Do not change an existing reader's channel order, shape, dtype handling, or
-numeric preprocessing in a repository-cleanup PR.
+Do not change an existing reader's channel order, shape, dtype handling, or numerical
+preprocessing in a cleanup PR. Such changes require a focused scientific bug fix with
+before/after tests.
 
-## Cache flow
-
-The current factory uses two cache levels:
+## Derived cache flow
 
 ```text
 raw/<Name>/<File>
         ↓ reader.read(...)
-<Name>.h5, keyed by Id
+<cache_dir or data_dir>/<Name>.h5, keyed by Id
         ↓ consolidation
-cache.h5, keyed by Id
+<cache_dir or data_dir>/cache.h5, keyed by Id
 ```
 
-If an `Id` already exists in `<Name>.h5`, the raw reader can be skipped. The
-final `cache.h5` contains the IDs selected for the run and is exposed through
-`H5DataDict`.
-
-Reader code must not assume that every training run will execute the raw-file
-conversion path; a compatible prebuilt `<Name>.h5` cache may be used instead.
-
-## Existing readers and support status
-
-Files under this directory include dataset-specific readers such as
-`RM_001_CWRU.py`, `RM_002_XJTU.py`, and `RM_003_FEMTO.py`, plus the offline
-`Dummy_Data.py` reader. File presence alone does not establish maintained or
-benchmark-supported status. Support claims must be backed by the maintained
-configuration registry, focused tests, a runnable demo where applicable, and
-explicit limitations.
-
-`Dummy_Data` can generate deterministic synthetic signals when raw files are
-absent. It remains the fully offline smoke path used by:
+Cache reuse is explicit:
 
 ```text
-configs/demo/00_smoke/dummy_dg.yaml
+data.use_cache omitted or false
+→ execute current readers and rebuild selected data
+
+data.use_cache true
+→ reuse complete existing HDF5 entries by selected Id
 ```
 
-Historical or placeholder files are retained until a separate inventory proves
-their consumers and disposition; they must not be deleted merely because their
-names overlap with another reader.
+Use `data.use_cache: true` only when raw files, reader code, and reader-relevant
+configuration are intentionally unchanged. Matching Id keys alone do not establish that
+two cached datasets have the same scientific meaning.
+
+`data.cache_dir` changes only the derived HDF5 location. Metadata and raw files still
+resolve from `data.data_dir`.
+
+## Maintained examples
+
+- `Dummy_Data.py` reads the repository-shipped `ch1` and `ch2` columns. Missing or
+  malformed fixtures fail; no synthetic substitute is generated.
+- `CSV_Signal.py` requires explicit `data.csv_signal_columns` and rejects guessed,
+  non-numeric, empty, or non-finite columns.
+- `RM_007_MFPT.py` validates the MFPT signal and physical metadata used by the current
+  real-data candidate.
+
+File presence alone is not a support claim. Check `SUPPORTED_COMBINATIONS.md` and the
+configuration registry for exact maintained combinations.
 
 ## Adding a reader
 
 1. Choose a stable metadata `Name`.
 2. Add `src/data_factory/reader/<Name>.py`.
 3. Implement `read(file_path, args_data) -> np.ndarray`.
-4. Place local raw files under `<data_dir>/raw/<Name>/<File>`.
-5. Add or validate metadata rows using the same `Name` and source `File`.
-6. Document source provenance, license, signal contract, and preprocessing.
-7. Add focused parsing, shape, dtype, channel-order, and malformed-input tests.
-8. Run the relevant config inspection and smoke gates before claiming support.
+4. Place raw files under `<data_dir>/raw/<Name>/<File>`.
+5. Add metadata rows using the same `Name` and source `File`.
+6. Document source provenance, license, shape, channel order, and preprocessing.
+7. Add parsing, output-contract, malformed-input, and channel-order tests.
+8. Run the relevant public config and Data Factory tests before claiming support.
 
-Do not hard-code a personal data directory in the reader's maintained execution
-path. Local paths belong in `configs/local/local.yaml` or CLI overrides.
-
-See [the data-factory contribution guide](../contributing.md) for evidence,
-licensing, configuration, and test requirements.
-
-## PHMFactory v0.3 preservation boundary
-
-The v0.3 repository cleanup preserves reader module paths and runtime behavior.
-The protected contract is recorded in
-[`docs/PHMFACTORY_V0_3_READER_PRESERVATION.md`](../../../docs/PHMFACTORY_V0_3_READER_PRESERVATION.md).
-
-Changes to reader parsing or numerical behavior require a separate bugfix or
-feature PR with before/after evidence. Documentation cleanup does not authorize
-runtime refactoring.
+Do not hard-code a personal path or modify Model, Task, Trainer, Pipeline, or CLI code to
+add a compatible reader.
 
 ## Related documentation
 
-- [Data directory and external-data boundary](../../../data/README.md)
-- [Data factory overview](../README.md)
-- [Data factory contribution guide](../contributing.md)
-- [Configuration guide](../../../configs/README.md)
+- [Data base configuration](../../../configs/base/data/README.md)
+- [Data directory and external-source boundary](../../../data/README.md)
+- [Data Factory overview](../README.md)
+- [Data Factory contribution guide](../contributing.md)

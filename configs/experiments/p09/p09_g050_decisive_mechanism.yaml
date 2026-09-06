@@ -1,0 +1,74 @@
+schema_version: 1
+experiment_id: P09-G050-DECISIVE-V1
+protocol_id: P09-GFS-V1
+evidence_tier: mechanism_decisive_preflight
+claim_eligible: false
+
+data:
+  metadata_path: /home/user/data/PHMbenchdata/PHM-Vibench/metadata.xlsx
+  metadata_sha256: 0b61d1f8b1f74811309a6bec9827b0c2f2956940e877a8070275e108ce2c9c30
+  cache_path: /home/user/data/PHMbenchdata/PHM-Vibench/cache.h5
+  target_system_ids: [1, 5, 6, 12, 18, 19]
+  canonical_maps:
+    1: {0: 0, 1: 1, 3: 2, 2: 3}
+    5: {0: 0, 1: 1, 2: 2, 3: 3}
+    6: {0: 0, 1: 1, 3: 2, 2: 3}
+    12: {0: 0, 1: 1, 2: 2, 3: 3}
+    18: {0: 0, 1: 1, 2: 2, 3: 3}
+    19: {0: 0, 3: 1, 7: 1, 4: 2, 8: 2, 1: 3, 5: 3}
+  base_class_ids: [0, 1]
+  novel_class_ids: [2, 3]
+  window_size: 1024
+  candidate_windows_per_record: 20
+  max_head_records_per_system_class: 4
+
+design:
+  seeds: [42, 123, 456, 789, 999]
+  k_shot: 5
+  query_per_class: 16
+  episodes_per_state: 20
+  support_states: [clean, outlier]
+  outlier_replacement_probability: 0.20
+  adaptation_record_fraction: one_third
+  pairing: identical_episode_and_corruption_manifest_across_arms
+
+source_fit:
+  base_head: balanced_logistic_regression
+  logistic_c: 1.0
+  logistic_max_iter: 2000
+  feature_scaler: source_base_only_standard_scaler
+  controller_steps: 120
+  controller_learning_rate: 0.01
+  controller_weight_decay: 0.0001
+  controller_support: 5
+  controller_query_per_class: 16
+  adapter_rank: 8
+
+arms:
+  B0: frozen_base_plus_mean_novel_prototypes
+  P: g030_reliability_conditioner
+  A7: cleared_mechanism_negative_control
+
+decision:
+  bootstrap_draws: 10000
+  bootstrap_seed: 20260801
+  distinct_logit_tolerance: 1.0e-6
+  identity_tolerance: 1.0e-8
+  clean_harmonic_noninferiority_margin: -0.02
+  base_accuracy_noninferiority_margin: -0.02
+  supported_if:
+    - outlier_delta_harmonic_95pct_lower_above_zero
+    - clean_mean_delta_harmonic_at_least_minus_0.02
+    - mean_delta_base_accuracy_at_least_minus_0.02
+    - execution_gates_pass
+  refuted_if:
+    - outlier_delta_harmonic_95pct_upper_below_zero
+    - mean_delta_base_accuracy_below_minus_0.02
+  otherwise: inconclusive
+
+execution:
+  conda_environment: LQ_signal
+  physical_gpu_indices: []
+  multi_gpu: false
+  device: cpu
+  output_dir: results/p09/g050_decisive_v1

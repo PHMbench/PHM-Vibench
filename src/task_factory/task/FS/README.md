@@ -1,48 +1,51 @@
-# FS Task
+# FS Task Compatibility Path
 
-`FS` contains few-shot task implementations. The current maintained public demo
-uses the config-first `FS.classification` wrapper.
+`FS` is currently a compatibility selector used by the existing data adapter and split
+path. The maintained `FS/classification` task is ordinary supervised classification.
+It does not construct N-way K-shot episodes.
 
 ## Current Surface
 
-| Task type | Task name | Module | Status |
+| Task type | Task name | Module | Current status |
 |---|---|---|---|
-| `FS` | `classification` | `classification.py` | Maintained demo path |
-| `FS` | `prototypical_network` | `prototypical_network.py` | Registered implementation |
-| `FS` | `matching_network` | `matching_network.py` | Registered implementation |
-| `FS` | `knn_feature` | `knn_feature.py` | Registered implementation |
-| `FS` | `finetuning` | `finetuning.py` | Registered implementation |
+| `FS` | `classification` | `classification.py` | Execution-smoke path; non-episodic CE |
+| `FS` | `prototypical_network` | `prototypical_network.py` | Registered historical implementation; no maintained batch contract |
+| `FS` | `matching_network` | `matching_network.py` | Registered historical implementation; no maintained batch contract |
+| `FS` | `knn_feature` | `knn_feature.py` | Registered historical implementation |
+| `FS` | `finetuning` | `finetuning.py` | Registered historical implementation |
 
-Maintained demo path:
+Maintained compatibility config:
 
 - `configs/demo/03_fewshot/cwru_protonet.yaml`
 
-The registry source of truth is `src/task_factory/task_registry.csv`.
+Despite the filename, the config resolves to `FS/classification` with cross-entropy. It
+contains no support/query tensors, prototype computation, episode-local labels, or
+query-only objective.
 
-## Configuration Notes
+## Configuration
 
-Inspect the maintained demo before copying it:
-
-```bash
-python -m scripts.config_inspect \
-  --config configs/demo/03_fewshot/cwru_protonet.yaml \
-  --override trainer.num_epochs=1
+```yaml
+task:
+  type: FS
+  name: classification
+  loss: CE
+  target_system_id: [1]
 ```
 
-Typical task fields live in `configs/base/task/fewshot.yaml`:
+The removed `n_way`, `k_shot`, `q_query`, and `episodes_per_epoch` fields were not
+consumed by the maintained sampler or task and therefore did not affect computation.
 
-- `task.type: "FS"`
-- `task.name`
-- `task.n_way`
-- `task.k_shot`
-- `task.q_query`
-- `task.episodes_per_epoch`
+## Boundary for a Real ProtoNet Path
 
-## Boundaries
+A future maintained ProtoNet path must provide together:
 
-- Do not treat every registered FS module as release-supported. Release support is
-  established by registry status, maintained configs, and smoke evidence.
-- This directory does not currently claim multi-scale episodes, cross-domain
-  episodes, hierarchical few-shot learning, or learned distance metrics.
-- Add new FS behavior by updating code, `src/task_factory/task_registry.csv`,
-  config validation, docs, and a focused smoke path together.
+```text
+N-way K-shot sampler
++ explicit support/query batch fields
++ episode-local label mapping
++ prototype computation
++ query loss
++ episodic metrics
+```
+
+Registration or a Python module alone is not scientific or release support.

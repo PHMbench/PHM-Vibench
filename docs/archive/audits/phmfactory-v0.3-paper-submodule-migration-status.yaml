@@ -1,104 +1,189 @@
-schema_version: 1
+schema_version: 2
 source_repository: PHMbench/PHM-Vibench
 release_target: v0.3.0
 policy: content_level_destination_evidence_required
-
 papers:
-  - paper_id: foundation-metric
-    source_path: paper/2025-10_foundation_model_0_metric
-    source_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
-    target_repository: null
-    target_pr: null
-    coverage_status: not_started
-    target_review_status: not_started
-    safe_to_remove: false
-
-  - paper_id: P01
-    source_path: paper/UXFD_paper/1D-2D_fusion_explainable
-    source_repository: liq22/1D-2D_fusion_explainable
-    source_commit: b385b07e82d6323a291d90e55a5ef4aff9336c0b
-    source_blob_count: 89
-    target_repository: AI4Engineering-L/P01-UXFD-Multimodal-Alignment
-    target_branch: migration/verify-phmfactory-gitlink-b385
-    target_head: 9b895a4a3fbf5faaa4152f9fe3096104d583ee87
+- paper_id: foundation-metric
+  source_path: paper/2025-10_foundation_model_0_metric
+  source_repository: liq22/PHM-Vibench-Paper-2025-Metric
+  source_commit: 2dd7dabe10c11a18e7a1d865ddcf70ba95f26ac7
+  source_path_count: 257
+  unique_git_blob_oids: 243
+  partition:
+    program_repository: AI4Engineering-L/PHM-Paper-Program-2026
+    program_pr: 3
+    program_merge_commit: 8ff9e6a776230111888b0ecb719f26fdaf4283f0
+    partition_manifest_sha256: d0ee37b6d1d3d6704042c59c1d16dcca0a9f70bf454b6c14c901db8e4acedf5c
+    partition_manifest_gzip_sha256: 68421cf0786378d0f6c35c0ad91721921448680f74ac4a98daf9fe6f90391da8
+    unassigned_count: 0
+    cross_authority_path_overlap_count: 0
+    cross_authority_mutable_oid_overlap_count: 0
+  disposition_counts:
+    p08_import: 34
+    p09_import: 28
+    duplicate_alias_to_p08: 8
+    phmfactory_reference: 2
+    provenance_quarantine: 182
+    source_metadata: 3
+  target_imports:
+  - paper_id: P08
+    target_repository: AI4Engineering-L/P08-HSE-Prompt-CDDG
+    target_branch: migration/import-foundation-2dd7da
+    target_head: a4f8d5a6c2194f4b0ebb725af23915af6d075ed5
     target_pr: 2
-    snapshot_exact_count: 68
-    archive_or_overlay_exact_count: 21
-    uncovered_count: 0
-    coverage_manifest_sha256: 82cf569c2a900a9a5f0931a179cc2a5965ba48cf1f1101f407748e9721614780
-    source_archive_sha256: c498b48144524174e7054efc1451c52c72c51c0bc5603a0c35f0b358f5bfcb51
-    coverage_status: complete
-    target_review_status: workflow_approval_required
-    safe_to_remove: false
-
-  - paper_id: P02
-    source_path: paper/UXFD_paper/Explainable_FD_Toolkit
-    source_repository: liq22/Explainable_FD_Toolkit
-    source_commit: 379244dc8410eea0580714bc216c71074acba3a9
-    source_blob_count: 163
-    target_repository: AI4Engineering-L/P02-XFD-Benchmark-Toolkit
-    target_branch: migration/verify-phmfactory-gitlink-379244
-    target_head: 47d256ff923685d2f84b1f07004b459f86a79b63
+    target_merge_commit: 476246e0a8fe6b513e1a33638cca6dd999ae1d06
+    target_validation_run: 30632117266
+    imported_path_count: 34
+    selection_manifest_sha256: 9fcf74b69b5878cca7c8c5f0aef24d9b7d3c946183f0f1cb88afabfd8fc0fb34
+    source_selection_archive_sha256: 42feb18923bb78fd0351977ac7558f5fa53715ce3ecfb0ae3e9da833e10fc414
+    target_review_status: target_merged
+    active_scientific_evidence: false
+  - paper_id: P09
+    target_repository: AI4Engineering-L/P09-HSE-Prompt-GFS
+    target_branch: migration/import-foundation-2dd7da
+    target_head: 64f60338596e08cdc63f8f176d4b1d4f9c5f7b31
     target_pr: 2
-    snapshot_exact_count: 142
-    archive_or_overlay_exact_count: 21
-    uncovered_count: 0
-    coverage_manifest_sha256: 05770099dfd98477b1eaca0a5a1f01db18595b763ef1b529f8f289c1ce61f3c0
-    source_archive_sha256: f6adc63df49697b1f50f6e5f99325c968c97acc8ded60efb3c4fbbb183a1a633
-    coverage_status: complete
-    target_review_status: workflow_approval_required
-    safe_to_remove: false
-
-  - paper_id: P03
-    source_path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
-    source_repository: liq22/LLM_Explainable_FD_Toolkit
-    source_commit: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
-    source_blob_count: 90
-    target_repository: AI4Engineering-L/P03-Evidence-Grounded-LLM-XFD
-    target_branch: migration/verify-phmfactory-gitlink-08eb94
-    target_head: 31e0f9f1c66839648af9315895f67a35cce98bff
-    target_pr: 2
-    snapshot_exact_count: 81
-    archive_or_overlay_exact_count: 9
-    uncovered_count: 0
-    coverage_manifest_sha256: 9c34faa184756cb7a2db5d85ba3bbabac4a7116f21afbd82f3c95230641e3883
-    source_archive_sha256: 6db015b3505435cef73632f9e6e15cbf3fdf4c67d9fb47c38cc0d7ebdb6e366c
-    coverage_status: complete
-    target_review_status: workflow_approval_required
-    safe_to_remove: false
-
-  - paper_id: P04
-    source_path: paper/UXFD_paper/MOE_explainable
-    source_commit: 0da06ae366eeb66d852c144013af6925446615cb
-    target_repository: AI4Engineering-L/P04-Physics-Informed-MoE-XFD
-    target_pr: null
-    coverage_status: not_started
-    target_review_status: not_started
-    safe_to_remove: false
-
-  - paper_id: P05
-    source_path: paper/UXFD_paper/Paper_fuzzy_XFD
-    source_commit: 1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f
-    target_repository: AI4Engineering-L/P05-Neuro-Fuzzy-Safe-XFD
-    target_pr: null
-    coverage_status: not_started
-    target_review_status: not_started
-    safe_to_remove: false
-
-  - paper_id: P06
-    source_path: paper/UXFD_paper/Neuralsymbolic_theory
-    source_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
-    target_repository: AI4Engineering-L/P06-Verifiable-Neural-Symbolic-XFD
-    target_pr: null
-    coverage_status: not_started
-    target_review_status: not_started
-    safe_to_remove: false
-
-  - paper_id: P07
-    source_path: paper/UXFD_paper/TII_operator_attention
-    source_commit: 20f47bac5c02763e1f6b856c90ce32861025c003
-    target_repository: AI4Engineering-L/P07-XOAN-Operator-Attention
-    target_pr: null
-    coverage_status: not_started
-    target_review_status: not_started
-    safe_to_remove: false
+    target_merge_commit: 9374427e09491cbab281c4167db5bf3539d7ac92
+    target_validation_run: 30632168615
+    imported_path_count: 28
+    selection_manifest_sha256: 14fd18e717e5266829a7b06f382a3414586ba2a9c93c65eb0bc449f470fdb391
+    source_selection_archive_sha256: d36eb4222518e104088ef4163d148d6ef33edad5f9a55d05d4a4d4127fa8b18b
+    target_review_status: target_merged
+    active_scientific_evidence: false
+  uncovered_count: 0
+  coverage_status: complete
+  target_review_status: targets_merged
+  safe_to_remove: true
+- paper_id: P01
+  source_path: paper/UXFD_paper/1D-2D_fusion_explainable
+  source_repository: liq22/1D-2D_fusion_explainable
+  source_commit: b385b07e82d6323a291d90e55a5ef4aff9336c0b
+  source_blob_count: 89
+  target_repository: AI4Engineering-L/P01-UXFD-Multimodal-Alignment
+  target_branch: migration/verify-phmfactory-gitlink-b385
+  target_head: a62db89f18783c9078d107f90e838900dd095a42
+  target_pr: 2
+  target_merge_commit: 964446803d58bf21472a3d7933b752d0f47aa8ef
+  target_validation_run: 30027073029
+  snapshot_exact_count: 68
+  archive_or_overlay_exact_count: 21
+  uncovered_count: 0
+  coverage_manifest_sha256: 82cf569c2a900a9a5f0931a179cc2a5965ba48cf1f1101f407748e9721614780
+  source_archive_sha256: c498b48144524174e7054efc1451c52c72c51c0bc5603a0c35f0b358f5bfcb51
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true
+- paper_id: P02
+  source_path: paper/UXFD_paper/Explainable_FD_Toolkit
+  source_repository: liq22/Explainable_FD_Toolkit
+  source_commit: 379244dc8410eea0580714bc216c71074acba3a9
+  source_blob_count: 163
+  target_repository: AI4Engineering-L/P02-XFD-Benchmark-Toolkit
+  target_branch: migration/verify-phmfactory-gitlink-379244
+  target_head: 6d73f731cd2308616b5fdac4335069878477c827
+  target_pr: 2
+  target_merge_commit: 062a4bd8a900317f14cd50d4a6227f454d2c5145
+  target_validation_run: 30027099795
+  snapshot_exact_count: 142
+  archive_or_overlay_exact_count: 21
+  uncovered_count: 0
+  coverage_manifest_sha256: 05770099dfd98477b1eaca0a5a1f01db18595b763ef1b529f8f289c1ce61f3c0
+  source_archive_sha256: f6adc63df49697b1f50f6e5f99325c968c97acc8ded60efb3c4fbbb183a1a633
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true
+- paper_id: P03
+  source_path: paper/UXFD_paper/LLM_Explainable_FD_Toolkit
+  source_repository: liq22/LLM_Explainable_FD_Toolkit
+  source_commit: 08eb944dd9acdbbd6c69cf39f050854a936e9b78
+  source_blob_count: 90
+  target_repository: AI4Engineering-L/P03-Evidence-Grounded-LLM-XFD
+  target_branch: migration/verify-phmfactory-gitlink-08eb94
+  target_head: b14bd9dea0f2838c5681b2e34edaf58c91aaa6aa
+  target_pr: 2
+  target_merge_commit: 6a95f27c35b1acd905d60c6848b74f1f1337cbce
+  target_validation_run: 30027125593
+  snapshot_exact_count: 81
+  archive_or_overlay_exact_count: 9
+  uncovered_count: 0
+  coverage_manifest_sha256: 9c34faa184756cb7a2db5d85ba3bbabac4a7116f21afbd82f3c95230641e3883
+  source_archive_sha256: 6db015b3505435cef73632f9e6e15cbf3fdf4c67d9fb47c38cc0d7ebdb6e366c
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true
+- paper_id: P04
+  source_path: paper/UXFD_paper/MOE_explainable
+  source_repository: liq22/MOE_explainable
+  source_commit: 0da06ae366eeb66d852c144013af6925446615cb
+  source_blob_count: 48
+  target_repository: AI4Engineering-L/P04-Physics-Informed-MoE-XFD
+  target_branch: migration/verify-phmfactory-gitlink-0da06a
+  target_head: bca10311e4d25145b5a7d18e491c1af639b7eca8
+  target_pr: 2
+  target_merge_commit: b983481ce02645c1e9044b98ad2528168c07ad28
+  target_validation_run: 30027152137
+  snapshot_exact_count: 36
+  archive_or_overlay_exact_count: 12
+  uncovered_count: 0
+  coverage_manifest_sha256: 95cbebba433e8965344cce955b5d28230485a82afbb8cafa8946fb0c8d0e329a
+  source_archive_sha256: 8d143549375271a795462c37b0b3b103148315754e97d52683e1506193e10339
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true
+- paper_id: P05
+  source_path: paper/UXFD_paper/Paper_fuzzy_XFD
+  source_repository: liq22/Paper_fuzzy_XFD
+  source_commit: 1bedd533bd52e7ac2592d3a6f7aeffaf25a1014f
+  source_blob_count: 53
+  target_repository: AI4Engineering-L/P05-Neuro-Fuzzy-Safe-XFD
+  target_branch: migration/verify-phmfactory-gitlink-1bedd5
+  target_head: bad91311b343638d3f1a929691899dffc024ace7
+  target_pr: 2
+  target_merge_commit: c2b6238f422fb2b4d6229146db2c016b2051f69e
+  target_validation_run: 30027178897
+  snapshot_exact_count: 51
+  archive_or_overlay_exact_count: 2
+  uncovered_count: 0
+  coverage_manifest_sha256: 5094bff21ad30dd7d5bffa519edf6cbcc3781544199bda5e06e419825ab13337
+  source_archive_sha256: be0efbcf96c7cceb00a00283c03db42af6c3495a37c2212737658dfeb1de0e55
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true
+- paper_id: P06
+  source_path: paper/UXFD_paper/Neuralsymbolic_theory
+  source_repository: liq22/Neuralsymbolic_theory
+  source_commit: ad7dc2e2851f59d941e402e68fa3d3409b39c583
+  source_blob_count: 68
+  target_repository: AI4Engineering-L/P06-Verifiable-Neural-Symbolic-XFD
+  target_branch: migration/verify-phmfactory-gitlink-ad7dc2
+  target_head: 3f62686809f595783322c39a1a2e99616e11bd18
+  target_pr: 2
+  target_merge_commit: 53c2ccc37ae8eae4fe07872db2225e9fff8b09bf
+  target_validation_run: 30027204260
+  snapshot_exact_count: 64
+  archive_or_overlay_exact_count: 4
+  uncovered_count: 0
+  coverage_manifest_sha256: dd1839fb1c5f577485dfc13dd22899c09084e5508270d1f2491457c15cb3f732
+  source_archive_sha256: a9ac2213f311d5f17f0f76a5269ba5025d43e6e493a38449c3595e11162da702
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true
+- paper_id: P07
+  source_path: paper/UXFD_paper/TII_operator_attention
+  source_repository: liq22/TII_operator_attention
+  source_commit: 20f47bac5c02763e1f6b856c90ce32861025c003
+  source_blob_count: 84
+  target_repository: AI4Engineering-L/P07-XOAN-Operator-Attention
+  target_branch: migration/verify-phmfactory-gitlink-20f47b
+  target_head: 74d54dd3bc22a6651748bc54024d8dfb1818e6f5
+  target_pr: 2
+  target_merge_commit: 0df3f1d57a05cef1faa5d7bca826dccea28f74f4
+  target_validation_run: 30027231367
+  snapshot_exact_count: 76
+  archive_or_overlay_exact_count: 8
+  uncovered_count: 0
+  coverage_manifest_sha256: 029263c26aea26261f0ce207d327003de102f5dd04edce1e9f5be5d4c59d6f22
+  source_archive_sha256: da07d7f28ee678c0087ca001bfe1c76acdf042c0dc5a80b079963b2f9cf4af9c
+  coverage_status: complete
+  target_review_status: target_merged
+  safe_to_remove: true

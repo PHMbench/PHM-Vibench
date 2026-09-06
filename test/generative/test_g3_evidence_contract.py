@@ -86,6 +86,33 @@ def test_docs_only_manifest_remains_non_promotional() -> None:
     assert manifest["validity"]["paper_ready"] is False
 
 
+def test_population_aware_manifest_requires_population_metric() -> None:
+    kwargs = _synthetic_manifest_kwargs()
+    kwargs["method_id"] = "population_aware_cfm"
+    kwargs["population_metrics"] = {
+        "population_dependency_mmd": {
+            "value": 0.1,
+            "status": "ok",
+            "reason": "",
+        }
+    }
+
+    manifest = build_synthetic_manifest(**kwargs)
+
+    assert manifest["validity"]["evidence"]["population_metrics"] is True
+    assert manifest["validity"]["runtime_smoke_eligible"] is True
+
+
+def test_population_aware_manifest_downgrades_missing_population_metric() -> None:
+    kwargs = _synthetic_manifest_kwargs()
+    kwargs["method_id"] = "population_aware_cfm"
+
+    manifest = build_synthetic_manifest(**kwargs)
+
+    assert manifest["validity"]["runtime_smoke_eligible"] is False
+    assert "population_metrics" in manifest["validity"]["missing_evidence"]
+
+
 @pytest.mark.parametrize("missing_key", ["protocol_evidence", "generated_evidence"])
 def test_synthetic_manifest_downgrades_missing_provenance(missing_key: str) -> None:
     kwargs = _synthetic_manifest_kwargs()

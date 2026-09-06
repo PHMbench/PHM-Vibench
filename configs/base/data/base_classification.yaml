@@ -6,9 +6,10 @@ data:
   train_ratio: 0.8
   val_ratio: 0.1
   test_ratio: 0.1
-  normalization: "standardization"
+  unused_ratio: 0.0
+  normalization: "per_window_standardization"
   window_size: 4096
-  stride: 5
+  window_sampling_strategy: "evenly_spaced"
   num_window: 64
   dtype: "float32"
   pin_memory: true
