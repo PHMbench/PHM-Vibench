@@ -1,4 +1,4 @@
-"""Small numerical primitives for fixed-model, common-intervention explanations.
+"""Numerical primitives for fixed-model, common-intervention explanations.
 
 Coefficients are sensitivities, not normalized heatmaps or IG contributions.
 The caller owns data splitting, experiment selection, checkpoints and reporting.
@@ -52,6 +52,10 @@ def exact_sparse_risk(basis: np.ndarray, second_moment: np.ndarray,
 M=E[v v^T], b=E[v d(v)], c=E[d(v)^2]. M is not a centred covariance.
 """
     basis = np.asarray(basis, dtype=float)
+    if basis.ndim != 2 or not np.isfinite(basis).all():
+        raise ValueError("basis must be a finite matrix")
+    if not np.isfinite(response_second_moment):
+        raise ValueError("response second moment must be finite")
     p = basis.shape[0]
     if basis.shape != (p, p) or p > 16 or not 1 <= k <= p:
         raise ValueError("exact oracle requires square p<=16 and 1<=k<=p")
@@ -59,6 +63,8 @@ M=E[v v^T], b=E[v d(v)], c=E[d(v)^2]. M is not a centred covariance.
     cross = np.asarray(cross_moment, dtype=float)
     if moment.shape != (p, p) or cross.shape != (p,):
         raise ValueError("second moment or cross moment has incompatible dimensions")
+    if not np.isfinite(moment).all() or not np.isfinite(cross).all():
+        raise ValueError("all response moments must be finite")
     if not np.allclose(moment, moment.T) or np.linalg.eigvalsh(moment).min() < -1e-10:
         raise ValueError("second moment must be symmetric positive semidefinite")
     gram, transformed = basis @ moment @ basis.T, basis @ cross
@@ -109,11 +115,10 @@ def sparse_response_fit(displacements: np.ndarray, responses: np.ndarray,
 
 def coefficients(model, x, target: int, basis, *, method: str,
                  baseline=None, steps: int = 32, radius: float = 0.01):
-    """Return [C,T] sensitivity coefficients and counted model-example visits.
+    """Return [C,T] sensitivities and counted model-example visits.
 
-x is a single [C,T] tensor. The model must return [batch, classes].
-path_gradient is the IG integrand average, not vanilla IG attribution.
-secant uses declared finite differences and is not reported as Occlusion.
+x is [C,T]; model output is [batch,classes]. path_gradient is the IG integrand
+average, not vanilla IG. secant is a finite difference, not Occlusion.
 """
     import torch
     if x.ndim != 2 or not torch.isfinite(x).all():
@@ -141,7 +146,7 @@ secant uses declared finite differences and is not reported as Occlusion.
         else:
             if baseline is None or baseline.shape != x.shape or steps < 1:
                 raise ValueError("path_gradient requires an explicit same-shape baseline and steps>=1")
-            # Midpoint quadrature; the baseline and step count define the path method.
+            # Midpoint quadrature; baseline and step count define the path method.
             points = [baseline + ((i + 0.5) / steps) * (x - baseline)
                       for i in range(steps)]
         gradients = []

@@ -7,10 +7,11 @@ def response_errors(model, x, targets, basis_names, methods, budgets, *,
                     baseline, evaluation_displacements, calibration_displacements,
                     forward_budget: int, backward_budget: int,
                     steps: int = 32, radius: float = 0.01):
-    """Evaluate held-out responses; return rows without choosing a representation.
+    """Score responses on distinct held-out displacement values.
 
-All tensors share original input coordinates. The caller must supply disjoint
-calibration/scoring perturbation banks. Forward visits count examples, not batches.
+The reference finite-grid protocol splits candidate perturbations before queries.
+The caller owns the sampling law; distinct values alone do not prove independence.
+Forward visits count examples, not batches. Visits reused across k are not summed.
 """
     import torch
     if model.training:
@@ -31,6 +32,10 @@ calibration/scoring perturbation banks. Forward visits count examples, not batch
             raise ValueError("nonfinite perturbation bank")
     if torch.equal(evaluation_displacements, calibration_displacements):
         raise ValueError("calibration and scoring banks must not be reused")
+    for cal, scoring in zip(calibration_displacements, evaluation_displacements):
+        for displacement in cal:
+            if torch.any(torch.all(scoring == displacement, dim=(1, 2))):
+                raise ValueError("overlapping calibration/scoring displacement rows")
     matrices = {name: orthogonal_basis(x.shape[-1], name) for name in basis_names}
     rows = []
     for n, sample in enumerate(x):
@@ -52,7 +57,7 @@ calibration/scoring perturbation banks. Forward visits count examples, not batch
         for name, matrix in matrices.items():
             a = torch.as_tensor(matrix, dtype=x.dtype, device=x.device)
             with torch.no_grad():
-                # Preservation is checked on both ends of the same intervention.
+                # Check preservation at both endpoints of the same intervention.
                 points = torch.cat((sample[None], sample[None] - ve), dim=0)
                 restored = (points @ a.T) @ a
                 if not torch.allclose(restored, points, atol=2e-5, rtol=2e-5):
