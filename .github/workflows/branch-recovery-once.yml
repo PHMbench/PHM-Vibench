@@ -1,0 +1,64 @@
+name: Branch recovery (one-off)
+
+on:
+  push:
+    branches: [maintenance/branch-recovery-20260907]
+    paths: [.github/workflows/branch-recovery-once.yml]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare every branch with retained history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/branch-recovery
+          cd "$GITHUB_WORKSPACE"
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/branches?per_page=100" | jq 'add' > /tmp/branch-recovery/branches.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls?state=all&per_page=100" | jq 'add' > /tmp/prs.json
+          jq '[.[] | {number,state,merged_at,merge_commit_sha,head_ref:.head.ref,head_sha:.head.sha,head_repo:.head.repo.full_name,base_ref:.base.ref}]' /tmp/prs.json > /tmp/branch-recovery/prs.json
+          main=$(git rev-parse origin/main)
+          dev=$(git rev-parse origin/dev)
+          printf 'main=%s\ndev=%s\n' "$main" "$dev" > /tmp/branch-recovery/bases.txt
+          printf 'branch\ttip\tdecision\tpr\tahead_main\tbehind_main\tchanged_paths\n' > /tmp/branch-recovery/branches.tsv
+          while IFS=$'\t' read -r name tip protected; do
+            pr=$(jq -r --arg n "$name" --arg t "$tip" --arg repo "$GITHUB_REPOSITORY" '[.[] | select(.head_repo==$repo and .head_ref==$n and .head_sha==$t and .merged_at!=null)] | first | if .==null then "-" else (.number|tostring) end' /tmp/branch-recovery/prs.json)
+            decision=HOLD_UNMERGED
+            if [[ "$name" == main || "$name" == dev || "$name" == maintenance/branch-recovery-20260907 || "$protected" == true ]] || jq -e --arg n "$name" --arg repo "$GITHUB_REPOSITORY" 'any(.[]; .state=="open" and (.base_ref==$n or (.head_repo==$repo and .head_ref==$n)))' /tmp/branch-recovery/prs.json > /dev/null; then
+              decision=KEEP_ACTIVE
+            elif git merge-base --is-ancestor "$tip" "$main"; then
+              decision=DELETE_ANCESTOR_MAIN
+            elif [[ "$pr" != - ]]; then
+              merged=$(jq -r --argjson n "$pr" '.[] | select(.number==$n) | .merge_commit_sha' /tmp/branch-recovery/prs.json)
+              if git merge-base --is-ancestor "$merged" "$main"; then decision=DELETE_MERGED_PR; fi
+            fi
+            read -r behind ahead < <(git rev-list --left-right --count "$main...$tip")
+            paths=$(git diff --name-only "$main...$tip" | wc -l)
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$tip" "$decision" "$pr" "$ahead" "$behind" "$paths" >> /tmp/branch-recovery/branches.tsv
+            if [[ "$decision" == HOLD_UNMERGED ]]; then
+              printf '\n## %s\n' "$name" >> /tmp/branch-recovery/unmerged-paths.txt
+              git log --format='%h %s' "$main..$tip" --no-merges | head -25 >> /tmp/branch-recovery/unmerged-paths.txt
+              git diff --name-status "$main...$tip" >> /tmp/branch-recovery/unmerged-paths.txt
+            fi
+          done < <(jq -r '.[] | [.name,.commit.sha,.protected] | @tsv' /tmp/branch-recovery/branches.json)
+          cat /tmp/branch-recovery/bases.txt
+          awk -F '\t' 'NR>1 {n[$3]++} END {for(k in n) print k,n[k]}' /tmp/branch-recovery/branches.tsv
+          cat /tmp/branch-recovery/branches.tsv
+          { echo '## Full branch inspection'; cat /tmp/branch-recovery/bases.txt; echo; awk -F '\t' 'NR>1 {n[$3]++} END {for(k in n) print k,n[k]}' /tmp/branch-recovery/branches.tsv; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: branch-recovery-inspection
+          path: /tmp/branch-recovery/
+          retention-days: 14
