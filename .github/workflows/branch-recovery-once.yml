@@ -7,87 +7,111 @@ permissions:
   contents: write
   pull-requests: read
 jobs:
-  archive_superseded:
+  finish_review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Preserve complete historical chains before removing 18 inactive branch refs
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Apply the two source-reviewed corrections to PR 223
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/archive-result
-          gh run download 34076542486 --repo "$GITHUB_REPOSITORY" --name branch-recovery-inspection --dir /tmp/inspection
+          mkdir -p /tmp/review-result
+          branch=research/phmfactory-llm-explanation-contract-20260905
+          test "$(git rev-parse origin/$branch)" = 8e00a256af62f9e2e880b43010c63c60d64c11ad
           git config user.name 'PHMFactory maintenance'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git worktree add -b finish-pr223 /tmp/pr223 "origin/$branch"
+          cd /tmp/pr223
           python - <<'PY'
-          import csv,json,os,subprocess
           from pathlib import Path
-          repo=os.environ['GITHUB_REPOSITORY']
-          out=Path('/tmp/archive-result')
-          groups={
-              'archive/v030-cleanup-source-20260907': ['agent/v030-agent-root-cleanup-batch1','agent/v030-agent-hidden-cleanup-batch2','agent/v030-module-agent-doc-inventory-batch3','agent/v030-reader-doc-neutralization-batch4','agent/v030-submodule-inventory-batch5','agent/v030-remove-personal-submodules-batch6','agent/v030-remove-dev-history-batch7'],
-              'archive/v030-docs-source-20260907': ['docs/user-onboarding-20260714','docs/documentation-audit-20260714','docs/contribution-policy-20260714','docs/factory-guides-validation-20260714','docs/archive-boundary-20260714'],
-              'archive/v030-release-docs-source-20260907': ['agent/v030-release-readiness-pr12','agent/v030-release-docs-pr12b'],
-              'archive/v030-release-metadata-source-20260907': ['agent/v030-release-metadata-pr12a'],
-              'archive/v030-submodule-source-20260907': ['agent/v030-submodule-governance-pr10b','agent/v030-submodule-governance-validation'],
-              'archive/pr40-full-slim-a4143f2': ['cleanup/repo-slim-2026-07-09'],
-          }
-          def run(*args): return subprocess.check_output(args,text=True).strip()
-          def api_list(path):
-              pages=json.loads(run('gh','api','--paginate','--slurp',f'repos/{repo}/{path}'))
-              return [item for page in pages for item in page]
-          inspected={r['branch']:r for r in csv.DictReader(open('/tmp/inspection/branches.tsv'),delimiter='\t')}
-          live={b['name']:b for b in api_list('branches?per_page=100')}
-          active={'main','dev','maintenance/branch-recovery-20260907'}
-          for p in api_list('pulls?state=open&per_page=100'):
-              active.add(p['base']['ref'])
-              if p['head']['repo']['full_name']==repo: active.add(p['head']['ref'])
-          command=['git','push','--atomic']
-          targets={}
-          completed=[]
-          for tag,names in groups.items():
-              tip=inspected[names[-1]]['tip']
-              existing=subprocess.run(['git','show-ref','--verify','--quiet',f'refs/tags/{tag}'])
-              if existing.returncode==0:
-                  tip=run('git','rev-parse',f'refs/tags/{tag}^{{commit}}')
-              elif existing.returncode==1:
-                  subprocess.run(['git','tag','-a',tag,tip,'-m','Superseded preparation history, archived on 2026-09-07. Historical claims and instructions are not current PHMFactory guidance.'],check=True)
-              else: raise RuntimeError('Cannot inspect archive tag')
-              targets[tag]=tip
-              for name in names:
-                  expected=inspected[name]['tip']
-                  if name in active or name not in live or live[name]['protected'] or live[name]['commit']['sha']!=expected:
-                      raise RuntimeError(f'Branch changed, protected, missing, or active: {name}')
-                  subprocess.run(['git','merge-base','--is-ancestor',expected,tip],check=True)
-                  for base in ['origin/main','origin/dev']:
-                      p=subprocess.run(['git','grep','-I','-l','-F',name,base,'--','.github','README.md','README_CN.md','CORE.md','CONTRIBUTING.md','CONTRIBUTING_CN.md','configs','phmfactory','src','docs','paper/project',':(exclude)docs/archive'],capture_output=True,text=True)
-                      if p.returncode!=1:
-                          raise RuntimeError(f'Current reference or grep failure for {name}: {p.stdout} {p.stderr}')
-                  command.append(f'--force-with-lease=refs/heads/{name}:{expected}')
-                  completed.append([name,expected,'ARCHIVED_AND_DELETED',tag])
-          if len(completed)!=18: raise RuntimeError('Unexpected batch size')
-          command.append('origin')
-          command.extend(f'refs/tags/{tag}:refs/tags/{tag}' for tag in targets)
-          command.extend(f':refs/heads/{row[0]}' for row in completed)
-          subprocess.run(command,check=True)
-          remaining=api_list('branches?per_page=100')
-          remaining_names={b['name'] for b in remaining}
-          if any(row[0] in remaining_names for row in completed): raise RuntimeError('Deletion not reflected remotely')
-          for tag,tip in targets.items():
-              actual=run('git','ls-remote','origin',f'refs/tags/{tag}^{{}}')
-              if not actual or actual.split()[0]!=tip: raise RuntimeError(f'Archive unavailable: {tag}')
-          with (out/'completed-archive-actions.tsv').open('w') as f:
-              w=csv.writer(f,delimiter='\t',lineterminator='\n');w.writerow(['branch','original_tip','action','retained_at']);w.writerows(completed)
-          (out/'remaining-branches.json').write_text(json.dumps(remaining,indent=2))
-          print(f'Archived 18 branch refs under five new tags and one existing tag; remaining refs: {len(remaining)}.')
+          f = Path('phmfactory/explanation/adapters.py')
+          text = f.read_text()
+          old = '        raise ValueError(f"class_names must contain exactly {size} non-empty labels")\n    return labels'
+          new = '        raise ValueError(f"class_names must contain exactly {size} non-empty labels")\n    if len(set(labels)) != len(labels):\n        raise ValueError("class_names must contain unique labels")\n    return labels'
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+          old = '    return PHMExplanationState(\n        sample_id=sample_id,\n        task=task,\n        model_family="TSPN_UXFD",'
+          new = '''    effective_mask = _sample(
+                  _field(trace, "rule_mask"), sample_index, name="rule_mask"
+              )
+              effective_permutation = _python(_field(trace, "consequent_permutation"))
+              # Native permutations are either shared [rules] or per-sample [batch, rules].
+              if effective_permutation is not None and isinstance(effective_permutation[0], Sequence):
+                  effective_permutation = _sample(
+                      effective_permutation, sample_index, name="consequent_permutation"
+                  )
+              if effective_mask is None or effective_permutation is None:
+                  limitations.append("Effective intervention values were not supplied in this trace.")
+          
+              return PHMExplanationState(
+                  sample_id=sample_id,
+                  task=task,
+                  model_family="TSPN_UXFD",'''
+          # The string above is indented for YAML; remove four spaces from its later lines.
+          lines = new.splitlines()
+          new = '\n'.join([lines[0]] + [line[4:] if line.startswith('    ') else line for line in lines[1:]])
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+          old = '                "total_rule_count": len(firing),'
+          new = old + '\n                "rule_mask": effective_mask,\n                "consequent_permutation": effective_permutation,'
+          assert text.count(old) == 1
+          f.write_text(text.replace(old, new))
+          f = Path('test/test_llm_explanation_models.py')
+          with f.open('a') as out:
+              out.write('''
+          
+          @pytest.mark.parametrize("class_names", [("fault", "fault"), ("fault", " fault ")])
+          def test_duplicate_class_labels_are_rejected(class_names):
+              model = TSPNUXFD(_make_args(enable_fuzzy=True)).eval()
+              with torch.no_grad():
+                  output = model.forward_with_fuzzy_trace(torch.randn(2, 128, 2))
+              with pytest.raises(ValueError, match="unique labels"):
+                  state_from_tspn_uxfd_fuzzy_trace(output, sample_id="duplicate", class_names=class_names)
+          
+          
+          @pytest.mark.parametrize("per_sample", [False, True])
+          def test_fuzzy_intervention_exports_the_selected_effective_values(per_sample):
+              torch.manual_seed(19)
+              model = TSPNUXFD(_make_args(enable_fuzzy=True)).eval()
+              x = torch.randn(2, 128, 2)
+              with torch.no_grad():
+                  original = model.forward_with_fuzzy_trace(x)
+                  rules = original.fuzzy_trace.rule_mask.shape[1]
+                  mask = torch.ones(2, rules, dtype=torch.bool)
+                  mask[1, 0] = False
+                  permutation = torch.arange(rules - 1, -1, -1)
+                  if per_sample:
+                      permutation = torch.stack([torch.arange(rules), permutation])
+                  output = model.forward_with_fuzzy_trace(x, rule_mask=mask, consequent_permutation=permutation)
+                  state = state_from_tspn_uxfd_fuzzy_trace(output, sample_id="intervention", sample_index=1)
+              metadata = state.to_dict()["metadata"]
+              assert metadata["rule_mask"] == output.fuzzy_trace.rule_mask[1].tolist()
+              expected = output.fuzzy_trace.consequent_permutation
+              if per_sample:
+                  expected = expected[1]
+              assert metadata["consequent_permutation"] == expected.tolist()
+              assert state.prediction.logits == pytest.approx(output.logits[1].tolist(), abs=1e-6)
+              original_state = state_from_tspn_uxfd_fuzzy_trace(original, sample_id="original", sample_index=1)
+              original_metadata = original_state.to_dict()["metadata"]
+              assert original_metadata["rule_mask"] == [True] * rules
+              assert original_metadata["consequent_permutation"] == list(range(rules))
+          ''')
           PY
+          python -m py_compile phmfactory/explanation/adapters.py test/test_llm_explanation_models.py
+          python -m pip install 'pytest>=7'
+          python -m pytest test/test_llm_explanation_contract.py -q | tee /tmp/review-result/contract-tests.txt
+          git diff --check
+          git add phmfactory/explanation/adapters.py test/test_llm_explanation_models.py
+          git commit -m 'fix(explanation): retain intervention values and reject ambiguous class labels'
+          git push origin "HEAD:refs/heads/$branch"
+          git rev-parse HEAD > /tmp/review-result/head.txt
+          git diff HEAD^ HEAD > /tmp/review-result/review-fixes.patch
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: historical-archive-completed
-          path: /tmp/archive-result/
-          retention-days: 90
+          name: explanation-review-final
+          path: /tmp/review-result/
+          retention-days: 30
