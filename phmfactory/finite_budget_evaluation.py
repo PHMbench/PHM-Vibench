@@ -13,6 +13,15 @@ All tensors share original input coordinates. The caller must supply disjoint
 calibration/scoring perturbation banks. Forward visits count examples, not batches.
 """
     import torch
+    if model.training:
+        raise ValueError("model must be frozen in eval mode")
+    if not torch.isfinite(x).all() or not torch.isfinite(baseline).all():
+        raise ValueError("input and baseline must be finite")
+    target_array = np.asarray(targets)
+    if target_array.ndim != 1 or not np.issubdtype(target_array.dtype, np.integer):
+        raise ValueError("targets must be a one-dimensional integer array")
+    if not methods or not set(methods) <= {"gradient", "path_gradient", "secant", "surrogate"}:
+        raise ValueError("requested response method is not implemented")
     if x.ndim != 3 or baseline.shape != x.shape or len(targets) != len(x):
         raise ValueError("expected x/baseline [N,C,T] and explicit targets [N]")
     for bank in (evaluation_displacements, calibration_displacements):
@@ -70,5 +79,5 @@ calibration/scoring perturbation banks. Forward visits count examples, not batch
                         raise ValueError("nonfinite response error")
                     rows.append(dict(sample=n, representation=name, method=method, k=int(k),
                         mse=error, forward=counts["forward"], backward=counts["backward"],
-                        evaluation_forward=1 + len(ve), output_kind="sensitivity_response"))
+                        evaluation_forward=1 + len(ve), validation_forward=2 * (1 + len(ve)), output_kind="sensitivity_response"))
     return rows
