@@ -25,7 +25,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/branch-recovery
-          cd "$GITHUB_WORKSPACE"
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/branches?per_page=100" | jq 'add' > /tmp/branch-recovery/branches.json
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls?state=all&per_page=100" | jq 'add' > /tmp/prs.json
           jq '[.[] | {number,state,merged_at,merge_commit_sha,head_ref:.head.ref,head_sha:.head.sha,head_repo:.head.repo.full_name,base_ref:.base.ref}]' /tmp/prs.json > /tmp/branch-recovery/prs.json
@@ -49,15 +48,18 @@ jobs:
             printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$tip" "$decision" "$pr" "$ahead" "$behind" "$paths" >> /tmp/branch-recovery/branches.tsv
             if [[ "$decision" == HOLD_UNMERGED ]]; then
               printf '\n## %s\n' "$name" >> /tmp/branch-recovery/unmerged-paths.txt
-              git log --format='%h %s' "$main..$tip" --no-merges | head -25 >> /tmp/branch-recovery/unmerged-paths.txt
+              git log --max-count=25 --format='%h %s' "$main..$tip" --no-merges >> /tmp/branch-recovery/unmerged-paths.txt
               git diff --name-status "$main...$tip" >> /tmp/branch-recovery/unmerged-paths.txt
             fi
           done < <(jq -r '.[] | [.name,.commit.sha,.protected] | @tsv' /tmp/branch-recovery/branches.json)
+          git for-each-ref --format='%(refname:short) %(objectname)' refs/tags > /tmp/branch-recovery/tags.txt
+          git ls-tree -r --name-only "$main" > /tmp/branch-recovery/main-paths.txt
           cat /tmp/branch-recovery/bases.txt
           awk -F '\t' 'NR>1 {n[$3]++} END {for(k in n) print k,n[k]}' /tmp/branch-recovery/branches.tsv
           cat /tmp/branch-recovery/branches.tsv
           { echo '## Full branch inspection'; cat /tmp/branch-recovery/bases.txt; echo; awk -F '\t' 'NR>1 {n[$3]++} END {for(k in n) print k,n[k]}' /tmp/branch-recovery/branches.tsv; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: branch-recovery-inspection
           path: /tmp/branch-recovery/
