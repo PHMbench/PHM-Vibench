@@ -1,0 +1,321 @@
+--- a/phmfactory/explanation/llm.py
++++ b/phmfactory/explanation/llm.py
+@@ -23,7 +23,7 @@
+         object.__setattr__(self, "text", self.text.strip())
+         for name in ("evidence_ids", "path_ids", "relation_ids"):
+             raw = getattr(self, name)
+-            normalized = tuple(str(item).strip() for item in raw)
++            normalized = _string_sequence(raw, f"claim.{name}")
+             if any(not item for item in normalized):
+                 raise ValueError(f"claim.{name} contains an empty identifier")
+             if len(set(normalized)) != len(normalized):
+@@ -55,7 +55,7 @@
+         object.__setattr__(self, "summary", self.summary.strip())
+         if not self.claims:
+             raise ValueError("claims must not be empty")
+-        normalized_limitations = tuple(str(item).strip() for item in self.limitations)
++        normalized_limitations = _string_sequence(self.limitations, "limitations")
+         if any(not item for item in normalized_limitations):
+             raise ValueError("limitations contains an empty item")
+         object.__setattr__(self, "limitations", normalized_limitations)
+@@ -119,7 +119,9 @@
+ def _string_sequence(value: Any, name: str) -> tuple[str, ...]:
+     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+         raise TypeError(f"{name} must be a sequence of strings")
+-    result = tuple(str(item).strip() for item in value)
++    if any(not isinstance(item, str) for item in value):
++        raise TypeError(f"{name} must contain only strings")
++    result = tuple(item.strip() for item in value)
+     if any(not item for item in result):
+         raise ValueError(f"{name} contains an empty string")
+     return result
+@@ -150,11 +152,11 @@
+                 f"claims[{index}] keys must be exactly {sorted(claim_keys)}"
+             )
+         claim = ExplanationClaim(
+-            text=str(raw_claim["text"]),
++            text=raw_claim["text"],
+             evidence_ids=_string_sequence(raw_claim["evidence_ids"], f"claims[{index}].evidence_ids"),
+             path_ids=_string_sequence(raw_claim["path_ids"], f"claims[{index}].path_ids"),
+             relation_ids=_string_sequence(raw_claim["relation_ids"], f"claims[{index}].relation_ids"),
+-            uncertainty=str(raw_claim["uncertainty"]),
++            uncertainty=raw_claim["uncertainty"],
+         )
+         if not claim.evidence_ids and not claim.path_ids:
+             raise ValueError(
+@@ -179,7 +181,7 @@
+ 
+     limitations = _string_sequence(payload["limitations"], "limitations")
+     return LLMExplanation(
+-        summary=str(payload["summary"]),
++        summary=payload["summary"],
+         claims=tuple(claims),
+         limitations=limitations,
+     )
+--- a/phmfactory/explanation/adapters.py
++++ b/phmfactory/explanation/adapters.py
+@@ -7,7 +7,9 @@
+ from __future__ import annotations
+ 
+ from collections.abc import Mapping, Sequence
++import json
+ import math
++from numbers import Integral
+ from typing import Any
+ 
+ from .schema import (
+@@ -135,9 +137,13 @@
+     method = getattr(model, "forward_evidence", None)
+     if not callable(method):
+         raise TypeError("XOAN adapter requires a model.forward_evidence method")
++    inference_mode = model.inference_mode
++    if inference_mode not in {"relaxed", "discrete"}:
++        raise ValueError("XOAN inference_mode must be relaxed or discrete")
+     report = method(x, dictionary_intervention=dictionary_intervention)
+     return state_from_xoan_report(
+         report,
++        inference_mode=inference_mode,
+         sample_id=sample_id,
+         task=task,
+         sample_index=sample_index,
+@@ -149,6 +155,7 @@
+ def state_from_xoan_report(
+     report: Mapping[str, Any],
+     *,
++    inference_mode: str,
+     sample_id: str,
+     task: str = "fault_diagnosis",
+     sample_index: int = 0,
+@@ -159,7 +166,10 @@
+ 
+     if not isinstance(report, Mapping):
+         raise TypeError("XOAN evidence report must be a mapping")
+-    logits = _vector(report.get("relaxed_logits"), sample_index, name="relaxed_logits")
++    if inference_mode not in {"relaxed", "discrete"}:
++        raise ValueError("inference_mode must be relaxed or discrete")
++    logit_key = f"{inference_mode}_logits"
++    logits = _vector(report[logit_key], sample_index, name=logit_key)
+     prediction = _prediction(logits, class_names)
+ 
+     serialized_paths = _python(report.get("serialized_paths"))
+@@ -167,23 +177,35 @@
+         serialized_paths, (str, bytes, bytearray)
+     ):
+         raise ValueError("XOAN report requires serialized_paths")
+-    selected_path = _sample(serialized_paths, sample_index, name="serialized_paths")
++    selected_path = json.loads(
++        _sample(serialized_paths, sample_index, name="serialized_paths")
++    )
++    # Use the native expression and executed edges, not the legacy integrity envelope.
++    public_path = {
++        "expression": selected_path["canonical_expression"],
++        "edges": selected_path["edges"],
++        "dictionary_intervention": selected_path["dictionary_intervention"],
++    }
+     path_atom = EvidenceAtom(
+         id="operator_path:selected",
+         kind="operator_path",
+         name="selected executable operator path",
+-        value=selected_path,
++        value=public_path,
+         source="XOANOperatorPath.forward_evidence",
+     )
+ 
+     evidence_atoms: list[EvidenceAtom] = [path_atom]
+-    metrics: list[tuple[str, float]] = []
++    probabilities = _softmax(logits)
++    entropy = -sum(p * math.log(p) for p in probabilities if p > 0.0)
++    if len(probabilities) > 1:
++        entropy /= math.log(len(probabilities))
++    metrics: list[tuple[str, float]] = [("predictive_entropy", entropy)]
+     for key, display_name in (
+         ("logit_relative_rmse", "relaxed_discrete_logit_relative_rmse"),
+-        ("predictive_entropy", "predictive_entropy"),
++        ("predictive_entropy", "relaxed_predictive_entropy"),
+         ("dictionary_insufficiency_score", "dictionary_insufficiency_score"),
+         ("relative_rmse", "relaxed_discrete_signal_relative_rmse"),
+-        ("normalized_selection_entropy", "normalized_selection_entropy"),
++        ("normalized_sparsemax_selection_entropy", "normalized_sparsemax_selection_entropy"),
+     ):
+         if key not in report:
+             continue
+@@ -220,9 +242,17 @@
+         relation="ordered executable operator path used by the discrete trace",
+     )
+     calibration_state = str(report.get("score_calibration_state", "not_provided"))
+-    metadata: dict[str, Any] = {}
++    metadata: dict[str, Any] = {"inference_mode": inference_mode}
+     if "dictionary_manifest" in report:
+-        metadata["dictionary_manifest"] = _python(report["dictionary_manifest"])
++        dictionary = report["dictionary_manifest"]
++        metadata["dictionary"] = {
++            name: _python(dictionary[name])
++            for name in (
++                "dictionary_id", "dictionary_version", "operator_semantics",
++                "operator_specs", "stage_operators", "dictionary_intervention",
++            )
++            if name in dictionary
++        }
+     if "insufficiency_score_id" in report:
+         metadata["insufficiency_score_id"] = str(report["insufficiency_score_id"])
+ 
+@@ -252,7 +282,9 @@
+         limitations=(
+             "The exported operator path is model-native structure; it is not automatically a physical mechanism.",
+             "Per-operator causal or additive class contribution is not provided by this adapter.",
+-        ),
++        ) + ((
++            "The discrete path approximates the relaxed decision; its discrepancy is reported separately.",
++        ) if inference_mode == "relaxed" else ()),
+         metadata=freeze_mapping(metadata, name="metadata"),
+     )
+ 
+@@ -318,7 +350,7 @@
+     )
+     labels = _labels(class_names, len(logits))
+     prediction = _prediction(logits, labels)
+-    scale = _float(_field(output, "fuzzy_scale", 1.0), name="fuzzy_scale")
++    scale = _float(_field(output, "fuzzy_scale"), name="fuzzy_scale")
+ 
+     firing = _vector(
+         _field(trace, "normalized_rule_firing"),
+@@ -344,9 +376,9 @@
+ 
+     ranked = sorted(range(len(firing)), key=lambda index: (-firing[index], index))
+     if max_rules is not None:
+-        if isinstance(max_rules, bool) or int(max_rules) <= 0:
++        if isinstance(max_rules, bool) or not isinstance(max_rules, Integral) or max_rules <= 0:
+             raise ValueError("max_rules must be a positive integer or None")
+-        ranked = ranked[: int(max_rules)]
++        ranked = ranked[:max_rules]
+ 
+     atoms: list[EvidenceAtom] = [
+         EvidenceAtom(
+--- a/test/test_llm_explanation_contract.py
++++ b/test/test_llm_explanation_contract.py
+@@ -1,5 +1,7 @@
+ from __future__ import annotations
+ 
++import json
++from copy import deepcopy
+ from dataclasses import dataclass
+ 
+ import pytest
+@@ -71,7 +73,11 @@
+ def test_xoan_report_adapter_preserves_path_and_uncertainty() -> None:
+     report = {
+         "relaxed_logits": [[0.2, 1.7, -0.1]],
+-        "serialized_paths": ["D1(MA3(x))"],
++        "serialized_paths": [json.dumps({
++            "canonical_expression": "D1(MA3(x))",
++            "edges": [],
++            "dictionary_intervention": None,
++        })],
+         "logit_relative_rmse": [0.02],
+         "predictive_entropy": [0.21],
+         "dictionary_insufficiency_score": [0.14],
+@@ -83,6 +89,7 @@
+ 
+     state = state_from_xoan_report(
+         report,
++        inference_mode="relaxed",
+         sample_id="xoan-1",
+         class_names=("normal", "inner", "outer"),
+         operating_conditions={"speed_rpm": 1200},
+@@ -90,10 +97,10 @@
+ 
+     assert state.prediction.label == "inner"
+     assert state.evidence_paths[0].id == "path:selected"
+-    assert state.evidence_atoms[0].value == "D1(MA3(x))"
++    assert state.evidence_atoms[0].value["expression"] == "D1(MA3(x))"
+     assert "structural_path" in state.capabilities
+     assert "additive_contribution" not in state.capabilities
+-    assert dict(state.uncertainty.metrics)["predictive_entropy"] == pytest.approx(0.21)
++    assert dict(state.uncertainty.metrics)["relaxed_predictive_entropy"] == pytest.approx(0.21)
+ 
+ 
+ @dataclass
+@@ -188,3 +195,25 @@
+     assert len(calls) == 1
+     assert explanation.claims[0].path_ids == ("p:outer",)
+     assert explanation.limitations
++
++
++@pytest.mark.parametrize("field", ["summary", "text", "uncertainty", "limitations", "evidence_ids"])
++def test_parser_rejects_non_text_fields_without_repair(field: str) -> None:
++    payload = {
++        "summary": "Model prediction.",
++        "claims": [{"text": "Observed feature.", "evidence_ids": ["e:order"],
++                    "path_ids": [], "relation_ids": [], "uncertainty": ""}],
++        "limitations": [],
++    }
++    if field == "summary":
++        payload["summary"] = None
++    elif field == "limitations":
++        payload["limitations"] = [17]
++    elif field == "evidence_ids":
++        payload["claims"][0][field] = [17]
++    else:
++        payload["claims"][0][field] = None
++    before = deepcopy(payload)
++    with pytest.raises((TypeError, ValueError)):
++        parse_llm_explanation(payload, _minimal_state())
++    assert payload == before
+--- /dev/null
++++ b/test/test_llm_explanation_models.py
+@@ -0,0 +1,55 @@
++"""Integration tests use the retained model implementations, not fabricated traces."""
++import json
++
++import pytest
++import torch
++
++from phmfactory.explanation import (
++    build_llm_packet, export_xoan_state, state_from_tspn_uxfd_fuzzy_trace,
++)
++from test.test_p07_xoan_method import _model
++from test.test_tspn_uxfd_assembly import TSPNUXFD, _make_args
++
++
++@pytest.mark.parametrize("mode", ["relaxed", "discrete"])
++def test_xoan_explains_the_selected_inference_route(mode, monkeypatch):
++    torch.manual_seed(7)
++    model = _model().eval()
++    model.inference_mode = mode
++    x = torch.randn(2, 64, 2)
++    calls = []
++    native_forward = model.forward_evidence
++    def counted_forward(*args, **kwargs):
++        calls.append(1)
++        return native_forward(*args, **kwargs)
++    monkeypatch.setattr(model, "forward_evidence", counted_forward)
++    with torch.no_grad():
++        expected = model(x)[1]
++        state = export_xoan_state(model, x, sample_id="route-check", sample_index=1)
++    assert len(calls) == 1
++    assert state.prediction.logits == pytest.approx(expected.tolist(), abs=1e-6)
++    assert dict(state.metadata)["inference_mode"] == mode
++    probabilities = expected.softmax(dim=0)
++    expected_entropy = -(probabilities * probabilities.log()).sum() / torch.log(torch.tensor(float(len(expected))))
++    assert dict(state.uncertainty.metrics)["predictive_entropy"] == pytest.approx(expected_entropy.item(), abs=1e-6)
++    assert state.evidence_atoms[0].value["expression"]
++    assert state.evidence_atoms[0].value["edges"]
++    assert "sha256" not in json.dumps(build_llm_packet(state))
++
++
++@pytest.mark.parametrize("max_rules", [None, 1])
++def test_fuzzy_state_matches_real_same_forward_output(max_rules):
++    torch.manual_seed(9)
++    model = TSPNUXFD(_make_args(enable_fuzzy=True, fuzzy_logit_scale=0.7)).eval()
++    with torch.no_grad():
++        output = model.forward_with_fuzzy_trace(torch.randn(2, 128, 2))
++        state = state_from_tspn_uxfd_fuzzy_trace(output, sample_id="fuzzy-check", sample_index=1, max_rules=max_rules)
++    assert state.prediction.logits == pytest.approx(output.logits[1].tolist(), abs=1e-6)
++    if max_rules is None:
++        for i in range(output.logits.shape[1]):
++            value = sum(c.value for c in state.contributions if c.target_label == f"class_{i}")
++            assert value == pytest.approx(output.logits[1, i].item(), abs=1e-6)
++        assert "decision_reconstruction" in state.capabilities
++    else:
++        assert "partial_contribution" in state.capabilities
++        assert "decision_reconstruction" not in state.capabilities
