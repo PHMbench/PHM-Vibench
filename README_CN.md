@@ -222,13 +222,43 @@ HSE 在此列为相关表示方法，不表示论文的全部实验使用了当�
 
 ## 贡献者与社区
 
-项目核心贡献者包括 [Qi Li](https://github.com/liq22) 和
-[Xuan Li](https://github.com/Xuan423)。完整贡献历史见
-[全部贡献者](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)。
+### 核心团队
+
+<table>
+  <tr>
+    <td align="center" width="160">
+      <a href="https://github.com/liq22">
+        <img src="https://github.com/liq22.png?size=160" width="80" height="80" alt="Qi Li"/><br/>
+        <strong>Qi Li</strong>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/Xuan423">
+        <img src="https://github.com/Xuan423.png?size=160" width="80" height="80" alt="Xuan Li"/><br/>
+        <strong>Xuan Li</strong>
+      </a>
+    </td>
+  </tr>
+</table>
+
+### 感谢所有贡献者
+
+[![PHMFactory 贡献者头像](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
+
+[查看完整贡献历史](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)。
+
+### 参与贡献
+
+可贡献代码、文档、示例或可复现的问题报告。提交 PR 前请阅读
+[贡献指南](CONTRIBUTING_CN.md)和[行为准则](CODE_OF_CONDUCT.md)。
+
+### 社区交流
+
+- [Slack 工作区](https://phmbench.slack.com/)：交流使用问题与研究想法。
+- [飞书群组](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c9fh4f62-5d01-42ff-bb1c-520092457e2d)：获取项目动态，参与群内讨论。
 
 可复现问题与具体功能建议请提交 [Issue](https://github.com/PHMbench/PHM-Vibench/issues)，
-使用问题与研究讨论请前往 [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)。
-参与开发前请阅读[贡献指南](CONTRIBUTING_CN.md)和[行为准则](CODE_OF_CONDUCT.md)。
+公开使用问答与研究讨论请前往 [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)。
 
 [Star 历史](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
 

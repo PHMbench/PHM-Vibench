@@ -237,14 +237,45 @@ Research candidates are not release promises.
 
 ## Contributors and community
 
-Core project contributors include [Qi Li](https://github.com/liq22) and
-[Xuan Li](https://github.com/Xuan423). See [all contributors](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
-for the full contribution history.
+### Core team
+
+<table>
+  <tr>
+    <td align="center" width="160">
+      <a href="https://github.com/liq22">
+        <img src="https://github.com/liq22.png?size=160" width="80" height="80" alt="Qi Li"/><br/>
+        <strong>Qi Li</strong>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/Xuan423">
+        <img src="https://github.com/Xuan423.png?size=160" width="80" height="80" alt="Xuan Li"/><br/>
+        <strong>Xuan Li</strong>
+      </a>
+    </td>
+  </tr>
+</table>
+
+### Thanks to all contributors
+
+[![PHMFactory contributors](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
+
+[View the full contribution history](https://github.com/PHMbench/PHM-Vibench/graphs/contributors).
+
+### Contributing
+
+Contribute code, documentation, examples, or reproducible bug reports. Read the
+[contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md) before
+opening a pull request.
+
+### Community channels
+
+- [Slack workspace](https://phmbench.slack.com/) — discuss usage and research ideas.
+- [Feishu group](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c9fh4f62-5d01-42ff-bb1c-520092457e2d) — join the group for project updates and discussion.
 
 Use [Issues](https://github.com/PHMbench/PHM-Vibench/issues) for reproducible bugs and
 bounded feature proposals, and [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)
-for usage questions and research ideas. Contributions follow the
-[contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md).
+for public questions and research conversations.
 
 [Star history](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
 
