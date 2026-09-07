@@ -34,27 +34,21 @@ jobs:
           assert text.count(old) == 1
           text = text.replace(old, new)
           old = '    return PHMExplanationState(\n        sample_id=sample_id,\n        task=task,\n        model_family="TSPN_UXFD",'
-          new = '''    effective_mask = _sample(
-                  _field(trace, "rule_mask"), sample_index, name="rule_mask"
-              )
-              effective_permutation = _python(_field(trace, "consequent_permutation"))
-              # Native permutations are either shared [rules] or per-sample [batch, rules].
-              if effective_permutation is not None and isinstance(effective_permutation[0], Sequence):
-                  effective_permutation = _sample(
-                      effective_permutation, sample_index, name="consequent_permutation"
-                  )
-              if effective_mask is None or effective_permutation is None:
-                  limitations.append("Effective intervention values were not supplied in this trace.")
-          
-              return PHMExplanationState(
-                  sample_id=sample_id,
-                  task=task,
-                  model_family="TSPN_UXFD",'''
-          # The string above is indented for YAML; remove four spaces from its later lines.
-          lines = new.splitlines()
-          new = '\n'.join([lines[0]] + [line[4:] if line.startswith('    ') else line for line in lines[1:]])
+          prefix = (
+              '    effective_mask = _sample(\n'
+              '        _field(trace, "rule_mask"), sample_index, name="rule_mask"\n'
+              '    )\n'
+              '    effective_permutation = _python(_field(trace, "consequent_permutation"))\n'
+              '    # Native permutations are shared [rules] or per-sample [batch, rules].\n'
+              '    if effective_permutation is not None and isinstance(effective_permutation[0], Sequence):\n'
+              '        effective_permutation = _sample(\n'
+              '            effective_permutation, sample_index, name="consequent_permutation"\n'
+              '        )\n'
+              '    if effective_mask is None or effective_permutation is None:\n'
+              '        limitations.append("Effective intervention values were not supplied in this trace.")\n\n'
+          )
           assert text.count(old) == 1
-          text = text.replace(old, new)
+          text = text.replace(old, prefix + old)
           old = '                "total_rule_count": len(firing),'
           new = old + '\n                "rule_mask": effective_mask,\n                "consequent_permutation": effective_permutation,'
           assert text.count(old) == 1
@@ -65,7 +59,7 @@ jobs:
           
           @pytest.mark.parametrize("class_names", [("fault", "fault"), ("fault", " fault ")])
           def test_duplicate_class_labels_are_rejected(class_names):
-              model = TSPNUXFD(_make_args(enable_fuzzy=True)).eval()
+              model = TSPNUXFD(_make_args(enable_fuzzy=True, num_classes=2)).eval()
               with torch.no_grad():
                   output = model.forward_with_fuzzy_trace(torch.randn(2, 128, 2))
               with pytest.raises(ValueError, match="unique labels"):
