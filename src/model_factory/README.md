@@ -71,7 +71,38 @@ model_module = importlib.import_module(
 model = model_module.Model(args_model, metadata)
 ```
 
-If `weights_path` is provided, the factory will load that checkpoint into the model.
+If `weights_path` is provided, the factory loads that checkpoint into the model.
+Construction and checkpoint exceptions retain their original type and traceback.
+
+### 2.3 Checkpoint strictness
+
+Checkpoint loading is strict by default:
+
+```yaml
+model:
+  weights_path: "/path/to/checkpoint.ckpt"
+  weights_strict: true
+```
+
+Use `weights_strict: false` only for an intentional transfer-learning run. Non-strict
+loading still requires at least one parameter with the same name and shape; zero matches
+fail instead of continuing with random initialization.
+
+`weights_strict` must be a YAML boolean:
+
+```yaml
+weights_strict: true   # valid
+weights_strict: false  # valid
+```
+
+Do not quote it:
+
+```yaml
+weights_strict: "false"  # invalid string, fails before checkpoint loading
+```
+
+PHMFactory does not interpret strings, integers, or other truthy/falsy values as a
+checkpoint policy.
 
 ## 3. Recommended demo configuration (current)
 

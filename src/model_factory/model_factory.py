@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 import torch
 
+from ..utils.label_ontology import validate_metadata_label_ontology
 from ..utils.utils import get_num_classes
 
 
@@ -19,11 +20,28 @@ def resolve_model_module(args_model: Any) -> str:
 def model_factory(args_model: Any, metadata: Any):
     """Instantiate a model by name and load an explicitly configured checkpoint.
 
-    A configured checkpoint is part of the requested experiment. If it cannot be
-    loaded, model construction fails instead of continuing with random or partial
-    initialization.
+    Model import, construction, and checkpoint failures retain their original
+    exception type and traceback. A configured checkpoint is part of the requested
+    experiment. If it cannot be loaded, model construction fails instead of continuing
+    with random or partial initialization.
     """
+    # Validate every label ontology that is actually supplied, even when
+    # num_classes was configured manually. Some isolated model/checkpoint uses
+    # intentionally provide no metadata and an explicit output width; in that
+    # case there is no ontology to validate or silently reinterpret.
+    if metadata is not None:
+        validate_metadata_label_ontology(
+            metadata,
+            group_field="Dataset_id",
+            require_labels=False,
+        )
+
     if not getattr(args_model, "num_classes", None):
+        if metadata is None:
+            raise ValueError(
+                "model.num_classes is required when model construction receives "
+                "no metadata"
+            )
         inferred = get_num_classes(metadata)
         if isinstance(inferred, dict):
             args_model.num_classes = (
@@ -35,31 +53,17 @@ def model_factory(args_model: Any, metadata: Any):
     module_path = resolve_model_module(args_model)
     model_module = importlib.import_module(module_path)
     model_cls = model_module.Model
-
-    try:
-        model = model_cls(args_model, metadata)
-    except Exception as exc:
-        raise RuntimeError(
-            f"Failed to create model '{args_model.type}.{args_model.name}': {exc}"
-        ) from exc
+    model = model_cls(args_model, metadata)
 
     weights_path = getattr(args_model, "weights_path", None)
     if weights_path:
-        strict = bool(getattr(args_model, "weights_strict", True))
-        try:
-            load_ckpt(model, weights_path, strict=strict)
-        except FileNotFoundError:
-            raise
-        except Exception as exc:
-            suggestion = (
-                "Check that the checkpoint belongs to this model. "
-                "For intentional transfer learning with a compatible subset of "
-                "parameters, set model.weights_strict=false."
+        strict = getattr(args_model, "weights_strict", True)
+        if not isinstance(strict, bool):
+            raise TypeError(
+                "model.weights_strict must be a boolean; use true for exact "
+                "checkpoint loading or false for an explicitly compatible subset"
             )
-            raise RuntimeError(
-                f"Failed to load checkpoint '{weights_path}' for model "
-                f"'{args_model.type}.{args_model.name}': {exc}. {suggestion}"
-            ) from exc
+        load_ckpt(model, weights_path, strict=strict)
 
     return model
 

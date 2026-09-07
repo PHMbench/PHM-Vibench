@@ -77,26 +77,18 @@ def task_factory(
     args_environment: Namespace,
     metadata: Any,
 ) -> pl.LightningModule:
-    """Instantiate one task or raise at the task factory boundary."""
+    """Instantiate one task while preserving constructor failures."""
 
-    key = f"{args_task.type}.{args_task.name}"
     task_class = _resolve_task_class(args_task)
-    try:
-        return task_class(
-            network=network,
-            args_data=args_data,
-            args_model=args_model,
-            args_task=args_task,
-            args_trainer=args_trainer,
-            args_environment=args_environment,
-            metadata=metadata,
-        )
-    except Exception as exc:
-        class_name = getattr(task_class, "__name__", type(task_class).__name__)
-        raise RuntimeError(
-            f"Cannot construct task {key!r} with {class_name}: {exc}. Check "
-            "the task configuration and constructor arguments."
-        ) from exc
+    return task_class(
+        network=network,
+        args_data=args_data,
+        args_model=args_model,
+        args_task=args_task,
+        args_trainer=args_trainer,
+        args_environment=args_environment,
+        metadata=metadata,
+    )
 
 
 __all__ = [

@@ -1,0 +1,6 @@
+# Transparent classification baseline: temporal mean followed by one linear head.
+
+model:
+  type: "Baseline"
+  name: "GlobalAverageLinear"
+  input_dim: 2

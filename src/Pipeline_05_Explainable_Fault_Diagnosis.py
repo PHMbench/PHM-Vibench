@@ -8,6 +8,6 @@ from src.runtime import run_classification_pipeline
 from src.runtime.explainability import ExplainabilityHooks
 
 
-def pipeline(args: Any) -> list[dict[str, Any]]:
-    """Run classification with UXFD-specific evidence hooks."""
+def pipeline(args: Any) -> dict[str, Any]:
+    """Run classification with UXFD hooks and return direct output paths."""
     return run_classification_pipeline(args, hooks=ExplainabilityHooks())

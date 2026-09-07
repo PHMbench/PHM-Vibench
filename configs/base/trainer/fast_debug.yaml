@@ -1,9 +1,8 @@
-# Base trainer config for fast debug runs (v0.1.0)
+# Minimal one-epoch Trainer configuration for local debugging.
 
 name: "Default_trainer"
 num_epochs: 1
-gpus: 1
-device: "cuda"
+device: "cpu"
+devices: 1
 early_stopping: false
 patience: 1
-

@@ -73,26 +73,15 @@ def trainer_factory(
     args_data: Namespace,
     path: str,
 ) -> pl.Trainer:
-    """Instantiate one trainer or raise at the trainer factory boundary."""
+    """Instantiate one trainer while preserving builder failures."""
 
-    name, trainer_function = _resolve_trainer_function(args_trainer)
-    try:
-        return trainer_function(
-            args_e=args_environment,
-            args_t=args_trainer,
-            args_d=args_data,
-            path=path,
-        )
-    except Exception as exc:
-        function_name = getattr(
-            trainer_function,
-            "__name__",
-            type(trainer_function).__name__,
-        )
-        raise RuntimeError(
-            f"Cannot construct trainer {name!r} with {function_name}: {exc}. "
-            "Check trainer settings, device availability, and output path."
-        ) from exc
+    _, trainer_function = _resolve_trainer_function(args_trainer)
+    return trainer_function(
+        args_e=args_environment,
+        args_t=args_trainer,
+        args_d=args_data,
+        path=path,
+    )
 
 
 __all__ = [

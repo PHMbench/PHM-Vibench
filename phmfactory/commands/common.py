@@ -10,8 +10,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from uuid import uuid4
-
-from phmfactory.config import DEFAULT_CONFIG
+import warnings
 
 
 def add_config_arguments(
@@ -19,20 +18,22 @@ def add_config_arguments(
     *,
     include_notes: bool = False,
     include_experimental: bool = True,
+    require_config: bool = True,
 ) -> None:
-    """Add the maintained config, explicit local layer, and override surface."""
+    """Add one explicit config selector, local layer, and override surface."""
 
-    parser.add_argument(
+    selector = parser.add_mutually_exclusive_group(required=require_config)
+    selector.add_argument(
         "--config",
         type=str,
         default=None,
-        help="Configuration path or maintained preset name.",
+        help="Required configuration path or maintained preset name.",
     )
-    parser.add_argument(
+    selector.add_argument(
         "--config_path",
         type=str,
         default=None,
-        help="Deprecated alias for --config.",
+        help="Deprecated alias for --config; the two options are mutually exclusive.",
     )
     parser.add_argument(
         "--local-config",
@@ -60,13 +61,25 @@ def add_config_arguments(
 
 
 def requested_config(args: argparse.Namespace) -> str:
-    """Return the preferred config argument while preserving the legacy alias."""
+    """Return the single explicit config selector or fail before analysis."""
 
-    if getattr(args, "config", None) is not None:
-        return str(args.config)
-    if getattr(args, "config_path", None) is not None:
-        return str(args.config_path)
-    return DEFAULT_CONFIG
+    config = getattr(args, "config", None)
+    legacy = getattr(args, "config_path", None)
+    if config is not None and legacy is not None:
+        raise ValueError("--config and --config_path are mutually exclusive")
+    if config is not None:
+        return str(config)
+    if legacy is not None:
+        warnings.warn(
+            "--config_path is deprecated; use --config instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return str(legacy)
+    raise ValueError(
+        "An explicit experiment configuration is required. "
+        "Use --config <preset-or-yaml>."
+    )
 
 
 def requested_local_config(args: argparse.Namespace) -> str | None:

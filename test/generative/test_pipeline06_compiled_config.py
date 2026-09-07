@@ -78,6 +78,10 @@ def test_adapter_dispatches_compiled_stage_without_reparse(monkeypatch) -> None:
 
     result = pipeline06_adapter.pipeline(args)
 
-    assert result == [{"stage": "train", "iteration": 0}]
+    assert result == {
+        "status": "succeeded",
+        "stage": "train",
+        "iterations": [{"stage": "train", "iteration": 0}],
+    }
     assert len(calls) == 1
     assert calls[0][0].task.generative.mode == "train"

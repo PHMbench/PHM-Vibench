@@ -1,37 +1,40 @@
 # PHMFactory
 
 <div align="center">
-  <img src="pic/PHM-Vibench.png" alt="PHMFactory logo" width="280"/>
+  <img src="pic/PHM-Vibench.png" alt="PHMFactory logo" width="260"/>
 
   <p>
     <a href="README.md"><strong>English</strong></a> |
     <a href="README_CN.md">中文</a>
   </p>
 
-  <p><strong>A configuration-first framework for reproducible PHM experiments on industrial signals.</strong></p>
+  <p><strong>Configuration-first PHM experiments for industrial signals.</strong></p>
 
   <p>
-    <img src="https://img.shields.io/badge/status-alpha-orange" alt="Status: alpha"/>
-    <img src="https://img.shields.io/badge/v0.3-pre--release-blue" alt="v0.3 pre-release"/>
+    <img src="https://img.shields.io/badge/status-release%20blocked-critical" alt="Release blocked"/>
+    <img src="https://img.shields.io/badge/version-0.3.0rc1-blue" alt="Version 0.3.0rc1"/>
+    <img src="https://img.shields.io/badge/Python-%3E%3D3.10-3776AB" alt="Python 3.10 or newer"/>
     <a href="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml"><img src="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml/badge.svg" alt="Core quality gates"/></a>
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="Apache 2.0 license"/>
   </p>
 </div>
 
-> **Current repository identity.** The project and Python package are named
-> **PHMFactory**, while the GitHub repository remains
-> [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench) during the v0.3
-> pre-release. Use the repository URL shown here until an eventual rename is completed.
+PHMFactory runs fault-diagnosis and related PHM experiments from one visible
+configuration. The framework must execute the data, model, task, training, checkpoint,
+and evaluation choices that the user requested.
 
-PHMFactory connects data loading, model construction, task logic, training, evaluation,
-and run records through one configuration-first interface. You select a maintained
-configuration, override only the values that differ on your machine, and run the same
-contract from the command line, Python module, or compatibility launcher.
+The repository is still named
+[`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench). The project, Python
+package, and command are named **PHMFactory**, `phmfactory`, and `phmfactory`.
 
-## Start with the offline demo
+> **Current status:** the offline Dummy path is maintained. The MFPT transparent
+> experiment remains `smoke_only` pending current-source requalification. There is no
+> package-index release or current `baseline_valid` reference, so release readiness is
+> blocked.
 
-The following path uses repository-shipped synthetic data and does not download an
-external dataset.
+## Quick start
+
+The first run is offline and uses repository-shipped Dummy data.
 
 ```bash
 git clone https://github.com/PHMbench/PHM-Vibench.git
@@ -47,221 +50,236 @@ phmfactory preflight --config smoke
 phmfactory demo
 ```
 
-A successful first run should:
+A successful run prints the paths you need:
 
-- report every required `doctor` check as `PASS`;
-- print `status=passed` during `preflight` without starting training;
-- complete one CPU Dummy experiment through data → model → task → trainer;
-- print the path to `run_manifest.json`;
-- write results below `results/demo/dummy_dg_smoke/`;
-- exit with status code `0` for all three commands.
-
-If a command fails, keep the complete terminal output and follow the relevant section in
-[Quickstart](docs/quickstart.md). Installation variants, including CPU-only PyTorch, are
-covered in [Installation](docs/installation.md).
-
-## Choose your next task
-
-| Goal | Start here |
-| --- | --- |
-| Understand the first run and its outputs | [Quickstart](docs/quickstart.md) |
-| Install on CPU, GPU, Linux, macOS, or Windows | [Installation](docs/installation.md) |
-| Use an existing maintained experiment | [Configuration guide](configs/README.md) |
-| Connect local PHM data | [Data layout](data/README.md) and [custom dataset guide](docs/custom_dataset.md) |
-| Select or add a model | [Model Factory](src/model_factory/README.md) |
-| Select or add a task | [Task Factory](src/task_factory/README.md) |
-| Use the browser interface | [Streamlit workspace](apps/streamlit/README.md) |
-| Extend or maintain the framework | [Developer guide](docs/developer_guide.md) |
-| Check the exact maintained surface | [Supported combinations](SUPPORTED_COMBINATIONS.md) |
-
-The complete documentation map is in [docs/index.md](docs/index.md).
-
-## The configuration model
-
-Maintained configurations use five logical blocks:
-
-```yaml
-environment:  # output location, seed, repeat count, process-level settings
-  ...
-data:         # metadata, raw data root, windows, workers, sampling policy
-  ...
-model:        # model family and model-specific parameters
-  ...
-task:         # diagnosis, domain generalization, few-shot, or pretraining logic
-  ...
-trainer:      # device, epochs, precision, logging, and checkpoint behavior
-  ...
+```text
+result_dir=...
+best_checkpoint=...
+test_metrics=...
+run_summary=...
+primary_metrics={...}
 ```
 
-A top-level `pipeline` selects the orchestration path. New datasets, models, tasks, and
-trainers should normally extend their factory instead of adding special cases to
-`main.py`.
+Use those paths to inspect the run. The Dummy demo verifies the installed software path;
+it is not a real-data benchmark or a performance claim.
 
-Start from the nearest maintained file under `configs/demo/`. Put research variants under
-`configs/experiments/`, and pass machine-specific values explicitly:
+See [Quickstart](docs/quickstart.md) for the complete walkthrough and
+[Installation](docs/installation.md) for platform notes.
+
+## Run an experiment
+
+Experiments require an explicit configuration:
 
 ```bash
 phmfactory preflight \
   --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/phm-data \
+  --override data.data_dir=/absolute/path/to/data \
   --override data.metadata_file=metadata.xlsx \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1
-```
 
-After preflight passes, remove the word `preflight` to execute the same configuration:
-
-```bash
 phmfactory \
   --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/phm-data \
+  --override data.data_dir=/absolute/path/to/data \
   --override data.metadata_file=metadata.xlsx \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1
 ```
 
-The exact composition and precedence rules are defined in
-[configs/README.md](configs/README.md).
+Machine-specific values are read only from an explicitly supplied `--local-config` file.
+Configuration composition and precedence are documented in
+[`configs/README.md`](configs/README.md).
 
-## Public entrypoints
-
-The following process entrypoints share the same configuration and exit-status semantics:
-
-```bash
-phmfactory --config <yaml> [--override key=value ...]
-python -m phmfactory --config <yaml> [--override key=value ...]
-python main.py --config <yaml> [--override key=value ...]
-```
-
-Use the installed `phmfactory` command in normal work. `python main.py` remains a
-repository compatibility launcher. Python callers that need the structured command or
-Pipeline result may import `phmfactory.cli.main` directly.
-
-Useful bounded commands:
-
-```bash
-phmfactory doctor
-phmfactory preflight --config <preset-or-yaml>
-phmfactory demo
-phmfactory data --help
-```
-
-## Maintained support boundary
-
-PHMFactory distinguishes three claims:
+## Project structure
 
 ```text
-discoverable  = an implementation or registry entry exists
-runnable      = a reviewed execution path exists
-supported     = a maintained configuration has current smoke evidence
+PHM-Vibench/
+├── phmfactory/           # Public commands and configuration entrypoint
+├── configs/              # Demo and research experiment configurations
+├── src/
+│   ├── data_factory/     # Readers, datasets, sampling and loaders
+│   ├── model_factory/    # Models and representation modules
+│   ├── task_factory/     # Objectives, metrics and optimization
+│   ├── trainer_factory/  # Devices, callbacks and model selection
+│   └── runtime/          # Experiment execution
+├── data/                 # Bundled Dummy data and data-layout guide
+├── test/                 # Runtime and component tests
+├── apps/streamlit/       # Optional browser workspace
+├── docs/                 # User and developer guides
+├── doc/changelog/        # Upgrade notes
+└── paper/project/        # Research source and migration notes
 ```
 
-The required relation is:
+Start with `configs/` to run an experiment and the relevant Factory to add a
+component. Run outputs are written to the paths printed by the command, not to a
+fixed directory implied by this tree.
+
+## Runtime structure
 
 ```text
-supported ⊆ runnable ⊆ discoverable
+resolved configuration
+    ↓
+canonical Pipeline
+    ↓
+Data Factory → Model Factory → Task Factory → Trainer Factory
+    ↓
+fit → selected checkpoint → test → finite metrics
+    ↓
+direct result paths
 ```
 
-A source file, model registry row, or successful import is not by itself a support claim.
-The current maintained surface is generated from the configuration registry and current
-runtime descriptors:
+| Boundary | Responsibility |
+| --- | --- |
+| Data Factory | metadata, readers, selected samples, datasets, samplers, loaders |
+| Model Factory | model identity, construction, explicitly requested weights |
+| Task Factory | objective, metrics, optimizer and scheduler |
+| Trainer Factory | device, callbacks, checkpoint selection, fit/test lifecycle |
+| Pipeline | orchestration and success gating |
 
-- [Supported components](SUPPORTED_COMPONENTS.md)
-- [Supported combinations](SUPPORTED_COMBINATIONS.md)
-- [Configuration registry](configs/config_registry.csv)
-- [Configuration Atlas](docs/CONFIG_ATLAS.md)
+A compatible component should be replaceable by changing that component and its
+configuration, not the other factories or the command router.
 
-`sanity_ok` means bounded functional evidence exists. It does not mean state-of-the-art
-performance, universal component compatibility, or permission to redistribute an
-external dataset.
+## Failure behavior
 
-## Optional Streamlit workspace
+PHMFactory fails at the boundary that owns the problem. It does not switch to an easier
+experiment after a requested data source, device, task, checkpoint, or metric fails.
+Useful errors should state the requested value, the observed value, the expected
+contract, and the smallest repair.
 
-The web workspace is an adapter around the same public CLI, not a second training system:
+## Support terms
 
-```bash
-python -m pip install -r apps/streamlit/requirements.txt
-streamlit run apps/streamlit/app.py
-```
+| Term | Meaning |
+| --- | --- |
+| `discoverable` | source or registry entry exists |
+| `runnable` | a reviewed execution path exists |
+| `execution-verified` | the exact command has current bounded execution evidence |
+| `baseline-valid` | the exact full experiment passed its current scientific protocol |
 
-Start with **Use safe CPU smoke defaults**. The UI can prepare a configuration, validate
-it, launch the public command, and display logs and artifacts. See
-[apps/streamlit/README.md](apps/streamlit/README.md) for its single-worker scope and
-troubleshooting.
+Support belongs to an exact configuration. Importable code alone is not support evidence.
+See [Supported combinations](SUPPORTED_COMBINATIONS.md),
+[Known limitations](KNOWN_LIMITATIONS.md), and
+[Release readiness](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md).
 
-## Architecture for developers
+## Documentation
+
+| Task | Start here |
+| --- | --- |
+| Install and complete the first run | [Quickstart](docs/quickstart.md) |
+| Configure an experiment | [Configuration guide](configs/README.md) |
+| Connect local data | [Data layout](data/README.md) |
+| Add or select a model | [Model Factory](src/model_factory/README.md) |
+| Add or select a task | [Task Factory](src/task_factory/README.md) |
+| Configure training | [Trainer Factory](src/trainer_factory/README.md) |
+| Use the optional browser workspace | [Streamlit](apps/streamlit/README.md) |
+| Contribute code | [Contributing](CONTRIBUTING.md) |
+| Understand project invariants | [Core contract](CORE.md) |
+
+The full navigation is in [`docs/index.md`](docs/index.md).
+
+## Development rules
+
+Follow Occam's razor:
 
 ```text
-phmfactory command / python -m phmfactory / main.py
-  └── public command router
-      └── resolved configuration + canonical Pipeline
-          └── protected src runtime
-              ├── data factory
-              ├── model factory
-              ├── task factory
-              └── trainer factory
+DELETE → INLINE → MERGE → SIMPLIFY → DOCUMENT → ADD
 ```
 
-Primary paths:
+One PR should protect one primary invariant and produce one user-visible result. Prefer
+clear code and direct errors over fallback, wrapper layers, duplicate registries, or
+future-oriented abstractions. Comments should explain a scientific or compatibility
+reason; they should not restate the code.
 
-- `phmfactory/` — public package, commands, config resolver, Pipeline descriptors, and run control plane;
-- `configs/` — reusable blocks, maintained demos, research experiments, and registry;
-- `src/data_factory/` — metadata, readers, datasets, samplers, and data assembly;
-- `src/model_factory/` — model families and model construction;
-- `src/task_factory/` — tasks, losses, metrics, and task construction;
-- `src/trainer_factory/` — trainer construction and extensions;
-- `apps/streamlit/` — optional browser workspace;
-- `test/` — maintained pytest suite;
-- `docs/` — user, extension, development, release, and historical documentation.
+Routine work starts from current `dev` and targets `dev`. Read [`CORE.md`](CORE.md) and
+[`CONTRIBUTING.md`](CONTRIBUTING.md) before broad changes.
 
-Run the maintained checks before requesting review:
+## Publications and research
 
-```bash
-python -m scripts.validate_docs
-python -m scripts.validate_configs
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-python -m scripts.gen_support_matrix
-git diff --exit-code SUPPORTED_COMPONENTS.md SUPPORTED_COMBINATIONS.md
-python -m pytest test/ -q
-```
+### Project paper
 
-See [docs/testing.md](docs/testing.md) for focused gates and evidence terminology.
+Qi Li, Bojian Chen, Xuan Li, Qitong Chen, Liang Chen, Changqing Shen, Lu Lu,
+Zhaoye Qin, and Fulei Chu.
+**[PHM-Vibench: A Unified and Factory-Style Vibration Benchmarking Framework for the Foundation Model Era](https://papers.phmsociety.org/index.php/phmap/article/view/4303)**.
+*PHM Society Asia-Pacific Conference*, 5(1), 2025 proceedings;
+published online January 13, 2026. DOI: [10.36001/phmap.2025.v5i1.4303](https://doi.org/10.36001/phmap.2025.v5i1.4303).
 
-## Branch policy
+The paper describes PHM-Vibench. For capabilities of the current PHMFactory source,
+use the [supported combinations](SUPPORTED_COMBINATIONS.md) and [known limitations](KNOWN_LIMITATIONS.md).
 
-`main` is the user-facing stable branch and the default branch. `dev` is the integration
-branch. Routine feature, fix, documentation, test, CI, cleanup, and migration pull
-requests target `dev` and start from the latest `dev`.
+### Related method
 
-Only an explicitly authorized release-promotion pull request or emergency hotfix may
-target `main`. A hotfix must be synchronized back to `dev`. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+Qi Li, Bojian Chen, Qitong Chen, Xuan Li, Zhaoye Qin, and Fulei Chu.
+**[HSE: A plug-and-play module for unified fault diagnosis foundation models](https://doi.org/10.1016/j.inffus.2025.103277)**.
+*Information Fusion*, 123, 103277, 2025.
 
-## Current pre-release limits
+HSE is listed as a related representation method, not as a claim that all published
+experiments used the current software. In-progress work and historical paper sources
+are separate from published results; see [research source notes](paper/project/README.md).
 
-PHMFactory remains an alpha `0.3.0.dev0` source release. In particular:
+### Research using PHMFactory
 
-- only the Dummy demo is fully offline and repository-shipped;
-- most real-data demos require local metadata and raw data;
-- CWRU provider revisions and required-file hashes are not yet finalized;
-- the GitHub repository has not been renamed;
-- no final `v0.3.0` tag or package publication is claimed;
-- experimental Pipelines and unlisted model/task combinations are not release-supported.
+To add a study, [open an issue](https://github.com/PHMbench/PHM-Vibench/issues) with its
+publication link, code or experiment configuration, and the software version used.
+Only studies with a documented use of this project belong in this category.
 
-Read [Known limitations](KNOWN_LIMITATIONS.md) and the
-[v0.3 release-readiness page](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md) before making a
-release or benchmark claim.
+## Roadmap
 
-## Contributing, support, and citation
+| Stage | Focus |
+| --- | --- |
+| Available | Configuration-first CLI, offline Dummy first run, and direct result paths |
+| Next | Complete declared metrics and result semantics; requalify the real-data reference experiment |
+| Research | Evaluate interpretable-model explanation and heterogeneous-signal extensions before promoting them to maintained examples |
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request. Report the
-exact commit, configuration, overrides, environment, data source, and complete error
-output.
+[Upgrade notes](doc/changelog/) record completed changes.
+[Release readiness](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md) records current blockers.
+Research candidates are not release promises.
 
-- Bugs and feature requests: [GitHub Issues](https://github.com/PHMbench/PHM-Vibench/issues)
-- Security reports: [SECURITY.md](SECURITY.md)
-- Development workflow: [docs/developer_guide.md](docs/developer_guide.md)
-- Release readiness: [docs/PHMFACTORY_V0_3_RELEASE_READINESS.md](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
+## Contributors and community
 
-PHMFactory is licensed under the [Apache License 2.0](LICENSE). Dataset and model artifacts
-may have separate source licenses. Use [CITATION.cff](CITATION.cff) for software citation
-metadata, and cite the exact commit or release used for each experiment.
+### Core team
+
+<table>
+  <tr>
+    <td align="center" width="160">
+      <a href="https://github.com/liq22">
+        <img src="https://github.com/liq22.png?size=160" width="80" height="80" alt="Qi Li"/><br/>
+        <strong>Qi Li</strong>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/Xuan423">
+        <img src="https://github.com/Xuan423.png?size=160" width="80" height="80" alt="Xuan Li"/><br/>
+        <strong>Xuan Li</strong>
+      </a>
+    </td>
+  </tr>
+</table>
+
+### Thanks to all contributors
+
+[![PHMFactory contributors](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
+
+[View the full contribution history](https://github.com/PHMbench/PHM-Vibench/graphs/contributors).
+
+### Contributing
+
+Contribute code, documentation, examples, or reproducible bug reports. Read the
+[contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md) before
+opening a pull request.
+
+### Community channels
+
+- [Slack workspace](https://phmbench.slack.com/) — discuss usage and research ideas.
+- [Feishu group](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c9fh4f62-5d01-42ff-bb1c-520092457e2d) — join the group for project updates and discussion.
+
+Use [Issues](https://github.com/PHMbench/PHM-Vibench/issues) for reproducible bugs and
+bounded feature proposals, and [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)
+for public questions and research conversations.
+
+[Star history](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
+
+## Citation and license
+
+PHMFactory is distributed under the [Apache License 2.0](LICENSE). Citation metadata are
+in [`CITATION.cff`](CITATION.cff). Dataset and third-party licenses remain separate.

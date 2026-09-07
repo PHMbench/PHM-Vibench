@@ -41,7 +41,12 @@ def _config(tmp_path: Path, *, iterations: int = 1) -> dict:
         "data": {"data_dir": str(tmp_path), "metadata_file": "dummy.csv"},
         "model": {"name": "dummy", "type": "dummy"},
         "task": {"name": "classification", "type": "DG"},
-        "trainer": {"device": "cpu", "gpus": 1},
+        "trainer": {
+            "device": "cpu",
+            "gpus": 1,
+            "num_epochs": 1,
+            "test_after_fit": True,
+        },
     }
 
 
@@ -107,7 +112,8 @@ def test_compiled_config_bypasses_legacy_reparse(
     )
     configs = classification.load_runtime_config(args)
     assert configs.environment.seed == 7
-    assert not hasattr(configs.trainer, "num_epochs")
+    assert configs.trainer.num_epochs == 1
+    assert configs.trainer.test_after_fit is True
 
 
 def test_missing_required_section_fails_closed(tmp_path: Path) -> None:
@@ -397,11 +403,12 @@ def test_task_module_requires_registration_or_task_symbol(
         )
 
 
-def test_task_construction_failure_is_raised_with_original_cause(
+def test_task_construction_failure_preserves_original_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class BrokenTask:
         def __init__(self, **kwargs):
+            del kwargs
             raise ValueError("invalid task dimensions")
 
     monkeypatch.setattr(
@@ -410,10 +417,7 @@ def test_task_construction_failure_is_raised_with_original_cause(
         lambda key: BrokenTask,
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="Cannot construct task 'DG.classification'.*invalid task dimensions",
-    ) as captured:
+    with pytest.raises(ValueError, match="invalid task dimensions"):
         task_factory_module.task_factory(
             args_task=SimpleNamespace(type="DG", name="classification"),
             network=object(),
@@ -423,8 +427,6 @@ def test_task_construction_failure_is_raised_with_original_cause(
             args_environment=SimpleNamespace(),
             metadata={},
         )
-
-    assert isinstance(captured.value.__cause__, ValueError)
 
 
 def test_trainer_import_failure_preserves_requested_module_and_cause(
@@ -458,10 +460,11 @@ def test_trainer_import_failure_preserves_requested_module_and_cause(
     assert isinstance(captured.value.__cause__, ModuleNotFoundError)
 
 
-def test_trainer_construction_failure_is_raised_with_original_cause(
+def test_trainer_construction_failure_preserves_original_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def broken_trainer(**kwargs):
+        del kwargs
         raise OSError("output path is read-only")
 
     monkeypatch.setattr(
@@ -470,15 +473,10 @@ def test_trainer_construction_failure_is_raised_with_original_cause(
         lambda key: broken_trainer,
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="Cannot construct trainer 'Default_trainer'.*output path is read-only",
-    ) as captured:
+    with pytest.raises(OSError, match="output path is read-only"):
         trainer_factory_module.trainer_factory(
             args_environment=SimpleNamespace(),
             args_trainer=SimpleNamespace(name="Default_trainer"),
             args_data=SimpleNamespace(),
             path="results/run",
         )
-
-    assert isinstance(captured.value.__cause__, OSError)

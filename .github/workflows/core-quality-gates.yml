@@ -46,8 +46,12 @@ jobs:
             phmfactory/config.py \
             scripts/config_inspect.py \
             scripts/validate_configs.py \
-            test/test_config_analysis_parity.py
-          python -m pytest test/test_config_analysis_parity.py -q
+            test/test_config_analysis_parity.py \
+            test/test_trainer_lifecycle_schema.py
+          python -m pytest \
+            test/test_config_analysis_parity.py \
+            test/test_trainer_lifecycle_schema.py \
+            -q
 
       - name: Verify generated configuration atlas
         run: |
@@ -213,6 +217,7 @@ jobs:
             "pytorch-lightning>=1.5" \
             "torchmetrics>=1.0" \
             "PyYAML>=6.0" \
+            "pydantic>=2.0" \
             "matplotlib" \
             "tensorboard" \
             "openpyxl" \
@@ -224,40 +229,57 @@ jobs:
       - name: Record smoke environment
         run: python -m pip freeze > offline-smoke-environment.txt
 
-      - name: Run shared runtime, data, evidence, and Pipeline 02 contract tests
+      - name: Run shared runtime, data, task, device, result, and Pipeline 02 contract tests
         shell: bash
         run: |
           set -o pipefail
           python -m py_compile \
-            phmfactory/runtime/evidence.py \
+            phmfactory/runtime/execution.py \
+            phmfactory/task_semantics.py \
             src/data_factory/explicit_data_factory.py \
             src/data_factory/dataset_task/Default_dataset.py \
             src/model_factory/ISFM/system_utils.py \
             src/model_factory/ISFM/task_head/H_01_Linear_cla.py \
+            src/task_factory/Components/loss.py \
+            src/task_factory/Components/metrics.py \
             src/task_factory/Default_task.py \
             src/task_factory/task/pretrain/hse_contrastive.py \
+            src/trainer_factory/Default_trainer.py \
+            src/utils/run_summary.py \
             src/runtime/classification.py \
             src/runtime/explainability.py \
             src/Pipeline_01_Fault_Diagnosis.py \
             src/Pipeline_02_Pretraining_Few_Shot.py \
             src/Pipeline_05_Explainable_Fault_Diagnosis.py \
             test/test_classification_runtime.py \
+            test/test_environment_execution_contract.py \
+            test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
+            test/test_device_authority.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
-            test/test_runtime_evidence.py \
+            test/test_run_summary.py \
+            test/test_runtime_execution.py \
             test/test_split_scientific_truth.py \
+            test/test_task_estimator_truth.py \
             test/test_transform_truth.py
           python -m pytest \
             test/test_classification_runtime.py \
+            test/test_environment_execution_contract.py \
+            test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
+            test/test_device_authority.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
             test/test_pipeline02_runtime.py \
-            test/test_runtime_evidence.py \
+            test/test_run_summary.py \
+            test/test_runtime_execution.py \
             test/test_split_scientific_truth.py \
+            test/test_task_estimator_truth.py \
             test/test_transform_truth.py \
+            test/test_llm_explanation_contract.py \
+            test/test_llm_explanation_models.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
       - name: Diagnose the installed environment
@@ -271,7 +293,12 @@ jobs:
         run: |
           set -o pipefail
           phmfactory preflight --config smoke 2>&1 | tee offline-preflight.log
-          grep -E '^effective_config_sha256=[0-9a-f]{64}$' offline-preflight.log
+          grep -F 'status=passed' offline-preflight.log
+          grep -F 'pipeline=Pipeline_01_Fault_Diagnosis' offline-preflight.log
+          if grep -qi 'sha256' offline-preflight.log; then
+            echo 'preflight must not expose digest fields' >&2
+            exit 1
+          fi
           test ! -e results/demo/dummy_dg_smoke
 
       - name: Run the documented offline demo command
@@ -280,29 +307,48 @@ jobs:
           set -o pipefail
           phmfactory demo 2>&1 | tee offline-smoke.log
 
-      - name: Verify Dummy run evidence index
+      - name: Verify direct Dummy results
         run: |
           python - <<'PY'
           import json
-          import re
+          import math
           from pathlib import Path
 
-          root = Path("results/demo/dummy_dg_smoke/.phmfactory/runs")
-          manifests = sorted(root.glob("*/run_manifest.json"))
-          assert len(manifests) == 1, manifests
-          payload = json.loads(manifests[0].read_text(encoding="utf-8"))
-          assert payload["status"] == "succeeded"
-          assert re.fullmatch(
-              r"[0-9a-f]{64}",
-              payload["run_spec"]["effective_config_sha256"],
-          )
-          roles = {item["role"] for item in payload["artifacts"]}
-          assert "classification_test_metrics" in roles, roles
-          assert "classification_aggregate_metrics" in roles, roles
-          iterations = payload["evidence"].get("classification_iterations")
-          assert isinstance(iterations, list) and len(iterations) == 1, iterations
-          assert iterations[0]["iteration"] == 0
-          assert iterations[0]["metrics_artifact"]["role"] == "classification_test_metrics"
+          lines = Path("offline-smoke.log").read_text(encoding="utf-8").splitlines()
+          values = {}
+          for line in lines:
+              if "=" not in line:
+                  continue
+              key, value = line.split("=", 1)
+              if key in {"result_dir", "best_checkpoint", "test_metrics", "run_summary"}:
+                  values[key] = value.strip()
+
+          assert set(values) == {
+              "result_dir",
+              "best_checkpoint",
+              "test_metrics",
+              "run_summary",
+          }, values
+          result_dir = Path(values["result_dir"])
+          checkpoint = Path(values["best_checkpoint"])
+          metrics = Path(values["test_metrics"])
+          summary_path = Path(values["run_summary"])
+          assert result_dir.is_dir(), result_dir
+          assert checkpoint.is_file(), checkpoint
+          assert metrics.is_file(), metrics
+          assert summary_path.is_file(), summary_path
+
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          assert summary["iterations"] == 1
+          assert summary["metrics"], summary
+          assert "config_sha256" not in summary
+          for metric in summary["metrics"].values():
+              assert metric["count"] == summary["iterations"]
+              assert math.isfinite(float(metric["mean"]))
+
+          assert not list(result_dir.rglob(".phmfactory"))
+          assert not list(result_dir.rglob("run_manifest.json"))
+          assert not list(result_dir.rglob("artifacts/manifest.json"))
           PY
 
       - name: Upload smoke diagnostics
@@ -316,7 +362,8 @@ jobs:
             offline-preflight.log
             offline-smoke.log
             offline-smoke-environment.txt
-            results/demo/dummy_dg_smoke/.phmfactory/runs/**/run_manifest.json
+            results/demo/dummy_dg_smoke/**/run_summary.json
+            results/demo/dummy_dg_smoke/**/all_results.csv
+            results/demo/dummy_dg_smoke/**/test_result_*.csv
           if-no-files-found: warn
-          include-hidden-files: true
           retention-days: 7

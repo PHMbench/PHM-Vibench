@@ -11,12 +11,8 @@ import pytest
 
 from examples import cwru_quickstart
 from phmfactory import __version__, cli
-from phmfactory.config import (
-    MAINTAINED_PRESETS,
-    ConfigAnalysis,
-    resolve_config_path,
-    semantic_config_sha256,
-)
+from phmfactory.commands import preflight
+from phmfactory.config import MAINTAINED_PRESETS, ConfigAnalysis, resolve_config_path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -44,12 +40,12 @@ def _analysis(
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(config),
+        effective_config_sha256="internal-only",
     )
 
 
-def test_public_version_is_v030_development_release() -> None:
-    assert __version__ == "0.3.0.dev0"
+def test_public_version_is_v030_rc1() -> None:
+    assert __version__ == "0.3.0rc1"
 
 
 def test_parser_preserves_legacy_config_path_alias() -> None:
@@ -69,14 +65,26 @@ def test_parser_accepts_explicit_local_config() -> None:
     assert args.local_config == "machine.yaml"
 
 
-def test_config_takes_precedence_over_legacy_alias() -> None:
+def test_config_and_legacy_alias_are_mutually_exclusive() -> None:
     args = argparse.Namespace(
         config="public.yaml",
         config_path="legacy.yaml",
         notes="",
         override=None,
     )
-    assert cli._resolve_config_path(args) == "public.yaml"
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        cli._resolve_config_path(args)
+
+
+def test_legacy_alias_selection_emits_visible_warning() -> None:
+    args = argparse.Namespace(
+        config=None,
+        config_path="legacy.yaml",
+        notes="",
+        override=None,
+    )
+    with pytest.warns(FutureWarning, match="--config_path is deprecated"):
+        assert cli._resolve_config_path(args) == "legacy.yaml"
 
 
 def test_process_entrypoint_discards_structured_success(
@@ -108,8 +116,9 @@ def test_run_dispatches_analyzed_canonical_module(
         pipeline="Pipeline_04_Unified_Evaluation",
         overrides={"pipeline": "Pipeline_04_unified_metric"},
     )
+    expected = {"status": "succeeded", "marker": "sentinel"}
 
-    def pipeline(args: argparse.Namespace) -> str:
+    def pipeline(args: argparse.Namespace) -> dict[str, str]:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
         observed["resolved_config_path"] = args.resolved_config_path
@@ -117,10 +126,8 @@ def test_run_dispatches_analyzed_canonical_module(
         observed["config_analysis"] = args.config_analysis
         observed["compiled_run_spec"] = args.compiled_run_spec
         observed["resolved_config_data"] = args.resolved_config_data
-        observed["effective_config_sha256"] = args.effective_config_sha256
-        observed["run_spec_sha256"] = args.run_spec_sha256
         observed["notes"] = args.notes
-        return "sentinel"
+        return expected
 
     def fake_import(name: str) -> SimpleNamespace:
         observed["module"] = name
@@ -143,14 +150,12 @@ def test_run_dispatches_analyzed_canonical_module(
         allow_experimental=True,
     )
 
-    assert cli.run(args) == "sentinel"
+    assert cli.run(args) == expected
     compiled = observed.pop("compiled_run_spec")
     resolved_data = observed.pop("resolved_config_data")
-    run_spec_sha256 = observed.pop("run_spec_sha256")
     config_analysis = observed.pop("config_analysis")
     assert compiled.pipeline == "Pipeline_04_Unified_Evaluation"
     assert resolved_data == analysis.effective_config
-    assert run_spec_sha256 == compiled.sha256
     assert config_analysis is analysis
     assert observed == {
         "module": "src.Pipeline_04_Unified_Evaluation",
@@ -158,10 +163,12 @@ def test_run_dispatches_analyzed_canonical_module(
         "config_path": str(analysis.path),
         "resolved_config_path": str(analysis.path),
         "resolved_pipeline": "Pipeline_04_Unified_Evaluation",
-        "effective_config_sha256": analysis.effective_config_sha256,
         "notes": "entrypoint-parity",
     }
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "runs").exists()
 
 
 @pytest.mark.parametrize("preset", tuple(sorted(MAINTAINED_PRESETS)))
@@ -171,12 +178,12 @@ def test_run_passes_maintained_preset_path_to_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
+    expected = {"status": "succeeded"}
 
-    def pipeline(args: argparse.Namespace) -> bool:
+    def pipeline(args: argparse.Namespace) -> dict[str, str]:
         observed["requested_config"] = args.requested_config
         observed["config_path"] = args.config_path
-        observed["effective_config_sha256"] = args.effective_config_sha256
-        return True
+        return expected
 
     monkeypatch.setattr(
         cli.importlib,
@@ -191,11 +198,13 @@ def test_run_passes_maintained_preset_path_to_runtime(
         override=[f"environment.output_dir={tmp_path / 'runs'}"],
     )
 
-    assert cli.run(args) is True
+    assert cli.run(args) == expected
     assert observed["requested_config"] == preset
     assert Path(str(observed["config_path"])) == resolve_config_path(preset)
-    assert len(str(observed["effective_config_sha256"])) == 64
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "runs").exists()
 
 
 def test_cwru_quickstart_uses_one_lightning_device_for_cpu(
@@ -273,7 +282,7 @@ def test_python_process_entrypoints_return_zero_for_preflight(
     )
     assert completed.returncode == 0, completed.stderr
     assert "status=passed" in completed.stdout
-    assert "effective_config_sha256=" in completed.stdout
+    assert "sha256" not in completed.stdout.lower()
     assert not target.exists()
 
 
@@ -300,6 +309,48 @@ def test_python_process_entrypoints_return_nonzero_for_invalid_config(
     assert "was not found" in completed.stderr
 
 
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["--notes", "missing-config"],
+        ["--allow-experimental"],
+        ["--override", "trainer.num_epochs=2"],
+        ["--config", "smoke", "--config_path", "smoke"],
+        ["preflight"],
+    ),
+)
+def test_root_experiment_selection_fails_before_analysis_or_import(
+    arguments: list[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / "must-not-exist"
+    analyzed = 0
+    imported = 0
+
+    def fail_analysis(*args, **kwargs):
+        nonlocal analyzed
+        analyzed += 1
+        pytest.fail("argument selection must fail before analyze_config")
+
+    def fail_import(*args, **kwargs):
+        nonlocal imported
+        imported += 1
+        pytest.fail("argument selection must fail before Pipeline import")
+
+    monkeypatch.setattr(cli, "analyze_config", fail_analysis)
+    monkeypatch.setattr(preflight, "analyze_config", fail_analysis)
+    monkeypatch.setattr(cli.importlib, "import_module", fail_import)
+
+    with pytest.raises(SystemExit) as error:
+        cli.main(arguments)
+
+    assert error.value.code == 2
+    assert analyzed == 0
+    assert imported == 0
+    assert not target.exists()
+
+
 def test_root_main_is_only_a_process_wrapper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -318,14 +369,15 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     observed: dict[str, object] = {}
+    expected = {"status": "succeeded", "dispatch": "packaged"}
 
-    def pipeline(args: argparse.Namespace) -> str:
+    def pipeline(args: argparse.Namespace) -> dict[str, str]:
         config = args.compiled_run_spec.runtime_config()
         observed["data"] = config["data"]["metadata_file"]
         observed["model"] = config["model"]["name"]
         observed["task"] = config["task"]["name"]
         observed["trainer"] = config["trainer"]["device"]
-        return "dispatched"
+        return expected
 
     real_import_module = cli.importlib.import_module
 
@@ -344,11 +396,14 @@ def test_run_dispatches_packaged_base_configs_outside_checkout(
         override=None,
     )
 
-    assert cli.run(args) == "dispatched"
+    assert cli.run(args) == expected
     assert observed == {
         "data": "metadata_dummy.csv",
         "model": "M_01_ISFM",
         "task": "classification",
         "trainer": "cpu",
     }
-    assert Path(args.run_manifest_path).is_file()
+    assert not hasattr(args, "effective_config_sha256")
+    assert not hasattr(args, "run_spec_sha256")
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "results").exists()

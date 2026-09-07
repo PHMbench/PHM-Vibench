@@ -1,4 +1,4 @@
-"""Validate one analyzed PHMFactory run without importing training code."""
+"""Validate one analyzed PHMFactory run without starting training."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from phmfactory.commands.common import (
     requested_local_config,
 )
 from phmfactory.config import analyze_config
+from phmfactory.device import resolve_device_request
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
-from phmfactory.runtime import CompiledRunSpec
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +34,8 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
 
     The function uses the same :func:`phmfactory.config.analyze_config` call as the real
     runtime. It does not import the Pipeline implementation, construct factories, create
-    the configured output directory, or start a run.
+    the configured output directory, or start a run. Device resolution uses the same
+    lightweight function as real Trainer construction.
     """
 
     args = build_parser().parse_args(list(argv))
@@ -49,7 +50,6 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
         detail = "; ".join(f"{item.field}: {item.message}" for item in errors)
         raise ValueError(f"configuration analysis failed: {detail}")
 
-    compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
     descriptor = require_pipeline_access(
         analysis.pipeline,
         allow_experimental=bool(args.allow_experimental),
@@ -64,6 +64,12 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
     if not isinstance(output_dir, str) or not output_dir.strip():
         raise ValueError("environment.output_dir is required for preflight")
     writable = check_writable_directory(output_dir)
+
+    trainer_config = analysis.effective_config.get("trainer")
+    if not isinstance(trainer_config, dict):
+        raise ValueError("trainer configuration must be a mapping for preflight")
+    accelerator, devices = resolve_device_request(argparse.Namespace(**trainer_config))
+
     result = {
         "status": "passed",
         "requested_config": source,
@@ -73,12 +79,13 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
             if analysis.local_config_path is not None
             else "none"
         ),
-        "effective_config_sha256": analysis.effective_config_sha256,
-        "run_spec_sha256": compiled.sha256,
         "pipeline": analysis.pipeline,
         "pipeline_module": module_name,
         "maturity": descriptor.maturity,
         "output_dir": str(writable),
+        "requested_device": str(trainer_config.get("device")),
+        "resolved_accelerator": accelerator,
+        "resolved_devices": devices,
     }
     for key, value in result.items():
         print(f"{key}={value}")

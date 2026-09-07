@@ -5,6 +5,8 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+from src.model_factory.ISFM.embedding.E_01_HSE import E_01_HSE
+
 
 hse_module = importlib.import_module(
     "src.task_factory.task.pretrain.hse_contrastive"
@@ -36,8 +38,20 @@ def _new_task_for_methods():
     instance = HSETask.__new__(HSETask)
     torch.nn.Module.__init__(instance)
     instance.args_task = _task_args()
+    instance.args_environment = SimpleNamespace(seed=17)
     instance.ce_loss_fn = F.cross_entropy
     return instance
+
+
+def _embedding_args(**overrides):
+    values = {
+        "patch_size_L": 4,
+        "patch_size_C": 2,
+        "num_patches": 5,
+        "output_dim": 8,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
 
 
 def test_hse_requires_at_least_one_enabled_objective(monkeypatch):
@@ -165,3 +179,113 @@ def test_invalid_augmentation_is_not_silently_rewritten():
     instance.args_task = _task_args(augmentation_dropout_p=1.2)
     with pytest.raises(ValueError, match="0 <= p < 1"):
         instance._create_augmented_view(features)
+
+
+def test_hse_embedding_rejects_oversized_time_patch_without_repetition():
+    model = E_01_HSE(_embedding_args(patch_size_L=9))
+    x = torch.randn(2, 8, 3)
+
+    with pytest.raises(ValueError, match="does not repeat or pad time"):
+        model(x, fs=torch.tensor([12_000.0, 48_000.0]))
+
+
+def test_hse_embedding_rejects_oversized_channel_patch_without_duplication():
+    model = E_01_HSE(_embedding_args(patch_size_C=4))
+    x = torch.randn(2, 8, 3)
+
+    with pytest.raises(ValueError, match="does not duplicate or pad channels"):
+        model(x, fs=torch.tensor([12_000.0, 48_000.0]))
+
+
+def test_hse_embedding_eval_is_deterministic_and_does_not_sample_random_starts(
+    monkeypatch,
+):
+    model = E_01_HSE(_embedding_args())
+    model.eval()
+    x = torch.arange(2 * 12 * 3, dtype=torch.float32).reshape(2, 12, 3)
+    fs = torch.tensor([12_000.0, 48_000.0])
+
+    def fail_random_start(*args, **kwargs):
+        pytest.fail("evaluation must not call torch.randint for HSE patch starts")
+
+    monkeypatch.setattr(torch, "randint", fail_random_start)
+    first = model(x, fs=fs)
+    torch.manual_seed(999)
+    second = model(x, fs=fs)
+
+    assert torch.equal(first, second)
+
+
+def test_hse_embedding_training_keeps_random_patch_sampling(monkeypatch):
+    model = E_01_HSE(_embedding_args())
+    model.train()
+    x = torch.randn(2, 12, 3)
+    calls = []
+
+    def fixed_random_start(low, high, size, *, device):
+        calls.append((low, high, size, device))
+        return torch.zeros(size, dtype=torch.long, device=device)
+
+    monkeypatch.setattr(torch, "randint", fixed_random_start)
+    output = model(x, fs=12_000.0)
+
+    assert output.shape == (2, 5, 8)
+    assert len(calls) == 2
+
+
+def test_hse_eval_augmentation_is_deterministic_and_rng_independent():
+    instance = _new_task_for_methods()
+    instance.args_task = _task_args(
+        augmentation_type="noise",
+        augmentation_noise_std=0.2,
+    )
+    features = torch.arange(24, dtype=torch.float32).reshape(4, 6)
+
+    torch.manual_seed(123)
+    rng_before = torch.random.get_rng_state()
+    first = instance._create_augmented_view(
+        features,
+        stage="val",
+        batch_idx=3,
+    )
+    rng_after = torch.random.get_rng_state()
+    assert torch.equal(rng_before, rng_after)
+
+    torch.manual_seed(999)
+    second = instance._create_augmented_view(
+        features,
+        stage="val",
+        batch_idx=3,
+    )
+    test_view = instance._create_augmented_view(
+        features,
+        stage="test",
+        batch_idx=3,
+    )
+
+    assert torch.equal(first, second)
+    assert not torch.equal(first, test_view)
+
+
+def test_hse_training_augmentation_remains_stochastic():
+    instance = _new_task_for_methods()
+    instance.args_task = _task_args(
+        augmentation_type="noise",
+        augmentation_noise_std=0.2,
+    )
+    features = torch.arange(24, dtype=torch.float32).reshape(4, 6)
+
+    torch.manual_seed(1)
+    first = instance._create_augmented_view(
+        features,
+        stage="train",
+        batch_idx=0,
+    )
+    torch.manual_seed(2)
+    second = instance._create_augmented_view(
+        features,
+        stage="train",
+        batch_idx=0,
+    )
+
+    assert not torch.equal(first, second)

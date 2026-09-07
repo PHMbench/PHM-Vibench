@@ -1,90 +1,86 @@
 # Changelog
 
-## v0.3.0 - Unreleased
+## 2026-09-07 — Organize version documents under `doc/`
 
-PHM-Vibench is being renamed to **PHMFactory**. This entry records the release delta only.
-
-- User-facing overview: [`RELEASE_NOTES_v0.3.0.md`](RELEASE_NOTES_v0.3.0.md)
-- Upgrade procedure: [`MIGRATION_v0.2_to_v0.3.md`](MIGRATION_v0.2_to_v0.3.md)
-- Current blockers: [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
-
-### Added
-
-- Public `phmfactory` distribution and Python package.
-- Equivalent entrypoints: `python main.py`, `python -m phmfactory`, and `phmfactory`.
-- Public configuration resolver under `phmfactory.config`.
-- Canonical Pipeline registry and descriptive Pipeline 01–06 identifiers.
-- Provider-neutral CWRU bundle download, validation, comparison, and quickstart interfaces.
-- Subsystem-owned optional requirements and dependency-ownership checks.
-- Runtime/reader fingerprints, repository-boundary guards, release-readiness checks,
-  submodule policy, and paper-migration tracking.
-- Explicit v0.2.0 release-candidate provenance anchored to
-  `a331769d4005018bc833534ecf4efeb5e8a5a78d`.
-- Machine-readable `phm-data-factory` v0.3.0 exclusion and v0.3.1 deferral contract.
-
-### Changed
-
-- Public identity converges on `PHMFactory` / `phmfactory`; the target repository is
-  `PHMbench/phmfactory`.
-- Six Pipeline files are renamed directly; no old-filename wrapper modules are added.
-- Maintained configs and documentation use canonical Pipeline names; legacy YAML values
-  remain explicit aliases with deprecation warnings.
-- Root `main.py` remains a supported thin dispatcher over the public package.
-- `apps/streamlit/app.py` becomes the only maintained web entrypoint.
-- Root `requirements.txt` remains the core authority; Streamlit, ModelScope, plotting,
-  and test dependencies live with their owning subsystems.
-- CWRU requires `metadata.xlsx` and `RM_001_CWRU.h5`; `corpus.xlsx` is optional for the
-  fault-diagnosis quickstart.
-- The mature `src.*` runtime remains in place behind the public façade.
-- Optional `phm-data-factory` integration is deferred to v0.3.1; v0.3.0 contains no
-  backend gitlink, runtime import, support claim, or live-IoTDB claim.
-
-### Removed or migrated
-
-- Legacy `app/` and root `streamlit_app.py`.
-- Root/hidden Agent workspaces, `.archive/`, and `dev/`, after verified preservation.
-- Tracked `results/` and `metrics_reports/` placeholders.
-- Personal `data/Rotor_simulation` and `paper/LQ_vibench_fix` gitlinks after complete
-  fixed-commit preservation.
-- P01–P09 paper/research gitlinks after destination-level fixed-SHA preservation,
-  accepted Foundation partitioning, and machine-verifiable migration tracking.
-- `.gitmodules` after the final migrated gitlink was removed.
-- Case-colliding lowercase authority files.
-- Historical `docs/past/` and `docs/v0.1.0/` trees after provenance preservation.
-
-### Compatibility
-
-- `python main.py --config <yaml>` remains supported.
-- `--config_path` remains a compatibility alias; `--config` is preferred.
-- New integrations should use `phmfactory.*`; `src.*` remains the protected v0.3
-  compatibility engine.
-- No `phm_factory` or `phm_vibench` namespace is introduced.
-- Direct Python imports of old Pipeline filenames must be updated; legacy YAML Pipeline
-  values continue through explicit aliases.
-- Reader signatures, parsing, channel order, shape/dtype semantics, data splitting,
-  metrics, checkpoints, seeds, and Pipeline algorithms are not intentionally changed.
-
-### Release status
-
-The paper/submodule migration and optional-backend decisions are complete. v0.3.0 remains
-unpublishable only while these machine-checked conditions remain:
+Version-specific migration guides and release notes now live under:
 
 ```text
-2 x CWRU_HASH_MISSING
-2 x CWRU_REVISION_FLOATING
-1 x REPOSITORY_RENAME_PENDING
-1 x VERSION_NOT_FINAL
+doc/migration/
+doc/release/
 ```
 
-The package remains `0.3.0.dev0`; no final tag or release is authorized. The version is
-changed to `0.3.0` only in the final promotion after CWRU and repository identity are ready.
+[`doc/README.md`](doc/README.md) is the maintained index. Current documentation links
+now point to the organized files. Short compatibility pages at the four former root paths
+keep existing external links, release checks, and workflow path filters valid without
+duplicating the document bodies. Historical audit records under `docs/archive/` retain
+their original path statements.
+
+## 2026-09-06 — Maintainer-approved dev-to-main upgrade
+
+Promote the complete `dev@9c0672f4` history into `main` through an ancestry-preserving
+merge. The maintainer confirmed that THU validation was completed in the linked work
+session and explicitly approved this promotion. The upgrade includes the installed-wheel
+Dummy first run, strict public configuration, explicit device selection, isolated run
+roots, and direct result paths.
+
+See [`doc/changelog/2026-09-05-dev-to-main.md`](doc/changelog/2026-09-05-dev-to-main.md)
+for the validation source, migration details, and scope. Research PR #223 is excluded.
+THU is not re-downloaded or rerun; existing regression checks still run on the promotion
+candidate. No numerical evidence is invented. The MFPT registry status and automated
+publication gate remain unchanged; this source merge does not create a tag, GitHub Release,
+or package-index publication.
+
+## 2026-09-05 — Plan A upgrade preparation
+
+PR #224 recorded the initial upgrade scope and THU local-validation confirmation. The
+subsequent maintainer acceptance and promotion are documented in the entry above.
+
+## v0.3.0-rc1 - Current source candidate
+
+PHMFactory remains versioned as `0.3.0rc1` in `PHMbench/PHM-Vibench`. This is a source
+state, not a tag or published release.
+
+### Current release status
+
+Release readiness is blocked until at least one exact real-data experiment is validated
+on the current source. The MFPT + `GlobalAverageLinear` reference was previously promoted,
+but later changes modified metric lifecycle, checkpoint selection, and repeated-run
+aggregation. Its registry status is therefore conservatively set to `smoke_only` pending
+an unchanged current-source rerun.
+
+### Current-source semantic fixes
+
+- Classification, binary, and regression objectives now preserve task-appropriate target
+  dtype and shape semantics.
+- AUROC consumes model scores rather than `argmax` class indices.
+- Stateful metrics use epoch-level update, compute, and reset behavior.
+- Checkpoint and early-stopping direction are explicit through `monitor_mode`.
+- Repeated runs require one identical, non-empty, finite scalar metric set for every seed.
+- Multiple unnamed test populations fail instead of silently discarding all but the first.
+- Data, model, task, trainer, checkpoint, and reader failures remain fail-fast on the
+  maintained public path.
+
+### Claim boundary
+
+The current source has bounded offline Dummy execution evidence and reviewed software
+contracts. It does not currently claim a current-source `baseline_valid` experiment,
+strong diagnostic accuracy, state-of-the-art performance, universal component
+compatibility, an RC1 tag, or published artifacts.
+
+See:
+
+- [`README.md`](README.md)
+- [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md)
+- [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
+- [`doc/release/RELEASE_NOTES_v0.3.0.md`](doc/release/RELEASE_NOTES_v0.3.0.md)
 
 ## v0.2.0 Release Candidate - 2026-07-11
 
 ### Added
 
 - Release gate documents for v0.2.0:
-  `RELEASE_NOTES_v0.2.0.md`, `MIGRATION_v0.1_to_v0.2.md`,
+  `doc/release/RELEASE_NOTES_v0.2.0.md`,
+  `doc/migration/MIGRATION_v0.1_to_v0.2.md`,
   `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md`, and
   `KNOWN_LIMITATIONS.md`.
 - Registry trace for the maintained `FS,classification` demo task via
@@ -95,20 +91,17 @@ changed to `0.3.0` only in the final promotion after CWRU and repository identit
 
 ### Changed
 
-- `main.py` now honors `--override pipeline=<PipelineName>` when selecting the
-  pipeline module, instead of silently using the YAML pipeline.
-- `base_task_cddg_fewshot` registry text now matches the actual `GFS` task type.
+- `main.py` honors `--override pipeline=<PipelineName>` when selecting the Pipeline module.
+- `base_task_cddg_fewshot` registry text matches the actual `GFS` task type.
 
 ### Validation
 
-- Current cycle-03 evidence covers all seven maintained public demo configs with
+- Cycle-03 evidence covered seven maintained public demo configurations with bounded
   one-epoch smoke runs.
-- Invalid smoke cases for unknown pipeline, model, and task now fail explicitly.
-- Maintained tests use `conda run -n LQ_signal python -m pytest test/ -q`.
+- Invalid unknown Pipeline, model, and task cases failed explicitly.
 
 ### Limitations
 
-- v0.2.0 support is limited to the maintained demo combinations listed in
-  `SUPPORTED_COMBINATIONS.md`.
-- The evidence is functional smoke and contract evidence, not a performance
-  benchmark.
+- v0.2.0 support was limited to the maintained demo combinations listed at that source
+  state.
+- The evidence was functional smoke and contract evidence, not a performance benchmark.

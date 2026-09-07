@@ -24,6 +24,19 @@ The presence of a Python file alone does not imply release support. Maintained c
 
 Exact constructor arguments and module paths are recorded in `../isfm_components.csv`. Runtime metadata requirements, such as sampling-rate or system identifiers, are documented in `../README.md` and the selected configuration.
 
+## HSE runtime contract
+
+`E_01_HSE` consumes signals with shape `[B, L, C]`.
+
+- Training mode samples valid patch starts randomly.
+- Evaluation mode uses a deterministic, evenly spaced patch grid.
+- Explicit `start_indices_L` and `start_indices_C` may be supplied together by a controlled evaluator.
+- `patch_size_L > L` is invalid and fails before feature construction.
+- `patch_size_C > C` is invalid and fails before feature construction.
+- HSE never repeats or pads the time axis and never duplicates or pads channels to satisfy a patch request.
+
+This distinction keeps training stochastic while ensuring repeated validation and test passes evaluate the same finite input representation.
+
 ## Adding or changing an embedding
 
 A public embedding change should keep the following surfaces synchronized:

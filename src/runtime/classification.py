@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pandas as pd
 from pytorch_lightning import seed_everything
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import (
     dict_to_namespace,
@@ -21,7 +25,11 @@ from src.model_factory import build_model
 from src.task_factory import build_task
 from src.trainer_factory import build_trainer
 from src.utils.config_utils import apply_overrides_to_config, parse_overrides
-from src.utils.run_summary import write_run_summary
+from src.utils.run_summary import (
+    build_run_summary,
+    normalize_metric_result,
+    write_run_summary,
+)
 from src.utils.utils import close_lab, init_lab, load_best_model_checkpoint
 
 
@@ -116,6 +124,45 @@ def _set_environment(args_environment: Any) -> None:
             print(f"[INFO] 设置环境变量: {key}={value}")
 
 
+def _build_experiment_label(configs: Any) -> str:
+    """Return the human-readable directory prefix for one experiment."""
+
+    dataset_name = Path(str(configs.data.metadata_file)).name
+    model_name = str(configs.model.name)
+    task_name = f"{configs.task.type}{configs.task.name}"
+    if model_name == "ISFM":
+        model_name = (
+            f"ISFM_{configs.model.embedding}_"
+            f"{configs.model.backbone}_{configs.model.task_head}"
+        )
+    return f"{dataset_name}/M_{model_name}/T_{task_name}"
+
+
+def _create_invocation_root(configs: Any) -> tuple[Path, str]:
+    """Create the one result root owned by this public invocation."""
+
+    output_dir = getattr(configs.environment, "output_dir", None)
+    if not isinstance(output_dir, str) or not output_dir.strip():
+        raise ValueError("environment.output_dir must be a non-empty string")
+
+    label = _build_experiment_label(configs)
+    invocation_id = (
+        datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+        + "-"
+        + uuid4().hex[:8]
+    )
+    name = f"{label}/{invocation_id}"
+    root = Path(output_dir).expanduser() / name
+    root.mkdir(parents=True, exist_ok=False)
+    return root.resolve(), name
+
+
+def _iteration_path(run_root: str | Path, iteration: int) -> Path:
+    """Return one iteration directory below an existing invocation root."""
+
+    return Path(run_root) / f"iter_{iteration}"
+
+
 def _close_data_factory(data_factory: Any) -> None:
     data = getattr(data_factory, "data", None)
     close = getattr(data, "close", None)
@@ -123,12 +170,49 @@ def _close_data_factory(data_factory: Any) -> None:
         close()
 
 
-def _result_row(result: Any) -> dict[str, Any]:
-    if not isinstance(result, list) or not result or not isinstance(result[0], dict):
+def _result_row(result: Any) -> dict[str, float]:
+    """Return one complete metric population from ``trainer.test``.
+
+    Lightning returns one mapping per test dataloader. The maintained classification
+    estimator currently defines exactly one test population. Multiple mappings are
+    therefore ambiguous and must be handled by an explicit multi-population protocol
+    rather than silently discarding every item after the first.
+    """
+
+    if not isinstance(result, (list, tuple)) or len(result) != 1:
+        observed = len(result) if isinstance(result, (list, tuple)) else type(result).__name__
         raise RuntimeError(
-            "trainer.test must return a non-empty list whose first item is a mapping"
+            "trainer.test must return exactly one metric mapping for the maintained "
+            f"classification test population, observed={observed}"
         )
-    return dict(result[0])
+    if not isinstance(result[0], Mapping):
+        raise RuntimeError(
+            "trainer.test result 0 must be a metric mapping, "
+            f"got {type(result[0]).__name__}"
+        )
+    return normalize_metric_result(
+        result[0],
+        context="trainer.test result 0",
+    )
+
+
+def _best_checkpoint_path(trainer: Any) -> Path:
+    callback = next(
+        (
+            item
+            for item in getattr(trainer, "callbacks", ())
+            if isinstance(item, ModelCheckpoint)
+        ),
+        None,
+    )
+    if callback is None or not callback.best_model_path:
+        raise RuntimeError(
+            "best checkpoint path is unavailable after checkpoint restoration"
+        )
+    path = Path(callback.best_model_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Best checkpoint does not exist: {path}")
+    return path.resolve()
 
 
 def _write_aggregate_outputs(
@@ -138,10 +222,17 @@ def _write_aggregate_outputs(
     run_seeds: list[int],
     configs: Any,
 ) -> dict[str, Any]:
-    """Write repeated-run metrics and their deterministic summary."""
+    """Write repeated-run metrics only after the complete estimator validates."""
 
     if last_iteration_path is None or not all_results:
         raise ValueError("aggregate outputs require at least one completed iteration")
+
+    # Validate the complete repeated-run estimator before publishing aggregate CSVs.
+    build_run_summary(
+        results=all_results,
+        seeds=run_seeds,
+        config=configs,
+    )
 
     run_root_path = Path(run_root)
     iteration_path = Path(last_iteration_path)
@@ -156,39 +247,46 @@ def _write_aggregate_outputs(
     )
 
 
-def _register_iteration_evidence(
-    args: Any,
+def _public_result(
     *,
-    iteration: int,
-    seed: int,
-    path: Path,
-    metrics_path: Path,
-) -> None:
-    attestation = getattr(args, "run_attestation", None)
-    if attestation is None:
-        return
-    artifact = attestation.register_artifact(
-        role="classification_test_metrics",
-        path=metrics_path,
-        metadata={"iteration": iteration, "run_dir": str(path)},
-    )
-    attestation.append_evidence(
-        "classification_iterations",
-        {
-            "iteration": iteration,
-            "seed": seed,
-            "run_dir": str(path),
-            "metrics_artifact": artifact,
-        },
-    )
+    run_root: Path,
+    best_checkpoints: list[Path],
+    all_results: list[dict[str, Any]],
+    summary: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the direct user-facing outputs of one classification invocation."""
+
+    if not best_checkpoints:
+        raise RuntimeError("classification completed without a best checkpoint")
+
+    result_root = run_root.resolve()
+    resolved_checkpoints = [path.resolve() for path in best_checkpoints]
+    test_metrics = result_root / "all_results.csv"
+    run_summary = result_root / "run_summary.json"
+    if summary is not None:
+        if not test_metrics.is_file():
+            raise FileNotFoundError(f"aggregate test metrics are missing: {test_metrics}")
+        if not run_summary.is_file():
+            raise FileNotFoundError(f"run summary is missing: {run_summary}")
+
+    return {
+        "status": "succeeded",
+        "result_dir": str(result_root),
+        "best_checkpoint": str(resolved_checkpoints[-1]),
+        "best_checkpoints": [str(path) for path in resolved_checkpoints],
+        "test_metrics": str(test_metrics) if summary is not None else None,
+        "run_summary": str(run_summary) if summary is not None else None,
+        "primary_metrics": dict(summary.get("metrics", {})) if summary else {},
+        "iterations": [dict(item) for item in all_results],
+    }
 
 
 def run_classification_pipeline(
     args: Any,
     *,
     hooks: ClassificationHooks | None = None,
-) -> list[dict[str, Any]]:
-    """Execute the shared train/test lifecycle for Pipeline 01 and Pipeline 05."""
+) -> dict[str, Any]:
+    """Execute the shared train/test lifecycle and return direct output paths."""
 
     hooks = hooks or ClassificationHooks()
     configs = load_runtime_config(args)
@@ -204,20 +302,40 @@ def run_classification_pipeline(
         args_data.task_list = args_task.task_list
         args_model.task_list = args_task.task_list
 
-    iterations = int(getattr(args_environment, "iterations", 0))
+    if not hasattr(args_environment, "iterations"):
+        raise ValueError("environment.iterations is required")
+    iterations = args_environment.iterations
+    if isinstance(iterations, bool) or not isinstance(iterations, int):
+        raise TypeError(
+            "environment.iterations must be an integer, "
+            f"got {type(iterations).__name__}"
+        )
     if iterations <= 0:
         raise ValueError(f"environment.iterations must be positive, got {iterations}")
-    base_seed = int(getattr(args_environment, "seed", 0))
-    test_after_fit = getattr(args_trainer, "test_after_fit", True)
-    if not isinstance(test_after_fit, bool):
+
+    if not hasattr(args_environment, "seed"):
+        raise ValueError("environment.seed is required")
+    base_seed = args_environment.seed
+    if isinstance(base_seed, bool) or not isinstance(base_seed, int):
         raise TypeError(
-            "trainer.test_after_fit must be a boolean when it is provided"
+            "environment.seed must be an integer, "
+            f"got {type(base_seed).__name__}"
         )
+
+    if not hasattr(args_trainer, "test_after_fit"):
+        raise ValueError(
+            "trainer.test_after_fit is required for classification Pipelines"
+        )
+    test_after_fit = args_trainer.test_after_fit
+    if not isinstance(test_after_fit, bool):
+        raise TypeError("trainer.test_after_fit must be a boolean")
     _set_environment(args_environment)
 
+    run_root, name = _create_invocation_root(configs)
     all_results: list[dict[str, Any]] = []
     run_seeds: list[int] = []
-    final_path: Path | None = None
+    best_checkpoints: list[Path] = []
+    last_iteration_path: Path | None = None
 
     for iteration in range(iterations):
         print(
@@ -225,10 +343,9 @@ def run_classification_pipeline(
             f"[INFO] 开始实验迭代 {iteration + 1}/{iterations}\n"
             f"{'=' * 50}"
         )
-        raw_path, name = path_name(configs, iteration)
-        path = Path(raw_path)
-        path.mkdir(parents=True, exist_ok=True)
-        final_path = path
+        path = _iteration_path(run_root, iteration)
+        path.mkdir(exist_ok=False)
+        last_iteration_path = path
         args_trainer.logger_name = name
 
         current_seed = base_seed + iteration
@@ -246,7 +363,7 @@ def run_classification_pipeline(
             args_trainer=args_trainer,
             iteration=iteration,
             path=path,
-            name=str(name),
+            name=name,
         )
         lab_started = False
         try:
@@ -291,6 +408,7 @@ def run_classification_pipeline(
 
             print("[INFO] 加载最佳模型并测试...")
             context.task = load_best_model_checkpoint(context.task, context.trainer)
+            best_checkpoints.append(_best_checkpoint_path(context.trainer))
             if not test_after_fit:
                 continue
             context.result = _result_row(
@@ -304,13 +422,6 @@ def run_classification_pipeline(
             print("[INFO] 保存测试结果...")
             metrics_path = path / f"test_result_{iteration}.csv"
             pd.DataFrame([context.result]).to_csv(metrics_path, index=False)
-            _register_iteration_evidence(
-                args,
-                iteration=iteration,
-                seed=current_seed,
-                path=path,
-                metrics_path=metrics_path,
-            )
             hooks.after_test(context)
         finally:
             if context.data_factory is not None:
@@ -318,25 +429,28 @@ def run_classification_pipeline(
             if lab_started:
                 close_lab()
 
-    if final_path is None:
+    if last_iteration_path is None:
         raise RuntimeError("classification Pipeline produced no iteration path")
     if not test_after_fit:
         print(f"\n{'=' * 50}\n[INFO] 训练完成；配置禁止测试\n{'=' * 50}")
-        return []
-    _write_aggregate_outputs(
-        final_path.parent,
-        final_path,
+        return _public_result(
+            run_root=run_root,
+            best_checkpoints=best_checkpoints,
+            all_results=all_results,
+            summary=None,
+        )
+
+    summary = _write_aggregate_outputs(
+        run_root,
+        last_iteration_path,
         all_results,
         run_seeds,
         configs,
     )
-    aggregate_path = final_path / "all_results.csv"
-    attestation = getattr(args, "run_attestation", None)
-    if attestation is not None:
-        attestation.register_artifact(
-            role="classification_aggregate_metrics",
-            path=aggregate_path,
-            metadata={"iterations": iterations},
-        )
     print(f"\n{'=' * 50}\n[INFO] 所有实验已完成\n{'=' * 50}")
-    return all_results
+    return _public_result(
+        run_root=run_root,
+        best_checkpoints=best_checkpoints,
+        all_results=all_results,
+        summary=summary,
+    )

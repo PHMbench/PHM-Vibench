@@ -1,35 +1,36 @@
 # PHMFactory
 
 <div align="center">
-  <img src="pic/PHM-Vibench.png" alt="PHMFactory 标志" width="280"/>
+  <img src="pic/PHM-Vibench.png" alt="PHMFactory 标志" width="260"/>
 
   <p>
     <a href="README.md">English</a> |
     <a href="README_CN.md"><strong>中文</strong></a>
   </p>
 
-  <p><strong>面向工业信号、强调可复现性的配置优先 PHM 实验框架。</strong></p>
+  <p><strong>面向工业信号的配置驱动 PHM 实验框架。</strong></p>
 
   <p>
-    <img src="https://img.shields.io/badge/状态-alpha-orange" alt="状态：alpha"/>
-    <img src="https://img.shields.io/badge/v0.3-预发布-blue" alt="v0.3 预发布"/>
-    <a href="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml"><img src="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml/badge.svg" alt="核心质量门禁"/></a>
+    <img src="https://img.shields.io/badge/状态-发布受阻-critical" alt="发布受阻"/>
+    <img src="https://img.shields.io/badge/版本-0.3.0rc1-blue" alt="版本 0.3.0rc1"/>
+    <img src="https://img.shields.io/badge/Python-%3E%3D3.10-3776AB" alt="Python 3.10 或更高版本"/>
+    <a href="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml"><img src="https://github.com/PHMbench/PHM-Vibench/actions/workflows/core-quality-gates.yml/badge.svg" alt="核心质量检查"/></a>
     <img src="https://img.shields.io/badge/许可-Apache%202.0-green" alt="Apache 2.0 许可"/>
   </p>
 </div>
 
-> **当前仓库身份。** 项目名称和 Python 包名已经统一为 **PHMFactory**，但在
-> v0.3 预发布阶段，GitHub 仓库仍是
-> [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench)。正式改名前请始终
-> 使用这里给出的真实仓库地址。
+PHMFactory 使用一份可见配置运行故障诊断及相关 PHM 实验。程序实际使用的数据、模型、
+任务、训练策略、checkpoint 和评价方式，必须与用户声明一致。
 
-PHMFactory 用一个配置优先入口连接数据加载、模型构建、任务逻辑、训练、评估和
-运行记录。用户选择一个维护中的配置，只覆盖本机路径或实验参数，即可通过命令行、
-Python 模块或兼容入口执行同一份实验语义。
+仓库仍为 [`PHMbench/PHM-Vibench`](https://github.com/PHMbench/PHM-Vibench)；项目、
+Python 包和命令分别为 **PHMFactory**、`phmfactory` 和 `phmfactory`。
 
-## 先运行完全离线的示例
+> **当前状态：** 离线 Dummy 主路径已维护；MFPT 透明实验仍为 `smoke_only`，等待当前
+> 源码复核。当前没有包索引发布，也没有 `baseline_valid` 参考配置，因此发布仍受阻。
 
-下面的路径只使用仓库自带的合成数据，不下载外部数据集：
+## 快速开始
+
+首次运行完全离线，只使用仓库内置 Dummy 数据。
 
 ```bash
 git clone https://github.com/PHMbench/PHM-Vibench.git
@@ -45,209 +46,223 @@ phmfactory preflight --config smoke
 phmfactory demo
 ```
 
-首次运行成功时，应满足：
+成功后终端直接给出：
 
-- `doctor` 的必需检查全部显示 `PASS`；
-- `preflight` 打印 `status=passed`，且不会启动训练；
-- `demo` 在 CPU 上完成一次 Dummy 数据的 data → model → task → trainer 链路；
-- 终端打印 `run_manifest.json` 的路径；
-- 结果写入 `results/demo/dummy_dg_smoke/`；
-- 三条命令的进程退出码均为 `0`。
-
-命令失败时请保留完整终端输出，并根据[快速开始](docs/quickstart.md)中的对应故障
-处理。CPU-only PyTorch、GPU 和不同操作系统的安装方式见[安装指南](docs/installation.md)。
-
-## 根据任务选择文档
-
-| 你的目标 | 从这里开始 |
-| --- | --- |
-| 理解第一次运行及其输出 | [快速开始](docs/quickstart.md) |
-| 在 CPU、GPU、Linux、macOS 或 Windows 上安装 | [安装指南](docs/installation.md) |
-| 运行一个已有的维护实验 | [配置系统](configs/README.md) |
-| 接入本地 PHM 数据 | [数据目录](data/README.md)和[自定义数据集](docs/custom_dataset.md) |
-| 选择或新增模型 | [模型工厂](src/model_factory/README_CN.md) |
-| 选择或新增任务 | [任务工厂](src/task_factory/README.md) |
-| 使用浏览器界面 | [Streamlit 工作区](apps/streamlit/README.md) |
-| 扩展或维护框架 | [开发者指南](docs/developer_guide.md) |
-| 核对当前真正支持的组合 | [支持组合](SUPPORTED_COMBINATIONS.md) |
-
-完整文档地图见 [docs/index.md](docs/index.md)。
-
-## 配置的五个逻辑块
-
-维护中的配置统一使用：
-
-```yaml
-environment:  # 输出路径、随机种子、重复次数和进程级设置
-  ...
-data:         # metadata、原始数据根目录、窗口和 worker
-  ...
-model:        # 模型家族及模型专有参数
-  ...
-task:         # 诊断、域泛化、小样本或预训练逻辑
-  ...
-trainer:      # 设备、epoch、精度、日志和 checkpoint
-  ...
+```text
+result_dir=...
+best_checkpoint=...
+test_metrics=...
+run_summary=...
+primary_metrics={...}
 ```
 
-顶层 `pipeline` 只负责选择编排路径。新增数据集、模型、任务和训练器时，原则上应扩展
-对应 factory，不应在 `main.py` 中加入项目专用分支。
+按这些路径检查结果即可。Dummy 示例只验证安装和维护运行路径，不代表真实数据 benchmark
+或算法性能。
 
-本地实验从 `configs/demo/` 中最接近的维护配置开始，研究变体放到
-`configs/experiments/`，本机路径通过显式 override 传入：
+完整步骤见[快速开始](docs/quickstart.md)，平台说明见[安装指南](docs/installation.md)。
+
+## 运行实验
+
+正式实验必须显式指定配置：
 
 ```bash
 phmfactory preflight \
   --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/phm-data \
+  --override data.data_dir=/absolute/path/to/data \
   --override data.metadata_file=metadata.xlsx \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1
-```
 
-预检通过后，去掉 `preflight` 即可执行同一份配置：
-
-```bash
 phmfactory \
   --config configs/demo/01_cross_domain/cwru_dg.yaml \
-  --override data.data_dir=/absolute/path/to/phm-data \
+  --override data.data_dir=/absolute/path/to/data \
   --override data.metadata_file=metadata.xlsx \
+  --override trainer.device=cpu \
+  --override trainer.devices=1 \
   --override trainer.num_epochs=1
 ```
 
-配置组合和优先级的权威说明位于 [configs/README.md](configs/README.md)。
+本机专用配置只有通过 `--local-config` 显式传入时才生效。配置组合与优先级见
+[`configs/README.md`](configs/README.md)。
 
-## 公开入口
-
-以下三个进程入口具有相同的配置和退出码语义：
-
-```bash
-phmfactory --config <yaml> [--override key=value ...]
-python -m phmfactory --config <yaml> [--override key=value ...]
-python main.py --config <yaml> [--override key=value ...]
-```
-
-正常使用时推荐安装后的 `phmfactory` 命令；`python main.py` 只作为仓库兼容入口保留。
-需要直接读取结构化 Python 返回值的调用者可以导入 `phmfactory.cli.main`。
-
-常用的轻量命令：
-
-```bash
-phmfactory doctor
-phmfactory preflight --config <preset-or-yaml>
-phmfactory demo
-phmfactory data --help
-```
-
-## 如何理解“支持”
-
-PHMFactory 明确区分：
+## 项目结构
 
 ```text
-discoverable  = 源码或注册表条目存在
-runnable      = 已建立可审查的执行路径
-supported     = 维护配置具有当前的功能冒烟结果
+PHM-Vibench/
+├── phmfactory/           # 公共命令与配置入口
+├── configs/              # 示例和研究实验配置
+├── src/
+│   ├── data_factory/     # 数据读取、数据集、采样与加载
+│   ├── model_factory/    # 模型与表示模块
+│   ├── task_factory/     # 目标函数、指标与优化策略
+│   ├── trainer_factory/  # 设备、回调与模型选择
+│   └── runtime/          # 实验执行
+├── data/                 # 内置 Dummy 数据与数据布局说明
+├── test/                 # 运行路径与组件测试
+├── apps/streamlit/       # 可选浏览器工作区
+├── docs/                 # 用户与开发文档
+├── doc/changelog/        # 升级记录
+└── paper/project/        # 研究源码与迁移说明
 ```
 
-必须满足：
+运行实验从 `configs/` 开始；新增组件从相应 Factory 开始。实验结果以命令返回的实际路径
+为准，目录树不规定固定的结果保存位置。
+
+## 运行结构
 
 ```text
-supported ⊆ runnable ⊆ discoverable
+解析完成的配置
+    ↓
+canonical Pipeline
+    ↓
+Data Factory → Model Factory → Task Factory → Trainer Factory
+    ↓
+fit → 选定 checkpoint → test → 有限指标
+    ↓
+直接结果路径
 ```
 
-源码文件、模型注册表条目或 import 成功都不自动等于“已支持”。当前维护范围由配置注册表
-和运行时 descriptor 生成：
+| 边界 | 责任 |
+| --- | --- |
+| Data Factory | metadata、reader、样本选择、dataset、sampler、loader |
+| Model Factory | 模型身份、模型构造、显式权重 |
+| Task Factory | 目标函数、指标、optimizer 和 scheduler |
+| Trainer Factory | 设备、callback、checkpoint、fit/test 生命周期 |
+| Pipeline | 编排与成功判定 |
 
-- [支持组件](SUPPORTED_COMPONENTS.md)
-- [支持组合](SUPPORTED_COMBINATIONS.md)
-- [配置注册表](configs/config_registry.csv)
-- [配置图谱](docs/CONFIG_ATLAS.md)
+替换一个兼容模块时，应只修改该模块及其配置，不应修改其他 Factory 或公共命令入口。
 
-`sanity_ok` 只表示已有边界明确的功能冒烟，不表示达到 SOTA、任意组件都可组合，也不
-表示外部数据可以重新分发。
+## 失败行为
 
-## 可选 Streamlit 工作区
+问题应在负责该问题的边界直接失败。数据源、设备、任务、checkpoint 或指标失败后，
+程序不得自动改跑更容易的实验。错误信息应说明请求值、实际值、预期合同和最小修复。
 
-Web 工作区只是同一公共 CLI 的适配层，不是第二套训练框架：
+## 支持术语
 
-```bash
-python -m pip install -r apps/streamlit/requirements.txt
-streamlit run apps/streamlit/app.py
-```
+| 术语 | 含义 |
+| --- | --- |
+| `discoverable` | 源码或注册项存在 |
+| `runnable` | 已有经过审阅的执行路径 |
+| `execution-verified` | 精确命令具有当前受控执行证据 |
+| `baseline-valid` | 精确完整实验通过当前科学协议 |
 
-首次使用选择 **Use safe CPU smoke defaults**。界面可以准备配置、验证、启动公共命令，
-并查看日志和产物。其单 worker 边界和故障处理见
-[apps/streamlit/README.md](apps/streamlit/README.md)。
+支持状态属于精确配置，不能由源码存在或 import 成功推导。详情见
+[支持组合](SUPPORTED_COMBINATIONS.md)、[已知限制](KNOWN_LIMITATIONS.md)和
+[发布状态](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)。
 
-## 开发者架构
+## 文档
+
+| 任务 | 入口 |
+| --- | --- |
+| 安装并完成首次运行 | [快速开始](docs/quickstart.md) |
+| 配置实验 | [配置指南](configs/README.md) |
+| 接入本地数据 | [数据布局](data/README.md) |
+| 选择或新增模型 | [Model Factory](src/model_factory/README.md) |
+| 选择或新增任务 | [Task Factory](src/task_factory/README.md) |
+| 配置训练 | [Trainer Factory](src/trainer_factory/README.md) |
+| 使用浏览器工作区 | [Streamlit](apps/streamlit/README.md) |
+| 贡献代码 | [贡献指南](CONTRIBUTING_CN.md) |
+| 理解项目约束 | [核心合同](CORE.md) |
+
+完整导航见 [`docs/index.md`](docs/index.md)。
+
+## 开发原则
+
+遵循奥卡姆剃刀：
 
 ```text
-phmfactory 命令 / python -m phmfactory / main.py
-  └── 公共命令路由
-      └── 已解析配置 + canonical Pipeline
-          └── 受保护的 src 运行时
-              ├── data factory
-              ├── model factory
-              ├── task factory
-              └── trainer factory
+DELETE → INLINE → MERGE → SIMPLIFY → DOCUMENT → ADD
 ```
 
-主要目录：
+一个 PR 只保护一个主要不变量，并产生一个用户可观察结果。优先使用直接、清楚的代码和
+错误信息，不增加兜底、包装层、重复注册表或面向假想未来的抽象。注释应解释科学或兼容
+原因，不重复代码本身。
 
-- `phmfactory/`：公开包、命令、配置解析、Pipeline descriptor 和运行控制层；
-- `configs/`：复用块、维护 demo、研究实验和配置注册表；
-- `src/data_factory/`：metadata、reader、dataset、sampler 和数据装配；
-- `src/model_factory/`：模型家族和模型构造；
-- `src/task_factory/`：任务、损失、指标和任务构造；
-- `src/trainer_factory/`：训练器构造和扩展；
-- `apps/streamlit/`：可选浏览器工作区；
-- `test/`：维护中的 pytest 测试；
-- `docs/`：用户、扩展、开发、发布和历史文档。
+常规工作从最新 `dev` 创建并合入 `dev`。广泛修改前先阅读 [`CORE.md`](CORE.md)和
+[`CONTRIBUTING_CN.md`](CONTRIBUTING_CN.md)。
 
-提交 PR 前运行：
+## 论文与研究
 
-```bash
-python -m scripts.validate_docs
-python -m scripts.validate_configs
-python -m scripts.gen_config_atlas
-git diff --exit-code docs/CONFIG_ATLAS.md
-python -m scripts.gen_support_matrix
-git diff --exit-code SUPPORTED_COMPONENTS.md SUPPORTED_COMBINATIONS.md
-python -m pytest test/ -q
-```
+### 项目论文
 
-聚焦测试和验证术语见 [docs/testing.md](docs/testing.md)。
+Qi Li, Bojian Chen, Xuan Li, Qitong Chen, Liang Chen, Changqing Shen, Lu Lu,
+Zhaoye Qin, Fulei Chu.
+**[PHM-Vibench: A Unified and Factory-Style Vibration Benchmarking Framework for the Foundation Model Era](https://papers.phmsociety.org/index.php/phmap/article/view/4303)**.
+*PHM Society Asia-Pacific Conference*, 5(1)，2025 年会议论文集；
+在线发表日期为 2026 年 1 月 13 日。DOI：[10.36001/phmap.2025.v5i1.4303](https://doi.org/10.36001/phmap.2025.v5i1.4303)。
 
-## 分支策略
+该论文介绍 PHM-Vibench。当前 PHMFactory 源码的能力范围，以
+[支持组合](SUPPORTED_COMBINATIONS.md)和[已知限制](KNOWN_LIMITATIONS.md)为准。
 
-`main` 是面向用户的稳定默认分支，`dev` 是集成分支。常规功能、修复、文档、测试、CI、
-清理和迁移 PR 都应以最新 `dev` 为起点并合入 `dev`。
+### 相关方法
 
-只有明确授权的发布提升 PR 或紧急 hotfix 可以指向 `main`；hotfix 必须同步回 `dev`。
-完整流程见 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。
+Qi Li, Bojian Chen, Qitong Chen, Xuan Li, Zhaoye Qin, Fulei Chu.
+**[HSE: A plug-and-play module for unified fault diagnosis foundation models](https://doi.org/10.1016/j.inffus.2025.103277)**.
+*Information Fusion*, 123, 103277, 2025。
 
-## 当前预发布限制
+HSE 在此列为相关表示方法，不表示论文的全部实验使用了当前软件版本。在研项目和历史
+论文源码不属于已发表结果，相关说明见[研究源码入口](paper/project/README.md)。
 
-PHMFactory 仍是 alpha 阶段的 `0.3.0.dev0` 源码版本：
+### 使用本项目的研究
 
-- 只有 Dummy demo 完全离线并随仓库提供；
-- 大部分真实数据 demo 需要本地 metadata 和原始数据；
-- CWRU provider revision 和必需文件 hash 尚未最终冻结；
-- GitHub 仓库尚未改名；
-- 当前不宣称已有最终 `v0.3.0` tag 或包发布；
-- experimental Pipeline 和未列出的模型/任务组合不属于发布支持范围。
+收录研究时，请通过 [Issue](https://github.com/PHMbench/PHM-Vibench/issues) 提供论文链接、
+代码或实验配置，以及实际使用的软件版本。本栏目只收录具有明确项目使用关系的研究。
 
-进行发布或 benchmark 声明前，请阅读[已知限制](KNOWN_LIMITATIONS.md)和
-[v0.3 发布就绪状态](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)。
+## 项目路线图
 
-## 贡献、支持与引用
+| 阶段 | 内容 |
+| --- | --- |
+| 已有能力 | 配置驱动 CLI、离线 Dummy 首跑、直接结果路径 |
+| 下一步 | 补齐声明指标与结果语义，重新验证真实数据参考实验 |
+| 研究方向 | 验证可解释模型的语言解释与异构信号扩展，再决定是否纳入维护示例 |
 
-提交 Issue 或 PR 前请阅读 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md)。问题报告应包含
-准确 commit、配置、override、环境、数据来源和完整错误输出。
+[升级记录](doc/changelog/)说明已完成的修改，
+[发布状态](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)说明当前阻塞。研究方向不代表发布承诺。
 
-- Bug 与功能建议：[GitHub Issues](https://github.com/PHMbench/PHM-Vibench/issues)
-- 安全问题：[SECURITY.md](SECURITY.md)
-- 开发流程：[docs/developer_guide.md](docs/developer_guide.md)
-- 发布状态：[docs/PHMFACTORY_V0_3_RELEASE_READINESS.md](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
+## 贡献者与社区
 
-PHMFactory 使用 [Apache License 2.0](LICENSE)。数据集和模型产物可能适用独立来源许可。
-软件引用信息见 [CITATION.cff](CITATION.cff)，每次实验应记录并引用准确的 commit 或 tag。
+### 核心团队
+
+<table>
+  <tr>
+    <td align="center" width="160">
+      <a href="https://github.com/liq22">
+        <img src="https://github.com/liq22.png?size=160" width="80" height="80" alt="Qi Li"/><br/>
+        <strong>Qi Li</strong>
+      </a>
+    </td>
+    <td align="center" width="160">
+      <a href="https://github.com/Xuan423">
+        <img src="https://github.com/Xuan423.png?size=160" width="80" height="80" alt="Xuan Li"/><br/>
+        <strong>Xuan Li</strong>
+      </a>
+    </td>
+  </tr>
+</table>
+
+### 感谢所有贡献者
+
+[![PHMFactory 贡献者头像](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
+
+[查看完整贡献历史](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)。
+
+### 参与贡献
+
+可贡献代码、文档、示例或可复现的问题报告。提交 PR 前请阅读
+[贡献指南](CONTRIBUTING_CN.md)和[行为准则](CODE_OF_CONDUCT.md)。
+
+### 社区交流
+
+- [Slack 工作区](https://phmbench.slack.com/)：交流使用问题与研究想法。
+- [飞书群组](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c9fh4f62-5d01-42ff-bb1c-520092457e2d)：获取项目动态，参与群内讨论。
+
+可复现问题与具体功能建议请提交 [Issue](https://github.com/PHMbench/PHM-Vibench/issues)，
+公开使用问答与研究讨论请前往 [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)。
+
+[Star 历史](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
+
+## 引用与许可
+
+PHMFactory 使用 [Apache License 2.0](LICENSE)。引用信息见 [`CITATION.cff`](CITATION.cff)。
+数据集与第三方组件许可相互独立。

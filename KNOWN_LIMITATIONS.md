@@ -1,108 +1,144 @@
-# Known Limitations for the PHMFactory v0.3 Pre-release
+# Known Limitations for the PHMFactory `0.3.0rc1` Source
 
-This page describes the current maintained source state. It does not imply that the final
-`v0.3.0` tag, repository rename, or package publication has occurred.
+This page describes the current `dev` source. It does not imply that an RC1 tag, GitHub
+Release, wheel/source upload, or package-index publication exists.
 
-## Repository and installation state
+## Current release state
 
-- The project and Python package are named PHMFactory, but the current GitHub repository
-  remains `PHMbench/PHM-Vibench`.
-- The source version is `0.3.0.dev0`.
-- The maintained pre-release installation path is an editable checkout installation:
+- Project and Python package: `PHMFactory` / `phmfactory`.
+- Repository: `PHMbench/PHM-Vibench`.
+- Source version: `0.3.0rc1`.
+- Release readiness is currently **blocked** because no real-data configuration has been
+  requalified as `baseline_valid` after recent metric, checkpoint-selection, and
+  repeated-run estimator changes.
+- The supported installation path is currently an editable checkout:
   `python -m pip install -e .`.
-- A final package-index release is not claimed. Do not document `pip install phmfactory`
-  as generally available until a real release is published and verified.
+- `pip install phmfactory` must not be documented as generally available until a real
+  publication is completed.
 
-## Supported surface
+## Evidence and support levels
 
-- Release support is limited to the exact configurations listed in
-  `SUPPORTED_COMBINATIONS.md`, not every discovered model/task/data combination.
-- A registry row, importable module, source file, or experimental opt-in is discovery
-  information; it is not by itself a support claim.
-- `Pipeline_01_Fault_Diagnosis` is the primary maintained classification path.
-- `Pipeline_02_Pretraining_Few_Shot` is supported only for the current bounded maintained
-  path; multi-stage workflows require their own evidence.
-- Pipeline 03 and Pipeline 04 remain experimental and require explicit acknowledgement.
-- Pipeline 05, Pipeline 06, and Pipeline_ID have compatibility or experimental contracts
-  but are not automatically part of the release-supported combination table.
+PHMFactory distinguishes:
+
+```text
+discoverable       source or registry entry exists
+runnable           a reviewed execution path exists
+execution-verified the exact command has bounded execution evidence
+baseline-valid     the exact complete experiment passed its current scientific protocol
+```
+
+A component file, import, registry row, or successful smoke does not imply benchmark
+validity. `baseline-valid` is configuration-specific and must be supported by the current
+source, exact data population, split, model, objective, checkpoint policy, declared
+metrics, seeds, and estimator.
+
+## Real-data reference status
+
+The MFPT + `GlobalAverageLinear` configuration remains a transparent real-data candidate:
+
+```text
+configs/baselines/01_mfpt/mfpt_global_average_linear.yaml
+```
+
+Historical three-seed results remain useful evidence about the protocol, but they are not
+current-source promotion evidence after runtime estimator changes. The registry therefore
+keeps the candidate at `protocol_status=smoke_only` until the unchanged experiment is
+rerun and independently checked.
+
+The candidate does not claim strong diagnostic accuracy, a strong representation, or
+state-of-the-art performance.
 
 ## Data availability
 
-- Only the Dummy smoke demo is fully offline and shipped with the repository.
-- Most non-Dummy demos require local metadata and raw files supplied through explicit
-  configuration or CLI overrides.
-- Dataset source, license, citation, and redistribution rights remain the responsibility
-  of each dataset contribution and user environment.
-- The CWRU public bundle interface exists, but final provider revisions and required-file
-  SHA-256 values are not yet frozen. It is therefore not a finalized release artifact.
-- A successful software smoke does not prove external data availability, data quality, or
-  permission to redistribute the source data.
+- Only the repository Dummy data are fully offline and shipped with the source.
+- MFPT preparation requires the external public provider and network access.
+- Most non-Dummy configurations require explicitly supplied local metadata and raw files.
+- Dataset licenses, citations, and redistribution rights remain dataset-specific.
+- A successful run does not authorize redistribution of external raw data.
+- Normal maintained runs do not download replacement metadata or silently synthesize
+  missing signals.
 
-## Platform and dependency coverage
+## Configuration and runtime
 
-- The focused maintained baseline uses Python 3.10 and Ubuntu CI runners.
-- CPU smoke validation uses the PyTorch 2.6.0 family.
-- Windows and other platforms have selected tests, but not every model, reader, optional
-  dependency, or GPU path is covered across every operating system.
-- Optional model families may require research dependencies beyond the first-run path.
-  An unconditional optional import should be reported as a dependency-boundary bug.
-- `phmfactory doctor` verifies real imports in the active environment; it cannot guarantee
-  every optional research model or external system integration.
+- The maintained public path is `phmfactory --config <yaml>`; `python main.py` is a
+  compatibility launcher.
+- Public runs must not change because an undeclared local configuration file exists.
+- Historical configs under `configs/v0.0.9/` are not part of the maintained quickstart.
+- Preflight does not yet prove every downstream model/task/trainer constructor is valid;
+  shared strict schema validation remains an active convergence item.
+- Repeated runs still need a single immutable invocation root so that all seeds and
+  aggregate outputs are isolated under one result directory.
+- Scheduler behavior is not yet fully explicit for every supported scheduler.
 
-## Configuration compatibility
+## Factory boundary
 
-- Public process entrypoints resolve maintained configs and explicit CLI overrides through
-  the public resolver.
-- Historical direct Pipeline imports retain compatibility behavior and should not be
-  treated as a second public configuration contract.
-- Machine-specific paths should be passed explicitly or kept in an untracked local
-  experiment file. A public run must not silently change because a hidden local file is
-  discovered.
-- The current repository still contains historical configs under `configs/v0.0.9/`.
-  Their presence does not make them part of the v0.3 quickstart or supported surface.
+The maintained responsibilities are:
 
-## Runtime and evidence boundaries
+```text
+Data Factory    reader, metadata, selected IDs, datasets, samplers, loaders
+Model Factory   model identity, construction, explicit weights
+Task Factory    task identity, objective, metric lifecycle
+Trainer Factory device, callbacks, checkpoints, fit/test lifecycle
+Pipeline        orchestration, success gating, direct result locations
+```
 
-- `sanity_ok` is bounded functional evidence, not benchmark-performance evidence.
-- The offline Dummy demo verifies configuration, factory construction, training, testing,
-  and result writing. Its metrics are not a scientific baseline.
-- Fair comparison requires the same effective config, code revision, environment, data,
-  split, seed, protocol, metric set, and aggregation rule.
-- The run manifest records the invocation and indexed artifacts, but not every historical
-  Pipeline has equally complete data, protocol, seed, and environment detail.
-- Failure to write the required run record makes a public invocation unsuccessful; richer
-  optional reports may still have Pipeline-specific limitations.
+Legacy `department` and `id` Data Factory implementations remain in the source tree but
+are not suitable for the maintained public configuration surface because they contain
+sample skipping or configuration-rewriting behavior. New work should use the strict
+`default` path.
 
-## Factory compatibility risks
+Historical Model, Task, and Trainer compatibility paths also remain. A compatibility path
+must not convert an internal module error into a misleading “module missing” error or
+return `None` after a construction failure.
 
-- Model, task, and trainer factories still include historical compatibility paths. New
-  work should fail at the source error rather than printing and returning `None`.
-- Checkpoint compatibility must not be inferred from partial `strict=False` loading.
-  Missing, unexpected, and shape-mismatched parameters require explicit policy and user
-  acknowledgement.
-- Dataset-adapter fallback to `Default_dataset` is historical behavior and must be reviewed
-  carefully when adding a new task name.
-- Sampler compatibility must be derived from current runtime behavior and focused tests;
-  stale tables or comments are not release evidence.
+## Results and metrics
 
-## Streamlit scope
+The authoritative maintained lifecycle is:
 
-- The Streamlit workspace is optional and delegates execution to the public CLI.
-- One Streamlit worker manages one active experiment at a time; the UI is not a cluster
-  scheduler or experiment queue.
-- Process detachment, CUDA workers, and operating-system restart behavior have platform
-  limits documented in `apps/streamlit/README.md`.
-- The CLI remains the source of execution semantics when UI and documentation disagree.
+```text
+fit
+-> best checkpoint restore
+-> test
+-> complete finite declared metrics
+-> repeated-run aggregation
+```
 
-## Release blockers intentionally retained
+- A Pipeline returning `None` is not success.
+- Multiple unnamed test populations are rejected rather than silently truncating to the
+  first result.
+- Every seed must report the same non-empty finite metric set.
+- The framework still needs an explicit closure check that every metric declared in the
+  task configuration appears in the final test result.
+- Result directories and direct returned paths are authoritative. A run manifest,
+  attestation, evidence index, receipt, or ledger is not required for scientific success.
 
-The following items are not resolved by ordinary usability refactors:
+## Platform and optional dependencies
 
-- immutable CWRU provider revisions;
-- byte-identical required CWRU file hashes;
-- final GitHub repository rename;
-- version promotion from `0.3.0.dev0` to `0.3.0`;
-- final tag, GitHub Release, and package publication.
+- The main CI environment is Python 3.10 on Ubuntu.
+- CPU smoke uses the PyTorch 2.6 family.
+- Windows, macOS, CUDA, optional models, and external systems do not have complete
+  cross-product coverage.
+- Streamlit, experiment tracking, remote providers, and IoTDB are optional surfaces and
+  must not be imported by the offline core path unless explicitly selected.
+- `phmfactory doctor` checks the bounded first-run environment, not every optional research
+  component.
 
-The current authority is
+## Streamlit
+
+The browser workspace is optional and delegates execution to the public CLI. It is not a
+scheduler. Current UI run records and output scanning are operational conveniences, not
+scientific result authority; the UI should ultimately consume the canonical direct result
+paths returned by the CLI.
+
+## CWRU and IoTDB
+
+- CWRU remains a later local reader/data acceptance target and must not block unrelated
+  development.
+- Provider revision, metadata fields, IDs, shape, channels, sample rate, labels, domains,
+  and reader behavior are the relevant scientific checks.
+- Per-file hashes and cross-provider byte identity are optional diagnostics only.
+- IoTDB is not the default backend and is not part of the current core install or release
+  claim.
+
+The current release-claim authority is
 [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md).

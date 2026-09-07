@@ -1,8 +1,8 @@
 """Inspect a PHMFactory configuration without defining a second resolver.
 
 The script is a presentation adapter over :func:`phmfactory.config.analyze_config`.
-Composition, explicit local configuration, CLI overrides, canonical Pipeline naming, and
-the semantic hash therefore match the real runtime and ``phmfactory preflight``.
+Composition, explicit local configuration, CLI overrides, and canonical Pipeline naming
+therefore match the real runtime and ``phmfactory preflight``.
 """
 
 from __future__ import annotations
@@ -33,7 +33,6 @@ class InspectResult:
     sources: Dict[str, str]
     targets: Dict[str, Any]
     sanity: List[Dict[str, Any]]
-    effective_config_sha256: str
     local_config_path: str | None
 
 
@@ -264,7 +263,6 @@ def inspect_config(
         sources=dict(analysis.sources),
         targets=targets,
         sanity=_sanity_checks(analysis, targets),
-        effective_config_sha256=analysis.effective_config_sha256,
         local_config_path=(
             str(analysis.local_config_path)
             if analysis.local_config_path is not None
@@ -279,7 +277,6 @@ def _has_failed_sanity(result: InspectResult) -> bool:
 
 def _payload(result: InspectResult, dump: DumpMode) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
-        "effective_config_sha256": result.effective_config_sha256,
         "local_config_path": result.local_config_path,
     }
     if dump in ("resolved", "all"):
@@ -295,7 +292,6 @@ def _payload(result: InspectResult, dump: DumpMode) -> Dict[str, Any]:
 
 def _render_md(result: InspectResult, dump: DumpMode) -> str:
     parts = [
-        f"effective_config_sha256: `{result.effective_config_sha256}`",
         f"explicit_local_config: `{result.local_config_path or 'none'}`",
         "",
     ]

@@ -6,11 +6,10 @@ This module owns the complete maintained precedence chain:
 
 Every public caller—run, preflight, inspection, validation, support generation, and the
 optional Streamlit UI—must use :func:`analyze_config` or the compatibility wrapper
-:func:`resolve_config`.  The module deliberately does not import a Pipeline, model,
-task, trainer, or dataset.  It resolves user intent into one immutable analysis object
-without starting training or creating output directories.
+:func:`resolve_config`. The module deliberately does not import a Pipeline, model, task,
+trainer, or dataset before the exact visible experiment has been composed and validated.
 
-Machine-local configuration is never discovered implicitly.  A local YAML file affects
+Machine-local configuration is never discovered implicitly. A local YAML file affects
 an invocation only when the caller supplies it explicitly.
 """
 
@@ -40,6 +39,22 @@ MAINTAINED_PRESETS: dict[str, str] = {
     "cross-system": "configs/demo/02_cross_system/multi_system_cddg.yaml",
     "few-shot": "configs/demo/03_fewshot/cwru_protonet.yaml",
 }
+
+
+def _explicit_source(source: str | Path | None) -> str:
+    """Return one non-empty public config selector or fail without fallback."""
+
+    if source is None:
+        raise ValueError(
+            "An explicit experiment configuration is required. "
+            "Pass a maintained preset name or YAML path."
+        )
+    requested = str(source).strip()
+    if not requested:
+        raise ValueError(
+            "Experiment configuration source must be a non-empty preset name or YAML path."
+        )
+    return requested
 
 
 @dataclass(frozen=True)
@@ -83,7 +98,7 @@ class ConfigDiagnostic:
 class ConfigAnalysis:
     """Immutable description of the exact effective configuration.
 
-    ``effective_config_sha256`` hashes only the canonical effective configuration.  It
+    ``effective_config_sha256`` hashes only the canonical effective configuration. It
     excludes the requested alias, source paths, installation path, and override spelling,
     so semantically identical invocations compare equal across checkouts and entrypoints.
     """
@@ -180,23 +195,43 @@ def semantic_config_sha256(config: Mapping[str, Any]) -> str:
     return sha256(payload).hexdigest()
 
 
+def validate_complete_experiment(config: Mapping[str, Any]) -> None:
+    """Validate one fully composed public experiment without rewriting it.
+
+    Base fragments remain free to contain only their owned block. This function is
+    called only after the public precedence chain has produced a complete experiment.
+    Pydantic is used as an acceptance boundary, not as a second configuration compiler:
+    defaults are not written back and no converted ``model_dump`` replaces the visible
+    mapping.
+    """
+
+    from src.config_schema import ExperimentConfig
+
+    before = deepcopy(config)
+    ExperimentConfig.model_validate(config, strict=True)
+    if config != before:
+        raise RuntimeError(
+            "ExperimentConfig validation mutated the visible effective configuration"
+        )
+
+
 def analyze_config(
-    source: str | Path | None = None,
+    source: str | Path,
     *,
     override_values: Sequence[str] | None = None,
     local_config: str | Path | None = None,
 ) -> ConfigAnalysis:
-    """Resolve one public configuration through the single maintained authority.
+    """Resolve and strictly validate one explicitly selected public experiment.
 
     Parameters
     ----------
     source:
-        Maintained preset name or YAML path.  ``None`` selects ``DEFAULT_CONFIG``.
+        Required maintained preset name or YAML path.
     override_values:
         Repeatable dotted ``key=value`` tokens applied last.
     local_config:
         Optional YAML path applied explicitly between the experiment YAML and CLI
-        overrides.  No default local file is searched when this argument is omitted.
+        overrides. No default local file is searched when this argument is omitted.
 
     Returns
     -------
@@ -205,13 +240,15 @@ def analyze_config(
 
     Raises
     ------
-    FileNotFoundError, TypeError, ValueError, UnicodeError, yaml.YAMLError
-        The original configuration error is propagated; there is no fallback to another
-        config or Pipeline.
+    FileNotFoundError, TypeError, ValueError, UnicodeError, yaml.YAMLError,
+    pydantic.ValidationError
+        The original configuration error is propagated. There is no fallback to another
+        config or Pipeline, and invalid experiments fail before Pipeline import, output
+        creation, or Factory construction.
     """
 
-    requested = str(source or DEFAULT_CONFIG)
-    path = resolve_config_path(source)
+    requested = _explicit_source(source)
+    path = resolve_config_path(requested)
     data, sources, files = _load_recursive_with_sources(
         path,
         stack=(),
@@ -247,6 +284,7 @@ def analyze_config(
     data["pipeline"] = pipeline
 
     effective = _json_compatible(deepcopy(data))
+    validate_complete_experiment(effective)
     return ConfigAnalysis(
         requested=requested,
         path=path,
@@ -262,7 +300,7 @@ def analyze_config(
 
 
 def resolve_config(
-    source: str | Path | None = None,
+    source: str | Path,
     *,
     override_values: Sequence[str] | None = None,
     local_config: str | Path | None = None,
@@ -322,10 +360,10 @@ def _resolve_explicit_local_path(source: str | Path) -> Path:
     )
 
 
-def resolve_config_path(source: str | Path | None) -> Path:
-    """Resolve a public preset or YAML path from a checkout or installed wheel."""
+def resolve_config_path(source: str | Path) -> Path:
+    """Resolve one explicit public preset or YAML path from checkout or wheel."""
 
-    requested = str(source or DEFAULT_CONFIG)
+    requested = _explicit_source(source)
     mapped = MAINTAINED_PRESETS.get(requested, requested)
     try:
         return _resolve_existing_config_path(mapped)

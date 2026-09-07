@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "phmfactory"
-version = "0.3.0.dev0"
+version = "0.3.0rc1"
 description = "Configuration-first PHM research and evaluation framework"
 readme = "README.md"
 requires-python = ">=3.10"

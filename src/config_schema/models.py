@@ -10,9 +10,9 @@ class EnvironmentConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     project: str = Field(..., description="Experiment short name, used in output organization.")
-    seed: int = Field(42, description="Global random seed.")
+    seed: int = Field(..., description="Required global random seed.")
     output_dir: str = Field(..., description="Base output directory (prefer repo-relative).")
-    iterations: int = Field(1, ge=1, description="Repeat runs with different seeds.")
+    iterations: int = Field(..., ge=1, description="Required number of repeated runs.")
     notes: str = Field("", description="Free-form notes.")
 
     @model_validator(mode="after")
@@ -285,7 +285,12 @@ class TrainerConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     name: str = Field(..., description="Trainer implementation name under trainer_factory.")
-    num_epochs: Optional[int] = Field(None, ge=1)
+    num_epochs: int = Field(..., ge=1)
+    device: Literal["cpu", "cuda", "auto"] = Field(...)
+    devices: int = Field(..., ge=1)
+    test_after_fit: Optional[bool] = None
+    monitor: Optional[str] = None
+    monitor_mode: Optional[Literal["min", "max"]] = None
     extensions: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
@@ -293,6 +298,30 @@ class TrainerConfig(BaseModel):
             "hanging under trainer.extensions.*; must be safe to ignore when unsupported."
         ),
     )
+
+    @model_validator(mode="after")
+    def _reject_legacy_aliases(self) -> "TrainerConfig":
+        extras = self.model_extra or {}
+        if "max_epochs" in extras:
+            raise ValueError(
+                "trainer.max_epochs is unsupported; use the single public field "
+                "trainer.num_epochs"
+            )
+        if "gpus" in extras:
+            raise ValueError(
+                "trainer.gpus is unsupported; use the single public field "
+                "trainer.devices"
+            )
+        return self
+
+
+_CLASSIFICATION_LIFECYCLE_PIPELINES = frozenset(
+    {
+        "Pipeline_01_Fault_Diagnosis",
+        "Pipeline_02_Pretraining_Few_Shot",
+        "Pipeline_05_Explainable_Fault_Diagnosis",
+    }
+)
 
 
 class ExperimentConfig(BaseModel):
@@ -309,6 +338,13 @@ class ExperimentConfig(BaseModel):
     def _basic_coupling_checks(self) -> "ExperimentConfig":
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
+        if (
+            self.pipeline in _CLASSIFICATION_LIFECYCLE_PIPELINES
+            and self.trainer.test_after_fit is None
+        ):
+            raise ValueError(
+                f"pipeline={self.pipeline} requires explicit trainer.test_after_fit"
+            )
         split = self.data.split
         if split and split.strategy == "grouped_metadata":
             if self.task.type in {"FS", "GFS"}:

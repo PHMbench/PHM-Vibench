@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import concurrent.futures
+import importlib
 import os
 from pathlib import Path
 import shutil
 from typing import Any
 
 import h5py
+import numpy as np
 from tqdm import tqdm
 
 from .contracts import format_loader_summary, require_nonempty_dataloaders
-from .data_factory import data_factory
+from .data_factory import _cache_directory, data_factory
+from .data_utils import MetadataAccessor, read_metadata_table
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .dataset_task.adapters import resolve_dataset_adapter
 from .splitting import resolve_data_splits
@@ -169,12 +172,50 @@ def _format_split_summary(summary: dict[str, Any]) -> str:
     )
 
 
+def _validate_reader_output(
+    data: Any,
+    *,
+    file_id: Any,
+    file_path: Path,
+) -> np.ndarray:
+    """Validate one successful reader return before publishing derived data."""
+
+    if not isinstance(data, np.ndarray):
+        raise TypeError(
+            f"Reader for ID {file_id} ({file_path}) must return numpy.ndarray; "
+            f"got {type(data).__name__}."
+        )
+    if data.ndim not in {1, 2, 3}:
+        raise ValueError(
+            f"Reader for ID {file_id} ({file_path}) returned shape {data.shape}; "
+            "supported reader ranks are 1, 2, or 3."
+        )
+    if data.size == 0 or any(int(size) <= 0 for size in data.shape):
+        raise ValueError(
+            f"Reader for ID {file_id} ({file_path}) returned empty shape "
+            f"{data.shape}."
+        )
+    if not np.issubdtype(data.dtype, np.number) or np.iscomplexobj(data):
+        raise TypeError(
+            f"Reader for ID {file_id} ({file_path}) must return real numeric "
+            f"samples; got dtype {data.dtype}."
+        )
+    if not np.isfinite(data).all():
+        raise FloatingPointError(
+            f"Reader for ID {file_id} ({file_path}) returned NaN or Inf."
+        )
+    if data.ndim == 2:
+        return np.expand_dims(data, axis=-1)
+    return data
+
+
 class ExplicitDataFactory(data_factory):
     """Build data through explicit adapters and publish only usable data stacks.
 
     Reader behavior, ID selection, windowing, samplers and DataLoaders remain in
     their existing modules. This class owns user-visible boundaries for explicit
-    adapters, complete caches, non-empty loaders, and observable split facts.
+    local metadata, explicit adapters, complete caches, non-empty loaders, and
+    observable split facts.
     """
 
     def __init__(self, args_data, args_task):
@@ -185,6 +226,72 @@ class ExplicitDataFactory(data_factory):
             args_data,
         )
         print(f"[SUCCESS] 数据加载器可用: {format_loader_summary(counts)}")
+
+    def _init_metadata(self, args_data):
+        """Read exactly the local metadata file declared by the user."""
+
+        metadata_path = Path(args_data.data_dir) / str(args_data.metadata_file)
+        metadata_frame = read_metadata_table(
+            metadata_path,
+            encoding=getattr(args_data, "metadata_encoding", None),
+        )
+        metadata = MetadataAccessor(metadata_frame, key_column="Id")
+        print(
+            f"[SUCCESS] 成功加载本地元数据: {metadata_path} "
+            f"({len(metadata)} 条记录)"
+        )
+        return metadata
+
+    def _read_single_data(self, file_id, meta, args_data):
+        """Read one declared raw file without replacing reader exceptions."""
+
+        dataset_name = meta["Name"]
+        file_name = meta["File"]
+        file_path = (
+            Path(args_data.data_dir)
+            / "raw"
+            / str(dataset_name)
+            / str(file_name)
+        )
+        if not file_path.is_file():
+            raise FileNotFoundError(
+                f"Raw data file not found for ID {file_id}: {file_path}"
+            )
+
+        reader = importlib.import_module(
+            f"src.data_factory.reader.{dataset_name}"
+        )
+        data = reader.read(str(file_path), args_data)
+        validated = _validate_reader_output(
+            data,
+            file_id=file_id,
+            file_path=file_path,
+        )
+        return file_id, validated, None
+
+    def _init_data(self, args_data, use_cache=None, max_workers=32):
+        """Read current raw inputs unless cache reuse is explicitly enabled.
+
+        Persistent HDF5 files are derived data, not an authority for the current
+        reader semantics. ``data.use_cache`` therefore defaults to ``False`` on
+        the maintained public path. Users may set it to ``True`` only when the
+        raw files, reader implementation, and reader-relevant configuration are
+        intentionally unchanged.
+        """
+
+        if use_cache is None:
+            use_cache = getattr(args_data, "use_cache", False)
+        if not isinstance(use_cache, bool):
+            raise TypeError(
+                "data.use_cache must be a boolean; omit it or set false to "
+                "re-read current raw inputs, or set true to reuse complete "
+                "derived HDF5 caches explicitly"
+            )
+        return super()._init_data(
+            args_data,
+            use_cache=use_cache,
+            max_workers=max_workers,
+        )
 
     def _update_name_cache(self, name, ids, args_data, max_workers):
         """Read all requested IDs and atomically update one dataset cache."""
@@ -241,7 +348,8 @@ class ExplicitDataFactory(data_factory):
                 f"failed. {details}"
             )
 
-        cache_path = Path(args_data.data_dir) / f"{name}.h5"
+        cache_root = Path(_cache_directory(args_data))
+        cache_path = cache_root / f"{name}.h5"
         temp_path = cache_path.with_name(f".{cache_path.name}.tmp")
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         temp_path.unlink(missing_ok=True)
@@ -282,7 +390,8 @@ class ExplicitDataFactory(data_factory):
             )
 
         expected_keys = {str(file_id) for file_id in expected_ids}
-        cache_path = Path(args_data.data_dir) / "cache.h5"
+        cache_root = Path(_cache_directory(args_data))
+        cache_path = cache_root / "cache.h5"
         temp_path = cache_path.with_name(".cache.h5.tmp")
         cache_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -314,9 +423,7 @@ class ExplicitDataFactory(data_factory):
                         )
                         continue
 
-                    source_path = (
-                        Path(args_data.data_dir) / f"{dataset_name}.h5"
-                    )
+                    source_path = cache_root / f"{dataset_name}.h5"
                     if not source_path.is_file():
                         missing.append(
                             (str(file_id), f"dataset cache not found: {source_path}")

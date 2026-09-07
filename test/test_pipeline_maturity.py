@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from phmfactory import cli
-from phmfactory.config import ConfigAnalysis, semantic_config_sha256
+from phmfactory.config import ConfigAnalysis
 from phmfactory.pipelines import (
     PipelineMaturityError,
     pipeline_descriptor,
     require_pipeline_access,
 )
+from phmfactory.runtime import ExecutionStatus
 
 
 def _analysis(tmp_path: Path, pipeline: str) -> ConfigAnalysis:
@@ -32,12 +32,8 @@ def _analysis(tmp_path: Path, pipeline: str) -> ConfigAnalysis:
         source_files=(path,),
         sources={},
         diagnostics=(),
-        effective_config_sha256=semantic_config_sha256(data),
+        effective_config_sha256="internal-only",
     )
-
-
-def _manifest(args: argparse.Namespace) -> dict:
-    return json.loads(Path(args.run_manifest_path).read_text(encoding="utf-8"))
 
 
 def test_supported_pipeline_requires_no_opt_in() -> None:
@@ -71,7 +67,7 @@ def test_legacy_alias_resolves_to_same_descriptor() -> None:
     )
 
 
-def test_cli_blocks_experimental_before_import_and_writes_failed_manifest(
+def test_cli_blocks_experimental_before_import(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -94,10 +90,11 @@ def test_cli_blocks_experimental_before_import_and_writes_failed_manifest(
     with pytest.raises(PipelineMaturityError):
         cli.run(args)
 
-    payload = _manifest(args)
-    assert payload["status"] == "failed"
-    assert payload["failure"]["stage"] == "maturity"
-    assert payload["failure"]["type"] == "PipelineMaturityError"
+    assert args.execution_envelope.status is ExecutionStatus.FAILED
+    assert args.execution_envelope.failure_stage == "maturity"
+    assert args.execution_envelope.error_type == "PipelineMaturityError"
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "runs").exists()
 
 
 def test_cli_explicit_opt_in_allows_experimental_import(
@@ -109,7 +106,9 @@ def test_cli_explicit_opt_in_allows_experimental_import(
     monkeypatch.setattr(
         cli.importlib,
         "import_module",
-        lambda name: SimpleNamespace(pipeline=lambda args: {"experimental": True}),
+        lambda name: SimpleNamespace(
+            pipeline=lambda args: {"status": "succeeded", "experimental": True}
+        ),
     )
     args = argparse.Namespace(
         config="maturity-test",
@@ -120,9 +119,11 @@ def test_cli_explicit_opt_in_allows_experimental_import(
         allow_experimental=True,
     )
 
-    assert cli.run(args) == {"experimental": True}
+    assert cli.run(args) == {"status": "succeeded", "experimental": True}
     assert args.pipeline_descriptor.maturity == "experimental"
-    assert _manifest(args)["status"] == "succeeded"
+    assert args.execution_envelope.status is ExecutionStatus.SUCCEEDED
+    assert not hasattr(args, "run_manifest_path")
+    assert not (tmp_path / "runs").exists()
 
 
 def test_non_opt_in_descriptors_remain_discoverable() -> None:

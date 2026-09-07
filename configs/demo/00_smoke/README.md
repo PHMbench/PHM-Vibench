@@ -1,30 +1,74 @@
-# Demo: Dummy DG Smoke (`demo_00_smoke_dummy_dg`)
+# Offline Dummy smoke paths
 
-Purpose: one-command end-to-end run using repo-shipped dummy metadata + raw CSV.
+These configurations use repository-shipped metadata and raw CSV files. They require no
+external dataset and exercise the same Data, Task, Trainer, and Pipeline contracts.
 
-## Minimal Run
-
-```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml
-```
-
-## Expected Outputs
-
-- Output base dir: `results/demo/dummy_dg_smoke/`
-- A subfolder `{experiment_name}/iter_0/` with Lightning logs/checkpoints.
-
-## Recommended Overrides
+## ISFM/HSE smoke
 
 ```bash
-python main.py --config configs/demo/00_smoke/dummy_dg.yaml --override trainer.num_epochs=1
+phmfactory --config configs/demo/00_smoke/dummy_dg.yaml
 ```
 
-## Common Pitfalls
+This path uses:
 
-1) Running from a different working directory (paths are repo-relative).
-2) Deleting `data/metadata_dummy.csv`.
-3) Using a very large `data.batch_size` (the smoke dataset is tiny; keep it small, e.g. `4`).
-4) Increasing `data.window_size` beyond the dummy signal length (when using real dummy CSVs).
+```text
+model.type=ISFM
+model.name=M_01_ISFM
+embedding=E_01_HSE
+backbone=B_04_Dlinear
+```
 
-Note:
-- If `data/raw/Dummy_Data/*.csv` is missing, `Dummy_Data` will generate synthetic signals so the smoke demo still runs.
+## Transparent model-replacement smoke
+
+```bash
+phmfactory --config configs/demo/00_smoke/dummy_global_average_linear.yaml
+```
+
+This path changes only the Model Factory configuration:
+
+```text
+model.type=Baseline
+model.name=GlobalAverageLinear
+```
+
+It is the shortest user-visible proof of the replacement invariant:
+
+```text
+replace one model
+=> change only the model configuration
+```
+
+The transparent model averages each `[B, L, C]` window over time and applies one linear
+classification head. It is intended for wiring and protocol diagnosis, not as a claim of
+strong diagnostic accuracy.
+
+## Expected outputs
+
+Each command writes below its declared `environment.output_dir` and produces an iteration
+directory with Lightning logs, a best checkpoint, finite test metrics, and an aggregate
+run summary.
+
+## Input contract
+
+Both paths consume:
+
+```text
+data/metadata_dummy.csv
+data/raw/Dummy_Data/dummy1.csv
+data/raw/Dummy_Data/dummy2.csv
+```
+
+Each signal CSV must contain numeric `ch1` and `ch2` columns in that order. Missing,
+empty, malformed, or non-finite files fail at the reader boundary. PHMFactory does not
+generate substitute signals, guess columns, pad channels, or silently repair the fixture.
+
+## Common failures
+
+1. Running from another working directory while using repository-relative paths.
+2. Deleting the packaged metadata or either signal CSV.
+3. Using a batch size too large for the small smoke dataset.
+4. Increasing `data.window_size` beyond the available signal length.
+5. Setting `model.input_dim` to a value other than the actual two channels.
+
+These are execution smokes. They prove bounded Factory assembly and runtime execution;
+they do not establish real-data benchmark validity or an algorithm-performance claim.

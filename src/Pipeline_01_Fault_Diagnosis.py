@@ -7,6 +7,6 @@ from typing import Any
 from src.runtime import run_classification_pipeline
 
 
-def pipeline(args: Any) -> list[dict[str, Any]]:
-    """Run the standard classification train/test lifecycle."""
+def pipeline(args: Any) -> dict[str, Any]:
+    """Run the standard classification lifecycle and return direct output paths."""
     return run_classification_pipeline(args)

@@ -20,6 +20,10 @@ data:
   batch_size: 256
   num_workers: 8
 
+  # Derived HDF5 is rebuilt from the current raw inputs unless reuse is explicit.
+  use_cache: false
+  cache_dir: "/path/to/derived-cache"
+
   window_size: 4096
   window_sampling_strategy: "evenly_spaced"
   num_window: 64
@@ -33,6 +37,31 @@ data:
   train_noise_snr: null
   evaluation_noise_snr: null
 ```
+
+## Derived HDF5 Cache
+
+`Name.h5` and `cache.h5` are derived acceleration files. They are not an authority for
+what the current reader would produce.
+
+The maintained public Data Factory uses:
+
+```text
+use_cache omitted or false
+→ read the current raw files
+→ rebuild the selected IDs
+→ publish a complete task cache
+
+use_cache true
+→ reuse complete existing HDF5 entries by selected ID
+```
+
+Set `use_cache: true` only when the raw files, reader implementation, and all
+reader-relevant configuration are intentionally unchanged. PHMFactory does not guess
+whether an older cache is scientifically equivalent to the current request.
+
+`cache_dir` changes only where derived HDF5 files are read and written. Metadata and raw
+signals still resolve from `data_dir`. This lets users keep generated cache files outside
+a read-only or shared raw-data directory without changing reader paths.
 
 ## Windowing
 
@@ -99,6 +128,8 @@ data boundary instead of silently returning an unmodified window.
 python main.py --config <yaml> --override data.data_dir=/path/to/PHM-Vibench
 python main.py --config <yaml> --override data.metadata_file=metadata.xlsx
 python main.py --config <yaml> --override data.num_workers=0
+python main.py --config <yaml> --override data.use_cache=true
+python main.py --config <yaml> --override data.cache_dir=/path/to/derived-cache
 ```
 
 ## How to Extend
@@ -116,3 +147,5 @@ python main.py --config <yaml> --override data.num_workers=0
 4. metadata `Name` or raw file path does not resolve.
 5. reader output contains non-numeric, NaN, or Inf values.
 6. requested noise cannot be applied to a zero-power signal.
+7. `use_cache` is not a boolean.
+8. `use_cache: true` is used after raw files, reader code, or read parameters changed.

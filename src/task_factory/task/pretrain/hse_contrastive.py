@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 class task(Default_task):
     """Feature-level HSE contrastive learning with an optional CE objective."""
 
+    _EVAL_AUGMENTATION_STAGE_OFFSETS = {
+        "val": 1_000_003,
+        "test": 2_000_003,
+    }
+
     def __init__(
         self,
         network,
@@ -40,7 +45,11 @@ class task(Default_task):
         self.args_task = args_task
         self.args_model = args_model
         self.args_data = args_data
+        self.args_environment = args_environment
         self.metadata = metadata
+        # hse_contrastive explicitly trains the classification head. This task
+        # identity belongs to the task implementation, not to a missing batch key.
+        self.model_task_id = "classification"
 
         self.contrast_weight = self._validated_weight(
             getattr(args_task, "contrast_weight", 1.0),
@@ -80,17 +89,25 @@ class task(Default_task):
     def _validated_weight(value: Any, name: str) -> float:
         weight = float(value)
         if not math.isfinite(weight) or weight < 0:
-            raise ValueError(f"task.{name} must be a finite non-negative number, got {value!r}.")
+            raise ValueError(
+                f"task.{name} must be a finite non-negative number, got {value!r}."
+            )
         return weight
 
     @staticmethod
     def _require_valid_loss(loss: torch.Tensor, name: str, stage: str) -> None:
         if not torch.is_tensor(loss):
-            raise TypeError(f"{name} must return a torch.Tensor, got {type(loss).__name__}.")
+            raise TypeError(
+                f"{name} must return a torch.Tensor, got {type(loss).__name__}."
+            )
         if loss.numel() != 1:
-            raise ValueError(f"{name} must return one scalar loss, got shape {tuple(loss.shape)}.")
+            raise ValueError(
+                f"{name} must return one scalar loss, got shape {tuple(loss.shape)}."
+            )
         if not torch.isfinite(loss).all():
-            raise FloatingPointError(f"{name} produced a non-finite loss during {stage}.")
+            raise FloatingPointError(
+                f"{name} produced a non-finite loss during {stage}."
+            )
         if stage == "train" and not loss.requires_grad:
             raise RuntimeError(
                 f"{name} is enabled but its training loss does not require gradients."
@@ -119,7 +136,7 @@ class task(Default_task):
         x: torch.Tensor = batch_dict["x"]
         y: torch.Tensor = batch_dict["y"]
         file_id: Any = batch_dict.get("file_id")
-        task_id: str = batch_dict.get("task_id", "classification")
+        task_id = self._resolve_model_task_id(batch_dict)
 
         system_ids: List[int] = []
         if self.classification_weight > 0:
@@ -140,12 +157,25 @@ class task(Default_task):
                 y,
                 system_ids=system_ids,
             )
-            self._require_valid_loss(classification_loss, "classification objective", stage)
+            self._require_valid_loss(
+                classification_loss,
+                "classification objective",
+                stage,
+            )
 
         contrastive_loss = x.new_zeros(())
         if self.contrast_weight > 0:
-            contrastive_loss = self._run_contrastive_flow(features, y)
-            self._require_valid_loss(contrastive_loss, "contrastive objective", stage)
+            contrastive_loss = self._run_contrastive_flow(
+                features,
+                y,
+                stage=stage,
+                batch_idx=batch_idx,
+            )
+            self._require_valid_loss(
+                contrastive_loss,
+                "contrastive objective",
+                stage,
+            )
 
         total_loss = (
             self.classification_weight * classification_loss
@@ -173,7 +203,9 @@ class task(Default_task):
     def _infer_system_ids(self, file_id: Any) -> List[int]:
         """Resolve the unique Dataset IDs for a classification batch."""
         if file_id is None:
-            raise ValueError("hse_contrastive classification requires batch['file_id'].")
+            raise ValueError(
+                "hse_contrastive classification requires batch['file_id']."
+            )
         if self.metadata is None:
             raise ValueError("hse_contrastive classification requires metadata.")
 
@@ -202,12 +234,9 @@ class task(Default_task):
 
     def _prepare_batch(self, batch: Any) -> Dict[str, Any]:
         if isinstance(batch, dict):
-            prepared = dict(batch)
-        else:
-            (x, y), data_name = batch
-            prepared = {"x": x, "y": y, "file_id": data_name}
-        prepared.setdefault("task_id", "classification")
-        return prepared
+            return dict(batch)
+        (x, y), data_name = batch
+        return {"x": x, "y": y, "file_id": data_name}
 
     def _forward_backbone(
         self,
@@ -228,7 +257,9 @@ class task(Default_task):
             )
         logits, features = output[0], output[1]
         if not torch.is_tensor(logits) or not torch.is_tensor(features):
-            raise TypeError("hse_contrastive model outputs must both be torch.Tensor values.")
+            raise TypeError(
+                "hse_contrastive model outputs must both be torch.Tensor values."
+            )
         return logits, self._flatten_features(features)
 
     @staticmethod
@@ -249,13 +280,17 @@ class task(Default_task):
         system_ids: Optional[List[int]] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if not torch.is_tensor(logits) or not torch.is_tensor(y):
-            raise TypeError("classification logits and labels must be torch.Tensor values.")
+            raise TypeError(
+                "classification logits and labels must be torch.Tensor values."
+            )
         if logits.ndim != 2:
             raise ValueError(
                 f"classification logits must have shape [B, C], got {tuple(logits.shape)}."
             )
         if y.ndim != 1:
-            raise ValueError(f"classification labels must have shape [B], got {tuple(y.shape)}.")
+            raise ValueError(
+                f"classification labels must have shape [B], got {tuple(y.shape)}."
+            )
         if logits.device != y.device:
             y = y.to(logits.device)
         if logits.shape[0] != y.shape[0]:
@@ -264,9 +299,13 @@ class task(Default_task):
                 f"logits={logits.shape[0]}, labels={y.shape[0]}."
             )
         if not torch.isfinite(logits).all():
-            raise FloatingPointError("classification logits contain NaN or Inf values.")
+            raise FloatingPointError(
+                "classification logits contain NaN or Inf values."
+            )
         if not torch.isfinite(y).all():
-            raise FloatingPointError("classification labels contain NaN or Inf values.")
+            raise FloatingPointError(
+                "classification labels contain NaN or Inf values."
+            )
 
         y = y.long()
         num_classes = logits.shape[1]
@@ -291,13 +330,18 @@ class task(Default_task):
         self,
         features: torch.Tensor,
         y: torch.Tensor,
+        *,
+        stage: str = "train",
+        batch_idx: int = 0,
     ) -> torch.Tensor:
         if self.strategy_manager is None:
             raise RuntimeError(
                 "The contrastive objective is enabled but no strategy was initialized."
             )
         if not torch.is_tensor(features) or not torch.is_tensor(y):
-            raise TypeError("contrastive features and labels must be torch.Tensor values.")
+            raise TypeError(
+                "contrastive features and labels must be torch.Tensor values."
+            )
 
         features = self._flatten_features(features)
         target_device = features.device
@@ -309,9 +353,13 @@ class task(Default_task):
                 f"features={features.shape[0]}, labels={y.shape[0]}."
             )
         if not torch.isfinite(features).all():
-            raise FloatingPointError("contrastive features contain NaN or Inf values.")
+            raise FloatingPointError(
+                "contrastive features contain NaN or Inf values."
+            )
         if not torch.isfinite(y).all():
-            raise FloatingPointError("contrastive labels contain NaN or Inf values.")
+            raise FloatingPointError(
+                "contrastive labels contain NaN or Inf values."
+            )
 
         labels_ext: Optional[torch.Tensor] = None
         if getattr(self.strategy_manager, "requires_labels", False):
@@ -322,12 +370,17 @@ class task(Default_task):
             y = y.long()
             if int(y.min().item()) < 0:
                 raise ValueError(
-                    f"contrastive labels must be non-negative, got minimum {int(y.min().item())}."
+                    "contrastive labels must be non-negative, got minimum "
+                    f"{int(y.min().item())}."
                 )
             labels_ext = torch.cat([y, y], dim=0)
 
         z1 = features
-        z2 = self._create_augmented_view(features)
+        z2 = self._create_augmented_view(
+            features,
+            stage=stage,
+            batch_idx=batch_idx,
+        )
         z = torch.cat([z1, z2], dim=0)
 
         result = self.strategy_manager.compute_loss(
@@ -339,12 +392,50 @@ class task(Default_task):
         )
         if not isinstance(result, Mapping) or "loss" not in result:
             raise TypeError(
-                "The contrastive strategy must return a mapping containing a 'loss' tensor."
+                "The contrastive strategy must return a mapping containing a "
+                "'loss' tensor."
             )
         return result["loss"]
 
-    def _create_augmented_view(self, features: torch.Tensor) -> torch.Tensor:
-        aug_type = str(getattr(self.args_task, "augmentation_type", "noise")).lower()
+    def _augmentation_generator(
+        self,
+        features: torch.Tensor,
+        *,
+        stage: str,
+        batch_idx: int,
+    ) -> Optional[torch.Generator]:
+        if stage == "train":
+            return None
+        if stage not in self._EVAL_AUGMENTATION_STAGE_OFFSETS:
+            raise ValueError(
+                f"unsupported HSE stage {stage!r}; expected train, val, or test"
+            )
+        if isinstance(batch_idx, bool) or int(batch_idx) != batch_idx or batch_idx < 0:
+            raise ValueError(
+                "HSE evaluation batch_idx must be a non-negative integer, "
+                f"got {batch_idx!r}"
+            )
+
+        base_seed = int(getattr(self.args_environment, "seed", 0))
+        seed = (
+            base_seed
+            + self._EVAL_AUGMENTATION_STAGE_OFFSETS[stage]
+            + int(batch_idx)
+        ) % (2**63 - 1)
+        generator = torch.Generator(device=features.device)
+        generator.manual_seed(seed)
+        return generator
+
+    def _create_augmented_view(
+        self,
+        features: torch.Tensor,
+        *,
+        stage: str = "train",
+        batch_idx: int = 0,
+    ) -> torch.Tensor:
+        aug_type = str(
+            getattr(self.args_task, "augmentation_type", "noise")
+        ).lower()
         allowed = {"none", "noise", "scaling", "dropout", "mixed"}
         if aug_type not in allowed:
             raise ValueError(
@@ -352,41 +443,79 @@ class task(Default_task):
                 f"Available values: {', '.join(sorted(allowed))}."
             )
 
-        noise_std = float(getattr(self.args_task, "augmentation_noise_std", 0.1))
-        dropout_p = float(getattr(self.args_task, "augmentation_dropout_p", 0.1))
-        scale_std = float(getattr(self.args_task, "augmentation_scale_std", 0.1))
+        noise_std = float(
+            getattr(self.args_task, "augmentation_noise_std", 0.1)
+        )
+        dropout_p = float(
+            getattr(self.args_task, "augmentation_dropout_p", 0.1)
+        )
+        scale_std = float(
+            getattr(self.args_task, "augmentation_scale_std", 0.1)
+        )
         if not math.isfinite(noise_std) or noise_std < 0:
-            raise ValueError("task.augmentation_noise_std must be finite and non-negative.")
+            raise ValueError(
+                "task.augmentation_noise_std must be finite and non-negative."
+            )
         if not math.isfinite(scale_std) or scale_std < 0:
-            raise ValueError("task.augmentation_scale_std must be finite and non-negative.")
+            raise ValueError(
+                "task.augmentation_scale_std must be finite and non-negative."
+            )
         if not math.isfinite(dropout_p) or not 0 <= dropout_p < 1:
-            raise ValueError("task.augmentation_dropout_p must satisfy 0 <= p < 1.")
+            raise ValueError(
+                "task.augmentation_dropout_p must satisfy 0 <= p < 1."
+            )
 
+        generator = self._augmentation_generator(
+            features,
+            stage=stage,
+            batch_idx=batch_idx,
+        )
         if aug_type == "none":
             augmented = features.clone()
         else:
             if aug_type == "mixed":
                 candidates = ("noise", "scaling", "dropout")
-                index = torch.randint(len(candidates), (1,), device=features.device).item()
+                index = torch.randint(
+                    len(candidates),
+                    (1,),
+                    device=features.device,
+                    generator=generator,
+                ).item()
                 aug_type = candidates[index]
 
             if aug_type == "dropout":
                 if dropout_p == 0:
                     augmented = features.clone()
                 else:
-                    mask = (torch.rand_like(features) >= dropout_p).to(features.dtype)
-                    augmented = features * mask
+                    mask = torch.rand(
+                        features.shape,
+                        device=features.device,
+                        dtype=features.dtype,
+                        generator=generator,
+                    )
+                    augmented = features * (mask >= dropout_p).to(features.dtype)
             elif aug_type == "scaling":
                 if scale_std == 0:
                     augmented = features.clone()
                 else:
-                    scale = 1.0 + torch.randn_like(features) * scale_std
+                    scale = 1.0 + torch.randn(
+                        features.shape,
+                        device=features.device,
+                        dtype=features.dtype,
+                        generator=generator,
+                    ) * scale_std
                     augmented = features * scale
             else:
                 if noise_std == 0:
                     augmented = features.clone()
                 else:
-                    augmented = features + torch.randn_like(features) * noise_std
+                    noise = torch.randn(
+                        features.shape,
+                        device=features.device,
+                        dtype=features.dtype,
+                        generator=generator,
+                    )
+                    augmented = features + noise * noise_std
 
         if not torch.isfinite(augmented).all():
             raise FloatingPointError("HSE augmentation produced NaN or Inf values.")

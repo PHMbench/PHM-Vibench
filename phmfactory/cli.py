@@ -1,6 +1,6 @@
 """Public command routing and process entrypoints for PHMFactory.
 
-This module exposes a programmatic API and an operating-system process boundary.  Both
+This module exposes a programmatic API and an operating-system process boundary. Both
 consume the same :class:`phmfactory.config.ConfigAnalysis`; neither reparses YAML or
 searches for machine-local configuration after compilation.
 """
@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from phmfactory.commands.common import (
@@ -20,16 +21,16 @@ from phmfactory.commands.common import (
 )
 from phmfactory.config import analyze_config
 from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
-from phmfactory.runtime import (
-    AttestationWriteError,
-    CompiledRunSpec,
-    ExecutionEnvelope,
-    RunAttestation,
-)
-from phmfactory.runtime.evidence import register_pipeline_result_evidence
+from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
 
 
 COMMANDS = ("data", "doctor", "demo", "preflight")
+DIRECT_OUTPUT_KEYS = (
+    "result_dir",
+    "best_checkpoint",
+    "test_metrics",
+    "run_summary",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="PHMFactory task pipeline",
         epilog=(
             "Commands: doctor, demo, preflight, data. "
-            "Compatible experiment form: phmfactory --config <yaml>."
+            "Run an experiment explicitly with phmfactory --config <yaml>."
         ),
     )
     add_config_arguments(parser, include_notes=True, include_experimental=True)
@@ -63,26 +64,35 @@ def _resolve_pipeline(args: argparse.Namespace, config_path: str) -> str:
     ).pipeline
 
 
-def _write_failed_attestation(
-    attestation: RunAttestation,
-    envelope: ExecutionEnvelope,
-    original_error: BaseException,
-) -> None:
-    """Persist terminal failure state without replacing the original exception."""
+def _print_direct_outputs(result: Mapping[str, Any]) -> None:
+    """Print canonical user outputs returned directly by a maintained Pipeline."""
 
-    try:
-        attestation.write(envelope)
-    except AttestationWriteError as write_error:
-        raise write_error from original_error
+    for key in DIRECT_OUTPUT_KEYS:
+        value = result.get(key)
+        if value is not None:
+            print(f"{key}={value}")
+    primary_metrics = result.get("primary_metrics")
+    if isinstance(primary_metrics, Mapping):
+        print(
+            "primary_metrics="
+            + json.dumps(
+                dict(primary_metrics),
+                sort_keys=True,
+                ensure_ascii=True,
+                allow_nan=False,
+            )
+        )
 
 
-def run(args: argparse.Namespace) -> Any:
-    """Analyze, record, authorize, execute, and index one Pipeline invocation.
+def run(args: argparse.Namespace) -> Mapping[str, Any]:
+    """Analyze, authorize, execute, and return one Pipeline invocation.
 
-    Configuration composition occurs exactly once in :func:`analyze_config`.  Protected
+    Configuration composition occurs exactly once in :func:`analyze_config`. Protected
     runtime code receives a mutable copy through ``CompiledRunSpec.runtime_config()``.
-    The function returns the Pipeline's explicit Python result for programmatic callers;
-    process exit handling is owned by :func:`entrypoint`.
+
+    The Pipeline result and exception are the public run authority. A successful run is
+    reported through direct result, checkpoint, metric, and summary paths returned by the
+    Pipeline; PHMFactory does not create a parallel attestation or evidence record.
     """
 
     requested = requested_config(args)
@@ -91,8 +101,7 @@ def run(args: argparse.Namespace) -> Any:
         override_values=args.override,
         local_config=requested_local_config(args),
     )
-    resolved = analysis.to_resolved_config()
-    compiled = CompiledRunSpec.compile(resolved)
+    compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
 
     args.requested_config = requested
     args.config_path = str(analysis.path)
@@ -101,22 +110,10 @@ def run(args: argparse.Namespace) -> Any:
     args.config_analysis = analysis
     args.compiled_run_spec = compiled
     args.resolved_config_data = compiled.runtime_config()
-    args.effective_config_sha256 = analysis.effective_config_sha256
-    args.run_spec_sha256 = compiled.sha256
 
     module_name = pipeline_module_name(analysis.pipeline, warn=False)
     envelope = ExecutionEnvelope(spec=compiled, pipeline_module=module_name)
     args.execution_envelope = envelope
-
-    try:
-        attestation = RunAttestation.prepare(compiled, module_name, envelope)
-    except BaseException as error:
-        envelope.record_failure(error, stage="attestation_prepare")
-        raise
-
-    args.run_attestation = attestation
-    args.run_id = attestation.run_id
-    args.run_manifest_path = str(attestation.manifest_path)
 
     try:
         descriptor = require_pipeline_access(
@@ -126,7 +123,6 @@ def run(args: argparse.Namespace) -> Any:
         )
     except BaseException as error:
         envelope.record_failure(error, stage="maturity")
-        _write_failed_attestation(attestation, envelope, error)
         raise
     args.pipeline_descriptor = descriptor
 
@@ -134,30 +130,11 @@ def run(args: argparse.Namespace) -> Any:
         pipeline_module = importlib.import_module(module_name)
     except BaseException as error:
         envelope.record_failure(error, stage="import")
-        _write_failed_attestation(attestation, envelope, error)
         raise
 
-    try:
-        result = envelope.execute(pipeline_module, args)
-    except BaseException as error:
-        _write_failed_attestation(attestation, envelope, error)
-        raise
-
-    try:
-        register_pipeline_result_evidence(attestation, compiled, result)
-    except BaseException as error:
-        envelope.record_failure(error, stage="evidence_finalize")
-        _write_failed_attestation(attestation, envelope, error)
-        raise
-
-    try:
-        attestation.write(envelope)
-    except AttestationWriteError as error:
-        envelope.record_failure(error, stage="attestation_finalize")
-        raise
-
-    print(f"run_manifest={attestation.manifest_path}")
-    print("完成所有实验！")
+    result = envelope.execute(pipeline_module, args)
+    _print_direct_outputs(result)
+    print("run=completed")
     return result
 
 
@@ -184,10 +161,13 @@ def _run_command(name: str, argv: Sequence[str]) -> Any:
 
 
 def main(argv: Sequence[str] | None = None) -> Any:
-    """Return the structured result of a named command or experiment."""
+    """Return the structured result of a named command or explicit experiment."""
 
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments[:1] and arguments[0] in COMMANDS:
+    if not arguments:
+        build_parser().print_help()
+        return {"status": "help"}
+    if arguments[0] in COMMANDS:
         return _run_command(arguments[0], arguments[1:])
     return run(build_parser().parse_args(arguments))
 
