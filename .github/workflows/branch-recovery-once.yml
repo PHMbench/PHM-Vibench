@@ -7,38 +7,87 @@ permissions:
   contents: write
   pull-requests: read
 jobs:
-  repair_explanation:
+  archive_superseded:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply tested source changes to the existing explanation PR
+      - name: Preserve complete historical chains before removing 18 inactive branch refs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/repair-result
-          test "$(git rev-parse origin/research/phmfactory-llm-explanation-contract-20260905)" = b2669f87a3e5156ab3f498916b8d47192e185b35
-          test "$(git rev-parse origin/dev)" = d478fb9d3a862b4fe8d00094bf753d5e2feda196
+          mkdir -p /tmp/archive-result
+          gh run download 34076542486 --repo "$GITHUB_REPOSITORY" --name branch-recovery-inspection --dir /tmp/inspection
           git config user.name 'PHMFactory maintenance'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git worktree add -b repair-pr223 /tmp/pr223 origin/research/phmfactory-llm-explanation-contract-20260905
-          cd /tmp/pr223
-          git merge --no-edit origin/dev
-          git apply --check "$GITHUB_WORKSPACE/.maintenance/explanation.patch"
-          git apply "$GITHUB_WORKSPACE/.maintenance/explanation.patch"
-          python -m pip install 'pytest>=7'
-          python -m pytest test/test_llm_explanation_contract.py -q | tee /tmp/repair-result/contract-tests.txt
-          python -m py_compile phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_models.py
-          git diff --check
-          git add phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_contract.py test/test_llm_explanation_models.py
-          git commit -m 'fix(explanation): preserve selected inference semantics and reject text coercion'
-          git push origin HEAD:refs/heads/research/phmfactory-llm-explanation-contract-20260905
-          git rev-parse HEAD > /tmp/repair-result/head.txt
-          git diff origin/dev..HEAD --stat > /tmp/repair-result/diff.txt
+          python - <<'PY'
+          import csv,json,os,subprocess
+          from pathlib import Path
+          repo=os.environ['GITHUB_REPOSITORY']
+          out=Path('/tmp/archive-result')
+          groups={
+              'archive/v030-cleanup-source-20260907': ['agent/v030-agent-root-cleanup-batch1','agent/v030-agent-hidden-cleanup-batch2','agent/v030-module-agent-doc-inventory-batch3','agent/v030-reader-doc-neutralization-batch4','agent/v030-submodule-inventory-batch5','agent/v030-remove-personal-submodules-batch6','agent/v030-remove-dev-history-batch7'],
+              'archive/v030-docs-source-20260907': ['docs/user-onboarding-20260714','docs/documentation-audit-20260714','docs/contribution-policy-20260714','docs/factory-guides-validation-20260714','docs/archive-boundary-20260714'],
+              'archive/v030-release-docs-source-20260907': ['agent/v030-release-readiness-pr12','agent/v030-release-docs-pr12b'],
+              'archive/v030-release-metadata-source-20260907': ['agent/v030-release-metadata-pr12a'],
+              'archive/v030-submodule-source-20260907': ['agent/v030-submodule-governance-pr10b','agent/v030-submodule-governance-validation'],
+              'archive/pr40-full-slim-a4143f2': ['cleanup/repo-slim-2026-07-09'],
+          }
+          def run(*args): return subprocess.check_output(args,text=True).strip()
+          def api_list(path):
+              pages=json.loads(run('gh','api','--paginate','--slurp',f'repos/{repo}/{path}'))
+              return [item for page in pages for item in page]
+          inspected={r['branch']:r for r in csv.DictReader(open('/tmp/inspection/branches.tsv'),delimiter='\t')}
+          live={b['name']:b for b in api_list('branches?per_page=100')}
+          active={'main','dev','maintenance/branch-recovery-20260907'}
+          for p in api_list('pulls?state=open&per_page=100'):
+              active.add(p['base']['ref'])
+              if p['head']['repo']['full_name']==repo: active.add(p['head']['ref'])
+          command=['git','push','--atomic']
+          targets={}
+          completed=[]
+          for tag,names in groups.items():
+              tip=inspected[names[-1]]['tip']
+              existing=subprocess.run(['git','show-ref','--verify','--quiet',f'refs/tags/{tag}'])
+              if existing.returncode==0:
+                  tip=run('git','rev-parse',f'refs/tags/{tag}^{{commit}}')
+              elif existing.returncode==1:
+                  subprocess.run(['git','tag','-a',tag,tip,'-m','Superseded preparation history, archived on 2026-09-07. Historical claims and instructions are not current PHMFactory guidance.'],check=True)
+              else: raise RuntimeError('Cannot inspect archive tag')
+              targets[tag]=tip
+              for name in names:
+                  expected=inspected[name]['tip']
+                  if name in active or name not in live or live[name]['protected'] or live[name]['commit']['sha']!=expected:
+                      raise RuntimeError(f'Branch changed, protected, missing, or active: {name}')
+                  subprocess.run(['git','merge-base','--is-ancestor',expected,tip],check=True)
+                  for base in ['origin/main','origin/dev']:
+                      p=subprocess.run(['git','grep','-I','-l','-F',name,base,'--','.github','README.md','README_CN.md','CORE.md','CONTRIBUTING.md','CONTRIBUTING_CN.md','configs','phmfactory','src','docs','paper/project',':(exclude)docs/archive'],capture_output=True,text=True)
+                      if p.returncode!=1:
+                          raise RuntimeError(f'Current reference or grep failure for {name}: {p.stdout} {p.stderr}')
+                  command.append(f'--force-with-lease=refs/heads/{name}:{expected}')
+                  completed.append([name,expected,'ARCHIVED_AND_DELETED',tag])
+          if len(completed)!=18: raise RuntimeError('Unexpected batch size')
+          command.append('origin')
+          command.extend(f'refs/tags/{tag}:refs/tags/{tag}' for tag in targets)
+          command.extend(f':refs/heads/{row[0]}' for row in completed)
+          subprocess.run(command,check=True)
+          remaining=api_list('branches?per_page=100')
+          remaining_names={b['name'] for b in remaining}
+          if any(row[0] in remaining_names for row in completed): raise RuntimeError('Deletion not reflected remotely')
+          for tag,tip in targets.items():
+              actual=run('git','ls-remote','origin',f'refs/tags/{tag}^{{}}')
+              if not actual or actual.split()[0]!=tip: raise RuntimeError(f'Archive unavailable: {tag}')
+          with (out/'completed-archive-actions.tsv').open('w') as f:
+              w=csv.writer(f,delimiter='\t',lineterminator='\n');w.writerow(['branch','original_tip','action','retained_at']);w.writerows(completed)
+          (out/'remaining-branches.json').write_text(json.dumps(remaining,indent=2))
+          print(f'Archived 18 branch refs under five new tags and one existing tag; remaining refs: {len(remaining)}.')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: explanation-repair-result
-          path: /tmp/repair-result/
-          retention-days: 30
+          name: historical-archive-completed
+          path: /tmp/archive-result/
+          retention-days: 90
