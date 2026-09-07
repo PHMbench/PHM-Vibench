@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-06 — Maintainer-approved dev-to-main upgrade
+
+Promote the complete `dev@9c0672f4` history into `main` through an ancestry-preserving
+merge. The maintainer confirmed that THU validation was completed in the linked work
+session and explicitly approved this promotion. The upgrade includes the installed-wheel
+Dummy first run, strict public configuration, explicit device selection, isolated run
+roots, and direct result paths.
+
+See [`doc/changelog/2026-09-05-dev-to-main.md`](doc/changelog/2026-09-05-dev-to-main.md)
+for the validation source, migration details, and scope. Research PR #223 is excluded.
+THU is not re-downloaded or rerun; existing regression checks still run on the promotion
+candidate. No numerical evidence is invented. The MFPT registry status and automated
+publication gate remain unchanged; this source merge does not create a tag, GitHub Release,
+or package-index publication.
+
+## 2026-09-05 — Plan A upgrade preparation
+
+PR #224 recorded the initial upgrade scope and THU local-validation confirmation. The
+subsequent maintainer acceptance and promotion are documented in the entry above.
+
 ## v0.3.0-rc1 - Current source candidate
 
 PHMFactory remains versioned as `0.3.0rc1` in `PHMbench/PHM-Vibench`. This is a source

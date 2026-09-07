@@ -23,6 +23,7 @@ paper-branch validator is superseded by the maintained
 ## Evidence boundary
 
 Do not merge either old paper branch wholesale: they carry obsolete
-`.gitmodules` state and historical paper gitlink deletions. Positive claims
-still require fresh, hash-bound runs recorded by the corresponding paper
-repository.
+`.gitmodules` state and historical paper gitlink deletions. Performance and explanation claims require current-source experiments recorded
+by the corresponding paper repository: exact configuration, data population,
+split, selected checkpoint, estimators, seeds, and results. A source snapshot
+or a valid identifier alone does not establish a scientific result.
