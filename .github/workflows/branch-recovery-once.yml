@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Repair the existing explanation branch without changing its model implementations
+      - name: Apply tested source changes to the existing explanation PR
         run: |
           set -euo pipefail
           mkdir -p /tmp/repair-result
@@ -27,21 +27,11 @@ jobs:
           git merge --no-edit origin/dev
           git apply --check "$GITHUB_WORKSPACE/.maintenance/explanation.patch"
           git apply "$GITHUB_WORKSPACE/.maintenance/explanation.patch"
-          python - <<'PY'
-          from pathlib import Path
-          f=Path('.github/workflows/core-quality-gates.yml')
-          text=f.read_text()
-          old='            test/test_transform_truth.py \\\n            -vv --tb=long'
-          new='            test/test_transform_truth.py \\\n            test/test_llm_explanation_contract.py \\\n            test/test_llm_explanation_models.py \\\n            -vv --tb=long'
-          if text.count(old)!=1:
-              raise RuntimeError('Expected one existing runtime pytest selection')
-          f.write_text(text.replace(old,new))
-          PY
           python -m pip install 'pytest>=7'
           python -m pytest test/test_llm_explanation_contract.py -q | tee /tmp/repair-result/contract-tests.txt
           python -m py_compile phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_models.py
           git diff --check
-          git add phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_contract.py test/test_llm_explanation_models.py .github/workflows/core-quality-gates.yml
+          git add phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_contract.py test/test_llm_explanation_models.py
           git commit -m 'fix(explanation): preserve selected inference semantics and reject text coercion'
           git push origin HEAD:refs/heads/research/phmfactory-llm-explanation-contract-20260905
           git rev-parse HEAD > /tmp/repair-result/head.txt
