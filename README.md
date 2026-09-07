@@ -92,6 +92,30 @@ Machine-specific values are read only from an explicitly supplied `--local-confi
 Configuration composition and precedence are documented in
 [`configs/README.md`](configs/README.md).
 
+## Project structure
+
+```text
+PHM-Vibench/
+├── phmfactory/           # Public commands and configuration entrypoint
+├── configs/              # Demo and research experiment configurations
+├── src/
+│   ├── data_factory/     # Readers, datasets, sampling and loaders
+│   ├── model_factory/    # Models and representation modules
+│   ├── task_factory/     # Objectives, metrics and optimization
+│   ├── trainer_factory/  # Devices, callbacks and model selection
+│   └── runtime/          # Experiment execution
+├── data/                 # Bundled Dummy data and data-layout guide
+├── test/                 # Runtime and component tests
+├── apps/streamlit/       # Optional browser workspace
+├── docs/                 # User and developer guides
+├── doc/changelog/        # Upgrade notes
+└── paper/project/        # Research source and migration notes
+```
+
+Start with `configs/` to run an experiment and the relevant Factory to add a
+component. Run outputs are written to the paths printed by the command, not to a
+fixed directory implied by this tree.
+
 ## Runtime structure
 
 ```text
@@ -169,6 +193,60 @@ reason; they should not restate the code.
 
 Routine work starts from current `dev` and targets `dev`. Read [`CORE.md`](CORE.md) and
 [`CONTRIBUTING.md`](CONTRIBUTING.md) before broad changes.
+
+## Publications and research
+
+### Project paper
+
+Qi Li, Bojian Chen, Xuan Li, Qitong Chen, Liang Chen, Changqing Shen, Lu Lu,
+Zhaoye Qin, and Fulei Chu.
+**[PHM-Vibench: A Unified and Factory-Style Vibration Benchmarking Framework for the Foundation Model Era](https://papers.phmsociety.org/index.php/phmap/article/view/4303)**.
+*PHM Society Asia-Pacific Conference*, 5(1), 2025 proceedings;
+published online January 13, 2026. DOI: [10.36001/phmap.2025.v5i1.4303](https://doi.org/10.36001/phmap.2025.v5i1.4303).
+
+The paper describes PHM-Vibench. For capabilities of the current PHMFactory source,
+use the [supported combinations](SUPPORTED_COMBINATIONS.md) and [known limitations](KNOWN_LIMITATIONS.md).
+
+### Related method
+
+Qi Li, Bojian Chen, Qitong Chen, Xuan Li, Zhaoye Qin, and Fulei Chu.
+**[HSE: A plug-and-play module for unified fault diagnosis foundation models](https://doi.org/10.1016/j.inffus.2025.103277)**.
+*Information Fusion*, 123, 103277, 2025.
+
+HSE is listed as a related representation method, not as a claim that all published
+experiments used the current software. In-progress work and historical paper sources
+are separate from published results; see [research source notes](paper/project/README.md).
+
+### Research using PHMFactory
+
+To add a study, [open an issue](https://github.com/PHMbench/PHM-Vibench/issues) with its
+publication link, code or experiment configuration, and the software version used.
+Only studies with a documented use of this project belong in this category.
+
+## Roadmap
+
+| Stage | Focus |
+| --- | --- |
+| Available | Configuration-first CLI, offline Dummy first run, and direct result paths |
+| Next | Complete declared metrics and result semantics; requalify the real-data reference experiment |
+| Research | Evaluate interpretable-model explanation and heterogeneous-signal extensions before promoting them to maintained examples |
+
+[Upgrade notes](doc/changelog/) record completed changes.
+[Release readiness](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md) records current blockers.
+Research candidates are not release promises.
+
+## Contributors and community
+
+Core project contributors include [Qi Li](https://github.com/liq22) and
+[Xuan Li](https://github.com/Xuan423). See [all contributors](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
+for the full contribution history.
+
+Use [Issues](https://github.com/PHMbench/PHM-Vibench/issues) for reproducible bugs and
+bounded feature proposals, and [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)
+for usage questions and research ideas. Contributions follow the
+[contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md).
+
+[Star history](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
 
 ## Citation and license
 
