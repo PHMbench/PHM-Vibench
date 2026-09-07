@@ -9,9 +9,11 @@ doc/migration/
 doc/release/
 ```
 
-[`doc/README.md`](doc/README.md) is the maintained index. Root-level release checks,
-workflow path filters, and current documentation links were updated with the move. The
-historical audit records under `docs/archive/` retain their original path statements.
+[`doc/README.md`](doc/README.md) is the maintained index. Current documentation links
+now point to the organized files. Short compatibility pages at the four former root paths
+keep existing external links, release checks, and workflow path filters valid without
+duplicating the document bodies. Historical audit records under `docs/archive/` retain
+their original path statements.
 
 ## 2026-09-06 — Maintainer-approved dev-to-main upgrade
 
