@@ -4,144 +4,74 @@ on:
     branches: [maintenance/branch-recovery-20260907]
     paths: [.github/workflows/branch-recovery-once.yml]
 permissions:
-  contents: write
+  contents: read
   pull-requests: read
 jobs:
-  recover:
+  inspect_remaining:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
-      - name: Load the completed read-only inspection
+          persist-credentials: false
+      - name: Inspect retained histories and export exact sources for focused tests
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          mkdir -p /tmp/source-review/current /tmp/source-review/pr223
           gh run download 34076542486 --repo "$GITHUB_REPOSITORY" --name branch-recovery-inspection --dir /tmp/inspection
-          mkdir -p /tmp/recovery-result
-          test "$(git rev-parse origin/main)" = 606c10bbb75fc565f7abb071e957bf631c2be5bb
-          test "$(git rev-parse origin/dev)" = 606c10bbb75fc565f7abb071e957bf631c2be5bb
-          git config user.name 'PHMFactory maintenance'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-      - name: Restore the project documentation on a separate topic branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git worktree add -b docs/project-homepage-recovery-20260907 /tmp/homepage origin/dev
-          cd /tmp/homepage
-          python -m scripts.validate_docs > /tmp/recovery-result/docs-before.txt
-          python "$GITHUB_WORKSPACE/.maintenance/restore_project_docs.py"
-          python -m scripts.validate_docs > /tmp/recovery-result/docs-after.txt
+          git archive origin/dev phmfactory src test configs scripts/validate_docs.py scripts/validate_configs.py README.md README_CN.md pyproject.toml .github/workflows | tar -x -C /tmp/source-review/current
+          git archive b2669f87a3e5156ab3f498916b8d47192e185b35 phmfactory/explanation test/test_llm_explanation_contract.py docs/LLM_EXPLANATION_INTEGRATION.md | tar -x -C /tmp/source-review/pr223
           python - <<'PY'
+          import csv,subprocess
           from pathlib import Path
-          from scripts.validate_docs import check_local_links
-          issues=check_local_links(Path.cwd(), [Path('README.md'),Path('README_CN.md'),Path('paper/project/README.md')])
-          if issues:
-              raise SystemExit(str(issues))
-          for name in ['README.md','README_CN.md']:
-              text=Path(name).read_text()
-              assert '10.36001/phmap.2025.v5i1.4303' in text
-              assert '10.1016/j.inffus.2025.103277' in text
-              assert 'secret=' not in text and '<iframe' not in text
-          print('Both homepages and the paper note have valid local links.')
-          PY
-          git diff --check
-          git add README.md README_CN.md paper/project/README.md doc/changelog/2026-09-07-project-homepage.md
-          git commit -m 'docs: restore project structure, publications and community'
-          git push origin HEAD:refs/heads/docs/project-homepage-recovery-20260907
-          git diff origin/dev..HEAD --stat > /tmp/recovery-result/docs-diff.txt
-          git rev-parse HEAD > /tmp/recovery-result/docs-head.txt
-      - name: Archive explicit historical snapshots and delete merged unused refs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import csv,json,os,subprocess
-          from pathlib import Path
-          repo=os.environ['GITHUB_REPOSITORY']
-          out=Path('/tmp/recovery-result')
-          def run(*args):
-              return subprocess.check_output(args,text=True).strip()
-          def api(path):
-              return json.loads(run('gh','api',f'repos/{repo}/{path}'))
+          out=Path('/tmp/source-review')
+          def git(*args): return subprocess.check_output(['git',*args],text=True).strip()
+          def ancestor(a,b):
+              p=subprocess.run(['git','merge-base','--is-ancestor',a,b])
+              if p.returncode not in (0,1): raise RuntimeError('git ancestry failed')
+              return p.returncode==0
+          main=git('rev-parse','origin/main')
+          all_refs=git('for-each-ref','--format=%(refname)','refs/remotes/origin','refs/tags').splitlines()
+          stable=[r for r in all_refs if not r.startswith('refs/remotes/origin/maintenance/') and not r.startswith('refs/remotes/origin/docs/project-homepage') and r!='refs/remotes/origin/HEAD']
+          tips={r:git('rev-parse',f'{r}^{{commit}}') for r in stable}
           rows=list(csv.DictReader(open('/tmp/inspection/branches.tsv'),delimiter='\t'))
-          refs={line.split('\t',1)[0] for line in Path('/tmp/inspection/name-references.tsv').read_text().splitlines()}
-          expected={r['branch']:r for r in rows}
-          selected=[r for r in rows if r['decision'] in ('DELETE_ANCESTOR_MAIN','DELETE_MERGED_PR') and r['branch'] not in refs]
-          if len(selected)!=145:
-              raise RuntimeError(f'Reviewed batch must contain 145 refs, got {len(selected)}')
-          archive={
-              'archive/pipeline06-source-7b97deb':'archive/pipeline06-source-20260705',
-              'archive/pipeline06-source-20260705-7b97deb':'archive/pipeline06-source-20260705',
-              'candidate/v0.2.0-repo-convergence-20260707':'archive/v0.2.0-repo-convergence-20260707',
-              'archive/p05-g050-engine-worktree-20260812':'archive/p05-g050-engine-worktree-20260812',
-          }
-          selected += [expected[name] for name in archive]
-          if api('git/ref/heads/main')['object']['sha']!='606c10bbb75fc565f7abb071e957bf631c2be5bb' or api('git/ref/heads/dev')['object']['sha']!='606c10bbb75fc565f7abb071e957bf631c2be5bb':
-              raise RuntimeError('Retained branch moved; inspect again before deletion')
-          live=json.loads(run('gh','api','--paginate','--slurp',f'repos/{repo}/branches?per_page=100'))
-          live={b['name']:b for page in live for b in page}
-          prs=json.loads(run('gh','api','--paginate','--slurp',f'repos/{repo}/pulls?state=open&per_page=100'))
-          active={'main','dev','maintenance/branch-recovery-20260907','docs/project-homepage-recovery-20260907'}
-          for page in prs:
-              for pr in page:
-                  active.add(pr['base']['ref'])
-                  if pr['head']['repo']['full_name']==repo: active.add(pr['head']['ref'])
-          command=['git','push','--atomic']
-          tag_targets={}
-          for row in selected:
-              name,tip=row['branch'],row['tip']
-              if name in active or name not in live or live[name]['protected'] or live[name]['commit']['sha']!=tip:
-                  raise RuntimeError(f'Ref is active, protected, missing, or changed: {name}')
-              if name in refs:
-                  raise RuntimeError(f'Ref still has a current name reference: {name}')
-              command.append(f'--force-with-lease=refs/heads/{name}:{tip}')
-              if name in archive:
-                  tag=archive[name]
-                  if tag in tag_targets and tag_targets[tag]!=tip:
-                      raise RuntimeError(f'Conflicting archive targets: {tag}')
-                  tag_targets[tag]=tip
-          for tag,tip in tag_targets.items():
-              existing=subprocess.run(['git','show-ref','--verify','--quiet',f'refs/tags/{tag}'])
-              if existing.returncode==0:
-                  if run('git','rev-parse',f'refs/tags/{tag}^{{commit}}')!=tip:
-                      raise RuntimeError(f'Archive tag already exists at another commit: {tag}')
-              elif existing.returncode==1:
-                  subprocess.run(['git','tag','-a',tag,tip,'-m','Historical research snapshot; not a maintained runtime or validated benchmark. Archived during user-requested branch cleanup on 2026-09-07.'],check=True)
-              else:
-                  raise RuntimeError(f'Cannot inspect tag: {tag}')
-          command.append('origin')
-          command.extend(f'refs/tags/{tag}:refs/tags/{tag}' for tag in tag_targets)
-          command.extend(f':refs/heads/{r["branch"]}' for r in selected)
-          subprocess.run(command,check=True)
-          after=json.loads(run('gh','api','--paginate','--slurp',f'repos/{repo}/branches?per_page=100'))
-          after=[b for page in after for b in page]
-          after_names={b['name'] for b in after}
-          if any(r['branch'] in after_names for r in selected):
-              raise RuntimeError('Deleted branch still listed')
-          for tag,tip in tag_targets.items():
-              remote=run('git','ls-remote','origin',f'refs/tags/{tag}^{{}}')
-              if not remote or remote.split()[0]!=tip:
-                  raise RuntimeError(f'Archive tag cannot be resolved: {tag}')
-          with (out/'completed-branch-actions.tsv').open('w') as f:
-              writer=csv.writer(f,delimiter='\t',lineterminator='\n')
-              writer.writerow(['branch','original_tip','action','retained_at','merged_pr'])
-              for r in selected:
-                  name=r['branch']
-                  writer.writerow([name,r['tip'],'ARCHIVED_AND_DELETED' if name in archive else 'DELETED_MERGED',archive.get(name,'main' if r['decision']=='DELETE_ANCESTOR_MAIN' else f'pull/{r["pr"]}/head'),r['pr']])
-          (out/'remaining-branches.json').write_text(json.dumps(after,indent=2))
-          summary=f'Deleted 145 merged/unreferenced branches. Archived four historical branch refs under three native tags, then deleted their branch refs. Remaining branches: {len(after)} (including two task branches).'
-          print(summary)
-          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f: f.write(summary+'\n')
+          relationships=[]
+          content=[]
+          for row in rows:
+              if not row['decision'].startswith('HOLD'): continue
+              branch,tip=row['branch'],row['tip']
+              own='refs/remotes/origin/'+branch
+              if own not in tips: continue
+              descendants=[r for r,t in tips.items() if r!=own and ancestor(tip,t)]
+              relationships.append([branch,tip,';'.join(descendants)])
+              if row['merge_bases']=='1':
+                  base=git('merge-base',main,tip)
+                  paths=git('diff','--name-only',base,tip).splitlines()
+                  p=subprocess.run(['git','diff','--quiet',tip,main,'--',*paths])
+                  if p.returncode not in (0,1): raise RuntimeError('git diff failed')
+                  content.append([branch,'IDENTICAL_TOUCHED_PATHS' if p.returncode==0 else 'HAS_DIFFERENT_PATHS',len(paths)])
+          for name,header,data in [('preserved-descendants.tsv',['branch','tip','descendant_refs'],relationships),('content-equivalence.tsv',['branch','comparison','touched_paths'],content)]:
+              with (out/name).open('w') as f:
+                  w=csv.writer(f,delimiter='\t',lineterminator='\n'); w.writerow(header);w.writerows(data)
+          for branch in ['lq_merge_UXFD','research/2025-2026-method-expansion-current']:
+              tip=git('rev-parse','origin/'+branch)
+              bases=git('merge-base','--all',main,tip).splitlines()
+              if len(bases)!=1: raise RuntimeError('Expected one source base for focused extraction')
+              paths=git('diff','--name-only',bases[0],tip).splitlines()
+              with (out/(branch.replace('/','_')+'-paths.tsv')).open('w') as f:
+                  for path in paths:
+                      p=subprocess.run(['git','diff','--quiet',tip,main,'--',path])
+                      if p.returncode not in (0,1): raise RuntimeError('git diff failed')
+                      f.write(path+'\t'+('IDENTICAL' if p.returncode==0 else 'DIFFERENT')+'\n')
+          (out/'bases.txt').write_text('main='+main+'\ndev='+git('rev-parse','origin/dev')+'\n')
+          print('Read-only content and descendant inspection complete.')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: branch-recovery-completed
-          path: /tmp/recovery-result/
-          retention-days: 90
+          name: retained-source-review
+          path: /tmp/source-review/
+          retention-days: 14
