@@ -39,6 +39,19 @@ Current behavior is defined by the latest code and tests. `CORE.md` records the 
 engineering and scientific constraints. Do not create another plan hierarchy or repeat
 the same contract in new documents.
 
+## Version, migration, and release records
+
+- [Version-document index](../doc/README.md)
+- [Root changelog](../CHANGELOG.md)
+- [v0.1.x to v0.2.0 migration](../doc/migration/MIGRATION_v0.1_to_v0.2.md)
+- [v0.2 to v0.3 migration](../doc/migration/MIGRATION_v0.2_to_v0.3.md)
+- [v0.2.0 release-candidate notes](../doc/release/RELEASE_NOTES_v0.2.0.md)
+- [v0.3.0 release notes](../doc/release/RELEASE_NOTES_v0.3.0.md)
+
+`doc/changelog/` records dated changes that were actually completed. Migration guides and
+release notes are version-specific records; they do not override current code, tests, or
+release-readiness checks.
+
 ## Support and release
 
 - [Configuration registry](../configs/config_registry.csv)
@@ -46,10 +59,9 @@ the same contract in new documents.
 - [Supported combinations](../SUPPORTED_COMBINATIONS.md)
 - [Known limitations](../KNOWN_LIMITATIONS.md)
 - [Release readiness](PHMFACTORY_V0_3_RELEASE_READINESS.md)
-- [v0.2 to v0.3 migration](../MIGRATION_v0.2_to_v0.3.md)
 
-The source version is `0.3.0rc1`, but the release gate remains blocked until a current
-real-data experiment is requalified as `baseline_valid`.
+The source version is `0.3.0rc1`. Source integration, benchmark promotion, version tags,
+and package publication remain separate decisions.
 
 ## Optional and experimental paths
 
@@ -80,6 +92,7 @@ plans are preserved by Git history rather than kept beside current user document
 | Scientific and engineering constraints | `CORE.md` |
 | Maintained config inventory | `configs/config_registry.csv` |
 | Current limitations | `KNOWN_LIMITATIONS.md` |
+| Version history | `CHANGELOG.md`, `doc/` |
 | Release blockers | `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md` |
 | Contribution and tests | `CONTRIBUTING.md`, `docs/testing.md` |
 | Streamlit behavior | `apps/streamlit/README.md` |

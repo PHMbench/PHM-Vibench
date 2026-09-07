@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-07 — Organize version documents under `doc/`
+
+Version-specific migration guides and release notes now live under:
+
+```text
+doc/migration/
+doc/release/
+```
+
+[`doc/README.md`](doc/README.md) is the maintained index. Current documentation links
+now point to the organized files. Short compatibility pages at the four former root paths
+keep existing external links, release checks, and workflow path filters valid without
+duplicating the document bodies. Historical audit records under `docs/archive/` retain
+their original path statements.
+
 ## 2026-09-06 — Maintainer-approved dev-to-main upgrade
 
 Promote the complete `dev@9c0672f4` history into `main` through an ancestry-preserving
@@ -57,14 +72,15 @@ See:
 - [`README.md`](README.md)
 - [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md)
 - [`docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)
-- [`RELEASE_NOTES_v0.3.0.md`](RELEASE_NOTES_v0.3.0.md)
+- [`doc/release/RELEASE_NOTES_v0.3.0.md`](doc/release/RELEASE_NOTES_v0.3.0.md)
 
 ## v0.2.0 Release Candidate - 2026-07-11
 
 ### Added
 
 - Release gate documents for v0.2.0:
-  `RELEASE_NOTES_v0.2.0.md`, `MIGRATION_v0.1_to_v0.2.md`,
+  `doc/release/RELEASE_NOTES_v0.2.0.md`,
+  `doc/migration/MIGRATION_v0.1_to_v0.2.md`,
   `SUPPORTED_COMPONENTS.md`, `SUPPORTED_COMBINATIONS.md`, and
   `KNOWN_LIMITATIONS.md`.
 - Registry trace for the maintained `FS,classification` demo task via
