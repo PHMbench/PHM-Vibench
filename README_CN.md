@@ -86,6 +86,29 @@ phmfactory \
 本机专用配置只有通过 `--local-config` 显式传入时才生效。配置组合与优先级见
 [`configs/README.md`](configs/README.md)。
 
+## 项目结构
+
+```text
+PHM-Vibench/
+├── phmfactory/           # 公共命令与配置入口
+├── configs/              # 示例和研究实验配置
+├── src/
+│   ├── data_factory/     # 数据读取、数据集、采样与加载
+│   ├── model_factory/    # 模型与表示模块
+│   ├── task_factory/     # 目标函数、指标与优化策略
+│   ├── trainer_factory/  # 设备、回调与模型选择
+│   └── runtime/          # 实验执行
+├── data/                 # 内置 Dummy 数据与数据布局说明
+├── test/                 # 运行路径与组件测试
+├── apps/streamlit/       # 可选浏览器工作区
+├── docs/                 # 用户与开发文档
+├── doc/changelog/        # 升级记录
+└── paper/project/        # 研究源码与迁移说明
+```
+
+运行实验从 `configs/` 开始；新增组件从相应 Factory 开始。实验结果以命令返回的实际路径
+为准，目录树不规定固定的结果保存位置。
+
 ## 运行结构
 
 ```text
@@ -158,6 +181,56 @@ DELETE → INLINE → MERGE → SIMPLIFY → DOCUMENT → ADD
 
 常规工作从最新 `dev` 创建并合入 `dev`。广泛修改前先阅读 [`CORE.md`](CORE.md)和
 [`CONTRIBUTING_CN.md`](CONTRIBUTING_CN.md)。
+
+## 论文与研究
+
+### 项目论文
+
+Qi Li, Bojian Chen, Xuan Li, Qitong Chen, Liang Chen, Changqing Shen, Lu Lu,
+Zhaoye Qin, Fulei Chu.
+**[PHM-Vibench: A Unified and Factory-Style Vibration Benchmarking Framework for the Foundation Model Era](https://papers.phmsociety.org/index.php/phmap/article/view/4303)**.
+*PHM Society Asia-Pacific Conference*, 5(1)，2025 年会议论文集；
+在线发表日期为 2026 年 1 月 13 日。DOI：[10.36001/phmap.2025.v5i1.4303](https://doi.org/10.36001/phmap.2025.v5i1.4303)。
+
+该论文介绍 PHM-Vibench。当前 PHMFactory 源码的能力范围，以
+[支持组合](SUPPORTED_COMBINATIONS.md)和[已知限制](KNOWN_LIMITATIONS.md)为准。
+
+### 相关方法
+
+Qi Li, Bojian Chen, Qitong Chen, Xuan Li, Zhaoye Qin, Fulei Chu.
+**[HSE: A plug-and-play module for unified fault diagnosis foundation models](https://doi.org/10.1016/j.inffus.2025.103277)**.
+*Information Fusion*, 123, 103277, 2025。
+
+HSE 在此列为相关表示方法，不表示论文的全部实验使用了当前软件版本。在研项目和历史
+论文源码不属于已发表结果，相关说明见[研究源码入口](paper/project/README.md)。
+
+### 使用本项目的研究
+
+收录研究时，请通过 [Issue](https://github.com/PHMbench/PHM-Vibench/issues) 提供论文链接、
+代码或实验配置，以及实际使用的软件版本。本栏目只收录具有明确项目使用关系的研究。
+
+## 项目路线图
+
+| 阶段 | 内容 |
+| --- | --- |
+| 已有能力 | 配置驱动 CLI、离线 Dummy 首跑、直接结果路径 |
+| 下一步 | 补齐声明指标与结果语义，重新验证真实数据参考实验 |
+| 研究方向 | 验证可解释模型的语言解释与异构信号扩展，再决定是否纳入维护示例 |
+
+[升级记录](doc/changelog/)说明已完成的修改，
+[发布状态](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md)说明当前阻塞。研究方向不代表发布承诺。
+
+## 贡献者与社区
+
+项目核心贡献者包括 [Qi Li](https://github.com/liq22) 和
+[Xuan Li](https://github.com/Xuan423)。完整贡献历史见
+[全部贡献者](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)。
+
+可复现问题与具体功能建议请提交 [Issue](https://github.com/PHMbench/PHM-Vibench/issues)，
+使用问题与研究讨论请前往 [Discussions](https://github.com/PHMbench/PHM-Vibench/discussions)。
+参与开发前请阅读[贡献指南](CONTRIBUTING_CN.md)和[行为准则](CODE_OF_CONDUCT.md)。
+
+[Star 历史](https://www.star-history.com/#PHMbench/PHM-Vibench&Date)
 
 ## 引用与许可
 

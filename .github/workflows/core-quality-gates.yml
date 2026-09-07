@@ -278,6 +278,8 @@ jobs:
             test/test_split_scientific_truth.py \
             test/test_task_estimator_truth.py \
             test/test_transform_truth.py \
+            test/test_llm_explanation_contract.py \
+            test/test_llm_explanation_models.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log
 
       - name: Diagnose the installed environment
