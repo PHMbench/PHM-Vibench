@@ -23,7 +23,7 @@ class ExplanationClaim:
         object.__setattr__(self, "text", self.text.strip())
         for name in ("evidence_ids", "path_ids", "relation_ids"):
             raw = getattr(self, name)
-            normalized = tuple(str(item).strip() for item in raw)
+            normalized = _string_sequence(raw, f"claim.{name}")
             if any(not item for item in normalized):
                 raise ValueError(f"claim.{name} contains an empty identifier")
             if len(set(normalized)) != len(normalized):
@@ -55,7 +55,7 @@ class LLMExplanation:
         object.__setattr__(self, "summary", self.summary.strip())
         if not self.claims:
             raise ValueError("claims must not be empty")
-        normalized_limitations = tuple(str(item).strip() for item in self.limitations)
+        normalized_limitations = _string_sequence(self.limitations, "limitations")
         if any(not item for item in normalized_limitations):
             raise ValueError("limitations contains an empty item")
         object.__setattr__(self, "limitations", normalized_limitations)
@@ -119,7 +119,9 @@ def build_llm_packet(
 def _string_sequence(value: Any, name: str) -> tuple[str, ...]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         raise TypeError(f"{name} must be a sequence of strings")
-    result = tuple(str(item).strip() for item in value)
+    if any(not isinstance(item, str) for item in value):
+        raise TypeError(f"{name} must contain only strings")
+    result = tuple(item.strip() for item in value)
     if any(not item for item in result):
         raise ValueError(f"{name} contains an empty string")
     return result
@@ -150,11 +152,11 @@ def parse_llm_explanation(
                 f"claims[{index}] keys must be exactly {sorted(claim_keys)}"
             )
         claim = ExplanationClaim(
-            text=str(raw_claim["text"]),
+            text=raw_claim["text"],
             evidence_ids=_string_sequence(raw_claim["evidence_ids"], f"claims[{index}].evidence_ids"),
             path_ids=_string_sequence(raw_claim["path_ids"], f"claims[{index}].path_ids"),
             relation_ids=_string_sequence(raw_claim["relation_ids"], f"claims[{index}].relation_ids"),
-            uncertainty=str(raw_claim["uncertainty"]),
+            uncertainty=raw_claim["uncertainty"],
         )
         if not claim.evidence_ids and not claim.path_ids:
             raise ValueError(
@@ -179,7 +181,7 @@ def parse_llm_explanation(
 
     limitations = _string_sequence(payload["limitations"], "limitations")
     return LLMExplanation(
-        summary=str(payload["summary"]),
+        summary=payload["summary"],
         claims=tuple(claims),
         limitations=limitations,
     )

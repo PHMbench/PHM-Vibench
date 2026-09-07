@@ -7,7 +7,9 @@ physical meaning by name guessing. Unsupported trace types fail explicitly.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import json
 import math
+from numbers import Integral
 from typing import Any
 
 from .schema import (
@@ -135,9 +137,13 @@ def export_xoan_state(
     method = getattr(model, "forward_evidence", None)
     if not callable(method):
         raise TypeError("XOAN adapter requires a model.forward_evidence method")
+    inference_mode = model.inference_mode
+    if inference_mode not in {"relaxed", "discrete"}:
+        raise ValueError("XOAN inference_mode must be relaxed or discrete")
     report = method(x, dictionary_intervention=dictionary_intervention)
     return state_from_xoan_report(
         report,
+        inference_mode=inference_mode,
         sample_id=sample_id,
         task=task,
         sample_index=sample_index,
@@ -149,6 +155,7 @@ def export_xoan_state(
 def state_from_xoan_report(
     report: Mapping[str, Any],
     *,
+    inference_mode: str,
     sample_id: str,
     task: str = "fault_diagnosis",
     sample_index: int = 0,
@@ -159,7 +166,10 @@ def state_from_xoan_report(
 
     if not isinstance(report, Mapping):
         raise TypeError("XOAN evidence report must be a mapping")
-    logits = _vector(report.get("relaxed_logits"), sample_index, name="relaxed_logits")
+    if inference_mode not in {"relaxed", "discrete"}:
+        raise ValueError("inference_mode must be relaxed or discrete")
+    logit_key = f"{inference_mode}_logits"
+    logits = _vector(report[logit_key], sample_index, name=logit_key)
     prediction = _prediction(logits, class_names)
 
     serialized_paths = _python(report.get("serialized_paths"))
@@ -167,23 +177,35 @@ def state_from_xoan_report(
         serialized_paths, (str, bytes, bytearray)
     ):
         raise ValueError("XOAN report requires serialized_paths")
-    selected_path = _sample(serialized_paths, sample_index, name="serialized_paths")
+    selected_path = json.loads(
+        _sample(serialized_paths, sample_index, name="serialized_paths")
+    )
+    # Use the native expression and executed edges, not the legacy integrity envelope.
+    public_path = {
+        "expression": selected_path["canonical_expression"],
+        "edges": selected_path["edges"],
+        "dictionary_intervention": selected_path["dictionary_intervention"],
+    }
     path_atom = EvidenceAtom(
         id="operator_path:selected",
         kind="operator_path",
         name="selected executable operator path",
-        value=selected_path,
+        value=public_path,
         source="XOANOperatorPath.forward_evidence",
     )
 
     evidence_atoms: list[EvidenceAtom] = [path_atom]
-    metrics: list[tuple[str, float]] = []
+    probabilities = _softmax(logits)
+    entropy = -sum(p * math.log(p) for p in probabilities if p > 0.0)
+    if len(probabilities) > 1:
+        entropy /= math.log(len(probabilities))
+    metrics: list[tuple[str, float]] = [("predictive_entropy", entropy)]
     for key, display_name in (
         ("logit_relative_rmse", "relaxed_discrete_logit_relative_rmse"),
-        ("predictive_entropy", "predictive_entropy"),
+        ("predictive_entropy", "relaxed_predictive_entropy"),
         ("dictionary_insufficiency_score", "dictionary_insufficiency_score"),
         ("relative_rmse", "relaxed_discrete_signal_relative_rmse"),
-        ("normalized_selection_entropy", "normalized_selection_entropy"),
+        ("normalized_sparsemax_selection_entropy", "normalized_sparsemax_selection_entropy"),
     ):
         if key not in report:
             continue
@@ -220,9 +242,17 @@ def state_from_xoan_report(
         relation="ordered executable operator path used by the discrete trace",
     )
     calibration_state = str(report.get("score_calibration_state", "not_provided"))
-    metadata: dict[str, Any] = {}
+    metadata: dict[str, Any] = {"inference_mode": inference_mode}
     if "dictionary_manifest" in report:
-        metadata["dictionary_manifest"] = _python(report["dictionary_manifest"])
+        dictionary = report["dictionary_manifest"]
+        metadata["dictionary"] = {
+            name: _python(dictionary[name])
+            for name in (
+                "dictionary_id", "dictionary_version", "operator_semantics",
+                "operator_specs", "stage_operators", "dictionary_intervention",
+            )
+            if name in dictionary
+        }
     if "insufficiency_score_id" in report:
         metadata["insufficiency_score_id"] = str(report["insufficiency_score_id"])
 
@@ -252,7 +282,9 @@ def state_from_xoan_report(
         limitations=(
             "The exported operator path is model-native structure; it is not automatically a physical mechanism.",
             "Per-operator causal or additive class contribution is not provided by this adapter.",
-        ),
+        ) + ((
+            "The discrete path approximates the relaxed decision; its discrepancy is reported separately.",
+        ) if inference_mode == "relaxed" else ()),
         metadata=freeze_mapping(metadata, name="metadata"),
     )
 
@@ -318,7 +350,7 @@ def state_from_tspn_uxfd_fuzzy_trace(
     )
     labels = _labels(class_names, len(logits))
     prediction = _prediction(logits, labels)
-    scale = _float(_field(output, "fuzzy_scale", 1.0), name="fuzzy_scale")
+    scale = _float(_field(output, "fuzzy_scale"), name="fuzzy_scale")
 
     firing = _vector(
         _field(trace, "normalized_rule_firing"),
@@ -344,9 +376,9 @@ def state_from_tspn_uxfd_fuzzy_trace(
 
     ranked = sorted(range(len(firing)), key=lambda index: (-firing[index], index))
     if max_rules is not None:
-        if isinstance(max_rules, bool) or int(max_rules) <= 0:
+        if isinstance(max_rules, bool) or not isinstance(max_rules, Integral) or max_rules <= 0:
             raise ValueError("max_rules must be a positive integer or None")
-        ranked = ranked[: int(max_rules)]
+        ranked = ranked[:max_rules]
 
     atoms: list[EvidenceAtom] = [
         EvidenceAtom(

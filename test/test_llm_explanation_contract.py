@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from copy import deepcopy
 from dataclasses import dataclass
 
 import pytest
@@ -71,7 +73,11 @@ def test_state_rejects_unknown_path_atom() -> None:
 def test_xoan_report_adapter_preserves_path_and_uncertainty() -> None:
     report = {
         "relaxed_logits": [[0.2, 1.7, -0.1]],
-        "serialized_paths": ["D1(MA3(x))"],
+        "serialized_paths": [json.dumps({
+            "canonical_expression": "D1(MA3(x))",
+            "edges": [],
+            "dictionary_intervention": None,
+        })],
         "logit_relative_rmse": [0.02],
         "predictive_entropy": [0.21],
         "dictionary_insufficiency_score": [0.14],
@@ -83,6 +89,7 @@ def test_xoan_report_adapter_preserves_path_and_uncertainty() -> None:
 
     state = state_from_xoan_report(
         report,
+        inference_mode="relaxed",
         sample_id="xoan-1",
         class_names=("normal", "inner", "outer"),
         operating_conditions={"speed_rpm": 1200},
@@ -90,10 +97,10 @@ def test_xoan_report_adapter_preserves_path_and_uncertainty() -> None:
 
     assert state.prediction.label == "inner"
     assert state.evidence_paths[0].id == "path:selected"
-    assert state.evidence_atoms[0].value == "D1(MA3(x))"
+    assert state.evidence_atoms[0].value["expression"] == "D1(MA3(x))"
     assert "structural_path" in state.capabilities
     assert "additive_contribution" not in state.capabilities
-    assert dict(state.uncertainty.metrics)["predictive_entropy"] == pytest.approx(0.21)
+    assert dict(state.uncertainty.metrics)["relaxed_predictive_entropy"] == pytest.approx(0.21)
 
 
 @dataclass
@@ -188,3 +195,25 @@ def test_explain_with_llm_uses_one_explicit_callback_without_fallback() -> None:
     assert len(calls) == 1
     assert explanation.claims[0].path_ids == ("p:outer",)
     assert explanation.limitations
+
+
+@pytest.mark.parametrize("field", ["summary", "text", "uncertainty", "limitations", "evidence_ids"])
+def test_parser_rejects_non_text_fields_without_repair(field: str) -> None:
+    payload = {
+        "summary": "Model prediction.",
+        "claims": [{"text": "Observed feature.", "evidence_ids": ["e:order"],
+                    "path_ids": [], "relation_ids": [], "uncertainty": ""}],
+        "limitations": [],
+    }
+    if field == "summary":
+        payload["summary"] = None
+    elif field == "limitations":
+        payload["limitations"] = [17]
+    elif field == "evidence_ids":
+        payload["claims"][0][field] = [17]
+    else:
+        payload["claims"][0][field] = None
+    before = deepcopy(payload)
+    with pytest.raises((TypeError, ValueError)):
+        parse_llm_explanation(payload, _minimal_state())
+    assert payload == before
