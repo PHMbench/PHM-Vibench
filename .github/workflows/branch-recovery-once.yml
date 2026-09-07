@@ -1,14 +1,11 @@
 name: Branch recovery (one-off)
-
 on:
   push:
     branches: [maintenance/branch-recovery-20260907]
     paths: [.github/workflows/branch-recovery-once.yml]
-
 permissions:
   contents: read
   pull-requests: read
-
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -18,7 +15,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Compare every branch with retained history
+      - name: Inspect every branch without changing refs
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -26,38 +23,80 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/branch-recovery
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/branches?per_page=100" | jq 'add' > /tmp/branch-recovery/branches.json
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls?state=all&per_page=100" | jq 'add' > /tmp/prs.json
-          jq '[.[] | {number,state,merged_at,merge_commit_sha,head_ref:.head.ref,head_sha:.head.sha,head_repo:.head.repo.full_name,base_ref:.base.ref}]' /tmp/prs.json > /tmp/branch-recovery/prs.json
-          main=$(git rev-parse origin/main)
-          dev=$(git rev-parse origin/dev)
-          printf 'main=%s\ndev=%s\n' "$main" "$dev" > /tmp/branch-recovery/bases.txt
-          printf 'branch\ttip\tdecision\tpr\tahead_main\tbehind_main\tchanged_paths\n' > /tmp/branch-recovery/branches.tsv
-          while IFS=$'\t' read -r name tip protected; do
-            pr=$(jq -r --arg n "$name" --arg t "$tip" --arg repo "$GITHUB_REPOSITORY" '[.[] | select(.head_repo==$repo and .head_ref==$n and .head_sha==$t and .merged_at!=null)] | first | if .==null then "-" else (.number|tostring) end' /tmp/branch-recovery/prs.json)
-            decision=HOLD_UNMERGED
-            if [[ "$name" == main || "$name" == dev || "$name" == maintenance/branch-recovery-20260907 || "$protected" == true ]] || jq -e --arg n "$name" --arg repo "$GITHUB_REPOSITORY" 'any(.[]; .state=="open" and (.base_ref==$n or (.head_repo==$repo and .head_ref==$n)))' /tmp/branch-recovery/prs.json > /dev/null; then
-              decision=KEEP_ACTIVE
-            elif git merge-base --is-ancestor "$tip" "$main"; then
-              decision=DELETE_ANCESTOR_MAIN
-            elif [[ "$pr" != - ]]; then
-              merged=$(jq -r --argjson n "$pr" '.[] | select(.number==$n) | .merge_commit_sha' /tmp/branch-recovery/prs.json)
-              if git merge-base --is-ancestor "$merged" "$main"; then decision=DELETE_MERGED_PR; fi
-            fi
-            read -r behind ahead < <(git rev-list --left-right --count "$main...$tip")
-            paths=$(git diff --name-only "$main...$tip" | wc -l)
-            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$tip" "$decision" "$pr" "$ahead" "$behind" "$paths" >> /tmp/branch-recovery/branches.tsv
-            if [[ "$decision" == HOLD_UNMERGED ]]; then
-              printf '\n## %s\n' "$name" >> /tmp/branch-recovery/unmerged-paths.txt
-              git log --max-count=25 --format='%h %s' "$main..$tip" --no-merges >> /tmp/branch-recovery/unmerged-paths.txt
-              git diff --name-status "$main...$tip" >> /tmp/branch-recovery/unmerged-paths.txt
-            fi
-          done < <(jq -r '.[] | [.name,.commit.sha,.protected] | @tsv' /tmp/branch-recovery/branches.json)
-          git for-each-ref --format='%(refname:short) %(objectname)' refs/tags > /tmp/branch-recovery/tags.txt
-          git ls-tree -r --name-only "$main" > /tmp/branch-recovery/main-paths.txt
-          cat /tmp/branch-recovery/bases.txt
-          awk -F '\t' 'NR>1 {n[$3]++} END {for(k in n) print k,n[k]}' /tmp/branch-recovery/branches.tsv
-          cat /tmp/branch-recovery/branches.tsv
-          { echo '## Full branch inspection'; cat /tmp/branch-recovery/bases.txt; echo; awk -F '\t' 'NR>1 {n[$3]++} END {for(k in n) print k,n[k]}' /tmp/branch-recovery/branches.tsv; } >> "$GITHUB_STEP_SUMMARY"
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls?state=all&per_page=100" | jq 'add | map({number,state,merged_at,merge_commit_sha,head_ref:.head.ref,head_sha:.head.sha,head_repo:.head.repo.full_name,base_ref:.base.ref})' > /tmp/branch-recovery/prs.json
+          python - <<'PY'
+          import csv, json, os, subprocess
+          from collections import Counter
+          from pathlib import Path
+          out = Path('/tmp/branch-recovery')
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          def ancestor(a, b):
+              p = subprocess.run(['git','merge-base','--is-ancestor',a,b])
+              if p.returncode not in (0,1):
+                  raise RuntimeError(f'git ancestry failed: {a} {b}')
+              return p.returncode == 0
+          branches = json.loads((out/'branches.json').read_text())
+          prs = json.loads((out/'prs.json').read_text())
+          main, dev = git('rev-parse','origin/main'), git('rev-parse','origin/dev')
+          (out/'bases.txt').write_text(f'main={main}\ndev={dev}\n')
+          active = {'main','dev','maintenance/branch-recovery-20260907'}
+          for p in prs:
+              if p['state']=='open':
+                  active.add(p['base_ref'])
+                  if p['head_repo']==os.environ['GITHUB_REPOSITORY']:
+                      active.add(p['head_ref'])
+          rows=[]
+          paths_file=(out/'unmerged-paths.txt').open('w')
+          refs_file=(out/'name-references.tsv').open('w')
+          for b in branches:
+              name,tip=b['name'],b['commit']['sha']
+              matches=[p for p in prs if p['head_repo']==os.environ['GITHUB_REPOSITORY'] and p['head_ref']==name and p['head_sha']==tip and p['merged_at']]
+              pr=matches[0] if matches else None
+              decision='HOLD_UNMERGED'
+              if name in active or b['protected']:
+                  decision='KEEP_ACTIVE'
+              elif ancestor(tip,main):
+                  decision='DELETE_ANCESTOR_MAIN'
+              elif pr and ancestor(pr['merge_commit_sha'],main):
+                  decision='DELETE_MERGED_PR'
+              bases=subprocess.run(['git','merge-base','--all',main,tip],text=True,capture_output=True)
+              if bases.returncode not in (0,1):
+                  raise RuntimeError(bases.stderr)
+              common=bases.stdout.splitlines()
+              behind,ahead=map(int,git('rev-list','--left-right','--count',f'{main}...{tip}').split())
+              changed='NA'
+              if len(common)==1:
+                  diff=git('diff','--name-status',common[0],tip)
+                  changed=len(diff.splitlines()) if diff else 0
+              else:
+                  diff=f'No single merge base ({len(common)} bases); snapshot difference follows.\n'+git('diff','--name-status',main,tip)
+                  if decision=='HOLD_UNMERGED':
+                      decision='HOLD_UNRELATED' if not common else 'HOLD_MULTIPLE_BASES'
+              rows.append([name,tip,decision,pr['number'] if pr else '-',ahead,behind,changed,len(common)])
+              if decision.startswith('HOLD'):
+                  paths_file.write(f'\n## {name}\n'+git('log','--max-count=25','--format=%h %s',f'{main}..{tip}','--no-merges')+'\n'+diff+'\n')
+              references=subprocess.run(['git','grep','-I','-l','-F',name,main,'--','.github','README.md','README_CN.md','CORE.md','CONTRIBUTING.md','CONTRIBUTING_CN.md','configs','phmfactory','src','docs','paper/project',':(exclude)docs/archive'],text=True,capture_output=True)
+              if references.returncode not in (0,1):
+                  raise RuntimeError(references.stderr)
+              for path in references.stdout.splitlines():
+                  refs_file.write(name+'\t'+path.partition(':')[2]+'\n')
+          paths_file.close(); refs_file.close()
+          with (out/'branches.tsv').open('w') as f:
+              w=csv.writer(f,delimiter='\t',lineterminator='\n')
+              w.writerow(['branch','tip','decision','pr','ahead_main','behind_main','changed_paths','merge_bases'])
+              w.writerows(rows)
+          (out/'tags.txt').write_text(git('for-each-ref','--format=%(refname:short) %(objectname)','refs/tags')+'\n')
+          (out/'main-paths.txt').write_text(git('ls-tree','-r','--name-only',main)+'\n')
+          for name in ['README.md','README_CN.md','CITATION.cff','paper/project/README.md','scripts/validate_docs.py','.github/workflows/core-quality-gates.yml']:
+              target=out/'source'/name
+              target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_text(git('show',f'{main}:{name}')+'\n')
+          summary=f'Inspected {len(rows)} branches\n'+json.dumps(Counter(r[2] for r in rows),indent=2)
+          print(summary)
+          print((out/'branches.tsv').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f: f.write(summary+'\n')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
