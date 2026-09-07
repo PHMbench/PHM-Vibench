@@ -4,74 +4,51 @@ on:
     branches: [maintenance/branch-recovery-20260907]
     paths: [.github/workflows/branch-recovery-once.yml]
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 jobs:
-  inspect_remaining:
+  repair_explanation:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
-      - name: Inspect retained histories and export exact sources for focused tests
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Repair the existing explanation branch without changing its model implementations
         run: |
           set -euo pipefail
-          mkdir -p /tmp/source-review/current /tmp/source-review/pr223
-          gh run download 34076542486 --repo "$GITHUB_REPOSITORY" --name branch-recovery-inspection --dir /tmp/inspection
-          git archive origin/dev phmfactory src test configs scripts/validate_docs.py scripts/validate_configs.py README.md README_CN.md pyproject.toml .github/workflows | tar -x -C /tmp/source-review/current
-          git archive b2669f87a3e5156ab3f498916b8d47192e185b35 phmfactory/explanation test/test_llm_explanation_contract.py docs/LLM_EXPLANATION_INTEGRATION.md | tar -x -C /tmp/source-review/pr223
+          mkdir -p /tmp/repair-result
+          test "$(git rev-parse origin/research/phmfactory-llm-explanation-contract-20260905)" = b2669f87a3e5156ab3f498916b8d47192e185b35
+          test "$(git rev-parse origin/dev)" = d478fb9d3a862b4fe8d00094bf753d5e2feda196
+          git config user.name 'PHMFactory maintenance'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git worktree add -b repair-pr223 /tmp/pr223 origin/research/phmfactory-llm-explanation-contract-20260905
+          cd /tmp/pr223
+          git merge --no-edit origin/dev
+          git apply --check "$GITHUB_WORKSPACE/.maintenance/explanation.patch"
+          git apply "$GITHUB_WORKSPACE/.maintenance/explanation.patch"
           python - <<'PY'
-          import csv,subprocess
           from pathlib import Path
-          out=Path('/tmp/source-review')
-          def git(*args): return subprocess.check_output(['git',*args],text=True).strip()
-          def ancestor(a,b):
-              p=subprocess.run(['git','merge-base','--is-ancestor',a,b])
-              if p.returncode not in (0,1): raise RuntimeError('git ancestry failed')
-              return p.returncode==0
-          main=git('rev-parse','origin/main')
-          all_refs=git('for-each-ref','--format=%(refname)','refs/remotes/origin','refs/tags').splitlines()
-          stable=[r for r in all_refs if not r.startswith('refs/remotes/origin/maintenance/') and not r.startswith('refs/remotes/origin/docs/project-homepage') and r!='refs/remotes/origin/HEAD']
-          tips={r:git('rev-parse',f'{r}^{{commit}}') for r in stable}
-          rows=list(csv.DictReader(open('/tmp/inspection/branches.tsv'),delimiter='\t'))
-          relationships=[]
-          content=[]
-          for row in rows:
-              if not row['decision'].startswith('HOLD'): continue
-              branch,tip=row['branch'],row['tip']
-              own='refs/remotes/origin/'+branch
-              if own not in tips: continue
-              descendants=[r for r,t in tips.items() if r!=own and ancestor(tip,t)]
-              relationships.append([branch,tip,';'.join(descendants)])
-              if row['merge_bases']=='1':
-                  base=git('merge-base',main,tip)
-                  paths=git('diff','--name-only',base,tip).splitlines()
-                  p=subprocess.run(['git','diff','--quiet',tip,main,'--',*paths])
-                  if p.returncode not in (0,1): raise RuntimeError('git diff failed')
-                  content.append([branch,'IDENTICAL_TOUCHED_PATHS' if p.returncode==0 else 'HAS_DIFFERENT_PATHS',len(paths)])
-          for name,header,data in [('preserved-descendants.tsv',['branch','tip','descendant_refs'],relationships),('content-equivalence.tsv',['branch','comparison','touched_paths'],content)]:
-              with (out/name).open('w') as f:
-                  w=csv.writer(f,delimiter='\t',lineterminator='\n'); w.writerow(header);w.writerows(data)
-          for branch in ['lq_merge_UXFD','research/2025-2026-method-expansion-current']:
-              tip=git('rev-parse','origin/'+branch)
-              bases=git('merge-base','--all',main,tip).splitlines()
-              if len(bases)!=1: raise RuntimeError('Expected one source base for focused extraction')
-              paths=git('diff','--name-only',bases[0],tip).splitlines()
-              with (out/(branch.replace('/','_')+'-paths.tsv')).open('w') as f:
-                  for path in paths:
-                      p=subprocess.run(['git','diff','--quiet',tip,main,'--',path])
-                      if p.returncode not in (0,1): raise RuntimeError('git diff failed')
-                      f.write(path+'\t'+('IDENTICAL' if p.returncode==0 else 'DIFFERENT')+'\n')
-          (out/'bases.txt').write_text('main='+main+'\ndev='+git('rev-parse','origin/dev')+'\n')
-          print('Read-only content and descendant inspection complete.')
+          f=Path('.github/workflows/core-quality-gates.yml')
+          text=f.read_text()
+          old='            test/test_transform_truth.py \\\n            -vv --tb=long'
+          new='            test/test_transform_truth.py \\\n            test/test_llm_explanation_contract.py \\\n            test/test_llm_explanation_models.py \\\n            -vv --tb=long'
+          if text.count(old)!=1:
+              raise RuntimeError('Expected one existing runtime pytest selection')
+          f.write_text(text.replace(old,new))
           PY
+          python -m pip install 'pytest>=7'
+          python -m pytest test/test_llm_explanation_contract.py -q | tee /tmp/repair-result/contract-tests.txt
+          python -m py_compile phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_models.py
+          git diff --check
+          git add phmfactory/explanation/adapters.py phmfactory/explanation/llm.py test/test_llm_explanation_contract.py test/test_llm_explanation_models.py .github/workflows/core-quality-gates.yml
+          git commit -m 'fix(explanation): preserve selected inference semantics and reject text coercion'
+          git push origin HEAD:refs/heads/research/phmfactory-llm-explanation-contract-20260905
+          git rev-parse HEAD > /tmp/repair-result/head.txt
+          git diff origin/dev..HEAD --stat > /tmp/repair-result/diff.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: retained-source-review
-          path: /tmp/source-review/
-          retention-days: 14
+          name: explanation-repair-result
+          path: /tmp/repair-result/
+          retention-days: 30
