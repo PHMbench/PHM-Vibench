@@ -106,6 +106,8 @@ def _labels(class_names: Sequence[str] | None, size: int) -> tuple[str, ...]:
     labels = tuple(str(item).strip() for item in class_names)
     if len(labels) != size or any(not item for item in labels):
         raise ValueError(f"class_names must contain exactly {size} non-empty labels")
+    if len(set(labels)) != len(labels):
+        raise ValueError("class_names must contain unique labels")
     return labels
 
 
@@ -475,6 +477,18 @@ def state_from_tspn_uxfd_fuzzy_trace(
             "The exported state contains only the highest-firing rules and cannot claim complete rule coverage."
         )
 
+    effective_mask = _sample(
+        _field(trace, "rule_mask"), sample_index, name="rule_mask"
+    )
+    effective_permutation = _python(_field(trace, "consequent_permutation"))
+    # Native permutations are shared [rules] or per-sample [batch, rules].
+    if effective_permutation is not None and isinstance(effective_permutation[0], Sequence):
+        effective_permutation = _sample(
+            effective_permutation, sample_index, name="consequent_permutation"
+        )
+    if effective_mask is None or effective_permutation is None:
+        limitations.append("Effective intervention values were not supplied in this trace.")
+
     return PHMExplanationState(
         sample_id=sample_id,
         task=task,
@@ -509,6 +523,8 @@ def state_from_tspn_uxfd_fuzzy_trace(
                 "fuzzy_scale": scale,
                 "exported_rule_count": len(ranked),
                 "total_rule_count": len(firing),
+                "rule_mask": effective_mask,
+                "consequent_permutation": effective_permutation,
             },
             name="metadata",
         ),
