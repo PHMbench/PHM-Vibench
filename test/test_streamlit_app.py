@@ -66,3 +66,24 @@ def test_advanced_yaml_resets_common_field_values_before_validation():
     assert new_revision > revision
     assert app.number_input(key=new_key).value == 9
     assert _button(app, 'Run experiment').disabled
+
+
+def test_advanced_yaml_invalid_integer_is_not_repaired_by_a_widget():
+    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
+    app.radio(key='ui_mode').set_value('Advanced').run()
+    assert not app.exception
+
+    config = yaml.safe_load(app.session_state['advanced_yaml_text'])
+    config['trainer']['num_epochs'] = 1.5
+    app.text_area(key='advanced_yaml_text').set_value(
+        yaml.safe_dump(config, sort_keys=False)
+    ).run()
+    assert not app.exception
+
+    _button(app, 'Validate configuration').click().run()
+    assert not app.exception
+    report = app.session_state['validation_report']
+    assert not report.ok
+    assert not report.resolved
+    assert 'num_epochs' in report.stderr
+    assert _button(app, 'Run experiment').disabled
