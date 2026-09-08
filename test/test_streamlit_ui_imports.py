@@ -5,6 +5,9 @@ from importlib.util import find_spec
 import sys
 import types
 
+import pytest
+import yaml
+
 
 class _Decorator:
     def __call__(self, *args, **kwargs):
@@ -19,6 +22,25 @@ def _install_streamlit_stub(monkeypatch) -> None:
     fake_streamlit.fragment = _Decorator()
     fake_streamlit.session_state = {}
     monkeypatch.setitem(sys.modules, "streamlit", fake_streamlit)
+
+
+def _advanced_yaml(epochs: int) -> str:
+    return yaml.safe_dump(
+        {
+            "environment": {"seed": 0, "iterations": 1, "output_dir": "results/demo"},
+            "data": {"batch_size": 4, "num_workers": 0},
+            "model": {"type": "Backbone", "name": "B_04_Dlinear"},
+            "task": {"lr": 0.001},
+            "trainer": {
+                "name": "Default_trainer",
+                "num_epochs": epochs,
+                "device": "cpu",
+                "devices": 1,
+                "test_after_fit": True,
+            },
+        },
+        sort_keys=False,
+    )
 
 
 def test_ui_modules_import_with_optional_streamlit_stub(monkeypatch):
@@ -88,3 +110,64 @@ def test_validation_snapshot_preserves_types_and_copies_nested_values(monkeypatc
     values.append(3)
     assert checked != capture("Advanced", "yaml", (("values", values),))
     assert checked == capture("Advanced", "yaml", (("values", [1, 2]),))
+
+
+def test_advanced_common_fields_follow_the_current_yaml_draft(monkeypatch):
+    _install_streamlit_stub(monkeypatch)
+    sys.modules.pop("apps.streamlit.ui_theme", None)
+    ui_theme = importlib.import_module("apps.streamlit.ui_theme")
+    fallback = yaml.safe_load(_advanced_yaml(1))
+    state = {"ui_mode": "Advanced", "advanced_yaml_text": _advanced_yaml(2)}
+
+    resolved, first_scope = ui_theme._advanced_field_context(state, fallback, "demo")
+    assert resolved["trainer"]["num_epochs"] == 2
+    assert first_scope == "advanced-1"
+
+    _, unchanged_scope = ui_theme._advanced_field_context(state, fallback, "demo")
+    assert unchanged_scope == first_scope
+
+    state["advanced_yaml_text"] = _advanced_yaml(3)
+    resolved, changed_scope = ui_theme._advanced_field_context(state, fallback, "demo")
+    assert resolved["trainer"]["num_epochs"] == 3
+    assert changed_scope == "advanced-2"
+
+    state["ui_mode"] = "Quick Start"
+    resolved, quick_scope = ui_theme._advanced_field_context(state, fallback, "demo")
+    assert resolved is fallback
+    assert quick_scope == ""
+
+
+def test_advanced_common_fields_reject_an_invalid_yaml_draft(monkeypatch):
+    _install_streamlit_stub(monkeypatch)
+    sys.modules.pop("apps.streamlit.ui_theme", None)
+    ui_theme = importlib.import_module("apps.streamlit.ui_theme")
+    state = {"ui_mode": "Advanced", "advanced_yaml_text": "trainer: ["}
+
+    with pytest.raises(ui_theme.ConfigServiceError):
+        ui_theme._advanced_field_context(state, {}, "demo")
+
+
+@pytest.mark.parametrize(
+    ("spec", "value"),
+    [
+        ({"widget": "number", "step": 1.0, "path": "trainer.num_epochs"}, 1.5),
+        ({"widget": "number", "step": 1.0, "path": "trainer.num_epochs"}, "2"),
+        ({"widget": "number", "step": 1.0, "path": "trainer.num_epochs"}, True),
+        ({"widget": "checkbox", "step": None, "path": "trainer.test_after_fit"}, "false"),
+        ({"widget": "text", "step": None, "path": "data.data_dir"}, 123),
+    ],
+)
+def test_common_fields_do_not_repair_invalid_yaml_types(monkeypatch, spec, value):
+    _install_streamlit_stub(monkeypatch)
+    sys.modules.pop("apps.streamlit.ui_theme", None)
+    ui_theme = importlib.import_module("apps.streamlit.ui_theme")
+    field = ui_theme.FieldSpec(
+        key="test",
+        label="Test",
+        widget=spec["widget"],
+        paths=(spec["path"],),
+        step=spec["step"],
+    )
+
+    with pytest.raises(ui_theme.ConfigServiceError):
+        ui_theme._validated_widget_value(field, value)
