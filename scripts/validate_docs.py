@@ -1,7 +1,7 @@
 """Documentation consistency checks (local, no network).
 
-This module is intentionally lightweight and conservative: it validates that documentation
-links resolve and that per-directory AI docs defer shared content to README.md.
+Check local links and the shared AI-entrypoint relationship. These checks do not prove
+that an example executes or that a particular Agent client loaded the instructions.
 """
 
 from __future__ import annotations
@@ -111,6 +111,20 @@ def check_ai_docs_point_to_readme(repo_root: Path) -> list[Issue]:
         for path in repo_root.rglob(doc_name):
             rel = path.relative_to(repo_root)
             if is_skipped_path(rel):
+                continue
+            if rel == Path("CLAUDE.md"):
+                if path.read_text(encoding="utf-8").strip() != "@AGENTS.md":
+                    issues.append(Issue(
+                        kind="invalid_shared_agent_import",
+                        path=str(rel),
+                        detail="Root CLAUDE.md must contain only @AGENTS.md",
+                    ))
+                if not (repo_root / "AGENTS.md").is_file():
+                    issues.append(Issue(
+                        kind="missing_shared_agent_document",
+                        path=str(rel),
+                        detail="Expected root AGENTS.md",
+                    ))
                 continue
             readme = path.parent / "README.md"
             if not readme.exists():

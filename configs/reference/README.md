@@ -1,13 +1,16 @@
-# `configs/reference/` (legacy)
+# Historical reference configurations
 
-This directory contains legacy experiment configs that are not part of the maintained onboarding path.
+These files are not maintained onboarding templates. Use [configs/demo](../demo/README.md)
+for a new experiment. A historical file may require explicit migration before it is
+accepted by the current schema or executable by the selected components.
 
-- Use `configs/demo/` as the template source for this repo.
-- `configs/reference/` is planned to be migrated/removed (likely into a paper/research submodule) to avoid confusion with
-  the main `main.py --config configs/demo/...` workflow.
-
-If you need to run one of these configs, validate it first:
+Inspect an explicitly selected file before attempting execution:
 
 ```bash
-python -m scripts.config_inspect --config <path_under_configs/reference/...yaml>
+phmfactory preflight --config <historical-config.yaml>
 ```
+
+Preflight is an early check, not proof of runtime compatibility or scientific validity.
+Do not restore a legacy loader, fallback or implicit default to make an old example pass.
+Retain useful research choices in an explicitly migrated experiment; do not treat old
+migration suggestions as an automatic task queue.

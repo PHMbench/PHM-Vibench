@@ -1,60 +1,18 @@
-# Transformer Models
+# Transformer implementations
 
-This directory provides transformer-based architectures for long-range temporal modeling.
+Set `model.type: Transformer` with an exact module name: `PatchTST`, `Autoformer`,
+`Informer`, `Linformer`, `ConvTransformer`, `Transformer_Dummy`, or `TSLTransformer`.
+The [catalogue](../model_registry.csv) locates implementations; [Model Factory](../README.md)
+defines construction. These names do not assert original-paper reproduction or support
+for every data/task combination.
 
-## Available models (`model.type = "Transformer"`)
-
-Config pattern:
-
-```yaml
-model:
-  type: "Transformer"
-  name: "PatchTST"        # or Autoformer / Informer / Linformer / ConvTransformer / Transformer_Dummy
-  # transformer-specific hyperparameters...
-```
-
-Supported `model.name` values:
-- `PatchTST`
-- `Autoformer`
-- `Informer`
-- `Linformer`
-- `ConvTransformer`
-- `Transformer_Dummy`
-
-For non-ISFM models, `model.embedding`, `model.backbone`, and `model.task_head` are **not used** and should be recorded as `/` in the CSV registry.
-
-## Common hyperparameters
-
-Most transformer models share the following configuration fields (exact names may vary per file):
-
-| Field       | Description                               |
-|------------|-------------------------------------------|
-| `input_dim`| input feature dimension                   |
-| `d_model`  | model dimension                           |
-| `n_heads`  | number of attention heads                 |
-| `num_layers` / `e_layers` / `d_layers` | encoder/decoder depth |
-| `d_ff`     | feed-forward dimension                    |
-| `dropout`  | dropout probability                       |
-| `seq_len`  | input sequence length (if used)           |
-| `pred_len` | prediction length (forecasting models)    |
-
-Please consult each model file for the exact argument list.
-
-## Example: PatchTST configuration
-
-PatchTST (`PatchTST.py`) expects at least:
-
-- `input_dim`
-- optionally: `patch_size`, `stride`, `d_model`, `n_heads`, `num_layers`, `d_ff`, `dropout`, `num_classes` or `output_dim`.
-
-Classification-style usage:
+## Example selection
 
 ```yaml
 model:
-  type: "Transformer"
-  name: "PatchTST"
-
-  input_dim: 3          # number of channels
+  type: Transformer
+  name: PatchTST
+  input_dim: 3
   patch_size: 16
   stride: 8
   d_model: 256
@@ -65,5 +23,18 @@ model:
   num_classes: 4
 ```
 
-Forecasting-style usage would instead set `output_dim` and omit `num_classes`.
+This is a model fragment, not a complete experiment. Here `stride < patch_size`, so
+successive patches overlap; do not describe this configuration as non-overlapping.
 
+## Check the actual interface
+
+Inspect the selected source for sequence length, channels, embedding size, attention
+heads, encoder/decoder inputs, prediction horizon and output semantics. Typical names
+such as `num_layers`, `e_layers` and `d_layers` are not interchangeable. Forecasting and
+classification interfaces need their own compatible Task, not just a changed output
+field. `TSLTransformer` is a clean-room classification implementation, not a general
+forecasting contract.
+
+Do not crop or pad an incompatible input silently. Test patch boundaries, input layout
+and actual outputs for the implementation changed. Complexity or benchmark claims need
+measured evidence for that configuration, not an architecture label.

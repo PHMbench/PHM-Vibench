@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject vendor- or user-specific Agent workspaces from public upstream."""
+"""Allow the shared entrypoints, not private workspaces or duplicate instructions."""
 
 from __future__ import annotations
 
@@ -9,11 +9,15 @@ import sys
 import unicodedata
 
 
-ROOT_AGENT_FILES = frozenset(
+PUBLIC_AGENT_FILES = frozenset({"AGENTS.md", "CLAUDE.md"})
+AGENT_DOCUMENT_NAMES = frozenset(
     {
+        "agent.md",
         "agents.md",
+        "agents.override.md",
         "agents_cn.md",
         "claude.md",
+        "claude.local.md",
         "claude_cn.md",
         "gemini.md",
         "codex_agent.md",
@@ -21,12 +25,7 @@ ROOT_AGENT_FILES = frozenset(
 )
 
 TOP_LEVEL_AGENT_DIRECTORIES = frozenset(
-    {
-        ".agents",
-        ".claude",
-        ".codex",
-        ".gemini",
-    }
+    {".agents", ".claude", ".codex", ".gemini"}
 )
 
 
@@ -53,12 +52,14 @@ def _violations(paths: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
         parts = PurePosixPath(unicodedata.normalize("NFC", path)).parts
         if not parts:
             continue
-        top = _portable(parts[0])
-        if top in TOP_LEVEL_AGENT_DIRECTORIES:
+        if _portable(parts[0]) in TOP_LEVEL_AGENT_DIRECTORIES:
             violations.append(("top-level Agent workspace", path))
             continue
-        if len(parts) == 1 and top in ROOT_AGENT_FILES:
-            violations.append(("root Agent document", path))
+        # Exact root names only; case variants and nested copies are not new authorities.
+        if path in PUBLIC_AGENT_FILES:
+            continue
+        if _portable(parts[-1]) in AGENT_DOCUMENT_NAMES:
+            violations.append(("duplicate or private Agent document", path))
     return tuple(sorted(violations))
 
 
