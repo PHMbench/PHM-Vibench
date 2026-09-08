@@ -114,6 +114,7 @@ jobs:
           test/test_streamlit_run_service.py
           test/test_streamlit_result_service.py
           test/test_streamlit_ui_imports.py
+          test/test_streamlit_refresh_policy.py
 
       - name: Upload focused Streamlit diagnostics
         if: always()
