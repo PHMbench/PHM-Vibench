@@ -137,7 +137,9 @@ def _evaluation_requested(record: RunRecord) -> Optional[bool]:
     if not config_path.is_file():
         return None
     try:
-        config = parse_yaml_text(config_path.read_text(encoding="utf-8"), source=str(config_path))
+        config = parse_yaml_text(
+            config_path.read_text(encoding="utf-8"), source=str(config_path)
+        )
     except (OSError, RuntimeError):
         return None
     trainer = config.get("trainer")
@@ -146,28 +148,29 @@ def _evaluation_requested(record: RunRecord) -> Optional[bool]:
 
 
 def _read_log(record: RunRecord, *, max_bytes: int) -> Tuple[str, str]:
+    """Read a bounded log tail because the public result trailer is emitted last."""
+
     path = record.run_dir / "run.log"
     if not path.is_file():
         return "", "Run log is not available."
     try:
         size = path.stat().st_size
+        with path.open("rb") as handle:
+            if size > max_bytes:
+                handle.seek(-max_bytes, os.SEEK_END)
+                handle.readline()  # discard a partial first line
+            data = handle.read()
     except OSError as error:
-        return "", f"Could not stat run log: {error}"
-    if size > max_bytes:
-        return "", (
-            f"Run log is {format_bytes(size)}; direct result parsing is limited to "
-            f"{format_bytes(max_bytes)}."
-        )
-    try:
-        return path.read_text(encoding="utf-8"), ""
-    except (OSError, UnicodeDecodeError) as error:
         return "", f"Could not read run log: {error}"
+    return data.decode("utf-8", errors="replace"), ""
 
 
 def _final_cli_trailer(text: str) -> Optional[Dict[str, str]]:
     lines = text.splitlines()
     try:
-        completed_index = max(index for index, line in enumerate(lines) if line == "run=completed")
+        completed_index = max(
+            index for index, line in enumerate(lines) if line == "run=completed"
+        )
     except ValueError:
         return None
 
@@ -192,17 +195,23 @@ def parse_direct_results(
     if record.status != "succeeded" or record.exit_code not in {0, None}:
         return DirectResults(
             evaluation_requested=evaluation_requested,
-            warnings=("Direct scientific results are not accepted for a non-successful run.",),
+            warnings=(
+                "Direct scientific results are not accepted for a non-successful run.",
+            ),
         )
 
     text, log_warning = _read_log(record, max_bytes=limits.max_log_bytes)
     if log_warning:
-        return DirectResults(evaluation_requested=evaluation_requested, warnings=(log_warning,))
+        return DirectResults(
+            evaluation_requested=evaluation_requested, warnings=(log_warning,)
+        )
     trailer = _final_cli_trailer(text)
     if trailer is None:
         return DirectResults(
             evaluation_requested=evaluation_requested,
-            warnings=("The process succeeded but no final `run=completed` CLI trailer was found.",),
+            warnings=(
+                "The process succeeded but no final `run=completed` CLI trailer was found.",
+            ),
         )
 
     warnings: List[str] = []
@@ -255,7 +264,9 @@ def parse_direct_results(
     if evaluation_requested is True:
         for key in ("test_metrics", "run_summary"):
             if resolved_files[key] is None:
-                warnings.append(f"Evaluation was requested but the CLI did not provide usable {key}.")
+                warnings.append(
+                    f"Evaluation was requested but the CLI did not provide usable {key}."
+                )
 
     return DirectResults(
         completed=True,
@@ -298,7 +309,9 @@ def _discover_root(
             continue
         entries_seen += len(entries)
         if entries_seen > limits.max_entries:
-            warnings.append(f"Artifact scan stopped after {limits.max_entries} directory entries.")
+            warnings.append(
+                f"Artifact scan stopped after {limits.max_entries} directory entries."
+            )
             truncated = True
             break
         for entry in entries:
@@ -348,19 +361,27 @@ def _rows_from_json(payload: Any) -> Tuple[List[Dict[str, Any]], str]:
         for key in ("metrics", "results", "summary"):
             candidate = payload.get(key)
             if isinstance(candidate, dict):
-                return [{str(k): _normalize_cell(v) for k, v in candidate.items()}], ""
-            if isinstance(candidate, list) and all(isinstance(item, dict) for item in candidate):
+                return [
+                    {str(k): _normalize_cell(v) for k, v in candidate.items()}
+                ], ""
+            if isinstance(candidate, list) and all(
+                isinstance(item, dict) for item in candidate
+            ):
                 return [
                     {str(k): _normalize_cell(v) for k, v in item.items()}
                     for item in candidate
                 ], ""
         return [{str(k): _normalize_cell(v) for k, v in payload.items()}], ""
     if isinstance(payload, list) and all(isinstance(item, dict) for item in payload):
-        return [{str(k): _normalize_cell(v) for k, v in item.items()} for item in payload], ""
+        return [
+            {str(k): _normalize_cell(v) for k, v in item.items()} for item in payload
+        ], ""
     return [], "JSON metrics must be an object or a list of objects."
 
 
-def load_metric_table(path: Path, limits: DiscoveryLimits = DiscoveryLimits()) -> MetricTable:
+def load_metric_table(
+    path: Path, limits: DiscoveryLimits = DiscoveryLimits()
+) -> MetricTable:
     try:
         size = path.stat().st_size
     except OSError as error:
@@ -457,7 +478,9 @@ def discover_results(
         except OSError:
             key = artifact.path.absolute()
         unique.setdefault(key, artifact)
-    artifacts = sorted(unique.values(), key=lambda item: (item.kind, item.relative_path))
+    artifacts = sorted(
+        unique.values(), key=lambda item: (item.kind, item.relative_path)
+    )
 
     metric_paths = [
         path for path in (direct.test_metrics, direct.run_summary) if path is not None
