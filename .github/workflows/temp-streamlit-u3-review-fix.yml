@@ -1,0 +1,93 @@
+name: Temporary Streamlit U3 review fix
+
+on:
+  push:
+    branches:
+      - fix/streamlit-direct-results-20260908
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/streamlit-direct-results-20260908
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Apply bounded-tail result parsing fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/streamlit/result_service.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''def _read_log(record: RunRecord, *, max_bytes: int) -> Tuple[str, str]:
+    path = record.run_dir / "run.log"
+    if not path.is_file():
+        return "", "Run log is not available."
+    try:
+        size = path.stat().st_size
+    except OSError as error:
+        return "", f"Could not stat run log: {error}"
+    if size > max_bytes:
+        return "", (
+            f"Run log is {format_bytes(size)}; direct result parsing is limited to "
+            f"{format_bytes(max_bytes)}."
+        )
+    try:
+        return path.read_text(encoding="utf-8"), ""
+    except (OSError, UnicodeDecodeError) as error:
+        return "", f"Could not read run log: {error}"
+'''
+          new = '''def _read_log(record: RunRecord, *, max_bytes: int) -> Tuple[str, str]:
+    """Read a bounded log tail because the public result trailer is emitted last."""
+
+    path = record.run_dir / "run.log"
+    if not path.is_file():
+        return "", "Run log is not available."
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as handle:
+            if size > max_bytes:
+                handle.seek(-max_bytes, os.SEEK_END)
+                handle.readline()  # discard a partial first line
+            data = handle.read()
+    except OSError as error:
+        return "", f"Could not read run log: {error}"
+    return data.decode("utf-8", errors="replace"), ""
+'''
+          if text.count(old) != 1:
+              raise RuntimeError('expected _read_log block not found exactly once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+
+          test_path = Path('test/test_streamlit_result_service.py')
+          test = test_path.read_text(encoding='utf-8')
+          addition = '''\n\ndef test_large_log_reads_bounded_tail_containing_cli_trailer(tmp_path: Path):\n    repo, rec = record(tmp_path)\n    result_dir = write_direct_result(repo, rec)\n    trailer = (rec.run_dir / "run.log").read_text(encoding="utf-8")\n    (rec.run_dir / "run.log").write_text(\n        ("verbose training line\\n" * 5000) + trailer,\n        encoding="utf-8",\n    )\n    direct = parse_direct_results(\n        repo, rec, limits=DiscoveryLimits(max_log_bytes=2048)\n    )\n    assert direct.completed\n    assert direct.result_dir == result_dir.resolve()\n    assert direct.test_metrics is not None\n    assert direct.run_summary is not None\n'''
+          if 'test_large_log_reads_bounded_tail_containing_cli_trailer' in test:
+              raise RuntimeError('bounded-tail test already exists')
+          test_path.write_text(test + addition, encoding='utf-8')
+          PY
+
+      - name: Verify review fix
+        run: |
+          python -m pip install PyYAML pytest
+          python -m py_compile apps/streamlit/result_service.py
+          python -m pytest test/test_streamlit_result_service.py -q
+          git diff --check
+
+      - name: Publish fix and remove temporary workflow
+        run: |
+          rm .github/workflows/temp-streamlit-u3-review-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/streamlit/result_service.py test/test_streamlit_result_service.py \
+            .github/workflows/temp-streamlit-u3-review-fix.yml
+          git commit -m 'fix(streamlit): parse direct results from bounded log tail'
+          git push origin HEAD:fix/streamlit-direct-results-20260908
