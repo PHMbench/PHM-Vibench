@@ -151,8 +151,13 @@ jobs:
         run: python -m pytest test/test_streamlit_public_contract.py -q --junitxml=streamlit-public.xml
       - name: Exercise the actual page with AppTest
         run: python -m pytest test/test_streamlit_app.py -q --junitxml=streamlit-page.xml
+      - name: Confirm integration reports exist
+        run: |
+          test -s streamlit-public.xml
+          test -s streamlit-page.xml
       - name: Upload integration diagnostics
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: streamlit-public-integration
