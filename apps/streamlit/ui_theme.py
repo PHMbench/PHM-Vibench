@@ -10,6 +10,7 @@ import streamlit as st
 try:
     from .config_service import (
         Catalog,
+        ConfigFormatError,
         ConfigServiceError,
         FieldSpec,
         RegistryEntry,
@@ -22,6 +23,7 @@ try:
 except ImportError:  # pragma: no cover
     from config_service import (  # type: ignore
         Catalog,
+        ConfigFormatError,
         ConfigServiceError,
         FieldSpec,
         RegistryEntry,
@@ -153,11 +155,40 @@ def _render_template_summary(entry: RegistryEntry) -> None:
             st.code(entry.related_docs.replace(";", "\n"), language="text")
 
 
-def _number_widget(spec: FieldSpec, current: Any, key: str) -> Any:
+def _validated_widget_value(spec: FieldSpec, current: Any) -> Any:
+    """Reject values a Streamlit widget would otherwise coerce before validation."""
+
     if current is None:
         current = spec.default
-    if current is None:
-        current = 0
+    if spec.widget == "number":
+        if current is None:
+            current = 0
+        integer_widget = spec.step is not None and float(spec.step).is_integer()
+        if integer_widget:
+            if isinstance(current, bool) or not isinstance(current, int):
+                raise ConfigFormatError(
+                    f"{spec.paths[0]} must be an integer before it can be edited as {spec.label}."
+                )
+        elif isinstance(current, bool) or not isinstance(current, (int, float)):
+            raise ConfigFormatError(
+                f"{spec.paths[0]} must be numeric before it can be edited as {spec.label}."
+            )
+    elif spec.widget == "checkbox" and not isinstance(current, bool):
+        raise ConfigFormatError(
+            f"{spec.paths[0]} must be a boolean before it can be edited as {spec.label}."
+        )
+    elif spec.widget == "text":
+        if current is None:
+            current = ""
+        if not isinstance(current, str):
+            raise ConfigFormatError(
+                f"{spec.paths[0]} must be text before it can be edited as {spec.label}."
+            )
+    return current
+
+
+def _number_widget(spec: FieldSpec, current: Any, key: str) -> Any:
+    current = _validated_widget_value(spec, current)
     is_integer = isinstance(current, int) and not isinstance(current, bool)
     if is_integer or (spec.step is not None and float(spec.step).is_integer()):
         return st.number_input(
@@ -214,6 +245,7 @@ def _render_field(
     *,
     widget_scope: str = "",
 ) -> Any:
+    current = _validated_widget_value(spec, current)
     scope = f"::{widget_scope}" if widget_scope else ""
     widget_key = f"field::{template_id}{scope}::{spec.key}"
     if spec.widget == "select":
@@ -232,13 +264,13 @@ def _render_field(
     if spec.widget == "checkbox":
         return st.checkbox(
             spec.label,
-            value=bool(current),
+            value=current,
             help=spec.help or None,
             key=widget_key,
         )
     return st.text_input(
         spec.label,
-        value="" if current is None else str(current),
+        value=current,
         help=spec.help or None,
         key=widget_key,
     )
@@ -262,13 +294,22 @@ def _render_fields(
             st.info("Fix the Advanced YAML draft before using common fields: " + str(error))
             return ()
     specs = tuple(spec for spec in catalog.fields if spec.quick_start or not quick_only)
+    try:
+        current_values = {
+            spec.key: _validated_widget_value(spec, field_value(source, spec))
+            for spec in specs
+        }
+    except ConfigServiceError as error:
+        st.info("Fix the configuration before using common fields: " + str(error))
+        return ()
+
     values: Dict[str, Any] = {}
     columns = st.columns(min(4, max(1, len(specs))))
     for index, spec in enumerate(specs):
         with columns[index % len(columns)]:
             values[spec.key] = _render_field(
                 spec,
-                field_value(source, spec),
+                current_values[spec.key],
                 template_id,
                 widget_scope=widget_scope,
             )
