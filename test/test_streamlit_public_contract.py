@@ -5,8 +5,11 @@ import json
 import math
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 
+from apps.streamlit import batch_runner as batches
+from apps.streamlit import batch_service
 from apps.streamlit import config_service as cs
 from apps.streamlit import result_service as results
 from apps.streamlit import run_service as rs
@@ -112,3 +115,76 @@ def test_ui_run_service_executes_real_dummy(monkeypatch):
         finally:
             if not rs.get_run(ROOT, record.run_id).is_terminal:
                 rs.cancel_run(ROOT, record.run_id, grace_seconds=1)
+
+
+def test_batch_runner_executes_two_real_dummy_trials_serially(monkeypatch):
+    report = cs.inspect_config(ROOT, SMOKE)
+    assert report.ok, (report.error, report.stderr)
+    output_parent = ROOT / 'outputs'
+    output_parent.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='ui-batch-', dir=output_parent) as directory:
+        directory = Path(directory)
+        monkeypatch.setattr(rs, '_run_root', lambda root: directory / 'runs')
+        with batches._BATCH_LOCK:
+            batches._BATCHES.clear()
+        config = dict(report.resolved)
+        config['environment'] = dict(
+            config['environment'],
+            iterations=1,
+            output_dir=str(directory / 'results'),
+        )
+        config['data'] = dict(config['data'], cache_dir=str(directory / 'cache'))
+        plan = batch_service.plan_grid(
+            config,
+            {'environment.seed': [31, 32]},
+            allowed_paths={'environment.seed'},
+            max_trials=2,
+            max_fits=2,
+        )
+        submitted = batches.start_batch(
+            batches.BatchRunRequest(
+                ROOT,
+                'demo_00_smoke_dummy_dg',
+                'Quick Start',
+                plan,
+                metadata={'purpose': 'streamlit batch integration'},
+            )
+        )
+        try:
+            deadline = time.monotonic() + 180
+            current = submitted
+            while not current.is_terminal and time.monotonic() < deadline:
+                time.sleep(0.1)
+                current = batches.get_batch(submitted.batch_id)
+            assert current.status == 'succeeded', current.error
+            assert current.completed_trials == 2
+            assert current.total_trials == 2
+            assert current.total_fits == 2
+            assert len(current.run_ids) == 2
+
+            records = [rs.get_run(ROOT, run_id) for run_id in current.run_ids]
+            assert [record.status for record in records] == ['succeeded', 'succeeded']
+            assert datetime.fromisoformat(records[1].started_at) >= datetime.fromisoformat(
+                records[0].ended_at
+            )
+            snapshots = [
+                cs.parse_yaml_text((record.run_dir / 'execution.yaml').read_text())
+                for record in records
+            ]
+            assert [snapshot['environment']['seed'] for snapshot in snapshots] == [31, 32]
+            assert all(snapshot['environment']['iterations'] == 1 for snapshot in snapshots)
+            for index, record in enumerate(records, start=1):
+                assert record.metadata['batch_id'] == submitted.batch_id
+                assert record.metadata['batch_trial_index'] == index
+                assert record.metadata['batch_total_trials'] == 2
+                assert 'run=completed' in (record.run_dir / 'run.log').read_text().splitlines()
+        finally:
+            batch = batches.get_batch(submitted.batch_id)
+            if batch.is_active:
+                batches.cancel_batch(submitted.batch_id)
+            for run_id in batch.run_ids:
+                record = rs.get_run(ROOT, run_id)
+                if not record.is_terminal:
+                    rs.cancel_run(ROOT, run_id, grace_seconds=1)
+            with batches._BATCH_LOCK:
+                batches._BATCHES.clear()
