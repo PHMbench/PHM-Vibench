@@ -1,0 +1,20 @@
+name: Temporary Streamlit source inspection
+on:
+  push:
+    branches: [fix/streamlit-inspector-parity-20260908]
+    paths: [.github/workflows/temporary-streamlit-source.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export tracked source only
+        run: git archive --format=tar.gz -o "$RUNNER_TEMP/phmfactory-source.tar.gz" HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streamlit-source
+          path: ${{ runner.temp }}/phmfactory-source.tar.gz
+          retention-days: 1
