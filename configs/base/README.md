@@ -1,9 +1,8 @@
-# Base Config Blocks (`configs/base/`)
+# Base configuration blocks
 
-Base configs are reusable building blocks for the 5-block config model:
-`environment` / `data` / `model` / `task` / `trainer`.
-
-They are meant to be **composed** by demos (and your experiments) via top-level `base_configs`:
+Base files are reusable fragments for the five sections: `environment`, `data`, `model`,
+`task`, and `trainer`. A fragment is not a complete runnable experiment. Demos and
+experiments compose them with `base_configs` and supply their own explicit values:
 
 ```yaml
 base_configs:
@@ -14,17 +13,18 @@ base_configs:
   trainer: "configs/base/trainer/default_single_gpu.yaml"
 ```
 
-## Readmes (Per Block)
+Read the relevant section guide:
+[environment](environment/README.md), [data](data/README.md), [model](model/README.md),
+[task](task/README.md), or [trainer](trainer/README.md).
 
-- `configs/base/environment/README.md`
-- `configs/base/data/README.md`
-- `configs/base/model/README.md`
-- `configs/base/task/README.md`
-- `configs/base/trainer/README.md`
+Add a fragment under its owning section and check the demos that compose it. Index a
+maintained fragment in `configs/config_registry.csv`; regenerate the Atlas when that
+source changes. A local prototype does not need to become a maintained example.
 
-## How to Add a New Base Block
+Keep machine paths and credentials out of shared fragments. Machine-local values must be
+supplied with an explicit `--local-config` or `--override`; a file's presence does not
+activate it. See the [configuration guide](../README.md).
 
-1) Create a YAML under the appropriate subfolder.
-2) Add a new row to `configs/config_registry.csv` with `category=base_*`.
-3) Regenerate atlas: `python -m scripts.gen_config_atlas`.
-
+Validate a complete consumer with `python -m scripts.validate_configs` and
+`phmfactory preflight --config <yaml>`. Do not force a fragment to satisfy the complete
+experiment schema on its own.

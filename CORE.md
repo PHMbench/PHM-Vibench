@@ -1,13 +1,15 @@
 # PHMFactory Core Contract
 
-This file records the smallest stable development contract. Current behavior is defined by
-the latest `dev` code and tests. User instructions belong in `README.md` and
-`docs/quickstart.md`; historical plans do not override this file.
+This file states the stable project requirements, not a release status or task queue.
+Current code and tests establish actual behavior. If they conflict with this contract,
+record the defect; do not silently lower the requirement to match the implementation.
+User instructions belong in [README.md](README.md) and [Quickstart](docs/quickstart.md).
+Historical plans do not override the current task or this contract.
 
 ## 1. Product goal
 
-A user declares one PHM experiment and PHMFactory executes that experiment without
-silently changing its scientific meaning.
+A user declares one PHM experiment and PHMFactory executes it without silently changing
+its scientific meaning.
 
 ```text
 requested experiment = executed experiment
@@ -37,8 +39,10 @@ fit → selected checkpoint → test → finite metrics
 direct result paths
 ```
 
-`phmfactory doctor`, `phmfactory preflight --config smoke`, and `phmfactory demo` form the
-offline first-run path. `python main.py` is a compatibility launcher, not a second runtime.
+`phmfactory doctor`, `phmfactory preflight --config smoke`, and `phmfactory demo` are the
+first-run commands. The Dummy runtime uses bundled inputs; installing dependencies is a
+separate operation. `python main.py` is a compatibility launcher, not another runtime.
+An explicitly training-only run must not be presented as evaluated.
 
 ## 3. Responsibility boundaries
 
@@ -51,45 +55,39 @@ offline first-run path. `python main.py` is a compatibility launcher, not a seco
 | Pipeline | orchestration and success gating | any Factory input |
 
 Replacing one compatible component should require changing that component and its
-configuration, not the other factories or the command router.
+configuration, not the other factories or command router.
 
 ## 4. Decision rule
 
-Before adding code or documentation, answer:
-
-```text
-Which current user action fails?
-Which scientific claim lacks evidence?
-What is the smallest change that reaches the root cause?
-What can be deleted instead?
-```
-
-Preferred order:
+Before adding code or documentation, identify the current user action or scientific
+question, the verified failure or uncertainty, and the smallest useful correction.
+Consider what can be removed instead:
 
 ```text
 DELETE → INLINE → MERGE → SIMPLIFY → DOCUMENT → ADD
 ```
 
-A new abstraction is justified only when at least two current maintained consumers need
-the same behavior and the change immediately removes duplicate logic.
+A new abstraction needs at least two current maintained consumers and must immediately
+remove duplicate logic. A demonstration of an idea is not an obligation to add it to the
+public runtime.
 
 ## 5. Prohibited patterns
 
 Do not add or restore:
 
-- duplicate audit or provenance control planes in the runtime;
-- silent fallback to another data source, model, task, device, loss, metric, checkpoint,
-  backend, or test population;
+- hash, checksum, digest, receipt or ledger systems as substitutes for direct scientific
+  validation, or duplicate audit/provenance control planes;
+- silent fallback to another source, model, task, device, objective, checkpoint, backend
+  or test population;
 - warning-and-continue behavior that drops selected samples or declared metrics;
-- automatic repair of labels, channels, patch size, domains, or experiment configuration;
-- manager, context, plugin, schema, or registry layers without an immediate maintained
-  consumer;
+- automatic repair of labels, channels, patch size, domains or experiment configuration;
+- manager, context, plugin, schema or registry layers without current consumers;
 - broad exception wrappers that replace the useful source error;
-- large refactors justified only by hypothetical future backends, datasets, or models;
-- tests that preserve an obsolete architecture instead of a user or scientific invariant.
+- large refactors justified only by hypothetical future uses;
+- tests that preserve obsolete architecture instead of user or scientific behavior.
 
-Comments should explain *why* a scientific or compatibility constraint exists. Remove
-comments that merely restate code or describe behavior that no longer exists.
+Comments explain why a constraint exists. Remove comments that merely repeat code or
+state behavior that no longer exists. Do not bulk-format unrelated files.
 
 ## 6. Failure contract
 
@@ -101,81 +99,46 @@ invalid request
 ```
 
 A useful error identifies the location, requested value, observed value, expected
-contract, and smallest repair. Cleanup belongs in `finally` and must not replace the
-source failure.
+contract and smallest repair. Cleanup belongs in `finally` and must not replace the
+source failure. A local environment limitation is not a permanent project requirement.
 
 ## 7. Support terms
 
 | Term | Meaning |
 | --- | --- |
-| `discoverable` | source or registry entry exists |
+| `discoverable` | source or catalogue entry exists |
 | `runnable` | a reviewed execution path exists |
-| `execution-verified` | the exact command has current bounded execution evidence |
-| `baseline-valid` | the exact full experiment passed its current scientific protocol |
+| `execution-verified` | the exact command has bounded execution evidence |
+| `baseline-valid` | the exact full experiment passed its scientific protocol |
 
-Support is configuration-specific. Source presence, importability, another configuration,
-or a historical result cannot establish it.
+Support is configuration-specific. Source presence, importability, another configuration
+or a historical result cannot establish it. Do not strengthen a claim to pass a check.
+Software regression, scientific acceptance, source merge and package publication are
+separate outcomes and must be reported separately.
 
-Current state:
+For the current state, inspect [config registry](configs/config_registry.csv),
+[supported combinations](SUPPORTED_COMBINATIONS.md), [known limitations](KNOWN_LIMITATIONS.md),
+[release readiness](docs/PHMFACTORY_V0_3_RELEASE_READINESS.md), and the associated current
+checks. Use [changelog](doc/changelog/) and PR records to determine completed work.
+Do not freeze commit IDs, open PR numbers or a next-task queue in this contract.
 
-- the offline Dummy path is maintained;
-- the MFPT transparent experiment remains `smoke_only` pending current-source
-  requalification;
-- there is no current `baseline_valid` registry row;
-- release readiness is blocked;
-- IoTDB and `phm-data-factory` are optional/deferred, not core dependencies.
+## 8. Change discipline
 
-Current status sources:
+One PR protects one primary invariant and states the current fact, root cause, scope,
+non-goals, observable result, focused validation, limitations and rollback.
+Keep one critical implementation change in progress; keep unrelated research separate.
+Follow [CONTRIBUTING.md](CONTRIBUTING.md) for branch and merge rules.
 
-- `configs/config_registry.csv`;
-- `SUPPORTED_COMBINATIONS.md`;
-- `KNOWN_LIMITATIONS.md`;
-- `docs/PHMFACTORY_V0_3_RELEASE_READINESS.md`.
+Validation follows the changed risk surface. Test runtime changes on the affected
+maintained path. A documentation edit does not require a new real-data experiment.
+Existing automatic checks remain enabled; distinguish their actual results from checks
+that were not run. Do not substitute a mock or static inspection for claimed execution.
 
-## 8. Pull-request discipline
+## 9. Shared AI guidance
 
-One PR protects one primary invariant and produces one user-visible outcome.
-
-Each PR states:
-
-```text
-Current fact
-Root cause
-Scope
-Out of scope
-Behavior after the change
-Focused validation
-Known limitation
-Rollback
-```
-
-Keep one critical implementation PR in progress. Use validation that matches the changed
-risk surface. Runtime changes protect the offline Dummy path; only changes affecting a
-real-data protocol should trigger its heavy workflow.
-
-## 9. Completed convergence steps
-
-Current `dev` already enforces:
-
-- one strict public configuration acceptance boundary;
-- explicit experiment selection at public entrypoints;
-- explicit `environment.seed` and `environment.iterations`;
-- explicit classification `trainer.num_epochs` and `trainer.test_after_fit`;
-- one maintained device-count field: `trainer.devices`.
-
-Do not reopen these items without a new executable counterexample.
-
-## 10. Current convergence order
-
-```text
-normal wheel installation evidence
-→ one immutable result root per invocation
-→ one successful Pipeline result contract
-→ declared evaluation metric closure
-→ explicit checkpoint and scheduler behavior
-→ default-only public Data Factory
-→ current-source MFPT requalification
-```
-
-Do not strengthen a release or benchmark claim to make a gate pass. Evidence changes the
-claim; the claim does not change the evidence.
+[AGENTS.md](AGENTS.md) is a short operational entrypoint; root `CLAUDE.md` imports it.
+This is an explicit exception to the former root-file ban, not permission to commit
+personal Agent workspaces. Module knowledge belongs in neutral READMEs, not duplicated
+or nested instruction files. The existing boundary check enforces that distinction.
+No personal credentials, tool permissions, hooks, local settings or conversation logs
+belong in these shared documents.

@@ -1,32 +1,23 @@
-# RNN Models
+# Recurrent implementations
 
-This directory contains recurrent neural networks for sequential modeling of industrial sensor data.
+Use `model.type: RNN` with an exact module name: `AttentionLSTM`, `AttentionGRU`,
+`ConvLSTM`, `ResidualRNN`, or `TransformerRNN`. Locations and typical arguments are in the
+[model catalogue](../model_registry.csv); construction is described in [Model Factory](../README.md).
 
-## Available models (`model.type = "RNN"`)
-
-Example config:
+A selection fragment is:
 
 ```yaml
 model:
-  type: "RNN"
-  name: "AttentionLSTM"   # or AttentionGRU / ConvLSTM / ResidualRNN / TransformerRNN
-  # other hyperparameters...
+  type: RNN
+  name: AttentionLSTM
 ```
 
-Supported `model.name` values:
-- `AttentionLSTM`
-- `AttentionGRU`
-- `ConvLSTM`
-- `ResidualRNN`
-- `TransformerRNN`
+Read the selected implementation before adding its `input_dim`, `hidden_dim`, layer count,
+bidirectionality and output settings. Field names, layouts, recurrent state handling and
+supported outputs differ; a generic `hidden_size` recipe is not a universal interface.
+ISFM embedding/backbone/head fields are not part of these standalone implementations.
 
-For non-ISFM models, `model.embedding`, `model.backbone`, and `model.task_head` are **not used** and should be set to `not_applicable` in the CSV registry.
-
-Typical hyperparameters:
-- `input_dim`, `hidden_dim`
-- `num_layers`
-- `bidirectional`
-- task-specific outputs: `num_classes` or `output_dim`
-
-Please consult the implementation files for detailed signatures, and extend this README with parameter tables and YAML examples as the interfaces stabilize.
-
+Preserve the time and channel axes expected by the implementation. Verify the output
+against the chosen Task with focused tests; do not turn an incompatible sequence or
+state shape into another input by silent truncation. Catalogue presence is not a
+performance, generalization or exact-experiment support claim.
