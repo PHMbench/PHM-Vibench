@@ -7,10 +7,16 @@ configuration digest. It compares the submitted YAML and typed override argument
 to the inputs last checked. A changed request requires another check before Run is enabled.
 The unused validation signature has been removed from the UI process records as well.
 
+The app entrypoint now imports the workspace by its package path. Launch from the checkout
+root with `python -m streamlit run apps/streamlit/app.py`; the entrypoint no longer retries
+an ambiguous top-level import when executed outside package context.
+
 A regression uses the real `scripts.config_inspect` process rather than a mock that supplies
 a retired field. The integration checks also exercise the actual Dummy CLI through the
 existing run service and the page's validate/edit/revalidate sequence through AppTest.
-The Streamlit workflow now triggers on its public inspector/configuration dependencies.
+The Streamlit workflow triggers on both inspector/configuration dependencies and the
+CLI, runtime, factories and bundled data exercised by that integration. Its CPU environment
+installs matching Torch and torchvision binaries before normal dependency resolution.
 
 ## Scope and limits
 
