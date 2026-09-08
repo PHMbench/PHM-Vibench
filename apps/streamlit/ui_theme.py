@@ -3,29 +3,33 @@
 from __future__ import annotations
 
 import difflib
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Dict, Mapping, MutableMapping, Tuple
 
 import streamlit as st
 
 try:
     from .config_service import (
         Catalog,
+        ConfigServiceError,
         FieldSpec,
         RegistryEntry,
         ValidationReport,
         build_field_overrides,
         dump_yaml,
         field_value,
+        parse_yaml_text,
     )
 except ImportError:  # pragma: no cover
     from config_service import (  # type: ignore
         Catalog,
+        ConfigServiceError,
         FieldSpec,
         RegistryEntry,
         ValidationReport,
         build_field_overrides,
         dump_yaml,
         field_value,
+        parse_yaml_text,
     )
 
 
@@ -177,8 +181,41 @@ def _number_widget(spec: FieldSpec, current: Any, key: str) -> Any:
     )
 
 
-def _render_field(spec: FieldSpec, current: Any, template_id: str) -> Any:
-    widget_key = f"field::{template_id}::{spec.key}"
+def _advanced_field_context(
+    state: MutableMapping[str, Any],
+    resolved: Mapping[str, Any],
+    template_id: str,
+) -> Tuple[Mapping[str, Any], str]:
+    """Use the current Advanced YAML as the common-field source.
+
+    The integer revision exists only to refresh Streamlit widget keys when the YAML draft
+    or selected template changes. It is not an experiment identity or integrity value.
+    """
+
+    if state.get("ui_mode") != "Advanced":
+        return resolved, ""
+    yaml_text = str(state.get("advanced_yaml_text") or "")
+    parsed = parse_yaml_text(yaml_text, source="Advanced YAML draft")
+    active_key = "advanced_field_active_template"
+    source_key = f"advanced_field_source::{template_id}"
+    revision_key = f"advanced_field_revision::{template_id}"
+    if state.get(active_key) != template_id or state.get(source_key) != yaml_text:
+        state[active_key] = template_id
+        state[source_key] = yaml_text
+        state[revision_key] = int(state.get(revision_key, 0)) + 1
+    revision = int(state.get(revision_key, 0))
+    return parsed, f"advanced-{revision}"
+
+
+def _render_field(
+    spec: FieldSpec,
+    current: Any,
+    template_id: str,
+    *,
+    widget_scope: str = "",
+) -> Any:
+    scope = f"::{widget_scope}" if widget_scope else ""
+    widget_key = f"field::{template_id}{scope}::{spec.key}"
     if spec.widget == "select":
         options = list(spec.options)
         if current not in options:
@@ -214,6 +251,16 @@ def _render_fields(
     *,
     quick_only: bool,
 ) -> Tuple[Tuple[str, Any], ...]:
+    source = resolved
+    widget_scope = ""
+    if st.session_state.get("ui_mode") == "Advanced":
+        try:
+            source, widget_scope = _advanced_field_context(
+                st.session_state, resolved, template_id
+            )
+        except ConfigServiceError as error:
+            st.info("Fix the Advanced YAML draft before using common fields: " + str(error))
+            return ()
     specs = tuple(spec for spec in catalog.fields if spec.quick_start or not quick_only)
     values: Dict[str, Any] = {}
     columns = st.columns(min(4, max(1, len(specs))))
@@ -221,11 +268,12 @@ def _render_fields(
         with columns[index % len(columns)]:
             values[spec.key] = _render_field(
                 spec,
-                field_value(resolved, spec),
+                field_value(source, spec),
                 template_id,
+                widget_scope=widget_scope,
             )
     return build_field_overrides(
-        resolved,
+        source,
         catalog,
         values,
         quick_start_only=quick_only,
