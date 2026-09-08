@@ -1,4 +1,4 @@
-"""Live run, result, artifact, and log rendering."""
+"""Live run, exact result, artifact, and log rendering."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ try:
         artifact_groups,
         discover_results,
         format_bytes,
-        headline_metrics,
+        primary_metric_headlines,
     )
     from .run_service import (
         RunRecord,
@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         artifact_groups,
         discover_results,
         format_bytes,
-        headline_metrics,
+        primary_metric_headlines,
     )
     from run_service import (  # type: ignore
         RunRecord,
@@ -102,15 +102,21 @@ def _render_overview(record: RunRecord, bundle: Any) -> None:
     st.code(format_command(record.command), language="bash")
     left, right = st.columns(2)
     with left:
-        st.markdown("**Run directory**")
+        st.markdown("**Streamlit process directory**")
         st.code(str(record.run_dir), language="text")
-        st.markdown("**Output root**")
-        st.code(record.output_root or "save", language="text")
+        st.markdown("**CLI-reported result directory**")
+        st.code(
+            str(bundle.direct.result_dir) if bundle.direct.result_dir is not None else "Not reported",
+            language="text",
+        )
     with right:
         st.markdown("**Template / mode**")
         st.write(f"{record.template_id or 'custom'} · {record.mode or 'unknown'}")
-        st.markdown("**Discovered roots**")
-        st.code("\n".join(str(path) for path in bundle.roots) or "None", language="text")
+        st.markdown("**Exact result roots used by this page**")
+        st.code("\n".join(str(path) for path in bundle.roots), language="text")
+    if bundle.direct.best_checkpoint is not None:
+        st.markdown("**Best checkpoint**")
+        st.code(str(bundle.direct.best_checkpoint), language="text")
     if record.error:
         st.warning(record.error)
     if record.metadata:
@@ -121,16 +127,24 @@ def _render_overview(record: RunRecord, bundle: Any) -> None:
 def _render_metrics(bundle: Any) -> None:
     for warning in bundle.warnings:
         st.warning(warning)
-    headlines = headline_metrics(bundle.metrics)
+
+    headlines = primary_metric_headlines(bundle.direct.primary_metrics)
     if headlines:
         cols = st.columns(len(headlines))
         for col, (name, value) in zip(cols, headlines):
-            col.metric(name, f"{value:.5g}" if isinstance(value, float) else value)
-    if not bundle.metrics:
-        st.info(
-            "No structured metrics artifact was found. The run and raw logs remain available."
-        )
-        return
+            col.metric(name, f"{value:.5g}")
+
+    if bundle.direct.evaluation_requested is False:
+        st.info("This approved configuration was training-only; post-fit test metrics were not requested.")
+    elif bundle.direct.completed and not bundle.metrics:
+        st.info("The completed CLI did not provide a usable test-metrics or run-summary file.")
+    elif not bundle.direct.completed:
+        st.info("Direct metrics become available only after the selected CLI run completes successfully.")
+
+    if bundle.direct.primary_metrics:
+        with st.expander("Primary metric summary returned by PHMFactory"):
+            st.json(dict(bundle.direct.primary_metrics))
+
     for table in bundle.metrics:
         st.markdown(f"**{table.source.name}**")
         if table.warning:
@@ -143,7 +157,7 @@ def _render_artifacts(bundle: Any, run_id: str) -> None:
     groups = artifact_groups(bundle)
     images = groups.get("image", ())
     if images:
-        st.markdown("**Visual artifacts**")
+        st.markdown("**Visual artifacts from this exact run**")
         columns = st.columns(min(3, len(images)))
         for index, artifact in enumerate(images):
             with columns[index % len(columns)]:
@@ -153,8 +167,8 @@ def _render_artifacts(bundle: Any, run_id: str) -> None:
                         caption=artifact.relative_path,
                         use_container_width=True,
                     )
-                except Exception as exc:
-                    st.warning(f"Could not render {artifact.relative_path}: {exc}")
+                except Exception as error:
+                    st.warning(f"Could not render {artifact.relative_path}: {error}")
     rows = [
         {
             "type": artifact.kind,
@@ -168,7 +182,7 @@ def _render_artifacts(bundle: Any, run_id: str) -> None:
     if rows:
         st.dataframe(rows, use_container_width=True, hide_index=True)
     else:
-        st.info("No artifacts have been discovered yet.")
+        st.info("No artifacts are available for this run.")
 
     downloadable = [
         item
@@ -218,8 +232,8 @@ def _render_run_actions(repo_root: Path, record: RunRecord) -> None:
                 cancel_run(repo_root, record.run_id)
                 st.toast("Cancellation requested.")
                 st.rerun()
-            except RunServiceError as exc:
-                _render_error("The run could not be cancelled.", exc)
+            except RunServiceError as error:
+                _render_error("The run could not be cancelled.", error)
     else:
         left.button(
             "Cancel run",
@@ -239,10 +253,10 @@ def _render_run_actions(repo_root: Path, record: RunRecord) -> None:
                 restarted = restart_run(repo_root, record.run_id)
                 st.session_state.active_run_id = restarted.run_id
                 st.session_state.selected_run_id = restarted.run_id
-                st.toast("Experiment restarted from its immutable snapshot.")
+                st.toast("Experiment restarted from its approved snapshot.")
                 st.rerun()
-            except RunServiceError as exc:
-                _render_error("The run could not be restarted.", exc)
+            except RunServiceError as error:
+                _render_error("The run could not be restarted.", error)
     else:
         middle.button(
             "Restart same run",
@@ -251,13 +265,13 @@ def _render_run_actions(repo_root: Path, record: RunRecord) -> None:
             use_container_width=True,
         )
 
-    manifest = record.run_dir / "run.json"
-    if manifest.is_file():
+    record_path = record.run_dir / "run.json"
+    if record_path.is_file():
         right.download_button(
-            "Download run manifest",
-            data=manifest.read_bytes(),
+            "Download run record",
+            data=record_path.read_bytes(),
             file_name=f"{record.run_id}.json",
-            key=f"manifest::{record.run_id}",
+            key=f"run-record::{record.run_id}",
             use_container_width=True,
         )
 
@@ -267,8 +281,8 @@ def _render_live_run(repo_root_text: str, run_id: str) -> None:
     repo_root = Path(repo_root_text)
     try:
         record = get_run(repo_root, run_id)
-    except RunServiceError as exc:
-        _render_error("The selected run could not be loaded.", exc)
+    except RunServiceError as error:
+        _render_error("The selected run could not be loaded.", error)
         return
 
     st.markdown(
@@ -288,8 +302,8 @@ def _render_live_run(repo_root_text: str, run_id: str) -> None:
 
     try:
         bundle = discover_results(repo_root, record)
-    except Exception as exc:  # keep logs/actions available if artifact parsing fails.
-        st.warning(f"Result discovery failed without affecting the run: {exc}")
+    except Exception as error:  # keep logs/actions available if result parsing fails.
+        st.warning(f"Result binding failed without affecting the run: {error}")
         bundle = None
 
     tabs = st.tabs(("Overview", "Metrics", "Artifacts", "Logs"))
