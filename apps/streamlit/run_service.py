@@ -63,7 +63,6 @@ class RunRequest:
     config_yaml: str = ""
     overrides: Tuple[Tuple[str, Any], ...] = ()
     output_root: str = "save"
-    validation_signature: str = ""
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
@@ -79,7 +78,6 @@ class RunRecord:
     log_path: str = ""
     output_root: str = ""
     overrides: Tuple[Tuple[str, Any], ...] = ()
-    validation_signature: str = ""
     pid: Optional[int] = None
     exit_code: Optional[int] = None
     created_at: str = ""
@@ -183,7 +181,6 @@ def prepare_request(request: RunRequest) -> RunRequest:
         config_yaml=yaml_text,
         overrides=overrides,
         output_root=output_root,
-        validation_signature=str(request.validation_signature),
         metadata=metadata,
     )
 
@@ -242,7 +239,6 @@ def _record(payload: Mapping[str, Any], run_dir: Path) -> RunRecord:
         log_path=str(payload.get("log_path") or ""),
         output_root=str(payload.get("output_root") or ""),
         overrides=tuple(overrides),
-        validation_signature=str(payload.get("validation_signature") or ""),
         pid=int(pid) if isinstance(pid, int) else None,
         exit_code=int(exit_code) if isinstance(exit_code, int) else None,
         created_at=str(payload.get("created_at") or ""),
@@ -336,7 +332,6 @@ def start_run(request: RunRequest) -> RunRecord:
             "log_path": str(log_path.relative_to(normalized.repo_root)),
             "output_root": normalized.output_root,
             "overrides": [[key, value] for key, value in normalized.overrides],
-            "validation_signature": normalized.validation_signature,
             "command": list(command),
             "pid": None,
             "exit_code": None,
@@ -616,7 +611,6 @@ def restart_run(repo_root: Path, run_id: str) -> RunRecord:
             config_yaml=config_path.read_text(encoding="utf-8"),
             overrides=previous.overrides,
             output_root=previous.output_root,
-            validation_signature=previous.validation_signature,
             metadata=metadata,
         )
     )

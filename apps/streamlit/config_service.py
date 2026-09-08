@@ -102,7 +102,6 @@ class ValidationReport:
     sources: Mapping[str, str] = field(default_factory=dict)
     targets: Mapping[str, Any] = field(default_factory=dict)
     sanity: Tuple[Mapping[str, Any], ...] = ()
-    effective_config_sha256: str = ""
     local_config_path: str | None = None
     stdout: str = ""
     stderr: str = ""
@@ -533,7 +532,7 @@ def inspect_config(
     python_executable: Optional[str] = None,
     local_config_path: Optional[Path] = None,
 ) -> ValidationReport:
-    """Invoke the public inspector and preserve its effective config identity."""
+    """Invoke the current public inspector without a second config identity."""
 
     command = [
         python_executable or sys.executable,
@@ -601,13 +600,16 @@ def inspect_config(
             stderr=completed.stderr,
             error="The config inspector returned an unexpected payload.",
         )
-    resolved = payload.get("resolved") or {}
-    sanity_raw = payload.get("sanity") or []
-    digest = str(payload.get("effective_config_sha256") or "")
+    resolved = payload.get("resolved")
+    sanity_raw = payload.get("sanity")
     if (
         not isinstance(resolved, dict)
         or not isinstance(sanity_raw, list)
-        or len(digest) != 64
+        or not sanity_raw
+        or not all(
+            isinstance(item, dict) and isinstance(item.get("ok"), bool)
+            for item in sanity_raw
+        )
     ):
         return ValidationReport(
             False,
@@ -616,8 +618,8 @@ def inspect_config(
             stderr=completed.stderr,
             error="The config inspector returned an incomplete payload.",
         )
-    sanity = tuple(item for item in sanity_raw if isinstance(item, dict))
-    passed = bool(sanity) and all(bool(item.get("ok")) for item in sanity)
+    sanity = tuple(sanity_raw)
+    passed = all(item["ok"] for item in sanity)
     return ValidationReport(
         passed,
         tuple(command),
@@ -625,7 +627,6 @@ def inspect_config(
         sources=payload.get("sources") or {},
         targets=payload.get("targets") or {},
         sanity=sanity,
-        effective_config_sha256=digest,
         local_config_path=payload.get("local_config_path"),
         stdout=completed.stdout,
         stderr=completed.stderr,

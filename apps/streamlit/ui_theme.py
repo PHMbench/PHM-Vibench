@@ -94,7 +94,7 @@ def _render_hero() -> None:
     <span class="phm-chip">Config-first</span>
     <span class="phm-chip">CPU smoke ready</span>
     <span class="phm-chip">No shell execution</span>
-    <span class="phm-chip">Reproducible run manifest</span>
+    <span class="phm-chip">Public CLI execution</span>
   </div>
 </div>
 <div class="phm-steps">
@@ -238,7 +238,7 @@ def _ensure_advanced_yaml(template_id: str, resolved: Mapping[str, Any]) -> None
         st.session_state.advanced_yaml_text = dump_yaml(resolved)
         st.session_state.advanced_override_text = ""
         st.session_state.validation_report = None
-        st.session_state.validation_signature = ""
+        st.session_state.validated_inputs = None
 
 
 def _render_diff(before: str, after: str) -> None:
