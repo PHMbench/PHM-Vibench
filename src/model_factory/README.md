@@ -1,173 +1,67 @@
-# PHM-Vibench Model Factory
+# Model Factory
 
-The PHM-Vibench Model Factory provides a collection of deep learning models for Prognostics and Health Management (PHM), wired through a unified configuration-first interface.
+Select a model through the resolved `model` configuration. The public Factory imports
+`src.model_factory.<type>.<name>` and constructs `Model(args_model, metadata)`. It returns
+a PyTorch module; the Trainer owns device placement, not this constructor.
 
-This document focuses on:
-- how to choose a model via `config.model.*`
-- how `model.type` / `embedding` / `backbone` / `task_head` map to code
-- where to find the full list of available options
+## Select an implementation
 
-For a Chinese overview, see `README_CN.md`.
-
-## 1. Directory Layout
-
-Core files and submodules:
-
-| File / Directory        | Description                                                                                           |
-| :---------------------- | :---------------------------------------------------------------------------------------------------- |
-| `model_factory.py`      | Main entry; `model_factory(args_model, metadata)` builds and returns a `torch.nn.Module`.            |
-| `MLP/`                  | MLP-based models.                                                                                     |
-| `CNN/`                  | Convolutional models (e.g., `ResNet1D`).                                                              |
-| `RNN/`                  | Recurrent models.                                                                                     |
-| `NO/`                   | Neural Operator models (e.g., `FNO`).                                                                 |
-| `Transformer/`          | Transformer-based architectures (e.g., `PatchTST`).                                                  |
-| `ISFM/`                 | Industrial Signal Foundation Models with embedding/backbone/task_head submodules.                    |
-| `ISFM_Prompt/`          | Prompt-style ISFM variants.                                                                           |
-| `X_model/`              | XAI and auxiliary models.                                                                             |
-
-Each model file normally exposes a `Model` class and can be instantiated via the factory.
-
-## 2. Configuration Interface (YAML)
-
-The factory is driven by the `model` section in your experiment YAML. The key idea is:
-
-- `model.type`: which subdirectory to use (e.g. `ISFM`, `Transformer`).
-- `model.name`: which Python module/class to use inside that directory (e.g. `M_01_ISFM`).
-- `model.embedding`: which embedding component to plug into ISFM-style models.
-- `model.backbone`: which backbone network to use.
-- `model.task_head`: which task head to attach (classification / prediction / multi-task).
-- any other fields under `model` are passed through as hyperparameters.
-
-### 2.1 Minimal example (ISFM)
+The following is a model fragment, not a complete experiment:
 
 ```yaml
 model:
-  type: "ISFM"
-  name: "M_01_ISFM"
-
-  embedding: "E_01_HSE"
-  backbone: "B_04_Dlinear"
-  task_head: "H_01_Linear_cla"
-
-  d_model: 256
-  n_layers: 2
-  dropout: 0.1
+  type: ISFM
+  name: M_01_ISFM
+  embedding: E_01_HSE
+  backbone: B_04_Dlinear
+  task_head: H_01_Linear_cla
 ```
 
-### 2.2 How the factory resolves your config
+Use a complete maintained configuration to supply the remaining parameters and metadata.
+`model.type` is the directory and `model.name` is the module exporting `Model`; neither is
+an arbitrary class description. The public Pipeline receives an already analyzed
+configuration and must not parse or merge YAML again inside this Factory.
 
-Internally, the factory:
+Implementation families:
+[CNN](CNN/README.md), [RNN](RNN/README.md), [MLP](MLP/README.md),
+[Transformer](Transformer/README.md), [neural operators](NO/README.md),
+[ISFM](ISFM/README.md), [ISFM Prompt](ISFM_Prompt/README.md), and
+[explainability/auxiliary models](X_model/README.md).
 
-1. Reads `model.type` and `model.name`.
-2. Imports `src.model_factory.{type}.{name}`.
-3. Instantiates `Model(args_model, metadata)` with the full `model` dict (plus metadata).
+## Catalogue is not support
 
-In pseudo-code:
+[model_registry.csv](model_registry.csv) indexes module paths, typical arguments and
+recorded test notes. It is not a list of scientifically validated Data × Model × Task
+combinations. Check the selected implementation, actual tests, complete configuration,
+and [supported combinations](../../SUPPORTED_COMBINATIONS.md).
 
-```python
-model_module = importlib.import_module(
-    f".{args_model.type}.{args_model.name}", package="src.model_factory"
-)
-model = model_module.Model(args_model, metadata)
-```
+Changing a model can change input layout, output meaning, sequence-length requirements,
+metadata needs or dependencies. Verify those boundaries rather than silently resizing
+an input, remapping labels or replacing the task to make a forward pass work.
 
-If `weights_path` is provided, the factory loads that checkpoint into the model.
-Construction and checkpoint exceptions retain their original type and traceback.
-
-### 2.3 Checkpoint strictness
-
-Checkpoint loading is strict by default:
+## Explicit checkpoint loading
 
 ```yaml
 model:
-  weights_path: "/path/to/checkpoint.ckpt"
+  weights_path: /path/to/checkpoint.ckpt
   weights_strict: true
 ```
 
-Use `weights_strict: false` only for an intentional transfer-learning run. Non-strict
-loading still requires at least one parameter with the same name and shape; zero matches
-fail instead of continuing with random initialization.
+This fragment extends the selected model, not its identity. `weights_strict` must be a
+YAML boolean, not a quoted string. Strict loading is the default. Intentional non-strict
+transfer still requires at least one matching parameter name and shape; zero matches
+must fail rather than silently use a random model. Construction/loading failures remain
+errors, not a signal to select another model.
 
-`weights_strict` must be a YAML boolean:
+## Add a compatible model
 
-```yaml
-weights_strict: true   # valid
-weights_strict: false  # valid
-```
+Place it in the appropriate family and expose `Model(args_model, metadata)`. State input,
+output, dtype and metadata requirements, then add a focused test and minimal configuration.
+Use the existing Factory resolution; do not edit the CLI or add another registry.
+Update catalogue/navigation when promoting a maintained implementation, not as a
+substitute for execution. Preserve caller configuration when changing constructors;
+existing inferred-field mutation is not a design pattern to copy.
 
-Do not quote it:
-
-```yaml
-weights_strict: "false"  # invalid string, fails before checkpoint loading
-```
-
-PHMFactory does not interpret strings, integers, or other truthy/falsy values as a
-checkpoint policy.
-
-## 3. Recommended demo configuration (current)
-
-For maintained demos we recommend the following ISFM configuration (aligned with
-`configs/base/model/backbone_dlinear.yaml`):
-
-```yaml
-model:
-  type: "ISFM"
-  name: "M_01_ISFM"
-  embedding: "E_01_HSE"
-  backbone: "B_04_Dlinear"
-  task_head: "H_01_Linear_cla"
-```
-
-This combination is used across `configs/demo/` and can be reused for CDDG / DG / FS / pretraining by changing only the `task.*` and trainer config.
-
-## 4. Model registry CSV
-
-The full list of currently supported combinations is maintained as a CSV:
-
-- `src/model_factory/model_registry.csv`
-
-Columns:
-- `model.type`: high-level model type (e.g. `ISFM`, `Transformer`, `CNN`).
-- `model.name`: model file/class name (e.g. `M_01_ISFM`, `PatchTST`).
-- `module_path`: Python import path of the model file.
-- `args`: short list of typical/important configuration fields for this model.
-- `notes`: short description or recommended usage.
-- `test_status`: testing status marker (e.g. `/` = unknown/not recorded, `pass`, `fail`).
-
-When in doubt, look up your intended model in this CSV to confirm `type`/`name`/`module_path`, and scan the `args` column to see which config fields you are expected to provide. Then fill in any additional type-specific fields (such as `embedding` / `backbone` / `task_head` for ISFM) according to the relevant README and configs.
-
-## 5. Type-specific configuration (where to look)
-
-Each `model.type` can have its own configuration details and valid options:
-
-- `ISFM/README.md` (or `CONFIG.md`):  
-  - explains how `embedding` / `backbone` / `task_head` are wired;  
-  - lists all ISFM subcomponents, e.g. `E_01_HSE`, `B_04_Dlinear`, `H_01_Linear_cla` etc.;  
-  - documents extra arguments required by each component (e.g. `patch_size_L`, `patch_size_C` for `E_01_HSE`).
-- `Transformer/README.md` (if present):  
-  - lists transformer backbones such as `PatchTST`, `Autoformer`, `Informer`, etc., and their key hyperparameters.
-- Likewise for `CNN/`, `RNN/`, `MLP/`, `NO/` once their READMEs are added.
-
-If a directory does not yet have its own README, refer to the model code directly and consider adding a short documentation section when you introduce changes.
-
-## 6. Factory workflow summary
-
-1. **Read config**: pipeline parses YAML and builds `args_model` from `config.model`.
-2. **Dynamic import**: `model_factory` imports via `model.type` and `model.name`.
-3. **Instantiate**: `Model(args_model, metadata)` is constructed.
-4. **Load checkpoint (optional)**: `weights_path` is used to restore parameters.
-5. **Return**: an initialized `torch.nn.Module`, ready for use by the task/trainer.
-
-This workflow is described in more detail (with code snippets) in the previous `readme.md`; those explanations have now been merged here and into the Chinese `README_CN.md`.
-
-## 7. Notes for contributors
-
-When adding a new model:
-
-- Place the implementation under the correct subdirectory (`ISFM/`, `Transformer/`, etc.).
-- Ensure the file exposes a `Model` class with constructor signature `Model(args_model, metadata)`.
-- Register its typical configuration in `src/model_factory/model_registry.csv`.
-- Update or create the corresponding type-specific README (e.g. `ISFM/README.md`) with:
-  - a minimal YAML example;
-  - a table of supported `embedding` / `backbone` / `task_head` values and required arguments.
-- Keep configuration keys in YAML lowercase with underscores, consistent with the rest of the repo.
+Read [contributing.md](contributing.md) for the contribution boundary. For a model change,
+run the affected tests and a compatible maintained smoke; a directory-wide model list is
+not a requirement to execute every research model.

@@ -1,14 +1,7 @@
-# Task Factory (`src/task_factory/`)
+# Task Factory
 
-The Task Factory wraps a model in the PyTorch Lightning task selected by `task.type` and `task.name`.
-
-```text
-resolved task config + model + metadata
-→ one task class
-→ configured LightningModule
-```
-
-The public contract is simple:
+The Task Factory wraps the selected model in the Lightning task identified by
+`task.type` and `task.name`.
 
 ```python
 from src.task_factory import build_task
@@ -24,101 +17,58 @@ task = build_task(
 )
 ```
 
-A successful call returns a `LightningModule`. Import and constructor failures raise with the requested task, module path, original cause, and repair guidance. The factory does not print an error and return `None`.
+This is a construction fragment using already resolved configuration and metadata.
+Tasks own objectives, estimator lifecycle and optimization, not device fallback or data
+replacement. Failures must not substitute another task, zero loss or an easier objective.
 
-## Configuration
+## Configuration and resolution
+
+A task fragment is:
 
 ```yaml
 task:
-  type: "DG"
-  name: "classification"
-  loss: "CE"
-  metrics: ["acc"]
-  optimizer: "adamw"
+  type: DG
+  name: classification
+  loss: CE
+  metrics: [acc, f1]
+  optimizer: adamw
   lr: 0.001
 ```
 
-Inspect the final target before running:
+For `DG.classification`, the Factory checks the existing `TASK_REGISTRY`, imports
+`src.task_factory.task.DG.classification`, then checks for decorator registration. The
+historical exported class `task` remains a compatibility path. Do not add another class
+name guessing strategy or implement both paths without a real compatibility need.
+
+A new task can use `@register_task("MyTaskType", "my_task")` on its class in
+`src/task_factory/task/MyTaskType/my_task.py`. See [Default_task.py](Default_task.py) for
+the actual constructor and lifecycle, and [components](Components/README.md) for loss and
+metric inputs. Do not copy an illustrative fragment as a complete runnable task.
+
+## Batch and metadata
+
+Document the dictionary fields actually consumed, such as `x`, `y`, `file_id`,
+`domain_id`, and `mask`. Preserve per-sample identity and metadata through the batch;
+`x, y = batch` is not a replacement for that contract. Configure the correct explicit
+dataset adapter when needed; do not catch an import failure and use `Default_dataset`.
+
+Metric construction requires validated metadata and, on maintained paths, `loss_name`.
+Aliases and logged estimator names belong to the existing metric helpers. Do not invent
+missing values, average batch-level F1, or use argmax labels as AUROC scores. Code and tests
+must determine whether every declared estimator and expected population was evaluated.
+
+## Verification and support
+
+Inspect and run the same complete configuration:
 
 ```bash
-python -m scripts.config_inspect --config <yaml> --dump targets
+phmfactory preflight --config <yaml>
+phmfactory --config <yaml> \
+  --override trainer.num_epochs=1 \
+  --override data.num_workers=0
 ```
 
-## Resolution order
-
-For key `DG.classification`, the factory:
-
-1. checks `TASK_REGISTRY`;
-2. imports the explicit historical path `src.task_factory.task.DG.classification`;
-3. checks the registry again so module decorators can register the class;
-4. accepts the historical exported class name `task` when the module is not decorator-registered.
-
-It does not guess a class from the filename or try arbitrary `*Task` names.
-
-## Adding a task
-
-Preferred implementation:
-
-```python
-from src.task_factory import register_task
-from src.task_factory.Default_task import Default_task
-
-
-@register_task("MyTaskType", "my_task")
-class MyTask(Default_task):
-    def training_step(self, batch, batch_idx):
-        ...
-```
-
-Place the module at the path implied by the configuration:
-
-```text
-src/task_factory/task/MyTaskType/my_task.py
-```
-
-For historical compatibility, the module may instead export:
-
-```python
-class task(Default_task):
-    ...
-```
-
-Do not implement both unless compatibility requires it.
-
-## Dataset contract
-
-A task must document the batch fields it actually consumes, such as:
-
-```text
-x, y, file_id, domain_id, mask
-```
-
-When the task needs a new dataset wrapper, register the matching dataset adapter explicitly:
-
-```python
-from src.data_factory import register_dataset_adapter
-
-register_dataset_adapter(
-    "MyTaskType",
-    "my_task",
-    "my_package.dataset_adapter",
-)
-```
-
-Do not rely on `ImportError → Default_dataset` fallback; that behavior is intentionally removed.
-
-## Minimal validation
-
-```bash
-python -m scripts.validate_configs
-python main.py --config <your-config.yaml> \
-  --override trainer.num_epochs=1 data.num_workers=0
-```
-
-A task becomes release-supported only when an exact config is listed as `sanity_ok`. A class, registry row, or successful import alone is not a support claim.
-
-## Failure examples
-
-- `Cannot import task ...`: verify `task.type`, `task.name`, module path, and optional dependencies.
-- `does not register ... and does not expose 'task'`: add `@register_task(...)` or export the historical `task` class.
-- `Cannot construct task ...`: inspect the preserved original exception and the task-specific configuration.
+Run the relevant objective, estimator and Task tests. A registry row or import is only
+implementation discovery; `sanity_ok` software execution is not a stable release or
+`baseline_valid` scientific claim. Use the existing [supported combinations](../../SUPPORTED_COMBINATIONS.md)
+and [contribution guide](contributing.md), not a second support table here.
