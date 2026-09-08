@@ -30,9 +30,10 @@ digest is required. Validation stores the submitted YAML text and typed override
 for direct comparison. Editing either makes the old validation stale and disables Run
 until the new request is checked. Hidden machine-local files do not participate.
 
-Inspection is not a promise that training will succeed. It does not construct the training
-stack or perform every public preflight check. A missing dependency or unavailable device
-must remain a visible failure, not trigger a different experiment.
+Inspection resolves the requested experiment. Run then materializes that approved mapping as
+one `execution.yaml` and invokes the existing public preflight against that exact file before
+training starts. A missing dependency or unavailable device remains a visible failure and
+does not trigger a different experiment.
 
 ## Edit a configuration
 
@@ -44,9 +45,9 @@ The backend owns composition, strict types, Pipeline selection, and explicit loc
 The UI does not auto-discover `configs/local/local.yaml`. Repository templates remain
 unchanged when a run creates its own `execution.yaml`.
 
-Current limitation: downloaded YAML does not yet fold in separate overrides. Preserve
-both the configuration and the displayed override arguments when reproducing a run.
-A single checked/downloaded/executed snapshot is the next configuration improvement.
+After validation, all safe-field and raw override edits are folded into one resolved YAML.
+Download, public preflight, execution, and restart use that same snapshot without a second
+`--override` layer. Repository templates remain unchanged.
 
 ## Run and inspect
 
@@ -87,8 +88,8 @@ view to attribute results from concurrent experiments. The per-run CLI log is au
 
 A rejected configuration shows the inspector's original stderr. Copy the visible command
 and run it with the same Python and working directory. Use `phmfactory doctor` for environment
-issues, and `phmfactory preflight --config <yaml>` with the same overrides for public
-preflight checks. Missing local data requires correcting the requested path; switching to
+issues. The Run action already executes `phmfactory preflight --config <execution.yaml>`
+before training; copy that saved YAML to reproduce the same preflight manually. Missing local data requires correcting the requested path; switching to
 the offline example is an explicit user action, never an automatic fallback.
 
 ## Development and tests

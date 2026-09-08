@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from apps.streamlit import run_service as run_service_module
+from apps.streamlit.config_service import apply_overrides, dump_yaml, load_yaml_mapping, parse_yaml_text
 from apps.streamlit.run_service import (
     RunConflictError,
     RunRequest,
@@ -20,6 +21,34 @@ from apps.streamlit.run_service import (
     restart_run,
     start_run,
 )
+
+@pytest.fixture(autouse=True)
+def _stub_public_run_boundaries(monkeypatch):
+    """Keep unit tests lightweight; real public subprocesses run in integration tests."""
+
+    def approve(request):
+        normalized = prepare_request(request)
+        config = (
+            load_yaml_mapping(normalized.config_source)
+            if normalized.config_source is not None
+            else parse_yaml_text(normalized.config_yaml)
+        )
+        config = apply_overrides(config, normalized.overrides)
+        environment = config.get('environment') or {}
+        output_root = str(environment.get('output_dir') or normalized.output_root)
+        return RunRequest(
+            repo_root=normalized.repo_root,
+            template_id=normalized.template_id,
+            mode=normalized.mode,
+            config_yaml=dump_yaml(config),
+            overrides=(),
+            output_root=output_root,
+            metadata=normalized.metadata,
+        )
+
+    monkeypatch.setattr(run_service_module, 'approve_request', approve)
+    monkeypatch.setattr(run_service_module, '_run_public_preflight', lambda root, path: None)
+
 
 CONFIG = '''\
 environment:
@@ -107,7 +136,7 @@ def test_successful_run_writes_manifest_and_log(tmp_path: Path):
             template_id='demo',
             mode='Quick Start',
             config_source=repo / 'configs' / 'demo.yaml',
-            overrides=(('trainer.num_epochs', 1),),
+            overrides=(('trainer.num_epochs', 2),),
             output_root='results/demo',
         )
     )
@@ -124,7 +153,11 @@ def test_successful_run_writes_manifest_and_log(tmp_path: Path):
     ]
     log = read_log_tail(final)
     assert 'CONFIG=outputs/streamlit/' in log
-    assert 'trainer.num_epochs' in log
+    assert 'OVERRIDES=None' in log
+    snapshot = (final.run_dir / 'execution.yaml').read_text(encoding='utf-8')
+    assert 'num_epochs: 2' in snapshot
+    assert '--override' not in final.command
+    assert final.overrides == ()
 
 
 def test_failed_process_is_recorded(tmp_path: Path):
@@ -257,3 +290,23 @@ def test_detached_manifest_blocks_a_second_run_on_posix(tmp_path: Path):
         start_run(
             RunRequest(repo_root=repo, template_id='demo', mode='Advanced', config_yaml=CONFIG)
         )
+
+
+def test_public_preflight_failure_does_not_launch_training(monkeypatch, tmp_path: Path):
+    repo = make_repo(tmp_path)
+
+    def fail_preflight(root, path):
+        raise RunServiceError('Public preflight rejected the approved execution.yaml before training.')
+
+    monkeypatch.setattr(run_service_module, '_run_public_preflight', fail_preflight)
+    with pytest.raises(RunServiceError, match='Public preflight rejected'):
+        start_run(
+            RunRequest(
+                repo_root=repo,
+                template_id='demo',
+                mode='Advanced',
+                config_yaml=CONFIG,
+            )
+        )
+    run_root = repo / 'outputs' / 'streamlit'
+    assert not run_root.exists() or not any(run_root.iterdir())

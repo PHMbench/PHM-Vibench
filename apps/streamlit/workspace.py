@@ -419,19 +419,29 @@ def main() -> None:
     )
     if report_is_current:
         _render_validation(report)
+        if report.ok:
+            st.caption(
+                "Validated snapshot: approved edits are folded into the YAML used for "
+                "download, public preflight, execution, and restart."
+            )
     elif isinstance(report, ValidationReport):
         st.warning(
             "The configuration changed after validation. Validate it again before running."
         )
 
-    can_download = bool(report_is_current and report.ok and not configuration_has_error)
+    approved_yaml_text = (
+        dump_yaml(report.resolved)
+        if report_is_current and report.ok and report.resolved
+        else ""
+    )
+    can_download = bool(approved_yaml_text and not configuration_has_error)
     can_run = bool(can_download and readiness.can_execute and data_status.ready)
     render_launch_blockers(readiness, data_status)
 
     if can_download:
         download_col.download_button(
             "Download execution YAML",
-            data=execution_yaml_text,
+            data=approved_yaml_text,
             file_name="phmfactory_config.yaml",
             mime="application/x-yaml",
             use_container_width=True,
@@ -461,8 +471,8 @@ def main() -> None:
                     repo_root=repo_root,
                     template_id=selected_id,
                     mode=mode,
-                    config_yaml=execution_yaml_text,
-                    overrides=overrides,
+                    config_yaml=approved_yaml_text,
+                    overrides=(),
                     output_root=str(resolved_output or "save"),
                     metadata={
                         "registry_path": entry.path,

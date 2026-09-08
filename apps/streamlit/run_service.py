@@ -13,6 +13,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -25,6 +26,9 @@ try:
     from .config_service import (
         ConfigServiceError,
         build_main_command,
+        dump_yaml,
+        inspect_config,
+        inspect_yaml_text,
         normalize_overrides,
         parse_yaml_text,
     )
@@ -32,6 +36,9 @@ except ImportError:  # pragma: no cover - Streamlit executes app.py as a script.
     from config_service import (  # type: ignore
         ConfigServiceError,
         build_main_command,
+        dump_yaml,
+        inspect_config,
+        inspect_yaml_text,
         normalize_overrides,
         parse_yaml_text,
     )
@@ -185,6 +192,85 @@ def prepare_request(request: RunRequest) -> RunRequest:
     )
 
 
+def approve_request(request: RunRequest) -> RunRequest:
+    """Resolve one request through the public config authority before launch."""
+
+    normalized = prepare_request(request)
+    report = (
+        inspect_config(
+            normalized.repo_root,
+            normalized.config_source,
+            normalized.overrides,
+        )
+        if normalized.config_source is not None
+        else inspect_yaml_text(
+            normalized.repo_root,
+            normalized.config_yaml,
+            normalized.overrides,
+        )
+    )
+    if not report.ok or not report.resolved:
+        detail = report.stderr.strip() or report.error or "Unknown configuration rejection."
+        raise RunServiceError(
+            "The public config inspector rejected this run request before launch.\n"
+            + detail
+        )
+    environment = report.resolved.get("environment")
+    output_root = (
+        str(environment.get("output_dir"))
+        if isinstance(environment, Mapping)
+        and isinstance(environment.get("output_dir"), str)
+        and environment.get("output_dir").strip()
+        else normalized.output_root
+    )
+    return RunRequest(
+        repo_root=normalized.repo_root,
+        template_id=normalized.template_id,
+        mode=normalized.mode,
+        config_yaml=dump_yaml(report.resolved),
+        overrides=(),
+        output_root=output_root,
+        metadata=normalized.metadata,
+    )
+
+
+def _run_public_preflight(repo_root: Path, config_path: Path, *, timeout: float = 90.0) -> None:
+    """Run the existing public preflight against the exact execution snapshot."""
+
+    display_path = config_path.resolve().relative_to(repo_root.resolve()).as_posix()
+    command = (
+        sys.executable,
+        "-m",
+        "phmfactory",
+        "preflight",
+        "--config",
+        display_path,
+    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(repo_root),
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RunServiceError(
+            f"Public preflight timed out after {timeout:g} seconds."
+        ) from error
+    except OSError as error:
+        raise RunServiceError(f"Could not start public preflight: {error}") from error
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip() or (
+            f"preflight exited with code {completed.returncode}"
+        )
+        raise RunServiceError(
+            "Public preflight rejected the approved execution.yaml before training.\n"
+            + detail
+        )
+
+
 def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
@@ -280,23 +366,23 @@ def _spawn_kwargs() -> Dict[str, Any]:
 
 
 def start_run(request: RunRequest) -> RunRecord:
-    """Create a durable run directory and launch the public PHM-Vibench CLI."""
+    """Approve, preflight, and launch one exact PHMFactory execution snapshot."""
 
-    normalized = prepare_request(request)
+    approved = approve_request(request)
     with _LOCK:
-        active = _active_managed_run(normalized.repo_root)
+        active = _active_managed_run(approved.repo_root)
         if active:
             raise RunConflictError(
                 f"This Streamlit worker already manages active run {active}. "
                 "Cancel or finish it before starting another experiment."
             )
-        run_root = _run_root(normalized.repo_root)
+        run_root = _run_root(approved.repo_root)
         if run_root.is_dir():
             for existing_dir in sorted(run_root.iterdir(), reverse=True):
                 if not existing_dir.is_dir() or not (existing_dir / "run.json").is_file():
                     continue
                 try:
-                    existing = get_run(normalized.repo_root, existing_dir.name)
+                    existing = get_run(approved.repo_root, existing_dir.name)
                 except RunServiceError:
                     continue
                 if existing.is_active:
@@ -306,32 +392,30 @@ def start_run(request: RunRequest) -> RunRecord:
                     )
 
         run_id = _new_run_id()
-        run_dir = _run_root(normalized.repo_root) / run_id
+        run_dir = _run_root(approved.repo_root) / run_id
         run_dir.mkdir(parents=True, exist_ok=False)
         config_path = run_dir / "execution.yaml"
-        if normalized.config_source is not None:
-            shutil.copyfile(normalized.config_source, config_path)
-        else:
-            config_path.write_text(normalized.config_yaml, encoding="utf-8")
+        config_path.write_text(approved.config_yaml, encoding="utf-8")
+        try:
+            _run_public_preflight(approved.repo_root, config_path)
+        except RunServiceError:
+            shutil.rmtree(run_dir)
+            raise
 
-        command = build_main_command(
-            normalized.repo_root,
-            config_path,
-            normalized.overrides,
-        )
+        command = build_main_command(approved.repo_root, config_path)
         log_path = run_dir / "run.log"
         created_at = _utc_now()
-        restart_of = str(normalized.metadata.get("restart_of") or "")
+        restart_of = str(approved.metadata.get("restart_of") or "")
         payload: Dict[str, Any] = {
             "schema_version": 1,
             "run_id": run_id,
             "status": "starting",
-            "template_id": normalized.template_id,
-            "mode": normalized.mode,
-            "config_path": str(config_path.relative_to(normalized.repo_root)),
-            "log_path": str(log_path.relative_to(normalized.repo_root)),
-            "output_root": normalized.output_root,
-            "overrides": [[key, value] for key, value in normalized.overrides],
+            "template_id": approved.template_id,
+            "mode": approved.mode,
+            "config_path": str(config_path.relative_to(approved.repo_root)),
+            "log_path": str(log_path.relative_to(approved.repo_root)),
+            "output_root": approved.output_root,
+            "overrides": [],
             "command": list(command),
             "pid": None,
             "exit_code": None,
@@ -341,7 +425,7 @@ def start_run(request: RunRequest) -> RunRecord:
             "cancel_requested": False,
             "error": "",
             "restart_of": restart_of,
-            "metadata": dict(normalized.metadata),
+            "metadata": dict(approved.metadata),
         }
         _atomic_write_json(_manifest_path(run_dir), payload)
 
@@ -351,7 +435,7 @@ def start_run(request: RunRequest) -> RunRecord:
         try:
             process = subprocess.Popen(
                 list(command),
-                cwd=str(normalized.repo_root),
+                cwd=str(approved.repo_root),
                 env=env,
                 stdin=subprocess.DEVNULL,
                 stdout=log_handle,
@@ -373,16 +457,15 @@ def start_run(request: RunRequest) -> RunRecord:
         payload.update(status="running", pid=process.pid, started_at=_utc_now())
         _atomic_write_json(_manifest_path(run_dir), payload)
         managed = _ManagedProcess(process=process, log_handle=log_handle, run_dir=run_dir)
-        _PROCESSES[_key(normalized.repo_root, run_id)] = managed
+        _PROCESSES[_key(approved.repo_root, run_id)] = managed
         monitor = threading.Thread(
             target=_monitor_process,
-            args=(normalized.repo_root, run_id, managed),
+            args=(approved.repo_root, run_id, managed),
             name=f"phm-vibench-run-{run_id}",
             daemon=True,
         )
         monitor.start()
         return _record(payload, run_dir)
-
 
 def _monitor_process(repo_root: Path, run_id: str, managed: _ManagedProcess) -> None:
     return_code: Optional[int] = None
