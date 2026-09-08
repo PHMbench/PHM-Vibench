@@ -46,7 +46,9 @@ def test_ui_run_service_executes_real_dummy(monkeypatch):
         config['data'] = dict(config['data'], cache_dir=str(directory / 'cache'))
         record = rs.start_run(rs.RunRequest(
             repo_root=ROOT, template_id='demo_00_smoke_dummy_dg', mode='Quick Start',
-            config_yaml=cs.dump_yaml(config), output_root=config['environment']['output_dir'],
+            config_yaml=cs.dump_yaml(config),
+            overrides=(('environment.seed', 23),),
+            output_root=config['environment']['output_dir'],
         ))
         try:
             deadline = time.monotonic() + 120
@@ -80,7 +82,16 @@ def test_ui_run_service_executes_real_dummy(monkeypatch):
             summary = json.loads(Path(values['run_summary']).read_text())
             assert summary['iterations'] == 1
             assert all(value['count'] == 1 for value in summary['metrics'].values())
-            assert 'validation_signature' not in json.loads((record.run_dir / 'run.json').read_text())
+            manifest = json.loads((record.run_dir / 'run.json').read_text())
+            assert 'validation_signature' not in manifest
+            assert manifest['overrides'] == []
+            assert '--override' not in record.command
+            snapshot_text = (record.run_dir / 'execution.yaml').read_text()
+            snapshot = cs.parse_yaml_text(snapshot_text)
+            assert snapshot['environment']['seed'] == 23
+            approved = cs.inspect_yaml_text(ROOT, snapshot_text)
+            assert approved.ok, (approved.error, approved.stderr)
+            assert approved.resolved == snapshot
         finally:
             if not rs.get_run(ROOT, record.run_id).is_terminal:
                 rs.cancel_run(ROOT, record.run_id, grace_seconds=1)
