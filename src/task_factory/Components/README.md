@@ -1,149 +1,85 @@
-# Task Components Library
+# Task components
 
-本目录包含任务所需的可复用组件，目的是解耦“任务逻辑”与“数学计算”。建议所有 Task 通过工厂接口（如 `get_loss_fn` / `get_metrics`）使用组件，避免硬编码。
+These modules supply mathematical operations used by Tasks. They do not own data
+selection, device fallback, experiment orchestration, or support promotion. Read the
+[Task Factory guide](../README.md) before adding a Task.
 
-## 目录与职责
-- `loss.py`：Loss 工厂，统一 `get_loss_fn(name)` 接口。
-- `contrastive_losses.py`：对比/度量学习损失实现（InfoNCE, SupCon, Triplet, BarlowTwins, VICReg 等）。
-- `contrastive_strategies.py`：对比学习策略架构，支持 HSE Prompt 集成和系统感知对比学习，详见 [CONTRASTIVE_STRATEGIES.md](./README_CONTRASTIVE_STRATEGIES.md)。
-- `metrics.py`：评估指标工厂，封装 torchmetrics。
-- `regularization.py`：正则化工具（L1/L2/Domain penalty/mixup 等）。
-- 其他：prompt_contrastive、metric_loss 等高级模块。
+## Loss interfaces
 
-## 生成/重构组件状态
-
-- `flow.py` / `FlowLoss`：实验性条件 flow-matching helper，已有 CPU 单元测试覆盖速度目标和采样形状；尚未注册为 maintained task/model。
-- `mean_flow_loss.py` / `MeanFlow`：实验性 MeanFlow helper，已有无条件 loss 和 sampler 设备推断 smoke 测试；采样协议和 PHM benchmark 配置尚未完成。
-- `ISFM/component/MaskedAutoencoder.py`：模型组件级 masked reconstruction 实现；pretrain 输出合同由 `test/generative/` 覆盖。
-
-这些组件不能单独作为 Pipeline 06、DDPM/CFM/Rectified Flow/Score-SDE 等完整方法的证据。进入 maintained surface 前仍需五段配置、registry/atlas、任务封装、shape/device/dtype 测试和 demo 证据。
-
-## Loss 一览（常用关键字）
-> 配置中通过 `task.loss` 指定；对比学习多为 **embedding 输入**，需确保输入格式正确。
-
-### 监督/常规
-| Key  | Class                   | 说明                   |
-| ---- | ----------------------- | ---------------------- |
-| CE   | nn.CrossEntropyLoss     | 多分类                 |
-| MSE  | nn.MSELoss              | 回归/预测             |
-| BCE  | nn.BCEWithLogitsLoss    | 二分类/多标签         |
-
-### 对比/度量
-| Key          | Class            | 说明                           | 典型输入                       |
-| ------------ | ---------------- | ------------------------------ | ------------------------------ |
-| INFONCE      | InfoNCELoss      | 自监督对比；需正样本对         | features (或 features+labels)  |
-| SUPCON       | SupConLoss       | 监督对比；同 label 为正样本    | features + labels              |
-| TRIPLET      | TripletLoss      | 三元组损失；需 margin          | features + labels              |
-| PROTOTYPICAL | PrototypicalLoss | 原型/度量学习                  | features + labels              |
-| BARLOWTWINS  | BarlowTwinsLoss  | 冗余减少；两视图               | z1, z2                         |
-| VICREG       | VICRegLoss       | 另一种两视图自监督             | z1, z2                         |
-
-⚠️ 注意事项：
-- InfoNCE/SupCon 需要“正样本对”存在：监督对比需 batch 内有重复 label；自监督需双视图或其他配对逻辑。单视图+唯一标签会得到 0 loss。
-- Triplet 需要合理的 margin；BarlowTwins/VICReg 需要两视图输入。
-- prompt_contrastive 的 `base_loss_type` 只接受文档列出的 key，额外参数请匹配底层 loss。
-
-## 在 HSE 对比预训练任务中通过超参选择 loss
-
-`pretrain/hse_contrastive.py` 通过 `contrastive_strategies.py` 内的策略管理器，支持以下两种配置方式：
-
-### 1. 简单模式：单一对比损失
-
-在 YAML 的 task 段中使用 `contrast_loss` 选择具体 loss 类型：
-
-```yaml
-task:
-  type: "pretrain"
-  name: "hse_contrastive"
-
-  # 选择对比损失类型（关键超参）
-  contrast_loss: "INFONCE"         # 或 "SUPCON" / "TRIPLET" / "PROTOTYPICAL" / "BARLOWTWINS" / "VICREG"
-
-  # 通用权重
-  contrast_weight: 1.0             # 对比 loss 权重
-  classification_weight: 0.0       # 设为 0 表示纯对比预训练；>0 表示对比+CE 混合
-
-  # 具体 loss 的超参（按需）
-  temperature: 0.07                # INFONCE / SUPCON 用
-  margin: 0.3                      # TRIPLET 用
-  barlow_lambda: 5e-3              # BARLOWTWINS 用
-```
-
-内部会自动构造：
+[loss.py](loss.py) provides:
 
 ```python
-contrastive_config = {
-    "type": "single",
-    "loss_type": args_task.contrast_loss,
-    "temperature": args_task.temperature,
-    "margin": args_task.margin,
-    "barlow_lambda": args_task.barlow_lambda,
-    ...
-}
-strategy_manager = create_contrastive_strategy(contrastive_config)
+get_loss_fn(loss_name: str)
+prepare_loss_inputs(loss_name, predictions, target)
 ```
 
-### 2. 高级模式：多损失组合 (ensemble)
+For the maintained supervised path, select `task.loss` explicitly. CE and NLL consume
+class-index targets; BCE consumes one score and one target per sample; regression losses
+consume matching continuous predictions and targets. Use `prepare_loss_inputs` for the
+implemented shape and dtype contract, not a blanket conversion of every target to long.
 
-如果需要组合多种对比损失，可以显式提供 `contrastive_strategy`：
+Inside a Task, with model outputs and targets already obtained from the declared batch:
 
-```yaml
-task:
-  type: "pretrain"
-  name: "hse_contrastive"
-
-  contrastive_strategy:
-    type: "ensemble"
-    losses:
-      - loss_type: "INFONCE"
-        weight: 0.6
-        temperature: 0.07
-      - loss_type: "SUPCON"
-        weight: 0.4
-        temperature: 0.07
-```
-
-此时会忽略 `contrast_loss`，直接按 `losses` 列表构建 `EnsembleContrastiveStrategy`。
-
-### 3. 对比 + 分类的组合方式
-
-在 `hse_contrastive` 任务中，对比损失与 CE 分类损失通过权重组合：
-
-- 纯对比预训练：`contrast_weight > 0` 且 `classification_weight = 0`  
-- 单阶段“对比 + CE”训练：两者都 > 0  
-
-下游分类阶段仍推荐使用 CDDG/FS/GFS 等专门的 classification 任务，`hse_contrastive` 主要用于预训练阶段 (`type="pretrain", name="hse_contrastive"`)。
-
-## 使用示例（Task 内）
 ```python
-from src.task_factory.Components.loss import get_loss_fn
+from src.task_factory.Components.loss import get_loss_fn, prepare_loss_inputs
 
-class MyContrastiveTask(pl.LightningModule):
-    def __init__(self, args_task, ...):
-        super().__init__()
-        self.loss_fn = get_loss_fn(args_task.loss)  # 例如 "INFONCE"
-
-    def training_step(self, batch, batch_idx):
-        feats = self.network(batch['x'])
-        labels = batch.get('y')
-        # 按 loss 类型传参
-        if hasattr(self.loss_fn, '__call__'):
-            try:
-                loss = self.loss_fn(feats, labels)  # SupCon 需要 labels
-            except TypeError:
-                loss = self.loss_fn(feats)          # InfoNCE 无标签模式
-        return loss
+loss_fn = get_loss_fn("CE")
+logits, labels = prepare_loss_inputs("CE", predictions, target)
+loss = loss_fn(logits, labels)
 ```
 
-## Metrics 配置
-在 YAML 中通过列表配置，例如：
-```yaml
-task:
-  metrics: ["acc", "f1", "auroc"]
-```
-在代码中通过 `get_metrics` 取用（详见 `metrics.py`）。
+This is a component fragment, not a complete training script. The enclosing Task defines
+how `predictions` and `target` are produced. Do not replace its dictionary batch contract
+with `x, y = batch`, pass mixup arguments to plain CrossEntropyLoss, or catch TypeError to
+retry another loss signature. A failed objective call must not select a different loss.
 
-## 规范建议
-- 不要在 Task 里硬编码具体 Loss/Metric，统一通过工厂获取。
-- 对比学习前确认数据流：是否提供双视图/重复标签；否则 InfoNCE/SupCon 会返回 0。
-- 如需新组件，先注册到对应工厂并更新本 README，保持可查性。 
+## Metric interfaces
+
+[metrics.py](metrics.py) provides:
+
+```python
+get_metrics(metric_names, metadata, *, loss_name=None)
+prepare_metric_inputs(metric_name, predictions, target, *, loss_name)
+```
+
+Metadata is required. The maintained Task supplies `loss_name`; omission exists only for
+low-level compatibility. With the Task's validated metadata:
+
+```python
+from src.task_factory.Components.metrics import get_metrics
+
+metrics = get_metrics(["acc", "f1"], metadata, loss_name="CE")
+```
+
+The result is a ModuleDict keyed by metadata `Name`, with stage-specific entries such as
+`train_acc`, `val_acc`, and `test_f1`. Classification construction validates the label
+ontology; do not infer missing classes from a single evaluation batch.
+
+Use separate stage states: update on batches, compute over the evaluation population,
+then reset at the stage boundary. AUROC needs continuous scores, not argmax labels. Use
+`prepare_metric_inputs` for the selected estimator. Do not average batch F1 values or fill
+missing metrics with zero. See [Default_task.py](../Default_task.py) for the implemented
+lifecycle. This guide does not claim that namespace collisions or declared-metric
+publication checks are already resolved.
+
+## Contrastive and generative components
+
+- [contrastive_losses.py](contrastive_losses.py) contains InfoNCE, SupCon, Triplet,
+  Prototypical, BarlowTwins, and VICReg implementations. Their input contracts differ;
+  inspect the selected implementation and its Task caller before use.
+- [contrastive strategy notes](README_CONTRASTIVE_STRATEGIES.md) describe research
+  composition. They are not evidence that every loss combination is maintained.
+- `flow.py` / `FlowLoss` and `mean_flow_loss.py` / `MeanFlow` are experimental helpers.
+  A helper test does not establish a complete Pipeline 06 method or benchmark result.
+- Model-side masked reconstruction is documented with its model implementation, not
+  treated as a generic supervised-loss substitute here.
+
+No universal argument retry, zero-loss repair, new component manager, or extra registry
+is required to document these boundaries.
+
+## Verification
+
+For documentation, run `python -m scripts.validate_docs`. For changes to supervised loss
+or metric behavior, use the existing `test/test_task_estimator_truth.py` and the affected
+Task tests. Select additional contrastive/generative tests only for the component changed.
+A real-data rerun is not a documentation-edit requirement.
