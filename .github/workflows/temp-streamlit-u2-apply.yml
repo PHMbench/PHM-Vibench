@@ -26,130 +26,102 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def edit(path: str, old: str, new: str, *, count: int = 1) -> None:
+          def exact_replace(path: str, old: str, new: str, count: int = 1) -> None:
               file = Path(path)
               text = file.read_text(encoding='utf-8')
               actual = text.count(old)
               if actual != count:
-                  raise RuntimeError(f'{path}: expected {count} occurrence(s), found {actual}: {old[:100]!r}')
+                  raise RuntimeError(f'{path}: expected {count}, found {actual}: {old[:100]!r}')
               file.write_text(text.replace(old, new), encoding='utf-8')
 
-          # run_service: turn any accepted source+override request into one fully resolved
-          # YAML snapshot, then run the existing public preflight against that exact file.
-          edit(
-              'apps/streamlit/run_service.py',
-              'import subprocess\nimport threading',
-              'import subprocess\nimport sys\nimport threading',
+          path = Path('apps/streamlit/run_service.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('import subprocess\nimport threading', 'import subprocess\nimport sys\nimport threading', 1)
+          old_import = '        ConfigServiceError,\n        build_main_command,\n        normalize_overrides,\n        parse_yaml_text,\n'
+          new_import = '        ConfigServiceError,\n        build_main_command,\n        dump_yaml,\n        inspect_config,\n        inspect_yaml_text,\n        normalize_overrides,\n        parse_yaml_text,\n'
+          if text.count(old_import) != 2:
+              raise RuntimeError('run_service import block changed unexpectedly')
+          text = text.replace(old_import, new_import)
+          marker = 'def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:\n'
+          helper = '''def approve_request(request: RunRequest) -> RunRequest:\n    \"\"\"Resolve one request through the public config authority before launch.\"\"\"\n\n    normalized = prepare_request(request)\n    report = (\n        inspect_config(\n            normalized.repo_root,\n            normalized.config_source,\n            normalized.overrides,\n        )\n        if normalized.config_source is not None\n        else inspect_yaml_text(\n            normalized.repo_root,\n            normalized.config_yaml,\n            normalized.overrides,\n        )\n    )\n    if not report.ok or not report.resolved:\n        detail = report.stderr.strip() or report.error or \"Unknown configuration rejection.\"\n        raise RunServiceError(\n            \"The public config inspector rejected this run request before launch.\\n\"\n            + detail\n        )\n    environment = report.resolved.get(\"environment\")\n    output_root = (\n        str(environment.get(\"output_dir\"))\n        if isinstance(environment, Mapping)\n        and isinstance(environment.get(\"output_dir\"), str)\n        and environment.get(\"output_dir\").strip()\n        else normalized.output_root\n    )\n    return RunRequest(\n        repo_root=normalized.repo_root,\n        template_id=normalized.template_id,\n        mode=normalized.mode,\n        config_yaml=dump_yaml(report.resolved),\n        overrides=(),\n        output_root=output_root,\n        metadata=normalized.metadata,\n    )\n\n\ndef _run_public_preflight(repo_root: Path, config_path: Path, *, timeout: float = 90.0) -> None:\n    \"\"\"Run the existing public preflight against the exact execution snapshot.\"\"\"\n\n    display_path = config_path.resolve().relative_to(repo_root.resolve()).as_posix()\n    command = (\n        sys.executable,\n        \"-m\",\n        \"phmfactory\",\n        \"preflight\",\n        \"--config\",\n        display_path,\n    )\n    try:\n        completed = subprocess.run(\n            command,\n            cwd=str(repo_root),\n            text=True,\n            capture_output=True,\n            timeout=timeout,\n            check=False,\n        )\n    except subprocess.TimeoutExpired as error:\n        raise RunServiceError(\n            f\"Public preflight timed out after {timeout:g} seconds.\"\n        ) from error\n    except OSError as error:\n        raise RunServiceError(f\"Could not start public preflight: {error}\") from error\n    if completed.returncode != 0:\n        detail = completed.stderr.strip() or completed.stdout.strip() or (\n            f\"preflight exited with code {completed.returncode}\"\n        )\n        raise RunServiceError(\n            \"Public preflight rejected the approved execution.yaml before training.\\n\"\n            + detail\n        )\n\n\n'''
+          if text.count(marker) != 1:
+              raise RuntimeError('run_service atomic-write marker changed unexpectedly')
+          text = text.replace(marker, helper + marker)
+          start = text.index('def start_run(request: RunRequest) -> RunRecord:')
+          end = text.index('\ndef _monitor_process', start)
+          start_run = '''def start_run(request: RunRequest) -> RunRecord:\n    \"\"\"Approve, preflight, and launch one exact PHMFactory execution snapshot.\"\"\"\n\n    approved = approve_request(request)\n    with _LOCK:\n        active = _active_managed_run(approved.repo_root)\n        if active:\n            raise RunConflictError(\n                f\"This Streamlit worker already manages active run {active}. \"\n                \"Cancel or finish it before starting another experiment.\"\n            )\n        run_root = _run_root(approved.repo_root)\n        if run_root.is_dir():\n            for existing_dir in sorted(run_root.iterdir(), reverse=True):\n                if not existing_dir.is_dir() or not (existing_dir / \"run.json\").is_file():\n                    continue\n                try:\n                    existing = get_run(approved.repo_root, existing_dir.name)\n                except RunServiceError:\n                    continue\n                if existing.is_active:\n                    raise RunConflictError(\n                        f\"Run {existing.run_id} is still {existing.status}. Resolve it before \"\n                        \"starting another experiment.\"\n                    )\n\n        run_id = _new_run_id()\n        run_dir = _run_root(approved.repo_root) / run_id\n        run_dir.mkdir(parents=True, exist_ok=False)\n        config_path = run_dir / \"execution.yaml\"\n        config_path.write_text(approved.config_yaml, encoding=\"utf-8\")\n        try:\n            _run_public_preflight(approved.repo_root, config_path)\n        except RunServiceError:\n            shutil.rmtree(run_dir)\n            raise\n\n        command = build_main_command(approved.repo_root, config_path)\n        log_path = run_dir / \"run.log\"\n        created_at = _utc_now()\n        restart_of = str(approved.metadata.get(\"restart_of\") or \"\")\n        payload: Dict[str, Any] = {\n            \"schema_version\": 1,\n            \"run_id\": run_id,\n            \"status\": \"starting\",\n            \"template_id\": approved.template_id,\n            \"mode\": approved.mode,\n            \"config_path\": str(config_path.relative_to(approved.repo_root)),\n            \"log_path\": str(log_path.relative_to(approved.repo_root)),\n            \"output_root\": approved.output_root,\n            \"overrides\": [],\n            \"command\": list(command),\n            \"pid\": None,\n            \"exit_code\": None,\n            \"created_at\": created_at,\n            \"started_at\": \"\",\n            \"ended_at\": \"\",\n            \"cancel_requested\": False,\n            \"error\": \"\",\n            \"restart_of\": restart_of,\n            \"metadata\": dict(approved.metadata),\n        }\n        _atomic_write_json(_manifest_path(run_dir), payload)\n\n        log_handle = log_path.open(\"w\", encoding=\"utf-8\", buffering=1)\n        env = os.environ.copy()\n        env[\"PYTHONUNBUFFERED\"] = \"1\"\n        try:\n            process = subprocess.Popen(\n                list(command),\n                cwd=str(approved.repo_root),\n                env=env,\n                stdin=subprocess.DEVNULL,\n                stdout=log_handle,\n                stderr=subprocess.STDOUT,\n                text=True,\n                shell=False,\n                **_spawn_kwargs(),\n            )\n        except OSError as exc:\n            log_handle.close()\n            payload.update(\n                status=\"failed\",\n                ended_at=_utc_now(),\n                error=f\"Could not start experiment process: {exc}\",\n            )\n            _atomic_write_json(_manifest_path(run_dir), payload)\n            return _record(payload, run_dir)\n\n        payload.update(status=\"running\", pid=process.pid, started_at=_utc_now())\n        _atomic_write_json(_manifest_path(run_dir), payload)\n        managed = _ManagedProcess(process=process, log_handle=log_handle, run_dir=run_dir)\n        _PROCESSES[_key(approved.repo_root, run_id)] = managed\n        monitor = threading.Thread(\n            target=_monitor_process,\n            args=(approved.repo_root, run_id, managed),\n            name=f\"phm-vibench-run-{run_id}\",\n            daemon=True,\n        )\n        monitor.start()\n        return _record(payload, run_dir)\n\n'''
+          text = text[:start] + start_run + text[end + 1:]
+          path.write_text(text, encoding='utf-8')
+
+          exact_replace(
+              'apps/streamlit/workspace.py',
+              '    can_download = bool(report_is_current and report.ok and not configuration_has_error)\n    can_run = bool(can_download and readiness.can_execute and data_status.ready)\n',
+              '    approved_yaml_text = (\n        dump_yaml(report.resolved)\n        if report_is_current and report.ok and report.resolved\n        else \"\"\n    )\n    can_download = bool(approved_yaml_text and not configuration_has_error)\n    can_run = bool(can_download and readiness.can_execute and data_status.ready)\n',
           )
-          edit(
-              'apps/streamlit/run_service.py',
-              '''        ConfigServiceError,\n        build_main_command,\n        normalize_overrides,\n        parse_yaml_text,\n''',
-              '''        ConfigServiceError,\n        build_main_command,\n        dump_yaml,\n        inspect_config,\n        inspect_yaml_text,\n        normalize_overrides,\n        parse_yaml_text,\n''',
-              count=2,
+          exact_replace('apps/streamlit/workspace.py', '            data=execution_yaml_text,', '            data=approved_yaml_text,')
+          exact_replace(
+              'apps/streamlit/workspace.py',
+              '                    config_yaml=execution_yaml_text,\n                    overrides=overrides,\n',
+              '                    config_yaml=approved_yaml_text,\n                    overrides=(),\n',
           )
-          marker = '''def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:\n'''
-          insertion = '''def approve_request(request: RunRequest) -> RunRequest:\n    \"\"\"Resolve one request through the public config authority before launch.\"\"\"\n\n    normalized = prepare_request(request)\n    report = (\n        inspect_config(\n            normalized.repo_root,\n            normalized.config_source,\n            normalized.overrides,\n        )\n        if normalized.config_source is not None\n        else inspect_yaml_text(\n            normalized.repo_root,\n            normalized.config_yaml,\n            normalized.overrides,\n        )\n    )\n    if not report.ok or not report.resolved:\n        detail = report.stderr.strip() or report.error or \"Unknown configuration rejection.\"\n        raise RunServiceError(\n            \"The public config inspector rejected this run request before launch.\\n\"\n            + detail\n        )\n    environment = report.resolved.get(\"environment\")\n    output_root = (\n        str(environment.get(\"output_dir\"))\n        if isinstance(environment, Mapping)\n        and isinstance(environment.get(\"output_dir\"), str)\n        and environment.get(\"output_dir\").strip()\n        else normalized.output_root\n    )\n    return RunRequest(\n        repo_root=normalized.repo_root,\n        template_id=normalized.template_id,\n        mode=normalized.mode,\n        config_yaml=dump_yaml(report.resolved),\n        overrides=(),\n        output_root=output_root,\n        metadata=normalized.metadata,\n    )\n\n\ndef _run_public_preflight(repo_root: Path, config_path: Path, *, timeout: float = 90.0) -> None:\n    \"\"\"Run PHMFactory's existing preflight against the exact execution snapshot.\"\"\"\n\n    display_path = config_path.resolve().relative_to(repo_root.resolve()).as_posix()\n    command = (\n        sys.executable,\n        \"-m\",\n        \"phmfactory\",\n        \"preflight\",\n        \"--config\",\n        display_path,\n    )\n    try:\n        completed = subprocess.run(\n            command,\n            cwd=str(repo_root),\n            text=True,\n            capture_output=True,\n            timeout=timeout,\n            check=False,\n        )\n    except subprocess.TimeoutExpired as error:\n        raise RunServiceError(\n            f\"Public preflight timed out after {timeout:g} seconds.\"\n        ) from error\n    except OSError as error:\n        raise RunServiceError(f\"Could not start public preflight: {error}\") from error\n    if completed.returncode != 0:\n        detail = completed.stderr.strip() or completed.stdout.strip() or (\n            f\"preflight exited with code {completed.returncode}\"\n        )\n        raise RunServiceError(\n            \"Public preflight rejected the approved execution.yaml before training.\\n\"\n            + detail\n        )\n\n\n'''
-          edit('apps/streamlit/run_service.py', marker, insertion + marker)
-          edit(
-              'apps/streamlit/run_service.py',
-              '    normalized = prepare_request(request)\n    with _LOCK:',
-              '    approved = approve_request(request)\n    with _LOCK:',
-          )
-          for old, new in (
-              ('normalized.repo_root', 'approved.repo_root'),
-              ('normalized.template_id', 'approved.template_id'),
-              ('normalized.mode', 'approved.mode'),
-              ('normalized.output_root', 'approved.output_root'),
-              ('normalized.metadata', 'approved.metadata'),
-          ):
-              text = Path('apps/streamlit/run_service.py').read_text(encoding='utf-8')
-              # Only start_run should still contain these names after approve_request was inserted.
-              start = text.index('def start_run(')
-              end = text.index('\ndef _monitor_process', start)
-              prefix, block, suffix = text[:start], text[start:end], text[end:]
-              block = block.replace(old, new)
-              Path('apps/streamlit/run_service.py').write_text(prefix + block + suffix, encoding='utf-8')
-          edit(
-              'apps/streamlit/run_service.py',
-              '''        config_path = run_dir / \"execution.yaml\"\n        if normalized.config_source is not None:\n            shutil.copyfile(normalized.config_source, config_path)\n        else:\n            config_path.write_text(normalized.config_yaml, encoding=\"utf-8\")\n\n        command = build_main_command(\n            approved.repo_root,\n            config_path,\n            normalized.overrides,\n        )\n''',
-              '''        config_path = run_dir / \"execution.yaml\"\n        config_path.write_text(approved.config_yaml, encoding=\"utf-8\")\n        try:\n            _run_public_preflight(approved.repo_root, config_path)\n        except RunServiceError:\n            shutil.rmtree(run_dir)\n            raise\n\n        command = build_main_command(approved.repo_root, config_path)\n''',
-          )
-          edit(
-              'apps/streamlit/run_service.py',
-              '''            \"overrides\": [[key, value] for key, value in normalized.overrides],\n''',
-              '''            \"overrides\": [],\n''',
+          exact_replace(
+              'apps/streamlit/workspace.py',
+              '    if report_is_current:\n        _render_validation(report)\n',
+              '    if report_is_current:\n        _render_validation(report)\n        if report.ok:\n            st.caption(\n                \"Validated snapshot: approved edits are folded into the YAML used for \"\n                \"download, public preflight, execution, and restart.\"\n            )\n',
           )
 
-          # workspace: download and launch the inspector-resolved YAML. UI overrides are
-          # inputs to approval only; they are no longer a second execution input.
-          edit(
-              'apps/streamlit/workspace.py',
-              '''    can_download = bool(report_is_current and report.ok and not configuration_has_error)\n    can_run = bool(can_download and readiness.can_execute and data_status.ready)\n''',
-              '''    approved_yaml_text = (\n        dump_yaml(report.resolved)\n        if report_is_current and report.ok and report.resolved\n        else \"\"\n    )\n    can_download = bool(approved_yaml_text and not configuration_has_error)\n    can_run = bool(can_download and readiness.can_execute and data_status.ready)\n''',
+          test_path = Path('test/test_streamlit_run_service.py')
+          test_text = test_path.read_text(encoding='utf-8')
+          import_marker = 'from apps.streamlit import run_service as run_service_module\n'
+          test_text = test_text.replace(
+              import_marker,
+              import_marker + 'from apps.streamlit.config_service import apply_overrides, dump_yaml, load_yaml_mapping, parse_yaml_text\n',
+              1,
           )
-          edit(
-              'apps/streamlit/workspace.py',
-              '            data=execution_yaml_text,',
-              '            data=approved_yaml_text,',
+          fixture_marker = "CONFIG = '''\\\n"
+          fixture = '''@pytest.fixture(autouse=True)\ndef _stub_public_run_boundaries(monkeypatch):\n    \"\"\"Keep unit tests lightweight; real public subprocesses run in integration tests.\"\"\"\n\n    def approve(request):\n        normalized = prepare_request(request)\n        config = (\n            load_yaml_mapping(normalized.config_source)\n            if normalized.config_source is not None\n            else parse_yaml_text(normalized.config_yaml)\n        )\n        config = apply_overrides(config, normalized.overrides)\n        environment = config.get('environment') or {}\n        output_root = str(environment.get('output_dir') or normalized.output_root)\n        return RunRequest(\n            repo_root=normalized.repo_root,\n            template_id=normalized.template_id,\n            mode=normalized.mode,\n            config_yaml=dump_yaml(config),\n            overrides=(),\n            output_root=output_root,\n            metadata=normalized.metadata,\n        )\n\n    monkeypatch.setattr(run_service_module, 'approve_request', approve)\n    monkeypatch.setattr(run_service_module, '_run_public_preflight', lambda root, path: None)\n\n\n'''
+          if test_text.count(fixture_marker) != 1:
+              raise RuntimeError('test CONFIG marker changed unexpectedly')
+          test_text = test_text.replace(fixture_marker, fixture + fixture_marker, 1)
+          test_text = test_text.replace("            overrides=(('trainer.num_epochs', 1),),\n", "            overrides=(('trainer.num_epochs', 2),),\n", 1)
+          test_text = test_text.replace(
+              "    assert 'CONFIG=outputs/streamlit/' in log\n    assert 'trainer.num_epochs' in log\n",
+              "    assert 'CONFIG=outputs/streamlit/' in log\n    assert 'OVERRIDES=None' in log\n    snapshot = (final.run_dir / 'execution.yaml').read_text(encoding='utf-8')\n    assert 'num_epochs: 2' in snapshot\n    assert '--override' not in final.command\n    assert final.overrides == ()\n",
+              1,
           )
-          edit(
-              'apps/streamlit/workspace.py',
-              '''                    config_yaml=execution_yaml_text,\n                    overrides=overrides,\n''',
-              '''                    config_yaml=approved_yaml_text,\n                    overrides=(),\n''',
-          )
-          edit(
-              'apps/streamlit/workspace.py',
-              '''    if report_is_current:\n        _render_validation(report)\n''',
-              '''    if report_is_current:\n        _render_validation(report)\n        if report.ok:\n            st.caption(\n                \"Validated snapshot: all approved edits are folded into the YAML used \"\n                \"for download, public preflight, execution, and restart.\"\n            )\n''',
-          )
+          test_text += '''\n\ndef test_public_preflight_failure_does_not_launch_training(monkeypatch, tmp_path: Path):\n    repo = make_repo(tmp_path)\n\n    def fail_preflight(root, path):\n        raise RunServiceError('Public preflight rejected the approved execution.yaml before training.')\n\n    monkeypatch.setattr(run_service_module, '_run_public_preflight', fail_preflight)\n    with pytest.raises(RunServiceError, match='Public preflight rejected'):\n        start_run(\n            RunRequest(\n                repo_root=repo,\n                template_id='demo',\n                mode='Advanced',\n                config_yaml=CONFIG,\n            )\n        )\n    run_root = repo / 'outputs' / 'streamlit'\n    assert not run_root.exists() or not any(run_root.iterdir())\n'''
+          test_path.write_text(test_text, encoding='utf-8')
 
-          # Unit fixture: fake the same two public subprocesses used by run_service.
-          edit(
-              'test/test_streamlit_run_service.py',
-              '''    (repo / 'configs' / 'demo.yaml').write_text(CONFIG, encoding='utf-8')\n    return repo\n''',
-              '''    (repo / 'configs' / 'demo.yaml').write_text(CONFIG, encoding='utf-8')\n\n    scripts = repo / 'scripts'\n    scripts.mkdir()\n    (scripts / '__init__.py').write_text('', encoding='utf-8')\n    (scripts / 'config_inspect.py').write_text(\n        r'''\nimport argparse, json\nfrom pathlib import Path\nimport yaml\n\np = argparse.ArgumentParser()\np.add_argument('--config', required=True)\np.add_argument('--dump')\np.add_argument('--format')\np.add_argument('--override', action='append', default=[])\na = p.parse_args()\nconfig = yaml.safe_load(Path(a.config).read_text(encoding='utf-8'))\nfor item in a.override:\n    key, raw = item.split('=', 1)\n    value = yaml.safe_load(raw)\n    current = config\n    parts = key.split('.')\n    for part in parts[:-1]:\n        current = current[part]\n    current[parts[-1]] = value\nprint(json.dumps({\n    'resolved': config, 'sources': {}, 'targets': {},\n    'sanity': [{'check': 'fixture', 'ok': True}], 'local_config_path': None,\n}))\n''',\n        encoding='utf-8',\n    )\n\n    package = repo / 'phmfactory'\n    package.mkdir()\n    (package / '__init__.py').write_text('', encoding='utf-8')\n    (package / '__main__.py').write_text(\n        r'''\nimport sys\nfrom pathlib import Path\n\nif len(sys.argv) < 2 or sys.argv[1] != 'preflight':\n    raise SystemExit(2)\nargs = sys.argv[2:]\nconfig = args[args.index('--config') + 1]\ntext = Path(config).read_text(encoding='utf-8')\nif 'preflight_fail: true' in text:\n    print('fixture preflight rejected the request', file=sys.stderr)\n    raise SystemExit(7)\nprint('status=passed')\n''',\n        encoding='utf-8',\n    )\n    return repo\n''',
-          )
-          edit(
-              'test/test_streamlit_run_service.py',
-              '''            overrides=(('trainer.num_epochs', 1),),\n''',
-              '''            overrides=(('trainer.num_epochs', 2),),\n''',
-          )
-          edit(
-              'test/test_streamlit_run_service.py',
-              '''    assert 'CONFIG=outputs/streamlit/' in log\n    assert 'trainer.num_epochs' in log\n''',
-              '''    assert 'CONFIG=outputs/streamlit/' in log\n    assert 'OVERRIDES=None' in log\n    snapshot = (final.run_dir / 'execution.yaml').read_text(encoding='utf-8')\n    assert 'num_epochs: 2' in snapshot\n    assert '--override' not in final.command\n    assert final.overrides == ()\n''',
-          )
-          with Path('test/test_streamlit_run_service.py').open('a', encoding='utf-8') as handle:
-              handle.write(r'''\n\ndef test_public_preflight_failure_does_not_launch_training(tmp_path: Path):\n    repo = make_repo(tmp_path)\n    invalid = CONFIG + '\\npreflight_fail: true\\n'\n    with pytest.raises(RunServiceError, match='Public preflight rejected'):\n        start_run(\n            RunRequest(\n                repo_root=repo,\n                template_id='demo',\n                mode='Advanced',\n                config_yaml=invalid,\n            )\n        )\n    run_root = repo / 'outputs' / 'streamlit'\n    assert not run_root.exists() or not any(run_root.iterdir())\n''')
-
-          # Real integration: prove a UI-style override is frozen into execution.yaml,
-          # preflight succeeds on that file, and training receives no second override list.
-          edit(
+          exact_replace(
               'test/test_streamlit_public_contract.py',
-              '''            config_yaml=cs.dump_yaml(config), output_root=config['environment']['output_dir'],\n''',
-              '''            config_yaml=cs.dump_yaml(config),\n            overrides=(('environment.seed', 23),),\n            output_root=config['environment']['output_dir'],\n''',
+              "            config_yaml=cs.dump_yaml(config), output_root=config['environment']['output_dir'],\n",
+              "            config_yaml=cs.dump_yaml(config),\n            overrides=(('environment.seed', 23),),\n            output_root=config['environment']['output_dir'],\n",
           )
-          edit(
+          exact_replace(
               'test/test_streamlit_public_contract.py',
-              '''            assert 'validation_signature' not in json.loads((record.run_dir / 'run.json').read_text())\n''',
-              '''            manifest = json.loads((record.run_dir / 'run.json').read_text())\n            assert 'validation_signature' not in manifest\n            assert manifest['overrides'] == []\n            assert '--override' not in record.command\n            snapshot = cs.parse_yaml_text((record.run_dir / 'execution.yaml').read_text())\n            assert snapshot['environment']['seed'] == 23\n            approved = cs.inspect_yaml_text(ROOT, (record.run_dir / 'execution.yaml').read_text())\n            assert approved.ok, (approved.error, approved.stderr)\n            assert approved.resolved == snapshot\n''',
-          )
-
-          # AppTest can assert the resolved value that feeds the approved snapshot.
-          edit(
-              'test/test_streamlit_app.py',
-              '''    assert app.session_state['validation_report'].resolved['trainer']['num_epochs'] == 2\n    assert app.session_state['validated_inputs'] != checked\n''',
-              '''    assert app.session_state['validation_report'].resolved['trainer']['num_epochs'] == 2\n    assert app.session_state['validated_inputs'] != checked\n''',
+              "            assert 'validation_signature' not in json.loads((record.run_dir / 'run.json').read_text())\n",
+              "            manifest = json.loads((record.run_dir / 'run.json').read_text())\n            assert 'validation_signature' not in manifest\n            assert manifest['overrides'] == []\n            assert '--override' not in record.command\n            snapshot_text = (record.run_dir / 'execution.yaml').read_text()\n            snapshot = cs.parse_yaml_text(snapshot_text)\n            assert snapshot['environment']['seed'] == 23\n            approved = cs.inspect_yaml_text(ROOT, snapshot_text)\n            assert approved.ok, (approved.error, approved.stderr)\n            assert approved.resolved == snapshot\n",
           )
 
           readme = Path('apps/streamlit/README.md')
           text = readme.read_text(encoding='utf-8')
-          text = text.replace(\n              '''Inspection is not a promise that training will succeed. It does not construct the training\nstack or perform every public preflight check. A missing dependency or unavailable device\nmust remain a visible failure, not trigger a different experiment.\n''',\n              '''Inspection resolves the requested experiment. Run then materializes that approved mapping as\none `execution.yaml` and invokes the existing public preflight against that exact file before\ntraining starts. A missing dependency or unavailable device remains a visible failure and\ndoes not trigger a different experiment.\n''',\n          )
-          text = text.replace(\n              '''Current limitation: downloaded YAML does not yet fold in separate overrides. Preserve\nboth the configuration and the displayed override arguments when reproducing a run.\nA single checked/downloaded/executed snapshot is the next configuration improvement.\n''',\n              '''After validation, all safe-field and raw override edits are folded into one resolved YAML.\nDownload, public preflight, execution, and restart use that same snapshot without a second\n`--override` layer. Repository templates remain unchanged.\n''',\n          )
-          text = text.replace(\n              '''issues, and `phmfactory preflight --config <yaml>` with the same overrides for public\npreflight checks.''',\n              '''issues. The Run action already executes `phmfactory preflight --config <execution.yaml>`\nbefore training; copy that saved YAML to reproduce the same preflight manually.''',\n          )
-          readme.write_text(text, encoding='utf-8')
+          old = 'Inspection is not a promise that training will succeed. It does not construct the training\nstack or perform every public preflight check. A missing dependency or unavailable device\nmust remain a visible failure, not trigger a different experiment.\n'
+          new = 'Inspection resolves the requested experiment. Run then materializes that approved mapping as\none `execution.yaml` and invokes the existing public preflight against that exact file before\ntraining starts. A missing dependency or unavailable device remains a visible failure and\ndoes not trigger a different experiment.\n'
+          if old not in text:
+              raise RuntimeError('README inspection paragraph changed unexpectedly')
+          text = text.replace(old, new, 1)
+          old = 'Current limitation: downloaded YAML does not yet fold in separate overrides. Preserve\nboth the configuration and the displayed override arguments when reproducing a run.\nA single checked/downloaded/executed snapshot is the next configuration improvement.\n'
+          new = 'After validation, all safe-field and raw override edits are folded into one resolved YAML.\nDownload, public preflight, execution, and restart use that same snapshot without a second\n`--override` layer. Repository templates remain unchanged.\n'
+          if old not in text:
+              raise RuntimeError('README snapshot limitation changed unexpectedly')
+          text = text.replace(old, new, 1)
+          old = 'issues, and `phmfactory preflight --config <yaml>` with the same overrides for public\npreflight checks.'
+          new = 'issues. The Run action already executes `phmfactory preflight --config <execution.yaml>`\nbefore training; copy that saved YAML to reproduce the same preflight manually.'
+          if old not in text:
+              raise RuntimeError('README troubleshooting paragraph changed unexpectedly')
+          readme.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          Path('doc/changelog/2026-09-08-streamlit-approved-config-preflight.md').write_text('''# Streamlit uses one approved execution configuration\n\n## User-visible change\n\nAfter validation, Streamlit materializes the public inspector's resolved mapping as one\n`execution.yaml`. The download button, the public preflight, the real CLI process, and\nrestart all consume that snapshot. Safe-field and raw override values are folded into the\nYAML during approval; the training command no longer receives a second override list.\n\nThe run service repeats public config inspection for programmatic callers, then runs the\nexisting `phmfactory preflight` against the exact saved file before starting training. A\npreflight failure removes the unused UI run directory and propagates the real diagnostic.\nNo alternative device, data source, Pipeline, or parameter value is selected.\n\n## Scope\n\nThis is a Streamlit adapter correction. It does not modify PHMFactory configuration\ncomposition, Factory/Pipeline code, datasets, split logic, objectives, metrics, checkpoint\nselection, or release claims. Result binding is still separate work: the Metrics/Artifacts\nview may still scan the configured output root, while `run.log` direct result paths remain\nauthoritative until U3.\n''', encoding='utf-8')
+          Path('doc/changelog/2026-09-08-streamlit-approved-config-preflight.md').write_text('''# Streamlit uses one approved execution configuration\n\n## User-visible change\n\nAfter validation, Streamlit materializes the public inspector's resolved mapping as one\n`execution.yaml`. Download, public preflight, the real CLI process, and restart consume\nthat snapshot. Safe-field and raw override values are folded into the YAML during approval;\nthe training command no longer receives a second override list.\n\nThe run service repeats public config inspection for programmatic callers, then runs the\nexisting `phmfactory preflight` against the exact saved file before starting training. A\npreflight failure removes the unused UI run directory and propagates the real diagnostic.\nNo alternative device, data source, Pipeline, or parameter value is selected.\n\n## Scope\n\nThis is a Streamlit adapter correction. It does not modify PHMFactory configuration\ncomposition, Factory/Pipeline code, datasets, split logic, objectives, metrics, checkpoint\nselection, or release claims. Result binding remains separate work: Metrics/Artifacts may\nstill scan the configured output root, while direct paths in `run.log` remain authoritative\nuntil U3.\n''', encoding='utf-8')
           PY
 
       - name: Run bounded checks before publishing the branch
@@ -168,7 +140,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add apps/streamlit/run_service.py apps/streamlit/workspace.py apps/streamlit/README.md \
             test/test_streamlit_run_service.py test/test_streamlit_public_contract.py \
-            test/test_streamlit_app.py doc/changelog/2026-09-08-streamlit-approved-config-preflight.md \
+            doc/changelog/2026-09-08-streamlit-approved-config-preflight.md \
             .github/workflows/temp-streamlit-u2-apply.yml
           git commit -m 'fix(streamlit): execute one approved configuration snapshot'
           git push origin HEAD:fix/streamlit-approved-config-preflight-20260908
