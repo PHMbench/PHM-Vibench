@@ -33,80 +33,111 @@ fields:
   device:
     label: "运行设备 | Device"
     widget: select
-    paths:
-      - trainer.device
-    options: [cpu, cuda]
+    paths: [trainer.device]
+    options: [cpu, cuda, auto]
     default: cpu
     quick_start: true
-    help: "CPU is the safest first run. Choose CUDA only when the core environment has a working GPU build."
+    help: "Exact trainer.device value. CPU is the safest first run; CUDA never falls back silently."
+
+  devices:
+    label: "设备数量 | Devices"
+    widget: number
+    paths: [trainer.devices]
+    min: 1
+    max: 16
+    step: 1
+    default: 1
+    quick_start: true
+    help: "Exact trainer.devices value. Request only hardware that is actually available."
 
   epochs:
     label: "训练轮数 | Epochs"
     widget: number
-    paths:
-      - trainer.num_epochs
-      - task.epochs
+    paths: [trainer.num_epochs]
     min: 1
     max: 1000
     step: 1
     default: 1
     quick_start: true
-    help: "Number of training epochs. Use 1 for smoke validation."
+    help: "Exact trainer.num_epochs value. Use 1 for smoke validation."
+
+  iterations:
+    label: "重复实验次数 | Iterations"
+    widget: number
+    paths: [environment.iterations]
+    min: 1
+    max: 100
+    step: 1
+    default: 1
+    quick_start: true
+    help: "Number of repeated experiment iterations owned by the backend runtime."
 
   seed:
-    label: "随机种子 | Random seed"
+    label: "基础随机种子 | Base seed"
     widget: number
-    paths:
-      - environment.seed
+    paths: [environment.seed]
     min: 0
     max: 2147483647
     step: 1
     default: 0
-    help: "Base seed used by the experiment iterations."
+    quick_start: true
+    help: "Exact environment.seed value used as the base seed for repeated iterations."
 
   batch_size:
     label: "批大小 | Batch size"
     widget: select
-    paths:
-      - data.batch_size
-      - task.batch_size
-      - trainer.batch_size
+    paths: [data.batch_size]
     options: [4, 8, 16, 32, 64, 128]
     default: 16
-    help: "The first existing alias is edited, so legacy and maintained configs remain compatible."
+    quick_start: true
+    help: "Exact data.batch_size value. The UI no longer searches Task or Trainer aliases."
 
   learning_rate:
     label: "学习率 | Learning rate"
     widget: number
-    paths:
-      - task.lr
-      - trainer.learning_rate
-      - trainer.lr
-      - model.learning_rate
+    paths: [task.lr]
     min: 0.000001
     max: 0.1
     step: 0.0001
     default: 0.001
-    help: "Learning-rate aliases are resolved from the selected configuration."
+    quick_start: true
+    help: "Exact task.lr value used by the maintained Task optimizer path."
 
   num_workers:
     label: "数据加载进程 | Data workers"
     widget: number
-    paths:
-      - data.num_workers
-      - task.num_workers
-      - trainer.num_workers
+    paths: [data.num_workers]
     min: 0
     max: 64
     step: 1
     default: 0
-    help: "Use 0 for the broadest Windows/Linux compatibility and for smoke runs."
+    quick_start: true
+    help: "Exact data.num_workers value. Use 0 for the broadest local compatibility."
+
+  test_after_fit:
+    label: "训练后测试 | Test after fit"
+    widget: checkbox
+    paths: [trainer.test_after_fit]
+    default: true
+    help: "When disabled, the run is training-only and test metrics are not expected."
+
+  data_dir:
+    label: "数据目录 | Data directory"
+    widget: text
+    paths: [data.data_dir]
+    default: data
+    help: "Path on the machine running Streamlit, not on a remote browser computer."
+
+  metadata_file:
+    label: "元数据文件 | Metadata file"
+    widget: text
+    paths: [data.metadata_file]
+    default: metadata.csv
+    help: "Metadata file interpreted relative to data.data_dir unless the backend config says otherwise."
 
   output_dir:
     label: "输出根目录 | Output directory"
     widget: text
-    paths:
-      - environment.output_dir
-      - output_dir
+    paths: [environment.output_dir]
     default: results/streamlit
-    help: "Prefer a repository-relative path. Machine-specific absolute paths belong in configs/local/local.yaml."
+    help: "Exact environment.output_dir value. Prefer an explicit writable path on the Streamlit host."
