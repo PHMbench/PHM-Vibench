@@ -95,7 +95,9 @@ def write_direct_result(
     else:
         primary = {}
     lines.extend((f"primary_metrics={json.dumps(primary)}", "run=completed"))
-    (rec.run_dir / "run.log").write_text("training output\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    (rec.run_dir / "run.log").write_text(
+        "training output\n" + "\n".join(lines) + "\n", encoding="utf-8"
+    )
     return result_dir
 
 
@@ -130,7 +132,9 @@ def test_cli_paths_outside_reported_result_dir_are_not_consumed(tmp_path: Path):
     outside.parent.mkdir(parents=True)
     outside.write_text("acc\n1.0\n", encoding="utf-8")
     log = (rec.run_dir / "run.log").read_text(encoding="utf-8")
-    log = log.replace(f"test_metrics={result_dir / 'all_results.csv'}", f"test_metrics={outside}")
+    log = log.replace(
+        f"test_metrics={result_dir / 'all_results.csv'}", f"test_metrics={outside}"
+    )
     (rec.run_dir / "run.log").write_text(log, encoding="utf-8")
 
     bundle = discover_results(repo, rec)
@@ -155,7 +159,9 @@ def test_success_without_final_trailer_does_not_scan_output_root(tmp_path: Path)
     foreign = repo / "results" / "demo" / "foreign"
     foreign.mkdir(parents=True)
     (foreign / "all_results.csv").write_text("acc\n1.0\n", encoding="utf-8")
-    (rec.run_dir / "run.log").write_text("training ended without public trailer\n", encoding="utf-8")
+    (rec.run_dir / "run.log").write_text(
+        "training ended without public trailer\n", encoding="utf-8"
+    )
     bundle = discover_results(repo, rec)
     assert bundle.direct.result_dir is None
     assert bundle.roots == (rec.run_dir.resolve(),)
@@ -224,3 +230,20 @@ def test_scan_limits_report_truncation_only_inside_exact_roots(tmp_path: Path):
     bundle = discover_results(repo, rec, limits=DiscoveryLimits(max_files=3))
     assert bundle.truncated
     assert set(bundle.roots) == {rec.run_dir.resolve(), result_dir.resolve()}
+
+
+def test_large_log_reads_bounded_tail_containing_cli_trailer(tmp_path: Path):
+    repo, rec = record(tmp_path)
+    result_dir = write_direct_result(repo, rec)
+    trailer = (rec.run_dir / "run.log").read_text(encoding="utf-8")
+    (rec.run_dir / "run.log").write_text(
+        ("verbose training line\n" * 5000) + trailer,
+        encoding="utf-8",
+    )
+    direct = parse_direct_results(
+        repo, rec, limits=DiscoveryLimits(max_log_bytes=2048)
+    )
+    assert direct.completed
+    assert direct.result_dir == result_dir.resolve()
+    assert direct.test_metrics is not None
+    assert direct.run_summary is not None
