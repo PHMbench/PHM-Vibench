@@ -1,4 +1,4 @@
-"""Live run, exact result, artifact, and log rendering."""
+"""Run status, exact-result, artifact, and log rendering."""
 
 from __future__ import annotations
 
@@ -117,6 +117,28 @@ def _render_overview(record: RunRecord, bundle: Any) -> None:
     if bundle.direct.best_checkpoint is not None:
         st.markdown("**Best checkpoint**")
         st.code(str(bundle.direct.best_checkpoint), language="text")
+    if record.error:
+        st.warning(record.error)
+    if record.metadata:
+        with st.expander("Run metadata"):
+            st.json(dict(record.metadata))
+
+
+def _render_active_overview(record: RunRecord) -> None:
+    """Render only process-owned facts while the CLI is still running."""
+
+    st.markdown("**Actual reproduction command**")
+    st.code(format_command(record.command), language="bash")
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Streamlit process directory**")
+        st.code(str(record.run_dir), language="text")
+    with right:
+        st.markdown("**Template / mode**")
+        st.write(f"{record.template_id or 'custom'} · {record.mode or 'unknown'}")
+    st.info(
+        "Metrics and artifacts are bound after the CLI finishes and reports exact result paths."
+    )
     if record.error:
         st.warning(record.error)
     if record.metadata:
@@ -276,15 +298,7 @@ def _render_run_actions(repo_root: Path, record: RunRecord) -> None:
         )
 
 
-@st.fragment(run_every="2s")
-def _render_live_run(repo_root_text: str, run_id: str) -> None:
-    repo_root = Path(repo_root_text)
-    try:
-        record = get_run(repo_root, run_id)
-    except RunServiceError as error:
-        _render_error("The selected run could not be loaded.", error)
-        return
-
+def _render_status(repo_root: Path, record: RunRecord) -> None:
     st.markdown(
         f'<span class="phm-status">{html.escape(_status_label(record))}</span> '
         f'<span class="phm-muted">{html.escape(record.run_id)}</span>',
@@ -300,6 +314,35 @@ def _render_live_run(repo_root_text: str, run_id: str) -> None:
     )
     _render_run_actions(repo_root, record)
 
+
+@st.fragment(run_every="2s")
+def _render_active_run(repo_root_text: str, run_id: str) -> None:
+    """Poll only process state and logs while a selected run is active."""
+
+    repo_root = Path(repo_root_text)
+    try:
+        record = get_run(repo_root, run_id)
+    except RunServiceError as error:
+        _render_error("The selected run could not be loaded.", error)
+        return
+
+    if record.is_terminal:
+        # Leave the timed fragment so terminal results become a static page section.
+        st.rerun()
+        return
+
+    _render_status(repo_root, record)
+    tabs = st.tabs(("Overview", "Logs"))
+    with tabs[0]:
+        _render_active_overview(record)
+    with tabs[1]:
+        _render_logs(record)
+
+
+def _render_terminal_run(repo_root: Path, record: RunRecord) -> None:
+    """Render terminal results without a periodic fragment rerun."""
+
+    _render_status(repo_root, record)
     try:
         bundle = discover_results(repo_root, record)
     except Exception as error:  # keep logs/actions available if result parsing fails.
@@ -318,3 +361,19 @@ def _render_live_run(repo_root_text: str, run_id: str) -> None:
             _render_artifacts(bundle, record.run_id)
     with tabs[3]:
         _render_logs(record)
+
+
+def _render_live_run(repo_root_text: str, run_id: str) -> None:
+    """Use timed rendering only while the selected process is active."""
+
+    repo_root = Path(repo_root_text)
+    try:
+        record = get_run(repo_root, run_id)
+    except RunServiceError as error:
+        _render_error("The selected run could not be loaded.", error)
+        return
+
+    if record.is_active:
+        _render_active_run(repo_root_text, run_id)
+        return
+    _render_terminal_run(repo_root, record)
