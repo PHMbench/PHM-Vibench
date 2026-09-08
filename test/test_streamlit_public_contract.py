@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from apps.streamlit import config_service as cs
+from apps.streamlit import result_service as results
 from apps.streamlit import run_service as rs
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -92,6 +93,22 @@ def test_ui_run_service_executes_real_dummy(monkeypatch):
             approved = cs.inspect_yaml_text(ROOT, snapshot_text)
             assert approved.ok, (approved.error, approved.stderr)
             assert approved.resolved == snapshot
+
+            # A newer-looking file elsewhere in the configured output root cannot be
+            # attributed to this run; the page binds only the CLI-reported result_dir.
+            foreign = directory / 'results' / 'foreign-run'
+            foreign.mkdir(parents=True)
+            (foreign / 'all_results.csv').write_text('acc\n1.0\n', encoding='utf-8')
+            bundle = results.discover_results(ROOT, record)
+            assert bundle.direct.completed
+            assert bundle.direct.result_dir == result_dir
+            assert bundle.direct.best_checkpoint == Path(values['best_checkpoint']).resolve()
+            assert bundle.direct.test_metrics == Path(values['test_metrics']).resolve()
+            assert bundle.direct.run_summary == Path(values['run_summary']).resolve()
+            assert bundle.direct.primary_metrics == metrics
+            assert bundle.roots == (record.run_dir.resolve(), result_dir)
+            assert all('foreign-run' not in str(item.path) for item in bundle.artifacts)
+            assert results.primary_metric_headlines(bundle.direct.primary_metrics)
         finally:
             if not rs.get_run(ROOT, record.run_id).is_terminal:
                 rs.cancel_run(ROOT, record.run_id, grace_seconds=1)

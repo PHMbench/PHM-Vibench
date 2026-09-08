@@ -38,8 +38,8 @@ does not trigger a different experiment.
 ## Edit a configuration
 
 **Quick Start** exposes common fields from `field_catalog.yaml`. **Advanced** also offers
-standalone YAML and one `key=value` override per line. Raw overrides have highest priority;
-the displayed command repeats `--override` for each value and is launched with `shell=False`.
+standalone YAML and one `key=value` override per line. Raw overrides have highest priority
+while the request is being inspected.
 
 The backend owns composition, strict types, Pipeline selection, and explicit local config.
 The UI does not auto-discover `configs/local/local.yaml`. Repository templates remain
@@ -61,7 +61,8 @@ outputs/streamlit/<run-id>/
 ```
 
 `run.json` records process state, command and timestamps. It is not a scientific evaluation
-or an integrity record. PHMFactory returns its own result paths in `run.log`:
+or an integrity record. PHMFactory returns its scientific result paths in the final CLI
+trailer written to `run.log`:
 
 ```text
 result_dir=...
@@ -72,32 +73,42 @@ primary_metrics=...
 run=completed
 ```
 
-Use those exact paths to confirm the current run. A training-only request does not have
-test metrics or a test summary. A non-zero exit remains failed even if partial files exist.
+The Metrics and Artifacts views bind to that exact `result_dir`. `test_metrics` and
+`run_summary` are consumed only when the reported files are inside the reported result
+directory. Headline cards come from the CLI `primary_metrics` summary, not from an arbitrary
+CSV row. Files elsewhere under the configured output root are never attributed to the run by
+mtime or filename. The Streamlit process directory remains available for its own YAML, log,
+and run record.
+
+A training-only request does not require test metrics or a test summary. A non-zero exit,
+cancelled run, or successful process without the final CLI trailer does not trigger a search
+for substitute results. The page keeps the process status and logs available and reports that
+direct scientific results are unavailable.
 
 The workspace can cancel its active process and repeat a prior configuration in a new run.
 One Streamlit worker manages one active experiment. Browser refresh does not submit a new
 run; a server restart may leave the child process detached and must not trigger automatic
 resubmission. Pause/resume and cluster scheduling are not supported.
 
-Current limitation: the Metrics/Artifacts views still discover files below the configured
-output root. Until direct-path result binding is implemented, do not use a shared-output
-view to attribute results from concurrent experiments. The per-run CLI log is authoritative.
-
 ## Troubleshooting
 
 A rejected configuration shows the inspector's original stderr. Copy the visible command
 and run it with the same Python and working directory. Use `phmfactory doctor` for environment
 issues. The Run action already executes `phmfactory preflight --config <execution.yaml>`
-before training; copy that saved YAML to reproduce the same preflight manually. Missing local data requires correcting the requested path; switching to
-the offline example is an explicit user action, never an automatic fallback.
+before training; copy that saved YAML to reproduce the same preflight manually. Missing local
+data requires correcting the requested path; switching to the offline example is an explicit
+user action, never an automatic fallback.
+
+If the process exits successfully but the page reports no direct results, inspect the full
+per-run `run.log`. The UI requires the public final trailer shown above and does not guess a
+result directory from adjacent files.
 
 ## Development and tests
 
 Keep changes within the existing services: `config_service.py` adapts the public inspector,
-`run_service.py` manages subprocesses, and `result_service.py` displays results. Field and
-template catalogues are UI metadata, not new experiment schemas. There is no experiment
-Agent or autonomous parameter search in this version.
+`run_service.py` manages subprocesses, and `result_service.py` consumes direct CLI results.
+Field and template catalogues are UI metadata, not new experiment schemas. There is no
+experiment Agent or autonomous parameter search in this version.
 
 ```bash
 python -m pytest -q \
