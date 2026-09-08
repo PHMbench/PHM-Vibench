@@ -1,4 +1,10 @@
-"""Bounded result and artifact discovery for Streamlit experiment runs."""
+"""Direct PHMFactory result binding for Streamlit experiment runs.
+
+The public CLI is the scientific result authority. This module reads the final CLI
+trailer from the selected run log and only browses that exact ``result_dir`` plus the
+Streamlit process directory. It never scans a shared output root or uses mtime to guess
+which experiment produced a file.
+"""
 
 from __future__ import annotations
 
@@ -7,14 +13,16 @@ import json
 import math
 import os
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 try:
+    from .config_service import parse_yaml_text
     from .run_service import RunRecord
 except ImportError:  # pragma: no cover - Streamlit executes app.py as a script.
+    from config_service import parse_yaml_text  # type: ignore
     from run_service import RunRecord  # type: ignore
 
 
@@ -25,6 +33,7 @@ class DiscoveryLimits:
     max_files: int = 500
     max_metric_bytes: int = 2_000_000
     max_metric_rows: int = 500
+    max_log_bytes: int = 10_000_000
 
 
 @dataclass(frozen=True)
@@ -47,38 +56,36 @@ class MetricTable:
 
 
 @dataclass(frozen=True)
+class DirectResults:
+    completed: bool = False
+    result_dir: Optional[Path] = None
+    best_checkpoint: Optional[Path] = None
+    test_metrics: Optional[Path] = None
+    run_summary: Optional[Path] = None
+    primary_metrics: Mapping[str, Any] = field(default_factory=dict)
+    evaluation_requested: Optional[bool] = None
+    warnings: Tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ResultBundle:
     run_id: str
     roots: Tuple[Path, ...]
     artifacts: Tuple[Artifact, ...]
     metrics: Tuple[MetricTable, ...]
+    direct: DirectResults = field(default_factory=DirectResults)
     warnings: Tuple[str, ...] = ()
     truncated: bool = False
 
 
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
-_METRIC_NAMES = {
-    "metrics.json",
-    "results.json",
-    "summary.json",
-    "all_results.csv",
-}
 _CONFIG_NAMES = {"execution.yaml", "config.yaml", "config.yml", "hparams.yaml"}
 _TEXT_EXTENSIONS = {".txt", ".md"}
 _DATA_EXTENSIONS = {".csv", ".json", ".parquet", ".npy", ".npz"}
 _DOCUMENT_EXTENSIONS = {".pdf", ".svg", ".html"}
-
-
-def _parse_time(value: str) -> Optional[float]:
-    if not value:
-        return None
-    try:
-        dt = datetime.fromisoformat(value)
-    except ValueError:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
+_DIRECT_KEYS = frozenset(
+    {"result_dir", "best_checkpoint", "test_metrics", "run_summary", "primary_metrics"}
+)
 
 
 def _classify(path: Path) -> str:
@@ -86,7 +93,9 @@ def _classify(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix in _IMAGE_EXTENSIONS:
         return "image"
-    if name in _METRIC_NAMES or name.startswith("test_result") and suffix == ".csv":
+    if name in {"all_results.csv", "run_summary.json", "metrics.json"} or (
+        name.startswith("test_result") and suffix == ".csv"
+    ):
         return "metrics"
     if name in _CONFIG_NAMES or suffix in {".yaml", ".yml"}:
         return "config"
@@ -110,48 +119,166 @@ def format_bytes(size: int) -> str:
     return f"{value:.1f} TB"
 
 
-def _is_dangerous_root(repo_root: Path, candidate: Path) -> bool:
-    resolved = candidate.resolve()
-    anchor = Path(resolved.anchor)
-    if resolved == anchor or resolved == Path.home().resolve():
-        return True
-    repo = repo_root.resolve()
-    if resolved == repo:
-        return True
-    try:
-        repo.relative_to(resolved)
-        return True  # candidate is a parent of the repository
-    except ValueError:
-        return False
-
-
-def _output_root(repo_root: Path, value: str) -> Optional[Path]:
-    if not value or "{" in value or "}" in value:
-        return None
+def _resolve_cli_path(repo_root: Path, value: str) -> Path:
     raw = Path(value).expanduser()
     return raw.resolve() if raw.is_absolute() else (repo_root / raw).resolve()
 
 
-def result_roots(repo_root: Path, record: RunRecord) -> Tuple[Path, ...]:
-    roots: List[Path] = [record.run_dir.resolve()]
-    output = _output_root(repo_root.resolve(), record.output_root)
-    if output is not None and output not in roots:
-        roots.append(output)
-    return tuple(roots)
+def _is_within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _evaluation_requested(record: RunRecord) -> Optional[bool]:
+    config_path = record.run_dir / "execution.yaml"
+    if not config_path.is_file():
+        return None
+    try:
+        config = parse_yaml_text(config_path.read_text(encoding="utf-8"), source=str(config_path))
+    except (OSError, RuntimeError):
+        return None
+    trainer = config.get("trainer")
+    value = trainer.get("test_after_fit") if isinstance(trainer, Mapping) else None
+    return value if isinstance(value, bool) else None
+
+
+def _read_log(record: RunRecord, *, max_bytes: int) -> Tuple[str, str]:
+    path = record.run_dir / "run.log"
+    if not path.is_file():
+        return "", "Run log is not available."
+    try:
+        size = path.stat().st_size
+    except OSError as error:
+        return "", f"Could not stat run log: {error}"
+    if size > max_bytes:
+        return "", (
+            f"Run log is {format_bytes(size)}; direct result parsing is limited to "
+            f"{format_bytes(max_bytes)}."
+        )
+    try:
+        return path.read_text(encoding="utf-8"), ""
+    except (OSError, UnicodeDecodeError) as error:
+        return "", f"Could not read run log: {error}"
+
+
+def _final_cli_trailer(text: str) -> Optional[Dict[str, str]]:
+    lines = text.splitlines()
+    try:
+        completed_index = max(index for index, line in enumerate(lines) if line == "run=completed")
+    except ValueError:
+        return None
+
+    values: Dict[str, str] = {}
+    for line in reversed(lines[:completed_index]):
+        if not line:
+            continue
+        key, separator, value = line.partition("=")
+        if not separator or key not in _DIRECT_KEYS:
+            break
+        values.setdefault(key, value)
+    return values
+
+
+def parse_direct_results(
+    repo_root: Path,
+    record: RunRecord,
+    *,
+    limits: DiscoveryLimits = DiscoveryLimits(),
+) -> DirectResults:
+    evaluation_requested = _evaluation_requested(record)
+    if record.status != "succeeded" or record.exit_code not in {0, None}:
+        return DirectResults(
+            evaluation_requested=evaluation_requested,
+            warnings=("Direct scientific results are not accepted for a non-successful run.",),
+        )
+
+    text, log_warning = _read_log(record, max_bytes=limits.max_log_bytes)
+    if log_warning:
+        return DirectResults(evaluation_requested=evaluation_requested, warnings=(log_warning,))
+    trailer = _final_cli_trailer(text)
+    if trailer is None:
+        return DirectResults(
+            evaluation_requested=evaluation_requested,
+            warnings=("The process succeeded but no final `run=completed` CLI trailer was found.",),
+        )
+
+    warnings: List[str] = []
+    raw_result_dir = trailer.get("result_dir", "").strip()
+    if not raw_result_dir:
+        return DirectResults(
+            completed=True,
+            evaluation_requested=evaluation_requested,
+            warnings=("The completed CLI trailer did not report result_dir.",),
+        )
+    result_dir = _resolve_cli_path(repo_root.resolve(), raw_result_dir)
+    if not result_dir.is_dir():
+        return DirectResults(
+            completed=True,
+            evaluation_requested=evaluation_requested,
+            warnings=(f"Reported result_dir is not a directory: {result_dir}",),
+        )
+
+    resolved_files: Dict[str, Optional[Path]] = {
+        "best_checkpoint": None,
+        "test_metrics": None,
+        "run_summary": None,
+    }
+    for key in resolved_files:
+        raw_value = trailer.get(key, "").strip()
+        if not raw_value:
+            continue
+        path = _resolve_cli_path(repo_root.resolve(), raw_value)
+        if not _is_within(path, result_dir):
+            warnings.append(f"Ignoring {key} outside reported result_dir: {path}")
+            continue
+        if not path.is_file():
+            warnings.append(f"Reported {key} does not exist: {path}")
+            continue
+        resolved_files[key] = path
+
+    primary_metrics: Mapping[str, Any] = {}
+    raw_primary = trailer.get("primary_metrics")
+    if raw_primary is not None:
+        try:
+            parsed = json.loads(raw_primary)
+        except json.JSONDecodeError as error:
+            warnings.append(f"Could not parse primary_metrics from the CLI trailer: {error}")
+        else:
+            if isinstance(parsed, dict):
+                primary_metrics = parsed
+            else:
+                warnings.append("primary_metrics from the CLI trailer is not a mapping.")
+
+    if evaluation_requested is True:
+        for key in ("test_metrics", "run_summary"):
+            if resolved_files[key] is None:
+                warnings.append(f"Evaluation was requested but the CLI did not provide usable {key}.")
+
+    return DirectResults(
+        completed=True,
+        result_dir=result_dir,
+        best_checkpoint=resolved_files["best_checkpoint"],
+        test_metrics=resolved_files["test_metrics"],
+        run_summary=resolved_files["run_summary"],
+        primary_metrics=primary_metrics,
+        evaluation_requested=evaluation_requested,
+        warnings=tuple(warnings),
+    )
 
 
 def _discover_root(
     root: Path,
     *,
-    started_epoch: Optional[float],
     limits: DiscoveryLimits,
-    include_old: bool,
 ) -> Tuple[List[Artifact], List[str], bool]:
     artifacts: List[Artifact] = []
     warnings: List[str] = []
     truncated = False
     if not root.exists():
-        warnings.append(f"Result root does not exist yet: {root}")
+        warnings.append(f"Result root does not exist: {root}")
         return artifacts, warnings, truncated
     if not root.is_dir():
         warnings.append(f"Result root is not a directory: {root}")
@@ -166,14 +293,12 @@ def _discover_root(
             continue
         try:
             entries = list(os.scandir(directory))
-        except OSError as exc:
-            warnings.append(f"Could not scan {directory}: {exc}")
+        except OSError as error:
+            warnings.append(f"Could not scan {directory}: {error}")
             continue
         entries_seen += len(entries)
         if entries_seen > limits.max_entries:
-            warnings.append(
-                f"Artifact scan stopped after {limits.max_entries} directory entries."
-            )
+            warnings.append(f"Artifact scan stopped after {limits.max_entries} directory entries.")
             truncated = True
             break
         for entry in entries:
@@ -188,12 +313,6 @@ def _discover_root(
                     continue
                 stat = entry.stat(follow_symlinks=False)
             except OSError:
-                continue
-            if (
-                not include_old
-                and started_epoch is not None
-                and stat.st_mtime < started_epoch - 5.0
-            ):
                 continue
             try:
                 relative = path.relative_to(root).as_posix()
@@ -237,18 +356,15 @@ def _rows_from_json(payload: Any) -> Tuple[List[Dict[str, Any]], str]:
                 ], ""
         return [{str(k): _normalize_cell(v) for k, v in payload.items()}], ""
     if isinstance(payload, list) and all(isinstance(item, dict) for item in payload):
-        return [
-            {str(k): _normalize_cell(v) for k, v in item.items()}
-            for item in payload
-        ], ""
+        return [{str(k): _normalize_cell(v) for k, v in item.items()} for item in payload], ""
     return [], "JSON metrics must be an object or a list of objects."
 
 
 def load_metric_table(path: Path, limits: DiscoveryLimits = DiscoveryLimits()) -> MetricTable:
     try:
         size = path.stat().st_size
-    except OSError as exc:
-        return MetricTable(source=path, warning=f"Could not stat metric file: {exc}")
+    except OSError as error:
+        return MetricTable(source=path, warning=f"Could not stat metric file: {error}")
     if size > limits.max_metric_bytes:
         return MetricTable(
             source=path,
@@ -275,8 +391,8 @@ def load_metric_table(path: Path, limits: DiscoveryLimits = DiscoveryLimits()) -
                         break
         else:
             return MetricTable(source=path, warning="Unsupported metric format.")
-    except (OSError, UnicodeDecodeError, csv.Error, json.JSONDecodeError) as exc:
-        return MetricTable(source=path, warning=f"Could not parse metrics: {exc}")
+    except (OSError, UnicodeDecodeError, csv.Error, json.JSONDecodeError) as error:
+        return MetricTable(source=path, warning=f"Could not parse metrics: {error}")
 
     truncated = len(rows) > limits.max_metric_rows
     if truncated:
@@ -298,15 +414,19 @@ def load_metric_table(path: Path, limits: DiscoveryLimits = DiscoveryLimits()) -
     )
 
 
-def _metric_priority(artifact: Artifact) -> Tuple[int, str]:
-    name = artifact.path.name.lower()
-    if name == "all_results.csv":
-        return (0, artifact.relative_path)
-    if name == "metrics.json":
-        return (1, artifact.relative_path)
-    if name.startswith("test_result"):
-        return (2, artifact.relative_path)
-    return (3, artifact.relative_path)
+def primary_metric_headlines(
+    primary_metrics: Mapping[str, Any], *, limit: int = 4
+) -> Tuple[Tuple[str, float], ...]:
+    values: List[Tuple[str, float]] = []
+    for name, raw in primary_metrics.items():
+        candidate = raw.get("mean") if isinstance(raw, Mapping) else raw
+        if isinstance(candidate, (int, float)) and not isinstance(candidate, bool):
+            value = float(candidate)
+            if math.isfinite(value):
+                values.append((str(name), value))
+                if len(values) >= limit:
+                    break
+    return tuple(values)
 
 
 def discover_results(
@@ -316,29 +436,20 @@ def discover_results(
     limits: DiscoveryLimits = DiscoveryLimits(),
 ) -> ResultBundle:
     repo = repo_root.resolve()
-    roots = result_roots(repo, record)
-    started_epoch = _parse_time(record.started_at)
-    artifacts: List[Artifact] = []
-    warnings: List[str] = []
-    truncated = False
-    accepted_roots: List[Path] = []
+    direct = parse_direct_results(repo, record, limits=limits)
+    roots: List[Path] = [record.run_dir.resolve()]
+    if direct.result_dir is not None and direct.result_dir not in roots:
+        roots.append(direct.result_dir)
 
+    artifacts: List[Artifact] = []
+    warnings: List[str] = list(direct.warnings)
+    truncated = False
     for root in roots:
-        if root != record.run_dir.resolve() and _is_dangerous_root(repo, root):
-            warnings.append(f"Refusing to scan overly broad result root: {root}")
-            continue
-        accepted_roots.append(root)
-        found, root_warnings, root_truncated = _discover_root(
-            root,
-            started_epoch=started_epoch,
-            limits=limits,
-            include_old=root == record.run_dir.resolve(),
-        )
+        found, root_warnings, root_truncated = _discover_root(root, limits=limits)
         artifacts.extend(found)
         warnings.extend(root_warnings)
         truncated = truncated or root_truncated
 
-    # De-duplicate the same physical file when roots overlap.
     unique: Dict[Path, Artifact] = {}
     for artifact in artifacts:
         try:
@@ -348,57 +459,19 @@ def discover_results(
         unique.setdefault(key, artifact)
     artifacts = sorted(unique.values(), key=lambda item: (item.kind, item.relative_path))
 
-    metric_artifacts = sorted(
-        (
-            item
-            for item in artifacts
-            if item.kind == "metrics"
-            or item.path.suffix.lower() in {".csv", ".json"}
-            and any(token in item.path.name.lower() for token in ("metric", "result", "summary"))
-        ),
-        key=_metric_priority,
-    )
-    metrics = tuple(load_metric_table(item.path, limits) for item in metric_artifacts[:12])
+    metric_paths = [
+        path for path in (direct.test_metrics, direct.run_summary) if path is not None
+    ]
+    metrics = tuple(load_metric_table(path, limits) for path in metric_paths)
     return ResultBundle(
         run_id=record.run_id,
-        roots=tuple(accepted_roots),
+        roots=tuple(roots),
         artifacts=tuple(artifacts),
         metrics=metrics,
+        direct=direct,
         warnings=tuple(dict.fromkeys(warnings)),
         truncated=truncated,
     )
-
-
-def headline_metrics(
-    tables: Sequence[MetricTable],
-    *,
-    limit: int = 4,
-) -> Tuple[Tuple[str, Any], ...]:
-    values: List[Tuple[str, Any]] = []
-    seen = set()
-    for table in tables:
-        if not table.rows:
-            continue
-        row = table.rows[-1]
-        for key, raw in row.items():
-            if key in seen or raw in (None, ""):
-                continue
-            value: Any = raw
-            if isinstance(raw, str):
-                try:
-                    value = float(raw)
-                except ValueError:
-                    continue
-            if (
-                isinstance(value, (int, float))
-                and not isinstance(value, bool)
-                and math.isfinite(float(value))
-            ):
-                seen.add(key)
-                values.append((str(key), value))
-                if len(values) >= limit:
-                    return tuple(values)
-    return tuple(values)
 
 
 def artifact_groups(bundle: ResultBundle) -> Mapping[str, Tuple[Artifact, ...]]:
