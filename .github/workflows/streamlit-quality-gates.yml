@@ -6,6 +6,28 @@ on:
       - "apps/streamlit/**"
       - "test/test_streamlit_*.py"
       - "test/requirements.txt"
+      - "scripts/config_inspect.py"
+      - "main.py"
+      - "phmfactory/__main__.py"
+      - "phmfactory/cli.py"
+      - "phmfactory/config.py"
+      - "phmfactory/device.py"
+      - "phmfactory/pipelines.py"
+      - "phmfactory/commands/common.py"
+      - "phmfactory/runtime/**"
+      - "src/Pipeline_01_Fault_Diagnosis.py"
+      - "src/runtime/**"
+      - "src/*_factory/**"
+      - "src/configs/**"
+      - "src/config_schema/**"
+      - "src/utils/**"
+      - "configs/base/**"
+      - "configs/demo/00_smoke/**"
+      - "configs/config_registry.csv"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
+      - "requirements.txt"
+      - "pyproject.toml"
       - ".github/workflows/streamlit-quality-gates.yml"
   push:
     branches:
@@ -14,6 +36,28 @@ on:
       - "apps/streamlit/**"
       - "test/test_streamlit_*.py"
       - "test/requirements.txt"
+      - "scripts/config_inspect.py"
+      - "main.py"
+      - "phmfactory/__main__.py"
+      - "phmfactory/cli.py"
+      - "phmfactory/config.py"
+      - "phmfactory/device.py"
+      - "phmfactory/pipelines.py"
+      - "phmfactory/commands/common.py"
+      - "phmfactory/runtime/**"
+      - "src/Pipeline_01_Fault_Diagnosis.py"
+      - "src/runtime/**"
+      - "src/*_factory/**"
+      - "src/configs/**"
+      - "src/config_schema/**"
+      - "src/utils/**"
+      - "configs/base/**"
+      - "configs/demo/00_smoke/**"
+      - "configs/config_registry.csv"
+      - "data/metadata_dummy.csv"
+      - "data/raw/Dummy_Data/**"
+      - "requirements.txt"
+      - "pyproject.toml"
       - ".github/workflows/streamlit-quality-gates.yml"
   workflow_dispatch:
 
@@ -77,4 +121,42 @@ jobs:
           name: streamlit-focused-${{ matrix.os }}
           path: streamlit-pytest-${{ matrix.os }}.xml
           if-no-files-found: error
+          retention-days: 7
+
+  public-integration:
+    name: Streamlit public inspector and Dummy integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MPLBACKEND: Agg
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      WANDB_MODE: disabled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install matching CPU Torch and torchvision
+        # timm requires torchvision; use the same binary family as CPU Torch.
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchvision==0.21.0
+      - name: Install PHMFactory and the minimum supported Streamlit
+        run: python -m pip install -e . "streamlit==1.37.0" "pytest>=7"
+      - name: Check installed dependencies
+        run: |
+          python -m pip check
+          python -c "import torch, torchvision; print(torch.__version__, torchvision.__version__)"
+      - name: Exercise current inspector and real Dummy subprocess
+        run: python -m pytest test/test_streamlit_public_contract.py -q --junitxml=streamlit-public.xml
+      - name: Exercise the actual page with AppTest
+        run: python -m pytest test/test_streamlit_app.py -q --junitxml=streamlit-page.xml
+      - name: Upload integration diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamlit-public-integration
+          path: |
+            streamlit-public.xml
+            streamlit-page.xml
+          if-no-files-found: warn
           retention-days: 7

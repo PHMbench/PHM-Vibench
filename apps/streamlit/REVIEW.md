@@ -53,7 +53,7 @@ process/results.
 3. The official and only maintained entry point is `apps/streamlit/app.py`.
 4. The historical `app/` prototype and root launcher were archived in the personal
    fork and removed from the public framework.
-5. The Run button is enabled only for the exact signature that passed repository
+5. The Run button is enabled only for the same submitted inputs that passed repository
    inspection.
 
 ## Deferred

@@ -7,7 +7,6 @@ Pipeline, or define a second training framework.
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import Any, Mapping, Sequence, Tuple
 
@@ -31,6 +30,7 @@ try:
         load_catalog,
         load_registry,
         normalize_overrides,
+        override_args,
         parse_override_lines,
         parse_yaml_text,
         resolve_repo_path,
@@ -83,6 +83,7 @@ except ImportError:  # pragma: no cover - Streamlit may execute app.py as a scri
         load_catalog,
         load_registry,
         normalize_overrides,
+        override_args,
         parse_override_lines,
         parse_yaml_text,
         resolve_repo_path,
@@ -152,11 +153,16 @@ def _cached_inspection(
     return inspect_config(Path(repo_root), Path(config_path), overrides)
 
 
-def _signature(mode: str, source: str, overrides: Sequence[Tuple[str, Any]]) -> str:
-    """Identify the visible UI inputs that were validated."""
+def _validation_inputs(
+    mode: str, source: str, overrides: Sequence[Tuple[str, Any]]
+) -> Tuple[str, str, Tuple[str, ...]]:
+    """Keep the submitted text and typed argv values for direct comparison.
 
-    payload = repr((mode, source, tuple(overrides))).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    Serializing through the existing CLI adapter separates True from 1 and
+    freezes nested override values without inventing another config identity.
+    """
+
+    return mode, source, override_args(overrides)
 
 
 def _initialize_state() -> None:
@@ -168,7 +174,7 @@ def _initialize_state() -> None:
         "advanced_yaml_text": "",
         "advanced_override_text": "",
         "validation_report": None,
-        "validation_signature": "",
+        "validated_inputs": None,
         "active_run_id": "",
         "selected_run_id": "",
     }
@@ -296,7 +302,7 @@ def main() -> None:
             selected_id,
             quick_only=True,
         )
-        source_for_signature = standalone_yaml
+        source_for_validation = standalone_yaml
     else:
         _ensure_advanced_yaml(selected_id, baseline_resolved)
         tabs = st.tabs(("Safe fields", "Full YAML", "Raw overrides"))
@@ -338,7 +344,7 @@ def main() -> None:
             _render_error("Raw overrides are invalid.", error)
             overrides = safe_overrides
             configuration_has_error = True
-        source_for_signature = advanced_yaml_text
+        source_for_validation = advanced_yaml_text
         execution_yaml_text = advanced_yaml_text
 
     st.header("3. 验证并运行 | Validate and launch")
@@ -384,7 +390,7 @@ def main() -> None:
         else:
             st.warning("Fix the configuration before validation.")
 
-    current_signature = _signature(mode, source_for_signature, overrides)
+    current_inputs = _validation_inputs(mode, source_for_validation, overrides)
     validate_col, download_col, run_col = st.columns(3)
     if validate_col.button(
         "Validate configuration",
@@ -400,16 +406,16 @@ def main() -> None:
                     else inspect_execution_yaml(repo_root, advanced_yaml_text, overrides)
                 )
             st.session_state.validation_report = report
-            st.session_state.validation_signature = current_signature
+            st.session_state.validated_inputs = current_inputs
         except ConfigServiceError as error:
             st.session_state.validation_report = None
-            st.session_state.validation_signature = ""
+            st.session_state.validated_inputs = None
             _render_error("Validation could not start.", error)
 
     report = st.session_state.validation_report
     report_is_current = (
         isinstance(report, ValidationReport)
-        and st.session_state.validation_signature == current_signature
+        and st.session_state.validated_inputs == current_inputs
     )
     if report_is_current:
         _render_validation(report)
@@ -458,7 +464,6 @@ def main() -> None:
                     config_yaml=execution_yaml_text,
                     overrides=overrides,
                     output_root=str(resolved_output or "save"),
-                    validation_signature=current_signature,
                     metadata={
                         "registry_path": entry.path,
                         "pipeline": entry.pipeline or "Pipeline_01_Fault_Diagnosis",
