@@ -122,7 +122,7 @@ def test_batch_preview_counts_and_invalidates_edits_without_launching(monkeypatc
     assert any('max_fits' in error.value for error in app.error)
 
 
-def test_batch_launch_requires_click_and_clears_the_submitted_preview(monkeypatch):
+def test_batch_launch_requires_click_and_locks_the_submitted_preview(monkeypatch):
     from types import SimpleNamespace
     from apps.streamlit import ui_batch
 
@@ -140,7 +140,8 @@ def test_batch_launch_requires_click_and_clears_the_submitted_preview(monkeypatc
     assert not app.exception
     assert len(submitted) == 1
     assert submitted[0][1].total_fits == 2
-    assert app.session_state['batch_plan'] is None
+    assert app.session_state['batch_plan'].total_fits == 2
+    assert app.session_state['batch_plan_submitted'] is True
     assert _button(app, 'Run batch').disabled
     app.run()
     assert not app.exception

@@ -78,6 +78,7 @@ def render_batch_controls(repo_root: Path, approved_yaml: str, *, template_id: s
                                  allowed_paths=GRID_PATHS, max_trials=max_trials, max_fits=max_fits)
                 st.session_state.batch_plan = plan
                 st.session_state.batch_plan_inputs = inputs
+                st.session_state.batch_plan_submitted = False
             except (BatchPlanError, ConfigServiceError, yaml.YAMLError) as error:
                 st.session_state.batch_plan = None
                 st.session_state.batch_plan_inputs = None
@@ -100,19 +101,21 @@ def render_batch_controls(repo_root: Path, approved_yaml: str, *, template_id: s
             st.code(plan.trials[selected_trial].config_yaml, language="yaml")
         batches = list_batches(repo_root)
         reserved = any(not batch.is_terminal for batch in batches)
-        if st.button("Run batch", disabled=not current or reserved, type="primary"):
+        submitted = st.session_state.get("batch_plan_submitted", False)
+        if st.button("Run batch", disabled=not current or reserved or submitted, type="primary"):
             try:
                 with st.spinner("Checking all trial snapshots before submitting the batch..."):
                     batch = start_batch(
                         RunRequest(repo_root=repo_root, template_id=template_id, mode=mode,
                                    config_yaml=approved_yaml), plan)
                 st.session_state.selected_batch_id = batch.batch_id
-                # One click submits one plan. Reruns can only monitor it, not replay it.
-                st.session_state.batch_plan = None
-                st.session_state.batch_plan_inputs = None
+                # Keep the inspected YAML visible; require a fresh Preview before resubmission.
+                st.session_state.batch_plan_submitted = True
                 st.rerun()
             except (RunServiceError, BatchPlanError, ConfigServiceError) as error:
                 st.error(str(error))
+        if submitted:
+            st.caption("This preview has been submitted. Preview a new plan to submit again.")
         if reserved:
             st.info("A batch owns this worker. Continue or cancel paused work before another submission.")
     batches = list_batches(repo_root)
