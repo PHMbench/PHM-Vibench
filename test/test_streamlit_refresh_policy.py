@@ -109,3 +109,36 @@ def test_terminal_renderer_discovers_results_once(monkeypatch) -> None:
 
     assert len(discovered) == 1
     assert discovered[0][1] is record
+
+
+def test_explicit_batch_trial_outside_recent_window_is_loaded(monkeypatch):
+    runtime = _load_runtime(monkeypatch)
+    old = types.SimpleNamespace(run_id='old-trial', status='succeeded', template_id='old')
+    recent = tuple(types.SimpleNamespace(run_id=f'new-{i}', status='succeeded', template_id='new') for i in range(20))
+    runtime.st.session_state.selected_run_id = old.run_id
+    loaded, options = [], []
+    def selectbox(label, ids, *, index, **kwargs):
+        options.extend(ids)
+        return ids[index]
+    runtime.st.sidebar = types.SimpleNamespace(selectbox=selectbox, caption=lambda value: None)
+    monkeypatch.setattr(runtime, 'list_runs', lambda root, limit: recent)
+    monkeypatch.setattr(runtime, 'get_run', lambda root, run_id: loaded.append(run_id) or old)
+    assert runtime._render_run_selector('repo') == 'old-trial'
+    assert loaded == ['old-trial']
+    assert options == ['old-trial', *(run.run_id for run in recent)]
+
+
+def test_missing_explicit_trial_does_not_select_another_run(monkeypatch):
+    runtime = _load_runtime(monkeypatch)
+    runtime.st.session_state.selected_run_id = 'removed-trial'
+    recent = (types.SimpleNamespace(run_id='other', status='succeeded', template_id='new'),)
+    errors = []
+    runtime.st.sidebar = types.SimpleNamespace(
+        error=errors.append, selectbox=lambda label, ids, **kwargs: ids[kwargs["index"]])
+    monkeypatch.setattr(runtime, 'list_runs', lambda root, limit: recent)
+    def missing(root, run_id):
+        raise runtime.RunServiceError('Run record not found: removed-trial')
+    monkeypatch.setattr(runtime, 'get_run', missing)
+    assert runtime._render_run_selector('repo') == 'removed-trial'
+    assert runtime.st.session_state.selected_run_id == 'removed-trial'
+    assert errors == ['Run record not found: removed-trial']

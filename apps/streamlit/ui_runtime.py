@@ -75,12 +75,20 @@ def _render_run_selector(repo_root: Path) -> Optional[str]:
         runs = list_runs(repo_root, limit=20)
     except RunServiceError:
         return None
+    preferred = st.session_state.selected_run_id or st.session_state.active_run_id
+    if preferred and all(item.run_id != preferred for item in runs):
+        try:
+            # Batch history can outlive the recent-run window. Load the exact
+            # requested trial rather than showing an unrelated newer result.
+            runs = (get_run(repo_root, preferred), *runs)
+        except RunServiceError as error:
+            st.sidebar.error(str(error))
+            return preferred
     if not runs:
         st.sidebar.caption("No experiment runs yet.")
         return None
     ids = tuple(item.run_id for item in runs)
-    preferred = st.session_state.selected_run_id or st.session_state.active_run_id
-    if preferred not in ids:
+    if not preferred:
         preferred = ids[0]
     lookup = {item.run_id: item for item in runs}
     selected = st.sidebar.selectbox(
