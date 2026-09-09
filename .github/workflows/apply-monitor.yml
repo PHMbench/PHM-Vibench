@@ -1,0 +1,26 @@
+name: Temporary monitor patch application
+on:
+  push:
+    branches: [fix/streamlit-editor-independent-monitor-20260909]
+    paths: [.github/workflows/apply-monitor.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/streamlit-editor-independent-monitor-20260909
+      - name: Apply tested frontend-only change
+        run: |
+          set -euo pipefail
+          git apply --check .monitor.patch
+          git apply .monitor.patch
+          git diff --check
+          python -m py_compile apps/streamlit/workspace.py apps/streamlit/ui_batch.py test/test_streamlit_app.py test/test_streamlit_ui_imports.py
+          git add apps/streamlit/README.md apps/streamlit/workspace.py apps/streamlit/ui_batch.py test/test_streamlit_ui_imports.py test/test_streamlit_app.py doc/changelog/2026-09-09-streamlit-independent-monitor.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(streamlit): keep existing run controls independent of editor errors'
+          git push origin HEAD:fix/streamlit-editor-independent-monitor-20260909
