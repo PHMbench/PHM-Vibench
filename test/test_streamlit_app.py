@@ -87,3 +87,61 @@ def test_advanced_yaml_invalid_integer_is_not_repaired_by_a_widget():
     assert not report.resolved
     assert 'num_epochs' in report.stderr
     assert _button(app, 'Run experiment').disabled
+
+
+def test_batch_preview_counts_and_invalidates_edits_without_launching(monkeypatch):
+    from apps.streamlit import ui_batch
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Preview or rerun must not start a process')
+    monkeypatch.setattr(ui_batch, 'start_batch', forbidden)
+    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
+    assert not app.exception
+    assert _button(app, 'Preview batch').disabled
+    assert _button(app, 'Run batch').disabled
+    _button(app, 'Validate configuration').click().run()
+    assert not app.exception
+    _button(app, 'Preview batch').click().run()
+    assert not app.exception
+    assert len(app.session_state['batch_plan'].trials) == 2
+    assert app.session_state['batch_plan'].total_fits == 2
+    assert not _button(app, 'Run batch').disabled
+    app.run()
+    assert not app.exception
+    assert not _button(app, 'Run batch').disabled
+    app.text_area(key='batch_grid_text').set_value('task.lr: [0.001, 0.0005, 0.0001]').run()
+    assert _button(app, 'Run batch').disabled
+    _button(app, 'Preview batch').click().run()
+    assert not app.exception
+    assert len(app.session_state['batch_plan'].trials) == 3
+    app.number_input(key='batch_max_fits').set_value(2).run()
+    _button(app, 'Preview batch').click().run()
+    assert not app.exception
+    assert app.session_state['batch_plan'] is None
+    assert _button(app, 'Run batch').disabled
+    assert any('max_fits' in error.value for error in app.error)
+
+
+def test_batch_launch_requires_click_and_clears_the_submitted_preview(monkeypatch):
+    from types import SimpleNamespace
+    from apps.streamlit import ui_batch
+
+    submitted = []
+    def submit(request, plan):
+        submitted.append((request, plan))
+        return SimpleNamespace(batch_id='submitted-batch')
+    monkeypatch.setattr(ui_batch, 'start_batch', submit)
+    monkeypatch.setattr(ui_batch, 'list_batches', lambda root: ())
+    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
+    _button(app, 'Validate configuration').click().run()
+    _button(app, 'Preview batch').click().run()
+    assert not submitted
+    _button(app, 'Run batch').click().run()
+    assert not app.exception
+    assert len(submitted) == 1
+    assert submitted[0][1].total_fits == 2
+    assert app.session_state['batch_plan'] is None
+    assert _button(app, 'Run batch').disabled
+    app.run()
+    assert not app.exception
+    assert len(submitted) == 1

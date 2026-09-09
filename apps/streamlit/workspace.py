@@ -12,6 +12,8 @@ from typing import Any, Mapping, Sequence, Tuple
 
 import streamlit as st
 
+from .ui_batch import render_batch_controls
+
 try:
     from .config_service import (
         Catalog,
@@ -490,6 +492,11 @@ def main() -> None:
             st.rerun()
         except (RunServiceError, RunConflictError) as error:
             _render_error("The experiment could not start.", error)
+
+    render_batch_controls(
+        repo_root, approved_yaml_text if can_run else "",
+        template_id=selected_id, mode=mode,
+    )
 
     st.header("4. 运行与结果 | Live run and evidence")
     run_id = (

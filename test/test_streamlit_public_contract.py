@@ -112,3 +112,52 @@ def test_ui_run_service_executes_real_dummy(monkeypatch):
         finally:
             if not rs.get_run(ROOT, record.run_id).is_terminal:
                 rs.cancel_run(ROOT, record.run_id, grace_seconds=1)
+
+
+def test_real_two_trial_batch_keeps_separate_public_results(monkeypatch):
+    from apps.streamlit.batch_service import plan_grid
+
+    report = cs.inspect_config(ROOT, SMOKE)
+    assert report.ok, (report.error, report.stderr)
+    output_parent = ROOT / 'outputs'
+    output_parent.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='batch-contract-', dir=output_parent) as directory:
+        directory = Path(directory)
+        monkeypatch.setattr(rs, '_run_root', lambda root: directory / 'runs')
+        config = dict(report.resolved)
+        config['environment'] = dict(config['environment'], output_dir=str(directory / 'results'))
+        config['data'] = dict(config['data'], cache_dir=str(directory / 'cache'))
+        plan = plan_grid(config, {'task.lr': [0.001, 0.0005]}, allowed_paths={'task.lr'},
+                         max_trials=2, max_fits=2)
+        batch = rs.start_batch(rs.RunRequest(repo_root=ROOT, template_id='dummy-batch',
+                                            mode='Quick Start', config_yaml=cs.dump_yaml(config)), plan)
+        try:
+            deadline = time.monotonic() + 180
+            while not batch.is_terminal and batch.status != 'paused' and time.monotonic() < deadline:
+                time.sleep(0.1)
+                batch = rs.get_batch(ROOT, batch.batch_id)
+            logs = [rs.read_log_tail(rs.get_run(ROOT, t['run_id'])) for t in batch.trials if t['run_id']]
+            assert batch.status == 'succeeded', (batch.error, logs)
+            assert batch.total_fits == 2
+            roots = []
+            for planned, trial in zip(plan.trials, batch.trials):
+                record = rs.get_run(ROOT, trial['run_id'])
+                assert record.status == 'succeeded'
+                assert (record.run_dir / 'execution.yaml').read_text() == planned.config_yaml
+                assert '--override' not in record.command
+                bundle = results.discover_results(ROOT, record)
+                assert bundle.direct.completed
+                assert bundle.direct.result_dir.is_relative_to(directory)
+                assert bundle.direct.best_checkpoint.is_file()
+                assert bundle.direct.test_metrics.is_file()
+                assert bundle.direct.run_summary.is_file()
+                assert bundle.direct.primary_metrics
+                roots.append(bundle.direct.result_dir)
+            assert len(set(roots)) == 2
+            assert len(rs.list_runs(ROOT)) == 2
+        finally:
+            rs.cancel_batch(ROOT, batch.batch_id)
+            deadline = time.monotonic() + 15
+            while ROOT.resolve() in rs._BATCHES and time.monotonic() < deadline:
+                time.sleep(0.1)
+            assert ROOT.resolve() not in rs._BATCHES
