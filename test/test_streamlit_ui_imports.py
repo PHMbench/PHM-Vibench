@@ -171,3 +171,35 @@ def test_common_fields_do_not_repair_invalid_yaml_types(monkeypatch, spec, value
 
     with pytest.raises(ui_theme.ConfigServiceError):
         ui_theme._validated_widget_value(field, value)
+
+
+def test_existing_runs_render_before_editor_catalog_failure(monkeypatch):
+    _install_streamlit_stub(monkeypatch)
+    sys.modules.pop('apps.streamlit.workspace', None)
+    workspace = importlib.import_module('apps.streamlit.workspace')
+    calls = []
+    monkeypatch.setattr(workspace, '_initialize_state', lambda: None)
+    workspace.st.session_state = types.SimpleNamespace(selected_run_id='running-a', active_run_id='running-a')
+    for name in ('set_page_config', 'header', 'info', 'caption'):
+        monkeypatch.setattr(workspace.st, name, lambda *args, **kwargs: None, raising=False)
+    monkeypatch.setattr(workspace, '_inject_style', lambda: None)
+    monkeypatch.setattr(workspace, '_render_hero', lambda: None)
+    monkeypatch.setattr(workspace, 'find_repo_root', lambda path: path)
+    monkeypatch.setattr(workspace, '_render_run_selector', lambda root: 'running-a')
+    monkeypatch.setattr(workspace, '_render_live_run', lambda root, run_id: calls.append(('run', run_id)))
+    monkeypatch.setattr(workspace, 'render_batch_history', lambda root: calls.append(('batches',)), raising=False)
+    monkeypatch.setattr(workspace, '_render_error', lambda *args, **kwargs: calls.append(('editor-error',)))
+    def invalid(path):
+        raise workspace.ConfigServiceError('Broken field catalogue')
+    monkeypatch.setattr(workspace, '_cached_catalog', invalid)
+    class StopPage(Exception):
+        pass
+    def stop():
+        raise StopPage
+    monkeypatch.setattr(workspace.st, 'stop', stop, raising=False)
+    with pytest.raises(StopPage):
+        workspace.main()
+    assert ('run', 'running-a') in calls
+    assert ('batches',) in calls
+    assert calls.index(('run', 'running-a')) < calls.index(('editor-error',))
+    assert calls.index(('batches',)) < calls.index(('editor-error',))

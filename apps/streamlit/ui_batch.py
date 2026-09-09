@@ -118,6 +118,11 @@ def render_batch_controls(repo_root: Path, approved_yaml: str, *, template_id: s
             st.caption("This preview has been submitted. Preview a new plan to submit again.")
         if reserved:
             st.info("A batch owns this worker. Continue or cancel paused work before another submission.")
+
+
+def render_batch_history(repo_root: Path) -> None:
+    """Existing batches remain controllable without a valid editor draft."""
+
     batches = list_batches(repo_root)
     if not batches:
         return
