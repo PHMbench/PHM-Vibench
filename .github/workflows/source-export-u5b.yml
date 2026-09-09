@@ -1,0 +1,20 @@
+name: Temporary frontend source export
+on:
+  push:
+    branches: [feat/streamlit-serial-batches-20260909]
+    paths: [.github/workflows/source-export-u5b.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 8f02b02c1ce6576e56612bbf7450b4f7382fc903
+      - run: git archive --format=tar.gz HEAD -o /tmp/phmfactory-u5b-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phmfactory-u5b-source
+          path: /tmp/phmfactory-u5b-source.tar.gz
+          retention-days: 1
