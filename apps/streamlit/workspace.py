@@ -194,12 +194,16 @@ def _render_existing_runs(repo_root: Path) -> None:
     """Do not let a new template or draft failure hide existing process controls."""
 
     st.header("运行与批次 | Runs and batches")
-    selected = _render_run_selector(repo_root)
-    run_id = selected or st.session_state.selected_run_id or st.session_state.active_run_id
-    if run_id:
-        _render_live_run(str(repo_root), run_id)
-    else:
-        st.caption("No run selected. Configure a new experiment below or select a past run.")
+    try:
+        selected = _render_run_selector(repo_root)
+        run_id = selected or st.session_state.selected_run_id or st.session_state.active_run_id
+        if run_id:
+            _render_live_run(str(repo_root), run_id)
+        else:
+            st.caption("No run selected. Configure a new experiment below or select a past run.")
+    except (RunServiceError, OSError, ValueError) as error:
+        # A damaged historical file must not disable batches or new configuration.
+        _render_error("The selected run view could not be loaded; batches and the editor remain available.", error)
     try:
         render_batch_history(repo_root)
     except (RunServiceError, OSError, ValueError) as error:

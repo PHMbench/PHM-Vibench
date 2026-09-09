@@ -248,3 +248,37 @@ def test_broken_editor_keeps_paused_batch_controls(monkeypatch):
     assert not app.exception
     assert cancelled == ['paused-batch']
     assert _button(app, 'Cancel batch').disabled
+
+
+def test_unreadable_historical_log_keeps_batch_controls_and_editor(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from apps.streamlit import workspace, ui_batch, ui_runtime
+    from apps.streamlit.run_service import RunRecord
+
+    record = RunRecord('old-run', 'succeeded', tmp_path, ('python', 'main.py'))
+    batch = SimpleNamespace(batch_id='paused-batch', status='paused', is_terminal=False,
+                            total_fits=1, error='Trial failed', trials=(dict(
+                                index=1, status='pending', fit_count=1, run_id='', error=''),))
+    monkeypatch.setattr(ui_runtime, 'list_runs', lambda root, limit: (record,))
+    monkeypatch.setattr(ui_runtime, 'get_run', lambda root, run_id: record)
+    monkeypatch.setattr(ui_batch, 'list_batches', lambda root: (batch,))
+    monkeypatch.setattr(ui_batch, 'get_batch', lambda root, batch_id: batch)
+    def unreadable(*args, **kwargs):
+        raise PermissionError('Cannot read old-run/run.log')
+    monkeypatch.setattr(ui_runtime, 'read_log_tail', unreadable)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Displaying a damaged historical run must not submit work.')
+    monkeypatch.setattr(workspace, 'start_run', forbidden)
+    monkeypatch.setattr(ui_batch, 'start_batch', forbidden)
+    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
+    assert not app.exception
+    assert not _button(app, 'Continue remaining trials').disabled
+    assert not _button(app, 'Cancel batch').disabled
+    assert not _button(app, 'Validate configuration').disabled
+    assert _button(app, 'Run experiment').disabled
+    assert app.session_state['selected_run_id'] == 'old-run'
+    assert any('Cannot read old-run/run.log' in item.value for item in app.code)
+    _button(app, 'Validate configuration').click().run()
+    assert not app.exception
+    assert app.session_state['validation_report'].ok
+    assert app.session_state['selected_run_id'] == 'old-run'

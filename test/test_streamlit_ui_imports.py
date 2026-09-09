@@ -203,3 +203,38 @@ def test_existing_runs_render_before_editor_catalog_failure(monkeypatch):
     assert ('batches',) in calls
     assert calls.index(('run', 'running-a')) < calls.index(('editor-error',))
     assert calls.index(('batches',)) < calls.index(('editor-error',))
+
+
+@pytest.mark.parametrize('failure_owner', ['selector', 'run_view'])
+def test_damaged_run_view_does_not_block_batches_or_editor(monkeypatch, failure_owner):
+    _install_streamlit_stub(monkeypatch)
+    sys.modules.pop('apps.streamlit.workspace', None)
+    workspace = importlib.import_module('apps.streamlit.workspace')
+    calls = []
+    workspace.st.session_state = types.SimpleNamespace(selected_run_id='old-run', active_run_id='')
+    for name in ('set_page_config', 'header', 'caption'):
+        monkeypatch.setattr(workspace.st, name, lambda *args, **kwargs: None, raising=False)
+    monkeypatch.setattr(workspace, '_initialize_state', lambda: None)
+    monkeypatch.setattr(workspace, '_inject_style', lambda: None)
+    monkeypatch.setattr(workspace, '_render_hero', lambda: None)
+    monkeypatch.setattr(workspace, 'find_repo_root', lambda path: path)
+    monkeypatch.setattr(workspace, '_render_run_selector', lambda root: 'old-run')
+    monkeypatch.setattr(workspace, '_render_live_run', lambda *args: None)
+    def unreadable(*args):
+        raise PermissionError('Cannot read old-run/run.log')
+    owner = '_render_run_selector' if failure_owner == 'selector' else '_render_live_run'
+    monkeypatch.setattr(workspace, owner, unreadable)
+    monkeypatch.setattr(workspace, '_render_error', lambda title, error, **kwargs: calls.append(('error', str(error))))
+    monkeypatch.setattr(workspace, 'render_batch_history', lambda root: calls.append(('batches',)))
+    class EditorReached(Exception):
+        pass
+    def editor(path):
+        calls.append(('editor',))
+        raise EditorReached
+    monkeypatch.setattr(workspace, '_cached_catalog', editor)
+    with pytest.raises(EditorReached):
+        workspace.main()
+    assert ('error', 'Cannot read old-run/run.log') in calls
+    assert ('batches',) in calls
+    assert ('editor',) in calls
+    assert workspace.st.session_state.selected_run_id == 'old-run'

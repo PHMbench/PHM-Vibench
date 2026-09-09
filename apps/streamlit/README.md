@@ -136,7 +136,8 @@ There is no cross-process scheduler, crash recovery, parallel execution or adapt
 missing template, empty category or invalid draft can block a new submission but cannot
 hide existing logs, cancellation, paused-batch controls or historical results. Batch
 history does not require a validated base configuration; only planning and submitting a
-new batch does. Changing pages or inputs never submits a run.
+new batch does. An inaccessible historical run displays its own error without disabling
+batches or the editor. Changing pages or inputs never submits a run.
 
 ## Recover a detached run
 

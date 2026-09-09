@@ -3,6 +3,8 @@
 The workspace renders existing runs and batch history before loading the editor's
 catalogue or resolving a new template. An empty category, missing template or invalid
 configuration can block a new experiment without hiding existing logs and cancellation.
+A damaged historical run or unreadable log likewise cannot hide batch controls or the
+editor; its original error is displayed separately.
 
 Batch history is rendered separately from batch planning and no longer requires a valid
 base YAML. Both views reuse the existing run and batch services. No second scheduler,
