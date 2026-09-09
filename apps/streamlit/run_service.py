@@ -550,17 +550,23 @@ def _monitor_process(repo_root: Path, run_id: str, managed: _ManagedProcess) -> 
             _PROCESSES.pop(_key(repo_root, run_id), None)
 
 
-def _pid_exists(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    if os.name == "nt":
-        return False
+def _pid_exists(pid: Optional[int]) -> Optional[bool]:
+    """False proves absence; None means this worker cannot check safely.
+
+    Do not use os.kill(pid, 0) on Windows: it is not a harmless liveness probe.
+    A present PID never proves process identity and is never adopted or killed.
+    """
+
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return None
+    if sys.platform == "win32":
+        return None
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    except PermissionError:
-        return True
+    except OSError:
+        return None
     return True
 
 
@@ -575,7 +581,7 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
     with _LOCK:
         payload = _read_payload(run_dir)
         status = str(payload.get("status") or "unknown")
-        if status in {"starting", "running", "cancelling"}:
+        if status in {"starting", "running", "cancelling", "detached"}:
             managed = _PROCESSES.get(key)
             if managed is not None:
                 return_code = managed.process.poll()
@@ -596,27 +602,58 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
                     # process-registry removal. get_run only reconciles durable state.
                     _atomic_write_json(_manifest_path(run_dir), payload)
             else:
-                pid = payload.get("pid")
-                cancel_requested = bool(payload.get("cancel_requested"))
-                new_status = (
-                    "cancelled"
-                    if cancel_requested
-                    else "detached" if isinstance(pid, int) and _pid_exists(pid) else "orphaned"
-                )
-                payload.update(
-                    status=new_status,
-                    ended_at="" if new_status == "detached" else _utc_now(),
-                    error=(
-                        "The Streamlit worker restarted while the process is still alive; "
-                        "automatic cancellation is disabled for safety."
-                        if new_status == "detached"
-                        else ""
-                        if new_status == "cancelled"
-                        else "The managed process is no longer available."
+                present = _pid_exists(payload.get("pid"))
+                # A persisted cancellation request is not proof that an unmanaged
+                # process stopped. Only observed absence releases its reservation.
+                changes = {
+                    "status": "orphaned" if present is False else "detached",
+                    "ended_at": _utc_now() if present is False else "",
+                    "exit_code": None,
+                    "error": (
+                        "The unmanaged process is no longer present. Its final exit "
+                        "status is unknown; logs and outputs are preserved."
+                        if present is False else
+                        "This worker does not own the recorded process. A present or "
+                        "unverifiable PID remains reserved; recheck it or confirm in "
+                        "the operating system that the original run has stopped. "
+                        "No process will be adopted, signalled or automatically retried."
                     ),
-                )
-                _atomic_write_json(_manifest_path(run_dir), payload)
+                }
+                if any(payload.get(key) != value for key, value in changes.items()):
+                    payload.update(changes)
+                    _atomic_write_json(_manifest_path(run_dir), payload)
         return _record(payload, run_dir)
+
+
+def release_detached_run(
+    repo_root: Path, run_id: str, *, confirmed_stopped: bool = False
+) -> RunRecord:
+    """Release an unverifiable reservation after explicit OS-level confirmation.
+
+    This acknowledges an unknown outcome, not success. It never signals a PID
+    or removes the run's configuration, logs or scientific outputs.
+    """
+
+    if confirmed_stopped is not True:
+        raise RunServiceError("Confirm that the original run has stopped before releasing it.")
+    root = _ensure_repo_root(repo_root)
+    with _LOCK:
+        record = get_run(root, run_id)
+        if record.is_terminal:
+            return record
+        if record.status != "detached" or _key(root, run_id) in _PROCESSES:
+            raise RunServiceError("Only a detached run can be released this way.")
+        if _pid_exists(record.pid) is True:
+            raise RunServiceError(
+                "The recorded PID still exists. This worker cannot prove it is the "
+                "original process and will not release or terminate it automatically."
+            )
+        payload = _update_payload(
+            record.run_dir, status="orphaned", ended_at=_utc_now(), exit_code=None,
+            error="User confirmed the original run stopped. Its final exit status "
+                  "is unknown; logs and outputs are preserved.",
+        )
+        return _record(payload, record.run_dir)
 
 
 def list_runs(repo_root: Path, *, limit: int = 30) -> Tuple[RunRecord, ...]:

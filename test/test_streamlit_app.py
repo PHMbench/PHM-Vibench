@@ -146,3 +146,29 @@ def test_batch_launch_requires_click_and_locks_the_submitted_preview(monkeypatch
     app.run()
     assert not app.exception
     assert len(submitted) == 1
+
+
+def test_detached_release_requires_confirmation_in_the_page(monkeypatch, tmp_path):
+    from apps.streamlit import ui_runtime
+
+    released = []
+    monkeypatch.setattr(ui_runtime, 'release_detached_run',
+                        lambda root, run_id, *, confirmed_stopped:
+                        released.append((root, run_id, confirmed_stopped)))
+    app = AppTest.from_string('''
+from pathlib import Path
+from apps.streamlit.run_service import RunRecord
+from apps.streamlit.ui_runtime import _render_detached_controls
+root = Path(".")
+record = RunRecord("lost-run", "detached", root, (), error="Process outcome unknown.")
+_render_detached_controls(root, record)
+''').run()
+    assert not app.exception
+    assert _button(app, 'Release finished run').disabled
+    assert released == []
+    app.checkbox(key='stopped-confirmed::lost-run').set_value(True).run()
+    assert not _button(app, 'Release finished run').disabled
+    assert released == []
+    _button(app, 'Release finished run').click().run()
+    assert not app.exception
+    assert released == [(Path('.'), 'lost-run', True)]
