@@ -277,7 +277,7 @@ def test_unreadable_historical_log_keeps_batch_controls_and_editor(monkeypatch, 
     assert not _button(app, 'Validate configuration').disabled
     assert _button(app, 'Run experiment').disabled
     assert app.session_state['selected_run_id'] == 'old-run'
-    assert any('Cannot read old-run/run.log' in item.value for item in app.code)
+    assert any('Cannot read old-run/run.log' in item.value for item in app.error)
     _button(app, 'Validate configuration').click().run()
     assert not app.exception
     assert app.session_state['validation_report'].ok
