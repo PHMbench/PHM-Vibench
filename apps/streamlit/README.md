@@ -88,7 +88,47 @@ direct scientific results are unavailable.
 The workspace can cancel its active process and repeat a prior configuration in a new run.
 One Streamlit worker manages one active experiment. Browser refresh does not submit a new
 run; a server restart may leave the child process detached and must not trigger automatic
-resubmission. Pause/resume and cluster scheduling are not supported.
+resubmission. Pausing/resuming a running training process and cluster scheduling are not supported.
+
+## Finite batches
+
+Validate the base experiment, then open **Plan parameter combinations**. Enter a small
+YAML grid, for example:
+
+```yaml
+task.lr: [0.001, 0.0005]
+data.batch_size: [16, 32]
+```
+
+Click **Preview batch** to see every trial, its exact YAML and the total number of fits.
+The first UI supports learning rate, batch size, epochs, seed and iterations; it does not
+vary datasets, splits, model identity or devices. The UI caps a plan at 16 CLI calls and
+64 fits; lower limits can be chosen. Seed grids preserve `environment.iterations`: four
+trials with three iterations mean twelve fits, not four.
+
+**Run batch** explicitly submits that preview. Every snapshot is checked by the existing
+public inspector before any trial starts. Each trial then goes through the same public
+preflight and CLI used for a single run. Snapshots are not rewritten and failures do not
+trigger retries, parameter changes or substitute experiments.
+
+One server worker executes one trial at a time and reserves its run slot between trials.
+The first failed or cancelled trial pauses the remaining work. **Continue remaining trials**
+is an explicit decision to run only the pending items; earlier failures stay visible and
+the batch cannot become successful if any trial failed. **Cancel batch** stops the current
+managed child using the existing cancellation service and cancels pending items. A paused
+batch must be continued or cancelled before another run can start.
+
+Batch state and planned configurations are saved in
+`outputs/streamlit/batches/<batch-id>/batch.json`. This is a scheduling record, not a new
+scientific result format. Each trial has its own ordinary run record, log and CLI-reported
+results; **View trial** opens that run. Batch progress describes process completion and
+never claims benchmark validity.
+
+Page refresh only monitors the worker; it never submits the next trial. A disconnected
+browser does not stop already submitted work while the server process remains alive.
+After a server restart the batch is marked **interrupted** and pending trials are not
+automatically resubmitted. Inspect the individual child runs before creating another plan.
+There is no cross-process scheduler, crash recovery, parallel execution or adaptive search.
 
 ## Troubleshooting
 
@@ -116,6 +156,8 @@ python -m pytest -q \
   test/test_streamlit_runtime_policy.py \
   test/test_streamlit_onboarding.py \
   test/test_streamlit_run_service.py \
+  test/test_streamlit_batch_service.py \
+  test/test_streamlit_batch_execution.py \
   test/test_streamlit_result_service.py \
   test/test_streamlit_ui_imports.py
 
