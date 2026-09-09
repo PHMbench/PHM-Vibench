@@ -1,0 +1,129 @@
+--- a/apps/streamlit/README.md
++++ b/apps/streamlit/README.md
+@@ -136,7 +136,8 @@
+ missing template, empty category or invalid draft can block a new submission but cannot
+ hide existing logs, cancellation, paused-batch controls or historical results. Batch
+ history does not require a validated base configuration; only planning and submitting a
+-new batch does. Changing pages or inputs never submits a run.
++new batch does. An inaccessible historical run displays its own error without disabling
++batches or the editor. Changing pages or inputs never submits a run.
+ 
+ ## Recover a detached run
+ 
+--- a/apps/streamlit/workspace.py
++++ b/apps/streamlit/workspace.py
+@@ -194,12 +194,16 @@
+     """Do not let a new template or draft failure hide existing process controls."""
+ 
+     st.header("运行与批次 | Runs and batches")
+-    selected = _render_run_selector(repo_root)
+-    run_id = selected or st.session_state.selected_run_id or st.session_state.active_run_id
+-    if run_id:
+-        _render_live_run(str(repo_root), run_id)
+-    else:
+-        st.caption("No run selected. Configure a new experiment below or select a past run.")
++    try:
++        selected = _render_run_selector(repo_root)
++        run_id = selected or st.session_state.selected_run_id or st.session_state.active_run_id
++        if run_id:
++            _render_live_run(str(repo_root), run_id)
++        else:
++            st.caption("No run selected. Configure a new experiment below or select a past run.")
++    except (RunServiceError, OSError, ValueError) as error:
++        # A damaged historical file must not disable batches or new configuration.
++        _render_error("The selected run view could not be loaded; batches and the editor remain available.", error)
+     try:
+         render_batch_history(repo_root)
+     except (RunServiceError, OSError, ValueError) as error:
+--- a/doc/changelog/2026-09-09-streamlit-independent-monitor.md
++++ b/doc/changelog/2026-09-09-streamlit-independent-monitor.md
+@@ -3,6 +3,8 @@
+ The workspace renders existing runs and batch history before loading the editor's
+ catalogue or resolving a new template. An empty category, missing template or invalid
+ configuration can block a new experiment without hiding existing logs and cancellation.
++A damaged historical run or unreadable log likewise cannot hide batch controls or the
++editor; its original error is displayed separately.
+ 
+ Batch history is rendered separately from batch planning and no longer requires a valid
+ base YAML. Both views reuse the existing run and batch services. No second scheduler,
+--- a/test/test_streamlit_app.py
++++ b/test/test_streamlit_app.py
+@@ -248,3 +248,37 @@
+     assert not app.exception
+     assert cancelled == ['paused-batch']
+     assert _button(app, 'Cancel batch').disabled
++
++
++def test_unreadable_historical_log_keeps_batch_controls_and_editor(monkeypatch, tmp_path):
++    from types import SimpleNamespace
++    from apps.streamlit import workspace, ui_batch, ui_runtime
++    from apps.streamlit.run_service import RunRecord
++
++    record = RunRecord('old-run', 'succeeded', tmp_path, ('python', 'main.py'))
++    batch = SimpleNamespace(batch_id='paused-batch', status='paused', is_terminal=False,
++                            total_fits=1, error='Trial failed', trials=(dict(
++                                index=1, status='pending', fit_count=1, run_id='', error=''),))
++    monkeypatch.setattr(ui_runtime, 'list_runs', lambda root, limit: (record,))
++    monkeypatch.setattr(ui_runtime, 'get_run', lambda root, run_id: record)
++    monkeypatch.setattr(ui_batch, 'list_batches', lambda root: (batch,))
++    monkeypatch.setattr(ui_batch, 'get_batch', lambda root, batch_id: batch)
++    def unreadable(*args, **kwargs):
++        raise PermissionError('Cannot read old-run/run.log')
++    monkeypatch.setattr(ui_runtime, 'read_log_tail', unreadable)
++    def forbidden(*args, **kwargs):
++        raise AssertionError('Displaying a damaged historical run must not submit work.')
++    monkeypatch.setattr(workspace, 'start_run', forbidden)
++    monkeypatch.setattr(ui_batch, 'start_batch', forbidden)
++    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
++    assert not app.exception
++    assert not _button(app, 'Continue remaining trials').disabled
++    assert not _button(app, 'Cancel batch').disabled
++    assert not _button(app, 'Validate configuration').disabled
++    assert _button(app, 'Run experiment').disabled
++    assert app.session_state['selected_run_id'] == 'old-run'
++    assert any('Cannot read old-run/run.log' in item.value for item in app.code)
++    _button(app, 'Validate configuration').click().run()
++    assert not app.exception
++    assert app.session_state['validation_report'].ok
++    assert app.session_state['selected_run_id'] == 'old-run'
+--- a/test/test_streamlit_ui_imports.py
++++ b/test/test_streamlit_ui_imports.py
+@@ -203,3 +203,38 @@
+     assert ('batches',) in calls
+     assert calls.index(('run', 'running-a')) < calls.index(('editor-error',))
+     assert calls.index(('batches',)) < calls.index(('editor-error',))
++
++
++@pytest.mark.parametrize('failure_owner', ['selector', 'run_view'])
++def test_damaged_run_view_does_not_block_batches_or_editor(monkeypatch, failure_owner):
++    _install_streamlit_stub(monkeypatch)
++    sys.modules.pop('apps.streamlit.workspace', None)
++    workspace = importlib.import_module('apps.streamlit.workspace')
++    calls = []
++    workspace.st.session_state = types.SimpleNamespace(selected_run_id='old-run', active_run_id='')
++    for name in ('set_page_config', 'header', 'caption'):
++        monkeypatch.setattr(workspace.st, name, lambda *args, **kwargs: None, raising=False)
++    monkeypatch.setattr(workspace, '_initialize_state', lambda: None)
++    monkeypatch.setattr(workspace, '_inject_style', lambda: None)
++    monkeypatch.setattr(workspace, '_render_hero', lambda: None)
++    monkeypatch.setattr(workspace, 'find_repo_root', lambda path: path)
++    monkeypatch.setattr(workspace, '_render_run_selector', lambda root: 'old-run')
++    monkeypatch.setattr(workspace, '_render_live_run', lambda *args: None)
++    def unreadable(*args):
++        raise PermissionError('Cannot read old-run/run.log')
++    owner = '_render_run_selector' if failure_owner == 'selector' else '_render_live_run'
++    monkeypatch.setattr(workspace, owner, unreadable)
++    monkeypatch.setattr(workspace, '_render_error', lambda title, error, **kwargs: calls.append(('error', str(error))))
++    monkeypatch.setattr(workspace, 'render_batch_history', lambda root: calls.append(('batches',)))
++    class EditorReached(Exception):
++        pass
++    def editor(path):
++        calls.append(('editor',))
++        raise EditorReached
++    monkeypatch.setattr(workspace, '_cached_catalog', editor)
++    with pytest.raises(EditorReached):
++        workspace.main()
++    assert ('error', 'Cannot read old-run/run.log') in calls
++    assert ('batches',) in calls
++    assert ('editor',) in calls
++    assert workspace.st.session_state.selected_run_id == 'old-run'
