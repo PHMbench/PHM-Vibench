@@ -1,0 +1,28 @@
+name: Temporary frontend patch transfer
+on:
+  push:
+    branches: [feat/streamlit-serial-batches-20260909]
+    paths: [.github/workflows/apply-u5b.yml, .u5b-*.patch]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/streamlit-serial-batches-20260909
+      - name: Apply the locally tested frontend changes
+        run: |
+          set -euo pipefail
+          cat .u5b-*.patch > /tmp/u5b.patch
+          git apply --check /tmp/u5b.patch
+          git apply /tmp/u5b.patch
+          git diff --check
+          python -m py_compile apps/streamlit/run_service.py apps/streamlit/ui_batch.py apps/streamlit/workspace.py test/test_streamlit_batch_execution.py test/test_streamlit_app.py test/test_streamlit_public_contract.py
+          git rm .u5b-*.patch .github/workflows/source-export-u5b.yml .github/workflows/apply-u5b.yml
+          git add .github/workflows/streamlit-quality-gates.yml apps/streamlit/README.md apps/streamlit/run_service.py apps/streamlit/ui_batch.py apps/streamlit/workspace.py doc/changelog/2026-09-09-streamlit-serial-batches.md test/test_streamlit_app.py test/test_streamlit_batch_execution.py test/test_streamlit_public_contract.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(streamlit): execute approved finite batches serially'
+          git push origin HEAD:feat/streamlit-serial-batches-20260909
