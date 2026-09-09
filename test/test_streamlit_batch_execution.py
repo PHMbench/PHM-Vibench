@@ -212,3 +212,24 @@ def test_snapshot_change_before_execution_is_not_silently_accepted(repo, monkeyp
     assert final.status == 'paused'
     assert 'changed the approved' in final.error
     assert not (repo / 'starts.txt').exists()
+
+
+@pytest.mark.parametrize('payload', [
+    [], {},
+    {'status': 'succeeded', 'trials': None, 'total_fits': 1},
+    {'status': 'succeeded', 'trials': [None], 'total_fits': 1},
+    {'status': 'succeeded', 'trials': [{}], 'total_fits': 1},
+    {'status': 'succeeded', 'trials': [], 'total_fits': True},
+])
+def test_malformed_batch_record_reports_its_path_without_repair(repo, payload):
+    directory = rs._batch_root(repo) / 'damaged'
+    directory.mkdir(parents=True)
+    path = directory / 'batch.json'
+    original = json.dumps(payload)
+    path.write_text(original, encoding='utf-8')
+    with pytest.raises(rs.RunServiceError, match='batch.json'):
+        rs.get_batch(repo, directory.name)
+    with pytest.raises(rs.RunServiceError, match='batch.json'):
+        rs.list_batches(repo)
+    assert path.read_text() == original
+    assert not (repo / 'starts.txt').exists()

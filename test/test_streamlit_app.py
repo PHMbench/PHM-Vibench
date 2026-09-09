@@ -282,3 +282,28 @@ def test_unreadable_historical_log_keeps_batch_controls_and_editor(monkeypatch, 
     assert not app.exception
     assert app.session_state['validation_report'].ok
     assert app.session_state['selected_run_id'] == 'old-run'
+
+
+def test_damaged_batch_record_keeps_editor_and_single_run_view(monkeypatch, tmp_path):
+    from apps.streamlit import workspace, ui_runtime, ui_batch, run_service
+
+    directory = tmp_path / 'batches' / 'damaged'
+    directory.mkdir(parents=True)
+    path = directory / 'batch.json'
+    path.write_text('{}', encoding='utf-8')
+    monkeypatch.setattr(run_service, '_batch_root', lambda root: directory.parent)
+    monkeypatch.setattr(ui_runtime, 'list_runs', lambda root, limit: ())
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A malformed history must not trigger any submission.')
+    monkeypatch.setattr(workspace, 'start_run', forbidden)
+    monkeypatch.setattr(ui_batch, 'start_batch', forbidden)
+    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
+    assert not app.exception
+    assert not _button(app, 'Validate configuration').disabled
+    assert any(str(path) in error.value for error in app.error)
+    _button(app, 'Validate configuration').click().run()
+    assert not app.exception
+    assert app.session_state['validation_report'].ok
+    assert not _button(app, 'Run experiment').disabled
+    assert not any(button.label == 'Run batch' for button in app.button)
+    assert path.read_text() == '{}'
