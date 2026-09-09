@@ -1,0 +1,118 @@
+--- a/apps/streamlit/run_service.py
++++ b/apps/streamlit/run_service.py
+@@ -809,7 +809,28 @@
+ 
+ 
+ def _batch_payload(directory: Path) -> Dict[str, Any]:
+-    return json.loads((directory / "batch.json").read_text(encoding="utf-8"))
++    """Read operational fields before callers index them; never repair old records."""
++
++    path = directory / "batch.json"
++    payload = json.loads(path.read_text(encoding="utf-8"))
++    if not isinstance(payload, dict):
++        raise RunServiceError(f"Batch record must contain a JSON object: {path}")
++    for name, expected in (("status", str), ("trials", list), ("total_fits", int)):
++        if name not in payload or type(payload[name]) is not expected:
++            raise RunServiceError(
++                f"Invalid batch record {path}: {name} must be {expected.__name__}."
++            )
++    for index, trial in enumerate(payload["trials"], start=1):
++        if not isinstance(trial, dict):
++            raise RunServiceError(f"Invalid batch record {path}: trial {index} must be an object.")
++        for name, expected in (("index", int), ("status", str), ("fit_count", int),
++                               ("run_id", str), ("error", str), ("config_yaml", str)):
++            if name not in trial or type(trial[name]) is not expected:
++                raise RunServiceError(
++                    f"Invalid batch record {path}: trial {index}.{name} "
++                    f"must be {expected.__name__}."
++                )
++    return payload
+ 
+ 
+ def _save_batch(directory: Path, payload: Mapping[str, Any]) -> None:
+--- a/apps/streamlit/ui_batch.py
++++ b/apps/streamlit/ui_batch.py
+@@ -99,7 +99,11 @@
+                                              range(len(plan.trials)),
+                                              format_func=lambda i: plan.trials[i].trial_id)
+             st.code(plan.trials[selected_trial].config_yaml, language="yaml")
+-        batches = list_batches(repo_root)
++        try:
++            batches = list_batches(repo_root)
++        except (RunServiceError, OSError, ValueError) as error:
++            st.error(f"Batch submission is unavailable until its history is readable: {error}")
++            return
+         reserved = any(not batch.is_terminal for batch in batches)
+         submitted = st.session_state.get("batch_plan_submitted", False)
+         if st.button("Run batch", disabled=not current or reserved or submitted, type="primary"):
+--- a/doc/changelog/2026-09-09-streamlit-independent-monitor.md
++++ b/doc/changelog/2026-09-09-streamlit-independent-monitor.md
+@@ -4,7 +4,9 @@
+ catalogue or resolving a new template. An empty category, missing template or invalid
+ configuration can block a new experiment without hiding existing logs and cancellation.
+ A damaged historical run or unreadable log likewise cannot hide batch controls or the
+-editor; its original error is displayed separately.
++editor; its original error is displayed separately. Malformed batch records report the
++record path and field at the existing read boundary. They are not repaired or skipped;
++new batch submission is disabled while ordinary configuration editing remains available.
+ 
+ Batch history is rendered separately from batch planning and no longer requires a valid
+ base YAML. Both views reuse the existing run and batch services. No second scheduler,
+--- a/test/test_streamlit_app.py
++++ b/test/test_streamlit_app.py
+@@ -282,3 +282,28 @@
+     assert not app.exception
+     assert app.session_state['validation_report'].ok
+     assert app.session_state['selected_run_id'] == 'old-run'
++
++
++def test_damaged_batch_record_keeps_editor_and_single_run_view(monkeypatch, tmp_path):
++    from apps.streamlit import workspace, ui_runtime, ui_batch, run_service
++
++    directory = tmp_path / 'batches' / 'damaged'
++    directory.mkdir(parents=True)
++    path = directory / 'batch.json'
++    path.write_text('{}', encoding='utf-8')
++    monkeypatch.setattr(run_service, '_batch_root', lambda root: directory.parent)
++    monkeypatch.setattr(ui_runtime, 'list_runs', lambda root, limit: ())
++    def forbidden(*args, **kwargs):
++        raise AssertionError('A malformed history must not trigger any submission.')
++    monkeypatch.setattr(workspace, 'start_run', forbidden)
++    monkeypatch.setattr(ui_batch, 'start_batch', forbidden)
++    app = AppTest.from_file(str(ROOT / 'apps/streamlit/app.py'), default_timeout=90).run()
++    assert not app.exception
++    assert not _button(app, 'Validate configuration').disabled
++    assert any(str(path) in error.value for error in app.error)
++    _button(app, 'Validate configuration').click().run()
++    assert not app.exception
++    assert app.session_state['validation_report'].ok
++    assert not _button(app, 'Run experiment').disabled
++    assert not any(button.label == 'Run batch' for button in app.button)
++    assert path.read_text() == '{}'
+--- a/test/test_streamlit_batch_execution.py
++++ b/test/test_streamlit_batch_execution.py
+@@ -212,3 +212,24 @@
+     assert final.status == 'paused'
+     assert 'changed the approved' in final.error
+     assert not (repo / 'starts.txt').exists()
++
++
++@pytest.mark.parametrize('payload', [
++    [], {},
++    {'status': 'succeeded', 'trials': None, 'total_fits': 1},
++    {'status': 'succeeded', 'trials': [None], 'total_fits': 1},
++    {'status': 'succeeded', 'trials': [{}], 'total_fits': 1},
++    {'status': 'succeeded', 'trials': [], 'total_fits': True},
++])
++def test_malformed_batch_record_reports_its_path_without_repair(repo, payload):
++    directory = rs._batch_root(repo) / 'damaged'
++    directory.mkdir(parents=True)
++    path = directory / 'batch.json'
++    original = json.dumps(payload)
++    path.write_text(original, encoding='utf-8')
++    with pytest.raises(rs.RunServiceError, match='batch.json'):
++        rs.get_batch(repo, directory.name)
++    with pytest.raises(rs.RunServiceError, match='batch.json'):
++        rs.list_batches(repo)
++    assert path.read_text() == original
++    assert not (repo / 'starts.txt').exists()
