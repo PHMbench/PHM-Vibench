@@ -130,6 +130,19 @@ After a server restart the batch is marked **interrupted** and pending trials ar
 automatically resubmitted. Inspect the individual child runs before creating another plan.
 There is no cross-process scheduler, crash recovery, parallel execution or adaptive search.
 
+## Recover a detached run
+
+Viewing a detached run or submitting another experiment rechecks its recorded PID. If a
+POSIX probe confirms absence, the record becomes `orphaned` and no longer reserves the
+worker. Its final exit status remains unknown; files are not removed or relabelled as a
+successful evaluation. A saved cancellation request alone is not proof of exit.
+
+A present or unverifiable PID stays reserved and is never adopted or killed. Use **Recheck
+process** after checking the operating system. When this platform cannot probe safely,
+**Release finished run** requires explicit confirmation that the original run stopped.
+Windows does not use `os.kill(pid, 0)` to probe a process. This is record reconciliation,
+not automatic training recovery.
+
 ## Troubleshooting
 
 A rejected configuration shows the inspector's original stderr. Copy the visible command
