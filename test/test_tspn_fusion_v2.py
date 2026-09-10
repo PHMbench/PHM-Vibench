@@ -246,13 +246,13 @@ def test_worst_source_one_domain_rejected():
 def test_pairs_supervised_even_when_consistency_zero():
     a,b=output(torch.randn(6,3)),output(torch.randn(6,3));y=torch.arange(6)%3;u=torch.arange(6);d=u//3
     f=TSPNFusionLoss(lambda_delta=0,reduction='mean_source')
-    r=f(a,y,u,d,paired=b,paired_target=y)
+    r=f(a,y,u,d,paired=b,paired_target=y,sample_ids=u,paired_sample_ids=u)
     torch.testing.assert_close(r['loss'],.5*(f(a,y,u,d)['loss']+f(b,y,u,d)['loss']))
 
 
 def test_correction_invariance_not_raw_imitation():
     a=output(torch.randn(6,3),torch.randn(6,3));y=torch.arange(6)%3;u=torch.arange(6);d=u//3
-    r=TSPNFusionLoss(lambda_delta=.1)(a,y,u,d,paired=a,paired_target=y)
+    r=TSPNFusionLoss(lambda_delta=.1)(a,y,u,d,paired=a,paired_target=y,sample_ids=u,paired_sample_ids=u)
     assert float(r['correction_consistency'])==0 and (a['candidate_probs']-a['raw_probs']).abs().sum()>0
 
 
@@ -288,3 +288,16 @@ def test_short_optimization_updates_candidate_not_reference():
         opt.zero_grad(set_to_none=True);objective(m.forward_details(x),y,u,d)['loss'].backward();opt.step()
     final=float(objective(m.forward_details(x),y,u,d)['loss'].detach())
     assert final<initial and all(torch.equal(before[k],v) for k,v in m.reference.state_dict().items())
+
+
+def test_same_label_permuted_pairs_are_rejected():
+    a=output(torch.randn(4,2));labels=torch.zeros(4,dtype=torch.long);ids=torch.arange(4);domains=ids//2
+    with pytest.raises(ValueError,match='row correspondence'):
+        TSPNFusionLoss()(a,labels,ids,domains,paired=a,paired_target=labels,
+                         sample_ids=ids,paired_sample_ids=ids.flip(0))
+
+
+def test_pairing_requires_sample_ids_not_just_labels():
+    a=output(torch.randn(4,2));labels=torch.zeros(4,dtype=torch.long);ids=torch.arange(4);domains=ids//2
+    with pytest.raises(ValueError,match='sample identities'):
+        TSPNFusionLoss()(a,labels,ids,domains,paired=a,paired_target=labels)

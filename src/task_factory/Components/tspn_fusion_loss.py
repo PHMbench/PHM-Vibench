@@ -68,15 +68,23 @@ class TSPNFusionLoss(nn.Module):
                 "excess": cep-ce0+self.brier_weight*(bp-b0)}
 
     def forward(self, out: dict, target: Tensor, unit_ids: Tensor, domain_ids: Tensor,
-                paired: dict | None = None, paired_target: Tensor | None = None) -> dict[str, Tensor]:
+                paired: dict | None = None, paired_target: Tensor | None = None,
+                *, sample_ids: Tensor | None = None,
+                paired_sample_ids: Tensor | None = None) -> dict[str, Tensor]:
         terms = self._terms(out, target)
         consistency = terms["excess"].new_zeros(target.shape)
         if paired is None:
-            if self.lambda_delta > 0 or paired_target is not None:
+            if self.lambda_delta > 0 or paired_target is not None or paired_sample_ids is not None:
                 raise ValueError("Correction consistency requires explicit same-label paired observations.")
         else:
             if paired_target is None or not torch.equal(paired_target, target):
-                raise ValueError("Paired inputs must retain label and row/unit correspondence.")
+                raise ValueError("Paired inputs must retain labels.")
+            # Labels alone cannot detect a permutation among equal-class windows.
+            for identity in (sample_ids, paired_sample_ids):
+                if identity is None or identity.dtype != torch.long or identity.shape != target.shape or identity.device != target.device:
+                    raise ValueError("Paired observations require explicit sample identities on both sides.")
+            if sample_ids.unique().numel() != target.numel() or not torch.equal(sample_ids, paired_sample_ids):
+                raise ValueError("Paired sample identities must be unique and retain row correspondence.")
             right = self._terms(paired, paired_target)
             terms = {key: .5*(value+right[key]) for key,value in terms.items()}
             v = out["candidate_probs"]-out["raw_probs"].detach()

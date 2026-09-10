@@ -11,7 +11,6 @@ from __future__ import annotations
 import copy
 import math
 from collections.abc import Mapping
-from pathlib import Path
 from types import SimpleNamespace
 
 import torch
@@ -251,28 +250,28 @@ class TSPNFusion(nn.Module):
 
 
 class Model(TSPNFusion):
-    """Existing PHMFactory constructor; no factory registration mechanism is added.
+    """Existing PHMFactory constructor and strict canonical checkpoint loader.
 
-    Use the unchanged original TSPN. Full fusion checkpoints are reconstructed
-    from their saved configuration, including branch order and transform options.
+    The upstream loader accepts bare model states and the platform's network.
+    Lightning prefix. No guessed prefixes or partial weight loading are added.
     """
     def __init__(self, args, metadata=None):
         from .TSPN import Model as OriginalTSPN
+        from ..model_factory import load_ckpt
         if args.checkpoint_kind not in {"reference", "fusion"}:
             raise ValueError("checkpoint_kind must be reference or fusion.")
         raw = copy.deepcopy(args.reference_config)
         raw = vars(raw) if not isinstance(raw, Mapping) else dict(raw)
+        if int(args.num_classes) != int(raw["num_classes"]):
+            raise ValueError("Top-level and reference class spaces must agree.")
         raw["device"] = args.device
         reference = OriginalTSPN(SimpleNamespace(**raw))
-        saved = torch.load(Path(args.checkpoint_path), map_location="cpu", weights_only=True)
-        if "state_dict" not in saved:
-            raise ValueError("Expected the exact state_dict; no inferred prefix stripping.")
         if args.checkpoint_kind == "reference":
-            reference.load_state_dict(saved["state_dict"], strict=True)
+            load_ckpt(reference, args.checkpoint_path, strict=True)
         super().__init__(reference, in_channels=int(raw["in_channels"]), num_classes=int(raw["num_classes"]),
                          branches=args.branches, use_reference_features=bool(getattr(args, "use_reference_features", True)),
                          reference_temperature=float(args.reference_temperature),
                          head_frobenius_cap=float(getattr(args, "head_frobenius_cap", 5.)))
         if args.checkpoint_kind == "fusion":
-            self.load_state_dict(saved["state_dict"], strict=True)
+            load_ckpt(self, args.checkpoint_path, strict=True)
         self.to(args.device)
