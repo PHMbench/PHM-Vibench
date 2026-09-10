@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+from scripts.validate_docs import check_ai_docs_point_to_readme
+
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "repo" / "check_agent_boundaries.py"
 SPEC = importlib.util.spec_from_file_location("check_agent_boundaries", MODULE_PATH)
@@ -15,10 +17,12 @@ def _violations(*paths: str) -> set[tuple[str, str]]:
     return set(MODULE._violations(tuple(paths)))
 
 
-def test_rejects_root_agent_documents_case_insensitively() -> None:
-    assert ("root Agent document", "CLAUDE.md") in _violations("CLAUDE.md")
-    assert ("root Agent document", "agents_cn.MD") in _violations("agents_cn.MD")
-    assert ("root Agent document", "Codex_agent.md") in _violations("Codex_agent.md")
+def test_allows_only_exact_shared_root_names() -> None:
+    assert not _violations("AGENTS.md", "CLAUDE.md")
+    paths = ("agent.md", "agents.md", "claude.MD", "agents_cn.MD", "Codex_agent.md")
+    assert _violations(*paths) == {
+        ("duplicate or private Agent document", path) for path in paths
+    }
 
 
 def test_rejects_top_level_agent_workspaces() -> None:
@@ -40,11 +44,35 @@ def test_allows_neutral_public_documentation() -> None:
     )
 
 
-def test_temporarily_allows_module_level_claude_documents() -> None:
-    """Module knowledge is migrated through implementation-aware follow-up PRs."""
-
-    assert not _violations(
+def test_rejects_nested_instructions_and_local_overrides() -> None:
+    paths = (
         "src/data_factory/CLAUDE.md",
-        "src/model_factory/Transformer/CLAUDE.md",
+        "src/model_factory/Transformer/AGENTS.md",
         "configs/demo/CLAUDE.md",
+        "AGENTS.override.md",
+        "CLAUDE.local.md",
     )
+    assert _violations(*paths) == {
+        ("duplicate or private Agent document", path) for path in paths
+    }
+
+
+def test_shared_root_import_passes_documentation_check(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# Project\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("Read README.md.\n", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("@AGENTS.md\n", encoding="utf-8")
+    assert not check_ai_docs_point_to_readme(tmp_path)
+
+
+def test_shared_root_import_requires_its_target(tmp_path: Path) -> None:
+    (tmp_path / "CLAUDE.md").write_text("@AGENTS.md\n", encoding="utf-8")
+    issues = check_ai_docs_point_to_readme(tmp_path)
+    assert [issue.kind for issue in issues] == ["missing_shared_agent_document"]
+
+
+def test_root_claude_cannot_add_a_second_instruction_body(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# Project\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("Read README.md.\n", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("@AGENTS.md\nUse a different policy.\n", encoding="utf-8")
+    issues = check_ai_docs_point_to_readme(tmp_path)
+    assert [issue.kind for issue in issues] == ["invalid_shared_agent_import"]

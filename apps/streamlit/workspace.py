@@ -7,11 +7,12 @@ Pipeline, or define a second training framework.
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import Any, Mapping, Sequence, Tuple
 
 import streamlit as st
+
+from .ui_batch import render_batch_controls, render_batch_history
 
 try:
     from .config_service import (
@@ -31,6 +32,7 @@ try:
         load_catalog,
         load_registry,
         normalize_overrides,
+        override_args,
         parse_override_lines,
         parse_yaml_text,
         resolve_repo_path,
@@ -83,6 +85,7 @@ except ImportError:  # pragma: no cover - Streamlit may execute app.py as a scri
         load_catalog,
         load_registry,
         normalize_overrides,
+        override_args,
         parse_override_lines,
         parse_yaml_text,
         resolve_repo_path,
@@ -152,11 +155,16 @@ def _cached_inspection(
     return inspect_config(Path(repo_root), Path(config_path), overrides)
 
 
-def _signature(mode: str, source: str, overrides: Sequence[Tuple[str, Any]]) -> str:
-    """Identify the visible UI inputs that were validated."""
+def _validation_inputs(
+    mode: str, source: str, overrides: Sequence[Tuple[str, Any]]
+) -> Tuple[str, str, Tuple[str, ...]]:
+    """Keep the submitted text and typed argv values for direct comparison.
 
-    payload = repr((mode, source, tuple(overrides))).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    Serializing through the existing CLI adapter separates True from 1 and
+    freezes nested override values without inventing another config identity.
+    """
+
+    return mode, source, override_args(overrides)
 
 
 def _initialize_state() -> None:
@@ -168,7 +176,7 @@ def _initialize_state() -> None:
         "advanced_yaml_text": "",
         "advanced_override_text": "",
         "validation_report": None,
-        "validation_signature": "",
+        "validated_inputs": None,
         "active_run_id": "",
         "selected_run_id": "",
     }
@@ -180,6 +188,26 @@ def _initialize_state() -> None:
 def _safe_smoke_reset(default_template_id: str) -> None:
     apply_safe_defaults(st.session_state, default_template_id)
     st.rerun()
+
+
+def _render_existing_runs(repo_root: Path) -> None:
+    """Do not let a new template or draft failure hide existing process controls."""
+
+    st.header("运行与批次 | Runs and batches")
+    try:
+        selected = _render_run_selector(repo_root)
+        run_id = selected or st.session_state.selected_run_id or st.session_state.active_run_id
+        if run_id:
+            _render_live_run(str(repo_root), run_id)
+        else:
+            st.caption("No run selected. Configure a new experiment below or select a past run.")
+    except (RunServiceError, OSError, ValueError) as error:
+        # A damaged historical file must not disable batches or new configuration.
+        _render_error("The selected run view could not be loaded; batches and the editor remain available.", error)
+    try:
+        render_batch_history(repo_root)
+    except (RunServiceError, OSError, ValueError) as error:
+        _render_error("Batch history could not be loaded; single-run controls remain available.", error)
 
 
 def main() -> None:
@@ -195,6 +223,14 @@ def main() -> None:
 
     try:
         repo_root = find_repo_root(APP_DIR)
+    except ConfigServiceError as error:
+        _render_error("The repository root could not be found.", error)
+        st.stop()
+
+    # Render first: st.stop in the editor must not remove logs/cancel/history.
+    _render_existing_runs(repo_root)
+
+    try:
         catalog = _cached_catalog(str(APP_DIR / "field_catalog.yaml"))
         profiles = _cached_profiles(str(APP_DIR / "template_profiles.yaml"))
         registry = _cached_registry(str(repo_root))
@@ -227,7 +263,6 @@ def main() -> None:
             "standalone YAML editor and explicit raw overrides."
         ),
     )
-    selected_run = _render_run_selector(repo_root)
 
     st.header("1. 选择实验模板 | Select a validated template")
     group_keys = tuple(catalog.template_groups.keys())
@@ -296,7 +331,7 @@ def main() -> None:
             selected_id,
             quick_only=True,
         )
-        source_for_signature = standalone_yaml
+        source_for_validation = standalone_yaml
     else:
         _ensure_advanced_yaml(selected_id, baseline_resolved)
         tabs = st.tabs(("Safe fields", "Full YAML", "Raw overrides"))
@@ -338,7 +373,7 @@ def main() -> None:
             _render_error("Raw overrides are invalid.", error)
             overrides = safe_overrides
             configuration_has_error = True
-        source_for_signature = advanced_yaml_text
+        source_for_validation = advanced_yaml_text
         execution_yaml_text = advanced_yaml_text
 
     st.header("3. 验证并运行 | Validate and launch")
@@ -384,7 +419,7 @@ def main() -> None:
         else:
             st.warning("Fix the configuration before validation.")
 
-    current_signature = _signature(mode, source_for_signature, overrides)
+    current_inputs = _validation_inputs(mode, source_for_validation, overrides)
     validate_col, download_col, run_col = st.columns(3)
     if validate_col.button(
         "Validate configuration",
@@ -400,32 +435,42 @@ def main() -> None:
                     else inspect_execution_yaml(repo_root, advanced_yaml_text, overrides)
                 )
             st.session_state.validation_report = report
-            st.session_state.validation_signature = current_signature
+            st.session_state.validated_inputs = current_inputs
         except ConfigServiceError as error:
             st.session_state.validation_report = None
-            st.session_state.validation_signature = ""
+            st.session_state.validated_inputs = None
             _render_error("Validation could not start.", error)
 
     report = st.session_state.validation_report
     report_is_current = (
         isinstance(report, ValidationReport)
-        and st.session_state.validation_signature == current_signature
+        and st.session_state.validated_inputs == current_inputs
     )
     if report_is_current:
         _render_validation(report)
+        if report.ok:
+            st.caption(
+                "Validated snapshot: approved edits are folded into the YAML used for "
+                "download, public preflight, execution, and restart."
+            )
     elif isinstance(report, ValidationReport):
         st.warning(
             "The configuration changed after validation. Validate it again before running."
         )
 
-    can_download = bool(report_is_current and report.ok and not configuration_has_error)
+    approved_yaml_text = (
+        dump_yaml(report.resolved)
+        if report_is_current and report.ok and report.resolved
+        else ""
+    )
+    can_download = bool(approved_yaml_text and not configuration_has_error)
     can_run = bool(can_download and readiness.can_execute and data_status.ready)
     render_launch_blockers(readiness, data_status)
 
     if can_download:
         download_col.download_button(
             "Download execution YAML",
-            data=execution_yaml_text,
+            data=approved_yaml_text,
             file_name="phmfactory_config.yaml",
             mime="application/x-yaml",
             use_container_width=True,
@@ -455,10 +500,9 @@ def main() -> None:
                     repo_root=repo_root,
                     template_id=selected_id,
                     mode=mode,
-                    config_yaml=execution_yaml_text,
-                    overrides=overrides,
+                    config_yaml=approved_yaml_text,
+                    overrides=(),
                     output_root=str(resolved_output or "save"),
-                    validation_signature=current_signature,
                     metadata={
                         "registry_path": entry.path,
                         "pipeline": entry.pipeline or "Pipeline_01_Fault_Diagnosis",
@@ -471,22 +515,12 @@ def main() -> None:
             )
             st.session_state.active_run_id = launched.run_id
             st.session_state.selected_run_id = launched.run_id
-            st.toast("Experiment started. Live logs are available below.")
+            st.toast("Experiment started. Logs and controls are in Runs and batches above.")
             st.rerun()
         except (RunServiceError, RunConflictError) as error:
             _render_error("The experiment could not start.", error)
 
-    st.header("4. 运行与结果 | Live run and evidence")
-    run_id = (
-        selected_run
-        or st.session_state.selected_run_id
-        or st.session_state.active_run_id
+    render_batch_controls(
+        repo_root, approved_yaml_text if can_run else "",
+        template_id=selected_id, mode=mode,
     )
-    if run_id:
-        _render_live_run(str(repo_root), run_id)
-    else:
-        st.info(
-            "Validate the CPU smoke template and start an experiment. This area will "
-            "show live logs, headline metrics, images, artifacts, and the immutable "
-            "reproduction command."
-        )

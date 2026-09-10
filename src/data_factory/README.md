@@ -1,16 +1,7 @@
-# Data Factory (`src/data_factory/`)
+# Data Factory
 
-The Data Factory converts a resolved `data` + `task` configuration into three usable `DataLoader`s:
-
-```text
-metadata + raw/prebuilt data
-→ complete cache
-→ explicit dataset adapter
-→ train / val / test datasets
-→ non-empty DataLoaders
-```
-
-The public entry point is:
+The maintained default path uses `ExplicitDataFactory` to turn the selected local
+metadata/raw inputs and resolved data/task configuration into datasets and loaders.
 
 ```python
 from src.data_factory import build_data
@@ -19,95 +10,68 @@ data_factory = build_data(args_data, args_task)
 train_loader = data_factory.get_dataloader("train")
 ```
 
-A successful call returns a usable factory. Missing data, unknown adapters, incomplete caches, and empty loaders raise at the data boundary with a repair message.
+This fragment assumes the public configuration has already been resolved. Use
+`phmfactory.config.analyze_config()` and the public Pipeline, not another YAML loader.
 
-## Maintained configuration
+## Inputs and traceability
+
+A common data fragment is:
 
 ```yaml
 data:
-  factory_name: "default"
-  data_dir: "/path/to/phm-data"
-  metadata_file: "metadata.xlsx"
+  factory_name: default
+  data_dir: /path/to/phm-data
+  metadata_file: metadata.xlsx
   batch_size: 32
-  num_workers: 4
+  num_workers: 0
   window_size: 4096
-  stride: 128
-  num_window: 64
-  train_ratio: 0.8
-  val_ratio: 0.1
-  test_ratio: 0.1
-  normalization: "standardization"
 ```
 
-Machine-specific values are applied only through an explicit local file:
+The enclosing experiment supplies task-specific split, sampling and normalization
+choices. Metadata commonly requires `Id`, `Dataset_id`, `Name`, `File`, `Label` and
+`Domain_id`; consult the selected reader and Task for its exact fields. Preserve the
+relationship between metadata `Id`, batch `file_id`, and the source record. Do not silently
+change sample identities, channel order, sample rate, units or preprocessing.
+
+Machine inputs must be explicit:
 
 ```bash
-phmfactory preflight --config <yaml> --local-config /path/to/local.yaml
-phmfactory run --config <yaml> --local-config /path/to/local.yaml
+phmfactory preflight --config <yaml> --local-config <local.yaml>
+phmfactory --config <yaml> --local-config <local.yaml>
 ```
 
-PHMFactory does not auto-discover `configs/local/local.yaml`.
+Normal execution of the maintained default does not download a substitute dataset.
+Missing files or malformed reader output fail at the data boundary.
 
-## Runtime contracts
+## Dataset adapters and partitions
 
-### Explicit dataset adapter
+The default resolves an adapter by `(task.type, task.name)` through
+[dataset_task/adapters.py](dataset_task/adapters.py). Unknown mappings fail rather than
+falling back to a default dataset. Tasks document the dictionary batch they consume.
 
-The default factory resolves exactly one adapter from:
+Split and window behavior depends on the chosen adapter and configuration. File/group
+isolation and raw-sample interval isolation are different checks: non-overlapping window
+indices do not prove that underlying samples are disjoint. Inspect the actual split and
+interval tests before claiming held-out independence. Keep provider test data out of
+training and checkpoint selection; do not infer a method from an old demo filename.
 
-```text
-(task.type, task.name)
-```
+## Cache behavior
 
-The runtime mapping lives in:
+The strict reader path validates selected inputs before publishing a rebuilt cache.
+Cache reuse is a distinct explicit choice (`use_cache`), not proof that old reader or
+preprocessing results match current configuration. Review [explicit_data_factory.py](explicit_data_factory.py)
+and [cache tests](../../test/test_data_cache_contract.py) for the implemented boundary.
+A documentation edit does not change this behavior or add a cache identity system.
 
-```text
-src/data_factory/dataset_task/adapters.py
-```
+## Extend a reader or adapter
 
-Unknown combinations fail. Import errors do not fall back to `Default_dataset`.
+A dataset reader lives at `src/data_factory/reader/<Name>.py` and exports
+`read(file_path, args_data)`. The common window representation is `[length, channels]`;
+see the [reader guide](reader/README.md) for the actual accepted arrays and failures.
+Add metadata for each source file, a small legal fixture, and a focused test. Do not
+silently repair axes, replace input values or skip selected files.
 
-### Complete cache
-
-Published `Name.h5` and `cache.h5` files contain every selected ID. A failed rebuild leaves the previous published cache unchanged. An already complete `cache.h5` is reused without copying the underlying data again.
-
-### Truthful splits
-
-- `val` and legacy `valid` refer to the same validation split.
-- DG/CDDG test IDs use their complete test files.
-- FS/GFS/pretrain tasks that reuse file IDs use disjoint train/val/test window slices.
-- Validation and test retain the final short batch.
-
-### Usable loaders
-
-The default factory checks `len(train_loader)`, `len(val_loader)`, and `len(test_loader)` before model construction. It does not consume a batch or impose a universal tensor schema.
-
-## Adding a new raw dataset
-
-1. Add a metadata row for every file. At minimum, current readers and tasks commonly use:
-
-```text
-Id, Dataset_id, Name, File, Label, Domain_id
-```
-
-2. Implement a reader:
-
-```python
-# src/data_factory/reader/MyDataset.py
-
-def read(file_path, args_data):
-    # Return a NumPy array shaped [length, channels].
-    ...
-```
-
-3. Set metadata `Name` to the reader module name, for example `MyDataset`.
-4. Use an existing task adapter or register a new one.
-5. Run a one-epoch smoke before adding the combination to the supported matrix.
-
-Reader numerical behavior is dataset-specific. Do not change channel order, axes, normalization, or source-field selection as part of unrelated cleanup.
-
-## Adding a task-specific dataset adapter
-
-Implement a dataset class with the historical constructor:
+A historical dataset adapter constructor is:
 
 ```python
 class set_dataset:
@@ -115,34 +79,15 @@ class set_dataset:
         ...
 ```
 
-Register it explicitly:
+Register a genuinely new adapter explicitly with `register_dataset_adapter(task_type,
+task_name, module_path)` from `src.data_factory`. Do not create another discovery system.
 
-```python
-from src.data_factory import register_dataset_adapter
+## Compatibility and support
 
-register_dataset_adapter(
-    "MyTaskType",
-    "my_task",
-    "my_package.dataset_adapter",
-)
-```
+The public implementation still exposes `department` and `id` as legacy choices at this
+source state. They are not the maintained strict path; do not recommend them for new
+experiments or claim their removal is complete. Use `default` for maintained work.
 
-There is no filename guessing. Duplicate registrations fail immediately.
-
-## Factory choices
-
-- `factory_name: default`: maintained explicit-adapter path.
-- `factory_name: department`: compatibility subclass of the historical factory.
-- `factory_name: id`: compatibility research path; it is not part of the maintained release combination table.
-
-New development should use `default` unless the alternative path has its own reviewed smoke.
-
-## Validate an extension
-
-```bash
-python -m scripts.config_inspect --config <your-config.yaml> --dump targets
-python -m scripts.validate_configs
-python main.py --config <your-config.yaml> --override trainer.num_epochs=1 data.num_workers=0
-```
-
-A source file, registry entry, or importable reader is discoverable—not automatically release-supported. Add a `sanity_ok` demo only after the exact configuration completes its bounded smoke.
+A source file or registry entry is discoverable, not benchmark support. Validate the
+exact complete configuration and its relevant data/Task tests. Record execution and
+protocol status separately in the existing [supported combinations](../../SUPPORTED_COMBINATIONS.md).

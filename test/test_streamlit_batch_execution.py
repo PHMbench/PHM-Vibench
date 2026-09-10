@@ -1,0 +1,235 @@
+"""Real child-process scheduling; public analysis/preflight are isolated in unit tests."""
+import json
+import time
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+
+from apps.streamlit import run_service as rs
+from apps.streamlit.batch_service import plan_grid
+from apps.streamlit.config_service import dump_yaml, parse_yaml_text
+
+
+BASE = {"environment": {"iterations": 2, "output_dir": "results"},
+        "data": {}, "model": {}, "trainer": {"num_epochs": 1}, "task": {"lr": 0.001}}
+
+
+@pytest.fixture
+def repo(tmp_path, monkeypatch):
+    root = tmp_path / 'repo'
+    root.mkdir()
+    (root / 'main.py').write_text('''import argparse, pathlib, time
+p = argparse.ArgumentParser(); p.add_argument('--config'); args = p.parse_args()
+text = pathlib.Path(args.config).read_text()
+with open('starts.txt', 'a') as f: f.write(args.config + '\\n')
+if '0.002' in text: raise SystemExit(7)
+if '0.003' in text: time.sleep(30)
+time.sleep(0.1)
+''')
+    def approve(request):
+        value = rs.prepare_request(request)
+        return replace(value, config_yaml=dump_yaml(parse_yaml_text(value.config_yaml)), overrides=())
+    monkeypatch.setattr(rs, 'approve_request', approve)
+    monkeypatch.setattr(rs, '_run_public_preflight', lambda *args: None)
+    yield root
+    managed = rs._BATCHES.get(root)
+    if managed:
+        rs.cancel_batch(root, managed.batch_id)
+        wait(root, managed.batch_id, terminal=True)
+
+
+def request(repo):
+    return rs.RunRequest(repo_root=repo, template_id='test', mode='Advanced', config_yaml=dump_yaml(BASE))
+
+
+def plan(values):
+    return plan_grid(BASE, {'task.lr': values}, allowed_paths={'task.lr'})
+
+
+def wait(repo, batch_id, *, terminal=False):
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        record = rs.get_batch(repo, batch_id)
+        if record.is_terminal or (not terminal and record.status == 'paused'):
+            return record
+        time.sleep(0.02)
+    raise AssertionError(record)
+
+
+def test_batch_is_serial_and_preserves_config_and_fit_count(repo):
+    batch = rs.start_batch(request(repo), plan([0.001, 0.0005]))
+    final = wait(repo, batch.batch_id, terminal=True)
+    assert final.status == 'succeeded'
+    assert final.total_fits == 4
+    assert [trial['status'] for trial in final.trials] == ['succeeded', 'succeeded']
+    runs = [rs.get_run(repo, trial['run_id']) for trial in final.trials]
+    assert runs[0].run_id != runs[1].run_id
+    assert len((repo / 'starts.txt').read_text().splitlines()) == 2
+    for trial, run in zip(final.trials, runs):
+        assert (run.run_dir / 'execution.yaml').read_text() == trial['config_yaml']
+        assert parse_yaml_text(trial['config_yaml'])['environment']['iterations'] == 2
+        assert run.metadata['batch_id'] == batch.batch_id
+        assert '--override' not in run.command
+    assert repo not in rs._BATCHES
+
+
+def test_failure_pauses_and_continuing_never_retries_failed_trial(repo):
+    batch = rs.start_batch(request(repo), plan([0.001, 0.002, 0.0005]))
+    paused = wait(repo, batch.batch_id)
+    assert paused.status == 'paused'
+    assert [t['status'] for t in paused.trials] == ['succeeded', 'failed', 'pending']
+    assert 'exit 7' in paused.error
+    assert len((repo / 'starts.txt').read_text().splitlines()) == 2
+    with pytest.raises(rs.RunConflictError, match='owns this worker'):
+        rs.start_run(request(repo))
+    with pytest.raises(rs.RunConflictError):
+        rs.start_batch(request(repo), plan([0.001]))
+    rs.continue_batch(repo, batch.batch_id)
+    final = wait(repo, batch.batch_id, terminal=True)
+    assert final.status == 'failed'
+    assert [t['status'] for t in final.trials] == ['succeeded', 'failed', 'succeeded']
+    assert len((repo / 'starts.txt').read_text().splitlines()) == 3
+
+
+def test_cancel_stops_current_child_and_never_starts_pending(repo):
+    batch = rs.start_batch(request(repo), plan([0.003, 0.001]))
+    deadline = time.monotonic() + 5
+    while not (repo / 'starts.txt').exists() and time.monotonic() < deadline:
+        time.sleep(0.02)
+    rs.cancel_batch(repo, batch.batch_id)
+    final = wait(repo, batch.batch_id, terminal=True)
+    assert final.status == 'cancelled'
+    assert [t['status'] for t in final.trials] == ['cancelled', 'cancelled']
+    assert len((repo / 'starts.txt').read_text().splitlines()) == 1
+    child = rs.get_run(repo, final.trials[0]['run_id'])
+    assert child.is_terminal
+    assert repo not in rs._BATCHES
+
+
+def test_cancel_paused_batch_retains_failure_and_discards_pending(repo):
+    batch = rs.start_batch(request(repo), plan([0.002, 0.001]))
+    assert wait(repo, batch.batch_id).status == 'paused'
+    final = rs.cancel_batch(repo, batch.batch_id)
+    assert final.status == 'cancelled'
+    assert [t['status'] for t in final.trials] == ['failed', 'cancelled']
+
+
+def test_all_snapshots_checked_before_any_child(repo, monkeypatch):
+    original = rs.approve_request
+    def approve(value):
+        if '0.002' in value.config_yaml:
+            raise rs.RunServiceError('Rejected second trial')
+        return original(value)
+    monkeypatch.setattr(rs, 'approve_request', approve)
+    with pytest.raises(rs.RunServiceError, match='second trial'):
+        rs.start_batch(request(repo), plan([0.001, 0.002]))
+    assert not (repo / 'starts.txt').exists()
+    assert not (repo / 'outputs').exists()
+
+
+def test_preflight_failure_pauses_without_substitute_config(repo, monkeypatch):
+    def preflight(root, path):
+        raise rs.RunServiceError('CUDA unavailable')
+    monkeypatch.setattr(rs, '_run_public_preflight', preflight)
+    batch = rs.start_batch(request(repo), plan([0.001, 0.0005]))
+    final = wait(repo, batch.batch_id)
+    assert final.status == 'paused'
+    assert 'CUDA unavailable' in final.error
+    assert not (repo / 'starts.txt').exists()
+
+
+def test_budget_rechecked_at_submission(repo):
+    bad = replace(plan([0.001]), total_fits=1)
+    with pytest.raises(rs.RunServiceError, match='fit count'):
+        rs.start_batch(request(repo), bad)
+    assert not (repo / 'outputs').exists()
+
+
+def test_batch_cannot_interleave_with_an_active_single_run(repo):
+    one = rs.start_run(replace(request(repo), config_yaml=dump_yaml({**BASE, 'task': {'lr': 0.003}})))
+    try:
+        with pytest.raises(rs.RunConflictError, match='active'):
+            rs.start_batch(request(repo), plan([0.001]))
+    finally:
+        rs.cancel_run(repo, one.run_id, grace_seconds=0.1)
+
+
+def test_lost_owner_never_restarts_pending_trials(repo):
+    directory = rs._batch_root(repo) / 'previous-session'
+    directory.mkdir(parents=True)
+    (directory / 'batch.json').write_text(json.dumps({
+        'status': 'running', 'total_fits': 2,
+        'trials': [{'index': 1, 'status': 'pending', 'run_id': '', 'error': '',
+                    'config_yaml': dump_yaml(BASE), 'fit_count': 2}],
+    }))
+    record = rs.get_batch(repo, directory.name)
+    assert record.status == 'interrupted'
+    assert record.trials[0]['status'] == 'pending'
+    assert not (repo / 'starts.txt').exists()
+    with pytest.raises(rs.RunServiceError):
+        rs.continue_batch(repo, directory.name)
+
+
+def test_cancel_during_preflight_never_starts_a_child(repo, monkeypatch):
+    import threading
+
+    entered, release = threading.Event(), threading.Event()
+    def preflight(root, path):
+        entered.set()
+        assert release.wait(5)
+    monkeypatch.setattr(rs, '_run_public_preflight', preflight)
+    batch = rs.start_batch(request(repo), plan([0.001, 0.0005]))
+    assert entered.wait(5)
+    cancelling = threading.Thread(target=rs.cancel_batch, args=(repo, batch.batch_id))
+    cancelling.start()
+    try:
+        assert rs._BATCHES[repo].cancel.wait(5)
+    finally:
+        release.set()
+        cancelling.join(5)
+    final = wait(repo, batch.batch_id, terminal=True)
+    assert final.status == 'cancelled'
+    assert not (repo / 'starts.txt').exists()
+    assert all(trial['status'] == 'cancelled' for trial in final.trials)
+
+
+def test_snapshot_change_before_execution_is_not_silently_accepted(repo, monkeypatch):
+    original = rs.approve_request
+    count = 0
+    def approve(value):
+        nonlocal count
+        count += 1
+        approved = original(value)
+        if count > 2:
+            config = parse_yaml_text(approved.config_yaml)
+            config['trainer']['num_epochs'] = 9
+            return replace(approved, config_yaml=dump_yaml(config))
+        return approved
+    monkeypatch.setattr(rs, 'approve_request', approve)
+    batch = rs.start_batch(request(repo), plan([0.001, 0.0005]))
+    final = wait(repo, batch.batch_id)
+    assert final.status == 'paused'
+    assert 'changed the approved' in final.error
+    assert not (repo / 'starts.txt').exists()
+
+
+@pytest.mark.parametrize('payload', [
+    [], {},
+    {'status': 'succeeded', 'trials': None, 'total_fits': 1},
+    {'status': 'succeeded', 'trials': [None], 'total_fits': 1},
+    {'status': 'succeeded', 'trials': [{}], 'total_fits': 1},
+    {'status': 'succeeded', 'trials': [], 'total_fits': True},
+])
+def test_malformed_batch_record_reports_its_path_without_repair(repo, payload):
+    directory = rs._batch_root(repo) / 'damaged'
+    directory.mkdir(parents=True)
+    path = directory / 'batch.json'
+    original = json.dumps(payload)
+    path.write_text(original, encoding='utf-8')
+    with pytest.raises(rs.RunServiceError, match='batch.json'):
+        rs.get_batch(repo, directory.name)
+    with pytest.raises(rs.RunServiceError, match='batch.json'):
+        rs.list_batches(repo)
+    assert path.read_text() == original
+    assert not (repo / 'starts.txt').exists()

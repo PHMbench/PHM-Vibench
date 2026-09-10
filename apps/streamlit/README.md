@@ -1,120 +1,57 @@
 # PHMFactory Streamlit Experiment Workspace
 
-This optional browser workspace helps users select a maintained template, edit a bounded
-parameter surface, validate the exact configuration, launch the public CLI, and inspect
-logs and artifacts.
-
-It is an adapter around PHMFactory—not a second configuration parser, scheduler, or
-training framework.
+Select an experiment, edit its parameters, inspect the configuration, and launch the
+existing PHMFactory CLI from a browser. Training stays in a separate process; the UI
+never calls a Factory or Trainer directly.
 
 ## Install and start
 
-Install the core source checkout first, then the optional UI dependencies:
+Use the same Python environment for PHMFactory and Streamlit. From the checkout root:
 
 ```bash
 python -m pip install -e .
 python -m pip install -r apps/streamlit/requirements.txt
-streamlit run apps/streamlit/app.py
+python -m streamlit run apps/streamlit/app.py
 ```
 
-Run the command from the repository root. `apps/streamlit/app.py` is the only maintained
-web entrypoint.
+`apps/streamlit/app.py` is the maintained web entrypoint. Data paths refer to the machine
+running Streamlit, not to another computer opening the browser.
 
 ## First experiment
 
-Use **Use safe CPU smoke defaults** in the sidebar. It selects:
+1. Select **Use safe CPU smoke defaults**. This chooses the bundled Dummy template,
+   CPU, one epoch, and zero data workers.
+2. Review the visible parameters and click **Validate configuration**.
+3. Click **Run experiment** and inspect the process status and log below.
 
-```text
-Template: demo_00_smoke_dummy_dg
-Mode:     Quick Start
-Device:   cpu
-Epochs:   1
-Data:     repository-shipped Dummy files
-```
+The public inspector remains the configuration authority. The UI accepts its current
+`resolved`, `sources`, `targets`, `sanity`, and `local_config_path` output; no configuration
+digest is required. Validation stores the submitted YAML text and typed override argv
+for direct comparison. Editing either makes the old validation stale and disables Run
+until the new request is checked. Hidden machine-local files do not participate.
 
-The workspace then guides the user through four steps:
+Inspection resolves the requested experiment. Run then materializes that approved mapping as
+one `execution.yaml` and invokes the existing public preflight against that exact file before
+training starts. A missing dependency or unavailable device remains a visible failure and
+does not trigger a different experiment.
 
-1. select a maintained template;
-2. change only the parameters needed for this run;
-3. validate the exact effective configuration and launch it;
-4. inspect live logs, metrics, files, and the reproduction command.
+## Edit a configuration
 
-## One configuration truth
+**Quick Start** exposes common fields from `field_catalog.yaml`. **Advanced** also offers
+standalone YAML and one `key=value` override per line. Raw overrides have highest priority
+while the request is being inspected.
 
-Streamlit delegates composition and validation to the same public inspector used by:
+The backend owns composition, strict types, Pipeline selection, and explicit local config.
+The UI does not auto-discover `configs/local/local.yaml`. Repository templates remain
+unchanged when a run creates its own `execution.yaml`.
 
-```text
-phmfactory preflight
-phmfactory run
-scripts.validate_configs
-scripts.config_inspect
-```
+After validation, all safe-field and raw override edits are folded into one resolved YAML.
+Download, public preflight, execution, and restart use that same snapshot without a second
+`--override` layer. Repository templates remain unchanged.
 
-The UI does not implement `base_configs` merging, Pipeline canonicalization, or hidden
-machine overrides itself.
+## Run and inspect
 
-The public precedence is:
-
-```text
-base_configs
-< selected experiment YAML
-< explicit local config, only when supplied by a CLI user
-< explicit overrides
-```
-
-The current UI intentionally does not auto-discover or silently apply
-`configs/local/local.yaml`. Quick Start and Advanced mode therefore have no invisible
-machine-local layer. Machine-specific values are edited in the standalone YAML or entered
-as explicit overrides. The planned command shown by the UI is the command that is
-launched.
-
-A successful validation report carries the same `effective_config_sha256` that CLI
-preflight and the final run manifest record. If the visible YAML or overrides change, the
-validation becomes stale and the Run button is disabled until validation runs again.
-
-## Quick Start mode
-
-Quick Start exposes only catalog-approved fields. The selected template is resolved once
-through the public inspector. UI values are converted into typed `key=value` argv tokens.
-
-Use this mode for:
-
-- the first offline smoke;
-- common epoch, device, worker, seed, or data-path changes;
-- users who do not need to edit the full YAML.
-
-## Advanced mode
-
-Advanced mode adds:
-
-- the same safe field catalog;
-- a standalone effective-YAML editor;
-- one typed override per line;
-- a configuration diff;
-- exact planned and actual reproduction commands.
-
-The YAML shown in this mode already contains the fully resolved base configuration. It
-has no hidden local layer. Raw overrides remain highest precedence and are passed as argv
-elements; the UI never builds a `shell=True` command.
-
-## Readiness and launch blockers
-
-Before launch, the workspace checks:
-
-- the repository entrypoint and configuration inventory;
-- required Python imports;
-- repository-shipped smoke assets;
-- output-directory writability;
-- selected template data and metadata availability;
-- public config inspection and sanity checks.
-
-A failed readiness check does not prevent users from inspecting the template or editing
-YAML, but execution remains disabled until the relevant environment, data, or config
-problem is fixed.
-
-## Run lifecycle
-
-Each UI run creates a managed workspace:
+Each UI run has a small process workspace:
 
 ```text
 outputs/streamlit/<run-id>/
@@ -123,107 +60,138 @@ outputs/streamlit/<run-id>/
 └── run.log
 ```
 
-The process then invokes the public command contract. PHMFactory's own runtime writes the
-invocation manifest below the configured experiment output directory:
+`run.json` records process state, command and timestamps. It is not a scientific evaluation
+or an integrity record. PHMFactory returns its scientific result paths in the final CLI
+trailer written to `run.log`:
 
 ```text
-<environment.output_dir>/.phmfactory/runs/<run-id>/run_manifest.json
+result_dir=...
+best_checkpoint=...
+test_metrics=...
+run_summary=...
+primary_metrics=...
+run=completed
 ```
 
-The UI supports:
+The Metrics and Artifacts views bind to that exact `result_dir`. `test_metrics` and
+`run_summary` are consumed only when the reported files are inside the reported result
+directory. Headline cards come from the CLI `primary_metrics` summary, not from an arbitrary
+CSV row. Files elsewhere under the configured output root are never attributed to the run by
+mtime or filename. The Streamlit process directory remains available for its own YAML, log,
+and run record.
 
-- **Run** — start one experiment process;
-- **Cancel** — terminate the process group, then force-kill after a grace period;
-- **Restart same run** — reuse the immutable YAML and override snapshot.
+A training-only request does not require test metrics or a test summary. A non-zero exit,
+cancelled run, or successful process without the final CLI trailer does not trigger a search
+for substitute results. The page keeps the process status and logs available and reports that
+direct scientific results are unavailable.
 
-Pause/resume is intentionally absent because it is not portable across Windows, CUDA,
-and data-loader subprocesses. One Streamlit worker manages one active experiment at a
-time; the workspace is not an implicit cluster scheduler.
+The workspace can cancel its active process and repeat a prior configuration in a new run.
+One Streamlit worker manages one active experiment. Browser refresh does not submit a new
+run; a server restart may leave the child process detached and must not trigger automatic
+resubmission. Pausing/resuming a running training process and cluster scheduling are not supported.
 
-## Results
+## Finite batches
 
-Result discovery is bounded by directory depth, entry count, file count, metric file
-size, and row count. Symbolic links are skipped.
+Validate the base experiment, then open **Plan parameter combinations**. Enter a small
+YAML grid, for example:
 
-The result views provide:
+```yaml
+task.lr: [0.001, 0.0005]
+data.batch_size: [16, 32]
+```
 
-- **Overview** — actual command, output roots, run metadata;
-- **Metrics** — headline values plus small CSV/JSON tables;
-- **Artifacts** — images, file inventory, and small-file downloads;
-- **Logs** — live tail and full-log download.
+Click **Preview batch** to see every trial, its exact YAML and the total number of fits.
+The first UI supports learning rate, batch size, epochs, seed and iterations; it does not
+vary datasets, splits, model identity or devices. The UI caps a plan at 16 CLI calls and
+64 fits; lower limits can be chosen. Seed grids preserve `environment.iterations`: four
+trials with three iterations mean twelve fits, not four.
 
-Malformed optional artifacts do not erase the process status, command, run manifest, or
-raw log.
+**Run batch** explicitly submits that preview. Every snapshot is checked by the existing
+public inspector before any trial starts. Each trial then goes through the same public
+preflight and CLI used for a single run. Snapshots are not rewritten and failures do not
+trigger retries, parameter changes or substitute experiments.
 
-## Extension boundaries
+One server worker executes one trial at a time and reserves its run slot between trials.
+The first failed or cancelled trial pauses the remaining work. **Continue remaining trials**
+is an explicit decision to run only the pending items; earlier failures stay visible and
+the batch cannot become successful if any trial failed. **Cancel batch** stops the current
+managed child using the existing cancellation service and cancels pending items. A paused
+batch must be continued or cancelled before another run can start.
 
-Use declarative files rather than model-specific UI branches:
+Batch state and planned configurations are saved in
+`outputs/streamlit/batches/<batch-id>/batch.json`. This is a scheduling record, not a new
+scientific result format. Each trial has its own ordinary run record, log and CLI-reported
+results; **View trial** opens that run. Batch progress describes process completion and
+never claims benchmark validity.
 
-- `configs/config_registry.csv` — maintained template identity and status;
-- `field_catalog.yaml` — editable fields, aliases, widgets, and template groups;
-- `template_profiles.yaml` — difficulty, data, device, and first-action guidance;
-- `config_service.py` — UI-safe serialization and public-inspector adapter;
-- `runtime_policy.py` — temporary standalone YAML inspection;
-- `run_service.py` — process lifecycle;
-- `result_service.py` — bounded artifact parsing;
-- `onboarding.py` — environment and data readiness;
-- `ui_*.py` — visual components only.
+Page refresh only monitors the worker; it never submits the next trial. A disconnected
+browser does not stop already submitted work while the server process remains alive.
+After a server restart the batch is marked **interrupted** and pending trials are not
+automatically resubmitted. Inspect the individual child runs before creating another plan.
+There is no cross-process scheduler, crash recovery, parallel execution or adaptive search.
 
-New config semantics belong in `phmfactory.config`, not in Streamlit. New metrics formats
-belong in `result_service.py`. New safe fields belong in `field_catalog.yaml`.
+## Keep existing runs visible
 
-## Validation
+**Runs and batches** appears before the new-experiment editor. A broken catalogue,
+missing template, empty category or invalid draft can block a new submission but cannot
+hide existing logs, cancellation, paused-batch controls or historical results. Batch
+history does not require a validated base configuration; only planning and submitting a
+new batch does. An inaccessible historical run displays its own error without disabling
+batches or the editor. Changing pages or inputs never submits a run.
+
+## Recover a detached run
+
+Viewing a detached run or submitting another experiment rechecks its recorded PID. If a
+POSIX probe confirms absence, the record becomes `orphaned` and no longer reserves the
+worker. Its final exit status remains unknown; files are not removed or relabelled as a
+successful evaluation. A saved cancellation request alone is not proof of exit.
+
+A present or unverifiable PID stays reserved and is never adopted or killed. Use **Recheck
+process** after checking the operating system. When this platform cannot probe safely,
+**Release finished run** requires explicit confirmation that the original run stopped.
+Windows does not use `os.kill(pid, 0)` to probe a process. This is record reconciliation,
+not automatic training recovery.
+
+## Troubleshooting
+
+A rejected configuration shows the inspector's original stderr. Copy the visible command
+and run it with the same Python and working directory. Use `phmfactory doctor` for environment
+issues. The Run action already executes `phmfactory preflight --config <execution.yaml>`
+before training; copy that saved YAML to reproduce the same preflight manually. Missing local
+data requires correcting the requested path; switching to the offline example is an explicit
+user action, never an automatic fallback.
+
+If the process exits successfully but the page reports no direct results, inspect the full
+per-run `run.log`. The UI requires the public final trailer shown above and does not guess a
+result directory from adjacent files.
+
+## Development and tests
+
+Keep changes within the existing services: `config_service.py` adapts the public inspector,
+`run_service.py` manages subprocesses, and `result_service.py` consumes direct CLI results.
+Field and template catalogues are UI metadata, not new experiment schemas. There is no
+experiment Agent or autonomous parameter search in this version.
 
 ```bash
-python -m py_compile apps/streamlit/*.py
-python -m pytest \
+python -m pytest -q \
   test/test_streamlit_config_service.py \
   test/test_streamlit_runtime_policy.py \
   test/test_streamlit_onboarding.py \
   test/test_streamlit_run_service.py \
+  test/test_streamlit_batch_service.py \
+  test/test_streamlit_batch_execution.py \
   test/test_streamlit_result_service.py \
   test/test_streamlit_ui_imports.py
-python -m scripts.validate_configs
+
+# Full PHMFactory environment; actual inspector and Dummy CLI subprocess.
+python -m pytest test/test_streamlit_public_contract.py -q
+
+# Run separately from optional-import stub tests; requires real Streamlit.
+python -m pytest test/test_streamlit_app.py -q
 python -m scripts.validate_docs
-phmfactory preflight --config smoke
-phmfactory demo
 ```
 
-Focused UI tests run on both Linux and Windows through
-`.github/workflows/streamlit-quality-gates.yml`.
-
-## Troubleshooting
-
-### Validation and the CLI disagree
-
-Copy the planned command from the UI and run it in the same environment. Report:
-
-```text
-exact command
-UI effective_config_sha256
-CLI preflight effective_config_sha256
-complete stderr
-```
-
-Different hashes for the same visible YAML and overrides are a configuration-parity bug.
-
-### A local path is missing
-
-Use the offline smoke template to separate installation from external data availability.
-In Advanced mode, edit `data.data_dir` in the standalone YAML or add an explicit raw
-override. The UI does not read a hidden local file.
-
-### A dependency import fails
-
-Run `phmfactory doctor` in the same environment. The optional UI requirements do not
-replace the core training environment.
-
-### CUDA initialization fails
-
-Return to CPU smoke, then verify the installed PyTorch build, driver, and device outside
-PHMFactory before changing experiment code.
-
-### No structured metrics appear
-
-Inspect `run.log`, `run.json`, and the PHMFactory `run_manifest.json`. Optional parser
-failure does not invalidate those primary records.
+The existing Streamlit workflow runs lightweight service tests on Linux and Windows. A
+separate Ubuntu integration job uses real Streamlit, the public inspector and the actual
+Dummy lifecycle. AppTest verifies page behavior, not browser disconnection or cancellation
+of every operating-system child process.

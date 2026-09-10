@@ -1,31 +1,30 @@
-# X_model (Explainability / Auxiliary Models)
+# Explainability and auxiliary models
 
-This directory hosts models used for explainability, feature extraction, and auxiliary processing.
-
-Typical modules:
-- `Feature_extract.py`
-- `MWA_CNN.py`
-- `Signal_processing.py`
-- `TSPN.py`
-- `TSPN_UXFD.py` (UXFD-aligned stable wrapper)
-- `BASE_ExplainableCNN.py` (baseline entry)
-- `UXFD/` (organized common UXFD modules)
-- `baselines/` (comparison baselines used by UXFD papers)
-
-Usage patterns may vary and are often task-specific. When a model here is intended to be instantiated by `model_factory`, it should follow the same pattern:
+This folder holds reusable signal-processing, explanation and auxiliary implementations.
+Not every helper is a top-level Factory model. Select an exact model module, for example:
 
 ```yaml
 model:
-  type: "X_model"
-  name: "Feature_extract"  # or another class exposed in this directory
-  # additional hyperparameters...
+  type: X_model
+  name: TSPN_UXFD
 ```
 
-For such models:
-- `model.embedding`, `model.backbone`, and `model.task_head` are not used and should be recorded as `not_applicable` in the CSV registry.
-- Please document any common configuration fields here as these components stabilize.
+This is a fragment; use the corresponding complete configuration for operator and shape
+settings. Catalogue entries include `MWA_CNN`, `TSPN`, `TSPN_UXFD`, `XOANOperatorPath` and
+`BASE_ExplainableCNN`. Consult [model_registry.csv](../model_registry.csv) and the selected
+source, rather than assuming `Feature_extract.py` or every helper exposes `Model`.
 
-## UXFD merge notes
+## Boundaries
 
-- Paper-specific configs and mapping docs live in each paper submodule under `paper/UXFD_paper/<paper_id>/`.
-- This directory only keeps reusable code and stable model entry modules that the vibench `model_factory` can import.
+Model assembly follows the parent [Factory contract](../README.md). Keep reusable code
+here; paper-specific methods, figures and results belong to their research repository.
+Use [paper/project/README.md](../../../paper/project/README.md) for migrated source
+locations, not the removed historical paper-submodule paths.
+
+The [LLM explanation integration guide](../../../docs/LLM_EXPLANATION_INTEGRATION.md)
+describes adapters for model traces. A valid trace or citation reference does not by
+itself prove causal, physical or natural-language faithfulness. Preserve the actual
+forward branch, intervention settings and active masks when reporting explanations.
+
+For a change, use the relevant assembly/trace tests and exact configuration. Do not infer
+universal model support, numerical performance or a paper claim from helper imports.

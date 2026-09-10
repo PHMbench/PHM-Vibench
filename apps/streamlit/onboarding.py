@@ -219,7 +219,7 @@ def apply_safe_defaults(
             "advanced_yaml_text": "",
             "advanced_override_text": "",
             "validation_report": None,
-            "validation_signature": "",
+            "validated_inputs": None,
         }
     )
 

@@ -1,0 +1,163 @@
+"""UI adapters exercised against the real public CLI, not a fabricated response."""
+from __future__ import annotations
+
+import json
+import math
+import tempfile
+import time
+from pathlib import Path
+
+from apps.streamlit import config_service as cs
+from apps.streamlit import result_service as results
+from apps.streamlit import run_service as rs
+
+ROOT = Path(__file__).resolve().parents[1]
+SMOKE = ROOT / 'configs/demo/00_smoke/dummy_dg.yaml'
+
+
+def test_real_inspector_response_without_digest_is_accepted():
+    report = cs.inspect_config(ROOT, SMOKE, [('trainer.num_epochs', 2)])
+    assert report.ok, (report.error, report.stderr, report.stdout)
+    payload = json.loads(report.stdout)
+    assert 'effective_config_sha256' not in payload
+    assert report.resolved == payload['resolved']
+    assert report.resolved['trainer']['num_epochs'] == 2
+    assert report.resolved['trainer']['devices'] == 1
+    assert report.local_config_path is None
+
+
+def test_real_inspector_keeps_strict_type_failure():
+    report = cs.inspect_config(ROOT, SMOKE, [('trainer.num_epochs', '2')])
+    assert not report.ok
+    assert not report.resolved
+    assert 'num_epochs' in report.stderr
+
+
+def test_ui_run_service_executes_real_dummy(monkeypatch):
+    report = cs.inspect_config(ROOT, SMOKE)
+    assert report.ok, (report.error, report.stderr)
+    # UI workspaces are checkout-local; all test-created inputs and outputs are temporary.
+    output_parent = ROOT / 'outputs'
+    output_parent.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='ui-contract-', dir=output_parent) as directory:
+        directory = Path(directory)
+        monkeypatch.setattr(rs, '_run_root', lambda root: directory / 'runs')
+        config = dict(report.resolved)
+        config['environment'] = dict(config['environment'], output_dir=str(directory / 'results'))
+        config['data'] = dict(config['data'], cache_dir=str(directory / 'cache'))
+        record = rs.start_run(rs.RunRequest(
+            repo_root=ROOT, template_id='demo_00_smoke_dummy_dg', mode='Quick Start',
+            config_yaml=cs.dump_yaml(config),
+            overrides=(('environment.seed', 23),),
+            output_root=config['environment']['output_dir'],
+        ))
+        try:
+            deadline = time.monotonic() + 120
+            while not record.is_terminal and time.monotonic() < deadline:
+                time.sleep(0.1)
+                record = rs.get_run(ROOT, record.run_id)
+            log = (record.run_dir / 'run.log').read_text(encoding='utf-8')
+            assert record.status == 'succeeded', log
+            assert record.exit_code == 0
+            assert 'run=completed' in log.splitlines()
+            keys = {'result_dir', 'best_checkpoint', 'test_metrics', 'run_summary'}
+            values = {}
+            for line in log.splitlines():
+                key, sep, value = line.partition('=')
+                if sep and key in keys | {'primary_metrics'}:
+                    values[key] = value
+            assert keys | {'primary_metrics'} <= values.keys(), log
+            result_dir = Path(values['result_dir']).resolve()
+            assert result_dir.is_relative_to(directory)
+            assert result_dir.is_dir()
+            for key in keys - {'result_dir'}:
+                path = Path(values[key]).resolve()
+                assert path.is_file(), (key, path)
+                assert path.is_relative_to(result_dir), (key, path)
+            metrics = json.loads(values['primary_metrics'])
+            assert metrics
+            for metric in metrics.values():
+                assert metric['count'] == 1
+                assert math.isfinite(metric['mean'])
+                assert metric['sample_std'] is None
+            summary = json.loads(Path(values['run_summary']).read_text())
+            assert summary['iterations'] == 1
+            assert all(value['count'] == 1 for value in summary['metrics'].values())
+            manifest = json.loads((record.run_dir / 'run.json').read_text())
+            assert 'validation_signature' not in manifest
+            assert manifest['overrides'] == []
+            assert '--override' not in record.command
+            snapshot_text = (record.run_dir / 'execution.yaml').read_text()
+            snapshot = cs.parse_yaml_text(snapshot_text)
+            assert snapshot['environment']['seed'] == 23
+            approved = cs.inspect_yaml_text(ROOT, snapshot_text)
+            assert approved.ok, (approved.error, approved.stderr)
+            assert approved.resolved == snapshot
+
+            # A newer-looking file elsewhere in the configured output root cannot be
+            # attributed to this run; the page binds only the CLI-reported result_dir.
+            foreign = directory / 'results' / 'foreign-run'
+            foreign.mkdir(parents=True)
+            (foreign / 'all_results.csv').write_text('acc\n1.0\n', encoding='utf-8')
+            bundle = results.discover_results(ROOT, record)
+            assert bundle.direct.completed
+            assert bundle.direct.result_dir == result_dir
+            assert bundle.direct.best_checkpoint == Path(values['best_checkpoint']).resolve()
+            assert bundle.direct.test_metrics == Path(values['test_metrics']).resolve()
+            assert bundle.direct.run_summary == Path(values['run_summary']).resolve()
+            assert bundle.direct.primary_metrics == metrics
+            assert bundle.roots == (record.run_dir.resolve(), result_dir)
+            assert all('foreign-run' not in str(item.path) for item in bundle.artifacts)
+            assert results.primary_metric_headlines(bundle.direct.primary_metrics)
+        finally:
+            if not rs.get_run(ROOT, record.run_id).is_terminal:
+                rs.cancel_run(ROOT, record.run_id, grace_seconds=1)
+
+
+def test_real_two_trial_batch_keeps_separate_public_results(monkeypatch):
+    from apps.streamlit.batch_service import plan_grid
+
+    report = cs.inspect_config(ROOT, SMOKE)
+    assert report.ok, (report.error, report.stderr)
+    output_parent = ROOT / 'outputs'
+    output_parent.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='batch-contract-', dir=output_parent) as directory:
+        directory = Path(directory)
+        monkeypatch.setattr(rs, '_run_root', lambda root: directory / 'runs')
+        config = dict(report.resolved)
+        config['environment'] = dict(config['environment'], output_dir=str(directory / 'results'))
+        config['data'] = dict(config['data'], cache_dir=str(directory / 'cache'))
+        plan = plan_grid(config, {'task.lr': [0.001, 0.0005]}, allowed_paths={'task.lr'},
+                         max_trials=2, max_fits=2)
+        batch = rs.start_batch(rs.RunRequest(repo_root=ROOT, template_id='dummy-batch',
+                                            mode='Quick Start', config_yaml=cs.dump_yaml(config)), plan)
+        try:
+            deadline = time.monotonic() + 180
+            while not batch.is_terminal and batch.status != 'paused' and time.monotonic() < deadline:
+                time.sleep(0.1)
+                batch = rs.get_batch(ROOT, batch.batch_id)
+            logs = [rs.read_log_tail(rs.get_run(ROOT, t['run_id'])) for t in batch.trials if t['run_id']]
+            assert batch.status == 'succeeded', (batch.error, logs)
+            assert batch.total_fits == 2
+            roots = []
+            for planned, trial in zip(plan.trials, batch.trials):
+                record = rs.get_run(ROOT, trial['run_id'])
+                assert record.status == 'succeeded'
+                assert (record.run_dir / 'execution.yaml').read_text() == planned.config_yaml
+                assert '--override' not in record.command
+                bundle = results.discover_results(ROOT, record)
+                assert bundle.direct.completed
+                assert bundle.direct.result_dir.is_relative_to(directory)
+                assert bundle.direct.best_checkpoint.is_file()
+                assert bundle.direct.test_metrics.is_file()
+                assert bundle.direct.run_summary.is_file()
+                assert bundle.direct.primary_metrics
+                roots.append(bundle.direct.result_dir)
+            assert len(set(roots)) == 2
+            assert len(rs.list_runs(ROOT)) == 2
+        finally:
+            rs.cancel_batch(ROOT, batch.batch_id)
+            deadline = time.monotonic() + 15
+            while ROOT.resolve() in rs._BATCHES and time.monotonic() < deadline:
+                time.sleep(0.1)
+            assert ROOT.resolve() not in rs._BATCHES
