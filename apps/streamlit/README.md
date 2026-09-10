@@ -130,6 +130,15 @@ After a server restart the batch is marked **interrupted** and pending trials ar
 automatically resubmitted. Inspect the individual child runs before creating another plan.
 There is no cross-process scheduler, crash recovery, parallel execution or adaptive search.
 
+## Keep existing runs visible
+
+**Runs and batches** appears before the new-experiment editor. A broken catalogue,
+missing template, empty category or invalid draft can block a new submission but cannot
+hide existing logs, cancellation, paused-batch controls or historical results. Batch
+history does not require a validated base configuration; only planning and submitting a
+new batch does. An inaccessible historical run displays its own error without disabling
+batches or the editor. Changing pages or inputs never submits a run.
+
 ## Recover a detached run
 
 Viewing a detached run or submitting another experiment rechecks its recorded PID. If a

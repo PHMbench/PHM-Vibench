@@ -99,7 +99,11 @@ def render_batch_controls(repo_root: Path, approved_yaml: str, *, template_id: s
                                              range(len(plan.trials)),
                                              format_func=lambda i: plan.trials[i].trial_id)
             st.code(plan.trials[selected_trial].config_yaml, language="yaml")
-        batches = list_batches(repo_root)
+        try:
+            batches = list_batches(repo_root)
+        except (RunServiceError, OSError, ValueError) as error:
+            st.error(f"Batch submission is unavailable until its history is readable: {error}")
+            return
         reserved = any(not batch.is_terminal for batch in batches)
         submitted = st.session_state.get("batch_plan_submitted", False)
         if st.button("Run batch", disabled=not current or reserved or submitted, type="primary"):
@@ -118,6 +122,11 @@ def render_batch_controls(repo_root: Path, approved_yaml: str, *, template_id: s
             st.caption("This preview has been submitted. Preview a new plan to submit again.")
         if reserved:
             st.info("A batch owns this worker. Continue or cancel paused work before another submission.")
+
+
+def render_batch_history(repo_root: Path) -> None:
+    """Existing batches remain controllable without a valid editor draft."""
+
     batches = list_batches(repo_root)
     if not batches:
         return

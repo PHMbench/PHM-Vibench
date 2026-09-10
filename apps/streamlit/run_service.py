@@ -809,7 +809,28 @@ def _batch_root(root: Path) -> Path:
 
 
 def _batch_payload(directory: Path) -> Dict[str, Any]:
-    return json.loads((directory / "batch.json").read_text(encoding="utf-8"))
+    """Read operational fields before callers index them; never repair old records."""
+
+    path = directory / "batch.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RunServiceError(f"Batch record must contain a JSON object: {path}")
+    for name, expected in (("status", str), ("trials", list), ("total_fits", int)):
+        if name not in payload or type(payload[name]) is not expected:
+            raise RunServiceError(
+                f"Invalid batch record {path}: {name} must be {expected.__name__}."
+            )
+    for index, trial in enumerate(payload["trials"], start=1):
+        if not isinstance(trial, dict):
+            raise RunServiceError(f"Invalid batch record {path}: trial {index} must be an object.")
+        for name, expected in (("index", int), ("status", str), ("fit_count", int),
+                               ("run_id", str), ("error", str), ("config_yaml", str)):
+            if name not in trial or type(trial[name]) is not expected:
+                raise RunServiceError(
+                    f"Invalid batch record {path}: trial {index}.{name} "
+                    f"must be {expected.__name__}."
+                )
+    return payload
 
 
 def _save_batch(directory: Path, payload: Mapping[str, Any]) -> None:
