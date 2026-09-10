@@ -110,6 +110,7 @@ jobs:
           test/test_streamlit_config_service.py
           test/test_streamlit_field_catalog.py
           test/test_streamlit_batch_service.py
+          test/test_streamlit_batch_execution.py
           test/test_streamlit_runtime_policy.py
           test/test_streamlit_onboarding.py
           test/test_streamlit_run_service.py

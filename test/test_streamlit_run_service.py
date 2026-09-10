@@ -310,3 +310,89 @@ def test_public_preflight_failure_does_not_launch_training(monkeypatch, tmp_path
         )
     run_root = repo / 'outputs' / 'streamlit'
     assert not run_root.exists() or not any(run_root.iterdir())
+
+
+def _unmanaged_record(repo, *, status='detached', pid=None, cancel_requested=False):
+    directory = repo / 'outputs' / 'streamlit' / 'unmanaged'
+    directory.mkdir(parents=True)
+    (directory / 'run.json').write_text(json.dumps({
+        'run_id': directory.name, 'status': status, 'pid': pid,
+        'command': [], 'overrides': [], 'exit_code': None,
+        'cancel_requested': cancel_requested,
+    }), encoding='utf-8')
+    return directory
+
+
+def test_exited_detached_process_releases_slot_without_claiming_success(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    if os.name == 'nt':
+        pytest.skip('Automatic non-signalling PID checks are POSIX-only.')
+    repo = make_repo(tmp_path)
+    child = subprocess.Popen([sys.executable, '-c', 'pass'])
+    assert child.wait(timeout=5) == 0
+    directory = _unmanaged_record(repo, pid=child.pid)
+    record = get_run(repo, directory.name)
+    assert record.status == 'orphaned'
+    assert record.exit_code is None
+    assert 'unknown' in record.error.lower()
+    assert not record.is_active
+    launched = start_run(RunRequest(repo, 'demo', 'Advanced', config_yaml=CONFIG))
+    assert wait_terminal(repo, launched.run_id).status == 'succeeded'
+
+
+def test_live_unmanaged_process_stays_reserved_even_after_cancel_request(monkeypatch, tmp_path):
+    import os
+
+    repo = make_repo(tmp_path)
+    _unmanaged_record(repo, status='cancelling', pid=os.getpid(), cancel_requested=True)
+    monkeypatch.setattr(run_service_module, '_pid_exists', lambda pid: True)
+    record = get_run(repo, 'unmanaged')
+    assert record.status == 'detached'
+    assert record.is_active
+    assert record.exit_code is None
+    with pytest.raises(RunConflictError):
+        start_run(RunRequest(repo, 'demo', 'Advanced', config_yaml=CONFIG))
+    with pytest.raises(RunServiceError, match='still exists'):
+        run_service_module.release_detached_run(repo, 'unmanaged', confirmed_stopped=True)
+
+
+def test_unknown_process_requires_explicit_confirmation_and_preserves_outputs(monkeypatch, tmp_path):
+    repo = make_repo(tmp_path)
+    directory = _unmanaged_record(repo, pid=12345)
+    (directory / 'run.log').write_text('original log', encoding='utf-8')
+    monkeypatch.setattr(run_service_module, '_pid_exists', lambda pid: None)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Unmanaged processes must not be signalled.')
+    monkeypatch.setattr(run_service_module, '_terminate_process', forbidden)
+    assert get_run(repo, 'unmanaged').status == 'detached'
+    with pytest.raises(RunServiceError, match='Confirm'):
+        run_service_module.release_detached_run(repo, 'unmanaged')
+    with pytest.raises(RunServiceError, match='Confirm'):
+        run_service_module.release_detached_run(repo, 'unmanaged', confirmed_stopped='true')
+    released = run_service_module.release_detached_run(repo, 'unmanaged', confirmed_stopped=True)
+    assert released.status == 'orphaned'
+    assert released.exit_code is None
+    assert 'confirmed' in released.error.lower()
+    assert (directory / 'run.log').read_text() == 'original log'
+
+
+def test_windows_unknown_probe_never_uses_os_kill(monkeypatch):
+    monkeypatch.setattr(run_service_module.sys, 'platform', 'win32')
+    def forbidden(*args):
+        raise AssertionError('os.kill(pid, 0) is not a safe Windows liveness probe.')
+    monkeypatch.setattr(run_service_module.os, 'kill', forbidden)
+    assert run_service_module._pid_exists(12345) is None
+
+
+def test_unverifiable_pid_is_not_assumed_exited(monkeypatch, tmp_path):
+    repo = make_repo(tmp_path)
+    _unmanaged_record(repo, status='running')
+    assert get_run(repo, 'unmanaged').status == 'detached'
+    def denied(*args):
+        raise PermissionError('permission denied')
+    monkeypatch.setattr(run_service_module.sys, 'platform', 'linux')
+    monkeypatch.setattr(run_service_module.os, 'kill', denied)
+    assert run_service_module._pid_exists(12345) is None

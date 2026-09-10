@@ -12,6 +12,8 @@ from typing import Any, Mapping, Sequence, Tuple
 
 import streamlit as st
 
+from .ui_batch import render_batch_controls, render_batch_history
+
 try:
     from .config_service import (
         Catalog,
@@ -188,6 +190,26 @@ def _safe_smoke_reset(default_template_id: str) -> None:
     st.rerun()
 
 
+def _render_existing_runs(repo_root: Path) -> None:
+    """Do not let a new template or draft failure hide existing process controls."""
+
+    st.header("运行与批次 | Runs and batches")
+    try:
+        selected = _render_run_selector(repo_root)
+        run_id = selected or st.session_state.selected_run_id or st.session_state.active_run_id
+        if run_id:
+            _render_live_run(str(repo_root), run_id)
+        else:
+            st.caption("No run selected. Configure a new experiment below or select a past run.")
+    except (RunServiceError, OSError, ValueError) as error:
+        # A damaged historical file must not disable batches or new configuration.
+        _render_error("The selected run view could not be loaded; batches and the editor remain available.", error)
+    try:
+        render_batch_history(repo_root)
+    except (RunServiceError, OSError, ValueError) as error:
+        _render_error("Batch history could not be loaded; single-run controls remain available.", error)
+
+
 def main() -> None:
     st.set_page_config(
         page_title="PHMFactory Experiment Workspace",
@@ -201,6 +223,14 @@ def main() -> None:
 
     try:
         repo_root = find_repo_root(APP_DIR)
+    except ConfigServiceError as error:
+        _render_error("The repository root could not be found.", error)
+        st.stop()
+
+    # Render first: st.stop in the editor must not remove logs/cancel/history.
+    _render_existing_runs(repo_root)
+
+    try:
         catalog = _cached_catalog(str(APP_DIR / "field_catalog.yaml"))
         profiles = _cached_profiles(str(APP_DIR / "template_profiles.yaml"))
         registry = _cached_registry(str(repo_root))
@@ -233,7 +263,6 @@ def main() -> None:
             "standalone YAML editor and explicit raw overrides."
         ),
     )
-    selected_run = _render_run_selector(repo_root)
 
     st.header("1. 选择实验模板 | Select a validated template")
     group_keys = tuple(catalog.template_groups.keys())
@@ -486,22 +515,12 @@ def main() -> None:
             )
             st.session_state.active_run_id = launched.run_id
             st.session_state.selected_run_id = launched.run_id
-            st.toast("Experiment started. Live logs are available below.")
+            st.toast("Experiment started. Logs and controls are in Runs and batches above.")
             st.rerun()
         except (RunServiceError, RunConflictError) as error:
             _render_error("The experiment could not start.", error)
 
-    st.header("4. 运行与结果 | Live run and evidence")
-    run_id = (
-        selected_run
-        or st.session_state.selected_run_id
-        or st.session_state.active_run_id
+    render_batch_controls(
+        repo_root, approved_yaml_text if can_run else "",
+        template_id=selected_id, mode=mode,
     )
-    if run_id:
-        _render_live_run(str(repo_root), run_id)
-    else:
-        st.info(
-            "Validate the CPU smoke template and start an experiment. This area will "
-            "show live logs, headline metrics, images, artifacts, and the immutable "
-            "reproduction command."
-        )

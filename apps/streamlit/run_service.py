@@ -1,6 +1,6 @@
 """Cross-platform process lifecycle for the optional Streamlit experiment console.
 
-The service owns subprocess state, durable run manifests, and log files. It does
+The service owns subprocess state, scheduling records, and log files. It does
 not import Streamlit and never calls a PHM-Vibench Pipeline directly. Every run
 executes the public CLI contract through ``main.py --config``.
 """
@@ -17,10 +17,12 @@ import sys
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, TextIO, Tuple
+
+from .batch_service import BatchPlan, _fit_count, _positive_int
 
 try:
     from .config_service import (
@@ -113,6 +115,35 @@ class _ManagedProcess:
 
 _LOCK = threading.RLock()
 _PROCESSES: Dict[str, _ManagedProcess] = {}
+
+
+@dataclass(frozen=True)
+class BatchRecord:
+    """Process scheduling facts; each trial keeps its own public CLI results."""
+
+    batch_id: str
+    status: str
+    batch_dir: Path
+    trials: Tuple[Mapping[str, Any], ...]
+    total_fits: int
+    error: str = ""
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in {"succeeded", "failed", "cancelled", "interrupted"}
+
+
+@dataclass
+class _ManagedBatch:
+    request: RunRequest
+    batch_id: str
+    batch_dir: Path
+    cancel: threading.Event = field(default_factory=threading.Event)
+
+
+# Reserve the same single-run slot between trials and while failure is paused.
+# This is deliberately process-local: a restarted service never auto-resubmits.
+_BATCHES: Dict[Path, _ManagedBatch] = {}
 
 
 def _utc_now() -> str:
@@ -365,32 +396,45 @@ def _spawn_kwargs() -> Dict[str, Any]:
     return {"start_new_session": True}
 
 
-def start_run(request: RunRequest) -> RunRecord:
+def _require_available(root: Path, batch_id: Optional[str] = None) -> None:
+    """Called under _LOCK for both ordinary runs and a batch's next trial."""
+
+    batch = _BATCHES.get(root)
+    if batch is not None and batch.batch_id != batch_id:
+        raise RunConflictError(
+            f"Batch {batch.batch_id} owns this worker. Finish, continue or cancel it first."
+        )
+    if batch_id is not None:
+        if batch is None or batch.batch_id != batch_id:
+            raise RunConflictError("The batch no longer owns this worker.")
+        if batch.cancel.is_set():
+            raise RunServiceError("Batch cancelled before training started.")
+    active = _active_managed_run(root)
+    if active:
+        raise RunConflictError(f"Run {active} is active. Finish or cancel it first.")
+    run_root = _run_root(root)
+    if run_root.is_dir():
+        for directory in sorted(run_root.iterdir(), reverse=True):
+            if not directory.is_dir() or not (directory / "run.json").is_file():
+                continue
+            try:
+                existing = get_run(root, directory.name)
+            except RunServiceError:
+                continue
+            if existing.is_active:
+                raise RunConflictError(
+                    f"Run {existing.run_id} is still {existing.status}. Resolve it first."
+                )
+
+
+def start_run(request: RunRequest, *, _batch_id: Optional[str] = None) -> RunRecord:
     """Approve, preflight, and launch one exact PHMFactory execution snapshot."""
 
     approved = approve_request(request)
+    if _batch_id is not None and approved.config_yaml != request.config_yaml:
+        raise RunServiceError("Public analysis changed the approved batch snapshot; inspect it again.")
     with _LOCK:
-        active = _active_managed_run(approved.repo_root)
-        if active:
-            raise RunConflictError(
-                f"This Streamlit worker already manages active run {active}. "
-                "Cancel or finish it before starting another experiment."
-            )
-        run_root = _run_root(approved.repo_root)
-        if run_root.is_dir():
-            for existing_dir in sorted(run_root.iterdir(), reverse=True):
-                if not existing_dir.is_dir() or not (existing_dir / "run.json").is_file():
-                    continue
-                try:
-                    existing = get_run(approved.repo_root, existing_dir.name)
-                except RunServiceError:
-                    continue
-                if existing.is_active:
-                    raise RunConflictError(
-                        f"Run {existing.run_id} is still {existing.status}. Resolve it before "
-                        "starting another experiment."
-                    )
-
+        _require_available(approved.repo_root, _batch_id)
         run_id = _new_run_id()
         run_dir = _run_root(approved.repo_root) / run_id
         run_dir.mkdir(parents=True, exist_ok=False)
@@ -398,6 +442,8 @@ def start_run(request: RunRequest) -> RunRecord:
         config_path.write_text(approved.config_yaml, encoding="utf-8")
         try:
             _run_public_preflight(approved.repo_root, config_path)
+            if _batch_id is not None and _BATCHES[approved.repo_root].cancel.is_set():
+                raise RunServiceError("Batch cancelled before training started.")
         except RunServiceError:
             shutil.rmtree(run_dir)
             raise
@@ -504,17 +550,23 @@ def _monitor_process(repo_root: Path, run_id: str, managed: _ManagedProcess) -> 
             _PROCESSES.pop(_key(repo_root, run_id), None)
 
 
-def _pid_exists(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    if os.name == "nt":
-        return False
+def _pid_exists(pid: Optional[int]) -> Optional[bool]:
+    """False proves absence; None means this worker cannot check safely.
+
+    Do not use os.kill(pid, 0) on Windows: it is not a harmless liveness probe.
+    A present PID never proves process identity and is never adopted or killed.
+    """
+
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return None
+    if sys.platform == "win32":
+        return None
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    except PermissionError:
-        return True
+    except OSError:
+        return None
     return True
 
 
@@ -529,7 +581,7 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
     with _LOCK:
         payload = _read_payload(run_dir)
         status = str(payload.get("status") or "unknown")
-        if status in {"starting", "running", "cancelling"}:
+        if status in {"starting", "running", "cancelling", "detached"}:
             managed = _PROCESSES.get(key)
             if managed is not None:
                 return_code = managed.process.poll()
@@ -550,27 +602,58 @@ def get_run(repo_root: Path, run_id: str) -> RunRecord:
                     # process-registry removal. get_run only reconciles durable state.
                     _atomic_write_json(_manifest_path(run_dir), payload)
             else:
-                pid = payload.get("pid")
-                cancel_requested = bool(payload.get("cancel_requested"))
-                new_status = (
-                    "cancelled"
-                    if cancel_requested
-                    else "detached" if isinstance(pid, int) and _pid_exists(pid) else "orphaned"
-                )
-                payload.update(
-                    status=new_status,
-                    ended_at="" if new_status == "detached" else _utc_now(),
-                    error=(
-                        "The Streamlit worker restarted while the process is still alive; "
-                        "automatic cancellation is disabled for safety."
-                        if new_status == "detached"
-                        else ""
-                        if new_status == "cancelled"
-                        else "The managed process is no longer available."
+                present = _pid_exists(payload.get("pid"))
+                # A persisted cancellation request is not proof that an unmanaged
+                # process stopped. Only observed absence releases its reservation.
+                changes = {
+                    "status": "orphaned" if present is False else "detached",
+                    "ended_at": _utc_now() if present is False else "",
+                    "exit_code": None,
+                    "error": (
+                        "The unmanaged process is no longer present. Its final exit "
+                        "status is unknown; logs and outputs are preserved."
+                        if present is False else
+                        "This worker does not own the recorded process. A present or "
+                        "unverifiable PID remains reserved; recheck it or confirm in "
+                        "the operating system that the original run has stopped. "
+                        "No process will be adopted, signalled or automatically retried."
                     ),
-                )
-                _atomic_write_json(_manifest_path(run_dir), payload)
+                }
+                if any(payload.get(key) != value for key, value in changes.items()):
+                    payload.update(changes)
+                    _atomic_write_json(_manifest_path(run_dir), payload)
         return _record(payload, run_dir)
+
+
+def release_detached_run(
+    repo_root: Path, run_id: str, *, confirmed_stopped: bool = False
+) -> RunRecord:
+    """Release an unverifiable reservation after explicit OS-level confirmation.
+
+    This acknowledges an unknown outcome, not success. It never signals a PID
+    or removes the run's configuration, logs or scientific outputs.
+    """
+
+    if confirmed_stopped is not True:
+        raise RunServiceError("Confirm that the original run has stopped before releasing it.")
+    root = _ensure_repo_root(repo_root)
+    with _LOCK:
+        record = get_run(root, run_id)
+        if record.is_terminal:
+            return record
+        if record.status != "detached" or _key(root, run_id) in _PROCESSES:
+            raise RunServiceError("Only a detached run can be released this way.")
+        if _pid_exists(record.pid) is True:
+            raise RunServiceError(
+                "The recorded PID still exists. This worker cannot prove it is the "
+                "original process and will not release or terminate it automatically."
+            )
+        payload = _update_payload(
+            record.run_dir, status="orphaned", ended_at=_utc_now(), exit_code=None,
+            error="User confirmed the original run stopped. Its final exit status "
+                  "is unknown; logs and outputs are preserved.",
+        )
+        return _record(payload, record.run_dir)
 
 
 def list_runs(repo_root: Path, *, limit: int = 30) -> Tuple[RunRecord, ...]:
@@ -716,3 +799,227 @@ def elapsed_seconds(record: RunRecord, *, now: Optional[datetime] = None) -> flo
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
     return max(0.0, (end - start).total_seconds())
+
+
+# Batch records contain only approved configurations and scheduling state. There
+# is no second evaluator; all subprocess, preflight and cancellation behavior
+# remains in start_run/get_run/cancel_run above.
+def _batch_root(root: Path) -> Path:
+    return _run_root(root) / "batches"
+
+
+def _batch_payload(directory: Path) -> Dict[str, Any]:
+    """Read operational fields before callers index them; never repair old records."""
+
+    path = directory / "batch.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RunServiceError(f"Batch record must contain a JSON object: {path}")
+    for name, expected in (("status", str), ("trials", list), ("total_fits", int)):
+        if name not in payload or type(payload[name]) is not expected:
+            raise RunServiceError(
+                f"Invalid batch record {path}: {name} must be {expected.__name__}."
+            )
+    for index, trial in enumerate(payload["trials"], start=1):
+        if not isinstance(trial, dict):
+            raise RunServiceError(f"Invalid batch record {path}: trial {index} must be an object.")
+        for name, expected in (("index", int), ("status", str), ("fit_count", int),
+                               ("run_id", str), ("error", str), ("config_yaml", str)):
+            if name not in trial or type(trial[name]) is not expected:
+                raise RunServiceError(
+                    f"Invalid batch record {path}: trial {index}.{name} "
+                    f"must be {expected.__name__}."
+                )
+    return payload
+
+
+def _save_batch(directory: Path, payload: Mapping[str, Any]) -> None:
+    _atomic_write_json(directory / "batch.json", payload)
+
+
+def _batch_record(directory: Path, payload: Mapping[str, Any]) -> BatchRecord:
+    return BatchRecord(
+        batch_id=directory.name, status=payload["status"], batch_dir=directory,
+        trials=tuple(copy.deepcopy(payload["trials"])), total_fits=payload["total_fits"],
+        error=payload.get("error", ""),
+    )
+
+
+def start_batch(request: RunRequest, plan: BatchPlan) -> BatchRecord:
+    """Submit one explicitly approved finite plan, preserving every trial and seed.
+
+    Resolve every snapshot before any trial starts. Execution then reuses the
+    ordinary public preflight and CLI one trial at a time. No automatic retries.
+    """
+
+    root = _ensure_repo_root(request.repo_root)
+    if not isinstance(plan, BatchPlan) or not plan.trials:
+        raise RunServiceError("A non-empty BatchPlan is required.")
+    if len(plan.trials) > _positive_int(plan.max_trials, name="max_trials"):
+        raise RunServiceError("Batch exceeds its approved trial budget.")
+    fits = [_fit_count(parse_yaml_text(trial.config_yaml)) for trial in plan.trials]
+    if (sum(fits) != plan.total_fits or sum(fits) > _positive_int(plan.max_fits, name="max_fits")
+            or any(count != trial.fit_count for count, trial in zip(fits, plan.trials))):
+        raise RunServiceError("Batch fit count differs from its approved configurations or budget.")
+    with _LOCK:
+        _require_available(root)
+    trials = []
+    for index, trial in enumerate(plan.trials, start=1):
+        candidate = replace(request, config_source=None, config_yaml=trial.config_yaml, overrides=())
+        approved = approve_request(candidate)
+        if approved.config_yaml != dump_yaml(parse_yaml_text(trial.config_yaml)):
+            raise RunServiceError(f"Public analysis changed trial {index}; inspect the configuration again.")
+        trials.append({"index": index, "status": "pending", "run_id": "", "error": "",
+                       "config_yaml": approved.config_yaml, "fit_count": fits[index - 1]})
+    with _LOCK:
+        _require_available(root)
+        batch_id = _new_run_id()
+        directory = _batch_root(root) / batch_id
+        directory.mkdir(parents=True, exist_ok=False)
+        payload = {"status": "running", "created_at": _utc_now(), "ended_at": "",
+                   "total_fits": plan.total_fits, "trials": trials, "error": ""}
+        _save_batch(directory, payload)
+        managed = _ManagedBatch(replace(approved, metadata=copy.deepcopy(approved.metadata)),
+                                batch_id, directory)
+        _BATCHES[root] = managed
+        _start_batch_worker(managed)
+        return _batch_record(directory, payload)
+
+
+def _start_batch_worker(managed: _ManagedBatch) -> None:
+    threading.Thread(target=_run_batch, args=(managed,),
+                     name=f"phm-batch-{managed.batch_id}", daemon=True).start()
+
+
+def _finish_batch(managed: _ManagedBatch, payload: Dict[str, Any], status: str) -> None:
+    """Called under _LOCK, only after the current child has reached a terminal state."""
+
+    payload.update(status=status, ended_at=_utc_now())
+    if status == "cancelled":
+        for trial in payload["trials"]:
+            if trial["status"] == "pending":
+                trial["status"] = "cancelled"
+    _save_batch(managed.batch_dir, payload)
+    _BATCHES.pop(managed.request.repo_root, None)
+
+
+def _run_batch(managed: _ManagedBatch) -> None:
+    root, directory = managed.request.repo_root, managed.batch_dir
+    while True:
+        with _LOCK:
+            payload = _batch_payload(directory)
+            if managed.cancel.is_set():
+                _finish_batch(managed, payload, "cancelled")
+                return
+            pending = next((t for t in payload["trials"] if t["status"] == "pending"), None)
+            if pending is None:
+                status = "succeeded" if all(t["status"] == "succeeded" for t in payload["trials"]) else "failed"
+                _finish_batch(managed, payload, status)
+                return
+            index = pending["index"] - 1
+            pending["status"] = "starting"
+            payload["error"] = ""
+            _save_batch(directory, payload)
+        record = None
+        error = ""
+        try:
+            request = replace(managed.request, config_yaml=pending["config_yaml"],
+                              metadata={**managed.request.metadata, "batch_id": managed.batch_id,
+                                        "trial_index": index + 1})
+            record = start_run(request, _batch_id=managed.batch_id)
+            with _LOCK:
+                payload = _batch_payload(directory)
+                payload["trials"][index].update(run_id=record.run_id, status=record.status)
+                _save_batch(directory, payload)
+            while not record.is_terminal:
+                if managed.cancel.wait(0.1):
+                    record = cancel_run(root, record.run_id)
+                else:
+                    record = get_run(root, record.run_id)
+            error = record.error or (f"Run {record.run_id} ended as {record.status} (exit {record.exit_code})."
+                                     if record.status != "succeeded" else "")
+        except Exception as exc:
+            # A worker cannot raise into the UI thread. Keep the original type and
+            # message visible and pause; never repair the configuration or skip it.
+            error = f"{type(exc).__name__}: {exc}"
+            if record is not None and not record.is_terminal:
+                cancel_run(root, record.run_id)
+        with _LOCK:
+            payload = _batch_payload(directory)
+            status = (record.status if record is not None and record.is_terminal
+                      else "cancelled" if managed.cancel.is_set() else "failed")
+            payload["trials"][index].update(status=status, error=error)
+            payload["error"] = error
+            if managed.cancel.is_set():
+                _finish_batch(managed, payload, "cancelled")
+                return
+            if status != "succeeded":
+                if any(t["status"] == "pending" for t in payload["trials"]):
+                    payload["status"] = "paused"
+                    _save_batch(directory, payload)
+                else:
+                    _finish_batch(managed, payload, "failed")
+                return
+            _save_batch(directory, payload)
+
+
+def get_batch(repo_root: Path, batch_id: str) -> BatchRecord:
+    root = _ensure_repo_root(repo_root)
+    if not batch_id or Path(batch_id).name != batch_id or batch_id in {".", ".."}:
+        raise RunServiceError("Invalid batch identifier.")
+    directory = _batch_root(root) / batch_id
+    with _LOCK:
+        payload = _batch_payload(directory)
+        managed = _BATCHES.get(root)
+        if payload["status"] in {"running", "paused", "cancelling"} and (
+            managed is None or managed.batch_id != batch_id
+        ):
+            payload.update(status="interrupted", ended_at=_utc_now(),
+                           error="The service lost batch ownership. No pending trial was resubmitted; inspect child runs before creating a new plan.")
+            _save_batch(directory, payload)
+        return _batch_record(directory, payload)
+
+
+def list_batches(repo_root: Path, *, limit: int = 20) -> Tuple[BatchRecord, ...]:
+    root = _ensure_repo_root(repo_root)
+    directory = _batch_root(root)
+    if not directory.exists():
+        return ()
+    paths = sorted((p for p in directory.iterdir() if (p / "batch.json").is_file()), reverse=True)
+    return tuple(get_batch(root, path.name) for path in paths[:limit])
+
+
+def continue_batch(repo_root: Path, batch_id: str) -> BatchRecord:
+    """Explicitly continue pending trials; a failed trial is never retried or erased."""
+
+    root = _ensure_repo_root(repo_root)
+    with _LOCK:
+        record = get_batch(root, batch_id)
+        managed = _BATCHES.get(root)
+        if record.status != "paused" or managed is None or managed.batch_id != batch_id:
+            raise RunServiceError("Only a paused batch owned by this service can continue.")
+        payload = _batch_payload(managed.batch_dir)
+        payload["status"] = "running"
+        _save_batch(managed.batch_dir, payload)
+        _start_batch_worker(managed)
+        return _batch_record(managed.batch_dir, payload)
+
+
+def cancel_batch(repo_root: Path, batch_id: str) -> BatchRecord:
+    """Cancel the current child via the existing service and cancel unstarted trials."""
+
+    root = _ensure_repo_root(repo_root)
+    # Signal before acquiring the execution lock, including while preflight is
+    # running. start_run checks this event again before it may create a child.
+    managed = _BATCHES.get(root)
+    if managed is None or managed.batch_id != batch_id:
+        return get_batch(root, batch_id)
+    managed.cancel.set()
+    with _LOCK:
+        payload = _batch_payload(managed.batch_dir)
+        if payload["status"] == "paused":
+            _finish_batch(managed, payload, "cancelled")
+        elif payload["status"] == "running":
+            payload["status"] = "cancelling"
+            _save_batch(managed.batch_dir, payload)
+        return _batch_record(managed.batch_dir, payload)

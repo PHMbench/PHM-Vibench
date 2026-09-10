@@ -24,6 +24,7 @@ try:
         get_run,
         list_runs,
         read_log_tail,
+        release_detached_run,
         restart_run,
     )
     from .ui_theme import _render_error
@@ -43,6 +44,7 @@ except ImportError:  # pragma: no cover
         get_run,
         list_runs,
         read_log_tail,
+        release_detached_run,
         restart_run,
     )
     from ui_theme import _render_error  # type: ignore
@@ -75,12 +77,20 @@ def _render_run_selector(repo_root: Path) -> Optional[str]:
         runs = list_runs(repo_root, limit=20)
     except RunServiceError:
         return None
+    preferred = st.session_state.selected_run_id or st.session_state.active_run_id
+    if preferred and all(item.run_id != preferred for item in runs):
+        try:
+            # Batch history can outlive the recent-run window. Load the exact
+            # requested trial rather than showing an unrelated newer result.
+            runs = (get_run(repo_root, preferred), *runs)
+        except RunServiceError as error:
+            st.sidebar.error(str(error))
+            return preferred
     if not runs:
         st.sidebar.caption("No experiment runs yet.")
         return None
     ids = tuple(item.run_id for item in runs)
-    preferred = st.session_state.selected_run_id or st.session_state.active_run_id
-    if preferred not in ids:
+    if not preferred:
         preferred = ids[0]
     lookup = {item.run_id: item for item in runs}
     selected = st.sidebar.selectbox(
@@ -298,6 +308,26 @@ def _render_run_actions(repo_root: Path, record: RunRecord) -> None:
         )
 
 
+def _render_detached_controls(repo_root: Path, record: RunRecord) -> None:
+    st.warning(record.error)
+    if st.button("Recheck process", key=f"recheck::{record.run_id}"):
+        # get_run rechecks without taking ownership or sending a termination signal.
+        get_run(repo_root, record.run_id)
+        st.rerun()
+    confirmed = st.checkbox(
+        "I confirmed in the operating system that the original run has stopped",
+        key=f"stopped-confirmed::{record.run_id}",
+    )
+    if st.button("Release finished run", disabled=not confirmed,
+                 key=f"release-detached::{record.run_id}"):
+        try:
+            release_detached_run(repo_root, record.run_id, confirmed_stopped=confirmed)
+            st.rerun()
+        except RunServiceError as error:
+            st.error(str(error))
+    st.caption("Release preserves files and records an unknown outcome, not a successful experiment.")
+
+
 def _render_status(repo_root: Path, record: RunRecord) -> None:
     st.markdown(
         f'<span class="phm-status">{html.escape(_status_label(record))}</span> '
@@ -313,6 +343,8 @@ def _render_status(repo_root: Path, record: RunRecord) -> None:
         record.exit_code if record.exit_code is not None else "—",
     )
     _render_run_actions(repo_root, record)
+    if record.status == "detached":
+        _render_detached_controls(repo_root, record)
 
 
 @st.fragment(run_every="2s")
