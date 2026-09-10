@@ -1,9 +1,6 @@
-"""Maintained Streamlit entry point for PHM-Vibench."""
+"""Streamlit entrypoint; launch with python -m streamlit from the checkout root."""
 
-try:
-    from .workspace import main
-except ImportError:  # pragma: no cover - Streamlit executes this file as a script.
-    from workspace import main  # type: ignore
+from apps.streamlit.workspace import main
 
 
 if __name__ == "__main__":

@@ -1,17 +1,20 @@
-# `configs/experiments/`
+# Research experiment configurations
 
-Local research configs live here.
+Start from the nearest example in [configs/demo](../demo/README.md), then copy it into a
+named subdirectory here. Record the actual data, objective and evaluation behavior; a
+research filename or directory is not evidence that its named method is implemented.
 
-- Start from a template under `configs/demo/`.
-- Copy into a dedicated subfolder (e.g. `configs/experiments/<task_dataset_variant>/...`) and iterate locally.
-- If a config becomes a maintained demo, move it into `configs/demo/` and add a row to `configs/config_registry.csv`.
-
-Recommended workflow:
+Inspect the exact complete configuration before running:
 
 ```bash
-# Inspect sources/targets before running
-python -m scripts.config_inspect --config configs/experiments/<name>/exp.yaml --override trainer.num_epochs=1
-
-# Validate schema (demos are checked by default; add new configs to the registry if you want CI coverage)
-python -m scripts.validate_configs
+phmfactory preflight --config configs/experiments/<name>/exp.yaml
 ```
+
+For machine-specific paths, pass `--local-config <local.yaml>` explicitly. Keep credentials
+and personal absolute paths out of shared files. Composition and override order are in
+[the configuration guide](../README.md).
+
+A private prototype need not be registered. To promote a configuration into a maintained
+demo, provide its real execution and protocol boundary, then update the existing registry
+and generated navigation. `python -m scripts.validate_configs` validates its selected
+maintained set; it is not proof that every unregistered local file here was tested.

@@ -10,8 +10,6 @@ import yaml
 from apps.streamlit import config_service as cs
 
 
-DIGEST = "a" * 64
-
 
 def _repo(tmp_path: Path) -> Path:
     (tmp_path / "main.py").write_text("# test\n", encoding="utf-8")
@@ -25,7 +23,6 @@ def _write_registry(root: Path, body: str) -> None:
 
 def _inspector_payload() -> dict:
     return {
-        "effective_config_sha256": DIGEST,
         "local_config_path": None,
         "resolved": {block: {} for block in cs.CONFIG_BLOCKS},
         "sources": {},
@@ -226,7 +223,7 @@ def test_inspect_config_parses_success(
 
     assert report.ok is True
     assert report.resolved == payload["resolved"]
-    assert report.effective_config_sha256 == DIGEST
+    assert "effective_config_sha256" not in vars(report)
     assert report.local_config_path is None
 
 
@@ -365,3 +362,26 @@ def test_inspect_config_passes_only_an_explicit_local_config(
 
     assert report.ok is True
     assert report.local_config_path == str(local.resolve())
+
+
+@pytest.mark.parametrize("sanity", [[], None, [{}], [{"ok": "false"}], [True]])
+def test_inspector_rejects_incomplete_or_untyped_checks(monkeypatch, tmp_path, sanity):
+    root = _repo(tmp_path)
+    payload = _inspector_payload()
+    payload["sanity"] = sanity
+    monkeypatch.setattr(cs.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0, stdout=json.dumps(payload), stderr=""))
+    report = cs.inspect_config(root, root / "configs/demo/demo.yaml")
+    assert not report.ok
+    assert "incomplete payload" in report.error
+
+
+def test_inspector_preserves_a_failed_check(monkeypatch, tmp_path):
+    root = _repo(tmp_path)
+    payload = _inspector_payload()
+    payload["sanity"] = [{"check": "device", "ok": False, "message": "Rejected."}]
+    monkeypatch.setattr(cs.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0, stdout=json.dumps(payload), stderr=""))
+    report = cs.inspect_config(root, root / "configs/demo/demo.yaml")
+    assert not report.ok
+    assert report.failed_checks[0]["message"] == "Rejected."

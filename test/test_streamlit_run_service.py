@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from apps.streamlit import run_service as run_service_module
+from apps.streamlit.config_service import apply_overrides, dump_yaml, load_yaml_mapping, parse_yaml_text
 from apps.streamlit.run_service import (
     RunConflictError,
     RunRequest,
@@ -20,6 +21,34 @@ from apps.streamlit.run_service import (
     restart_run,
     start_run,
 )
+
+@pytest.fixture(autouse=True)
+def _stub_public_run_boundaries(monkeypatch):
+    """Keep unit tests lightweight; real public subprocesses run in integration tests."""
+
+    def approve(request):
+        normalized = prepare_request(request)
+        config = (
+            load_yaml_mapping(normalized.config_source)
+            if normalized.config_source is not None
+            else parse_yaml_text(normalized.config_yaml)
+        )
+        config = apply_overrides(config, normalized.overrides)
+        environment = config.get('environment') or {}
+        output_root = str(environment.get('output_dir') or normalized.output_root)
+        return RunRequest(
+            repo_root=normalized.repo_root,
+            template_id=normalized.template_id,
+            mode=normalized.mode,
+            config_yaml=dump_yaml(config),
+            overrides=(),
+            output_root=output_root,
+            metadata=normalized.metadata,
+        )
+
+    monkeypatch.setattr(run_service_module, 'approve_request', approve)
+    monkeypatch.setattr(run_service_module, '_run_public_preflight', lambda root, path: None)
+
 
 CONFIG = '''\
 environment:
@@ -107,7 +136,7 @@ def test_successful_run_writes_manifest_and_log(tmp_path: Path):
             template_id='demo',
             mode='Quick Start',
             config_source=repo / 'configs' / 'demo.yaml',
-            overrides=(('trainer.num_epochs', 1),),
+            overrides=(('trainer.num_epochs', 2),),
             output_root='results/demo',
         )
     )
@@ -124,7 +153,11 @@ def test_successful_run_writes_manifest_and_log(tmp_path: Path):
     ]
     log = read_log_tail(final)
     assert 'CONFIG=outputs/streamlit/' in log
-    assert 'trainer.num_epochs' in log
+    assert 'OVERRIDES=None' in log
+    snapshot = (final.run_dir / 'execution.yaml').read_text(encoding='utf-8')
+    assert 'num_epochs: 2' in snapshot
+    assert '--override' not in final.command
+    assert final.overrides == ()
 
 
 def test_failed_process_is_recorded(tmp_path: Path):
@@ -257,3 +290,109 @@ def test_detached_manifest_blocks_a_second_run_on_posix(tmp_path: Path):
         start_run(
             RunRequest(repo_root=repo, template_id='demo', mode='Advanced', config_yaml=CONFIG)
         )
+
+
+def test_public_preflight_failure_does_not_launch_training(monkeypatch, tmp_path: Path):
+    repo = make_repo(tmp_path)
+
+    def fail_preflight(root, path):
+        raise RunServiceError('Public preflight rejected the approved execution.yaml before training.')
+
+    monkeypatch.setattr(run_service_module, '_run_public_preflight', fail_preflight)
+    with pytest.raises(RunServiceError, match='Public preflight rejected'):
+        start_run(
+            RunRequest(
+                repo_root=repo,
+                template_id='demo',
+                mode='Advanced',
+                config_yaml=CONFIG,
+            )
+        )
+    run_root = repo / 'outputs' / 'streamlit'
+    assert not run_root.exists() or not any(run_root.iterdir())
+
+
+def _unmanaged_record(repo, *, status='detached', pid=None, cancel_requested=False):
+    directory = repo / 'outputs' / 'streamlit' / 'unmanaged'
+    directory.mkdir(parents=True)
+    (directory / 'run.json').write_text(json.dumps({
+        'run_id': directory.name, 'status': status, 'pid': pid,
+        'command': [], 'overrides': [], 'exit_code': None,
+        'cancel_requested': cancel_requested,
+    }), encoding='utf-8')
+    return directory
+
+
+def test_exited_detached_process_releases_slot_without_claiming_success(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    if os.name == 'nt':
+        pytest.skip('Automatic non-signalling PID checks are POSIX-only.')
+    repo = make_repo(tmp_path)
+    child = subprocess.Popen([sys.executable, '-c', 'pass'])
+    assert child.wait(timeout=5) == 0
+    directory = _unmanaged_record(repo, pid=child.pid)
+    record = get_run(repo, directory.name)
+    assert record.status == 'orphaned'
+    assert record.exit_code is None
+    assert 'unknown' in record.error.lower()
+    assert not record.is_active
+    launched = start_run(RunRequest(repo, 'demo', 'Advanced', config_yaml=CONFIG))
+    assert wait_terminal(repo, launched.run_id).status == 'succeeded'
+
+
+def test_live_unmanaged_process_stays_reserved_even_after_cancel_request(monkeypatch, tmp_path):
+    import os
+
+    repo = make_repo(tmp_path)
+    _unmanaged_record(repo, status='cancelling', pid=os.getpid(), cancel_requested=True)
+    monkeypatch.setattr(run_service_module, '_pid_exists', lambda pid: True)
+    record = get_run(repo, 'unmanaged')
+    assert record.status == 'detached'
+    assert record.is_active
+    assert record.exit_code is None
+    with pytest.raises(RunConflictError):
+        start_run(RunRequest(repo, 'demo', 'Advanced', config_yaml=CONFIG))
+    with pytest.raises(RunServiceError, match='still exists'):
+        run_service_module.release_detached_run(repo, 'unmanaged', confirmed_stopped=True)
+
+
+def test_unknown_process_requires_explicit_confirmation_and_preserves_outputs(monkeypatch, tmp_path):
+    repo = make_repo(tmp_path)
+    directory = _unmanaged_record(repo, pid=12345)
+    (directory / 'run.log').write_text('original log', encoding='utf-8')
+    monkeypatch.setattr(run_service_module, '_pid_exists', lambda pid: None)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Unmanaged processes must not be signalled.')
+    monkeypatch.setattr(run_service_module, '_terminate_process', forbidden)
+    assert get_run(repo, 'unmanaged').status == 'detached'
+    with pytest.raises(RunServiceError, match='Confirm'):
+        run_service_module.release_detached_run(repo, 'unmanaged')
+    with pytest.raises(RunServiceError, match='Confirm'):
+        run_service_module.release_detached_run(repo, 'unmanaged', confirmed_stopped='true')
+    released = run_service_module.release_detached_run(repo, 'unmanaged', confirmed_stopped=True)
+    assert released.status == 'orphaned'
+    assert released.exit_code is None
+    assert 'confirmed' in released.error.lower()
+    assert (directory / 'run.log').read_text() == 'original log'
+
+
+def test_windows_unknown_probe_never_uses_os_kill(monkeypatch):
+    monkeypatch.setattr(run_service_module.sys, 'platform', 'win32')
+    def forbidden(*args):
+        raise AssertionError('os.kill(pid, 0) is not a safe Windows liveness probe.')
+    monkeypatch.setattr(run_service_module.os, 'kill', forbidden)
+    assert run_service_module._pid_exists(12345) is None
+
+
+def test_unverifiable_pid_is_not_assumed_exited(monkeypatch, tmp_path):
+    repo = make_repo(tmp_path)
+    _unmanaged_record(repo, status='running')
+    assert get_run(repo, 'unmanaged').status == 'detached'
+    def denied(*args):
+        raise PermissionError('permission denied')
+    monkeypatch.setattr(run_service_module.sys, 'platform', 'linux')
+    monkeypatch.setattr(run_service_module.os, 'kill', denied)
+    assert run_service_module._pid_exists(12345) is None
