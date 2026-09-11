@@ -140,7 +140,9 @@ class ConfigAnalysis:
             "pipeline": self.pipeline,
             "overrides": deepcopy(self.overrides),
             "local_config_path": (
-                str(self.local_config_path) if self.local_config_path is not None else None
+                str(self.local_config_path)
+                if self.local_config_path is not None
+                else None
             ),
             "source_files": [str(path) for path in self.source_files],
             "sources": dict(self.sources),
@@ -155,8 +157,8 @@ def parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
     Raises
     ------
     ValueError
-        If a token is missing ``=``, has an empty key/value, contains malformed YAML,
-        or attempts to traverse a non-mapping field.
+        If a token is missing ``=``, has an empty key/value or invalid dotted segment,
+        contains malformed YAML, or attempts to traverse a non-mapping field.
     """
 
     parsed: dict[str, Any] = {}
@@ -441,6 +443,12 @@ def _read_yaml_mapping(path: Path) -> dict[str, Any]:
 def _set_dotted(target: dict[str, Any], key: str, value: Any) -> None:
     current = target
     parts = key.split(".")
+    if any(not part or part != part.strip() for part in parts):
+        raise ValueError(
+            f"Invalid override path {key!r}: path segments must be non-empty "
+            "and have no surrounding whitespace. Use a dotted field such as "
+            "trainer.num_epochs; PHMFactory does not repair field paths."
+        )
     for part in parts[:-1]:
         existing = current.get(part)
         if existing is None:
