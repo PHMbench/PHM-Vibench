@@ -43,6 +43,30 @@ class IdIncludedDataset(Dataset):
     def __len__(self):
         return self._total_samples
 
+    def expected_dataset_names(self) -> tuple[str, ...]:
+        """Declare this dataset's Name-level populations without reading samples.
+
+        Only selected file IDs participate. Multiple Dataset_id values may intentionally
+        share one Name and retain the existing pooled metric namespace.
+        """
+        if not self.dataset_dict:
+            raise ValueError("Evaluation requires a non-empty selected test population.")
+        names: set[str] = set()
+        for file_id in self.dataset_dict:
+            try:
+                name = self.metadata[file_id]["Name"]
+            except (KeyError, IndexError, TypeError) as exc:
+                raise KeyError(
+                    f"Cannot resolve evaluation Name for selected file_id={file_id!r}."
+                ) from exc
+            if not isinstance(name, str) or not name or name != name.strip():
+                raise ValueError(
+                    f"Evaluation Name for file_id={file_id!r} must be a non-empty "
+                    f"string without surrounding whitespace, got {name!r}."
+                )
+            names.add(name)
+        return tuple(sorted(names))
+
     def get_file_windows_list(self):
         return self.file_windows_list
 
