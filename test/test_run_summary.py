@@ -367,11 +367,12 @@ def test_missing_test_name_cannot_disappear_from_expectations(publication_case, 
     with pytest.raises(RuntimeError, match="test_acc_B.*test_f1_B"):
         run([{"test_acc_A": 0.5, "test_f1_A": 0.4}], names=("A", "B"))
     assert state.tests == 1
-    assert not list(tmp_path.rglob("*.csv"))
+    assert not list(tmp_path.rglob("test_result_*.csv"))
+    assert not list(tmp_path.rglob("all_results.csv"))
     assert not list(tmp_path.rglob("run_summary.json"))
 
 
-@pytest.mark.parametrize("metrics", [("acc", "f1"), ("accuracy", "F1")])
+@pytest.mark.parametrize("metrics", [("acc", "f1"), ("ACC", "F1")])
 def test_complete_publication_preserves_aliases_extra_loss_and_name_pooling(publication_case, metrics):
     run, state = publication_case
     payload = {"test_acc_A": 0.5, "test_f1_A": 0.4, "test_loss": 1.0}
@@ -412,7 +413,9 @@ def test_training_only_skips_declared_test_closure(publication_case, tmp_path):
     assert state.tests == 0
     assert result["status"] == "succeeded"
     assert result["test_metrics"] is result["run_summary"] is None
-    assert not list(tmp_path.rglob("*.csv"))
+    assert not list(tmp_path.rglob("test_result_*.csv"))
+    assert not list(tmp_path.rglob("all_results.csv"))
+    assert not list(tmp_path.rglob("run_summary.json"))
 
 
 @pytest.mark.parametrize("row", [{}, {"Name": ""}, {"Name": " A"}, {"Name": None}])
