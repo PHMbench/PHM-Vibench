@@ -88,8 +88,8 @@ class ConfigDiagnostic:
         return {
             "code": self.code,
             "severity": self.severity,
-            "field": self.field,
             "message": self.message,
+            "field": self.field,
             "suggestion": self.suggestion,
         }
 
@@ -140,7 +140,9 @@ class ConfigAnalysis:
             "pipeline": self.pipeline,
             "overrides": deepcopy(self.overrides),
             "local_config_path": (
-                str(self.local_config_path) if self.local_config_path is not None else None
+                str(self.local_config_path)
+                if self.local_config_path is not None
+                else None
             ),
             "source_files": [str(path) for path in self.source_files],
             "sources": dict(self.sources),
