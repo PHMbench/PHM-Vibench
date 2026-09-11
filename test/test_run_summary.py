@@ -125,9 +125,9 @@ def test_metric_result_rejects_empty_nonnumeric_boolean_and_nonscalar_values():
 
 
 def test_summary_rejects_noninteger_seed_values():
-    with pytest.raises(ValueError, match="seed 0 must be an integer"):
+    with pytest.raises(TypeError, match="seed 0 must be an integer"):
         build_run_summary([{"test_acc": 0.5}], [42.5], _config())
-    with pytest.raises(ValueError, match="seed 0 must be an integer"):
+    with pytest.raises(TypeError, match="seed 0 must be an integer"):
         build_run_summary([{"test_acc": 0.5}], [True], _config())
 
 
@@ -255,6 +255,7 @@ class _UnreadSamples:
 
 
 @pytest.fixture
+ndef_placeholder
 def publication_case(tmp_path, monkeypatch):
     """Real config, dataset identities, Task and writer; only training is isolated."""
     metadata = {
