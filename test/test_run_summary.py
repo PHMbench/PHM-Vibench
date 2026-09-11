@@ -255,7 +255,6 @@ class _UnreadSamples:
 
 
 @pytest.fixture
-ndef_placeholder
 def publication_case(tmp_path, monkeypatch):
     """Real config, dataset identities, Task and writer; only training is isolated."""
     metadata = {
