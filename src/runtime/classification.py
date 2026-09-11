@@ -222,7 +222,7 @@ def _write_aggregate_outputs(
     run_seeds: list[int],
     configs: Any,
 ) -> dict[str, Any]:
-    """Write repeated-run metrics only after the complete estimator validates."""
+    """Write metrics already checked against each seed's declared test population."""
 
     if last_iteration_path is None or not all_results:
         raise ValueError("aggregate outputs require at least one completed iteration")
@@ -411,12 +411,22 @@ def run_classification_pipeline(
             best_checkpoints.append(_best_checkpoint_path(context.trainer))
             if not test_after_fit:
                 continue
+
+            test_loader = context.data_factory.get_dataloader("test")
+            dataset_names = test_loader.dataset.expected_dataset_names()
+            expected_keys = context.task.expected_evaluation_metric_keys(dataset_names)
             context.result = _result_row(
-                context.trainer.test(
-                    context.task,
-                    context.data_factory.get_dataloader("test"),
-                )
+                context.trainer.test(context.task, test_loader)
             )
+            missing_keys = sorted(expected_keys - context.result.keys())
+            if missing_keys:
+                raise RuntimeError(
+                    "Declared evaluation metrics were not reported: "
+                    f"seed={current_seed}, configured_metrics={args_task.metrics!r}, "
+                    f"expected_test_datasets={list(dataset_names)!r}, "
+                    f"missing_metric_keys={missing_keys!r}, "
+                    f"reported_metric_keys={sorted(context.result)!r}"
+                )
             all_results.append(context.result)
 
             print("[INFO] 保存测试结果...")

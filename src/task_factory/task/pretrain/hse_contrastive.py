@@ -64,6 +64,9 @@ class task(Default_task):
                 "hse_contrastive requires at least one positive objective weight: "
                 "set task.contrast_weight or task.classification_weight above zero."
             )
+        if getattr(args_trainer, "test_after_fit", None) is True:
+            # Reject an impossible evaluation request before spending time training.
+            self._require_evaluation_metrics()
 
         self.ce_loss_fn = get_loss_fn("CE")
         self.strategy_manager = None
@@ -84,6 +87,25 @@ class task(Default_task):
                     f"{loss_type!r}. Check task.contrast_loss and its parameters."
                 ) from exc
             logger.info("[hse_contrastive] Enabled contrastive strategy: %s", loss_type)
+
+    def _require_evaluation_metrics(self) -> None:
+        if self.classification_weight <= 0 or self.metric_names != ("acc",):
+            raise ValueError(
+                "hse_contrastive reports only pooled task.metrics=['acc'] when "
+                "task.classification_weight > 0; "
+                f"configured metrics={list(self.metric_names)!r}, "
+                f"classification_weight={self.classification_weight!r}. "
+                "For contrastive-only training explicitly set trainer.test_after_fit=false. "
+                "Otherwise choose a task/objective that computes the requested metrics; "
+                "PHMFactory does not change objective weights or drop metrics."
+            )
+
+    def expected_evaluation_metric_keys(self, dataset_names: tuple[str, ...]) -> set[str]:
+        """Keep this task's existing pooled accuracy, not Default_task's per-Name keys."""
+        if not dataset_names:
+            raise ValueError("Evaluation requires a non-empty selected test population.")
+        self._require_evaluation_metrics()
+        return {"test_acc"}
 
     @staticmethod
     def _validated_weight(value: Any, name: str) -> float:

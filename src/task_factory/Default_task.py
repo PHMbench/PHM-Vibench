@@ -20,6 +20,11 @@ from .Components.metrics import get_metrics, prepare_metric_inputs
 from .Components.regularization import calculate_regularization
 
 
+def _metric_log_key(metric_key: str, data_name: str) -> str:
+    """Use the same Name-level key for metric logging and publication checks."""
+    return f"{metric_key}_{data_name}"
+
+
 @register_task("Default_task", "Default_task")
 class Default_task(pl.LightningModule):
     """General Lightning task with explicit objective and metric semantics."""
@@ -95,6 +100,19 @@ class Default_task(pl.LightningModule):
             **vars(self.args_environment),
         }
         self.save_hyperparameters(hparams_dict, ignore=["network", "metadata"])
+
+    def expected_evaluation_metric_keys(
+        self,
+        dataset_names: tuple[str, ...],
+    ) -> set[str]:
+        """Require configured estimators for every population declared before test."""
+        if not dataset_names:
+            raise ValueError("Evaluation requires a non-empty selected test population.")
+        return {
+            _metric_log_key(f"test_{metric_name}", data_name)
+            for data_name in dataset_names
+            for metric_name in self.metric_names
+        }
 
     def _resolve_model_task_id(self, batch: Mapping[str, Any]) -> str:
         """Return the configured task head and reject batch-level overrides."""
@@ -198,7 +216,7 @@ class Default_task(pl.LightningModule):
                 loss_name=self.loss_name,
             )
             metric_fn.update(metric_predictions, metric_target)
-            metric_values[f"{metric_key}_{data_name}"] = metric_fn
+            metric_values[_metric_log_key(metric_key, data_name)] = metric_fn
         return metric_values
 
     def _compute_regularization(self) -> Dict[str, torch.Tensor]:
