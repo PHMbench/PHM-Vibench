@@ -289,3 +289,50 @@ def test_hse_training_augmentation_remains_stochastic():
     )
 
     assert not torch.equal(first, second)
+
+
+def _real_hse_task(*, evaluated=True, classification_weight=1.0, metrics=("acc",)):
+    class Network(torch.nn.Module):
+        def forward(self, x, *, file_id, task_id, return_feature):
+            assert task_id == "classification" and return_feature
+            return torch.cat([x, -x], dim=1), x
+
+    return HSETask(
+        Network(), SimpleNamespace(), SimpleNamespace(),
+        _task_args(name="hse_contrastive", loss="CE", metrics=list(metrics),
+                   contrast_weight=1.0 if classification_weight == 0 else 0.0,
+                   classification_weight=classification_weight),
+        SimpleNamespace(test_after_fit=evaluated), SimpleNamespace(seed=17),
+        {0: {"Name": "A", "Dataset_id": 7, "Label": 0},
+         1: {"Name": "A", "Dataset_id": 7, "Label": 1}},
+    )
+
+
+def test_hse_declared_accuracy_matches_its_existing_logged_namespace(monkeypatch):
+    instance = _real_hse_task(metrics=("ACC",))
+    logged = {}
+    monkeypatch.setattr(instance, "log", lambda key, value, **kwargs: logged.update({key: value}))
+    instance.test_step(
+        {"x": torch.tensor([[1.0], [-1.0]]), "y": torch.tensor([0, 1]),
+         "file_id": torch.tensor([0, 1])},
+        0,
+    )
+    expected = instance.expected_evaluation_metric_keys(("A",))
+    assert expected == {"test_acc"}
+    assert expected <= logged.keys()
+    assert logged["test_acc"].item() == 1.0
+    assert "test_acc_A" not in logged
+
+
+@pytest.mark.parametrize("weight,metrics", [(0.0, ("acc",)), (1.0, ("acc", "f1"))])
+def test_hse_impossible_evaluation_is_rejected_during_construction(weight, metrics):
+    with pytest.raises(ValueError, match="hse_contrastive reports only pooled"):
+        _real_hse_task(classification_weight=weight, metrics=metrics)
+
+
+def test_hse_contrastive_only_remains_available_as_explicit_training_only():
+    instance = _real_hse_task(evaluated=False, classification_weight=0.0)
+    assert instance.classification_weight == 0.0
+    assert instance.contrast_weight == 1.0
+    with pytest.raises(ValueError, match="test_after_fit=false"):
+        instance.expected_evaluation_metric_keys(("A",))
