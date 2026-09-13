@@ -85,20 +85,67 @@ def test_cwru_release_contract_rejects_semantic_gaps(mutator, message: str) -> N
     assert message in "; ".join(readiness._cwru_contract_errors(payload))
 
 
-def test_baseline_valid_reference_requires_the_exact_reviewed_row() -> None:
-    row = {
+def _baseline_row(*, protocol_status: str = "baseline_valid") -> dict[str, str]:
+    return {
         "id": readiness.BASELINE_REGISTRY_ID,
         "category": "baseline",
         "path": readiness.BASELINE_CONFIG_PATH,
         "pipeline": "Pipeline_01_Fault_Diagnosis",
         "status": "sanity_ok",
-        "protocol_status": "baseline_valid",
+        "protocol_status": protocol_status,
     }
 
-    assert readiness._baseline_valid_error([row]) == ""
 
-    row["protocol_status"] = "smoke_only"
-    assert "baseline_valid" in readiness._baseline_valid_error([row])
+def test_baseline_valid_reference_accepts_the_exact_reviewed_row() -> None:
+    assert readiness._baseline_reference_findings([_baseline_row()]) == ()
+
+
+def test_smoke_only_reference_reports_revalidation_not_corruption() -> None:
+    findings = readiness._baseline_reference_findings(
+        [_baseline_row(protocol_status="smoke_only")]
+    )
+
+    assert [finding.code for finding in findings] == [
+        "BASELINE_REVALIDATION_REQUIRED"
+    ]
+    assert "smoke_only" in findings[0].detail
+    assert "current-source" in findings[0].detail
+
+
+def test_malformed_baseline_reference_remains_invalid() -> None:
+    row = _baseline_row(protocol_status="smoke_only")
+    row["path"] = "configs/baselines/wrong.yaml"
+
+    findings = readiness._baseline_reference_findings([row])
+
+    assert [finding.code for finding in findings] == [
+        "BASELINE_VALID_REFERENCE_INVALID"
+    ]
+    assert "wrong.yaml" in findings[0].detail
+
+
+@pytest.mark.parametrize(("mode", "exit_code"), [("audit", 0), ("release", 1)])
+def test_revalidation_blocker_is_visible_and_blocks_release(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: str,
+    exit_code: int,
+) -> None:
+    blocker = readiness.Finding(
+        "BASELINE_REVALIDATION_REQUIRED",
+        "MFPT remains protocol_status='smoke_only'",
+    )
+    monkeypatch.setattr(readiness, "collect_findings", lambda: (blocker,))
+    monkeypatch.setattr(
+        readiness.sys,
+        "argv",
+        ["check_release_readiness.py", "--mode", mode],
+    )
+
+    assert readiness.main() == exit_code
+    output = capsys.readouterr().out
+    assert "BASELINE_REVALIDATION_REQUIRED" in output
+    assert "readiness BLOCKED: 1 blocker(s)" in output
 
 
 def test_registry_reader_requires_release_authority_columns(tmp_path) -> None:
