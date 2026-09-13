@@ -1,0 +1,60 @@
+name: Temporary archive branch governance
+
+on:
+  push:
+    branches: [docs/archive-branch-governance-20260913]
+    paths: [.github/workflows/temporary-archive-branch-governance.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/archive-branch-governance-20260913
+          fetch-depth: 1
+      - name: Archive the historical decision record and leave a compatibility pointer
+        run: |
+          set -euo pipefail
+          mkdir -p docs/archive/governance
+          cp docs/branch_governance_20260709.md docs/archive/governance/branch_governance_20260709.md
+          cat > docs/branch_governance_20260709.md <<'EOF'
+          # Branch Governance Decision Record (2026-07-09)
+
+          This path is retained as a compatibility pointer for historical links.
+
+          The July 9, 2026 branch-consolidation plan is a historical decision record, not
+          current repository policy. Its branch names, PR states, UXFD staging plan, and
+          destructive-cleanup hold list describe that point in time and must not be used as
+          current execution instructions.
+
+          - Current contribution, branch, PR, and rollback rules: [CONTRIBUTING.md](../CONTRIBUTING.md)
+          - Current project invariants: [CORE.md](../CORE.md)
+          - Archived July 9 decision record: [docs/archive/governance/branch_governance_20260709.md](archive/governance/branch_governance_20260709.md)
+
+          Historical references inside the archived record are intentionally preserved as
+          evidence of the old decision context. Current branch existence must be checked from
+          GitHub, not inferred from that record.
+          EOF
+          cat > doc/changelog/2026-09-13-archive-branch-governance.md <<'EOF'
+          # Archive the July branch-governance plan
+
+          `docs/branch_governance_20260709.md` described the repository consolidation state
+          on July 9, 2026. Its old PR numbers, branch names and staged UXFD/Streamlit plans
+          are no longer current operating instructions.
+
+          The complete record is preserved under `docs/archive/governance/`. The original
+          path now points maintainers to `CONTRIBUTING.md` and `CORE.md`, which own current
+          branch and change discipline. No runtime, experiment, research branch or release
+          state is changed by this documentation-only update.
+          EOF
+          git rm .github/workflows/temporary-archive-branch-governance.yml
+          git add docs/branch_governance_20260709.md docs/archive/governance/branch_governance_20260709.md doc/changelog/2026-09-13-archive-branch-governance.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: archive obsolete July branch governance plan'
+          git push origin HEAD:docs/archive-branch-governance-20260913
