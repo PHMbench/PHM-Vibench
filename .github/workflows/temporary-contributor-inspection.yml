@@ -1,0 +1,28 @@
+name: Temporary contributor inspection
+
+on:
+  push:
+    branches: [docs/static-contributor-grid-20260913]
+    paths: [.github/workflows/temporary-contributor-inspection.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  contributors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query GitHub contributor API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/contributors?anon=0&per_page=100" \
+            --jq '.[] | select(.type == "User") | [.login, .html_url, .avatar_url, (.contributions|tostring)] | @tsv' \
+            > contributors.tsv
+          cat contributors.tsv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contributor-list
+          path: contributors.tsv
+          retention-days: 1
