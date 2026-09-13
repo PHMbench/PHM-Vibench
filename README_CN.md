@@ -243,7 +243,36 @@ HSE 在此列为相关表示方法，不表示论文的全部实验使用了当�
 
 ### 感谢所有贡献者
 
-[![PHMFactory 贡献者头像](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)
+<!-- CONTRIBUTORS:START -->
+<table>
+  <tr>
+    <td align="center" width="128">
+      <a href="https://github.com/liq22">
+        <img src="https://github.com/liq22.png?size=96" width="64" height="64" alt="liq22"/><br/>
+        <sub><b>liq22</b></sub>
+      </a>
+    </td>
+    <td align="center" width="128">
+      <a href="https://github.com/Xuan423">
+        <img src="https://github.com/Xuan423.png?size=96" width="64" height="64" alt="Xuan423"/><br/>
+        <sub><b>Xuan423</b></sub>
+      </a>
+    </td>
+    <td align="center" width="128">
+      <a href="https://github.com/Bojian-Chen">
+        <img src="https://github.com/Bojian-Chen.png?size=96" width="64" height="64" alt="Bojian-Chen"/><br/>
+        <sub><b>Bojian-Chen</b></sub>
+      </a>
+    </td>
+    <td align="center" width="128">
+      <a href="https://github.com/xuyu0010">
+        <img src="https://github.com/xuyu0010.png?size=96" width="64" height="64" alt="xuyu0010"/><br/>
+        <sub><b>xuyu0010</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+<!-- CONTRIBUTORS:END -->
 
 [查看完整贡献历史](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)。
 
