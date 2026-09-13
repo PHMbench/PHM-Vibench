@@ -1,0 +1,195 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+
+def replace(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    text = file.read_text(encoding="utf-8")
+    if old not in text:
+        raise RuntimeError(f"Expected block not found in {path}")
+    file.write_text(text.replace(old, new), encoding="utf-8")
+
+
+checker_old = '''def _baseline_valid_error(rows: Iterable[Mapping[str, str]]) -> str:
+    matches = [row for row in rows if row.get("id") == BASELINE_REGISTRY_ID]
+    if len(matches) != 1:
+        return f"expected exactly one {BASELINE_REGISTRY_ID!r} row, found {len(matches)}"
+    row = matches[0]
+    expected = {
+        "category": "baseline",
+        "path": BASELINE_CONFIG_PATH,
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "status": "sanity_ok",
+        "protocol_status": "baseline_valid",
+    }
+    mismatches = [
+        f"{field}={row.get(field)!r}, expected {value!r}"
+        for field, value in expected.items()
+        if row.get(field) != value
+    ]
+    return "; ".join(mismatches)
+'''
+checker_new = '''def _baseline_reference_findings(
+    rows: Iterable[Mapping[str, str]],
+) -> tuple[Finding, ...]:
+    """Separate malformed registry state from intentional revalidation debt."""
+
+    matches = [row for row in rows if row.get("id") == BASELINE_REGISTRY_ID]
+    if len(matches) != 1:
+        return (
+            Finding(
+                "BASELINE_VALID_REFERENCE_INVALID",
+                f"expected exactly one {BASELINE_REGISTRY_ID!r} row, found {len(matches)}",
+            ),
+        )
+
+    row = matches[0]
+    expected = {
+        "category": "baseline",
+        "path": BASELINE_CONFIG_PATH,
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "status": "sanity_ok",
+    }
+    mismatches = [
+        f"{field}={row.get(field)!r}, expected {value!r}"
+        for field, value in expected.items()
+        if row.get(field) != value
+    ]
+    protocol_status = row.get("protocol_status", "")
+    if protocol_status not in {"smoke_only", "baseline_valid"}:
+        mismatches.append(
+            "protocol_status="
+            f"{protocol_status!r}, expected 'smoke_only' or 'baseline_valid'"
+        )
+    if mismatches:
+        return (Finding("BASELINE_VALID_REFERENCE_INVALID", "; ".join(mismatches)),)
+    if protocol_status == "smoke_only":
+        return (
+            Finding(
+                "BASELINE_REVALIDATION_REQUIRED",
+                "MFPT remains protocol_status='smoke_only'; rerun the unchanged "
+                "current-source protocol before restoring 'baseline_valid'",
+            ),
+        )
+    return ()
+'''
+replace("tools/repo/check_release_readiness.py", checker_old, checker_new)
+
+collect_old = '''    registry_path = ROOT / BASELINE_REGISTRY_PATH
+    if not registry_path.is_file():
+        findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", f"{registry_path} absent"))
+    else:
+        baseline_error = _baseline_valid_error(_read_registry_rows(registry_path))
+        if baseline_error:
+            findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", baseline_error))
+'''
+collect_new = '''    registry_path = ROOT / BASELINE_REGISTRY_PATH
+    if not registry_path.is_file():
+        findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", f"{registry_path} absent"))
+    else:
+        findings.extend(_baseline_reference_findings(_read_registry_rows(registry_path)))
+'''
+replace("tools/repo/check_release_readiness.py", collect_old, collect_new)
+
+test_old = '''def test_baseline_valid_reference_requires_the_exact_reviewed_row() -> None:
+    row = {
+        "id": readiness.BASELINE_REGISTRY_ID,
+        "category": "baseline",
+        "path": readiness.BASELINE_CONFIG_PATH,
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "status": "sanity_ok",
+        "protocol_status": "baseline_valid",
+    }
+
+    assert readiness._baseline_valid_error([row]) == ""
+
+    row["protocol_status"] = "smoke_only"
+    assert "baseline_valid" in readiness._baseline_valid_error([row])
+'''
+test_new = '''def _baseline_row(*, protocol_status: str = "baseline_valid") -> dict[str, str]:
+    return {
+        "id": readiness.BASELINE_REGISTRY_ID,
+        "category": "baseline",
+        "path": readiness.BASELINE_CONFIG_PATH,
+        "pipeline": "Pipeline_01_Fault_Diagnosis",
+        "status": "sanity_ok",
+        "protocol_status": protocol_status,
+    }
+
+
+def test_baseline_valid_reference_accepts_the_exact_reviewed_row() -> None:
+    assert readiness._baseline_reference_findings([_baseline_row()]) == ()
+
+
+def test_smoke_only_reference_reports_revalidation_not_corruption() -> None:
+    findings = readiness._baseline_reference_findings(
+        [_baseline_row(protocol_status="smoke_only")]
+    )
+
+    assert [finding.code for finding in findings] == [
+        "BASELINE_REVALIDATION_REQUIRED"
+    ]
+    assert "smoke_only" in findings[0].detail
+    assert "current-source" in findings[0].detail
+
+
+def test_malformed_baseline_reference_remains_invalid() -> None:
+    row = _baseline_row(protocol_status="smoke_only")
+    row["path"] = "configs/baselines/wrong.yaml"
+
+    findings = readiness._baseline_reference_findings([row])
+
+    assert [finding.code for finding in findings] == [
+        "BASELINE_VALID_REFERENCE_INVALID"
+    ]
+    assert "wrong.yaml" in findings[0].detail
+
+
+@pytest.mark.parametrize(("mode", "exit_code"), [("audit", 0), ("release", 1)])
+def test_revalidation_blocker_is_visible_and_blocks_release(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: str,
+    exit_code: int,
+) -> None:
+    blocker = readiness.Finding(
+        "BASELINE_REVALIDATION_REQUIRED",
+        "MFPT remains protocol_status='smoke_only'",
+    )
+    monkeypatch.setattr(readiness, "collect_findings", lambda: (blocker,))
+    monkeypatch.setattr(
+        readiness.sys,
+        "argv",
+        ["check_release_readiness.py", "--mode", mode],
+    )
+
+    assert readiness.main() == exit_code
+    output = capsys.readouterr().out
+    assert "BASELINE_REVALIDATION_REQUIRED" in output
+    assert "readiness BLOCKED: 1 blocker(s)" in output
+'''
+replace("test/test_release_readiness.py", test_old, test_new)
+
+replace(
+    "docs/PHMFACTORY_V0_3_RELEASE_READINESS.md",
+    "BASELINE_VALID_REFERENCE_INVALID",
+    "BASELINE_REVALIDATION_REQUIRED",
+)
+
+Path("doc/changelog/2026-09-13-mfpt-revalidation-blocker.md").write_text(
+    '''# Distinguish MFPT revalidation debt from an invalid baseline reference
+
+The MFPT registry row already remains `sanity_ok / smoke_only`: bounded software execution
+is retained, while the earlier `baseline_valid` scientific claim is suspended. Release
+readiness now reports `BASELINE_REVALIDATION_REQUIRED` for that intentional state instead
+of misclassifying the structurally valid row as `BASELINE_VALID_REFERENCE_INVALID`.
+
+A malformed or missing registry row still reports `BASELINE_VALID_REFERENCE_INVALID`.
+Audit mode displays the revalidation reason and exits successfully; release mode remains
+blocked until reviewed current-source evidence restores `protocol_status=baseline_valid`.
+No MFPT configuration, data split, model, hyperparameter, runtime, metric definition or
+benchmark result changes in this correction.
+''',
+    encoding="utf-8",
+)
