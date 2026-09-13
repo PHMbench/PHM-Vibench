@@ -1,4 +1,4 @@
-name: Temporary contributor inspection
+name: Temporary contributor homepage update
 
 on:
   push:
@@ -6,23 +6,82 @@ on:
     paths: [.github/workflows/temporary-contributor-inspection.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  contributors:
+  update-homepage:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Query GitHub contributor API
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/static-contributor-grid-20260913
+          fetch-depth: 0
+      - name: Generate the static contributor grid
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api --paginate "repos/${GITHUB_REPOSITORY}/contributors?anon=0&per_page=100" \
-            --jq '.[] | select(.type == "User") | [.login, .html_url, .avatar_url, (.contributions|tostring)] | @tsv' \
+            --jq '.[] | select(.type == "User") | [.login, .html_url, (.contributions|tostring)] | @tsv' \
             > contributors.tsv
-          cat contributors.tsv
-      - uses: actions/upload-artifact@v4
-        with:
-          name: contributor-list
-          path: contributors.tsv
-          retention-days: 1
+          python - <<'PY'
+          from pathlib import Path
+
+          rows = []
+          for raw in Path("contributors.tsv").read_text(encoding="utf-8").splitlines():
+              login, profile, contributions = raw.split("\t")
+              rows.append((login, profile, int(contributions)))
+          rows.sort(key=lambda item: (-item[2], item[0].lower()))
+
+          cells = []
+          for login, profile, _ in rows:
+              cells.append(
+                  "    <td align=\"center\" width=\"128\">\n"
+                  f"      <a href=\"{profile}\">\n"
+                  f"        <img src=\"https://github.com/{login}.png?size=96\" width=\"64\" height=\"64\" alt=\"{login}\"/><br/>\n"
+                  f"        <sub><b>{login}</b></sub>\n"
+                  "      </a>\n"
+                  "    </td>"
+              )
+
+          table_lines = ["<!-- CONTRIBUTORS:START -->", "<table>"]
+          for start in range(0, len(cells), 4):
+              table_lines.append("  <tr>")
+              table_lines.extend(cells[start:start + 4])
+              table_lines.append("  </tr>")
+          table_lines.extend(["</table>", "<!-- CONTRIBUTORS:END -->"])
+          table = "\n".join(table_lines)
+
+          replacements = {
+              "README.md": "[![PHMFactory contributors](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)",
+              "README_CN.md": "[![PHMFactory 贡献者头像](https://contrib.rocks/image?repo=PHMbench/PHM-Vibench)](https://github.com/PHMbench/PHM-Vibench/graphs/contributors)",
+          }
+          for filename, old_line in replacements.items():
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              if old_line not in text:
+                  raise SystemExit(f"Expected contributor image not found in {filename}")
+              path.write_text(text.replace(old_line, table, 1), encoding="utf-8")
+
+          Path("doc/changelog/2026-09-13-contributor-grid.md").write_text(
+              "# Static contributor grid\n\n"
+              "The README contributor wall no longer depends on the third-party `contrib.rocks` image service.\n"
+              "Both English and Chinese homepages now render the current GitHub contributor list as a static HTML grid using GitHub-hosted user avatars.\n\n"
+              "The core-team section, full GitHub contribution-history link, Slack, Feishu, Issues, Discussions and Star History links are unchanged.\n"
+              "The grid is intentionally updated manually when needed; no permanent contributor bot or README-rewrite workflow was added.\n",
+              encoding="utf-8",
+          )
+          PY
+          if grep -R "contrib.rocks/image" README.md README_CN.md; then
+            echo "contrib.rocks image dependency remains" >&2
+            exit 1
+          fi
+      - name: Commit the docs-only result and remove this temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/temporary-contributor-inspection.yml
+          git add README.md README_CN.md doc/changelog/2026-09-13-contributor-grid.md
+          git diff --cached --check
+          git commit -m "docs: replace broken contributor image with static avatar grid"
+          git push origin HEAD:docs/static-contributor-grid-20260913
