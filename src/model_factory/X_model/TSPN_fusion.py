@@ -138,7 +138,8 @@ class TSPNFusion(nn.Module):
     """
     def __init__(self, reference: nn.Module, *, in_channels: int, num_classes: int,
                  branches, use_reference_features: bool = True,
-                 reference_temperature: float = 1., head_frobenius_cap: float = 5.):
+                 reference_temperature: float = 1., head_frobenius_cap: float = 5.,
+                 head_type: str = "linear", head_hidden_dim: int = 16):
         super().__init__()
         from .TSPN_tf_operators import TimeFrequencyBranch
         if int(reference.args.num_classes) != num_classes or int(reference.args.in_channels) != in_channels:
@@ -151,6 +152,12 @@ class TSPNFusion(nn.Module):
             raise ValueError("branches must be an explicitly ordered sequence.")
         if not branches and not use_reference_features:
             raise ValueError("The candidate needs at least one feature source.")
+        if head_type not in {"linear", "mlp"}:
+            raise ValueError("head_type must be linear or mlp.")
+        if head_type == "mlp" and (isinstance(head_hidden_dim, bool) or
+                not isinstance(head_hidden_dim, int) or head_hidden_dim < 1):
+            raise ValueError("An MLP needs an explicit positive integer hidden width.")
+        self.head_type = head_type
         self.reference = reference.requires_grad_(False).eval()
         self.in_channels, self.num_classes = int(in_channels), int(num_classes)
         self.use_reference_features = bool(use_reference_features)
@@ -171,7 +178,13 @@ class TSPNFusion(nn.Module):
             self.branches[name] = branch
             self.feature_dims[name] = branch.output_dim
         dimension = sum(self.feature_dims.values())
-        self.candidate_head = nn.Linear(dimension, num_classes)
+        # Preserve legacy linear state keys. The MLP is a readout comparator,
+        # not another encoder or a new signal-processing branch.
+        if head_type == "mlp":
+            self.candidate_hidden = nn.Linear(dimension, head_hidden_dim)
+            nn.init.kaiming_uniform_(self.candidate_hidden.weight, nonlinearity="relu")
+            nn.init.zeros_(self.candidate_hidden.bias)
+        self.candidate_head = nn.Linear(head_hidden_dim if head_type == "mlp" else dimension, num_classes)
         nn.init.normal_(self.candidate_head.weight, mean=0., std=.01)
         nn.init.zeros_(self.candidate_head.bias)
         self.register_buffer("head_frobenius_cap", torch.tensor(float(head_frobenius_cap)))
@@ -207,7 +220,8 @@ class TSPNFusion(nn.Module):
 
     def effective_head_weight(self) -> Tensor:
         w = self.candidate_head.weight
-        return w/(torch.linalg.vector_norm(w)/self.head_frobenius_cap).clamp_min(1.)
+        cap = self.head_frobenius_cap.sqrt() if self.head_type == "mlp" else self.head_frobenius_cap
+        return w/(torch.linalg.vector_norm(w)/cap).clamp_min(1.)
 
     def forward_details(self, x: Tensor) -> dict:
         self._check_input(x)
@@ -218,6 +232,11 @@ class TSPNFusion(nn.Module):
         for name, branch in self.branches.items():
             feature_dict[name] = branch(x)
         features = torch.cat([z/math.sqrt(self.feature_dims[name]) for name, z in feature_dict.items()], -1)
+        if self.head_type == "mlp":
+            w = self.candidate_hidden.weight
+            cap = self.head_frobenius_cap.sqrt()
+            w = w/(torch.linalg.vector_norm(w)/cap).clamp_min(1.)
+            features = F.relu(F.linear(features, w, self.candidate_hidden.bias))
         logits = F.linear(features, self.effective_head_weight(), self.candidate_head.bias)
         p0 = F.softmax(raw_logits/self.reference_temperature.item(), -1)
         q = F.softmax(logits, -1)
@@ -271,7 +290,9 @@ class Model(TSPNFusion):
         super().__init__(reference, in_channels=int(raw["in_channels"]), num_classes=int(raw["num_classes"]),
                          branches=args.branches, use_reference_features=bool(getattr(args, "use_reference_features", True)),
                          reference_temperature=float(args.reference_temperature),
-                         head_frobenius_cap=float(getattr(args, "head_frobenius_cap", 5.)))
+                         head_frobenius_cap=float(getattr(args, "head_frobenius_cap", 5.)),
+                         head_type=getattr(args, "head_type", "linear"),
+                         head_hidden_dim=getattr(args, "head_hidden_dim", 16))
         if args.checkpoint_kind == "fusion":
             load_ckpt(self, args.checkpoint_path, strict=True)
         self.to(args.device)
