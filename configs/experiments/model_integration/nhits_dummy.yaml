@@ -1,0 +1,52 @@
+# NHITS identity-basis shared-channel point forecast; not an upstream benchmark.
+pipeline: Pipeline_01_Fault_Diagnosis
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: native_nhits_forecast_smoke
+  seed: 0
+  iterations: 1
+  output_dir: results/model_integration/nhits
+  wandb: false
+  swanlab: false
+data:
+  data_dir: data
+  metadata_file: metadata_dummy.csv
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  num_window: 8
+  normalization: none
+model:
+  type: MLP
+  name: NHITS
+  seq_len: 96
+  pred_len: 32
+  input_dim: 2
+  n_blocks: [1, 1]
+  n_pool_kernel_size: [4, 2]
+  n_freq_downsample: [4, 1]
+  mlp_units: [[32, 32], [32, 32]]
+  pooling_mode: MaxPool1d
+  interpolation_mode: linear
+  dropout_prob_theta: 0.0
+  activation: ReLU
+task:
+  type: DG
+  name: point_forecasting
+  model_task_id: forecasting
+  loss: MSE
+  metrics: [mse, mae]
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+trainer:
+  num_epochs: 1
+  test_after_fit: true
+  device: cpu
+  devices: 1
+  early_stopping: false
+  log_every_n_steps: 1
