@@ -34,3 +34,13 @@ maintained AI instruction body.
 
 B−1 does not claim all 187 candidates are audited, approved, implemented, benchmark-ready
 or within a universal resource budget.
+
+
+## B00: PR #266 deconstruction
+
+[B00 outcome](B00_OUTCOME.md) records the 48-path decomposition of the former mega model
+integration change. [Dependency map](PR266_DEPENDENCY_MAP.md) identifies Task/shared/model
+coupling, [diff inventory](PR266_DIFF_INVENTORY.csv) assigns each path one owner/decision,
+and [model audit](PR266_MODEL_AUDIT.csv) records preliminary candidate-level blockers.
+
+B00 is deconstruction only: it does not promote candidates, replay code or start B01.
