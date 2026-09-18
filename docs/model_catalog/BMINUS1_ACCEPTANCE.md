@@ -1,50 +1,40 @@
-# B−1 Acceptance Status
+# B−1 scope-freeze outcome
 
 Date: 2026-09-18
 
-This page records the completion state of B−1 only. It does not authorize B00, new model implementation, or changes to PR #266.
+B−1 established durable selection and evidence rules for model-catalogue work.
+It did not add or approve model implementations.
 
-## Acceptance checklist
+## Frozen outcomes
 
-- [x] Benchmark coverage matrix frozen.
-- [x] Scientific Inclusion Gate frozen.
-- [x] Candidate identity schema frozen as name + variant + task + source reference, with provisional source-row IDs retained where the source sheet lacks those fields.
-- [x] lifecycle / disposition / reason_code separated.
-- [x] E0 / E1 / E2 / E3 evidence ladder frozen.
-- [x] Native / pretrained / non-gradient / external-service acceptance profiles frozen.
-- [x] Resource-budget method frozen and grounded in existing CI plus a small local baseline measurement.
-- [x] Catalogue and current runtime/discovery-registry responsibilities separated without modifying production resolution.
-- [x] No new model implementation added by B−1.
-- [x] Original 187-row source denominator and 18-row Task planning sheet preserved.
-- [x] Final-head repository checks relevant to this documentation branch are green.
-- [ ] Independent fresh-context review completed.
+- Benchmark coverage is expressed as scientific roles, not a model-count target.
+- Candidates must pass the G1–G7 inclusion gate before implementation is queued.
+- Candidate identity separates canonical name, variant, task and source revision.
+- lifecycle, disposition and reason_code are orthogonal fields.
+- E0 / E1 / E2 / E3 distinguish source/legal, framework, algorithm-fidelity and PHM evidence.
+- Native, pretrained, non-gradient and external-service candidates use different acceptance profiles.
+- The catalogue is research/source material and is not a second runtime registry.
+- No candidate is promoted from DISCOVERED solely by catalogue presence or CI status.
+- Resource evidence is recorded with its exact environment and scope.
 
-## Resource qualification
+## Resource qualification at the freeze
 
-Measured evidence now includes:
-- existing PR #266 JUnit timing and public Dummy timing;
-- three independent local source-slice import/inference measurements for the unchanged GlobalAverageLinear baseline.
+Measured evidence includes:
+- historical PR #266 JUnit and public Dummy timings at its recorded source revision;
+- three local source-slice import/inference measurements for the unchanged
+  GlobalAverageLinear baseline.
 
-Still NOT RUN:
-- full PHMFactory cold package import;
-- normal wheel dependency-size delta;
+Not established by B−1:
+- full PHMFactory cold-package import cost;
+- normal-wheel dependency-size delta;
 - full training peak memory;
-- GPU / real-PHM resource budget.
+- GPU or real-PHM resource budgets.
 
-These unmeasured dimensions do not invalidate B−1's scientific-selection rules, but they prevent any future candidate from automatically passing G7 without model-specific evidence.
+Those missing measurements are candidate-specific evidence requirements where relevant,
+not reasons to invent a universal model threshold.
 
-## Merge gate
+## Review outcome rule
 
-B−1 implementation/documentation work is complete enough for independent review. Merge only after:
-1. current-head CI remains green;
-2. no unresolved review thread remains;
-3. an independent reviewer finds no blocking P0/P1, or explicitly records the blocking issue for correction.
-
-Until then:
-- keep PR #267 unmerged;
-- keep PR #266 unchanged at its existing head;
-- do not execute B00;
-- do not create a model implementation PR;
-- do not change dev/main, tags, package publication, THU, or external checkpoints.
-
-Author self-review and green CI are not treated as independent approval.
+An implementation or adoption decision still requires its own source, fidelity, resource
+and scientific evidence. B−1 itself is a scope/policy freeze; it is not E2/E3 evidence
+for any model and does not make a later stage automatic.
