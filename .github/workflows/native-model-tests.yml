@@ -4,15 +4,21 @@ on:
   pull_request:
     paths:
       - 'src/model_factory/_native_classification.py'
+      - 'src/model_factory/_native_forecasting.py'
       - 'src/model_factory/Transformer/iTransformer.py'
       - 'src/model_factory/CNN/TimesNet.py'
       - 'src/model_factory/CNN/TSLANet.py'
+      - 'src/model_factory/MLP/NLinear.py'
+      - 'src/model_factory/MLP/SparseTSF.py'
+      - 'src/model_factory/MLP/FITS.py'
+      - 'src/model_factory/RNN/SegRNN.py'
       - 'src/task_factory/**'
       - 'src/data_factory/**'
       - 'src/runtime/classification.py'
       - 'phmfactory/**'
       - 'configs/experiments/model_integration/**'
       - 'test/test_native_model_ports.py'
+      - 'test/test_native_forecasting.py'
       - 'test/test_native_model_public_path.py'
       - '.github/workflows/native-model-tests.yml'
 
@@ -40,9 +46,9 @@ jobs:
           python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0
           python -m pip install -e . 'pytest>=7'
           python -m pip check
-      - name: Test native models and three real Dummy fits
+      - name: Test native equations and real public Dummy fits
         run: |
-          python -m pytest -v test/test_native_model_ports.py test/test_native_model_public_path.py --junitxml=native-models.xml
+          python -m pytest -v test/test_native_model_ports.py test/test_native_forecasting.py test/test_native_model_public_path.py --junitxml=native-models.xml
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

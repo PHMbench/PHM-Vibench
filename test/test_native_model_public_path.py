@@ -1,4 +1,4 @@
-"""Three real one-epoch CPU fits through the unmodified public PHMFactory CLI."""
+"""Real one-epoch CPU fits through the unmodified public PHMFactory CLI."""
 
 import json
 import math
@@ -13,8 +13,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.mark.parametrize("model", ["itransformer", "timesnet", "tslanet"])
-def test_native_model_public_dummy(model, tmp_path, record_property):
+@pytest.mark.parametrize("model,metrics", [
+    ("itransformer", ("acc", "f1")),
+    ("timesnet", ("acc", "f1")),
+    ("tslanet", ("acc", "f1")),
+    ("nlinear", ("mse", "mae")),
+    ("sparsetsf", ("mse", "mae")),
+    ("fits", ("mse", "mae")),
+    ("segrnn", ("mse", "mae")),
+])
+def test_native_model_public_dummy(model, metrics, tmp_path, record_property):
     config = ROOT / "configs" / "experiments" / "model_integration" / f"{model}_dummy.yaml"
     command = [
         sys.executable, "-m", "phmfactory", "--config", str(config),
@@ -42,7 +50,7 @@ def test_native_model_public_dummy(model, tmp_path, record_property):
         path = Path(values[field]).resolve()
         assert path.is_file() and root in path.parents
     summary = json.loads(Path(values["run_summary"]).read_text(encoding="utf-8"))
-    assert {"test_acc_Dummy_Data", "test_f1_Dummy_Data"} <= summary["metrics"].keys()
+    assert {f"test_{metric}_Dummy_Data" for metric in metrics} <= summary["metrics"].keys()
     for metric in summary["metrics"].values():
         assert metric["count"] == 1 and math.isfinite(metric["mean"])
     record_property("model", model)

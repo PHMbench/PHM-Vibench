@@ -26,6 +26,9 @@ DATASET_ADAPTERS: dict[tuple[str, str], DatasetAdapterSpec] = {
     ("DG", "classification"): DatasetAdapterSpec(
         "src.data_factory.dataset_task.DG.Classification_dataset"
     ),
+    ("DG", "point_forecasting"): DatasetAdapterSpec(
+        "src.data_factory.dataset_task.DG.Classification_dataset"
+    ),
     ("CDDG", "classification"): DatasetAdapterSpec(
         "src.data_factory.dataset_task.CDDG.classification_dataset"
     ),
