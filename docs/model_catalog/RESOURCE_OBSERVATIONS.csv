@@ -1,0 +1,12 @@
+suite,tests,sum_case_seconds,max_case_seconds
+test.test_native_model_ports,63,1.191,0.868
+test.test_native_forecasting,85,3.640,3.423
+test.test_native_forecasting_extensions,51,0.158,0.015
+test.test_native_forecasting_interpolation,56,0.160,0.011
+test.test_modern_tcn_native,22,0.103,0.027
+test.test_timemixer_native,29,0.247,0.035
+test.test_native_model_public_path,15,112.556,7.918
+junit_total,321,119.890,
+job_wall_clock,1,205,
+dependency_install_step,1,75,
+pytest_step_wall_clock,1,121,
