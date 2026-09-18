@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
     ("itransformer", ("acc", "f1")),
     ("timesnet", ("acc", "f1")),
     ("tslanet", ("acc", "f1")),
+    ("moderntcn", ("acc", "f1")),
     ("nlinear", ("mse", "mae")),
     ("sparsetsf", ("mse", "mae")),
     ("fits", ("mse", "mae")),
