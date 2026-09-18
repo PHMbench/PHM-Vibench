@@ -11,6 +11,9 @@ on:
       - 'src/model_factory/MLP/NLinear.py'
       - 'src/model_factory/MLP/SparseTSF.py'
       - 'src/model_factory/MLP/FITS.py'
+      - 'src/model_factory/MLP/SOFTS.py'
+      - 'src/model_factory/MLP/FreTS.py'
+      - 'src/model_factory/MLP/TSMixer.py'
       - 'src/model_factory/RNN/SegRNN.py'
       - 'src/task_factory/**'
       - 'src/data_factory/**'
@@ -19,6 +22,7 @@ on:
       - 'configs/experiments/model_integration/**'
       - 'test/test_native_model_ports.py'
       - 'test/test_native_forecasting.py'
+      - 'test/test_native_forecasting_extensions.py'
       - 'test/test_native_model_public_path.py'
       - '.github/workflows/native-model-tests.yml'
 
@@ -48,7 +52,7 @@ jobs:
           python -m pip check
       - name: Test native equations and real public Dummy fits
         run: |
-          python -m pytest -v test/test_native_model_ports.py test/test_native_forecasting.py test/test_native_model_public_path.py --junitxml=native-models.xml
+          python -m pytest -v test/test_native_model_ports.py test/test_native_forecasting.py test/test_native_forecasting_extensions.py test/test_native_model_public_path.py --junitxml=native-models.xml
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

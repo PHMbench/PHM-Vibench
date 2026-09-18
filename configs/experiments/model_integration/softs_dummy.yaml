@@ -1,0 +1,51 @@
+# Raw-window point forecasting; software smoke, not a held-out benchmark.
+pipeline: Pipeline_01_Fault_Diagnosis
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: native_softs_forecast_smoke
+  seed: 0
+  iterations: 1
+  output_dir: results/model_integration/softs
+  wandb: false
+  swanlab: false
+data:
+  data_dir: data
+  metadata_file: metadata_dummy.csv
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  num_window: 8
+  normalization: none
+model:
+  type: MLP
+  name: SOFTS
+  seq_len: 96
+  pred_len: 32
+  input_dim: 2
+  d_model: 16
+  d_core: 8
+  d_ff: 32
+  e_layers: 1
+  dropout: 0.0
+  use_norm: true
+  activation: gelu
+task:
+  type: DG
+  name: point_forecasting
+  model_task_id: forecasting
+  loss: MSE
+  metrics: [mse, mae]
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+trainer:
+  num_epochs: 1
+  test_after_fit: true
+  device: cpu
+  devices: 1
+  early_stopping: false
+  log_every_n_steps: 1

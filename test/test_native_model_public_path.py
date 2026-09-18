@@ -21,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
     ("sparsetsf", ("mse", "mae")),
     ("fits", ("mse", "mae")),
     ("segrnn", ("mse", "mae")),
+    ("softs", ("mse", "mae")),
+    ("frets", ("mse", "mae")),
+    ("tsmixer", ("mse", "mae")),
 ])
 def test_native_model_public_dummy(model, metrics, tmp_path, record_property):
     config = ROOT / "configs" / "experiments" / "model_integration" / f"{model}_dummy.yaml"
