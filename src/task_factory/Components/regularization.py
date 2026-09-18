@@ -74,14 +74,14 @@ def calculate_regularization(
     reg_config: Any,
     params: Iterable[torch.nn.Parameter],
 ) -> dict[str, torch.Tensor]:
-    """Calculate the declared regularization over every trainable parameter."""
+    """Return real penalties; complex L2 means sum(abs(parameter)**2)."""
 
     methods = _resolve_methods(reg_config)
     trainable_params = [parameter for parameter in params if parameter.requires_grad]
 
     if not methods:
         if trainable_params:
-            return {"total": trainable_params[0].new_zeros(())}
+            return {"total": trainable_params[0].real.new_zeros(())}
         return {"total": torch.tensor(0.0, dtype=torch.float32)}
 
     normalized_methods = {str(name).strip().lower(): weight for name, weight in methods.items()}
@@ -113,18 +113,18 @@ def calculate_regularization(
             "regularization is enabled but the task has no trainable parameters"
         )
 
-    total = trainable_params[0].new_zeros(())
+    total = trainable_params[0].real.new_zeros(())
     losses: dict[str, torch.Tensor] = {}
     for method, weight in weights.items():
         if weight == 0:
             continue
-        current = trainable_params[0].new_zeros(())
+        current = trainable_params[0].real.new_zeros(())
         if method == "l1":
             for parameter in trainable_params:
                 current = current + parameter.abs().sum()
         else:
             for parameter in trainable_params:
-                current = current + parameter.square().sum()
+                current = current + parameter.abs().square().sum()
 
         weighted = current * weight
         losses[method] = weighted

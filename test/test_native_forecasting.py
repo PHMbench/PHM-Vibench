@@ -207,3 +207,33 @@ def test_task_future_never_changes_forecast_and_target_is_horizon():
 def test_task_rejects_target_leakage_and_wrong_objectives(data, task_args):
     with pytest.raises((ValueError, TypeError)):
         construct_task(data, task_args)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64, torch.complex64, torch.complex128])
+@pytest.mark.parametrize("regularization", [None, {"l2": 0.0}, {"l2": 0.3}, {"l1": 0.2, "l2": 0.3}])
+def test_regularization_is_real_and_matches_norms(dtype, regularization):
+    from src.task_factory.Components.regularization import calculate_regularization
+    values = [1+2j, -3+4j] if dtype.is_complex else [1., -3.]
+    parameter = torch.nn.Parameter(torch.tensor(values, dtype=dtype))
+    result = calculate_regularization(regularization, [parameter])
+    expected = parameter.real.new_zeros(())
+    for name, weight in (regularization or {}).items():
+        expected = expected + weight * (parameter.abs().sum() if name == "l1" else parameter.abs().square().sum())
+    assert not result["total"].is_complex()
+    torch.testing.assert_close(result["total"], expected)
+    loss = parameter.abs().square().sum() + result["total"]
+    loss.backward()
+    assert torch.isfinite(parameter.grad).all()
+
+
+def test_fits_task_returns_real_differentiable_total_loss():
+    task = construct_task()
+    task.network = build("MLP", "FITS")
+    window = torch.randn(2, 48, 2)
+    batch = {"x": window, "y": torch.tensor([0, 0]), "file_id": torch.tensor([1, 1])}
+    step = task._shared_step(batch, "train")
+    loss = step["train_total_loss"]
+    assert not loss.is_complex() and loss.ndim == 0 and torch.isfinite(loss)
+    torch.testing.assert_close(loss, step["train_loss"])
+    loss.backward()
+    assert all(parameter.grad is not None for parameter in task.network.parameters())
