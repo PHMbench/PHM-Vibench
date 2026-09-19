@@ -1,0 +1,49 @@
+处理文件: 97
+DE_time: X097_DE_time 包含 243938 个数据
+FE_time: X097_FE_time 包含 243938 个数据
+拼接后数据形状: (243938, 2)
+处理文件: 109
+DE_time: X109_DE_time 包含 243938 个数据
+FE_time: X109_FE_time 包含 243938 个数据
+拼接后数据形状: (243938, 2)
+处理文件: 305
+DE_time: X305_DE_time 包含 120984 个数据
+FE_time: X305_FE_time 包含 120984 个数据
+拼接后数据形状: (120984, 2)
+处理文件: 306
+DE_time: X306_DE_time 包含 121719 个数据
+FE_time: X306_FE_time 包含 121719 个数据
+拼接后数据形状: (121719, 2)
+处理文件: 307
+DE_time: X307_DE_time 包含 121168 个数据
+FE_time: X307_FE_time 包含 121168 个数据
+拼接后数据形状: (121168, 2)
+处理文件: 308
+DE_time: X308_DE_time 包含 121351 个数据
+FE_time: X308_FE_time 包含 121351 个数据
+拼接后数据形状: (121351, 2)
+处理文件: 314
+DE_time: X314_DE_time 包含 121535 个数据
+FE_time: X314_FE_time 包含 121535 个数据
+拼接后数据形状: (121535, 2)
+RM_001_CWRU: 155 metadata records inspected
+RM_002_XJTU: 9215 metadata records inspected
+RM_003_FEMTO: 27146 metadata records inspected
+RM_004_IMS: 9463 metadata records inspected
+RM_005_Ottawa23: 60 metadata records inspected
+RM_006_THU: 12 metadata records inspected
+RM_007_MFPT: 23 metadata records inspected
+RM_008_UNSW: 628 metadata records inspected
+RM_010_SEU: 20 metadata records inspected
+RM_015_susu: 10 metadata records inspected
+RM_016_JNU: 12 metadata records inspected
+RM_017_Ottawa19: 36 metadata records inspected
+/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/src/data_factory/reader/utils.py:26: DtypeWarning: Columns (0,1,2,6,7,8) have mixed types. Specify dtype option on import or set low_memory=False.
+  return pd.read_csv(filepath, **kwargs)
+RM_018_THU24: 15 metadata records inspected
+RM_020_DIRG: 180 metadata records inspected
+RM_023_HIT23: 42 metadata records inspected
+RM_024_JUST: 180 metadata records inspected
+RM_027_PU: 2559 metadata records inspected
+RM_031_HUST24: 99 metadata records inspected
+{"files":18,"datasets":19,"records":49855,"probes":30,"qualified_datasets":0,"eligible_folds":0,"elapsed_seconds":41.206,"output":"/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1"}

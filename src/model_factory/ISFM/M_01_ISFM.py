@@ -13,6 +13,10 @@ from src.utils.utils import get_num_classes
 # Component IDs remain config-facing. Values are module and symbol names so the
 # selected implementation is imported only when the model is instantiated.
 Embedding_dict = {
+    "SupportConditionedTokenizer": (
+        "src.model_factory.ISFM.embedding.SupportConditionedTokenizer",
+        "SupportConditionedTokenizer",
+    ),
     "E_01_HSE": ("src.model_factory.ISFM.embedding.E_01_HSE", "E_01_HSE"),
     "E_02_HSE_v2": ("src.model_factory.ISFM.embedding.E_02_HSE_rec", "E_02_HSE_v2"),
     "E_03_Patch": ("src.model_factory.ISFM.embedding.E_03_Patch", "E_03_Patch"),
@@ -109,12 +113,44 @@ class Model(nn.Module):
         """Return the metadata-derived dataset-to-class-count mapping."""
         return get_num_classes(self.metadata)
 
-    def _embed(self, x, file_id):
+    def _embed(self, x, file_id, *, sample_rates=None, incremental=None,
+               availability=None, start_indices_L=None, start_indices_C=None):
         """Apply the configured embedding."""
+        if self.args_m.embedding == "SupportConditionedTokenizer":
+            if incremental is None or availability is None:
+                raise ValueError('projected incremental coordinates and availability are required')
+            if sample_rates is not None or start_indices_L is not None or start_indices_C is not None:
+                raise ValueError('projected physical cells must not be repatched')
+            return self.embedding(x, incremental, availability)
+        if incremental is not None or availability is not None:
+            raise ValueError('incremental/availability require SupportConditionedTokenizer')
         if self.args_m.embedding in ("E_01_HSE", "E_02_HSE_v2"):
-            _, fs_tensor = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+            if sample_rates is None:
+                _, fs_tensor = resolve_batch_metadata(self.metadata, file_id, device=x.device)
+            else:
+                fs_tensor = sample_rates
+            if start_indices_L is not None or start_indices_C is not None:
+                if self.args_m.embedding != "E_01_HSE":
+                    raise ValueError('explicit patch starts currently require E_01_HSE')
+                return self.embedding(x, fs_tensor, start_indices_L=start_indices_L,
+                                      start_indices_C=start_indices_C)
             return self.embedding(x, fs_tensor)
+        if sample_rates is not None or start_indices_L is not None or start_indices_C is not None:
+            raise ValueError('sampling metadata requires a physical HSE embedding')
         return self.embedding(x)
+
+    def encode(self, x: torch.Tensor, *, file_id=None, sample_rates=None,
+               incremental=None, availability=None, start_indices_L=None,
+               start_indices_C=None) -> torch.Tensor:
+        """Return backbone tokens without consulting any classification head.
+
+        Unseen targets supply acquisition metadata directly, not a fabricated
+        source file/system identity. Caller controls eval mode and freezing.
+        """
+        tokens = self._embed(x, file_id, sample_rates=sample_rates,
+                             incremental=incremental, availability=availability,
+                             start_indices_L=start_indices_L, start_indices_C=start_indices_C)
+        return self._encode(tokens)
 
     def _encode(self, x):
         """Apply the configured backbone."""
@@ -142,10 +178,11 @@ class Model(nn.Module):
             )
         return None
 
-    def forward(self, x: torch.Tensor, file_id=False, task_id=False, return_feature=False):
+    def forward(self, x: torch.Tensor, file_id=False, task_id=False, return_feature=False,
+                *, incremental=None, availability=None):
         """Forward pass through embedding, backbone, and task head."""
         self.shape = x.shape
-        x = self._embed(x, file_id)
+        x = self._embed(x, file_id, incremental=incremental, availability=availability)
         if return_feature:
             feature = self._encode(x)
             output = self._head(feature, file_id, task_id)

@@ -1,4 +1,5 @@
 component_type,component_id,module_path,key_args,args,notes,test_status
+embedding,SupportConditionedTokenizer,src/model_factory/ISFM/embedding/SupportConditionedTokenizer.py,"token_organization, patch_size_L, num_patches, output_dim, d_model, source_rms","support or ordinary; projected [B K P] common/incremental; binary availability","matched two-branch projected tokenizer; physical qualification and joint runtime pending",test/test_tii_native_model.py
 embedding,E_01_HSE,src/model_factory/ISFM/embedding/E_01_HSE.py,"patch_size_L, patch_size_C, num_patches, output_dim","patch_size_L=256, patch_size_C=1, num_patches=128, output_dim=1024（示例）","hierarchical signal embedding (HSE) for time-domain patches","/"
 embedding,E_01_HSE_abalation,src/model_factory/ISFM/embedding/E_01_HSE.py,"sampling_mode, apply_mixing, linear_config, patch_scale, activation_type","sampling_mode='random', apply_mixing=True, linear_config=(1,1), patch_scale=(1,1,1)","ablation version of HSE with configurable mixing and depth","/"
 embedding,E_01_HTFE,src/model_factory/ISFM/embedding/E_01_HTFE.py,"/","/","HTFE-style time-frequency embedding","/"
