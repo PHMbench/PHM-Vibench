@@ -1,0 +1,216 @@
+data_config: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/configs/data.yaml
+dataset: D1_PU
+class_names:
+- healthy
+- inner_race_or_IR_dominant_mixed
+- outer_race_or_OR_dominant_mixed
+mode: independent
+rule: moments
+bound: bernstein
+scope: source_mixture
+delta_total: 0.05
+delta_shift: 0.0
+selection_alpha_grid:
+- 0.0
+- 0.1
+- 0.2
+- 0.3
+- 0.4
+- 0.5
+- 0.6
+- 0.7
+- 0.8
+- 0.9
+- 1.0
+d1_controls:
+  tau: 1.0
+  selection_predictor: candidate
+  selection_brier_weight: 0.25
+  nonlinear_hidden_dim: 16
+  seed: 42
+reference_development_group_files:
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/reference/development_groups.csv
+development_group_files:
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_123/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_456/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_123/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_456/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/UO/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/UO/seed_123/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/UO/seed_456/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RO/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RO/seed_123/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RO/seed_456/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_123/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_456/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/linear/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/MLP8/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/MLP32/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/MLP16_all/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_envelope/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_stft_short/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_morlet/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_stft_long/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_mexican_hat/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_stockwell/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/diagnostics/only_chirplet_up/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/baselines/ResNet1D/seed_42/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/baselines/ResNet1D/seed_123/development_groups.csv
+- /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/baselines/ResNet1D/seed_456/development_groups.csv
+executed_code_revisions:
+  core_candidate_training: 19ae593bca674ed021662ba92383cb467e583279
+  reference_training: 4f87b5b60ecc9bf13ebbfa632e690038d75b0742
+analysis_definition:
+  inputs: frozen window-level prediction artifacts only
+  metrics: [brier, ce, accuracy, macro_f1]
+  risk_aggregation:
+    hierarchy: [window, acquisition, global_physical_group, condition]
+    within_acquisition: arithmetic mean of window Brier or CE
+    within_group: equal-weight mean of acquisition risks
+    within_condition: equal-weight mean of global physical-group risks
+    across_conditions: equal-weight mean of condition-specific metrics
+  classification:
+    prediction: argmax of acquisition mean window probabilities
+    confusion: equal total weight per global physical group within each condition
+    accuracy_and_macro_f1: computed from each condition's group-balanced confusion matrix
+    class_space: all three frozen classes; report represented classes and support
+    group_f1_averaging: false
+  condition_sets:
+    source: ['0', '2', '3']
+    unseen: ['1']
+  primary_contrasts:
+    risk: group-balanced window Brier
+    Delta_pipe: R(O) - R(MLP16)
+    Delta_loss: R(RC) - R(O)
+    Delta_prior: R(RO) - R(UO)
+    Delta_response: R(RC) - R(RO)
+    Delta_adoption: R(adopted predictor) - R(selected direct candidate)
+    Delta_adoption_vs_raw: R(adopted predictor) - R(p0)
+  bootstrap:
+    repeats: 2000
+    seed: 20260919
+    cluster: global physical group
+    strata: prespecified condition-incidence mask; preserve each stratum size
+    paired: same global-group multiplicity across conditions, predictors, and training seeds
+    interval: 95% descriptive percentile interval
+    interpretation: conditional on frozen predictors; no significance stars or new multiplicity rule
+  training_seeds:
+    values: [42, 123, 456]
+    summary: finite three-seed arithmetic mean and sample standard deviation
+    standard_deviation_ddof: 1
+    independent_physical_samples: false
+  adoption_interpretation: conditional on the already selected candidate and fixed coefficient
+  source_diagnostics: seed42 source-validation only; excluded from the assessment bank and permanent test
+candidates:
+- name: temperature
+  kind: temperature
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_42/selected_candidate.pt
+  temperature_grid:
+  - 0.5
+  - 0.75
+  - 1.0
+  - 1.5
+  - 2.0
+- name: MLP16
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_42/selected_candidate.pt
+- name: O
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_42/selected_candidate.pt
+- name: RC
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_42/selected_candidate.pt
+final_candidates:
+- name: MLP16_seed_42
+  arm: MLP16
+  seed: 42
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_42/selected_candidate.pt
+- name: MLP16_seed_123
+  arm: MLP16
+  seed: 123
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_123/selected_candidate.pt
+- name: MLP16_seed_456
+  arm: MLP16
+  seed: 456
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/MLP16/seed_456/selected_candidate.pt
+- name: O_seed_42
+  arm: O
+  seed: 42
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_42/selected_candidate.pt
+- name: O_seed_123
+  arm: O
+  seed: 123
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_123/selected_candidate.pt
+- name: O_seed_456
+  arm: O
+  seed: 456
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/O/seed_456/selected_candidate.pt
+- name: UO_seed_42
+  arm: UO
+  seed: 42
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/UO/seed_42/selected_candidate.pt
+- name: UO_seed_123
+  arm: UO
+  seed: 123
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/UO/seed_123/selected_candidate.pt
+- name: UO_seed_456
+  arm: UO
+  seed: 456
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/UO/seed_456/selected_candidate.pt
+- name: RO_seed_42
+  arm: RO
+  seed: 42
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RO/seed_42/selected_candidate.pt
+- name: RO_seed_123
+  arm: RO
+  seed: 123
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RO/seed_123/selected_candidate.pt
+- name: RO_seed_456
+  arm: RO
+  seed: 456
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RO/seed_456/selected_candidate.pt
+- name: RC_seed_42
+  arm: RC
+  seed: 42
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_42/selected_candidate.pt
+- name: RC_seed_123
+  arm: RC
+  seed: 123
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_123/selected_candidate.pt
+- name: RC_seed_456
+  arm: RC
+  seed: 456
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/core/RC/seed_456/selected_candidate.pt
+- name: ResNet1D_seed_42
+  arm: ResNet1D
+  seed: 42
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/baselines/ResNet1D/seed_42/selected_candidate.pt
+- name: ResNet1D_seed_123
+  arm: ResNet1D
+  seed: 123
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/baselines/ResNet1D/seed_123/selected_candidate.pt
+- name: ResNet1D_seed_456
+  arm: ResNet1D
+  seed: 456
+  kind: model
+  checkpoint: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/baselines/ResNet1D/seed_456/selected_candidate.pt

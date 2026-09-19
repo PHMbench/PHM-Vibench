@@ -1,0 +1,5 @@
+candidate,arm,seed,temperature,alpha,worst_source_brier,worst_source_brier_excess
+temperature,temperature,42,1.5,1.0,0.5253281130584859,-0.012291047043861858
+MLP16,MLP16,42,1.0,0.0,0.6278524952882558,0.0
+O,O,42,1.0,0.0,0.5837218917084102,0.0
+RC,RC,42,1.0,0.0,0.5778985807875004,0.0

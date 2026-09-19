@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "stage": "preflight",
+  "reason": "Complete reference history has not been supplied; choose empirical explicitly or retrain cleanly.",
+  "exit_status": 1,
+  "waveform_access": false,
+  "reference_training_performed": false
+}

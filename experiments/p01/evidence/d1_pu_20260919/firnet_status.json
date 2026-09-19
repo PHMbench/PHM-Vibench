@@ -1,0 +1,10 @@
+{
+  "arm": "FIRNet",
+  "seeds": [42, 123, 456],
+  "status": "blocked",
+  "reason": "No complete method or legal original FIRNet implementation available; official publisher access provides only abstract and section snippets. MCN and FIR-CCF are different methods and are not substituted.",
+  "doi": "10.1016/j.ymssp.2024.111314",
+  "source": "https://www.sciencedirect.com/science/article/pii/S0888327024002127",
+  "training_performed": false,
+  "core_execution_blocked": false
+}

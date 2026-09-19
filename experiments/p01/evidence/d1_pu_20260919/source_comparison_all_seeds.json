@@ -1,0 +1,54 @@
+{
+  "status": "matched_source_comparison",
+  "seeds": [
+    {
+      "seed": 42,
+      "arms": [
+        "O",
+        "UO",
+        "RO",
+        "RC"
+      ],
+      "optimizer_steps_per_arm": 1000,
+      "sampled_acquisitions_per_arm": 6000,
+      "source_validation_windows_per_arm": 600,
+      "initial_candidate_state_equal": true,
+      "actual_sampler_and_pair_schedule_equal": true,
+      "source_reference_vectors_exactly_equal": true,
+      "source_access_and_selector_equal": true
+    },
+    {
+      "seed": 123,
+      "arms": [
+        "O",
+        "UO",
+        "RO",
+        "RC"
+      ],
+      "optimizer_steps_per_arm": 1000,
+      "sampled_acquisitions_per_arm": 6000,
+      "source_validation_windows_per_arm": 600,
+      "initial_candidate_state_equal": true,
+      "actual_sampler_and_pair_schedule_equal": true,
+      "source_reference_vectors_exactly_equal": true,
+      "source_access_and_selector_equal": true
+    },
+    {
+      "seed": 456,
+      "arms": [
+        "O",
+        "UO",
+        "RO",
+        "RC"
+      ],
+      "optimizer_steps_per_arm": 1000,
+      "sampled_acquisitions_per_arm": 6000,
+      "source_validation_windows_per_arm": 600,
+      "initial_candidate_state_equal": true,
+      "actual_sampler_and_pair_schedule_equal": true,
+      "source_reference_vectors_exactly_equal": true,
+      "source_access_and_selector_equal": true
+    }
+  ],
+  "scope": "Saved source execution only; no H5, assessment/test predictions, checkpoint inference or scientific performance claim."
+}

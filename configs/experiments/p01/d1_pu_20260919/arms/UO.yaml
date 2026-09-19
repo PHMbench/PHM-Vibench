@@ -1,0 +1,168 @@
+model:
+  type: X_model
+  name: TSPN_fusion
+  num_classes: 3
+  device: cpu
+  checkpoint_kind: reference
+  checkpoint_path: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/reference/selected_candidate.pt
+  reference_temperature: 1.0
+  head_frobenius_cap: 5.0
+  reference_config:
+    in_channels: 1
+    in_dim: 8192
+    out_dim: 8192
+    out_channels: 12
+    scale: 1
+    skip_connection: false
+    internal_instance_normalization: false
+    num_classes: 3
+    signal_processing_configs:
+      layer1:
+      - I
+      - HT
+      - WF
+    feature_extractor_configs:
+    - RMS
+    - Std
+    - AbsMean
+    f_c_mu: 0.18
+    f_c_sigma: 0.01
+    f_b_mu: 0.04
+    f_b_sigma: 0.001
+  use_reference_features: true
+  branches:
+  - name: envelope
+    type: envelope
+    carrier:
+      centers:
+      - 0.19
+      - 0.32
+      widths:
+      - 0.025
+      - 0.025
+      center_bounds:
+      - - 0.16
+        - 0.22
+      - - 0.29
+        - 0.35
+      width_bounds:
+      - - 0.015
+        - 0.035
+      - - 0.015
+        - 0.035
+    modulation:
+      centers:
+      - 0.025
+      - 0.06
+      - 0.1
+      widths:
+      - 0.0045
+      - 0.0045
+      - 0.0045
+      center_bounds:
+      - - 0.021
+        - 0.029
+      - - 0.056
+        - 0.064
+      - - 0.096
+        - 0.104
+      width_bounds:
+      - - 0.003
+        - 0.006
+      - - 0.003
+        - 0.006
+      - - 0.003
+        - 0.006
+  - name: stft_short
+    type: stft
+    transform:
+      win_length: 64
+      n_fft: 128
+      hop_length: 16
+    readout:
+      row_groups: 8
+      time_bins: 4
+      log_floor: 0.001
+  - name: morlet
+    type: cwt
+    transform:
+      wavelet: morlet
+      scales:
+      - 4.0
+      - 6.0
+      - 9.0
+      - 14.0
+      omega0: 6.0
+      truncate: 4.0
+      stride: 4
+    readout:
+      time_bins: 4
+      log_floor: 0.001
+  - name: stft_long
+    type: stft
+    transform:
+      win_length: 128
+      n_fft: 128
+      hop_length: 16
+    readout:
+      row_groups: 8
+      time_bins: 4
+      log_floor: 0.001
+  - name: mexican_hat
+    type: cwt
+    transform:
+      wavelet: mexican_hat
+      scales:
+      - 2.0
+      - 4.0
+      - 6.0
+      - 9.0
+      truncate: 4.0
+      stride: 4
+    readout:
+      time_bins: 4
+      log_floor: 0.001
+  - name: stockwell
+    type: stockwell
+    transform:
+      frequencies:
+      - 0.05
+      - 0.09
+      - 0.15
+      - 0.23
+      - 0.3
+      width_factor: 1.0
+      truncate: 4.0
+      stride: 4
+    readout:
+      time_bins: 4
+      log_floor: 0.001
+  - name: chirplet_up
+    type: chirplet
+    transform:
+      frequencies:
+      - 0.08
+      - 0.14
+      - 0.22
+      - 0.3
+      window_sigma: 10.0
+      chirp_rate: 0.0002
+      truncate: 4.0
+      stride: 4
+    readout:
+      time_bins: 4
+      log_floor: 0.001
+  head_type: linear
+  head_hidden_dim: 16
+loss:
+  tau: 1.0
+  brier_weight: 0.25
+  domain_temperature: 0.25
+  lambda_delta: 0.1
+  reduction: worst_source
+  risk_reference: absolute
+  consistency_target: candidate
+assessment:
+  delta: 0.05
+  candidate_count: 4
+  target_scope: same_distribution

@@ -1,0 +1,9 @@
+model:
+  type: CNN
+  name: ResNet1D
+  input_dim: 1
+  num_classes: 3
+  layers: [2, 2, 2, 2]
+  initial_channels: 64
+  block_type: basic
+  device: cpu

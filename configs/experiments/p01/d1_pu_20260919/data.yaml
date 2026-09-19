@@ -1,0 +1,38 @@
+model:
+  num_classes: 3
+  class_names:
+  - healthy
+  - inner_race_or_IR_dominant_mixed
+  - outer_race_or_OR_dominant_mixed
+data:
+  layout: LC
+  squeeze_axes:
+  - 2
+  channel_indices:
+  - 2
+  window_size: 8192
+  windows_per_unit: 2
+datasets:
+- name: D1_PU
+  format: vibench_h5
+  metadata_file: /home/user/data/PHMbenchdata/PHM-Vibench/metadata.xlsx
+  h5_file: /home/user/data/PHMbenchdata/PHM-Vibench/RM_027_PU.h5
+  select:
+    Name:
+    - RM_027_PU
+  columns:
+    id: Id
+    label: Label
+    domain: Domain_id
+    unit_id: unit_id
+    split: split
+    sample_rate_hz: Sample_rate
+    rotation_speed_rpm: Domain_description
+  rotation_speed_pattern: (?P<rpm>900|1500)rpm, (?:0\.1|0\.7)Nm, (?:400|1000)N
+  protocol_file: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/protocol.csv
+  source_domains:
+  - 0
+  - 2
+  - 3
+  domain_sequence:
+  - 1

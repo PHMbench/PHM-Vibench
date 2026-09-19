@@ -1,0 +1,38 @@
+{
+  "completed_source_runs": 30,
+  "completed_core_slots": 15,
+  "completed_diagnostics": 11,
+  "completed_baseline_slots": 3,
+  "actual_development_histories": 30,
+  "unique_development_groups": 20,
+  "baseline_comparisons": [
+    {
+      "seed": 42,
+      "baseline": "ResNet1D",
+      "comparator": "O",
+      "matched_acquisition_draws": 6000,
+      "matched_steps": 1000,
+      "sampler_and_pair_schedule_equal": true,
+      "source_reference_vectors_equal": true
+    },
+    {
+      "seed": 123,
+      "baseline": "ResNet1D",
+      "comparator": "O",
+      "matched_acquisition_draws": 6000,
+      "matched_steps": 1000,
+      "sampler_and_pair_schedule_equal": true,
+      "source_reference_vectors_equal": true
+    },
+    {
+      "seed": 456,
+      "baseline": "ResNet1D",
+      "comparator": "O",
+      "matched_acquisition_draws": 6000,
+      "matched_steps": 1000,
+      "sampler_and_pair_schedule_equal": true,
+      "source_reference_vectors_equal": true
+    }
+  ],
+  "assessment_or_test_accessed": false
+}

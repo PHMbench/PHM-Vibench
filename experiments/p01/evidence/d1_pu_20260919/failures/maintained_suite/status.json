@@ -1,0 +1,12 @@
+{
+  "status": "collection_failed",
+  "exit_status": 2,
+  "environment": "LQ_signal",
+  "reason": "ModuleNotFoundError: streamlit while importing test/test_streamlit_app.py",
+  "tests_executed": false,
+  "explicitly_excluded_node": "test/test_p07_dirg_manifest.py::test_real_78_files_reader_and_window_materialization_are_exact_and_read_only",
+  "exclusion_reason": "Reads 78 real DIRG waveforms and generates hashes; outside the authorized PU D1 scope.",
+  "dependency_installation_performed": false,
+  "test_sources_modified_to_suppress_failure": false,
+  "scientific_training_failure": false
+}

@@ -1,0 +1,47 @@
+model:
+  type: X_model
+  name: TSPN_fusion
+  num_classes: 3
+  device: cpu
+  checkpoint_kind: reference
+  checkpoint_path: /tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/reference/selected_candidate.pt
+  reference_temperature: 1.0
+  head_frobenius_cap: 5.0
+  reference_config:
+    in_channels: 1
+    in_dim: 8192
+    out_dim: 8192
+    out_channels: 12
+    scale: 1
+    skip_connection: false
+    internal_instance_normalization: false
+    num_classes: 3
+    signal_processing_configs:
+      layer1:
+      - I
+      - HT
+      - WF
+    feature_extractor_configs:
+    - RMS
+    - Std
+    - AbsMean
+    f_c_mu: 0.18
+    f_c_sigma: 0.01
+    f_b_mu: 0.04
+    f_b_sigma: 0.001
+  use_reference_features: true
+  branches: []
+  head_type: mlp
+  head_hidden_dim: 8
+loss:
+  tau: 1.0
+  brier_weight: 0.25
+  domain_temperature: 0.25
+  lambda_delta: 0.0
+  reduction: mean_source
+  risk_reference: relative
+  consistency_target: correction
+assessment:
+  delta: 0.05
+  candidate_count: 4
+  target_scope: same_distribution
