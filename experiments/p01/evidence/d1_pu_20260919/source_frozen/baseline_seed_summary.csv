@@ -1,0 +1,17 @@
+split,arm,scope,metric,seeds,status,finite_seed_mean,seed_sd,lower,upper,interval_status
+validation,ResNet1D,condition:0,ce,"[42, 123, 456]",complete,1.4362052831053733,0.13119647509879578,,,not_computed
+validation,ResNet1D,condition:0,brier,"[42, 123, 456]",complete,0.8986486432152795,0.1577346513001939,,,not_computed
+validation,ResNet1D,condition:0,accuracy,"[42, 123, 456]",complete,0.35000000000000003,0.20880613017821098,,,not_computed
+validation,ResNet1D,condition:0,macro_f1,"[42, 123, 456]",complete,0.25791530308640537,0.14446884948323238,,,not_computed
+validation,ResNet1D,condition:2,ce,"[42, 123, 456]",complete,1.2661560603479545,0.10071371204340158,,,not_computed
+validation,ResNet1D,condition:2,brier,"[42, 123, 456]",complete,0.7962166795272793,0.09062202915255864,,,not_computed
+validation,ResNet1D,condition:2,accuracy,"[42, 123, 456]",complete,0.37999999999999995,0.1819340539866025,,,not_computed
+validation,ResNet1D,condition:2,macro_f1,"[42, 123, 456]",complete,0.3167087554132468,0.11137548039832894,,,not_computed
+validation,ResNet1D,condition:3,ce,"[42, 123, 456]",complete,1.9086080130251748,0.06875406169430483,,,not_computed
+validation,ResNet1D,condition:3,brier,"[42, 123, 456]",complete,0.9796050340072858,0.1316229622974913,,,not_computed
+validation,ResNet1D,condition:3,accuracy,"[42, 123, 456]",complete,0.34,0.08717797887081345,,,not_computed
+validation,ResNet1D,condition:3,macro_f1,"[42, 123, 456]",complete,0.22197448284404805,0.06800479774973842,,,not_computed
+validation,ResNet1D,source,ce,"[42, 123, 456]",complete,1.5369897854928343,0.06725087327647764,,,not_computed
+validation,ResNet1D,source,brier,"[42, 123, 456]",complete,0.891490118916615,0.10838316445310042,,,not_computed
+validation,ResNet1D,source,accuracy,"[42, 123, 456]",complete,0.35666666666666663,0.1483614205617859,,,not_computed
+validation,ResNet1D,source,macro_f1,"[42, 123, 456]",complete,0.2655328471145667,0.08862477044366114,,,not_computed

@@ -1,0 +1,25 @@
+split,arm,scope,metric,seeds,status,finite_seed_mean,seed_sd,lower,upper,interval_status
+test,ResNet1D,condition:0,ce,"[42, 123, 456]",complete,1.8069159427569026,0.2677201206434912,,,not_computed
+test,ResNet1D,condition:0,brier,"[42, 123, 456]",complete,1.0977603662239201,0.1592463731491878,,,not_computed
+test,ResNet1D,condition:0,accuracy,"[42, 123, 456]",complete,0.0857142857142857,0.07726181304565691,,,not_computed
+test,ResNet1D,condition:0,macro_f1,"[42, 123, 456]",complete,0.05778828473863934,0.05160993078858582,,,not_computed
+test,ResNet1D,condition:1,ce,"[42, 123, 456]",complete,2.1416847128953256,0.3658210139335541,,,not_computed
+test,ResNet1D,condition:1,brier,"[42, 123, 456]",complete,1.2636660740044745,0.1556653998908753,,,not_computed
+test,ResNet1D,condition:1,accuracy,"[42, 123, 456]",complete,0.021428571428571422,0.024743582965269666,,,not_computed
+test,ResNet1D,condition:1,macro_f1,"[42, 123, 456]",complete,0.020013173227947507,0.021158150658014848,,,not_computed
+test,ResNet1D,condition:2,ce,"[42, 123, 456]",complete,1.9055849476154885,0.3214557640336578,,,not_computed
+test,ResNet1D,condition:2,brier,"[42, 123, 456]",complete,1.1414687498567893,0.19133995779174073,,,not_computed
+test,ResNet1D,condition:2,accuracy,"[42, 123, 456]",complete,0.07380952380952381,0.059476171413318075,,,not_computed
+test,ResNet1D,condition:2,macro_f1,"[42, 123, 456]",complete,0.0536588112551147,0.03805754302745302,,,not_computed
+test,ResNet1D,condition:3,ce,"[42, 123, 456]",complete,1.7996150196840366,0.2355998780453059,,,not_computed
+test,ResNet1D,condition:3,brier,"[42, 123, 456]",complete,1.0807345426235133,0.15555049338158664,,,not_computed
+test,ResNet1D,condition:3,accuracy,"[42, 123, 456]",complete,0.15238095238095237,0.010910894511799623,,,not_computed
+test,ResNet1D,condition:3,macro_f1,"[42, 123, 456]",complete,0.11864790100262157,0.013320553665691983,,,not_computed
+test,ResNet1D,source,ce,"[42, 123, 456]",complete,1.8373719700188094,0.27405983322637406,,,not_computed
+test,ResNet1D,source,brier,"[42, 123, 456]",complete,1.1066545529014076,0.16865982897043208,,,not_computed
+test,ResNet1D,source,accuracy,"[42, 123, 456]",complete,0.10396825396825397,0.0488723946613989,,,not_computed
+test,ResNet1D,source,macro_f1,"[42, 123, 456]",complete,0.07669833233212521,0.03407515573573213,,,not_computed
+test,ResNet1D,unseen,ce,"[42, 123, 456]",complete,2.1416847128953256,0.3658210139335541,,,not_computed
+test,ResNet1D,unseen,brier,"[42, 123, 456]",complete,1.2636660740044745,0.1556653998908753,,,not_computed
+test,ResNet1D,unseen,accuracy,"[42, 123, 456]",complete,0.021428571428571422,0.024743582965269666,,,not_computed
+test,ResNet1D,unseen,macro_f1,"[42, 123, 456]",complete,0.020013173227947507,0.021158150658014848,,,not_computed

@@ -1,0 +1,28 @@
+{
+  "environment": "LQ_signal",
+  "executable": "/home/user/anaconda3/envs/LQ_signal/bin/python",
+  "python": "3.10.0",
+  "platform": "Linux-5.15.0-139-generic-x86_64-with-glibc2.31",
+  "packages": {
+    "torch": "2.6.0",
+    "numpy": "1.23.5",
+    "pandas": "1.5.3",
+    "scipy": "1.10.1",
+    "matplotlib": "3.7.0",
+    "h5py": "3.13.0",
+    "PyYAML": "6.0.1",
+    "pytest": "9.0.2"
+  },
+  "training_and_frozen_inference": {
+    "CUDA_VISIBLE_DEVICES": "0",
+    "device": "cuda:0",
+    "physical_gpu": 0,
+    "gpu_name": "NVIDIA GeForce RTX 4090",
+    "driver_version": "550.54.14",
+    "reported_total_memory_MiB": 24564,
+    "cpu_training_fallback": false,
+    "gpu2_used": false
+  },
+  "timing_environment": "Other projects were observed using physical GPU0 during later source fits and frozen export. These are observed shared-device wall times, not exclusive-device speed claims. Latency attempts separately record co-resident GPU processes before and after each measurement.",
+  "offline_analysis": "CUDA_VISIBLE_DEVICES is empty; existing prediction artifacts only. No H5 or checkpoint inference."
+}

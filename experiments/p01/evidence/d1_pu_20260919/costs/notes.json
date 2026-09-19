@@ -1,0 +1,36 @@
+{
+  "run_root": "/tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919",
+  "frozen_root": "/tmp/p01-d1-20260919-1irHPs/artifacts/d1_pu_20260919/frozen",
+  "expected_source_runs": 30,
+  "completed_source_runs": 30,
+  "missing_artifacts": [],
+  "firnet_status": {
+    "arm": "FIRNet",
+    "seeds": [
+      42,
+      123,
+      456
+    ],
+    "status": "blocked",
+    "reason": "No complete method or legal original FIRNet implementation available; official publisher access provides only abstract and section snippets. MCN and FIR-CCF are different methods and are not substituted.",
+    "doi": "10.1016/j.ymssp.2024.111314",
+    "source": "https://www.sciencedirect.com/science/article/pii/S0888327024002127",
+    "training_performed": false,
+    "core_execution_blocked": false
+  },
+  "interpretation": [
+    "Blank fields mean unavailable/not separately measured; they are not zero costs.",
+    "Process/filesystem/protected-stage intervals overlap component timers and must not be summed together.",
+    "Reference pretraining is one separate run; reused labels are not charged once per arm or seed.",
+    "Label rows are unique acquisition pools, with physical groups deduplicated across conditions; reserved rows are not evidence of access.",
+    "Window counts use the frozen windows_per_unit declaration; one acquisition label is reused across its windows.",
+    "ResNet direct parameters exclude the stored reference; measured peak memory may include both resident models.",
+    "Latency repetitions are timing repeats of one source-validation input, not independent specimens.",
+    "No latency was rerun; no checkpoint, raw waveform or prediction NPZ was read.",
+    "Training diagnostic means/medians weight recorded batches equally along changing optimization states, not independent specimens or frozen models.",
+    "Unscaled feature energy/norm follow the recorded z/sqrt(d) convention exactly; branch-specific native units do not imply energy matching.",
+    "Median feature summaries aggregate within-batch medians, not all-window medians; sampled_window_visits include reused observations.",
+    "First-readout MLP column-block gradients are not additive branch-logit contributions; pair_penalty is unweighted and contributes nothing when lambda_delta=0.",
+    "Training A, b and b/sqrt(A), pair responses and source weights are trajectory diagnostics, not independent-assessment guarantees."
+  ]
+}

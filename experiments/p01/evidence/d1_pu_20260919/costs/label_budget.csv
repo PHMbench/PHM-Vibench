@@ -1,0 +1,23 @@
+pool,split,domain,access_status,groups,acquisitions,windows,labelled_acquisitions,reference_reuses_pool,counts_basis
+source_fit,update,all,accessed,15,900,1800,900,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_fit,update,0,accessed,15,300,600,300,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_fit,update,2,accessed,15,300,600,300,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_fit,update,3,accessed,15,300,600,300,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_selection,validation,all,accessed,5,300,600,300,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_selection,validation,0,accessed,5,100,200,100,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_selection,validation,2,accessed,5,100,200,100,True,frozen acquisition identities; windows from frozen windows_per_unit
+source_selection,validation,3,accessed,5,100,200,100,True,frozen acquisition identities; windows from frozen windows_per_unit
+assessment,assessment,all,accessed,5,300,600,300,False,frozen acquisition identities; windows from frozen windows_per_unit
+assessment,assessment,0,accessed,5,100,200,100,False,frozen acquisition identities; windows from frozen windows_per_unit
+assessment,assessment,2,accessed,5,100,200,100,False,frozen acquisition identities; windows from frozen windows_per_unit
+assessment,assessment,3,accessed,5,100,200,100,False,frozen acquisition identities; windows from frozen windows_per_unit
+test,test,all,accessed,7,559,1118,559,False,frozen acquisition identities; windows from frozen windows_per_unit
+test,test,0,accessed,7,140,280,140,False,frozen acquisition identities; windows from frozen windows_per_unit
+test,test,1,accessed,7,140,280,140,False,frozen acquisition identities; windows from frozen windows_per_unit
+test,test,2,accessed,7,139,278,139,False,frozen acquisition identities; windows from frozen windows_per_unit
+test,test,3,accessed,7,140,280,140,False,frozen acquisition identities; windows from frozen windows_per_unit
+distinct_accessed_union,multiple,all,accessed,32,2059,4118,2059,True,union of accessed frozen acquisition identities
+distinct_accessed_union,multiple,0,accessed,32,640,1280,640,True,union of accessed frozen acquisition identities
+distinct_accessed_union,multiple,1,accessed,7,140,280,140,True,union of accessed frozen acquisition identities
+distinct_accessed_union,multiple,2,accessed,32,639,1278,639,True,union of accessed frozen acquisition identities
+distinct_accessed_union,multiple,3,accessed,32,640,1280,640,True,union of accessed frozen acquisition identities
