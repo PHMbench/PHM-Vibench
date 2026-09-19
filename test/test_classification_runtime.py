@@ -214,6 +214,94 @@ def test_pipeline_wrappers_only_select_hooks(monkeypatch: pytest.MonkeyPatch) ->
     assert calls == [("p01", marker), ("p05", marker, "ExplainabilityHooks")]
 
 
+def test_tii_iterations_preserve_source_rms_request_and_use_each_fitted_scale(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    args = _args(tmp_path, iterations=2)
+    config = args.compiled_run_spec.runtime_config()
+    config["task"]["name"] = "tii_joint"
+    config["data"].update(num_patches=4, patch_size=16)
+    config["model"].update(
+        source_rms="source_train", num_patches=4, patch_size_L=16
+    )
+    config["trainer"]["test_after_fit"] = False
+    args.compiled_run_spec = CompiledRunSpec.compile(
+        ResolvedConfig(
+            requested="tii-iterations",
+            path=tmp_path / "tii.yaml",
+            data=config,
+            pipeline="Pipeline_01_Fault_Diagnosis",
+            overrides={},
+        )
+    )
+    scales = iter([2.5, 4.0])
+    requested_models, built_models, task_models, context_models = [], [], [], []
+    fitted_scales = []
+
+    class Hooks(classification.ClassificationHooks):
+        def on_iteration_start(self, context):
+            requested_models.append(context.args_model)
+            assert context.args_model.source_rms == "source_train"
+
+        def after_stack_built(self, context):
+            context_models.append(context.args_model)
+
+    class DataFactory:
+        def __init__(self):
+            self.source_rms = next(scales)
+            self.window_inventory = [{"group": 0, "role": "source_train"}]
+
+        def get_metadata(self):
+            return {0: {"Label": 0, "Dataset_id": 1}}
+
+        def get_dataloader(self, split):
+            assert split in {"train", "val"}
+            return split
+
+    class Trainer:
+        def fit(self, task, train, val):
+            assert (train, val) == ("train", "val")
+            fitted_scales.append(task.args_model.source_rms)
+
+    def build_model(args_model, **kwargs):
+        built_models.append(args_model)
+        return SimpleNamespace(args_model=args_model)
+
+    def build_task(**kwargs):
+        task_models.append(kwargs["args_model"])
+        assert kwargs["network"].args_model is kwargs["args_model"]
+        return SimpleNamespace(args_model=kwargs["args_model"])
+
+    monkeypatch.setattr(classification, "init_lab", lambda *a: None)
+    monkeypatch.setattr(classification, "close_lab", lambda: None)
+    monkeypatch.setattr(classification, "seed_everything", lambda seed: None)
+    monkeypatch.setattr(classification, "build_data", lambda *a: DataFactory())
+    monkeypatch.setattr(classification, "build_model", build_model)
+    monkeypatch.setattr(classification, "build_task", build_task)
+    monkeypatch.setattr(classification, "build_trainer", lambda *a: Trainer())
+    monkeypatch.setattr(
+        classification, "load_best_model_checkpoint", lambda task, trainer: task
+    )
+    monkeypatch.setattr(
+        classification, "_best_checkpoint_path", lambda trainer: tmp_path / "mock.ckpt"
+    )
+
+    result = classification.run_classification_pipeline(args, hooks=Hooks())
+
+    assert result["status"] == "succeeded"
+    assert len(result["best_checkpoints"]) == 2
+    assert fitted_scales == [2.5, 4.0]
+    assert requested_models[0] is requested_models[1]
+    assert requested_models[0].source_rms == "source_train"
+    assert built_models[0] is not built_models[1]
+    for requested, built, task, context in zip(
+        requested_models, built_models, task_models, context_models
+    ):
+        assert built is not requested
+        assert built is task is context
+
+
 def test_same_file_fewshot_windows_are_disjoint_across_splits() -> None:
     raw = np.arange(40, dtype=np.float32).reshape(20, 2)
     data = {1: raw}

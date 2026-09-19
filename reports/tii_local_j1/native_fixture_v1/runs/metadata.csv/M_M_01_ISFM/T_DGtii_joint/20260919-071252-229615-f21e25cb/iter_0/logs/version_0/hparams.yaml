@@ -1,0 +1,86 @@
+data:
+  batch_size: 32
+  cache_dir: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\u76EE\
+    /03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/scratch"
+  common_bands_hz:
+  - - 1.0
+    - 8.0
+  data_dir: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\u76EE\
+    /03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1"
+  duration_s: 1.0
+  evidence_kind: tensor_fixture
+  factory_name: default
+  grid_rate_hz: 64.0
+  increment_bands_hz:
+  - - 8.0
+    - 24.0
+  metadata_file: metadata.csv
+  normalization: source_rms
+  num_patches: 4
+  num_workers: 0
+  output_unit: m/s^2
+  patch_size: 16
+  record_inventory: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\
+    \u76EE/03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/records.csv"
+  rounds: 20
+  seed: 0
+  source_batch_size: 32
+  use_cache: true
+environment:
+  iterations: 1
+  notes: M0 tensor fixture; not industrial J1-C
+  output_dir: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\u76EE\
+    /03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs"
+  project: tii_M0_tensor_fixture
+  seed: 0
+  swanlab: false
+  wandb: false
+model:
+  backbone: B_04_Dlinear
+  d_model: 8
+  embedding: SupportConditionedTokenizer
+  name: M_01_ISFM
+  num_classes:
+    '1': 2
+    '2': 2
+  num_patches: 4
+  output_dim: 8
+  patch_size_L: 16
+  source_rms: 0.7557584548882775
+  task_head: H_01_Linear_cla
+  token_organization: ordinary
+  type: ISFM
+task:
+  lambda_common: 0
+  lambda_private: 0
+  loss: CE
+  lr: 0.001
+  metrics:
+  - acc
+  name: tii_joint
+  optimizer: adamw
+  sampling_seed: 0
+  scheduler: null
+  source_system_ids:
+  - 1
+  - 2
+  target_system_id:
+  - 1
+  - 2
+  type: DG
+  weight_decay: 0.0001
+trainer:
+  checkpoint_min_delta: 1.0e-08
+  deterministic: true
+  device: cpu
+  devices: 1
+  early_stopping: false
+  log_every_n_steps: 1
+  logger_name: metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071252-229615-f21e25cb
+  monitor: val_group_nll
+  monitor_mode: min
+  name: Default_trainer
+  num_epochs: 1
+  num_sanity_val_steps: 0
+  test_after_fit: false
+  val_check_interval: 10

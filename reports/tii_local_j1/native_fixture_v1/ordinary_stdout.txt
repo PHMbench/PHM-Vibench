@@ -1,0 +1,57 @@
+Seed set to 0
+GPU available: True (cuda), used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/setup.py:177: GPU available but not used. You can set it by doing `Trainer(accelerator='gpu')`.
+Missing logger folder: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs/metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071252-229615-f21e25cb/iter_0/logs
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:652: Checkpoint directory /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs/metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071252-229615-f21e25cb/iter_0 exists and is not empty.
+
+  | Name    | Type  | Params | Mode 
+------------------------------------------
+0 | network | Model | 420    | train
+------------------------------------------
+420       Trainable params
+0         Non-trainable params
+420       Total params
+0.002     Total estimated model params size (MB)
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=143` in the `DataLoader` to improve performance.
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=143` in the `DataLoader` to improve performance.
+
+==================================================
+[INFO] 开始实验迭代 1/1
+==================================================
+[INFO] 设置随机种子: 0
+[INFO] WandB disabled by configuration.
+[INFO] 构建数据工厂...
+[SUCCESS] 成功加载本地元数据: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/metadata.csv (16 条记录)
+[SUCCESS] TII source loaders: train=20 batches, val=2 batches
+[INFO] 构建模型...
+[INFO] 构建任务...
+[INFO] 构建训练器...
+[INFO] 开始训练...
+Training: |          | 0/? [00:00<?, ?it/s]Training:   0%|          | 0/20 [00:00<?, ?it/s]Epoch 0:   0%|          | 0/20 [00:00<?, ?it/s] Epoch 0:   5%|▌         | 1/20 [00:00<00:00, 24.50it/s]Epoch 0:   5%|▌         | 1/20 [00:00<00:00, 24.30it/s, v_num=0]Epoch 0:  10%|█         | 2/20 [00:00<00:00, 25.40it/s, v_num=0]Epoch 0:  10%|█         | 2/20 [00:00<00:00, 25.30it/s, v_num=0]Epoch 0:  15%|█▌        | 3/20 [00:00<00:00, 25.86it/s, v_num=0]Epoch 0:  15%|█▌        | 3/20 [00:00<00:00, 25.80it/s, v_num=0]Epoch 0:  20%|██        | 4/20 [00:00<00:00, 26.14it/s, v_num=0]Epoch 0:  20%|██        | 4/20 [00:00<00:00, 26.09it/s, v_num=0]Epoch 0:  25%|██▌       | 5/20 [00:00<00:00, 26.38it/s, v_num=0]Epoch 0:  25%|██▌       | 5/20 [00:00<00:00, 26.34it/s, v_num=0]Epoch 0:  30%|███       | 6/20 [00:00<00:00, 26.55it/s, v_num=0]Epoch 0:  30%|███       | 6/20 [00:00<00:00, 26.52it/s, v_num=0]Epoch 0:  35%|███▌      | 7/20 [00:00<00:00, 26.61it/s, v_num=0]Epoch 0:  35%|███▌      | 7/20 [00:00<00:00, 26.58it/s, v_num=0]Epoch 0:  40%|████      | 8/20 [00:00<00:00, 26.71it/s, v_num=0]Epoch 0:  40%|████      | 8/20 [00:00<00:00, 26.69it/s, v_num=0]Epoch 0:  45%|████▌     | 9/20 [00:00<00:00, 26.82it/s, v_num=0]Epoch 0:  45%|████▌     | 9/20 [00:00<00:00, 26.80it/s, v_num=0]Epoch 0:  50%|█████     | 10/20 [00:00<00:00, 26.89it/s, v_num=0]Epoch 0:  50%|█████     | 10/20 [00:00<00:00, 26.86it/s, v_num=0]
+Validation: |          | 0/? [00:00<?, ?it/s][A
+Validation:   0%|          | 0/2 [00:00<?, ?it/s][A
+Validation DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s][A
+Validation DataLoader 0:  50%|█████     | 1/2 [00:00<00:00, 251.52it/s][A
+Validation DataLoader 0: 100%|██████████| 2/2 [00:00<00:00, 248.79it/s][A
+                                                                       [AEpoch 0:  50%|█████     | 10/20 [00:00<00:00, 24.25it/s, v_num=0]Epoch 0:  55%|█████▌    | 11/20 [00:00<00:00, 24.68it/s, v_num=0]Epoch 0:  55%|█████▌    | 11/20 [00:00<00:00, 24.66it/s, v_num=0]Epoch 0:  60%|██████    | 12/20 [00:00<00:00, 24.89it/s, v_num=0]Epoch 0:  60%|██████    | 12/20 [00:00<00:00, 24.88it/s, v_num=0]Epoch 0:  65%|██████▌   | 13/20 [00:00<00:00, 25.05it/s, v_num=0]Epoch 0:  65%|██████▌   | 13/20 [00:00<00:00, 25.03it/s, v_num=0]Epoch 0:  70%|███████   | 14/20 [00:00<00:00, 25.22it/s, v_num=0]Epoch 0:  70%|███████   | 14/20 [00:00<00:00, 25.20it/s, v_num=0]Epoch 0:  75%|███████▌  | 15/20 [00:00<00:00, 25.38it/s, v_num=0]Epoch 0:  75%|███████▌  | 15/20 [00:00<00:00, 25.36it/s, v_num=0]Epoch 0:  80%|████████  | 16/20 [00:00<00:00, 25.51it/s, v_num=0]Epoch 0:  80%|████████  | 16/20 [00:00<00:00, 25.50it/s, v_num=0]Epoch 0:  85%|████████▌ | 17/20 [00:00<00:00, 25.64it/s, v_num=0]Epoch 0:  85%|████████▌ | 17/20 [00:00<00:00, 25.63it/s, v_num=0]Epoch 0:  90%|█████████ | 18/20 [00:00<00:00, 25.75it/s, v_num=0]Epoch 0:  90%|█████████ | 18/20 [00:00<00:00, 25.74it/s, v_num=0]Epoch 0:  95%|█████████▌| 19/20 [00:00<00:00, 25.85it/s, v_num=0]Epoch 0:  95%|█████████▌| 19/20 [00:00<00:00, 25.84it/s, v_num=0]Epoch 0: 100%|██████████| 20/20 [00:00<00:00, 25.94it/s, v_num=0]Epoch 0: 100%|██████████| 20/20 [00:00<00:00, 25.93it/s, v_num=0]
+Validation: |          | 0/? [00:00<?, ?it/s][A
+Validation:   0%|          | 0/2 [00:00<?, ?it/s][A
+Validation DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s][A
+Validation DataLoader 0:  50%|█████     | 1/2 [00:00<00:00, 272.75it/s][A
+Validation DataLoader 0: 100%|██████████| 2/2 [00:00<00:00, 261.11it/s][A
+                                                                       [AEpoch 0: 100%|██████████| 20/20 [00:00<00:00, 24.87it/s, v_num=0]Epoch 0: 100%|██████████| 20/20 [00:00<00:00, 24.68it/s, v_num=0]`Trainer.fit` stopped: `max_epochs=1` reached.
+Epoch 0: 100%|██████████| 20/20 [00:00<00:00, 24.66it/s, v_num=0]
+[INFO] 加载最佳模型并测试...
+[INFO] WandB logger closed.
+[INFO] SwanLab is not used: You must call swanlab.init() before using finish()
+[INFO] SwanLab logger closed.
+
+==================================================
+[INFO] 训练完成；配置禁止测试
+==================================================
+result_dir=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs/metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071252-229615-f21e25cb
+best_checkpoint=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs/metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071252-229615-f21e25cb/iter_0/model-epoch=00-step=20.ckpt
+primary_metrics={}
+run=completed

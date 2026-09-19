@@ -1,0 +1,25 @@
+file,metadata_id,observation,raw_rate_hz,metadata_rate_hz,cache_equals_raw,details
+RM_007_MFPT.h5,46282,embedded MAT sr and entire gs compared to cache,97656.0,97656.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46283,embedded MAT sr and entire gs compared to cache,97656.0,97656.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46284,embedded MAT sr and entire gs compared to cache,97656.0,97656.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46285,embedded MAT sr and entire gs compared to cache,97656.0,97656.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46286,embedded MAT sr and entire gs compared to cache,97656.0,97656.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46287,embedded MAT sr and entire gs compared to cache,97656.0,97656.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46288,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46289,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46290,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46291,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46292,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46293,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46294,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46295,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46296,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46297,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46298,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46299,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46300,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46301,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46302,embedded MAT sr and entire gs compared to cache,48828.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46303,embedded MAT sr and entire gs compared to cache,24414.0,48828.0,True,no resampling where exact=True
+RM_007_MFPT.h5,46304,embedded MAT sr and entire gs compared to cache,6104.0,48828.0,True,no resampling where exact=True
+RM_027_PU.h5,47567,original vibration_1 time axis and units; native reader discards time axis,64205.44507562148,64000.0,,"{""unit"":[],""samples"":256823,""timestamps"":256823,""duration"":4.000003421789442,""dt_quantiles"":[4.277236802074924e-06,1.5398052489068448e-05,1.5825776169542394e-05]}"

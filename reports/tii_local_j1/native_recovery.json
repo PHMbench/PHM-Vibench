@@ -1,0 +1,63 @@
+{
+  "status": "PASS",
+  "evidence_kind": "tensor_fixture",
+  "config": "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5de5\u4f5c\u4e0e\u9879\u76ee/03_\u8bba\u6587\u6d41\u6c34\u7ebf/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/native.yaml",
+  "command": "python -m scripts.tii_verify_native_fixture --fixture reports/tii_local_j1/native_fixture_v1 --output reports/tii_local_j1",
+  "python": "3.10.0",
+  "torch": "2.6.0+cu124",
+  "pytorch_lightning": "2.3.3",
+  "device": "cpu",
+  "elapsed_seconds": 0.7158789779641666,
+  "peak_rss_kib": 703020,
+  "arms": [
+    {
+      "method": "ordinary",
+      "status": "PASS",
+      "checkpoint": "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5de5\u4f5c\u4e0e\u9879\u76ee/03_\u8bba\u6587\u6d41\u6c34\u7ebf/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs/metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071252-229615-f21e25cb/iter_0/model-epoch=00-step=20.ckpt",
+      "global_step": 20,
+      "source_rms": 0.7557584548882775,
+      "source_heads": [
+        "1",
+        "2"
+      ],
+      "optimizer_parameter_states": 16,
+      "optimizer_steps": [
+        20
+      ],
+      "sampler_rounds_bitwise_equal": 20,
+      "source_validation_windows": 16,
+      "tokens_features_logits_bitwise_equal": true,
+      "rms_optimizer_bitwise_equal": true,
+      "source_val_group_nll": 0.6602382659912109,
+      "source_val_group_acc": 0.75,
+      "checkpoint_score_matches_recomputed_source_validation": true
+    },
+    {
+      "method": "support",
+      "status": "PASS",
+      "checkpoint": "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5de5\u4f5c\u4e0e\u9879\u76ee/03_\u8bba\u6587\u6d41\u6c34\u7ebf/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs/metadata.csv/M_M_01_ISFM/T_DGtii_joint/20260919-071316-121506-b21a34c9/iter_0/model-epoch=00-step=20.ckpt",
+      "global_step": 20,
+      "source_rms": 0.7557584548882775,
+      "source_heads": [
+        "1",
+        "2"
+      ],
+      "optimizer_parameter_states": 16,
+      "optimizer_steps": [
+        20
+      ],
+      "sampler_rounds_bitwise_equal": 20,
+      "source_validation_windows": 16,
+      "tokens_features_logits_bitwise_equal": true,
+      "rms_optimizer_bitwise_equal": true,
+      "source_val_group_nll": 0.6746500357985497,
+      "source_val_group_acc": 0.5,
+      "checkpoint_score_matches_recomputed_source_validation": true
+    }
+  ],
+  "limitations": [
+    "Constructed source fixtures; no industrial qualification, target head or query evaluation.",
+    "Replays saved states and the fixed round sampler; does not resume Trainer loops or take a new optimizer step.",
+    "Only CPU bitwise equality is established."
+  ]
+}

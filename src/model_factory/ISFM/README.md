@@ -59,3 +59,22 @@ A component change should document its actual tensor/metadata contract and test 
 affected complete configuration. Do not edit the CLI or add another configuration
 loader. Parameter efficiency, cross-system generalization and diagnostic accuracy require
 matched experiments and are not guaranteed by selecting the ISFM family.
+
+## Projected support-conditioned tokens
+
+`M_01_ISFM` also accepts `embedding: SupportConditionedTokenizer` with explicit
+`token_organization: support` or `ordinary`. Both use two Linear–GELU–Linear
+branches of width `D/2`, with `output_dim=D`, `d_model` as branch hidden width,
+`patch_size_L=P` and `num_patches=K`. Inputs are preprojected common/incremental
+`[B,K,P]` cells and one binary `availability` value per observation. All K time
+positions are valid; availability gates a channel block, not time padding.
+`source_rms` is one positive source-training scalar saved as a model buffer.
+The data protocol must supply qualified physical projections and fit that scalar;
+selecting this component alone does not establish those prerequisites.
+
+`model.encode(x, incremental=p, availability=a)` returns backbone tokens without
+head or dataset lookup. For unseen targets using native HSE, pass `sample_rates`
+directly; E_01_HSE also accepts explicit `start_indices_L/start_indices_C` through
+this interface. The caller freezes parameters and sets evaluation mode before
+target adaptation. The existing `forward(return_feature=True)` retains its
+logits-and-features contract; frozen target extraction uses `encode()`.
