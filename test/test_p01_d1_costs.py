@@ -156,3 +156,65 @@ def test_failed_run_is_not_success_and_source_access_is_preserved(artifacts, tmp
     costs = _rows(tmp_path/"summary"/"cost.csv")
     row = next(row for row in costs if row["arm"] == "O" and row["seed"] == "42" and row["stage"] == "fit")
     assert row["status"] == "failed" and row["acquisitions"] == "4"
+
+
+def test_training_summaries_preserve_scale_direction_and_missing_values(artifacts, tmp_path):
+    root, frozen, _, _ = artifacts
+    run = root/"core"/"O"/"seed_42"
+    def write(name, rows):
+        with (run/name).open("w", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+    write("training_features.csv", [dict(epoch=0, step=step, branch="view", feature_dim=4,
+          sampled_windows=12, mean_scaled_squared_norm=energy, median_scaled_norm=norm,
+          input_weight_parameters=12, input_weight_gradient_norm=5+2*step, raw_input_weight_norm=2,
+          effective_input_weight_norm=1, effective_output_weight_norm=3)
+          for step, energy, norm in [(0, 2, 1), (1, 6, 2)]])
+    write("training_domains.csv", [dict(epoch=0, step=step, domain="0", candidate_risk=1+step,
+          reference_risk=.5, excess=.5+step, weight=.25+step*.5) for step in (0, 1)])
+    write("training_reference_prior.csv", [dict(epoch=0, step=step, domain_i="0", domain_j="2",
+          reference_risk_difference_over_rho=value) for step, value in [(0, .4), (1, -.8)]])
+    write("training_responses.csv", [dict(epoch=0, step=step, domain="0", A=4*step, b=-2*step,
+          sqrt_A=2*step, b_over_sqrt_A=None if step == 0 else -1,
+          delta_p0_squared_norm=step, delta_q_squared_norm=2+step, delta_v_squared_norm=3+step,
+          delta_p0_mean_vector=json.dumps([step, -step]),
+          delta_q_mean_vector=json.dumps([1+step, -1-step]),
+          delta_v_mean_vector=json.dumps([1, -1])) for step in (0, 1)])
+    write("training_batches.csv", [dict(epoch=0, step=step, loss=1, risk_objective=1, diagnostic_excess=1,
+          max_source_excess=1, source_envelope=1, correction_consistency=2+4*step,
+          candidate_output_consistency=5+2*step, reference_output_consistency=step, pair_penalty=2+4*step) for step in (0, 1)])
+    output = tmp_path/"summary"
+    summarize(root, frozen, [], output)
+    features = [row for row in _rows(output/"training_features_summary.csv") if row["arm"] == "O" and row["seed"] == "42"]
+    metrics = {row["metric"]: row for row in features}
+    assert float(metrics["mean_unscaled_squared_norm"]["mean"]) == 16
+    assert float(metrics["median_unscaled_norm"]["median"]) == 3
+    assert float(metrics["input_weight_gradient_norm"]["mean"]) == 6
+    assert metrics["mean_scaled_squared_norm"]["n"] == "2"
+    assert metrics["mean_scaled_squared_norm"]["sampled_window_visits"] == "24"
+    assert "not pooled-window median" in metrics["median_scaled_norm"]["derivation"]
+    mechanisms = [row for row in _rows(output/"training_mechanism_summary.csv") if row["arm"] == "O" and row["seed"] == "42"]
+    ratio = next(row for row in mechanisms if row["metric"] == "b_over_sqrt_A")
+    assert ratio["n"] == "1" and ratio["n_missing"] == "1" and float(ratio["mean"]) == -1
+    prior = next(row for row in mechanisms if row["metric"] == "reference_risk_difference_over_rho")
+    assert float(prior["mean"]) == pytest.approx(-.2)
+    vector = next(row for row in mechanisms if row["metric"] == "delta_q_mean_vector" and row["component"] == "1")
+    assert float(vector["mean"]) == -1.5
+    penalties = {row["metric"]: float(row["mean"]) for row in mechanisms if row["family"] == "objective"}
+    assert penalties["correction_consistency"] == 4 and penalties["candidate_output_consistency"] == 6
+    assert all("not frozen population estimates" in row["summary_scope"] for row in features+mechanisms)
+    assert not ({"group_id", "acquisition_id", "window_id"} & set(features[0]))
+    assert not ({"group_id", "acquisition_id", "window_id"} & set(mechanisms[0]))
+
+
+def test_missing_training_files_are_missing_and_failed_runs_are_not_summarized(artifacts, tmp_path):
+    root, frozen, _, _ = artifacts
+    _json(root/"core"/"O"/"seed_42"/"execution_status.json", dict(exit_status=1))
+    output = tmp_path/"summary"
+    notes = summarize(root, frozen, [], output)
+    features = _rows(output/"training_features_summary.csv")
+    assert not any(row["arm"] == "O" and row["seed"] == "42" for row in features)
+    missing = next(row for row in features if row["arm"] == "O" and row["seed"] == "123")
+    assert missing["measurement_status"] == "missing" and missing["mean"] == missing["median"] == ""
+    assert str(root/"core"/"O"/"seed_123"/"training_features.csv") in notes["missing_artifacts"]

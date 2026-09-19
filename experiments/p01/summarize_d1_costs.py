@@ -8,12 +8,15 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 from pathlib import Path
+import statistics
 
 import yaml
 
 CORE_ARMS = ("MLP16", "O", "UO", "RO", "RC")
 SEEDS = (42, 123, 456)
+TRAINING_SCOPE = "equal-weight summaries of recorded source-training batch statistics; changing models, not frozen population estimates"
 
 
 def _read(path: Path):
@@ -117,6 +120,105 @@ def label_pools(root: Path, frozen: Path, runs: list[dict], f1: dict, f2: dict, 
     return rows
 
 
+def _batch_summary(values: list, *, artifact: Path, metric: str) -> dict:
+    present = [float(value) for value in values if value not in (None, "")]
+    if any(not math.isfinite(value) for value in present):
+        raise ValueError(f"Nonfinite recorded training statistic: {artifact}: {metric}")
+    return dict(mean=statistics.fmean(present) if present else None,
+                median=statistics.median(present) if present else None,
+                n=len(present), n_missing=len(values)-len(present),
+                measurement_status="recorded" if len(present) == len(values) else "partial" if present else "missing")
+
+
+def training_diagnostics(specs: list[tuple], runs: list[dict], missing: list[str]) -> tuple[list[dict], list[dict]]:
+    """Reduce existing trajectory diagnostics without pooling windows or subjects."""
+    features, mechanisms = [], []
+    feature_metrics = {
+        "mean_scaled_squared_norm": ("scaled feature units squared", "recorded within-batch mean of ||z/sqrt(d)||^2"),
+        "mean_unscaled_squared_norm": ("native feature units squared", "d times recorded mean_scaled_squared_norm"),
+        "median_scaled_norm": ("scaled feature units", "recorded within-batch median of ||z/sqrt(d)||; not pooled-window median"),
+        "median_unscaled_norm": ("native feature units", "sqrt(d) times recorded median_scaled_norm; not pooled-window median"),
+        "input_weight_gradient_norm": ("loss per native parameter coordinate", "raw first-readout parameter gradient Frobenius norm; MLP input-column block"),
+        "raw_input_weight_norm": ("native weight coordinates", "raw first-readout input-column-block Frobenius norm"),
+        "effective_input_weight_norm": ("native weight coordinates", "effective capped first-readout input-column-block Frobenius norm"),
+        "effective_output_weight_norm": ("native weight coordinates", "whole effective output matrix norm; repeated across branch rows"),
+    }
+    mechanism_files = [
+        ("training_domains.csv", "domain_risk", ("domain",), {
+            "candidate_risk": "CE + beta Brier", "reference_risk": "CE + beta Brier", "excess": "CE + beta Brier", "weight": "dimensionless"}),
+        ("training_reference_prior.csv", "reference_prior", ("domain_i", "domain_j"), {
+            "reference_risk_difference_over_rho": "dimensionless (c_i-c_j)/rho"}),
+        ("training_responses.csv", "response", ("domain",), {
+            "A": "squared probability L2 norm", "b": "probability inner product", "sqrt_A": "probability L2 norm",
+            "b_over_sqrt_A": "signed probability direction; undefined when A=0",
+            "delta_p0_squared_norm": "squared probability L2 norm", "delta_q_squared_norm": "squared probability L2 norm",
+            "delta_v_squared_norm": "squared probability L2 norm"}),
+        ("training_batches.csv", "objective", (), {
+            "loss": "CE + beta Brier + weighted consistency", "risk_objective": "CE + beta Brier",
+            "diagnostic_excess": "CE + beta Brier", "max_source_excess": "CE + beta Brier", "source_envelope": "CE + beta Brier",
+            "correction_consistency": "unweighted squared probability L2 norm",
+            "candidate_output_consistency": "unweighted squared probability L2 norm",
+            "reference_output_consistency": "squared probability L2 norm", "pair_penalty": "selected unweighted squared probability L2 norm"}),
+    ]
+    for (arm, seed, role, directory), run in zip(specs, runs):
+        if run["status"] != "completed" or role not in {"core", "diagnostic"}:
+            continue
+        base = dict(arm=arm, seed=seed, role=role, summary_scope=TRAINING_SCOPE,
+                    risk_reference=run["scope"].get("risk_reference"), consistency_target=run["scope"].get("consistency_target"))
+
+        def grouped(filename, keys, destination, family):
+            path = directory/filename
+            rows = []
+            if path.is_file():
+                with path.open(newline="") as stream:
+                    rows = list(csv.DictReader(stream))
+            if not rows:
+                missing.append(str(path))
+                destination.append(dict(base, family=family, measurement_status="missing", artifact=str(path)))
+            groups = {}
+            for row in rows:
+                groups.setdefault(tuple(row[key] for key in keys), []).append(row)
+            return path, groups
+
+        path, groups = grouped("training_features.csv", ("branch",), features, "features")
+        for (branch,), rows in groups.items():
+            dimensions = {int(row["feature_dim"]) for row in rows}
+            if len(dimensions) != 1:
+                raise ValueError(f"Changing feature dimension in {path}: {branch}")
+            dimension = dimensions.pop()
+            parameters = {row.get("input_weight_parameters") for row in rows}
+            info = dict(base, branch=branch, feature_dim=dimension,
+                        input_weight_parameters=next(iter(parameters)) if len(parameters) == 1 else None,
+                        n_batches=len({(row["epoch"], row["step"]) for row in rows}),
+                        sampled_window_visits=sum(int(row["sampled_windows"]) for row in rows), artifact=str(path))
+            for metric, (unit, derivation) in feature_metrics.items():
+                source = metric.replace("unscaled", "scaled")
+                factor = dimension if metric == "mean_unscaled_squared_norm" else math.sqrt(dimension) if metric == "median_unscaled_norm" else 1.
+                values = [float(row[source])*factor if row.get(source) not in (None, "") else None for row in rows]
+                features.append(dict(info, metric=metric, unit=unit, derivation=derivation,
+                                     **_batch_summary(values, artifact=path, metric=metric)))
+        for filename, family, keys, metrics in mechanism_files:
+            path, groups = grouped(filename, keys, mechanisms, family)
+            for identity, rows in groups.items():
+                info = dict(base, family=family, **dict(zip(keys, identity)), artifact=str(path),
+                            n_batches=len({(row["epoch"], row["step"]) for row in rows}))
+                for metric, unit in metrics.items():
+                    mechanisms.append(dict(info, metric=metric, unit=unit,
+                                           **_batch_summary([row.get(metric) for row in rows], artifact=path, metric=metric)))
+                if family == "response":
+                    for metric in ("delta_p0_mean_vector", "delta_q_mean_vector", "delta_v_mean_vector"):
+                        vectors = [json.loads(row[metric]) if row.get(metric) else None for row in rows]
+                        dimensions = {len(vector) for vector in vectors if vector is not None}
+                        if len(dimensions) > 1:
+                            raise ValueError(f"Changing class-vector dimension in {path}: {metric}")
+                        for component in range(next(iter(dimensions), 0)):
+                            mechanisms.append(dict(info, metric=metric, component=component, unit="signed probability; frozen class-order index",
+                                **_batch_summary([vector[component] if vector is not None else None for vector in vectors], artifact=path, metric=metric)))
+                        if not dimensions:
+                            mechanisms.append(dict(info, metric=metric, measurement_status="missing"))
+    return features, mechanisms
+
+
 def summarize(run_root: Path, frozen_root: Path, latency_dirs: list[Path], output: Path) -> dict:
     root, frozen = run_root.resolve(), frozen_root.resolve()
     if output.exists():
@@ -215,6 +317,7 @@ def summarize(run_root: Path, frozen_root: Path, latency_dirs: list[Path], outpu
                                 group_id=measured["group_id"], acquisition_id=measured["acquisition_id"], domain=measured["domain"],
                                 split=measured["split"], window_id=measured["window_id"], io_boundary=measured["io_boundary"],
                                 deployment_kind=deployment["kind"], alpha=deployment["alpha"], artifact=str(path)))
+    features, mechanisms = training_diagnostics(specs, runs, missing)
     notes = dict(run_root=str(root), frozen_root=str(frozen), expected_source_runs=len(specs),
                  completed_source_runs=sum(run["status"] == "completed" for run in runs),
                  missing_artifacts=sorted(set(missing)), firnet_status=firnet,
@@ -227,6 +330,11 @@ def summarize(run_root: Path, frozen_root: Path, latency_dirs: list[Path], outpu
                      "ResNet direct parameters exclude the stored reference; measured peak memory may include both resident models.",
                      "Latency repetitions are timing repeats of one source-validation input, not independent specimens.",
                      "No latency was rerun; no checkpoint, raw waveform or prediction NPZ was read.",
+                     "Training diagnostic means/medians weight recorded batches equally along changing optimization states, not independent specimens or frozen models.",
+                     "Unscaled feature energy/norm follow the recorded z/sqrt(d) convention exactly; branch-specific native units do not imply energy matching.",
+                     "Median feature summaries aggregate within-batch medians, not all-window medians; sampled_window_visits include reused observations.",
+                     "First-readout MLP column-block gradients are not additive branch-logit contributions; pair_penalty is unweighted and contributes nothing when lambda_delta=0.",
+                     "Training A, b and b/sqrt(A), pair responses and source weights are trajectory diagnostics, not independent-assessment guarantees.",
                  ])
     output.mkdir(parents=True)
     _csv(output/"cost.csv", costs, ["arm", "seed", "role", "stage", "status", "measurement_status", "seconds", "timer_field",
@@ -238,6 +346,10 @@ def summarize(run_root: Path, frozen_root: Path, latency_dirs: list[Path], outpu
     _csv(output/"latency.csv", latency, ["arm", "seed", "role", "path", "measurement_status", "median_ms", "q1_ms", "q3_ms", "iqr_ms",
          "peak_allocated_bytes", "executed_parameters", "total_loaded_parameters", "device", "gpu", "dtype", "input_shape", "warmup", "repeats",
          "group_id", "acquisition_id", "domain", "split", "window_id", "io_boundary", "deployment_kind", "alpha", "bundle", "artifact"])
+    _csv(output/"training_features_summary.csv", features, ["arm", "seed", "role", "branch", "feature_dim", "input_weight_parameters",
+         "metric", "unit", "mean", "median", "n", "n_missing", "n_batches", "sampled_window_visits", "measurement_status", "derivation", "summary_scope", "artifact"])
+    _csv(output/"training_mechanism_summary.csv", mechanisms, ["arm", "seed", "role", "family", "domain", "domain_i", "domain_j", "metric",
+         "component", "unit", "mean", "median", "n", "n_missing", "n_batches", "measurement_status", "risk_reference", "consistency_target", "summary_scope", "artifact"])
     (output/"notes.json").write_text(json.dumps(notes, indent=2, allow_nan=False)+"\n")
     return notes
 
