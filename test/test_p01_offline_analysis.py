@@ -189,3 +189,73 @@ def test_physical_groups_cannot_cross_partitions(tmp_path):
     with pytest.raises(ValueError, match="crosses analyzed partitions"):
         analysis.run([spec, dict(spec, split="validation")], tmp_path / "leaked",
                      condition_sets={"test": {"all": ["d0", "d1"]}, "validation": {"all": ["d0", "d1"]}})
+
+
+def source_predictions():
+    p = predictions()
+    p.pop("deployed_probs")
+    p.pop("deployed_log_probs")
+    classes = p.pop("class_names")
+    p["raw_class_names"] = classes
+    p["candidate_class_names"] = classes.copy()
+    # Training-mixture arrays must never be mistaken for the direct candidate.
+    p["training_tau_mixture_probs"] = p["raw_probs"].copy()
+    p["training_tau_mixture_log_probs"] = p["raw_log_probs"].copy()
+    return p
+
+
+def test_source_trainer_artifacts_are_analyzed_without_rewriting_or_inference(tmp_path):
+    source_runs = []
+    unchanged = {}
+    diagnostics = ["linear", "MLP8", "MLP32", "MLP16_all"] + [f"only_view_{i}" for i in range(7)]
+    slots = [(arm, seed) for arm in analysis.CORE for seed in analysis.SEEDS] + [(arm, 42) for arm in diagnostics]
+    for arm, seed in slots:
+        root = tmp_path / arm / f"seed_{seed}"
+        root.mkdir(parents=True)
+        path = root / "selected_source_validation_windows.npz"
+        p = source_predictions()
+        p.update(arm=np.asarray(arm), seed=np.asarray(seed), checkpoint=np.asarray(str(root / "selected_candidate.pt")),
+                 benchmark_commit=np.asarray("original-training-commit"), model_config=np.asarray(str(root / "model_config.yaml")))
+        np.savez(path, **p)
+        (root / "model_config.yaml").write_text("model: synthetic-test-fixture\n")
+        unchanged[path] = path.read_bytes()
+        source_runs.append(f"{arm}:{seed}:{root}")
+    descriptors = analysis.source_run_descriptors(source_runs)
+    assert len(descriptors) == 26
+    artifact = analysis.load_artifact(descriptors[0])
+    np.testing.assert_array_equal(artifact.arrays["deployed_probs"], artifact.arrays["candidate_probs"])
+    assert not np.array_equal(artifact.arrays["deployed_probs"], artifact.arrays["training_tau_mixture_probs"])
+    output = tmp_path / "analysis"
+    report = analysis.run(descriptors, output, condition_sets={"validation": {"source": ["d0", "d1"]}})
+    assert report["status"] == "complete"
+    recorded = json.loads((output / "inputs.json").read_text())["predictions"]
+    assert len(recorded) == 26
+    assert all(row["benchmark_commit"] == "original-training-commit" for row in recorded)
+    assert all(row["checkpoint"].endswith("selected_candidate.pt") for row in recorded)
+    assert all(row["model_config"] == row["source_snapshots"]["model_config.yaml"] for row in recorded)
+    assert all("not independent adoption" in row["deployed_alias"] for row in recorded)
+    assert all(path.read_bytes() == content for path, content in unchanged.items())
+    contrasts = read_csv(output / "paired_contrasts.csv")
+    assert {row["contrast"] for row in contrasts} == {*analysis.CONTRASTS, "Delta_same_readout"}
+
+
+@pytest.mark.parametrize("override", [{"split": "test"}, {"alpha": .5}, {"role": "adopted"}])
+def test_source_alias_cannot_fill_missing_deployment_for_other_roles(tmp_path, override):
+    spec = dict(save(tmp_path, source_predictions()), split="validation")
+    with pytest.raises(ValueError, match="validation/direct/alpha=1"):
+        analysis.load_artifact(dict(spec, **override))
+
+
+def test_partial_deployment_is_not_silently_repaired(tmp_path):
+    p = source_predictions()
+    p["deployed_probs"] = p["candidate_probs"]
+    with pytest.raises(ValueError, match="Missing deployed"):
+        analysis.load_artifact(dict(save(tmp_path, p), split="validation"))
+
+
+def test_source_descriptor_keeps_explicit_missing_slots(tmp_path):
+    run_directory = tmp_path / "not_finished"
+    spec = analysis.source_run_descriptors([f"RO:456:{run_directory}"])[0]
+    assert spec["arm"] == "RO" and spec["seed"] == 456
+    assert spec["path"] == str(run_directory / "selected_source_validation_windows.npz")
+    assert not run_directory.exists()

@@ -3,6 +3,9 @@
 CLI inputs are the exporter's existing exports.json list, not a second run registry.
 Condition sets are explicit, for example {"test":{"source":["0","1"],"unseen":["2"]}}.
 All confidence intervals are descriptive, conditional on the frozen predictors.
+Source trainer outputs can instead be declared with repeated --source-run ARM:SEED:RUNDIR.
+For validation/direct/alpha=1 only, deployed is an in-memory alias of candidate;
+this is not an adoption decision and does not modify the source prediction file.
 """
 from __future__ import annotations
 
@@ -51,6 +54,13 @@ def load_artifact(spec: Mapping[str, Any]) -> Artifact:
         raise ValueError("Frozen alpha must lie in [0,1].")
     with np.load(spec["path"], allow_pickle=False) as saved:
         p = {key: saved[key] for key in saved.files}
+    missing_deployed = {"deployed_probs", "deployed_log_probs"} - p.keys()
+    if missing_deployed:
+        if missing_deployed != {"deployed_probs", "deployed_log_probs"} or not (
+                spec["split"] == "validation" and spec["role"] == "direct" and alpha == 1):
+            raise ValueError("Missing deployed predictions are allowed only for validation/direct/alpha=1.")
+        p["deployed_probs"] = p["candidate_probs"]
+        p["deployed_log_probs"] = p["candidate_log_probs"]
     if "class_names" not in p:
         if not np.array_equal(p["raw_class_names"], p["candidate_class_names"]):
             raise ValueError("Raw and candidate class order differ.")
@@ -95,7 +105,37 @@ def load_artifact(spec: Mapping[str, Any]) -> Artifact:
             raise ValueError(f"Descriptor and artifact disagree on {key}.")
     acquisitions = acquisition_estimates(p)
     groups = group_estimates(acquisitions, classes)
-    return Artifact(dict(spec), p, acquisitions, groups, names.tolist())
+    recorded = dict(spec)
+    for key in ("checkpoint", "benchmark_commit", "code_commit", "model_config", "config_snapshot"):
+        if key in p:
+            value = p[key].item()
+            if key in recorded and recorded[key] != value:
+                raise ValueError(f"Descriptor and artifact disagree on {key}.")
+            recorded[key] = value
+    if missing_deployed:
+        recorded["deployed_alias"] = "candidate; validation direct alpha=1, not independent adoption"
+    return Artifact(recorded, p, acquisitions, groups, names.tolist())
+
+
+def source_run_descriptors(runs: Sequence[str]) -> list[dict[str, Any]]:
+    """Bind only explicitly named source runs, including requested missing slots."""
+    result = []
+    for value in runs:
+        fields = value.split(":", 2)
+        if len(fields) != 3 or not fields[0] or not fields[2]:
+            raise ValueError("Declare each source run as ARM:SEED:RUNDIR.")
+        arm, seed_text, directory = fields
+        seed = int(seed_text)
+        root = Path(directory).expanduser().resolve()
+        spec = dict(name=f"{arm}_seed_{seed}", arm=arm, seed=seed, split="validation", role="direct", alpha=1.,
+                    path=str(root / "selected_source_validation_windows.npz"), source_run=str(root))
+        snapshots = {filename: str(root / filename) for filename in
+                     ("command.json", "model_config.yaml", "data_config.yaml", "result_scope.json")
+                     if (root / filename).is_file()}
+        if snapshots:
+            spec["source_snapshots"] = snapshots
+        result.append(spec)
+    return result
 
 
 def acquisition_estimates(p: Mapping[str, np.ndarray]) -> list[dict[str, Any]]:
@@ -375,19 +415,25 @@ def run(predictions: Sequence[Mapping[str, Any]], output: str | Path, *,
                   adoption_intervals="conditional on the already selected candidate and coefficient",
                   class_names=artifacts[0].classes)
     (root / "analysis.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    (root / "inputs.json").write_text(json.dumps(dict(predictions=list(predictions), condition_sets=condition_sets,
+    recorded = {(entry.spec["split"], entry.spec["name"]): entry.spec for entry in artifacts}
+    input_predictions = [recorded.get((item["split"], item["name"]), dict(item)) for item in predictions]
+    (root / "inputs.json").write_text(json.dumps(dict(predictions=input_predictions, condition_sets=condition_sets,
                                                       adoption_mode=adoption_mode), indent=2), encoding="utf-8")
     return report
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--inputs", required=True, help="Existing exports.json list from frozen export")
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--inputs", help="Existing exports.json list from frozen export")
+    inputs.add_argument("--source-run", action="append", metavar="ARM:SEED:RUNDIR",
+                        help="Explicit source-only run; repeat for every core and diagnostic slot")
     parser.add_argument("--condition-sets", required=True, help="JSON mapping split -> named condition set -> condition IDs")
     parser.add_argument("--output", required=True)
     parser.add_argument("--adoption-mode", choices=("independent", "empirical"))
     args = parser.parse_args()
-    report = run(json.loads(Path(args.inputs).read_text()), args.output,
+    predictions = json.loads(Path(args.inputs).read_text()) if args.inputs else source_run_descriptors(args.source_run)
+    report = run(predictions, args.output,
                  condition_sets=json.loads(Path(args.condition_sets).read_text()), adoption_mode=args.adoption_mode)
     print(json.dumps(report, indent=2))
 
