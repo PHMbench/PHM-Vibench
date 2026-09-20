@@ -1,0 +1,77 @@
+{
+  "post_hoc": true,
+  "constants": {
+    "p0": [
+      0.04973054230756268,
+      0.4879995119074979,
+      0.46226994685828704
+    ],
+    "MLP16_seed_42": [
+      0.19487774593134713,
+      0.4287708884974323,
+      0.37635137826204307
+    ],
+    "MLP16_seed_123": [
+      0.18797069537142913,
+      0.4174101951718331,
+      0.3946191198130451
+    ],
+    "MLP16_seed_456": [
+      0.19664532753328487,
+      0.4089781217773757,
+      0.3943765628337857
+    ],
+    "O_seed_42": [
+      0.16775190320331604,
+      0.4291238524764779,
+      0.40312424644827827
+    ],
+    "O_seed_123": [
+      0.16088061338601026,
+      0.4261263054112592,
+      0.4129930815597375
+    ],
+    "O_seed_456": [
+      0.1790533420257271,
+      0.38268797077238587,
+      0.4382586917777859
+    ],
+    "pi_S": [
+      0.19999999999999976,
+      0.40000000000000063,
+      0.40000000000000063
+    ]
+  },
+  "class_order": [
+    "healthy",
+    "inner_race_or_IR_dominant_mixed",
+    "outer_race_or_OR_dominant_mixed"
+  ],
+  "source_groups": 5,
+  "source_conditions": [
+    "0",
+    "2",
+    "3"
+  ],
+  "weights": "equal conditions, bearings within condition, acquisitions within bearing, windows within acquisition",
+  "inputs": {
+    "p0": "frozen/source_validation/raw_reference.npz",
+    "MLP16_seed_42": "frozen/source_validation/MLP16_seed_42.npz",
+    "MLP16_seed_123": "frozen/source_validation/MLP16_seed_123.npz",
+    "MLP16_seed_456": "frozen/source_validation/MLP16_seed_456.npz",
+    "O_seed_42": "frozen/source_validation/O_seed_42.npz",
+    "O_seed_123": "frozen/source_validation/O_seed_123.npz",
+    "O_seed_456": "frozen/source_validation/O_seed_456.npz"
+  },
+  "constant_estimation": "source-selection only; fixed in every test bootstrap",
+  "zero_components": {
+    "p0": [],
+    "MLP16_seed_42": [],
+    "MLP16_seed_123": [],
+    "MLP16_seed_456": [],
+    "O_seed_42": [],
+    "O_seed_123": [],
+    "O_seed_456": [],
+    "pi_S": []
+  }
+}
