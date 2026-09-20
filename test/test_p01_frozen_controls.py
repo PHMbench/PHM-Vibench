@@ -142,3 +142,23 @@ def test_cli_rejects_writes_inside_original_root(tmp_path):
                             env=dict(os.environ, CUDA_VISIBLE_DEVICES=''))
     assert result.returncode != 0 and 'outside the read-only' in result.stderr
     assert not (tmp_path/'new').exists()
+
+
+def test_runtime_guard_blocks_source_writes_h5_and_checkpoints(tmp_path):
+    code = '''
+from pathlib import Path
+import sys
+from experiments.p01.frozen_controls import protect_inputs
+root=Path(sys.argv[1]).resolve()
+protect_inputs(root)
+for path,mode in [(root/'must_not_exist.json','w'),(root/'signals.h5','rb'),(root/'weights.pt','rb')]:
+    try:
+        open(path,mode)
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError('Protected operation was not rejected')
+'''
+    result = subprocess.run([sys.executable,'-c',code,str(tmp_path)],capture_output=True,text=True)
+    assert result.returncode == 0, result.stderr
+    assert list(tmp_path.iterdir()) == []

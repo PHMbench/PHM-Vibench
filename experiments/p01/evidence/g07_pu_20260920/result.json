@@ -1,0 +1,11 @@
+{
+  "post_hoc": true,
+  "status": "completed",
+  "protocol_verdict": "pass_with_limitations",
+  "permanent_test_sealed": true,
+  "sealed_groups": 7,
+  "restriction": "No further model/loss/operator/routing/calibration/seed/baseline/decision design using these bearings.",
+  "original_pipeline_recovered": true,
+  "constants_fixed_in_bootstrap": true,
+  "interpretation": "Exploratory input-dependence accounting only, not a causal or information-theoretic decomposition."
+}
