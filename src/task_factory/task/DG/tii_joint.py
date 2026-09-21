@@ -79,6 +79,8 @@ class task(pl.LightningModule):
             if any(role != 'source_train' for role in item['role']):
                 raise ValueError('training may only consume source_train windows')
             losses.append(self.source_loss(source, item))
+        if getattr(self.args_task, 'acceptance_audit', False):
+            self._observe_source_gradients(losses, batch)
         return torch.stack(losses).mean()
 
     def training_step(self, batch, batch_idx):
@@ -130,6 +132,98 @@ class task(pl.LightningModule):
         self.log('val_group_nll', torch.tensor(nll, dtype=torch.float64, device=self.device),
                  on_epoch=True, batch_size=1)
         self.log('val_group_acc', acc, on_epoch=True, batch_size=1)
+
+    @staticmethod
+    def _norm(values):
+        terms = [v.detach().double().square().sum() for v in values if v is not None]
+        return float(torch.stack(terms).sum().sqrt().cpu()) if terms else 0.0
+
+    def _append_audit(self, name, rows):
+        import csv
+        from pathlib import Path
+        directory = Path(self.args_task.acceptance_output)
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / name
+        new = not path.exists()
+        with path.open('a', newline='', encoding='utf-8') as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+            if new:
+                writer.writeheader()
+            writer.writerows(rows)
+
+    def _observe_source_gradients(self, losses, batch):
+        """Observe actual loss graphs with extra VJPs, but no extra forward or optimizer step."""
+        import json
+        parameters = tuple(self.network.parameters())
+        heads = {s: {id(p) for p in self.network.task_head.mutiple_fc[str(s)].parameters()}
+                 for s in self.sources}
+        head_ids = set().union(*heads.values())
+        rows = []
+        for source, loss in zip(self.sources, losses):
+            gradients = torch.autograd.grad(loss, parameters, retain_graph=True, allow_unused=True)
+            shared = [g for p, g in zip(parameters, gradients) if id(p) not in head_ids]
+            own = [g for p, g in zip(parameters, gradients) if id(p) in heads[source]]
+            other = [g for p, g in zip(parameters, gradients) if id(p) in head_ids-heads[source]]
+            item = batch[source]
+            labels, counts = torch.unique(item['y'].detach().cpu(), return_counts=True)
+            rows.append(dict(round=int(self.global_step)+1, dataset=source,
+                encoder_grad_norm=self._norm(shared), own_head_grad_norm=self._norm(own),
+                other_head_grad_norm=self._norm(other), windows=len(item['y']),
+                groups=json.dumps(list(map(str, item['group']))),
+                class_counts=json.dumps(dict(zip(map(str, labels.tolist()), counts.tolist())))))
+        self._append_audit('source_gradients.csv', rows)
+
+    def on_before_optimizer_step(self, optimizer):
+        if getattr(self.args_task, 'acceptance_audit', False):
+            self._before_update = {name: p.detach().clone() for name, p in self.network.named_parameters()}
+
+    def on_train_batch_end(self, outputs, batch, batch_idx):
+        if not getattr(self.args_task, 'acceptance_audit', False):
+            return
+        heads = {s: {id(p) for p in self.network.task_head.mutiple_fc[str(s)].parameters()}
+                 for s in self.sources}
+        head_ids = set().union(*heads.values())
+        deltas = [(p, p.detach()-self._before_update[name]) for name, p in self.network.named_parameters()]
+        row = dict(round=int(self.global_step),
+                   joint_encoder_parameter_delta=self._norm([v for p, v in deltas if id(p) not in head_ids]))
+        for source in self.sources:
+            row[f'head_{source}_joint_delta'] = self._norm([v for p, v in deltas if id(p) in heads[source]])
+        self._append_audit('joint_updates.csv', [row])
+        del self._before_update
+
+    def source_validation_predictions(self, factory, checkpoint, *, mask_increment=False):
+        """Export every native source-validation window; do not fit a head."""
+        import json
+        import pandas as pd
+        by_source = {s: [r for r in factory.window_inventory
+                         if r['dataset'] == s and r['role'] == 'source_val'] for s in self.sources}
+        cursors = dict.fromkeys(self.sources, 0)
+        rows = []
+        self.eval()
+        with torch.inference_mode():
+            for original in factory.val_dataset:
+                source = original['source']
+                self._validate_source_batch(source, original)
+                batch = {k: v.to(self.device) if torch.is_tensor(v) else v for k, v in original.items()}
+                if mask_increment:
+                    batch['incremental'] = torch.zeros_like(batch['incremental'])
+                    batch['availability'] = torch.zeros_like(batch['availability'])
+                logits = self(batch).detach().cpu().double()
+                probabilities = logits.softmax(-1)
+                for i in range(len(logits)):
+                    window = by_source[source][cursors[source]]
+                    for field in ('recording_id', 'group', 'file_id', 'role'):
+                        if window[field] != original[field][i]:
+                            raise ValueError(f'validation window order/identity mismatch: {field}')
+                    rows.append(dict(**window, true_label=int(original['y'][i]),
+                        logits=json.dumps(logits[i].tolist()), probabilities=json.dumps(probabilities[i].tolist()),
+                        checkpoint=str(checkpoint), seed=0, method='support',
+                        intervention='mask_increment' if mask_increment else 'full',
+                        availability=int(original['availability'][i])))
+                    cursors[source] += 1
+        if any(cursors[s] != len(by_source[s]) for s in self.sources):
+            raise ValueError('source validation export omitted declared windows')
+        return pd.DataFrame(rows)
 
     def test_step(self, batch, batch_idx):
         raise RuntimeError('tii_joint trains sources only; frozen target query evaluation is separate')

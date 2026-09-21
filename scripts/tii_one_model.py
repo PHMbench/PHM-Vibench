@@ -124,12 +124,239 @@ def current_blocker() -> dict[str, Any]:
     }
 
 
+def acceptance_constraints(config):
+    """First real acceptance is one 20-round fit, not two successive fits."""
+    constraints(config)
+    for section, key, expected in (
+        ('data', 'rounds', 20), ('trainer', 'val_check_interval', 10),
+        ('trainer', 'num_sanity_val_steps', 0),
+    ):
+        value = config[section].get(key)
+        if type(value) is not type(expected) or value != expected:
+            raise ValueError(f'acceptance requires {section}.{key}={expected!r}, got {value!r}')
+
+
+def _gpu0():
+    if os.environ.get('CUDA_VISIBLE_DEVICES') not in (None, '', '0'):
+        raise ValueError('acceptance explicitly requests physical GPU0')
+    os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    import torch
+    if not torch.cuda.is_available():
+        raise RuntimeError('CUDA is unavailable; no CPU or fixture substitution')
+    return torch
+
+
+def _save_report(output, report):
+    (output / 'run.json').write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+'\n')
+
+
+def _expected_source_windows(factory):
+    import pandas as pd
+    metadata = factory.get_metadata()
+    rows = [dict(row, true_label=int(metadata[row['file_id']]['Label'])) for row in factory.window_inventory]
+    return pd.DataFrame(rows)
+
+
+def _finish_analysis(output, report):
+    """Complete saved-artifact checks without acquiring data or loading a model."""
+    import math
+    from src.task_factory.Components.tii_evaluation import analyze_source_acceptance
+    if not report.get('restore', {}).get('rms_equal'):
+        raise ValueError('successful checkpoint/RMS restoration must precede acceptance')
+    score = report.get('native_selection_nll')
+    if not isinstance(score, (int, float)) or not math.isfinite(score):
+        raise ValueError('missing finite native checkpoint selection score')
+    analysis = analyze_source_acceptance(output)
+    if abs(score-analysis['source_validation_nll']) > 1e-8:
+        raise ValueError('offline source NLL disagrees with the native selection score')
+    if 'error' in report:
+        report['recovered_export_error'] = report.pop('error')
+    report.update(analysis=analysis, selection_score_recomputed=True,
+                  status='completed_source_acceptance_not_transfer')
+    _save_report(output, report)
+
+
+def _export_selected(context, output, report):
+    """Only inference through the selected native Task; no optimizer or head fit."""
+    import numpy as np
+    import torch
+    task, factory = context.task, context.data_factory
+    task.eval()
+    checkpoint = report['best_checkpoint']
+    saved = torch.load(checkpoint, map_location=task.device, weights_only=False)
+    if int(saved['global_step']) not in (10, 20):
+        raise ValueError('selected checkpoint is outside this acceptance budget')
+    report['selected_global_step'] = int(saved['global_step'])
+    scores = [value['best_model_score'] for value in saved['callbacks'].values()
+              if isinstance(value, dict) and value.get('monitor') == 'val_group_nll']
+    if len(scores) != 1:
+        raise ValueError('checkpoint must contain exactly one native source selection score')
+    report['native_selection_nll'] = float(scores[0])
+    before_rms = task.network.embedding.source_rms.detach().cpu().clone()
+    if before_rms.item() != factory.source_rms:
+        raise ValueError('source RMS in selected encoder disagrees with the native source fit')
+    # Preserve full predictions even if a later restore/mask check fails.
+    full = task.source_validation_predictions(factory, checkpoint)
+    full.to_csv(output/'source_validation_predictions.csv', index=False)
+    task.load_state_dict(saved['state_dict'], strict=True)
+    restored = task.source_validation_predictions(factory, checkpoint)
+    key = ['dataset', 'recording_id', 'channel', 'window_start', 'window_end']
+    if not full[key].equals(restored[key]):
+        raise ValueError('checkpoint restore changed the predicted population')
+    left = [np.asarray(json.loads(x), dtype=float) for x in full.logits]
+    right = [np.asarray(json.loads(x), dtype=float) for x in restored.logits]
+    delta = max(float(np.max(np.abs(a-b))) for a, b in zip(left, right))
+    close = all(np.allclose(a, b, rtol=1e-6, atol=1e-7) for a, b in zip(left, right))
+    if not close or not torch.equal(before_rms, task.network.embedding.source_rms.detach().cpu()):
+        raise ValueError('selected-checkpoint restore changed logits or normalization')
+    report['restore'] = dict(max_abs_logit_delta=delta, rtol=1e-6, atol=1e-7, rms_equal=True)
+    masked = task.source_validation_predictions(factory, checkpoint, mask_increment=True)
+    masked.to_csv(output/'source_validation_masked_predictions.csv', index=False)
+    report['export_completed'] = True
+    _save_report(output, report)
+    _finish_analysis(output, report)
+
+
+def execute_acceptance(config, output):
+    """Use the existing classification lifecycle once; capture its live context."""
+    import contextlib
+    from types import SimpleNamespace
+    import traceback
+    import yaml
+    output.mkdir(parents=True, exist_ok=False)
+    config['environment']['output_dir'] = str(output/'native')
+    config['task']['acceptance_audit'] = True
+    config['task']['acceptance_output'] = str(output/'audit')
+    snapshot = output/'runtime.yaml'
+    snapshot.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
+    report = dict(status='failed_or_interrupted', mode='one_model_acceptance_20',
+                  native_invocations=0, model_fits_completed=0, source_system_ids=config['task']['source_system_ids'],
+                  seed=0, rounds=20, command=sys.orig_argv, industrial_transfer_delta=None, pooling_interaction=None)
+    started = time.monotonic()
+    _save_report(output, report)
+    try:
+        torch = _gpu0()
+        torch.cuda.reset_peak_memory_stats(0)
+        from phmfactory.config import analyze_config
+        from src.runtime.classification import ClassificationHooks, run_classification_pipeline
+        analysis = analyze_config(snapshot)
+
+        class Capture(ClassificationHooks):
+            context = None
+
+            def after_stack_built(self, context):
+                if self.context is not None or context.task.network is not context.model:
+                    raise ValueError('acceptance requires exactly one shared native model')
+                self.context = context
+                if context.trainer.accumulate_grad_batches != 1 or context.trainer.precision != '32-true':
+                    raise ValueError('acceptance requires native accumulation=1 and 32-true precision')
+                expected = _expected_source_windows(context.data_factory)
+                expected.to_csv(output/'expected_source_windows.csv', index=False)
+                classes = {str(s): list(range(context.task.network.task_head.mutiple_fc[str(s)].out_features))
+                           for s in context.task.sources}
+                (output/'local_class_map.json').write_text(json.dumps(classes, indent=2)+'\n')
+
+        capture = Capture()
+        with (output/'run.log').open('w', buffering=1) as log, contextlib.redirect_stdout(log), contextlib.redirect_stderr(log):
+            report['native_invocations'] = 1
+            result = run_classification_pipeline(SimpleNamespace(
+                config_path=str(snapshot), compiled_run_spec=analysis, resolved_pipeline=analysis.pipeline), hooks=capture)
+            if result['status'] != 'succeeded' or len(result['best_checkpoints']) != 1:
+                raise ValueError('native lifecycle did not return one selected checkpoint')
+            context = capture.context
+            if context is None or context.trainer.global_step != 20:
+                raise ValueError('native lifecycle did not complete exactly 20 shared updates')
+            report.update(model_fits_completed=1, best_checkpoint=result['best_checkpoints'][0],
+                          native_result=result, status='training_completed_export_pending',
+                          parameter_count=sum(p.numel() for p in context.task.network.parameters()),
+                          training_wall_seconds=time.monotonic()-started,
+                          training_peak_cuda_bytes=torch.cuda.max_memory_allocated(0))
+            _save_report(output, report)
+            context.task.to('cuda:0')
+            _export_selected(context, output, report)
+        return 0
+    finally:
+        error = sys.exc_info()[1]
+        if error is not None:
+            report['status'] = 'export_or_analysis_failed' if report['model_fits_completed'] else 'failed_or_interrupted'
+            report['error'] = repr(error)
+            with (output/'run.log').open('a') as log:
+                traceback.print_exception(*sys.exc_info(), file=log)
+        report['wall_seconds_including_export'] = time.monotonic()-started
+        _save_report(output, report)
+
+
+def export_completed_acceptance(output):
+    """Recover only export from a completed fit; never repeat Trainer.fit."""
+    from types import SimpleNamespace
+    import pandas as pd
+    report = json.loads((output/'run.json').read_text())
+    if report.get('mode') != 'one_model_acceptance_20' or report.get('model_fits_completed') != 1:
+        raise ValueError('export-only requires this acceptance run with one completed fit')
+    # Saved predictions never reopen H5 or repeat inference for a plotting failure.
+    if report.get('export_completed'):
+        try:
+            _finish_analysis(output, report)
+        except Exception as exc:
+            report.update(status='export_or_analysis_failed', error=repr(exc))
+            _save_report(output, report)
+            raise
+        print('Saved acceptance artifacts validated; no data reload, inference or fit.')
+        return 0
+    torch = _gpu0()
+    from phmfactory.config import analyze_config
+    from src.data_factory import build_data
+    from src.model_factory import build_model
+    from src.task_factory import build_task
+    config = analyze_config(output/'runtime.yaml').runtime_config()
+    acceptance_constraints(config)
+    require_sources(config, config['task']['source_system_ids'])
+    args = {k: SimpleNamespace(**v) for k, v in config.items() if isinstance(v, dict)}
+    factory = build_data(args['data'], args['task'])
+    current = _expected_source_windows(factory).astype(str)
+    expected = pd.read_csv(output/'expected_source_windows.csv', dtype=str)
+    pd.testing.assert_frame_equal(current, expected, check_dtype=False)
+    args['model'].source_rms = factory.source_rms
+    network = build_model(args['model'], metadata=factory.get_metadata())
+    task = build_task(args_task=args['task'], network=network, args_data=args['data'],
+                      args_model=args['model'], args_trainer=args['trainer'],
+                      args_environment=args['environment'], metadata=factory.get_metadata())
+    saved = torch.load(report['best_checkpoint'], map_location='cpu', weights_only=False)
+    if factory.source_rms != saved['hyper_parameters']['model']['source_rms']:
+        raise ValueError('source RMS differs from the completed fit; refuse export')
+    task.load_state_dict(saved['state_dict'], strict=True)
+    try:
+        task.to('cuda:0')
+        _export_selected(SimpleNamespace(task=task, data_factory=factory), output, report)
+    except Exception as exc:
+        report.update(status='export_or_analysis_failed', error=repr(exc))
+        _save_report(output, report)
+        raise
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, help='Reviewed native YAML; default: one_model.local.yaml')
     parser.add_argument('--output', type=Path, default=Path('results/tii_one_model'), help='New run directory; never overwrite')
     parser.add_argument('--check-only', action='store_true', help='Check config/admission/files only; no waveform read or training')
+    parser.add_argument('--acceptance', action='store_true', help='One real 20-round fit, native audit, restore and source export')
+    parser.add_argument('--export-only', action='store_true', help='Recover a failed export from one completed acceptance; never fit')
+    parser.add_argument('--analyze-only', action='store_true', help='Read saved source artifacts only; no inference or training')
     args = parser.parse_args(argv)
+    if sum((args.acceptance, args.export_only, args.analyze_only)) > 1:
+        parser.error('choose one of acceptance, export-only, analyze-only')
+    if (args.export_only or args.analyze_only) and (args.config or args.check_only):
+        parser.error('artifact recovery uses only --output, not a new config')
+    if args.export_only:
+        output = args.output.expanduser().resolve()
+        os.chdir(ROOT)
+        return export_completed_acceptance(output)
+    if args.analyze_only:
+        from src.task_factory.Components.tii_evaluation import analyze_source_acceptance
+        print(json.dumps(analyze_source_acceptance(args.output.expanduser().resolve()), indent=2))
+        return 0
     config_path = (args.config or LOCAL_CONFIG).expanduser().resolve()
     output = args.output.expanduser().resolve()
     os.chdir(ROOT)  # Native relative data/config paths have one documented meaning.
@@ -141,6 +368,8 @@ def main(argv: list[str] | None = None) -> int:
     analysis = analyze_config(config_path)
     config = analysis.runtime_config()
     sources = constraints(config)
+    if args.acceptance:
+        acceptance_constraints(config)
     selected = require_sources(config, sources)
     data_root = Path(config['data']['data_dir']).resolve()
     if output == data_root or data_root in output.parents or output in data_root.parents:
@@ -156,10 +385,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return 0
 
-    # The local launcher is explicitly for physical GPU0, not visible device 0
-    # after an unknown caller remapping. No CPU/DDP fallback is exposed.
     if os.environ.get('CUDA_VISIBLE_DEVICES') not in (None, '', '0'):
         raise ValueError('this launcher requests physical GPU0; remove the conflicting CUDA_VISIBLE_DEVICES mapping')
+    if args.acceptance:
+        return execute_acceptance(config, output)
     output.mkdir(parents=True, exist_ok=False)
     config['environment']['output_dir'] = str(output / 'native')
     import yaml
@@ -177,7 +406,6 @@ def main(argv: list[str] | None = None) -> int:
         if result.returncode != 0:
             print(f"Training failed; retained log: {output / 'run.log'}", file=sys.stderr)
             return result.returncode if result.returncode > 0 else 1
-        # Consume the native result path, not a newest-checkpoint filesystem guess.
         lines = (output / 'run.log').read_text(encoding='utf-8').splitlines()
         checkpoints = [x.split('=', 1)[1] for x in lines if x.startswith('best_checkpoint=')]
         if len(checkpoints) != 1 or not Path(checkpoints[0]).is_file():

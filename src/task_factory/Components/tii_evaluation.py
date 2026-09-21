@@ -46,8 +46,6 @@ def _read_inventory(path: Path, columns: Sequence[str]) -> pd.DataFrame:
         if column in ("logits", "probabilities"):
             continue
         values = table[column].tolist()
-        # CSV has no scalar types. Reject serialized nonfinite/null identities
-        # before they can become apparently legitimate physical groups or IDs.
         if column not in _INTEGER_COLUMNS:
             values = [None if isinstance(v, str) and v.strip().casefold() in
                       {"none", "null", "nan", "inf", "+inf", "-inf",
@@ -92,11 +90,11 @@ def _validate_query_rows(
 
 
 def _prediction_arrays(
-    table: pd.DataFrame, local_class_map: Mapping[str, Sequence[int]],
+    table: pd.DataFrame, local_class_map: Mapping[str, Sequence[int]], *, context="target",
 ) -> tuple[list[np.ndarray], list[int]]:
     arrays, label_columns = [], []
     for index, row in table.iterrows():
-        classes = tuple(local_class_map[row["target"]])
+        classes = tuple(local_class_map[row[context]])
         if row["true_label"] not in classes:
             raise ValueError(f"prediction row {index}: true_label absent from local class map")
         try:
@@ -109,7 +107,6 @@ def _prediction_arrays(
             raise ValueError(f"prediction row {index}: finite vectors matching local class map required")
         if (probabilities < 0).any() or not np.isclose(probabilities.sum(), 1, atol=1e-7, rtol=0):
             raise ValueError(f"prediction row {index}: nonnegative probabilities summing to one required")
-        # Stable softmax is a consistency check, never a probability repair.
         shifted = logits - logits.max()
         exponential = np.exp(shifted)
         expected = exponential / exponential.sum()
@@ -199,8 +196,6 @@ def evaluate_query_predictions(
             raise ValueError(f"{target}: query label absent from local class map")
     arrays, labels = _prediction_arrays(predictions, local_class_map)
 
-    # No NLL computation is reached until every row and the whole population
-    # have passed. Centering also preserves small loss at very large offsets.
     losses = []
     for logits, label_column in zip(arrays, labels):
         centered = logits - logits.max()
@@ -218,3 +213,135 @@ def evaluate_query_predictions(
         prediction_count=("window_count", "sum"),
     ).reset_index()
     return windows, groups
+
+
+SOURCE_KEY = ('dataset', 'recording_id', 'channel', 'window_start', 'window_end')
+SOURCE_COLUMNS = SOURCE_KEY + ('group', 'role', 'file_id', 'true_label')
+
+
+def evaluate_source_predictions(predictions_file, *, expected_windows_file,
+                                local_class_map, checkpoint, intervention):
+    """Descriptive source-validation risk, not a held-out transfer estimator.
+
+    Expected windows include BOTH source_train and source_val, saved by the
+    native Data Factory before fit. No split is derived from predictions.
+    The native CE label-to-column mapping must be contiguous per local head.
+    """
+    if Path(predictions_file).resolve() == Path(expected_windows_file).resolve():
+        raise ValueError('predictions cannot define their own expected population')
+    expected = _read_inventory(Path(expected_windows_file), SOURCE_COLUMNS)
+    predictions = _read_inventory(Path(predictions_file), SOURCE_COLUMNS + (
+        'checkpoint', 'method', 'seed', 'intervention', 'logits', 'probabilities'))
+    _unique(expected, SOURCE_KEY, 'source window inventory')
+    _unique(predictions, SOURCE_KEY, 'source predictions')
+    if not expected.role.isin(['source_train', 'source_val']).all():
+        raise ValueError('source inventory cannot contain query/target roles')
+    if not predictions.role.eq('source_val').all():
+        raise ValueError('source predictions must contain source_val only')
+    if (not predictions.checkpoint.eq(str(checkpoint)).all()
+            or not predictions.intervention.eq(intervention).all()
+            or not predictions.method.eq('support').all() or not predictions.seed.eq(0).all()):
+        raise ValueError('source predictions disagree with the one-model evaluation condition')
+    for source, rows in expected.groupby('dataset', sort=False):
+        train = rows[rows.role == 'source_train']
+        val = rows[rows.role == 'source_val']
+        if train.empty or val.empty or set(train.group) & set(val.group):
+            raise ValueError('source train/validation require nonempty disjoint groups')
+        if set(train.recording_id) & set(val.recording_id):
+            raise ValueError('source recording leakage across roles')
+        identities = rows[['recording_id', 'group', 'file_id', 'true_label', 'role']].drop_duplicates()
+        if identities.recording_id.duplicated().any():
+            raise ValueError('record identity changes group, file, label or role across windows')
+    if (expected.window_end <= expected.window_start).any():
+        raise ValueError('source window_end must exceed window_start')
+    val = expected[expected.role == 'source_val']
+    if _keys(predictions, SOURCE_COLUMNS) != _keys(val, SOURCE_COLUMNS):
+        raise ValueError('source predictions omit or alter predeclared validation windows')
+    if set(local_class_map) != set(expected.dataset):
+        raise ValueError('class map must cover every selected source exactly')
+    for source, classes in local_class_map.items():
+        if (len(classes) < 2 or any(type(c) is not int for c in classes)
+                or list(classes) != list(range(len(classes)))):
+            raise ValueError('native source head requires ordered contiguous local class columns')
+        if not set(expected.loc[expected.dataset == source, 'true_label']) <= set(classes):
+            raise ValueError('source label absent from its fixed class map')
+    arrays, labels = _prediction_arrays(predictions, local_class_map, context='dataset')
+    windows = predictions.copy()
+    windows['nll'] = [float(logsumexp(x-x.max()) - (x-x.max())[y]) for x, y in zip(arrays, labels)]
+    windows['correct'] = [int(x.argmax() == y) for x, y in zip(arrays, labels)]
+    if not np.isfinite(windows.nll).all():
+        raise ValueError('nonfinite source risk')
+    groups = windows.groupby(['dataset', 'group'], sort=False).agg(
+        nll=('nll', 'mean'), accuracy=('correct', 'mean'), windows=('nll', 'size')).reset_index()
+    metrics = groups.groupby('dataset', sort=False).agg(
+        nll=('nll', 'mean'), accuracy=('accuracy', 'mean'), groups=('group', 'size'),
+        windows=('windows', 'sum')).reset_index()
+    metrics['scope'] = 'checkpoint_selection_source_validation'
+    metrics['intervention'] = intervention
+    return windows, groups, metrics
+
+
+def analyze_source_acceptance(output):
+    """Analyze retained observations only. No model, loader or optimizer import."""
+    output = Path(output)
+    run = json.loads((output/'run.json').read_text())
+    if run.get('mode') != 'one_model_acceptance_20' or run.get('model_fits_completed') != 1:
+        raise ValueError('analysis requires one completed bounded fit')
+    if not run.get('export_completed'):
+        raise ValueError('full source prediction export is incomplete')
+    classes = json.loads((output/'local_class_map.json').read_text())
+    checkpoint = run['best_checkpoint']
+    metrics_by_mode, groups_by_mode = {}, {}
+    for intervention, filename in (
+        ('full', 'source_validation_predictions.csv'),
+        ('mask_increment', 'source_validation_masked_predictions.csv'),
+    ):
+        windows, groups, metrics = evaluate_source_predictions(output/filename,
+            expected_windows_file=output/'expected_source_windows.csv', local_class_map=classes,
+            checkpoint=checkpoint, intervention=intervention)
+        metrics_by_mode[intervention], groups_by_mode[intervention] = metrics, groups
+        windows.to_csv(output/f'{intervention}_window_metrics.csv', index=False)
+        groups.to_csv(output/f'{intervention}_group_metrics.csv', index=False)
+        metrics.to_csv(output/f'{intervention}_source_metrics.csv', index=False)
+    paired = groups_by_mode['full'].merge(groups_by_mode['mask_increment'],
+        on=['dataset', 'group'], suffixes=('_full', '_mask'), validate='one_to_one')
+    paired['delta_mask_minus_full_nll'] = paired.nll_mask-paired.nll_full
+    paired.to_csv(output/'increment_mask_group_differences.csv', index=False)
+    gradients = pd.read_csv(output/'audit/source_gradients.csv', dtype={'dataset': str})
+    updates = pd.read_csv(output/'audit/joint_updates.csv')
+    sources = set(classes)
+    expected_pairs = {(r, s) for r in range(1, 21) for s in sources}
+    if (gradients.duplicated(['round', 'dataset']).any()
+            or set(zip(gradients['round'], gradients.dataset)) != expected_pairs):
+        raise ValueError('gradient observations must include every source at each of 20 real updates')
+    norm_columns = ['encoder_grad_norm', 'own_head_grad_norm', 'other_head_grad_norm']
+    if not np.isfinite(gradients[norm_columns].to_numpy()).all() or (gradients[norm_columns] < 0).any().any():
+        raise ValueError('gradient observations must be finite nonnegative norms')
+    if not gradients.other_head_grad_norm.eq(0).all() or not gradients.windows.eq(32).all():
+        raise ValueError('source-head gradient contamination or unequal source exposure')
+    for source in sources:
+        rows = gradients[gradients.dataset == source]
+        if rows.encoder_grad_norm.max() <= 0 or rows.own_head_grad_norm.max() <= 0:
+            raise ValueError(f'source {source} has no observed gradient reaching shared encoder or local head')
+        if any(len(json.loads(x)) != 32 for x in rows.groups):
+            raise ValueError('source group exposure is incomplete')
+        if any(sum(json.loads(x).values()) != 32 for x in rows.class_counts):
+            raise ValueError('source class exposure is incomplete')
+    delta_columns = ['joint_encoder_parameter_delta'] + [f'head_{s}_joint_delta' for s in sorted(sources)]
+    if not set(delta_columns) <= set(updates):
+        raise ValueError('joint update observations must include the encoder and every local head')
+    if (updates['round'].duplicated().any() or set(updates['round']) != set(range(1, 21))
+            or not np.isfinite(updates[delta_columns].to_numpy()).all()
+            or (updates[delta_columns] < 0).any().any()
+            or updates.joint_encoder_parameter_delta.max() <= 0):
+        raise ValueError('actual joint optimizer update evidence is incomplete/nonfinite/zero')
+    report = dict(scope='descriptive_source_validation_not_independent_test',
+        model_fits_completed=1, source_validation_nll=float(metrics_by_mode['full'].nll.mean()),
+        masked_source_validation_nll=float(metrics_by_mode['mask_increment'].nll.mean()),
+        actual_joint_updates=20, observed_sources=len(sources), windows_per_source=640,
+        gradient_head_isolation=True, source_gradients_reach_shared_encoder=True,
+        joint_update_observed=True, transfer_delta=None, pooling_interaction=None,
+        uncertainty='not estimated: one selected model and checkpoint-selection validation population',
+        mechanism_boundary='masking measures frozen-model sensitivity, not retrained information value; joint deltas are not per-source causal updates')
+    (output/'analysis.json').write_text(json.dumps(report, indent=2, allow_nan=False)+'\n')
+    return report
