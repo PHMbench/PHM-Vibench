@@ -1,0 +1,5 @@
+model,candidate_id,role,G1,G2,G3,G4,G5,G6,G7,decision,blocking_detail
+ModernTCN,source:M016,strong modern convolution,PASS,PARTIAL,PASS,PASS,PASS,NOT_RUN,PARTIAL,DEFER,"Overlaps existing TCN/ResNet; exact fidelity oracle and incremental scientific value not yet established."
+TSLANet,source:M019,spectral/interactive-convolution,PASS,PASS,PASS,PASS,PASS,NOT_RUN,PARTIAL,DEFER,"Distinct bias but higher upstream dependency/fidelity complexity; not the lowest-risk first pilot."
+iTransformer,source:M022,variate/channel attention,PASS,PASS,BLOCKED,PASS,PASS,NOT_RUN,PARTIAL,DEFER,"Official thuml/iTransformer main is forecasting-only; classification candidate source/variant must be frozen before E0/E2."
+TimesNet,source:M187,periodic 2D variation,PASS,PASS,PASS,PASS,PASS,PARTIAL,PARTIAL,PREFERRED_NOT_QUEUED,"THUML Time-Series-Library exposes a classification branch at 4e938a...; historical #266 tests exist, but current-dev implementation and candidate-specific memory/full G7 are not yet complete."
