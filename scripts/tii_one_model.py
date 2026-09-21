@@ -63,11 +63,18 @@ def constraints(config: dict[str, Any]) -> list[int]:
 
 
 def qualification_rows(path: Path) -> list[dict[str, str]]:
-    with path.open(newline='', encoding='utf-8') as stream:
-        reader = csv.DictReader(stream)
-        if not {'dataset', 'dataset_id', 'file', 'eligible', 'exclusion_reason'} <= set(reader.fieldnames or []):
-            raise ValueError(f'{path}: expected the existing dataset qualification columns')
-        return list(reader)
+    # The retained report stores whole-record ID lists in cells exceeding csv's
+    # 128 KiB default. Use the actual file size, without truncating those lists.
+    previous_limit = csv.field_size_limit()
+    csv.field_size_limit(max(previous_limit, path.stat().st_size))
+    try:
+        with path.open(newline='', encoding='utf-8') as stream:
+            reader = csv.DictReader(stream)
+            if not {'dataset', 'dataset_id', 'file', 'eligible', 'exclusion_reason'} <= set(reader.fieldnames or []):
+                raise ValueError(f'{path}: expected the existing dataset qualification columns')
+            return list(reader)
+    finally:
+        csv.field_size_limit(previous_limit)
 
 
 def require_sources(config: dict[str, Any], sources: list[int]) -> list[dict[str, str]]:

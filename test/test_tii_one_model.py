@@ -124,6 +124,16 @@ class TestAdmissionAndInvocation(unittest.TestCase):
         with patch.dict(sys.modules, {'phmfactory.config': self.compiler}), patch.dict(os.environ, {}, clear=True):
             return entry.main(['--config', str(self.cfg), '--output', str(self.output), *flags])
 
+    def test_long_serialized_record_list_is_not_truncated(self):
+        ids = '[' + ','.join(map(str, range(40000))) + ']'
+        previous = csv.field_size_limit()
+        with self.q.open('w', newline='') as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(self.rows[0]) + ['metadata_id'])
+            writer.writeheader()
+            writer.writerow(dict(self.rows[0], metadata_id=ids))
+        self.assertEqual(entry.qualification_rows(self.q)[0]['metadata_id'], ids)
+        self.assertEqual(csv.field_size_limit(), previous)
+
     def test_ineligible_has_no_native_call(self):
         self.rows[0].update(eligible='False', exclusion_reason='physical time unresolved')
         self.write_rows()
