@@ -22,3 +22,15 @@ D1 did not run this reporting addition. Focused tests cover the count boundary,
 its agreement with the unchanged envelope on constructed moments, and report
 integration with explicitly stubbed record/support readers; they do not run PHM
 training or re-open real data. The original loader/model tests remain separate.
+
+
+## Partial source-preflight plans
+
+Parent installed-runtime #56 exposed three `KeyError: delta_total` failures:
+older source-preflight plans did not yet declare assessment error allocation.
+The report is now explicitly `not computed` when `delta_total` or `delta_shift`
+is absent. No budget is guessed. Existing source-fitting checks still run,
+including missing reference history and protected-group overlap rejection.
+Assessment still requires its complete, declared plan; this compatibility fix
+only preserves the earlier source-preflight contract. Original parent tests
+were not altered or skipped to hide the regression.

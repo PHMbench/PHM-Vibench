@@ -64,11 +64,19 @@ def test_invalid_design_is_not_repaired(counts, k, failure, method):
         moment_design(counts, candidate_count=k, failure=failure, method=method)
 
 
-@pytest.mark.parametrize('mode,rule,n', [('independent', 'moments', 5),
-                                      ('empirical', 'moments', 5),
-                                      ('independent', 'paired', 5),
-                                      ('independent', 'moments', 1)])
-def test_preflight_reports_counts_without_changing_the_declared_route(tmp_path, monkeypatch, mode, rule, n):
+@pytest.mark.parametrize('mode,rule,n,omitted,history_issue', [
+    ('independent', 'moments', 5, (), None),
+    ('empirical', 'moments', 5, (), None),
+    ('independent', 'paired', 5, (), None),
+    ('independent', 'moments', 1, (), None),
+    ('independent', 'moments', 5, ('delta_total',), None),
+    ('independent', 'moments', 5, ('delta_shift',), None),
+    ('independent', 'moments', 5, ('delta_total', 'delta_shift'), None),
+    ('independent', 'moments', 5, ('delta_total', 'delta_shift'), 'history'),
+    ('independent', 'moments', 5, ('delta_total', 'delta_shift'), 'overlap'),
+])
+def test_preflight_reports_counts_without_changing_the_declared_route(
+        tmp_path, monkeypatch, mode, rule, n, omitted, history_issue):
     """Isolate the report integration from unchanged metadata/transform readers."""
     import csv
     import sys
@@ -97,15 +105,22 @@ def test_preflight_reports_counts_without_changing_the_declared_route(tmp_path, 
                 reference_development_group_files=['history.csv'],
                 d1_controls=dict(tau=1., selection_predictor='candidate', selection_brier_weight=.25,
                                  nonlinear_hidden_dim=16, seed=42))
+    for key in omitted:
+        del plan[key]
+    if history_issue == 'history':
+        plan['reference_development_group_files'] = []
+    elif history_issue == 'overlap':
+        (tmp_path/'history.csv').write_text('group_id\nassessment_0\n')
     for name, obj in [('data', data), ('model', model), ('plan', plan)]:
         (tmp_path/f'{name}.yaml').write_text(yaml.safe_dump(obj))
     output = tmp_path/'preflight'
-    if mode == 'independent' and n < 2:
-        with pytest.raises(ValueError, match='need at least two'):
+    expected_error = history_issue or ('need at least two' if mode == 'independent' and n < 2 else None)
+    if expected_error:
+        with pytest.raises(ValueError, match=expected_error):
             preflight_fusion.run(tmp_path/'plan.yaml', tmp_path/'model.yaml', output)
     else:
         preflight_fusion.run(tmp_path/'plan.yaml', tmp_path/'model.yaml', output)
-    applicable = mode == 'independent' and rule == 'moments' and n >= 2
+    applicable = mode == 'independent' and rule == 'moments' and n >= 2 and not omitted
     assert (output/'assessment_design.csv').exists() == applicable
     if applicable:
         rows = list(csv.DictReader((output/'assessment_design.csv').open()))
@@ -116,5 +131,12 @@ def test_preflight_reports_counts_without_changing_the_declared_route(tmp_path, 
         text = (output/'decision.md').read_text()
         assert 'ruled out by the declared counts' in text
         assert 'source fitting may proceed' in text
+    text = (output/'decision.md').read_text()
+    if omitted:
+        assert 'not computed (assessment allocation not fully declared:' in text
+        assert 'Nonzero moment-rule adoption:' not in text
+        for key in omitted:
+            assert key in text
+        assert ('Status: BLOCKED' in text) == bool(expected_error)
     # Diagnostic reporting never changes the declared mode, delta or rule.
     assert yaml.safe_load((tmp_path/'plan.yaml').read_text()) == plan
