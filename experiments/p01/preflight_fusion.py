@@ -151,6 +151,8 @@ def run(plan_path, model_path, output):
                           if r['domain'] == domain and r['split'] == 'assessment'})
               for domain in sources}
     design = None
+    design_note = 'requires independent moments and at least two groups per condition'
+    missing_allocation = sorted({'delta_total', 'delta_shift'} - plan.keys())
     if mode == 'independent':
         if not paths:
             reasons.append('Complete reference history has not been supplied; choose empirical explicitly or retrain cleanly.')
@@ -158,7 +160,11 @@ def run(plan_path, model_path, output):
             # Both radius families feed the same sample-moment estimator.
             if n < 2:
                 reasons.append(f'{domain}: insufficient independent assessment groups for the moment estimator (need at least two).')
-        if plan['rule'] == 'moments' and all(n >= 2 for n in counts.values()):
+        if plan['rule'] == 'moments' and missing_allocation:
+            # Source-only preflight plans need not yet allocate assessment
+            # error. Do not invent defaults or mask existing history errors.
+            design_note = 'assessment allocation not fully declared: ' + ', '.join(missing_allocation)
+        if plan['rule'] == 'moments' and not missing_allocation and all(n >= 2 for n in counts.values()):
             from experiments.p01.fusion_assessment import moment_design
             design = moment_design(counts, candidate_count=len(names),
                                    failure=float(plan['delta_total'])-float(plan['delta_shift']),
@@ -185,7 +191,7 @@ def run(plan_path, model_path, output):
         text += [f'Nonzero moment-rule adoption: {outcome}.',
                  'See assessment_design.csv. This diagnostic does not select a rule, change coefficients, or block valid source fitting.', '']
     else:
-        text += ['Count-only moment-design diagnostic: not computed (requires independent moments and at least two groups per condition).', '']
+        text += [f'Count-only moment-design diagnostic: not computed ({design_note}).', '']
     text += ['Status: BLOCKED', *reasons] if reasons else ['Status: source fitting may proceed under the declared scope.']
     (root/'decision.md').write_text('\n'.join(text)+'\n')
     if reasons:
