@@ -123,6 +123,36 @@ def radius(var, n, width, failure, method):
     raise ValueError('Predeclare hoeffding or bernstein, not an outcome-dependent minimum.')
 
 
+def moment_design(group_counts: Mapping[str, int], *, candidate_count: int,
+                  failure: float, method: str) -> dict:
+    """Count-only necessary condition for nonzero moment-rule adoption.
+
+    The zero-variance radius is a lower bound on every candidate's radius.
+    If it reaches the largest possible b (2) in any required condition, the
+    max-condition envelope cannot prefer a positive coefficient. Passing this
+    check is not evidence of power, independence, or useful correction. It
+    neither reads predictions nor changes assess(), its rule, or its decision.
+    """
+    if not group_counts or isinstance(candidate_count, (bool, np.bool_)) or not isinstance(candidate_count, (int, np.integer)) or candidate_count < 1:
+        raise ValueError('Supply nonempty condition counts and a positive integer candidate count.')
+    if not math.isfinite(failure) or not 0 < failure < 1:
+        raise ValueError('Supply the moment-rule failure budget in (0,1).')
+    event_failure = failure / (2 * int(candidate_count) * len(group_counts))
+    rows = []
+    for domain, n in sorted(group_counts.items()):
+        if isinstance(n, (bool, np.bool_)) or not isinstance(n, (int, np.integer)) or n < 2:
+            raise ValueError(f'{domain}: at least two integer independent groups are required by the moment estimator.')
+        floor = float(radius(0., int(n), 2.5, event_failure, method))
+        ceiling = 2. - floor
+        rows.append(dict(domain=domain, independent_groups=int(n),
+                         b_radius_floor=floor, b_lower_ceiling=ceiling,
+                         nonzero_ruled_out_by_count=ceiling <= 0))
+    return dict(rule='moments', method=method, rule_failure_budget=failure,
+                candidate_count=int(candidate_count), condition_count=len(rows),
+                event_failure_budget=event_failure, by_domain=rows,
+                nonzero_ruled_out_by_count=any(row['nonzero_ruled_out_by_count'] for row in rows))
+
+
 def paired_range(alpha):
     alpha = np.asarray(alpha, dtype=float)
     if not np.isfinite(alpha).all() or np.any((alpha < 0) | (alpha > 1)):
