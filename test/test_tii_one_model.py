@@ -73,6 +73,13 @@ class TestBudget(unittest.TestCase):
             with self.subTest(section=section, key=key), self.assertRaises(ValueError):
                 entry.constraints(c)
 
+    def test_yaml_cannot_override_physical_device_mapping(self):
+        for key, value in [('CUDA_VISIBLE_DEVICES', '2'), ('CUDA_DEVICE_ORDER', 'FASTEST_FIRST')]:
+            c = request()
+            c['environment'][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, key):
+                entry.constraints(c)
+
     def test_round_budget_explicit(self):
         for value in (0, 10001, True, None):
             c = request()

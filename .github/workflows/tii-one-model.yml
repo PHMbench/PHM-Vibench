@@ -6,7 +6,7 @@ on:
       - 'scripts/tii_one_model.py'
       - 'test/test_tii_one_model.py'
       - 'phmfactory/config.py'
-      - 'src/config_schema.py'
+      - 'src/config_schema/**'
       - 'configs/experiments/tii/**'
       - '.github/workflows/tii-one-model.yml'
   push:
@@ -15,7 +15,7 @@ on:
       - 'scripts/tii_one_model.py'
       - 'test/test_tii_one_model.py'
       - 'phmfactory/config.py'
-      - 'src/config_schema.py'
+      - 'src/config_schema/**'
       - 'configs/experiments/tii/**'
       - '.github/workflows/tii-one-model.yml'
 

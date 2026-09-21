@@ -46,6 +46,11 @@ def constraints(config: dict[str, Any]) -> list[int]:
         # In particular, a boolean must not pass as an integer seed/count.
         if type(value) is not type(expected) or value != expected:
             raise ValueError(f'{key}: expected {expected!r}, got {value!r}')
+    # Native runtime applies uppercase environment fields after process startup.
+    # Forbid YAML overrides of the physical-device mapping owned by this command.
+    for key in ('CUDA_VISIBLE_DEVICES', 'CUDA_DEVICE_ORDER'):
+        if key in config['environment']:
+            raise ValueError(f'environment.{key} must be absent; this command owns the GPU0 mapping')
     sources = config['task'].get('source_system_ids')
     if (not isinstance(sources, list) or not 2 <= len(sources) <= 5
             or any(type(x) is not int or x < 0 for x in sources)
