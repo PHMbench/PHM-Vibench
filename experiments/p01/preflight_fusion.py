@@ -147,13 +147,30 @@ def run(plan_path, model_path, output):
     reasons = []
     if any(r['overlap_count'] and (mode == 'independent' or r['partition'] == 'test') for r in overlaps):
         reasons.append('Known development overlap with protected observations.')
+    counts = {domain: len({r['unit_id'] for r in records
+                          if r['domain'] == domain and r['split'] == 'assessment'})
+              for domain in sources}
+    design = None
     if mode == 'independent':
         if not paths:
             reasons.append('Complete reference history has not been supplied; choose empirical explicitly or retrain cleanly.')
-        for domain in sources:
-            n = len({r['unit_id'] for r in records if r['domain'] == domain and r['split'] == 'assessment'})
-            if n < (2 if plan['bound'] == 'bernstein' else 1):
-                reasons.append(f'{domain}: insufficient independent assessment groups for the selected bound.')
+        for domain, n in counts.items():
+            # Both radius families feed the same sample-moment estimator.
+            if n < 2:
+                reasons.append(f'{domain}: insufficient independent assessment groups for the moment estimator (need at least two).')
+        if plan['rule'] == 'moments' and all(n >= 2 for n in counts.values()):
+            from experiments.p01.fusion_assessment import moment_design
+            design = moment_design(counts, candidate_count=len(names),
+                                   failure=float(plan['delta_total'])-float(plan['delta_shift']),
+                                   method=plan['bound'])
+            # The full physical group is counted once even if it has multiple
+            # labels/acquisitions. These rows contain no observed probabilities.
+            rows = [dict(**row, candidate_count=design['candidate_count'],
+                         condition_count=design['condition_count'], method=design['method'],
+                         rule_failure_budget=design['rule_failure_budget'],
+                         event_failure_budget=design['event_failure_budget'])
+                    for row in design['by_domain']]
+            write_csv(root/'assessment_design.csv', rows)
     text = ['# D1 pre-test decision', '', f"Mode: {mode}. Primary rule: {plan['rule']}.",
             f"Assessment K: {len(names)}; candidates: {', '.join(names)}.",
             f"Training tau: {controls['tau']}; selection predictor: {controls['selection_predictor']}; selection Brier weight: {controls['selection_brier_weight']}.",
@@ -162,6 +179,13 @@ def run(plan_path, model_path, output):
             'History completeness is a scientific obligation, not established by this overlap check.',
             'Passing counts does not imply enough power for a nonzero correction.',
             'Next: source-only candidate fitting. Candidate and rule definitions must be frozen before test prediction.', '']
+    if design is not None:
+        outcome = ('ruled out by the declared counts' if design['nonzero_ruled_out_by_count']
+                   else 'not ruled out by the count-only check; candidate quality and power remain unknown')
+        text += [f'Nonzero moment-rule adoption: {outcome}.',
+                 'See assessment_design.csv. This diagnostic does not select a rule, change coefficients, or block valid source fitting.', '']
+    else:
+        text += ['Count-only moment-design diagnostic: not computed (requires independent moments and at least two groups per condition).', '']
     text += ['Status: BLOCKED', *reasons] if reasons else ['Status: source fitting may proceed under the declared scope.']
     (root/'decision.md').write_text('\n'.join(text)+'\n')
     if reasons:
