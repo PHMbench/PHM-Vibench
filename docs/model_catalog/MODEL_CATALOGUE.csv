@@ -14,13 +14,13 @@ source:M012,Model_Candidates!13,MambaSL,,,https://github.com/thuml/Time-Series-L
 source:M013,Model_Candidates!14,Medformer,,,https://github.com/DL4mHealth/Medformer,,,,DISCOVERED,,NONE,,,,
 source:M014,Model_Candidates!15,TSCMamba,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
 source:M015,Model_Candidates!16,TimeDART,,,https://github.com/ustc-time-series/TimeDART,,,,DISCOVERED,,NONE,,,,
-source:M016,Model_Candidates!17,ModernTCN,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
+source:M016,Model_Candidates!17,ModernTCN,classification,classification_supervised,https://github.com/luodhhh/ModernTCN,56a9a2c018385cd5acef015378cae7f084d1b11c,MIT,,AUDITED,,NONE,E0,dependency-light source audit; current implementation not admitted,2026-09-21,Not selected first: strong modern convolution role overlaps existing TCN/ResNet; requires G2 and E2 before queue.
 source:M017,Model_Candidates!18,SegRNN,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
 source:M018,Model_Candidates!19,TEFN,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
-source:M019,Model_Candidates!20,TSLANet,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
+source:M019,Model_Candidates!20,TSLANet,classification,classification_supervised,https://github.com/emadeldeen24/TSLANet,ca0e88416d3ae49fd50e399c44ae94868378a94d,MIT,,AUDITED,,NONE,E0,upstream classification code uses timm/lightning; native dependency plan required,2026-09-21,"Spectral/interactive-convolution role is distinct, but first-pilot fidelity and maintenance burden exceed TimesNet."
 source:M020,Model_Candidates!21,TimeFilter,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
 source:M021,Model_Candidates!22,TimeMixer,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
-source:M022,Model_Candidates!23,iTransformer,,,https://github.com/WenjieDu/PyPOTS,,,,DISCOVERED,,NONE,,,,
+source:M022,Model_Candidates!23,iTransformer,classification_candidate,classification_supervised,https://github.com/thuml/iTransformer,c2426e68ca13f74aaec08045c5c724d8ad328124,MIT,,AUDITED,,EVIDENCE_INSUFFICIENT,E0_BLOCKED,official main is forecasting-only,2026-09-21,Official main source does not define classification; exact classification variant/source must be frozen before E0 can pass.
 source:M023,Model_Candidates!24,ATFNet,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
 source:M024,Model_Candidates!25,Bi-Mamba+,,,https://github.com/GestaltCogTeam/BasicTS,,,,DISCOVERED,,NONE,,,,
 source:M025,Model_Candidates!26,CARD,,,https://github.com/GestaltCogTeam/BasicTS,,,,DISCOVERED,,NONE,,,,
@@ -185,4 +185,4 @@ source:M183,Model_Candidates!184,PatchTST,,,https://github.com/thuml/Time-Series
 source:M184,Model_Candidates!185,Pyraformer,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
 source:M185,Model_Candidates!186,SCINet,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
 source:M186,Model_Candidates!187,TiDE,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
-source:M187,Model_Candidates!188,TimesNet,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
+source:M187,Model_Candidates!188,TimesNet,classification,classification_supervised,https://github.com/thuml/Time-Series-Library,4e938a1767106324dd753b2a44832bf870a0252e,MIT,,AUDITED,,NONE,E0; historical_E1_reference_only,historical #266: 19 component/contract cases ~0.175s; public Dummy 7.696s; memory NOT_RUN,2026-09-21,B01 preferred S1 candidate: explicit classification branch plus periodic 2D variation bias; not QUEUED until current-dev implementation slot and candidate-specific G7 are closed.
