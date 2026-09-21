@@ -1,0 +1,53 @@
+name: TII one-model command
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/tii_one_model.py'
+      - 'test/test_tii_one_model.py'
+      - 'phmfactory/config.py'
+      - 'src/config_schema.py'
+      - 'configs/experiments/tii/**'
+      - '.github/workflows/tii-one-model.yml'
+  push:
+    branches: [dev]
+    paths:
+      - 'scripts/tii_one_model.py'
+      - 'test/test_tii_one_model.py'
+      - 'phmfactory/config.py'
+      - 'src/config_schema.py'
+      - 'configs/experiments/tii/**'
+      - '.github/workflows/tii-one-model.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-command:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install 'PyYAML>=6' 'pydantic>=2' 'pytest>=7'
+      - name: Check bounded invocation and native config authority
+        run: python -m pytest test/test_tii_one_model.py -q --junitxml=tii-one-model-tests.xml
+      - name: Retained qualification must stop the no-config command
+        shell: bash
+        run: |
+          set +e
+          python -m scripts.tii_one_model > tii-one-model-readiness.json
+          code=$?
+          set -e
+          test "$code" -eq 2
+          python -c 'import json; r=json.load(open("tii-one-model-readiness.json")); assert r["native_invocations"] == 0; assert len(r["candidates"]) <= 5'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tii-one-model-command-checks
+          path: |
+            tii-one-model-tests.xml
+            tii-one-model-readiness.json
+          retention-days: 14
