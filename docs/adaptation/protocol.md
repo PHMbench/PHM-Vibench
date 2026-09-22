@@ -74,9 +74,13 @@ The two estimators must not be pooled.
 
 Data Factory owns stream order and traceability. An adaptation batch may expose
 `x`, optional `mask`, `file_id`, `sample_id`, `timestamp`, `sequence_id` and
-explicitly allowed physical metadata. Target-label aliases, including case or separator
-variants such as `Label` and `fault_label`, are rejected from that metadata surface.
-`domain_id` is available only when `domain_boundary=known`.
+explicitly allowed physical metadata. B00 uses a positive metadata schema rather than an
+arbitrary pass-through: normalized keys are limited to physical quantities such as
+`speed_rpm`, `shaft_rate_hz`, `load_hp`, `torque`, `temperature`, and
+`sample_rate`. Target-derived aliases, including `Label`, `Label_Description`,
+`fault_label`, `fault_type`, `condition_id`, and class/target label variants are
+rejected. An unrecognized metadata key fails closed and must be reviewed before entering
+the allowlist. `domain_id` is available only when `domain_boundary=known`.
 
 The evaluator receives `y` separately. Model Factory still owns only the backbone and
 explicit source checkpoint. Task Factory owns the adaptation objective and update
