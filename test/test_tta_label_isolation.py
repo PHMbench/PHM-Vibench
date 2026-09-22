@@ -102,7 +102,19 @@ def test_hidden_domain_boundary_removes_domain_id_but_known_boundary_exposes_it(
     assert "y" not in known
 
 
-@pytest.mark.parametrize("key", ["y", "label", "labels", "target", "future_y"])
+@pytest.mark.parametrize(
+    "key",
+    [
+        "y",
+        "Label",
+        "labels",
+        "target",
+        "fault_label",
+        "TARGET-LABEL",
+        "class labels",
+        "future_y",
+    ],
+)
 def test_target_like_metadata_cannot_be_whitelisted(key):
     with pytest.raises(ValueError, match="target label"):
         build_adaptation_view(
@@ -148,6 +160,38 @@ def test_source_only_never_calls_update():
     )
     assert adapter.export_state()["optimizer_state"]["steps"] == 0
     assert step.update_result == {"update_applied": False, "reason": "source_only"}
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        protocol(
+            regime="delayed_label_adaptation",
+            target_label_access="delayed",
+            state_persistence="persistent",
+        ),
+        protocol(
+            regime="online_supervised_continual",
+            target_label_access="online_supervised",
+            state_persistence="persistent",
+        ),
+        protocol(
+            regime="offline_sfda",
+            state_persistence="episodic_reset",
+            adapt_population="adapt",
+            evaluation_population="eval",
+        ),
+        protocol(
+            regime="continual_sfda",
+            state_persistence="persistent",
+            adapt_population="adapt",
+            evaluation_population="eval",
+        ),
+    ],
+)
+def test_b00_executor_rejects_regimes_that_need_other_lifecycles(candidate):
+    with pytest.raises(ValueError, match="dedicated runtime"):
+        execute_protocol_step(ToyAdapter(), {"x": [1.0], "y": [0]}, candidate)
 
 
 def test_delayed_label_is_unavailable_before_declared_step():
