@@ -364,6 +364,7 @@ jobs:
         env:
           OMP_NUM_THREADS: "1"
           MKL_NUM_THREADS: "1"
+          PHMFACTORY_TEST_PYTHON: /tmp/phmfactory-wheel/bin/python
           TIMESNET_ARTIFACT_DIR: /tmp/timesnet-diagnostics
         run: |
           set -euo pipefail
@@ -378,6 +379,13 @@ jobs:
             test_timesnet.py test_timesnet_public.py -vv --durations=10 \
             -o junit_family=xunit1 --junitxml=/tmp/timesnet-diagnostics/tests.xml \
             2>&1 | tee /tmp/timesnet-diagnostics/pytest.log
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("/tmp/timesnet-diagnostics/tests.xml").getroot()
+          suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+          skipped = sum(int(suite.attrib.get("skipped", 0)) for suite in suites)
+          assert skipped == 0, f"installed-wheel TimesNet tests skipped: {skipped}"
+          PY
 
       - name: Upload TimesNet installed-wheel diagnostics
         if: always()
