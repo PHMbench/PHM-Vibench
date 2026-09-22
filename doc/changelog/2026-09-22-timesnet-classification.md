@@ -11,3 +11,9 @@ E2 使用固定 THUML Time-Series-Library 版本的真实源定义，数值逻�
 本地源码切片的 29 项测试已通过。现有 public-package workflow 增加安装后验证：正常 wheel 环境、离开 checkout、固定上游对齐、preflight、真实 TimesNet fit、selected checkpoint 恢复、acc/f1 和直接结果路径；同时记录实际导入时间、完整 CLI 墙钟和进程 RSS。最终执行结果以本 PR 的当前 head 产物为准，不复用 #266 旧绿灯。
 
 本轮不运行 THU，不声称 E3/benchmark-ready、不修改 main、不发布 tag 或包。使用和来源见 [CNN 文档](../../src/model_factory/CNN/README.md#timesnet-classification)。
+
+## 当前安装包验证
+
+PR 当前 head 的正常 wheel 测试在 Python 3.10 / CPU 环境中实际执行 **30 项，30 passed、0 skipped**，其中包含真实 TimesNet CLI preflight、1 epoch fit、selected checkpoint、test 与 checkpoint 独立重放。安装后模型实际从 `site-packages` 导入；记录的模型 import 为约 **0.867 s**，完整 CLI 墙钟约 **6.01 s**，该进程峰值 RSS 约 **527.95 MiB**。这些是软件/资源 smoke，不是 PHM 准确率结论。
+
+因此 catalogue 可记录为 `VERIFIED / CORE_NATIVE / E0+E1+E2`。真实 PHM split、方法收益和论文比较仍属于 E3，**没有**因本次 merge 自动获得 `BENCHMARK_READY` 或 `baseline-valid`。
