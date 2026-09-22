@@ -14,6 +14,7 @@ import pytest
 import torch
 from torch.nn import functional as F
 
+from src.configs.config_utils import dict_to_namespace
 from src.model_factory.CNN.TimesNet import Model, TimesBlock, fft_periods
 # A private package name avoids Python's stdlib `test` package and global `layers`.
 _reference_dir = Path(__file__).parent / "fixtures" / "timesnet_upstream"
@@ -114,6 +115,13 @@ def test_explicit_dc_tie_correction_not_claimed_as_upstream_parity():
     assert torch.equal(weights, torch.zeros(1, 1))
     model = Model(arguments(seq_len=2, top_k=1)).eval()
     assert torch.isfinite(model(torch.zeros(2, 2, 2))).all()
+
+
+def test_public_namespace_wrapped_class_map_constructs_one_head():
+    args = dict_to_namespace(vars(arguments(num_classes={"Dummy_Data": 3})))
+    model = Model(args)
+    assert model.projection.out_features == 3
+    assert model(torch.randn(2, 32, 2)).shape == (2, 3)
 
 
 def test_optimizer_features_no_mutation_and_strict_serialization(tmp_path):
