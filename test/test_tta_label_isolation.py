@@ -110,6 +110,8 @@ def test_hidden_domain_boundary_removes_domain_id_but_known_boundary_exposes_it(
         "labels",
         "target",
         "fault_label",
+        "fault_type",
+        "condition_id",
         "Label_Description",
         "TARGET-LABEL",
         "class labels",
@@ -123,6 +125,29 @@ def test_target_like_metadata_cannot_be_whitelisted(key):
             {"x": [1.0], "y": [0], key: [0]},
             protocol(),
             allowed_physical_metadata=(key,),
+        )
+
+
+def test_only_positive_physical_metadata_schema_can_be_whitelisted():
+    batch = {
+        "x": [1.0],
+        "y": [0],
+        "Sample_Rate": 12000,
+        "load_hp": 2,
+        "Working_Condition_description": "fault-class-derived text",
+    }
+    view = build_adaptation_view(
+        batch,
+        protocol(),
+        allowed_physical_metadata=("Sample_Rate", "load_hp"),
+    )
+    assert view == {"x": [1.0], "Sample_Rate": 12000, "load_hp": 2}
+
+    with pytest.raises(ValueError, match="positive allowlist"):
+        build_adaptation_view(
+            batch,
+            protocol(),
+            allowed_physical_metadata=("Working_Condition_description",),
         )
 
 
