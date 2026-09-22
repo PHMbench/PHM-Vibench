@@ -14,6 +14,6 @@ E2 使用固定 THUML Time-Series-Library 版本的真实源定义，数值逻�
 
 ## 当前安装包验证
 
-PR 当前 head 的正常 wheel 测试在 Python 3.10 / CPU 环境中实际执行 **30 项，30 passed、0 skipped**，其中包含真实 TimesNet CLI preflight、1 epoch fit、selected checkpoint、test 与 checkpoint 独立重放。安装后模型实际从 `site-packages` 导入；记录的模型 import 为约 **0.867 s**，完整 CLI 墙钟约 **6.01 s**，该进程峰值 RSS 约 **527.95 MiB**。这些是软件/资源 smoke，不是 PHM 准确率结论。
+PR 当前 head 的正常 wheel 测试在 Python 3.10 / CPU 环境中实际执行 **31 项，31 passed、0 skipped**，其中包含真实 TimesNet CLI preflight、1 epoch fit、selected checkpoint、test 与 checkpoint 独立重放。安装后模型实际从 `site-packages` 导入；记录的模型 import 为约 **1.002 s**，完整 CLI 墙钟约 **6.59 s**，该进程峰值 RSS 约 **528.55 MiB**。这些是软件/资源 smoke，不是 PHM 准确率结论。
 
 因此 catalogue 可记录为 `VERIFIED / CORE_NATIVE / E0+E1+E2`。真实 PHM split、方法收益和论文比较仍属于 E3，**没有**因本次 merge 自动获得 `BENCHMARK_READY` 或 `baseline-valid`。
