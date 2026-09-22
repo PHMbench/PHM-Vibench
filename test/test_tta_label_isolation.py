@@ -110,8 +110,10 @@ def test_hidden_domain_boundary_removes_domain_id_but_known_boundary_exposes_it(
         "labels",
         "target",
         "fault_label",
+        "Label_Description",
         "TARGET-LABEL",
         "class labels",
+        "class_name",
         "future_y",
     ],
 )
