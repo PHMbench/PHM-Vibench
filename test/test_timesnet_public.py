@@ -66,7 +66,6 @@ print(json.dumps(dict(model_file=m.__file__, python=sys.version,
     for key in ("best_checkpoint", "test_metrics", "run_summary"):
         path = Path(values[key]).resolve()
         assert path.is_file() and root in path.parents, (key, path)
-    assert "Restoring states from the checkpoint path" in log, log
     assert values["best_checkpoint"] in log
     summary = json.loads(Path(values["run_summary"]).read_text(encoding="utf-8"))
     assert summary["iterations"] == 1
@@ -75,6 +74,64 @@ print(json.dumps(dict(model_file=m.__file__, python=sys.version,
         assert metric["count"] == 1 and math.isfinite(metric["mean"])
     (artifacts / "run_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     (artifacts / "test_metrics.csv").write_text(Path(values["test_metrics"]).read_text(encoding="utf-8"), encoding="utf-8")
+    # The runtime restores state_dict itself; no Lightning restore log is promised.
+    # Rebuild the saved network and independently replay its exact test loader.
+    replay_path = artifacts / "checkpoint_replay.json"
+    replay = subprocess.run([executable, "-c", r'''
+import json, sys
+from pathlib import Path
+import torch
+from torch.nn import functional as F
+from sklearn.metrics import accuracy_score, f1_score
+from pytorch_lightning import seed_everything
+from phmfactory.config import analyze_config
+from src.configs.config_utils import dict_to_namespace, transfer_namespace
+from src.data_factory import build_data
+from src.model_factory import build_model
+
+config_path, overrides, checkpoint_path, report_path = json.loads(sys.argv[1])
+cfg = dict_to_namespace(analyze_config(config_path, override_values=overrides).effective_config)
+seed_everything(cfg.environment.seed)
+args_data, args_task, args_model = (
+    transfer_namespace(getattr(cfg, key)) for key in ("data", "task", "model")
+)
+factory = build_data(args_data, args_task)
+try:
+    model = build_model(args_model, metadata=factory.get_metadata())
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    selected = [state for state in checkpoint["callbacks"].values()
+                if isinstance(state, dict) and state.get("best_model_path") == checkpoint_path]
+    assert len(selected) == 1 and torch.isfinite(selected[0]["best_model_score"])
+    network_state = {key.removeprefix("network."): value
+                     for key, value in checkpoint["state_dict"].items()
+                     if key.startswith("network.")}
+    model.load_state_dict(network_state, strict=True)
+    model.eval()
+    labels, predictions, total_loss = [], [], 0.0
+    with torch.no_grad():
+        for batch in factory.get_dataloader("test"):
+            logits = model(batch["x"], batch["file_id"], task_id="classification")
+            y = batch["y"].long().reshape(-1)
+            total_loss += F.cross_entropy(logits, y, reduction="sum").item()
+            labels.extend(y.tolist())
+            predictions.extend(logits.argmax(-1).tolist())
+    assert labels
+    result = dict(checkpoint=checkpoint_path, samples=len(labels),
+                  acc=float(accuracy_score(labels, predictions)),
+                  f1=float(f1_score(labels, predictions, labels=range(cfg.model.num_classes),
+                                    average="macro", zero_division=0)),
+                  loss=total_loss/len(labels), labels=labels, predictions=predictions)
+    Path(report_path).write_text(json.dumps(result, indent=2), encoding="utf-8")
+finally:
+    factory.data.close()
+''', json.dumps([installed["config"], options[3::2], values["best_checkpoint"], str(replay_path)])],
+                            cwd=tmp_path, env=env, text=True, capture_output=True, timeout=60)
+    (artifacts / "checkpoint_replay.log").write_text(replay.stdout + replay.stderr, encoding="utf-8")
+    assert replay.returncode == 0, replay.stdout + replay.stderr
+    replayed = json.loads(replay_path.read_text(encoding="utf-8"))
+    for metric in ("acc", "f1", "loss"):
+        reported = summary["metrics"][f"test_{metric}_Dummy_Data" if metric != "loss" else "test_loss"]["mean"]
+        assert math.isclose(replayed[metric], reported, rel_tol=1e-5, abs_tol=1e-6), (metric, replayed, reported)
     resources = json.loads(time_file.read_text(encoding="utf-8"))
     assert resources["wall_seconds"] > 0 and resources["max_rss_kib"] > 0
     record_property("import_seconds", installed["import_seconds"])
