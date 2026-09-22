@@ -1,237 +1,122 @@
-# P19 execution authority — PHMFactory + external time-series datasets
+# Goal — P19 native signal-program correction: essential evidence
 
-## Scope
+## Core claim, gap and reuse
 
-Paper: `AI4Engineering-L/P-19-Deterministic-Representation-Gain-tpami`.
+Paper: `AI4Engineering-L/P-19-Deterministic-Representation-Gain-tpami`, formal source `paper/tex/main.tex`. Unique owner of new execution: PHMFactory (`PHMbench/PHM-Vibench`). Agent Benchmark is not a runtime dependency; its completed E1–E6/G6 evidence and the earlier correction code are historical/migration references only.
 
-**Unique execution owner for all new P19 experiments:** `PHMbench/PHM-Vibench` (PHMFactory).
+**Core claim:** a named signal program can improve a competent frozen TSPN beyond constant logit adjustments and alternative native-feature readouts. Without the native qualification and matched real comparison this practical contribution is unestablished. The target remains IEEE TPAMI; software checks and standard algebra do not supply the missing empirical value.
 
-`liq22/phm-agent-benchmark` is **not** an execution dependency for the active TSPN/signal-program paper. Its completed P19 frozen-bank pilot and G6 source attribution remain historical evidence only. Do not add new P19 models, data adapters, training stages, correction code, metrics, plots, or experiment Goals there.
+**Current gap:** at inspected dev `bc21a9ea65d56c0083d837f16e882a6d6f36c6d5`, TSPN, public configuration and native runtime exist, but `configs/experiments/p19/` was not retrievable; `scripts/paper/p19/` contains only `plot_signal_method.py`. No ready PHMFactory OP1 training/correction command is asserted. Inspect local research branches before writing code: an unmerged valid implementation may already exist.
 
-The active paper studies interpretable time-series signal processing on top of TSPN. New experiments must therefore use PHMFactory's existing data/model/task/trainer/runtime path and dataset-specific readers.
+**Reuse:** original prepared PHM population and physical roles; historical pilot/G6 results and failures; any genuinely compatible completed TSPN checkpoint/export. Do not repeat G6, the old six model fits, old bootstraps or completed data preparation. The attached older routing review does not authorize a new geometry objective or a return to Agent Benchmark.
 
-## Repository ownership
+## Inputs and protocol
 
-- `PHMbench/PHM-Vibench`
-  - TSPN and interpretable signal-processing implementations.
-  - Dataset readers/adapters and metadata contracts.
-  - Public configuration and preflight.
-  - Training, checkpoint selection, inference/export, metrics, statistics, plotting.
-  - P19 experiment configuration and executable scripts.
-- `AI4Engineering-L/P-19-Deterministic-Representation-Gain-tpami`
-  - TeX manuscript, theory/formulation, method description, claim/evidence table and paper-facing references.
-- `liq22/phm-agent-benchmark`
-  - read-only historical E1–E6 P19 pilot evidence; no active P19 implementation.
+### Inputs and ownership
 
-Do not cross-import Agent Benchmark into PHMFactory.
+Read actual local `AGENTS.md`, `CORE.md`, the current P19 method/claim map, this Goal and only relevant owner documentation. Retain unrelated changes.
 
-## Data roots
+Verified native owners are `phmfactory/config.py`, `phmfactory/cli.py`, `src/model_factory/X_model/TSPN.py`, `src/data_factory/`, `src/runtime/` and `docs/custom_dataset.md`. `scripts/paper/p19/` is the existing narrow helper location; use it only where an existing native export/evaluator cannot cover the required comparison. Do not clone a loader, trainer, split resolver or result manager.
 
-PHM data already available locally remain read-only:
+The former reference routines are `signal_programs.py`, `operator_gain.py`, `operator_study.py`, and the native export binding at Agent Benchmark revision `76a195133c23149147d204fd2883eebcc2e9289a`. Read them for numerical migration, not as an installed/imported execution dependency. Preserve the minimum relevant computation and its license; do not migrate unrelated routing/Agent code. Existing source checks of that reference do not establish a PHMFactory-native run.
 
-```text
-/home/user/data/PHMbenchdata/PHM-Vibench/
-```
+Local inputs previously supplied by the user:
 
-All additional general time-series datasets live under:
+- PHM root: `/home/user/data/PHMbenchdata/PHM-Vibench/`, including original `metadata.xlsx` and README; read-only.
+- Prepared-role reference: `/home/user/LQ/B_Signal/astra/phm-agent-benchmark/local_outputs/p19_native_v2_20260919/prepared.json`. Reading an existing record is not permission to execute that repository. Resolve its actual raw paths, labels, unit IDs and source provenance through PHMFactory.
+- Extra time-series root: `$HOME/data/timeseries`; HAR at `$HOME/data/timeseries/uci-har/raw/UCI HAR Dataset`. Do not download it again when complete. Never append the terminal `$` to a directory name.
+- Previously used native Python: `/home/user/anaconda3/envs/LQ_signal/bin/python`. Current availability, PHMFactory installation and available memory/time must be checked locally, not assumed.
 
-```bash
-export TS_DATA_ROOT="$HOME/data/timeseries"
-mkdir -p "$TS_DATA_ROOT"
-```
+### Fixed Paderborn specification
 
-The terminal prompt `$` is not part of the path.
+Retain the declared study, not a new parameter search:
 
-Prepared UCI HAR currently belongs under:
+| Item | Fixed condition |
+|---|---|
+| Observation | Original 32-bearing assignment; 64 kHz vibration channel; 4,096-sample windows; 32 evenly spaced windows per record; original per-window standardization |
+| Roles | Fit/tune/grow/select/test: 5/3/10/7/7 bearings. Actual IDs come from saved preparation, not invented from these counts |
+| Backbone | Native TSPN, one I/WF/MWF/HT layer, 16 output channels, RMS/AbsMean/Std/Kurtosis/CrestFactor/Skewness statistics; three classes; no skip or additional internal instance normalization |
+| Training | Original OP1 budget 100 epochs and seeds 11/23/37. Recover remaining optimizer, batching, precision and checkpoint-selection values from the approved effective native config before fitting; unresolved values are blockers, not silently chosen defaults |
+| Qualification | Equal-bearing **tune** accuracy at least 0.80 after tune checkpoint/temperature selection; not grow accuracy and not a test lower confidence bound |
+| External program | Fixed center/width pairs (1000,500), (4000,1000), (10000,2000), (20000,4000) Hz; modulation intervals [20,100), [100,300), [300,1000) Hz; lags 64/256/1024; 42 named features, not the superseded trainable-band design |
+| Readouts | Intercept, native-matched, native-full, signal-program; same frozen calibrated logits and grow data; equal-unit offset multinomial NLL plus L2=0.01 on coefficients and intercept; zero initialization; at most 1,000 L-BFGS-B iterations |
+| Native matching | Label-blind Gaussian QR projection, seed 11, to 42 columns; retain the full native vector as a separate stronger, unequal-capacity control |
+| Probability decision | Same grow Brier segment and empirical select rule for all corrections. The fixed class-stratified pilot does not use an iid deployment certificate |
+| Output | TSPN plus raw/projected/guarded versions of four corrections: 13 outputs, not 13 independent experiments |
 
-```text
-$HOME/data/timeseries/uci-har/raw/UCI HAR Dataset
-```
+Treat a PHMFactory source change as a real dependency change. Test frozen-state behavior and checkpoint compatibility; do not assume old runtime predictions remain identical. No existing PHM data or 1,517 record-length discrepancies may be erased or silently repaired in metadata.
 
-Other time-series datasets are added only when required by a retained paper claim. Their raw payloads stay outside Git.
+### Metrics, repetitions and budget
 
-## Scientific study boundary
+Primary: equal-bearing Brier of `signal_program/guarded` minus TSPN. Information contrasts: projected signal minus projected intercept/native-matched/native-full. Keep accuracy and unit-weighted macro-F1 separately. Lower Brier difference and higher accuracy difference favor the signal correction; no sign is presumed.
 
-The new study is distinct from the historical ResNet1D/TCN frozen-bank pilot.
+The existing three training seeds measure optimization variability and are retained because this specific study already registered them and the old pilot had seed-dependent outcomes. They do not create extra bearings. First average seed effects within a bearing; then use the existing 2,000 paired whole-bearing stratified draws, seed 20260922, for the fixed 1/3/3 test composition. Report the singleton healthy-stratum limitation and each seed. Compute paired accuracy uncertainty from the same predictions for any accuracy-gain claim. Do not add training repeats after seeing an interval.
 
-Primary scientific question:
+Binding uses only focused CPU checks and a native small-batch forward/backward/checkpoint smoke. Long training starts only after the actual native command and complete numerical config are established. At most the three fixed backbone runs are authorized for OP1, minus compatible completed work. All readout controls reuse each export. GPU policy remains one physical GPU 0, no GPU 2 and no multi-GPU; if unavailable, continue independent CPU/data tasks rather than selecting another device. Record actual local resource limits before a long run.
 
-> Do explicit modulation, periodicity and impulsiveness signal programs add useful corrections beyond a competent PHMFactory TSPN and matched native-feature readouts?
+## Execution
 
-The baseline qualification target is a predeclared diagnostic-accuracy floor. A requested 80% threshold is a qualification criterion, **not a guaranteed result**. Report source qualification and held-out accuracy separately. Never change a split, drop a seed, extend training after test inspection, or replace a dataset merely to cross 80%.
+### 1. Read-only binding checks
 
-The core correction contrasts are:
-
-1. frozen TSPN;
-2. intercept-only correction;
-3. equal-dimensional native TSPN feature correction;
-4. full-native-feature correction;
-5. named signal-program correction.
-
-Every condition shares the same TSPN checkpoint, native window population, calibration, grow/select roles and readout objective within a dataset.
-
-## Implementation location
-
-Use existing PHMFactory owners before adding code:
-
-- public config: `phmfactory/config.py`;
-- data: `src/data_factory/`;
-- TSPN/signal operators: `src/model_factory/X_model/`;
-- task and metrics: `src/task_factory/`;
-- runtime: `src/runtime/`;
-- experiment configs: `configs/experiments/p19/`;
-- narrow paper helpers when a public runtime hook is insufficient: `scripts/paper/p19/`.
-
-A helper may export selected-checkpoint logits/features or perform the fixed correction analysis, but it must reuse PHMFactory data/model/task construction. It must not create a second loader, trainer, split resolver, label ontology or result authority.
-
-The active P19 implementation presently located in Agent Benchmark is migration reference only. Port the minimum scientifically necessary routines into PHMFactory, verify numerical equivalence on a small legal/synthetic fixture, then run all new experiments only from PHMFactory.
-
-## Dataset A — Paderborn / PHM
-
-Use the existing local Paderborn source through PHMFactory.
-
-Preserve the already declared physical-unit split semantics unless a new protocol is explicitly approved. The statistical unit is the physical bearing; windows and training seeds do not increase the independent-unit count.
-
-The active TSPN study keeps interpretable signal processing as the central mechanism. Paderborn-specific analysis bands may be used only for the Paderborn protocol and must be recorded in the visible experiment config.
-
-Before a long run:
+These are actual inspection commands, **not OP1 execution**:
 
 ```bash
+: "${PHMFACTORY_ROOT:?Set the actual PHMFactory worktree}"
 cd "$PHMFACTORY_ROOT"
 git status --short
+git branch --show-current
 git rev-parse HEAD
-phmfactory doctor
-phmfactory preflight --config configs/experiments/p19/<paderborn-config>.yaml
+git ls-files 'configs/experiments/*p19*' 'configs/experiments/p19/*' 'scripts/paper/p19/*'
+python -m phmfactory --help
 ```
 
-Then execute through the public PHMFactory entry, not Agent Benchmark.
+Check active PRs and the installed module origins. Do not reset, force-pull, replace the environment or edit the paper's Results. If compatible native code already exists, reuse and validate it; do not repeat a migration to satisfy this document.
 
-## Dataset B — UCI HAR external time-series replication
+### 2. Bind only the missing correction path
 
-UCI HAR is the first external general time-series dataset because it is already prepared locally. Its official subject train/test boundary must be preserved.
+Reuse TSPN construction, native data/Task, checkpoint selection and prediction export. Port only absent named-feature, offset-readout, projection/acceptance and unit-analysis routines. Do not add an alternative Pipeline solely to launch this paper. Keep the fixed 42-feature specification and data roles.
 
-Do **not** copy Paderborn's:
+Use a small labeled software fixture for arithmetic and serialization, clearly separated from scientific evidence. Verify fixed-input features, frozen backbone parameters and running state, exact zero-correction recovery, contribution sums, class-log-odds contrasts, physical-unit weights and saved-state replay. The log-odds contrast is computed from saved logits to avoid taking logarithms of underflowed probabilities. No new architecture or target-tuned normalization is introduced.
 
-- 64 kHz sampling rate;
-- 4,096-sample window;
-- vibration-channel meaning;
-- frequency bands;
-- class head;
-- physical-bearing grouping.
+Complete a small native data/model/checkpoint smoke in the real environment. Missing metadata, unsupported configuration or a failed native smoke stops the affected long experiment; synthetic fixtures cannot replace this step. Validate only affected owners plus normal required CI.
 
-Instead, implement or reuse a PHMFactory dataset reader/adapter whose metadata preserves subject identity, channel order, sampling rate and official split. Allocate fit/tune/design only inside the official training subjects; keep official test subjects untouched until all model/operator/readout settings are frozen.
+### 3. Record and run the real native invocation
 
-If a PHMFactory-native HAR reader does not yet exist, add it using `docs/custom_dataset.md`:
+After the native binding exists, set `P19_CONFIG` to its actual reviewed training config. The following is the verified **public command interface**, conditional on that config being implemented and validated:
 
-```text
-src/data_factory/reader/<HAR_name>.py
-metadata with subject/group and class fields
-focused reader/adapter tests
-configs/experiments/p19/<har-config>.yaml
+```bash
+: "${P19_CONFIG:?Set the implemented and reviewed native P19 config}"
+test -f "$P19_CONFIG"
+python -m phmfactory preflight --config "$P19_CONFIG"
+python -m scripts.config_inspect --config "$P19_CONFIG" --dump resolved --format yaml
 ```
 
-The signal-program specification must be task-specific. Use the actual sampling rate and observable frequency grid; do not transfer Paderborn hertz bands. Any normalized-frequency design must be declared before HAR test scoring.
+Record the actual per-seed train/export/correction/analyze invocations in the existing execution notes. No undocumented `operator_fit`, `source`, `evaluate` or `--split` stage is assumed to exist in PHMFactory. `phmfactory --config` is the native training interface; it is not automatically an offset-readout analysis command. Use the existing helper or the minimal verified binding from step 2 and retain its real command.
 
-The independent unit is the subject, not the window.
+Train/select/calibrate source-only, export the same windows and capture native features at the declared position. For each source-qualified seed, fit all four corrections and freeze their coefficients, segment strengths and select decisions before scoring test labels. Do not retrain a completed backbone to recover an export/analysis-only failure. No post-selection refit or post-test setting change is authorized.
 
-## Additional time-series datasets
+A floor failure writes qualification and failure/completion status without a new correction test score, following the retained protocol. It is a valid source outcome but leaves the planned correction contrast incomplete. Do not report a favorable successful-seed subset as the three-seed primary.
 
-PAMAP2, Sleep-EDF, PTB-XL, Speech Commands or another dataset may be added under `$HOME/data/timeseries` only if one is needed to support a retained cross-domain claim after Paderborn + HAR evidence is inspected.
+### 4. External time-series work that can proceed independently
 
-Do not create a five-dataset checklist in advance. Each added dataset requires:
+UCI HAR remains the first external task for the user's retained time-series scope. Its data/reader binding can proceed while Paderborn is blocked. Keep the official subject train/test boundary; use its own sampling rate, channels, provided window semantics and label ontology. Do not re-window across subjects or copy Paderborn's 64 kHz/4,096-sample/band configuration.
 
-- source/license verification;
-- PHMFactory reader/metadata binding;
-- native sampling/channel/class semantics;
-- independent-unit definition;
-- train/tune/design/test separation;
-- dataset-specific signal-program coordinates.
+The exact HAR reader, role IDs inside training subjects, signal profile, TSPN dimensions, fitting budget and repetitions are **not yet bound in this snapshot**. Record those source-only choices and the verified invocation before a HAR performance run. No HAR training/test run is authorized by a placeholder path in this Goal. Return the binding for the next experiment-A handoff. The need for independent cross-task evidence is decided by the claim, not by whether Paderborn is positive. Do not download five datasets or launch a geometry-routing replication.
 
-## Minimal execution sequence
+## Artifacts and validation
 
-### G0 — PHMFactory migration and smoke
+Use native returned result/checkpoint/config locations. Preserve input identities, raw/projected/guarded probabilities, unit-level loss and correct/count, class order, calibration, coefficients, feature names, projection/acceptance states, seeds, real command, necessary logs and failures. Keep native checkpoint and input-source references; raw data remain local.
 
-1. Inspect current PHMFactory `dev`, active PRs and working tree.
-2. Locate the current TSPN model and all operators that can be reused directly.
-3. Port only the missing P19 signal-program/correction routines from the historical Agent Benchmark implementation.
-4. Add focused CPU tests for signal-program values, exact logit reconstruction, zero-correction recovery, grouped weighting and saved-state replay.
-5. Run a real PHMFactory model/data forward-backward/checkpoint smoke in the existing native environment.
-6. Do not run test performance during migration validation.
+The small P19 additions must support independent metric recomputation and feature-term reconstruction. Report both added-logit sums and class-log-odds contrasts from the same saved arrays; reference retention is checked separately for the deployed prediction. A nonzero raw correction that is rejected has zero deployed effect. Exact arithmetic is not proof of physical causality or a predictive benefit.
 
-### G1 — Paderborn TSPN qualification and correction
+Use the entire prescribed cohort and all available registered-seed states. Distinguish infrastructure failure, invalid protocol, source-floor failure, valid negative effect and guard rejection. No missing metric is filled with zero. Time and memory fields remain missing unless actually measured; fitting time is not deployment latency.
 
-1. Freeze configuration, physical roles, TSPN training budget and seeds before test scoring.
-2. Train/select/calibrate TSPN through PHMFactory.
-3. Fit the four correction controls on the declared source grow units.
-4. Freeze probability projection and source acceptance before test scoring.
-5. Evaluate the full fixed test population.
-6. Save per-unit Brier, accuracy, macro-F1, raw/projected/guarded predictions, coefficients and named logit contributions.
-7. Preserve qualification failures, zero strength, rejected corrections and adverse effects.
+Map evidence to the paper's C1–C4 table, Sections 3–4 and the existing OP1 settings/comparison locations. Plot only from saved analysis CSVs; no model inference or new bootstrap may hide inside a plot script. The method diagrams are reused, not redrawn as simulated results.
 
-### G2 — HAR replication
+## Failure and sync
 
-Only after the PHMFactory HAR binding and protocol are complete:
+If a required input is absent, preserve the precise blocker and continue other independent tasks in this batch. With no executable item left, stop and return the binding gap. Environment fixes may preserve the protocol; changes to source roles, observations, model, objective, calibration, selection or estimator need an explicit scientific handoff and cannot be pooled with the original protocol.
 
-1. verify official subject split and PHMFactory metadata;
-2. freeze task-specific TSPN and signal-program settings;
-3. run the same scientific contrasts;
-4. aggregate uncertainty over subjects;
-5. retain all signs and failures.
+Validated minimal native code/configuration and shareable evidence go through focused PHMFactory branches and PRs to dev. No force push, master/main changes, unrelated merges, raw-data upload or second runtime. Large artifacts follow the existing authorized storage with real accessible references. The paper links the actual accepted source and artifacts; it does not copy the execution body or write new Results in this stage.
 
-HAR is an external replication of the mechanism, not a search for a favorable dataset.
-
-### G3 — paper-facing analysis
-
-Plots and tables read saved PHMFactory artifacts only:
-
-```text
-PHMFactory run
--> raw predictions / unit metrics / saved states
--> analysis CSV
--> paper figure/table
-```
-
-No plotting stage trains or performs model inference.
-
-## Required artifacts
-
-For each dataset/seed keep the existing PHMFactory run outputs plus the minimum P19 additions:
-
-- fully resolved configuration and actual command;
-- selected checkpoint;
-- source/test unit assignments;
-- class/channel/sampling metadata;
-- baseline qualification;
-- calibration state;
-- raw/projected/guarded predictions;
-- unit-level Brier/accuracy/macro-F1;
-- readout coefficients and signal feature names;
-- exact added-logit reconstruction check;
-- failure record when applicable;
-- measured runtime fields only when actually measured.
-
-Raw datasets stay outside Git.
-
-## Acceptance
-
-Software completion and scientific support are separate.
-
-A valid experiment may show:
-
-- baseline < 80%;
-- signal correction = baseline;
-- signal correction worse than native control;
-- source guard rejection;
-- positive signal correction.
-
-All are valid outcomes if the protocol is followed.
-
-A positive operator-specific claim requires real independent-unit evidence beyond both the frozen TSPN and the matched native-feature control. A broad time-series claim additionally requires the independent external dataset.
-
-## Stop and sync
-
-Validated implementation/configuration changes go to PHMFactory `dev` through the normal PR process. The paper repository records only the current protocol, artifact locations and evidence interpretation.
-
-Do not add new P19 implementation to Agent Benchmark. Do not rerun the historical E1–E6 pilot.
-
-Stop after the smallest batch needed to resolve the current claim and hand the actual artifacts back to the paper evidence stage.
+Return the actual native config and commands, completed/reused/blocked items, all source qualifications and paired outcomes, retained failures, artifact paths and synchronization state. If no new execution occurred, say so. Stop after the essential batch; the evidence-B stage decides what the results support.
