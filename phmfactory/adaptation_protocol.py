@@ -26,6 +26,26 @@ _LABEL_ALIASES = frozenset(
         "class_label",
         "future_y",
         "y_future",
+        "fault_type",
+        "condition_id",
+    }
+)
+_SAFE_PHYSICAL_METADATA_KEYS = frozenset(
+    {
+        "speed",
+        "speed_rpm",
+        "rpm",
+        "shaft_rate_hz",
+        "load",
+        "load_hp",
+        "load_nm",
+        "torque",
+        "temperature",
+        "sample_rate",
+        "sampling_rate",
+        "pressure",
+        "voltage",
+        "current",
     }
 )
 _ADAPTATION_KEYS = (
@@ -98,10 +118,15 @@ def build_adaptation_view(
     for key in allowed_physical_metadata:
         if not isinstance(key, str) or not key.strip():
             raise TypeError("allowed physical metadata keys must be non-empty strings")
+        normalized = _normalized_metadata_key(key)
         if _is_target_label_key(key):
             raise ValueError(f"target label key {key!r} cannot enter adaptation view")
-        if _normalized_metadata_key(key) == "domain_id" and protocol.domain_boundary == "hidden":
+        if normalized == "domain_id" and protocol.domain_boundary == "hidden":
             raise ValueError("hidden domain boundaries cannot expose domain_id")
+        if normalized != "domain_id" and normalized not in _SAFE_PHYSICAL_METADATA_KEYS:
+            raise ValueError(
+                f"physical metadata key {key!r} is not in the B00 positive allowlist"
+            )
         if key in batch:
             view[key] = batch[key]
 
