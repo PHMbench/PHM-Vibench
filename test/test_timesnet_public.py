@@ -8,11 +8,14 @@ import math
 import os
 from pathlib import Path
 import subprocess
-import sys
+
+import pytest
 
 
 def test_installed_timesnet_preflight_fit_checkpoint_metrics(tmp_path, record_property):
-    executable = os.environ.get("PHMFACTORY_TEST_PYTHON", sys.executable)
+    executable = os.environ.get("PHMFACTORY_TEST_PYTHON")
+    if not executable:
+        pytest.skip("installed-wheel TimesNet validation requires PHMFACTORY_TEST_PYTHON")
     artifacts = Path(os.environ.get("TIMESNET_ARTIFACT_DIR", str(tmp_path / "artifacts"))).resolve()
     artifacts.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
