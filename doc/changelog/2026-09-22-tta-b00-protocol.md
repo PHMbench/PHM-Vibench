@@ -6,9 +6,12 @@ online-supervised continual controls.
 
 B00 adds no adaptation algorithm and no runnable TTA Task. The base TTA YAML is a
 protocol fragment only. Target labels are split into an evaluator-only view; ordinary
-adaptation code receives no `y`. Hidden domain boundaries suppress `domain_id`, online
-streams cannot be replayed as extra epochs, SFDA requires distinct adaptation/evaluation
-populations, and delayed labels cannot be released before their declared availability.
+adaptation code receives no `y`. Physical metadata is positive-allowlisted so repository
+label aliases such as `Label_Description`, `fault_type`, or `condition_id` cannot
+enter adaptation through a free-form metadata key. Hidden domain boundaries suppress
+`domain_id`, online streams cannot be replayed as extra epochs, SFDA requires distinct
+adaptation/evaluation populations, and delayed labels cannot be released before their
+declared availability.
 
 A small dependency-light protocol helper makes predict-before-update and update-before-predict
 observably distinct without importing the maintained classification runtime or implementing
