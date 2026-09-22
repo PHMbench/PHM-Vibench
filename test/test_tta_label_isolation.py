@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from src.config_schema import AdaptationProtocolConfig
-from src.runtime.adaptation import (
+from phmfactory.adaptation_protocol import (
     build_adaptation_view,
     execute_protocol_step,
     label_event_for_update,

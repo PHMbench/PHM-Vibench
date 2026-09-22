@@ -56,7 +56,7 @@ jobs:
       - name: Verify adaptation protocol contracts
         run: |
           python -m py_compile \
-            src/runtime/adaptation.py \
+            phmfactory/adaptation_protocol.py \
             test/test_tta_protocol_contract.py \
             test/test_tta_label_isolation.py
           python -m pytest \

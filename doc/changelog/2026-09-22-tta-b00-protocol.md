@@ -10,6 +10,6 @@ adaptation code receives no `y`. Hidden domain boundaries suppress `domain_id`, 
 streams cannot be replayed as extra epochs, SFDA requires distinct adaptation/evaluation
 populations, and delayed labels cannot be released before their declared availability.
 
-A small protocol runtime makes predict-before-update and update-before-predict
-observably distinct without implementing Tent, SAR, CoTTA, SHOT, buffers or a new
-Trainer. Focused protocol tests run inside the existing Core quality workflow.
+A small dependency-light protocol helper makes predict-before-update and update-before-predict
+observably distinct without importing the maintained classification runtime or implementing
+Tent, SAR, CoTTA, SHOT, buffers or a new Trainer. The real adaptation runtime remains B01 work. Focused protocol tests run inside the existing Core quality workflow.
