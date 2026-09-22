@@ -1,7 +1,7 @@
-# P18 submission-essential evidence handoff
+# P18 fixed-checkpoint evidence contract
 
-Add [P18 experiment A](../../docs/P18_EXPERIMENT_A.md) in the existing documentation area. The first block is original MFPT-held-out seed101 checkpoint evaluation on CWRU/JNU source-training cohorts, plus offline recovery of existing comparison artifacts. Training and HPO budgets are zero.
+Add [P18 evidence A](../../configs/experiments/P18_EVIDENCE_A.md) beside the existing research-configuration owner. It specifies one original MFPT-held-out seed101 checkpoint evaluation on CWRU/JNU source-training cohorts. Training and HPO budgets are zero. The initially proposed documentation-area work queue was removed; current status and subsequent experiment ordering remain owned by the paper repository.
 
-The document distinguishes true-reference access from a Bayes upper bound, valid low-fit results from invalid protocols, and formulation-only qualification from an empirical restriction claim. The current tracked child does not expose the locally reported P18 Task/config/checkpoint chain; its exact inference command remains unverified until local binding. The unrelated S/DLinear fit95 launcher is explicitly not a substitute.
+The contract distinguishes finite-reader reference access from a Bayes upper bound and valid low-fit results from invalid protocols. The current inspected child does not expose the locally reported P18 Task/config/checkpoint chain; its exact invocation is explicitly unverified until local binding. The separate S/DLinear fit95 trainer is not a substitute.
 
-No runtime, model, data, configuration schema, protected interface or scientific result changes. Documentation validation does not establish that P18 inference was run. Rollback is removal of this documentation-only change; existing local experiments and artifacts remain untouched.
+No runtime, model, data, configuration schema, protected interface or scientific result changes. Documentation checks do not establish industrial execution. Rollback removes this documentation-only change without touching existing experiments or artifacts.
