@@ -53,6 +53,23 @@ def feature_trace(model,out,epoch,step):
     These are sampled source-training trajectory diagnostics, not final-model
     population estimates and not a rule for rescaling any branch.
     """
+    if model.head_type=='operator_residual':
+        rows=[]
+        for name,z in out['branch_features'].items():
+            head=model.operator_heads[name]
+            gradient=head.hidden.weight.grad
+            if gradient is None:raise RuntimeError('No branch-readout gradient.')
+            w1,w2=head.effective_weights(model.head_frobenius_cap)
+            d=model.feature_dims[name];norm=(z.detach()/math.sqrt(d)).norm(dim=-1)
+            rows.append(dict(epoch=epoch,step=step,branch=name,feature_dim=d,sampled_windows=len(norm),
+                             mean_scaled_squared_norm=float(norm.square().mean()),
+                             median_scaled_norm=float(torch.quantile(norm,.5)),
+                             input_weight_gradient_norm=float(gradient.norm()),
+                             input_weight_parameters=int(head.hidden.weight.numel()),
+                             raw_input_weight_norm=float(head.hidden.weight.detach().norm()),
+                             effective_input_weight_norm=float(w1.detach().norm()),
+                             effective_output_weight_norm=float(w2.detach().norm())))
+        return rows
     first=model.candidate_hidden if model.head_type=='mlp' else model.candidate_head
     gradient=first.weight.grad
     if gradient is None:raise RuntimeError('No candidate input-layer gradient.')
@@ -86,6 +103,8 @@ def evaluate(model,units,device,tau,beta,pack_batch,selection_predictor='candida
             for name,lp in [('raw',lp0),('candidate',lpq),('training_tau_mixture',lpm)]:
                 prediction_arrays.setdefault(name+'_log_probs',[]).append(lp.cpu().numpy())
                 prediction_arrays.setdefault(name+'_probs',[]).append(lp.exp().cpu().numpy())
+            for name,value in out.get('branch_logit_contributions',{}).items():
+                prediction_arrays.setdefault('logit_contribution__'+name,[]).append(value.cpu().numpy())
             for key,value in [('group_ids',u['unit_id']),('acquisition_ids',u.get('acquisition_id',u['unit_id'])),('domains',u['domain'])]:
                 prediction_arrays.setdefault(key,[]).append(np.repeat(str(value),len(y)))
             prediction_arrays.setdefault('labels',[]).append(y.cpu().numpy())
@@ -148,10 +167,14 @@ def main():
     p.add_argument('--selection-brier-weight',type=float,default=.25)
     p.add_argument('--selection-predictor',choices=['candidate','training_tau_mixture'],default='candidate')
     p.add_argument('--arm',default='candidate',help='Declared comparison arm; recorded without changing the model.')
+    p.add_argument('--reference-min-accuracy',type=float,default=None,
+                   help='Optional source-selection qualification, at least 0.8; never a test guarantee.')
     p.add_argument('--evaluate-test',action='store_true',help='Empirical candidate comparison after source choices are fixed; not assessed deployment.')
     args=p.parse_args()
     if min(args.epochs,args.steps_per_epoch,args.units_per_domain)<1 or not math.isfinite(args.lr) or args.lr<=0 or args.pair_shift<0:
         raise ValueError('Positive training budget and nonnegative pair shift required.')
+    if args.reference_min_accuracy is not None and not .8 <= args.reference_min_accuracy <= 1:
+        raise ValueError('Reference qualification threshold must lie in [0.8,1].')
     if not math.isfinite(args.selection_brier_weight) or args.selection_brier_weight<0:
         raise ValueError('Invalid independent selection weight.')
     from experiments.p01.window_io import materialize,pack_batch
@@ -193,13 +216,45 @@ def main():
     baseline={k:v.detach().clone() for k,v in model.reference.state_dict().items()}
     torch.save({k:v.detach().cpu().clone() for k,v in model.state_dict().items() if not k.startswith('reference.')},
                output/'initial_candidate_state.pt')
+    if args.reference_min_accuracy is not None:
+        # This reuses selection observations, so it is a development gate only.
+        # Keep the record even when it blocks the fit; never search another test.
+        _,_,qualification=evaluate(model,val,args.device,objective.tau,args.selection_brier_weight,pack_batch)
+        raw_rows=[row for row in qualification if row['predictor']=='raw']
+        passed=all(row['accuracy']>=args.reference_min_accuracy for row in raw_rows)
+        (output/'reference_qualification.json').write_text(json.dumps(dict(
+            threshold=args.reference_min_accuracy, source_conditions=raw_rows,
+            passed=passed, independent_test_guarantee=False),indent=2))
+        if not passed:
+            raise ValueError('Reference did not reach the declared source accuracy threshold; see reference_qualification.json. No candidate was trained.')
     optimizer=torch.optim.Adam([p for p in model.parameters() if p.requires_grad],lr=args.lr)
     best=float('inf');log=[];domain_log=[];feature_log=[];batch_log=[];sampling_log=[];prior_log=[];response_log=[]
     training_seconds=0.;selection_seconds=0.;selected_epoch=None
     diagnostic_keys=('diagnostic_excess','max_source_excess','source_envelope','correction_consistency',
                      'risk_objective','pair_penalty','candidate_output_consistency','reference_output_consistency')
     if args.device.startswith('cuda'):torch.cuda.reset_peak_memory_stats()
+    def save_selected(epoch,summary,val_rows,prediction_arrays):
+        torch.save({'state_dict':model.state_dict(),'model':cfg['model'],'epoch':epoch,'arm':args.arm,'seed':args.seed,
+                    'benchmark_commit':benchmark_commit},output/'selected_candidate.pt')
+        write_csv(output/'selected_source_validation.csv',summary);write_csv(output/'selected_source_validation_units.csv',val_rows)
+        arrays={key:np.concatenate(values) for key,values in prediction_arrays.items()}
+        class_names=data['model'].get('class_names')
+        if class_names is not None:
+            if len(class_names)!=classes or len(set(class_names))!=classes:raise ValueError('Invalid ordered class names.')
+            arrays.update(raw_class_names=np.asarray(class_names,dtype=str),candidate_class_names=np.asarray(class_names,dtype=str))
+        arrays.update(arm=np.asarray(args.arm),seed=np.asarray(args.seed),checkpoint=np.asarray(str(output/'selected_candidate.pt')),
+                      benchmark_commit=np.asarray(benchmark_commit),model_config=np.asarray(str(output/'model_config.yaml')))
+        np.savez_compressed(output/'selected_source_validation_windows.npz',**arrays)
     started=synchronized_time(args.device)
+    if model.head_type=='operator_residual':
+        # Keep the exact TSPN function as an explicit incumbent. This protects
+        # only the declared source-selection score, never unknown target risk.
+        selected_epoch=-1;prediction_arrays={}
+        selection_started=synchronized_time(args.device)
+        best,val_rows,summary=evaluate(model,val,args.device,objective.tau,args.selection_brier_weight,
+                                      pack_batch,args.selection_predictor,prediction_arrays)
+        selection_seconds+=synchronized_time(args.device)-selection_started
+        save_selected(-1,summary,val_rows,prediction_arrays)
     for epoch in range(args.epochs):
         train_started=synchronized_time(args.device)
         model.train();losses=[];diagnostics=[]
@@ -253,17 +308,7 @@ def main():
         if prior_log:write_csv(output/'training_reference_prior.csv',prior_log)
         if score<best:
             best=score;selected_epoch=epoch
-            torch.save({'state_dict':model.state_dict(),'model':cfg['model'],'epoch':epoch,'arm':args.arm,'seed':args.seed,
-                        'benchmark_commit':benchmark_commit},output/'selected_candidate.pt')
-            write_csv(output/'selected_source_validation.csv',summary);write_csv(output/'selected_source_validation_units.csv',val_rows)
-            arrays={key:np.concatenate(values) for key,values in prediction_arrays.items()}
-            class_names=data['model'].get('class_names')
-            if class_names is not None:
-                if len(class_names)!=classes or len(set(class_names))!=classes:raise ValueError('Invalid ordered class names.')
-                arrays.update(raw_class_names=np.asarray(class_names,dtype=str),candidate_class_names=np.asarray(class_names,dtype=str))
-            arrays.update(arm=np.asarray(args.arm),seed=np.asarray(args.seed),checkpoint=np.asarray(str(output/'selected_candidate.pt')),
-                          benchmark_commit=np.asarray(benchmark_commit),model_config=np.asarray(str(output/'model_config.yaml')))
-            np.savez_compressed(output/'selected_source_validation_windows.npz',**arrays)
+            save_selected(epoch,summary,val_rows,prediction_arrays)
         print(log[-1],flush=True)
     if args.device.startswith('cuda'):torch.cuda.synchronize()
     total_seconds=time.perf_counter()-started
@@ -291,6 +336,9 @@ def main():
               classification='group-balanced acquisition accuracy and macro-F1 from a weighted confusion matrix',
               feature_diagnostics='sampled source-training inputs after dimension scaling; not frozen population moments',
               interpretation='training_tau_mixture is not independently assessed deployment')
+    if model.head_type=='operator_residual':
+        note['reference_incumbent_retained']=selected_epoch==-1
+        note['selection_boundary']='Initial zero residual included; source-score protection only, not target accuracy guarantee.'
     (output/'result_scope.json').write_text(json.dumps(note,indent=2));print(output)
 
 

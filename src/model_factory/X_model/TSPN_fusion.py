@@ -87,19 +87,39 @@ def analytic_envelope(x: Tensor) -> Tensor:
 class EnvelopeBranch(nn.Module):
     """1D: Gaussian carrier bank -> envelope -> modulation-band energy.
 
-    Input B,L,C; output B,C*Kcarrier*(1+Kmodulation). The FFT boundary is periodic.
+    Input B,L,C; named carrier/modulation statistics. The FFT boundary is periodic.
+    Optional impulsiveness, energy and lag operators reuse the same filtered signal.
     Amplitude is preserved through the mean envelope; no per-sample whitening.
     """
-    def __init__(self, in_channels: int, carrier: Mapping, modulation: Mapping):
+    def __init__(self, in_channels: int, carrier: Mapping, modulation: Mapping,
+                 diagnostics: Mapping | None = None):
         super().__init__()
         self.carrier = GaussianBands(**carrier)
         self.modulation = GaussianBands(**modulation)
-        self.output_dim = in_channels * self.carrier.count * (1 + self.modulation.count)
+        self.diagnostics = None if diagnostics is None else copy.deepcopy(dict(diagnostics))
+        names = ['log_mean_envelope'] + [f'log_modulation_energy_{j}' for j in range(self.modulation.count)]
+        if self.diagnostics is not None:
+            if set(self.diagnostics) != {'lags', 'epsilon'}:
+                raise ValueError("Envelope diagnostics require exactly lags and epsilon.")
+            lags, epsilon = self.diagnostics['lags'], self.diagnostics['epsilon']
+            if (not isinstance(lags, (list, tuple)) or not lags or
+                    any(isinstance(lag, bool) or not isinstance(lag, int) or lag < 1 for lag in lags) or
+                    len(set(lags)) != len(lags)):
+                raise ValueError("Declare unique positive integer lags in samples, not shaft orders.")
+            if isinstance(epsilon, bool) or not math.isfinite(epsilon) or epsilon <= 0:
+                raise ValueError("Declare a positive fixed diagnostic epsilon.")
+            names += ['log_band_kurtosis', 'log_envelope_cv2', 'asinh_teager_ratio']
+            names += [f'envelope_correlation_lag_{lag}' for lag in lags]
+        self.feature_names = [f'channel_{c}/carrier_{k}/{name}'
+                              for c in range(in_channels) for k in range(self.carrier.count) for name in names]
+        self.output_dim = len(self.feature_names)
 
     def forward(self, x: Tensor) -> Tensor:
         n = x.shape[1]
         self.carrier.check_grid(n)
         self.modulation.check_grid(n)
+        if self.diagnostics is not None and (n < 3 or max(self.diagnostics['lags']) > n - 2):
+            raise ValueError("Each declared lag needs at least two observed pairs; no circular lag padding.")
         frequency = torch.fft.rfftfreq(n, device=x.device, dtype=x.dtype)
         spectrum = torch.fft.rfft(x.transpose(1, 2), dim=-1, norm="ortho")
         masks = self.carrier(frequency)
@@ -112,7 +132,24 @@ class EnvelopeBranch(nn.Module):
         weights = self.modulation(frequency)
         weights = weights / weights.sum(-1, keepdim=True)
         energies = torch.einsum("bckf,mf->bckm", power, weights)
-        return torch.cat((torch.log1p(mean), torch.log1p(energies)), dim=-1).flatten(1)
+        values = [torch.log1p(mean), torch.log1p(energies)]
+        if self.diagnostics is not None:
+            # Explicit regularized operators; epsilon is fixed in signal-squared
+            # units, not fitted from a target batch. Exact scale invariance is not claimed.
+            eps = self.diagnostics['epsilon']
+            yc = filtered - filtered.mean(-1, keepdim=True)
+            variance = yc.square().mean(-1, keepdim=True)
+            kurtosis = yc.pow(4).mean(-1, keepdim=True) / (variance + eps).square()
+            cv2 = centered.square().mean(-1, keepdim=True) / (mean.square() + eps)
+            teager = (filtered[..., 1:-1].square() - filtered[..., :-2] * filtered[..., 2:]).mean(-1, keepdim=True)
+            teager = teager / (filtered.square().mean(-1, keepdim=True) + eps)
+            values.extend([torch.log1p(kurtosis), torch.log1p(cv2), torch.asinh(teager)])
+            for lag in self.diagnostics['lags']:
+                left, right = centered[..., :-lag], centered[..., lag:]
+                denominator = ((left.square().mean(-1, keepdim=True) + eps) *
+                               (right.square().mean(-1, keepdim=True) + eps)).sqrt()
+                values.append((left * right).mean(-1, keepdim=True) / denominator)
+        return torch.cat(values, dim=-1).flatten(1)
 
 
 def mixture_log_probs(raw_logits: Tensor, candidate_logits: Tensor, alpha: float,
@@ -129,6 +166,34 @@ def mixture_log_probs(raw_logits: Tensor, candidate_logits: Tensor, alpha: float
     return torch.logaddexp(log_p + math.log1p(-alpha), log_q + math.log(alpha))
 
 
+class OperatorResidualHead(nn.Module):
+    """One zero-anchored nonlinear function per physical branch, not cross-branch mixing.
+
+    The last matrix starts at zero: initialization exactly preserves the calibrated
+    TSPN logits. Additivity explains logit changes, not unique physical causation.
+    """
+    def __init__(self, dimension: int, hidden: int, classes: int):
+        super().__init__()
+        self.hidden = nn.Linear(dimension, hidden)
+        nn.init.kaiming_uniform_(self.hidden.weight, nonlinearity='relu')
+        nn.init.zeros_(self.hidden.bias)
+        self.output = nn.Linear(hidden, classes, bias=False)
+        nn.init.zeros_(self.output.weight)
+
+    def effective_weights(self, cap: Tensor) -> tuple[Tensor, Tensor]:
+        root = cap.sqrt()
+        return tuple(w / (w.norm() / root).clamp_min(1.)
+                     for w in (self.hidden.weight, self.output.weight))
+
+    def forward(self, z: Tensor, cap: Tensor) -> Tensor:
+        w1, w2 = self.effective_weights(cap)
+        h = F.relu(F.linear(z, w1, self.hidden.bias)) - F.relu(self.hidden.bias)
+        value = F.linear(h, w2)
+        # Softmax is unchanged by a common class shift. Center to give one
+        # identifiable class-contrast convention; zero features give zero evidence.
+        return value - value.mean(-1, keepdim=True)
+
+
 class TSPNFusion(nn.Module):
     """One frozen reference and a configuration-assembled operator family.
 
@@ -141,7 +206,6 @@ class TSPNFusion(nn.Module):
                  reference_temperature: float = 1., head_frobenius_cap: float = 5.,
                  head_type: str = "linear", head_hidden_dim: int = 16):
         super().__init__()
-        from .TSPN_tf_operators import TimeFrequencyBranch
         if int(reference.args.num_classes) != num_classes or int(reference.args.in_channels) != in_channels:
             raise ValueError("Reference and new predictor must share channels and labels.")
         if not math.isfinite(reference_temperature) or reference_temperature <= 0:
@@ -152,9 +216,9 @@ class TSPNFusion(nn.Module):
             raise ValueError("branches must be an explicitly ordered sequence.")
         if not branches and not use_reference_features:
             raise ValueError("The candidate needs at least one feature source.")
-        if head_type not in {"linear", "mlp"}:
-            raise ValueError("head_type must be linear or mlp.")
-        if head_type == "mlp" and (isinstance(head_hidden_dim, bool) or
+        if head_type not in {"linear", "mlp", "operator_residual"}:
+            raise ValueError("head_type must be linear, mlp or operator_residual.")
+        if head_type in {"mlp", "operator_residual"} and (isinstance(head_hidden_dim, bool) or
                 not isinstance(head_hidden_dim, int) or head_hidden_dim < 1):
             raise ValueError("An MLP needs an explicit positive integer hidden width.")
         self.head_type = head_type
@@ -174,19 +238,24 @@ class TSPNFusion(nn.Module):
             if kind == "envelope":
                 branch = EnvelopeBranch(in_channels, **spec)
             else:
+                from .TSPN_tf_operators import TimeFrequencyBranch
                 branch = TimeFrequencyBranch(kind, in_channels, **spec)
             self.branches[name] = branch
             self.feature_dims[name] = branch.output_dim
         dimension = sum(self.feature_dims.values())
         # Preserve legacy linear state keys. The MLP is a readout comparator,
         # not another encoder or a new signal-processing branch.
-        if head_type == "mlp":
-            self.candidate_hidden = nn.Linear(dimension, head_hidden_dim)
-            nn.init.kaiming_uniform_(self.candidate_hidden.weight, nonlinearity="relu")
-            nn.init.zeros_(self.candidate_hidden.bias)
-        self.candidate_head = nn.Linear(head_hidden_dim if head_type == "mlp" else dimension, num_classes)
-        nn.init.normal_(self.candidate_head.weight, mean=0., std=.01)
-        nn.init.zeros_(self.candidate_head.bias)
+        if head_type == "operator_residual":
+            self.operator_heads = nn.ModuleDict({name: OperatorResidualHead(d, head_hidden_dim, num_classes)
+                                                 for name, d in self.feature_dims.items()})
+        else:
+            if head_type == "mlp":
+                self.candidate_hidden = nn.Linear(dimension, head_hidden_dim)
+                nn.init.kaiming_uniform_(self.candidate_hidden.weight, nonlinearity="relu")
+                nn.init.zeros_(self.candidate_hidden.bias)
+            self.candidate_head = nn.Linear(head_hidden_dim if head_type == "mlp" else dimension, num_classes)
+            nn.init.normal_(self.candidate_head.weight, mean=0., std=.01)
+            nn.init.zeros_(self.candidate_head.bias)
         self.register_buffer("head_frobenius_cap", torch.tensor(float(head_frobenius_cap)))
         self.register_buffer("alpha", torch.tensor(0., dtype=torch.float64))
         self.register_buffer("reference_temperature", torch.tensor(reference_temperature, dtype=torch.float64))
@@ -219,6 +288,8 @@ class TSPNFusion(nn.Module):
         self.alpha.fill_(alpha)
 
     def effective_head_weight(self) -> Tensor:
+        if self.head_type == "operator_residual":
+            raise ValueError("The operator-residual readout has separate branch matrices, not a joint head.")
         w = self.candidate_head.weight
         cap = self.head_frobenius_cap.sqrt() if self.head_type == "mlp" else self.head_frobenius_cap
         return w/(torch.linalg.vector_norm(w)/cap).clamp_min(1.)
@@ -231,19 +302,28 @@ class TSPNFusion(nn.Module):
             feature_dict["reference"] = torch.asinh(z0)
         for name, branch in self.branches.items():
             feature_dict[name] = branch(x)
-        features = torch.cat([z/math.sqrt(self.feature_dims[name]) for name, z in feature_dict.items()], -1)
-        if self.head_type == "mlp":
-            w = self.candidate_hidden.weight
-            cap = self.head_frobenius_cap.sqrt()
-            w = w/(torch.linalg.vector_norm(w)/cap).clamp_min(1.)
-            features = F.relu(F.linear(features, w, self.candidate_hidden.bias))
-        logits = F.linear(features, self.effective_head_weight(), self.candidate_head.bias)
+        contributions = {}
+        if self.head_type == "operator_residual":
+            scale = math.sqrt(len(feature_dict))
+            contributions = {name: self.operator_heads[name](z / math.sqrt(self.feature_dims[name]),
+                                                            self.head_frobenius_cap) / scale
+                             for name, z in feature_dict.items()}
+            logits = raw_logits / self.reference_temperature.item() + torch.stack(list(contributions.values())).sum(0)
+        else:
+            features = torch.cat([z/math.sqrt(self.feature_dims[name]) for name, z in feature_dict.items()], -1)
+            if self.head_type == "mlp":
+                w = self.candidate_hidden.weight
+                cap = self.head_frobenius_cap.sqrt()
+                w = w/(torch.linalg.vector_norm(w)/cap).clamp_min(1.)
+                features = F.relu(F.linear(features, w, self.candidate_hidden.bias))
+            logits = F.linear(features, self.effective_head_weight(), self.candidate_head.bias)
         p0 = F.softmax(raw_logits/self.reference_temperature.item(), -1)
         q = F.softmax(logits, -1)
         return {"raw_logits": raw_logits, "candidate_logits": logits,
                 "raw_probs": p0, "candidate_probs": q, "correction": q-p0,
                 "raw_features": z0, "branch_features": feature_dict,
-                "reference_temperature": self.reference_temperature}
+                "reference_temperature": self.reference_temperature,
+                **({"branch_logit_contributions": contributions} if contributions else {})}
 
     @torch.no_grad()
     def predict_proba(self, x: Tensor) -> Tensor:

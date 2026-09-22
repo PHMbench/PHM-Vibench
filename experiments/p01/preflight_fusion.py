@@ -57,7 +57,7 @@ def support_rows(config, length, fs):
     for spec in config['branches']:
         kind, name = spec['type'], spec['name']
         if kind == 'envelope':
-            b = EnvelopeBranch(channels, spec['carrier'], spec['modulation'])
+            b = EnvelopeBranch(channels, spec['carrier'], spec['modulation'], spec.get('diagnostics'))
             for component in ('carrier', 'modulation'):
                 bands = getattr(b, component); bands.check_grid(length)
                 centers, widths = bands.parameters_in_frequency()
@@ -67,6 +67,14 @@ def support_rows(config, length, fs):
                         frequency_hz=float(centers[i].detach())*fs,
                         width_hz=float(widths[i].detach())*fs, window_enbw_hz='',
                         grid_hz=fs/length, convention='periodic FFT; three-width support'))
+            if b.diagnostics is not None:
+                for lag in b.diagnostics['lags']:
+                    if lag > length - 2:
+                        raise ValueError(f'{name}: each lag needs at least two observed pairs.')
+                    rows.append(dict(branch=name, component='envelope_correlation', row=lag,
+                        support_samples=length, valid_positions=length-lag, duration_s=length/fs,
+                        frequency_hz='', width_hz='', window_enbw_hz='', grid_hz='',
+                        convention=f'lag={lag} samples ({lag/fs:g} s); no circular lag padding'))
         else:
             b = TimeFrequencyBranch(kind, channels, spec['transform'], spec['readout'])
             t = b.transform; positions = len(t.times(length))
