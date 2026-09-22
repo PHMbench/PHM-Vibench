@@ -55,10 +55,11 @@ def _normalized_metadata_key(key: str) -> str:
 
 def _is_target_label_key(key: str) -> bool:
     normalized = _normalized_metadata_key(key)
+    tokens = set(normalized.split("_"))
     return (
         normalized in _LABEL_ALIASES
-        or normalized.endswith("_label")
-        or normalized.endswith("_labels")
+        or bool(tokens.intersection({"label", "labels", "target", "targets", "class", "classes"}))
+        or normalized.startswith(("label", "target", "class"))
     )
 
 
