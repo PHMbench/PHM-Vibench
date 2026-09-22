@@ -26,6 +26,7 @@ SOFTWARE.
 import math
 from collections.abc import Mapping
 from numbers import Real
+from types import SimpleNamespace
 
 import torch
 from torch import nn
@@ -135,9 +136,15 @@ class Model(nn.Module):
             raise ValueError("model.dropout must be a number in [0, 1)")
         classes = args_model.num_classes
         if isinstance(classes, Mapping):
-            if len(classes) != 1:
+            class_map = classes
+        elif isinstance(classes, SimpleNamespace):
+            class_map = vars(classes)
+        else:
+            class_map = None
+        if class_map is not None:
+            if len(class_map) != 1:
                 raise ValueError("TimesNet has one class head; num_classes must define one ontology")
-            classes = next(iter(classes.values()))
+            classes = next(iter(class_map.values()))
         if isinstance(classes, bool) or not isinstance(classes, int) or classes < 2:
             raise ValueError("model.num_classes must be an integer >= 2")
         self.model = nn.ModuleList([TimesBlock(dim, ff_dim, top_k, num_kernels) for _ in range(depth)])
