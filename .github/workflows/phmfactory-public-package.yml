@@ -39,6 +39,9 @@ on:
       - "test/test_run_summary.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
+      - "test/test_timesnet.py"
+      - "test/test_timesnet_public.py"
+      - "test/fixtures/timesnet_upstream/**"
       - ".github/workflows/phmfactory-public-package.yml"
   push:
     branches:
@@ -80,6 +83,9 @@ on:
       - "test/test_run_summary.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
+      - "test/test_timesnet.py"
+      - "test/test_timesnet_public.py"
+      - "test/fixtures/timesnet_upstream/**"
       - ".github/workflows/phmfactory-public-package.yml"
   workflow_dispatch:
 
@@ -190,8 +196,10 @@ jobs:
               "src/configs/config_utils.py",
               "src/config_schema/__init__.py",
               "src/config_schema/models.py",
+              "src/model_factory/CNN/TimesNet.py",
               "configs/__init__.py",
               "configs/demo/00_smoke/dummy_dg.yaml",
+              "configs/experiments/model_integration/timesnet_dummy.yaml",
               "configs/base/environment/base.yaml",
               "configs/base/data/base_cross_domain.yaml",
               "configs/base/model/backbone_dlinear.yaml",
@@ -207,6 +215,7 @@ jobs:
           assert "phmfactory/runtime/attestation.py" not in names
           assert "phmfactory/runtime/evidence.py" not in names
           assert not any(name.startswith(("paper/", "dev/", "results/")) for name in names)
+          assert not any("timesnet_upstream" in name for name in names)
           PY
 
       - name: Install wheel with normal dependency resolution
@@ -349,6 +358,35 @@ jobs:
           assert summary.get("metrics"), summary
           assert "sha256" not in text.lower()
           PY
+
+      - name: Test installed TimesNet against the pinned upstream classifier
+        shell: bash
+        env:
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          TIMESNET_ARTIFACT_DIR: /tmp/timesnet-diagnostics
+        run: |
+          set -euo pipefail
+          /tmp/phmfactory-wheel/bin/python -m pip install "pytest>=7"
+          /tmp/phmfactory-wheel/bin/python -m pip check
+          mkdir -p /tmp/phmfactory-timesnet-tests/fixtures /tmp/timesnet-diagnostics
+          cp test/test_timesnet.py test/test_timesnet_public.py /tmp/phmfactory-timesnet-tests/
+          cp -R test/fixtures/timesnet_upstream /tmp/phmfactory-timesnet-tests/fixtures/
+          cd /tmp/phmfactory-timesnet-tests
+          unset PYTHONPATH
+          /tmp/phmfactory-wheel/bin/python -m pytest \
+            test_timesnet.py test_timesnet_public.py -vv --durations=10 \
+            -o junit_family=xunit1 --junitxml=/tmp/timesnet-diagnostics/tests.xml \
+            2>&1 | tee /tmp/timesnet-diagnostics/pytest.log
+
+      - name: Upload TimesNet installed-wheel diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timesnet-installed-wheel
+          path: /tmp/timesnet-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload installed-wheel diagnostics
         if: always()
