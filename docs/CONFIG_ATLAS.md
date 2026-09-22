@@ -382,6 +382,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
 - Status: `sanity_ok`
 
+#### `timesnet_classification_smoke`
+- Path: `configs/experiments/model_integration/timesnet_dummy.yaml`
+- Description: TimesNet classification CPU software smoke; upstream-fidelity and installed-wheel path; not PHM benchmark evidence
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/experiments/model_integration/timesnet_dummy.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/model_integration/timesnet/{experiment_name}/iter_{i}/`
+- Related docs: `src/model_factory/CNN/README.md`
+- Status: `sanity_ok`
+
 
 ## Pipeline_02_Pretraining_Few_Shot
 
