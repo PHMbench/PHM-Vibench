@@ -40,7 +40,7 @@ p0 使用现有 `experiments.p01.train_source_classifier --role reference` 或�
 
 基线与各候选采用同一预声明的有限源搜索上限、优化更新/选择机会和观测。已有旧 PU 的20×50更新不自动等于新任务充分收敛。先用实际可复用配置确定预算并保留曲线；任何小型源调参只能在共同声明的上限内。不得因分数不好单臂延长或继续加新配置。参数量、参照预训练资源和额外初始候选分别披露。
 
-主要效果为 I−p0、I−MLP16、I−I-base 的组平衡 acquisition accuracy 差与 window Brier 差，准确率正值、Brier负值有利；macro-F1与class支持单列。物理组是统计重采样单位；同组跨条件共同重采样、两臂共享索引。固定三seed的有限均值、seed SD、条件于冻结模型的描述性组配对95%区间分开报告。沿用2000次、analysis seed20260919的既有离线实现，不新增统计系统。核心比较全部呈现，不用“任一有利指标”决定成功；不将区间跨零写成等价。
+主要效果为 I−p0、I−MLP16、I−I-base 的组平衡 acquisition accuracy 差与 window Brier 差，准确率正值、Brier负值有利；macro-F1与class支持单列。物理组是统计重采样单位；同组跨条件共同重采样、两臂共享索引。固定三seed的有限均值、seed SD、条件于冻结模型的描述性组配对95%区间分开报告。复用既有组聚合/重采样函数，沿用2000次、analysis seed20260919；原 analyze_d1 的 CORE/CONTRASTS 固定为旧五臂，需按下述接口步骤显式适配本批清单，不声称旧CLI已支持新差值。核心比较全部呈现，不用“任一有利指标”决定成功；不将区间跨零写成等价。
 
 分布无关准确率/Brier确认报告 `diagnostic_gain` 可作为额外证据，不是经验方法论文的通用合并或运行门槛。若确实使用它声明保证，误差族、候选/seed/条件/数据集分配及独立抽样假设必须预先固定，不能看结果后换半径。
 
@@ -48,7 +48,7 @@ p0 使用现有 `experiments.p01.train_source_classifier --role reference` 或�
 
 1. 读取当前模型/loss/数据接口和已有完整运行，复用兼容产物；记录实际 code commit。不要从过往交接的 commit 名字推断最新能力。
 2. 先完成输入绑定和预声明预算。用现有 `preflight_fusion` 做 metadata/H5 keys/算子支持检查，不加载保护 test 波形。配置依现有 schema，缺失字段不靠自动值修复。
-3. 核对既有 `test/test_p01_interpretable.py`、`test/test_p01_interpretable_runtime.py` 的受影响路径。模型主体不要重实现。当前原 `frozen_export` 的旧15槽位/K4入口不适用新矩阵；本地如无已验证的新入口，只给原 `load_model/predict_records/save_bundle/verify_vectors` 加本批清单适配，不复制 loader/evaluator、不重写旧 D1 合同。此适配应先在现有构造 fixture 验证，再启动拟合。
+3. 核对既有 `test/test_p01_interpretable.py`、`test/test_p01_interpretable_runtime.py` 的受影响路径。模型主体不要重实现。当前原 `frozen_export` 的旧15槽位/K4入口不适用新矩阵；本地如无已验证的新入口，只给原 `load_model/predict_records/save_bundle/verify_vectors` 加本批清单适配，不复制 loader/evaluator、不重写旧 D1 合同。同时为原 analyze_d1 的旧 CORE/CONTRASTS 增加本批显式清单适配，复用 load_artifact、组聚合及配对重采样，不复制评价器。用构造数组验证 I−p0、I−MLP16、I−I-base 都被实际输出，p0只是一条共享参照，缺臂明确报错，旧D1默认行为不变。这两项适配应先验证，再启动拟合。
 4. 建立/复用 p0，查看 source 资格与曲线。失败时保存记录，不开始该任务的候选训练；继续其他已预声明的独立必需工作。资格不达标并不授权无上限搜索。
 5. 生成三种真实模型配置：I 保留完整分支及 diagnostics；I-base 只移除新 diagnostics；MLP16 使用原 mlp、branches=[]、reference features=true。I与I-base同类输出零初始化且参照候选保留。维数/参数数目可能不同，如实记录，不称纯因果信息消融。
 6. 直接调用现有 trainer，传 `--reference-min-accuracy 0.8`。不要通过未传播此参数的旧 replicate/study wrapper 假定已经资格检查。示例下方变量必须来自实际冻结配置。
@@ -68,19 +68,20 @@ conda activate LQ_signal
 : "${DATASET:?真实dataset name}"
 : "${RUN_OUT:?本次未存在的输出目录}"
 : "${SEED:?固定seed}"
+: "${ARM:?固定臂名 I 或 I-base 或 MLP16}"
 : "${EPOCHS:?预声明预算}"
 : "${STEPS:?预声明预算}"
 : "${PAIR_SHIFT:?标签保持的偏移}"
 CUDA_VISIBLE_DEVICES=0 python -m experiments.p01.train_tspn_fusion_v2 \
   --model-config "$MODEL_CFG" --data-config "$DATA_CFG" --dataset "$DATASET" \
-  --output "$RUN_OUT" --device cuda:0 --seed "$SEED" \
+  --output "$RUN_OUT" --device cuda:0 --seed "$SEED" --arm "$ARM" \
   --epochs "$EPOCHS" --steps-per-epoch "$STEPS" --units-per-domain 2 \
   --lr 0.001 --pair-shift "$PAIR_SHIFT" \
   --selection-predictor candidate --selection-brier-weight 0.25 \
   --reference-min-accuracy 0.8
 ```
 
-默认物理 GPU0；GPU2 禁止，训练不自动换卡或回退CPU。CPU读取/分析和软件测试不属于训练fallback。不存在的“全候选”CLI不在本文伪造；其少量清单适配是运行前待核验接口，不是已经完成的实验。
+默认物理 GPU0；GPU2 禁止，训练不自动换卡或回退CPU。CPU读取/分析和软件测试不属于训练fallback。不存在的“全候选”CLI不在本文伪造；导出和分析的少量清单适配是运行前待核验接口，不是已经完成的实验。arm从训练、checkpoint到NPZ及分析清单必须完全一致，不能训练后改名掩盖语义错误。
 
 ## Artifacts and validation
 
