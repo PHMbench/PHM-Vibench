@@ -1,7 +1,9 @@
 """Protocol-only primitives for label-safe adaptation experiments.
 
-B00 defines observability and ordering.  It deliberately contains no Tent, SAR, CoTTA,
-SHOT, optimizer construction, buffer policy, or Trainer implementation.
+B00 defines observability and ordering. It deliberately contains no Tent, SAR, CoTTA,
+SHOT, optimizer construction, buffer policy, or Trainer implementation. Only unlabeled
+single-stream source/TTA transactions are executable here; SFDA and label-bearing
+regimes are schema-only until their own runtimes exist.
 """
 
 from __future__ import annotations
@@ -12,8 +14,19 @@ from typing import Any, Mapping, Protocol, Sequence
 from src.config_schema import AdaptationProtocolConfig
 
 
-_TARGET_LABEL_KEYS = frozenset(
-    {"y", "label", "labels", "target", "targets", "future_y", "y_future"}
+_LABEL_ALIASES = frozenset(
+    {
+        "y",
+        "label",
+        "labels",
+        "target",
+        "targets",
+        "fault_label",
+        "target_label",
+        "class_label",
+        "future_y",
+        "y_future",
+    }
 )
 _ADAPTATION_KEYS = (
     "x",
@@ -31,10 +44,26 @@ _EVALUATION_KEYS = (
     "sequence_id",
     "domain_id",
 )
+_EXECUTABLE_UNLABELED_REGIMES = frozenset(
+    {"source_only", "episodic_tta", "online_tta", "continual_tta"}
+)
+
+
+def _normalized_metadata_key(key: str) -> str:
+    return key.strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _is_target_label_key(key: str) -> bool:
+    normalized = _normalized_metadata_key(key)
+    return (
+        normalized in _LABEL_ALIASES
+        or normalized.endswith("_label")
+        or normalized.endswith("_labels")
+    )
 
 
 class AdaptationAlgorithm(Protocol):
-    """Minimal runtime shape used by the protocol tests and future B01 runtime."""
+    """Minimal unlabeled adapter shape used by B00 protocol tests."""
 
     def predict(self, view: Mapping[str, Any]) -> Any: ...
 
@@ -54,7 +83,7 @@ def build_adaptation_view(
     *,
     allowed_physical_metadata: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """Return the only view an unsupervised adaptation transaction may receive."""
+    """Return the only view an unlabeled adaptation transaction may receive."""
 
     if not isinstance(batch, Mapping):
         raise TypeError("adaptation batch must be a mapping")
@@ -66,16 +95,16 @@ def build_adaptation_view(
         view["domain_id"] = batch["domain_id"]
 
     for key in allowed_physical_metadata:
-        if not isinstance(key, str) or not key:
+        if not isinstance(key, str) or not key.strip():
             raise TypeError("allowed physical metadata keys must be non-empty strings")
-        if key in _TARGET_LABEL_KEYS:
+        if _is_target_label_key(key):
             raise ValueError(f"target label key {key!r} cannot enter adaptation view")
-        if key == "domain_id" and protocol.domain_boundary == "hidden":
+        if _normalized_metadata_key(key) == "domain_id" and protocol.domain_boundary == "hidden":
             raise ValueError("hidden domain boundaries cannot expose domain_id")
         if key in batch:
             view[key] = batch[key]
 
-    leaked = sorted(_TARGET_LABEL_KEYS.intersection(view))
+    leaked = sorted(key for key in view if _is_target_label_key(key))
     if leaked:
         raise AssertionError(f"adaptation view leaked target labels: {leaked}")
     return view
@@ -97,7 +126,7 @@ def label_event_for_update(
     *,
     current_step: int,
 ) -> Any:
-    """Release a target label only under an explicitly labelled protocol."""
+    """Release a target label only under an explicitly label-bearing protocol."""
 
     if protocol.target_label_access == "none":
         raise PermissionError("this adaptation protocol forbids target-label updates")
@@ -128,7 +157,18 @@ def execute_protocol_step(
     *,
     allowed_physical_metadata: Sequence[str] = (),
 ) -> ProtocolStep:
-    """Execute one label-isolated predict/update transaction."""
+    """Execute one unlabeled source/TTA predict-update transaction.
+
+    B00 intentionally refuses SFDA and label-bearing regimes. Their schemas are frozen,
+    but executing them requires separate population or label-event lifecycles that belong
+    to later bounded changes.
+    """
+
+    if protocol.regime not in _EXECUTABLE_UNLABELED_REGIMES:
+        raise ValueError(
+            f"B00 protocol helper does not execute regime={protocol.regime!r}; "
+            "SFDA and label-bearing adaptation require their dedicated runtime."
+        )
 
     adapt_view = build_adaptation_view(
         batch,
