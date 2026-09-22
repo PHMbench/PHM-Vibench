@@ -53,6 +53,17 @@ jobs:
             test/test_trainer_lifecycle_schema.py \
             -q
 
+      - name: Verify adaptation protocol contracts
+        run: |
+          python -m py_compile \
+            src/runtime/adaptation.py \
+            test/test_tta_protocol_contract.py \
+            test/test_tta_label_isolation.py
+          python -m pytest \
+            test/test_tta_protocol_contract.py \
+            test/test_tta_label_isolation.py \
+            -q
+
       - name: Verify generated configuration atlas
         run: |
           python -m scripts.gen_config_atlas
