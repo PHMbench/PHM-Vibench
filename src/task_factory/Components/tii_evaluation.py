@@ -220,7 +220,7 @@ SOURCE_COLUMNS = SOURCE_KEY + ('group', 'role', 'file_id', 'true_label')
 
 
 def evaluate_source_predictions(predictions_file, *, expected_windows_file,
-                                local_class_map, checkpoint, intervention):
+                                local_class_map, checkpoint, intervention, role='source_val'):
     """Descriptive source-validation risk, not a held-out transfer estimator.
 
     Expected windows include BOTH source_train and source_val, saved by the
@@ -236,8 +236,8 @@ def evaluate_source_predictions(predictions_file, *, expected_windows_file,
     _unique(predictions, SOURCE_KEY, 'source predictions')
     if not expected.role.isin(['source_train', 'source_val']).all():
         raise ValueError('source inventory cannot contain query/target roles')
-    if not predictions.role.eq('source_val').all():
-        raise ValueError('source predictions must contain source_val only')
+    if role not in ('source_train', 'source_val') or not predictions.role.eq(role).all():
+        raise ValueError(f'source predictions must contain {role} only')
     if (not predictions.checkpoint.eq(str(checkpoint)).all()
             or not predictions.intervention.eq(intervention).all()
             or not predictions.method.eq('support').all() or not predictions.seed.eq(0).all()):
@@ -253,8 +253,8 @@ def evaluate_source_predictions(predictions_file, *, expected_windows_file,
         if identities.recording_id.duplicated().any():
             raise ValueError('record identity changes group, file, label or role across windows')
     if (expected.window_end <= expected.window_start).any():
-        raise ValueError('source window_end must exceed window_start')
-    val = expected[expected.role == 'source_val']
+        raise ValueError('source window_end must exceed source window_start')
+    val = expected[expected.role == role]
     if _keys(predictions, SOURCE_COLUMNS) != _keys(val, SOURCE_COLUMNS):
         raise ValueError('source predictions omit or alter predeclared validation windows')
     if set(local_class_map) != set(expected.dataset):
@@ -269,6 +269,7 @@ def evaluate_source_predictions(predictions_file, *, expected_windows_file,
     windows = predictions.copy()
     windows['nll'] = [float(logsumexp(x-x.max()) - (x-x.max())[y]) for x, y in zip(arrays, labels)]
     windows['correct'] = [int(x.argmax() == y) for x, y in zip(arrays, labels)]
+    windows['predicted_label'] = [int(x.argmax()) for x in arrays]
     if not np.isfinite(windows.nll).all():
         raise ValueError('nonfinite source risk')
     groups = windows.groupby(['dataset', 'group'], sort=False).agg(
@@ -276,7 +277,24 @@ def evaluate_source_predictions(predictions_file, *, expected_windows_file,
     metrics = groups.groupby('dataset', sort=False).agg(
         nll=('nll', 'mean'), accuracy=('accuracy', 'mean'), groups=('group', 'size'),
         windows=('windows', 'sum')).reset_index()
-    metrics['scope'] = 'checkpoint_selection_source_validation'
+    # Diagnostics do not replace the native group-weighted NLL/accuracy.
+    from sklearn.metrics import f1_score, recall_score
+    for index, metric in metrics.iterrows():
+        selected = windows[windows.dataset == metric.dataset]
+        weights = 1.0 / selected.groupby('group').group.transform('size')
+        labels = list(local_class_map[metric.dataset])
+        metrics.loc[index, 'window_accuracy'] = selected.correct.mean()
+        metrics.loc[index, 'macro_f1'] = f1_score(selected.true_label, selected.predicted_label,
+            labels=labels, average='macro', sample_weight=weights, zero_division=0)
+        metrics.loc[index, 'balanced_accuracy'] = recall_score(selected.true_label, selected.predicted_label,
+            labels=labels, average='macro', sample_weight=weights, zero_division=0)
+        metrics.loc[index, 'per_class_recall'] = json.dumps(dict(zip(labels, recall_score(
+            selected.true_label, selected.predicted_label, labels=labels, average=None,
+            sample_weight=weights, zero_division=0).tolist())))
+        prior = selected.assign(weight=weights).groupby('true_label').weight.sum()
+        metrics.loc[index, 'majority_accuracy'] = prior.max()/prior.sum()
+    metrics['scope'] = ('training_resubstitution' if role == 'source_train'
+                        else 'checkpoint_selection_source_validation')
     metrics['intervention'] = intervention
     return windows, groups, metrics
 
@@ -285,7 +303,7 @@ def analyze_source_acceptance(output):
     """Analyze retained observations only. No model, loader or optimizer import."""
     output = Path(output)
     run = json.loads((output/'run.json').read_text())
-    if run.get('mode') != 'one_model_acceptance_20' or run.get('model_fits_completed') != 1:
+    if run.get('mode') not in ('one_model_acceptance_20','one_model_fit95') or run.get('model_fits_completed') != 1:
         raise ValueError('analysis requires one completed bounded fit')
     if not run.get('export_completed'):
         raise ValueError('full source prediction export is incomplete')
@@ -335,13 +353,80 @@ def analyze_source_acceptance(output):
             or (updates[delta_columns] < 0).any().any()
             or updates.joint_encoder_parameter_delta.max() <= 0):
         raise ValueError('actual joint optimizer update evidence is incomplete/nonfinite/zero')
+    rounds = 10000 if run.get('mode') == 'one_model_fit95' else 20
+    # Legacy 20-update reports used the mode as their budget; fit95 must
+    # declare its longer budget explicitly. Never reinterpret a legacy run.
+    declared_rounds = run.get('rounds', 20 if run.get('mode') == 'one_model_acceptance_20' else None)
+    if type(declared_rounds) is not int or declared_rounds != rounds:
+        raise ValueError('run update count differs from its declared mode')
     report = dict(scope='descriptive_source_validation_not_independent_test',
         model_fits_completed=1, source_validation_nll=float(metrics_by_mode['full'].nll.mean()),
         masked_source_validation_nll=float(metrics_by_mode['mask_increment'].nll.mean()),
-        actual_joint_updates=20, observed_sources=len(sources), windows_per_source=640,
+        actual_joint_updates=rounds, gradient_audited_updates=20,
+        observed_sources=len(sources), windows_per_source=32*rounds,
         gradient_head_isolation=True, source_gradients_reach_shared_encoder=True,
         joint_update_observed=True, transfer_delta=None, pooling_interaction=None,
         uncertainty='not estimated: one selected model and checkpoint-selection validation population',
         mechanism_boundary='masking measures frozen-model sensitivity, not retrained information value; joint deltas are not per-source causal updates')
+    if run.get('mode') == 'one_model_fit95':
+        score = run.get('native_selection_nll')
+        if not isinstance(score, (float, int)) or not np.isfinite(score) or abs(score-report['source_validation_nll']) > 1e-8:
+            raise ValueError('fit95 source validation score differs from the selected native checkpoint')
+        report.update(source_fit95_report(output))
     (output/'analysis.json').write_text(json.dumps(report, indent=2, allow_nan=False)+'\n')
     return report
+
+def source_fit95_report(output):
+    """Recompute every observed curve point and the SAME selected-checkpoint target."""
+    output = Path(output)
+    run = json.loads((output/'run.json').read_text())
+    if run.get('mode') != 'one_model_fit95' or run.get('model_fits_completed') != 1:
+        raise ValueError('fit95 needs one completed declared fit')
+    classes = json.loads((output/'local_class_map.json').read_text())
+    if set(map(str, run['source_system_ids'])) != set(classes):
+        raise ValueError('fit95 class maps differ from the sources actually requested')
+    _, groups, metrics = evaluate_source_predictions(output/'source_training_predictions.csv',
+        expected_windows_file=output/'expected_source_windows.csv', local_class_map=classes,
+        checkpoint=run['best_checkpoint'], intervention='full', role='source_train')
+    groups.to_csv(output/'selected_training_group_metrics.csv', index=False)
+    metrics.to_csv(output/'selected_training_source_metrics.csv', index=False)
+    curve = pd.read_csv(output/'source_fit_curve.csv', dtype={'dataset': str})
+    steps = (0, 20, 100, 500, 1000, 2500, 5000, 10000)
+    expected = {(step, role, source) for step in steps
+                for role in ('source_train', 'source_val') for source in classes}
+    actual = set(zip(curve.global_step, curve.role, curve.dataset))
+    if curve.duplicated(['global_step', 'role', 'dataset']).any() or actual != expected:
+        raise ValueError('source fitting curve must contain every declared observation')
+    columns = ['nll','accuracy','window_accuracy','macro_f1','balanced_accuracy','majority_accuracy','groups','windows']
+    if not np.isfinite(curve[columns]).all().all():
+        raise ValueError('source fit curve contains nonfinite metrics')
+    for step in steps:
+        for role in ('source_train', 'source_val'):
+            stem = output/'fit95'/f'step_{step:05d}'
+            _, _, computed = evaluate_source_predictions(str(stem)+f'_{role}.csv',
+                expected_windows_file=output/'expected_source_windows.csv', local_class_map=classes,
+                checkpoint=str(stem)+'.ckpt', intervention='full', role=role)
+            recorded = curve[(curve.global_step == step) & (curve.role == role)].set_index('dataset')
+            computed = computed.set_index('dataset').loc[recorded.index]
+            if not np.allclose(recorded[columns], computed[columns], rtol=1e-8, atol=1e-10):
+                raise ValueError('curve disagrees with complete retained predictions')
+    train = curve[curve.role == 'source_train']
+    terminal = train[train.global_step == 10000]
+    minimum_group = float(metrics.accuracy.min())
+    minimum_window = float(metrics.window_accuracy.min())
+    reached = train.groupby('global_step')[['accuracy','window_accuracy']].min()
+    reached = reached[(reached.accuracy >= .95) & (reached.window_accuracy >= .95)]
+    majority_warning = metrics.loc[metrics.accuracy <= metrics.majority_accuracy + 1e-12,'dataset'].tolist()
+    result = dict(
+        threshold=.95, source_fit_target_met=minimum_group >= .95 and minimum_window >= .95,
+        min_source_train_group_accuracy=minimum_group,
+        min_source_train_window_accuracy=minimum_window,
+        terminal_source_fit_target_met=bool((terminal.accuracy >= .95).all() and (terminal.window_accuracy >= .95).all()),
+        first_observed_all_source_target_step=int(reached.index[0]) if len(reached) else None,
+        selected_sources_not_above_majority=majority_warning,
+        checkpoint_rule='unchanged: source validation NLL only',
+        decision_unit='every declared source at the SAME selected checkpoint',
+        interpretation='resubstitution fitting diagnostic, not foundation-model or transfer evidence',
+    )
+    (output/'fit95_summary.json').write_text(json.dumps(result, indent=2, allow_nan=False)+'\n')
+    return result

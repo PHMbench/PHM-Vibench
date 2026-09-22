@@ -79,7 +79,8 @@ class task(pl.LightningModule):
             if any(role != 'source_train' for role in item['role']):
                 raise ValueError('training may only consume source_train windows')
             losses.append(self.source_loss(source, item))
-        if getattr(self.args_task, 'acceptance_audit', False):
+        if (getattr(self.args_task, 'acceptance_audit', False)
+                and self.global_step < getattr(self.args_task, 'acceptance_audit_rounds', float('inf'))):
             self._observe_source_gradients(losses, batch)
         return torch.stack(losses).mean()
 
@@ -174,11 +175,12 @@ class task(pl.LightningModule):
         self._append_audit('source_gradients.csv', rows)
 
     def on_before_optimizer_step(self, optimizer):
-        if getattr(self.args_task, 'acceptance_audit', False):
+        if (getattr(self.args_task, 'acceptance_audit', False)
+                and self.global_step < getattr(self.args_task, 'acceptance_audit_rounds', float('inf'))):
             self._before_update = {name: p.detach().clone() for name, p in self.network.named_parameters()}
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
-        if not getattr(self.args_task, 'acceptance_audit', False):
+        if not hasattr(self, '_before_update'):
             return
         heads = {s: {id(p) for p in self.network.task_head.mutiple_fc[str(s)].parameters()}
                  for s in self.sources}
@@ -192,17 +194,34 @@ class task(pl.LightningModule):
         del self._before_update
 
     def source_validation_predictions(self, factory, checkpoint, *, mask_increment=False):
-        """Export every native source-validation window; do not fit a head."""
+        return self.source_predictions(factory, checkpoint, role='source_val', mask_increment=mask_increment)
+
+    def source_predictions(self, factory, checkpoint, *, role, mask_increment=False):
+        """Export a complete existing source inventory, never sample training batches."""
         import json
         import pandas as pd
+        if role not in ('source_train', 'source_val'):
+            raise ValueError('source export requires an explicit source_train or source_val role')
         by_source = {s: [r for r in factory.window_inventory
-                         if r['dataset'] == s and r['role'] == 'source_val'] for s in self.sources}
+                         if r['dataset'] == s and r['role'] == role] for s in self.sources}
+        if role == 'source_val':
+            batches = factory.val_dataset
+        else:
+            batches = []
+            for source, windows in factory.train_dataset.sources.items():
+                for start in range(0, len(windows['y']), self.batch_size_per_source):
+                    end = start + self.batch_size_per_source
+                    item = {key: value[start:end] for key, value in windows.items()}
+                    item['source'] = source
+                    batches.append(item)
         cursors = dict.fromkeys(self.sources, 0)
         rows = []
         self.eval()
         with torch.inference_mode():
-            for original in factory.val_dataset:
+            for original in batches:
                 source = original['source']
+                if any(r != role for r in original['role']):
+                    raise ValueError('source export role disagrees with the native inventory')
                 self._validate_source_batch(source, original)
                 batch = {k: v.to(self.device) if torch.is_tensor(v) else v for k, v in original.items()}
                 if mask_increment:
