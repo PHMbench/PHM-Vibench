@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'scripts/tii_one_model.py'
+      - 'scripts/run_tii_fit95.sh'
+      - 'scripts/tii_plot_fit95.py'
+      - 'src/task_factory/Components/tii_fit95.py'
+      - 'test/test_tii_fit95.py'
       - 'scripts/run_tii_experiments.sh'
       - 'scripts/tii_plot_source.py'
       - 'src/task_factory/task/DG/tii_joint.py'
@@ -18,6 +22,10 @@ on:
     branches: [dev]
     paths:
       - 'scripts/tii_one_model.py'
+      - 'scripts/run_tii_fit95.sh'
+      - 'scripts/tii_plot_fit95.py'
+      - 'src/task_factory/Components/tii_fit95.py'
+      - 'test/test_tii_fit95.py'
       - 'scripts/run_tii_experiments.sh'
       - 'scripts/tii_plot_source.py'
       - 'src/task_factory/task/DG/tii_joint.py'
@@ -48,15 +56,16 @@ jobs:
           python -m pip install -e . 'pytest>=7' 'pytorch-lightning>=2.5,<2.7'
       - name: Check shell and plotting syntax
         run: |
+          bash -n scripts/run_tii_fit95.sh
           bash -n scripts/run_tii_experiments.sh
-          python -m py_compile scripts/tii_plot_source.py
+          python -m py_compile scripts/tii_plot_source.py scripts/tii_plot_fit95.py src/task_factory/Components/tii_fit95.py
       - name: Native launcher, source population and acceptance integration
         env:
           OMP_NUM_THREADS: '1'
           MKL_NUM_THREADS: '1'
           MPLBACKEND: Agg
-        run: python -m pytest test/test_tii_one_model.py test/test_tii_one_model_acceptance.py -q --junitxml=tii-one-model-tests.xml
-      - name: Retained qualification stops both no-config commands
+        run: python -m pytest test/test_tii_one_model.py test/test_tii_one_model_acceptance.py test/test_tii_fit95.py -q --junitxml=tii-one-model-tests.xml
+      - name: Retained qualification stops all no-config commands
         shell: bash
         run: |
           set +e
@@ -64,9 +73,12 @@ jobs:
           basic=$?
           python -m scripts.tii_one_model --acceptance > tii-acceptance-readiness.json
           acceptance=$?
+          python -m scripts.tii_one_model --fit95 > tii-fit95-readiness.json
+          fitting=$?
           set -e
           test "$basic" -eq 2
           test "$acceptance" -eq 2
+          test "$fitting" -eq 2
           python -c 'import json; r=json.load(open("tii-acceptance-readiness.json")); assert r["native_invocations"] == 0; assert len(r["candidates"]) <= 5'
       - uses: actions/upload-artifact@v4
         if: always()
@@ -76,4 +88,5 @@ jobs:
             tii-one-model-tests.xml
             tii-one-model-readiness.json
             tii-acceptance-readiness.json
+            tii-fit95-readiness.json
           retention-days: 14

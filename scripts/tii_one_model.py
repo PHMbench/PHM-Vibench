@@ -124,6 +124,18 @@ def current_blocker() -> dict[str, Any]:
     }
 
 
+def fit95_constraints(config):
+    """User-requested fitting diagnostic; not the confirmatory S/U experiment."""
+    constraints(config)
+    for section, key, expected in (
+        ('data', 'rounds', 10000), ('trainer', 'val_check_interval', 100),
+        ('trainer', 'num_sanity_val_steps', 0),
+    ):
+        value = config[section].get(key)
+        if type(value) is not type(expected) or value != expected:
+            raise ValueError(f'fit95 requires {section}.{key}={expected!r}, got {value!r}')
+
+
 def acceptance_constraints(config):
     """First real acceptance is one 20-round fit, not two successive fits."""
     constraints(config)
@@ -172,8 +184,9 @@ def _finish_analysis(output, report):
         raise ValueError('offline source NLL disagrees with the native selection score')
     if 'error' in report:
         report['recovered_export_error'] = report.pop('error')
-    report.update(analysis=analysis, selection_score_recomputed=True,
-                  status='completed_source_acceptance_not_transfer')
+    status = ('completed_source_fit95_diagnostics_not_transfer'
+              if report.get('mode') == 'one_model_fit95' else 'completed_source_acceptance_not_transfer')
+    report.update(analysis=analysis, selection_score_recomputed=True, status=status)
     _save_report(output, report)
 
 
@@ -185,8 +198,10 @@ def _export_selected(context, output, report):
     task.eval()
     checkpoint = report['best_checkpoint']
     saved = torch.load(checkpoint, map_location=task.device, weights_only=False)
-    if int(saved['global_step']) not in (10, 20):
-        raise ValueError('selected checkpoint is outside this acceptance budget')
+    interval = 100 if report.get('mode') == 'one_model_fit95' else 10
+    limit = 10000 if report.get('mode') == 'one_model_fit95' else 20
+    if int(saved['global_step']) not in range(interval, limit+1, interval):
+        raise ValueError('selected checkpoint is outside the declared validation schedule')
     report['selected_global_step'] = int(saved['global_step'])
     scores = [value['best_model_score'] for value in saved['callbacks'].values()
               if isinstance(value, dict) and value.get('monitor') == 'val_group_nll']
@@ -197,8 +212,9 @@ def _export_selected(context, output, report):
     if before_rms.item() != factory.source_rms:
         raise ValueError('source RMS in selected encoder disagrees with the native source fit')
     # Preserve full predictions even if a later restore/mask check fails.
+    from src.task_factory.Components.tii_fit95 import retain_predictions
     full = task.source_validation_predictions(factory, checkpoint)
-    full.to_csv(output/'source_validation_predictions.csv', index=False)
+    retain_predictions(output/'source_validation_predictions.csv', full)
     task.load_state_dict(saved['state_dict'], strict=True)
     restored = task.source_validation_predictions(factory, checkpoint)
     key = ['dataset', 'recording_id', 'channel', 'window_start', 'window_end']
@@ -212,13 +228,16 @@ def _export_selected(context, output, report):
         raise ValueError('selected-checkpoint restore changed logits or normalization')
     report['restore'] = dict(max_abs_logit_delta=delta, rtol=1e-6, atol=1e-7, rms_equal=True)
     masked = task.source_validation_predictions(factory, checkpoint, mask_increment=True)
-    masked.to_csv(output/'source_validation_masked_predictions.csv', index=False)
+    retain_predictions(output/'source_validation_masked_predictions.csv', masked)
+    if report.get('mode') == 'one_model_fit95':
+        train = task.source_predictions(factory, checkpoint, role='source_train')
+        retain_predictions(output/'source_training_predictions.csv', train)
     report['export_completed'] = True
     _save_report(output, report)
     _finish_analysis(output, report)
 
 
-def execute_acceptance(config, output):
+def execute_acceptance(config, output, *, fit95=False):
     """Use the existing classification lifecycle once; capture its live context."""
     import contextlib
     from types import SimpleNamespace
@@ -228,11 +247,15 @@ def execute_acceptance(config, output):
     config['environment']['output_dir'] = str(output/'native')
     config['task']['acceptance_audit'] = True
     config['task']['acceptance_output'] = str(output/'audit')
+    # First 20 real updates are audited; later fitting is not charged repeated VJPs.
+    config['task']['acceptance_audit_rounds'] = 20
     snapshot = output/'runtime.yaml'
     snapshot.write_text(yaml.safe_dump(config, sort_keys=False, allow_unicode=True))
-    report = dict(status='failed_or_interrupted', mode='one_model_acceptance_20',
+    report = dict(status='failed_or_interrupted',
+                  mode='one_model_fit95' if fit95 else 'one_model_acceptance_20',
                   native_invocations=0, model_fits_completed=0, source_system_ids=config['task']['source_system_ids'],
-                  seed=0, rounds=20, command=sys.orig_argv, industrial_transfer_delta=None, pooling_interaction=None)
+                  seed=0, rounds=config['data']['rounds'], command=sys.orig_argv,
+                  industrial_transfer_delta=None, pooling_interaction=None)
     started = time.monotonic()
     _save_report(output, report)
     try:
@@ -249,6 +272,9 @@ def execute_acceptance(config, output):
                 if self.context is not None or context.task.network is not context.model:
                     raise ValueError('acceptance requires exactly one shared native model')
                 self.context = context
+                if fit95:
+                    from src.task_factory.Components.tii_fit95 import SourceFit95
+                    context.trainer.callbacks.append(SourceFit95(context.data_factory, output))
                 if context.trainer.accumulate_grad_batches != 1 or context.trainer.precision != '32-true':
                     raise ValueError('acceptance requires native accumulation=1 and 32-true precision')
                 expected = _expected_source_windows(context.data_factory)
@@ -265,8 +291,8 @@ def execute_acceptance(config, output):
             if result['status'] != 'succeeded' or len(result['best_checkpoints']) != 1:
                 raise ValueError('native lifecycle did not return one selected checkpoint')
             context = capture.context
-            if context is None or context.trainer.global_step != 20:
-                raise ValueError('native lifecycle did not complete exactly 20 shared updates')
+            if context is None or context.trainer.global_step != config['data']['rounds']:
+                raise ValueError('native lifecycle did not complete the predeclared shared-update budget')
             report.update(model_fits_completed=1, best_checkpoint=result['best_checkpoints'][0],
                           native_result=result, status='training_completed_export_pending',
                           parameter_count=sum(p.numel() for p in context.task.network.parameters()),
@@ -292,7 +318,7 @@ def export_completed_acceptance(output):
     from types import SimpleNamespace
     import pandas as pd
     report = json.loads((output/'run.json').read_text())
-    if report.get('mode') != 'one_model_acceptance_20' or report.get('model_fits_completed') != 1:
+    if report.get('mode') not in ('one_model_acceptance_20', 'one_model_fit95') or report.get('model_fits_completed') != 1:
         raise ValueError('export-only requires this acceptance run with one completed fit')
     # Saved predictions never reopen H5 or repeat inference for a plotting failure.
     if report.get('export_completed'):
@@ -310,7 +336,10 @@ def export_completed_acceptance(output):
     from src.model_factory import build_model
     from src.task_factory import build_task
     config = analyze_config(output/'runtime.yaml').runtime_config()
-    acceptance_constraints(config)
+    if report['mode'] == 'one_model_fit95':
+        fit95_constraints(config)
+    else:
+        acceptance_constraints(config)
     require_sources(config, config['task']['source_system_ids'])
     args = {k: SimpleNamespace(**v) for k, v in config.items() if isinstance(v, dict)}
     factory = build_data(args['data'], args['task'])
@@ -342,11 +371,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--output', type=Path, default=Path('results/tii_one_model'), help='New run directory; never overwrite')
     parser.add_argument('--check-only', action='store_true', help='Check config/admission/files only; no waveform read or training')
     parser.add_argument('--acceptance', action='store_true', help='One real 20-round fit, native audit, restore and source export')
+    parser.add_argument('--fit95', action='store_true', help='One bounded 10000-update fit; report every-source 95% train target')
     parser.add_argument('--export-only', action='store_true', help='Recover a failed export from one completed acceptance; never fit')
     parser.add_argument('--analyze-only', action='store_true', help='Read saved source artifacts only; no inference or training')
     args = parser.parse_args(argv)
-    if sum((args.acceptance, args.export_only, args.analyze_only)) > 1:
-        parser.error('choose one of acceptance, export-only, analyze-only')
+    if sum((args.acceptance, args.fit95, args.export_only, args.analyze_only)) > 1:
+        parser.error('choose one of acceptance, fit95, export-only, analyze-only')
     if (args.export_only or args.analyze_only) and (args.config or args.check_only):
         parser.error('artifact recovery uses only --output, not a new config')
     if args.export_only:
@@ -355,8 +385,9 @@ def main(argv: list[str] | None = None) -> int:
         return export_completed_acceptance(output)
     if args.analyze_only:
         from src.task_factory.Components.tii_evaluation import analyze_source_acceptance
-        print(json.dumps(analyze_source_acceptance(args.output.expanduser().resolve()), indent=2))
-        return 0
+        result = analyze_source_acceptance(args.output.expanduser().resolve())
+        print(json.dumps(result, indent=2))
+        return 3 if result.get('source_fit_target_met') is False else 0
     config_path = (args.config or LOCAL_CONFIG).expanduser().resolve()
     output = args.output.expanduser().resolve()
     os.chdir(ROOT)  # Native relative data/config paths have one documented meaning.
@@ -370,6 +401,8 @@ def main(argv: list[str] | None = None) -> int:
     sources = constraints(config)
     if args.acceptance:
         acceptance_constraints(config)
+    if args.fit95:
+        fit95_constraints(config)
     selected = require_sources(config, sources)
     data_root = Path(config['data']['data_dir']).resolve()
     if output == data_root or data_root in output.parents or output in data_root.parents:
@@ -387,8 +420,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if os.environ.get('CUDA_VISIBLE_DEVICES') not in (None, '', '0'):
         raise ValueError('this launcher requests physical GPU0; remove the conflicting CUDA_VISIBLE_DEVICES mapping')
-    if args.acceptance:
-        return execute_acceptance(config, output)
+    if args.acceptance or args.fit95:
+        return execute_acceptance(config, output, fit95=args.fit95)
     output.mkdir(parents=True, exist_ok=False)
     config['environment']['output_dir'] = str(output / 'native')
     import yaml
