@@ -203,15 +203,16 @@ def test_predict_then_update_and_update_then_predict_are_observably_different():
     assert transductive.parameter == 1.0
 
 
-def test_source_only_never_calls_update():
+def test_b00_executor_rejects_source_only_until_frozen_runtime_exists():
     adapter = ToyAdapter()
-    step = execute_protocol_step(
-        adapter,
-        {"x": [2.0], "y": [1]},
-        protocol(regime="source_only", state_persistence="episodic_reset"),
-    )
-    assert adapter.export_state()["optimizer_state"]["steps"] == 0
-    assert step.update_result == {"update_applied": False, "reason": "source_only"}
+    before = adapter.export_state()
+    with pytest.raises(ValueError, match="source-only frozen inference"):
+        execute_protocol_step(
+            adapter,
+            {"x": [2.0], "y": [1]},
+            protocol(regime="source_only", state_persistence="episodic_reset"),
+        )
+    assert adapter.export_state() == before
 
 
 @pytest.mark.parametrize(
