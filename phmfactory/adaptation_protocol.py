@@ -2,8 +2,9 @@
 
 B00 defines observability and ordering. It deliberately contains no Tent, SAR, CoTTA,
 SHOT, optimizer construction, buffer policy, or Trainer implementation. Only unlabeled
-single-stream source/TTA transactions are executable here; SFDA and label-bearing
-regimes are schema-only until their own runtimes exist.
+single-stream source/TTA transactions whose lifecycle is already representable are
+executable here; reset-based, SFDA, and label-bearing regimes remain schema-only until
+their own runtimes exist.
 """
 
 from __future__ import annotations
@@ -48,10 +49,12 @@ _SAFE_PHYSICAL_METADATA_KEYS = frozenset(
         "current",
     }
 )
+# file_id is intentionally evaluator-only in B00. Several PHM datasets encode fault
+# class directly in file-number ranges, so exposing it to an adapter is a target-label
+# channel even when the literal y field is absent.
 _ADAPTATION_KEYS = (
     "x",
     "mask",
-    "file_id",
     "sample_id",
     "timestamp",
     "sequence_id",
@@ -65,7 +68,7 @@ _EVALUATION_KEYS = (
     "domain_id",
 )
 _EXECUTABLE_UNLABELED_REGIMES = frozenset(
-    {"source_only", "episodic_tta", "online_tta", "continual_tta"}
+    {"source_only", "online_tta", "continual_tta"}
 )
 
 
@@ -78,7 +81,11 @@ def _is_target_label_key(key: str) -> bool:
     tokens = set(normalized.split("_"))
     return (
         normalized in _LABEL_ALIASES
-        or bool(tokens.intersection({"label", "labels", "target", "targets", "class", "classes"}))
+        or bool(
+            tokens.intersection(
+                {"label", "labels", "target", "targets", "class", "classes"}
+            )
+        )
         or normalized.startswith(("label", "target", "class"))
     )
 
@@ -121,6 +128,11 @@ def build_adaptation_view(
         normalized = _normalized_metadata_key(key)
         if _is_target_label_key(key):
             raise ValueError(f"target label key {key!r} cannot enter adaptation view")
+        if normalized == "file_id":
+            raise ValueError(
+                "file_id is evaluator-only in B00 because repository file-number "
+                "ranges can encode target class"
+            )
         if normalized == "domain_id" and protocol.domain_boundary == "hidden":
             raise ValueError("hidden domain boundaries cannot expose domain_id")
         if normalized != "domain_id" and normalized not in _SAFE_PHYSICAL_METADATA_KEYS:
@@ -185,15 +197,21 @@ def execute_protocol_step(
 ) -> ProtocolStep:
     """Execute one unlabeled source/TTA predict-update transaction.
 
-    B00 intentionally refuses SFDA and label-bearing regimes. Their schemas are frozen,
-    but executing them requires separate population or label-event lifecycles that belong
-    to later bounded changes.
+    B00 intentionally refuses reset-based, SFDA, and label-bearing lifecycles. Their
+    schemas are frozen, but executing them requires episode/domain reset, separate
+    population, or label-event state that belongs to later bounded changes.
     """
 
     if protocol.regime not in _EXECUTABLE_UNLABELED_REGIMES:
         raise ValueError(
             f"B00 protocol helper does not execute regime={protocol.regime!r}; "
-            "SFDA and label-bearing adaptation require their dedicated runtime."
+            "reset-based, SFDA, and label-bearing adaptation require their dedicated runtime."
+        )
+    if protocol.regime != "source_only" and protocol.state_persistence != "persistent":
+        raise ValueError(
+            "B00 protocol helper executes adaptive streams only with "
+            "state_persistence='persistent'; episodic/domain reset requires a "
+            "dedicated reset lifecycle."
         )
 
     adapt_view = build_adaptation_view(
