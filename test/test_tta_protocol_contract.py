@@ -151,3 +151,38 @@ def test_protocol_is_required_only_for_tta_tasks():
         TaskConfig.model_validate(
             {"type": "DG", "name": "classification", "protocol": protocol()}
         )
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("adapt_population", ""),
+        ("adapt_population", " "),
+        ("adapt_population", " target_adapt "),
+        ("evaluation_population", ""),
+        ("evaluation_population", "  "),
+        ("evaluation_population", " target_eval "),
+    ],
+)
+def test_sfda_population_identifiers_are_non_empty_and_not_repaired(field, value):
+    payload = protocol(
+        regime="offline_sfda",
+        state_persistence="episodic_reset",
+        adapt_population="target_adapt",
+        evaluation_population="target_eval",
+        passes=2,
+    )
+    payload[field] = value
+    with pytest.raises(ValidationError, match=field):
+        AdaptationProtocolConfig.model_validate(payload)
+
+
+@pytest.mark.parametrize("artifact", ["", " ", " fisher "])
+def test_source_artifact_identifiers_are_non_empty_and_not_repaired(artifact):
+    with pytest.raises(ValidationError, match="source_artifacts"):
+        AdaptationProtocolConfig.model_validate(
+            protocol(
+                source_access="checkpoint_plus_artifact",
+                source_artifacts=[artifact],
+            )
+        )
+
