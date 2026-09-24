@@ -68,7 +68,7 @@ _EVALUATION_KEYS = (
     "domain_id",
 )
 _EXECUTABLE_UNLABELED_REGIMES = frozenset(
-    {"source_only", "online_tta", "continual_tta"}
+    {"online_tta", "continual_tta"}
 )
 
 
@@ -197,17 +197,18 @@ def execute_protocol_step(
 ) -> ProtocolStep:
     """Execute one unlabeled source/TTA predict-update transaction.
 
-    B00 intentionally refuses reset-based, SFDA, and label-bearing lifecycles. Their
-    schemas are frozen, but executing them requires episode/domain reset, separate
-    population, or label-event state that belongs to later bounded changes.
+    B00 intentionally refuses source-only, reset-based, SFDA, and label-bearing
+    lifecycles that require state guarantees not owned here. Their schemas are frozen,
+    but executing them requires a frozen-inference, episode/domain reset, separate
+    population, or label-event runtime that belongs to later bounded changes.
     """
 
     if protocol.regime not in _EXECUTABLE_UNLABELED_REGIMES:
         raise ValueError(
             f"B00 protocol helper does not execute regime={protocol.regime!r}; "
-            "reset-based, SFDA, and label-bearing adaptation require their dedicated runtime."
+            "source-only frozen inference, reset-based, SFDA, and label-bearing adaptation require their dedicated runtime."
         )
-    if protocol.regime != "source_only" and protocol.state_persistence != "persistent":
+    if protocol.state_persistence != "persistent":
         raise ValueError(
             "B00 protocol helper executes adaptive streams only with "
             "state_persistence='persistent'; episodic/domain reset requires a "
@@ -220,13 +221,6 @@ def execute_protocol_step(
         allowed_physical_metadata=allowed_physical_metadata,
     )
     evaluation = build_evaluation_view(batch)
-
-    if protocol.regime == "source_only":
-        return ProtocolStep(
-            prediction=adapter.predict(adapt_view),
-            evaluation=evaluation,
-            update_result={"update_applied": False, "reason": "source_only"},
-        )
 
     if protocol.timing == "predict_then_update":
         prediction = adapter.predict(adapt_view)
