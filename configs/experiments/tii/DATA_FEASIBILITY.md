@@ -13,10 +13,12 @@
 ## Inputs and protocol
 
 - 数据只读根：`/home/user/data/PHMbenchdata/PHM-Vibench`，现有README、metadata.xlsx、PU H5及原MAT/采集资料。实际路径按原生Name/Id/File与`RECORD_INVENTORY.csv`解析，不猜路径或物理组。
+- **原始文件根必须同时提供**：`/home/user/data/PHMbenchdata/PHM-Vibench/raw/RM_027_PU/`。该约定由现有 `experiments/p01/bind_pu_d1.py` 的 input_binding 写入逻辑支持，仅复用路径证据，不复用其D1数据划分或模型结果。sentinel应按inventory解析到 `K001/N09_M07_F10_K001_1.mat`；已有采集说明位置为 `K001/measuring_log_K001.pdf` 及同原始树中的实际specimen profile/测量日志。先确认本机真实文件存在、字段关联和版本，不把文档路径本身视作测量依据；其他资料位置按本地README/inventory读取，不猜文件名。H5和Excel不能替代原MAT的时间/单位字段。
 - 起点：PU Id47567、`K001/N09_M07_F10_K001_1.mat`。旧检查为256823样本、跨度平均约64205.445 Hz，metadata为64000 Hz，Unit字段为空；平均速率不证明均匀采样，原时间与振动通道的关联未闭合。
 - 依赖：先核对当前子仓和论文gitlink，复用 `src/task_factory/Components/tii_target_head.py::make_episode`、元数据接口和既有读取器。`select_l2`只验证分数网格完整，不证明排除源拟合的来源合法。
 - 固定：原波形、真实record/group、局部标签、共同/增量支持和完整可用/不可用规则；每类5条原记录、PCG64(1729)、剔除全部adaptation组、每类至少2个query组。不重抽，不换shot，不按模型分数选source/target。
 - 统计单位：原始物理组不能拆成窗口或按类别拆开重复计数。本任务只做固定集合描述；不bootstrap旧构造结果，不把通过抽样的PU直接记为整体合格。
+- 重复次数：一次确定性的新增字段/静态可行性检查；相同输入、协议和已有有效结果直接复用。0个优化seed、0个新episode，不用统一3-seed门槛。固定episode可行性只复用或按既定PCG64(1729)规则计算，失败不重抽。
 - 资源：沿用 `LQ_signal`，只读CPU检查；0次fit、0次HPO、0次GPU训练。必要的新时间字段检查仅覆盖已有PU inventory，复用已查项。其他来源只复用现有资料以核对阶段逻辑，不新增跨数据集搜索或下载。
 
 ## Execution
@@ -27,7 +29,13 @@
 git status --short
 git rev-parse HEAD
 conda run -n LQ_signal --no-capture-output python -m phmfactory --help
+# 检查已有输入位置，不读取训练数据或运行资格扫描
+DATA_ROOT=/home/user/data/PHMbenchdata/PHM-Vibench
+RAW_PU="$DATA_ROOT/raw/RM_027_PU"
+ls -ld -- "$RAW_PU" "$RAW_PU/K001/N09_M07_F10_K001_1.mat" "$RAW_PU/K001/measuring_log_K001.pdf"
 ```
+
+上述路径和接口由源码核验；本轮远端没有访问作者本机文件。命令语法可检查，文件是否存在及是否包含所需原始依据必须本地核实。
 
 1. **PU原始依据。**读取既有报告，核对Id47567振动channel与time-field的实际关联、n_signal/n_time、首末时间、重复/倒序、dt范围及分布摘要。明确区分时间关联错误、存储/导出规则、metadata错误和真实非均匀采样；证据不足写unresolved，不能选择最有利解释。
 2. **补齐原来未检查的PU范围。**按同一inventory记录原始时间/单位字段；已检查且可追溯的条目复用。单位只能由原采集资料/换算记录确定，不能根据幅值补g或m/s²。名义64kHz和30kHz低通不能自动提供本条记录的时间映射、校准和过渡带依据。不得原地改用户H5/Excel，若有确定错误仅形成带原值/新值/依据的建议。
