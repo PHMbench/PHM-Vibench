@@ -293,6 +293,20 @@ class AdaptationProtocolConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_protocol_semantics(self) -> "AdaptationProtocolConfig":
+        for field_name in ("adapt_population", "evaluation_population"):
+            value = getattr(self, field_name)
+            if value is not None and (not value.strip() or value != value.strip()):
+                raise ValueError(
+                    f"protocol.{field_name} must be a non-empty string without "
+                    "surrounding whitespace"
+                )
+        for artifact in self.source_artifacts:
+            if not artifact.strip() or artifact != artifact.strip():
+                raise ValueError(
+                    "protocol.source_artifacts entries must be non-empty strings "
+                    "without surrounding whitespace"
+                )
+
         expected_label_access = {
             "source_only": "none",
             "episodic_tta": "none",
