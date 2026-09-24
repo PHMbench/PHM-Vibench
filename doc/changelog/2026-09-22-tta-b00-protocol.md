@@ -16,3 +16,5 @@ declared availability.
 A small dependency-light protocol helper makes predict-before-update and update-before-predict
 observably distinct without importing the maintained classification runtime or implementing
 Tent, SAR, CoTTA, SHOT, buffers or a new Trainer. The real adaptation runtime remains B01 work. Focused protocol tests run inside the existing Core quality workflow.
+
+Reviewer follow-up tightened B00 fail-closed behavior: `file_id` is evaluator-only because repository file-number ranges can encode fault class, and reset-dependent protocols are not executable until a real reset lifecycle exists. `episodic_tta` and `domain_reset` therefore remain validated schema choices but cannot be passed through the B00 step executor. These changes prevent a protocol helper from silently behaving as continual adaptation or exposing a target-label proxy.
