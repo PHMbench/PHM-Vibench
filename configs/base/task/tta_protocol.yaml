@@ -1,0 +1,15 @@
+# Scientific protocol fragment only. No TTA algorithm is registered by B00.
+task:
+  type: TTA
+  name: protocol_only
+  model_task_id: classification
+  protocol:
+    regime: online_tta
+    source_access: checkpoint_only
+    target_label_access: none
+    timing: predict_then_update
+    state_persistence: persistent
+    domain_boundary: hidden
+    label_space: closed_set
+    passes: 1
+    source_artifacts: []
