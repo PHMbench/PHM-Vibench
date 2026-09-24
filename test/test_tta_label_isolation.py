@@ -5,6 +5,7 @@ import pytest
 from src.config_schema import AdaptationProtocolConfig
 from phmfactory.adaptation_protocol import (
     build_adaptation_view,
+    build_evaluation_view,
     execute_protocol_step,
     label_event_for_update,
 )
@@ -84,6 +85,30 @@ def test_target_labels_never_enter_adaptation_view_or_change_state():
     assert states[0] == states[1] == states[2]
     assert predictions[0] == predictions[1] == predictions[2]
     assert evaluations == [[0, 1], [1, 0], [0, 0]]
+
+
+def test_file_id_is_evaluator_only_even_when_it_encodes_target_class():
+    batch = {
+        "x": [1.0],
+        "y": [1],
+        "file_id": 173,
+        "sample_id": 9,
+        "sequence_id": "asset-A",
+    }
+    adapt = build_adaptation_view(batch, protocol())
+    evaluation = build_evaluation_view(batch)
+
+    assert "file_id" not in adapt
+    assert adapt["sample_id"] == 9
+    assert adapt["sequence_id"] == "asset-A"
+    assert evaluation["file_id"] == 173
+
+    with pytest.raises(ValueError, match="file_id is evaluator-only"):
+        build_adaptation_view(
+            batch,
+            protocol(),
+            allowed_physical_metadata=("file_id",),
+        )
 
 
 def test_hidden_domain_boundary_removes_domain_id_but_known_boundary_exposes_it():
@@ -193,6 +218,15 @@ def test_source_only_never_calls_update():
     "candidate",
     [
         protocol(
+            regime="episodic_tta",
+            state_persistence="episodic_reset",
+        ),
+        protocol(
+            regime="online_tta",
+            state_persistence="domain_reset",
+            domain_boundary="known",
+        ),
+        protocol(
             regime="delayed_label_adaptation",
             target_label_access="delayed",
             state_persistence="persistent",
@@ -217,7 +251,7 @@ def test_source_only_never_calls_update():
     ],
 )
 def test_b00_executor_rejects_regimes_that_need_other_lifecycles(candidate):
-    with pytest.raises(ValueError, match="dedicated runtime"):
+    with pytest.raises(ValueError, match="dedicated runtime|reset lifecycle"):
         execute_protocol_step(ToyAdapter(), {"x": [1.0], "y": [0]}, candidate)
 
 
