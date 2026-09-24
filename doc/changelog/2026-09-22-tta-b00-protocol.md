@@ -18,3 +18,5 @@ observably distinct without importing the maintained classification runtime or i
 Tent, SAR, CoTTA, SHOT, buffers or a new Trainer. The real adaptation runtime remains B01 work. Focused protocol tests run inside the existing Core quality workflow.
 
 Reviewer follow-up tightened B00 fail-closed behavior: `file_id` is evaluator-only because repository file-number ranges can encode fault class, and reset-dependent protocols are not executable until a real reset lifecycle exists. `episodic_tta` and `domain_reset` therefore remain validated schema choices but cannot be passed through the B00 step executor. These changes prevent a protocol helper from silently behaving as continual adaptation or exposing a target-label proxy.
+
+Final review also keeps `source_only` schema-only in B00. A generic adapter `predict()` call can mutate stateful inference layers when model mode is not guaranteed, so frozen-source execution is deferred to B01, where equality with ordinary frozen inference and state preservation can be tested explicitly.
