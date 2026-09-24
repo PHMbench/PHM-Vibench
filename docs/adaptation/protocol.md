@@ -102,9 +102,11 @@ raises rather than releasing the label. This prevents forecasting or delayed-sup
 experiments from reading future truth at prediction time.
 
 B00 freezes the schemas for delayed-label, online-supervised and SFDA regimes but does
-not execute those lifecycles. The dependency-light `execute_protocol_step()` accepts `source_only` and only persistent
-`online_tta` / `continual_tta`. `episodic_tta` and `domain_reset` remain schema-level
-protocols until an explicit reset lifecycle exists. Label-bearing regimes need an explicit
+not execute those lifecycles. The dependency-light `execute_protocol_step()` is only a timing/isolation probe for
+persistent `online_tta` / `continual_tta`. `source_only` remains schema-level until
+B01 provides frozen inference that proves prediction does not mutate model state;
+`episodic_tta` and `domain_reset` likewise remain schema-level until an explicit reset
+lifecycle exists. Label-bearing regimes need an explicit
 label-event runtime; SFDA needs separate adaptation and evaluation populations. Passing
 any unsupported lifecycle through the B00 single-stream executor fails rather than silently
 running a different experiment.
