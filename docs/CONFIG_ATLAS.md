@@ -211,7 +211,6 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/base/task/README.md`, `docs/adaptation/protocol.md`
 - Status: `/`
 
-
 ### base_trainer
 
 #### `base_trainer_default_single_gpu`
