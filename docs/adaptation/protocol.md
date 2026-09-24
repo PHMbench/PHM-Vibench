@@ -73,8 +73,9 @@ The two estimators must not be pooled.
 ## Views and ownership
 
 Data Factory owns stream order and traceability. An adaptation batch may expose
-`x`, optional `mask`, `file_id`, `sample_id`, `timestamp`, `sequence_id` and
-explicitly allowed physical metadata. B00 uses a positive metadata schema rather than an
+`x`, optional `mask`, `sample_id`, `timestamp`, `sequence_id` and explicitly allowed
+physical metadata. `file_id` is evaluator-only in B00 because repository file-number
+ranges can encode the target class; adapters must not receive it as an identity shortcut. B00 uses a positive metadata schema rather than an
 arbitrary pass-through: normalized keys are limited to physical quantities such as
 `speed_rpm`, `shaft_rate_hz`, `load_hp`, `torque`, `temperature`, and
 `sample_rate`. Target-derived aliases, including `Label`, `Label_Description`,
@@ -101,11 +102,12 @@ raises rather than releasing the label. This prevents forecasting or delayed-sup
 experiments from reading future truth at prediction time.
 
 B00 freezes the schemas for delayed-label, online-supervised and SFDA regimes but does
-not execute those lifecycles. The dependency-light `execute_protocol_step()` accepts
-only `source_only`, `episodic_tta`, `online_tta` and `continual_tta`. Label-bearing
-regimes need an explicit label-event runtime; SFDA needs separate adaptation and
-evaluation populations. Passing either through the B00 single-stream executor fails
-rather than silently running a different experiment.
+not execute those lifecycles. The dependency-light `execute_protocol_step()` accepts `source_only` and only persistent
+`online_tta` / `continual_tta`. `episodic_tta` and `domain_reset` remain schema-level
+protocols until an explicit reset lifecycle exists. Label-bearing regimes need an explicit
+label-event runtime; SFDA needs separate adaptation and evaluation populations. Passing
+any unsupported lifecycle through the B00 single-stream executor fails rather than silently
+running a different experiment.
 
 ## What is runnable after B00?
 
