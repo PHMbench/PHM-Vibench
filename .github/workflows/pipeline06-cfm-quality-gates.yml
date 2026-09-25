@@ -79,13 +79,33 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install CPU Torch
+      - name: Install matching CPU Torch and torchvision
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0"
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu \
+            "torch==2.6.0" "torchvision==0.21.0"
 
       - name: Install the public runtime and test dependency
         run: python -m pip install -e . "pytest>=7"
+
+      - name: Compile Pipeline 06 and CFM modules
+        run: |
+          python -m py_compile \
+            src/Pipeline_06_Generative_Modeling.py \
+            src/model_factory/generative_model/condition_encoder.py \
+            src/model_factory/generative_model/film.py \
+            src/model_factory/generative_model/phm_cfm_mlp1d.py \
+            src/task_factory/Components/generative/flow_matching.py \
+            src/task_factory/Components/generative/euler_ode.py \
+            src/task_factory/task/generative/conditional_flow_matching.py \
+            test/generative/test_pipeline06_import.py \
+            test/generative/test_pipeline06_preflight.py \
+            test/generative/test_pipeline06_dispatch.py \
+            test/generative/test_cfm_core_contract.py \
+            test/generative/test_cfm_dtype_contract.py \
+            test/generative/test_cfm_factory_contract.py \
+            test/generative/test_euler_request_contract.py \
+            test/generative/test_cfm_demo_e_chain.py
 
       - name: Inspect the actual candidate demo
         shell: bash
@@ -112,6 +132,7 @@ jobs:
             test/generative/test_cfm_core_contract.py \
             test/generative/test_cfm_dtype_contract.py \
             test/generative/test_cfm_factory_contract.py \
+            test/generative/test_euler_request_contract.py \
             test/generative/test_cfm_demo_e_chain.py \
             2>&1 | tee pipeline06-cfm-pytest.log
 
