@@ -39,6 +39,7 @@ on:
       - "test/test_run_summary.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
+      - "test/test_tta_source_stream.py"
       - "test/test_timesnet.py"
       - "test/test_timesnet_public.py"
       - "test/fixtures/timesnet_upstream/**"
@@ -83,6 +84,7 @@ on:
       - "test/test_run_summary.py"
       - "test/test_runtime_control_plane.py"
       - "test/test_runtime_execution.py"
+      - "test/test_tta_source_stream.py"
       - "test/test_timesnet.py"
       - "test/test_timesnet_public.py"
       - "test/fixtures/timesnet_upstream/**"
@@ -181,6 +183,7 @@ jobs:
               "phmfactory/cli.py",
               "phmfactory/config.py",
               "phmfactory/device.py",
+              "phmfactory/source_stream.py",
               "phmfactory/pipelines.py",
               "phmfactory/commands/__init__.py",
               "phmfactory/commands/common.py",
@@ -386,6 +389,42 @@ jobs:
           skipped = sum(int(suite.attrib.get("skipped", 0)) for suite in suites)
           assert skipped == 0, f"installed-wheel TimesNet tests skipped: {skipped}"
           PY
+
+      - name: Verify installed B01 source-only stream outside the checkout
+        shell: bash
+        env:
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/phmfactory-source-stream-tests /tmp/source-stream-diagnostics
+          cp test/test_tta_source_stream.py /tmp/phmfactory-source-stream-tests/
+          cd /tmp/phmfactory-source-stream-tests
+          unset PYTHONPATH
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          from pathlib import Path
+          import phmfactory.source_stream as module
+          assert "site-packages" in Path(module.__file__).parts, module.__file__
+          PY
+          /tmp/phmfactory-wheel/bin/python -m pytest test_tta_source_stream.py -vv \
+            --junitxml=/tmp/source-stream-diagnostics/tests.xml \
+            2>&1 | tee /tmp/source-stream-diagnostics/pytest.log
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("/tmp/source-stream-diagnostics/tests.xml").getroot()
+          suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+          assert sum(int(s.attrib.get("tests", 0)) for s in suites) > 0
+          assert sum(int(s.attrib.get("skipped", 0)) for s in suites) == 0
+          PY
+
+      - name: Upload source-only stream installed-wheel diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tta-b01-installed-wheel
+          path: /tmp/source-stream-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload TimesNet installed-wheel diagnostics
         if: always()
