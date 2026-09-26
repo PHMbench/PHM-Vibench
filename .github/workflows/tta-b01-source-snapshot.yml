@@ -1,0 +1,21 @@
+name: TTA B01 temporary source snapshot
+on:
+  push:
+    branches: [feat/tta-b01-source-stream-20260926]
+    paths: [.github/workflows/tta-b01-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive tracked source only
+        run: git archive --format=tar.gz HEAD > /tmp/phmfactory-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tta-b01-source-snapshot
+          path: /tmp/phmfactory-source.tar.gz
+          retention-days: 1
