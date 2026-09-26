@@ -103,8 +103,8 @@ experiments from reading future truth at prediction time.
 
 B00 freezes the schemas for delayed-label, online-supervised and SFDA regimes but does
 not execute those lifecycles. The dependency-light `execute_protocol_step()` is only a timing/isolation probe for
-persistent `online_tta` / `continual_tta`. `source_only` remains schema-level until
-B01 provides frozen inference that proves prediction does not mutate model state;
+persistent `online_tta` / `continual_tta`. `source_only` is executed separately by the bounded B01 runtime described below,
+not by this protocol helper;
 `episodic_tta` and `domain_reset` likewise remain schema-level until an explicit reset
 lifecycle exists. Label-bearing regimes need an explicit
 label-event runtime; SFDA needs separate adaptation and evaluation populations. Passing
@@ -114,10 +114,8 @@ running a different experiment.
 ## What is runnable after B00?
 
 Nothing new. `configs/base/task/tta_protocol.yaml` is a validated protocol fragment, not
-a registered Task. No TTA dataset adapter or algorithm is registered. The next bounded
-change is a source-only ordered-stream runtime that must reproduce ordinary frozen
-prediction under the same checkpoint, inputs and order before any adaptive method is
-added.
+a registered Task. No TTA dataset adapter or algorithm is registered. The B01 Python runtime below adds a frozen control without registering a TTA Task
+or changing public CLI dispatch. A protocol fragment is still not a runnable experiment.
 
 ## Evidence required before an algorithm is supported
 
@@ -125,3 +123,108 @@ A later algorithm PR must record paper, official repository, fixed source revisi
 license, exact updated parameter subset, fixed input/source weights, a reference update
 and numerical tolerance. Import, registry presence or shape-only forward evidence is not
 algorithm fidelity.
+
+
+## B01: source-only ordered-stream runtime
+
+`phmfactory.source_stream.run_source_only_stream` accepts an already constructed model,
+an explicitly prepared target-only DataLoader, the source-only protocol, an explicit
+source checkpoint and the caller's evaluator. It strictly restores weights through the
+existing Model Factory loader and performs **no fit, backward, optimizer step or update**.
+
+The supported protocol is `source_only / checkpoint_only / none / predict_then_update /
+persistent / closed_set / passes=1`. Either hidden or known domain boundaries may be
+declared, but the B01 model receives only `x`. File IDs, labels, domain IDs and all
+traceability fields remain evaluator-only; no per-file head or metadata-based model
+forward is claimed. Other protocols, masked inputs and unsupported loaders fail closed.
+
+The caller explicitly calls `model.eval()` before execution and owns model/input device
+placement. B01 rejects training-mode submodules or existing gradients instead of fixing
+them. After strict checkpoint loading, each batch is checked against one copy of all
+registered parameters and buffers, including non-persistent buffers. Changes in values,
+identities, modes, gradient flags or registered modules cause failure before the next
+prediction. A mutation during forward fails before that prediction reaches the evaluator.
+There is no automatic restoration that could conceal a failed source-only experiment.
+
+The accepted loaders are synchronous (`num_workers=0`) with either the ordinary
+SequentialSampler/BatchSampler or the existing unshuffled, non-dropping
+Same_system_Sampler using `Dataset_id`. The latter's complete index coverage is checked;
+its system-grouped order is retained, **not relabelled chronological order**. B01 does not
+construct populations, shuffle, sort timestamps, change split/windowing, cast inputs,
+move devices or fit normalization. An upstream producer must supply the intended order
+and frozen preprocessing. A loader that drops samples fails the complete-population gate.
+
+### Equivalence contract and usage
+
+The reference is ordinary `model.eval()` plus `torch.no_grad()` inference, using the same
+checkpoint, initial non-persistent buffers, inputs, preprocessing, order **and batch
+partition**. TimesNet selects periods using a batch aggregate, so changing batch size is
+not part of the equality claim. The CPU BatchNorm/Dropout fixture is checked exactly;
+actual GlobalAverageLinear and TimesNet Model Factory paths use `rtol=1e-6, atol=1e-7`.
+No arbitrary hardware/precision or batch-size invariance is claimed.
+
+The following is the integration seam; `target_loader`, `model`, `source_metadata`,
+`source_checkpoint` and `result_dir` are explicit caller-owned inputs. The model has a
+single K>=2 CE logit head fixed by the source ontology, not inferred
+from target labels. For brevity this example assumes one dataset metric namespace.
+
+```python
+from pathlib import Path
+import pandas as pd
+from phmfactory.source_stream import run_source_only_stream
+from src.config_schema import AdaptationProtocolConfig
+from src.task_factory.Components.metrics import get_metrics, prepare_metric_inputs
+from src.utils.run_summary import write_run_summary
+
+protocol = AdaptationProtocolConfig(
+    regime="source_only", source_access="checkpoint_only", target_label_access="none",
+    timing="predict_then_update", state_persistence="persistent",
+    domain_boundary="hidden", label_space="closed_set",
+)
+model.eval()  # explicit; architecture/device/source class ontology are already fixed
+metrics = get_metrics(["acc", "f1"], source_metadata, loss_name="CE")[dataset_name]
+
+def evaluate(logits, view):
+    for name in ("acc", "f1"):
+        pred, target = prepare_metric_inputs(name, logits, view["y"], loss_name="CE")
+        metrics[f"test_{name}"].update(pred, target)
+
+sample_count = run_source_only_stream(
+    model, target_loader, protocol, checkpoint_path=source_checkpoint, evaluate=evaluate,
+)
+# Only after complete success: aggregate over the population, never average batch F1.
+result = {f"test_{name}": float(metrics[f"test_{name}"].compute()) for name in ("acc", "f1")}
+result_dir = Path(result_dir)
+result_dir.mkdir(parents=True, exist_ok=True)
+pd.DataFrame([result]).to_csv(result_dir / "all_results.csv", index=False)
+write_run_summary(result_dir / "run_summary.json", [result], [source_seed])
+```
+
+No new result schema, registry, Trainer or CLI is introduced. The Data Factory owns data
+preparation; **do not run an ordinary training Data Factory over source records inside a
+checkpoint-only deployment**. The integration tests construct the existing ordinary
+Dummy factory as a test fixture and pass only its test loader into B01. They are not
+claims about source-data access during real deployment. No training runs in these tests.
+
+### Evidence and remaining boundaries
+
+The focused tests execute real torch modules, the native Data/Model factories, canonical
+raw and Lightning-prefixed checkpoints, existing Task metrics and existing result summary
+writing. True/permuted/zero labels yield identical predictions, model state and RNG state
+in the fixed fixture. Deliberate BatchNorm, parameter, non-persistent-buffer, mode and
+evaluator-induced mutations fail. Empty, randomized, dropping or incomplete streams,
+wrong checkpoints, invalid protocols and non-finite outputs also fail. The existing
+public-package CI runs these tests again from the installed wheel outside the checkout.
+
+The state checks have one full-state-copy memory cost and O(model-state-size) comparison
+cost each batch. They are correctness checks, not a low-latency performance claim. The
+runner uses trusted datasets, collators, model modules and evaluator code; it is not a
+sandbox against malicious Python closures or an audit of arbitrary unregistered Python
+state. Stochastic transforms and data-dependent mutable Python caches require their own
+qualification. Discard partial evaluator state after any exception; do not publish it as
+a completed population result.
+
+These tests establish the bounded frozen control, not industrial PHM usefulness or TTA
+algorithm fidelity. No TTA Task/CLI, adaptive optimizer, EMA, replay, SFDA, reset or resume
+lifecycle is enabled. B01 requires exact-head CI and independent review before merge;
+Tent remains a separate decision after that gate.
