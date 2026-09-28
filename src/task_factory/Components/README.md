@@ -77,6 +77,14 @@ publication checks are already resolved.
 No universal argument retry, zero-loss repair, new component manager, or extra registry
 is required to document these boundaries.
 
+## Test-time adaptation component
+
+[tent.py](tent.py) owns the bounded B02 entropy/Adam update on BatchNorm affine
+parameters. Its x-only predict/update pair contains no label input, data selection or
+result writer. See the [adaptation protocol](../../../docs/adaptation/protocol.md#b02-one-step-prequential-tent)
+for source checkpoint, ordering, parameterization, state and evidence boundaries. This
+component is not a registered Lightning TTA Task.
+
 ## Verification
 
 For documentation, run `python -m scripts.validate_docs`. For changes to supervised loss

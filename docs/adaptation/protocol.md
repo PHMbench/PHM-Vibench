@@ -2,8 +2,8 @@
 
 This document freezes the scientific protocol for test-time adaptation (TTA), continual
 TTA, source-free domain adaptation (SFDA), delayed-label adaptation and supervised
-continual controls. It does not claim that Tent, SAR, CoTTA, SHOT or another adaptation
-algorithm is implemented.
+continual controls. B01 supplies a frozen Python control and B02 supplies the bounded
+Tent Python path below; SAR, CoTTA, SHOT and other algorithms remain outside this scope.
 
 The experiment object is
 
@@ -227,4 +227,111 @@ a completed population result.
 These tests establish the bounded frozen control, not industrial PHM usefulness or TTA
 algorithm fidelity. No TTA Task/CLI, adaptive optimizer, EMA, replay, SFDA, reset or resume
 lifecycle is enabled. B01 requires exact-head CI and independent review before merge;
-Tent remains a separate decision after that gate.
+The separately bounded B02 implementation follows below.
+
+
+## B02: one-step prequential Tent
+
+`phmfactory.tent_stream.run_tent_stream` reuses B01's complete ordered loader contract,
+canonical strict source-checkpoint loading and the caller's existing Task metric/output
+path. `src.task_factory.Components.tent.Tent` owns entropy, the BN-affine parameter
+subset and Adam. No TTA Task/CLI, dataset adapter, Trainer or registry is added.
+
+The fixed source is [official Tent](https://github.com/DequanWang/tent) at
+`e9e926a668d85244c66a6d5c006efbd2b82e83e8` (MIT; attribution is retained in the component
+and [test fixture](../../test/fixtures/tent_upstream/README.md)). The production extension
+admits affine BatchNorm1d as well as the original BatchNorm2d. Other normalization
+families, non-affine BN and BN-free models fail; they are not modified to fit Tent.
+
+### The exact update and estimator
+
+B02 accepts only `online_tta` or `continual_tta`, `checkpoint_only`, no target labels,
+`predict_then_update`, persistent state, closed-set classification and one pass. Each
+batch makes exactly one model forward and one Adam step. The learning rate must be
+explicit; betas=(0.9,0.999), eps=1e-8 and weight_decay=0. No scheduler, multi-step update,
+pseudo-label loss, confidence filter, EMA, replay, reset, SFDA or supervised update is
+included. Freeze the learning rate using source validation or a declared development
+shift before observing target labels; there is no target-labelled selector in this API.
+
+For an ordered batch $B_t$, with current-batch BN statistics and train-mode dropout:
+
+$$
+p_t=\operatorname{softmax}(f_{\theta_{t-1};\,\mathrm{BN}(B_t)}(B_t)),\qquad
+L_t=-\frac{1}{|B_t|}\sum_{i\in B_t}\sum_k p_{ik}\log p_{ik}.
+$$
+
+The runtime evaluates the isolated pre-update prediction, then applies the entropy
+gradient to BN scale/shift only. It reuses that exact forward graph, rather than
+performing a second stochastic forward. The upstream one-step function likewise returns
+pre-update logits. `update_then_predict` and more than one step are not silently mapped
+onto this estimator.
+
+This is **batch-prequential in the parameter update**, not strict sample-causal
+inference: every prediction can use other inputs in its current batch through BN.
+The first Tent prediction already uses batch statistics and training-mode dropout;
+it is not the B01 frozen-source prediction even before the first Adam step. A later
+scientific comparison should keep the frozen source and a separately declared BN-only
+control distinct. Identical batch partitions and stochastic state are part of fidelity.
+
+### Calling the bounded runtime
+
+This extends the B01 construction fragment; `model`, `target_loader`, source checkpoint,
+source-selected learning rate and evaluator already exist. It is not a runnable YAML
+preset, a data-download command or a training command.
+
+```python
+from phmfactory.tent_stream import run_tent_stream
+
+protocol = AdaptationProtocolConfig(
+    regime="online_tta", source_access="checkpoint_only", target_label_access="none",
+    timing="predict_then_update", state_persistence="persistent",
+    domain_boundary="hidden", label_space="closed_set",
+)
+model.eval()
+adapter = run_tent_stream(
+    model, target_loader, protocol, checkpoint_path=source_checkpoint,
+    learning_rate=source_selected_lr, evaluate=evaluate,
+)
+assert adapter.num_samples == len(target_loader.dataset)
+# Now compute population metrics and use the same all_results.csv/run_summary writer.
+```
+
+Only `x` reaches `Tent.predict`; `Tent.adapt()` accepts no external labels or loss. IDs,
+label aliases and even known domain IDs remain evaluator-only for this x-only method.
+All registered state is checked before/after prediction and before/after update; only
+BN affine parameters may change at the update. Failures keep the original exception,
+produce no success return, and require discarding the partial model, optimizer and
+metric state. There is no rollback-and-continue path. Stateful Python caches and hostile
+closures remain outside the trusted-module contract described under B01.
+
+### Saved algorithm state versus whole-experiment resume
+
+At a completed batch boundary `Tent.state_dict()` supplies ordinary model/optimizer
+state, non-persistent buffers, counters, last entropy and CPU/relevant CUDA torch RNG.
+`Tent.load_state_dict()` requires compatible architecture, Adam settings and device kind.
+These are payload methods for an enclosing checkpoint owner, not a second checkpoint
+writer or Trainer. In the CPU dropout fixture, ordinary `torch.save` followed by a new
+Python process and `torch.load` reproduces the next prediction, model/Adam state and RNG
+exactly. Saving a pending, not-yet-adapted batch is rejected.
+
+The full-pass `run_tent_stream` entrypoint does **not** resume an entire experiment.
+A future Trainer-owned integration must also restore the ordered stream cursor,
+preprocessing RNG and evaluator accumulator. Algorithm-state continuation alone must not
+be advertised as resumable end-to-end execution. CUDA execution/resume is not qualified
+by CPU tests; no GPU fallback is made.
+
+### Evidence boundary
+
+The unmodified upstream oracle covers BN2d and a controlled BN1d operator extension.
+Tests compare logits, losses, gradients, Adam moments, model parameters and RNG, and
+replace labels with permuted/zero values while preserving all adaptation trajectories.
+They also execute the existing ResNet1D Model Factory and native Data Factory test loader
+on bundled Dummy, reuse B01 frozen inference, and check population F1 and result output.
+The standard public-package workflow repeats B02 from an installed wheel outside the
+checkout. Initial failed oracle-layout checks are retained as diagnostics, not passes.
+
+No industrial dataset or trained industrial checkpoint has been evaluated for B02.
+This is algorithm/framework verification, not E3 utility, safety, robustness, CTTA
+non-forgetting or `benchmark_ready` evidence. O(model-state) checks and the source-state
+copy are not an adaptation latency or peak-memory benchmark. Source weights, target
+order and target preprocessing remain caller-owned and must be fixed in a real study.
