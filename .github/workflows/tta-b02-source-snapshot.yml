@@ -1,0 +1,29 @@
+name: TTA B02 temporary source snapshot
+on:
+  push:
+    branches: [feat/tta-b02-tent-20260928]
+    paths: [.github/workflows/tta-b02-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: git archive --format=tar.gz 95cf1dcfd06f5d9068fe9f39580db28873ed34e2 -o /tmp/phmfactory-b02-base.tar.gz
+      - uses: actions/checkout@v4
+        with:
+          repository: DequanWang/tent
+          ref: e9e926a668d85244c66a6d5c006efbd2b82e83e8
+          path: upstream-tent
+          persist-credentials: false
+      - run: git -C upstream-tent archive --format=tar.gz HEAD -o /tmp/tent-upstream.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tta-b02-source-snapshot
+          retention-days: 1
+          path: |
+            /tmp/phmfactory-b02-base.tar.gz
+            /tmp/tent-upstream.tar.gz
