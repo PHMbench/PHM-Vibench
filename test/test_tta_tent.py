@@ -453,7 +453,8 @@ def test_failure_cannot_produce_completed_population(tmp_path, kind):
     assert torch.equal(before, model.bn.weight)  # no optimizer step before these failures
 
 
-@pytest.mark.parametrize("kind", ["lr", "amsgrad", "nan_optimizer", "counter", "buffers", "last_loss"])
+@pytest.mark.parametrize("kind", ["lr", "amsgrad", "nan_optimizer", "counter", "buffers", "last_loss",
+                                  "missing_moments", "missing_second_moment", "wrong_step", "moment_shape"])
 def test_invalid_resume_fails_closed(kind):
     adapter = Tent(TinyBN().eval(), learning_rate=1e-3)
     adapter.predict(Rows().x[:3]); adapter.adapt()
@@ -464,6 +465,13 @@ def test_invalid_resume_fails_closed(kind):
         next(iter(state["optimizer"]["state"].values()))["exp_avg"].fill_(float("nan"))
     elif kind == "counter": state["num_updates"] = True
     elif kind == "buffers": state["extra_buffers"] = {}
+    elif kind == "missing_moments": state["optimizer"]["state"] = {}
+    elif kind == "missing_second_moment":
+        del next(iter(state["optimizer"]["state"].values()))["exp_avg_sq"]
+    elif kind == "wrong_step":
+        next(iter(state["optimizer"]["state"].values()))["step"].zero_()
+    elif kind == "moment_shape":
+        next(iter(state["optimizer"]["state"].values()))["exp_avg"] = torch.zeros(1)
     else: state["last_loss"] = float("inf")
     with pytest.raises(ValueError):
         Tent(TinyBN().eval(), learning_rate=1e-3).load_state_dict(state)

@@ -206,6 +206,16 @@ class Tent:
         if any(not torch.isfinite(v).all() for s in self.optimizer.state.values()
                for v in s.values() if isinstance(v, torch.Tensor)):
             raise ValueError("Tent checkpoint optimizer state is non-finite")
+        # Adam otherwise accepts missing moments and silently starts a new trajectory.
+        expected = set(self.optimizer.param_groups[0]["params"]) if state["num_updates"] else set()
+        if set(self.optimizer.state) != expected:
+            raise ValueError("Tent checkpoint Adam moments are incomplete")
+        for parameter, moments in self.optimizer.state.items():
+            if (set(moments) != {"step", "exp_avg", "exp_avg_sq"}
+                    or moments["step"].numel() != 1
+                    or moments["step"].item() != state["num_updates"]
+                    or any(moments[k].shape != parameter.shape for k in ("exp_avg", "exp_avg_sq"))):
+                raise ValueError("Tent checkpoint Adam step/moment contract differs")
         if (state["num_updates"] > state["num_samples"]
                 or (state["last_loss"] is not None and not math.isfinite(state["last_loss"]))):
             raise ValueError("Tent checkpoint counters/loss are invalid")
