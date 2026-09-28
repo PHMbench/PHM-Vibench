@@ -11,8 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: 95cf1dcfd06f5d9068fe9f39580db28873ed34e2
           persist-credentials: false
-      - run: git archive --format=tar.gz 95cf1dcfd06f5d9068fe9f39580db28873ed34e2 -o /tmp/phmfactory-b02-base.tar.gz
+      - run: git archive --format=tar.gz HEAD -o /tmp/phmfactory-b02-base.tar.gz
       - uses: actions/checkout@v4
         with:
           repository: DequanWang/tent
