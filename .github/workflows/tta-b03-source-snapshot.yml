@@ -13,19 +13,19 @@ jobs:
         with:
           ref: feat/tta-b03-sar-20260929
           fetch-depth: 0
-      - name: Apply exact locally validated B03 patch
+      - name: Apply exact locally validated B03 source patch
         shell: bash
         run: |
           set -euo pipefail
           cat .github/b03-patch.part1 .github/b03-patch.part2 .github/b03-patch.part3 .github/b03-patch.part4 | base64 -d > /tmp/b03.patch.gz
           gzip -dc /tmp/b03.patch.gz > /tmp/b03.patch
           patch -p1 < /tmp/b03.patch
+          git checkout -- .github/workflows/phmfactory-public-package.yml
           rm -f .github/b03-patch.part1 .github/b03-patch.part2 .github/b03-patch.part3 .github/b03-patch.part4
-          rm -f .github/workflows/tta-b03-source-snapshot.yml
           git add -A
           git diff --cached --check
           git status --short
-      - name: Commit validated candidate and remove transport
+      - name: Commit non-workflow candidate
         shell: bash
         run: |
           set -euo pipefail
