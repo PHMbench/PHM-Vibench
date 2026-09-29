@@ -392,6 +392,36 @@ class SAR:
             cuda_rng=torch.cuda.get_rng_state(self.device) if self.device.type == "cuda" else None,
         ))
 
+    def _validate_model_payload(
+        self, state: dict[str, Any], extra: dict[str, torch.Tensor]
+    ) -> None:
+        """Reject continuation payloads that alter frozen source tensors."""
+        if state.keys() != self._source_model.keys():
+            raise ValueError("SAR checkpoint model keys differ from the explicit source state")
+        trainable = set(self.parameter_names)
+        for name, source_tensor in self._source_model.items():
+            observed = state[name]
+            if (not isinstance(observed, torch.Tensor)
+                    or observed.shape != source_tensor.shape
+                    or observed.dtype != source_tensor.dtype
+                    or observed.device.type != source_tensor.device.type
+                    or not torch.isfinite(observed).all()):
+                raise ValueError(f"SAR checkpoint model tensor is invalid: {name}")
+            if name not in trainable and not torch.equal(
+                    observed.to(source_tensor.device), source_tensor):
+                raise ValueError(f"SAR checkpoint changed frozen source tensor: {name}")
+        if extra.keys() != self._source_extra.keys():
+            raise ValueError("SAR checkpoint non-persistent buffer keys differ")
+        for name, source_tensor in self._source_extra.items():
+            observed = extra[name]
+            if (not isinstance(observed, torch.Tensor)
+                    or observed.shape != source_tensor.shape
+                    or observed.dtype != source_tensor.dtype
+                    or observed.device.type != source_tensor.device.type
+                    or not torch.isfinite(observed).all()
+                    or not torch.equal(observed.to(source_tensor.device), source_tensor)):
+                raise ValueError(f"SAR checkpoint changed frozen source buffer: {name}")
+
     def _validate_optimizer_state(self) -> None:
         allowed = set(self.optimizer.params)
         if not set(self.optimizer.base_optimizer.state).issubset(allowed):
@@ -434,6 +464,10 @@ class SAR:
             if value is not None and (not isinstance(value, (int, float)) or not math.isfinite(value)):
                 raise ValueError(f"SAR checkpoint {name} is invalid")
 
+        # Validate the current continuation payload against the explicit source anchor
+        # before mutating this adapter. Only selected normalization affine parameters
+        # are allowed to differ; backbone/head parameters and all buffers stay frozen.
+        self._validate_model_payload(state["model"], state["extra_buffers"])
         self._restore_model(state["model"], state["extra_buffers"])
         options = [{key: value for key, value in group.items() if key != "params"}
                    for group in self.optimizer.base_optimizer.param_groups]

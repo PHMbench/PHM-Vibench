@@ -325,8 +325,11 @@ def test_invalid_resume_fails_closed(kind):
     elif kind == "source_lr": state["source_optimizer"]["param_groups"][0]["lr"] = 1.0
     elif kind == "last_loss": state["last_loss"] = float("inf")
     elif kind == "source_model": state["source_model"].pop(next(iter(state["source_model"])))
-    else:
+    elif kind == "source_model_value":
         key = next(iter(state["source_model"])); state["source_model"][key].add_(1)
+    else:
+        key = next(key for key in state["model"] if key not in adapter.parameter_names)
+        state["model"][key].add_(1)
     with pytest.raises((ValueError, RuntimeError)):
         SAR(TinyNorm("bn1d", dropout=0).eval(), learning_rate=1e-3, margin_e0=10.0).load_state_dict(state)
 
