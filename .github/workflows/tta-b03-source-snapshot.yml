@@ -1,30 +1,35 @@
-name: TTA B03 temporary source snapshot
+name: TTA B03 apply validated candidate
 on:
   push:
     branches: [feat/tta-b03-sar-20260929]
     paths: [.github/workflows/tta-b03-source-snapshot.yml]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 07a0355a0f77e8609bb106e5bb45d7acf3b5cf70
-          persist-credentials: false
-      - run: git archive --format=tar.gz HEAD -o /tmp/phmfactory-b03-base.tar.gz
-      - uses: actions/checkout@v4
-        with:
-          repository: mr-eggplant/SAR
-          ref: 20f6e24b17525f34503510afccedc0629b67b7c4
-          path: upstream-sar
-          persist-credentials: false
-      - run: git -C upstream-sar archive --format=tar.gz HEAD -o /tmp/sar-upstream.tar.gz
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tta-b03-source-snapshot
-          retention-days: 1
-          path: |
-            /tmp/phmfactory-b03-base.tar.gz
-            /tmp/sar-upstream.tar.gz
+          ref: feat/tta-b03-sar-20260929
+          fetch-depth: 0
+      - name: Apply exact locally validated B03 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/b03-patch.part1 .github/b03-patch.part2 .github/b03-patch.part3 .github/b03-patch.part4 | base64 -d > /tmp/b03.patch.gz
+          gzip -dc /tmp/b03.patch.gz > /tmp/b03.patch
+          patch -p1 < /tmp/b03.patch
+          rm -f .github/b03-patch.part1 .github/b03-patch.part2 .github/b03-patch.part3 .github/b03-patch.part4
+          rm -f .github/workflows/tta-b03-source-snapshot.yml
+          git add -A
+          git diff --cached --check
+          git status --short
+      - name: Commit validated candidate and remove transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "feat(tta): add bounded SAR ordered-stream adaptation (B03)"
+          git push origin HEAD:feat/tta-b03-sar-20260929
