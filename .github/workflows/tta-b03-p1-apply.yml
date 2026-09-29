@@ -1,0 +1,33 @@
+name: TTA B03 apply P1 correction
+on:
+  push:
+    branches: [feat/tta-b03-sar-20260929]
+    paths: [.github/workflows/tta-b03-p1-apply.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/tta-b03-sar-20260929
+          fetch-depth: 0
+      - name: Apply reviewed P1 correction
+        shell: bash
+        env:
+          PATCH_B64: "H4sICCYru2oAA3AxLnBhdGNoAO1X32/bNhB+z1/BqQ+TEEm2kyxbEnhI0BZFMTQb0mIvgSHQ0snmIpEaSSV1i/7vuyMlW06cJu32OCOILYn3++77TkmSMD4yOh9Zbm6ykudW6dXopaobJUFaMzJcp81qb39/n82fc/D8nCWHJwfxMdunr8Njdn6+x4afvC14puViihryZUqX6QIs3cqM5RZCA1WZFnArcoiYKNngOrWrBth0ygKSCxhUBtgluhBvjETRHtvbp18FlCy75ZUoUG1WqwKqrOGrSvEi9CfoQ+pj5kyfskLk9tpYHbMLuZrFDD5azYe3vdcfQBqlZ15JxJJfnROnG6VBEFzBX5BblitphWy5FUqyzrphdskt45UFzUqtPoFkRrU6B2adZpOigo02SgL5l97AyoQR+2Hqk5J5IR9a93DgBH00F5iiP3nVwmutlQ6D9xdXLF9CftMoIS1zsoxkMcqy9A7V6CBg8E0lcmF735wPQbQxgLkRks8rLAk6ZH3lGq55DRhZJvHbDI6XSjO6F3cKMx8sE3JXOMJC/TAeNTegb6Egi+TONSmcbZ/BdIVSWSaMkHhI5hD2YtsFjLbl1jb02kxqlhw7jhI+dNnfflq6cP36QNrdfob0oOcf6tg8fFQTJcHHK0wpJGZ0nYgo5VUVRvfTu7Nlyt0901fPYAHdlJ2yz1SNL0H0oB5037mDtd50DZfFwEf4u+VV+EgwfU6sCnflIbrXU98XV77kcoG9tWskdwWHgTmAeGwuhw+/dS6lkkkD2giD9i2bt242B3MafMdkeYeenCx37P/J+leT9QxR3/Df3Nr/ZW/7thr2tifSbepUjRW1+ISQvmHoAeutvcDA1Z3H5p4N1qKeF5AOhs1EudhxdM7NwGjqjEaYadPO6XRnBvNA68bR4RGtG0fHR/Fk/GDdQCO3lBWCKbJGHjvcud/H7lTMQsxVzEpkaRtFfblqbgeFdiepCg+q+3QVfJ4HmBmstxX6vCBhl3NHwHmrNQ3/rh2C8QUn53cyNUa0VHqodw6IEcDqFnMp5AKl0Ade8AaJOmW/y2pFSIELCxAk6xrd+OTt8RLjBramdTNUy1FnX3WrOmQ6Y3Oe38wx06MloKcbUZd5PN/1nSEOX3UtmW6vZOljm5un/cDdDGbd5nYdOMzKOr3BbNBnXpsGg1PXKft2JdSNShps7evPCMKnXVcR8OJl3DeZZAut2qaHWGo/fEwYE/j+D748bBvmAdxJriH70WlwejJ32Mz2ErfCWwzO/cus5dnW0r7zkVvTD36Kf8E1Hb8mk/XcQEUuCywTbdkd8FQ6OO1T1N1a+xPMroOhS3g9xlsoMsNkTdLxLr0VR38qZcxG7+YWybkBDAMhyyD6imO+fvd966qaNqoJJZY0xGrocOeZCN8WEq/e9Pv745YyV+VgMPlU3Cl70sjZbg+vUXyW8qLIwknUGzfD94iBfvrZtZtrkq0O7hutW7H6wX58F98W33bEHbgTdsmaFXVO6nDNhOEG2WJ21SIm1f5qCwwR8cIPQq4uEUXCYC4nRRCzQqtGtXY6jlLAJIZIahVwLRGKMo2eTCeQHMYItHohZAbj6WSc4lkaeM85Gb2C+fQSYvq2L1Q+8rxWqcXoYHxwnIxPkoOTBFs9mY8PE2r3uugm4bmnaTiOiVKO45/dXCTsN4CGWXQOLKv4HIvkkMz9TEDmqiBMFQWCtSgFARtFiYCtdKIQW1P2gVC6v8dyLqlS3hu/DbCryzeI0vYOkJ0xhz8aVgqN+E6GDCAFFFT+O66LlFx6x29QY93YFdPYsW6fRnI0Gy6QKmkbxyVzbpGDDPITkoWml0/pUZu8vuSXrAaO2IYAjhwFGt/uffnfv3mFu36NUbW1M3pREHwvlMandeKqseajDq6JMqhNO+4aaXT9FvSqe2lwMvGW5hj5rSW7Jmav3124gNcpOfNM1bH33VJVkGCEoAUJY+imrQGpI2Hd+3aH88XTL95c9tRzj6+65Rn/uq0bE4xqbqlSX6HbdYYUMmYueIUaeI5lKcVH26JfuFeovDVElegkXkqv9QrMJdjJq9Grtq5XqB3y1lMvZsItKFUFRXK3BEzgJs3O3ltM3EL7IP+4OmUvDk6Oz1AF1jBxwbx869SUaH+ZUE4QS1BpAQ3IwqfwVsAdftW4T+AEyoJadLXeGAC7Hk3t/QM/9VyWLRIAAA=="
+        run: |
+          set -euo pipefail
+          printf '%s' "$PATCH_B64" | base64 -d | gzip -dc > /tmp/p1.patch
+          patch -p1 < /tmp/p1.patch
+          git add src/task_factory/Components/sar.py test/test_tta_sar.py doc/changelog/2026-09-29-tta-b03-sar.md
+          git diff --cached --check
+      - name: Commit correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(tta): reject frozen-state mutation in SAR restore"
+          git push origin HEAD:feat/tta-b03-sar-20260929
