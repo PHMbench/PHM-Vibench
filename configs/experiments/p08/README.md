@@ -6,9 +6,9 @@ generic pipeline CLI does not execute this dedicated protocol. It does not
 download data, infer missing physical metadata, or replace the model after a failure.
 
 ```bash
-python -m scripts.p08_physical data-check --config configs/experiments/p08/physical_conditioning.yaml --local-config /absolute/path/p08.local.yaml
-python -m scripts.p08_physical smoke --config configs/experiments/p08/physical_conditioning.yaml --local-config /absolute/path/p08.local.yaml --target 1 --seed 42 --arms B1,P0
-python -m scripts.p08_physical tune --config configs/experiments/p08/physical_conditioning.yaml --local-config /absolute/path/p08.local.yaml --target 1 --arms B1,LATE,TOKEN,P0
+conda run --no-capture-output -n LQ_signal python -m scripts.p08_physical data-check --config configs/experiments/p08/physical_conditioning.yaml --local-config /absolute/path/p08.local.yaml
+conda run --no-capture-output -n LQ_signal python -m scripts.p08_physical smoke --config configs/experiments/p08/physical_conditioning.yaml --local-config /absolute/path/p08.local.yaml --target 1 --seed 42 --arms B1,P0
+conda run --no-capture-output -n LQ_signal python -m scripts.p08_physical tune --config configs/experiments/p08/physical_conditioning.yaml --local-config /absolute/path/p08.local.yaml --target 1 --arms B1,LATE,TOKEN,P0
 ```
 
 `B0/B1/F01/P0` are index/physical coordinates crossed with neutral/FiLM conditioning.
