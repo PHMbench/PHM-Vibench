@@ -1,6 +1,7 @@
 """The bounded P07 method preserves executable semantics and counts all extraction work."""
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import torch
 
 from src.model_factory.X_model.P07OperatorPath import Model, OperatorNet
@@ -51,6 +52,20 @@ class BoundedP07Tests(unittest.TestCase):
             self.assertGreaterEqual(out['extraction_seconds'], out['replay_seconds'])
         with self.assertRaises(ValueError):
             self.model.extract(self.x[:1], budget=19, strategy='perturbation')
+
+    def test_minimum_extraction_budgets_match_executed_calls(self):
+        for strategy, budget in (('cost', 2), ('perturbation', 2 + 6 * self.model.stages)):
+            with self.subTest(strategy=strategy):
+                with patch.object(OperatorNet, 'forward', autospec=True,
+                                  side_effect=OperatorNet.forward) as forward_call, \
+                     patch.object(OperatorNet, 'discrete', autospec=True,
+                                  side_effect=OperatorNet.discrete) as discrete_call:
+                    out = self.model.extract(self.x[:1], budget=budget, strategy=strategy)
+                self.assertEqual(forward_call.call_count, budget - 1)
+                self.assertEqual(discrete_call.call_count, 1)
+                executed_calls = forward_call.call_count + discrete_call.call_count
+                self.assertEqual(out['total_queries'], executed_calls)
+                self.assertLessEqual(executed_calls, budget)
 
     def test_budget_exhaustion_and_zero_margin_abstain(self):
         with torch.no_grad():
