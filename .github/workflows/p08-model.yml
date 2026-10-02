@@ -1,10 +1,14 @@
-name: P08 actual HSE model
+name: P08 source-only physical conditioning
 on:
   pull_request:
     branches: [dev]
     paths:
       - 'src/model_factory/ISFM/M_P08_PhysicalConditioning.py'
-      - 'test/test_p08_model.py'
+      - 'src/data_factory/p08_data.py'
+      - 'src/task_factory/task/DG/p08_physical.py'
+      - 'scripts/p08_physical.py'
+      - 'configs/experiments/p08/**'
+      - 'test/test_p08_*.py'
       - '.github/workflows/p08-model.yml'
   workflow_dispatch:
 permissions:
@@ -21,9 +25,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install pytest einops numpy
-      - run: python -m pytest test/test_p08_model.py -q
+      - run: python -m pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install pytest einops numpy pandas h5py scikit-learn PyYAML pydantic pytorch-lightning tqdm
+      - run: python -m pytest test/test_p08_model.py test/test_p08_data.py test/test_p08_execution.py -q
       - name: Save exact source for reproducible offline review
         if: always()
         run: git archive --format=zip HEAD -o p08-source.zip
