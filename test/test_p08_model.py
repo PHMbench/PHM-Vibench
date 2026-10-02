@@ -67,3 +67,18 @@ def test_explicit_patch_coordinates_are_shared_and_validated():
     b = m(x, fs=10., condition=p, start_indices_L=starts, start_indices_C=channels)
     assert torch.equal(a, b)
     with pytest.raises(ValueError): m(x, fs=10., condition=p, start_indices_L=starts)
+
+
+def test_small_batch_is_trainable_with_fixed_real_hse_patches():
+    x, p = inputs(); m = model(fusion='none').train()
+    labels = torch.tensor([0,1,0,1]); starts=torch.tensor([[0,8,16,24]]).expand(4,-1)
+    channels=torch.zeros_like(starts)
+    optimizer=torch.optim.AdamW(m.parameters(),lr=.02)
+    losses=[]
+    for _ in range(60):
+        optimizer.zero_grad()
+        logits=m(x,fs=10.,condition=p,start_indices_L=starts,start_indices_C=channels)
+        loss=torch.nn.functional.cross_entropy(logits,labels)
+        assert torch.isfinite(loss)
+        losses.append(float(loss.detach())); loss.backward(); optimizer.step()
+    assert losses[-1] < .15 and losses[-1] < losses[0]/2

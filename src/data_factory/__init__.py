@@ -60,3 +60,6 @@ __all__ = [
     "IdIncludedDataset",
     "id_data_factory",
 ]
+
+# P08 source-only record inventory is an explicit experimental Data Factory.
+from .p08_data import P08DataFactory  # noqa: F401

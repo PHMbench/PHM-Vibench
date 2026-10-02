@@ -1,0 +1,70 @@
+# Bind real source inventories and physical labels explicitly before training.
+# This is not a dummy fallback or an accepted benchmark configuration.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: p08_source_only
+  seed: 7
+  iterations: 1
+  output_dir: results/p08/source_fits
+  wandb: false
+  swanlab: false
+data:
+  factory_name: p08
+  data_dir: /mnt/e/D01_vibench
+  metadata_file: P08_SOURCE_INVENTORY.csv
+  storage: h5
+  h5_layout: sample_channel
+  evidence_kind: natural_acquisition
+  source_system_ids: [1, 13, 12, 19]
+  target_system_id: 6
+  label_names: []   # REQUIRED: common physical meanings in exact Label order
+  condition_fields:
+    - name: rotation_speed_rpm
+      kind: continuous
+      unit: rpm
+      meaning: Independently measured shaft rotation speed
+      availability: Recorded tachometer or documented acquisition setting
+  batch_size: 32
+  num_workers: 0
+  window_size: 1024
+  stride: 1024
+  normalization: none
+  sampling_seed: 7
+  train_batches_per_epoch: 40
+model:
+  type: ISFM
+  name: M_P08_PhysicalConditioning
+  embedding: E_01_HSE
+  backbone: TransformerEncoderLayer
+  task_head: SharedLinear
+  coordinates: physical
+  fusion: none
+  num_classes: 3
+  condition_dim: 4
+  output_dim: 32
+  patch_size_L: 64
+  num_patches: 8
+  nhead: 4
+task:
+  type: DG
+  name: p08
+  loss: CE
+  metrics: [record_macro_f1, record_balanced_accuracy, unit_balanced_brier]
+  lr: 0.001
+  weight_decay: 0.0001
+trainer:
+  name: Default_trainer
+  monitor: source_unit_brier
+  monitor_mode: min
+  test_after_fit: false
+  num_epochs: 40
+  device: cuda
+  devices: 1
+  num_sanity_val_steps: 0
+  early_stopping: true
+  patience: 10
+  deterministic: true
+p08_search:
+  arms: [none, late_concat, film]
+  learning_rates: [0.0003, 0.001, 0.003]
+  weight_decays: [0.0, 0.0001]
