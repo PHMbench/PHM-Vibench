@@ -67,3 +67,20 @@ def test_explicit_patch_coordinates_are_shared_and_validated():
     b = m(x, fs=10., condition=p, start_indices_L=starts, start_indices_C=channels)
     assert torch.equal(a, b)
     with pytest.raises(ValueError): m(x, fs=10., condition=p, start_indices_L=starts)
+
+
+def test_factory_forward_finite_gradient_and_feature_interface():
+    from src.model_factory import build_model
+    configured = args()
+    configured.type = 'ISFM'
+    configured.name = 'M_P08_PhysicalConditioning'
+    m = build_model(configured, metadata=None).eval()
+    x, p = inputs()
+    logits, z = m(x, fs=10., condition=p, return_features=True)
+    assert logits.shape == (4, 3) and z.shape == (4, 8)
+    torch.nn.functional.cross_entropy(logits, torch.tensor([0, 1, 2, 0])).backward()
+    for module in (m.embedding, m.norm, m.backbone, m.head, m.film):
+        for parameter in module.parameters():
+            assert parameter.grad is not None and torch.isfinite(parameter.grad).all()
+    with pytest.raises(ValueError):
+        m(x, fs=10., condition=torch.full_like(p, float('nan')), detach_condition=True)

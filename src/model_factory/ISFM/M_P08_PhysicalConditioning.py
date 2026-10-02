@@ -45,7 +45,8 @@ class Model(nn.Module):
         self.late_concat = nn.Sequential(nn.Linear(width+self.condition_dim, width), nn.SiLU(), nn.Linear(width, width))
 
     def forward(self, x, file_id=None, task_id=None, *, fs=None, condition=None,
-                detach_condition=False, start_indices_L=None, start_indices_C=None):
+                detach_condition=False, start_indices_L=None, start_indices_C=None,
+                return_features=False):
         # file_id is accepted only for Factory signature compatibility, never used.
         if task_id is not None and task_id != self.task_id:
             raise ValueError('P08 uses one shared, explicitly configured task head')
@@ -64,11 +65,12 @@ class Model(nn.Module):
                            start_indices_C=start_indices_C)
         v = self.norm(h)
         conditioned = self.fusion != 'none' and not detach_condition
-        if conditioned:
+        if self.fusion != 'none':
             if condition is None or condition.shape != (len(x), self.condition_dim):
                 raise ValueError('Expected source-encoded condition[B,condition_dim]')
             if condition.device != x.device or condition.dtype != x.dtype or not torch.isfinite(condition).all():
                 raise ValueError('condition must share x dtype/device and contain finite values')
+        if conditioned:
             if self.fusion == 'film':
                 gamma, beta = self.film(condition).chunk(2, dim=-1)
                 v = (1+gamma[:, None, :])*v + beta[:, None, :]
@@ -78,7 +80,8 @@ class Model(nn.Module):
         z = self.backbone(v).mean(dim=1)
         if conditioned and self.fusion == 'late_concat':
             z = self.late_concat(torch.cat((z, condition), dim=-1))
-        return self.head(z)
+        logits = self.head(z)
+        return (logits, z) if return_features else logits
 
     def parameter_counts(self):
         shared = sum(p.numel() for module in (self.embedding, self.norm, self.backbone, self.head) for p in module.parameters())
