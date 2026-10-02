@@ -40,6 +40,7 @@ def _run(*overrides: str) -> None:
         text=True,
         timeout=120,
         env=environment,
+        cwd=REPO_ROOT,
     )
     assert completed.returncode == 0, (
         f"command failed: {' '.join(command)}\n"
@@ -80,7 +81,7 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
         f"environment.output_dir={output}",
         "environment.seed=0",
         "trainer.device=cpu",
-        "trainer.gpus=1",
+        "trainer.devices=1",
         "trainer.num_epochs=1",
         "data.num_workers=0",
         f"data.data_dir={fixture_data}",
@@ -110,6 +111,10 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
         sample["samples"]["path"], map_location="cpu", weights_only=True
     )
     assert torch.isfinite(sample_payload["samples"]).all()
+    assert sample_payload["samples"].shape == (2, 2, 128)
+    assert sample_payload["samples"].dtype == torch.float32
+    assert sample_payload["fault_label"].shape == (2,)
+    assert sample_payload["domain_id"].shape == (2,)
     synthetic_manifest = json.loads(
         Path(sample["synthetic_manifest"]["path"]).read_text(encoding="utf-8")
     )
