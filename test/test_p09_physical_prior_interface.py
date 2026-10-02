@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 from src.task_factory.task.GFS.physical_prior import (
-    adapt_support, export_source, qualify_source,
+    export_source, qualify_source,
 )
 
 
@@ -172,22 +172,8 @@ def test_rejects_contradictory_source_exclusion_declarations(key, value, match) 
         qualify_source(model, torch.jit.script(model), x, prompts, source_spec=spec, **constants())
 
 
-def test_delegation_calls_only_explicit_adaptation_core() -> None:
-    model, x, prompts, spec = fixture()
-    call = {}
-    expected = object()
 
-    def supplied_core(*args, **kwargs):
-        call.update(args=args, kwargs=kwargs)
-        return expected
-
-    y = torch.tensor([2, 2, 3])
-    groups = torch.tensor([10, 10, 20])
-    views = torch.tensor([0, 1, 0])
-    result = adapt_support(supplied_core, model, x, y, groups, views, torch.eye(2),
-                           spec["base_classes"], [2, 3], arm="A7", prior=prompts[1],
-                           scale=2., lr=.1, steps=2, lam=.2, radius=.1, checkpoints=[2])
-    assert result is expected and call["args"][0] is model
-    assert call["kwargs"]["prior"] is prompts[1]
-    assert call["kwargs"]["steps"] == 2
-    assert "query" not in call["kwargs"]
+def test_canonical_core_rejects_overflowed_normalization() -> None:
+    from src.task_factory.task.GFS.physical_prior_core import unit
+    with pytest.raises(ValueError, match="normalize"):
+        unit(torch.tensor([[3.e38, 3.e38]]))

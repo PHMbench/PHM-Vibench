@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 import io
 import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -291,20 +291,3 @@ def export_source(
     (destination / "source.json").write_text(encoded)
     return report
 
-
-def adapt_support(
-    implementation: Callable[..., Any], model: nn.Module, x: Tensor, y: Tensor,
-    groups: Tensor, views: Tensor, base: Tensor, base_classes: Sequence[int],
-    novel_classes: Sequence[int], *, arm: str, prior: Tensor, scale: float,
-    lr: float, steps: int, lam: float, radius: float, checkpoints: Sequence[int],
-    subset: Sequence[str] = (), initial_prompt: Tensor | None = None,
-) -> Any:
-    """Delegate support-only adaptation to the explicitly supplied paper core.
-
-    Bind ``implementation=P4.core.adapt`` in the paper caller. There is no query
-    argument, historical runner fallback, module search, or second objective.
-    """
-    return implementation(model, x, y, groups, views, base, base_classes, novel_classes,
-                          arm=arm, prior=prior, scale=scale, lr=lr, steps=steps, lam=lam,
-                          radius=radius, checkpoints=checkpoints, subset=subset,
-                          initial_prompt=initial_prompt)
