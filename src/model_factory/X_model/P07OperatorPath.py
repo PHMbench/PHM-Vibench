@@ -223,7 +223,7 @@ class OperatorNet(nn.Module):
                       analytic_bound=None, analytic_sufficient=False, exact_gap=None,
                       search_complete=False, cost=None, replay_seconds=None,
                       replay_queries=0, extraction_seconds=None,
-                      minimum_declared_cost=False)
+                      minimum_declared_cost=False, accepted_source=None)
         def finish() -> dict:
             sync()
             result["extraction_seconds"] = time.perf_counter() - started
@@ -260,7 +260,7 @@ class OperatorNet(nn.Module):
             gap = float((logits - candidate).abs().max())
             if margin > 0 and gap <= relative_tolerance * margin:
                 analytic = float(self.bound(trace, path)) if self.bounded and not self.learned else None
-                result.update(accepted=True, path=[labels[j] for j in path],
+                result.update(accepted=True, accepted_source="ranked_candidate", path=[labels[j] for j in path],
                               cost=sum(costs[j] for j in path), exact_gap=gap,
                               analytic_bound=analytic,
                               analytic_sufficient=analytic is not None and 2 * analytic < margin,
@@ -277,6 +277,16 @@ class OperatorNet(nn.Module):
                     result["total_queries"] += 1
                 return finish()
         result["search_complete"] = tested == len(paths)
+        # The argmax call is already charged and verified. Budget exhaustion
+        # cannot turn a known feasible path into an alleged coverage failure.
+        # Unvisited cheaper paths mean there is no minimum-cost certificate.
+        if result["checked_argmax_accepted"]:
+            analytic = float(self.bound(trace, argmax_path)) if self.bounded and not self.learned else None
+            result.update(accepted=True, accepted_source="cached_argmax",
+                          path=[labels[j] for j in argmax_path], cost=result["argmax_cost"],
+                          exact_gap=result["argmax_gap"], analytic_bound=analytic,
+                          analytic_sufficient=analytic is not None and 2 * analytic < margin,
+                          minimum_declared_cost=False)
         return finish()
 
 

@@ -52,6 +52,11 @@ class BoundedP07Tests(unittest.TestCase):
             self.assertEqual(out['ranking_queries'], 18 if strategy == 'perturbation' else 0)
             self.assertLessEqual(out['exact_gap'], .49 * out['margin'])
             self.assertGreaterEqual(out['extraction_seconds'], out['replay_seconds'])
+        minimal = self.model.extract(self.x[:1], budget=2)
+        self.assertTrue(minimal['accepted'])
+        self.assertEqual(minimal['accepted_source'], 'cached_argmax')
+        self.assertFalse(minimal['minimum_declared_cost'])
+        self.assertEqual(minimal['total_queries'], 2)
         with self.assertRaises(ValueError):
             self.model.extract(self.x[:1], budget=19, strategy='perturbation')
 
