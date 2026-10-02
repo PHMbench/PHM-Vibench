@@ -1,0 +1,10 @@
+# Model fragment for prepared physical-view packs, not a complete Pipeline config.
+# Construct through src.model_factory.build_model; paper experiments own the pack protocol.
+model:
+  type: MoE
+  name: M_05_FixedRouteMoE
+  input_dim: 1024
+  num_experts: 4
+  num_classes: 4
+  width: 64
+  arm: aligned

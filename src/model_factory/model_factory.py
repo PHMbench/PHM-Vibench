@@ -9,7 +9,6 @@ from typing import Any, Mapping
 import torch
 
 from ..utils.label_ontology import validate_metadata_label_ontology
-from ..utils.utils import get_num_classes
 
 
 def resolve_model_module(args_model: Any) -> str:
@@ -42,6 +41,9 @@ def model_factory(args_model: Any, metadata: Any):
                 "model.num_classes is required when model construction receives "
                 "no metadata"
             )
+        # Explicit-width model construction does not require the Lightning stack.
+        from ..utils.utils import get_num_classes
+
         inferred = get_num_classes(metadata)
         if isinstance(inferred, dict):
             args_model.num_classes = (
