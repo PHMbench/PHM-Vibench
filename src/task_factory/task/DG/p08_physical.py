@@ -106,8 +106,8 @@ def _model_config(config: dict, encoder: ConditionEncoder, arm: str) -> dict:
     args = copy.deepcopy(config["model"])
     if (args["type"], args["name"]) != ("ISFM", "M_P08_PhysicalConditioning"):
         raise ValueError("P08 runner requires the declared M_P08_PhysicalConditioning model")
-    components = {"embedding": "E_01_HSE", "backbone": "shared_transformer_block",
-                  "task_head": "shared_common_ontology_linear"}
+    components = {"embedding": "E_01_HSE", "backbone": "TransformerEncoderLayer",
+                  "task_head": "SharedLinear"}
     if any(args.get(key) != value for key, value in components.items()):
         raise ValueError("P08 model component declarations differ from the implemented shared HSE path")
     if args.get("weights_path"):

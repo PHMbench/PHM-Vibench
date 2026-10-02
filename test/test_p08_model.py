@@ -84,3 +84,26 @@ def test_factory_forward_finite_gradient_and_feature_interface():
             assert parameter.grad is not None and torch.isfinite(parameter.grad).all()
     with pytest.raises(ValueError):
         m(x, fs=10., condition=torch.full_like(p, float('nan')), detach_condition=True)
+
+
+def test_small_batch_is_trainable_with_fixed_real_hse_patches():
+    x, p = inputs(); m = model(fusion='none').train()
+    labels = torch.tensor([0,1,0,1]); starts=torch.tensor([[0,8,16,24]]).expand(4,-1)
+    channels=torch.zeros_like(starts)
+    optimizer=torch.optim.AdamW(m.parameters(),lr=.02)
+    losses=[]
+    for _ in range(60):
+        optimizer.zero_grad()
+        logits=m(x,fs=10.,condition=p,start_indices_L=starts,start_indices_C=channels)
+        loss=torch.nn.functional.cross_entropy(logits,labels)
+        assert torch.isfinite(loss)
+        losses.append(float(loss.detach())); loss.backward(); optimizer.step()
+    assert losses[-1] < .15 and losses[-1] < losses[0]/2
+
+
+@pytest.mark.parametrize('key', ['embedding', 'backbone', 'task_head'])
+def test_rejects_unexecuted_component_names(key):
+    configured = args()
+    setattr(configured, key, 'not-the-implemented-component')
+    with pytest.raises(ValueError, match=f'P08 {key} must explicitly name'):
+        Model(configured)

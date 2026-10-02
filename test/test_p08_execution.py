@@ -46,8 +46,8 @@ def config(tmp_path):
             record_inventory=str(tmp_path / "records.csv"), ontology_file=str(tmp_path / "ontology.csv"),
             qualification_file=None, continuous_fields=["speed_rpm"], categorical_fields=["material"],
             window_points=32, stride_points=32, normalization="per_window_standardize", validation_fraction=.25),
-        model=dict(type="ISFM", name="M_P08_PhysicalConditioning", embedding="E_01_HSE", backbone="shared_transformer_block",
-            task_head="shared_common_ontology_linear", output_dim=8, nhead=2, patch_size_L=8,
+        model=dict(type="ISFM", name="M_P08_PhysicalConditioning", embedding="E_01_HSE", backbone="TransformerEncoderLayer",
+            task_head="SharedLinear", output_dim=8, nhead=2, patch_size_L=8,
             num_patches=2, num_classes=3, condition_dim=None, coordinates="physical", fusion="film"),
         task=dict(type="DG", name="p08_physical", loss="CE", systems=["1", "13", "19"],
             seeds=[42, 123], split_seed=42, tuning_seed=42, arms=["B1", "P0"], comparison="tuned",
@@ -347,3 +347,9 @@ def test_cli_uses_public_config_precedence_and_preserves_existing_runs(config, t
     assert len(json.loads((output / "summary.json").read_text())["results"]) == 2
     with pytest.raises(FileExistsError):
         _run(config, "smoke", output, arms=["B1"])
+
+
+def test_retired_alternate_entrypoint_does_not_run_another_protocol():
+    from scripts.p08_experiments import main
+    with pytest.raises(SystemExit, match="alternate P08 native protocol is retired"):
+        main()

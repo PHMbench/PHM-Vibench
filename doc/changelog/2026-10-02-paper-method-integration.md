@@ -41,3 +41,16 @@ resolve to this checkout, rather than a paper-local `src` package.
 No industrial data, GPU benchmark, baseline tuning, real HSE source fitting, or
 scientific performance comparison was executed for this integration. Historical
 results remain attached to their original code and protocol versions.
+
+During final synchronization, upstream published the alternative P08 native
+protocol at `838ad940`. This integration retains that commit as a merge parent
+and preserves its complete implementation in Git history. The active protocol
+remains `scripts.p08_physical`, following the approved paper scientific frame:
+the declared factorial arms, matched B1 selection, strict record/ontology
+contracts, full search validation, and complete seed summaries. The alternate
+schema and fit/evaluate configuration are retired; their old entrypoint reports
+the difference instead of dispatching to another experiment. Component identity
+checks, fixed-patch positive overfit, typed metadata reading, and focused CI
+output records are selectively retained. See `docs/P08_EXPERIMENT_A.md` for the
+recovery reference and exact inventory-access boundary; inventory preflight is
+not a claim of never opening target metadata.

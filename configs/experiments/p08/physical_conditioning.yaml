@@ -28,8 +28,8 @@ model:
   type: ISFM
   name: M_P08_PhysicalConditioning
   embedding: E_01_HSE
-  backbone: shared_transformer_block
-  task_head: shared_common_ontology_linear
+  backbone: TransformerEncoderLayer
+  task_head: SharedLinear
   output_dim: 32
   nhead: 4
   num_classes: 3

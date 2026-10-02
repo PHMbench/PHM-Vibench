@@ -16,6 +16,9 @@ from .embedding.E_01_HSE import E_01_HSE
 class Model(nn.Module):
     def __init__(self, args_model, metadata=None):
         super().__init__()
+        for key, expected in [('embedding','E_01_HSE'),('backbone','TransformerEncoderLayer'),('task_head','SharedLinear')]:
+            if hasattr(args_model,key) and getattr(args_model,key) != expected:
+                raise ValueError(f'P08 {key} must explicitly name {expected}')
         self.coordinates = args_model.coordinates
         self.fusion = args_model.fusion
         if self.coordinates not in {'physical', 'index'}:

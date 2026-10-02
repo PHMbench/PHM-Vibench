@@ -291,3 +291,13 @@ def test_invalid_window_inputs_fail_without_fallback(inventory, scenario, messag
     np.save(record["signal_path"], raw)
     with pytest.raises(ValueError, match=message):
         windows(record, config)
+
+
+def test_shared_reader_explicit_dtype_preserves_numeric_looking_identifiers(tmp_path):
+    from src.data_factory.data_utils import read_metadata_table
+    table = tmp_path / "typed.csv"
+    table.write_text("record_id,label\n001,0\n002,1\n")
+    typed = read_metadata_table(table, dtype={"record_id": "string"})
+    assert typed.record_id.tolist() == ["001", "002"]
+    assert typed.label.tolist() == [0, 1]
+    assert read_metadata_table(table).record_id.tolist() == [1, 2]
