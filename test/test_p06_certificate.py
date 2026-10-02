@@ -8,15 +8,19 @@ from phmfactory.p06 import (Head, SymbolicCertificateTask, calibrate, features,
                             fit_head, representations)
 
 
-def repeat_fixture():
+def repeat_fixture(*, measured_speed_fluctuates=False):
     t = np.arange(2048) / 4096
     amplitudes = np.array([.03, .06, .04, .07, .5, .6, .55, .65])
-    x = (np.sin(2*np.pi*30*t)[None, :] +
-         amplitudes[:, None]*np.sin(2*np.pi*3.2*30*t)[None, :])
-    return dict(x=x, speed_hz=np.full(8, 30.), fs=4096.,
+    speed = np.full(8, 30.)
+    if measured_speed_fluctuates:
+        speed += np.linspace(-.005, .005, 8)
+    x = (np.sin(2*np.pi*speed[:, None]*t) +
+         amplitudes[:, None]*np.sin(2*np.pi*3.2*speed[:, None]*t))
+    return dict(x=x, speed_hz=speed, nominal_speed_hz=np.full(8, 30.), fs=4096.,
                 y=np.repeat([0, 1], 4),
                 unit=np.repeat(['healthy-a', 'healthy-b', 'fault-a', 'fault-b'], 2),
-                split=np.full(8, 'train'), condition=np.full(8, 'source'))
+                split=np.full(8, 'train'), condition=np.full(8, 'source'),
+                acquisition=np.asarray([f'record-{i}' for i in range(8)]))
 
 
 class ExactCertificateTests(unittest.TestCase):
@@ -83,6 +87,52 @@ class SymbolicCertificateTaskTests(unittest.TestCase):
         for data in invalid:
             with self.subTest(fields=list(data)), self.assertRaises(ValueError):
                 SymbolicCertificateTask(orders=[3.2]).fit(data)
+
+    def test_real_condition_uses_actual_features_and_nominal_repeat_groups(self):
+        data = repeat_fixture(measured_speed_fluctuates=True)
+        task = SymbolicCertificateTask(orders=[3.2]).fit(data)
+        actual_energy = features(data['x'], data['speed_hz'], data['fs'], [3.2])
+        with self.assertRaisesRegex(ValueError, 'same-unit, same-speed repeats'):
+            calibrate(actual_energy, data)
+        theta, gamma = calibrate(actual_energy, {**data, 'speed_hz': data['nominal_speed_hz']})
+        np.testing.assert_array_equal(task.theta, theta)
+        np.testing.assert_array_equal(task.gamma, gamma)
+        np.testing.assert_array_equal(task.symbols(data),
+            representations(actual_energy, theta, gamma)['uncertainty_order'])
+        nominal_energy = features(data['x'], data['nominal_speed_hz'], data['fs'], [3.2])
+        self.assertGreater(float(np.max(np.abs(actual_energy - nominal_energy))), 0.)
+        state = task.state()
+        self.assertEqual(state['source_nominal_speed_hz'], 30.)
+        self.assertEqual(state['calibration_groups'], 'unit_and_nominal_speed_within_source_condition')
+        np.testing.assert_array_equal(task.predict(data), data['y'])
+
+    def test_real_condition_rejects_missing_or_invalid_nominal_and_acquisitions(self):
+        for required in ('nominal_speed_hz', 'acquisition'):
+            missing = dict(self.data)
+            missing.pop(required)
+            with self.subTest(missing=required), self.assertRaises(ValueError):
+                SymbolicCertificateTask(orders=[3.2]).fit(missing)
+        invalid = [
+            {**self.data, 'nominal_speed_hz': np.array([30.]*7 + [31.])},
+            {**self.data, 'nominal_speed_hz': np.full(8, np.nan)},
+            {**self.data, 'nominal_speed_hz': np.zeros(8)},
+            {**self.data, 'nominal_speed_hz': np.array([30.])},
+            {**self.data, 'acquisition': np.full(8, 'one-windowed-record')},
+            {**self.data, 'acquisition': np.full(8, '')},
+            {**self.data, 'unit': np.full(8, '')},
+            {**self.data, 'y': self.data['y'].astype(float)},
+        ]
+        for index, data in enumerate(invalid):
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                SymbolicCertificateTask(orders=[3.2]).fit(data)
+
+    def test_synthetic_repeat_grouping_retains_supplied_speed_semantics(self):
+        data = dict(self.data)
+        for field in ('condition', 'nominal_speed_hz', 'acquisition'):
+            data.pop(field)
+        task = SymbolicCertificateTask(orders=[3.2]).fit(data)
+        np.testing.assert_array_equal(task.predict(data), data['y'])
+        self.assertEqual(task.state()['calibration_groups'], 'unit_and_supplied_speed')
 
     def test_predict_and_failed_refit_do_not_use_held_out_rows_for_fit(self):
         task = SymbolicCertificateTask(orders=[3.2]).fit(self.data)

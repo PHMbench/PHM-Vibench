@@ -122,9 +122,13 @@ class SymbolicCertificateTask:
 
     ``fit`` requires ``x, y, unit, split, speed_hz, fs``. Every supplied row must
     declare ``split='train'``; selecting source domains is the caller's protocol
-    responsibility. Width calibration requires repeated measurements at the same
-    unit and speed, exactly as in the P4 method. ``symbols`` and ``predict`` need
-    only ``x, speed_hz, fs`` and never update fitted state.
+    responsibility. Condition-bearing inputs must declare one complete source
+    condition, its unique ``nominal_speed_hz`` and unique ``acquisition`` IDs.
+    Features use measured speeds; repeats within that condition are grouped by
+    physical unit and nominal speed. Without condition metadata, the caller must
+    establish homogeneous acquisition settings; repeats use unit and supplied
+    speed, as in the synthetic P4 protocol. ``symbols`` and ``predict`` need only
+    ``x, speed_hz, fs`` and never update fitted state.
 
     Pair certificates take explicit expected and actual symbols. Sharing a unit
     identifier is deliberately not an automatic physical-pairing contract.
@@ -149,6 +153,7 @@ class SymbolicCertificateTask:
         self.fs: float | None = None
         self.training_units: tuple[str, ...] = ()
         self.source_condition: str | None = None
+        self.source_nominal_speed_hz: float | None = None
 
     @staticmethod
     def _signals(data: Mapping[str, Any]) -> tuple[np.ndarray, np.ndarray, float]:
@@ -183,18 +188,35 @@ class SymbolicCertificateTask:
             raise ValueError('Labels must be integer 0=healthy and 1..K=fault orders')
         if unit.dtype.kind != 'U' or np.any(np.char.strip(unit) == ''):
             raise ValueError('Nonempty Unicode physical-unit identifiers required')
-        source_condition = None
+        source_condition, source_nominal_speed = None, None
+        calibration_speed = speed
         if 'condition' in training_data:
             condition = np.asarray(training_data['condition'])
             if (condition.shape != (len(x),) or condition.dtype.kind != 'U' or
                     np.any(np.char.strip(condition) == '') or len(np.unique(condition)) != 1):
                 raise ValueError('Select one complete source condition before calibration')
             source_condition = str(condition[0])
+            if 'nominal_speed_hz' not in training_data:
+                raise ValueError('A complete source condition requires nominal_speed_hz')
+            nominal = np.asarray(training_data['nominal_speed_hz'], dtype=float)
+            if (nominal.shape != (len(x),) or not np.isfinite(nominal).all() or
+                    np.any(nominal <= 0) or len(np.unique(nominal)) != 1):
+                raise ValueError('One positive finite nominal_speed_hz required for the source condition')
+            if 'acquisition' not in training_data:
+                raise ValueError('Condition-bearing inputs require independent acquisition IDs')
+            source_nominal_speed = float(nominal[0])
+            calibration_speed = nominal
+        if 'acquisition' in training_data:
+            acquisition = np.asarray(training_data['acquisition'])
+            if (acquisition.shape != (len(x),) or acquisition.dtype.kind != 'U' or
+                    np.any(np.char.strip(acquisition) == '') or
+                    len(np.unique(acquisition)) != len(x)):
+                raise ValueError('Unique nonempty acquisition IDs required; windows are not independent repeats')
         for identity in np.unique(unit):
             if len(np.unique(y[unit == identity])) != 1:
                 raise ValueError(f'Contradictory physical-unit label: {identity}')
         e = features(x, speed, fs, self.orders)
-        calibration_data = dict(y=y, unit=unit, split=split, speed_hz=speed)
+        calibration_data = dict(y=y, unit=unit, split=split, speed_hz=calibration_speed)
         theta, gamma = calibrate(e, calibration_data)
         z = representations(e, theta, gamma)[self.representation]
         head = fit_head(z, y)
@@ -202,6 +224,7 @@ class SymbolicCertificateTask:
         self.theta, self.gamma, self.head, self.fs = theta, gamma, head, fs
         self.training_units = tuple(map(str, np.unique(unit)))
         self.source_condition = source_condition
+        self.source_nominal_speed_hz = source_nominal_speed
         return self
 
     def _fitted_head(self) -> Head:
@@ -248,6 +271,9 @@ class SymbolicCertificateTask:
                     theta=self.theta.tolist(), gamma=self.gamma.tolist(),
                     fs=self.fs, training_units=list(self.training_units),
                     source_condition=self.source_condition,
+                    source_nominal_speed_hz=self.source_nominal_speed_hz,
+                    calibration_groups=('unit_and_nominal_speed_within_source_condition'
+                        if self.source_condition is not None else 'unit_and_supplied_speed'),
                     feature=dict(window='numpy.hanning', order_half_width=.12,
                                  normalization_order_band=[.5, 8.]),
                     weights=[[float(value) for value in row] for row in head.w],
