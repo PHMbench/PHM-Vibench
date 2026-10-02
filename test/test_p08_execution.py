@@ -119,7 +119,56 @@ def test_fixed_split_across_training_seeds_and_matched_hyperparameters(config, t
         arms=["B0", "B1", "F01", "P0"], selection=tmp_path / "tune")
     assert len(result["results"]) == 4
     contrasts = json.loads((tmp_path / "matched/contrasts.json").read_text())
-    assert {r["contrast"] for r in contrasts} == {"delta_H", "delta_P_at_index", "delta_P_at_physical", "interaction"}
+    assert {r["contrast"] for r in contrasts} == {"delta_H", "delta_P", "delta_H_at_neutral",
+        "delta_H_at_physical", "delta_P_at_index", "delta_P_at_physical", "interaction"}
+
+
+def test_matched_marginal_effects_paired_ci_and_complete_seed_means(config, tmp_path):
+    config["task"]["comparison"] = "matched"
+    # Every physical unit has the same three-label confusion pattern. Resampling
+    # units therefore yields an exact point interval for each fitted-model contrast.
+    predictions = {"B0": [0, 0, 0], "B1": [0, 1, 1], "F01": [1, 2, 0], "P0": [0, 1, 2]}
+    expected = {"delta_H": 25 / 36, "delta_P": 5 / 36,
+                "delta_H_at_neutral": 7 / 18, "delta_H_at_physical": 1.,
+                "delta_P_at_index": -1 / 6, "delta_P_at_physical": 4 / 9,
+                "interaction": 11 / 18}
+    results = []
+    for seed in (42, 123):
+        for arm, predicted in predictions.items():
+            rows = []
+            for unit in range(3):
+                for label in range(3):
+                    chosen = predicted[label] if seed == 42 else label
+                    rows.append(dict(record_id=f"{unit}-{label}", system_id="19",
+                        physical_unit_id=str(unit), label=label,
+                        probabilities=[float(i == chosen) for i in range(3)]))
+            directory = tmp_path / f"{seed}-{arm}"
+            directory.mkdir()
+            runner.write_json(directory / "predictions.json", rows)
+            results.append(dict(target="19", seed=seed, arm=arm, directory=directory.name,
+                                metrics=runner.scores(rows, 3)))
+    runner._contrasts(results[:4], config, tmp_path)
+    for filename in ("per_system_contrasts.csv", "per_system_summary.csv"):
+        with (tmp_path / filename).open() as stream:
+            assert list(csv.DictReader(stream)) == []
+    runner._contrasts(results, config, tmp_path)
+    contrasts = json.loads((tmp_path / "contrasts.json").read_text())
+    for row in contrasts:
+        value = expected[row["contrast"]] if row["seed"] == 42 else 0.
+        assert row["delta_macro_f1"] == pytest.approx(value)
+        assert row["ci95_conditional_on_fitted_models"] == pytest.approx([value, value])
+    with (tmp_path / "per_system_contrasts.csv").open() as stream:
+        means = list(csv.DictReader(stream))
+    assert len(means) == 7
+    for row in means:
+        assert int(row["seed_count"]) == 2
+        assert float(row["mean_delta_macro_f1"]) == pytest.approx(expected[row["contrast"]] / 2)
+        assert float(row["seed_std"]) == pytest.approx(abs(expected[row["contrast"]]) / np.sqrt(2))
+    with (tmp_path / "per_system_summary.csv").open() as stream:
+        summaries = {r["arm"]: r for r in csv.DictReader(stream)}
+    for arm, mean in {"B0": 7 / 12, "B1": 7 / 9, "F01": .5, "P0": 1.}.items():
+        assert float(summaries[arm]["mean_record_macro_f1"]) == pytest.approx(mean)
+        assert int(summaries[arm]["seed_count"]) == 2
 
 
 def test_failed_selection_and_bad_seed_are_preserved(config, tmp_path):

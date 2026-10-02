@@ -419,7 +419,10 @@ def _contrasts(results: list[dict], config: dict, output: Path) -> None:
     for target, seed in sorted({(r["target"], r["seed"]) for r in results}):
         records = {r["arm"]: r for r in results if (r["target"], r["seed"]) == (target, seed)}
         if config["task"]["comparison"] == "matched":
-            definitions = {"delta_H": {"B1": 1, "B0": -1},
+            definitions = {"delta_H": {"B1": .5, "B0": -.5, "P0": .5, "F01": -.5},
+                           "delta_P": {"F01": .5, "B0": -.5, "P0": .5, "B1": -.5},
+                           "delta_H_at_neutral": {"B1": 1, "B0": -1},
+                           "delta_H_at_physical": {"P0": 1, "F01": -1},
                            "delta_P_at_index": {"F01": 1, "B0": -1},
                            "delta_P_at_physical": {"P0": 1, "B1": -1},
                            "interaction": {"P0": 1, "B1": -1, "F01": -1, "B0": 1}}
@@ -434,6 +437,28 @@ def _contrasts(results: list[dict], config: dict, output: Path) -> None:
                 "ci95_conditional_on_fitted_models": _cluster_ci(rows, coefficients, config["model"]["num_classes"],
                     seed, config["task"].get("bootstrap_replicates", 1000))})
     write_json(output / "contrasts.json", comparisons)
+    # Paper M_ab(d) averages the complete predeclared seed set. Partial comparisons
+    # retain their per-seed estimates but do not masquerade as this estimand.
+    declared_seeds = set(config["task"]["seeds"])
+    for filename, rows, group_field, value_field, mean_field in (
+        ("per_system_contrasts.csv", comparisons, "contrast", "delta_macro_f1", "mean_delta_macro_f1"),
+        ("per_system_summary.csv", [dict(target=r["target"], seed=r["seed"], arm=r["arm"],
+            record_macro_f1=r["metrics"]["record_macro_f1"]) for r in results],
+            "arm", "record_macro_f1", "mean_record_macro_f1"),
+    ):
+        with (output / filename).open("w", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=["target", group_field, "seed_count", mean_field, "seed_std"])
+            writer.writeheader()
+            for target, group in sorted({(r["target"], r[group_field]) for r in rows}):
+                selected = [r for r in rows if (r["target"], r[group_field]) == (target, group)]
+                if {r["seed"] for r in selected} != declared_seeds:
+                    continue
+                if len(selected) != len(declared_seeds):
+                    raise ValueError("Duplicate seed results in a per-system summary")
+                values = [r[value_field] for r in selected]
+                writer.writerow({"target": target, group_field: group, "seed_count": len(values),
+                    mean_field: float(np.mean(values)),
+                    "seed_std": float(np.std(values, ddof=1)) if len(values) > 1 else ""})
 
 
 def execute(config: dict, command: str, output: Path, *, target: str | None = None,
