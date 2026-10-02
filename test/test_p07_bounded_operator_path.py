@@ -44,6 +44,8 @@ class BoundedP07Tests(unittest.TestCase):
         for strategy in ('cost', 'perturbation'):
             out = self.model.extract(self.x[:1], budget=238, strategy=strategy)
             self.assertTrue(out['accepted'])
+            self.assertEqual(out['checked_argmax_accepted'], out['argmax_gap'] <= .49 * out['margin'])
+            self.assertEqual(out['argmax_total_queries'], 2)
             self.assertLessEqual(out['total_queries'], 238)
             self.assertEqual(out['total_queries'], sum(out[k] for k in (
                 'reference_queries', 'argmax_queries', 'ranking_queries', 'candidate_queries', 'replay_queries')))
@@ -73,6 +75,7 @@ class BoundedP07Tests(unittest.TestCase):
             self.model.head.bias.zero_()
         out = self.model.extract(self.x[:1], budget=2)
         self.assertFalse(out['accepted'])
+        self.assertFalse(out['checked_argmax_accepted'])
         self.assertEqual(out['total_queries'], 2)
         self.assertFalse(out['search_complete'])
 

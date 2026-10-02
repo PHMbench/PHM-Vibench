@@ -218,6 +218,8 @@ class OperatorNet(nn.Module):
                       margin=margin, prediction=int(logits.argmax(-1)),
                       argmax_agrees=bool(logits.argmax(-1) == argmax_logits.argmax(-1)),
                       argmax_gap=float((logits - argmax_logits).abs().max()),
+                      checked_argmax_accepted=bool(margin > 0 and float((logits - argmax_logits).abs().max()) <= relative_tolerance * margin),
+                      argmax_cost=sum(costs[j] for j in argmax_path), argmax_total_queries=2,
                       analytic_bound=None, analytic_sufficient=False, exact_gap=None,
                       search_complete=False, cost=None, replay_seconds=None,
                       replay_queries=0, extraction_seconds=None,
