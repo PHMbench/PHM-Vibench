@@ -698,3 +698,49 @@ def analyze(root):
                 arm=command.parent.parent.name,seed=config['seed'],run=str(command.parent),
                 status=scope['status'],optimizer_steps=scope.get('optimizer_steps'),
                 trainable_parameters=scope.get('trainable_parameters'),total_parameters=scope.get('total_parameters'),
+                reference_parameters=scope.get('reference_parameters'),training_seconds=scope.get('training_seconds'),
+                selection_seconds=scope.get('source_selection_seconds',scope.get('selection_seconds')),
+                export_seconds=scope.get('export_seconds'),total_run_seconds=scope.get('total_run_seconds'),
+                peak_allocated_gpu_bytes=scope.get('peak_allocated_gpu_bytes')))
+    destination=root/'summary';destination.mkdir(exist_ok=False)
+    write_csv(destination/'metrics.csv',all_metrics);write_csv(destination/'contrasts.csv',all_contrasts)
+    write_csv(destination/'reconstruction.csv',explanations)
+    write_csv(destination/'reference_metrics.csv',reference_metrics)
+    write_csv(destination/'costs.csv',costs)
+    write_csv(destination/'window_contributions_by_acquisition.csv',contributions)
+    plot_contrasts(pd.DataFrame(all_contrasts),destination)
+    dump(destination/'scope.json',dict(fixture=frozen['fixture'],data_scope='constructed' if frozen['fixture'] else 'declared_industrial_requires_custodian_validation',
+         independent_unit_validity='Declared specimen/run identity requires the local data audit; software does not prove physical independence.',
+         aggregation='Per task; no pooling of windows/seeds/datasets as independent physical units.',
+         claims='Report signed contrasts and valid failures; qualification is not a proof of strong target performance.'))
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('command',choices=['bind','preflight','smoke','tune','fit','freeze','test','analyze'])
+    p.add_argument('--root');p.add_argument('--study');p.add_argument('--task',action='append');p.add_argument('--output')
+    p.add_argument('--fixture',action='store_true');p.add_argument('--device',default='cuda:0')
+    p.add_argument('--kind',choices=['baseline','method']);p.add_argument('--family',choices=['reference','baselines','method'])
+    args=p.parse_args()
+    if args.command=='bind':
+        if not args.study or not args.task or not args.output:p.error('bind requires --study, repeated --task and --output')
+        bind(args.study,args.task,args.output,args.fixture)
+    else:
+        if not args.root:p.error('--root required')
+        if args.command in {'smoke','tune'} and not (args.kind if args.command=='smoke' else args.family):p.error('Declare --kind or --family')
+        try:
+            if args.command=='preflight':preflight(args.root)
+            elif args.command=='smoke':smoke(args.root,args.kind,args.device)
+            elif args.command=='tune':tune(args.root,args.family,args.device)
+            elif args.command=='fit':fit(args.root,args.device)
+            elif args.command=='freeze':freeze(args.root,args.device)
+            elif args.command=='test':test(args.root,args.device)
+            elif args.command=='analyze':analyze(args.root)
+        except Exception as exc:
+            root=Path(args.root)
+            if root.is_dir():
+                import time
+                dump(root/f'failure_{args.command}_{time.time_ns()}.json',dict(command=vars(args),error_type=type(exc).__name__,error=str(exc)))
+            raise
+
+if __name__=='__main__':main()
