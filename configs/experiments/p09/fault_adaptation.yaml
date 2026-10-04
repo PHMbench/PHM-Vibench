@@ -1,0 +1,24 @@
+# Requires --data /absolute/episodes.json and --output /absolute/new-directory.
+# Every episode binds a qualified source export directory and support/query NPZs.
+# --checkpoint /absolute/source-export explicitly uses that source for all episodes.
+# No source-training implementation or physical map is supplied by this config.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: acquisition_retention
+  seed: 0
+  output_dir: results/fault_adaptation
+data:
+  evidence_kind: unqualified_explicit_export
+model:
+  type: GFS
+  name: supplied_prompt_encoder
+task:
+  type: GFS
+  name: fault_adaptation
+  execution: research
+  fault_adaptation:
+    experiment: E1
+    information_regime: target_gfs
+trainer:
+  device: cpu
+  devices: 1
