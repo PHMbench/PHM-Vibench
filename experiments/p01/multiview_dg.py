@@ -458,3 +458,123 @@ def smoke(root,kind,device):
             chosen.append(next(r for r in records if r['split']=='update' and r['label']==label))
         xs=[window_record(r,dataset,data['data'])[:1] for r in chosen]
         x=torch.cat(xs).to(device);y=torch.tensor([r['label'] for r in chosen],device=device)
+        # Tiny-source memorization diagnoses optimization; these weights never
+        # enter HPO, final fitting or test evaluation.
+        temporary=Path(task['path'])/f'smoke_{kind}';temporary.mkdir(exist_ok=False)
+        reference=None
+        if kind=='method':
+            reference=_reference(task)
+            names=['I']
+        else:names=list(study['baselines'])
+        for name in names:
+            cfg=candidate_config(study,task,name,reference)
+            cfg['model']['device']=device
+            model=model_factory(SimpleNamespace(**cfg['model']),metadata=None).to(device)
+            def logits():
+                return model.forward_details(x)['candidate_logits'] if name=='I' else model(x)
+            model.eval()
+            with torch.no_grad():
+                initial=float(torch.nn.functional.cross_entropy(logits(),y))
+                if name=='I':
+                    out=model.forward_details(x)
+                    torch.testing.assert_close(out['candidate_probs'],out['raw_probs'],atol=1e-7,rtol=1e-6)
+            reference_state={k:v.clone() for k,v in model.reference.state_dict().items()} if name=='I' else None
+            optimizer=torch.optim.Adam([p for p in model.parameters() if p.requires_grad],lr=.003)
+            for step in range(study['overfit_steps']):
+                model.train();value=logits()
+                if value.shape!=(len(y),data['model']['num_classes']):raise ValueError('Logit shape/class mismatch.')
+                loss=torch.nn.functional.cross_entropy(value,y)
+                if not torch.isfinite(loss):raise FloatingPointError('Nonfinite tiny-source loss.')
+                optimizer.zero_grad(set_to_none=True);loss.backward()
+                if any(p.grad is not None and not torch.isfinite(p.grad).all() for p in model.parameters()):
+                    raise FloatingPointError('Nonfinite gradient.')
+                if not any(p.grad is not None and bool(p.grad.abs().sum()>0) for p in model.parameters() if p.requires_grad):
+                    raise ValueError('All trainable gradients vanished.')
+                optimizer.step()
+            model.eval()
+            with torch.no_grad():
+                final=float(torch.nn.functional.cross_entropy(logits(),y));accuracy=float((logits().argmax(-1)==y).float().mean())
+                before=logits().clone()
+            checkpoint=temporary/(name+'.pt');torch.save(model.state_dict(),checkpoint)
+            model.load_state_dict(torch.load(checkpoint,map_location=device,weights_only=True),strict=True)
+            with torch.no_grad():torch.testing.assert_close(before,logits(),rtol=1e-6,atol=1e-7)
+            if name=='I':
+                if any(not torch.equal(v,model.reference.state_dict()[k]) for k,v in reference_state.items()):raise ValueError('Frozen reference changed.')
+                out=model.forward_details(x);parts=torch.stack(list(out['branch_logit_contributions'].values())).sum(0)
+                raw=out['raw_logits']/float(model.reference_temperature)
+                torch.testing.assert_close(parts,out['candidate_logits']-raw,atol=2e-6,rtol=1e-6)
+            report=dict(task=task['name'],arm=name,initial_CE=initial,final_CE=final,tiny_source_accuracy=accuracy,
+                        trainable_parameters=sum(p.numel() for p in model.parameters() if p.requires_grad),
+                        passed=final<initial and accuracy>=.95,target_read=False)
+            dump(temporary/(name+'.json'),report);reports.append(report)
+            if not report['passed']:raise ValueError(f'Tiny-source memorization failed: {task["name"]}/{name}. Diagnose; do not start formal fitting.')
+    dump(root/f'smoke_{kind}.json',dict(status='passed',checks=reports))
+
+
+def reconstruction(arrays):
+    keys=sorted(k for k in arrays if k.startswith('logit_contribution__'))
+    if not keys:return None
+    total=sum(arrays[k].astype(np.float64) for k in keys)
+    # Subtract a fixed class-0 contrast, never unstable log(prob) in low precision.
+    direct=arrays['candidate_log_probs'].astype(np.float64)-arrays['raw_log_probs'].astype(np.float64)
+    error=(total-total[:,:1])-(direct-direct[:,:1])
+    maximum=float(np.abs(error).max())
+    scale=1+float(np.abs(direct).max())
+    if maximum>1e-5*scale:raise ValueError('Actual branch contributions do not reconstruct direct class contrasts.')
+    return dict(max_abs=maximum,mean_abs=float(np.abs(error).mean()),tolerance=1e-5*scale,reference_branch_separate=True)
+
+
+def freeze(root,device):
+    root,study,info=_development_guard(root,device)
+    frozen=[];quality=[];task_snapshots=[]
+    for task in info['tasks']:
+        reference=_reference(task)
+        for arm in [*study['baselines'],*CORE]:
+            selected=read(Path(task['path'])/'hpo'/arm/'selection.json')
+            for seed in study['seeds']:
+                _completed_run(study,task,arm,selected['trial'],seed,Path(task['path'])/'fits'/arm/str(seed),reference,selected['view'])
+    for task in info['tasks']:
+        data,dataset,records=source_data(task)
+        validation=[r for r in records if r['split']=='validation']
+        reference=_reference(task);ref=torch.load(reference/'selected_candidate.pt',map_location='cpu',weights_only=True)
+        destination=Path(task['path'])/'frozen';destination.mkdir(exist_ok=False)
+        spec=read(Path(task['path'])/'task.json')
+        task_snapshots.append(dict(**task,spec=spec,
+            test_structure=pd.read_csv(Path(task['path'])/'test_structure.csv',dtype=str,keep_default_na=False).to_dict('records'),
+            source_groups=sorted({r['unit_id'] for r in records})))
+        for arm in [*study['baselines'],*CORE]:
+            for seed in study['seeds']:
+                directory=Path(task['path'])/'fits'/arm/str(seed)
+                if not (directory/'result_scope.json').exists() or (directory/'failure.json').exists():
+                    raise ValueError('All declared final fits must complete before any target release.')
+                model,saved=load_model(directory/'selected_candidate.pt',device)
+                if any(not torch.equal(v.cpu(),model.reference.state_dict()[k].cpu()) for k,v in ref['state_dict'].items()):
+                    raise ValueError('Candidates do not share the selected complete reference.')
+                classes=data['model']['class_names']
+                predictions=predict_records(model,validation,dataset,data,classes,device,alpha=1.)
+                reconstruction(predictions)
+                with np.load(directory/'selected_source_validation_windows.npz',allow_pickle=False) as old:
+                    expected={k:old[k] for k in old.files}
+                expected['deployed_probs']=expected['candidate_probs'];expected['deployed_log_probs']=expected['candidate_log_probs']
+                verify_vectors(expected,predictions)
+                path=destination/f'{arm}_{seed}.pt'
+                save_bundle(model,saved['model'],path,kind='model',temperature=1.,alpha=1.,classes=classes,
+                            input_data=data['data'],sampling_rate=records[0]['sample_rate_hz'],scope='prospective_DG_no_target_selection')
+                restored,_=load_model(path,device)
+                verify_vectors(predictions,predict_records(restored,validation,dataset,data,classes,device,alpha=1.))
+                chosen=read(Path(task['path'])/'hpo'/arm/'selection.json')
+                frozen.append(dict(task=task['name'],arm=arm,seed=seed,checkpoint=str(path),view=chosen['view']))
+                profile=class_profile(predictions)
+                for row in summarize_rows(acquisition_rows(predictions),len(classes)):
+                    if row['predictor']=='candidate':
+                        quality.append(dict(task=task['name'],arm=arm,seed=seed,**row,
+                            source_class_profile=json.dumps(profile[str(row['domain'])],allow_nan=False)))
+    write_csv(root/'source_quality.csv',quality)
+    # A single suite barrier: all splits and datasets are selected before any target.
+    dump(root/'frozen.json',dict(tasks=task_snapshots,study=study,models=frozen,fixture=info['fixture'],target_read=False))
+
+
+def test(root,device):
+    root=Path(root).resolve();frozen=read(root/'frozen.json')
+    for task in frozen['tasks']:
+        directory=Path(task['path']);spec=task['spec'];dataset=copy.deepcopy(spec['dataset']);m=dataset['columns']
