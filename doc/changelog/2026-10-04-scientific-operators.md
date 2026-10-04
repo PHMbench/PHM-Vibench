@@ -17,3 +17,8 @@ distribution's identity. A declared source revision is separate from that
 observation and never establishes a clean working tree. A software fixture
 result establishes neither scientific novelty nor empirical PHM benefit.
 
+| Scientific task | Packaged configuration | Existing computation |
+|---|---|---|
+| `DG.expert_intervention` | `configs/experiments/p04/expert_intervention.yaml` | Role assignment and frozen-gate intervention contrasts |
+
+Source training/search accepts only train/val packs; independent matching/test packs use explicit checkpoints, saved normalization and source identities. Historical G050 is not re-executed or relabelled.
