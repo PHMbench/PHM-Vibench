@@ -578,3 +578,123 @@ def test(root,device):
     root=Path(root).resolve();frozen=read(root/'frozen.json')
     for task in frozen['tasks']:
         directory=Path(task['path']);spec=task['spec'];dataset=copy.deepcopy(spec['dataset']);m=dataset['columns']
+        stat=Path(dataset['h5_file']).stat()
+        if [stat.st_size,stat.st_mtime_ns]!=task['h5_stat']:
+            raise ValueError('Read-only H5 changed after freezing.')
+        frame=pd.DataFrame(task['test_structure'])
+        labels=_metadata_rows(dataset,set(frame[m['id']]))
+        structural=[c for c in frame.columns if c not in {m['unit_id'],m['split']}]
+        pd.testing.assert_frame_equal(
+            labels[structural].sort_values(m['id']).reset_index(drop=True),
+            frame[structural].sort_values(m['id']).reset_index(drop=True))
+        labels=labels.merge(frame[[m['id'],m['unit_id'],m['split']]],on=m['id'],validate='one_to_one')
+        test_csv=directory/'test.csv'
+        if test_csv.exists():
+            pd.testing.assert_frame_equal(pd.read_csv(test_csv,dtype=str,keep_default_na=False),labels.reset_index(drop=True))
+        else: labels.to_csv(test_csv,index=False)
+        dataset.pop('protocol_file');dataset.pop('select',None)
+        domains=set(frame[m['domain']]);sources=[str(d) for d in dataset['source_domains'] if str(d) in domains]
+        dataset.update(metadata_file=str(test_csv),source_domains=sources,access_scope='test')
+        data=dict(model=spec['model'],data=spec['data'],datasets=[dataset]);records=read_records(dataset,data)
+        source_ids=set(task['source_groups'])
+        if source_ids&{r['unit_id'] for r in records}:raise ValueError('Target records cross the source physical partition.')
+        exports=[]
+        out=directory/'predictions';out.mkdir(exist_ok=True)
+        for item in [x for x in frozen['models'] if x['task']==task['name']]:
+            path=out/f'{item["arm"]}_{item["seed"]}.npz'
+            entry=dict(name=path.stem,arm=item['arm'],seed=item['seed'],split='test',path=str(path),alpha=1.,role='direct')
+            if not path.exists():
+                model,_=load_model(item['checkpoint'],device)
+                arrays=predict_records(model,records,dataset,data,data['model']['class_names'],device,alpha=1.)
+                reconstruction(arrays)
+                np.savez_compressed(path,**arrays)
+            analyze_d1.load_artifact(entry)  # Validate every completed or resumed export.
+            exports.append(entry)
+        filename=directory/'exports.json'
+        if filename.exists():
+            if read(filename)!=exports:raise ValueError('Frozen export identities changed.')
+        else:dump(filename,exports)
+    if not (root/'test_complete.json').exists():dump(root/'test_complete.json',dict(status='complete',frozen_models=len(frozen['models'])))
+
+
+def contribution_rows(arrays,task,arm,seed):
+    """Mean WINDOW logit contributions, never additive acquisition log-odds."""
+    rows=[]
+    keys=[k for k in arrays if k.startswith('logit_contribution__')]
+    for acquisition in np.unique(arrays['acquisition_ids']):
+        mask=arrays['acquisition_ids']==acquisition
+        label_values=np.unique(arrays['labels'][mask])
+        if len(label_values)!=1: raise ValueError('An acquisition has multiple labels.')
+        label=int(label_values[0]);prediction=int(arrays['candidate_probs'][mask].mean(0).argmax())
+        domain=str(arrays['domains'][mask][0]);group=str(arrays['group_ids'][mask][0])
+        for key in keys:
+            values=arrays[key][mask].mean(0)
+            for c in range(1,len(values)):
+                rows.append(dict(task=task,arm=arm,seed=seed,domain=domain,group_id=group,
+                                 acquisition_id=acquisition,label=label,correct=int(prediction==label),
+                                 branch=key.split('__',1)[1],class_c=c,class_reference=0,
+                                 mean_window_logit_contribution=float(values[c]-values[0])))
+    return rows
+
+
+def plot_contrasts(frame,output):
+    """Plot actual per-task contrasts and intervals without pooling tasks."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    for (task,scope,metric),part in frame.groupby(['task','scope','metric'],sort=True):
+        if metric not in {'accuracy','brier'} or scope not in {'target','heldout_source'}: continue
+        if not (part.status=='complete').all(): raise ValueError('Incomplete comparison cannot become a paper figure.')
+        values=part[['finite_seed_mean','lower','upper']].to_numpy(float)
+        if not np.isfinite(values).all(): raise ValueError('Nonfinite contrast/interval.')
+        y=np.arange(len(part));fig,ax=plt.subplots(figsize=(8,max(3,len(part)*.4)))
+        ax.hlines(y,values[:,1],values[:,2]);ax.plot(values[:,0],y,'o');ax.axvline(0,linestyle=':')
+        ax.set_yticks(y,part.contrast);ax.set_xlabel(f'Proposed minus comparator: {metric}')
+        ax.set_title(f'{task} / {scope}');fig.tight_layout()
+        fig.savefig(output/f'{task}_{scope}_{metric}.pdf');plt.close(fig)
+
+
+def analyze(root):
+    root=Path(root).resolve();frozen=read(root/'frozen.json')
+    if not (root/'test_complete.json').exists():raise ValueError('Finish the complete frozen target release first.')
+    all_metrics=[];all_contrasts=[];explanations=[];contributions=[];costs=[];reference_metrics=[]
+    core=[*frozen['study']['baselines'],*CORE]
+    contrasts={**CONTRASTS,**{f'I-{b}':('I',b) for b in frozen['study']['baselines']}}
+    for task in frozen['tasks']:
+        directory=Path(task['path']);exports=read(directory/'exports.json')
+        expected={(a,s) for a in core for s in frozen['study']['seeds']}
+        actual=[(x['arm'],x['seed']) for x in exports]
+        if len(actual)!=len(expected) or set(actual)!=expected:
+            raise ValueError('The explicit current matrix is incomplete or duplicated; do not analyze a favorable subset.')
+        structural=pd.DataFrame(task['test_structure']);spec=task['spec']
+        domains=set(structural[spec['dataset']['columns']['domain']]);target=[str(x) for x in spec['dataset']['domain_sequence']]
+        source=sorted(domains-set(target));sets={'target':target}
+        if source:sets['heldout_source']=source
+        if not (directory/'analysis').exists():
+            analyze_d1.run(exports,directory/'analysis',condition_sets={'test':sets},core_arms=core,
+                           contrasts=contrasts,seeds=frozen['study']['seeds'])
+        recorded=read(directory/'analysis'/'analysis.json')
+        if (recorded['status']!='complete' or recorded['declared_core_arms']!=core or
+                recorded['declared_seeds']!=frozen['study']['seeds'] or
+                recorded['declared_contrasts']!={k:list(v) for k,v in contrasts.items()}):
+            raise ValueError('Existing analysis does not describe the complete frozen comparison matrix.')
+        for filename,output in [('seed_summary.csv',all_metrics),('contrast_seed_summary.csv',all_contrasts)]:
+            rows=pd.read_csv(directory/'analysis'/filename).to_dict('records')
+            output.extend(dict(dataset=task['dataset_id'],task=task['name'],**r) for r in rows)
+        for entry in exports:
+            with np.load(entry['path'],allow_pickle=False) as archive:arrays={k:archive[k] for k in archive.files}
+            check=reconstruction(arrays)
+            if check:contributions.extend(contribution_rows(arrays,task['name'],entry['arm'],entry['seed']))
+            if check:explanations.append(dict(task=task['name'],arm=entry['arm'],seed=entry['seed'],**check))
+        # The reference is shared: report it once per task, not as three fits.
+        first=exports[0]
+        with np.load(first['path'],allow_pickle=False) as archive: raw={k:archive[k] for k in archive.files}
+        for row in summarize_rows(acquisition_rows(raw),spec['model']['num_classes']):
+            if row['predictor']=='raw':reference_metrics.append(dict(task=task['name'],**row))
+        for command in sorted((directory/'hpo').glob('*/trial_*/command.json'))+sorted((directory/'fits').glob('*/*/command.json')):
+            scope=read(command.parent/'result_scope.json')
+            config=read(command)
+            costs.append(dict(task=task['name'],stage='hpo' if 'hpo' in command.parts else 'fit',
+                arm=command.parent.parent.name,seed=config['seed'],run=str(command.parent),
+                status=scope['status'],optimizer_steps=scope.get('optimizer_steps'),
+                trainable_parameters=scope.get('trainable_parameters'),total_parameters=scope.get('total_parameters'),
