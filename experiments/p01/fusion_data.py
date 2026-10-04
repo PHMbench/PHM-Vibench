@@ -39,6 +39,12 @@ def read_records(dataset, config):
     required=('id','unit_id','label','domain','split','sample_rate_hz','rotation_speed_rpm')
     if any(k not in mapping or mapping[k] not in frame for k in required):
         raise ValueError('Map the existing Id, physical group, label, condition, partition and physical units.')
+    scope=dataset.get('access_scope','legacy')
+    if scope in {'source','test'}:
+        allowed_splits={'update','validation'} if scope=='source' else {'test'}
+        allowed_domains=set(map(str,dataset['source_domains'])) if scope=='source' else set(map(str,dataset['source_domains']+dataset['domain_sequence']))
+        if not set(frame[mapping['split']]).issubset(allowed_splits) or not set(frame[mapping['domain']]).issubset(allowed_domains):
+            raise ValueError('Isolated metadata contains forbidden split/domain rows before labels or H5 are accessed.')
     h5=Path(dataset['h5_file']).expanduser().resolve();records=[];partitions={};seen=set()
     with H5DataDict(str(h5)) as signals:
         for row in frame.to_dict('records'):
@@ -70,20 +76,32 @@ def read_records(dataset, config):
             seen.add(r['h5_key'])
             if r['h5_key'] not in signals:raise KeyError(f"Missing H5 Id {r['h5_key']}")
             records.append(r)
+    scope=dataset.get('access_scope', 'legacy')
+    if scope not in {'legacy','source','test'}:
+        raise ValueError('Unknown access_scope.')
     sources=list(map(str,dataset['source_domains']));future=list(map(str,dataset['domain_sequence']))
     declared=sources+future
-    if not sources or len(set(declared))!=len(declared):
+    if (not sources and scope!='test') or len(set(declared))!=len(declared):
         raise ValueError('Declare unique, disjoint source and future conditions.')
-    if set(declared)!={r['domain'] for r in records}:
+    observed={r['domain'] for r in records}
+    if scope=='source':
+        if future or len(sources)<2 or observed!=set(sources):
+            raise ValueError('Source-only DG input must contain at least two source domains and no target domains.')
+        if any(r['split'] not in {'update','validation'} for r in records):
+            raise ValueError('Source-only DG metadata contains a holdout record.')
+    elif scope=='test':
+        if any(r['split']!='test' for r in records) or observed!=set(declared):
+            raise ValueError('Test-only DG input must contain exactly the frozen test population.')
+    elif set(declared)!=observed:
         raise ValueError('Declare every selected condition.')
-    for d in sources:
+    for d in (sources if scope!='test' else []):
         for split in ('update','validation'):
             if not any(r['domain']==d and r['split']==split for r in records):
                 raise ValueError(f'{d} lacks {split} acquisitions.')
-    for d in declared:
+    for d in (declared if scope!='source' else []):
         if not any(r['domain']==d and r['split']=='test' for r in records):
             raise ValueError(f'{d} lacks permanent test acquisitions; declared conditions cannot disappear from evaluation.')
-    if {r['label'] for r in records if r['domain'] in sources and r['split']=='update'}!=set(range(int(config['model']['num_classes']))):
+    if scope!='test' and {r['label'] for r in records if r['domain'] in sources and r['split']=='update'}!=set(range(int(config['model']['num_classes']))):
         raise ValueError('Source training must cover the declared classes.')
     return records
 
