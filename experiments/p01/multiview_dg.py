@@ -338,3 +338,123 @@ def _execute(study,task,arm,trial,seed,output,device,reference=None,view=None):
     logpath=output.parent/(output.name+'.log')
     with logpath.open('x') as stream:
         run=subprocess.run(command,cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
+    if run.returncode:
+        output.mkdir(exist_ok=True)
+        dump(output/'failure.json',dict(command=command,returncode=run.returncode,log=str(logpath)))
+        raise RuntimeError(f'Training failed without changing recipe; inspect {logpath}')
+    return output
+
+
+def _completed_run(study,task,arm,trial,seed,out,reference,view):
+    out=Path(out)
+    if (out/'failure.json').exists() or not (out/'result_scope.json').exists():
+        raise ValueError('Interrupted/failed run cannot be silently omitted or overwritten.')
+    command=read(out/'command.json')
+    expected=dict(trial,seed=seed,epochs=study['epochs'],steps_per_epoch=study['steps_per_epoch'],
+                  units_per_domain=study['units_per_domain'],dg=True)
+    if any(command.get(k)!=v for k,v in expected.items()):
+        raise ValueError('Completed run recipe differs from the frozen trial/seed/budget.')
+    # Saved training models may add derived fields; the original submitted YAML
+    # is retained separately and must exactly match the study-derived recipe.
+    submitted=read(out.parent/(out.name+'.yaml'))
+    if submitted!=candidate_config(study,task,arm,reference,view):
+        raise ValueError('Completed run inputs, model or selected view changed.')
+
+
+def _score(run, reference=False):
+    table=pd.read_csv(Path(run)/'selected_source_validation.csv',dtype={'domain':str})
+    q=table[table.predictor=='candidate'].set_index('domain')
+    p=table[table.predictor=='raw'].set_index('domain')
+    # The inherited reference uses ordinary CE; all downstream candidates share
+    # the exact same CE+.25 Brier excess selector and source observation set.
+    score=float(q.ce.max()) if reference else float(((q.ce-p.ce)+.25*(q.brier-p.brier)).max())
+    if not math.isfinite(score): raise ValueError('Nonfinite source selection score.')
+    return score
+
+
+def class_profile(arrays):
+    """Use the existing acquisition/group estimator for source class diagnostics."""
+    p=dict(arrays)
+    p.setdefault('deployed_probs',p['candidate_probs'])
+    p.setdefault('deployed_log_probs',p['candidate_log_probs'])
+    grouped=analyze_d1.group_estimates(analyze_d1.acquisition_estimates(p),p['candidate_probs'].shape[1])
+    output={}
+    for domain in sorted(set(p['domains'])):
+        rows=[g for g in grouped if g['domain']==domain and g['predictor']=='candidate']
+        cm=np.mean(np.stack([g['confusion_matrix'] for g in rows]),axis=0)
+        support=cm.sum(axis=1)
+        recall=[float(cm[c,c]/v) if v else None for c,v in enumerate(support)]
+        output[str(domain)]=dict(weighted_support=support.tolist(),recall=recall,
+                                 confusion=cm.tolist(),class_collapse=any(x==0 for x in recall if x is not None))
+    return output
+
+
+def tune(root, family, device):
+    root,study,info=_development_guard(root,device)
+    if not (root/'smoke_baseline.json').exists(): raise ValueError('Baseline smoke must pass before HPO.')
+    arms=['p0'] if family=='reference' else list(study['baselines']) if family=='baselines' else list(CORE)
+    if family=='method' and not (root/'smoke_method.json').exists(): raise ValueError('Method smoke must pass before proposed HPO.')
+    for task in info['tasks']:
+        reference=None if family=='reference' else _reference(task)
+        if family=='method':
+            for baseline in study['baselines']:
+                if not (Path(task['path'])/'hpo'/baseline/'selection.json').exists():
+                    raise ValueError('Finish all baseline HPO before proposed fitting.')
+                chosen=read(Path(task['path'])/'hpo'/baseline/'selection.json')
+                if any(p['class_collapse'] for p in chosen['source_class_profile'].values()):
+                    raise ValueError('A selected baseline collapses a source class; diagnose source fitting before proposed HPO.')
+        for arm in arms:
+            directory=Path(task['path'])/'hpo'/arm
+            if (directory/'selection.json').exists(): continue
+            trials=[]
+            views=[b['name'] for b in study['fusion']['model']['branches']]
+            for index,trial in enumerate(study['trials']):
+                view=views[index%len(views)] if arm=='I-single' else None
+                out=directory/f'trial_{index:02d}'
+                if out.exists():
+                    # Resume only a completed exact trial; no silent rerun of failures.
+                    _completed_run(study,task,arm,trial,study['hpo_seed'],out,reference,view)
+                else: _execute(study,task,arm,trial,study['hpo_seed'],out,device,reference,view)
+                trials.append(dict(index=index,score=_score(out,arm=='p0'),run=str(out),trial=trial,view=view))
+            best=min(trials,key=lambda t:(t['score'],t['index']))
+            if arm=='p0':
+                tab=pd.read_csv(Path(best['run'])/'selected_source_validation.csv')
+                if not bool((tab[tab.predictor=='candidate'].accuracy>=study['reference_min_accuracy']).all()):
+                    dump(directory/'qualification_failed.json',dict(best=best,trials=trials))
+                    raise ValueError('Reference source qualification failed within the fixed budget. No proposed run is permitted.')
+            with np.load(Path(best['run'])/'selected_source_validation_windows.npz',allow_pickle=False) as saved:
+                profile=class_profile({k:saved[k] for k in saved.files})
+            dump(directory/'selection.json',dict(**best,all_trials=trials,source_class_profile=profile,criterion='worst_source_CE' if arm=='p0' else 'worst_source_CE_plus_0.25_Brier_excess',target_read=False))
+
+
+def fit(root,device):
+    root,study,info=_development_guard(root,device)
+    for task in info['tasks']:
+        reference=_reference(task)
+        for arm in [*study['baselines'],*CORE]:
+            selected=read(Path(task['path'])/'hpo'/arm/'selection.json')
+            for seed in study['seeds']:
+                out=Path(task['path'])/'fits'/arm/str(seed)
+                if out.exists():
+                    _completed_run(study,task,arm,selected['trial'],seed,out,reference,selected['view'])
+                    continue
+                _execute(study,task,arm,selected['trial'],seed,out,device,reference,selected['view'])
+
+
+def _reference_wrapper(path,device):
+    saved=torch.load(path,map_location='cpu',weights_only=True)
+    saved=dict(saved,reference_model=saved['model'],reference_state_dict=saved['state_dict'],reference_temperature=1.)
+    return FrozenClassifier(saved,device)
+
+
+def smoke(root,kind,device):
+    root,study,info=_development_guard(root,device)
+    torch.set_num_threads(1);torch.manual_seed(study['hpo_seed'])
+    reports=[]
+    for task in info['tasks']:
+        data,dataset,records=source_data(task)
+        chosen=[]
+        for label in range(data['model']['num_classes']):
+            chosen.append(next(r for r in records if r['split']=='update' and r['label']==label))
+        xs=[window_record(r,dataset,data['data'])[:1] for r in chosen]
+        x=torch.cat(xs).to(device);y=torch.tensor([r['label'] for r in chosen],device=device)
