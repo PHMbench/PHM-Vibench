@@ -85,6 +85,11 @@ def load_artifact(spec: Mapping[str, Any]) -> Artifact:
     order = np.asarray(sorted(range(n), key=identities.__getitem__))
     for key in (*identity_fields, "labels"):
         p[key] = p[key][order]
+    for key in list(p):
+        if key.startswith("logit_contribution__"):
+            if p[key].shape!=(n,classes) or not np.isfinite(p[key]).all():
+                raise ValueError("Invalid branch contribution array.")
+            p[key]=p[key][order]
     for predictor in PREDICTORS:
         prob = np.asarray(p[predictor + "_probs"], dtype=float)
         lp = np.asarray(p[predictor + "_log_probs"], dtype=float)
@@ -257,8 +262,14 @@ def _write_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
 
 def run(predictions: Sequence[Mapping[str, Any]], output: str | Path, *,
         condition_sets: Mapping[str, Mapping[str, Sequence[str]]],
-        adoption_mode: str | None = None) -> dict[str, Any]:
+        adoption_mode: str | None = None,
+        core_arms: Sequence[str] = CORE, contrasts: Mapping[str, tuple[str,str]] = CONTRASTS,
+        seeds: Sequence[int] = SEEDS) -> dict[str, Any]:
     """Analyze an explicit export list without discovering/selecting successful runs."""
+    if not core_arms or len(set(core_arms))!=len(core_arms) or len(seeds)<2 or len(set(seeds))!=len(seeds):
+        raise ValueError("Declare unique arms and at least two fixed training seeds.")
+    if any(a not in core_arms or b not in (*core_arms,"p0") for a,b in contrasts.values()):
+        raise ValueError("Every contrast must reference declared arms.")
     if not predictions:
         raise ValueError("The frozen prediction list is empty.")
     identities = [(item["split"], item["name"]) for item in predictions]
@@ -337,35 +348,35 @@ def run(predictions: Sequence[Mapping[str, Any]], output: str | Path, *,
                                                repair=float(values["repair"][0]), damage=float(values["damage"][0]),
                                                prediction_change_rate=float(values["change"][0])))
         available = sorted(direct)
-        missing_slots = [{"arm": arm, "seed": seed} for arm in CORE for seed in SEEDS if (arm, seed) not in direct]
+        missing_slots = [{"arm": arm, "seed": seed} for arm in core_arms for seed in seeds if (arm, seed) not in direct]
         coverage.append(dict(split=split, complete_core=not missing_slots, missing_core_slots=missing_slots,
                              available_direct_slots=[dict(arm=arm, seed=seed) for arm, seed in available]))
-        for arm in CORE:
-            present = [seed for seed in SEEDS if (arm, seed) in direct]
+        for arm in core_arms:
+            present = [seed for seed in seeds if (arm, seed) in direct]
             for scope in scopes:
                 for metric in METRICS:
                     values = [estimates[(direct[(arm, seed)].spec["name"], "candidate", scope)][metric] for seed in present]
-                    complete = len(present) == len(SEEDS)
+                    complete = len(present) == len(seeds)
                     average = np.mean(values, axis=0) if complete else None
                     lower, upper = _interval(average[1:]) if complete else (None, None)
                     seed_rows.append(dict(split=split, arm=arm, scope=scope, metric=metric, seeds=present,
                                           status="complete" if complete else "partial", finite_seed_mean=float(average[0]) if complete else None,
                                           seed_sd=float(np.std([v[0] for v in values], ddof=1)) if complete else None,
                                           lower=lower, upper=upper))
-        for contrast, (treatment, control) in CONTRASTS.items():
-            present = [seed for seed in SEEDS if (treatment, seed) in direct and (control, seed) in direct]
+        for contrast, (treatment, control) in contrasts.items():
+            present = [seed for seed in seeds if (treatment, seed) in direct and (control=="p0" or (control, seed) in direct)]
             for scope in scopes:
                 for metric in METRICS:
                     differences = []
                     for seed in present:
                         left = estimates[(direct[(treatment, seed)].spec["name"], "candidate", scope)][metric]
-                        right = estimates[(direct[(control, seed)].spec["name"], "candidate", scope)][metric]
+                        right = estimates[(direct[(treatment, seed)].spec["name"], "raw", scope)][metric] if control=="p0" else estimates[(direct[(control, seed)].spec["name"], "candidate", scope)][metric]
                         delta = left - right
                         differences.append(delta)
                         lower, upper = _interval(delta[1:])
                         contrast_rows.append(dict(split=split, contrast=contrast, treatment=treatment, control=control,
                                                   seed=seed, scope=scope, metric=metric, value=float(delta[0]), lower=lower, upper=upper))
-                    complete = len(present) == len(SEEDS)
+                    complete = len(present) == len(seeds)
                     average = np.mean(differences, axis=0) if complete else None
                     lower, upper = _interval(average[1:]) if complete else (None, None)
                     contrast_seed_rows.append(dict(split=split, contrast=contrast, scope=scope, metric=metric, seeds=present,
@@ -410,7 +421,8 @@ def run(predictions: Sequence[Mapping[str, Any]], output: str | Path, *,
                   intervals="descriptive 95% percentile intervals conditional on frozen predictors; small group counts can be unstable",
                   classification="acquisition mean probability argmax, group-balanced confusion, fixed full class space",
                   condition_aggregation="equal-weight mean of condition-specific metrics, not a pooled F1",
-                  seed_aggregation="finite three-seed mean and sample SD; seeds are not independent physical specimens",
+                  seed_aggregation=f"finite {len(seeds)}-seed mean and sample SD; seeds are not independent physical specimens",
+                  declared_core_arms=list(core_arms), declared_contrasts=dict(contrasts), declared_seeds=list(seeds),
                   Delta_pipe_alias="Delta_repr has the same numeric definition; processing-pipeline contrast, not pure representation causality",
                   adoption_intervals="conditional on the already selected candidate and coefficient",
                   class_names=artifacts[0].classes)

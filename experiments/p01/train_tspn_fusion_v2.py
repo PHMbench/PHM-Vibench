@@ -164,6 +164,9 @@ def main():
     p.add_argument('--epochs',type=int,default=20);p.add_argument('--steps-per-epoch',type=int,default=50)
     p.add_argument('--units-per-domain',type=int,default=2);p.add_argument('--lr',type=float,default=.001)
     p.add_argument('--pair-shift',type=int,default=0,help='Circular time-origin change, NOT speed augmentation.')
+    p.add_argument('--weight-decay',type=float,default=0.)
+    p.add_argument('--scheduler',choices=['none','cosine'],default='none')
+    p.add_argument('--dg',action='store_true',help='Require source-only metadata and forbid inline test.')
     p.add_argument('--selection-brier-weight',type=float,default=.25)
     p.add_argument('--selection-predictor',choices=['candidate','training_tau_mixture'],default='candidate')
     p.add_argument('--arm',default='candidate',help='Declared comparison arm; recorded without changing the model.')
@@ -197,6 +200,8 @@ def main():
     model=model_factory(SimpleNamespace(**cfg['model']),metadata=None).to(args.device)
     objective=TSPNFusionLoss(**cfg['loss'])
     if objective.lambda_delta>0 and args.pair_shift<1:raise ValueError('Supply a justified --pair-shift or set lambda_delta=0.')
+    if args.dg and (dataset.get('access_scope')!='source' or args.evaluate_test):
+        raise ValueError('DG fitting accepts only isolated source metadata; test is a separate frozen operation.')
     records=read_records(dataset,data);sources=list(map(str,dataset['source_domains']))
     if len({r['sample_rate_hz'] for r in records})!=1:raise ValueError('Normalized-frequency model requires one sampling rate.')
     load_started=time.perf_counter()
@@ -227,7 +232,10 @@ def main():
             passed=passed, independent_test_guarantee=False),indent=2))
         if not passed:
             raise ValueError('Reference did not reach the declared source accuracy threshold; see reference_qualification.json. No candidate was trained.')
-    optimizer=torch.optim.Adam([p for p in model.parameters() if p.requires_grad],lr=args.lr)
+    if not math.isfinite(args.weight_decay) or args.weight_decay<0:
+        raise ValueError('weight_decay must be finite and nonnegative.')
+    optimizer=torch.optim.Adam([p for p in model.parameters() if p.requires_grad],lr=args.lr,weight_decay=args.weight_decay)
+    scheduler=torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,args.epochs) if args.scheduler=='cosine' else None
     best=float('inf');log=[];domain_log=[];feature_log=[];batch_log=[];sampling_log=[];prior_log=[];response_log=[]
     training_seconds=0.;selection_seconds=0.;selected_epoch=None
     diagnostic_keys=('diagnostic_excess','max_source_excess','source_envelope','correction_consistency',
@@ -309,6 +317,7 @@ def main():
         if score<best:
             best=score;selected_epoch=epoch
             save_selected(epoch,summary,val_rows,prediction_arrays)
+        if scheduler is not None: scheduler.step()
         print(log[-1],flush=True)
     if args.device.startswith('cuda'):torch.cuda.synchronize()
     total_seconds=time.perf_counter()-started
