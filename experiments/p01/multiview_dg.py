@@ -218,3 +218,123 @@ def bind(study_path, task_paths, output, fixture=False):
     return root
 
 
+def suite(root):
+    root=Path(root).resolve()
+    study=read(root/'study.yaml')
+    if study!=read(root/'study_lock.json'):
+        raise ValueError('Study configuration changed after binding; use a new prospective study.')
+    info=read(root/'tasks.json')
+    for task in info['tasks']:
+        for name,text in task['binding'].items():
+            if (Path(task['path'])/name).read_text()!=text:
+                raise ValueError(f'Bound source/task assignment changed: {task["name"]}/{name}')
+        h5=Path(read(Path(task['path'])/'task.json')['dataset']['h5_file']).stat()
+        if [h5.st_size,h5.st_mtime_ns]!=task['h5_stat']:
+            raise ValueError('Read-only H5 changed after task binding.')
+    return root,study,info
+
+
+def source_data(task):
+    data=read(Path(task['path'])/'source.yaml');dataset=data['datasets'][0]
+    if dataset.get('access_scope')!='source' or dataset['domain_sequence']:
+        raise ValueError('Only isolated source data may enter development.')
+    return data,dataset,read_records(dataset,data)
+
+
+def candidate_config(study,task,arm,reference=None,view=None):
+    data=read(Path(task['path'])/'source.yaml')
+    classes=data['model']['num_classes'];length=data['data']['window_size']
+    channels=len(data['data']['channel_indices'])
+    if arm=='p0':
+        model=copy.deepcopy(study['reference'])
+        model.update(type='X_model',name='TSPN',num_classes=classes,in_channels=channels,in_dim=length,out_dim=length,device='cpu')
+        return dict(model=model)
+    if arm in study['baselines']:
+        model=copy.deepcopy(study['baselines'][arm])
+        model.update(num_classes=classes,device='cpu')
+        model['in_channels' if model['type']=='X_model' else 'input_dim']=channels
+        return dict(model=model)
+    cfg=copy.deepcopy(study['fusion']);m=cfg['model']
+    ref=read(Path(reference)/'model_config.yaml')['model']
+    m.update(num_classes=classes,reference_config=ref,checkpoint_kind='reference',
+             checkpoint_path=str(Path(reference)/'selected_candidate.pt'),device='cpu')
+    if arm in {'I-F','MLP16'}: m['branches']=[]
+    elif arm=='I-single':
+        m['branches']=[b for b in m['branches'] if b['name']==view]
+        if len(m['branches'])!=1: raise ValueError('Unknown source-selected view.')
+    elif arm=='I-base':
+        for b in m['branches']:
+            if b['type']=='envelope': b.pop('diagnostics',None)
+    elif arm not in {'I','Dense'}: raise ValueError('Unknown proposed/control arm.')
+    if arm in {'Dense','MLP16'}: m['head_type']='mlp'
+    return cfg
+
+
+def preflight(root):
+    root,study,info=suite(root)
+    if (root/'preflight.json').exists(): raise FileExistsError('Preflight already recorded; use a fresh suite after protocol edits.')
+    checks=[]
+    for task in info['tasks']:
+        data,dataset,records=source_data(task)
+        classes=set(range(data['model']['num_classes']))
+        for d in dataset['source_domains']:
+            for split in ('update','validation'):
+                rows=[r for r in records if r['domain']==str(d) and r['split']==split]
+                if {r['label'] for r in rows}!=classes:
+                    raise ValueError(f'{task["name"]}/{d}/{split} lacks closed-set source class coverage.')
+                if len({r['unit_id'] for r in rows})<study['units_per_domain']:
+                    raise ValueError('Too few physical groups for the declared batch sampling.')
+        for record in records:
+            x=window_record(record,dataset,data['data'])
+            if x.shape[-1]!=len(data['data']['channel_indices']) or not torch.isfinite(x).all():
+                raise ValueError('Invalid observed channels/tensor.')
+            if torch.any(x.std(dim=1)==0): raise ValueError('Constant source window/channel; inspect reader and signal.')
+        checks.append(dict(task=task['name'],groups=len({r['unit_id'] for r in records}),
+                           acquisitions=len(records),source_domains=dataset['source_domains'],target_read=False))
+    dump(root/'preflight.json',dict(status='passed',tasks=checks))
+
+
+def _development_guard(root, device):
+    root,study,info=suite(root)
+    if (root/'frozen.json').exists(): raise ValueError('The complete suite is frozen; no further fitting or selection.')
+    if not (root/'preflight.json').exists(): raise ValueError('Run source-only preflight first.')
+    if device=='cpu' and not info['fixture']:
+        raise ValueError('CPU training is allowed only for explicit constructed fixtures; use physical GPU0 locally.')
+    if device!='cpu' and (device!='cuda:0' or os.environ.get('CUDA_VISIBLE_DEVICES')!='0' or not torch.cuda.is_available()):
+        raise ValueError('Training requires CUDA_VISIBLE_DEVICES=0 and available cuda:0; no fallback.')
+    return root,study,info
+
+
+def _reference(task):
+    record=read(Path(task['path'])/'hpo'/'p0'/'selection.json')
+    return Path(record['run'])
+
+
+def _execute(study,task,arm,trial,seed,output,device,reference=None,view=None):
+    output=Path(output)
+    if output.exists(): raise FileExistsError(output)
+    output.parent.mkdir(parents=True,exist_ok=True)
+    cfg=candidate_config(study,task,arm,reference,view)
+    cfgpath=output.parent/(output.name+'.yaml')
+    cfgpath.write_text(yaml.safe_dump(cfg,sort_keys=False))
+    flags=['--model-config',str(cfgpath),'--data-config',str(Path(task['path'])/'source.yaml'),
+           '--dataset',read(Path(task['path'])/'source.yaml')['datasets'][0]['name'],
+           '--output',str(output),'--seed',str(seed),'--device',device,'--dg',
+           '--epochs',str(study['epochs']),'--steps-per-epoch',str(study['steps_per_epoch']),
+           '--units-per-domain',str(study['units_per_domain']),
+           '--lr',str(trial['lr']),'--weight-decay',str(trial['weight_decay']),'--scheduler',trial['scheduler']]
+    if arm=='p0' or arm in study['baselines']:
+        module='experiments.p01.train_source_classifier'
+        flags+=['--role','reference' if arm=='p0' else 'baseline']
+        if arm!='p0':flags+=['--reference-config',str(reference/'model_config.yaml'),
+                             '--reference-checkpoint',str(reference/'selected_candidate.pt'),
+                             '--pair-shift',str(study['pair_shift'])]
+    else:
+        module='experiments.p01.train_tspn_fusion_v2'
+        flags+=['--pair-shift',str(study['pair_shift']),'--arm',arm,
+                '--reference-min-accuracy',str(study['reference_min_accuracy'])]
+    command=[sys.executable,'-m',module,*flags]
+    env=dict(os.environ,PYTHONPATH=str(ROOT)+os.pathsep+os.environ.get('PYTHONPATH',''))
+    logpath=output.parent/(output.name+'.log')
+    with logpath.open('x') as stream:
+        run=subprocess.run(command,cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
