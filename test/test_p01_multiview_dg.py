@@ -102,3 +102,102 @@ def test_source_only_loader_rejects_holdout_before_h5(task_source,tmp_path,monke
 def test_no_preprocessing_silent_ignore(task_source,tmp_path):
     path,task=task_source;task['data']['normalization']='target_zscore';path.write_text(yaml.safe_dump(task))
     with pytest.raises(ValueError,match='normalization'):bind_fixture(tmp_path,task_source)
+
+
+def test_study_mutation_and_test_before_freeze_are_blocked(task_source,tmp_path):
+    root=bind_fixture(tmp_path,task_source)
+    with pytest.raises(FileNotFoundError):dg.test(root,'cpu')
+    study=dg.read(root/'study.yaml');study['epochs']+=1;(root/'study.yaml').write_text(yaml.safe_dump(study))
+    with pytest.raises(ValueError,match='changed after binding'):dg.suite(root)
+
+
+@pytest.mark.parametrize('name,kind,options',[
+ ('ResNet1D','CNN',dict(input_dim=1,layers=[2,2,2,2],initial_channels=64,block_type='basic')),
+ ('TCN','CNN',dict(input_dim=1,num_channels=[32,32,32],kernel_size=3,dropout=.1)),
+ ('PatchTST','Transformer',dict(input_dim=1,d_model=64,n_heads=4,num_layers=2,d_ff=128,patch_size=16,stride=8)),
+ ('BASE_ExplainableCNN','X_model',dict(in_channels=1,width=32,dropout=.1)),
+])
+def test_baseline_factory_gradient_strict_restore(name,kind,options,tmp_path):
+    torch.set_num_threads(1);torch.manual_seed(42)
+    config=SimpleNamespace(type=kind,name=name,num_classes=3,device='cpu',**options)
+    model=model_factory(config,None);x=torch.randn(4,512,1);target=torch.tensor([0,1,2,1])
+    logits=model(x);assert logits.shape==(4,3)
+    torch.nn.functional.cross_entropy(logits,target).backward()
+    assert any(p.grad is not None and p.grad.abs().sum()>0 for p in model.parameters())
+    model.eval();expected=model(x).detach();torch.save(model.state_dict(),tmp_path/'state.pt')
+    restored=model_factory(config,None);restored.load_state_dict(torch.load(tmp_path/'state.pt',weights_only=True),strict=True);restored.eval()
+    torch.testing.assert_close(expected,restored(x),rtol=1e-6,atol=1e-7)
+
+
+def test_small_suite_end_to_end(task_source,tmp_path):
+    root=bind_fixture(tmp_path,task_source)
+    dg.preflight(root);dg.smoke(root,'baseline','cpu')
+    dg.tune(root,'reference','cpu');dg.smoke(root,'method','cpu')
+    dg.tune(root,'baselines','cpu');dg.tune(root,'method','cpu');dg.fit(root,'cpu')
+    assert not (root/'fixture_to_2'/'test.csv').exists()
+    dg.freeze(root,'cpu')
+    with pytest.raises(ValueError,match='frozen'):dg.fit(root,'cpu')
+    dg.test(root,'cpu');dg.analyze(root)
+    contrasts=pd.read_csv(root/'summary'/'contrasts.csv')
+    assert set(contrasts.contrast)==set(dg.CONTRASTS)|{'I-TCN'}
+    assert set(contrasts.status)=={'complete'}
+    rec=pd.read_csv(root/'summary'/'reconstruction.csv')
+    assert (rec.max_abs<rec.tolerance).all()
+    assert dg.read(root/'summary'/'scope.json')['fixture'] is True
+
+
+def test_missing_physical_assignment_is_not_silently_dropped(task_source,tmp_path):
+    protocol=pd.read_csv(tmp_path/'protocol.csv',dtype=str)
+    protocol.iloc[1:].to_csv(tmp_path/'protocol.csv',index=False)
+    with pytest.raises(ValueError,match='Every selected acquisition'):bind_fixture(tmp_path,task_source)
+
+
+def test_changed_source_metadata_is_rejected(task_source,tmp_path):
+    root=bind_fixture(tmp_path,task_source)
+    path=root/'fixture_to_2'/'source.csv'
+    path.write_text(path.read_text()+'\n')
+    with pytest.raises(ValueError,match='Bound source/task assignment'):dg.suite(root)
+
+
+def test_different_target_sampling_convention_is_rejected(task_source,tmp_path):
+    path=tmp_path/'metadata.csv';data=pd.read_csv(path,dtype=str)
+    data.loc[data.Domain=='2','Fs']='48000';data.to_csv(path,index=False)
+    with pytest.raises(ValueError,match='sampling convention'):bind_fixture(tmp_path,task_source)
+
+
+def test_core_alias_cannot_be_shadowed():
+    study=fixture_study();study['baselines']['I']=study['baselines']['TCN']
+    with pytest.raises(ValueError,match='shadow'):dg.validate_study(study)
+
+
+def test_duplicate_split_is_not_an_additional_experiment(task_source,tmp_path):
+    path,task=task_source;other=copy.deepcopy(task);other['name']='renamed_same_split'
+    second=tmp_path/'second.yaml';second.write_text(yaml.safe_dump(other))
+    config=tmp_path/'study.yaml';config.write_text(yaml.safe_dump(fixture_study()))
+    with pytest.raises(ValueError,match='Duplicate domain splits'):
+        dg.bind(config,[path,second],tmp_path/'suite',fixture=True)
+
+
+def test_same_observations_cannot_count_as_two_datasets(task_source,tmp_path):
+    path,task=task_source;other=copy.deepcopy(task);other.update(name='alias_task',dataset_id='not_a_new_dataset')
+    second=tmp_path/'second.yaml';second.write_text(yaml.safe_dump(other))
+    config=tmp_path/'study.yaml';config.write_text(yaml.safe_dump(fixture_study()))
+    with pytest.raises(ValueError,match='relabeled as multiple datasets'):
+        dg.bind(config,[path,second],tmp_path/'suite',fixture=True)
+
+
+def test_source_class_profile_uses_weighted_physical_groups():
+    p=np.array([[.9,.1],[.2,.8],[.8,.2]])
+    arrays=dict(raw_probs=p,candidate_probs=p,raw_log_probs=np.log(p),candidate_log_probs=np.log(p),
+       labels=np.array([0,1,1]),group_ids=np.array(['g0','g1','g1']),
+       acquisition_ids=np.array(['a0','a1','a2']),window_ids=np.array(['0','0','0']),domains=np.array(['0','0','0']))
+    profile=dg.class_profile(arrays)['0']
+    assert profile['weighted_support']==[.5,.5]
+    assert profile['recall']==[1.,.5]
+    assert not profile['class_collapse']
+
+
+def test_source_selector_retains_literal_domain_ids(tmp_path):
+    pd.DataFrame(dict(domain=['01','1','1','01'],predictor=['candidate','candidate','raw','raw'],
+                      ce=[.1,.4,.1,.4],brier=[0.,0.,0.,0.])).to_csv(tmp_path/'selected_source_validation.csv',index=False)
+    assert dg._score(tmp_path)==pytest.approx(.3)
