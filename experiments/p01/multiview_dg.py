@@ -98,3 +98,123 @@ def _metadata_rows(dataset, selected_ids):
     path=Path(dataset['metadata_file']); idcol=dataset['columns']['id']
     reader=pd.read_excel if path.suffix.lower()=='.xlsx' else pd.read_csv
     ids=reader(path,usecols=[idcol],dtype=str,keep_default_na=False)[idcol].map(_vibench_id)
+    if ids.duplicated().any(): raise ValueError('Duplicate acquisition ID in metadata.')
+    keep={i+1 for i,x in enumerate(ids) if x in selected_ids}
+    result=reader(path,skiprows=lambda i: i!=0 and i not in keep,dtype=str,keep_default_na=False)
+    result[idcol]=result[idcol].map(_vibench_id)
+    if set(result[idcol])!=set(selected_ids): raise ValueError('Assignment IDs are missing from original metadata.')
+    return result
+
+
+def bind_task(task_path, out):
+    task=read(task_path)
+    if set(task['data'])-{'layout','window_size','windows_per_unit','channel_indices','squeeze_axes'}:
+        raise ValueError('Undeclared preprocessing/normalization is forbidden; no target-fitted statistics.')
+    names=task['model']['class_names']
+    if len(names)!=task['model']['num_classes'] or len(set(names))!=len(names) or len(names)<2:
+        raise ValueError('Declare the complete ordered class space once.')
+    base=Path(task_path).resolve().parent
+    dataset=copy.deepcopy(task['dataset']); mapping=dataset['columns']
+    for key in ('metadata_file','h5_file','protocol_file'):
+        dataset[key]=str(resolve(dataset[key],base))
+    # A custodian assigns a physical specimen/run globally, never a window.
+    if not task.get('physical_group_basis') or not task.get('domain_basis'):
+        raise ValueError('State how physical IDs and operating domains were established.')
+    if task.get('dataset_id')=='RM_027_PU':
+        raise ValueError('PU D1 test exposure is sealed; no automatic reuse in the new study.')
+    sources=list(map(str,dataset['source_domains'])); targets=list(map(str,dataset['domain_sequence']))
+    if len(sources)<2 or len(targets)!=1 or len(set(sources+targets))!=len(sources)+1:
+        raise ValueError('DG requires >=2 distinct sources and exactly one disjoint unseen target.')
+    protocol=pd.read_csv(dataset['protocol_file'],dtype=str,keep_default_na=False)
+    required={mapping['id'],mapping['unit_id'],mapping['split']}
+    protocol[mapping['id']]=protocol[mapping['id']].map(_vibench_id)
+    if set(protocol)!=required or protocol[mapping['id']].duplicated().any():
+        raise ValueError('Protocol must provide exactly unique Id, physical unit and partition columns.')
+    if not set(protocol[mapping['split']]).issubset({'update','validation','test','exclude'}):
+        raise ValueError('Assign update/validation/test/exclude explicitly.')
+    if protocol.groupby(mapping['unit_id'])[mapping['split']].nunique().max()!=1:
+        raise ValueError('A physical specimen crosses partitions, including other operating conditions.')
+    path=Path(dataset['metadata_file']); reader=pd.read_excel if path.suffix.lower()=='.xlsx' else pd.read_csv
+    structural_cols={mapping[k] for k in ('id','domain','sample_rate_hz','rotation_speed_rpm')} | set(dataset.get('select',{}))
+    if mapping['label'] in structural_cols:
+        raise ValueError('Class labels may not define condition selection.')
+    frame=reader(path,usecols=list(structural_cols),dtype=str,keep_default_na=False)
+    selection=dict(dataset);selection.pop('protocol_file')
+    frame=_h5_metadata_frame(selection,frame,mapping)
+    required_ids=set(frame[frame[mapping['domain']].isin(sources+targets)][mapping['id']])
+    if not required_ids.issubset(set(protocol[mapping['id']])):
+        raise ValueError('Every selected acquisition needs an explicit physical partition; use exclude rather than omit rows.')
+    frame=frame.merge(protocol,on=mapping['id'],how='left',validate='one_to_one')
+    if not len(frame) or not frame[mapping['unit_id']].str.len().min():
+        raise ValueError('Missing assigned physical identities.')
+    frame=frame[frame[mapping['domain']].isin(sources+targets)]
+    src=frame[frame[mapping['domain']].isin(sources)&frame[mapping['split']].isin(['update','validation'])]
+    tst=frame[frame[mapping['split']]=='test']
+    if not set(targets).issubset(set(tst[mapping['domain']])) or not len(src):
+        raise ValueError('Assigned task lacks source development or target test groups.')
+    if set(src[mapping['unit_id']])&set(tst[mapping['unit_id']]):
+        raise ValueError('Source and test physical units overlap.')
+    rates=pd.to_numeric(frame[mapping['sample_rate_hz']],errors='raise')
+    if not np.isfinite(rates).all() or (rates<=0).any() or rates.nunique()!=1:
+        raise ValueError('One sampling convention per task, including held-out structure; do not silently resample.')
+    source=_metadata_rows(dataset,set(src[mapping['id']]))
+    if any(c in source for c in (mapping['unit_id'],mapping['split'])):
+        raise ValueError('Existing physical partitions must not be overwritten.')
+    source=source.merge(src[list(required)],on=mapping['id'],validate='one_to_one')
+    out.mkdir(parents=True,exist_ok=False)
+    source.to_csv(out/'source.csv',index=False)
+    # Only IDs/domains/partitions/physical units/measurement conventions; no test labels.
+    tst.to_csv(out/'test_structure.csv',index=False)
+    src.to_csv(out/'source_structure.csv',index=False)
+    source_dataset=copy.deepcopy(dataset)
+    source_dataset.pop('protocol_file');source_dataset.pop('select',None)
+    source_dataset.update(metadata_file=str(out/'source.csv'),source_domains=sources,domain_sequence=[],access_scope='source')
+    data=dict(model=task['model'],data=task['data'],datasets=[source_dataset])
+    (out/'source.yaml').write_text(yaml.safe_dump(data,sort_keys=False))
+    task['dataset']=dataset
+    dump(out/'task.json',task)
+    h5_stat=Path(dataset['h5_file']).stat()
+    return dict(name=task['name'],dataset_id=task['dataset_id'],path=str(out),target=targets[0],
+                binding={name:(out/name).read_text() for name in ('task.json','source.yaml','source.csv','source_structure.csv','test_structure.csv')},
+                h5_stat=[h5_stat.st_size,h5_stat.st_mtime_ns])
+
+
+def bind(study_path, task_paths, output, fixture=False):
+    study=read(study_path);validate_study(study)
+    tasks=[read(p) for p in task_paths]
+    names=[t['name'] for t in tasks]
+    if len(names)!=len(set(names)) or any('/' in n or n in {'.','..'} for n in names):
+        raise ValueError('Unique path-safe task names required.')
+    identities=[(t['dataset_id'],tuple(sorted(map(str,t['dataset']['source_domains']))),tuple(map(str,t['dataset']['domain_sequence']))) for t in tasks]
+    if len(set(identities))!=len(identities):
+        raise ValueError('Duplicate domain splits must not be counted as distinct experiments.')
+    if not fixture:
+        by_dataset={t['dataset_id'] for t in tasks}
+        if len(by_dataset)<study['min_datasets'] or any(sum(t['dataset_id']==d for t in tasks)<study['min_splits_per_dataset'] for d in by_dataset):
+            raise ValueError('Bind the complete prospective multi-dataset/multi-split suite before tuning.')
+    root=Path(output).resolve();root.mkdir(parents=True,exist_ok=False)
+    (root/'study.yaml').write_text(yaml.safe_dump(study,sort_keys=False))
+    descriptions=[bind_task(p,root/read(p)['name']) for p in task_paths]
+    physical_partitions={};observation_owners={};label_spaces={}
+    for task in descriptions:
+        spec=read(Path(task['path'])/'task.json');m=spec['dataset']['columns']
+        labels=tuple(spec['model']['class_names'])
+        if label_spaces.setdefault(task['dataset_id'],labels)!=labels:
+            raise ValueError('One dataset must retain its ordered class space across domain splits.')
+        for filename in ('source_structure.csv','test_structure.csv'):
+            frame=pd.read_csv(Path(task['path'])/filename,dtype=str,keep_default_na=False)
+            for identifier in frame[m['id']]:
+                key=(spec['dataset']['h5_file'],identifier)
+                if observation_owners.setdefault(key,task['dataset_id'])!=task['dataset_id']:
+                    raise ValueError('The same H5 observations were relabeled as multiple datasets.')
+        protocol=pd.read_csv(spec['dataset']['protocol_file'],dtype=str,keep_default_na=False)
+        for unit,split in protocol[[m['unit_id'],m['split']]].drop_duplicates().itertuples(index=False,name=None):
+            key=(task['dataset_id'],unit)
+            if key in physical_partitions and physical_partitions[key]!=split:
+                raise ValueError('A physical group changes partition across DG splits; preserve the global specimen assignment.')
+            physical_partitions[key]=split
+    dump(root/'tasks.json',dict(tasks=descriptions,fixture=fixture))
+    dump(root/'study_lock.json',study)
+    return root
+
+
