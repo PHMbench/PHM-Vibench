@@ -23,8 +23,8 @@ class Model(nn.Module):
         self.fusion = args_model.fusion
         if self.coordinates not in {'physical', 'index'}:
             raise ValueError('coordinates must be physical or index')
-        if self.fusion not in {'none', 'film', 'token_concat', 'late_concat'}:
-            raise ValueError('fusion must be none, film, token_concat or late_concat')
+        if self.fusion not in {'none', 'film', 'token_concat', 'late_concat', 'condition_only'}:
+            raise ValueError('fusion must be none, film, token_concat, late_concat or condition_only')
         integers = ['output_dim', 'num_classes', 'condition_dim', 'patch_size_L', 'num_patches', 'nhead']
         for key in integers:
             value = getattr(args_model, key)
@@ -36,6 +36,10 @@ class Model(nn.Module):
         self.condition_dim = args_model.condition_dim
         self.num_classes = args_model.num_classes
         self.task_id = getattr(args_model, 'model_task_id', 'classification')
+        if self.fusion == 'condition_only':
+            self.condition_only = nn.Sequential(nn.Linear(self.condition_dim, width), nn.SiLU())
+            self.head = nn.Linear(width, self.num_classes)
+            return
         # Equal seeds initialize the shared representation before any conditional branch.
         self.embedding = E_01_HSE(SimpleNamespace(patch_size_L=args_model.patch_size_L,
             patch_size_C=1, num_patches=args_model.num_patches, output_dim=width))
@@ -53,6 +57,16 @@ class Model(nn.Module):
         # file_id is accepted only for Factory signature compatibility, never used.
         if task_id is not None and task_id != self.task_id:
             raise ValueError('P08 uses one shared, explicitly configured task head')
+        if self.fusion == 'condition_only':
+            if detach_condition:
+                raise ValueError('condition-only control has no unconditioned branch')
+            if condition is None or condition.ndim != 2 or condition.shape[1] != self.condition_dim:
+                raise ValueError('Expected source-encoded condition[B,condition_dim]')
+            if not torch.isfinite(condition).all():
+                raise ValueError('condition must contain finite values')
+            z = self.condition_only(condition)
+            logits = self.head(z)
+            return (logits, z) if return_features else logits
         if x.ndim != 3 or x.shape[2] != 1 or x.shape[1] < 2 or not torch.isfinite(x).all():
             raise ValueError('P08 requires finite x[B,L,1] with L>=2; no channel guessing or padding')
         if not isinstance(detach_condition, bool):
@@ -87,6 +101,11 @@ class Model(nn.Module):
         return (logits, z) if return_features else logits
 
     def parameter_counts(self):
+        if self.fusion == 'condition_only':
+            count = sum(p.numel() for p in self.parameters())
+            branch = sum(p.numel() for p in self.condition_only.parameters())
+            return {'stored_parameters': count, 'active_parameters': count,
+                    'active_conditional_parameters': branch}
         shared = sum(p.numel() for module in (self.embedding, self.norm, self.backbone, self.head) for p in module.parameters())
         branch = {'film': self.film, 'token_concat': self.token_concat, 'late_concat': self.late_concat}
         conditional = 0 if self.fusion == 'none' else sum(p.numel() for p in branch[self.fusion].parameters())

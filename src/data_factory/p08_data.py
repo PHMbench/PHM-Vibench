@@ -385,6 +385,13 @@ def windows(record: dict[str, Any], data_config: dict[str, Any]) -> torch.Tensor
         raw = np.load(path, allow_pickle=False)
     else:
         raise ValueError("Declare .h5/.hdf5 signal data; .npy is only for tensor_fixture")
+    layout = data_config.get("signal_layout", "points_channels")
+    if layout == "points_channels_singleton":
+        if raw.ndim != 3 or raw.shape[2] != 1:
+            raise ValueError(f"Declared points_channels_singleton requires [L,C,1], got {raw.shape}")
+        raw = raw[:, :, 0]
+    elif layout != "points_channels":
+        raise ValueError(f"Unsupported explicit signal_layout: {layout!r}")
     if raw.ndim == 1:
         raw = raw[:, None]
     if raw.ndim != 2 or raw.shape[1] <= channel:

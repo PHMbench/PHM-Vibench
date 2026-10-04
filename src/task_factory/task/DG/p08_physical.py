@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import platform
 import random
-import subprocess
 import sys
 import time
 import traceback
@@ -34,8 +33,10 @@ ARMS = {
     "B0": ("index", "none"), "B1": ("physical", "none"),
     "F01": ("index", "film"), "P0": ("physical", "film"),
     "TOKEN": ("physical", "token_concat"), "LATE": ("physical", "late_concat"),
+    "C_ONLY": ("physical", "condition_only"),
 }
 Record = dict[str, Any]
+PHASES = ("data-check", "smoke", "overfit", "tune", "compare", "benchmark", "ablate")
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -133,6 +134,9 @@ def _patches(x: torch.Tensor, model, generator: torch.Generator | None = None):
 
 
 def _forward(model, x, record, condition, *, generator=None, detached=False, features=False):
+    if model.fusion == "condition_only":
+        return model(None, condition=condition.expand(len(x), -1).to(x.device),
+                     detach_condition=detached, return_features=features)
     kwargs = dict(fs=torch.full((len(x),), float(record["sampling_rate"]), device=x.device),
                   condition=condition.expand(len(x), -1).to(x.device),
                   detach_condition=detached, **_patches(x, model, generator))
@@ -291,7 +295,8 @@ def fit(config: dict, train: list[Record], val: list[Record], *, target: str,
             gradients = [p.grad for p in model.parameters() if p.grad is not None]
             if not gradients or any(not torch.isfinite(g).all() for g in gradients):
                 raise FloatingPointError("Missing or nonfinite source-training gradients")
-            active = [model.embedding, model.norm, model.backbone, model.head]
+            active = ([model.head] if model.fusion == "condition_only" else
+                      [model.embedding, model.norm, model.backbone, model.head])
             if model.fusion != "none":
                 active.append(getattr(model, model.fusion))
             if any(p.grad is None for module in active for p in module.parameters() if p.requires_grad):
@@ -384,10 +389,11 @@ def _selected(selection_root: Path, config: dict, target: str, seed: int, arm: s
 
 
 def _provenance(config: dict) -> dict:
-    root = Path(__file__).resolve().parents[4]
-    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--short"], cwd=root, capture_output=True, text=True, check=True).stdout
-    return {"code_sha": sha, "working_tree_status": dirty, "command": sys.argv,
+    from phmfactory import __version__, installed_build_identity
+    return {"package_version": __version__,
+            "observed_build": installed_build_identity(),
+            "declared_source_revision": config["environment"].get("source_revision"),
+            "command": sys.argv,
             "python": platform.python_version(), "torch": torch.__version__, "numpy": np.__version__,
             "evidence_kind": config["data"]["evidence_kind"], "industrial_claim_accepted": False}
 
@@ -427,7 +433,7 @@ def _contrasts(results: list[dict], config: dict, output: Path) -> None:
                            "delta_P_at_physical": {"P0": 1, "B1": -1},
                            "interaction": {"P0": 1, "B1": -1, "F01": -1, "B0": 1}}
         else:
-            definitions = {f"P0_minus_{arm}": {"P0": 1, arm: -1} for arm in ("B1", "LATE", "TOKEN")}
+            definitions = {f"P0_minus_{arm}": {"P0": 1, arm: -1} for arm in ("B1", "LATE", "TOKEN", "C_ONLY")}
         for name, coefficients in definitions.items():
             if not set(coefficients) <= records.keys():
                 continue
@@ -461,14 +467,18 @@ def _contrasts(results: list[dict], config: dict, output: Path) -> None:
                     "seed_std": float(np.std(values, ddof=1)) if len(values) > 1 else ""})
 
 
-def execute(config: dict, command: str, output: Path, *, target: str | None = None,
+def execute(config: dict, phase: str, output: Path, *, target: str | None = None,
             seed: int | None = None, arms: list[str] | None = None,
-            selection: Path | None = None) -> dict:
+            selection: Path | None = None, checkpoint: Path | None = None) -> dict:
     """CLI owner calls this once with the public resolver's effective configuration."""
+    command = phase
+    if checkpoint is not None and (command != "ablate" or target is None or seed is None):
+        raise ValueError("An explicit checkpoint requires ablate with one explicit target and seed")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     try:
-        return _execute(config, command, output, target=target, seed=seed, arms=arms, selection=selection)
+        return _execute(config, command, output, target=target, seed=seed, arms=arms,
+                        selection=selection, explicit_checkpoint=checkpoint)
     except Exception as exc:
         failure_path = output / "failed.json"
         if failure_path.exists():
@@ -479,7 +489,8 @@ def execute(config: dict, command: str, output: Path, *, target: str | None = No
         raise
 
 
-def _execute(config: dict, command: str, output: Path, *, target, seed, arms, selection) -> dict:
+def _execute(config: dict, command: str, output: Path, *, target, seed, arms, selection,
+             explicit_checkpoint=None) -> dict:
     if command not in {"data-check", "smoke", "overfit", "tune", "compare", "benchmark", "ablate"}:
         raise ValueError(f"Unknown P08 action: {command}")
     prior_results = []
@@ -526,7 +537,7 @@ def _execute(config: dict, command: str, output: Path, *, target, seed, arms, se
         raise ValueError("P08 target primary metric is record_macro_f1")
     arms = list(config["task"]["arms"] if arms is None else arms)
     if not arms or len(set(arms)) != len(arms) or not set(arms) <= ARMS.keys():
-        raise ValueError("Arms must be a nonempty unique subset of B0,B1,F01,P0,TOKEN,LATE")
+        raise ValueError("Arms must be a nonempty unique subset of B0,B1,F01,P0,TOKEN,LATE,C_ONLY")
     epochs = _positive_int(config["trainer"]["num_epochs"], "trainer.num_epochs")
     updates = _positive_int(config["trainer"]["updates_per_epoch"], "trainer.updates_per_epoch")
     _positive_int(config["trainer"]["batch_size"], "trainer.batch_size")
@@ -539,6 +550,11 @@ def _execute(config: dict, command: str, output: Path, *, target, seed, arms, se
         raise ValueError("Industrial P08 runs use the frozen common six-trial search")
     if command in {"compare", "benchmark", "ablate"} and selection is None:
         raise ValueError(f"{command} requires --selection; no untuned fallback")
+    if config["data"]["evidence_kind"] == "industrial" and command in {"compare", "benchmark", "ablate"}:
+        from phmfactory import installed_build_identity
+        if installed_build_identity()["kind"] != "installed_distribution":
+            raise RuntimeError("Industrial comparison requires installed distribution provenance; "
+                               "a caller-declared source revision does not identify this checkout")
     if command == "benchmark" and (target is not None or seed is not None):
         raise ValueError("benchmark evaluates the full declared matrix; use compare for a subset")
     if command == "benchmark":
@@ -615,9 +631,20 @@ def _execute(config: dict, command: str, output: Path, *, target, seed, arms, se
                 arm_path.mkdir()
                 completed = _completed_evaluation(Path(selection), held_out, repetition, "P0")
                 checkpoint_path = Path(selection) / f"target-{held_out}" / f"seed-{repetition}" / "arm-P0" / "checkpoint.pt"
+                admitted_path = checkpoint_path
+                if explicit_checkpoint is not None:
+                    checkpoint_path = Path(explicit_checkpoint)
                 if json.loads((Path(selection) / "records.json").read_text()) != records:
                     raise ValueError("Inventory metadata changed after checkpoint fitting")
                 checkpoint, model, encoder = _load_checkpoint(checkpoint_path, held_out, repetition, "P0", device)
+                if explicit_checkpoint is not None:
+                    admitted = torch.load(admitted_path, map_location="cpu", weights_only=False)
+                    same_state = (checkpoint["state_dict"].keys() == admitted["state_dict"].keys()
+                        and all(torch.equal(value, admitted["state_dict"][key])
+                                for key, value in checkpoint["state_dict"].items()))
+                    if (not same_state or checkpoint["model_config"] != admitted["model_config"]
+                            or checkpoint["encoder"] != admitted["encoder"]):
+                        raise ValueError("Explicit checkpoint differs from the completed selected model/encoder")
                 if checkpoint["epoch"] != completed["selected_epoch"] or checkpoint["source_validation_brier"] != completed["source_validation_brier"]:
                     raise ValueError("Ablation checkpoint no longer matches its completed evaluation")
                 if checkpoint["train_record_ids"] != split_ids["train"] or checkpoint["validation_record_ids"] != split_ids["validation"]:
@@ -704,4 +731,5 @@ def _execute(config: dict, command: str, output: Path, *, target, seed, arms, se
             for r in results:
                 writer.writerow([r["target"], r["seed"], r["arm"], r["metrics"]["record_macro_f1"], r["metrics"]["record_balanced_accuracy"]])
     write_json(output / "summary.json", summary)
+    summary.update(result_dir=str(output.resolve()), run_summary=str((output / "summary.json").resolve()))
     return summary

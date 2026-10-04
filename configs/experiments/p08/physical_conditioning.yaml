@@ -1,4 +1,4 @@
-# Research entrypoint: python -m scripts.p08_physical <phase> --config <this file>.
+# Research entrypoint: phmfactory research <phase> --config <this file>.
 # Machine-local paths are explicit --local-config overrides. No dataset is downloaded.
 pipeline: Pipeline_01_Fault_Diagnosis
 environment:
@@ -41,13 +41,14 @@ model:
 task:
   type: DG
   name: p08_physical
+  execution: research
   loss: CE
   systems: ['1', '13', '6', '12', '19']
   seeds: [42, 123, 456, 789, 999]
   split_seed: 42
   tuning_seed: 42
   bootstrap_replicates: 1000
-  arms: [B1, LATE, TOKEN, P0]
+  arms: [B1, C_ONLY, LATE, TOKEN, P0]
   comparison: tuned
   search_learning_rates: [0.0003, 0.001, 0.003]
   search_weight_decays: [0.0, 0.0001]

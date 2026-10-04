@@ -96,11 +96,22 @@ def test_selected_checkpoint_reproduces_predictions_and_ablation_never_retrains(
     def forbid_fit(*args, **kwargs):
         raise AssertionError("An intervention must not retrain")
     monkeypatch.setattr(runner, "fit", forbid_fit)
-    _run(config, "ablate", tmp_path / "ablate", arms=["P0"], selection=tmp_path / "compare")
+    import shutil
+    explicit = tmp_path / "explicit-selected-checkpoint.pt"
+    shutil.copyfile(path / "checkpoint.pt", explicit)
+    _run(config, "ablate", tmp_path / "ablate", arms=["P0"], selection=tmp_path / "compare",
+         checkpoint=explicit)
     ablation = tmp_path / "ablate/target-19/seed-42/arm-P0"
     assert json.loads((ablation / "predictions_correct.json").read_text()) == restored
     assert json.loads((ablation / "wrong.json").read_text())["status"] == "not_identifiable"
     assert json.loads((ablation / "metrics_correct.json").read_text())["mean_representation_l2_from_correct"] == 0
+    changed = torch.load(explicit, weights_only=False)
+    key = next(iter(changed["state_dict"]))
+    changed["state_dict"][key] = changed["state_dict"][key] + .01
+    torch.save(changed, explicit)
+    with pytest.raises(ValueError, match="differs from the completed selected model"):
+        _run(config, "ablate", tmp_path / "altered", arms=["P0"], selection=tmp_path / "compare",
+             checkpoint=explicit)
     with pytest.raises(ValueError, match="target, seed, or arm"):
         runner._load_checkpoint(path / "checkpoint.pt", "19", 123, "P0", torch.device("cpu"))
 
@@ -333,15 +344,16 @@ def test_source_brier_balances_units_and_systems_not_record_counts():
 
 
 def test_cli_uses_public_config_precedence_and_preserves_existing_runs(config, tmp_path):
-    from scripts.p08_physical import main
+    from phmfactory.cli import main
+    config["task"]["execution"] = "research"
     base = tmp_path / "experiment.yaml"
     local = tmp_path / "local.yaml"
     base.write_text(yaml.safe_dump(config))
     local.write_text(yaml.safe_dump({"model": {"output_dim": 16}}))
     output = tmp_path / "cli"
-    assert main(["smoke", "--config", str(base), "--local-config", str(local),
+    assert main(["research", "smoke", "--config", str(base), "--local-config", str(local),
                  "--override", "model.output_dim=8", "--output", str(output),
-                 "--target", "19", "--seed", "42", "--arms", "B1"]) == 0
+                 "--target", "19", "--seed", "42", "--arms", "B1"])["status"] == "completed"
     assert json.loads((output / "config.json").read_text())["model"]["output_dim"] == 8
     _run(config, "smoke", output, arms=["P0"])
     assert len(json.loads((output / "summary.json").read_text())["results"]) == 2

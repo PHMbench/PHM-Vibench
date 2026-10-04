@@ -23,6 +23,7 @@ result establishes neither scientific novelty nor empirical PHM benefit.
 | `classification.selective_diagnosis` | `configs/experiments/p05/selective_diagnosis.yaml` | Joint certificate, calibration and matched selective risk |
 | `classification.symbolic_diagnosis` | `configs/experiments/p06/symbolic_fixture.yaml` | Conditional head certificates and representation/diagnosis comparison |
 | `DG.operator_path` | `configs/experiments/p07/operator_path.yaml` | Regularized objective, source export and independent path replay |
+| `DG.p08_physical` | `configs/experiments/p08/physical_conditioning.yaml` | Source-only conditioning and same-information fusion controls |
 
 Source training/search accepts only train/val packs; independent matching/test packs use explicit checkpoints, saved normalization and source identities. Historical G050 is not re-executed or relabelled.
 
@@ -31,3 +32,5 @@ The selective-diagnosis slice retains unit weighting, score ties and undefined a
 Symbolic baseline tuning requires a separate source-only pack before signal access. Frozen evaluation consumes its completed tuning directory and checks saved source membership. Synthetic fit_state.json stores affine heads, not a source exporter. Existing representation contrasts are not renamed an independent repair algorithm.
 
 Operator-path export retains the default three-way contract and adds explicit source-only export. Training excludes target-containing packs; evaluation/replay use explicit checkpoints and saved paths. Full benchmark orchestration and paired statistical summaries are not claimed migrated.
+
+C_ONLY is source-encoded condition → linear → SiLU → shared classifier, without HSE, patches or vibration computation. Common record/window sampling remains; all five tuned arms retain the six-candidate search. These contrasts do not estimate conditional mutual information. Frozen ablation checks an explicit checkpoint against the completed selected model/encoder. Declared points_channels_singleton data accepts [L,C,1] without guessing axes. Industrial comparisons require observed installed-distribution identity; this is not empirical qualification.
