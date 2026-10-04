@@ -30,6 +30,7 @@ def task_source(tmp_path):
                     signal=(1+4*label)*np.sin(2*np.pi*(.08+.01*int(domain))*time)
                     h5[str(index)]=signal[:,None]
                     rows.append(dict(Id=str(index),Label=str(label),Domain=str(domain),Fs='12000',RPM='1000'))
+                    # The same physical specimen across conditions has one split.
                     assign.append(dict(Id=str(index),Unit=f'{split}_{label}',Split=split))
     pd.DataFrame(rows).to_csv(tmp_path/'metadata.csv',index=False)
     pd.DataFrame(assign).to_csv(tmp_path/'protocol.csv',index=False)
