@@ -88,6 +88,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--steps-per-epoch", type=int, default=50)
     p.add_argument("--units-per-domain", type=int, default=2)
     p.add_argument("--lr", type=float, default=.001)
+    p.add_argument("--weight-decay", type=float, default=0.)
+    p.add_argument("--scheduler", choices=("none","cosine"), default="none")
+    p.add_argument("--dg", action="store_true", help="Require source-only metadata; allow explicitly supported classification baselines.")
     p.add_argument("--pair-shift", type=int, default=0)
     p.add_argument("--reference-checkpoint")
     p.add_argument("--reference-config")
@@ -115,9 +118,11 @@ def run(args: argparse.Namespace) -> Path:
     settings = copy.deepcopy(cfg["model"])
     identity = (settings["type"], settings["name"])
     expected = ("X_model", "TSPN") if args.role == "reference" else ("CNN", "ResNet1D")
-    if identity != expected or settings.get("weights_path"):
+    supported={("CNN","ResNet1D"),("CNN","TCN"),("Transformer","PatchTST"),("X_model","BASE_ExplainableCNN")}
+    allowed=(identity in supported) if args.role=="baseline" and args.dg else identity==expected
+    if not allowed or settings.get("weights_path"):
         raise ValueError(f"Role {args.role} requires the existing {expected} model initialized without weights.")
-    if args.role == "baseline" and (settings.get("layers") != [2, 2, 2, 2] or
+    if args.role == "baseline" and not args.dg and (settings.get("layers") != [2, 2, 2, 2] or
                                      settings.get("initial_channels") != 64 or settings.get("block_type") != "basic"):
         raise ValueError("The declared ResNet1D baseline uses basic blocks [2,2,2,2] and initial_channels=64.")
     classes = int(settings["num_classes"])
@@ -143,7 +148,7 @@ def run(args: argparse.Namespace) -> Path:
         reference_settings = copy.deepcopy(yaml.safe_load(Path(args.reference_config).read_text())["model"])
         if (reference_settings["type"], reference_settings["name"]) != ("X_model", "TSPN") or int(reference_settings["num_classes"]) != classes:
             raise ValueError("The fixed reference must be the original TSPN in the same class space.")
-        if int(reference_settings["in_dim"]) != length or int(reference_settings["in_channels"]) != int(settings["input_dim"]):
+        if int(reference_settings["in_dim"]) != length or int(reference_settings["in_channels"]) != int(settings.get("input_dim",settings.get("in_channels"))):
             raise ValueError("Baseline and reference must consume the same window and channels.")
         reference_settings["device"] = args.device
         reference = model_factory(SimpleNamespace(**reference_settings), metadata=None).to(args.device)
@@ -151,13 +156,17 @@ def run(args: argparse.Namespace) -> Path:
         reference.requires_grad_(False).eval()
         frozen = {key: value.detach().clone() for key, value in reference.state_dict().items()}
 
+    if args.dg and dataset.get("access_scope")!="source":
+        raise ValueError("DG training requires a separately bound source-only metadata file.")
+    if args.dg and identity==("CNN","TCN") and int(settings.get("kernel_size",2))<2:
+        raise ValueError("This pinned TCN requires kernel_size>=2 (zero-chomp kernels are excluded).")
     records = read_records(dataset, data)
     sources = list(map(str, dataset["source_domains"]))
     if len(sources) < 2 or len({r["sample_rate_hz"] for r in records}) != 1:
         raise ValueError("D1 requires at least two source conditions with one sampling convention.")
     train = materialize([r for r in records if r["split"] == "update" and r["domain"] in sources], dataset, data)
     validation = materialize([r for r in records if r["split"] == "validation" and r["domain"] in sources], dataset, data)
-    expected_channels = int(settings["in_channels"] if args.role == "reference" else settings["input_dim"])
+    expected_channels = int(settings["in_channels"] if args.role == "reference" else settings.get("input_dim",settings.get("in_channels")))
     if any(u["x"].shape[-1] != expected_channels for u in train+validation):
         raise ValueError("Observed channels differ from the declared classifier input.")
     pools = group_pools(train, sources)
@@ -175,7 +184,10 @@ def run(args: argparse.Namespace) -> Path:
     write_csv(output/"development_groups.csv", [dict(group_id=group, split=split) for group, split in groups])
     torch.save({key: value.detach().cpu().clone() for key, value in model.state_dict().items()}, output/"initial_candidate_state.pt")
     view = _EvaluationView(model, reference, classes, args.reference_temperature)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    if not math.isfinite(args.weight_decay) or args.weight_decay<0:
+        raise ValueError("weight_decay must be finite and nonnegative.")
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,args.epochs) if args.scheduler=="cosine" else None
     best, best_epoch = float("inf"), None
     history, sampling, batches = [], [], []
     fit_seconds = selection_seconds = export_seconds = 0.
@@ -240,16 +252,20 @@ def run(args: argparse.Namespace) -> Path:
                 write_csv(output/"selected_source_validation_units.csv", rows)
                 predictions = {key: np.concatenate(value) for key, value in arrays.items()}
                 predictions.update(raw_class_names=np.asarray(class_names), candidate_class_names=np.asarray(class_names),
-                                   arm=np.asarray("p0" if args.role == "reference" else "ResNet1D"), seed=np.asarray(args.seed))
+                                   arm=np.asarray("p0" if args.role == "reference" else settings["name"]), seed=np.asarray(args.seed))
                 np.savez_compressed(output/"selected_source_validation_windows.npz", **predictions)
                 export_seconds += _clock(args.device)-started
+            if scheduler is not None: scheduler.step()
             print(history[-1], flush=True)
         if reference is not None:
             if reference.training or any(p.requires_grad or p.grad is not None for p in reference.parameters()) or not all(
                 torch.equal(frozen[key], value) for key, value in reference.state_dict().items()
             ):
                 raise AssertionError("Frozen reference parameters or buffers changed.")
-        load_ckpt(model, str(output/"selected_candidate.pt"), strict=True)
+        # This trainer writes bare model keys. TCN itself owns a `network`
+        # submodule, which is not the Lightning wrapper prefix.
+        selected=torch.load(output/"selected_candidate.pt",map_location=args.device,weights_only=True)
+        model.load_state_dict(selected["state_dict"],strict=True)
         model.eval()
         scope.update(status="classifier_fitted", best_epoch=best_epoch, selected_score=best,
                      reference_state_unchanged=True if reference is not None else None,
