@@ -1,0 +1,124 @@
+# Explicit --data, --output and phase-specific --checkpoint/--selection are required.
+# Tune/train/overfit consume a source-only train/val export. Evaluation uses the full split export.
+# Existing 18-candidate pilot search; this is not baseline-qualified evidence.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: operator_path
+  seed: 0
+  output_dir: results/operator_path
+data:
+  domain_holdout: true
+  evidence_kind: unqualified_explicit_export
+model:
+  type: X_model
+  name: P07OperatorPath
+task:
+  type: DG
+  name: operator_path
+  execution: research
+  operator_path:
+    purpose: Shared validation-only pilot search; industrial evidence requires qualified
+      exports and external task baseline
+    training:
+      lr: 0.001
+      weight_decay: 0.0001
+      batch_size: 32
+      epochs: 50
+      residual_weight: 0.1
+      concentration_weight: 0.1
+      head_lr_multiplier: 1.0
+    search:
+    - lr: 0.0005
+      weight_decay: 0
+      head_lr_multiplier: 1
+    - lr: 0.0005
+      weight_decay: 0
+      head_lr_multiplier: 10
+    - lr: 0.0005
+      weight_decay: 0
+      head_lr_multiplier: 100
+    - lr: 0.0005
+      weight_decay: 0.0001
+      head_lr_multiplier: 1
+    - lr: 0.0005
+      weight_decay: 0.0001
+      head_lr_multiplier: 10
+    - lr: 0.0005
+      weight_decay: 0.0001
+      head_lr_multiplier: 100
+    - lr: 0.001
+      weight_decay: 0
+      head_lr_multiplier: 1
+    - lr: 0.001
+      weight_decay: 0
+      head_lr_multiplier: 10
+    - lr: 0.001
+      weight_decay: 0
+      head_lr_multiplier: 100
+    - lr: 0.001
+      weight_decay: 0.0001
+      head_lr_multiplier: 1
+    - lr: 0.001
+      weight_decay: 0.0001
+      head_lr_multiplier: 10
+    - lr: 0.001
+      weight_decay: 0.0001
+      head_lr_multiplier: 100
+    - lr: 0.003
+      weight_decay: 0
+      head_lr_multiplier: 1
+    - lr: 0.003
+      weight_decay: 0
+      head_lr_multiplier: 10
+    - lr: 0.003
+      weight_decay: 0
+      head_lr_multiplier: 100
+    - lr: 0.003
+      weight_decay: 0.0001
+      head_lr_multiplier: 1
+    - lr: 0.003
+      weight_decay: 0.0001
+      head_lr_multiplier: 10
+    - lr: 0.003
+      weight_decay: 0.0001
+      head_lr_multiplier: 100
+    seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    tuning_seeds:
+    - 100
+    - 101
+    intervention_limit: 120
+    search_budget: 238
+    protocol_acceptance:
+      utility_tolerance: null
+      minimum_coverage: null
+    overfit:
+      steps: 600
+      lr: 0.01
+      min_accuracy: 0.95
+      max_ce: 0.2
+      head_lr_multiplier: 100.0
+    selection: Minimum mean source-validation CE across both tuning seeds; identical
+      18 lr/weight-decay/head-multiplier candidates for all classifiers; regularization
+      weights fixed before test access
+    limitations: Pilot range, not an official published optimum. Learned/CNN controls
+      are not parameter matched. Five seeds do not by themselves justify inferential
+      claims.
+    arms:
+    - sparse
+    - routing_concentration
+    - uniform
+    - dense
+    - learned
+    - cnn
+    - resnet1d
+    - proposed
+    comparison: competitive
+    evaluation_partition: test
+trainer:
+  device: cpu
+  devices: 1
