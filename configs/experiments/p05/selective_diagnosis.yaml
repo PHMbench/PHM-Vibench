@@ -1,0 +1,102 @@
+# Feature archive path is supplied by --data; operators and training options are below.
+# Empty factory blocks are intentional: this explicit research path does not invoke generic waveform factories.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  output_dir: results/selective_diagnosis
+data: {}
+model: {}
+task:
+  type: classification
+  name: selective_diagnosis
+  execution: research
+  selective_diagnosis:
+    suite: all
+    epochs: 60
+    rules: 16
+    radius: 0.1
+    alpha: 0.05
+    delta: 0.05
+    seeds:
+    - 42
+    - 123
+    - 456
+    - 789
+    - 1024
+    device: cpu
+    learning_rate: 0.003
+    weight_decay: 0.0001
+    batch_size: 256
+    mlp_width: 64
+    selector_width: 64
+    target_coverage: 0.9
+    coverage_penalty: 32.0
+    aux_weight: 0.5
+    calibration: cluster
+    methods:
+    - joint
+    - fuzzy_rule_score
+    - fuzzy_msp
+    - class_only
+    - mlp_msp
+    - selectivenet_feature
+    tuning_seed: 20261003
+    search:
+      selection_metric: unit_balanced_tune_nll
+      training:
+        epochs: 60
+        patience: 10
+        batch_size: 256
+        weight_decay: 0.0001
+        radius: 0.1
+      candidates:
+        fuzzy:
+        - rules: 8
+          learning_rate: 0.0005
+        - rules: 8
+          learning_rate: 0.001
+        - rules: 8
+          learning_rate: 0.003
+        - rules: 16
+          learning_rate: 0.0005
+        - rules: 16
+          learning_rate: 0.001
+        - rules: 16
+          learning_rate: 0.003
+        mlp:
+        - mlp_width: 32
+          learning_rate: 0.0005
+        - mlp_width: 32
+          learning_rate: 0.001
+        - mlp_width: 32
+          learning_rate: 0.003
+        - mlp_width: 64
+          learning_rate: 0.0005
+        - mlp_width: 64
+          learning_rate: 0.001
+        - mlp_width: 64
+          learning_rate: 0.003
+        selective:
+        - selector_width: 32
+          learning_rate: 0.0005
+        - selector_width: 32
+          learning_rate: 0.001
+        - selector_width: 32
+          learning_rate: 0.003
+        - selector_width: 64
+          learning_rate: 0.0005
+        - selector_width: 64
+          learning_rate: 0.001
+        - selector_width: 64
+          learning_rate: 0.003
+      scope: bounded feature-track search; proposed ranges, not previously measured
+        optimal settings
+      target_coverage: 0.9
+      selectivenet:
+        objective: paper normalized selective risk
+        coverage_penalty: 32
+        aux_weight: 0.5
+      test_access: false
+      calibration_access: false
+trainer:
+  devices: 1
+  strategy: auto

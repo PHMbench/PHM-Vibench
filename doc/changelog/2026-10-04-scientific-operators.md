@@ -20,5 +20,8 @@ result establishes neither scientific novelty nor empirical PHM benefit.
 | Scientific task | Packaged configuration | Existing computation |
 |---|---|---|
 | `DG.expert_intervention` | `configs/experiments/p04/expert_intervention.yaml` | Role assignment and frozen-gate intervention contrasts |
+| `classification.selective_diagnosis` | `configs/experiments/p05/selective_diagnosis.yaml` | Joint certificate, calibration and matched selective risk |
 
 Source training/search accepts only train/val packs; independent matching/test packs use explicit checkpoints, saved normalization and source identities. Historical G050 is not re-executed or relabelled.
+
+The selective-diagnosis slice retains unit weighting, score ties and undefined all-abstain risk. Prediction rejects raw-feature broadcasting; plots reject failed/unqualified runs and preserve contrast signs. Existing independent-unit qualifications remain required.
