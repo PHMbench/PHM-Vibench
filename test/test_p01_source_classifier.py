@@ -100,8 +100,17 @@ def test_reference_and_baseline_source_training_checkpoint_and_access(source_fix
         scope = json.loads((output/"result_scope.json").read_text())
         assert scope["status"] == "classifier_fitted"
         assert scope["optimizer_steps"] == 2
+        assert scope["supervised_endpoints"] == (1 if output == reference_dir else 2)
+        assert scope["sampled_windows"] == 16
+        assert scope["supervised_window_endpoints"] == scope["sampled_windows"]*scope["supervised_endpoints"]
+        assert scope["total_parameters"] == scope["trainable_parameters"]
+        assert scope["reference_parameters"] == (0 if output == reference_dir else sum(p.numel() for p in fusion.reference.parameters()))
         assert not scope["permanent_test_predicted"] and not scope["independent_assessment_performed"]
         assert scope["fit"]["groups"] == scope["selection"]["groups"] == 2
+        qualification = json.loads((output/"source_qualification.json").read_text())
+        assert qualification["expected_source_conditions"] == ["0", "2"]
+        assert len(qualification["source_conditions"]) == 2
+        assert all(row["class_support"] == [2, 2] for row in qualification["source_conditions"])
         with np.load(output/"selected_source_validation_windows.npz", allow_pickle=False) as p:
             assert np.isfinite(p["candidate_log_probs"]).all()
             np.testing.assert_allclose(np.exp(p["candidate_log_probs"]), p["candidate_probs"], rtol=1e-6)
@@ -145,6 +154,40 @@ def test_reference_uses_ce_and_earliest_validation_tie(source_fixture, monkeypat
     assert scope["selector"] == "worst_domain_CE"
 
 
+def test_condition_dg_reference_matches_baseline_paired_sampling(source_fixture, tmp_path, monkeypatch):
+    arguments, _ = source_fixture
+    data = yaml.safe_load((tmp_path/"data.yaml").read_text())
+    data["datasets"][0]["access_scope"] = "source"
+    (tmp_path/"data.yaml").write_text(yaml.safe_dump(data))
+    seen = []
+    original_loss = trainer.supervised_loss
+    def capture_loss(logits, labels, groups, domains, **kwargs):
+        seen.append((kwargs["brier_weight"], kwargs["paired_logits"] is not None))
+        return original_loss(logits, labels, groups, domains, **kwargs)
+    monkeypatch.setattr(trainer, "supervised_loss", capture_loss)
+    reference = trainer.run(arguments("reference", "paired-reference", ["--dg", "--pair-shift", "4"]))
+    baseline = trainer.run(arguments("baseline", "paired-baseline", [
+        "--dg", "--pair-shift", "4", "--reference-config", str(reference/"model_config.yaml"),
+        "--reference-checkpoint", str(reference/"selected_candidate.pt")]))
+    pd.testing.assert_frame_equal(pd.read_csv(reference/"sampling.csv"), pd.read_csv(baseline/"sampling.csv"))
+    rng = random.Random(10042)
+    assert pd.read_csv(reference/"training_batches.csv").pair_shift.tolist() == [rng.randint(1, 4) for _ in range(2)]
+    assert seen == [(0., True), (0., True), (.25, True), (.25, True)]
+    scope = json.loads((reference/"result_scope.json").read_text())
+    assert scope["objective"] == "paired_group_balanced_CE" and scope["selector"] == "worst_domain_CE"
+    assert scope["supervised_endpoints"] == 2 and scope["supervised_window_endpoints"] == 32
+
+
+def test_condition_dg_reference_cannot_omit_the_paired_shift(source_fixture, tmp_path):
+    arguments, accesses = source_fixture
+    data = yaml.safe_load((tmp_path/"data.yaml").read_text())
+    data["datasets"][0]["access_scope"] = "source"
+    (tmp_path/"data.yaml").write_text(yaml.safe_dump(data))
+    with pytest.raises(ValueError, match="same declared paired shift"):
+        trainer.run(arguments("reference", "unpaired-dg", ["--dg"]))
+    assert not accesses
+
+
 def test_nonfinite_training_preserves_failure_without_recipe_change(source_fixture, monkeypatch, tmp_path):
     arguments, _ = source_fixture
     monkeypatch.setattr(trainer, "supervised_loss", lambda *args, **kwargs: torch.tensor(float("nan")))
@@ -153,3 +196,59 @@ def test_nonfinite_training_preserves_failure_without_recipe_change(source_fixtu
     scope = json.loads((tmp_path/"failed"/"result_scope.json").read_text())
     assert scope["status"] == "failed" and scope["error_type"] == "FloatingPointError"
     assert not (tmp_path/"failed"/"selected_candidate.pt").exists()
+    assert json.loads((tmp_path/"failed"/"failure.json").read_text())["error_type"] == "FloatingPointError"
+
+
+def test_invalid_pretraining_request_keeps_failure_and_existing_output(source_fixture, tmp_path):
+    arguments, accesses = source_fixture
+    with pytest.raises(ValueError, match="positive training budget"):
+        trainer.run(arguments("reference", "invalid", ["--lr", "-1"]))
+    scope = json.loads((tmp_path/"invalid"/"result_scope.json").read_text())
+    assert scope["status"] == "failed"
+    assert not accesses
+    sentinel = tmp_path/"invalid"/"user.txt"
+    sentinel.write_text("preserve")
+    with pytest.raises(FileExistsError):
+        trainer.run(arguments("reference", "invalid"))
+    assert sentinel.read_text() == "preserve"
+
+
+def test_formal_dataset_cannot_bypass_source_isolation_by_omitting_dg(source_fixture, tmp_path):
+    arguments, accesses = source_fixture
+    data = yaml.safe_load((tmp_path/"data.yaml").read_text())
+    data["datasets"][0]["protocol"] = "specimen_disjoint_condition_dg"
+    (tmp_path/"data.yaml").write_text(yaml.safe_dump(data))
+    with pytest.raises(ValueError, match="source-only metadata"):
+        trainer.run(arguments("reference", "unisolated"))
+    assert not accesses
+
+
+def test_mwa_six_level_identity_cannot_silently_use_legacy_four_levels(source_fixture, tmp_path):
+    arguments, _ = source_fixture
+    (tmp_path/"baseline.yaml").write_text(yaml.safe_dump(dict(model=dict(
+        type="X_model", name="MWA_CNN", in_channels=1, num_classes=2, depth=4))))
+    with pytest.raises(ValueError, match="explicit depth=6"):
+        trainer.run(arguments("baseline", "wrong-mwa", [
+            "--dg", "--pair-shift", "4", "--reference-config", str(tmp_path/"reference.yaml"),
+            "--reference-checkpoint", str(tmp_path/"not-read.pt")]))
+
+
+def test_mwa_six_level_baseline_runs_and_restores_through_shared_trainer(source_fixture, tmp_path):
+    arguments, _ = source_fixture
+    reference_dir = trainer.run(arguments("reference", "mwa-reference"))
+    (tmp_path/"baseline.yaml").write_text(yaml.safe_dump(dict(model=dict(
+        type="X_model", name="MWA_CNN", in_channels=1, num_classes=2, depth=6))))
+    data = yaml.safe_load((tmp_path/"data.yaml").read_text())
+    data["datasets"][0]["access_scope"] = "source"
+    (tmp_path/"data.yaml").write_text(yaml.safe_dump(data))
+    output = trainer.run(arguments("baseline", "mwa-six", [
+        "--dg", "--pair-shift", "4", "--reference-config", str(reference_dir/"model_config.yaml"),
+        "--reference-checkpoint", str(reference_dir/"selected_candidate.pt")]))
+    saved = torch.load(output/"selected_candidate.pt", weights_only=True)
+    assert saved["model"]["name"] == "MWA_CNN" and saved["model"]["depth"] == 6
+    restored, _ = load_model(output/"selected_candidate.pt", "cpu")
+    with torch.no_grad():
+        details = restored.forward_details(torch.ones(2, 128, 1))
+    assert details["candidate_logits"].shape == (2, 2)
+    assert torch.isfinite(details["candidate_logits"]).all()
+    assert (output/"source_qualification.json").is_file()

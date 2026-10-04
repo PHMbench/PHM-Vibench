@@ -13,13 +13,30 @@ import pandas as pd
 
 def read_records(dataset, config):
     from experiments.p01.window_io import _h5_metadata_frame, _vibench_id
+    from experiments.p01.condition_contract import (
+        ConditionContractError, bound_condition_task, is_condition_dg, validate_condition_task,
+    )
     from src.data_factory.H5DataDict import H5DataDict
+    formal = is_condition_dg(dataset, config)
+    condition_task = None
+    if formal:
+        condition_task = bound_condition_task(dataset, config)
+        validate_condition_task(condition_task)
+        if dataset.get('access_scope') not in {'source', 'test'}:
+            raise ConditionContractError('SPLIT_INVALID', 'Formal model input must be an isolated source or test binding.')
+        if any(v['kind'] == 'trajectory' for v in condition_task['physical_conditions']['variables'].values()):
+            raise ConditionContractError('CONDITION_UNVERIFIED',
+                'The current scalar-RPM window interface does not implement documented condition trajectories; do not substitute mean RPM.')
     if dataset['format'] != 'vibench_h5':
         raise ValueError('Fusion uses the existing Vibench H5, not a second waveform format.')
     path=Path(dataset['metadata_file']).expanduser().resolve()
     read=pd.read_excel if path.suffix.lower()=='.xlsx' else pd.read_csv
     frame=read(path,dtype=str,keep_default_na=False)
-    mapping=dataset['columns']; idcol=mapping['id']
+    mapping=dict(dataset['columns']); idcol=mapping['id']
+    if formal:
+        for canonical, legacy in (('specimen_id', 'unit_id'), ('condition_id', 'domain')):
+            if canonical in mapping and legacy not in mapping:
+                mapping[legacy] = mapping[canonical]
     speed_pattern = dataset.get('rotation_speed_pattern')
     if speed_pattern is not None:
         speed_pattern = re.compile(speed_pattern)
@@ -44,7 +61,13 @@ def read_records(dataset, config):
         allowed_splits={'update','validation'} if scope=='source' else {'test'}
         allowed_domains=set(map(str,dataset['source_domains'])) if scope=='source' else set(map(str,dataset['source_domains']+dataset['domain_sequence']))
         if not set(frame[mapping['split']]).issubset(allowed_splits) or not set(frame[mapping['domain']]).issubset(allowed_domains):
-            raise ValueError('Isolated metadata contains forbidden split/domain rows before labels or H5 are accessed.')
+            raise ConditionContractError('SPLIT_INVALID', 'Isolated metadata contains forbidden split/domain rows before labels or H5 are accessed.')
+    if formal:
+        physical = condition_task['physical_conditions']
+        source_column = physical['mapping']['source_column']
+        if source_column not in frame:
+            raise ConditionContractError('CONDITION_UNVERIFIED', f'Documented condition mapping column {source_column!r} is absent.')
+        validate_condition_task(condition_task, frame.to_dict('records'))
     h5=Path(dataset['h5_file']).expanduser().resolve();records=[];partitions={};seen=set()
     with H5DataDict(str(h5)) as signals:
         for row in frame.to_dict('records'):
@@ -70,6 +93,10 @@ def read_records(dataset, config):
             for k in ('sample_rate_hz','rotation_speed_rpm'):
                 r[k]=float(r[k])
                 if not np.isfinite(r[k]) or r[k]<=0:raise ValueError(f'Invalid measured {k}.')
+            if formal:
+                r['specimen_id'] = r['unit_id']
+                r['condition_id'] = r['domain']
+                r['rotation_speed_kind'] = dataset['rotation_speed_kind']
             r['h5_key']=_vibench_id(r['id']);r['path']=str(h5)
             r['acquisition_id']=r['h5_key']
             if r['h5_key'] in seen:raise ValueError('Repeated H5 acquisition.')
@@ -90,15 +117,18 @@ def read_records(dataset, config):
         if any(r['split'] not in {'update','validation'} for r in records):
             raise ValueError('Source-only DG metadata contains a holdout record.')
     elif scope=='test':
-        if any(r['split']!='test' for r in records) or observed!=set(declared):
-            raise ValueError('Test-only DG input must contain exactly the frozen test population.')
+        if (any(r['split']!='test' for r in records) or not observed.issubset(declared)
+                or not set(future).issubset(observed)):
+            raise ConditionContractError('SPLIT_INVALID', 'Test-only DG input requires the unseen target and only declared held-out observations.')
     elif set(declared)!=observed:
         raise ValueError('Declare every selected condition.')
     for d in (sources if scope!='test' else []):
         for split in ('update','validation'):
             if not any(r['domain']==d and r['split']==split for r in records):
                 raise ValueError(f'{d} lacks {split} acquisitions.')
-    for d in (declared if scope!='source' else []):
+    # Some datasets have no held-out-specimen measurements at source settings.
+    # Their absence limits the A control; it must not invalidate a valid B target.
+    for d in (future if scope=='test' else declared if scope!='source' else []):
         if not any(r['domain']==d and r['split']=='test' for r in records):
             raise ValueError(f'{d} lacks permanent test acquisitions; declared conditions cannot disappear from evaluation.')
     if scope!='test' and {r['label'] for r in records if r['domain'] in sources and r['split']=='update'}!=set(range(int(config['model']['num_classes']))):

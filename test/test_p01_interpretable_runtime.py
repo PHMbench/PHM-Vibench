@@ -124,7 +124,45 @@ def test_reference_competence_gate_blocks_before_optimizer(runtime,tmp_path,monk
     result=json.loads((tmp_path/'blocked/reference_qualification.json').read_text())
     assert not result['passed'] and not result['independent_test_guarantee']
     assert all(row['accuracy']==.5 for row in result['source_conditions'])
+    assert all(row['class_recall']==[1.,0.] for row in result['source_conditions'])
+    assert json.loads((tmp_path/'blocked/failure.json').read_text())['error_type']=='ValueError'
     assert not (tmp_path/'blocked/selected_candidate.pt').exists()
+
+
+def test_condition_dg_refuses_inline_test_even_without_flag(runtime,tmp_path,monkeypatch):
+    _,data=runtime
+    data['datasets'][0].update(protocol='specimen_disjoint_condition_dg',access_scope='source')
+    (tmp_path/'data.yaml').write_text(yaml.safe_dump(data))
+    monkeypatch.setattr(sys,'argv',run_args(tmp_path,'inline-test',['--evaluate-test']))
+    with pytest.raises(ValueError,match='separate frozen operation'):
+        trainer.main()
+    scope=json.loads((tmp_path/'inline-test/result_scope.json').read_text())
+    assert scope['status']=='failed' and not scope['permanent_test_predicted']
+    assert not (tmp_path/'inline-test/selected_candidate.pt').exists()
+
+
+def test_condition_dg_reference_qualification_cannot_be_omitted(runtime,tmp_path,monkeypatch):
+    _,data=runtime
+    source_records=[r for r in trainer.read_records(data['datasets'][0],data)
+                    if r['domain'] in {'0','1'} and r['split'] in {'update','validation'}]
+    data['datasets'][0].update(protocol='specimen_disjoint_condition_dg',access_scope='source')
+    (tmp_path/'data.yaml').write_text(yaml.safe_dump(data))
+    # Population qualification is exercised here; the separate condition-contract
+    # tests cover physical evidence validation before this reader boundary.
+    monkeypatch.setattr(trainer,'read_records',lambda *_:source_records)
+    monkeypatch.setattr(sys,'argv',run_args(tmp_path,'default-gate'))
+    with pytest.raises(ValueError,match='No candidate was trained'):
+        trainer.main()
+    result=json.loads((tmp_path/'default-gate/reference_qualification.json').read_text())
+    assert result['threshold']==.8 and not result['passed']
+    assert not (tmp_path/'default-gate/selected_candidate.pt').exists()
+
+
+def test_missing_config_failure_is_recorded_before_materialization(tmp_path,monkeypatch):
+    monkeypatch.setattr(sys,'argv',run_args(tmp_path,'missing-config'))
+    with pytest.raises(FileNotFoundError):
+        trainer.main()
+    assert json.loads((tmp_path/'missing-config/failure.json').read_text())['error_type']=='FileNotFoundError'
 
 
 def test_preflight_validates_diagnostic_lags(runtime):

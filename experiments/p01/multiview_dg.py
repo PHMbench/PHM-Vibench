@@ -22,6 +22,9 @@ import torch
 import yaml
 
 from experiments.p01.fusion_data import read_records, summarize_rows
+from experiments.p01.condition_contract import validate_condition_task
+from experiments.p01.baseline_qualification import qualify_source_prediction_arrays
+from experiments.p01.condition_comparison import paired_condition_rows
 from experiments.p01.fusion_deployment import (
     FrozenClassifier, load_model, predict_records, save_bundle, verify_vectors,
     acquisition_rows, write_csv,
@@ -31,10 +34,10 @@ from experiments.p01 import analyze_d1
 from src.model_factory.model_factory import model_factory
 
 ROOT = Path(__file__).resolve().parents[2]
-CORE = ('I', 'I-F', 'MLP16', 'I-single', 'Dense', 'I-base')
-CONTRASTS = {f'I-{arm}': ('I', arm) for arm in ('p0', 'I-F', 'MLP16', 'I-single', 'Dense', 'I-base')}
+CORE = ('I', 'I-F', 'MLP16', 'I-single', 'Dense', 'Dense-matched', 'I-base')
+CONTRASTS = {f'I-{arm}': ('I', arm) for arm in ('p0', 'I-F', 'MLP16', 'I-single', 'Dense', 'Dense-matched', 'I-base')}
 SUPPORTED = {('CNN','ResNet1D'), ('CNN','TCN'), ('Transformer','PatchTST'),
-             ('X_model','BASE_ExplainableCNN')}
+             ('X_model','BASE_ExplainableCNN'), ('X_model','MWA_CNN')}
 
 
 def ablation_arms(study):
@@ -64,8 +67,8 @@ def validate_study(study):
     if study['schema_version'] != 1:
         raise ValueError('Unsupported DG study schema.')
     seeds = study['seeds']
-    if study['min_datasets']<3 or study['min_splits_per_dataset']<1:
-        raise ValueError('The industrial suite requires at least three datasets and one prospectively frozen target split per dataset.')
+    if study['min_datasets']<2 or study['min_splits_per_dataset']<2:
+        raise ValueError('The industrial suite requires at least two datasets and two prospectively frozen condition splits per dataset.')
     if len(seeds)<2 or any(type(x) is not int for x in seeds) or len(set(seeds))!=len(seeds):
         raise ValueError('At least two unique explicit final seeds are required.')
     if study['hpo_seed'] in seeds:
@@ -74,8 +77,14 @@ def validate_study(study):
         raise ValueError('The current study retains its prespecified .8 reference criterion.')
     if min(study[k] for k in ('epochs','steps_per_epoch','units_per_domain','overfit_steps')) < 1:
         raise ValueError('Positive training and smoke budgets are required.')
-    if len(study['trials']) < 2:
-        raise ValueError('Freeze more than one source-only HPO trial.')
+    if type(study['pair_shift']) is not int or study['pair_shift'] < 1:
+        raise ValueError('All formal DG models share a positive declared circular-pair shift budget.')
+    if not 2 <= len(study['trials']) <= 12:
+        raise ValueError('Freeze between two and twelve source-only HPO trials per family.')
+    if len({json.dumps(t, sort_keys=True) for t in study['trials']}) != len(study['trials']):
+        raise ValueError('Duplicate HPO trials do not add tuning evidence.')
+    if 'update_budgets' in study and study['update_budgets'] != [1000, 2500, 5000, 7500]:
+        raise ValueError('Freeze the declared common source-convergence budget ladder.')
     for trial in study['trials']:
         if set(trial)!={'lr','weight_decay','scheduler'} or not math.isfinite(trial['lr']) or trial['lr']<=0:
             raise ValueError('Each trial declares lr, weight_decay and scheduler.')
@@ -114,6 +123,9 @@ def _metadata_rows(dataset, selected_ids):
 
 def bind_task(task_path, out):
     task=read(task_path)
+    if task.get('protocol') != 'specimen_disjoint_condition_dg':
+        raise ValueError('CONDITION_UNVERIFIED: bind the explicit specimen-disjoint physical-condition protocol.')
+    validate_condition_task(task)
     if set(task['data'])-{'layout','window_size','windows_per_unit','channel_indices','squeeze_axes'}:
         raise ValueError('Undeclared preprocessing/normalization is forbidden; no target-fitted statistics.')
     names=task['model']['class_names']
@@ -123,9 +135,7 @@ def bind_task(task_path, out):
     dataset=copy.deepcopy(task['dataset']); mapping=dataset['columns']
     for key in ('metadata_file','h5_file','protocol_file'):
         dataset[key]=str(resolve(dataset[key],base))
-    # A custodian assigns a physical specimen/run globally, never a window.
-    if not task.get('physical_group_basis') or not task.get('domain_basis'):
-        raise ValueError('State how physical IDs and operating domains were established.')
+    # Identity and condition evidence were checked before metadata was opened.
     if task.get('dataset_id')=='RM_027_PU':
         raise ValueError('PU D1 test exposure is sealed; no automatic reuse in the new study.')
     sources=list(map(str,dataset['source_domains'])); targets=list(map(str,dataset['domain_sequence']))
@@ -156,6 +166,8 @@ def bind_task(task_path, out):
     frame=frame[frame[mapping['domain']].isin(sources+targets)]
     src=frame[frame[mapping['domain']].isin(sources)&frame[mapping['split']].isin(['update','validation'])]
     tst=frame[frame[mapping['split']]=='test']
+    admitted = pd.concat([src, tst])
+    validate_condition_task(task, admitted.to_dict('records'))
     if not set(targets).issubset(set(tst[mapping['domain']])) or not len(src):
         raise ValueError('Assigned task lacks source development or target test groups.')
     if set(src[mapping['unit_id']])&set(tst[mapping['unit_id']]):
@@ -172,8 +184,11 @@ def bind_task(task_path, out):
     # Only IDs/domains/partitions/physical units/measurement conventions; no test labels.
     tst.to_csv(out/'test_structure.csv',index=False)
     src.to_csv(out/'source_structure.csv',index=False)
+    frame.loc[~frame[mapping['id']].isin(admitted[mapping['id']])].to_csv(out/'embargo_structure.csv', index=False)
     source_dataset=copy.deepcopy(dataset)
     source_dataset.pop('protocol_file');source_dataset.pop('select',None)
+    for key in ('protocol', 'specimen_basis', 'physical_conditions'):
+        source_dataset[key] = copy.deepcopy(task[key])
     source_dataset.update(metadata_file=str(out/'source.csv'),source_domains=sources,domain_sequence=[],access_scope='source')
     data=dict(model=task['model'],data=task['data'],datasets=[source_dataset])
     (out/'source.yaml').write_text(yaml.safe_dump(data,sort_keys=False))
@@ -237,7 +252,33 @@ def suite(root):
         h5=Path(read(Path(task['path'])/'task.json')['dataset']['h5_file']).stat()
         if [h5.st_size,h5.st_mtime_ns]!=task['h5_stat']:
             raise ValueError('Read-only H5 changed after task binding.')
+        # Reports are not authority: recheck the live scientific declarations.
+        validate_condition_task(read(Path(task['path'])/'task.json'))
     return root,study,info
+
+
+def condition_audit(root):
+    """Verify declared physical semantics without reading any signal array."""
+    root, study, info = suite(root)
+    rows = []
+    for task in info['tasks']:
+        directory = Path(task['path'])
+        spec = read(directory/'task.json')
+        structure = pd.concat([pd.read_csv(directory/name, dtype=str, keep_default_na=False)
+                               for name in ('source_structure.csv', 'test_structure.csv')])
+        # Source labels are permitted here; held-out A/B labels stay sealed.
+        source_spec = copy.deepcopy(spec)
+        source_spec['dataset'] = read(directory/'source.yaml')['datasets'][0]
+        source_labels = pd.read_csv(directory/'source.csv', dtype=str, keep_default_na=False)
+        source_support = {r['condition_id']: r['class_support'] for r in
+                          validate_condition_task(source_spec, source_labels.to_dict('records'))}
+        for row in validate_condition_task(spec, structure.to_dict('records')):
+            row['class_support'] = source_support.get(row['condition_id'], '')
+            rows.append(dict(dataset=task['dataset_id'], task=task['name'], **row))
+    output = root/'condition_audit.csv'
+    # Revalidation is deliberate; this table is a readable result, not a bypass token.
+    pd.DataFrame(rows).to_csv(output, index=False)
+    return rows
 
 
 def source_data(task):
@@ -277,13 +318,25 @@ def candidate_config(study,task,arm,reference=None,view=None):
         if len(kept)!=len(m['branches'])-1:
             raise ValueError('Unknown leave-one-view-out branch.')
         m['branches']=kept
-    elif arm not in {'I','Dense'}: raise ValueError('Unknown proposed/control arm.')
-    if arm in {'Dense','MLP16'}: m['head_type']='mlp'
+    elif arm not in {'I','Dense','Dense-matched'}: raise ValueError('Unknown proposed/control arm.')
+    if arm == 'Dense-matched':
+        # Compare readouts on exactly the same learned operator family. Count
+        # actual branch dimensions; equal hidden width is not equal capacity.
+        with torch.random.fork_rng(devices=[]):
+            proposed = model_factory(SimpleNamespace(**m), metadata=None)
+        dimension = sum(proposed.feature_dims.values())
+        target = sum(p.numel() for p in proposed.operator_heads.parameters())
+        slope = dimension + 1 + classes
+        width = max(1, int(round((target - classes) / slope)))
+        m['head_hidden_dim'] = min({max(1,width-1), width, width+1},
+                                  key=lambda h: (abs(h*slope+classes-target), h))
+    if arm in {'Dense','Dense-matched','MLP16'}: m['head_type']='mlp'
     return cfg
 
 
 def preflight(root):
     root,study,info=suite(root)
+    condition_audit(root)
     if (root/'preflight.json').exists(): raise FileExistsError('Preflight already recorded; use a fresh suite after protocol edits.')
     checks=[]
     for task in info['tasks']:
@@ -310,6 +363,7 @@ def _development_guard(root, device):
     root,study,info=suite(root)
     if (root/'frozen.json').exists(): raise ValueError('The complete suite is frozen; no further fitting or selection.')
     if not (root/'preflight.json').exists(): raise ValueError('Run source-only preflight first.')
+    condition_audit(root)
     if device=='cpu' and not info['fixture']:
         raise ValueError('CPU training is allowed only for explicit constructed fixtures; use physical GPU0 locally.')
     if device!='cpu' and (device!='cuda:0' or os.environ.get('CUDA_VISIBLE_DEVICES')!='0' or not torch.cuda.is_available()):
@@ -317,8 +371,73 @@ def _development_guard(root, device):
     return root,study,info
 
 
+def _training_study(root, study, info):
+    """Apply the source-calibrated common update cap, never target outcomes."""
+    if info['fixture']:
+        return study
+    selection = read(Path(root)/'budget_selection.json')
+    if selection.get('status') != 'passed' or selection['updates'] not in study['update_budgets']:
+        raise ValueError('BUDGET_INSUFFICIENT: finish source-only convergence calibration before HPO.')
+    result = copy.deepcopy(study)
+    if selection['updates'] % result['steps_per_epoch']:
+        raise ValueError('Common update budget must end at a declared source checkpoint.')
+    result['epochs'] = selection['updates'] // result['steps_per_epoch']
+    return result
+
+
+def calibrate(root, device):
+    """Baseline-only prospective budget calibration; no proposed/target fitting."""
+    root, study, info = _development_guard(root, device)
+    if not (root/'smoke_baseline.json').exists():
+        raise ValueError('Baseline smoke must pass before source convergence calibration.')
+    if (root/'budget_selection.json').exists():
+        raise FileExistsError('A common budget decision already exists; do not overwrite it.')
+    if any((Path(t['path'])/'hpo').exists() for t in info['tasks']):
+        raise ValueError('Freeze the common budget before any HPO trial.')
+    trial = dict(lr=.001, weight_decay=0., scheduler='none')
+    records = []
+    budgets = study.get('update_budgets', [study['epochs']*study['steps_per_epoch']])
+    for cap in budgets:
+        recipe = copy.deepcopy(study)
+        if cap % recipe['steps_per_epoch']:
+            raise ValueError('Calibration cap must be an integer number of source-checkpoint intervals.')
+        recipe['epochs'] = cap // recipe['steps_per_epoch']
+        improving = []
+        for task in info['tasks']:
+            reference = None
+            for arm in ['p0', *study['baselines']]:
+                out = Path(task['path'])/'calibration'/str(cap)/arm
+                if out.exists():
+                    _completed_run(recipe, task, arm, trial, study['hpo_seed'], out, reference, None)
+                else:
+                    _execute(recipe, task, arm, trial, study['hpo_seed'], out, device, reference)
+                gain = _recent_source_improvement(out)
+                still_improving = gain >= .001
+                improving.append(still_improving)
+                records.append(dict(task=task['name'], arm=arm, updates=cap,
+                                    recent_source_improvement=gain, still_improving=still_improving,
+                                    run=str(out)))
+                if arm == 'p0': reference = out
+        write_csv(root/'calibration.csv', records)
+        if not any(improving):
+            dump(root/'budget_selection.json', dict(status='passed', updates=cap,
+                 rule='last_five_checkpoints_improvement_below_0.001_for_all_baselines', target_read=False))
+            return
+    dump(root/'budget_selection.json', dict(status='budget_insufficient', updates=budgets[-1], target_read=False))
+    raise ValueError('BUDGET_INSUFFICIENT: a baseline still improves at the maximum common source budget.')
+
+
+def _recent_source_improvement(run):
+    history = pd.read_csv(Path(run)/'training.csv')['worst_validation_score'].to_numpy(float)
+    if len(history) < 5 or not np.isfinite(history).all():
+        raise ValueError('BUDGET_INSUFFICIENT: five finite source checkpoints are required to assess recent improvement.')
+    return float(history[-5] - min(history[-4:]))
+
+
 def _reference(task):
     record=read(Path(task['path'])/'hpo'/'p0'/'selection.json')
+    if not record.get('qualification', {}).get('passed', False):
+        raise ValueError('BASELINE_UNQUALIFIED: the complete reference must qualify on every source condition.')
     return Path(record['run'])
 
 
@@ -337,10 +456,9 @@ def _execute(study,task,arm,trial,seed,output,device,reference=None,view=None):
            '--lr',str(trial['lr']),'--weight-decay',str(trial['weight_decay']),'--scheduler',trial['scheduler']]
     if arm=='p0' or arm in study['baselines']:
         module='experiments.p01.train_source_classifier'
-        flags+=['--role','reference' if arm=='p0' else 'baseline']
+        flags+=['--role','reference' if arm=='p0' else 'baseline', '--pair-shift',str(study['pair_shift'])]
         if arm!='p0':flags+=['--reference-config',str(reference/'model_config.yaml'),
-                             '--reference-checkpoint',str(reference/'selected_candidate.pt'),
-                             '--pair-shift',str(study['pair_shift'])]
+                             '--reference-checkpoint',str(reference/'selected_candidate.pt')]
     else:
         module='experiments.p01.train_tspn_fusion_v2'
         flags+=['--pair-shift',str(study['pair_shift']),'--arm',arm,
@@ -352,7 +470,8 @@ def _execute(study,task,arm,trial,seed,output,device,reference=None,view=None):
         run=subprocess.run(command,cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
     if run.returncode:
         output.mkdir(exist_ok=True)
-        dump(output/'failure.json',dict(command=command,returncode=run.returncode,log=str(logpath)))
+        failure = output/('process_failure.json' if (output/'failure.json').exists() else 'failure.json')
+        dump(failure,dict(command=command,returncode=run.returncode,log=str(logpath)))
         raise RuntimeError(f'Training failed without changing recipe; inspect {logpath}')
     return output
 
@@ -361,6 +480,8 @@ def _completed_run(study,task,arm,trial,seed,out,reference,view):
     out=Path(out)
     if (out/'failure.json').exists() or not (out/'result_scope.json').exists():
         raise ValueError('Interrupted/failed run cannot be silently omitted or overwritten.')
+    if read(out/'result_scope.json').get('status') not in {'classifier_fitted', 'candidate_fitted'}:
+        raise ValueError('Only a completed training run can be selected or resumed.')
     command=read(out/'command.json')
     expected=dict(trial,seed=seed,epochs=study['epochs'],steps_per_epoch=study['steps_per_epoch'],
                   units_per_domain=study['units_per_domain'],dg=True)
@@ -401,23 +522,87 @@ def class_profile(arrays):
     return output
 
 
+def _qualify_run(task, run, threshold=.8):
+    data, dataset, _ = source_data(task)
+    with np.load(Path(run)/'selected_source_validation_windows.npz', allow_pickle=False) as archive:
+        arrays = {key: archive[key] for key in archive.files}
+    return qualify_source_prediction_arrays(arrays, list(map(str, dataset['source_domains'])),
+                                            data['model']['num_classes'], threshold)
+
+
+def _baseline_qualifications(study, info):
+    reports = []
+    for task in info['tasks']:
+        reference = _reference(task)
+        reports.append(dict(task=task['name'], arm='p0', seed=study['hpo_seed'], shared_reference=True,run=str(reference),
+                            **_qualify_run(task, reference, study['reference_min_accuracy'])))
+        for arm in study['baselines']:
+            selected = read(Path(task['path'])/'hpo'/arm/'selection.json')
+            for seed in study['seeds']:
+                run = Path(task['path'])/'fits'/arm/str(seed)
+                _completed_run(study, task, arm, selected['trial'], seed, run, reference, None)
+                reports.append(dict(task=task['name'], arm=arm, seed=seed, shared_reference=False,run=str(run),
+                                    **_qualify_run(task, run, study['reference_min_accuracy'])))
+    for row in reports:
+        row['performance_passed'] = row['passed']
+        if not info['fixture']:
+            gain = _recent_source_improvement(row['run'])
+            row['recent_source_improvement'] = gain
+            row['convergence_passed'] = gain < .001
+            if not row['convergence_passed']:
+                row['passed'] = False
+                row['reasons'].append('BUDGET_INSUFFICIENT: source criterion still improves at the common cap.')
+    return reports
+
+
+def qualify(root, device='cpu'):
+    """Qualify the actual selected baseline fits, not seed/condition averages."""
+    root, study, info = suite(root)
+    condition_audit(root)
+    study = _training_study(root, study, info)
+    reports = _baseline_qualifications(study, info)
+    result = dict(passed=all(row['passed'] for row in reports), runs=reports, target_read=False)
+    path = root/'baseline_qualification.json'
+    if path.exists():
+        if read(path) != result:
+            raise ValueError('Baseline qualification changed; preserve the failed study and diagnose before rerunning.')
+    else:
+        dump(path, result)
+    if not result['passed']:
+        if any(row.get('convergence_passed') is False for row in reports):
+            raise ValueError('BUDGET_INSUFFICIENT: a selected baseline still improves; preserve this study and revise the shared budget before target access.')
+        raise ValueError('BASELINE_UNQUALIFIED: at least one fixed baseline seed/source condition failed; no proposed comparison.')
+    return result
+
+
+def _require_qualified_baselines(root, study, info):
+    if not (Path(root)/'baseline_qualification.json').exists():
+        raise ValueError('BASELINE_UNQUALIFIED: fit all fixed baseline seeds and run qualify before proposed development.')
+    # Recompute from the selected source predictions; a stale PASS file cannot
+    # override missing conditions/classes or a failed fixed seed.
+    reports = _baseline_qualifications(study, info)
+    if any(row.get('convergence_passed') is False for row in reports):
+        raise ValueError('BUDGET_INSUFFICIENT: current baseline source trajectories fail the frozen recent-improvement rule.')
+    if not reports or not all(row['passed'] for row in reports):
+        raise ValueError('BASELINE_UNQUALIFIED: current baseline source predictions fail qualification.')
+
+
 def tune(root, family, device):
     root,study,info=_development_guard(root,device)
+    study = _training_study(root, study, info)
     if not (root/'smoke_baseline.json').exists(): raise ValueError('Baseline smoke must pass before HPO.')
     arms=['p0'] if family=='reference' else list(study['baselines']) if family=='baselines' else list(CORE)
     if family=='method' and not (root/'smoke_method.json').exists(): raise ValueError('Method smoke must pass before proposed HPO.')
+    if family=='method': _require_qualified_baselines(root, study, info)
     for task in info['tasks']:
         reference=None if family=='reference' else _reference(task)
-        if family=='method':
-            for baseline in study['baselines']:
-                if not (Path(task['path'])/'hpo'/baseline/'selection.json').exists():
-                    raise ValueError('Finish all baseline HPO before proposed fitting.')
-                chosen=read(Path(task['path'])/'hpo'/baseline/'selection.json')
-                if any(p['class_collapse'] for p in chosen['source_class_profile'].values()):
-                    raise ValueError('A selected baseline collapses a source class; diagnose source fitting before proposed HPO.')
         for arm in arms:
             directory=Path(task['path'])/'hpo'/arm
-            if (directory/'selection.json').exists(): continue
+            if (directory/'selection.json').exists():
+                chosen = read(directory/'selection.json')
+                if arm == 'p0' and not _qualify_run(task, chosen['run'])['passed']:
+                    raise ValueError('BASELINE_UNQUALIFIED: selected reference remains unqualified.')
+                continue
             trials=[]
             views=[b['name'] for b in study['fusion']['model']['branches']]
             for index,trial in enumerate(study['trials']):
@@ -429,21 +614,29 @@ def tune(root, family, device):
                 else: _execute(study,task,arm,trial,study['hpo_seed'],out,device,reference,view)
                 trials.append(dict(index=index,score=_score(out,arm=='p0'),run=str(out),trial=trial,view=view))
             best=min(trials,key=lambda t:(t['score'],t['index']))
-            if arm=='p0':
-                tab=pd.read_csv(Path(best['run'])/'selected_source_validation.csv')
-                if not bool((tab[tab.predictor=='candidate'].accuracy>=study['reference_min_accuracy']).all()):
-                    dump(directory/'qualification_failed.json',dict(best=best,trials=trials))
-                    raise ValueError('Reference source qualification failed within the fixed budget. No proposed run is permitted.')
             with np.load(Path(best['run'])/'selected_source_validation_windows.npz',allow_pickle=False) as saved:
                 profile=class_profile({k:saved[k] for k in saved.files})
-            dump(directory/'selection.json',dict(**best,all_trials=trials,source_class_profile=profile,criterion='worst_source_CE' if arm=='p0' else 'worst_source_CE_plus_0.25_Brier_excess',target_read=False))
+            qualification = _qualify_run(task, best['run']) if arm == 'p0' or arm in study['baselines'] else None
+            dump(directory/'selection.json',dict(**best,all_trials=trials,source_class_profile=profile,
+                 qualification=qualification, criterion='worst_source_CE' if arm=='p0' else 'worst_source_CE_plus_0.25_Brier_excess',target_read=False))
+            if arm=='p0' and not qualification['passed']:
+                raise ValueError('BASELINE_UNQUALIFIED: reference failed after the complete source-only HPO budget.')
 
 
-def fit(root,device):
+def fit(root,device,family='all'):
     root,study,info=_development_guard(root,device)
+    study = _training_study(root, study, info)
+    if family not in {'all', 'baselines', 'method'}:
+        raise ValueError('Choose baselines or method for final fitting.')
+    if family == 'all':
+        fit(root, device, 'baselines')
+        qualify(root, device)
+        return fit(root, device, 'method')
+    if family == 'method': _require_qualified_baselines(root, study, info)
+    arms = list(study['baselines']) if family == 'baselines' else [*CORE, *ablation_arms(study)]
     for task in info['tasks']:
         reference=_reference(task)
-        for arm in [*study['baselines'],*CORE,*ablation_arms(study)]:
+        for arm in arms:
             selector='I' if arm.startswith('I-minus-') else arm
             selected=read(Path(task['path'])/'hpo'/selector/'selection.json')
             for seed in study['seeds']:
@@ -462,6 +655,9 @@ def _reference_wrapper(path,device):
 
 def smoke(root,kind,device):
     root,study,info=_development_guard(root,device)
+    if kind == 'method':
+        study = _training_study(root, study, info)
+        _require_qualified_baselines(root, study, info)
     torch.set_num_threads(1);torch.manual_seed(study['hpo_seed'])
     reports=[]
     for task in info['tasks']:
@@ -478,7 +674,7 @@ def smoke(root,kind,device):
         if kind=='method':
             reference=_reference(task)
             names=['I']
-        else:names=list(study['baselines'])
+        else:names=['p0', *study['baselines']]
         for name in names:
             cfg=candidate_config(study,task,name,reference)
             cfg['model']['device']=device
@@ -539,6 +735,8 @@ def reconstruction(arrays):
 
 def freeze(root,device):
     root,study,info=_development_guard(root,device)
+    study = _training_study(root, study, info)
+    _require_qualified_baselines(root, study, info)
     frozen=[];quality=[];task_snapshots=[]
     for task in info['tasks']:
         reference=_reference(task)
@@ -574,8 +772,17 @@ def freeze(root,device):
                 path=destination/f'{arm}_{seed}.pt'
                 save_bundle(model,saved['model'],path,kind='model',temperature=1.,alpha=1.,classes=classes,
                             input_data=data['data'],sampling_rate=records[0]['sample_rate_hz'],scope='prospective_DG_no_target_selection')
-                restored,_=load_model(path,device)
-                verify_vectors(predictions,predict_records(restored,validation,dataset,data,classes,device,alpha=1.))
+                restored = destination/f'{arm}_{seed}_source_restore'
+                command = [sys.executable, '-m', 'experiments.p01.fusion_deployment', 'predict',
+                           '--bundle', str(path), '--data-config', str(Path(task['path'])/'source.yaml'),
+                           '--dataset', dataset['name'], '--split', 'validation', '--sources-only',
+                           '--device', device, '--output', str(restored)]
+                env = dict(os.environ, PYTHONPATH=str(ROOT)+os.pathsep+os.environ.get('PYTHONPATH', ''),
+                           OMP_NUM_THREADS='1', MKL_NUM_THREADS='1')
+                with (destination/f'{arm}_{seed}_source_restore.log').open('x') as stream:
+                    subprocess.run(command, cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT, check=True)
+                with np.load(restored/'predictions.npz', allow_pickle=False) as actual:
+                    verify_vectors(predictions, actual)
                 selector='I' if arm.startswith('I-minus-') else arm
                 chosen=read(Path(task['path'])/'hpo'/selector/'selection.json')
                 frozen.append(dict(task=task['name'],arm=arm,seed=seed,checkpoint=str(path),view=chosen['view']))
@@ -590,7 +797,9 @@ def freeze(root,device):
 
 
 def test(root,device):
-    root=Path(root).resolve();frozen=read(root/'frozen.json')
+    root, original_study, info = suite(root)
+    condition_audit(root)
+    frozen=read(root/'frozen.json')
     for task in frozen['tasks']:
         directory=Path(task['path']);spec=task['spec'];dataset=copy.deepcopy(spec['dataset']);m=dataset['columns']
         stat=Path(dataset['h5_file']).stat()
@@ -608,9 +817,13 @@ def test(root,device):
             pd.testing.assert_frame_equal(pd.read_csv(test_csv,dtype=str,keep_default_na=False),labels.reset_index(drop=True))
         else: labels.to_csv(test_csv,index=False)
         dataset.pop('protocol_file');dataset.pop('select',None)
-        domains=set(frame[m['domain']]);sources=[str(d) for d in dataset['source_domains'] if str(d) in domains]
-        dataset.update(metadata_file=str(test_csv),source_domains=sources,access_scope='test')
+        for key in ('protocol', 'specimen_basis', 'physical_conditions'):
+            dataset[key] = copy.deepcopy(spec[key])
+        dataset.update(metadata_file=str(test_csv),access_scope='test')
         data=dict(model=spec['model'],data=spec['data'],datasets=[dataset]);records=read_records(dataset,data)
+        evaluated_spec=dict(spec,dataset=dataset)
+        pd.DataFrame(validate_condition_task(evaluated_spec, labels.to_dict('records'))).to_csv(
+            directory/'test_condition_audit.csv', index=False)
         source_ids=set(task['source_groups'])
         if source_ids&{r['unit_id'] for r in records}:raise ValueError('Target records cross the source physical partition.')
         exports=[]
@@ -672,7 +885,7 @@ def plot_contrasts(frame,output):
 def analyze(root):
     root=Path(root).resolve();frozen=read(root/'frozen.json')
     if not (root/'test_complete.json').exists():raise ValueError('Finish the complete frozen target release first.')
-    all_metrics=[];all_contrasts=[];explanations=[];contributions=[];costs=[];reference_metrics=[]
+    all_metrics=[];all_contrasts=[];explanations=[];contributions=[];costs=[];reference_metrics=[];condition_differences=[]
     ablations=list(ablation_arms(frozen['study']))
     core=[*frozen['study']['baselines'],*CORE,*ablations]
     contrasts={**CONTRASTS,**{f'I-{b}':('I',b) for b in frozen['study']['baselines']},
@@ -687,6 +900,11 @@ def analyze(root):
         domains=set(structural[spec['dataset']['columns']['domain']]);target=[str(x) for x in spec['dataset']['domain_sequence']]
         source=sorted(domains-set(target));sets={'target':target}
         if source:sets['heldout_source']=source
+        mapping=spec['dataset']['columns']
+        declared_sources=list(map(str,spec['dataset']['source_domains']))
+        target_groups=set(structural.loc[structural[mapping['domain']]==target[0],mapping['unit_id']])
+        paired_groups={d: sorted(target_groups & set(structural.loc[structural[mapping['domain']]==d,mapping['unit_id']]))
+                       for d in declared_sources}
         if not (directory/'analysis').exists():
             analyze_d1.run(exports,directory/'analysis',condition_sets={'test':sets},core_arms=core,
                            contrasts=contrasts,seeds=frozen['study']['seeds'])
@@ -698,8 +916,14 @@ def analyze(root):
         for filename,output in [('seed_summary.csv',all_metrics),('contrast_seed_summary.csv',all_contrasts)]:
             rows=pd.read_csv(directory/'analysis'/filename).to_dict('records')
             output.extend(dict(dataset=task['dataset_id'],task=task['name'],**r) for r in rows)
-        for entry in exports:
+        for entry_index, entry in enumerate(exports):
             with np.load(entry['path'],allow_pickle=False) as archive:arrays={k:archive[k] for k in archive.files}
+            for row in paired_condition_rows(arrays, declared_sources, target[0], eligible_groups=paired_groups):
+                if row['predictor']=='raw' and entry_index:
+                    continue  # Shared p0 is one fitted function, not repeated reference trials.
+                condition_differences.append(dict(task=task['name'],dataset=task['dataset_id'],
+                    arm='p0' if row['predictor']=='raw' else entry['arm'],
+                    seed=frozen['study']['hpo_seed'] if row['predictor']=='raw' else entry['seed'],**row))
             check=reconstruction(arrays)
             if check:contributions.extend(contribution_rows(arrays,task['name'],entry['arm'],entry['seed']))
             if check:explanations.append(dict(task=task['name'],arm=entry['arm'],seed=entry['seed'],**check))
@@ -708,14 +932,23 @@ def analyze(root):
         with np.load(first['path'],allow_pickle=False) as archive: raw={k:archive[k] for k in archive.files}
         for row in summarize_rows(acquisition_rows(raw),spec['model']['num_classes']):
             if row['predictor']=='raw':reference_metrics.append(dict(task=task['name'],**row))
-        for command in sorted((directory/'hpo').glob('*/trial_*/command.json'))+sorted((directory/'fits').glob('*/*/command.json')):
+        for command in (sorted((directory/'hpo').glob('*/trial_*/command.json'))+
+                        sorted((directory/'fits').glob('*/*/command.json'))+
+                        sorted((directory/'calibration').glob('*/*/command.json'))):
             scope=read(command.parent/'result_scope.json')
             config=read(command)
-            costs.append(dict(task=task['name'],stage='hpo' if 'hpo' in command.parts else 'fit',
-                arm=command.parent.parent.name,seed=config['seed'],run=str(command.parent),
+            calibration='calibration' in command.parts
+            endpoints=scope.get('supervised_window_endpoints')
+            if endpoints is None and scope.get('sampled_windows') is not None and scope.get('supervised_endpoints') is not None:
+                endpoints=scope['sampled_windows']*scope['supervised_endpoints']
+            costs.append(dict(task=task['name'],stage='calibration' if calibration else 'hpo' if 'hpo' in command.parts else 'fit',
+                arm=command.parent.name if calibration else command.parent.parent.name,seed=config['seed'],run=str(command.parent),
                 status=scope['status'],optimizer_steps=scope.get('optimizer_steps'),
                 trainable_parameters=scope.get('trainable_parameters'),total_parameters=scope.get('total_parameters'),
                 reference_parameters=scope.get('reference_parameters'),training_seconds=scope.get('training_seconds'),
+                supervised_endpoints=scope.get('supervised_endpoints'),
+                sampled_windows=scope.get('sampled_windows'),
+                supervised_window_endpoints=endpoints,
                 selection_seconds=scope.get('source_selection_seconds',scope.get('selection_seconds')),
                 export_seconds=scope.get('export_seconds'),total_run_seconds=scope.get('total_run_seconds'),
                 peak_allocated_gpu_bytes=scope.get('peak_allocated_gpu_bytes')))
@@ -724,17 +957,18 @@ def analyze(root):
     write_csv(destination/'reconstruction.csv',explanations)
     write_csv(destination/'reference_metrics.csv',reference_metrics)
     write_csv(destination/'costs.csv',costs)
+    write_csv(destination/'paired_condition_differences.csv',condition_differences)
     write_csv(destination/'window_contributions_by_acquisition.csv',contributions)
     plot_contrasts(pd.DataFrame(all_contrasts),destination)
     dump(destination/'scope.json',dict(fixture=frozen['fixture'],data_scope='constructed' if frozen['fixture'] else 'declared_industrial_requires_custodian_validation',
-         independent_unit_validity='Declared specimen/run identity requires the local data audit; software does not prove physical independence.',
+         independent_unit_validity='Verified physical specimen declarations are required; software checks their consistency, not the truth of cited evidence.',
          aggregation='Per task; no pooling of windows/seeds/datasets as independent physical units.',
          claims='Report signed contrasts and valid failures; qualification is not a proof of strong target performance.'))
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('command',choices=['bind','preflight','smoke','tune','fit','freeze','test','analyze'])
+    p.add_argument('command',choices=['bind','condition-audit','preflight','smoke','calibrate','tune','fit','qualify','freeze','test','analyze'])
     p.add_argument('--root');p.add_argument('--study');p.add_argument('--task',action='append');p.add_argument('--output')
     p.add_argument('--fixture',action='store_true');p.add_argument('--device',default='cuda:0')
     p.add_argument('--kind',choices=['baseline','method']);p.add_argument('--family',choices=['reference','baselines','method'])
@@ -746,10 +980,13 @@ def main():
         if not args.root:p.error('--root required')
         if args.command in {'smoke','tune'} and not (args.kind if args.command=='smoke' else args.family):p.error('Declare --kind or --family')
         try:
-            if args.command=='preflight':preflight(args.root)
+            if args.command=='condition-audit':condition_audit(args.root)
+            elif args.command=='preflight':preflight(args.root)
             elif args.command=='smoke':smoke(args.root,args.kind,args.device)
+            elif args.command=='calibrate':calibrate(args.root,args.device)
             elif args.command=='tune':tune(args.root,args.family,args.device)
-            elif args.command=='fit':fit(args.root,args.device)
+            elif args.command=='fit':fit(args.root,args.device,args.family or 'all')
+            elif args.command=='qualify':qualify(args.root,args.device)
             elif args.command=='freeze':freeze(args.root,args.device)
             elif args.command=='test':test(args.root,args.device)
             elif args.command=='analyze':analyze(args.root)

@@ -33,7 +33,7 @@ NO,DeepONet,src/model_factory/NO/DeepONet.py,"input_dim, branch_depth, trunk_dep
 NO,NeuralODE,src/model_factory/NO/NeuralODE.py,"input_dim, hidden_dim, num_layers, solver, rtol, atol, num_classes/output_dim","neural ordinary differential equation model","/"
 NO,GraphNO,src/model_factory/NO/GraphNO.py,"input_dim, hidden_dim, num_layers, num_eigenvectors, graph_size, num_classes/output_dim","graph-based neural operator","/"
 NO,WaveletNO,src/model_factory/NO/WaveletNO.py,"input_dim, hidden_dim, num_layers, wavelet, num_levels, mode, num_classes/output_dim","multi-scale wavelet neural operator","/"
-X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"input_dim, num_windows, kernel_size, num_classes/output_dim","multi-window attention CNN for auxiliary analysis","/"
+X_model,MWA_CNN,src/model_factory/X_model/MWA_CNN.py,"in_channels/input_dim, depth, num_classes","multilayer wavelet attention CNN; explicit depth=6 or legacy depth=4; requires mwa extra","unit-tested"
 X_model,TSPN,src/model_factory/X_model/TSPN.py,"input_dim, hidden_dim, num_prototypes, num_classes/output_dim","time-series prototype/explainability network","/"
 X_model,TSPN_UXFD,src/model_factory/X_model/TSPN_UXFD.py,"signal_processing_configs, feature_extractor_configs, in_channels, num_classes/output_dim","UXFD-aligned TSPN wrapper (stable name for paper submodules)","/"
 X_model,XOANOperatorPath,src/model_factory/X_model/XOANOperatorPath.py,"in_channels, num_classes, classifier_hidden_dim, dropout, inference_mode, operator_path.*","P07 standalone typed sparse executable operator-path classifier; G030 software status only","pass"

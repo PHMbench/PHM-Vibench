@@ -1,8 +1,9 @@
-"""Source-only training of the existing TSPN reference or ResNet1D comparator.
+"""Source-only training of the existing TSPN reference or declared comparator.
 
 Both roles reuse physical-group sampling, acquisition windows and the fusion
-evaluator. Reference development uses ordinary CE. The comparator uses paired
-CE + .25 Brier and selection relative to the complete frozen reference.
+evaluator. Condition-DG reference development uses paired ordinary CE; legacy
+reference runs remain unpaired. The comparator uses paired CE + .25 Brier and
+selection relative to the complete frozen reference.
 """
 from __future__ import annotations
 
@@ -27,6 +28,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from experiments.p01.fusion_data import read_records, group_pools, sample_units
+from experiments.p01.baseline_qualification import qualify_source_prediction_arrays, record_training_failure
+from experiments.p01.condition_contract import is_condition_dg
 from experiments.p01.train_tspn_fusion_v2 import evaluate, write_csv
 from experiments.p01.window_io import materialize, pack_batch
 from src.model_factory.model_factory import model_factory, load_ckpt
@@ -98,13 +101,15 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
-def run(args: argparse.Namespace) -> Path:
+def _run(args: argparse.Namespace) -> Path:
     if min(args.epochs, args.steps_per_epoch, args.units_per_domain) < 1 or not math.isfinite(args.lr) or args.lr <= 0:
         raise ValueError("A positive training budget and learning rate are required.")
     if not math.isfinite(args.reference_temperature) or args.reference_temperature <= 0:
         raise ValueError("The frozen reference temperature must be positive.")
-    if args.role == "reference" and (args.pair_shift or args.reference_checkpoint or args.reference_config):
-        raise ValueError("Reference development uses unpaired ordinary CE without a prior checkpoint.")
+    if args.pair_shift < 0:
+        raise ValueError("The declared circular pair shift must be nonnegative.")
+    if args.role == "reference" and (args.reference_checkpoint or args.reference_config):
+        raise ValueError("Reference development uses ordinary CE without a prior checkpoint.")
     if args.role == "baseline" and (args.pair_shift < 1 or not args.reference_checkpoint or not args.reference_config):
         raise ValueError("Baseline training requires the frozen reference and an explicit paired shift.")
     if args.device.startswith("cuda"):
@@ -118,10 +123,12 @@ def run(args: argparse.Namespace) -> Path:
     settings = copy.deepcopy(cfg["model"])
     identity = (settings["type"], settings["name"])
     expected = ("X_model", "TSPN") if args.role == "reference" else ("CNN", "ResNet1D")
-    supported={("CNN","ResNet1D"),("CNN","TCN"),("Transformer","PatchTST"),("X_model","BASE_ExplainableCNN")}
+    supported={("CNN","ResNet1D"),("CNN","TCN"),("Transformer","PatchTST"),("X_model","BASE_ExplainableCNN"),("X_model","MWA_CNN")}
     allowed=(identity in supported) if args.role=="baseline" and args.dg else identity==expected
     if not allowed or settings.get("weights_path"):
         raise ValueError(f"Role {args.role} requires the existing {expected} model initialized without weights.")
+    if identity == ("X_model", "MWA_CNN") and settings.get("depth") != 6:
+        raise ValueError("The declared MWA-CNN-6 baseline requires explicit depth=6; a four-level model is not equivalent.")
     if args.role == "baseline" and not args.dg and (settings.get("layers") != [2, 2, 2, 2] or
                                      settings.get("initial_channels") != 64 or settings.get("block_type") != "basic"):
         raise ValueError("The declared ResNet1D baseline uses basic blocks [2,2,2,2] and initial_channels=64.")
@@ -130,6 +137,16 @@ def run(args: argparse.Namespace) -> Path:
     if classes != int(data["model"]["num_classes"]) or len(class_names) != classes or len(set(class_names)) != classes:
         raise ValueError("Classifier and data must share the explicit ordered class space.")
     dataset = next(d for d in data["datasets"] if d["name"] == args.dataset)
+    formal_dg = is_condition_dg(dataset, data)
+    if args.dg and not formal_dg:
+        raise ValueError("DG training requires a bound, verified physical-condition contract.")
+    if (args.dg or formal_dg) and dataset.get("access_scope") != "source":
+        raise ValueError("DG training requires a separately bound source-only metadata file.")
+    if args.role == "reference":
+        if formal_dg and args.pair_shift < 1:
+            raise ValueError("Condition-DG reference training requires the same declared paired shift as the comparator families.")
+        if not formal_dg and args.pair_shift:
+            raise ValueError("Legacy reference development uses unpaired ordinary CE.")
     length = int(data["data"]["window_size"])
     if args.pair_shift >= length:
         raise ValueError("The circular pair shift must be shorter than the observed window.")
@@ -156,8 +173,6 @@ def run(args: argparse.Namespace) -> Path:
         reference.requires_grad_(False).eval()
         frozen = {key: value.detach().clone() for key, value in reference.state_dict().items()}
 
-    if args.dg and dataset.get("access_scope")!="source":
-        raise ValueError("DG training requires a separately bound source-only metadata file.")
     if args.dg and identity==("CNN","TCN") and int(settings.get("kernel_size",2))<2:
         raise ValueError("This pinned TCN requires kernel_size>=2 (zero-chomp kernels are excluded).")
     records = read_records(dataset, data)
@@ -173,7 +188,6 @@ def run(args: argparse.Namespace) -> Path:
     if any(len(pool) < args.units_per_domain for pool in pools.values()):
         raise ValueError("Insufficient physical groups for the fixed source sampling budget.")
     output = Path(args.output)
-    output.mkdir(parents=True, exist_ok=False)
     command = dict(vars(args), python=sys.executable, torch_version=str(torch.__version__),
                    numpy_version=str(np.__version__), code_commit=subprocess.check_output(
                        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip())
@@ -194,9 +208,13 @@ def run(args: argparse.Namespace) -> Path:
     beta = 0. if args.role == "reference" else .25
     scope = dict(status="running", role=args.role, seed=args.seed, permanent_test_predicted=False,
                  independent_assessment_performed=False, fit=_resources(train), selection=_resources(validation),
-                 objective="ordinary_group_balanced_CE" if args.role == "reference" else "paired_CE_plus_0.25_Brier",
+                 objective=("paired_group_balanced_CE" if args.pair_shift else "ordinary_group_balanced_CE")
+                     if args.role == "reference" else "paired_CE_plus_0.25_Brier",
                  selector="worst_domain_CE" if args.role == "reference" else "worst_domain_CE_plus_0.25_Brier_excess",
-                 checkpoint_tie_break="earliest_epoch", trainable_parameters=sum(p.numel() for p in model.parameters()))
+                 checkpoint_tie_break="earliest_epoch", trainable_parameters=sum(p.numel() for p in model.parameters() if p.requires_grad),
+                 total_parameters=sum(p.numel() for p in model.parameters()),
+                 reference_parameters=sum(p.numel() for p in reference.parameters()) if reference is not None else 0,
+                 supervised_endpoints=2 if args.pair_shift else 1)
     (output/"result_scope.json").write_text(json.dumps(scope, indent=2))
     if args.device.startswith("cuda"):
         torch.cuda.reset_peak_memory_stats()
@@ -210,7 +228,7 @@ def run(args: argparse.Namespace) -> Path:
                 x, y, unit_ids, _ = pack_batch(units, args.device)
                 domain_ids = torch.cat([torch.full((len(u["x"]),), sources.index(u["domain"]), dtype=torch.long)
                                         for u in units]).to(args.device)
-                shift = pair_rng.randint(1, args.pair_shift) if args.role == "baseline" else 0
+                shift = pair_rng.randint(1, args.pair_shift) if args.pair_shift else 0
                 logits = model(x)
                 paired = model(x.roll(shift, dims=1)) if shift else None
                 loss = supervised_loss(logits, y, unit_ids, domain_ids, brier_weight=beta, paired_logits=paired)
@@ -254,6 +272,10 @@ def run(args: argparse.Namespace) -> Path:
                 predictions.update(raw_class_names=np.asarray(class_names), candidate_class_names=np.asarray(class_names),
                                    arm=np.asarray("p0" if args.role == "reference" else settings["name"]), seed=np.asarray(args.seed))
                 np.savez_compressed(output/"selected_source_validation_windows.npz", **predictions)
+                # Save the selected predictor's development qualification without
+                # discarding a weak HPO trial or selecting a different checkpoint.
+                qualification = qualify_source_prediction_arrays(predictions, sources, classes)
+                (output/"source_qualification.json").write_text(json.dumps(qualification, indent=2))
                 export_seconds += _clock(args.device)-started
             if scheduler is not None: scheduler.step()
             print(history[-1], flush=True)
@@ -277,9 +299,26 @@ def run(args: argparse.Namespace) -> Path:
         scope.update(status="failed", error_type=type(error).__name__, error=str(error), completed_epochs=len(history))
         raise
     finally:
+        sampled_windows = sum(batch["windows"] for batch in batches)
+        scope.update(sampled_windows=sampled_windows, sampled_acquisitions=len(sampling),
+                     supervised_window_endpoints=sampled_windows*scope["supervised_endpoints"])
         (output/"result_scope.json").write_text(json.dumps(scope, indent=2))
     print(output, flush=True)
     return output
+
+
+def run(args: argparse.Namespace) -> Path:
+    output = Path(args.output)
+    output.mkdir(parents=True, exist_ok=False)
+    (output/"command.json").write_text(json.dumps(dict(vars(args)), indent=2))
+    (output/"result_scope.json").write_text(json.dumps(dict(
+        status="running", role=args.role, seed=args.seed,
+        permanent_test_predicted=False, independent_assessment_performed=False), indent=2))
+    try:
+        return _run(args)
+    except (Exception, KeyboardInterrupt) as error:
+        record_training_failure(output, error)
+        raise
 
 
 def main() -> None:

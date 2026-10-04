@@ -21,6 +21,8 @@ import yaml
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from experiments.p01.fusion_data import read_records,group_pools,sample_units,summarize_rows
+from experiments.p01.baseline_qualification import qualify_source_prediction_arrays,record_training_failure
+from experiments.p01.condition_contract import is_condition_dg
 
 
 def write_csv(path,rows):
@@ -157,7 +159,7 @@ def synchronized_time(device):
     return time.perf_counter()
 
 
-def main():
+def parser():
     p=argparse.ArgumentParser(description=__doc__)
     for key in ('model-config','data-config','dataset','output'):p.add_argument('--'+key,required=True)
     p.add_argument('--device',default='cpu');p.add_argument('--seed',type=int,default=42)
@@ -171,9 +173,12 @@ def main():
     p.add_argument('--selection-predictor',choices=['candidate','training_tau_mixture'],default='candidate')
     p.add_argument('--arm',default='candidate',help='Declared comparison arm; recorded without changing the model.')
     p.add_argument('--reference-min-accuracy',type=float,default=None,
-                   help='Optional source-selection qualification, at least 0.8; never a test guarantee.')
+                   help='Source-selection qualification, at least 0.8; mandatory at 0.8 for condition DG, optional for legacy runs.')
     p.add_argument('--evaluate-test',action='store_true',help='Empirical candidate comparison after source choices are fixed; not assessed deployment.')
-    args=p.parse_args()
+    return p
+
+
+def _run(args):
     if min(args.epochs,args.steps_per_epoch,args.units_per_domain)<1 or not math.isfinite(args.lr) or args.lr<=0 or args.pair_shift<0:
         raise ValueError('Positive training budget and nonnegative pair shift required.')
     if args.reference_min_accuracy is not None and not .8 <= args.reference_min_accuracy <= 1:
@@ -185,6 +190,13 @@ def main():
     from src.task_factory.Components.tspn_fusion_loss import TSPNFusionLoss
     cfg=yaml.safe_load(Path(args.model_config).read_text());data=yaml.safe_load(Path(args.data_config).read_text())
     dataset=next(d for d in data['datasets'] if d['name']==args.dataset)
+    formal_dg=is_condition_dg(dataset,data)
+    if args.dg and not formal_dg:
+        raise ValueError('DG fitting requires a bound, verified physical-condition contract.')
+    if (args.dg or formal_dg) and (dataset.get('access_scope')!='source' or args.evaluate_test):
+        raise ValueError('DG fitting accepts only isolated source metadata; test is a separate frozen operation.')
+    if formal_dg and args.reference_min_accuracy is None:
+        args.reference_min_accuracy=.8
     if cfg['model']['checkpoint_kind']!='reference':raise ValueError('Start from the declared frozen raw checkpoint.')
     classes=int(cfg['model']['reference_config']['num_classes'])
     if cfg['model']['num_classes']!=classes or data['model']['num_classes']!=classes:raise ValueError('Model, reference and dataset class spaces disagree.')
@@ -200,8 +212,6 @@ def main():
     model=model_factory(SimpleNamespace(**cfg['model']),metadata=None).to(args.device)
     objective=TSPNFusionLoss(**cfg['loss'])
     if objective.lambda_delta>0 and args.pair_shift<1:raise ValueError('Supply a justified --pair-shift or set lambda_delta=0.')
-    if args.dg and (dataset.get('access_scope')!='source' or args.evaluate_test):
-        raise ValueError('DG fitting accepts only isolated source metadata; test is a separate frozen operation.')
     records=read_records(dataset,data);sources=list(map(str,dataset['source_domains']))
     if len({r['sample_rate_hz'] for r in records})!=1:raise ValueError('Normalized-frequency model requires one sampling rate.')
     load_started=time.perf_counter()
@@ -210,7 +220,7 @@ def main():
     materialization_seconds=time.perf_counter()-load_started
     pools=group_pools(train,sources)
     if any(len(v)<args.units_per_domain for v in pools.values()):raise ValueError('Not enough independent source groups per domain.')
-    output=Path(args.output);output.mkdir(parents=True,exist_ok=False)
+    output=Path(args.output)
     (output/'model_config.yaml').write_text(yaml.safe_dump(cfg,sort_keys=False))
     (output/'data_config.yaml').write_text(yaml.safe_dump(data,sort_keys=False))
     benchmark_commit=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
@@ -224,14 +234,15 @@ def main():
     if args.reference_min_accuracy is not None:
         # This reuses selection observations, so it is a development gate only.
         # Keep the record even when it blocks the fit; never search another test.
-        _,_,qualification=evaluate(model,val,args.device,objective.tau,args.selection_brier_weight,pack_batch)
-        raw_rows=[row for row in qualification if row['predictor']=='raw']
-        passed=all(row['accuracy']>=args.reference_min_accuracy for row in raw_rows)
-        (output/'reference_qualification.json').write_text(json.dumps(dict(
-            threshold=args.reference_min_accuracy, source_conditions=raw_rows,
-            passed=passed, independent_test_guarantee=False),indent=2))
-        if not passed:
-            raise ValueError('Reference did not reach the declared source accuracy threshold; see reference_qualification.json. No candidate was trained.')
+        qualification_arrays={}
+        evaluate(model,val,args.device,objective.tau,args.selection_brier_weight,pack_batch,
+                 prediction_arrays=qualification_arrays)
+        qualification=qualify_source_prediction_arrays(
+            {key:np.concatenate(values) for key,values in qualification_arrays.items()},
+            sources,classes,args.reference_min_accuracy,predictor='raw')
+        (output/'reference_qualification.json').write_text(json.dumps(qualification,indent=2))
+        if not qualification['passed']:
+            raise ValueError('Reference did not pass the declared condition-wise source qualification; see reference_qualification.json. No candidate was trained.')
     if not math.isfinite(args.weight_decay) or args.weight_decay<0:
         raise ValueError('weight_decay must be finite and nonnegative.')
     optimizer=torch.optim.Adam([p for p in model.parameters() if p.requires_grad],lr=args.lr,weight_decay=args.weight_decay)
@@ -349,6 +360,25 @@ def main():
         note['reference_incumbent_retained']=selected_epoch==-1
         note['selection_boundary']='Initial zero residual included; source-score protection only, not target accuracy guarantee.'
     (output/'result_scope.json').write_text(json.dumps(note,indent=2));print(output)
+    return output
+
+
+def run(args):
+    output=Path(args.output)
+    output.mkdir(parents=True,exist_ok=False)
+    (output/'command.json').write_text(json.dumps(dict(vars(args)),indent=2))
+    (output/'result_scope.json').write_text(json.dumps(dict(
+        status='running',arm=args.arm,seed=args.seed,permanent_test_predicted=False,
+        independent_assessment_performed=False),indent=2))
+    try:
+        return _run(args)
+    except (Exception,KeyboardInterrupt) as error:
+        record_training_failure(output,error)
+        raise
+
+
+def main():
+    return run(parser().parse_args())
 
 
 if __name__=='__main__':main()
