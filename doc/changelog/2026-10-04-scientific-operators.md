@@ -21,7 +21,10 @@ result establishes neither scientific novelty nor empirical PHM benefit.
 |---|---|---|
 | `DG.expert_intervention` | `configs/experiments/p04/expert_intervention.yaml` | Role assignment and frozen-gate intervention contrasts |
 | `classification.selective_diagnosis` | `configs/experiments/p05/selective_diagnosis.yaml` | Joint certificate, calibration and matched selective risk |
+| `classification.symbolic_diagnosis` | `configs/experiments/p06/symbolic_fixture.yaml` | Conditional head certificates and representation/diagnosis comparison |
 
 Source training/search accepts only train/val packs; independent matching/test packs use explicit checkpoints, saved normalization and source identities. Historical G050 is not re-executed or relabelled.
 
 The selective-diagnosis slice retains unit weighting, score ties and undefined all-abstain risk. Prediction rejects raw-feature broadcasting; plots reject failed/unqualified runs and preserve contrast signs. Existing independent-unit qualifications remain required.
+
+Symbolic baseline tuning requires a separate source-only pack before signal access. Frozen evaluation consumes its completed tuning directory and checks saved source membership. Synthetic fit_state.json stores affine heads, not a source exporter. Existing representation contrasts are not renamed an independent repair algorithm.
