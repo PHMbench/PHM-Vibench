@@ -24,7 +24,7 @@ from phmfactory.pipelines import pipeline_module_name, require_pipeline_access
 from phmfactory.runtime import CompiledRunSpec, ExecutionEnvelope
 
 
-COMMANDS = ("data", "doctor", "demo", "preflight")
+COMMANDS = ("data", "doctor", "demo", "preflight", "research")
 DIRECT_OUTPUT_KEYS = (
     "result_dir",
     "best_checkpoint",
@@ -40,8 +40,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="phmfactory",
         description="PHMFactory task pipeline",
         epilog=(
-            "Commands: doctor, demo, preflight, data. "
-            "Run an experiment explicitly with phmfactory --config <yaml>."
+            "Run an experiment explicitly with phmfactory --config <yaml>. "
+            "Commands: doctor, demo, preflight, data, research."
         ),
     )
     add_config_arguments(parser, include_notes=True, include_experimental=True)
@@ -101,6 +101,11 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         override_values=args.override,
         local_config=requested_local_config(args),
     )
+    if analysis.effective_config.get("task", {}).get("execution") == "research":
+        raise ValueError("This configuration requires phmfactory research <phase> --config <yaml>; "
+                         "generic Pipeline training would not execute its scientific objective")
+    from phmfactory.commands.research import reject_scientific_factory_task
+    reject_scientific_factory_task(analysis.effective_config)
     compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
 
     args.requested_config = requested
@@ -141,6 +146,10 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
 def _run_command(name: str, argv: Sequence[str]) -> Any:
     """Load one small command module only when selected."""
 
+    if name == "research":
+        from phmfactory.commands import research
+
+        return research.run(argv)
     if name == "data":
         from phmfactory.commands import data
 
