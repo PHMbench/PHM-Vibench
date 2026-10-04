@@ -35,3 +35,5 @@ PATCH
           git add experiments/p01 test/test_p01_multiview_dg.py
           git commit -m "experiment(p01): source-only multi-view DG, HPO and frozen comparison"
           git push origin HEAD:feat/p01-multiview-dg-20261003
+
+# second push intentionally triggers this branch-local workflow
