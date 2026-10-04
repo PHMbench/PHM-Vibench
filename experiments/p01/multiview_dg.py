@@ -58,8 +58,8 @@ def validate_study(study):
     if study['schema_version'] != 1:
         raise ValueError('Unsupported DG study schema.')
     seeds = study['seeds']
-    if study['min_datasets']<2 or study['min_splits_per_dataset']<2:
-        raise ValueError('The industrial suite needs multiple datasets and multiple splits per dataset.')
+    if study['min_datasets']<3 or study['min_splits_per_dataset']<1:
+        raise ValueError('The industrial suite requires at least three datasets and one prospectively frozen target split per dataset.')
     if len(seeds)<2 or any(type(x) is not int for x in seeds) or len(set(seeds))!=len(seeds):
         raise ValueError('At least two unique explicit final seeds are required.')
     if study['hpo_seed'] in seeds:
