@@ -37,6 +37,12 @@ SUPPORTED = {('CNN','ResNet1D'), ('CNN','TCN'), ('Transformer','PatchTST'),
              ('X_model','BASE_ExplainableCNN')}
 
 
+def ablation_arms(study):
+    if not study.get('leave_one_view_out', False):
+        return ()
+    return tuple(f"I-minus-{b['name']}" for b in study['fusion']['model']['branches'])
+
+
 def read(path):
     path=Path(path)
     text=path.read_text(encoding='utf-8')
@@ -265,6 +271,12 @@ def candidate_config(study,task,arm,reference=None,view=None):
     elif arm=='I-base':
         for b in m['branches']:
             if b['type']=='envelope': b.pop('diagnostics',None)
+    elif arm.startswith('I-minus-'):
+        removed=arm.removeprefix('I-minus-')
+        kept=[b for b in m['branches'] if b['name']!=removed]
+        if len(kept)!=len(m['branches'])-1:
+            raise ValueError('Unknown leave-one-view-out branch.')
+        m['branches']=kept
     elif arm not in {'I','Dense'}: raise ValueError('Unknown proposed/control arm.')
     if arm in {'Dense','MLP16'}: m['head_type']='mlp'
     return cfg
@@ -431,8 +443,9 @@ def fit(root,device):
     root,study,info=_development_guard(root,device)
     for task in info['tasks']:
         reference=_reference(task)
-        for arm in [*study['baselines'],*CORE]:
-            selected=read(Path(task['path'])/'hpo'/arm/'selection.json')
+        for arm in [*study['baselines'],*CORE,*ablation_arms(study)]:
+            selector='I' if arm.startswith('I-minus-') else arm
+            selected=read(Path(task['path'])/'hpo'/selector/'selection.json')
             for seed in study['seeds']:
                 out=Path(task['path'])/'fits'/arm/str(seed)
                 if out.exists():
@@ -529,8 +542,9 @@ def freeze(root,device):
     frozen=[];quality=[];task_snapshots=[]
     for task in info['tasks']:
         reference=_reference(task)
-        for arm in [*study['baselines'],*CORE]:
-            selected=read(Path(task['path'])/'hpo'/arm/'selection.json')
+        for arm in [*study['baselines'],*CORE,*ablation_arms(study)]:
+            selector='I' if arm.startswith('I-minus-') else arm
+            selected=read(Path(task['path'])/'hpo'/selector/'selection.json')
             for seed in study['seeds']:
                 _completed_run(study,task,arm,selected['trial'],seed,Path(task['path'])/'fits'/arm/str(seed),reference,selected['view'])
     for task in info['tasks']:
@@ -542,7 +556,7 @@ def freeze(root,device):
         task_snapshots.append(dict(**task,spec=spec,
             test_structure=pd.read_csv(Path(task['path'])/'test_structure.csv',dtype=str,keep_default_na=False).to_dict('records'),
             source_groups=sorted({r['unit_id'] for r in records})))
-        for arm in [*study['baselines'],*CORE]:
+        for arm in [*study['baselines'],*CORE,*ablation_arms(study)]:
             for seed in study['seeds']:
                 directory=Path(task['path'])/'fits'/arm/str(seed)
                 if not (directory/'result_scope.json').exists() or (directory/'failure.json').exists():
@@ -562,7 +576,8 @@ def freeze(root,device):
                             input_data=data['data'],sampling_rate=records[0]['sample_rate_hz'],scope='prospective_DG_no_target_selection')
                 restored,_=load_model(path,device)
                 verify_vectors(predictions,predict_records(restored,validation,dataset,data,classes,device,alpha=1.))
-                chosen=read(Path(task['path'])/'hpo'/arm/'selection.json')
+                selector='I' if arm.startswith('I-minus-') else arm
+                chosen=read(Path(task['path'])/'hpo'/selector/'selection.json')
                 frozen.append(dict(task=task['name'],arm=arm,seed=seed,checkpoint=str(path),view=chosen['view']))
                 profile=class_profile(predictions)
                 for row in summarize_rows(acquisition_rows(predictions),len(classes)):
@@ -658,8 +673,10 @@ def analyze(root):
     root=Path(root).resolve();frozen=read(root/'frozen.json')
     if not (root/'test_complete.json').exists():raise ValueError('Finish the complete frozen target release first.')
     all_metrics=[];all_contrasts=[];explanations=[];contributions=[];costs=[];reference_metrics=[]
-    core=[*frozen['study']['baselines'],*CORE]
-    contrasts={**CONTRASTS,**{f'I-{b}':('I',b) for b in frozen['study']['baselines']}}
+    ablations=list(ablation_arms(frozen['study']))
+    core=[*frozen['study']['baselines'],*CORE,*ablations]
+    contrasts={**CONTRASTS,**{f'I-{b}':('I',b) for b in frozen['study']['baselines']},
+               **{f'I-vs-no-{a.removeprefix("I-minus-")}':('I',a) for a in ablations}}
     for task in frozen['tasks']:
         directory=Path(task['path']);exports=read(directory/'exports.json')
         expected={(a,s) for a in core for s in frozen['study']['seeds']}
