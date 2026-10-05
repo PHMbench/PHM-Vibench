@@ -13,6 +13,8 @@ import torch.nn as nn
 from einops import rearrange
 import torch.nn.functional as F
 from collections import OrderedDict
+from numbers import Integral
+import math
 from .Signal_processing import *
 from .Feature_extract import *
 
@@ -68,9 +70,21 @@ class Model(nn.Module):
             signal_processing_modules.append(SignalProcessingModuleDict(signal_module))
 
         feature_extractor_modules = OrderedDict()
+        feature_definitions = dict(getattr(args, "feature_definitions", {}))
+        unsupported = set(feature_definitions) - {"Entropy", "Kurtosis"}
+        inactive = set(feature_definitions) - set(args.feature_extractor_configs)
+        if unsupported or inactive:
+            raise ValueError(
+                "feature_definitions only supports active Entropy/Kurtosis features; "
+                f"unsupported={sorted(unsupported)}, inactive={sorted(inactive)}"
+            )
         for feature_name in args.feature_extractor_configs:
             module_class = ALL_FE[feature_name]
-            feature_extractor_modules[feature_name] = module_class()  # 假设所有模块的构造函数不需要参数
+            options = ({"definition": feature_definitions[feature_name]}
+                       if feature_name in feature_definitions else {})
+            if feature_name in {"Entropy", "Kurtosis"}:
+                options["epsilon"] = getattr(args, "feature_epsilon", 1e-12)
+            feature_extractor_modules[feature_name] = module_class(**options)
         
         # TODO logic
         
@@ -87,7 +101,12 @@ class Model(nn.Module):
                                                                        in_channels,
                                                                        out_channels,
                                                                        self.args.skip_connection,
-                                                                       self.internal_instance_normalization).to(self.args.device))
+                                                                       self.internal_instance_normalization,
+                                                                       gate_parameterization=getattr(self.args, "gate_parameterization", "softmax"),
+                                                                       gate_temperature=getattr(self.args, "gate_temperature", 0.1),
+                                                                       gate_bias=getattr(self.args, "gate_bias", True),
+                                                                       skip_bias=getattr(self.args, "skip_bias", True),
+                                                                       ).to(self.args.device))
             in_channels = out_channels 
             assert out_channels % self.signal_processing_layers[i].module_num == 0 
             # out_channels = int(out_channels * self.args.scale)
@@ -100,6 +119,8 @@ class Model(nn.Module):
             self.channel_for_feature,
             self.channel_for_feature,
             self.internal_instance_normalization,
+            mixing=getattr(self.args, "feature_mixing", "shared"),
+            mixing_bias=getattr(self.args, "feature_mixing_bias", True),
         ).to(self.args.device)
         len_feature = len(self.feature_extractor_modules)
         self.channel_for_classifier = self.channel_for_feature * len_feature
@@ -107,7 +128,13 @@ class Model(nn.Module):
 
     def init_classifier(self):
         print('# build classifier')
-        self.clf = Classifier(self.channel_for_classifier, self.args.num_classes).to(self.args.device)
+        self.clf = Classifier(
+            self.channel_for_classifier,
+            self.args.num_classes,
+            hidden_dims=getattr(self.args, "classifier_hidden_dims", (128,)),
+            activation=getattr(self.args, "classifier_activation", "relu"),
+            bias=getattr(self.args, "classifier_bias", True),
+        ).to(self.args.device)
 
     def forward(self, x, data_id = None,task_id = None):
         """Compute logits for a batch.
@@ -146,9 +173,18 @@ class CustomBatchNorm(nn.Module):
         if self.training:
             mean = x.mean(dim=0)
             var = x.var(dim=0, unbiased=False)
-            self.running_mean = (1 - self.eps) * self.running_mean + self.eps * mean
-            self.running_var = (1 - self.eps) * self.running_var + self.eps * var
-            out = (x - mean) / (var.sqrt() + self.eps)
+            # Running statistics are source-fitted state, not an autograd history
+            # spanning training batches. Preserve the existing numerical update.
+            with torch.no_grad():
+                self.running_mean.copy_((1 - self.eps) * self.running_mean + self.eps * mean)
+                self.running_var.copy_((1 - self.eps) * self.running_var + self.eps * var)
+            # sqrt(var)'s derivative is infinite at a constant feature; masking
+            # only after sqrt still produces 0 * inf in backward. Preserve the
+            # exact forward value while choosing the zero subgradient there.
+            zero_variance = var == 0
+            safe_var = torch.where(zero_variance, torch.ones_like(var), var)
+            std = torch.where(zero_variance, torch.zeros_like(var), safe_var.sqrt())
+            out = (x - mean) / (std + self.eps)
         else:
             out = (x - self.running_mean) / (self.running_var.sqrt() + self.eps)
         return out
@@ -162,6 +198,11 @@ class SignalProcessingLayer(nn.Module):
         output_channels,
         skip_connection=True,
         internal_instance_normalization=True,
+        *,
+        gate_parameterization: str = "softmax",
+        gate_temperature: float = 0.1,
+        gate_bias: bool = True,
+        skip_bias: bool = True,
     ):
         super(SignalProcessingLayer, self).__init__()
         self.norm = (
@@ -169,13 +210,18 @@ class SignalProcessingLayer(nn.Module):
             if internal_instance_normalization
             else nn.Identity()
         )
-        self.weight_connection = nn.Linear(input_channels, output_channels)
+        if gate_parameterization not in {"softmax", "raw"}:
+            raise ValueError("gate_parameterization must be 'softmax' or 'raw'")
+        if not math.isfinite(gate_temperature) or gate_temperature <= 0:
+            raise ValueError("gate_temperature must be finite and positive")
+        self.gate_parameterization = gate_parameterization
+        self.weight_connection = nn.Linear(input_channels, output_channels, bias=gate_bias)
         self.signal_processing_modules = signal_processing_modules
         self.module_num = len(signal_processing_modules)
-        self.temperature = 0.1
+        self.temperature = float(gate_temperature)
         
         if skip_connection:
-            self.skip_connection = nn.Linear(input_channels, output_channels)
+            self.skip_connection = nn.Linear(input_channels, output_channels, bias=skip_bias)
     def forward(self, x):
         # 信号标准化
         x = rearrange(x, 'b l c -> b c l')
@@ -186,10 +232,9 @@ class SignalProcessingLayer(nn.Module):
         # Normalize for this forward without mutating the parameter. In-place
         # ``weight.data`` replacement made consecutive interventions consume
         # different backbones and bypassed autograd's actual parameter path.
-        normalized_weight = F.softmax(
-            self.weight_connection.weight / self.temperature,
-            dim=0,
-        )
+        normalized_weight = self.weight_connection.weight
+        if self.gate_parameterization == "softmax":
+            normalized_weight = F.softmax(normalized_weight / self.temperature, dim=0)
         x = F.linear(normed_x, normalized_weight, self.weight_connection.bias)
 
         # 按模块数拆分
@@ -214,9 +259,22 @@ class FeatureExtractorlayer(nn.Module):
         in_channels=1,
         out_channels=1,
         internal_instance_normalization=True,
+        *,
+        mixing: str = "shared",
+        mixing_bias: bool = True,
     ):
         super(FeatureExtractorlayer, self).__init__()
-        self.weight_connection = nn.Linear(in_channels, out_channels)
+        if mixing not in {"shared", "per_feature"}:
+            raise ValueError("feature_mixing must be 'shared' or 'per_feature'")
+        self.mixing = mixing
+        if mixing == "shared":
+            # Keep the original module name for strict restoration of p0.
+            self.weight_connection = nn.Linear(in_channels, out_channels, bias=mixing_bias)
+        else:
+            self.weight_connections = nn.ModuleDict({
+                name: nn.Linear(in_channels, out_channels, bias=mixing_bias)
+                for name in feature_extractor_modules
+            })
         self.feature_extractor_modules = feature_extractor_modules
         
         out_channels = int(len(feature_extractor_modules) * out_channels)
@@ -243,24 +301,42 @@ class FeatureExtractorlayer(nn.Module):
         normed_x = self.pre_norm(x)
         normed_x = rearrange(normed_x, 'b c l -> b l c')
         
-        x = self.weight_connection(normed_x)
-        x = rearrange(x, 'b l c -> b c l')
         outputs = []
-        for module in self.feature_extractor_modules.values():
-            outputs.append(module(x))
+        if self.mixing == "shared":
+            mixed = self.weight_connection(normed_x).transpose(1, 2)
+            outputs = [module(mixed) for module in self.feature_extractor_modules.values()]
+        else:
+            for name, module in self.feature_extractor_modules.items():
+                mixed = self.weight_connections[name](normed_x).transpose(1, 2)
+                outputs.append(module(mixed))
         res = torch.cat(outputs, dim=1).squeeze(-1) # B,C
         return self.norm(res)
 
 class Classifier(nn.Module):
-    def __init__(self, in_channels, num_classes): # TODO logic
+    def __init__(
+        self,
+        in_channels: int,
+        num_classes: int,
+        *,
+        hidden_dims=(128,),
+        activation: str = "relu",
+        bias: bool = True,
+    ):
         super(Classifier, self).__init__()
-        self.clf = nn.Sequential(
-            nn.Linear(in_channels, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
-            
-        )
-        # self.clf = nn.Linear(in_channels, num_classes)
+        if activation not in {"relu", "identity"}:
+            raise ValueError("classifier_activation must be 'relu' or 'identity'")
+        if not isinstance(hidden_dims, (list, tuple)) or any(
+            isinstance(width, bool) or not isinstance(width, Integral) or width <= 0
+            for width in hidden_dims
+        ):
+            raise ValueError("classifier_hidden_dims must be a list of positive integers (or [])")
+        dimensions = [in_channels, *hidden_dims, num_classes]
+        layers = []
+        for index, (width_in, width_out) in enumerate(zip(dimensions, dimensions[1:])):
+            layers.append(nn.Linear(width_in, width_out, bias=bias))
+            if index < len(dimensions) - 2:
+                layers.append(nn.ReLU() if activation == "relu" else nn.Identity())
+        self.clf = nn.Sequential(*layers)
         
     def forward(self, x):
         x = x.view(x.size(0), -1)

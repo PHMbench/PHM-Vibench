@@ -15,7 +15,7 @@ def calibration_stage(tmp_path, monkeypatch):
         'steps_per_epoch': 10,
         'update_budgets': [1000, 2500, 5000],
         'hpo_seed': 20261003,
-        'baselines': {'ResNet1D': {}, 'MWA-CNN-6': {}},
+        'baselines': {'ResNet1D': {}, 'MWA-CNN-6': {}, 'TSPN_TON': {}},
     }
     tasks = [dict(name=name, path=str(tmp_path/name)) for name in ('fold_a', 'fold_b')]
     for task in tasks:
@@ -74,7 +74,7 @@ def test_calibration_uses_one_cap_for_every_task_and_baseline(calibration_stage,
         record_run(recipe, task, arm, trial, seed, output, reference, 'execute')
         cap = recipe['epochs']*recipe['steps_per_epoch']
         # The last baseline of the last task forces every arm to the next cap.
-        improving = cap == 1000 and task['name'] == 'fold_b' and arm == 'MWA-CNN-6'
+        improving = cap == 1000 and task['name'] == 'fold_b' and arm == 'TSPN_TON'
         _history(output, improving=improving)
 
     def completed(recipe, task, arm, trial, seed, output, reference, view):
@@ -184,3 +184,44 @@ def test_final_baseline_qualification_requires_each_actual_run_to_converge(tmp_p
         assert failing[0]['recent_source_improvement'] == pytest.approx(.04)
         assert any('BUDGET_INSUFFICIENT' in reason for reason in failing[0]['reasons'])
         assert all(row['convergence_passed'] and row['passed'] for row in reports if row['seed'] != 123)
+
+
+@pytest.mark.parametrize('fixture', [False, True])
+@pytest.mark.parametrize('status', ['implementation_unverified','documented_adaptation'])
+def test_ton_mapping_status_controls_formal_qualification(tmp_path, monkeypatch, fixture, status):
+    study = dict(baselines={'TSPN_TON': {}}, seeds=[42, 123, 456], hpo_seed=20261003,
+                 reference_min_accuracy=.8, baseline_provenance={'TSPN_TON': dict(
+                     status=status, differences=['Explicit author-defined statistics and affine readout.'])})
+    task = dict(name='fold_a', path=str(tmp_path/'fold_a'))
+    info = dict(fixture=fixture, tasks=[task])
+    reference = Path(task['path'])/'hpo'/'p0'/'trial_00'
+    selection = Path(task['path'])/'hpo'/'TSPN_TON'
+    selection.mkdir(parents=True)
+    dg.dump(selection/'selection.json', dict(trial=dict(lr=.001,weight_decay=0.,scheduler='none')))
+    monkeypatch.setattr(dg, '_reference', lambda task: reference)
+    monkeypatch.setattr(dg, '_completed_run', lambda *args: None)
+    monkeypatch.setattr(dg, '_qualify_run', lambda *args: dict(passed=True,reasons=[]))
+    monkeypatch.setattr(dg, '_recent_source_improvement', lambda run: 0.)
+    monkeypatch.setattr(dg, 'suite', lambda root: (Path(root),study,info))
+    monkeypatch.setattr(dg, 'condition_audit', lambda root: None)
+    monkeypatch.setattr(dg, '_training_study', lambda root, study, info: study)
+    monkeypatch.setattr(dg, '_development_guard', lambda root, device: (Path(root),study,info))
+    if fixture or status=='documented_adaptation':
+        result = dg.qualify(tmp_path)
+        assert result['passed']
+        assert all(row.get('provenance',{}).get('status')==status
+                   for row in result['runs'] if row['arm']=='TSPN_TON')
+    else:
+        with pytest.raises(ValueError,match='BASELINE_IMPLEMENTATION_UNVERIFIED'):
+            dg.qualify(tmp_path)
+        result=dg.read(tmp_path/'baseline_qualification.json')
+        assert not result['passed'] and result['target_read'] is False
+        assert all(row['performance_passed'] for row in result['runs'])
+        failed=[row for row in result['runs'] if not row['passed']]
+        assert {row['seed'] for row in failed}=={42,123,456}
+        assert all(row['implementation_passed'] is False and row['convergence_passed'] for row in failed)
+        # Even a perfect source score and a cached PASS cannot release a target.
+        (tmp_path/'baseline_qualification.json').write_text('{"passed": true}')
+        with pytest.raises(ValueError,match='BASELINE_IMPLEMENTATION_UNVERIFIED'):
+            dg.freeze(tmp_path,'cpu')
+        assert not (tmp_path/'frozen.json').exists()

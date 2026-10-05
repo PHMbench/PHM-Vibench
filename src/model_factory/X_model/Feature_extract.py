@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 import sympy
 from sympy.abc import x
 
@@ -58,12 +59,29 @@ class VarFeature(FeatureExtractionBase):
         self.name = "Var"
 #  Entropy
 class EntropyFeature(FeatureExtractionBase):
-    def __init__(self):
+    def __init__(self, definition: str = "legacy_softmax_weighted", epsilon: float = 1e-12):
         super(EntropyFeature, self).__init__("entropy")
-        self.register_feature_method(
-            lambda x: (x * torch.log(torch.softmax(x, dim=-1))).mean(dim=-1, keepdim=True)
-        )
+        if not math.isfinite(epsilon) or epsilon <= 0:
+            raise ValueError("feature_epsilon must be finite and positive")
+        self.epsilon = float(epsilon)
+        if definition == "legacy_softmax_weighted":
+            # The historical statistic is not Shannon entropy. log_softmax is
+            # algebraically identical but avoids log(0) for separated samples.
+            self.register_feature_method(
+                lambda x: (x * F.log_softmax(x, dim=-1)).mean(dim=-1, keepdim=True)
+            )
+        elif definition == "absolute_mean_xlogx":
+            self.register_feature_method(self.absolute_mean_xlogx)
+        else:
+            raise ValueError("Entropy definition must be 'legacy_softmax_weighted' or 'absolute_mean_xlogx'")
+        self.definition = definition
         self.name = "Entropy"
+
+    def absolute_mean_xlogx(self, x: torch.Tensor) -> torch.Tensor:
+        """Mean |x| log(|x| + epsilon); not a normalized probability entropy."""
+        magnitude = x.abs()
+        return (magnitude * (magnitude + self.epsilon).log()).mean(dim=-1, keepdim=True)
+
 # Max
 class MaxFeature(FeatureExtractionBase):
     def __init__(self):
@@ -90,13 +108,28 @@ class AbsMeanFeature(FeatureExtractionBase):
         self.name = "AbsMean"
 # Kurtosis        
 class KurtosisFeature(FeatureExtractionBase):
-    def __init__(self):
+    def __init__(self, definition: str = "legacy_sample_variance", epsilon: float = 1e-12):
         super(KurtosisFeature, self).__init__("kurtosis")
-        self.register_feature_method(
-            lambda x: (((x - torch.mean(x, dim=-1, keepdim=True)) ** 4).mean(dim=-1, keepdim=True)) /
-                      (torch.var(x, dim=-1, keepdim=True) ** 2)
-        )
+        if not math.isfinite(epsilon) or epsilon <= 0:
+            raise ValueError("feature_epsilon must be finite and positive")
+        self.epsilon = float(epsilon)
+        if definition == "legacy_sample_variance":
+            self.register_feature_method(
+                lambda x: (((x - torch.mean(x, dim=-1, keepdim=True)) ** 4).mean(dim=-1, keepdim=True)) /
+                          (torch.var(x, dim=-1, keepdim=True) ** 2)
+            )
+        elif definition == "population_moment":
+            self.register_feature_method(self.population_moment)
+        else:
+            raise ValueError("Kurtosis definition must be 'legacy_sample_variance' or 'population_moment'")
+        self.definition = definition
         self.name = "Kurtosis"
+
+    def population_moment(self, x: torch.Tensor) -> torch.Tensor:
+        """m4 / max(m2, epsilon)^2; constant signals explicitly map to zero."""
+        centered = x - x.mean(dim=-1, keepdim=True)
+        variance = centered.square().mean(dim=-1, keepdim=True)
+        return centered.pow(4).mean(dim=-1, keepdim=True) / variance.clamp_min(self.epsilon).square()
 # RMS
 class RMSFeature(FeatureExtractionBase):
     def __init__(self):

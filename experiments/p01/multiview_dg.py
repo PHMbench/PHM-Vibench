@@ -25,6 +25,7 @@ from experiments.p01.fusion_data import read_records, summarize_rows
 from experiments.p01.condition_contract import validate_condition_task
 from experiments.p01.baseline_qualification import qualify_source_prediction_arrays
 from experiments.p01.condition_comparison import paired_condition_rows
+from experiments.p01.diagnostic_analysis import profile_predictor, select_explanation_cases
 from experiments.p01.fusion_deployment import (
     FrozenClassifier, load_model, predict_records, save_bundle, verify_vectors,
     acquisition_rows, write_csv,
@@ -37,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CORE = ('I', 'I-F', 'MLP16', 'I-single', 'Dense', 'Dense-matched', 'I-base')
 CONTRASTS = {f'I-{arm}': ('I', arm) for arm in ('p0', 'I-F', 'MLP16', 'I-single', 'Dense', 'Dense-matched', 'I-base')}
 SUPPORTED = {('CNN','ResNet1D'), ('CNN','TCN'), ('Transformer','PatchTST'),
-             ('X_model','BASE_ExplainableCNN'), ('X_model','MWA_CNN')}
+             ('X_model','BASE_ExplainableCNN'), ('X_model','MWA_CNN'), ('X_model','TSPN')}
 
 
 def ablation_arms(study):
@@ -63,7 +64,7 @@ def resolve(value, base):
     return value.resolve() if value.is_absolute() else (base/value).resolve()
 
 
-def validate_study(study):
+def validate_study(study, *, fixture=False):
     if study['schema_version'] != 1:
         raise ValueError('Unsupported DG study schema.')
     seeds = study['seeds']
@@ -73,6 +74,10 @@ def validate_study(study):
         raise ValueError('At least two unique explicit final seeds are required.')
     if study['hpo_seed'] in seeds:
         raise ValueError('HPO seed and final reporting seeds must be distinct.')
+    if 42 not in seeds:
+        raise ValueError('The frozen explanation-case rule requires final seed 42, including in constructed fixtures.')
+    if not fixture and (seeds != [42, 123, 456] or study['hpo_seed'] != 20261003):
+        raise ValueError('Formal DG retains final seeds 42/123/456 and HPO seed 20261003.')
     if study['reference_min_accuracy'] != .8:
         raise ValueError('The current study retains its prespecified .8 reference criterion.')
     if min(study[k] for k in ('epochs','steps_per_epoch','units_per_domain','overfit_steps')) < 1:
@@ -90,10 +95,30 @@ def validate_study(study):
             raise ValueError('Each trial declares lr, weight_decay and scheduler.')
         if trial['scheduler'] not in {'none','cosine'} or not math.isfinite(trial['weight_decay']) or trial['weight_decay']<0:
             raise ValueError('Invalid optimizer trial.')
+    if not fixture and {(t['lr'], t['weight_decay'], t['scheduler']) for t in study['trials']} != {
+            (lr, wd, 'none') for lr in (1e-4, 3e-4, 1e-3, 3e-3) for wd in (0., 1e-4, 1e-3)}:
+        raise ValueError('Formal DG requires the frozen twelve-trial 4-by-3 Adam grid for every family.')
     if set(study['baselines']) & set((*CORE, 'p0')):
         raise ValueError('Baseline aliases may not shadow a core model identity.')
     if not study['baselines'] or any((m['type'],m['name']) not in SUPPORTED for m in study['baselines'].values()):
         raise ValueError('Use only inspected classification models at the recorded runtime revision.')
+    for arm, model in study['baselines'].items():
+        if arm == 'TSPN_TON' and (model['type'], model['name']) != ('X_model', 'TSPN'):
+            raise ValueError('TSPN_TON identifies a TSPN configuration, not a replacement architecture.')
+        if (model['type'], model['name']) == ('X_model', 'TSPN'):
+            if arm != 'TSPN_TON' or study.get('baseline_training', {}).get(arm) != {'objective': 'ce'}:
+                raise ValueError('The independent TSPN_TON comparator requires its explicit native CE objective.')
+            provenance = study.get('baseline_provenance', {}).get(arm, {})
+            if provenance.get('status') not in {'implementation_unverified', 'documented_adaptation'}:
+                raise ValueError('TSPN_TON requires explicit adaptation provenance, not a faithful-reproduction claim.')
+            if provenance['status'] == 'documented_adaptation' and not provenance.get('differences'):
+                raise ValueError('TSPN_TON documented_adaptation must disclose its implemented differences.')
+    if set(study.get('baseline_training', {})) - set(study['baselines']):
+        raise ValueError('Baseline training recipes must name an existing baseline.')
+    for arm, recipe in study.get('baseline_training', {}).items():
+        expected = 'ce' if arm == 'TSPN_TON' else 'ce_plus_0.25_brier'
+        if recipe != {'objective': expected}:
+            raise ValueError(f'{arm} must retain its declared training objective {expected}.')
     names = [b['name'] for b in study['fusion']['model']['branches']]
     if len(names)<2 or len(names)!=len(set(names)) or len(study['trials'])<len(names):
         raise ValueError('Require multiple unique views and enough total single-view trials to cover them.')
@@ -201,7 +226,7 @@ def bind_task(task_path, out):
 
 
 def bind(study_path, task_paths, output, fixture=False):
-    study=read(study_path);validate_study(study)
+    study=read(study_path);validate_study(study, fixture=fixture)
     tasks=[read(p) for p in task_paths]
     names=[t['name'] for t in tasks]
     if len(names)!=len(set(names)) or any('/' in n or n in {'.','..'} for n in names):
@@ -300,7 +325,14 @@ def candidate_config(study,task,arm,reference=None,view=None):
         model=copy.deepcopy(study['baselines'][arm])
         model.update(num_classes=classes,device='cpu')
         model['in_channels' if model['type']=='X_model' else 'input_dim']=channels
-        return dict(model=model)
+        if (model['type'], model['name']) == ('X_model', 'TSPN'):
+            model.update(in_dim=length, out_dim=length)
+        cfg = dict(model=model, arm=arm)
+        if arm in study.get('baseline_training', {}):
+            cfg['training'] = copy.deepcopy(study['baseline_training'][arm])
+        if arm in study.get('baseline_provenance', {}):
+            cfg['provenance'] = copy.deepcopy(study['baseline_provenance'][arm])
+        return cfg
     cfg=copy.deepcopy(study['fusion']);m=cfg['model']
     ref=read(Path(reference)/'model_config.yaml')['model']
     m.update(num_classes=classes,reference_config=ref,checkpoint_kind='reference',
@@ -545,7 +577,13 @@ def _baseline_qualifications(study, info):
                                     **_qualify_run(task, run, study['reference_min_accuracy'])))
     for row in reports:
         row['performance_passed'] = row['passed']
+        if row['arm'] in study.get('baseline_provenance', {}):
+            row['provenance'] = copy.deepcopy(study['baseline_provenance'][row['arm']])
         if not info['fixture']:
+            if row.get('provenance', {}).get('status') == 'implementation_unverified':
+                row['implementation_passed'] = False
+                row['passed'] = False
+                row['reasons'].append('BASELINE_IMPLEMENTATION_UNVERIFIED: unresolved paper-to-configuration semantics; source diagnostics are not faithful baseline evidence.')
             gain = _recent_source_improvement(row['run'])
             row['recent_source_improvement'] = gain
             row['convergence_passed'] = gain < .001
@@ -569,6 +607,8 @@ def qualify(root, device='cpu'):
     else:
         dump(path, result)
     if not result['passed']:
+        if any(row.get('implementation_passed') is False for row in reports):
+            raise ValueError('BASELINE_IMPLEMENTATION_UNVERIFIED: resolve the declared baseline semantics before proposed development or target release.')
         if any(row.get('convergence_passed') is False for row in reports):
             raise ValueError('BUDGET_INSUFFICIENT: a selected baseline still improves; preserve this study and revise the shared budget before target access.')
         raise ValueError('BASELINE_UNQUALIFIED: at least one fixed baseline seed/source condition failed; no proposed comparison.')
@@ -581,6 +621,8 @@ def _require_qualified_baselines(root, study, info):
     # Recompute from the selected source predictions; a stale PASS file cannot
     # override missing conditions/classes or a failed fixed seed.
     reports = _baseline_qualifications(study, info)
+    if any(row.get('implementation_passed') is False for row in reports):
+        raise ValueError('BASELINE_IMPLEMENTATION_UNVERIFIED: source qualification cannot certify an unresolved literature mapping.')
     if any(row.get('convergence_passed') is False for row in reports):
         raise ValueError('BUDGET_INSUFFICIENT: current baseline source trajectories fail the frozen recent-improvement rule.')
     if not reports or not all(row['passed'] for row in reports):
@@ -737,7 +779,7 @@ def freeze(root,device):
     root,study,info=_development_guard(root,device)
     study = _training_study(root, study, info)
     _require_qualified_baselines(root, study, info)
-    frozen=[];quality=[];task_snapshots=[]
+    frozen=[];quality=[];task_snapshots=[];inference_costs=[]
     for task in info['tasks']:
         reference=_reference(task)
         for arm in [*study['baselines'],*CORE,*ablation_arms(study)]:
@@ -750,6 +792,28 @@ def freeze(root,device):
         validation=[r for r in records if r['split']=='validation']
         reference=_reference(task);ref=torch.load(reference/'selected_candidate.pt',map_location='cpu',weights_only=True)
         destination=Path(task['path'])/'frozen';destination.mkdir(exist_ok=False)
+        # Reuse a fixed, source-validation-only batch for all predictors. Timing
+        # neither opens a target nor changes a model/configuration selection.
+        timing_cap=min(32,len(dataset['source_domains'])*study['units_per_domain'])
+        timing_records=validation[:timing_cap]
+        timing_x=torch.cat([window_record(r,dataset,data['data'])[:1] for r in timing_records]).to(device)
+        def record_inference(arm, seed, predictor):
+            profile=profile_predictor(predictor,timing_x,device)
+            profile.update(task=task['name'],arm=arm,seed=seed,target_read=False,
+                           acquisition_ids=[str(r['acquisition_id']) for r in timing_records])
+            dump(destination/f'{arm}_{seed}_inference.json',profile)
+            reference_cost=profile['reference_only'] or {}
+            inference_costs.append(dict(task=task['name'],arm=arm,seed=seed,
+                input_shape=json.dumps(profile['input_shape']),dtype=profile['dtype'],device=profile['device'],
+                hardware=profile['hardware'],warmup=profile['warmup'],repeats=profile['repeats'],
+                full_median_ms=profile['full']['median_ms'],full_p95_ms=profile['full']['p95_ms'],
+                full_forward_peak_increment_bytes=profile['full']['forward_peak_increment_bytes'],
+                reference_median_ms=reference_cost.get('median_ms'),
+                incremental_median_ms=profile['incremental_median_ms'],
+                timing_boundary=profile['timing_boundary'],memory_boundary=profile['memory_boundary'],target_read=False))
+        reference_predictor=_reference_wrapper(reference/'selected_candidate.pt',device).candidate
+        record_inference('p0',study['hpo_seed'],reference_predictor)
+        del reference_predictor
         spec=read(Path(task['path'])/'task.json')
         task_snapshots.append(dict(**task,spec=spec,
             test_structure=pd.read_csv(Path(task['path'])/'test_structure.csv',dtype=str,keep_default_na=False).to_dict('records'),
@@ -783,6 +847,13 @@ def freeze(root,device):
                     subprocess.run(command, cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT, check=True)
                 with np.load(restored/'predictions.npz', allow_pickle=False) as actual:
                     verify_vectors(predictions, actual)
+                # Reload the deployed alpha=1 model; selected fusion training
+                # checkpoints retain alpha=0, which would time only p0.
+                del model
+                deployed,_=load_model(path,device)
+                if isinstance(deployed,FrozenClassifier):deployed=deployed.candidate
+                record_inference(arm,seed,deployed)
+                del deployed
                 selector='I' if arm.startswith('I-minus-') else arm
                 chosen=read(Path(task['path'])/'hpo'/selector/'selection.json')
                 frozen.append(dict(task=task['name'],arm=arm,seed=seed,checkpoint=str(path),view=chosen['view']))
@@ -792,6 +863,7 @@ def freeze(root,device):
                         quality.append(dict(task=task['name'],arm=arm,seed=seed,**row,
                             source_class_profile=json.dumps(profile[str(row['domain'])],allow_nan=False)))
     write_csv(root/'source_quality.csv',quality)
+    write_csv(root/'inference_costs.csv',inference_costs)
     # A single suite barrier: all splits and datasets are selected before any target.
     dump(root/'frozen.json',dict(tasks=task_snapshots,study=study,models=frozen,fixture=info['fixture'],target_read=False))
 
@@ -886,6 +958,7 @@ def analyze(root):
     root=Path(root).resolve();frozen=read(root/'frozen.json')
     if not (root/'test_complete.json').exists():raise ValueError('Finish the complete frozen target release first.')
     all_metrics=[];all_contrasts=[];explanations=[];contributions=[];costs=[];reference_metrics=[];condition_differences=[]
+    explanation_cases=[];explanation_strata=[]
     ablations=list(ablation_arms(frozen['study']))
     core=[*frozen['study']['baselines'],*CORE,*ablations]
     contrasts={**CONTRASTS,**{f'I-{b}':('I',b) for b in frozen['study']['baselines']},
@@ -927,6 +1000,16 @@ def analyze(root):
             check=reconstruction(arrays)
             if check:contributions.extend(contribution_rows(arrays,task['name'],entry['arm'],entry['seed']))
             if check:explanations.append(dict(task=task['name'],arm=entry['arm'],seed=entry['seed'],**check))
+            if entry['arm']=='I' and entry['seed']==42:
+                cases=select_explanation_cases(arrays,conditions=[*declared_sources,*target],
+                                                class_names=spec['model']['class_names'],seed=42)
+                dump(directory/'analysis'/'explanation_cases.json',cases)
+                for row in cases['cases']:
+                    flattened=dict(row,signed_branch_terms=json.dumps(row['signed_branch_terms'],sort_keys=True),
+                                   descriptors=json.dumps(row['descriptors'],sort_keys=True))
+                    explanation_cases.append(dict(task=task['name'],dataset=task['dataset_id'],seed=42,**flattened))
+                explanation_strata.extend(dict(task=task['name'],dataset=task['dataset_id'],seed=42,**row)
+                                          for row in cases['strata'])
         # The reference is shared: report it once per task, not as three fits.
         first=exports[0]
         with np.load(first['path'],allow_pickle=False) as archive: raw={k:archive[k] for k in archive.files}
@@ -957,6 +1040,9 @@ def analyze(root):
     write_csv(destination/'reconstruction.csv',explanations)
     write_csv(destination/'reference_metrics.csv',reference_metrics)
     write_csv(destination/'costs.csv',costs)
+    write_csv(destination/'inference_costs.csv',pd.read_csv(root/'inference_costs.csv').to_dict('records'))
+    write_csv(destination/'explanation_cases.csv',explanation_cases)
+    write_csv(destination/'explanation_strata.csv',explanation_strata)
     write_csv(destination/'paired_condition_differences.csv',condition_differences)
     write_csv(destination/'window_contributions_by_acquisition.csv',contributions)
     plot_contrasts(pd.DataFrame(all_contrasts),destination)

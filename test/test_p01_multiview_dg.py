@@ -64,7 +64,20 @@ def fixture_study():
     return dict(schema_version=1,min_datasets=2,min_splits_per_dataset=2,seeds=[42,123,456],hpo_seed=20261003,
        epochs=20,steps_per_epoch=10,units_per_domain=2,pair_shift=8,overfit_steps=150,reference_min_accuracy=.8,
        trials=[dict(lr=.003,weight_decay=0.,scheduler='none'),dict(lr=.001,weight_decay=0.,scheduler='none')],
-       reference=ref,baselines={'TCN':dict(type='CNN',name='TCN',num_channels=[8,8],kernel_size=3,dropout=0.)},
+       reference=ref,baselines={
+           'TCN':dict(type='CNN',name='TCN',num_channels=[8,8],kernel_size=3,dropout=0.),
+           'TSPN_TON':dict(type='X_model',name='TSPN',out_channels=1,scale=4,skip_connection=True,
+                internal_instance_normalization=False,
+                signal_processing_configs={f'layer{i}':['WF'] for i in (1,2,3)},
+                feature_extractor_configs=['Mean','Entropy','Kurtosis'],
+                feature_definitions={'Entropy':'absolute_mean_xlogx','Kurtosis':'population_moment'},feature_epsilon=1e-12,
+                gate_parameterization='raw',gate_bias=False,skip_bias=False,
+                feature_mixing='per_feature',feature_mixing_bias=False,
+                classifier_hidden_dims=[4],classifier_activation='identity',classifier_bias=False,
+                f_c_mu=.18,f_c_sigma=.01,f_b_mu=.04,f_b_sigma=.001)},
+       baseline_training={'TSPN_TON':dict(objective='ce')},
+       baseline_provenance={'TSPN_TON':dict(status='documented_adaptation',
+           differences=['Absolute-value mean xlogx entropy; regularized population kurtosis; width-4 two-affine readout.'])},
        fusion=dict(model=dict(type='X_model',name='TSPN_fusion',head_type='operator_residual',head_hidden_dim=16,
             use_reference_features=True,reference_temperature=1.,head_frobenius_cap=5.,
             branches=[dict(name='stft_short',type='stft',transform=dict(win_length=64,n_fft=64,hop_length=16),readout=dict(row_groups=4,time_bins=2,log_floor=.001)),
@@ -191,7 +204,7 @@ def test_baseline_factory_gradient_strict_restore(name,kind,options,tmp_path):
 def test_small_suite_end_to_end(task_source,tmp_path):
     root=bind_fixture(tmp_path,task_source)
     dg.condition_audit(root);dg.preflight(root);dg.smoke(root,'baseline','cpu')
-    assert {row['arm'] for row in dg.read(root/'smoke_baseline.json')['checks']} == {'p0', 'TCN'}
+    assert {row['arm'] for row in dg.read(root/'smoke_baseline.json')['checks']} == {'p0', 'TCN', 'TSPN_TON'}
     dg.tune(root,'reference','cpu');dg.tune(root,'baselines','cpu')
     dg.fit(root,'cpu',family='baselines');dg.qualify(root,'cpu')
     # A cached PASS cannot hide one final seed collapsing a source condition.
@@ -216,6 +229,11 @@ def test_small_suite_end_to_end(task_source,tmp_path):
     arms=set(dg.CORE) | set(study['baselines']) | set(dg.ablation_arms(study))
     expected_fits={(arm,seed) for arm in arms for seed in study['seeds']}
     assert {(item['arm'],item['seed']) for item in frozen['models']}==expected_fits
+    inference=pd.read_csv(root/'inference_costs.csv')
+    assert set(inference[['arm','seed']].itertuples(index=False,name=None)) == expected_fits | {('p0',study['hpo_seed'])}
+    assert inference.input_shape.nunique()==1 and not inference.target_read.any()
+    assert (inference.full_median_ms>0).all()
+    assert inference.loc[inference.arm=='I','incremental_median_ms'].notna().all()
     for arm,seed in expected_fits:
         restored=root/'fixture_to_2'/'frozen'/f'{arm}_{seed}_source_restore'
         assert (restored/'scope.json').is_file()
@@ -227,7 +245,7 @@ def test_small_suite_end_to_end(task_source,tmp_path):
     with pytest.raises(ValueError,match='frozen'):dg.fit(root,'cpu')
     dg.test(root,'cpu');dg.analyze(root)
     contrasts=pd.read_csv(root/'summary'/'contrasts.csv')
-    assert set(contrasts.contrast)==set(dg.CONTRASTS)|{'I-TCN'}
+    assert set(contrasts.contrast)==set(dg.CONTRASTS)|{'I-TCN','I-TSPN_TON'}
     assert set(contrasts.status)=={'complete'}
     rec=pd.read_csv(root/'summary'/'reconstruction.csv')
     assert (rec.max_abs<rec.tolerance).all()
@@ -246,6 +264,12 @@ def test_small_suite_end_to_end(task_source,tmp_path):
     assert set(identity)==expected_rows
     np.testing.assert_allclose(paired.target_minus_source,paired.target_estimate-paired.source_estimate,atol=1e-12)
     assert dg.read(root/'summary'/'scope.json')['fixture'] is True
+    cases=pd.read_csv(root/'summary'/'explanation_cases.csv')
+    strata=pd.read_csv(root/'summary'/'explanation_strata.csv')
+    assert set(cases.seed)=={42} and set(cases.condition_id)=={0,1,2}
+    assert len(strata)==3*2*4 and set(strata.status)<={'present','missing'}
+    assert (cases.reconstruction_absolute_error<1e-5).all()
+    assert (root/'summary'/'inference_costs.csv').is_file()
 
 
 def test_execute_preserves_trainer_failure_when_recording_process_exit(task_source,tmp_path,monkeypatch):
@@ -293,7 +317,7 @@ def test_different_target_sampling_convention_is_rejected(task_source,tmp_path):
 
 def test_core_alias_cannot_be_shadowed():
     study=fixture_study();study['baselines']['I']=study['baselines']['TCN']
-    with pytest.raises(ValueError,match='shadow'):dg.validate_study(study)
+    with pytest.raises(ValueError,match='shadow'):dg.validate_study(study,fixture=True)
 
 
 def test_hpo_budget_cannot_be_expanded_or_padded_with_duplicates():
@@ -304,6 +328,42 @@ def test_hpo_budget_cannot_be_expanded_or_padded_with_duplicates():
     study['trials']=[study['trials'][0],study['trials'][0]]
     with pytest.raises(ValueError,match='Duplicate HPO'):
         dg.validate_study(study)
+
+
+def test_formal_grid_cannot_use_the_constructed_fixture_budget():
+    study=fixture_study()
+    with pytest.raises(ValueError,match='twelve-trial'):
+        dg.validate_study(study)
+    dg.validate_study(study,fixture=True)
+
+
+def test_explanation_reporting_seed_cannot_be_omitted_before_binding():
+    study=fixture_study();study['seeds']=[7,8]
+    with pytest.raises(ValueError,match='explanation-case rule'):
+        dg.validate_study(study,fixture=True)
+
+
+@pytest.mark.parametrize('invalid',['identity','objective','faithfulness'])
+def test_ton_label_requires_explicit_model_objective_and_unverified_mapping(invalid):
+    study=fixture_study()
+    if invalid=='identity':study['baselines']['TSPN_TON']=study['baselines']['TCN']
+    elif invalid=='objective':study['baseline_training']['TSPN_TON']['objective']='ce_plus_0.25_brier'
+    else:study['baseline_provenance']['TSPN_TON']['status']='faithful_reproduction'
+    with pytest.raises(ValueError,match='TSPN_TON'):
+        dg.validate_study(study,fixture=True)
+
+
+def test_ton_candidate_uses_task_window_and_independent_configuration(task_source,tmp_path):
+    root=bind_fixture(tmp_path,task_source)
+    _,study,info=dg.suite(root)
+    study['baselines']['TSPN_TON'].update(in_dim=17,out_dim=17,in_channels=99)
+    cfg=dg.candidate_config(study,info['tasks'][0],'TSPN_TON')
+    assert (cfg['model']['in_dim'],cfg['model']['out_dim'],cfg['model']['in_channels'])==(512,512,1)
+    assert (cfg['model']['type'],cfg['model']['name'])==('X_model','TSPN')
+    assert cfg['arm']=='TSPN_TON' and cfg['training']=={'objective':'ce'}
+    assert cfg['provenance']['status']=='documented_adaptation'
+    assert not {'weights_path','checkpoint_path','reference_config'} & cfg['model'].keys()
+    assert cfg['model']['signal_processing_configs'] != study['reference']['signal_processing_configs']
 
 
 def test_duplicate_split_is_not_an_additional_experiment(task_source,tmp_path):
