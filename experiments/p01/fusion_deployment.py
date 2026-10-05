@@ -66,12 +66,14 @@ class FrozenClassifier(torch.nn.Module):
         return self.candidate(x)
 
 
-def log_predictions(model,x,kind,temperature,alpha,contributions=None):
+def log_predictions(model,x,kind,temperature,alpha,contributions=None,descriptors=None):
     from src.model_factory.X_model.TSPN_fusion import mixture_log_probs
     if kind=='model':
         out=model.forward_details(x);raw=out['raw_logits'];candidate=out['candidate_logits']
         if contributions is not None:
             contributions.update(out.get('branch_logit_contributions',{}))
+        if descriptors is not None:
+            descriptors.update(out.get('branch_features',{}))
     elif kind=='temperature':
         raw=model.reference(x)
         candidate=raw/(float(model.reference_temperature)*temperature)
@@ -94,12 +96,18 @@ def predict_records(model,records,dataset,data,classes,device,kind='model',tempe
                            'labels','group_ids','acquisition_ids','window_ids','domains')}
     for record in records:
         x=window_record(record,dataset,data['data']).to(device)
-        contributions={}
-        lp0,lpq,lpf=log_predictions(model,x,kind,temperature,alpha,contributions)
+        contributions={};descriptors={}
+        lp0,lpq,lpf=log_predictions(model,x,kind,temperature,alpha,contributions,descriptors)
         # These explain the DIRECT candidate's log-odds correction. A probability
         # mixture at intermediate alpha is not additive in these logit terms.
         for name,value in contributions.items():
             arrays.setdefault('logit_contribution__'+name,[]).append(value.cpu().numpy())
+        # Existing per-view descriptors come from the same forward. Raw signals
+        # and full time-frequency maps are intentionally not copied into exports.
+        for name,value in descriptors.items():
+            if value.ndim!=2 or not torch.isfinite(value).all():
+                raise FloatingPointError(f'Invalid finite window-by-feature descriptor: {name}')
+            arrays.setdefault('descriptor__'+name,[]).append(value.cpu().numpy())
         for prefix,lp in zip(('raw','candidate','deployed'),(lp0,lpq,lpf)):
             if not torch.isfinite(lp).all():raise FloatingPointError('Nonfinite model log probabilities.')
             arrays[prefix+'_log_probs'].append(lp.cpu().numpy())
@@ -169,6 +177,10 @@ def verify_vectors(expected,actual):
     if names!={key for key in actual if key.startswith('logit_contribution__')}:
         raise AssertionError('Restored explanation branches differ.')
     for key in names:
+        np.testing.assert_allclose(actual[key],expected[key],atol=1e-7,rtol=1e-6,err_msg=f'Restored {key}')
+    # Older exports have no descriptors; newer exports must restore every one.
+    for key in (key for key in expected if key.startswith('descriptor__')):
+        if key not in actual:raise AssertionError(f'Restored descriptor is missing: {key}')
         np.testing.assert_allclose(actual[key],expected[key],atol=1e-7,rtol=1e-6,err_msg=f'Restored {key}')
 
 

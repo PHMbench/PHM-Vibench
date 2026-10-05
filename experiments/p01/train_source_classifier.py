@@ -2,8 +2,8 @@
 
 Both roles reuse physical-group sampling, acquisition windows and the fusion
 evaluator. Condition-DG reference development uses paired ordinary CE; legacy
-reference runs remain unpaired. The comparator uses paired CE + .25 Brier and
-selection relative to the complete frozen reference.
+reference runs remain unpaired. Comparators retain their declared native paired
+objective and share CE + .25 Brier selection relative to the frozen reference.
 """
 from __future__ import annotations
 
@@ -123,12 +123,21 @@ def _run(args: argparse.Namespace) -> Path:
     settings = copy.deepcopy(cfg["model"])
     identity = (settings["type"], settings["name"])
     expected = ("X_model", "TSPN") if args.role == "reference" else ("CNN", "ResNet1D")
-    supported={("CNN","ResNet1D"),("CNN","TCN"),("Transformer","PatchTST"),("X_model","BASE_ExplainableCNN"),("X_model","MWA_CNN")}
+    supported={("CNN","ResNet1D"),("CNN","TCN"),("Transformer","PatchTST"),("X_model","BASE_ExplainableCNN"),("X_model","MWA_CNN"),("X_model","TSPN")}
     allowed=(identity in supported) if args.role=="baseline" and args.dg else identity==expected
     if not allowed or settings.get("weights_path"):
         raise ValueError(f"Role {args.role} requires the existing {expected} model initialized without weights.")
     if identity == ("X_model", "MWA_CNN") and settings.get("depth") != 6:
         raise ValueError("The declared MWA-CNN-6 baseline requires explicit depth=6; a four-level model is not equivalent.")
+    tspn_comparator = args.role == "baseline" and identity == ("X_model", "TSPN")
+    if tspn_comparator and (cfg.get("arm") != "TSPN_TON" or cfg.get("training") != {"objective": "ce"}
+                            or cfg.get("provenance", {}).get("status") not in {"implementation_unverified", "documented_adaptation"}):
+        raise ValueError("The independent TSPN_TON baseline requires explicit CE and declared adaptation provenance.")
+    if tspn_comparator and cfg['provenance']['status'] == 'documented_adaptation' and not cfg['provenance'].get('differences'):
+        raise ValueError('A documented TSPN_TON adaptation must disclose its implemented differences.')
+    objective = "ce" if args.role == "reference" or tspn_comparator else "ce_plus_0.25_brier"
+    if cfg.get("training", {"objective": objective}) != {"objective": objective}:
+        raise ValueError("The classifier training objective differs from the declared method recipe.")
     if args.role == "baseline" and not args.dg and (settings.get("layers") != [2, 2, 2, 2] or
                                      settings.get("initial_channels") != 64 or settings.get("block_type") != "basic"):
         raise ValueError("The declared ResNet1D baseline uses basic blocks [2,2,2,2] and initial_channels=64.")
@@ -150,8 +159,8 @@ def _run(args: argparse.Namespace) -> Path:
     length = int(data["data"]["window_size"])
     if args.pair_shift >= length:
         raise ValueError("The circular pair shift must be shorter than the observed window.")
-    if args.role == "reference" and int(settings["in_dim"]) != length:
-        raise ValueError("The original TSPN input interval must match the declared window.")
+    if identity == ("X_model", "TSPN") and (int(settings["in_dim"]) != length or int(settings["out_dim"]) != length):
+        raise ValueError("Every TSPN input/output interval must match the declared window.")
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -205,12 +214,15 @@ def _run(args: argparse.Namespace) -> Path:
     best, best_epoch = float("inf"), None
     history, sampling, batches = [], [], []
     fit_seconds = selection_seconds = export_seconds = 0.
-    beta = 0. if args.role == "reference" else .25
+    beta = 0. if objective == "ce" else .25
+    selector_beta = 0. if args.role == "reference" else .25
     scope = dict(status="running", role=args.role, seed=args.seed, permanent_test_predicted=False,
                  independent_assessment_performed=False, fit=_resources(train), selection=_resources(validation),
                  objective=("paired_group_balanced_CE" if args.pair_shift else "ordinary_group_balanced_CE")
-                     if args.role == "reference" else "paired_CE_plus_0.25_Brier",
+                     if objective == "ce" else "paired_CE_plus_0.25_Brier",
                  selector="worst_domain_CE" if args.role == "reference" else "worst_domain_CE_plus_0.25_Brier_excess",
+                 arm="p0" if args.role == "reference" else cfg.get("arm", settings["name"]),
+                 provenance=copy.deepcopy(cfg.get("provenance", {})),
                  checkpoint_tie_break="earliest_epoch", trainable_parameters=sum(p.numel() for p in model.parameters() if p.requires_grad),
                  total_parameters=sum(p.numel() for p in model.parameters()),
                  reference_parameters=sum(p.numel() for p in reference.parameters()) if reference is not None else 0,
@@ -247,7 +259,7 @@ def _run(args: argparse.Namespace) -> Path:
             fit_seconds += _clock(args.device)-started
             started = _clock(args.device)
             arrays = {}
-            score, rows, summary = evaluate(view, validation, args.device, 1., beta, pack_batch,
+            score, rows, summary = evaluate(view, validation, args.device, 1., selector_beta, pack_batch,
                                             prediction_arrays=arrays)
             if args.role == "reference":
                 score = max(row["ce"] for row in summary if row["predictor"] == "candidate")
@@ -261,7 +273,8 @@ def _run(args: argparse.Namespace) -> Path:
             if score < best:
                 best, best_epoch = score, epoch
                 started = _clock(args.device)
-                saved = dict(kind="classifier", state_dict=model.state_dict(), model=settings, epoch=epoch)
+                saved = dict(kind="classifier", state_dict=model.state_dict(), model=settings, epoch=epoch,
+                             arm=scope["arm"], objective=objective, provenance=scope["provenance"])
                 if reference is not None:
                     saved.update(reference_model=reference_settings, reference_state_dict=reference.state_dict(),
                                  reference_temperature=args.reference_temperature)
@@ -270,7 +283,7 @@ def _run(args: argparse.Namespace) -> Path:
                 write_csv(output/"selected_source_validation_units.csv", rows)
                 predictions = {key: np.concatenate(value) for key, value in arrays.items()}
                 predictions.update(raw_class_names=np.asarray(class_names), candidate_class_names=np.asarray(class_names),
-                                   arm=np.asarray("p0" if args.role == "reference" else settings["name"]), seed=np.asarray(args.seed))
+                                   arm=np.asarray(scope["arm"]), seed=np.asarray(args.seed))
                 np.savez_compressed(output/"selected_source_validation_windows.npz", **predictions)
                 # Save the selected predictor's development qualification without
                 # discarding a weak HPO trial or selecting a different checkpoint.

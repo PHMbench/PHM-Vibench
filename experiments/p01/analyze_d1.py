@@ -90,6 +90,10 @@ def load_artifact(spec: Mapping[str, Any]) -> Artifact:
             if p[key].shape!=(n,classes) or not np.isfinite(p[key]).all():
                 raise ValueError("Invalid branch contribution array.")
             p[key]=p[key][order]
+        elif key.startswith("descriptor__"):
+            if p[key].ndim!=2 or len(p[key])!=n or not np.isfinite(p[key]).all():
+                raise ValueError("Invalid window-by-feature descriptor array.")
+            p[key]=p[key][order]
     for predictor in PREDICTORS:
         prob = np.asarray(p[predictor + "_probs"], dtype=float)
         lp = np.asarray(p[predictor + "_log_probs"], dtype=float)

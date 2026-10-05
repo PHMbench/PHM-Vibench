@@ -252,3 +252,72 @@ def test_mwa_six_level_baseline_runs_and_restores_through_shared_trainer(source_
     assert details["candidate_logits"].shape == (2, 2)
     assert torch.isfinite(details["candidate_logits"]).all()
     assert (output/"source_qualification.json").is_file()
+
+
+def test_ton_tspn_configuration_fits_independently_with_ce_and_common_selector(source_fixture, tmp_path, monkeypatch):
+    arguments, accesses = source_fixture
+    reference_dir = trainer.run(arguments("reference", "ton-reference"))
+    recipe = dict(model=dict(type="X_model", name="TSPN", in_channels=1, num_classes=2,
+        in_dim=128, out_dim=128, out_channels=1, scale=4, skip_connection=True,
+        internal_instance_normalization=False,
+        signal_processing_configs={f"layer{i}": ["WF"] for i in (1, 2, 3)},
+        feature_extractor_configs=["Mean", "Entropy", "Kurtosis"],
+        feature_definitions={"Entropy": "absolute_mean_xlogx", "Kurtosis": "population_moment"},feature_epsilon=1e-12,
+        gate_parameterization="raw", gate_bias=False, skip_bias=False,
+        feature_mixing="per_feature", feature_mixing_bias=False,
+        classifier_hidden_dims=[4], classifier_activation="identity", classifier_bias=False,
+        f_c_mu=.18, f_c_sigma=.01, f_b_mu=.04, f_b_sigma=.001),
+        arm="TSPN_TON", training=dict(objective="ce"),
+        provenance=dict(status="documented_adaptation", differences=["Absolute mean xlogx entropy; regularized population kurtosis; width-4 two-affine readout."]))
+    (tmp_path/"baseline.yaml").write_text(yaml.safe_dump(recipe))
+    data = yaml.safe_load((tmp_path/"data.yaml").read_text())
+    data["datasets"][0]["access_scope"] = "source"
+    (tmp_path/"data.yaml").write_text(yaml.safe_dump(data))
+    objectives, selectors = [], []
+    original_loss, original_evaluate = trainer.supervised_loss, trainer.evaluate
+    def capture_loss(*args, **kwargs):
+        objectives.append(kwargs["brier_weight"])
+        return original_loss(*args, **kwargs)
+    def capture_selection(*args, **kwargs):
+        selectors.append(args[4])
+        return original_evaluate(*args, **kwargs)
+    monkeypatch.setattr(trainer, "supervised_loss", capture_loss)
+    monkeypatch.setattr(trainer, "evaluate", capture_selection)
+    output = trainer.run(arguments("baseline", "ton", ["--dg", "--pair-shift", "4",
+        "--reference-config", str(reference_dir/"model_config.yaml"),
+        "--reference-checkpoint", str(reference_dir/"selected_candidate.pt")]))
+    assert objectives == [0., 0.] and selectors == [.25]
+    scope = json.loads((output/"result_scope.json").read_text())
+    assert scope["role"] == "baseline" and scope["arm"] == "TSPN_TON"
+    assert scope["objective"] == "paired_group_balanced_CE"
+    assert scope["selector"] == "worst_domain_CE_plus_0.25_Brier_excess"
+    assert scope["provenance"] == recipe["provenance"] and scope["reference_state_unchanged"]
+    saved = torch.load(output/"selected_candidate.pt", weights_only=True)
+    reference = torch.load(reference_dir/"selected_candidate.pt", weights_only=True)
+    assert saved["model"]["name"] == "TSPN" and saved["objective"] == "ce"
+    assert saved["model"]["signal_processing_configs"] != reference["model"]["signal_processing_configs"]
+    assert all(torch.equal(value, saved["reference_state_dict"][key]) for key, value in reference["state_dict"].items())
+    restored, _ = load_model(output/"selected_candidate.pt", "cpu")
+    time = torch.arange(128, dtype=torch.float32)
+    x = torch.stack([torch.sin(time*frequency)+.1*torch.cos(time*.33) for frequency in (.07,.13)]).unsqueeze(-1)
+    with torch.no_grad():
+        details = restored.forward_details(x)
+    assert details["candidate_logits"].shape == details["raw_logits"].shape == (2, 2)
+    assert torch.isfinite(details["candidate_logits"]).all()
+    with torch.no_grad():
+        assert torch.isfinite(restored.forward_details(torch.ones(2, 128, 1))["candidate_logits"]).all()
+    with np.load(output/"selected_source_validation_windows.npz", allow_pickle=False) as arrays:
+        assert arrays["arm"].item() == "TSPN_TON"
+    assert {split for split, _ in accesses} == {"update", "validation"}
+
+
+def test_ton_configuration_cannot_claim_faithful_implementation(source_fixture, tmp_path):
+    arguments, accesses = source_fixture
+    model = yaml.safe_load((tmp_path/"reference.yaml").read_text())["model"]
+    (tmp_path/"baseline.yaml").write_text(yaml.safe_dump(dict(model=model,arm="TSPN_TON",
+        training=dict(objective="ce"),provenance=dict(status="faithful_reproduction"))))
+    with pytest.raises(ValueError, match="adaptation provenance"):
+        trainer.run(arguments("baseline", "ton-false-claim", ["--dg", "--pair-shift", "4",
+            "--reference-config", str(tmp_path/"reference.yaml"),
+            "--reference-checkpoint", str(tmp_path/"not-read.pt")]))
+    assert not accesses

@@ -157,8 +157,15 @@ class WaveFilters(SignalProcessingBase): # TII中的实现
 
     # TODO add other filter
         
-    def filter_generator(self, in_channels, freq_length): 
-        omega = torch.linspace(0, 0.5, freq_length, device=self.device).view(1, -1, 1)
+    def filter_generator(self, in_channels, freq_length, signal_length=None):
+        if signal_length is not None and signal_length % 2:
+            # Odd rFFTs have no Nyquist bin: their final frequency is floor(N/2)/N.
+            omega = torch.arange(freq_length, device=self.f_c.device,
+                                 dtype=self.f_c.dtype) / signal_length
+        else:
+            omega = torch.linspace(0, 0.5, freq_length, device=self.f_c.device,
+                                   dtype=self.f_c.dtype)
+        omega = omega.view(1, -1, 1)
         
         self.omega = omega # .reshape(1, freq_length, 1).repeat([1, 1, in_channels])
         
@@ -169,11 +176,13 @@ class WaveFilters(SignalProcessingBase): # TII中的实现
         in_dim, in_channels = x.shape[-2],x.shape[-1] # B,L,C
         freq = torch.fft.rfft(x, dim=1, norm='ortho')
         
-        self.filters = self.filter_generator(in_channels, in_dim//2 + 1)
+        self.filters = self.filter_generator(in_channels, in_dim//2 + 1, signal_length=in_dim)
         # 应用滤波器到所有通道
         filtered_freq = freq * self.filters[:,:,:in_channels] # B,L//2,C * 1,L//2,c
         
-        x_hat = torch.fft.irfft(filtered_freq, dim=1, norm='ortho')
+        # irfft otherwise assumes an even input length, breaking odd windows
+        # and their residual skip path by dropping the final sample.
+        x_hat = torch.fft.irfft(filtered_freq, n=in_dim, dim=1, norm='ortho')
         return x_hat.real
 #%%
 # 4 ##############################################  小波滤波器的通用实现  ##############################################
