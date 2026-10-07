@@ -103,7 +103,9 @@ def make_plan(args):
         raise ValueError('Partial selections cannot freeze/test/analyze. Complete the unchanged full study first.')
     if args.action == 'run' and 'test' in stages and not args.allow_target_read:
         raise ValueError('Final target access requires --allow-target-read; default execution stops at freeze.')
-    study_path = args.study.expanduser().resolve() if args.study else root/'study.yaml'
+    recorded_path = control_dir(root)/'state.json'
+    original_study = read(recorded_path)['inputs']['study_path'] if args.resume and recorded_path.exists() else None
+    study_path = args.study.expanduser().resolve() if args.study else Path(original_study) if original_study else root/'study.yaml'
     study = read(study_path)
     if not isinstance(study, dict): raise ValueError('Study must be the existing mapping YAML.')
     baselines = list(study['baselines'])
@@ -122,7 +124,7 @@ def make_plan(args):
         arms = [a for a in available if a in chosen]
     if arms and set(arms) - set(available): raise ValueError(f'Unknown arms: {set(arms) - set(available)}')
     seeds = [int(s) for s in args.seeds] if args.seeds else None
-    if seeds and set(seeds) - set(study['seeds']): raise ValueError('Selected seeds are not in the frozen final seed list.')
+    if seeds and (len(set(seeds)) != len(seeds) or set(seeds) - set(study['seeds'])): raise ValueError('Selected seeds are not in the frozen final seed list.')
     task_paths = [p.expanduser().resolve() for p in (args.task or [])]
     if 'bind' in stages and not task_paths:
         # A full resume uses the originally declared input paths, not inferred H5 data.
@@ -256,7 +258,7 @@ def run(args, root, study_path, task_paths, commands):
             raise ValueError('Formal execution requires committed paper/runtime sources. Local task files may remain outside tracked code.')
         if state['code'] is not None and state['code'] != context:
             raise ValueError('Code revision or tracked modifications changed; do not resume this study under different code.')
-        inputs = dict(study=read(study_path), tasks={str(p):p.read_text() for p in task_paths})
+        inputs = dict(study_path=str(study_path), study=read(study_path), tasks={str(p):p.read_text() for p in task_paths})
         if state['inputs'] is not None:
             if not inputs['tasks']:
                 inputs['tasks'] = {p:Path(p).read_text() for p in state['inputs']['tasks']}

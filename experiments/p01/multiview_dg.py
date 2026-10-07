@@ -569,7 +569,9 @@ def _execute_or_resume(study, task, arm, trial, seed, out, device, reference, vi
         if any(command.get(k) != v for k, v in expected.items()):
             raise ValueError('Interrupted trial/seed/budget differs from the frozen recipe.')
     failures = [read(out/n) for n in ('failure.json', 'process_failure.json') if (out/n).exists()]
-    if any(f.get('returncode') not in {-2, -15, 130, 143} for f in failures) or scope.get('status') not in {None, 'running'}:
+    interrupted_failure = lambda f: (f.get('returncode') in {-2, -15, 130, 143}
+        or (f.get('status') == 'interrupted' and f.get('error_type') == 'KeyboardInterrupt'))
+    if any(not interrupted_failure(f) for f in failures) or scope.get('status') not in {None, 'running', 'interrupted'}:
         raise ValueError('A failed numerical experiment cannot be retried as an interruption.')
     archive = Path(task['path'])/'interrupted'/f'{arm}_{seed}_{time.time_ns()}'
     archive.mkdir(parents=True, exist_ok=False)

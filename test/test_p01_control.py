@@ -242,3 +242,37 @@ def test_resume_after_freeze_never_restarts_source_development(setup,monkeypatch
 
 def test_controller_core_matches_runtime():
     assert ctl.CORE==dg.CORE
+
+
+def test_recorded_keyboard_interrupt_is_restartable_but_not_a_numerical_error(tmp_path,monkeypatch):
+    from experiments.p01.baseline_qualification import record_training_failure
+    study,task,trial,out=interrupted_run(tmp_path,monkeypatch)
+    record_training_failure(out,KeyboardInterrupt())
+    dg.dump(out/'process_failure.json',dict(returncode=-2))
+    calls=[]
+    monkeypatch.setattr(dg,'_execute',lambda *a:calls.append(a))
+    dg._execute_or_resume(study,task,'I',trial,42,out,'cpu',None,None,retry_interrupted=True)
+    assert len(calls)==1 and calls[0][4]==42
+    archive=next((Path(task['path'])/'interrupted').iterdir())
+    assert dg.read(archive/'42'/'failure.json')['error_type']=='KeyboardInterrupt'
+
+
+def test_resume_recovers_original_study_and_task_paths(setup,monkeypatch):
+    args=parsed(setup,'--through','preflight',action='run')
+    root,study,tasks,commands=ctl.make_plan(args)
+    monkeypatch.setattr(ctl,'code_context',lambda:{})
+    def execute(command,log,announce):
+        root.mkdir(exist_ok=True);log.write_text('done')
+        stage=next(s for s,c in commands if c==command)
+        (root/ctl.MARKERS[stage]).write_text('{}' if ctl.MARKERS[stage].endswith('.json') else 'condition')
+        return 0,None
+    monkeypatch.setattr(ctl,'call_stage',execute)
+    assert ctl.run(args,root,study,tasks,commands)==0
+    resume=ctl.parser().parse_args(['run','--root',str(root),'--resume','--fixture','--device','cpu','--through','preflight'])
+    assert ctl.make_plan(resume)==(root,study,tasks,commands)
+    assert ctl.run(resume,*ctl.make_plan(resume))==0
+
+
+def test_equivalent_duplicate_seeds_are_rejected(setup):
+    with pytest.raises(ValueError,match='seed'):
+        ctl.make_plan(parsed(setup,'--only','fit-method','--seeds','42,042'))
