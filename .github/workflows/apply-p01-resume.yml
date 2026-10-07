@@ -22,9 +22,9 @@ jobs:
           test "$(git hash-object experiments/p01/control.py)" = 5900dae9278a5c7864c4f5182c429a63d586b1dc
           test "$(git hash-object experiments/p01/multiview_dg.py)" = 52612e7579e294bf7e5f0fc7b4ff56851d9a5727
           test "$(git hash-object test/test_p01_control.py)" = e5db98c44929938d8906f117ebcac272c12341c4
-          sed -i 's/^ diff --git/diff --git/' .github/p01-resume.patch
-          git apply --check .github/p01-resume.patch
-          git apply .github/p01-resume.patch
+          sed 's/^ diff --git/diff --git/' .github/p01-resume.patch > /tmp/p01-reviewed-resume.patch
+          git apply --check /tmp/p01-reviewed-resume.patch
+          git apply /tmp/p01-reviewed-resume.patch
           test "$(git hash-object experiments/p01/control.py)" = 9343d2dbff2306e212f378ae95bd2328147ff62f
           test "$(git hash-object experiments/p01/multiview_dg.py)" = 92246735998c141a8308774f544a881ba573da3d
           test "$(git hash-object test/test_p01_control.py)" = e2189be2bcd0e572493c6e0426be9930b72b8035
