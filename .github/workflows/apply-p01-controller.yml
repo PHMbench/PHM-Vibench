@@ -1,0 +1,47 @@
+name: Apply reviewed P01 controller patch
+on:
+  pull_request:
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/p01-experiment-controller-20261007'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Apply locally tested file changes and remove the transfer machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          original=$(git rev-parse HEAD)
+          test -z "$(git status --porcelain)"
+          test "$(git hash-object experiments/p01/multiview_dg.py)" = b987929b53b80e27a8302f1608e1c472e5d5472f
+          git apply --check .github/p01-controller.patch
+          git apply .github/p01-controller.patch
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('experiments/p01/control.py')
+          s=p.read_text()
+          old="            if previous and previous['status']=='completed' and stage not in REENTER:"
+          assert s.count(old)==1
+          s=s.replace(old,"            frozen_source = (root/'frozen.json').exists() and stage not in {'test', 'analyze'}\n            if previous and previous['status']=='completed' and (stage not in REENTER or frozen_source):")
+          s=s.replace("                if not marker or not marker.exists():", "                if (marker is not None and not marker.exists()) or (marker is None and not frozen_source):",1)
+          s=s.replace("                if marker.suffix=='.json': read(marker)", "                if marker is not None and marker.suffix=='.json': read(marker)",1)
+          p.write_text(s)
+          PY
+          test "$(git hash-object experiments/p01/multiview_dg.py)" = 52612e7579e294bf7e5f0fc7b4ff56851d9a5727
+          test "$(git hash-object experiments/p01/control.py)" = 5900dae9278a5c7864c4f5182c429a63d586b1dc
+          test "$(git hash-object test/test_p01_control.py)" = e5db98c44929938d8906f117ebcac272c12341c4
+          git rm .github/p01-controller.patch .github/workflows/apply-p01-controller.yml
+          git add experiments/p01/multiview_dg.py experiments/p01/control.py
+          git diff --cached --check
+          git config user.name 'ChatGPT'
+          git config user.email 'noreply@openai.com'
+          git commit -m 'feat(p01): wire selectors and explicit interrupted-trial reuse into the existing runner'
+          test "$(git ls-remote origin refs/heads/feat/p01-experiment-controller-20261007 | cut -f1)" = "$original"
+          git push origin HEAD:refs/heads/feat/p01-experiment-controller-20261007
+          git rev-parse HEAD
