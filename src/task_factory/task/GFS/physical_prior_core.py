@@ -1,7 +1,5 @@
-"""Canonical PHMFactory physical-prior GFS operations. The supplied encoder must implement forward(x, p)."""
+"""Reusable physical-prior GFS operations. The supplied encoder implements forward(x, p)."""
 from __future__ import annotations
-import copy
-import math
 from typing import Sequence
 import torch
 from torch import Tensor, nn
@@ -99,84 +97,3 @@ def assert_frozen(before: dict[str, Tensor], model: nn.Module) -> None:
     for k, v in before.items():
         if not torch.equal(v, after[k]):
             raise AssertionError(f'Non-prompt state changed: {k}')
-
-
-def adapt(model: nn.Module, x: Tensor, y: Tensor, groups: Tensor, views: Tensor,
-          base: Tensor, base_classes: Sequence[int], novel_classes: Sequence[int],
-          *, arm: str, prior: Tensor, scale: float, lr: float, steps: int,
-          lam: float, radius: float, checkpoints: Sequence[int], subset: Sequence[str] = (),
-          initial_prompt: Tensor | None = None) -> list[tuple[int, nn.Module, Tensor]]:
-    """Adapt with a declared regularization center and a separate total-prompt start.
-
-    ``prior`` centers the penalty; ``initial_prompt`` only chooses p at step zero.
-    Omitting the latter preserves the original A6/A7/A8 initialization p=prior.
-    No query argument is accepted. Checkpoints are fixed before this call.
-    """
-    if arm not in {'A2', 'A3', 'A4', 'A6', 'A7', 'A8'}:
-        raise ValueError(f'Unsupported arm: {arm}')
-    if not all(math.isfinite(v) for v in (radius, lam, lr)) or radius <= 0 or lam < 0 or lr <= 0 or type(steps) is not int or steps < 0:
-        raise ValueError('Invalid source-selected adaptation settings.')
-    if not torch.isfinite(prior).all():
-        raise ValueError('The regularization center must be finite.')
-    if float(prior.norm()) > radius + 1e-7:
-        raise ValueError('The prior lies outside the common total-prompt ball.')
-    if not checkpoints or min(checkpoints) < 0 or max(checkpoints) > steps:
-        raise ValueError('Checkpoint schedule must be predeclared within the update budget.')
-    net = copy.deepcopy(model).eval()
-    original = {k: v.detach().clone() for k, v in net.state_dict().items()}
-    for value in net.parameters():
-        # ScriptModule deepcopy can yield non-leaf clones. Detach this private copy
-        # before selecting trainable parameters; never detach the source module.
-        value.detach_()
-        value.requires_grad_(False)
-    if initial_prompt is not None and arm not in {'A6', 'A7', 'A8'}:
-        raise ValueError('An explicit prompt start is only valid for prompt-adaptation arms.')
-    start = prior if initial_prompt is None else initial_prompt
-    if start.shape != prior.shape or start.device != prior.device or start.dtype != prior.dtype:
-        raise ValueError('Initial total prompt and center must have identical shape, device and dtype.')
-    if not torch.isfinite(start).all() or float(start.norm()) > radius + 1e-7:
-        raise ValueError('Initial total prompt must be finite and within the shared radius.')
-    # phi is displacement from the regularization center, not from the optimizer start.
-    prior = prior.detach().clone()
-    phi = nn.Parameter(start.detach().clone() - prior)
-    if arm == 'A4':
-        return [(0, net, torch.zeros_like(prior))]
-    if arm in {'A2', 'A3'}:
-        prior = torch.zeros_like(prior)
-        params = dict(net.named_parameters())
-        names = list(params) if arm == 'A2' else list(subset)
-        if not names or any(n not in params for n in names):
-            raise ValueError('A2/A3 requires exact exported non-prompt parameter names.')
-        selected = [params[n] for n in names]
-        if arm == 'A3' and abs(sum(t.numel() for t in selected) - phi.numel()) > .05 * phi.numel():
-            raise ValueError('A3 is not within five percent of the prompt parameter count.')
-        for t in selected:
-            t.requires_grad_(True)
-        initial = [t.detach().clone() for t in selected]
-    else:
-        selected = [phi]
-        initial = [torch.zeros_like(phi)]
-    optimizer = torch.optim.SGD(selected, lr=lr)
-    snapshots = []
-    for step in range(steps + 1):
-        p = prior + phi if arm in {'A6', 'A7', 'A8'} else prior
-        if step in checkpoints:
-            snapshots.append((step, copy.deepcopy(net).eval(), p.detach().clone()))
-        if step == steps:
-            break
-        optimizer.zero_grad()
-        loss = crossfit(net, x, p, y, groups, views, base, base_classes, novel_classes, scale)
-        penalty = sum((t - t0).square().sum() for t, t0 in zip(selected, initial))
-        loss = loss + .5 * lam * penalty
-        if not torch.isfinite(loss):
-            raise FloatingPointError('Non-finite support objective; no fallback is used.')
-        loss.backward()
-        optimizer.step()
-        if arm in {'A6', 'A7', 'A8'}:
-            with torch.no_grad():
-                total = prior + phi
-                total *= min(1.0, radius / max(float(total.norm()), 1e-12))
-                phi.copy_(total - prior)
-    if arm in {'A6', 'A7', 'A8'}:
-        assert_frozen(original, net)
-    return snapshots
