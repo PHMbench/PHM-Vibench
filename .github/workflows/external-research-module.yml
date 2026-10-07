@@ -1,0 +1,19 @@
+name: External research module boundary
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  downstream-module:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pytest PyYAML pydantic
+      - name: Verify generic dispatch without a paper registry or experiment execution
+        run: python -m pytest -q test/test_external_research_module.py test/test_research_commands.py test/test_research_schema_union.py
