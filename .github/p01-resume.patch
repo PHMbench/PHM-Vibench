@@ -1,0 +1,87 @@
+diff --git a/experiments/p01/control.py b/experiments/p01/control.py
+--- a/experiments/p01/control.py
++++ b/experiments/p01/control.py
+@@ -103,7 +103,9 @@
+         raise ValueError('Partial selections cannot freeze/test/analyze. Complete the unchanged full study first.')
+     if args.action == 'run' and 'test' in stages and not args.allow_target_read:
+         raise ValueError('Final target access requires --allow-target-read; default execution stops at freeze.')
+-    study_path = args.study.expanduser().resolve() if args.study else root/'study.yaml'
++    recorded_path = control_dir(root)/'state.json'
++    original_study = read(recorded_path)['inputs']['study_path'] if args.resume and recorded_path.exists() else None
++    study_path = args.study.expanduser().resolve() if args.study else Path(original_study) if original_study else root/'study.yaml'
+     study = read(study_path)
+     if not isinstance(study, dict): raise ValueError('Study must be the existing mapping YAML.')
+     baselines = list(study['baselines'])
+@@ -122,7 +124,7 @@
+         arms = [a for a in available if a in chosen]
+     if arms and set(arms) - set(available): raise ValueError(f'Unknown arms: {set(arms) - set(available)}')
+     seeds = [int(s) for s in args.seeds] if args.seeds else None
+-    if seeds and set(seeds) - set(study['seeds']): raise ValueError('Selected seeds are not in the frozen final seed list.')
++    if seeds and (len(set(seeds)) != len(seeds) or set(seeds) - set(study['seeds'])): raise ValueError('Selected seeds are not in the frozen final seed list.')
+     task_paths = [p.expanduser().resolve() for p in (args.task or [])]
+     if 'bind' in stages and not task_paths:
+         # A full resume uses the originally declared input paths, not inferred H5 data.
+@@ -256,7 +258,7 @@
+             raise ValueError('Formal execution requires committed paper/runtime sources. Local task files may remain outside tracked code.')
+         if state['code'] is not None and state['code'] != context:
+             raise ValueError('Code revision or tracked modifications changed; do not resume this study under different code.')
+-        inputs = dict(study=read(study_path), tasks={str(p):p.read_text() for p in task_paths})
++        inputs = dict(study_path=str(study_path), study=read(study_path), tasks={str(p):p.read_text() for p in task_paths})
+         if state['inputs'] is not None:
+             if not inputs['tasks']:
+                 inputs['tasks'] = {p:Path(p).read_text() for p in state['inputs']['tasks']}
+ diff --git a/experiments/p01/multiview_dg.py b/experiments/p01/multiview_dg.py
+--- a/experiments/p01/multiview_dg.py
++++ b/experiments/p01/multiview_dg.py
+@@ -569,7 +569,9 @@
+         if any(command.get(k) != v for k, v in expected.items()):
+             raise ValueError('Interrupted trial/seed/budget differs from the frozen recipe.')
+     failures = [read(out/n) for n in ('failure.json', 'process_failure.json') if (out/n).exists()]
+-    if any(f.get('returncode') not in {-2, -15, 130, 143} for f in failures) or scope.get('status') not in {None, 'running'}:
++    interrupted_failure = lambda f: (f.get('returncode') in {-2, -15, 130, 143}
++        or (f.get('status') == 'interrupted' and f.get('error_type') == 'KeyboardInterrupt'))
++    if any(not interrupted_failure(f) for f in failures) or scope.get('status') not in {None, 'running', 'interrupted'}:
+         raise ValueError('A failed numerical experiment cannot be retried as an interruption.')
+     archive = Path(task['path'])/'interrupted'/f'{arm}_{seed}_{time.time_ns()}'
+     archive.mkdir(parents=True, exist_ok=False)
+ diff --git a/test/test_p01_control.py b/test/test_p01_control.py
+--- a/test/test_p01_control.py
++++ b/test/test_p01_control.py
+@@ -242,3 +242,37 @@
+ 
+ def test_controller_core_matches_runtime():
+     assert ctl.CORE==dg.CORE
++
++
++def test_recorded_keyboard_interrupt_is_restartable_but_not_a_numerical_error(tmp_path,monkeypatch):
++    from experiments.p01.baseline_qualification import record_training_failure
++    study,task,trial,out=interrupted_run(tmp_path,monkeypatch)
++    record_training_failure(out,KeyboardInterrupt())
++    dg.dump(out/'process_failure.json',dict(returncode=-2))
++    calls=[]
++    monkeypatch.setattr(dg,'_execute',lambda *a:calls.append(a))
++    dg._execute_or_resume(study,task,'I',trial,42,out,'cpu',None,None,retry_interrupted=True)
++    assert len(calls)==1 and calls[0][4]==42
++    archive=next((Path(task['path'])/'interrupted').iterdir())
++    assert dg.read(archive/'42'/'failure.json')['error_type']=='KeyboardInterrupt'
++
++
++def test_resume_recovers_original_study_and_task_paths(setup,monkeypatch):
++    args=parsed(setup,'--through','preflight',action='run')
++    root,study,tasks,commands=ctl.make_plan(args)
++    monkeypatch.setattr(ctl,'code_context',lambda:{})
++    def execute(command,log,announce):
++        root.mkdir(exist_ok=True);log.write_text('done')
++        stage=next(s for s,c in commands if c==command)
++        (root/ctl.MARKERS[stage]).write_text('{}' if ctl.MARKERS[stage].endswith('.json') else 'condition')
++        return 0,None
++    monkeypatch.setattr(ctl,'call_stage',execute)
++    assert ctl.run(args,root,study,tasks,commands)==0
++    resume=ctl.parser().parse_args(['run','--root',str(root),'--resume','--fixture','--device','cpu','--through','preflight'])
++    assert ctl.make_plan(resume)==(root,study,tasks,commands)
++    assert ctl.run(resume,*ctl.make_plan(resume))==0
++
++
++def test_equivalent_duplicate_seeds_are_rejected(setup):
++    with pytest.raises(ValueError,match='seed'):
++        ctl.make_plan(parsed(setup,'--only','fit-method','--seeds','42,042'))
