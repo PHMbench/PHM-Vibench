@@ -1,6 +1,7 @@
 name: Apply reviewed P01 resume correction
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
 permissions:
   contents: write
 jobs:
