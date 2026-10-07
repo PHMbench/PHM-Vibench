@@ -12,6 +12,8 @@ def _valid_grouped_fic_config() -> dict:
         "environment": {
             "project": "schema-union",
             "output_dir": "outputs/schema-union",
+            "seed": 17,
+            "iterations": 1,
         },
         "data": {
             "data_dir": "data",
@@ -34,7 +36,8 @@ def _valid_grouped_fic_config() -> dict:
             "loss": "CE",
             "gradient_constraint": {"name": "fic", "epsilon": 2.0},
         },
-        "trainer": {"name": "Default_trainer", "num_epochs": 1},
+        "trainer": {"name": "Default_trainer", "num_epochs": 1,
+                    "device": "cpu", "devices": 1},
     }
 
 
