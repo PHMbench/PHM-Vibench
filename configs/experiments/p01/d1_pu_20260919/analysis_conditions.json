@@ -1,4 +1,0 @@
-{
-  "validation": {"source": ["0", "2", "3"]},
-  "test": {"source": ["0", "2", "3"], "unseen": ["1"]}
-}
