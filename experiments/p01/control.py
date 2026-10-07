@@ -270,10 +270,11 @@ def run(args, root, study_path, task_paths, commands):
             if previous and not args.resume:
                 raise ValueError(f'{stage} was already attempted. Inspect status and use --resume explicitly.')
             marker = root / MARKERS[stage] if stage in MARKERS else None
-            if previous and previous['status']=='completed' and stage not in REENTER:
-                if not marker or not marker.exists():
+            frozen_source = (root/'frozen.json').exists() and stage not in {'test', 'analyze'}
+            if previous and previous['status']=='completed' and (stage not in REENTER or frozen_source):
+                if (marker is not None and not marker.exists()) or (marker is None and not frozen_source):
                     raise ValueError(f'Completed {stage} marker is missing; controller state is not scientific authority.')
-                if marker.suffix=='.json': read(marker)
+                if marker is not None and marker.suffix=='.json': read(marker)
                 print(f'SKIP {stage}: previously completed; no new execution.')
                 continue
             if previous and previous['status'] in {'running','interrupted'} and stage not in REENTER | {'calibrate'}:
