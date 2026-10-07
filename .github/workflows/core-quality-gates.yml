@@ -269,6 +269,7 @@ jobs:
             test/test_environment_execution_contract.py \
             test/test_trainer_lifecycle_contract.py \
             test/test_data_cache_contract.py \
+            test/test_xjtu_metadata_conditions.py \
             test/test_device_authority.py \
             test/test_hse_objective_contract.py \
             test/test_per_sample_metadata.py \
@@ -278,6 +279,7 @@ jobs:
             test/test_split_scientific_truth.py \
             test/test_task_estimator_truth.py \
             test/test_transform_truth.py \
+            test/test_tspn_paper_configs.py \
             test/test_llm_explanation_contract.py \
             test/test_llm_explanation_models.py \
             -vv --tb=long 2>&1 | tee runtime-contracts-pytest.log

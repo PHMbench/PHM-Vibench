@@ -21,7 +21,10 @@ pytorch-lightning>=1.5.0
 torchmetrics>=1.0.0
 einops
 reformer_pytorch
-transformers
+# Transformers 5.19 probes an unavailable accelerator on torch 2.6 CPU while
+# Lightning imports TorchMetrics. Keep the compatible declared import path;
+# do not patch torch or silently bypass model/metric imports.
+transformers==4.57.1
 timm
 
 # Evaluation and maintained runtime logging

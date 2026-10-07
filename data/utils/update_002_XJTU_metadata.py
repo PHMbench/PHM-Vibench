@@ -121,7 +121,7 @@ def update_xjtu_sy_metadata_v3_staging(metadata_csv_path: str, output_csv_path: 
                 metadata_df.loc[index, 'Domain_id'] = 1
                 metadata_df.loc[index, 'Domain_description'] = '37.5Hz11kN'
             elif '40Hz10kN' in condition:
-                metadata_df.loc[index, 'Domain_id'] = 1 
+                metadata_df.loc[index, 'Domain_id'] = 2
                 metadata_df.loc[index, 'Domain_description'] = '40Hz10kN'
         
         # --- Label, RUL_label, 和任务相关性 ---
