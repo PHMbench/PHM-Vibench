@@ -11,6 +11,8 @@ import copy
 import json
 import math
 import os
+import shutil
+import time
 from pathlib import Path
 import subprocess
 import sys
@@ -417,7 +419,7 @@ def _training_study(root, study, info):
     return result
 
 
-def calibrate(root, device):
+def calibrate(root, device, *, retry_interrupted=False):
     """Baseline-only prospective budget calibration; no proposed/target fitting."""
     root, study, info = _development_guard(root, device)
     if not (root/'smoke_baseline.json').exists():
@@ -439,7 +441,9 @@ def calibrate(root, device):
             reference = None
             for arm in ['p0', *study['baselines']]:
                 out = Path(task['path'])/'calibration'/str(cap)/arm
-                if out.exists():
+                if retry_interrupted:
+                    _execute_or_resume(recipe, task, arm, trial, study['hpo_seed'], out, device, reference, None, True)
+                elif out.exists():
                     _completed_run(recipe, task, arm, trial, study['hpo_seed'], out, reference, None)
                 else:
                     _execute(recipe, task, arm, trial, study['hpo_seed'], out, device, reference)
@@ -524,6 +528,59 @@ def _completed_run(study,task,arm,trial,seed,out,reference,view):
     submitted=read(out.parent/(out.name+'.yaml'))
     if submitted!=candidate_config(study,task,arm,reference,view):
         raise ValueError('Completed run inputs, model or selected view changed.')
+
+
+def _selected(available, requested, label):
+    """Filter execution, never the bound scientific population or freeze matrix."""
+    if requested is None:
+        return list(available)
+    if not requested or len(set(requested)) != len(requested) or set(requested) - set(available):
+        raise ValueError(f'Unknown, empty or duplicate {label} selection: {requested}; available={list(available)}')
+    return [item for item in available if item in requested]
+
+
+def _execute_or_resume(study, task, arm, trial, seed, out, device, reference, view, retry_interrupted=False):
+    """Keep exact completed fits; explicitly restart only an interrupted attempt.
+
+    Selected checkpoints are not optimizer/RNG snapshots. Restart the SAME trial
+    and seed from initialization, retaining the incomplete directory and log. A
+    numerical/qualification failure or changed recipe is never automatically retried.
+    """
+    out = Path(out)
+    log = out.parent / (out.name + '.log')
+    if not out.exists() and not log.exists():
+        return _execute(study, task, arm, trial, seed, out, device, reference, view)
+    if out.exists() and not retry_interrupted:
+        _completed_run(study, task, arm, trial, seed, out, reference, view)
+        return out
+    scope = read(out/'result_scope.json') if (out/'result_scope.json').exists() else {}
+    if scope.get('status') in {'classifier_fitted', 'candidate_fitted'}:
+        _completed_run(study, task, arm, trial, seed, out, reference, view)
+        return out
+    if not retry_interrupted:
+        raise ValueError(f'Incomplete run: {out}. Preserve it; --retry-interrupted explicitly restarts only a signal-interrupted trial.')
+    submitted = read(out.parent/(out.name+'.yaml'))
+    if submitted != candidate_config(study, task, arm, reference, view):
+        raise ValueError('Interrupted model/configuration changed; use a new study.')
+    if (out/'command.json').exists():
+        command = read(out/'command.json')
+        expected = dict(trial, seed=seed, epochs=study['epochs'], steps_per_epoch=study['steps_per_epoch'],
+                        units_per_domain=study['units_per_domain'], dg=True)
+        if any(command.get(k) != v for k, v in expected.items()):
+            raise ValueError('Interrupted trial/seed/budget differs from the frozen recipe.')
+    failures = [read(out/n) for n in ('failure.json', 'process_failure.json') if (out/n).exists()]
+    interrupted_failure = lambda f: (f.get('returncode') in {-2, -15, 130, 143}
+        or (f.get('status') == 'interrupted' and f.get('error_type') == 'KeyboardInterrupt'))
+    if any(not interrupted_failure(f) for f in failures) or scope.get('status') not in {None, 'running', 'interrupted'}:
+        raise ValueError('A failed numerical experiment cannot be retried as an interruption.')
+    archive = Path(task['path'])/'interrupted'/f'{arm}_{seed}_{time.time_ns()}'
+    archive.mkdir(parents=True, exist_ok=False)
+    for path in (out, log, out.parent/(out.name+'.yaml')):
+        if path.exists():
+            shutil.move(str(path), str(archive/path.name))
+    dump(archive/'restart.json', dict(arm=arm, seed=seed, trial=trial, original_run=str(out),
+                                    reason='explicit_restart_from_initialization', target_read=False))
+    return _execute(study, task, arm, trial, seed, out, device, reference, view)
 
 
 def _score(run, reference=False):
@@ -629,64 +686,72 @@ def _require_qualified_baselines(root, study, info):
         raise ValueError('BASELINE_UNQUALIFIED: current baseline source predictions fail qualification.')
 
 
-def tune(root, family, device):
+def tune(root, family, device, *, task_names=None, selected_arms=None, retry_interrupted=False):
     root,study,info=_development_guard(root,device)
     study = _training_study(root, study, info)
     if not (root/'smoke_baseline.json').exists(): raise ValueError('Baseline smoke must pass before HPO.')
     arms=['p0'] if family=='reference' else list(study['baselines']) if family=='baselines' else list(CORE)
     if family=='method' and not (root/'smoke_method.json').exists(): raise ValueError('Method smoke must pass before proposed HPO.')
     if family=='method': _require_qualified_baselines(root, study, info)
+    arms = _selected(arms, selected_arms, 'arms')
+    tasks = _selected([t['name'] for t in info['tasks']], task_names, 'tasks')
     for task in info['tasks']:
+        if task['name'] not in tasks: continue
         reference=None if family=='reference' else _reference(task)
         for arm in arms:
             directory=Path(task['path'])/'hpo'/arm
-            if (directory/'selection.json').exists():
-                chosen = read(directory/'selection.json')
-                if arm == 'p0' and not _qualify_run(task, chosen['run'])['passed']:
-                    raise ValueError('BASELINE_UNQUALIFIED: selected reference remains unqualified.')
-                continue
+            # A recorded selection does not bypass verification of its complete
+            # original search; rerunning this stage adds no search opportunities.
+            recorded = read(directory/'selection.json') if (directory/'selection.json').exists() else None
             trials=[]
             views=[b['name'] for b in study['fusion']['model']['branches']]
             for index,trial in enumerate(study['trials']):
                 view=views[index%len(views)] if arm=='I-single' else None
                 out=directory/f'trial_{index:02d}'
-                if out.exists():
-                    # Resume only a completed exact trial; no silent rerun of failures.
-                    _completed_run(study,task,arm,trial,study['hpo_seed'],out,reference,view)
-                else: _execute(study,task,arm,trial,study['hpo_seed'],out,device,reference,view)
+                _execute_or_resume(study,task,arm,trial,study['hpo_seed'],out,device,reference,view,
+                                   retry_interrupted=retry_interrupted)
                 trials.append(dict(index=index,score=_score(out,arm=='p0'),run=str(out),trial=trial,view=view))
             best=min(trials,key=lambda t:(t['score'],t['index']))
             with np.load(Path(best['run'])/'selected_source_validation_windows.npz',allow_pickle=False) as saved:
                 profile=class_profile({k:saved[k] for k in saved.files})
             qualification = _qualify_run(task, best['run']) if arm == 'p0' or arm in study['baselines'] else None
-            dump(directory/'selection.json',dict(**best,all_trials=trials,source_class_profile=profile,
-                 qualification=qualification, criterion='worst_source_CE' if arm=='p0' else 'worst_source_CE_plus_0.25_Brier_excess',target_read=False))
+            selection = dict(**best,all_trials=trials,source_class_profile=profile,
+                 qualification=qualification, criterion='worst_source_CE' if arm=='p0' else 'worst_source_CE_plus_0.25_Brier_excess',target_read=False)
+            if recorded is not None:
+                if recorded != selection:
+                    raise ValueError('Recorded HPO selection differs from the complete frozen search.')
+            else:
+                dump(directory/'selection.json', selection)
             if arm=='p0' and not qualification['passed']:
                 raise ValueError('BASELINE_UNQUALIFIED: reference failed after the complete source-only HPO budget.')
 
 
-def fit(root,device,family='all'):
+def fit(root,device,family='all', *, task_names=None, selected_arms=None, selected_seeds=None, retry_interrupted=False):
     root,study,info=_development_guard(root,device)
     study = _training_study(root, study, info)
     if family not in {'all', 'baselines', 'method'}:
         raise ValueError('Choose baselines or method for final fitting.')
     if family == 'all':
+        if any(v is not None for v in (task_names, selected_arms, selected_seeds)) or retry_interrupted:
+            raise ValueError('Filtered fitting requires an explicit baselines or method family.')
         fit(root, device, 'baselines')
         qualify(root, device)
         return fit(root, device, 'method')
     if family == 'method': _require_qualified_baselines(root, study, info)
     arms = list(study['baselines']) if family == 'baselines' else [*CORE, *ablation_arms(study)]
+    arms = _selected(arms, selected_arms, 'arms')
+    seeds = _selected(study['seeds'], selected_seeds, 'seeds')
+    tasks = _selected([t['name'] for t in info['tasks']], task_names, 'tasks')
     for task in info['tasks']:
+        if task['name'] not in tasks: continue
         reference=_reference(task)
         for arm in arms:
             selector='I' if arm.startswith('I-minus-') else arm
             selected=read(Path(task['path'])/'hpo'/selector/'selection.json')
-            for seed in study['seeds']:
+            for seed in seeds:
                 out=Path(task['path'])/'fits'/arm/str(seed)
-                if out.exists():
-                    _completed_run(study,task,arm,selected['trial'],seed,out,reference,selected['view'])
-                    continue
-                _execute(study,task,arm,selected['trial'],seed,out,device,reference,selected['view'])
+                _execute_or_resume(study,task,arm,selected['trial'],seed,out,device,reference,selected['view'],
+                                   retry_interrupted=retry_interrupted)
 
 
 def _reference_wrapper(path,device):
@@ -1058,7 +1123,16 @@ def main():
     p.add_argument('--root');p.add_argument('--study');p.add_argument('--task',action='append');p.add_argument('--output')
     p.add_argument('--fixture',action='store_true');p.add_argument('--device',default='cuda:0')
     p.add_argument('--kind',choices=['baseline','method']);p.add_argument('--family',choices=['reference','baselines','method'])
+    p.add_argument('--task-name', action='append', help='Execute a bound task subset in tune/fit only; does not redefine the suite.')
+    p.add_argument('--arm', action='append', help='Execute an existing arm subset in tune/fit only.')
+    p.add_argument('--seed', action='append', type=int, help='Execute a final seed subset in fit only; HPO remains unchanged.')
+    p.add_argument('--retry-interrupted', action='store_true', help='Explicit same-trial restart for incomplete calibration/tune/fit outputs; never retry numerical failures.')
     args=p.parse_args()
+    if (args.task_name or args.arm) and args.command not in {'tune','fit'}:
+        p.error('Task/arm filtering is limited to tune/fit.')
+    if args.retry_interrupted and args.command not in {'calibrate','tune','fit'}:
+        p.error('Interrupted-trial retry is limited to calibrate/tune/fit.')
+    if args.seed and args.command != 'fit': p.error('--seed filters final fitting only.')
     if args.command=='bind':
         if not args.study or not args.task or not args.output:p.error('bind requires --study, repeated --task and --output')
         bind(args.study,args.task,args.output,args.fixture)
@@ -1069,9 +1143,9 @@ def main():
             if args.command=='condition-audit':condition_audit(args.root)
             elif args.command=='preflight':preflight(args.root)
             elif args.command=='smoke':smoke(args.root,args.kind,args.device)
-            elif args.command=='calibrate':calibrate(args.root,args.device)
-            elif args.command=='tune':tune(args.root,args.family,args.device)
-            elif args.command=='fit':fit(args.root,args.device,args.family or 'all')
+            elif args.command=='calibrate':calibrate(args.root,args.device,retry_interrupted=args.retry_interrupted)
+            elif args.command=='tune':tune(args.root,args.family,args.device,task_names=args.task_name,selected_arms=args.arm,retry_interrupted=args.retry_interrupted)
+            elif args.command=='fit':fit(args.root,args.device,args.family or 'all',task_names=args.task_name,selected_arms=args.arm,selected_seeds=args.seed,retry_interrupted=args.retry_interrupted)
             elif args.command=='qualify':qualify(args.root,args.device)
             elif args.command=='freeze':freeze(args.root,args.device)
             elif args.command=='test':test(args.root,args.device)
