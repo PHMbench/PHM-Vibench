@@ -21,7 +21,8 @@ pytorch-lightning>=1.5.0
 torchmetrics>=1.0.0
 einops
 reformer_pytorch
-transformers
+# The installed CPU path is checked with this version, not an untested major upgrade.
+transformers==4.57.1
 timm
 
 # Evaluation and maintained runtime logging
