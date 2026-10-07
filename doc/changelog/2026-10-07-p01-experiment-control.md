@@ -16,6 +16,13 @@ from an incomplete optimizer state. Numerical failures are never silently retrie
 Some non-transactional stages still require inspection after interruption; no cleanup
 or target re-selection is automated. Documentation states these recovery boundaries.
 
+Clean installation exposed an unrelated dependency incompatibility before numerical
+execution: unbounded Transformers resolved to 5.19.0 and its accelerator probe raised
+on the declared PyTorch 2.6 CPU build during Lightning/TorchMetrics import. The
+runtime requirements now pin Transformers 4.57.1. No device API monkeypatch, skipped
+import, replacement model or CPU/GPU fallback is used. Existing installations must
+resolve the declared dependencies before a new study, not change versions mid-run.
+
 Focused tests cover read-only planning, filters and unchanged study population,
 parameter/target guards, logs/exit codes, locks, process-group termination, original
 constructed data admission and interrupted-versus-failed run handling. Software
