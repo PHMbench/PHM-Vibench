@@ -17,6 +17,8 @@ from phmfactory.config import analyze_config
 def reject_scientific_factory_task(config: Mapping[str, Any]) -> None:
     """A scientific execute module cannot masquerade as a Lightning task."""
     task = config.get("task", {})
+    if "module" in task:
+        raise ValueError("task.module requires task.execution=research and phmfactory research <phase>")
     identifiers = [task.get("type"), task.get("name")]
     if any(not isinstance(value, str) or not value.isidentifier() for value in identifiers):
         return
@@ -50,7 +52,12 @@ def task_module(config: Mapping[str, Any]):
     identifiers = [task.get("type"), task.get("name")]
     if any(not isinstance(value, str) or not value.isidentifier() for value in identifiers):
         raise ValueError("task.type and task.name must be explicit Python identifiers")
-    module = importlib.import_module("src.task_factory.task." + ".".join(identifiers))
+    # The downstream configuration selects its module; no study registry,
+    # paper name, import fallback or experiment plan belongs to the framework.
+    name = task.get("module", "src.task_factory.task." + ".".join(identifiers))
+    if not isinstance(name, str) or not name or any(not part.isidentifier() for part in name.split(".")):
+        raise ValueError("task.module must be an explicit dotted Python module name")
+    module = importlib.import_module(name)
     if not callable(getattr(module, "execute", None)):
         raise TypeError(f"{module.__name__} does not expose scientific execute(config, phase, output)")
     return module
