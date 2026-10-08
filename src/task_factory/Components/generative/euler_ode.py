@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import math
+from numbers import Integral
+
 import torch
 
 
@@ -40,7 +43,10 @@ def sample_euler_ode(
     t0: float = 0.0,
     t1: float = 1.0,
 ) -> torch.Tensor:
-    """Integrate a stateless velocity field using explicit Euler steps."""
+    """Integrate a stateless velocity field with exactly the requested Euler steps.
+
+    A fractional count cannot be truncated: it would change the integrated interval.
+    """
 
     if noise.ndim != 3:
         raise ValueError(f"noise must be [N,C,L], got {tuple(noise.shape)}")
@@ -48,8 +54,12 @@ def sample_euler_ode(
         raise ValueError(f"noise must be floating point, got {noise.dtype}")
     if not torch.isfinite(noise).all():
         raise ValueError("noise contains NaN/Inf")
-    if int(num_steps) <= 0:
+    if isinstance(num_steps, bool) or not isinstance(num_steps, Integral):
+        raise TypeError(f"num_steps must be an integer, got {num_steps!r}")
+    if num_steps <= 0:
         raise ValueError(f"num_steps must be positive, got {num_steps}")
+    if not math.isfinite(float(t0)) or not math.isfinite(float(t1)):
+        raise ValueError(f"t0 and t1 must be finite, got {t0} and {t1}")
     if not float(t1) > float(t0):
         raise ValueError(f"t1 must be greater than t0, got {t0} and {t1}")
 
