@@ -34,12 +34,16 @@ class DataSplitConfig(BaseModel):
     fractions: Optional[Dict[Literal["train", "val", "test"], float]] = None
     manifest_path: Optional[str] = None
     manifest_mode: Literal["generate", "read_only"] = "generate"
-    manifest_sha256: Optional[str] = None
     partition_map: Optional[Dict[Literal["train", "val", "test"], str]] = None
 
     @model_validator(mode="after")
     def _check_grouped_protocol(self) -> "DataSplitConfig":
         if self.strategy == "legacy_windows":
+            if self.manifest_mode == "read_only" or self.partition_map is not None:
+                raise ValueError(
+                    "frozen manifest controls require data.split.strategy=grouped_metadata; "
+                    "legacy_windows cannot consume manifest_mode=read_only or partition_map"
+                )
             return self
         if not self.group_key:
             raise ValueError("data.split.group_key is required for grouped_metadata")

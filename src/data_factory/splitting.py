@@ -91,6 +91,11 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
     if spec.strategy not in {"legacy_windows", "grouped_metadata"}:
         raise ValueError(f"unknown data.split.strategy {spec.strategy!r}")
     if spec.strategy == "legacy_windows":
+        if spec.manifest_mode == "read_only" or spec.partition_map is not None:
+            raise ValueError(
+                "frozen manifest controls require data.split.strategy=grouped_metadata; "
+                "legacy_windows cannot consume manifest_mode=read_only or partition_map"
+            )
         return {}
     if spec.manifest_mode not in {"generate", "read_only"}:
         raise ValueError(

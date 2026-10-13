@@ -387,3 +387,57 @@ def test_public_config_preserves_read_only_frozen_split_fields(tmp_path, task_ty
     ), encoding="utf-8")
     with pytest.raises(ValidationError, match="partition_map must contain exactly"):
         analyze_config(config)
+
+
+@pytest.mark.parametrize("strategy", ["legacy_windows", None])
+@pytest.mark.parametrize("frozen_controls", [
+    "    manifest_mode: read_only\n",
+    "    partition_map: {train: fit, val: tune, test: target}\n",
+    "    manifest_mode: read_only\n    partition_map: {train: fit, val: tune, test: target}\n",
+    "    partition_map: {}\n",
+])
+def test_public_boundary_rejects_legacy_or_default_strategy_with_frozen_controls(
+    tmp_path, monkeypatch, strategy, frozen_controls,
+):
+    config = tmp_path / "invalid-frozen.yaml"
+    manifest = tmp_path / "must-not-be-written.json"
+    output_dir = tmp_path / "must-not-be-created"
+    _minimal_config(config, epochs=1)
+    strategy_line = "" if strategy is None else f"    strategy: {strategy}\n"
+    text = config.read_text(encoding="utf-8").replace(
+        "  metadata_file: metadata_dummy.csv\n",
+        "  metadata_file: metadata_dummy.csv\n  split:\n"
+        + strategy_line + f"    manifest_path: {manifest}\n" + frozen_controls,
+    ).replace("  output_dir: results/test", f"  output_dir: {output_dir}")
+    config.write_text(text, encoding="utf-8")
+
+    def fail_pipeline_import(*args, **kwargs):
+        pytest.fail("Invalid frozen split must fail before Pipeline import or raw-data access")
+
+    monkeypatch.setattr(public_cli.importlib, "import_module", fail_pipeline_import)
+    for call in (
+        lambda: analyze_config(config),
+        lambda: inspect_config(config),
+        lambda: preflight.run(["--config", str(config)]),
+        lambda: public_cli.run(public_cli.build_parser().parse_args(["--config", str(config)])),
+    ):
+        with pytest.raises(ValidationError, match="require data.split.strategy=grouped_metadata"):
+            call()
+    assert not manifest.exists()
+    assert not output_dir.exists()
+
+
+def test_public_config_does_not_expose_runtime_manifest_digest(tmp_path):
+    config = tmp_path / "unsupported-manifest-field.yaml"
+    _minimal_config(config, epochs=1)
+    config.write_text(config.read_text(encoding="utf-8").replace(
+        "  metadata_file: metadata_dummy.csv\n",
+        "  metadata_file: metadata_dummy.csv\n  split:\n"
+        "    strategy: grouped_metadata\n    group_key: Bearing_id\n"
+        "    test_policy: task_defined\n    manifest_mode: read_only\n"
+        "    manifest_path: results/frozen.json\n"
+        "    partition_map: {train: fit, val: tune, test: target}\n"
+        "    manifest_sha256: unsupported-public-field\n",
+    ), encoding="utf-8")
+    with pytest.raises(ValidationError, match="manifest_sha256"):
+        analyze_config(config)
