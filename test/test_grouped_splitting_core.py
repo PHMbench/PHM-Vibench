@@ -193,6 +193,28 @@ def test_legacy_split_preserves_id_contract():
     assert result.test_ids == tuple(test_ids)
 
 
+@pytest.mark.parametrize("strategy", ["legacy_windows", None])
+@pytest.mark.parametrize("frozen_controls", [
+    {"manifest_mode": "read_only"},
+    {"partition_map": {"train": "fit", "val": "tune", "test": "target"}},
+    {"manifest_mode": "read_only", "partition_map": {"train": "fit", "val": "tune", "test": "target"}},
+    {"partition_map": {}},
+])
+def test_legacy_or_default_strategy_rejects_frozen_controls_before_manifest_access(
+    tmp_path, strategy, frozen_controls,
+):
+    manifest = tmp_path / "must-not-be-written.json"
+    split = dict(frozen_controls, manifest_path=str(manifest))
+    if strategy is not None:
+        split["strategy"] = strategy
+    with pytest.raises(ValueError, match="require data.split.strategy=grouped_metadata"):
+        resolve_data_splits(
+            object(), SimpleNamespace(split=SimpleNamespace(**split)),
+            SimpleNamespace(type="Default_task"), ["source-id"], ["target-id"],
+        )
+    assert not manifest.exists()
+
+
 def _factory_args(manifest_path):
     args_data = _split_args(manifest_path)
     args_data.window_size = 2
