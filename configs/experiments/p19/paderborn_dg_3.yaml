@@ -1,0 +1,5 @@
+base_configs:
+  study: configs/experiments/p19/paderborn_dg_0.yaml
+study:
+  source_domains: [0, 1, 2]
+  target_domains: [3]

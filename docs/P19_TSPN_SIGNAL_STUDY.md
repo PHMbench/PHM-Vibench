@@ -1,122 +1,258 @@
-# Goal — P19 native signal-program correction: essential evidence
+# P19 Local Execution SOP
 
-## Core claim, gap and reuse
+This is the sole execution SOP for the P19 multiview study. The paper repository owns the scientific claims; PHMFactory owns configuration, data access, training, correction, evaluation and analysis. Agent Benchmark is a historical numerical/artifact reference, not a runtime dependency.
 
-Paper: `AI4Engineering-L/P-19-Deterministic-Representation-Gain-tpami`, formal source `paper/tex/main.tex`. Unique owner of new execution: PHMFactory (`PHMbench/PHM-Vibench`). Agent Benchmark is not a runtime dependency; its completed E1–E6/G6 evidence and the earlier correction code are historical/migration references only.
+The implementation and synthetic CPU checks establish software behavior. **Real PHM data qualification, local CUDA/WSL validation, strong-baseline tuning and scientific performance experiments have not been run for this implementation.** Do not report software checks as multiview efficacy. The required second PHM dataset and the HAR profile remain unbound.
 
-**Core claim:** a named signal program can improve a competent frozen TSPN beyond constant logit adjustments and alternative native-feature readouts. Without the native qualification and matched real comparison this practical contribution is unestablished. The target remains IEEE TPAMI; software checks and standard algebra do not supply the missing empirical value.
+## A. Goal and fixed comparisons
 
-**Current gap:** at inspected dev `bc21a9ea65d56c0083d837f16e882a6d6f36c6d5`, TSPN, public configuration and native runtime exist, but `configs/experiments/p19/` was not retrievable; `scripts/paper/p19/` contains only `plot_signal_method.py`. No ready PHMFactory OP1 training/correction command is asserted. Inspect local research branches before writing code: an unmerged valid implementation may already exist.
+Determine whether the existing signal-view correction improves a capable frozen TSPN beyond an intercept, native-feature readouts and each single view. Preserve the existing method; add joint condition/entity DG as a separate prospective experiment. The original seven-bearing OP1 target has historical exposure, so OP1 remains exploratory. The supplied Paderborn DG configurations also retain an exploratory evaluation label rather than inventing a clean target-access history.
 
-**Reuse:** original prepared PHM population and physical roles; historical pilot/G6 results and failures; any genuinely compatible completed TSPN checkpoint/export. Do not repeat G6, the old six model fits, old bootstraps or completed data preparation. The attached older routing review does not authorize a new geometry objective or a return to Agent Benchmark.
+| Question | Controlled comparison | Outcome |
+|---|---|---|
+| C1: deployed incremental value | `signal_program/guarded` minus the same TSPN | Primary: equal-entity full multiclass Brier difference; lower favors the correction |
+| C1: value of supplied signal coordinates | Projected signal program minus projected intercept, native-matched and native-full readouts | Separates view information from another fitted head and readout capacity |
+| C1: joint-view utility | Projected signal program minus each projected single-view readout | Tests the four declared families without searching view subsets |
+| C2: computational explanation | Replay saved feature/view terms against raw added logits and class log-odds | Arithmetic fidelity, not physical causality or a linear decomposition of mixed probabilities |
+| Generalization | Repeat the same comparisons over frozen joint condition/entity folds and at least two qualified PHM datasets | Paderborn alone is incomplete multi-PHM evidence; HAR cannot replace the second PHM dataset |
 
-## Inputs and protocol
+Accuracy and Macro-F1 are secondary outcomes with their own paired intervals. RAW outputs are diagnostic. A rejected correction has zero deployed effect. The original 13 outputs remain intact; four single-view readouts add 12 outputs from the same TSPN export, for 25 in total. They require no new backbone fits.
 
-### Inputs and ownership
+### OP1 and DG are distinct budgets
 
-Read actual local `AGENTS.md`, `CORE.md`, the current P19 method/claim map, this Goal and only relevant owner documentation. Retain unrelated changes.
+| Setting | Retained OP1 | New Paderborn DG |
+|---|---|---|
+| Configuration | [op1.yaml](../configs/experiments/p19/op1.yaml) | [paderborn_dg_0.yaml](../configs/experiments/p19/paderborn_dg_0.yaml) through `_3.yaml` |
+| Population | Actual original 32-bearing assignment; fit/tune/grow/select/test = 5/3/10/7/7 | Same fixed bearing roles; source-role bearings in three source conditions, test-role bearings in the held-out condition; exclude cross combinations |
+| Backbones | TSPN only | TSPN, ResNet1D and TCN; same source search budget |
+| Training | 100 epochs; AdamW LR `1e-3`, WD `1e-4`; CE; batch 128; seeds 11/23/37 | Four ordered `(LR,WD)` trials: `(1e-3,0)`, `(1e-3,1e-4)`, `(3e-4,0)`, `(3e-4,1e-4)`; each 100 epochs at seed 11 |
+| Checkpoint | Minimum `val_loss`, earliest epoch on an exact tie; no early stopping or automatic post-fit test | Same checkpoint rule; trial ranking by uncalibrated entity-weighted tune Macro-F1, Accuracy, lower Brier, then trial order |
+| Repetition | Three fixed fits; no added HPO | Reuse selected seed-11 fit; train the selected configuration at 23 and 37: **six fits/model/fold**, 18 per fold, 72 across four folds |
+| Calibration/refit | Tune-only temperature; no fit+tune refit | Temperature fitted after trial selection; no fit+tune refit |
+| Source floor | Equal-bearing tune Accuracy >=0.80; a failed seed receives no correction test score and blocks complete evaluation | Tune Accuracy/Macro-F1 below 0.80 is diagnostic, not a filter; keep valid difficult folds and all seeds |
+| Bootstrap | 2,000 paired class-stratified whole-bearing draws, seed 20260922; fixed 1/3/3 test composition has a singleton healthy stratum | 2,000 paired whole-bearing draws, seed 20261013; report folds separately |
 
-Verified native owners are `phmfactory/config.py`, `phmfactory/cli.py`, `src/model_factory/X_model/TSPN.py`, `src/data_factory/`, `src/runtime/` and `docs/custom_dataset.md`. `scripts/paper/p19/` is the existing narrow helper location; use it only where an existing native export/evaluator cannot cover the required comparison. Do not clone a loader, trainer, split resolver or result manager.
+The fit counts above describe formal model selection/repetition. The bounded smoke and source-overfit diagnostics below are additional software-qualification work and do not contribute comparison scores. The native model set is an implemented comparison, not yet a qualified strong-baseline result. An appropriate official strong time-series reference, such as Hydra, has not been bound or validated under this protocol. Do not substitute published scores on other splits or claim SOTA. TimesNet is not one of the current three configured baselines; any future qualification must retain the declared source-only budget and inference boundary.
 
-The former reference routines are `signal_programs.py`, `operator_gain.py`, `operator_study.py`, and the native export binding at Agent Benchmark revision `76a195133c23149147d204fd2883eebcc2e9289a`. Read them for numerical migration, not as an installed/imported execution dependency. Preserve the minimum relevant computation and its license; do not migrate unrelated routing/Agent code. Existing source checks of that reference do not establish a PHMFactory-native run.
+The DG reference architectures are frozen before optimizer search: ResNet1D basic blocks `[2,2,2,2]` and initial width 64 follow the [native defaults](../src/model_factory/CNN/ResNet1D.py), rather than its reduced testing example. TCN channels `[32,64,64,64]` and kernel size 7 follow the existing [P04 comparator configuration](../configs/experiments/p04/baseline_tcn_indomain.yaml); dropout 0.2 is the [native default](../src/model_factory/CNN/TCN.py). P04 supplies architecture provenance only, not P19 data/split/training rules or DG qualification. These choices are not measured competitive results and do not change OP1, the method or the equal search/epoch/seed budget.
 
-Local inputs previously supplied by the user:
+## B. Environment and inputs
 
-- PHM root: `/home/user/data/PHMbenchdata/PHM-Vibench/`, including original `metadata.xlsx` and README; read-only.
-- Prepared-role reference: `/home/user/LQ/B_Signal/astra/phm-agent-benchmark/local_outputs/p19_native_v2_20260919/prepared.json`. Reading an existing record is not permission to execute that repository. Resolve its actual raw paths, labels, unit IDs and source provenance through PHMFactory.
-- Extra time-series root: `$HOME/data/timeseries`; HAR at `$HOME/data/timeseries/uci-har/raw/UCI HAR Dataset`. Do not download it again when complete. Never append the terminal `$` to a directory name.
-- Previously used native Python: `/home/user/anaconda3/envs/LQ_signal/bin/python`. Current availability, PHMFactory installation and available memory/time must be checked locally, not assumed.
+Use the reviewed PHMFactory worktree, currently `/home/user/LQ/B_Signal/PHMFactory-p19-implementation-20261013`, and record its actual revision and dirty state. The corresponding paper worktree is `/home/user/LQ/B_Signal/astra/P19-implementation-20261013`. These local paths are not proof of a merged remote revision.
 
-### Fixed Paderborn specification
+- Existing Python candidate: `/home/user/anaconda3/envs/LQ_signal/bin/python`; package metadata requires Python >=3.10. Verify the actual environment locally.
+- Dependencies: the repository [requirements.txt](../requirements.txt), including PyTorch 2.6.0, Lightning, NumPy, SciPy, pandas, HDF5 and Excel readers. Do not upgrade/install silently to make a failed run pass. Record installed versions and the actual CPU/CUDA build.
+- Raw PHM root: `/home/user/data/PHMbenchdata/PHM-Vibench/`, original `metadata.xlsx` and signals read-only. No metadata repair, normalization rewrite or sample deletion in place.
+- Existing historical preparation: `/home/user/LQ/B_Signal/astra/phm-agent-benchmark/local_outputs/p19_native_v2_20260919/prepared.json`. Read its references to recover the actual approved physical assignment; do not execute the historical repository or infer bearing IDs from counts.
+- `study.role_map` must point to the actual physical-split JSON. Its `assignments` maps bearing IDs to roles; historical `design` assignments are resolved by the saved `grow_units` and `select_units` lists. All five final roles and their fixed counts must be covered. Record/window IDs are not physical entity substitutes.
+- Existing HAR data are under `$HOME/data/timeseries/uci-har/raw/UCI HAR Dataset`. The channel/role/frequency/lag/native-dimension profile is unbound, so there is no HAR performance command in this SOP.
+- GPU: query only physical GPU 0 with `nvidia-smi --id=0 --query-gpu=uuid --format=csv,noheader`, require its single nonempty GPU UUID, and export that exact UUID as `CUDA_VISIBLE_DEVICES` before Python imports. The logical model device remains `cuda:0`. Numeric `CUDA_VISIBLE_DEVICES=0` is rejected because CUDA device ordering can differ from the physical index. No GPU 2, multi-GPU or automatic fallback is allowed. Explicit CPU smoke/overfit calls set `CUDA_VISIBLE_DEVICES=''`. Available GPU memory, CUDA driver/runtime and WSL behavior must be checked locally.
 
-Retain the declared study, not a new parameter search:
+The Paderborn profile is fixed at 64 kHz, channel index 2, 4,096 samples, 32 evenly spaced windows/record, native per-window standardization and no additional TSPN instance normalization. Its four Gaussian center/width pairs are `(1000,500)`, `(4000,1000)`, `(10000,2000)`, `(20000,4000)` Hz; modulation intervals are `[20,100)`, `[100,300)`, `[300,1000)` Hz; lags are 64/256/1024 samples. Check actual channel/label semantics before running. The 20 kHz center requires sampling rate >40 kHz; no silent clipping, zero padding or resampling transfers this profile to another dataset. Each modulation interval must contain an observable DFT bin and each lag must fit the window.
 
-| Item | Fixed condition |
-|---|---|
-| Observation | Original 32-bearing assignment; 64 kHz vibration channel; 4,096-sample windows; 32 evenly spaced windows per record; original per-window standardization |
-| Roles | Fit/tune/grow/select/test: 5/3/10/7/7 bearings. Actual IDs come from saved preparation, not invented from these counts |
-| Backbone | Native TSPN, one I/WF/MWF/HT layer, 16 output channels, RMS/AbsMean/Std/Kurtosis/CrestFactor/Skewness statistics; three classes; no skip or additional internal instance normalization |
-| Training | Original OP1 budget 100 epochs and seeds 11/23/37. Recover remaining optimizer, batching, precision and checkpoint-selection values from the approved effective native config before fitting; unresolved values are blockers, not silently chosen defaults |
-| Qualification | Equal-bearing **tune** accuracy at least 0.80 after tune checkpoint/temperature selection; not grow accuracy and not a test lower confidence bound |
-| External program | Fixed center/width pairs (1000,500), (4000,1000), (10000,2000), (20000,4000) Hz; modulation intervals [20,100), [100,300), [300,1000) Hz; lags 64/256/1024; 42 named features, not the superseded trainable-band design |
-| Readouts | Intercept, native-matched, native-full, signal-program; same frozen calibrated logits and grow data; equal-unit offset multinomial NLL plus L2=0.01 on coefficients and intercept; zero initialization; at most 1,000 L-BFGS-B iterations |
-| Native matching | Label-blind Gaussian QR projection, seed 11, to 42 columns; retain the full native vector as a separate stronger, unequal-capacity control |
-| Probability decision | Same grow Brier segment and empirical select rule for all corrections. The fixed class-stratified pilot does not use an iid deployment certificate |
-| Output | TSPN plus raw/projected/guarded versions of four corrections: 13 outputs, not 13 independent experiments |
+The native TSPN has 96 feature coordinates here; label-blind Gaussian QR seed 11 supplies the 42-dimensional native-matched control. Native-full remains a stronger unequal-capacity control. All readouts use the same calibrated offset and grow data, equal-entity multinomial NLL, L2=0.01 on coefficients and intercept, zero initialization and at most 1,000 L-BFGS-B iterations. Grow fits the probability segment and select fixes the empirical guard. A multichannel profile must explicitly satisfy the matching dimension requirement rather than pad missing coordinates.
 
-Treat a PHMFactory source change as a real dependency change. Test frozen-state behavior and checkpoint compatibility; do not assume old runtime predictions remain identical. No existing PHM data or 1,517 record-length discrepancies may be erased or silently repaired in metadata.
+## C. Preflight sequence
 
-### Metrics, repetitions and budget
+Proceed in order **environment → data → split → baseline → method → metric**. Failure stops affected formal experiments; preserve the failure and fix the actual cause before retrying into a fresh output directory.
 
-Primary: equal-bearing Brier of `signal_program/guarded` minus TSPN. Information contrasts: projected signal minus projected intercept/native-matched/native-full. Keep accuracy and unit-weighted macro-F1 separately. Lower Brier difference and higher accuracy difference favor the signal correction; no sign is presumed.
+1. Verify the selected interpreter imports this worktree and the requested GPU maps to physical 0. `research preflight` resolves configuration/module ownership only: it does not qualify real data or prove execution.
+2. `sanity` reads metadata, checks the profile, labels, role counts and class support, and writes derived metadata/manifests. Source training receives a separate source-only metadata population; target evaluation receives the separate evaluation population. Original metadata are unchanged. The preparation may inspect target assignment/class-support metadata as a protocol check; target signals/predictions cannot enter source fitting or selection.
+3. Inspect actual entity IDs, `Domain_id` meanings and excluded cross combinations. Each DG fold must contain multiple source conditions and a disjoint target condition **and** disjoint source/target bearings. A condition code without a verified physical entity is insufficient. Mark unsupported class/entity coverage infeasible; do not redraw roles after seeing results.
+4. Run native baseline and TSPN CPU smoke phases. Each uses one epoch and two windows/record through the native loader/task/trainer. Then run `overfit`: 100 epochs and two windows/record on source fit data, requiring entity-weighted fit Accuracy >=0.99 at the restored minimum-val-loss checkpoint. It uses ResNet1D for DG and TSPN for OP1, with tune/checkpoint access still source-only. A failure stops formal experiments for inspection; do not reduce the threshold or inspect target to fix it. This diagnostic tests a source training path; it does not certify every baseline or prove competitiveness.
+5. Confirm source checkpoint replay, finite tensors/gradients, frozen parameters **and running buffers**, and native features captured from the same forward pass as logits. Fit/tune/grow/select all precede test: fit trains the backbone; tune selects/calibrates; grow fits readouts/normalizers/segments; select fixes empirical guards. Validation, calibration and export batch size is 1 for every model. This also prevents TimesNet's native batch-level period statistic from using other target items if it is later qualified.
+6. Verify the saved class order, probability rows and metric units. Each of G entities has total weight `1/G`; each of its m_g windows has weight `1/(G*m_g)`. Accuracy and full multiclass Brier are entity averages. Macro-F1 is computed from that weighted confusion matrix over the fixed classes, with zero-denominator class F1 set to zero and missing support reported; it is not a mean of per-bearing F1 values. Seeds are repeated fits, not extra independent entities.
 
-The existing three training seeds measure optimization variability and are retained because this specific study already registered them and the old pilot had seed-dependent outcomes. They do not create extra bearings. First average seed effects within a bearing; then use the existing 2,000 paired whole-bearing stratified draws, seed 20260922, for the fixed 1/3/3 test composition. Report the singleton healthy-stratum limitation and each seed. Compute paired accuracy uncertainty from the same predictions for any accuracy-gain claim. Do not add training repeats after seeing an interval.
+For Brier/Accuracy, average paired seed effects within each entity before whole-entity resampling. For Macro-F1, recompute each seed's weighted confusion/F1 for each common resample, then average paired seed differences. Never average probabilities into an undeclared ensemble. Report seed dispersion and the healthy-singleton limitation; intervals condition on the registered cohort and fitted models.
 
-Binding uses only focused CPU checks and a native small-batch forward/backward/checkpoint smoke. Long training starts only after the actual native command and complete numerical config are established. At most the three fixed backbone runs are authorized for OP1, minus compatible completed work. All readout controls reuse each export. GPU policy remains one physical GPU 0, no GPU 2 and no multi-GPU; if unavailable, continue independent CPU/data tasks rather than selecting another device. Record actual local resource limits before a long run.
+## D. Executable commands
 
-## Execution
+These commands use the implemented public entrypoint and require actual local inputs. They do not fabricate a role map or a second-dataset profile. Fill the three required local variables once using absolute paths. Use an explicit local YAML for machine paths only; all commands retain the same local layer and overrides in Bash arrays. Do not change scientific values between phases.
 
-### 1. Read-only binding checks
-
-These are actual inspection commands, **not OP1 execution**:
+### 1. Environment, configuration and data sanity
 
 ```bash
-: "${PHMFACTORY_ROOT:?Set the actual PHMFactory worktree}"
+set -euo pipefail
+PHMFACTORY_ROOT="${PHMFACTORY_ROOT:-/home/user/LQ/B_Signal/PHMFactory-p19-implementation-20261013}"
+P19_PYTHON="${P19_PYTHON:-/home/user/anaconda3/envs/LQ_signal/bin/python}"
+: "${P19_LOCAL_CONFIG:?Set the actual machine-local YAML path}"
+: "${P19_ROLE_MAP:?Set the approved physical-split JSON path}"
+: "${P19_OUTPUT_ROOT:?Set a fresh local result root for this execution}"
+test -f "$P19_LOCAL_CONFIG"
+test -f "$P19_ROLE_MAP"
+test ! -e "$P19_OUTPUT_ROOT"
 cd "$PHMFACTORY_ROOT"
+P19_GPU0_UUID="$(nvidia-smi --id=0 --query-gpu=uuid --format=csv,noheader)"
+[[ "$P19_GPU0_UUID" =~ ^GPU-[[:xdigit:]-]+$ ]]
+export CUDA_VISIBLE_DEVICES="$P19_GPU0_UUID"
 git status --short
-git branch --show-current
 git rev-parse HEAD
-git ls-files 'configs/experiments/*p19*' 'configs/experiments/p19/*' 'scripts/paper/p19/*'
-python -m phmfactory --help
+"$P19_PYTHON" --version
+"$P19_PYTHON" -m phmfactory --help
+"$P19_PYTHON" -m pip show phmfactory torch pytorch-lightning numpy scipy
+nvidia-smi --id=0
+mkdir -p "$P19_OUTPUT_ROOT/console"
+p19_common=(--local-config "$P19_LOCAL_CONFIG" --override "study.role_map=$P19_ROLE_MAP")
+p19_name=paderborn_dg_0
+p19_config=configs/experiments/p19/paderborn_dg_0.yaml
+p19_args=(--config "$p19_config" "${p19_common[@]}")
+p19_run() {
+  local phase="$1"
+  shift
+  local log="$P19_OUTPUT_ROOT/console/${p19_name}_${phase}.log"
+  test ! -e "$log"
+  "$P19_PYTHON" -m phmfactory research "$phase" "${p19_args[@]}" "$@" \
+    2>&1 | tee "$log"
+}
+p19_run preflight
+p19_run sanity --output "$P19_OUTPUT_ROOT/$p19_name/sanity"
+p19_data="$P19_OUTPUT_ROOT/$p19_name/sanity/prepared.json"
 ```
 
-Check active PRs and the installed module origins. Do not reset, force-pull, replace the environment or edit the paper's Results. If compatible native code already exists, reuse and validate it; do not repeat a migration to satisfy this document.
+If the GPU is unavailable, the environment check stops before formal execution. Do not start tuning or select another GPU. Independent metadata checks and explicit CPU diagnostic work may proceed separately after recording the unavailable GPU. Read `source_metadata.csv`, `source_split.json`, `evaluation_split.json` and `excluded_cross_combinations.csv` locally and complete the split checks above before progressing.
 
-### 2. Bind only the missing correction path
-
-Reuse TSPN construction, native data/Task, checkpoint selection and prediction export. Port only absent named-feature, offset-readout, projection/acceptance and unit-analysis routines. Do not add an alternative Pipeline solely to launch this paper. Keep the fixed 42-feature specification and data roles.
-
-Use a small labeled software fixture for arithmetic and serialization, clearly separated from scientific evidence. Verify fixed-input features, frozen backbone parameters and running state, exact zero-correction recovery, contribution sums, class-log-odds contrasts, physical-unit weights and saved-state replay. The log-odds contrast is computed from saved logits to avoid taking logarithms of underflowed probabilities. No new architecture or target-tuned normalization is introduced.
-
-Complete a small native data/model/checkpoint smoke in the real environment. Missing metadata, unsupported configuration or a failed native smoke stops the affected long experiment; synthetic fixtures cannot replace this step. Validate only affected owners plus normal required CI.
-
-### 3. Record and run the real native invocation
-
-After the native binding exists, set `P19_CONFIG` to its actual reviewed training config. The following is the verified **public command interface**, conditional on that config being implemented and validated:
+### 2. Baseline smoke
 
 ```bash
-: "${P19_CONFIG:?Set the implemented and reviewed native P19 config}"
-test -f "$P19_CONFIG"
-python -m phmfactory preflight --config "$P19_CONFIG"
-python -m scripts.config_inspect --config "$P19_CONFIG" --dump resolved --format yaml
+CUDA_VISIBLE_DEVICES='' p19_run baseline_smoke --data "$p19_data" --device cpu \
+  --output "$P19_OUTPUT_ROOT/$p19_name/baseline_smoke"
 ```
 
-Record the actual per-seed train/export/correction/analyze invocations in the existing execution notes. No undocumented `operator_fit`, `source`, `evaluate` or `--split` stage is assumed to exist in PHMFactory. `phmfactory --config` is the native training interface; it is not automatically an offset-readout analysis command. Use the existing helper or the minimal verified binding from step 2 and retain its real command.
+The DG baseline smoke uses the configured ResNet1D. Formal tuning still includes all three configured backbones.
 
-Train/select/calibrate source-only, export the same windows and capture native features at the declared position. For each source-qualified seed, fit all four corrections and freeze their coefficients, segment strengths and select decisions before scoring test labels. Do not retrain a completed backbone to recover an export/analysis-only failure. No post-selection refit or post-test setting change is authorized.
+### 3. Proposed-method smoke
 
-A floor failure writes qualification and failure/completion status without a new correction test score, following the retained protocol. It is a valid source outcome but leaves the planned correction contrast incomplete. Do not report a favorable successful-seed subset as the three-seed primary.
+```bash
+CUDA_VISIBLE_DEVICES='' p19_run method_smoke --data "$p19_data" --device cpu \
+  --output "$P19_OUTPUT_ROOT/$p19_name/method_smoke"
+CUDA_VISIBLE_DEVICES='' p19_run overfit --data "$p19_data" --device cpu \
+  --output "$P19_OUTPUT_ROOT/$p19_name/overfit"
+```
 
-### 4. External time-series work that can proceed independently
+The method smoke exercises the native TSPN training/checkpoint path. `overfit` is the separate 100-epoch source diagnostic described above. Synthetic tests cover correction arithmetic and replay; the real source readout fit is the later `fit` phase. Do not claim a real correction comparison from a smoke/overfit result.
 
-UCI HAR remains the first external task for the user's retained time-series scope. Its data/reader binding can proceed while Paderborn is blocked. Keep the official subject train/test boundary; use its own sampling rate, channels, provided window semantics and label ontology. Do not re-window across subjects or copy Paderborn's 64 kHz/4,096-sample/band configuration.
+### 4. Strong-baseline tuning
 
-The exact HAR reader, role IDs inside training subjects, signal profile, TSPN dimensions, fitting budget and repetitions are **not yet bound in this snapshot**. Record those source-only choices and the verified invocation before a HAR performance run. No HAR training/test run is authorized by a placeholder path in this Goal. Return the binding for the next experiment-A handoff. The need for independent cross-task evidence is decided by the claim, not by whether Paderborn is positive. Do not download five datasets or launch a geometry-routing replication.
+```bash
+p19_run tune --data "$p19_data" \
+  --output "$P19_OUTPUT_ROOT/$p19_name/tune"
+```
 
-## Artifacts and validation
+`tune` performs the complete declared grid and selected-seed repeats; `selection.json` records the selected checkpoints and source selection rule. A failed trial invalidates the declared search budget: retain `tuning_failures.json` and stop, rather than choose among a smaller successful grid. Source performance/failure review precedes method assessment. No additional architecture/trial search is hidden in `fit`.
 
-Use native returned result/checkpoint/config locations. Preserve input identities, raw/projected/guarded probabilities, unit-level loss and correct/count, class order, calibration, coefficients, feature names, projection/acceptance states, seeds, real command, necessary logs and failures. Keep native checkpoint and input-source references; raw data remain local.
+### 5. Small source comparison before target access
 
-The small P19 additions must support independent metric recomputation and feature-term reconstruction. Report both added-logit sums and class-log-odds contrasts from the same saved arrays; reference retention is checked separately for the deployed prediction. A nonzero raw correction that is rejected has zero deployed effect. Exact arithmetic is not proof of physical causality or a predictive benefit.
+```bash
+p19_run fit --data "$p19_data" \
+  --selection "$P19_OUTPUT_ROOT/$p19_name/tune/selection.json" \
+  --output "$P19_OUTPUT_ROOT/$p19_name/fit"
+p19_run source_compare --data "$p19_data" \
+  --selection "$P19_OUTPUT_ROOT/$p19_name/fit/frozen_index.json" \
+  --output "$P19_OUTPUT_ROOT/$p19_name/source_compare"
+```
 
-Use the entire prescribed cohort and all available registered-seed states. Distinguish infrastructure failure, invalid protocol, source-floor failure, valid negative effect and guard rejection. No missing metric is filled with zero. Time and memory fields remain missing unless actually measured; fitting time is not deployment latency.
+`fit` calibrates and freezes every registered model/seed state. `source_compare` replays the 25 TSPN/readout predictions on saved source select data without another fit or target access. These labels already determined the guard: this is a source diagnostic, not an independent validation estimate or a new selection rule. Review infrastructure/protocol failures before target evaluation; do not retune the method in response to this diagnostic.
 
-Map evidence to the paper's C1–C4 table, Sections 3–4 and the existing OP1 settings/comparison locations. Plot only from saved analysis CSVs; no model inference or new bootstrap may hide inside a plot script. The method diagrams are reused, not redrawn as simulated results.
+### 6. Full DG evaluation and independent OP1
 
-## Failure and sync
+After source qualification and freeze, evaluate the first fold, then continue the predeclared folds with the same machine layer and physical assignment:
 
-If a required input is absent, preserve the precise blocker and continue other independent tasks in this batch. With no executable item left, stop and return the binding gap. Environment fixes may preserve the protocol; changes to source roles, observations, model, objective, calibration, selection or estimator need an explicit scientific handoff and cannot be pooled with the original protocol.
+```bash
+p19_run evaluate --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/fit/frozen_index.json" --output "$P19_OUTPUT_ROOT/$p19_name/evaluate"
+p19_run analyze --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/evaluate/evaluation.json" --output "$P19_OUTPUT_ROOT/$p19_name/analyze"
+for p19_fold in 1 2 3; do
+  p19_name="paderborn_dg_$p19_fold"
+  p19_config="configs/experiments/p19/$p19_name.yaml"
+  p19_args=(--config "$p19_config" "${p19_common[@]}")
+  p19_run preflight
+  p19_run sanity --output "$P19_OUTPUT_ROOT/$p19_name/sanity"
+  p19_data="$P19_OUTPUT_ROOT/$p19_name/sanity/prepared.json"
+  CUDA_VISIBLE_DEVICES='' p19_run baseline_smoke --data "$p19_data" --device cpu --output "$P19_OUTPUT_ROOT/$p19_name/baseline_smoke"
+  CUDA_VISIBLE_DEVICES='' p19_run method_smoke --data "$p19_data" --device cpu --output "$P19_OUTPUT_ROOT/$p19_name/method_smoke"
+  CUDA_VISIBLE_DEVICES='' p19_run overfit --data "$p19_data" --device cpu --output "$P19_OUTPUT_ROOT/$p19_name/overfit"
+  p19_run tune --data "$p19_data" --output "$P19_OUTPUT_ROOT/$p19_name/tune"
+  p19_run fit --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/tune/selection.json" --output "$P19_OUTPUT_ROOT/$p19_name/fit"
+  p19_run source_compare --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/fit/frozen_index.json" --output "$P19_OUTPUT_ROOT/$p19_name/source_compare"
+  p19_run evaluate --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/fit/frozen_index.json" --output "$P19_OUTPUT_ROOT/$p19_name/evaluate"
+  p19_run analyze --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/evaluate/evaluation.json" --output "$P19_OUTPUT_ROOT/$p19_name/analyze"
+done
+```
 
-Validated minimal native code/configuration and shareable evidence go through focused PHMFactory branches and PRs to dev. No force push, master/main changes, unrelated merges, raw-data upload or second runtime. Large artifacts follow the existing authorized storage with real accessible references. The paper links the actual accepted source and artifacts; it does not copy the execution body or write new Results in this stage.
+A valid negative effect is not a reason to alter the protocol, drop a fold or add trials. Target evaluation is downstream of complete source freeze; it cannot revise the source choices.
 
-Return the actual native config and commands, completed/reused/blocked items, all source qualifications and paired outcomes, retained failures, artifact paths and synchronization state. If no new execution occurred, say so. Stop after the essential batch; the evidence-B stage decides what the results support.
+The separate OP1 command uses its original fixed three-fit budget. First recover any compatible completed work and verify checkpoint/dependency behavior; do not blindly duplicate old training or treat the historical routing pilot as this method's result.
+
+```bash
+p19_name=op1
+p19_args=(--config configs/experiments/p19/op1.yaml "${p19_common[@]}")
+p19_run preflight
+p19_run sanity --output "$P19_OUTPUT_ROOT/$p19_name/sanity"
+p19_data="$P19_OUTPUT_ROOT/$p19_name/sanity/prepared.json"
+CUDA_VISIBLE_DEVICES='' p19_run method_smoke --data "$p19_data" --device cpu --output "$P19_OUTPUT_ROOT/$p19_name/method_smoke"
+CUDA_VISIBLE_DEVICES='' p19_run overfit --data "$p19_data" --device cpu --output "$P19_OUTPUT_ROOT/$p19_name/overfit"
+p19_run tune --data "$p19_data" --output "$P19_OUTPUT_ROOT/$p19_name/tune"
+p19_run fit --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/tune/selection.json" --output "$P19_OUTPUT_ROOT/$p19_name/fit"
+p19_run source_compare --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/fit/frozen_index.json" --output "$P19_OUTPUT_ROOT/$p19_name/source_compare"
+p19_run evaluate --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/fit/frozen_index.json" --output "$P19_OUTPUT_ROOT/$p19_name/evaluate"
+p19_run analyze --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/evaluate/evaluation.json" --output "$P19_OUTPUT_ROOT/$p19_name/analyze"
+```
+
+An OP1 floor failure yields `incomplete_qualification`; evaluation rejects that index. Do not edit it to score passing seeds alone. The stage named `tune` still uses only OP1's one fixed configuration at three seeds, not DG HPO.
+
+These four Paderborn folds do **not** complete multi-PHM DG. Qualification of a second PHM dataset requires actual physical entities, multiple meaningful conditions, fixed class support and a legal profile; its identity and bindings must be settled before a config/performance run. No placeholder dataset/HAR loop is supplied.
+
+### 7. Ablation and mechanism analysis
+
+The existing `fit`/`evaluate`/`analyze` stages already fit all four single-view controls and save their raw/projected/guarded outputs, plus the exact feature/view explanation replay. Use those artifacts for E1–E3; do not train another backbone for each view. Optional plots consume the saved analysis CSV, with no inference, new resampling or outcome-selected comparisons:
+
+```bash
+for p19_name in paderborn_dg_0 paderborn_dg_1 paderborn_dg_2 paderborn_dg_3 op1; do
+  p19_args=(--config "configs/experiments/p19/$p19_name.yaml" "${p19_common[@]}")
+  p19_data="$P19_OUTPUT_ROOT/$p19_name/sanity/prepared.json"
+  p19_run plot --data "$p19_data" --selection "$P19_OUTPUT_ROOT/$p19_name/analyze/analysis.json" --output "$P19_OUTPUT_ROOT/$p19_name/plot"
+done
+```
+
+Only invoke this optional loop when all listed analyses exist; preserve an incomplete OP1 gate as incomplete, without a substitute plot. If only export/analysis failed, repair and rerun that stage from compatible saved inputs into a fresh path rather than retrain a completed backbone.
+
+## E. Expected outputs
+
+Every execution stage creates its own fresh directory and `stdout.log`/`stderr.log`, writes `config.json` and `command.json` for valid stage configuration, and records `completion.json` on success or `failure.json` with the phase/error/traceback on failure after stage creation. Unsupported CLI/configuration failures may occur before output creation; the console log preserves these. `preflight` creates no stage output. Native checkpoints and arrays are local artifacts, not uploads.
+
+| Stage | Required artifacts and meaning |
+|---|---|
+| `sanity` | `prepared.json`, `source_metadata.csv`, `evaluation_metadata.csv`, `source_split.json`, `evaluation_split.json`, `excluded_cross_combinations.csv`; derived populations only |
+| `baseline_smoke`, `method_smoke`, `overfit` | `native_smoke/training.json`, `effective_config.json`, native YAML/checkpoint paths, `stdout.log`, `stderr.log`, `tune_reference.npz`, `fit_reference.npz`, `fit_metrics.json`; status `smoke_only` or `overfit_diagnostic_only`, no target score |
+| `tune` | `tuning_trials.csv`, `selection.json`; each native run's configuration, log, minimum-val-loss checkpoint and tune reference; `tuning_failures.json` and per-trial failure records if the grid fails |
+| `fit` | `frozen_index.json`; per-model/seed `qualification.json`, `frozen.json` when qualified; TSPN `source_export/{fit,tune,grow,select}.npz`, `operator_inputs.npz`, `effective_config.json`, `sources.json`; temperature, coefficient/projection/guard state in the freeze |
+| `source_compare` | `source_select_metrics.csv`; source-only replay of the 25 TSPN/readout outputs, not an independent estimate after guard selection |
+| `evaluate` | `evaluation.json`; per-model/seed `target_export/`, `predictions.npz`, `metrics.csv`; TSPN `explanations.npz` and `explanation_check.json` |
+| `analyze` | `analysis.json`, `summary_metrics.csv`, `seed_metrics.csv`, `paired_effects.csv`, `contribution_results.csv`; all registered models/seeds, physical-entity intervals and claim mapping |
+| `plot` | `comparison_metrics.png`, `comparison_metrics.pdf`; saved summary CSV only, no model/data/uncertainty recomputation |
+| Any failure | Original console/native logs and `failure.json` where created; exact command/config, failed phase and retained predecessor artifacts; no invented zero metric |
+
+Full multiclass Brier sums over classes, without dividing by their count. Accuracy and Macro-F1 are fractions in `[0,1]`; any presentation as percent must label the conversion. A negative paired Brier difference favors the candidate; positive Accuracy/F1 differences favor it. Preserve class order, item/window coordinates, unit IDs, seed, all probabilities and the frozen state so scores can be recomputed independently.
+
+## F. Acceptance and stopping criteria
+
+Accept the **software chain** only when actual local environment/import checks, complete physical/domain splits, source baseline/TSPN smoke, the declared source-overfit check, checkpoint replay, source freeze and metric recomputation pass. CUDA binding must match the physical GPU 0 UUID before any CUDA initialization and expose exactly one device; a failed identity check stops execution. Synthetic CPU tests alone are insufficient for real-data qualification. Native export requires checkpoint logits/features to replay within `1e-6`; saved raw feature/view contributions must reconstruct logits within `1e-10`. Reject nonfinite arrays/gradients, invalid probabilities, dimension/rate/label mismatches, missing roles/classes or any target population entering the source data factory.
+
+Accept a **scientific comparison** only with complete registered trials/models/seeds, equal information/training/search budgets, source-only choice rules and the same target items. OP1 retains its stop gate. DG retains low-source-performance diagnostics without censoring valid negative outcomes. Floor passage alone does not establish a strong baseline. Missing source-overfit qualification, a failed grid, an incomplete freeze or a changed dependency/checkpoint replay blocks the affected claim.
+
+Freeze after source stages; test does not select roles, profiles, models, checkpoints, temperatures, hyperparameters, seeds or new datasets. Preserve guard rejection, zero mixing, difficult folds and inconsistent signs. No favorable subset replaces the planned complete comparison. No efficiency claim follows unless the complete preprocessing/training/inference cost is actually measured.
+
+TSPN's constant-feature gradient fix changes native dependency behavior. Although it retains the forward population-standard-deviation formula and running-state update, do not assume identical training trajectories or old-checkpoint predictions without replay. See the [implementation changelog](../doc/changelog/p19-native-multiview-20261013.md).
+
+## G. Result return format and boundary
+
+Return a concise local report with actual paths, not raw/private arrays:
+
+1. Source revision/worktree, interpreter/package/CUDA/device versions, data version/path and exact common local-config/override arguments.
+2. Successful, failed, reused and not-run experiments by protocol/fold/model/seed; infrastructure/protocol/source-floor/valid-negative outcomes distinguished.
+3. Complete baseline search table, selected configurations, source qualification/learning checks and any incomplete budget; no claim that an unqualified external reference is baseline-valid.
+4. Proposed-method primary, projected information/SV controls, secondary Accuracy/Macro-F1, per-seed dispersion, paired intervals and arithmetic reconstruction checks.
+5. Bugs/anomalies, excluded cross combinations, singleton/class-support limitations, and complete config/log/checkpoint/prediction/metric/summary/failure paths.
+6. `Contribution–Experiment–Result` mapping using `contribution_results.csv`; mark unsupported or incomplete conclusions plainly.
+7. The next smallest necessary experiment, with its hypothesis and stopping rule; identify the unresolved second-PHM/HAR binding explicitly.
+
+Only code, documentation and synthetic software fixtures are shareable by default. Keep raw signals, spreadsheets, private predictions/checkpoints and other private arrays local; do not upload them or enable external logging. No merge/push/data download, dependency upgrade, target-driven rerun or new dataset experiment follows automatically from this SOP. Write new paper Results only after the actual evidence supports them.

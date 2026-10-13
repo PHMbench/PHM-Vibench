@@ -1,0 +1,25 @@
+base_configs:
+  study: configs/experiments/p19/op1.yaml
+study:
+  protocol: condition_dg
+  source_domains: [1, 2, 3]
+  target_domains: [0]
+  baseline_models:
+    ResNet1D:
+      type: CNN
+      name: ResNet1D
+      input_dim: 1
+      num_classes: 3
+      block_type: basic
+      layers: [2, 2, 2, 2]
+      initial_channels: 64
+      device: cuda:0
+    TCN:
+      type: CNN
+      name: TCN
+      input_dim: 1
+      num_classes: 3
+      num_channels: [32, 64, 64, 64]
+      kernel_size: 7
+      dropout: 0.2
+      device: cuda:0
