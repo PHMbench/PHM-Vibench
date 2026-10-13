@@ -1,0 +1,91 @@
+# Original OP1 numerical settings; local paths must be supplied explicitly.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: p19_multiview
+  output_dir: results/p19
+  seed: 11
+  iterations: 1
+  wandb: false
+  swanlab: false
+data:
+  data_dir: /home/user/data/PHMbenchdata/PHM-Vibench
+  metadata_file: metadata.xlsx
+  factory_name: default
+  batch_size: 128
+  eval_batch_size: 1
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  unused_ratio: 0.0
+  normalization: per_window_standardization
+  window_size: 4096
+  window_sampling_strategy: evenly_spaced
+  num_window: 32
+  dtype: float32
+  pin_memory: true
+  selected_channels: [2]
+model: &tspn
+  type: X_model
+  name: TSPN
+  in_channels: 1
+  out_channels: 16
+  in_dim: 4096
+  out_dim: 4096
+  num_classes: 3
+  scale: 1
+  device: cuda:0
+  skip_connection: false
+  internal_instance_normalization: false
+  signal_processing_configs:
+    layer1: [I, WF, MWF, HT]
+  feature_extractor_configs: [RMS, AbsMean, Std, Kurtosis, CrestFactor, Skewness]
+  f_c_mu: 0.15
+  f_c_sigma: 0.01
+  f_b_mu: 0.05
+  f_b_sigma: 0.005
+  Morlet_f_b: 5.0
+  Morlet_f_c: 20.0
+task:
+  execution: research
+  type: classification
+  name: multiview_signal
+trainer:
+  name: Default_trainer
+  monitor: val_loss
+  monitor_mode: min
+  num_epochs: 100
+  device: cuda
+  devices: 1
+  early_stopping: false
+  test_after_fit: false
+  deterministic: true
+  save_top_k: 1
+  precision: 32-true
+study:
+  protocol: op1
+  dataset_id: 20
+  unit_column: Physical_unit
+  role_map: REQUIRED_PHYSICAL_SPLIT_JSON
+  role_counts: {fit: 5, tune: 3, grow: 10, select: 7, test: 7}
+  evaluation_role: exploratory
+  class_names: [healthy, inner_dominant, outer_dominant]
+  training_seeds: [11, 23, 37]
+  program:
+    sample_rate_hz: 64000.0
+    bands_hz: [[1000.0, 500.0], [4000.0, 1000.0], [10000.0, 2000.0], [20000.0, 4000.0]]
+    modulation_bands_hz: [[20.0, 100.0], [100.0, 300.0], [300.0, 1000.0]]
+    lags_samples: [64, 256, 1024]
+  native_task:
+    type: Default_task
+    name: Default_task
+    model_task_id: classification
+    loss: CE
+    metrics: [acc]
+    optimizer: adamw
+    lr: 0.001
+    weight_decay: 0.0001
+    epochs: 100
+    target_system_id: [20]
+  baseline_models:
+    TSPN: *tspn

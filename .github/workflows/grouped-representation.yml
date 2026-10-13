@@ -26,3 +26,8 @@ jobs:
           test/test_external_research_module.py
           test/test_grouped_splitting_core.py
           test/test_tspn_normalization.py
+          test/test_multiview_signal_math.py
+          test/test_multiview_signal_native.py
+          test/test_multiview_signal_runtime.py
+          test/test_multiview_signal_stages.py
+          test/test_multiview_signal_analysis.py
