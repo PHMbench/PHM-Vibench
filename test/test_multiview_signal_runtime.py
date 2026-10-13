@@ -6,6 +6,7 @@ import pytest
 
 from phmfactory.config import analyze_config
 from src.task_factory.task.classification.multiview_signal.runtime import _prepare, execute
+from src.task_factory.task.classification.multiview_signal import runtime, native
 
 
 def _metadata_fixture(tmp_path):
@@ -59,3 +60,59 @@ def test_infeasible_profile_and_roles_stop_with_failure_record(tmp_path):
         execute(config, "sanity", tmp_path / "invalid_roles")
     failure = json.loads((tmp_path / "invalid_roles" / "failure.json").read_text())
     assert failure["phase"] == "sanity" and failure["status"] == "failed"
+
+
+@pytest.mark.parametrize("damage", ["empty_models", "missing_model", "extra_model", "missing_seed", "extra_seed", "wrong_record_seed"])
+def test_incomplete_selection_stops_before_fitting(tmp_path, monkeypatch, damage):
+    prepared = {"study": {"baseline_models": {"TSPN": {}, "ResNet1D": {}},
+                          "training_seeds": [11, 23, 37]}}
+    selection = {"models": {model: {"runs": {str(seed): {"native_config": {"environment": {"seed": seed}}}
+                                               for seed in (11, 23, 37)}}
+                            for model in prepared["study"]["baseline_models"]}}
+    if damage == "empty_models":
+        selection["models"] = {}
+    elif damage == "missing_model":
+        del selection["models"]["ResNet1D"]
+    elif damage == "extra_model":
+        selection["models"]["undeclared"] = {}
+    elif damage == "missing_seed":
+        del selection["models"]["ResNet1D"]["runs"]["37"]
+    elif damage == "extra_seed":
+        selection["models"]["ResNet1D"]["runs"]["42"] = {}
+    else:
+        selection["models"]["ResNet1D"]["runs"]["37"]["native_config"]["environment"]["seed"] = 11
+    monkeypatch.setattr(runtime, "_arrays", lambda *args: pytest.fail("Incomplete cohort reached source fitting"))
+    monkeypatch.setattr(native, "export_native", lambda *args, **kwargs: pytest.fail("Incomplete cohort reached source export"))
+    with pytest.raises(ValueError, match="registered|record"):
+        runtime._fit(prepared, selection, tmp_path)
+    assert not list(tmp_path.glob("**/frozen.json"))
+
+
+@pytest.mark.parametrize("stage", ["evaluate", "source_compare"])
+@pytest.mark.parametrize("damage", ["empty", "missing_model", "missing_seed", "duplicate", "extra_model", "extra_seed"])
+def test_incomplete_freeze_stops_before_target_or_replay(tmp_path, monkeypatch, stage, damage):
+    prepared = {"study": {"baseline_models": {"TSPN": {}, "ResNet1D": {}},
+                          "training_seeds": [11, 23, 37]}}
+    coordinates = [(model, seed) for model in prepared["study"]["baseline_models"] for seed in (11, 23, 37)]
+    if damage == "empty":
+        coordinates = []
+    elif damage == "missing_model":
+        coordinates = coordinates[:3]
+    elif damage == "missing_seed":
+        coordinates.pop()
+    elif damage == "duplicate":
+        coordinates[-1] = coordinates[0]
+    elif damage == "extra_model":
+        coordinates.append(("undeclared", 11))
+    else:
+        coordinates.append(("ResNet1D", 42))
+    paths = []
+    for index, (model, seed) in enumerate(coordinates):
+        path = tmp_path / f"state_{index}.json"
+        path.write_text(json.dumps({"model": model, "seed": seed}))
+        paths.append(str(path))
+    frozen = {"status": "completed", "freezes": paths}
+    monkeypatch.setattr(native, "export_target_native", lambda *args, **kwargs: pytest.fail("Incomplete cohort reached target"))
+    monkeypatch.setattr(runtime, "_arrays", lambda *args: pytest.fail("Incomplete cohort reached source replay"))
+    with pytest.raises(ValueError, match="exactly every registered model/seed"):
+        getattr(runtime, "_" + stage)(prepared, frozen, tmp_path)

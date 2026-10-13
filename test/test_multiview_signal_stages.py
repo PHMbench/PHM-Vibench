@@ -147,7 +147,7 @@ def test_complete_source_freeze_compare_target_evaluation_and_analysis(tmp_path,
             assert len(state["states"]["states"]) == 8
         assert state["seed"] in seeds and state["target_scored"] is False
 
-    source_result = runtime._source_compare(frozen, directories["source_compare"])
+    source_result = runtime._source_compare(prepared, frozen, directories["source_compare"])
     assert source_result["target_scored"] is False and not target_calls
     with Path(source_result["metrics"]).open(newline="") as stream:
         source_rows = list(csv.DictReader(stream))

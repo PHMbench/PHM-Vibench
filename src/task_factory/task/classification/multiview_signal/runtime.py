@@ -235,6 +235,16 @@ def _tune(prepared: Mapping[str, Any], config: Mapping[str, Any], output: Path) 
 def _fit(prepared: Mapping[str, Any], selection: Mapping[str, Any], output: Path) -> dict[str, Any]:
     from .native import export_native
     study = prepared["study"]
+    expected_models = set(study["baseline_models"])
+    expected_seeds = {str(seed) for seed in study["training_seeds"]}
+    if not expected_models or set(selection["models"]) != expected_models:
+        raise ValueError("Selection must contain exactly every registered model before source freezing")
+    for chosen in selection["models"].values():
+        if set(chosen["runs"]) != expected_seeds:
+            raise ValueError("Selection must contain exactly every registered seed before source freezing")
+        for seed, record in chosen["runs"].items():
+            if record["native_config"]["environment"]["seed"] != int(seed):
+                raise ValueError("Native training record and registered seed disagree")
     freezes, qualifications = [], []
     for model_name, chosen in selection["models"].items():
         for seed in study["training_seeds"]:
@@ -275,7 +285,7 @@ def _fit(prepared: Mapping[str, Any], selection: Mapping[str, Any], output: Path
             _json(path, freeze)
             freezes.append(str(path))
     # Below-floor OP1 seeds remain visible; they cannot be pooled as a passing subset.
-    complete = len(freezes) == len(selection["models"]) * len(study["training_seeds"])
+    complete = len(freezes) == len(expected_models) * len(expected_seeds)
     index = {"status": "completed" if complete else "incomplete_qualification", "freezes": freezes,
              "qualifications": qualifications, "expected_seeds": study["training_seeds"],
              "prepared": selection["prepared"], "target_scored": False}
@@ -283,14 +293,25 @@ def _fit(prepared: Mapping[str, Any], selection: Mapping[str, Any], output: Path
     return dict(index, selection=str(output / "frozen_index.json"))
 
 
-def _evaluate(prepared: Mapping[str, Any], frozen_index: Mapping[str, Any], output: Path) -> dict[str, Any]:
-    from .native import export_target_native
+def _complete_frozen_family(prepared: Mapping[str, Any], frozen_index: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Validate the entire declared cohort before any target access or replay."""
     if frozen_index["status"] != "completed":
         raise ValueError("All registered model/seed states must be frozen before target evaluation")
+    study = prepared["study"]
+    expected = {(model, seed) for model in study["baseline_models"] for seed in study["training_seeds"]}
+    family = [_load(path) for path in frozen_index["freezes"]]
+    observed = [(state["model"], state["seed"]) for state in family]
+    if not expected or len(observed) != len(expected) or set(observed) != expected:
+        raise ValueError("Frozen family must contain exactly every registered model/seed with no duplicates")
+    return family
+
+
+def _evaluate(prepared: Mapping[str, Any], frozen_index: Mapping[str, Any], output: Path) -> dict[str, Any]:
+    from .native import export_target_native
+    family = _complete_frozen_family(prepared, frozen_index)
     evaluated = []
     study = prepared["study"]
-    for frozen_path in frozen_index["freezes"]:
-        frozen = _load(frozen_path)
+    for frozen_path, frozen in zip(frozen_index["freezes"], family):
         native = deepcopy(prepared["evaluation_config"])
         native["model"] = deepcopy(frozen["native_config"]["model"])
         native["environment"]["seed"] = frozen["seed"]
@@ -340,12 +361,10 @@ def _evaluate(prepared: Mapping[str, Any], frozen_index: Mapping[str, Any], outp
     return {"status": "completed", "selection": str(output / "evaluation.json")}
 
 
-def _source_compare(frozen_index: Mapping[str, Any], output: Path) -> dict[str, Any]:
-    if frozen_index["status"] != "completed":
-        raise ValueError("Source comparison requires the complete frozen source family")
+def _source_compare(prepared: Mapping[str, Any], frozen_index: Mapping[str, Any], output: Path) -> dict[str, Any]:
+    family = _complete_frozen_family(prepared, frozen_index)
     rows = []
-    for path in frozen_index["freezes"]:
-        frozen = _load(path)
+    for path, frozen in zip(frozen_index["freezes"], family):
         if frozen["model"] != "TSPN":
             continue
         values = _arrays(Path(path).parent / "source_export" / "select.npz")
@@ -415,7 +434,7 @@ def _execute_phase(config: Mapping[str, Any], phase: str, output: Path, *, data:
                 if phase == "fit":
                     result = _fit(prepared, previous, output)
                 elif phase == "source_compare":
-                    result = _source_compare(previous, output)
+                    result = _source_compare(prepared, previous, output)
                 elif phase == "evaluate":
                     result = _evaluate(prepared, previous, output)
                 elif phase == "analyze":
