@@ -338,3 +338,52 @@ def test_grouped_split_coupling_fails_at_the_shared_public_boundary(
 
     with pytest.raises(ValidationError, match="requires test_policy=task_defined"):
         analyze_config(config)
+
+
+@pytest.mark.parametrize("channels", ["[]", "[-1]", "[2, 2]", "[true]", "[2.0]", '["2"]'])
+def test_public_config_rejects_ambiguous_channel_selection(tmp_path, channels):
+    config = tmp_path / "channels.yaml"
+    _minimal_config(config, epochs=1)
+    text = config.read_text().replace(
+        "  metadata_file: metadata_dummy.csv\n",
+        f"  metadata_file: metadata_dummy.csv\n  selected_channels: {channels}\n",
+    )
+    config.write_text(text)
+    with pytest.raises(ValidationError, match="selected_channels"):
+        analyze_config(config)
+    config.write_text(text.replace(f"selected_channels: {channels}", "selected_channels: [2]"))
+    assert analyze_config(config).runtime_config()["data"]["selected_channels"] == [2]
+
+
+@pytest.mark.parametrize("task_type,test_policy", [("DG", "task_defined"), ("CDDG", "task_defined"), ("Default_task", "partition")])
+def test_public_config_preserves_read_only_frozen_split_fields(tmp_path, task_type, test_policy):
+    config = tmp_path / "frozen.yaml"
+    _minimal_config(config, epochs=1)
+    text = config.read_text().replace("  type: DG\n", f"  type: {task_type}\n")
+    text = text.replace(
+        "  metadata_file: metadata_dummy.csv\n",
+        "  metadata_file: metadata_dummy.csv\n"
+        "  split:\n"
+        "    strategy: grouped_metadata\n"
+        "    group_key: Bearing_id\n"
+        f"    test_policy: {test_policy}\n"
+        "    manifest_mode: read_only\n"
+        "    manifest_path: results/frozen.json\n"
+        "    partition_map: {train: fit, val: tune, test: target}\n",
+    )
+    config.write_text(text, encoding="utf-8")
+
+    analysis = analyze_config(config)
+    split = analysis.effective_config["data"]["split"]
+
+    assert split["manifest_mode"] == "read_only"
+    assert split["partition_map"] == {"train": "fit", "val": "tune", "test": "target"}
+    assert split["test_policy"] == test_policy
+    assert not (tmp_path / "results").exists()
+
+    config.write_text(text.replace(
+        "partition_map: {train: fit, val: tune, test: target}",
+        "partition_map: {train: fit, val: tune}",
+    ), encoding="utf-8")
+    with pytest.raises(ValidationError, match="partition_map must contain exactly"):
+        analyze_config(config)
