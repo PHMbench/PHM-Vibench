@@ -148,7 +148,10 @@ class CustomBatchNorm(nn.Module):
             var = x.var(dim=0, unbiased=False)
             self.running_mean = (1 - self.eps) * self.running_mean + self.eps * mean
             self.running_var = (1 - self.eps) * self.running_var + self.eps * var
-            out = (x - mean) / (var.sqrt() + self.eps)
+            centered = x - mean
+            # Same population std, with a finite zero-norm derivative for constant features.
+            std = torch.linalg.vector_norm(centered, dim=0) / x.shape[0] ** 0.5
+            out = centered / (std + self.eps)
         else:
             out = (x - self.running_mean) / (self.running_var.sqrt() + self.eps)
         return out

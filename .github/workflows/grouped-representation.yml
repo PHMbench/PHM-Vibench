@@ -25,3 +25,4 @@ jobs:
           test/test_grouped_prototype_operations.py
           test/test_external_research_module.py
           test/test_grouped_splitting_core.py
+          test/test_tspn_normalization.py
