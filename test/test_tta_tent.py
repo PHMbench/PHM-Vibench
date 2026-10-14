@@ -475,3 +475,131 @@ def test_invalid_resume_fails_closed(kind):
     else: state["last_loss"] = float("inf")
     with pytest.raises(ValueError):
         Tent(TinyBN().eval(), learning_rate=1e-3).load_state_dict(state)
+
+# Config-bound execution shares this installed-wheel suite with the Tent operator.
+def stream_config(method="none"):
+    from phmfactory.config import analyze_config
+    name = "tent.yaml" if method == "tent" else "source_only.yaml"
+    path = files("configs").joinpath("experiments", "tta", name)
+    return analyze_config(str(path)).runtime_config()
+
+
+def stream_inputs(tmp_path, config):
+    rng = np.random.default_rng(8)
+    x = rng.normal(size=(7, 128, 2)).astype(np.float32)
+    y = np.arange(7, dtype=np.int64) % 3
+    path = tmp_path / "target.npz"
+    np.savez(path, x=x, y=y)
+    args = {k: v for k, v in config["model"].items()
+            if k not in {"weights_path", "weights_strict"}}
+    torch.manual_seed(16)
+    model = build_model(SimpleNamespace(**args), None).eval()
+    source = checkpoint(tmp_path, model)
+    config["model"]["weights_path"] = str(source)
+    config["data"]["path"] = str(path)
+    return model, x, y
+
+
+@pytest.mark.parametrize("method", ["none", "tent"])
+def test_config_stream_real_cli_and_low_level_parity(tmp_path, method):
+    import os
+    import yaml
+    cfg = stream_config(method)
+    model, x, y = stream_inputs(tmp_path, cfg)
+    source = Path(cfg["model"]["weights_path"])
+    source_before = source.read_bytes()
+    config_path = tmp_path / "experiment.yaml"
+    config_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    out = tmp_path / "run"
+    env = dict(os.environ, OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    completed = subprocess.run([sys.executable, "-m", "phmfactory", "research", "evaluate",
+        "--config", str(config_path), "--output", str(out)],
+        capture_output=True, text=True, env=env, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "research=completed" in completed.stdout
+    assert source.read_bytes() == source_before
+    from src.data_factory.target_stream import build_target_stream
+    loader = build_target_stream(cfg["data"]["path"], batch_size=4)
+    pred = []
+    evaluate = lambda p, _: pred.append(p)
+    p = AdaptationProtocolConfig(**cfg["task"]["protocol"])
+    torch.manual_seed(cfg["environment"]["seed"])
+    if method == "none":
+        run_source_only_stream(model, loader, p, checkpoint_path=source, evaluate=evaluate)
+    else:
+        run_tent_stream(model, loader, p, checkpoint_path=source, learning_rate=.001,
+                        evaluate=evaluate)
+    logits = np.load(out / "predictions.npz")["logits"]
+    np.testing.assert_allclose(logits, torch.cat(pred).numpy(), rtol=1e-6, atol=1e-7)
+    np.testing.assert_array_equal(np.load(out / "predictions.npz")["sample_id"], np.arange(7))
+    scores = pd.read_csv(out / "all_results.csv").iloc[0]
+    assert scores.test_f1 == pytest.approx(f1_score(y, logits.argmax(1), labels=[0,1,2],
+                                                  average="macro", zero_division=0))
+    assert yaml.safe_load((out / "config.yaml").read_text()) == cfg
+    assert json.loads((out / "run_summary.json").read_text())["iterations"] == 1
+
+
+@pytest.mark.parametrize("method", ["none", "tent"])
+def test_config_label_counterfactuals_same_predictions(tmp_path, method):
+    from src.task_factory.task.TTA.stream import execute
+    cfg = stream_config(method)
+    _, x, y = stream_inputs(tmp_path, cfg)
+    outputs = []
+    for i, labels in enumerate((y, y[::-1].copy(), np.zeros_like(y))):
+        np.savez(cfg["data"]["path"], x=x, y=labels)
+        out = tmp_path / str(i)
+        result = execute(cfg, "evaluate", out)
+        assert result["num_samples"] == 7 and result["benchmark_ready"] is False
+        outputs.append(np.load(out / "predictions.npz")["logits"])
+    for candidate in outputs[1:]:
+        np.testing.assert_array_equal(candidate, outputs[0])
+
+
+@pytest.mark.parametrize("key,value", [
+    ("task.adaptation.method", "sar"), ("task.adaptation.learning_rate", -1),
+    ("task.adaptation.learning_rate", True), ("task.adaptation.memory", 8),
+    ("task.protocol.regime", "offline_sfda"), ("task.protocol.target_label_access", "online_supervised"),
+    ("task.protocol.passes", 2), ("task.protocol.timing", "update_then_predict"),
+    ("task.protocol.state_persistence", "episodic_reset"),
+    ("task.protocol.source_access", "source_data_available"),
+    ("environment.iterations", 2), ("environment.seed", True),
+    ("trainer.device", "auto"), ("trainer.devices", True), ("trainer.num_epochs", 2),
+    ("data.batch_size", True), ("data.order", "shuffle"), ("data.preprocessing", "fit_target"),
+    ("model.num_classes", None), ("model.weights_strict", False),
+    ("task.metrics", ["acc", "missing"]), ("task.metrics", ["f1", "f1"]),
+])
+def test_config_bad_settings_fail_before_io(tmp_path, key, value):
+    from src.task_factory.task.TTA.stream import execute
+    cfg = stream_config("tent")
+    location = cfg
+    parts = key.split(".")
+    for part in parts[:-1]: location = location[part]
+    location[parts[-1]] = value
+    with pytest.raises((TypeError, ValueError)):
+        execute(cfg, "evaluate", tmp_path / "absent")
+    assert not (tmp_path / "absent").exists()
+
+
+@pytest.mark.parametrize("kind", ["dtype", "shape", "empty", "nan", "y_dtype", "y_shape", "file_id"])
+def test_target_archive_rejects_repair_and_metadata(tmp_path, kind):
+    from src.data_factory.target_stream import build_target_stream
+    data = dict(x=np.ones((3,8,2), dtype=np.float32), y=np.zeros(3, dtype=np.int64))
+    if kind == "dtype": data["x"] = data["x"].astype(np.float64)
+    elif kind == "shape": data["x"] = data["x"][:,:,0]
+    elif kind == "empty": data["x"] = data["x"][:0]
+    elif kind == "nan": data["x"][0,0,0] = np.nan
+    elif kind == "y_dtype": data["y"] = data["y"].astype(np.float32)
+    elif kind == "y_shape": data["y"] = data["y"][:,None]
+    else: data["file_id"] = data["y"] + 100
+    path = tmp_path / "target.npz"
+    np.savez(path, **data)
+    with pytest.raises(ValueError): build_target_stream(path, batch_size=2)
+
+
+def test_config_validate_no_files_and_no_method_mismatch(tmp_path):
+    from src.task_factory.task.TTA.stream import execute
+    cfg = stream_config()
+    assert execute(cfg, "validate", tmp_path / "none")["status"] == "configuration_validated"
+    assert not (tmp_path / "none").exists()
+    cfg["task"]["adaptation"] = dict(method="tent", learning_rate=.001)
+    with pytest.raises(ValueError): execute(cfg, "evaluate", tmp_path / "none")

@@ -3,7 +3,9 @@
 This document freezes the scientific protocol for test-time adaptation (TTA), continual
 TTA, source-free domain adaptation (SFDA), delayed-label adaptation and supervised
 continual controls. B01 supplies a frozen Python control and B02 supplies the bounded
-Tent Python path below; SAR, CoTTA, SHOT and other algorithms remain outside this scope.
+Tent Python path below. The prepared-stream Config binding at the end reuses those paths
+through the existing research command; SAR, CoTTA, SHOT and other algorithms remain
+outside the executable scope.
 
 The experiment object is
 
@@ -335,3 +337,101 @@ This is algorithm/framework verification, not E3 utility, safety, robustness, CT
 non-forgetting or `benchmark_ready` evidence. O(model-state) checks and the source-state
 copy are not an adaptation latency or peak-memory benchmark. Source weights, target
 order and target preprocessing remain caller-owned and must be fixed in a real study.
+
+
+## Config-driven prepared target stream
+
+The existing public resolver and `phmfactory research` command now select
+`src.task_factory.task.TTA.stream`; no new CLI, registry, Trainer or adaptation algorithm
+is introduced. Select one of the registered experimental configurations:
+
+| Configuration | Declared setting | Adaptation | Executed path |
+|---|---|---|---|
+| `configs/experiments/tta/source_only.yaml` | `source_only` | `method: none` | Existing B01 frozen inference |
+| `configs/experiments/tta/tent.yaml` | `online_tta` (or explicit `continual_tta`) | `method: tent`, explicit positive learning rate | Existing B02 one-step Tent |
+
+Both require `task.execution: research`, checkpoint-only source access, no target-label
+updates, `predict_then_update`, persistent state, closed-set labels, one run/pass and
+explicit CPU/device-count 1. Method and regime must agree: switching only `method` while
+retaining an incompatible regime fails. No Cartesian product of all model/settings is
+claimed. Source-only needs an x-only state-preserving classifier; Tent additionally needs
+its compatible affine BatchNorm1d/2d parameters. Architectures are neither repaired nor
+replaced. Model identity and architecture parameters still belong to Model Factory.
+
+### Three different checks
+
+```bash
+# Resolves the installed task module; this is the existing generic research preflight.
+phmfactory research preflight --config configs/experiments/tta/source_only.yaml
+
+# Checks the supported method/protocol/config combination without opening data/weights.
+phmfactory research validate --config configs/experiments/tta/source_only.yaml
+phmfactory research validate --config configs/experiments/tta/tent.yaml
+
+# Executes every row once; these two explicit local files must actually exist.
+phmfactory research evaluate \
+  --config configs/experiments/tta/source_only.yaml \
+  --override data.path=/absolute/target_windows.npz \
+  --override model.weights_path=/absolute/source.pt \
+  --output /absolute/new-results/source
+
+phmfactory research evaluate \
+  --config configs/experiments/tta/tent.yaml \
+  --override data.path=/absolute/target_windows.npz \
+  --override model.weights_path=/absolute/source.pt \
+  --output /absolute/new-results/tent
+```
+
+`validate` checks declared settings, not checkpoint existence, architecture compatibility,
+legal data provenance or E3 utility. Evaluation checks these inputs at their owning
+boundaries before producing a successful result. Existing output directories are refused.
+Ordinary `phmfactory --config` cannot execute these research tasks and must not be used as
+an interchangeable training command. The default example learning rate is illustrative,
+not source-selected for an industrial study; freeze its justified value before target
+labels are observed. No target-label model selector is provided.
+
+### Explicit inputs, not a substitute Data Factory
+
+The Data Factory module `target_stream.py` reads one prepared NPZ archive containing
+**exactly** `x` and `y`: finite float32 observations `[N,L,C]`, and int64 evaluator labels
+`[N]` in a source-fixed contiguous label ontology. Object/pickle arrays, additional fields,
+wrong dtypes/shapes and empty populations are rejected rather than repaired.
+`data.order: archive_rows` preserves file row order with sequential batching and no dropped
+tail. It does not infer acquisition chronology from arbitrary archive order.
+`data.preprocessing: precomputed` performs no fitting or signal transformations; the
+upstream study must establish train-only preprocessing, raw-sample separation, units and
+sample/channel identity. This format cannot prove those properties.
+
+The example uses a small ResNet1D with two input channels and three source classes solely
+to make software tests inexpensive. Replace its architecture settings and checkpoint
+explicitly with a compatible source model; do not auto-resample, pad channels, remap labels
+or infer class width from target labels. The model is constructed without target metadata.
+Only `x` reaches B01/B02; row indices and `y` remain evaluator-only. The entire prepared
+archive is held in CPU memory; this is ordered evaluation, not an out-of-core data reader.
+
+### Results and remaining responsibilities
+
+After full-population success, reuse `all_results.csv` and the existing
+`run_summary.json` writer. `config.yaml` preserves the resolved run settings, and
+`predictions.npz` contains logits and archive-row `sample_id` for paired comparison; it
+contains no labels. Accuracy, Macro-F1, precision and recall use the existing Task metric
+accumulators over the full population, not averaged batch scores. The source checkpoint
+stays at the explicit caller-owned path. The public command prints its existing observed
+build identity; retain that stdout and the checkout revision with experiment records.
+No new integrity or result authority is added.
+
+This entry does not write an adapted-model checkpoint or resume the full stream cursor,
+preprocessing state and evaluator. Tent's existing algorithm payload remains available
+through its Python interface. Those missing lifecycle guarantees must not be inferred
+from a successful full pass. Replay, label-event updates, SFDA, reset policies, extra
+training epochs, other optimizers and GPU configuration are rejected in this bounded
+entry rather than silently ignored.
+
+The existing installed-wheel Tent test suite also runs the two real CLI subprocesses with
+explicit synthetic source checkpoints/prepared observations, ordinary/B01/B02 parity,
+true/permuted/zero-label counterfactuals, invalid-config/NPZ cases and population Macro-F1.
+These are framework/protocol checks, not trained PHM source models, real industrial
+reproduction, adaptation-efficiency measurements or SOTA results. The configurations stay
+experimental `needs_smoke / smoke_only`; the placeholder paths are not a maintained
+out-of-the-box benchmark. Consult the [mechanism and source map](../model_catalog/LEARNING_METHODS.md)
+before adding another learning algorithm.
