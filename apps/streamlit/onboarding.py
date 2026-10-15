@@ -90,6 +90,14 @@ class DoctorReport:
     error: str = ""
 
 
+def _doctor_output_text(value: str | bytes | None) -> str:
+    """Decode TimeoutExpired's optional byte streams without losing diagnostics."""
+
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
+
+
 def _bounded_diagnostic(text: str, *, limit: int = 16000) -> str:
     """Keep the tail where doctor reports its last checks and final status."""
 
@@ -123,9 +131,11 @@ def run_public_doctor(
             check=False,
             timeout=timeout,
         )
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as error:
         return DoctorReport(
             command, False, None,
+            stdout=_bounded_diagnostic(_doctor_output_text(error.stdout)),
+            stderr=_bounded_diagnostic(_doctor_output_text(error.stderr)),
             error=f"Doctor timed out after {timeout:g} seconds. Check core imports in a terminal.",
         )
     except OSError as error:
