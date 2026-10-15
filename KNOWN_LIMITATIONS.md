@@ -66,8 +66,8 @@ state-of-the-art performance.
 - Historical configs under `configs/v0.0.9/` are not part of the maintained quickstart.
 - Preflight does not yet prove every downstream model/task/trainer constructor is valid;
   shared strict schema validation remains an active convergence item.
-- Repeated runs still need a single immutable invocation root so that all seeds and
-  aggregate outputs are isolated under one result directory.
+- The maintained classification runtime creates one invocation root for all iterations
+  and aggregate outputs; see `src/runtime/classification.py`.
 - Scheduler behavior is not yet fully explicit for every supported scheduler.
 
 ## Factory boundary
@@ -107,8 +107,9 @@ fit
 - Multiple unnamed test populations are rejected rather than silently truncating to the
   first result.
 - Every seed must report the same non-empty finite metric set.
-- The framework still needs an explicit closure check that every metric declared in the
-  task configuration appears in the final test result.
+- The maintained classification runtime rejects a test result missing any metric key
+  declared by the task for the expected test datasets. This check does not qualify
+  research or legacy runtimes that use another evaluation path.
 - Result directories and direct returned paths are authoritative. A run manifest,
   attestation, evidence index, receipt, or ledger is not required for scientific success.
 
