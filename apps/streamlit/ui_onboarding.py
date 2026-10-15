@@ -8,8 +8,10 @@ from pathlib import Path
 import streamlit as st
 
 try:
+    from .config_service import format_command
     from .onboarding import DoctorReport, ReadinessReport, TemplateDataStatus, TemplateProfile, run_public_doctor
 except ImportError:  # pragma: no cover - Streamlit executes app.py as a script.
+    from config_service import format_command  # type: ignore
     from onboarding import DoctorReport, ReadinessReport, TemplateDataStatus, TemplateProfile, run_public_doctor  # type: ignore
 
 
@@ -87,7 +89,7 @@ def render_public_doctor(repo_root: Path) -> None:
             "environment problem and run Doctor again."
         )
     with st.sidebar.expander("Doctor details", expanded=not report.passed):
-        st.code(" ".join(report.command), language="text")
+        st.code(format_command(report.command), language="bash")
         if report.error:
             st.error(report.error)
         if report.stdout:
