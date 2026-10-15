@@ -27,7 +27,7 @@ REQUIRED_METRICS = {
 }
 
 
-def _run(*overrides: str) -> None:
+def _run(*overrides: str, expected_error: str | None = None) -> None:
     command = [sys.executable, "main.py", "--config", CONFIG]
     for override in overrides:
         command.extend(("--override", override))
@@ -40,11 +40,17 @@ def _run(*overrides: str) -> None:
         text=True,
         timeout=120,
         env=environment,
+        cwd=REPO_ROOT,
     )
-    assert completed.returncode == 0, (
+    diagnostics = (
         f"command failed: {' '.join(command)}\n"
         f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
     )
+    if expected_error is not None:
+        assert completed.returncode != 0, diagnostics
+        assert expected_error in completed.stdout + completed.stderr, diagnostics
+    else:
+        assert completed.returncode == 0, diagnostics
 
 
 def _ledger(path: Path) -> dict:
@@ -80,7 +86,7 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
         f"environment.output_dir={output}",
         "environment.seed=0",
         "trainer.device=cpu",
-        "trainer.gpus=1",
+        "trainer.devices=1",
         "trainer.num_epochs=1",
         "data.num_workers=0",
         f"data.data_dir={fixture_data}",
@@ -93,14 +99,24 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
     assert train["checkpoint"]["strict"] is True
     assert train["normalization"]["source_split"] == "train"
 
-    _run(
-        *common,
+    sample_inputs = (
         "task.generative.mode=sample",
         f"task.generative.checkpoint_path={train['checkpoint']['path']}",
         f"task.generative.normalization_path={train['normalization']['path']}",
         f"task.generative.normalization_sha256={train['normalization']['sha256']}",
         f"task.generative.protocol_path={train['protocol']['path']}",
     )
+    for invalid_steps in ("2.5", "true", '\"2\"'):
+        _run(
+            *common,
+            *sample_inputs,
+            f"task.generative.num_steps={invalid_steps}",
+            expected_error="num_steps must be an integer",
+        )
+        assert _ledger(ledger_path)["stages"]["sample"]["status"] == "failed"
+        assert not list(output.rglob("samples.pt"))
+
+    _run(*common, *sample_inputs)
     sample = _ledger(ledger_path)["stages"]["sample"]
     assert sample["status"] == "completed"
     assert sample["checkpoint"]["sha256"] == train["checkpoint"]["sha256"]
@@ -110,6 +126,10 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
         sample["samples"]["path"], map_location="cpu", weights_only=True
     )
     assert torch.isfinite(sample_payload["samples"]).all()
+    assert sample_payload["samples"].shape == (2, 2, 128)
+    assert sample_payload["samples"].dtype == torch.float32
+    assert sample_payload["fault_label"].shape == (2,)
+    assert sample_payload["domain_id"].shape == (2,)
     synthetic_manifest = json.loads(
         Path(sample["synthetic_manifest"]["path"]).read_text(encoding="utf-8")
     )

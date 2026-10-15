@@ -47,6 +47,7 @@ def _namespace(**kwargs):
 def test_pretrain_prediction_shared_step_reports_prediction_loss() -> None:
     network = _IdentityPredictionModel()
     args_task = _namespace(
+        name="prediction",
         loss="CE",
         metrics=["acc"],
         mask_ratio=0.0,
@@ -61,7 +62,10 @@ def test_pretrain_prediction_shared_step_reports_prediction_loss() -> None:
         args_task=args_task,
         args_trainer=_namespace(gpus=0),
         args_environment=_namespace(),
-        metadata={7: {"Name": "Dummy_Data", "Label": 0}},
+        metadata={
+            7: {"Name": "Dummy_Data", "Label": 0},
+            8: {"Name": "Dummy_Data", "Label": 1},
+        },
     )
     batch = {
         "x": torch.tensor([[[1.0], [2.0], [3.0], [4.0]]]),
@@ -81,6 +85,7 @@ def test_pretrain_prediction_shared_step_reports_prediction_loss() -> None:
 
 def test_pretrain_prediction_requires_reconstruction_shape_match() -> None:
     args_task = _namespace(
+        name="prediction",
         loss="CE",
         metrics=["acc"],
         mask_ratio=0.0,
@@ -95,7 +100,10 @@ def test_pretrain_prediction_requires_reconstruction_shape_match() -> None:
         args_task=args_task,
         args_trainer=_namespace(gpus=0),
         args_environment=_namespace(),
-        metadata={7: {"Name": "Dummy_Data", "Label": 0}},
+        metadata={
+            7: {"Name": "Dummy_Data", "Label": 0},
+            8: {"Name": "Dummy_Data", "Label": 1},
+        },
     )
     batch = {
         "x": torch.randn(2, 8, 2),
