@@ -92,6 +92,26 @@ Machine-specific values are read only from an explicitly supplied `--local-confi
 Configuration composition and precedence are documented in
 [`configs/README.md`](configs/README.md).
 
+Scientific operators that do not use the ordinary Lightning lifecycle have an explicit
+installed task entry. The same configuration resolver composes their YAML, local values
+and overrides:
+
+```bash
+phmfactory research preflight --config /absolute/research-config.yaml
+phmfactory research <phase> --config /absolute/research-config.yaml \
+  --local-config /absolute/local.yaml --output /absolute/new-run-directory
+```
+
+These configurations declare `task.execution: research`. Ordinary
+`phmfactory --config` rejects them because it would not execute their scientific
+objectives. Operators stay in the existing Data, Model and Task Factories; the command
+only resolves inputs and dispatches the named task. Research preflight verifies
+configuration/module resolution, without fitting, data qualification or result creation.
+Data, checkpoint, selection and output paths are explicit command inputs where consumed;
+unsupported inputs fail before execution. Small fixture runs are software checks, not
+qualified baselines or empirical PHM results. See the
+[scientific operator change](doc/changelog/2026-10-04-scientific-operators.md).
+
 ## Project structure
 
 ```text

@@ -205,6 +205,25 @@ def validate_complete_experiment(config: Mapping[str, Any]) -> None:
     mapping.
     """
 
+    task = config.get("task")
+    if isinstance(task, Mapping) and "execution" in task and task["execution"] != "research":
+        raise ValueError("task.execution only supports 'research'; omit it for a Factory task")
+    if isinstance(task, Mapping) and task.get("execution") == "research":
+        # Scientific tasks include non-gradient certificates and feature archives;
+        # Lightning metadata-file/model-name requirements would describe a different
+        # experiment. Their operator-specific values are validated by the owner.
+        for block in ("environment", "data", "model", "task", "trainer"):
+            if not isinstance(config.get(block), Mapping):
+                raise ValueError(f"Research configuration requires mapping {block!r}")
+        for key in ("type", "name"):
+            value = config["task"].get(key)
+            if not isinstance(value, str) or not value.isidentifier():
+                raise ValueError(f"Research task.{key} must be an explicit Python identifier")
+        output = config["environment"].get("output_dir")
+        if not isinstance(output, str) or not output.strip():
+            raise ValueError("Research environment.output_dir must be a nonempty string")
+        return
+
     from src.config_schema import ExperimentConfig
 
     before = deepcopy(config)

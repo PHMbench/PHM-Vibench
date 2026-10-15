@@ -9,7 +9,7 @@ Key Features:
 - Simple Dataset_id → learnable prompt mapping
 - Direct signal + prompt combination (no complex fusion strategies)
 - Lightweight and easy to understand
-- Fallback to signal-only processing when metadata unavailable
+- Explicit failure when prompt metadata is unavailable or invalid
 
 Architecture:
 Signal → HSE Processing → Prompt Combination → Output
@@ -82,6 +82,9 @@ class HSE_prompt(nn.Module):
         self.prompt_dim = getattr(args, 'prompt_dim', 64)
         self.max_dataset_ids = getattr(args, 'max_dataset_ids', 50)
         self.prompt_combination = getattr(args, 'prompt_combination', 'add')
+        self.freeze_prompts_in_finetuning = getattr(
+            args, 'freeze_prompts_in_finetuning', False
+        )
 
         # Validate prompt combination mode
         if self.prompt_combination not in ['add', 'concat']:
@@ -167,118 +170,64 @@ class HSE_prompt(nn.Module):
         Returns:
             Embedded signal tensor of shape (B, num_patches, output_dim)
         """
+        if x.ndim != 3:
+            raise ValueError(f"x must have shape (B, L, C), got {tuple(x.shape)}")
+        if not torch.isfinite(x).all():
+            raise ValueError("x contains NaN or Inf values")
+
         # Step 1: Heterogeneous signal processing
         signal_embeddings = self._process_signal_patches(x, fs)
 
-        # Step 2: Enhanced prompt combination with stability checks
-        if self.use_prompt and dataset_ids is not None:
-            try:
-                # Enhanced dataset_ids processing with intelligent mapping
-                if not torch.is_tensor(dataset_ids):
-                    dataset_ids = torch.tensor(dataset_ids, dtype=torch.long, device=x.device)
-                else:
-                    dataset_ids = dataset_ids.long()
+        # Step 2: Prompt combination. Prompt-enabled runs require one valid ID per
+        # sample; changing an ID changes the scientific path, so never map or clamp it.
+        if self.use_prompt:
+            if dataset_ids is None:
+                raise ValueError(
+                    "dataset_ids are required when HSE_prompt.use_prompt is true"
+                )
+            raw_ids = torch.as_tensor(dataset_ids, device=x.device)
+            if raw_ids.ndim != 1 or raw_ids.numel() != x.shape[0]:
+                raise ValueError(
+                    "dataset_ids must be a 1D tensor with one ID per sample: "
+                    f"got shape {tuple(raw_ids.shape)} for batch_size={x.shape[0]}"
+                )
+            if raw_ids.is_floating_point():
+                if not torch.isfinite(raw_ids).all():
+                    raise ValueError("dataset_ids contain NaN or Inf values")
+                if not torch.equal(raw_ids, raw_ids.round()):
+                    raise ValueError("dataset_ids must contain integer values")
+            dataset_ids = raw_ids.to(dtype=torch.long)
+            max_dataset_id = self.prompt_encoder.num_embeddings - 1
+            if (dataset_ids < 0).any() or (dataset_ids > max_dataset_id).any():
+                raise ValueError(
+                    "dataset_ids must be within the configured prompt table range "
+                    f"[0, {max_dataset_id}], got {dataset_ids.tolist()}"
+                )
 
-                # Ensure device consistency
-                if dataset_ids.device != x.device:
-                    dataset_ids = dataset_ids.to(x.device)
+            prompt_vectors = self.prompt_encoder(dataset_ids)
+            if not torch.isfinite(prompt_vectors).all():
+                raise ValueError("prompt encoder produced NaN or Inf values")
 
-                # Intelligent dataset_id mapping for multi-system compatibility
-                max_dataset_id = self.prompt_encoder.num_embeddings - 1
+            if self.prompt_combination == 'add':
+                prompt_projected = self.prompt_proj(prompt_vectors).unsqueeze(1)
+                signal_embeddings = signal_embeddings + prompt_projected
+            else:
+                prompt_expanded = prompt_vectors.unsqueeze(1).expand(
+                    -1, self.num_patches, -1
+                )
+                signal_embeddings = self.concat_proj(
+                    torch.cat([signal_embeddings, prompt_expanded], dim=-1)
+                )
 
-                # Handle multi-system dataset_id ranges (e.g., [0-3], [4-8], etc.)
-                if dataset_ids.max() > max_dataset_id:
-                    # Strategy 1: Intelligent range mapping
-                    unique_ids = torch.unique(dataset_ids)
-                    id_mapping = {}
-
-                    for uid in unique_ids:
-                        if uid <= max_dataset_id:
-                            id_mapping[uid.item()] = uid.item()
-                        else:
-                            # Map out-of-range IDs to available range using modulo
-                            mapped_id = uid % (max_dataset_id + 1)
-                            id_mapping[uid.item()] = mapped_id.item()
-
-                            # Only warn once per unique out-of-range ID
-                            if not hasattr(self, '_warned_ids'):
-                                self._warned_ids = set()
-                            if uid.item() not in self._warned_ids:
-                                print(f"[HSE_prompt] Mapping dataset_id {uid.item()} → {mapped_id.item()} (range [0, {max_dataset_id}])")
-                                self._warned_ids.add(uid.item())
-
-                    # Apply mapping
-                    mapped_ids = torch.tensor([id_mapping[id.item()] for id in dataset_ids],
-                                              dtype=torch.long, device=x.device)
-                    dataset_ids = mapped_ids
-
-                elif dataset_ids.min() < 0:
-                    # Handle negative IDs (should not happen, but defensive)
-                    dataset_ids = torch.clamp(dataset_ids, 0, max_dataset_id)
-                    print(f"[HSE_prompt] Clamped negative dataset_ids to [0, {max_dataset_id}]")
-
-                # Get prompt vectors with error checking
-                prompt_vectors = self.prompt_encoder(dataset_ids)  # (B, prompt_dim)
-
-                # Numerical stability: limit prompt vector norms
-                prompt_norms = prompt_vectors.norm(dim=-1, keepdim=True)
-                max_norm = 10.0  # Prevent numerical explosion
-                scale_factors = torch.clamp(max_norm / (prompt_norms + 1e-8), max=1.0)
-                prompt_vectors = prompt_vectors * scale_factors
-
-                # Combine signal and prompt with stability checks
-                if self.prompt_combination == 'add':
-                    # Project prompt to match signal dimension if needed
-                    prompt_projected = self.prompt_proj(prompt_vectors)  # (B, output_dim)
-                    prompt_projected = prompt_projected.unsqueeze(1)  # (B, 1, output_dim)
-
-                    # Check for numerical issues before addition
-                    if torch.isnan(prompt_projected).any() or torch.isinf(prompt_projected).any():
-                        print("Warning: NaN/Inf in prompt_projected, using signal-only")
-                        raise ValueError("Numerical instability in prompt projection")
-
-                    # Stable addition with gradient clipping
-                    combined_embeddings = signal_embeddings + prompt_projected
-
-                    # Gradient stability check
-                    if combined_embeddings.abs().max() > 100:
-                        combined_embeddings = torch.clamp(combined_embeddings, -100, 100)
-                        print("Warning: Combined embeddings clipped to prevent instability")
-
-                elif self.prompt_combination == 'concat':
-                    # Expand prompt to match number of patches
-                    prompt_expanded = prompt_vectors.unsqueeze(1).expand(-1, self.num_patches, -1)  # (B, num_patches, prompt_dim)
-
-                    # Numerical check before concatenation
-                    if torch.isnan(prompt_expanded).any() or torch.isinf(prompt_expanded).any():
-                        print("Warning: NaN/Inf in prompt_expanded, using signal-only")
-                        raise ValueError("Numerical instability in prompt expansion")
-
-                    # Concatenate and project
-                    concatenated = torch.cat([signal_embeddings, prompt_expanded], dim=-1)  # (B, num_patches, output_dim + prompt_dim)
-                    combined_embeddings = self.concat_proj(concatenated)
-
-                    # Final stability check
-                    if torch.isnan(combined_embeddings).any() or torch.isinf(combined_embeddings).any():
-                        print("Warning: NaN/Inf after concat projection, using signal-only")
-                        raise ValueError("Numerical instability in concat projection")
-
-                signal_embeddings = combined_embeddings
-
-            except Exception as e:
-                # Enhanced error logging and graceful fallback
-                print(f"Warning: Prompt processing failed ({e}), falling back to signal-only processing")
-                # Ensure signal_embeddings remains valid
-                if torch.isnan(signal_embeddings).any() or torch.isinf(signal_embeddings).any():
-                    print("Critical: Signal embeddings also corrupted, attempting recovery")
-                    signal_embeddings = torch.clamp(signal_embeddings, -10, 10)
-                    if torch.isnan(signal_embeddings).any():
-                        # Last resort: zero embeddings with small noise
-                        signal_embeddings = torch.randn_like(signal_embeddings) * 0.01
+            if not torch.isfinite(signal_embeddings).all():
+                raise ValueError("prompt combination produced NaN or Inf values")
 
         # Step 3: Final processing
         output = self.final_norm(signal_embeddings)
         output = self.dropout(output)
+
+        if not torch.isfinite(output).all():
+            raise ValueError("HSE_prompt produced NaN or Inf values")
 
         return output
 
@@ -298,6 +247,8 @@ class HSE_prompt(nn.Module):
 
         # Handle sampling frequency (统一为 [B])
         fs_tensor = normalize_fs(fs, batch_size=B, device=device, as_column=False)  # [B]
+        if not torch.isfinite(fs_tensor).all() or (fs_tensor <= 0).any():
+            raise ValueError("fs must contain finite positive sampling frequencies")
         T = 1.0 / fs_tensor  # [B]
 
         # Generate time embeddings
@@ -316,12 +267,25 @@ class HSE_prompt(nn.Module):
             x = repeat(x, 'b l c -> b l (c r)', r=repeat_factor)
             C = x.size(2)
 
-        # Random patch sampling
+        # Training samples patches stochastically. Evaluation uses an evenly spaced
+        # grid so repeated evaluation of the same input is deterministic.
         max_start_L = L - self.patch_size_L
         max_start_C = C - self.patch_size_C
 
-        start_L = torch.randint(0, max_start_L + 1, (B, self.num_patches), device=device)
-        start_C = torch.randint(0, max_start_C + 1, (B, self.num_patches), device=device)
+        if self.training:
+            start_L = torch.randint(
+                0, max_start_L + 1, (B, self.num_patches), device=device
+            )
+            start_C = torch.randint(
+                0, max_start_C + 1, (B, self.num_patches), device=device
+            )
+        else:
+            start_L = torch.linspace(
+                0, max_start_L, self.num_patches, device=device
+            ).round().to(dtype=torch.long).expand(B, -1)
+            start_C = torch.linspace(
+                0, max_start_C, self.num_patches, device=device
+            ).round().to(dtype=torch.long).expand(B, -1)
 
         # Create patch indices
         offset_L = torch.arange(self.patch_size_L, device=device)
