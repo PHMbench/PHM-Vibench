@@ -24,6 +24,25 @@ running Streamlit, not to another computer opening the browser.
 2. Review the visible parameters and click **Validate configuration**.
 3. Click **Run experiment** and inspect the process status and log below.
 
+### Verify the actual runtime imports
+
+The first-run sidebar checks whether modules are **discoverable**. A discoverable
+PyTorch or Lightning package can still fail on import due to binary or dependency
+incompatibility. The initial readiness banner is therefore advisory, not a promise
+that training will succeed.
+
+Click **Verify runtime imports (doctor)** in the sidebar to run the existing public
+`python -m phmfactory doctor` command using Streamlit's Python interpreter.
+Its stdout, stderr, and failures are displayed without launching a Pipeline.
+This check runs only on explicit user action: it does not slow down every page
+refresh or silently install/fix packages.
+
+A passing doctor checks the bounded smoke environment; it does **not** replace
+selected-configuration validation, public preflight, dataset qualification, or
+training. If dependencies change, click Doctor again; a previous result is not a
+persistent certification.
+
+
 The public inspector remains the configuration authority. The UI accepts its current
 `resolved`, `sources`, `targets`, `sanity`, and `local_config_path` output; no configuration
 digest is required. Validation stores the submitted YAML text and typed override argv
