@@ -227,3 +227,22 @@ def test_cfm_task_sample_contract() -> None:
 
     assert samples.shape == (2, 2, 16)
     assert torch.isfinite(samples).all()
+
+
+@pytest.mark.parametrize("num_steps", [True, False, 2.5, 2.0, "2"])
+def test_cfm_task_rejects_noninteger_steps_before_model_call(num_steps) -> None:
+    task = _task()
+    calls = []
+    task.network.register_forward_pre_hook(lambda *args: calls.append(True))
+
+    with pytest.raises(TypeError, match="num_steps.*integer"):
+        task.sample(
+            {"fault_label": torch.tensor([0]), "domain_id": torch.tensor([0])},
+            num_samples=1,
+            length=16,
+            channels=2,
+            num_steps=num_steps,
+            device="cpu",
+        )
+
+    assert calls == []

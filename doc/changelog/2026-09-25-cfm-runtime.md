@@ -5,6 +5,10 @@ step size divided by 2.5. With zero initial state and constant unit velocity on 
 it returned 0.8 rather than 1.0. Non-integer/boolean counts and non-finite time bounds
 now fail before model evaluation. Valid integer-step arithmetic is unchanged.
 
+The Task and public sample stage now pass the original requested step count to this
+validation instead of converting it with `int()`. Negative regression cases exercise
+both boundaries so fractional and boolean requests cannot bypass the sampler contract.
+
 Seventeen analytic PyTorch cases cover step counts, exact constant-field endpoints,
 float32/float64, invalid inputs, and input/mode preservation. The isolated source-slice
 run changed from 9 failures / 8 passes to 17 passes. This is not full-checkout evidence.
@@ -12,13 +16,23 @@ run changed from 9 failures / 8 passes to 17 passes. This is not full-checkout e
 The existing three-stage CPU regression now uses `trainer.devices` rather than the
 rejected `trainer.gpus` alias, fixes its subprocess working directory, and checks sample
 shape/dtype and condition lengths. The existing CFM workflow includes this actual
-train/checkpoint/sample/eval test and the compiled-config adapter. Path filters include
-the demo and its shared runtime dependencies. No test is skipped to recover a pass.
+train/checkpoint/sample/eval test and the compiled-config adapter within the complete
+generative test suite. Old population and prediction fixtures now supply the current
+required configuration and classification cardinality; their original assertions remain.
+Path filters include
+the demo and its shared runtime dependencies, with the same CFM checks triggered by
+pushes to `dev`. No test is skipped to recover a pass.
 
 The first full-install CI attempt stopped in collection because CPU torch was combined
 with an incompatible torchvision wheel. The workflow now installs the matching pair
 from the official CPU index before the normal editable install. Current-head CI remains
 the authority for full integration; the first failure is retained in Actions.
+
+The generative demo guide now identifies the linear-path CFM objective, the experimental
+PaD-TS-inspired population regularizer, and the unimplemented iMF reference. It records
+the remaining single-window population tail-batch failure and the limits of condition,
+utility, and normalization evidence. A successful Dummy pipeline is not PHM SOTA
+validation.
 
 No new model family, normalization algorithm, scientific metric, hash/ledger framework,
 registry promotion, real PHM data run, release, or main-branch change is included.

@@ -28,6 +28,7 @@ on:
   push:
     branches:
       - main
+      - dev
     paths:
       - "phmfactory/**"
       - "src/Pipeline_06_Generative_Modeling.py"
@@ -125,15 +126,7 @@ jobs:
           set -o pipefail
           python -m pytest -vv --tb=long \
             --junitxml=pipeline06-cfm-junit.xml \
-            test/generative/test_pipeline06_import.py \
-            test/generative/test_pipeline06_preflight.py \
-            test/generative/test_pipeline06_dispatch.py \
-            test/generative/test_pipeline06_compiled_config.py \
-            test/generative/test_cfm_core_contract.py \
-            test/generative/test_cfm_dtype_contract.py \
-            test/generative/test_cfm_factory_contract.py \
-            test/generative/test_euler_request_contract.py \
-            test/generative/test_cfm_demo_e_chain.py \
+            test/generative/ \
             2>&1 | tee pipeline06-cfm-pytest.log
 
       - name: Upload focused diagnostics

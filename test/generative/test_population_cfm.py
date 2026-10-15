@@ -166,6 +166,8 @@ def test_population_config_rejects_single_sample_batches() -> None:
         "environment": {
             "project": "population-contract",
             "output_dir": "results/test-population-contract",
+            "seed": 0,
+            "iterations": 1,
         },
         "data": {
             "data_dir": "data",
@@ -182,7 +184,12 @@ def test_population_config_rejects_single_sample_batches() -> None:
             "name": "conditional_flow_matching",
             "population_regularization": {"enabled": True},
         },
-        "trainer": {"name": "Default_trainer"},
+        "trainer": {
+            "name": "Default_trainer",
+            "num_epochs": 1,
+            "device": "cpu",
+            "devices": 1,
+        },
     }
 
     with pytest.raises(ValidationError, match="data.batch_size >= 2"):
