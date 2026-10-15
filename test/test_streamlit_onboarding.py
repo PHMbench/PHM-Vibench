@@ -298,12 +298,14 @@ def test_doctor_requires_public_completion_marker(tmp_path: Path) -> None:
 
 def test_doctor_timeout_remains_recoverable(tmp_path: Path) -> None:
     def fake_run(*args, **kwargs):
-        raise subprocess.TimeoutExpired(cmd="phmfactory doctor", timeout=1)
+        raise subprocess.TimeoutExpired(\n            cmd="phmfactory doctor", timeout=1,\n            output=b"PASS import:yaml\\n", stderr=b"Still importing Lightning\\n",\n        )
 
     report = ob.run_public_doctor(_repo(tmp_path), runner=fake_run, timeout=1)
     assert report.passed is False
     assert report.exit_code is None
     assert "timed out" in report.error.lower()
+    assert "PASS import:yaml" in report.stdout
+    assert "Still importing Lightning" in report.stderr
 
 
 def test_doctor_subprocess_failure_remains_recoverable(tmp_path: Path) -> None:
