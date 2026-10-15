@@ -10,6 +10,8 @@ from __future__ import annotations
 import importlib.metadata
 import importlib.util
 import os
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, MutableMapping, Tuple
@@ -73,6 +75,81 @@ class TemplateDataStatus:
     action: str = ""
     data_root: str = ""
     metadata_path: str = ""
+
+
+
+@dataclass(frozen=True)
+class DoctorReport:
+    """Result of the real public doctor command in the UI's Python environment."""
+
+    command: Tuple[str, ...]
+    passed: bool
+    exit_code: int | None
+    stdout: str = ""
+    stderr: str = ""
+    error: str = ""
+
+
+def _bounded_diagnostic(text: str, *, limit: int = 16000) -> str:
+    """Keep the tail where doctor reports its last checks and final status."""
+
+    if len(text) <= limit:
+        return text
+    return f"[Earlier doctor output truncated]\n{text[-limit:]}"
+
+
+def run_public_doctor(
+    repo_root: Path,
+    *,
+    runner: Callable[..., Any] | None = None,
+    timeout: float = 90.0,
+) -> DoctorReport:
+    """Run the existing CLI doctor only when the user asks; never start training.
+
+    Cheap module discovery cannot establish whether PyTorch/Lightning really import.
+    Use the same Python executable as Streamlit, a bounded subprocess, and the public
+    success marker. Doctor is advisory and does not replace config preflight.
+    """
+
+    root = Path(repo_root).resolve()
+    command = (sys.executable, "-m", "phmfactory", "doctor")
+    execute = subprocess.run if runner is None else runner
+    try:
+        completed = execute(
+            list(command),
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return DoctorReport(
+            command, False, None,
+            error=f"Doctor timed out after {timeout:g} seconds. Check core imports in a terminal.",
+        )
+    except OSError as error:
+        return DoctorReport(
+            command, False, None,
+            error=f"Doctor could not start: {error}",
+        )
+
+    stdout = _bounded_diagnostic(str(completed.stdout or ""))
+    stderr = _bounded_diagnostic(str(completed.stderr or ""))
+    code = int(completed.returncode)
+    completed_marker = any(
+        line.startswith("doctor=passed checks=")
+        for line in stdout.splitlines()
+    )
+    passed = code == 0 and completed_marker
+    message = (
+        ""
+        if passed
+        else f"Doctor exited with code {code}."
+        if code != 0
+        else "Doctor exited successfully without its completion marker."
+    )
+    return DoctorReport(command, passed, code, stdout, stderr, message)
 
 
 _DEPENDENCIES = (
@@ -255,7 +332,7 @@ def collect_environment_readiness(
     version_reader: Callable[[str], str] = importlib.metadata.version,
     access_checker: Callable[[os.PathLike[str], int], bool] = os.access,
 ) -> ReadinessReport:
-    """Check whether the safest offline CPU path can be executed."""
+    """Check cheap prerequisites; actual imports require the public doctor command."""
 
     root = Path(repo_root).resolve()
     checks = []
@@ -282,7 +359,8 @@ def collect_environment_readiness(
                 f"dependency:{module_name}",
                 label,
                 "ready" if present else "blocked",
-                f"Installed{f' ({version})' if version else ''}."
+                f"Module found{f' (distribution {version})' if version else ''}; "
+                "runtime import not yet verified."
                 if present
                 else f"Python module {module_name!r} is unavailable.",
                 "" if present else action,
