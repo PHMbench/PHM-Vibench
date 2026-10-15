@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from typing import Optional
+from pathlib import Path
 
 import streamlit as st
 
 try:
-    from .onboarding import ReadinessReport, TemplateDataStatus, TemplateProfile
+    from .onboarding import DoctorReport, ReadinessReport, TemplateDataStatus, TemplateProfile, run_public_doctor
 except ImportError:  # pragma: no cover - Streamlit executes app.py as a script.
-    from onboarding import ReadinessReport, TemplateDataStatus, TemplateProfile  # type: ignore
+    from onboarding import DoctorReport, ReadinessReport, TemplateDataStatus, TemplateProfile, run_public_doctor  # type: ignore
 
 
 _STATUS_ICON = {"ready": "✓", "warning": "!", "blocked": "×"}
@@ -24,9 +25,9 @@ def template_option_label(template_id: str, profile: TemplateProfile) -> str:
 def render_readiness_sidebar(report: ReadinessReport) -> None:
     st.sidebar.markdown("### First-run readiness")
     if report.can_execute and not report.warnings:
-        st.sidebar.success("CPU smoke prerequisites look ready.")
+        st.sidebar.success("Basic CPU smoke prerequisites were discovered.")
     elif report.can_execute:
-        st.sidebar.warning("Ready with non-blocking environment warnings.")
+        st.sidebar.warning("Basic prerequisites found; review non-blocking warnings.")
     else:
         st.sidebar.error(f"{len(report.blocked)} prerequisite(s) need attention.")
 
@@ -49,11 +50,50 @@ def render_readiness_banner(report: ReadinessReport) -> None:
         )
     elif report.warnings:
         st.warning(
-            "The environment is runnable, but one or more non-blocking checks should "
-            "be reviewed before launch."
+            "Basic prerequisites were found, but there are warnings. Doctor can "
+            "check real imports before the selected experiment is validated."
         )
     else:
-        st.success("Environment ready for the repository-shipped CPU smoke experiment.")
+        st.info("Basic smoke prerequisites found. Use Doctor to verify real imports; validation and preflight still apply.")
+
+
+
+def render_public_doctor(repo_root: Path) -> None:
+    """Offer real import diagnostics without blocking the UI or starting training."""
+
+    st.sidebar.caption(
+        "Presence checks do not import Torch or Lightning. Use the existing "
+        "PHMFactory doctor to verify the active Python environment."
+    )
+    if st.sidebar.button(
+        "Verify runtime imports (doctor)",
+        use_container_width=True,
+        key="run-phmfactory-doctor",
+    ):
+        with st.spinner("Running phmfactory doctor without training..."):
+            st.session_state["phmfactory_doctor_report"] = run_public_doctor(repo_root)
+
+    report = st.session_state.get("phmfactory_doctor_report")
+    if not isinstance(report, DoctorReport):
+        return
+    if report.passed:
+        st.sidebar.success(
+            "Doctor passed the installed core-runtime checks. "
+            "Selected experiment validation is still required."
+        )
+    else:
+        st.sidebar.error(
+            "Doctor could not verify the runtime. Fix the reported dependency or "
+            "environment problem and run Doctor again."
+        )
+    with st.sidebar.expander("Doctor details", expanded=not report.passed):
+        st.code(" ".join(report.command), language="text")
+        if report.error:
+            st.error(report.error)
+        if report.stdout:
+            st.code(report.stdout, language="text")
+        if report.stderr:
+            st.code(report.stderr, language="text")
 
 
 def render_template_profile(profile: TemplateProfile) -> None:
