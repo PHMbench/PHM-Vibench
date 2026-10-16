@@ -1,0 +1,39 @@
+{
+  "status": "completed",
+  "qualification": "UNRESOLVED",
+  "dataset": "RM_027_PU",
+  "dataset_id": 20,
+  "sentinel_id": 47567,
+  "expected_records": 2559,
+  "inspected_records": 2559,
+  "failed_records": 0,
+  "coverage_complete": true,
+  "data_root": "/home/user/data/PHMbenchdata/PHM-Vibench",
+  "metadata_file": "/home/user/data/PHMbenchdata/PHM-Vibench/metadata.xlsx",
+  "inventory": "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/PHMFactory-tii-pu-20261016/reports/tii_local_j1/RECORD_INVENTORY.csv",
+  "output_dir": "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/PHMFactory-tii-pu-20261016/reports/tii_pu_observation_followup",
+  "argv": [
+    "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/PHMFactory-tii-pu-20261016/scripts/tii_pu_observations.py",
+    "--data-root",
+    "/home/user/data/PHMbenchdata/PHM-Vibench",
+    "--inventory",
+    "reports/tii_local_j1/RECORD_INVENTORY.csv",
+    "--output-dir",
+    "reports/tii_pu_observation_followup",
+    "--code-commit",
+    "c7f2fbc3"
+  ],
+  "code_commit": "c7f2fbc3",
+  "elapsed_seconds": 183.6408424070105,
+  "cpu_user_seconds": 35.051378,
+  "cpu_system_seconds": 14.110061,
+  "peak_rss_bytes": 631033856,
+  "environment": {
+    "platform": "Linux-5.15.0-139-generic-x86_64-with-glibc2.31",
+    "python": "3.10.0",
+    "numpy": "1.23.5",
+    "scipy": "1.10.1",
+    "pandas": "1.5.3"
+  },
+  "interpretation": "Stored timestamp exact nonuniformity is descriptive; no clock tolerance is assumed. span_average_rate_hz and rate_difference_hz are conditional on X.Data being seconds. Blank or absent Unit is preserved; physical clock, scale and acquisition qualification remain unresolved."
+}
