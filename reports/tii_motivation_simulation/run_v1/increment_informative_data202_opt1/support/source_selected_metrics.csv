@@ -1,0 +1,7 @@
+step,role,source,nll,accuracy,records
+300,source_train,1,0.007042663891451383,1.0,64
+300,source_train,2,0.06338775165624866,1.0,64
+300,source_val,1,0.01148487648112234,1.0,32
+300,source_val,2,0.0625720142603752,1.0,32
+300,source_train,equal_source_mean,0.035215207773850024,1.0,128
+300,source_val,equal_source_mean,0.03702844537074877,1.0,64
