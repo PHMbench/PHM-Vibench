@@ -1,0 +1,2 @@
+metadata_id_a,metadata_id_b,original_file_a,original_file_b,bearing,vibration_values_equal,associated_time_values_equal,scope
+48223,48224,KA04/N09_M07_F10_KA04_17.mat,KA04/N09_M07_F10_KA04_18.mat,KA04,True,True,only_pair_identified_in_original_KA04_measuring_log
