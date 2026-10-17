@@ -275,6 +275,21 @@ class Default_dataset(Dataset):  # THU_006or018_basic
                 f"data ID {self.key!r} must be rank 1 or 2 after reader output; "
                 f"got shape {sample_data.shape}"
             )
+        channels = getattr(self.args_data, "selected_channels", None)
+        if channels is not None:
+            if (not isinstance(channels, (list, tuple)) or not channels
+                    or any(isinstance(value, bool) or not isinstance(value, int)
+                           or value < 0 for value in channels)
+                    or len(set(channels)) != len(channels)):
+                raise ValueError("data.selected_channels must be explicit unique nonnegative indices")
+            sample_data = sample_data[:, None] if sample_data.ndim == 1 else sample_data
+            if max(channels) >= sample_data.shape[1]:
+                raise ValueError(
+                    f"data ID {self.key!r}: selected_channels={channels} exceeds "
+                    f"reader channel count {sample_data.shape[1]}"
+                )
+            # Select the declared observation before any per-window transform.
+            sample_data = sample_data[:, channels]
         try:
             finite_input = np.isfinite(sample_data).all()
         except TypeError as exc:
