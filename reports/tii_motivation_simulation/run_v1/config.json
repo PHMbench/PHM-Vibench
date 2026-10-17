@@ -1,0 +1,130 @@
+{
+  "spec": {
+    "steps": 300,
+    "validation_interval": 50,
+    "batch_size": 32,
+    "train_records": 64,
+    "validation_records": 32,
+    "target_records": 128,
+    "repeats": [
+      [
+        101,
+        0
+      ],
+      [
+        202,
+        1
+      ],
+      [
+        303,
+        2
+      ]
+    ],
+    "tasks": [
+      "common_informative",
+      "increment_informative"
+    ]
+  },
+  "command": [
+    "/home/user/anaconda3/envs/LQ_signal/bin/python",
+    "-m",
+    "scripts.tii_motivation_simulation",
+    "--output",
+    "reports/tii_motivation_simulation/run_v1"
+  ],
+  "code_commit": "150d6976f3fd5b35f4da8c92dc5330b5859fe43f",
+  "evidence_kind": "tensor_fixture",
+  "device": "cpu",
+  "cuda_visible_devices": "",
+  "threads": 1,
+  "model": {
+    "name": "M_01_ISFM",
+    "embedding": "SupportConditionedTokenizer",
+    "backbone": "B_04_Dlinear",
+    "head": "H_01_Linear_cla",
+    "output_dim": 8,
+    "hidden_width": 16,
+    "K": 4,
+    "P": 16
+  },
+  "optimizer": {
+    "name": "tii_joint.configure_optimizers AdamW",
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "scheduler": null
+  },
+  "head": {
+    "implementation": "tii_target_head.fit_head",
+    "alpha": 0.01,
+    "scale": 2,
+    "episode_seed": 1729,
+    "shots": 5
+  },
+  "generator": {
+    "duration_s": 1,
+    "source_rates_hz": {
+      "full": 64,
+      "common_only": 16
+    },
+    "target_rate_hz": 64,
+    "common_frequencies_hz": [
+      3,
+      5
+    ],
+    "increment_frequencies_hz": [
+      12,
+      16
+    ],
+    "amplitude_uniform": [
+      0.8,
+      1.2
+    ],
+    "phase_uniform": [
+      0,
+      6.283185307179586
+    ],
+    "gaussian_noise_std": 0.1,
+    "common_bands_hz": [
+      [
+        1,
+        8
+      ]
+    ],
+    "increment_bands_hz": [
+      [
+        8,
+        24
+      ]
+    ],
+    "grid_rate_hz": 64,
+    "units": "m/s²",
+    "source2_labels": "one minus common latent",
+    "records_are_independent": true,
+    "target_distribution": "same generating distribution as full source, independent new records",
+    "out_of_distribution_shift": false,
+    "interpretation": "independent target generalization under this generator"
+  },
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "selection": {
+    "criterion": "native equal-source/group source_val NLL",
+    "tie_tolerance": 1e-08,
+    "tie": "earliest"
+  },
+  "versions": {
+    "python": "3.10.0",
+    "platform": "Linux-5.15.0-139-generic-x86_64-with-glibc2.31",
+    "numpy": "1.23.5",
+    "pandas": "1.5.3",
+    "scipy": "1.10.1",
+    "torch": "2.6.0+cu124",
+    "pytorch_lightning": "2.3.3"
+  }
+}
