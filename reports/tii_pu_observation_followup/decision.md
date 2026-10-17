@@ -52,6 +52,28 @@ industrial encoder was initialized or trained, no target head was fitted, and
 no tokenizer effect or 95% fitting result is estimated. The existing S/U
 Method, fitting budget and natural-acquisition protocol are unchanged.
 
+## Static stage eligibility (C5/C6/C7)
+
+This is a **read-only reassessment** of the retained `reports/tii_local_j1/DATASET_QUALIFICATION.csv` and `FOLD_ELIGIBILITY.csv` at the PR's base `dev=c47f976e`. The original 19 dataset/task identities contain **zero qualified independent industrial datasets** and **zero eligible target folds**. The PU episode alone is PASS, not acquisition-qualified. This follow-up has not requalified other sources, redrawn episodes, or enumerated inner-alpha tasks.
+
+| Stage | Necessary condition | Evidence now available | Execution verdict |
+| --- | --- | --- | --- |
+| C5 source fitting | At least two qualified independent sources, with group-separated train/val and valid physical input support | 0 qualified datasets; PU remains UNRESOLVED | **BLOCKED**; fit95 NOT RUN |
+| C6 held-out transfer | At least three qualified datasets, at least two valid sources after each target exclusion, a fixed target episode and a nonempty admissible source-only inner-alpha set | 0 qualified datasets and 0 eligible folds; PU's episode PASS does not satisfy the acquisition gate; inner-alpha feasibility NOT EVALUATED after failed prerequisite | **BLOCKED**; no industrial SC/UU target effects |
+| C7 pooling interaction | C6 prerequisites plus SC/UU × single/joint four cells, a predefined fully observed single source, fixed full-pool geometry and matched adaptation | C6 BLOCKED; no qualified single source or complete industrial four-cell results | **BLOCKED**; no interaction estimate |
+
+### Separate acquisition-dimension decisions
+
+| Dimension | Verdict | Exact boundary |
+| --- | --- | --- |
+| Raw record and stored-axis mapping | **resolved** (structural mapping only) | All selected metadata IDs link to a named original MAT and the unique vibration channel's matching XIndex/raster/length; KA04 replacement IDs 48223/48224 are not independent acquisitions |
+| Time | **unresolved** | Stored vectors are ordered, but HostService semantics, clock accuracy and the relation of stored increments to physical sampling are unknown; conditional cadence is not a certified Hz rate |
+| Unit | **unresolved** | MAT unit fields are empty and end-to-end conditioner/ADC/export scaling cannot be established from the nominal 100 mV/g sensitivity |
+| Frequency response | **unresolved** | Nominal second-order 30 kHz low-pass does not provide measured full-chain passband, attenuation tolerance, transition guards or anti-alias qualification |
+| Physical grouping | **resolved for bearing-level grouping; incomplete for individual acquisition independence** | 32 documented bearing codes are retained as groups; the one log-identified duplicate pair is confirmed; no exhaustive duplicate-acquisition proof was performed |
+
+**Overall: UNRESOLVED.** No newly eligible source or fold is established. These dimensions cannot be averaged into an acquisition PASS; further progress requires original calibration/scaling, clock/export and full-chain response documents. Do not restart training or alter the frozen protocol.
+
 ## Artifacts and checks
 
 - `record_observations.csv`: complete record-level structural/time/unit observations.
