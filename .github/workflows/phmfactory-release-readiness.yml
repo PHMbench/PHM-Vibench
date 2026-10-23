@@ -100,7 +100,7 @@ jobs:
             fi
           done
 
-          expected_pattern='VERSION_NOT_RC1|BASELINE_VALID_REFERENCE_INVALID'
+          expected_pattern='VERSION_NOT_RC1|BASELINE_REVALIDATION_REQUIRED'
           unexpected="$(grep '^- ' release-readiness.txt | grep -Ev "${expected_pattern}" || true)"
           if [ -n "${unexpected}" ]; then
             echo "Unexpected RC1 blocker(s):" >&2

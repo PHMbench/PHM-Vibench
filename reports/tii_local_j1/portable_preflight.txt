@@ -1,0 +1,11 @@
+status=passed
+requested_config=configs/experiments/tii/m0_tensor_fixture.yaml
+resolved_config_path=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/configs/experiments/tii/m0_tensor_fixture.yaml
+local_config_path=none
+pipeline=Pipeline_01_Fault_Diagnosis
+pipeline_module=src.Pipeline_01_Fault_Diagnosis
+maturity=supported
+output_dir=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/tii_m0_fixture
+requested_device=cpu
+resolved_accelerator=cpu
+resolved_devices=1

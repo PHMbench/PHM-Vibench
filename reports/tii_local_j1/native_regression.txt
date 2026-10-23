@@ -1,0 +1,26 @@
+........................................................................ [ 85%]
+............                                                             [100%]
+=============================== warnings summary ===============================
+../../../../../../../../anaconda3/envs/LQ_signal/lib/python3.10/site-packages/lightning_fabric/__init__.py:41
+  /home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/lightning_fabric/__init__.py:41: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+
+../../../../../../../../anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pkg_resources/__init__.py:3147
+  /home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pkg_resources/__init__.py:3147: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+../../../../../../../../anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pkg_resources/__init__.py:3147
+  /home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pkg_resources/__init__.py:3147: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('zope')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+../../../../../../../../anaconda3/envs/LQ_signal/lib/python3.10/site-packages/lightning_fabric/__init__.py:41
+  /home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/lightning_fabric/__init__.py:41: Deprecated call to `pkg_resources.declare_namespace('lightning_fabric')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+
+../../../../../../../../anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/__init__.py:37
+  /home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/__init__.py:37: Deprecated call to `pkg_resources.declare_namespace('pytorch_lightning')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+84 passed, 5 warnings in 5.45s

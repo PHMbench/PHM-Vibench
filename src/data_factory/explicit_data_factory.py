@@ -219,6 +219,13 @@ class ExplicitDataFactory(data_factory):
     """
 
     def __init__(self, args_data, args_task):
+        if (args_task.type, args_task.name) == ('DG', 'tii_joint'):
+            from .tii_data import initialize_tii_data
+            self.args_data, self.args_task = args_data, args_task
+            initialize_tii_data(self, args_data, args_task)
+            counts = require_nonempty_dataloaders(self, args_task, args_data, splits=('train', 'val'))
+            print(f"[SUCCESS] TII source loaders: {format_loader_summary(counts)}")
+            return
         super().__init__(args_data, args_task)
         counts = require_nonempty_dataloaders(
             self,

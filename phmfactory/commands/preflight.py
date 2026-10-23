@@ -49,6 +49,11 @@ def run(argv: Sequence[str]) -> dict[str, Any]:
     if errors:
         detail = "; ".join(f"{item.field}: {item.message}" for item in errors)
         raise ValueError(f"configuration analysis failed: {detail}")
+    if analysis.effective_config.get("task", {}).get("execution") == "research":
+        from phmfactory.commands.research import preflight as research_preflight
+        return dict(research_preflight(analysis))
+    from phmfactory.commands.research import reject_scientific_factory_task
+    reject_scientific_factory_task(analysis.effective_config)
 
     descriptor = require_pipeline_access(
         analysis.pipeline,

@@ -1,0 +1,83 @@
+Seed set to 0
+[INFO] 设置环境变量: PROJECT_HOME=.
+
+==================================================
+[INFO] 开始实验迭代 1/1
+==================================================
+[INFO] 设置随机种子: 0
+[INFO] WandB disabled by configuration.
+[INFO] 构建数据工厂...
+[SUCCESS] 成功加载本地元数据: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/data/metadata_dummy.csv (2 条记录)
+检查 Name.h5 缓存:   0%|          | 0/2 [00:00<?, ?it/s]检查 Name.h5 缓存: 100%|██████████| 2/2 [00:00<00:00, 7067.07it/s]
+并行读取 Dummy_Data:   0%|          | 0/2 [00:00<?, ?it/s]并行读取 Dummy_Data: 100%|██████████| 2/2 [00:00<00:00, 55.11it/s]
+整合 cache.h5:   0%|          | 0/2 [00:00<?, ?it/s]整合 cache.h5: 100%|██████████| 2/2 [00:00<00:00, 518.52it/s]
+数据整合完成。最终缓存文件: /tmp/phmfactory-demo-cache-607b817u/cache.h5
+DG划分 - 使用显式可执行域协议
+  - 训练域: [0]
+  - 测试域: [1]
+训练/验证样本数: 1
+测试样本数: 1
+Initializing datasets with explicit adapter src.data_factory.dataset_task.DG.Classification_dataset.set_dataset for DG/classification.
+Creating train datasets:   0%|          | 0/1 [00:00<?, ?it/s]Creating train datasets: 100%|██████████| 1/1 [00:00<00:00, 556.05it/s]
+Creating val datasets:   0%|          | 0/1 [00:00<?, ?it/s]Creating val datasets: 100%|██████████| 1/1 [00:00<00:00, 842.40it/s]
+Creating test datasets:   0%|          | 0/1 [00:00<?, ?it/s]Creating test datasets: 100%|██████████| 1/1 [00:00<00:00, 877.84it/s]
+GPU available: True (cuda), used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/setup.py:177: GPU available but not used. You can set it by doing `Trainer(accelerator='gpu')`.
+`Trainer(val_check_interval=1.0)` was configured so validation will run at the end of the training epoch..
+Missing logger folder: /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/demo/dummy_dg_smoke/metadata_dummy.csv/M_M_01_ISFM/T_DGclassification/20260919-073541-660210-2fc99c21/iter_0/logs
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:652: Checkpoint directory /home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/demo/dummy_dg_smoke/metadata_dummy.csv/M_M_01_ISFM/T_DGclassification/20260919-073541-660210-2fc99c21/iter_0 exists and is not empty.
+
+  | Name    | Type             | Params | Mode 
+-----------------------------------------------------
+0 | network | Model            | 51.8 K | train
+1 | loss_fn | CrossEntropyLoss | 0      | train
+2 | metrics | ModuleDict       | 0      | train
+-----------------------------------------------------
+51.8 K    Trainable params
+0         Non-trainable params
+51.8 K    Total params
+0.207     Total estimated model params size (MB)
+[DATA SPLIT] raw-overlap train/val=True, train/test=False, val/test=False; file-overlap train/val=[1], train/test=[]; test-classes-seen-in-train=False
+[SUCCESS] 数据加载器可用: train=2 batches, val=1 batch, test=2 batches
+[INFO] 构建模型...
+[INFO] 构建任务...
+[INFO] 构建训练器...
+[INFO] 开始训练...
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=143` in the `DataLoader` to improve performance.
+Sanity Checking:   0%|          | 0/1 [00:00<?, ?it/s]Sanity Checking DataLoader 0:   0%|          | 0/1 [00:00<?, ?it/s]Sanity Checking DataLoader 0: 100%|██████████| 1/1 [00:00<00:00, 49.43it/s]                                                                           /home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=143` in the `DataLoader` to improve performance.
+/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py:298: The number of training batches (2) is smaller than the logging interval Trainer(log_every_n_steps=50). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+Training: |          | 0/? [00:00<?, ?it/s]Training:   0%|          | 0/2 [00:00<?, ?it/s]Epoch 0:   0%|          | 0/2 [00:00<?, ?it/s] Epoch 0:  50%|█████     | 1/2 [00:00<00:00, 65.83it/s]Epoch 0:  50%|█████     | 1/2 [00:00<00:00, 64.74it/s, v_num=0]Epoch 0: 100%|██████████| 2/2 [00:00<00:00, 86.21it/s, v_num=0]Epoch 0: 100%|██████████| 2/2 [00:00<00:00, 85.31it/s, v_num=0]
+Validation: |          | 0/? [00:00<?, ?it/s][A
+Validation:   0%|          | 0/1 [00:00<?, ?it/s][A
+Validation DataLoader 0:   0%|          | 0/1 [00:00<?, ?it/s][A
+Validation DataLoader 0: 100%|██████████| 1/1 [00:00<00:00, 298.25it/s][A
+                                                                       [AEpoch 0: 100%|██████████| 2/2 [00:00<00:00, 51.55it/s, v_num=0]Epoch 0: 100%|██████████| 2/2 [00:00<00:00, 50.34it/s, v_num=0]Metric val_loss improved. New best score: 0.597
+`Trainer.fit` stopped: `max_epochs=1` reached.
+Epoch 0: 100%|██████████| 2/2 [00:00<00:00, 35.55it/s, v_num=0]/home/user/anaconda3/envs/LQ_signal/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:424: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=143` in the `DataLoader` to improve performance.
+
+[INFO] 加载最佳模型并测试...
+Testing: |          | 0/? [00:00<?, ?it/s]Testing:   0%|          | 0/2 [00:00<?, ?it/s]Testing DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s]Testing DataLoader 0:  50%|█████     | 1/2 [00:00<00:00, 122.81it/s]Testing DataLoader 0: 100%|██████████| 2/2 [00:00<00:00, 144.32it/s]Testing DataLoader 0: 100%|██████████| 2/2 [00:00<00:00, 83.75it/s] 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+       Test metric             DataLoader 0
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  test_Dummy_Data_loss      0.8030020594596863
+   test_acc_Dummy_Data              0.0
+        test_loss           0.8030020594596863
+     test_total_loss        0.8030020594596863
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+[INFO] 保存测试结果...
+[INFO] WandB logger closed.
+[INFO] SwanLab is not used: You must call swanlab.init() before using finish()
+[INFO] SwanLab logger closed.
+
+==================================================
+[INFO] 所有实验已完成
+==================================================
+result_dir=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/demo/dummy_dg_smoke/metadata_dummy.csv/M_M_01_ISFM/T_DGclassification/20260919-073541-660210-2fc99c21
+best_checkpoint=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/demo/dummy_dg_smoke/metadata_dummy.csv/M_M_01_ISFM/T_DGclassification/20260919-073541-660210-2fc99c21/iter_0/model-epoch=00-step=2.ckpt
+test_metrics=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/demo/dummy_dg_smoke/metadata_dummy.csv/M_M_01_ISFM/T_DGclassification/20260919-073541-660210-2fc99c21/all_results.csv
+run_summary=/home/user/LQ/Q_paper/LQQL_OS/lqql_06_工作与项目/03_论文流水线/P-vibench-HSEv2/external/phmfactory/results/demo/dummy_dg_smoke/metadata_dummy.csv/M_M_01_ISFM/T_DGclassification/20260919-073541-660210-2fc99c21/run_summary.json
+primary_metrics={"test_Dummy_Data_loss": {"count": 1, "mean": 0.8030020594596863, "sample_std": null}, "test_acc_Dummy_Data": {"count": 1, "mean": 0.0, "sample_std": null}, "test_loss": {"count": 1, "mean": 0.8030020594596863, "sample_std": null}, "test_total_loss": {"count": 1, "mean": 0.8030020594596863, "sample_std": null}}
+run=completed

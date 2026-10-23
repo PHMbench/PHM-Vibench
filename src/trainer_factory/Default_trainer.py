@@ -28,6 +28,20 @@ if "LOCAL_RANK" in os.environ:
 _SELECTION_MODES = frozenset({"min", "max"})
 
 
+class ToleranceModelCheckpoint(ModelCheckpoint):
+    """Keep the earlier checkpoint when the change is within a declared tolerance."""
+    def __init__(self, *, min_delta, **kwargs):
+        super().__init__(**kwargs)
+        if self.mode != 'min' or self.save_top_k != 1 or min_delta < 0:
+            raise ValueError('checkpoint_min_delta requires mode=min, save_top_k=1 and nonnegative tolerance')
+        self.min_delta = min_delta
+
+    def check_monitor_top_k(self, trainer, current=None):
+        if current is not None and len(self.best_k_models) == 1:
+            return bool(current < self.kth_value - self.min_delta)
+        return super().check_monitor_top_k(trainer, current)
+
+
 def resolve_epoch_contract(args: Any) -> int:
     """Return the single explicit positive epoch count without alias fallback."""
 
@@ -119,6 +133,8 @@ def trainer(args_e, args_t, args_d, path):
         log_every_n_steps=args_t.log_every_n_steps,
         strategy="ddp_find_unused_parameters_true" if devices > 1 else "auto",
         deterministic=getattr(args_t, "deterministic", None),
+        val_check_interval=getattr(args_t, "val_check_interval", 1.0),
+        num_sanity_val_steps=getattr(args_t, "num_sanity_val_steps", 2),
     )
 
 
@@ -126,7 +142,11 @@ def call_backs(args, path):
     """Build checkpoint and stopping callbacks from one selection contract."""
 
     monitor, mode = resolve_selection_contract(args)
-    checkpoint_callback = ModelCheckpoint(
+    min_delta = getattr(args, 'checkpoint_min_delta', 0.0)
+    checkpoint_cls = ToleranceModelCheckpoint if min_delta else ModelCheckpoint
+    checkpoint_kwargs = {'min_delta': min_delta} if min_delta else {}
+    checkpoint_callback = checkpoint_cls(
+        **checkpoint_kwargs,
         monitor=monitor,
         # Do not embed a hard-coded metric such as val_loss in the filename.  The
         # configured monitor may be any logged scalar and the callback itself owns the

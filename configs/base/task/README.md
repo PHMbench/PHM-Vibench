@@ -29,11 +29,36 @@ classification path. A specialized task such as `hse_contrastive` declares its m
 head explicitly inside that task implementation. Missing batch metadata must not inject
 an unrelated `classification` task or override the configured Task Factory semantics.
 
+## Adaptation protocol fragment
+
+`tta_protocol.yaml` freezes adaptation observability and state semantics only. It does
+**not** register a runnable TTA method. The first runnable path must arrive in a later
+bounded PR with its own Data/Task/runtime evidence.
+
+```yaml
+task:
+  type: TTA
+  name: protocol_only
+  protocol:
+    regime: online_tta
+    source_access: checkpoint_only
+    target_label_access: none
+    timing: predict_then_update
+    state_persistence: persistent
+    domain_boundary: hidden
+    label_space: closed_set
+    passes: 1
+```
+
+Target labels remain evaluator-only for TTA/SFDA. A delayed-label experiment receives a
+separate label event only after its declared availability step; it is never added to the
+ordinary adaptation view. See [the adaptation protocol](../../../docs/adaptation/protocol.md).
+
 ## Core fields
 
 | Field | Type | Meaning |
 | --- | ---: | --- |
-| `task.type` | enum | Registered task family such as `DG`, `CDDG`, `FS`, `GFS`, `pretrain`, or `Default_task`. |
+| `task.type` | enum | Task family. `TTA` is accepted for protocol validation but has no runnable algorithm in B00; existing registered families include `DG`, `CDDG`, `FS`, `GFS`, `pretrain`, and `Default_task`. |
 | `task.name` | str | Concrete Task Factory implementation and maintained model-task identity where applicable. |
 | `task.loss` | str | Main objective consumed during backward. Unknown losses must fail. |
 | `task.metrics` | list[str] | Complete requested metric set. Unknown metrics fail instead of being skipped. |

@@ -219,6 +219,7 @@ TaskType = Literal[
     "pretrain",
     "Default_task",
     "generative",
+    "TTA",
 ]
 
 
@@ -256,6 +257,133 @@ class PopulationRegularizationConfig(BaseModel):
         return self
 
 
+class AdaptationProtocolConfig(BaseModel):
+    """Scientific protocol declaration for adaptation experiments.
+
+    This validates observability and update timing only.  It does not register an
+    adaptation algorithm or make a TTA experiment runnable.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    regime: Literal[
+        "source_only",
+        "episodic_tta",
+        "online_tta",
+        "continual_tta",
+        "offline_sfda",
+        "continual_sfda",
+        "delayed_label_adaptation",
+        "online_supervised_continual",
+    ]
+    source_access: Literal[
+        "checkpoint_only",
+        "checkpoint_plus_artifact",
+        "source_data_available",
+    ]
+    target_label_access: Literal["none", "delayed", "online_supervised"]
+    timing: Literal["predict_then_update", "update_then_predict"]
+    state_persistence: Literal["episodic_reset", "domain_reset", "persistent"]
+    domain_boundary: Literal["hidden", "known"]
+    label_space: Literal["closed_set", "partial_set", "open_set"]
+    passes: int = Field(1, ge=1)
+    adapt_population: Optional[str] = None
+    evaluation_population: Optional[str] = None
+    source_artifacts: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _check_protocol_semantics(self) -> "AdaptationProtocolConfig":
+        for field_name in ("adapt_population", "evaluation_population"):
+            value = getattr(self, field_name)
+            if value is not None and (not value.strip() or value != value.strip()):
+                raise ValueError(
+                    f"protocol.{field_name} must be a non-empty string without "
+                    "surrounding whitespace"
+                )
+        for artifact in self.source_artifacts:
+            if not artifact.strip() or artifact != artifact.strip():
+                raise ValueError(
+                    "protocol.source_artifacts entries must be non-empty strings "
+                    "without surrounding whitespace"
+                )
+
+        expected_label_access = {
+            "source_only": "none",
+            "episodic_tta": "none",
+            "online_tta": "none",
+            "continual_tta": "none",
+            "offline_sfda": "none",
+            "continual_sfda": "none",
+            "delayed_label_adaptation": "delayed",
+            "online_supervised_continual": "online_supervised",
+        }[self.regime]
+        if self.target_label_access != expected_label_access:
+            raise ValueError(
+                f"protocol.regime={self.regime} requires "
+                f"target_label_access={expected_label_access}"
+            )
+
+        streaming = {
+            "source_only",
+            "episodic_tta",
+            "online_tta",
+            "continual_tta",
+            "delayed_label_adaptation",
+            "online_supervised_continual",
+        }
+        if self.regime in streaming and self.passes != 1:
+            raise ValueError(
+                f"protocol.regime={self.regime} requires passes=1; "
+                "online streams cannot be replayed as extra epochs"
+            )
+        if self.regime == "episodic_tta" and self.state_persistence != "episodic_reset":
+            raise ValueError("episodic_tta requires state_persistence=episodic_reset")
+        if self.regime in {"continual_tta", "continual_sfda", "online_supervised_continual"}:
+            if self.state_persistence != "persistent":
+                raise ValueError(
+                    f"{self.regime} requires state_persistence=persistent"
+                )
+        if self.regime == "online_tta" and self.state_persistence == "episodic_reset":
+            raise ValueError(
+                "online_tta cannot use episodic_reset; use regime=episodic_tta"
+            )
+        if self.state_persistence == "domain_reset" and self.domain_boundary != "known":
+            raise ValueError(
+                "state_persistence=domain_reset requires domain_boundary=known"
+            )
+
+        sfda = self.regime in {"offline_sfda", "continual_sfda"}
+        if sfda:
+            if not self.adapt_population or not self.evaluation_population:
+                raise ValueError(
+                    f"{self.regime} requires explicit adapt_population and "
+                    "evaluation_population"
+                )
+            if self.adapt_population == self.evaluation_population:
+                raise ValueError(
+                    "SFDA adapt_population and evaluation_population must be distinct"
+                )
+            if self.source_access == "source_data_available":
+                raise ValueError(
+                    f"{self.regime} cannot declare source_data_available"
+                )
+        elif self.adapt_population is not None or self.evaluation_population is not None:
+            raise ValueError(
+                "adapt_population/evaluation_population are reserved for SFDA regimes"
+            )
+
+        if self.source_access == "checkpoint_plus_artifact":
+            if not self.source_artifacts:
+                raise ValueError(
+                    "checkpoint_plus_artifact requires non-empty source_artifacts"
+                )
+        elif self.source_artifacts:
+            raise ValueError(
+                "source_artifacts require source_access=checkpoint_plus_artifact"
+            )
+        return self
+
+
 class TaskConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -264,6 +392,7 @@ class TaskConfig(BaseModel):
 
     target_system_id: Optional[List[int]] = None
     loss: Optional[str] = None
+    protocol: Optional[AdaptationProtocolConfig] = None
     gradient_constraint: Optional[GradientConstraintConfig] = None
     population_regularization: Optional[PopulationRegularizationConfig] = None
 
@@ -278,6 +407,14 @@ class TaskConfig(BaseModel):
     def _check_gradient_constraint(self) -> "TaskConfig":
         if self.gradient_constraint is not None and (self.loss or "").upper() != "CE":
             raise ValueError("task.gradient_constraint.name=fic requires task.loss=CE")
+        return self
+
+    @model_validator(mode="after")
+    def _check_adaptation_protocol(self) -> "TaskConfig":
+        if self.type == "TTA" and self.protocol is None:
+            raise ValueError("task.type=TTA requires task.protocol")
+        if self.type != "TTA" and self.protocol is not None:
+            raise ValueError("task.protocol is reserved for task.type=TTA")
         return self
 
 

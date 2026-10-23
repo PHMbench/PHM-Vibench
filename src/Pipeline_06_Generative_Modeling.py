@@ -662,7 +662,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             device,
         )
         num_samples = int(condition["fault_label"].numel())
-        num_steps = int(_get_attr(gen_cfg, "num_steps", 8))
+        num_steps = _get_attr(gen_cfg, "num_steps", 8)
         length = int(_get_attr(gen_cfg, "length", getattr(args_data, "window_size", 128)))
         channels = int(getattr(args_model, "in_channels", 1))
         started = time.perf_counter()

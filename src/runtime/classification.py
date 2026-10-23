@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
@@ -375,15 +376,29 @@ def run_classification_pipeline(
             context.data_factory = build_data(args_data, args_task)
             metadata = context.data_factory.get_metadata()
 
+            fitted_model_args = args_model
+            if (args_task.type, args_task.name) == ('DG', 'tii_joint'):
+                if test_after_fit:
+                    raise ValueError('tii_joint is source training; set trainer.test_after_fit=false')
+                if args_model.source_rms != 'source_train':
+                    raise ValueError('tii_joint requires model.source_rms=source_train')
+                if (args_model.num_patches, args_model.patch_size_L) != (args_data.num_patches, args_data.patch_size):
+                    raise ValueError('model K/P must match the frozen physical grid')
+                fitted_model_args = deepcopy(args_model)
+                fitted_model_args.source_rms = context.data_factory.source_rms
+                context.args_model = fitted_model_args
+                pd.DataFrame(context.data_factory.window_inventory).to_csv(path / 'source_windows.csv', index=False)
+                pd.DataFrame([{'source_rms': fitted_model_args.source_rms}]).to_csv(path / 'source_rms.csv', index=False)
+
             print("[INFO] 构建模型...")
-            context.model = build_model(args_model, metadata=metadata)
+            context.model = build_model(fitted_model_args, metadata=metadata)
 
             print("[INFO] 构建任务...")
             context.task = build_task(
                 args_task=args_task,
                 network=context.model,
                 args_data=args_data,
-                args_model=args_model,
+                args_model=fitted_model_args,
                 args_trainer=args_trainer,
                 args_environment=args_environment,
                 metadata=metadata,

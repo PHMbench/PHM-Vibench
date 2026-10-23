@@ -86,6 +86,7 @@ def read_metadata_table(
     file_path: str | os.PathLike[str],
     *,
     encoding: object | None = None,
+    dtype: dict[str, str] | None = None,
 ) -> pd.DataFrame:
     """Read one declared local metadata file with extension-defined semantics.
 
@@ -109,7 +110,7 @@ def read_metadata_table(
             raise ValueError(
                 "data.metadata_encoding applies only to .csv and .tsv metadata"
             )
-        return pd.read_excel(path)
+        return pd.read_excel(path, dtype=dtype)
 
     if suffix == ".csv":
         separator = ","
@@ -125,6 +126,7 @@ def read_metadata_table(
         path,
         sep=separator,
         encoding=_metadata_encoding(encoding),
+        dtype=dtype,
     )
 
 

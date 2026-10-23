@@ -1,0 +1,26 @@
+# Existing synthetic source-only protocol. Not a qualified Paderborn protocol.
+# Tune with source-only train/val NPZ --data. Evaluate a separate full NPZ
+# only with that completed tune directory supplied as --checkpoint.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: symbolic_source_only_baselines
+  seed: 20261002
+  output_dir: results/symbolic_source_only_baselines
+data:
+  evidence_kind: declared_source_only_transfer
+model:
+  object: phmfactory.p06.Head
+task:
+  type: classification
+  name: symbolic_diagnosis
+  execution: research
+  symbolic_diagnosis:
+    protocol: P4-source-only-baselines-v1
+    source: {speed_hz: 30.0}
+    orders: [3.2, 4.8, 6.4]
+    C: [0.1, 1.0, 10.0, 100.0]
+    gamma: [scale, 0.01, 0.1, 1.0]
+    seed: 20261002
+trainer:
+  device: cpu
+  devices: 1

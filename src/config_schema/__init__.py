@@ -1,4 +1,5 @@
 from .models import (
+    AdaptationProtocolConfig,
     DataConfig,
     DataSplitConfig,
     EnvironmentConfig,
@@ -11,6 +12,7 @@ from .models import (
 )
 
 __all__ = [
+    "AdaptationProtocolConfig",
     "EnvironmentConfig",
     "DataConfig",
     "DataSplitConfig",

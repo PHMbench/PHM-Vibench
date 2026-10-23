@@ -1,0 +1,51 @@
+# Software smoke only: the bundled Dummy split is not a held-out PHM benchmark.
+pipeline: Pipeline_01_Fault_Diagnosis
+base_configs:
+  environment: configs/base/environment/base.yaml
+  data: configs/base/data/base_cross_domain.yaml
+  task: configs/base/task/dg.yaml
+  trainer: configs/base/trainer/default_single_gpu.yaml
+environment:
+  project: timesnet_classification_smoke
+  seed: 0
+  iterations: 1
+  output_dir: results/model_integration/timesnet
+  wandb: false
+  swanlab: false
+data:
+  data_dir: data
+  metadata_file: metadata_dummy.csv
+  batch_size: 4
+  num_workers: 0
+  window_size: 128
+  num_window: 8
+model:
+  type: CNN
+  name: TimesNet
+  seq_len: 128
+  input_dim: 2
+  num_classes: 2
+  d_model: 16
+  d_ff: 32
+  e_layers: 1
+  dropout: 0.0
+  top_k: 2
+  num_kernels: 2
+task:
+  type: DG
+  name: classification
+  loss: CE
+  metrics: [acc, f1]
+  target_system_id: [0]
+  source_domain_id: [0]
+  target_domain_id: [1]
+trainer:
+  num_epochs: 1
+  test_after_fit: true
+  device: cpu
+  devices: 1
+  precision: 32
+  monitor: val_loss
+  monitor_mode: min
+  early_stopping: false
+  log_every_n_steps: 1

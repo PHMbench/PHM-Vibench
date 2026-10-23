@@ -1,0 +1,83 @@
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: tii_M0_tensor_fixture
+  seed: 0
+  iterations: 1
+  output_dir: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\u76EE\
+    /03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/runs"
+  notes: M0 tensor fixture; not industrial J1-C
+  wandb: false
+  swanlab: false
+data:
+  factory_name: default
+  data_dir: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\u76EE\
+    /03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1"
+  metadata_file: metadata.csv
+  record_inventory: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\
+    \u76EE/03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/records.csv"
+  cache_dir: "/home/user/LQ/Q_paper/LQQL_OS/lqql_06_\u5DE5\u4F5C\u4E0E\u9879\u76EE\
+    /03_\u8BBA\u6587\u6D41\u6C34\u7EBF/P-vibench-HSEv2/external/phmfactory/reports/tii_local_j1/native_fixture_v1/scratch"
+  use_cache: true
+  evidence_kind: tensor_fixture
+  normalization: source_rms
+  batch_size: 32
+  source_batch_size: 32
+  num_workers: 0
+  seed: 0
+  rounds: 20
+  duration_s: 1.0
+  grid_rate_hz: 64.0
+  num_patches: 4
+  patch_size: 16
+  output_unit: m/s^2
+  common_bands_hz:
+  - - 1.0
+    - 8.0
+  increment_bands_hz:
+  - - 8.0
+    - 24.0
+model:
+  type: ISFM
+  name: M_01_ISFM
+  embedding: SupportConditionedTokenizer
+  token_organization: ordinary
+  backbone: B_04_Dlinear
+  task_head: H_01_Linear_cla
+  patch_size_L: 16
+  num_patches: 4
+  output_dim: 8
+  d_model: 8
+  source_rms: source_train
+task:
+  type: DG
+  name: tii_joint
+  target_system_id:
+  - 1
+  - 2
+  source_system_ids:
+  - 1
+  - 2
+  sampling_seed: 0
+  loss: CE
+  metrics:
+  - acc
+  optimizer: adamw
+  lr: 0.001
+  weight_decay: 0.0001
+  lambda_common: 0
+  lambda_private: 0
+  scheduler: null
+trainer:
+  name: Default_trainer
+  num_epochs: 1
+  test_after_fit: false
+  early_stopping: false
+  device: cpu
+  devices: 1
+  monitor: val_group_nll
+  monitor_mode: min
+  checkpoint_min_delta: 1.0e-08
+  val_check_interval: 10
+  num_sanity_val_steps: 0
+  log_every_n_steps: 1
+  deterministic: true

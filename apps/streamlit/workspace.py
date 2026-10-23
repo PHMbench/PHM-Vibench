@@ -51,6 +51,7 @@ try:
         render_launch_blockers,
         render_readiness_banner,
         render_readiness_sidebar,
+        render_public_doctor,
         render_template_data_status,
         render_template_profile,
         template_option_label,
@@ -109,6 +110,7 @@ except ImportError:  # pragma: no cover - Streamlit may execute app.py as a scri
         render_launch_blockers,
         render_readiness_banner,
         render_readiness_sidebar,
+        render_public_doctor,
         render_template_data_status,
         render_template_profile,
         template_option_label,
@@ -251,6 +253,7 @@ def main() -> None:
     ):
         _safe_smoke_reset(catalog.default_template_id)
     render_readiness_sidebar(readiness)
+    render_public_doctor(repo_root)
     st.sidebar.divider()
 
     st.sidebar.markdown("### Experiment workspace")

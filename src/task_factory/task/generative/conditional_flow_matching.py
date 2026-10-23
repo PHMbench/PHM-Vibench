@@ -368,7 +368,7 @@ class ConditionalFlowMatchingTask(pl.LightningModule):
             self.network.to(sample_device),
             noise,
             condition,
-            num_steps=int(num_steps),
+            num_steps=num_steps,
         )
 
 

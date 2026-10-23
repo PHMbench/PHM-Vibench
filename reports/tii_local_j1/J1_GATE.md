@@ -1,0 +1,3 @@
+J1 = NO-GO: M0 fixture integration and query-negative checks pass, but 0/19 dataset IDs and 0/19 held-out folds qualify; the required real two-source micro-run is NOT RUN.
+Blocked product: J2/N/H/J3/J3-R/J4, real query statistics and figures; all remain NOT RUN, with failures retained in the qualification/anomaly tables.
+Smallest next action: correct the documented cache/metadata conflicts and supply original physical-group, unit, native/effective-rate and acquisition-response evidence for at least three independent corpora; requalify without changing the frozen target episode or bands using target signals.

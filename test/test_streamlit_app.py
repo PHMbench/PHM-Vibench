@@ -307,3 +307,34 @@ def test_damaged_batch_record_keeps_editor_and_single_run_view(monkeypatch, tmp_
     assert not _button(app, 'Run experiment').disabled
     assert not any(button.label == 'Run batch' for button in app.button)
     assert path.read_text() == '{}'
+
+
+def test_doctor_is_explicit_and_does_not_reset_configuration(monkeypatch):
+    """A page rerun must not launch doctor; clicking it preserves editor state."""
+
+    from apps.streamlit import ui_onboarding
+    from apps.streamlit.onboarding import DoctorReport
+
+    calls = []
+
+    def fake_doctor(repo_root):
+        calls.append(str(repo_root))
+        return DoctorReport(
+            command=("python", "-m", "phmfactory", "doctor"),
+            passed=True,
+            exit_code=0,
+            stdout="doctor=passed checks=8\n",
+        )
+
+    monkeypatch.setattr(ui_onboarding, "run_public_doctor", fake_doctor)
+    app = AppTest.from_file(str(ROOT / "apps/streamlit/app.py"), default_timeout=90).run()
+    assert calls == []
+
+    _button(app, "Verify runtime imports (doctor)").click().run()
+    assert len(calls) == 1
+    assert app.session_state["phmfactory_doctor_report"].passed is True
+
+    _button(app, "Validate configuration").click().run()
+    assert len(calls) == 1
+    assert app.session_state["phmfactory_doctor_report"].passed is True
+

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+import subprocess
 
 import pytest
 
@@ -236,3 +238,101 @@ def test_default_smoke_profile_assets_exist() -> None:
     assert smoke.requires_external_data is False
     assert smoke.required_paths
     assert all((root / path).exists() for path in smoke.required_paths)
+
+
+def test_doctor_executes_public_module_command_in_same_python(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    observed = {}
+
+    def fake_run(argv, **kwargs):
+        observed["argv"] = tuple(argv)
+        observed["kwargs"] = kwargs
+        return SimpleNamespace(
+            returncode=0,
+            stdout="PASS import:torch: imported\ndoctor=passed checks=8\n",
+            stderr="",
+        )
+
+    report = ob.run_public_doctor(root, runner=fake_run, timeout=12)
+    assert report.passed is True
+    assert report.exit_code == 0
+    assert observed["argv"] == report.command
+    assert observed["argv"][1:] == ("-m", "phmfactory", "doctor")
+    assert observed["kwargs"] == {
+        "cwd": str(root.resolve()),
+        "capture_output": True,
+        "text": True,
+        "check": False,
+        "timeout": 12,
+    }
+    assert not (root / "outputs").exists()
+
+
+def test_doctor_reports_failed_runtime_import_without_fallback(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(
+            returncode=1,
+            stdout="FAIL import:pytorch_lightning: incompatible package\n",
+            stderr="ImportError: missing binary\n",
+        )
+
+    report = ob.run_public_doctor(root, runner=fake_run)
+    assert report.passed is False
+    assert report.exit_code == 1
+    assert "Lightning" not in report.error  # no made-up diagnosis
+    assert "exit" in report.error.lower()
+    assert "FAIL import:pytorch_lightning" in report.stdout
+    assert "ImportError" in report.stderr
+
+
+def test_doctor_requires_public_completion_marker(tmp_path: Path) -> None:
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(returncode=0, stdout="Help output only", stderr="")
+
+    report = ob.run_public_doctor(_repo(tmp_path), runner=fake_run)
+    assert report.passed is False
+    assert "completion marker" in report.error
+
+
+def test_doctor_timeout_remains_recoverable(tmp_path: Path) -> None:
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd="phmfactory doctor",
+            timeout=1,
+            output=b"PASS import:yaml\n",
+            stderr=b"Still importing Lightning\n",
+        )
+
+    report = ob.run_public_doctor(_repo(tmp_path), runner=fake_run, timeout=1)
+    assert report.passed is False
+    assert report.exit_code is None
+    assert "timed out" in report.error.lower()
+    assert "PASS import:yaml" in report.stdout
+    assert "Still importing Lightning" in report.stderr
+
+
+def test_doctor_subprocess_failure_remains_recoverable(tmp_path: Path) -> None:
+    def fake_run(*args, **kwargs):
+        raise OSError("process launch blocked")
+
+    report = ob.run_public_doctor(_repo(tmp_path), runner=fake_run)
+    assert report.passed is False
+    assert report.exit_code is None
+    assert "launch blocked" in report.error
+
+
+def test_doctor_output_is_bounded_to_final_lines(tmp_path: Path) -> None:
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(
+            returncode=0,
+            stdout="x" * 20000 + "\ndoctor=passed checks=8\n",
+            stderr="",
+        )
+    report = ob.run_public_doctor(_repo(tmp_path), runner=fake_run)
+    assert report.passed is True
+    assert len(report.stdout) < 16100
+    assert report.stdout.endswith("doctor=passed checks=8\n")
+    assert "truncated" in report.stdout
+

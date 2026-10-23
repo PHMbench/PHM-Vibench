@@ -1,0 +1,21 @@
+# CPU software fixture only. No measured PHM data or scientific efficacy claim.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: symbolic_diagnosis_fixture
+  seed: 20260907
+  output_dir: results/symbolic_diagnosis_fixture
+data:
+  evidence_kind: synthetic_software_fixture
+model:
+  object: phmfactory.p06.Head
+task:
+  type: classification
+  name: symbolic_diagnosis
+  execution: research
+  symbolic_diagnosis:
+    counts: [1, 1, 1]
+    orders: [3.2, 4.8, 6.4]
+    seed: 20260907
+trainer:
+  device: cpu
+  devices: 1

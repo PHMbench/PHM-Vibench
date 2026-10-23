@@ -1,0 +1,37 @@
+# Prospective M05 scientific operators, not historical G050 or a DG-valid result.
+# Run through `phmfactory research <phase>` with explicit data/output/checkpoint.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: expert_intervention
+  output_dir: results/expert_intervention
+data:
+  format: explicit_group_split_feature_pack
+  normalization: source_train_feature_standardization
+model:
+  type: MoE
+  name: M_05_FixedRouteMoE
+task:
+  type: DG
+  name: expert_intervention
+  execution: research
+  expert_intervention:
+    arm: generic
+    seed: 20
+    epochs: 100
+    width: 64
+    batch_size: 128
+    lr: 0.001
+    weight_decay: 0.0001
+    balance: 0.01
+    dg: true
+    independent_groups: false
+    # Per fitted-model alpha: for simultaneous families divide by arms × seeds.
+    alpha: 0.05
+    intervention: replacement
+    search_arms: [generic, aligned, shuffled]
+    learning_rates: [0.0003, 0.001, 0.003]
+    weight_decays: [0.0001, 0.01]
+trainer:
+  device: cpu
+  devices: 1
+  test_after_fit: false

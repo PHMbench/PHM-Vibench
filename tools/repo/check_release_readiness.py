@@ -393,24 +393,49 @@ def _read_registry_rows(path: Path) -> list[dict[str, str]]:
         ]
 
 
-def _baseline_valid_error(rows: Iterable[Mapping[str, str]]) -> str:
+def _baseline_reference_findings(
+    rows: Iterable[Mapping[str, str]],
+) -> tuple[Finding, ...]:
+    """Separate malformed registry state from intentional revalidation debt."""
+
     matches = [row for row in rows if row.get("id") == BASELINE_REGISTRY_ID]
     if len(matches) != 1:
-        return f"expected exactly one {BASELINE_REGISTRY_ID!r} row, found {len(matches)}"
+        return (
+            Finding(
+                "BASELINE_VALID_REFERENCE_INVALID",
+                f"expected exactly one {BASELINE_REGISTRY_ID!r} row, found {len(matches)}",
+            ),
+        )
+
     row = matches[0]
     expected = {
         "category": "baseline",
         "path": BASELINE_CONFIG_PATH,
         "pipeline": "Pipeline_01_Fault_Diagnosis",
         "status": "sanity_ok",
-        "protocol_status": "baseline_valid",
     }
     mismatches = [
         f"{field}={row.get(field)!r}, expected {value!r}"
         for field, value in expected.items()
         if row.get(field) != value
     ]
-    return "; ".join(mismatches)
+    protocol_status = row.get("protocol_status", "")
+    if protocol_status not in {"smoke_only", "baseline_valid"}:
+        mismatches.append(
+            "protocol_status="
+            f"{protocol_status!r}, expected 'smoke_only' or 'baseline_valid'"
+        )
+    if mismatches:
+        return (Finding("BASELINE_VALID_REFERENCE_INVALID", "; ".join(mismatches)),)
+    if protocol_status == "smoke_only":
+        return (
+            Finding(
+                "BASELINE_REVALIDATION_REQUIRED",
+                "MFPT remains protocol_status='smoke_only'; rerun the unchanged "
+                "current-source protocol before restoring 'baseline_valid'",
+            ),
+        )
+    return ()
 
 
 def collect_findings() -> tuple[Finding, ...]:
@@ -470,9 +495,7 @@ def collect_findings() -> tuple[Finding, ...]:
     if not registry_path.is_file():
         findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", f"{registry_path} absent"))
     else:
-        baseline_error = _baseline_valid_error(_read_registry_rows(registry_path))
-        if baseline_error:
-            findings.append(Finding("BASELINE_VALID_REFERENCE_INVALID", baseline_error))
+        findings.extend(_baseline_reference_findings(_read_registry_rows(registry_path)))
     missing_baseline_paths = [
         path for path in BASELINE_REQUIRED_PATHS if not (ROOT / path).is_file()
     ]

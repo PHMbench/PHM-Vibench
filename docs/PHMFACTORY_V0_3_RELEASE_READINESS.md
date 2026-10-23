@@ -17,7 +17,7 @@ published artifacts: none
 The current blocker is intentional:
 
 ```text
-BASELINE_VALID_REFERENCE_INVALID
+BASELINE_REVALIDATION_REQUIRED
 ```
 
 The MFPT transparent reference was validated on an earlier source state. Subsequent

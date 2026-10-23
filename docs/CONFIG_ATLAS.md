@@ -200,6 +200,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `configs/README.md`, `configs/base/task/README.md`, `src/task_factory/task/pretrain/README.md`
 - Status: `/`
 
+#### `base_task_tta_protocol`
+- Path: `configs/base/task/tta_protocol.yaml`
+- Description: Adaptation scientific protocol fragment; no runnable TTA algorithm
+- Owner code: `src/config_schema/models.py:AdaptationProtocolConfig`
+- Keyspace: `task.type`, `task.name`, `task.model_task_id`, `task.protocol.*`
+- Minimal run: `python -m pytest test/test_tta_protocol_contract.py test/test_tta_label_isolation.py -q`
+- Common overrides: -
+- Outputs: -
+- Related docs: `configs/base/task/README.md`, `docs/adaptation/protocol.md`
+- Status: `/`
+
 ### base_trainer
 
 #### `base_trainer_default_single_gpu`
@@ -380,6 +391,17 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Common overrides: `trainer.device=cpu`, `trainer.gpus=1`, `data.num_workers=0`
 - Outputs: `results/experiments/p07/g030_executable_operator_path_smoke/{experiment_name}/iter_{i}/`
 - Related docs: `configs/experiments/p07_xoan_operator_attention/README.md`
+- Status: `sanity_ok`
+
+#### `timesnet_classification_smoke`
+- Path: `configs/experiments/model_integration/timesnet_dummy.yaml`
+- Description: TimesNet classification CPU software smoke; upstream-fidelity and installed-wheel path; not PHM benchmark evidence
+- Owner code: `src/Pipeline_01_Fault_Diagnosis.py:pipeline`
+- Keyspace: `environment.*`, `data.*`, `model.*`, `task.*`, `trainer.*`
+- Minimal run: `python main.py --config configs/experiments/model_integration/timesnet_dummy.yaml`
+- Common overrides: `trainer.num_epochs=1`, `trainer.device=cpu`, `data.num_workers=0`
+- Outputs: `results/model_integration/timesnet/{experiment_name}/iter_{i}/`
+- Related docs: `src/model_factory/CNN/README.md`
 - Status: `sanity_ok`
 
 
