@@ -428,6 +428,25 @@ class TrainerConfig(BaseModel):
     test_after_fit: Optional[bool] = None
     monitor: Optional[str] = None
     monitor_mode: Optional[Literal["min", "max"]] = None
+    # Declare actual Default_trainer inputs; validation never materializes defaults
+    # into the visible runtime mapping. Custom trainers may still own extra fields.
+    save_top_k: Optional[int] = None
+    early_stopping: Optional[bool] = None
+    patience: Optional[int] = None
+    min_delta: Optional[float] = None
+    deterministic: Optional[bool | Literal["warn"]] = None
+    pruning: Optional[float | List[float]] = None
+    log_every_n_steps: Optional[int] = None
+    logger_name: Optional[str] = None
+    val_check_interval: Optional[int | float] = None
+    num_sanity_val_steps: Optional[int] = None
+    checkpoint_min_delta: Optional[float] = None
+    # Retain the registered TimesNet configuration's existing declaration.
+    # This acceptance does not change Default_trainer's precision behavior.
+    precision: Optional[int | str] = None
+    # Existing experiment metadata is preserved, not interpreted by the trainer.
+    paper_id: Optional[str] = None
+    preset_version: Optional[str] = None
     extensions: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
@@ -448,6 +467,12 @@ class TrainerConfig(BaseModel):
             raise ValueError(
                 "trainer.gpus is unsupported; use the single public field "
                 "trainer.devices"
+            )
+        if self.name == "Default_trainer" and extras:
+            raise ValueError(
+                "Default_trainer does not consume these trainer fields: "
+                f"{sorted(extras)}. Supported fields: {sorted(type(self).model_fields)}. "
+                "Use an exact supported field name; unknown fields are not applied."
             )
         return self
 
