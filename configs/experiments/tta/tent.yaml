@@ -1,0 +1,11 @@
+base_configs:
+  experiment: source_only.yaml
+environment:
+  output_dir: results/target_stream_tent
+task:
+  protocol:
+    regime: online_tta
+  adaptation:
+    method: tent
+    # Example setting, not target-tuned or a reproduced PHM optimum.
+    learning_rate: 0.001
