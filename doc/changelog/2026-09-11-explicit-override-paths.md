@@ -2,6 +2,8 @@
 
 公共配置解析器拒绝空路径段和段首尾空格，例如 `trainer..num_epochs=2`、`.trainer.num_epochs=2`。错误保留原路径，不自动折叠点号或修改字段名。
 
+补齐整个 key 边界的空格检查，例如 ` trainer.num_epochs=2` 和 `trainer.num_epochs =2`，不再先 strip 后接受。保留既有 P07 g030 配置的 `trainer.paper_id` 和 `trainer.preset_version` metadata；这些字段不改变训练行为，也不向未声明它们的配置注入默认值。
+
 现有 Trainer Schema 明确列出 Default_trainer 实际消费的可选参数。选择 Default_trainer 时，未知字段（如 `num_epoch`）在公共配置分析阶段失败，并给出支持字段；不再添加一个被训练器忽略的新键后继续运行。正确字段仍是 `trainer.num_epochs`。
 
 合法可选字段无需预先出现在 base YAML 中。Schema 仍只做验证，不把其默认值写入运行配置；自定义 Trainer 和现有 Model/Task 研究扩展字段保持原来的显式配置能力。本次不采用“只能覆盖已存在叶子”的全局禁令。

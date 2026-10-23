@@ -166,7 +166,6 @@ def parse_overrides(values: Sequence[str] | None) -> dict[str, Any]:
         if "=" not in item:
             raise ValueError(f"Invalid override format: {item!r}. Use key=value format.")
         key, raw_value = item.split("=", 1)
-        key = key.strip()
         if not key:
             raise ValueError("Override key must be non-empty")
         value_text = raw_value.strip()

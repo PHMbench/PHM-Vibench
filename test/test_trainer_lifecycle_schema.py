@@ -113,6 +113,8 @@ def test_pipeline06_does_not_receive_unused_classification_policy() -> None:
     "trainer.num_epochs.=2",
     "trainer. .num_epochs=2",
     "trainer. num_epochs=2",
+    " trainer.num_epochs=2",
+    "trainer.num_epochs =2",
 ])
 def test_empty_or_padded_override_segments_are_rejected(token):
     with pytest.raises(ValueError, match="Invalid override path"):
@@ -122,6 +124,8 @@ def test_empty_or_padded_override_segments_are_rejected(token):
 @pytest.mark.parametrize("token,exception,detail", [
     ("trainer.num_epoch=2", ValidationError, "num_epoch"),
     ("trainer..num_epochs=2", ValueError, "Invalid override path"),
+    (" trainer.num_epochs=2", ValueError, "Invalid override path"),
+    ("trainer.num_epochs =2", ValueError, "Invalid override path"),
 ])
 def test_invalid_overrides_fail_at_each_public_entry_before_execution(
     tmp_path, monkeypatch, token, exception, detail,
@@ -191,6 +195,17 @@ def test_custom_trainer_and_research_component_extras_remain_explicit():
     assert config["model"]["research_parameter"] == 7
     assert config["task"]["research_parameter"] is False
     # Configuration acceptance is not a claim that this example Trainer is installed.
+
+
+def test_registered_trainer_metadata_is_preserved_without_injecting_defaults():
+    path = Path("configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml")
+    trainer = analyze_config(path).runtime_config()["trainer"]
+    assert trainer["paper_id"] == "P07"
+    assert trainer["preset_version"] == "p07-g030-method-smoke-v1"
+    assert validate_one(path) == []
+    plain = analyze_config("smoke").runtime_config()["trainer"]
+    assert "paper_id" not in plain
+    assert "preset_version" not in plain
 
 
 def test_supported_repeated_override_keeps_last_value_and_strict_types():

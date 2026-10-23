@@ -301,6 +301,9 @@ class TrainerConfig(BaseModel):
     pruning: Optional[float | List[float]] = None
     log_every_n_steps: Optional[int] = None
     logger_name: Optional[str] = None
+    # Existing experiment metadata is preserved, not interpreted by the trainer.
+    paper_id: Optional[str] = None
+    preset_version: Optional[str] = None
     extensions: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
