@@ -438,6 +438,12 @@ class TrainerConfig(BaseModel):
     pruning: Optional[float | List[float]] = None
     log_every_n_steps: Optional[int] = None
     logger_name: Optional[str] = None
+    val_check_interval: Optional[int | float] = None
+    num_sanity_val_steps: Optional[int] = None
+    checkpoint_min_delta: Optional[float] = None
+    # Retain the registered TimesNet configuration's existing declaration.
+    # This acceptance does not change Default_trainer's precision behavior.
+    precision: Optional[int | str] = None
     # Existing experiment metadata is preserved, not interpreted by the trainer.
     paper_id: Optional[str] = None
     preset_version: Optional[str] = None

@@ -208,6 +208,24 @@ def test_registered_trainer_metadata_is_preserved_without_injecting_defaults():
     assert "preset_version" not in plain
 
 
+@pytest.mark.parametrize("interval", [10, 0.25])
+def test_current_trainer_optional_inputs_preserve_values_without_defaults(interval):
+    plain = analyze_config("smoke").runtime_config()["trainer"]
+    fields = {"val_check_interval", "num_sanity_val_steps", "checkpoint_min_delta", "precision"}
+    assert fields.isdisjoint(plain)
+    trainer = analyze_config("smoke", override_values=[
+        f"trainer.val_check_interval={interval}",
+        "trainer.num_sanity_val_steps=0", "trainer.checkpoint_min_delta=0.01",
+    ]).runtime_config()["trainer"]
+    assert trainer["val_check_interval"] == interval
+    assert type(trainer["val_check_interval"]) is type(interval)
+    assert trainer["num_sanity_val_steps"] == 0
+    assert trainer["checkpoint_min_delta"] == 0.01
+    path = Path("configs/experiments/model_integration/timesnet_dummy.yaml")
+    assert analyze_config(path).runtime_config()["trainer"]["precision"] == 32
+    assert validate_one(path) == []
+
+
 def test_supported_repeated_override_keeps_last_value_and_strict_types():
     config = analyze_config("smoke", override_values=[
         "trainer.num_epochs=1", "trainer.num_epochs=2",
