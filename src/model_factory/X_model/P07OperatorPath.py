@@ -32,7 +32,9 @@ def sparsemax(scores: Tensor) -> Tensor:
     cumulative = sorted_scores.cumsum(-1)
     support = (1 + k * sorted_scores > cumulative).sum(-1, keepdim=True)
     threshold = (cumulative.gather(-1, support - 1) - 1) / support.to(scores.dtype)
-    return (shifted - threshold).clamp_min(0)
+    # ReLU selects zero derivative at the threshold, matching the strict support.
+    # clamp_min instead differentiates zero coordinates and breaks its constant-sum gradient.
+    return F.relu(shifted - threshold)
 
 
 def operator(x: Tensor, name: str) -> Tensor:

@@ -163,6 +163,9 @@ jobs:
             "pytorch-lightning>=1.5" \
             "pytest>=7"
 
+      - name: Verify P07 bounded sparsemax contract
+        run: python -m pytest test/test_p07_bounded_operator_path.py -q
+
       - name: Compile UXFD modules
         run: |
           python -m py_compile \
