@@ -1,7 +1,7 @@
 # P07 sparsemax support-boundary derivative
 
 The bounded operator model now uses ReLU for the final positive-part operation in
-sparsemax. It returns the same finite forward projection as `clamp_min(0)), while
+sparsemax. It returns the same finite forward projection as `clamp_min(0)`, while
 selecting zero derivative for coordinates exactly at the threshold, consistently
 with the strictly positive support used to compute that threshold.
 
