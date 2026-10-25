@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 import torch
 
-from src.model_factory.X_model.P07OperatorPath import Model, OperatorNet
+from src.model_factory.X_model.P07OperatorPath import Model, OperatorNet, sparsemax
 
 
 class BoundedP07Tests(unittest.TestCase):
@@ -13,6 +13,27 @@ class BoundedP07Tests(unittest.TestCase):
         torch.manual_seed(73)
         self.x = torch.linspace(-2, 2, 64, dtype=torch.double).reshape(2, 32, 1)
         self.model = OperatorNet(1, 3).double().eval()
+
+    def test_sparsemax_boundary_preserves_simplex_and_support_jacobian(self):
+        # At a splitting point choose the positive-support Clarke Jacobian
+        # (Martins & Astudillo, 2016, Eq. 12), including zero inactive rows.
+        cases = (
+            ([1., 0., -2., -3., -4., -5.], [1., 0., 0., 0., 0., 0.]),
+            ([.75, .25, 0., -2., -3., -4.], [.75, .25, 0., 0., 0., 0.]),
+        )
+        for dtype in (torch.float32, torch.float64):
+            for values, projection in cases:
+                with self.subTest(dtype=dtype, scores=values):
+                    scores = torch.tensor(values, dtype=dtype, requires_grad=True)
+                    probabilities = sparsemax(scores)
+                    torch.testing.assert_close(probabilities, scores.new_tensor(projection), rtol=0, atol=0)
+                    support = (probabilities > 0).to(dtype)
+                    expected = torch.diag(support) - torch.outer(support, support) / support.sum()
+                    torch.testing.assert_close(probabilities.sum(), scores.new_tensor(1.), rtol=0, atol=0)
+                    total_gradient, = torch.autograd.grad(probabilities.sum(), scores)
+                    torch.testing.assert_close(total_gradient, torch.zeros_like(scores), rtol=0, atol=0)
+                    actual = torch.autograd.functional.jacobian(sparsemax, scores)
+                    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
 
     def test_factory_fixed_input_trace_and_checkpoint_parity(self):
         factory = Model(SimpleNamespace(in_channels=1, num_classes=3)).double().eval()
