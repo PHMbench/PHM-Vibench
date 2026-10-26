@@ -60,13 +60,12 @@ def read(file_path, *args):
         print(f"读取文件失败: {e}")
         return None
     
-    data = data[1:]
-    data =data.float()
-    # 修复字节序问题
+    # pandas .values is an ndarray (without a .float() method).
+    # Retain the existing first-row exclusion and exact channel order.
+    data = np.asarray(data[1:], dtype=np.float64)
     data = fix_byte_order(data)
     if data.ndim == 1:
         data = data.reshape(-1, 1)
-    data = data.astype(np.float64)
     return data
 
 if __name__ == "__main__":
