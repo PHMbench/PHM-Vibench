@@ -63,8 +63,7 @@ python main.py --config configs/demo/01_cross_domain/cwru_dg.yaml \
 
 - `data/metadata.xlsx` is a metadata index used by local full-data workflows. The
   maintained offline smoke demo uses `metadata_dummy.csv` instead.
-- `data/Reference/` contains literature and source notes used when maintaining
-  dataset readers. These files are reference artifacts, not dataset payloads and
+- [`data/Reference/`](Reference/README.md) contains source papers and scoped physical/sensor reading notes for dataset readers. These files are reference artifacts, not dataset payloads and
   not evidence that every referenced dataset is bundled, licensed for
   redistribution, or smoke-tested.
 - Exploratory notebooks under `data/`, when present, are development aids and are
