@@ -1,42 +1,37 @@
+"""JUST slewing-bearing source-v1: seven numerical *measurement* columns.
+
+Original Mendeley hwg8v5j8t6 v1 defines 4 vertical accelerometer, 2
+horizontal accelerometer and 1 acoustic-emission signal. No independent
+index/time column is specified. Files with an additional column or a header
+need original-format qualification; never drop a column by position.
+"""
+from __future__ import annotations
+
+from pathlib import Path
 import numpy as np
 import pandas as pd
-import os
-from .utils import fix_byte_order,load_data
-
-def read(file_path, *args):
-    """
-    读取RM_023_HIT23数据集
-    Args:
-        file_path (str): 数据文件路径
-    Returns:
-        numpy.ndarray: 数据数组，形状为 length x channel
-    """
- 
-    data = load_data(file_path, file_type='csv')
-    
-    # 自动识别并读取数组数据，排除matlab文件头信息
-
-    data = data.values[:,1:]
-
-    
-    # 转换为浮点数
-    data = data.astype(float)
-    
-    # 修复字节序问题
-    data = fix_byte_order(data)
-    
-    # 确保是二维数组
-    if data.ndim == 1:
-        data = data.reshape(-1, 1)
-        
-    return data
 
 
-
-if __name__ == "__main__":
-    from utils import test_reader
-    test_reader(metadata_path = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/data/metadata_5_data.csv',
-                 data_dir = '/home/user/data/PHMbenchdata/PHM-Vibench/raw',
-                 name = 'RM_024_JUST',
-                 output_dir = '/home/user/LQ/B_Signal/Signal_foundation_model/Vbench/src/data_factory/reader/output',
-                 read=read)
+def read(file_path, *args) -> np.ndarray:
+    """Return 7 measured streams in the exact source CSV order as float64."""
+    del args
+    path = Path(file_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"JUST CSV file not found: {path}")
+    if path.suffix.lower() != ".csv":
+        raise ValueError(f"JUST source v1 requires CSV, got {path.suffix!r}")
+    frame = pd.read_csv(path, header=None)
+    if frame.shape[1] != 7 or frame.shape[0] < 2:
+        raise ValueError(
+            f"JUST source v1 requires 7 measurement columns and >=2 rows; got {frame.shape}. "
+            "A possible time/index column needs an independently confirmed source variant."
+        )
+    try:
+        array = frame.to_numpy(dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "JUST source v1 requires 7 numeric measurement columns, with no assumed header or time column"
+        ) from exc
+    if not np.isfinite(array).all():
+        raise FloatingPointError("JUST source v1 contains NaN or Inf")
+    return np.ascontiguousarray(array)
