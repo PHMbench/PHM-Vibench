@@ -1,0 +1,42 @@
+# Experimental prepared-window CPU evaluation; paths must be supplied explicitly.
+pipeline: Pipeline_01_Fault_Diagnosis
+environment:
+  project: target_stream
+  seed: 0
+  iterations: 1
+  output_dir: results/target_stream_source
+# NPZ rows must be selected and preprocessed upstream without target-label tuning.
+data:
+  path: /explicit/path/to/target_windows.npz
+  batch_size: 4
+  order: archive_rows
+  preprocessing: precomputed
+model:
+  type: CNN
+  name: ResNet1D
+  input_dim: 2
+  num_classes: 3
+  block_type: basic
+  layers: [1, 1, 1, 1]
+  initial_channels: 4
+  weights_path: /explicit/path/to/source.pt
+  weights_strict: true
+task:
+  type: TTA
+  name: stream
+  execution: research
+  protocol:
+    regime: source_only
+    source_access: checkpoint_only
+    target_label_access: none
+    timing: predict_then_update
+    state_persistence: persistent
+    domain_boundary: hidden
+    label_space: closed_set
+    passes: 1
+  adaptation:
+    method: none
+  metrics: [acc, f1]
+trainer:
+  device: cpu
+  devices: 1
