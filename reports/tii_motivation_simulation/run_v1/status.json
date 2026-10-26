@@ -1,0 +1,13 @@
+{
+  "status": "completed",
+  "encoder_fits": 12,
+  "head_fits": 24,
+  "industrial_data_reads": 0,
+  "gpu_workloads": 0,
+  "resources": {
+    "wall_seconds": 55.840148525021505,
+    "cpu_user_seconds": 55.648886,
+    "cpu_system_seconds": 0.13100099999999998,
+    "process_peak_rss_kib": 714208
+  }
+}
