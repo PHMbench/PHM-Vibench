@@ -156,3 +156,9 @@ add a compatible reader.
 - [Data directory and external-source boundary](../../../data/README.md)
 - [Data Factory overview](../README.md)
 - [Data Factory contribution guide](../contributing.md)
+
+## Source-scoped import candidates: KAIST and HUST23 (2026-10-26)
+
+- `RM_026_HUST23.read`: reads the original MAT `data` **steady-state vibration** as float64 `[L,1]`. Original `fs` is **shaft frequency in Hz**, not acquisition sample rate. `ru/ru_raw` run-up and `rpm` speed trace are deliberately not imported by this single-channel steady-state path. The publisher reports 51,200 samples/s; the actual record metadata must still be bound separately. [Publisher paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC10327369/).
+- `RM_025_KAIST.read`: accepts the original constant-load **vibration MAT** `Signal` nested layout from the independently implemented [Damavand dataset digester](https://github.com/pydamavand/damavand/blob/83162b5e087a646bae0b8405b7493aa9c4beb28b/damavand/datasets/digestors.py), returns four axes in the publisher's A-x/A-y/B-x/B-y order, units **g**, unchanged numeric scale. This input is not a generic multi-modality reader; [KAIST published data source](https://data.mendeley.com/datasets/ztmf3m7h5x/6) separately stores acoustic (Pa) and temperature/current (°C/A), and their clocks/units must not be silently merged. Varying-speed subset files need separate input treatment.
+- Both readers fail explicitly on unsupported shape/type/absent field/nonfinite samples. Added synthetic contract tests only. **Original source records have not been imported or scientifically qualified**; `Name`/file-extension presence alone does not establish maintained dataset support. Existing Data Factory cache keys require explicit rebuild after changing a reader.
