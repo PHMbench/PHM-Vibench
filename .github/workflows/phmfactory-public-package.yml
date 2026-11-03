@@ -42,6 +42,8 @@ on:
       - "test/test_tta_source_stream.py"
       - "test/test_tta_tent.py"
       - "test/fixtures/tent_upstream/**"
+      - "test/test_tta_sar.py"
+      - "test/fixtures/sar_upstream/**"
       - "test/test_timesnet.py"
       - "test/test_timesnet_public.py"
       - "test/fixtures/timesnet_upstream/**"
@@ -89,6 +91,8 @@ on:
       - "test/test_tta_source_stream.py"
       - "test/test_tta_tent.py"
       - "test/fixtures/tent_upstream/**"
+      - "test/test_tta_sar.py"
+      - "test/fixtures/sar_upstream/**"
       - "test/test_timesnet.py"
       - "test/test_timesnet_public.py"
       - "test/fixtures/timesnet_upstream/**"
@@ -468,6 +472,45 @@ jobs:
         with:
           name: tta-b02-installed-wheel
           path: /tmp/tent-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Verify installed B03 SAR outside the checkout
+        shell: bash
+        env:
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/phmfactory-sar-tests/fixtures /tmp/sar-diagnostics
+          cp test/test_tta_sar.py /tmp/phmfactory-sar-tests/
+          cp -R test/fixtures/sar_upstream /tmp/phmfactory-sar-tests/fixtures/
+          cd /tmp/phmfactory-sar-tests
+          unset PYTHONPATH
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          from pathlib import Path
+          import phmfactory.sar_stream as runtime
+          import src.task_factory.Components.sar as component
+          for module in (runtime, component):
+              assert "site-packages" in Path(module.__file__).parts, module.__file__
+          PY
+          /tmp/phmfactory-wheel/bin/python -m pytest test_tta_sar.py -vv \
+            --junitxml=/tmp/sar-diagnostics/tests.xml \
+            2>&1 | tee /tmp/sar-diagnostics/pytest.log
+          /tmp/phmfactory-wheel/bin/python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("/tmp/sar-diagnostics/tests.xml").getroot()
+          suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+          assert sum(int(s.attrib.get("tests", 0)) for s in suites) > 0
+          assert sum(int(s.attrib.get("skipped", 0)) for s in suites) == 0
+          PY
+
+      - name: Upload SAR installed-wheel diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tta-b03-installed-wheel
+          path: /tmp/sar-diagnostics/
           if-no-files-found: warn
           retention-days: 7
 

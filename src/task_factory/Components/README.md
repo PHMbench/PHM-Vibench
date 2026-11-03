@@ -85,6 +85,12 @@ result writer. See the [adaptation protocol](../../../docs/adaptation/protocol.m
 for source checkpoint, ordering, parameterization, state and evidence boundaries. This
 component is not a registered Lightning TTA Task.
 
+[sar.py](sar.py) owns the bounded B03 reliable-entropy/SAM update. It preserves the
+official BN2d/LN/GN parameter-selection rules and adds an explicitly tested BatchNorm1d
+operator extension for PHM time-series models. The component has no target-label input,
+data selection, result writer or second Trainer. See the
+[adaptation protocol](../../../docs/adaptation/protocol.md#b03-sharpness-aware-and-reliable-entropy-minimization-sar).
+
 ## Verification
 
 For documentation, run `python -m scripts.validate_docs`. For changes to supervised loss

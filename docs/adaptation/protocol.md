@@ -335,3 +335,109 @@ This is algorithm/framework verification, not E3 utility, safety, robustness, CT
 non-forgetting or `benchmark_ready` evidence. O(model-state) checks and the source-state
 copy are not an adaptation latency or peak-memory benchmark. Source weights, target
 order and target preprocessing remain caller-owned and must be fixed in a real study.
+
+
+## B03: Sharpness-Aware and Reliable Entropy Minimization (SAR)
+
+`phmfactory.sar_stream.run_sar_stream` reuses the B01 ordered-loader contract, strict
+source checkpoint loading and the caller's existing population evaluator. The algorithm
+component is `src.task_factory.Components.sar.SAR`. No TTA Task registration, second
+Trainer, dataset adapter, result system or public CLI is introduced.
+
+The fixed reference is the official `mr-eggplant/SAR` repository at
+`20f6e24b17525f34503510afccedc0629b67b7c4` (BSD-3-Clause). The source-equivalent `sar.py`, `sam.py` and license are retained as test-only fixtures; only repository-required trailing whitespace normalization is applied. B03 preserves the official
+BatchNorm2d, GroupNorm and LayerNorm update and top-layer exclusion rules, and adds an
+operator-equivalent affine BatchNorm1d path for PHM 1-D models. No normalization layer is
+inserted or replaced to make an incompatible model pass.
+
+### Exact B03 transaction
+
+B03 accepts only `online_tta` or `continual_tta` with `checkpoint_only`, no target
+labels, `predict_then_update`, persistent state, closed-set classification and one pass.
+The caller supplies an explicit learning rate and reliable-entropy margin before target
+labels are observed. The SAM radius is fixed by default to the official `rho=0.05`; the
+base optimizer is SGD with momentum 0.9 and no weight decay. The official recovery
+threshold is fixed to 0.2. There is no target-labelled selector, scheduler, replay,
+teacher, pseudo-label objective or extra target pass.
+
+For current batch $B_t$, first compute logits and reliable-sample entropy
+
+$$
+z_t=f_{\theta_{t-1}}(B_t),\qquad
+H_i(z_t)=-\sum_k p_{ik}\log p_{ik},\qquad
+I_1=\{i:H_i(z_t)<E_0\}.
+$$
+
+The evaluator receives an isolated copy of $z_t$ **before** the current update. SAR then
+uses the same first-forward graph to obtain the reliable entropy gradient, performs the
+SAM ascent step
+
+$$
+\hat\epsilon(\theta)=\rho\frac{g}{\lVert g\rVert_2+10^{-12}},
+$$
+
+runs the method's required second forward at $\theta+\hat\epsilon$, applies the reliability
+filter again, restores $\theta$, and performs the SGD-momentum descent step using the
+second gradient. Thus B03 makes **two method forwards per updated batch** while exposing
+only the first pre-update logits to evaluation. A random-number change by the evaluator
+between the two forwards is rejected, rather than silently changing the dropout mask and
+therefore the adaptation trajectory.
+
+Like Tent, this is batch-prequential in parameter updates rather than strict sample-causal
+inference: BatchNorm can couple examples inside the current batch. Batch partition is part
+of the protocol and no batch-size invariance is claimed.
+
+### Reliable filtering and recovery edge semantics
+
+The official code takes a mean over an empty reliable set. In modern PyTorch that value is
+NaN while its gradient can be zero, which can still interact with accumulated SGD
+momentum. B03 does not treat that artifact as a scientific update. If either reliability
+stage selects zero samples, the current batch is evaluated but the parameter update is
+explicitly skipped; the SAM perturbation, if already created, is restored without a base
+optimizer step. This deviation is stated and tested rather than hidden behind a warning
+or fallback.
+
+After a successful second-stage update, B03 updates the official entropy EMA
+
+$$
+\bar H_t=0.9\bar H_{t-1}+0.1H_t.
+$$
+
+When the EMA falls below 0.2, the configured source model and source optimizer state are
+restored as the SAR recovery action. This is **algorithm-internal recovery**, not the
+protocol's `episodic_reset` or `domain_reset`; the ordered stream continues and the method
+remains a persistent TTA process. The just-computed EMA is retained after recovery to
+match the official forward ordering. The implementation resets SGD momentum together
+with the source model, matching the intended source-state recovery rather than relying on
+the upstream SAM wrapper's incomplete optimizer serialization.
+
+### State and leakage boundary
+
+Only `x` reaches `SAR.predict`. Labels, `file_id`, label-derived aliases and domain IDs are
+kept in the evaluator view. `SAR.adapt()` accepts no label, external loss or new input.
+True, permuted and all-zero target labels must produce identical predictions and complete
+model/optimizer/EMA/RNG trajectories when source checkpoint, stream, batch partition and
+seed are fixed.
+
+At a completed batch boundary `SAR.state_dict()` contains current model state, explicit
+non-persistent buffers, SGD momentum, the recovery anchor, EMA/counters and the relevant
+torch RNG. `load_state_dict()` rejects changed hyperparameters, malformed counters,
+non-finite or missing momentum, incompatible recovery anchors and changed device kind.
+This is an **algorithm-state payload**, not end-to-end experiment resume. Stream cursor,
+preprocessing RNG and evaluator state still belong to a future Trainer-owned resume
+integration.
+
+### Evidence boundary
+
+The numerical oracle checks the official BN2d/GN/LN implementation over multiple batches,
+including logits, adapted parameters, optimizer trajectory and EMA. A paired BN1d/BN2d
+fixture verifies the declared 1-D operator extension. Tests also cover source-top-layer
+exclusion, recovery, empty reliable sets, evaluator RNG/state mutation, new-process
+continuation, label permutation, population Macro-F1, existing result writing, and the
+actual ResNet1D Model Factory plus native Dummy target loader. The public-package workflow
+repeats B03 from the installed wheel outside the repository checkout.
+
+These gates establish implementation fidelity for the declared bounded path, not E3 PHM
+utility. No industrial checkpoint/data, GPU efficiency, A→B→A forgetting, small-batch
+superiority, safety guarantee or `benchmark_ready` status is claimed. SAR's motivating
+wild-stream benefits must be tested separately on fixed PHM shifts before any such claim.
