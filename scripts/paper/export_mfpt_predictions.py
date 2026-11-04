@@ -1,7 +1,8 @@
 """Replay Experiment A's selected checkpoint without fitting or selecting a model.
 
 Use the original configuration/overrides, selected checkpoint, per-seed metrics and
-split file. Output is additional numerical evidence, not a new benchmark result.
+split file. The explicit simulation profile verifies the same code on simulated
+Dummy_Data records; the default MFPT profile retains Experiment A unchanged.
 """
 
 from __future__ import annotations
@@ -139,6 +140,7 @@ def export_predictions(task, loader, checkpoint: Path, output: Path) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True)
+    parser.add_argument("--profile", choices=("mfpt", "simulation"), default="mfpt")
     parser.add_argument("--local-config")
     parser.add_argument("--override", action="append", default=[])
     parser.add_argument("--checkpoint", required=True, type=Path,
@@ -177,6 +179,8 @@ def main(argv=None) -> int:
         "normalization": "none", "dtype": "float32",
         "train_noise_snr": None, "evaluation_noise_snr": None,
     }
+    if args.profile == "simulation":
+        required_data.update(window_size=128, num_window=8, batch_size=16)
     for key, expected_value in required_data.items():
         if config["data"][key] != expected_value:
             raise ValueError(f"Experiment A fixes data.{key}={expected_value!r}")
@@ -211,16 +215,23 @@ def main(argv=None) -> int:
         task.load_state_dict(saved["state_dict"], strict=True)
         task.cpu()
         loader = factory.get_dataloader("test")
-        if loader.dataset.expected_dataset_names() != ("RM_007_MFPT",):
-            raise ValueError("Experiment A replay must use the declared MFPT test population")
+        expected_name = "RM_007_MFPT" if args.profile == "mfpt" else "Dummy_Data"
+        if loader.dataset.expected_dataset_names() != (expected_name,):
+            raise ValueError(f"Replay profile {args.profile!r} requires {expected_name}")
+        if args.profile == "simulation":
+            if any(metadata[file_id]["Data_Origin"] != "simulation"
+                   for file_id in loader.dataset.dataset_dict):
+                raise ValueError("Simulation replay requires explicitly simulated metadata")
         result = export_predictions(task, loader, checkpoint, args.output)
-        if result["records"] != 6 or result["windows"] != 96:
-            raise AssertionError("Experiment A requires all six test files and 16 windows per file")
-        for metric, key in (("accuracy", "test_acc_RM_007_MFPT"), ("macro_f1", "test_f1_RM_007_MFPT")):
+        expected_records = 6 if args.profile == "mfpt" else 9
+        expected_windows = expected_records * required_data["num_window"]
+        if result["records"] != expected_records or result["windows"] != expected_windows:
+            raise AssertionError(f"Replay requires {expected_records} records and {expected_windows} windows")
+        for metric, key in (("accuracy", f"test_acc_{expected_name}"), ("macro_f1", f"test_f1_{expected_name}")):
             value = float(reported[0][key])
             if not np.isfinite(value) or abs(result[metric] - value) > METRIC_ATOL:
                 raise AssertionError(f"{key}: reported={value}, independently recomputed={result[metric]}")
-        result.update({"checkpoint": str(checkpoint), "seed": args.seed,
+        result.update({"profile": args.profile, "checkpoint": str(checkpoint), "seed": args.seed,
                        "source_metrics": str(args.reported_metrics.resolve()),
                        "source_split": str(args.split_manifest.resolve()),
                        "config": config,
