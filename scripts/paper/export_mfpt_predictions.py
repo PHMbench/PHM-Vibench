@@ -171,6 +171,15 @@ def main(argv=None) -> int:
         raise ValueError("Use an Experiment A mean-linear or fixed TimesNet configuration")
     if config["trainer"]["device"] != "cpu" or config["trainer"]["devices"] != 1:
         raise ValueError("Experiment A replay requires the declared single CPU execution")
+    required_data = {
+        "window_size": 2048, "num_window": 16, "batch_size": 32,
+        "window_sampling_strategy": "evenly_spaced", "window_sampling_seed": 17,
+        "normalization": "none", "dtype": "float32",
+        "train_noise_snr": None, "evaluation_noise_snr": None,
+    }
+    for key, expected_value in required_data.items():
+        if config["data"][key] != expected_value:
+            raise ValueError(f"Experiment A fixes data.{key}={expected_value!r}")
     checkpoint = args.checkpoint.resolve(strict=True)
     original_split = json.loads(args.split_manifest.read_text(encoding="utf-8"))
     with args.reported_metrics.open(encoding="utf-8", newline="") as handle:
@@ -182,6 +191,7 @@ def main(argv=None) -> int:
     # DG does not support read_only partition manifests. Reconstruct with the
     # unchanged selector and compare membership, writing only into the new directory.
     config["data"]["split"]["manifest_path"] = str(args.output / "replay_split.json")
+    config["data"]["cache_dir"] = str(args.output / "cache")
     namespaces = _namespaces(dict_to_namespace(config))
     environment, data, model, task_args, trainer = namespaces
     seed_everything(args.seed)
@@ -213,7 +223,7 @@ def main(argv=None) -> int:
         result.update({"checkpoint": str(checkpoint), "seed": args.seed,
                        "source_metrics": str(args.reported_metrics.resolve()),
                        "source_split": str(args.split_manifest.resolve()),
-                       "config": analysis.runtime_config(),
+                       "config": config,
                        "torch_version": torch.__version__,
                        "logit_atol": LOGIT_ATOL, "logit_rtol": LOGIT_RTOL,
                        "metric_atol": METRIC_ATOL})
