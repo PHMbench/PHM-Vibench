@@ -219,6 +219,10 @@ class ExplicitDataFactory(data_factory):
     """
 
     def __init__(self, args_data, args_task):
+        if (args_task.type, args_task.name) == ("TTA", "stream"):
+            from .target_stream import initialize_target_stream
+            initialize_target_stream(self, args_data, args_task)
+            return
         if (args_task.type, args_task.name) == ('DG', 'tii_joint'):
             from .tii_data import initialize_tii_data
             self.args_data, self.args_task = args_data, args_task

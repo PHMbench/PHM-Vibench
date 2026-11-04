@@ -100,3 +100,26 @@ tensors exactly. Independent NumPy window construction and two metric calculatio
 matched the stored values within the predeclared tolerances. A legacy overlapping
 split with `eval_split=test` was explicitly rejected. All evidence is simulation-only;
 MFPT/PU protocols, existing results and registry support levels remain unchanged.
+
+## Target-only TTA continuation
+
+Configured source, BN-only, persistent Tent and known-domain episodic Tent now reuse
+Data Factory metadata/readers and the existing low-level streams. No NPZ input path,
+new trainer or alternative result writer is introduced. One separately trained small
+ResNet1D source provides affine BN for the controls. Simulation seed 17, two source
+epochs, 144 target windows: pooled accuracy source 1/3, BN-only 0.4305556, Tent
+0.4236111, episodic Tent 0.4236111. This is execution evidence, not efficacy.
+
+Actual target-label permutation preserves states/predictions for each arm. Source raw
+files are absent in the executed target directory. Direct pre-update mathematical
+replay agrees with persistent Tent. Episodic final state and all three RNG states match
+an isolated fresh final episode. Fixed-class grouped metrics were independently
+recomputed; the earlier observed-class group summaries are retained as superseded.
+The first reset comparison exposed the DataLoader base-seed draw; the reset snapshot
+was moved after iterator construction, then only affected episodic runs were repeated.
+
+Existing local tests: 169 passed before message-compatibility adjustment; ten affected
+protocol rejection cases passed after it. One obsolete rejection case was removed
+because known-domain reset is now implemented. Three original packaged-Dummy cases
+could not execute in the retained partial source archive (original bundled data absent);
+this is not an assertion that the full repository suite passes. No new test file.

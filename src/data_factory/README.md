@@ -91,3 +91,35 @@ experiments or claim their removal is complete. Use `default` for maintained wor
 A source file or registry entry is discoverable, not benchmark support. Validate the
 exact complete configuration and its relevant data/Task tests. Record execution and
 protocol status separately in the existing [supported combinations](../../SUPPORTED_COMBINATIONS.md).
+
+## Configured target-only streams
+
+`TTA/stream` uses `build_data` with the same explicit metadata, strict readers,
+window construction and native sampler. `task.target_domain_id` is the declared replay
+order; optional `task.target_asset_ids` narrows that population. Domain-homogeneous
+batches preserve each short tail. Source records are excluded before raw reads; a
+source checkpoint and explicit source class count are required, not source raw files.
+
+Train the separate source configuration, then pass its returned selected checkpoint:
+
+```bash
+python main.py --config configs/experiments/phmfactory/simulated_source_resnet.yaml
+python main.py research evaluate --config configs/experiments/phmfactory/simulated_tta.yaml \
+  --checkpoint /absolute/path/to/source-selected.ckpt --output /new/result/directory
+```
+
+The default is persistent Tent over simulated conditions 1 then 2. Select the BN-only
+control with `--override task.method=bn_only`. A frozen control additionally selects
+`task.method=source_only` and `task.protocol.regime=source_only`. Domain-episodic Tent
+selects `task.protocol.regime=episodic_tta` and
+`task.protocol.state_persistence=episodic_reset`; the domain boundary must be known.
+An `online_tta` configuration may select a single target domain instead.
+
+Only inputs enter the predictor/update; labels and identities are evaluator-only.
+Predictions precede updates. Reset restores the configured source adaptation state,
+optimizer and Python/NumPy/Torch RNG after loader-iterator initialization. Budgets
+count the full stream even when per-episode optimizer counters reset. Pooled metrics
+and optional record/asset equal-weight means are distinct estimands; group F1 uses
+the fixed class vocabulary with absent classes contributing zero. Results contain all
+window coordinates, logits, final algorithm state and the actual source checkpoint
+path. These simulated commands establish neither real-PHM benefit nor family-wide support.
