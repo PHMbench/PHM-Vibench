@@ -173,6 +173,7 @@ jobs:
             src/model_factory/X_model/UXFD/fusion/simple_fusion.py \
             src/model_factory/X_model/UXFD/fuzzy/fuzzy_reasoner.py \
             src/model_factory/X_model/UXFD/operator_attention/operator_attention_1d.py \
+            src/model_factory/X_model/UXFD/neurosymbolic/logic_reasoner.py \
             test/test_tspn_uxfd_assembly.py
 
       - name: Record focused environment
