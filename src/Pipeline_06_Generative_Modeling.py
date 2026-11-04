@@ -543,7 +543,6 @@ def _run_train_stage(args: Any, configs: Any, iteration: int) -> Any:
     from src.utils.generative_evidence import strict_load_lightning_checkpoint
 
     args_environment, args_data, args_model, args_task, args_trainer = _namespaces(configs)
-    gen_cfg = _get_attr(args_task, "generative")
     run_path, name = _run_path(configs, iteration)
     seed = int(getattr(args_environment, "seed", 0)) + iteration
     seed_everything(seed, workers=True)
@@ -704,7 +703,8 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             samples,
             real_labels=real_labels,
             fake_labels=condition["fault_label"].detach().cpu(),
-            real_domains=condition["domain_id"].detach().cpu(),
+            real_domains=real_domains,
+            fake_domains=condition["domain_id"].detach().cpu(),
             population_rbf_bandwidths=_population_rbf_bandwidths(args_task),
         )
         config_evidence, generated_protocol = _write_run_contracts(
