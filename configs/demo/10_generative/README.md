@@ -77,3 +77,33 @@ single-class Dummy run is not TSTR, TRTS, physical-unit generation, condition fi
 or PHM SOTA evidence. Metrics that cannot be computed retain their reasons.
 
 No arbitrary-dataset, additional model-family, or accelerator support is implied.
+
+## Multi-class simulation and validation references
+
+Reuse the explicit simulated data prepared by `scripts/prepare_simulated_phm.py`.
+The separate configuration does not change the bundled single-class smoke:
+
+```bash
+python main.py --config configs/experiments/phmfactory/simulated_cfm.yaml
+```
+
+Use the same three-stage procedure above with this configuration. It trains for two
+epochs on 162 normalized windows and samples 54 windows across the nine requested
+class/condition pairs. `task.generative.eval_split=val` uses the complete validation
+loader: 54 non-overlapping validation windows in this configuration, regardless of
+how many synthetic samples are requested. The returned stage records the reference
+split and both population counts. `eval_split=train` retains its existing bounded
+training-reference smoke; `test` remains unsupported rather than falling back.
+
+These are held-out windows from the same simulated records and conditions, not
+independent real assets. Validation is also used for checkpoint selection and is not
+an untouched final test. The simulation uses per-window standardized signals; it does
+not establish physical-unit synthesis. Distances are relative to the declared reference;
+a nearest-neighbor distance to validation signals is not a training-copying test.
+The nearest-centroid metric remains a proxy, not a matched augmentation experiment.
+
+A completed seed-17 local run produced finite [54,2,128] samples and eight computable
+smoke metrics. Relabelling those fixed samples cyclically, while retaining signals
+and class/domain counts, kept condition-frequency distance at zero and nearest-centroid
+accuracy at 1/3. This null control does not support a condition-dependent diagnostic
+benefit. Runtime execution and generation efficacy remain separate claims.

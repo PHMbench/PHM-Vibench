@@ -320,8 +320,9 @@ def _train_reference(
     data_factory: Any,
     channels: int,
     *,
-    max_batches: int = 32,
+    max_batches: int | None = 32,
     max_samples: int | None = None,
+    split: str = "train",
 ) -> tuple[Any, Any, Any]:
     import torch
 
@@ -329,9 +330,9 @@ def _train_reference(
     labels = []
     domains = []
     metadata = data_factory.get_metadata()
-    for index, batch in enumerate(data_factory.get_dataloader("train")):
+    for index, batch in enumerate(data_factory.get_dataloader(split)):
         if "x" not in batch:
-            raise ValueError("train batch is missing x")
+            raise ValueError(f"{split} batch is missing x")
         current = _to_ncl(batch["x"], channels)
         current_labels, current_domains = _batch_conditions(batch, metadata)
         windows.append(current)
@@ -339,12 +340,12 @@ def _train_reference(
             labels.append(current_labels)
         if current_domains is not None:
             domains.append(current_domains)
-        if index + 1 >= max_batches:
+        if max_batches is not None and index + 1 >= max_batches:
             break
         if max_samples is not None and sum(item.shape[0] for item in windows) >= max_samples:
             break
     if not windows:
-        raise ValueError("train dataloader produced no windows")
+        raise ValueError(f"{split} dataloader produced no windows")
     real = torch.cat(windows, dim=0)
     real_labels = torch.cat(labels) if labels else None
     real_domains = torch.cat(domains) if domains else None
@@ -377,7 +378,7 @@ def _write_run_contracts(
         },
         "conditions": ["fault_label", "domain_id"],
         "stages": ["train", "sample", "eval"],
-        "reference_split": "train",
+        "reference_split": str(_get_attr(_get_attr(args_task, "generative"), "eval_split", "train")),
     }
     protocol_path, protocol_hash, _ = write_hashed_json(
         run_path / "generative_protocol.json",
@@ -542,6 +543,7 @@ def _run_train_stage(args: Any, configs: Any, iteration: int) -> Any:
     from src.utils.generative_evidence import strict_load_lightning_checkpoint
 
     args_environment, args_data, args_model, args_task, args_trainer = _namespaces(configs)
+    gen_cfg = _get_attr(args_task, "generative")
     run_path, name = _run_path(configs, iteration)
     seed = int(getattr(args_environment, "seed", 0)) + iteration
     seed_everything(seed, workers=True)
@@ -702,8 +704,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             samples,
             real_labels=real_labels,
             fake_labels=condition["fault_label"].detach().cpu(),
-            real_domains=real_domains,
-            fake_domains=condition["domain_id"].detach().cpu(),
+            real_domains=condition["domain_id"].detach().cpu(),
             population_rbf_bandwidths=_population_rbf_bandwidths(args_task),
         )
         config_evidence, generated_protocol = _write_run_contracts(
@@ -848,16 +849,18 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             expected_hash=normalization_hash,
         )
         reference_split = str(_get_attr(gen_cfg, "eval_split", "train")).lower()
-        if reference_split != "train":
-            raise ValueError(
-                "G3 deterministic evaluation requires task.generative.eval_split=train"
-            )
+        if reference_split not in {"train", "val"}:
+            raise ValueError("task.generative.eval_split must be train or val")
         channels = int(getattr(args_model, "in_channels", samples.shape[1]))
         samples = _to_ncl(samples, channels)
+        # Preserve the bounded train-reference smoke. Validation uses its entire
+        # declared population, not a prefix determined by the synthetic count.
         real, real_labels, real_domains = _train_reference(
             data_factory,
             channels,
-            max_samples=samples.shape[0],
+            split=reference_split,
+            max_batches=32 if reference_split == "train" else None,
+            max_samples=samples.shape[0] if reference_split == "train" else None,
         )
         ledger, _ = load_hashed_json(_stage_ledger_path(configs))
         train_stage = _get_attr(_get_attr(ledger, "stages", {}), "train", {})
@@ -919,6 +922,9 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
                 "sha256": evaluation_hash,
             },
             "metric_summary": metrics["summary"],
+            "reference_split": reference_split,
+            "reference_samples": int(real.shape[0]),
+            "generated_samples": int(samples.shape[0]),
         }
         _record_stage(
             configs,

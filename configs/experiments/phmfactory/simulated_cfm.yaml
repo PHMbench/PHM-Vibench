@@ -1,0 +1,42 @@
+# Simulation-only conditional generation, not physical or diagnostic validation.
+# Each of 27 records contributes six train and two validation windows. No overlap.
+# Signals use per-window standardization; generated units are normalized.
+# All three class/condition identities are allowed generation queries.
+# One seed, two training epochs, eight Euler steps, 54 synthetic windows.
+base_configs:
+  reference: "configs/demo/10_generative/dummy_generative_cfm.yaml"
+environment:
+  project: "simulated_cfm"
+  seed: 17
+  iterations: 1
+  output_dir: "results/experiments/phmfactory/simulated_cfm"
+  notes: "Explicit simulation; held-out windows from seen records and conditions."
+data:
+  data_dir: "data/simulated_phm"
+  metadata_file: "metadata_simulated.csv"
+  batch_size: 16
+  num_window: 8
+  window_size: 128
+  window_sampling_strategy: "evenly_spaced"
+  train_ratio: 0.75
+  val_ratio: 0.25
+  test_ratio: 0.0
+  normalization: "standardization"
+  use_cache: false
+  cache_dir: "results/experiments/phmfactory/simulated_cfm/cache"
+model:
+  num_fault_classes: 3
+  num_domains: 3
+task:
+  target_system_id: [900]
+  generative:
+    synthetic_dataset_id: "simulation_cfm"
+    eval_split: "val"
+    num_samples: 54
+    condition_sampling_policy: "grid"
+    condition_grid:
+      fault_label: [0, 1, 2]
+      domain_id: [0, 1, 2]
+      samples_per_condition: 6
+trainer:
+  num_epochs: 2
