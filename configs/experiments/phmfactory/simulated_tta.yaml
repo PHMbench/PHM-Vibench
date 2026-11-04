@@ -1,0 +1,56 @@
+# Simulation-only closed-set stream. Source fitted separately on domain 0.
+# Population: all records/windows of domain 1 then 2; 144 windows, 18 records.
+# Access: checkpoint only; labels/record IDs are evaluator-only. No source raw read.
+# Timing: one prediction then at most one update per native batch, including tail.
+# Selection: fixed source validation checkpoint; no target tuning.
+# Budget: seed 17; one target pass; batch 16; Adam lr 1e-3; no replay memory.
+# Estimators: pooled windows and equal group-weight within-record/asset window metrics.
+pipeline: "Pipeline_01_Fault_Diagnosis"
+environment:
+  seed: 17
+  iterations: 1
+  output_dir: "results/experiments/phmfactory/simulated_tta"
+data:
+  factory_name: "default"
+  data_dir: "data/simulated_phm"
+  metadata_file: "metadata_simulated.csv"
+  batch_size: 16
+  num_workers: 0
+  window_size: 128
+  num_window: 8
+  window_sampling_strategy: "evenly_spaced"
+  window_sampling_seed: 17
+  normalization: "none"
+  dtype: "float32"
+  use_cache: false
+  cache_dir: "results/experiments/phmfactory/simulated_tta/cache"
+model:
+  type: "CNN"
+  name: "ResNet1D"
+  input_dim: 2
+  num_classes: 3
+  layers: [1, 1, 1, 1]
+  initial_channels: 4
+task:
+  execution: "research"
+  type: "TTA"
+  name: "stream"
+  target_system_id: [900]
+  target_domain_id: [1, 2]
+  method: "tent"
+  checkpoint: "REQUIRED_SOURCE_SELECTED_CHECKPOINT"
+  lr: 0.001
+  metrics: ["acc", "f1"]
+  evaluation_units: ["window", "record", "asset"]
+  protocol:
+    regime: "continual_tta"
+    source_access: "checkpoint_only"
+    target_label_access: "none"
+    timing: "predict_then_update"
+    state_persistence: "persistent"
+    domain_boundary: "known"
+    label_space: "closed_set"
+    passes: 1
+trainer:
+  device: "cpu"
+  devices: 1

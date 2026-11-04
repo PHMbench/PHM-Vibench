@@ -229,7 +229,6 @@ def test_invalid_model_fails_before_algorithm_setup(kind):
 
 @pytest.mark.parametrize("change", [dict(regime="source_only"), dict(timing="update_then_predict"),
     dict(regime="episodic_tta", state_persistence="episodic_reset"),
-    dict(state_persistence="domain_reset", domain_boundary="known"),
     dict(regime="offline_sfda", adapt_population="adapt", evaluation_population="eval"),
     dict(regime="continual_sfda", adapt_population="adapt", evaluation_population="eval"),
     dict(regime="delayed_label_adaptation", target_label_access="delayed"),

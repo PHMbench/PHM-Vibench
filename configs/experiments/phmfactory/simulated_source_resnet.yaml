@@ -1,0 +1,21 @@
+# Source checkpoint for matched TTA controls, not a tuned PHM baseline.
+# 6 source train / 3 source validation files; target conditions are never used to select.
+base_configs:
+  reference: "configs/experiments/phmfactory/simulated_dg_linear.yaml"
+environment:
+  project: "simulated_source_resnet"
+  output_dir: "results/experiments/phmfactory/simulated_source_resnet"
+data:
+  split:
+    manifest_path: "results/experiments/phmfactory/simulated_source_resnet/split.json"
+  cache_dir: "results/experiments/phmfactory/simulated_source_resnet/cache"
+model:
+  type: "CNN"
+  name: "ResNet1D"
+  input_dim: 2
+  num_classes: 3
+  layers: [1, 1, 1, 1]
+  initial_channels: 4
+task:
+  source_domain_id: [0]
+  target_domain_id: [1, 2]

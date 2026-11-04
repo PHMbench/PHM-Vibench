@@ -62,6 +62,7 @@ _ADAPTATION_KEYS = (
 _EVALUATION_KEYS = (
     "y",
     "file_id",
+    "window_id",
     "sample_id",
     "timestamp",
     "sequence_id",
