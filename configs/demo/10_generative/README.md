@@ -107,3 +107,25 @@ smoke metrics. Relabelling those fixed samples cyclically, while retaining signa
 and class/domain counts, kept condition-frequency distance at zero and nearest-centroid
 accuracy at 1/3. This null control does not support a condition-dependent diagnostic
 benefit. Runtime execution and generation efficacy remain separate claims.
+
+### Exact population and count contract
+
+The simulation config states the six setting declarations at its header. Its label/domain
+conditions are legitimate generation queries, while validation loss selects the checkpoint.
+It establishes a development-reference execution path, not the final-evaluation isolation
+required by the full F10/I12 contract. Relabelling generated samples is an association
+negative control; it is not a test that evaluator-only labels cannot influence fitting.
+No family-wide L2 or post-merge capability is inferred from this one run.
+
+For `grid` or `explicit` sampling, the expanded condition count must equal
+`task.generative.num_samples`. A request for 54 samples with a nine-row condition grid
+previously sampled nine silently; it now fails before calling the sampler. Set both
+`num_samples=9` and `condition_grid.samples_per_condition=1` to request the smaller
+three-class/three-domain grid deliberately. Existing matching requests are unchanged.
+
+A separate sampling/evaluation check reused the previously trained seed-17 checkpoint,
+requested those nine samples, and evaluated with `data.batch_size=1`. The evaluation
+used 54/54 validation windows over 54 batches, confirming that neither the generated
+count nor the legacy 32-batch training-reference limit truncates validation. No model
+was retrained or selected for this check, and the eight required smoke metrics were
+computable. The original 54-sample result and its negative control remain unchanged.

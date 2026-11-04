@@ -475,6 +475,11 @@ def _sample_conditions(gen_cfg: Any, metadata: Any, num_samples: int, device: An
             )
     else:
         raise ValueError(f"unsupported condition sampling policy: {policy}")
+    if len(pairs) != num_samples:
+        raise ValueError(
+            f"task.generative.num_samples={num_samples} conflicts with "
+            f"{policy} condition count={len(pairs)}; declare matching counts"
+        )
     return {
         "fault_label": torch.tensor(
             [label for label, _ in pairs], dtype=torch.long, device=device
@@ -662,7 +667,6 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             num_samples,
             device,
         )
-        num_samples = int(condition["fault_label"].numel())
         num_steps = _get_attr(gen_cfg, "num_steps", 8)
         length = int(_get_attr(gen_cfg, "length", getattr(args_data, "window_size", 128)))
         channels = int(getattr(args_model, "in_channels", 1))

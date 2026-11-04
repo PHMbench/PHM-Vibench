@@ -52,3 +52,22 @@ complete predictions, split membership and independently recomputed metrics. Sim
 execution, existing CI and real-data qualification remain separate outcomes; exact
 run results are recorded in the PR, not inferred from this implementation description.
 No new test file, mock, test framework, runtime, data reader or result manager is added.
+
+## Setting-contract refinement
+
+The simulated DG configuration now states population, access, timing/state, selection,
+budget and estimator next to the fields already consumed by the runtime. It remains a
+file-level, seen-simulated-unit/new-condition experiment, not asset-isolated transfer.
+No new `task.protocol` fields or registry status are introduced by comments.
+
+The existing simulation CI step also compares optimizer state, learning-rate scheduler
+state and source-validation checkpoint scores under the two existing target-only
+interventions. A direct check of the retained seed-17 checkpoints passed all four added
+optimizer/selection comparisons without fitting again. Checkpoint RNG state was not
+recorded; the TimesNet configuration has no corresponding intervention arms. These
+limits are explicit in the output instead of declaring every invariant passed.
+
+PR status and scientific qualification are separate. The simulation branch may carry
+configuration-specific execution evidence before merge, but it does not become a
+capability of `dev` or a real-data `baseline_valid` result until the applicable conditions
+are met. The exact MFPT protocol and historical results are unchanged.

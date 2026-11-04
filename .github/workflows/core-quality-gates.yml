@@ -435,6 +435,27 @@ jobs:
               assert original["state_dict"].keys() == changed["state_dict"].keys()
               assert all(torch.equal(v, changed["state_dict"][k]) for k, v in original["state_dict"].items())
               checks[f"target_{variant}_selected_state_equal"] = True
+              # Compare only learning state: paths differ intentionally by run directory.
+              for left, right in zip(original["optimizer_states"], changed["optimizer_states"], strict=True):
+                  assert left["param_groups"] == right["param_groups"]
+                  assert left["state"].keys() == right["state"].keys()
+                  for parameter, values in left["state"].items():
+                      assert values.keys() == right["state"][parameter].keys()
+                      for name, value in values.items():
+                          other = right["state"][parameter][name]
+                          assert torch.equal(value, other) if torch.is_tensor(value) else value == other
+              assert original["lr_schedulers"] == changed["lr_schedulers"]
+              assert original["callbacks"].keys() == changed["callbacks"].keys()
+              for key, callback in original["callbacks"].items():
+                  other = changed["callbacks"][key]
+                  assert callback["monitor"] == other["monitor"] == "val_loss"
+                  assert torch.equal(callback["best_model_score"], other["best_model_score"])
+                  assert torch.equal(callback["current_score"], other["current_score"])
+              checks[f"target_{variant}_optimizer_state_equal"] = True
+              checks[f"target_{variant}_source_selection_score_equal"] = True
+          # These checkpoint files do not retain RNG state; TimesNet has no intervention arm.
+          checks["rng_state_comparison"] = "not_recorded"
+          checks["timesnet_intervention_checks"] = "not_executed"
           first = pd.read_csv(root / "linear-original/export/predictions.csv")
           permuted = pd.read_csv(root / "linear-labels/export/predictions.csv")
           columns = ["file_id", "window_id", "raw_start", "raw_end", "logit_0", "logit_1", "logit_2", "prediction"]

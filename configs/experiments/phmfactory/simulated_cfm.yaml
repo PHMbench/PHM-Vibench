@@ -1,8 +1,11 @@
-# Simulation-only conditional generation, not physical or diagnostic validation.
-# Each of 27 records contributes six train and two validation windows. No overlap.
-# Signals use per-window standardization; generated units are normalized.
-# All three class/condition identities are allowed generation queries.
-# One seed, two training epochs, eight Euler steps, 54 synthetic windows.
+# Simulation-only conditional generation; not physical or diagnostic validation.
+# Population: 27 records; 6 train + 2 validation windows per record (162/54).
+# Access: training signals and class/domain conditions; validation for model selection.
+# Timing/state: train -> restore selected checkpoint -> sample -> fixed-state evaluation.
+# Selection: minimum validation loss; that validation set is not an untouched final test.
+# Budget: seed 17, 2 epochs, 8 Euler steps; 3 classes x 3 conditions x 6 samples = 54.
+# Estimator: declared smoke metrics over all validation windows and requested samples.
+# Raw intervals are disjoint; records/assets/conditions are shared. Units are standardized.
 base_configs:
   reference: "configs/demo/10_generative/dummy_generative_cfm.yaml"
 environment:
