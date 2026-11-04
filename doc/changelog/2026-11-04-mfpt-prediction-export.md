@@ -71,3 +71,32 @@ PR status and scientific qualification are separate. The simulation branch may c
 configuration-specific execution evidence before merge, but it does not become a
 capability of `dev` or a real-data `baseline_valid` result until the applicable conditions
 are met. The exact MFPT protocol and historical results are unchanged.
+
+
+## CFM group-disjoint test evaluation
+
+A separate `simulated_cfm_holdout.yaml` now trains, selects and evaluates on disjoint
+simulated assets, using the existing read-only split implementation. The public
+`DataSplitConfig` accepts that implementation's `manifest_mode` and `partition_map`;
+`generative` is admitted to its partition lifecycle. The analytical data preparation
+command writes an optional fixed split with `--cfm-split`.
+
+Pipeline 06 uses training metadata for model construction and metadata-derived
+sampling conditions. It accepts complete test-reference evaluation only for grouped
+metadata. The existing evaluation artifact records this split without promoting the
+run to `baseline_valid`. No new loader, trainer, split algorithm, hash scheme or test
+file was introduced. Original train/validation smoke semantics are retained.
+
+Actual seed-17 simulation executions: three two-epoch fits (original, test-label
+permutation, test-waveform replacement), three strict checkpoint/sample stages and
+three complete 72-window test evaluations with nine generated samples. The initial
+evaluation stopped at the old artifact writer's blanket prohibition on test; that
+failed record was preserved before correcting the writer and rerunning only evaluation.
+An interrupted subprocess launch was resumed only for its unstarted evaluation stage.
+
+Both interventions preserved selected model/optimizer/scheduler state, selection
+scores, processed-training normalization, post-train/post-sample RNG states and sampled
+tensors exactly. Independent NumPy window construction and two metric calculations
+matched the stored values within the predeclared tolerances. A legacy overlapping
+split with `eval_split=test` was explicitly rejected. All evidence is simulation-only;
+MFPT/PU protocols, existing results and registry support levels remain unchanged.
