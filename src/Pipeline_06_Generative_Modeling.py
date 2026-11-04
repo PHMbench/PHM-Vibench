@@ -207,6 +207,15 @@ def _record_stage(configs: Any, stage: str, **values: Any) -> dict[str, Any]:
     )
 
 
+def _training_metadata(data_factory: Any) -> Any:
+    """Keep held-out labels out of model construction and sampling conditions."""
+    from src.data_factory.data_utils import MetadataAccessor
+
+    metadata = data_factory.get_metadata()
+    train_ids = list(data_factory.train_dataset.dataset_dict)
+    return MetadataAccessor(metadata.df.loc[train_ids], key_column=metadata.key_column)
+
+
 def _build_stack(
     args_data: Any,
     args_model: Any,
@@ -222,7 +231,7 @@ def _build_stack(
     if data_factory is None:
         raise RuntimeError("data factory returned None")
     metadata = data_factory.get_metadata()
-    model = build_model(args_model, metadata=metadata)
+    model = build_model(args_model, metadata=_training_metadata(data_factory))
     if model is None:
         raise RuntimeError("model factory returned None")
     task = build_task(
@@ -461,7 +470,7 @@ def _sample_conditions(gen_cfg: Any, metadata: Any, num_samples: int, device: An
     elif policy == "explicit":
         rows = _get_attr(gen_cfg, "explicit_conditions", None)
         if not rows:
-            raise ValueError("condition_sampling_policy=explicit requires rows")
+            raise ValueError("explicit condition_sampling_policy requires rows")
         for row in rows:
             count = int(_get_attr(row, "count", 1))
             if count <= 0:
@@ -663,7 +672,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
         num_samples = int(_get_attr(gen_cfg, "num_samples", 2))
         condition = _sample_conditions(
             gen_cfg,
-            data_factory.get_metadata(),
+            _training_metadata(data_factory),
             num_samples,
             device,
         )
@@ -725,7 +734,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
         else:
             protocol_evidence = generated_protocol
         metadata_path = Path(str(args_data.data_dir)) / str(args_data.metadata_file)
-        domain_map = _write_domain_map(run_path, data_factory.get_metadata())
+        domain_map = _write_domain_map(run_path, _training_metadata(data_factory))
         source_split = str(_get_attr(gen_cfg, "source_split", "train"))
         manifest = build_synthetic_manifest(
             synthetic_dataset_id=str(
@@ -853,12 +862,16 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             expected_hash=normalization_hash,
         )
         reference_split = str(_get_attr(gen_cfg, "eval_split", "train")).lower()
-        if reference_split not in {"train", "val"}:
-            raise ValueError("task.generative.eval_split must be train or val")
+        if reference_split not in {"train", "val", "test"}:
+            raise ValueError("task.generative.eval_split must be train, val or test")
+        if reference_split == "test" and not data_factory.split_result.strategy.startswith(
+            "grouped_metadata"
+        ):
+            raise ValueError("test-reference generation evaluation requires grouped_metadata")
         channels = int(getattr(args_model, "in_channels", samples.shape[1]))
         samples = _to_ncl(samples, channels)
-        # Preserve the bounded train-reference smoke. Validation uses its entire
-        # declared population, not a prefix determined by the synthetic count.
+        # Train keeps the existing bounded smoke. Validation and test use their
+        # complete populations, independently of the number of generated samples.
         real, real_labels, real_domains = _train_reference(
             data_factory,
             channels,

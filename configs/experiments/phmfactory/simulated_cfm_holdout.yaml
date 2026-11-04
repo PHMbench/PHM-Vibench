@@ -1,0 +1,31 @@
+# Explicit simulation; asset identities are simulated, not physical equipment.
+# Population: unit 0 train, unit 1 validation, unit 2 untouched test, for each class.
+# Access: train signals/conditions for fitting; validation for checkpoint selection.
+# Timing/state: fit -> source-selected checkpoint -> declared condition grid -> test.
+# Selection: minimum validation loss; test inputs and labels do not select the model.
+# Budget: seed 17, 2 epochs, 8 Euler steps; 9 requested class/domain pairs.
+# Estimator: full 72-window test population against 9 generated windows; normalized units.
+base_configs:
+  reference: "configs/experiments/phmfactory/simulated_cfm.yaml"
+environment:
+  project: "simulated_cfm_holdout"
+  output_dir: "results/experiments/phmfactory/simulated_cfm_holdout"
+  notes: "Explicit simulation; three disjoint simulated units per class for train/val/test."
+data:
+  data_dir: "data/simulated_cfm_holdout"
+  cache_dir: "results/experiments/phmfactory/simulated_cfm_holdout/cache"
+  split:
+    strategy: "grouped_metadata"
+    group_key: "asset_id"
+    stratify_key: null
+    test_policy: "partition"
+    manifest_path: "data/simulated_cfm_holdout/cfm_split.json"
+    manifest_mode: "read_only"
+    partition_map: {train: train, val: val, test: test}
+task:
+  generative:
+    synthetic_dataset_id: "simulation_cfm_holdout"
+    eval_split: "test"
+    num_samples: 9
+    condition_grid:
+      samples_per_condition: 1

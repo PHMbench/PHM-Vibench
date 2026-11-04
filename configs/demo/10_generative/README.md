@@ -93,7 +93,8 @@ class/condition pairs. `task.generative.eval_split=val` uses the complete valida
 loader: 54 non-overlapping validation windows in this configuration, regardless of
 how many synthetic samples are requested. The returned stage records the reference
 split and both population counts. `eval_split=train` retains its existing bounded
-training-reference smoke; `test` remains unsupported rather than falling back.
+training-reference smoke. Final `test` evaluation requires the separately declared
+group-disjoint configuration below; it is rejected for the legacy window split.
 
 These are held-out windows from the same simulated records and conditions, not
 independent real assets. Validation is also used for checkpoint selection and is not
@@ -129,3 +130,46 @@ used 54/54 validation windows over 54 batches, confirming that neither the gener
 count nor the legacy 32-batch training-reference limit truncates validation. No model
 was retrained or selected for this check, and the eight required smoke metrics were
 computable. The original 54-sample result and its negative control remain unchanged.
+
+
+## Group-disjoint final evaluation (explicit simulation)
+
+The separate configuration `configs/experiments/phmfactory/simulated_cfm_holdout.yaml`
+uses the existing read-only grouped split, not a second loader. For each class,
+simulated unit 0 supplies training, unit 1 supplies validation, and unit 2 supplies
+final evaluation. Each partition contains nine records and 72 windows; their simulated
+asset IDs and raw records are disjoint. All three conditions occur in every partition.
+The earlier validation-window configuration and its results are unchanged.
+
+```bash
+python -m scripts.prepare_simulated_phm --output data/simulated_cfm_holdout --cfm-split
+python main.py --config configs/experiments/phmfactory/simulated_cfm_holdout.yaml
+```
+
+Use the returned checkpoint, normalization and protocol paths with the same public
+sample/eval commands described above, selecting this configuration for every stage.
+It requests nine class/domain conditions and evaluates all 72 test windows. Evaluation
+may set `--override data.batch_size=1`; this changes evaluation batching, not its
+population or fitted model. Paths in `data.split.manifest_path` and `data.data_dir`
+must both be overridden when relocating the prepared input.
+
+`--cfm-split` writes the format already consumed by `splitting.py`, with its existing
+metadata binding. The public Schema now admits `manifest_mode=read_only` and
+`partition_map`; it does not construct another split. CFM model cardinalities and
+metadata-derived sampling conditions use training rows, while validation labels remain
+available to validation loss. An explicit generation grid is a declared query, not a
+request for the evaluator's labels. `eval_split=test` requires grouped metadata;
+renaming the overlapping legacy test loader cannot establish a held-out population.
+
+The seed-17, two-epoch configuration was executed with two distinct final-test
+interventions: cyclically permute test labels, or replace only test waveforms with
+seeded noise. Train and validation data and group membership were held fixed. Selected
+parameters/buffers, Adam and scheduler state, selection scores, training normalization,
+Python/NumPy/Torch RNG states after training and sampling, and generated tensors agreed
+exactly. Each evaluation included 72/72 windows against nine samples; NumPy recomputation
+of time-statistics and spectral distance agreed at `atol=1e-6, rtol=1e-5`.
+
+This is configuration-specific simulation execution and isolation evidence, not
+physical fidelity, real-equipment transfer or downstream augmentation benefit.
+The centroid metric remains a proxy. There is no learned filter or downstream
+augmentation classifier in this configuration. Registry promotion remains separate.

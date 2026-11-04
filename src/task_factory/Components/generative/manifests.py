@@ -177,10 +177,8 @@ def build_evaluation_manifest(
     sampling_wall_clock_seconds: float | None,
 ) -> dict[str, Any]:
     split = str(reference_split).strip().lower()
-    if split in {"test", "target_test"}:
-        raise ValueError(
-            "test-reference evaluation is not eligible in the maintained smoke contract"
-        )
+    if split not in {"train", "val", "test"}:
+        raise ValueError("reference_split must be train, val or test")
 
     statuses = {
         name: str(metrics.get(name, {}).get("status", "missing"))

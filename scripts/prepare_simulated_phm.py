@@ -8,24 +8,27 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 from pathlib import Path
 
 import numpy as np
 
 
 def prepare(output: Path, seed: int = 2026, target_scale: float = 1.0,
-            target_label_shift: int = 0) -> Path:
+            target_label_shift: int = 0, cfm_split: bool = False) -> Path:
     """Create a new data root; target interventions never modify source records."""
     output.mkdir(parents=True, exist_ok=False)
     raw = output / "raw" / "Dummy_Data"
     raw.mkdir(parents=True)
     rows = []
+    partitions = {name: [] for name in ("train", "val", "test")}
     sample_rate, length = 2048, 2048
     time = np.arange(length) / sample_rate
     for label in range(3):
         for unit in range(3):
             for domain in range(3):
                 file_id = 900001 + label * 9 + unit * 3 + domain
+                partitions[("train", "val", "test")[unit]].append(file_id)
                 rng = np.random.default_rng(seed + file_id)
                 rate = (24 + 7 * label) * (1 + 0.15 * domain)
                 phase = (time * rate + 0.07 * unit) % 1
@@ -60,6 +63,17 @@ def prepare(output: Path, seed: int = 2026, target_scale: float = 1.0,
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
+    if cfm_split:
+        from src.utils.generative_evidence import sha256_file
+
+        # Reuse the existing read-only split format; no new provenance mechanism.
+        manifest = {
+            "schema_version": 1, "group_key": "asset_id", "stratify_key": None,
+            "metadata_file_sha256": sha256_file(metadata), "partitions": partitions,
+        }
+        (output / "cfm_split.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
     return metadata
 
 
@@ -69,10 +83,12 @@ def main(argv=None) -> int:
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--target-scale", type=float, default=1.0)
     parser.add_argument("--target-label-shift", type=int, choices=(0, 1, 2), default=0)
+    parser.add_argument("--cfm-split", action="store_true",
+                        help="Write the existing read-only split format: unit 0/1/2 = train/val/test.")
     args = parser.parse_args(argv)
     if not np.isfinite(args.target_scale) or args.target_scale <= 0:
         parser.error("--target-scale must be finite and positive")
-    metadata = prepare(args.output, args.seed, args.target_scale, args.target_label_shift)
+    metadata = prepare(args.output, args.seed, args.target_scale, args.target_label_shift, args.cfm_split)
     print(f"simulation_metadata={metadata}")
     print("simulation_records=27")
     return 0
