@@ -1,0 +1,26 @@
+# Experiment A's fixed model substitution, not a tuned diagnosis baseline.
+# All data, split, window, seed, objective and checkpoint settings are inherited.
+base_configs:
+  reference: "configs/baselines/01_mfpt/mfpt_global_average_linear.yaml"
+
+environment:
+  project: "phmfactory_mfpt_timesnet_reference"
+  output_dir: "results/experiments/phmfactory/mfpt_timesnet"
+  notes: "Fixed TimesNet substitution specified in docs/PHMFACTORY_EXPERIMENT_A.md."
+
+data:
+  split:
+    manifest_path: "results/experiments/phmfactory/mfpt_timesnet/split_manifest.json"
+
+model:
+  type: "CNN"
+  name: "TimesNet"
+  seq_len: 2048
+  input_dim: 1
+  num_classes: 3
+  d_model: 16
+  d_ff: 32
+  e_layers: 1
+  dropout: 0.0
+  top_k: 2
+  num_kernels: 2
