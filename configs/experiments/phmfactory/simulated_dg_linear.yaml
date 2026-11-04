@@ -1,7 +1,12 @@
-# Software demo only: three simulated signal classes, source conditions 0/1,
-# unseen target condition 2. These are not real bearings or MFPT/PU samples.
-# File-grouped source validation; no target fitting or selection; frozen test.
-# Fixed 2-epoch, seed-17 budget; full-window accuracy and macro-F1.
+# Simulation-only F0/F1 candidate; not real bearings or MFPT/PU.
+# Population: 27 records; source conditions 0/1, target condition 2.
+# Access: source inputs/labels for fit and selection; target truth for evaluation only.
+# Timing/state: offline fit, restore source-selected checkpoint, frozen target prediction.
+# Selection: val_loss on source files (File-grouped 75/25 split, split seed 17).
+# Budget: training seed 17, 2 epochs, 1 run, 8 x 128-point windows per record.
+# Estimator: pooled-window accuracy and macro-F1 on all 72 target windows.
+# File isolation does not imply asset isolation: simulated units recur across conditions.
+# These fields below are executed; comments explain their six-part scientific meaning.
 base_configs:
   reference: "configs/baselines/01_mfpt/mfpt_global_average_linear.yaml"
 environment:
