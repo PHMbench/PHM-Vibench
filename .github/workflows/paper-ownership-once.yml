@@ -12,258 +12,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 3
-      - name: Remove transferred paper implementations and enforce ownership
+          fetch-depth: 4
+      - name: Complete the existing source migration without workflow writes
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/cleanup/paper-ownership-20261105
-          test "$(git rev-parse HEAD^)" = fae561da81be5fabcd7d5895fb59313f465bc4d8
+          test "$(git rev-parse HEAD^)" = 5d71bae6f2fbc0a53e8d0d2777668117b483c232
+          git show 5d71bae6f2fbc0a53e8d0d2777668117b483c232:.github/workflows/paper-ownership-once.yml > "$RUNNER_TEMP/original-migration.yml"
           python - <<'PY'
           from pathlib import Path
-          import ast
-          import re
-          import shutil
-          root = Path.cwd()
-          removed = []
-          def remove(name):
-              p = root / name
-              assert p.exists(), f'Missing expected source: {name}'
-              if p.is_dir():
-                  removed.extend(str(x.relative_to(root)) for x in p.rglob('*') if x.is_file())
-                  shutil.rmtree(p)
-              else:
-                  removed.append(name)
-                  p.unlink()
-          for name in (
-              'phmfactory/p06.py',
-              'src/task_factory/task/classification/symbolic_diagnosis',
-              'configs/experiments/p06',
-              'test/test_p06_certificate.py', 'test/test_symbolic_diagnosis_execution.py',
-              'test/test_symbolic_diagnosis_panel.py',
-              'src/model_factory/X_model/P07OperatorPath.py',
-              'src/task_factory/task/DG/operator_path',
-              'src/data_factory/operator_path_export.py',
-              'configs/experiments/p07', 'test/test_operator_path_runtime.py',
-              'test/test_operator_path_export.py',
-              'src/utils/p07_protocol', 'scripts/p07_execute_work_unit.py',
-              'scripts/p07_protocol_preflight.py',
-              'src/model_factory/X_model/XOANOperatorPath.py',
-              'src/model_factory/X_model/UXFD/operator_attention/executable_operator_path_1d.py',
-              'configs/base/model/xoan_operator_path.yaml',
-              'configs/experiments/p07_xoan_operator_attention',
-              'test/test_executable_operator_path.py',
-          ):
-              remove(name)
-          for p in sorted((root / 'test').glob('test_p07_*.py')):
-              remove(str(p.relative_to(root)))
-          def delete_nodes(path, names):
-              p = root / path
-              lines = p.read_text().splitlines(keepends=True)
-              tree = ast.parse(''.join(lines))
-              ranges = []
-              for node in ast.walk(tree):
-                  name = getattr(node, 'name', None)
-                  if isinstance(node, ast.Assign):
-                      name = next((t.id for t in node.targets if isinstance(t, ast.Name)), None)
-                  elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                      name = node.target.id
-                  if name in names:
-                      start = min([node.lineno] + [d.lineno for d in getattr(node, 'decorator_list', [])])
-                      ranges.append((start - 1, node.end_lineno))
-              assert len(ranges) == len(names), (path, names, ranges)
-              for start, end in sorted(ranges, reverse=True):
-                  del lines[start:end]
-              p.write_text(''.join(lines))
-          delete_nodes('src/config_schema/models.py', {'OperatorName', 'XOANOperatorPathConfig', '_check_xoan_operator_path'})
-          p = root / 'src/config_schema/models.py'
-          text = p.read_text()
-          text, n = re.subn(r'^    operator_path: Optional\[XOANOperatorPathConfig\] = None\n', '', text, flags=re.M)
-          assert n == 1
-          p.write_text(text)
-          p = root / 'src/model_factory/X_model/UXFD/operator_attention/__init__.py'
-          p.write_text('"""Reusable one-dimensional operator attention."""\nfrom .operator_attention_1d import OperatorAttention1D, OperatorAttentionConfig\n\n__all__ = ["OperatorAttention1D", "OperatorAttentionConfig"]\n')
-          delete_nodes('phmfactory/explanation/adapters.py', {'export_xoan_state', 'state_from_xoan_report'})
-          p = root / 'phmfactory/explanation/__init__.py'
-          text = p.read_text()
-          for name in ('export_xoan_state', 'state_from_xoan_report'):
-              text = re.sub(r'^\s*' + name + r',\s*\n', '', text, flags=re.M)
-              text = re.sub(r'^\s*[\"\']' + name + r'[\"\'],\s*\n', '', text, flags=re.M)
-          p.write_text(text)
-          delete_nodes('test/test_llm_explanation_models.py', {'test_xoan_explains_the_selected_inference_route'})
-          delete_nodes('test/test_llm_explanation_contract.py', {'test_xoan_report_adapter_preserves_path_and_uncertainty'})
-          for name in ('test/test_llm_explanation_models.py', 'test/test_llm_explanation_contract.py'):
-              p = root / name
-              lines = p.read_text().splitlines(keepends=True)
-              lines = [line for line in lines if not ('from test.test_p07_xoan_method import' in line or line.strip() in {'export_xoan_state,', 'state_from_xoan_report,'})]
-              p.write_text(''.join(lines))
-          p = root / 'test/test_research_commands.py'
-          text = p.read_text().replace('"name": "symbolic_diagnosis",', '"name": "external", "module": "downstream_experiment",')
-          text = text.replace("'name': 'symbolic_diagnosis',", "'name': 'external', 'module': 'downstream_experiment',")
-          p.write_text(text)
-          p = root / 'test/test_trainer_lifecycle_schema.py'
-          text = p.read_text()
-          text = text.replace('Path("configs/experiments/p07_xoan_operator_attention/g030_executable_operator_path_smoke.yaml")', 'Path("configs/demo/00_smoke/dummy_dg.yaml")')
-          text = text.replace('trainer = analyze_config(path).runtime_config()["trainer"]', 'trainer = analyze_config(path, override_values=["trainer.user_note=explicit", "trainer.preset_version=fixture-v1"]).runtime_config()["trainer"]')
-          text = text.replace('assert trainer["paper_id"] == "P07"', 'assert trainer["user_note"] == "explicit"')
-          text = text.replace('assert trainer["preset_version"] == "p07-g030-method-smoke-v1"', 'assert trainer["preset_version"] == "fixture-v1"')
-          p.write_text(text)
-          for name in ('configs/config_registry.csv', 'src/model_factory/model_registry.csv'):
-              p = root / name
-              p.write_text(''.join(line for line in p.read_text().splitlines(keepends=True) if not re.search(r'(?i)xoan_operator_path|XOANOperatorPath|P07OperatorPath|p07_g040', line)))
-          p = root / 'src/model_factory/X_model/README.md'
-          p.write_text(''.join(line for line in p.read_text().splitlines(keepends=True) if 'XOANOperatorPath' not in line))
-          for p in (root / '.github/workflows').glob('*.yml'):
-              if p.name == 'paper-ownership-once.yml':
-                  continue
-              text = p.read_text()
-              for name in removed:
-                  if name.startswith('test/') and name.endswith('.py'):
-                      text = re.sub(r'^\s*' + re.escape(name) + r'\s*\\?\s*\n', '', text, flags=re.M)
-                      text = text.replace(name + ' ', '')
-              p.write_text(text)
-          ownership = '''\n### Paper ownership\n\nPHMFactory is a reusable library, not a home for individual-paper material.\nPaper-specific methods, objectives, protocols, schema, thresholds, ablations,\nexperiment matrices, data-selection lists, manuscript/figure sources, results,\ncheckpoints, study scripts and their tests belong to the owning paper repository.\nMoving them into `src/research`, renaming them, or keeping a forwarding import\ndoes not make them shared infrastructure. Papers may depend on PHMFactory;\nPHMFactory must not import, vendor or dynamically select a particular paper.\nUse the existing explicit `task.module` interface from the paper's configuration.\n\nA standard reference algorithm or independently reusable component may be\nmaintained here only with an explicit shared contract and actual maintained\nconsumers, not a promised future use. Promotion removes study-specific budgets,\nclaims and data choices; two paper callers alone do not generalize a protocol.\nCitations, migration history and links to external research are documentation,\nnot permission to ship that research. Existing unreviewed legacy material is\nnot precedent for adding more. Preserve independent historical work until its\nowner and consumers are resolved; never delete or relabel evidence to satisfy CI.\n'''
-          p = root / 'CORE.md'
-          text = p.read_text()
-          assert '## 4. Decision rule' in text
-          p.write_text(text.replace('## 4. Decision rule', ownership + '\n## 4. Decision rule'))
-          p = root / 'AGENTS.md'
-          text = p.read_text()
-          marker = '## Find the existing owner'
-          assert marker in text
-          text = text.replace(marker, 'Paper ownership is a hard boundary in `CORE.md` section 3. A request for a\nsingle paper does not authorize storing its method, protocol, configs, scripts,\nresults or manuscript assets here. Edit the paper repository and reuse the\nexisting explicit `task.module` interface. Do not add `src/research`, a paper\nnamespace, an import shim or a whitelist exception. Shared promotion needs\nactual independent consumers and a study-neutral contract.\n\n' + marker)
-          p.write_text(text)
-          p = root / 'CONTRIBUTING.md'
-          text = p.read_text()
-          old = 'Research variants without a maintained user\nneed belong in `configs/experiments/` or a separate research repository until their\ninterface is stable.'
-          assert old in text
-          text = text.replace(old, 'Single-paper methods, experiment protocols and materials belong in their paper\nrepository, even when their interface is stable. `configs/experiments/` is for\nreusable framework capability examples, not individual-paper studies. Follow\nthe paper-ownership boundary in `CORE.md` section 3; the library never imports\na paper, and no compatibility forwarding module is retained.')
-          p.write_text(text)
-          p = root / '.github/PULL_REQUEST_TEMPLATE.md'
-          with p.open('a') as f:
-              f.write('\n## Shared-library ownership\n\n- Which reusable contract changes, and which current independent consumers use it?\n- Where are paper-specific methods, configurations, protocols, results and figure/manuscript assets maintained? Link the owning repository rather than copying them here.\n- Confirm that no paper import, study-specific dispatch, forwarding shim or renamed study package was added. A generic name is not evidence of reuse.\n\nThe existing ownership check catches identifiable path/import regressions;\nreview must still reject study-specific semantics hidden behind generic names.\n')
-          p = root / 'tools/repo/check_paper_migration_status.py'
-          text = p.read_text().replace('import sys\n', 'import sys\nimport subprocess\n')
-          function = '''\n\ndef collect_source_findings(base_ref: str | None = None) -> tuple[Finding, ...]:
-              """Reject returned paper code and identifiable new study-owned materials."""
-              tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT, text=True).split("\\0")
-              retired = (
-                  "phmfactory/p06.py", "src/utils/p07_protocol/", "src/research/p07_protocol/",
-                  "src/model_factory/X_model/P07OperatorPath.py", "src/model_factory/X_model/XOANOperatorPath.py",
-                  "src/model_factory/X_model/UXFD/operator_attention/executable_operator_path_1d.py",
-                  "src/task_factory/task/classification/symbolic_diagnosis/",
-                  "src/task_factory/task/DG/operator_path/", "src/data_factory/operator_path_export.py",
-                  "configs/experiments/p06/", "configs/experiments/p07/",
-                  "configs/experiments/p07_xoan_operator_attention/", "configs/base/model/xoan_operator_path.yaml",
-                  "scripts/p07_", "test/test_p07_", "test/test_p06_certificate.py",
-                  "test/test_symbolic_diagnosis_", "test/test_operator_path_", "test/test_executable_operator_path.py",
-              )
-              findings = [Finding("PAPER_IMPLEMENTATION_RETURNED", path) for path in tracked
-                          if path and any(path.startswith(prefix) for prefix in retired)]
-              if base_ref:
-                  base = subprocess.check_output(["git", "rev-parse", "--verify", base_ref + "^{commit}"], cwd=ROOT, text=True).strip()
-                  added = subprocess.check_output(["git", "diff", "--name-only", "-z", "--no-renames", "--diff-filter=A", base + "...HEAD"], cwd=ROOT, text=True).split("\\0")
-                  paper_path = re.compile(r"(?:^|[/_.-])[Pp][0-9]{2}(?=[/_.-]|[A-Z]|$)")
-                  for path in added:
-                      if path and (paper_path.search(path) or path.startswith(("paper/", "papers/", "research/", "studies/", "src/research/"))):
-                          if not path.startswith(("doc/changelog/", "docs/archive/")):
-                              findings.append(Finding("NEW_PAPER_MATERIAL", path))
-                  diff = subprocess.check_output(["git", "diff", "--unified=0", base + "...HEAD", "--", "phmfactory", "src", "configs", "scripts"], cwd=ROOT, text=True)
-                  paper_import = re.compile(r"^\\+\\s*(?:from|import)\\s+(?:paper(?:[.\\s])|P4(?:[.\\s])|[Pp][0-9]{2}(?:[.\\s]))")
-                  path = ""
-                  for line in diff.splitlines():
-                      if line.startswith("+++ b/"):
-                          path = line[6:]
-                      elif paper_import.search(line):
-                          findings.append(Finding("PAPER_REVERSE_DEPENDENCY", path + ": " + line[1:].strip()))
-              return tuple(findings)
-          '''
-          import textwrap
-          function = textwrap.dedent(function)
-          text = text.replace('\ndef main() -> int:', function + '\n\ndef main() -> int:')
-          text = text.replace('    args = parser.parse_args()', '    parser.add_argument("--base-ref", help="PR base commit for new paper material checks")\n    args = parser.parse_args()')
-          text = text.replace('        findings = collect_findings()', '        findings = collect_findings() + collect_source_findings(args.base_ref)')
-          p.write_text(text)
-          p = root / '.github/workflows/paper-migration-status.yml'
-          p.write_text('''name: Paper migration status
-          on:
-            pull_request:
-            push:
-              branches: [main]
-            workflow_dispatch:
-          permissions:
-            contents: read
-          jobs:
-            tracker:
-              name: Paper ownership and migration contract
-              runs-on: ubuntu-latest
-              timeout-minutes: 5
-              steps:
-                - uses: actions/checkout@v4
-                  with:
-                    fetch-depth: 0
-                    submodules: false
-                - uses: actions/setup-python@v5
-                  with:
-                    python-version: "3.10"
-                - name: Install existing checker dependency
-                  run: python -m pip install PyYAML
-                - name: Enforce ownership and completed historical migrations
-                  env:
-                    BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-                  shell: bash
-                  run: |
-                    set -euo pipefail
-                    args=()
-                    if [[ -n "$BASE_REF" && "$BASE_REF" != 0000000000000000000000000000000000000000 ]]; then
-                      args=(--base-ref "$BASE_REF")
-                    fi
-                    python tools/repo/check_paper_migration_status.py --mode release "${args[@]}" | tee paper-migration-release.txt
-                - uses: actions/upload-artifact@v4
-                  with:
-                    name: phmfactory-v030-paper-migration-status
-                    path: paper-migration-release.txt
-                    if-no-files-found: error
-          '''.replace('\n          ', '\n'))
-          p = root / 'doc/changelog/2026-11-05-paper-ownership.md'
-          p.write_text('''# Paper implementation ownership
-          
-          P06 certificate/symbolic execution, P07 bounded-DAG execution and the retired
-          XOAN protocol have moved to their AI4Engineering-L paper repositories.
-          The runtime no longer ships their methods, study configuration or tests;
-          `phmfactory.p06` and the retired model/task import paths have no forwarding
-          compatibility layer. Current scientific results and protocols are unchanged.
-          
-          Paper configurations use the existing explicit `task.module` interface.
-          Run from the paper root with the declared framework dependency installed.
-          Generic readers, standard baselines, Task/Trainer boundaries and public
-          configuration remain here. Study callers must migrate before adopting this
-          runtime revision; the coordinated paper PRs stay Draft until verified.
-          
-          CORE, contributor guidance, the PR template and the existing migration
-          checker now enforce ownership. The existing workflow runs on every PR.
-          Identifiable new paper paths/imports and known returned implementations fail;
-          reviewers must also check semantic ownership behind generic filenames.
-          Historical unrelated paper material has not been silently deleted or approved.
-          
-          This commit records source migration, not scientific performance or a new
-          baseline qualification. Exact tests and limitations are reported in the PR.
-          '''.replace('\n          ', '\n'))
-          for name in ('src/config_schema/models.py', 'phmfactory/explanation/adapters.py', 'phmfactory/explanation/__init__.py', 'tools/repo/check_paper_migration_status.py', 'test/test_llm_explanation_models.py', 'test/test_llm_explanation_contract.py', 'test/test_trainer_lifecycle_schema.py', 'test/test_research_commands.py'):
-              ast.parse((root / name).read_text(), filename=name)
-          print('Removed', len(removed), 'paper-owned paths; current source syntax parsed.')
+          import os
+          import yaml
+          workflow = yaml.safe_load((Path(os.environ['RUNNER_TEMP']) / 'original-migration.yml').read_text())
+          run = workflow['jobs']['migrate']['steps'][1]['run']
+          source = run.split("python - <<'PY'\n", 1)[1].split('\nPY\n', 1)[0]
+          (Path(os.environ['RUNNER_TEMP']) / 'approved-migration.py').write_text(source)
+          PY
+          python "$RUNNER_TEMP/approved-migration.py"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('test/test_llm_explanation_models.py')
+          p.write_text(p.read_text().replace('build_llm_packet, export_xoan_state, state_from_tspn_uxfd_fuzzy_trace,', 'build_llm_packet, state_from_tspn_uxfd_fuzzy_trace,'))
           PY
           python -m pip install --disable-pip-version-check PyYAML pydantic
           python -m scripts.gen_config_atlas
           python -m scripts.gen_support_matrix
-          git add -- phmfactory src configs test scripts CORE.md AGENTS.md CONTRIBUTING.md .github/PULL_REQUEST_TEMPLATE.md .github/workflows tools/repo/check_paper_migration_status.py docs/CONFIG_ATLAS.md SUPPORTED_COMPONENTS.md SUPPORTED_COMBINATIONS.md doc/changelog/2026-11-05-paper-ownership.md
+          git diff -- .github/workflows > "$RUNNER_TEMP/engine-workflows.patch"
+          # GITHUB_TOKEN has no workflow-write scope; those edits use the authorized connector.
+          git restore -- .github/workflows
+          git add -- phmfactory src configs test scripts CORE.md AGENTS.md CONTRIBUTING.md .github/PULL_REQUEST_TEMPLATE.md tools/repo/check_paper_migration_status.py docs/CONFIG_ATLAS.md SUPPORTED_COMPONENTS.md SUPPORTED_COMBINATIONS.md doc/changelog/2026-11-05-paper-ownership.md
           git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'refactor: remove P06/P07 study ownership from the shared runtime'
+          git commit -m 'refactor: move P06/P07 ownership out of the shared runtime'
           git push origin HEAD:refs/heads/cleanup/paper-ownership-20261105
           git archive --format=tar.gz -o "$RUNNER_TEMP/engine-paper-ownership-source.tar.gz" HEAD
-          # Preserve real Git objects for existing provenance checks, never credentials/config.
           tar -czf "$RUNNER_TEMP/engine-git-metadata.tar.gz" .git/HEAD .git/objects .git/refs .git/shallow .git/index
       - uses: actions/upload-artifact@v4
         with:
@@ -271,4 +55,5 @@ jobs:
           path: |
             ${{ runner.temp }}/engine-paper-ownership-source.tar.gz
             ${{ runner.temp }}/engine-git-metadata.tar.gz
+            ${{ runner.temp }}/engine-workflows.patch
           retention-days: 3
