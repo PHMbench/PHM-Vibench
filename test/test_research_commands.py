@@ -15,7 +15,7 @@ def config_path(tmp_path):
         pipeline='Pipeline_01_Fault_Diagnosis',
         environment={'output_dir': str(tmp_path / 'results')},
         data={'kind': 'declared_fixture'}, model={'object': 'saved affine head'},
-        task={'type': 'classification', 'name': 'symbolic_diagnosis', 'execution': 'research'},
+        task={'type': 'classification', 'name': 'external', 'module': 'downstream_experiment', 'execution': 'research'},
         trainer={'device': 'cpu'})))
     return path
 

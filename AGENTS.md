@@ -25,6 +25,13 @@ For an implementation task, state one short plan, then make the smallest useful 
 Use authorization already given for this task, but do not extend it to unrelated branches,
 data, tags, package publication, or machine settings.
 
+Paper ownership is a hard boundary in `CORE.md` section 3. A request for a
+single paper does not authorize storing its method, protocol, configs, scripts,
+results or manuscript assets here. Edit the paper repository and reuse the
+existing explicit `task.module` interface. Do not add `src/research`, a paper
+namespace, an import shim or a whitelist exception. Shared promotion needs
+actual independent consumers and a study-neutral contract.
+
 ## Find the existing owner
 
 - Public configuration: `phmfactory/config.py`; use `analyze_config()`, not a new loader.

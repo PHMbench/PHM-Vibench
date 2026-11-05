@@ -35,9 +35,11 @@ observable acceptance result
 ```
 
 Do not add a feature because it may be useful for hypothetical future datasets, backends,
-models, distributed systems, or workflows. Research variants without a maintained user
-need belong in `configs/experiments/` or a separate research repository until their
-interface is stable.
+models, distributed systems, or workflows. Single-paper methods, experiment protocols and materials belong in their paper
+repository, even when their interface is stable. `configs/experiments/` is for
+reusable framework capability examples, not individual-paper studies. Follow
+the paper-ownership boundary in `CORE.md` section 3; the library never imports
+a paper, and no compatibility forwarding module is retained.
 
 ## 2. Permanent constraints
 
