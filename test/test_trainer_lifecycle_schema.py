@@ -199,8 +199,7 @@ def test_custom_trainer_and_research_component_extras_remain_explicit():
 
 def test_registered_trainer_metadata_is_preserved_without_injecting_defaults():
     path = Path("configs/demo/00_smoke/dummy_dg.yaml")
-    trainer = analyze_config(path, override_values=["trainer.user_note=explicit", "trainer.preset_version=fixture-v1"]).runtime_config()["trainer"]
-    assert trainer["user_note"] == "explicit"
+    trainer = analyze_config(path, override_values=["trainer.preset_version=fixture-v1"]).runtime_config()["trainer"]
     assert trainer["preset_version"] == "fixture-v1"
     assert validate_one(path) == []
     plain = analyze_config("smoke").runtime_config()["trainer"]

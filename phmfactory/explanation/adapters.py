@@ -369,7 +369,5 @@ def state_from_tspn_uxfd_fuzzy_trace(
 
 __all__ = [
     "export_tspn_uxfd_fuzzy_state",
-    "export_xoan_state",
     "state_from_tspn_uxfd_fuzzy_trace",
-    "state_from_xoan_report",
 ]

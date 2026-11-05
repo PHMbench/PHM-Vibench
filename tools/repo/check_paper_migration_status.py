@@ -240,15 +240,16 @@ def collect_source_findings(base_ref: str | None = None) -> tuple[Finding, ...]:
         paper_path = re.compile(r"(?:^|[/_.-])[Pp][0-9]{2}(?=[/_.-]|[A-Z]|$)")
         for path in added:
             if path and (paper_path.search(path) or path.startswith(("paper/", "papers/", "research/", "studies/", "src/research/"))):
-                if not path.startswith(("doc/changelog/", "docs/archive/")):
+                if not (path.endswith(".md") and path.startswith(("doc/changelog/", "docs/archive/audits/"))):
                     findings.append(Finding("NEW_PAPER_MATERIAL", path))
         diff = subprocess.check_output(["git", "diff", "--unified=0", base + "...HEAD", "--", "phmfactory", "src", "configs", "scripts"], cwd=ROOT, text=True)
         paper_import = re.compile(r"^\+\s*(?:from|import)\s+(?:paper(?:[.\s])|P4(?:[.\s])|[Pp][0-9]{2}(?:[.\s]))")
+        paper_binding = re.compile(r"phmfactory\.p06|p07_protocol|P07OperatorPath|XOANOperatorPath|(?:module\s*[:=]\s*[\"\']?)(?:paper\.|P4\.|[Pp][0-9]{2}\.)")
         path = ""
         for line in diff.splitlines():
             if line.startswith("+++ b/"):
                 path = line[6:]
-            elif paper_import.search(line):
+            elif line.startswith("+") and (paper_import.search(line) or paper_binding.search(line)):
                 findings.append(Finding("PAPER_REVERSE_DEPENDENCY", path + ": " + line[1:].strip()))
     return tuple(findings)
 
