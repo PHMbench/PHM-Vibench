@@ -863,13 +863,15 @@ def test_tiny_local_dummy_builds_loaders_without_provider_imports(
     assert not any(name == "modelscope" or name.startswith("modelscope.") for name in imported)
 
 
-@pytest.mark.parametrize('prepared_h5', [False, True])
-def test_source_only_never_reads_or_copies_target(tmp_path, monkeypatch, prepared_h5):
+@pytest.mark.parametrize('prepared_h5,use_cache', [(False, False), (False, True), (True, True)],
+                         ids=['raw-refresh', 'raw-reuse', 'prepared-h5'])
+@pytest.mark.parametrize('warm_cache', [False, True])
+def test_source_only_never_reads_or_copies_target(tmp_path, monkeypatch, prepared_h5, use_cache, warm_cache):
     _write_tiny_local_dummy_fixture(tmp_path)
     cache = tmp_path / 'derived'
     args = SimpleNamespace(
         factory_name='default', data_dir=str(tmp_path), metadata_file='metadata.csv',
-        cache_dir=str(cache), use_cache=prepared_h5, load_test=False,
+        cache_dir=str(cache), use_cache=use_cache, load_test=False,
         batch_size=3, num_workers=0, train_ratio=.8, val_ratio=.2,
         test_ratio=0., unused_ratio=0., normalization='per_window_standardization',
         window_size=8, window_sampling_strategy='evenly_spaced', num_window=5,
@@ -888,6 +890,17 @@ def test_source_only_never_reads_or_copies_target(tmp_path, monkeypatch, prepare
     else:
         for name in ('target_c0.csv', 'target_c1.csv'):
             (tmp_path / 'raw' / 'Dummy_Data' / name).unlink()
+
+    if warm_cache:
+        cache.mkdir()
+        for name in ('Dummy_Data.h5', 'cache.h5'):
+            _write_h5(cache / name, {str(i): float(i) for i in (1, 3, 4)})
+            with h5py.File(cache / name, 'a') as h:
+                del h['1']
+                h.create_dataset('1', data=np.arange(64, dtype=np.float32)[:, None])
+        # Whole-file copying would read sealed records without invoking h5py.
+        monkeypatch.setattr('src.data_factory.explicit_data_factory.shutil.copy2',
+                            lambda *a, **kw: pytest.fail('unfiltered cache file copy'))
 
     original_copy, original_read = h5py.Group.copy, h5py.Dataset.__getitem__
     def guarded_copy(self, source, *a, **kw):

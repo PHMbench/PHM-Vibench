@@ -416,7 +416,15 @@ class ExplicitDataFactory(data_factory):
 
         try:
             if cache_path.is_file():
-                shutil.copy2(cache_path, temp_path)
+                if getattr(args_data, "load_test", True):
+                    shutil.copy2(cache_path, temp_path)
+                else:
+                    # Old caches may include sealed targets. A whole-file copy
+                    # would read those records even though no dataset opens them.
+                    allowed = set(map(str, self.split_result.train_ids + self.split_result.val_ids))
+                    with h5py.File(cache_path, "r") as previous, h5py.File(temp_path, "w") as target:
+                        for key in sorted(allowed.intersection(previous.keys())):
+                            previous.copy(key, target, name=key)
             with h5py.File(temp_path, "a") as h5_file:
                 for file_id, data, _ in results:
                     key = str(file_id)
