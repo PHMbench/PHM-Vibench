@@ -92,4 +92,5 @@ class IdIncludedDataset(Dataset):
 
         result = dict(output)
         result["file_id"] = file_id
+        result["window_id"] = window_id
         return result

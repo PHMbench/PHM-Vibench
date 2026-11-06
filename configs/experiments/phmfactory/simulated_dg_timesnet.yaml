@@ -1,0 +1,22 @@
+# Same simulated population, split, source fitting budget and target evaluation.
+base_configs:
+  reference: "configs/experiments/phmfactory/simulated_dg_linear.yaml"
+environment:
+  project: "simulated_dg_timesnet"
+  output_dir: "results/experiments/phmfactory/simulated_dg_timesnet"
+data:
+  cache_dir: "results/experiments/phmfactory/simulated_dg_timesnet/cache"
+  split:
+    manifest_path: "results/experiments/phmfactory/simulated_dg_timesnet/split.json"
+model:
+  type: "CNN"
+  name: "TimesNet"
+  seq_len: 128
+  input_dim: 2
+  num_classes: 3
+  d_model: 8
+  d_ff: 16
+  e_layers: 1
+  dropout: 0.0
+  top_k: 2
+  num_kernels: 2
