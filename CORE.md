@@ -57,6 +57,27 @@ An explicitly training-only run must not be presented as evaluated.
 Replacing one compatible component should require changing that component and its
 configuration, not the other factories or command router.
 
+
+### Paper ownership
+
+PHMFactory is a reusable library, not a home for individual-paper material.
+Paper-specific methods, objectives, protocols, schema, thresholds, ablations,
+experiment matrices, data-selection lists, manuscript/figure sources, results,
+checkpoints, study scripts and their tests belong to the owning paper repository.
+Moving them into `src/research`, renaming them, or keeping a forwarding import
+does not make them shared infrastructure. Papers may depend on PHMFactory;
+PHMFactory must not import, vendor or dynamically select a particular paper.
+Use the existing explicit `task.module` interface from the paper's configuration.
+
+A standard reference algorithm or independently reusable component may be
+maintained here only with an explicit shared contract and actual maintained
+consumers, not a promised future use. Promotion removes study-specific budgets,
+claims and data choices; two paper callers alone do not generalize a protocol.
+Citations, migration history and links to external research are documentation,
+not permission to ship that research. Existing unreviewed legacy material is
+not precedent for adding more. Preserve independent historical work until its
+owner and consumers are resolved; never delete or relabel evidence to satisfy CI.
+
 ## 4. Decision rule
 
 Before adding code or documentation, identify the current user action or scientific

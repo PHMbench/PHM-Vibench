@@ -107,3 +107,12 @@ Follow-up work:
 - [ ] Test skips, mocks, exception catches, or tolerance changes do not hide the behavior under review.
 - [ ] Performance, compatibility, maturity, and dataset claims are supported by linked evidence or clearly marked as unverified.
 - [ ] A rollback is possible without losing unique branch or research history.
+
+## Shared-library ownership
+
+- Which reusable contract changes, and which current independent consumers use it?
+- Where are paper-specific methods, configurations, protocols, results and figure/manuscript assets maintained? Link the owning repository rather than copying them here.
+- Confirm that no paper import, study-specific dispatch, forwarding shim or renamed study package was added. A generic name is not evidence of reuse.
+
+The existing ownership check catches identifiable path/import regressions;
+review must still reject study-specific semantics hidden behind generic names.

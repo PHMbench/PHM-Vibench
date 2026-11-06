@@ -2,9 +2,7 @@
 
 from .adapters import (
     export_tspn_uxfd_fuzzy_state,
-    export_xoan_state,
     state_from_tspn_uxfd_fuzzy_trace,
-    state_from_xoan_report,
 )
 from .llm import (
     ExplanationClaim,
@@ -39,9 +37,7 @@ __all__ = [
     "build_llm_packet",
     "explain_with_llm",
     "export_tspn_uxfd_fuzzy_state",
-    "export_xoan_state",
     "freeze_mapping",
     "parse_llm_explanation",
     "state_from_tspn_uxfd_fuzzy_trace",
-    "state_from_xoan_report",
 ]
