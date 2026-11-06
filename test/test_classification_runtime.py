@@ -534,3 +534,12 @@ def test_trainer_construction_failure_preserves_original_exception(
             args_data=SimpleNamespace(),
             path="results/run",
         )
+
+
+def test_source_only_rejects_automatic_test_before_building_data(tmp_path, monkeypatch):
+    config = _config(tmp_path)
+    config['data']['load_test'] = False
+    monkeypatch.setattr(classification, 'load_runtime_config', lambda args: SimpleNamespace(**config))
+    monkeypatch.setattr(classification, 'build_data', lambda *a: pytest.fail('data accessed'))
+    with pytest.raises(ValueError, match='load_test=false conflicts'):
+        classification.run_classification_pipeline(Namespace())

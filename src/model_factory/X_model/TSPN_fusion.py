@@ -204,7 +204,8 @@ class TSPNFusion(nn.Module):
     def __init__(self, reference: nn.Module, *, in_channels: int, num_classes: int,
                  branches, use_reference_features: bool = True,
                  reference_temperature: float = 1., head_frobenius_cap: float = 5.,
-                 head_type: str = "linear", head_hidden_dim: int = 16):
+                 head_type: str = "linear", head_hidden_dim: int = 16,
+                 residual_group_count: int | None = None):
         super().__init__()
         if int(reference.args.num_classes) != num_classes or int(reference.args.in_channels) != in_channels:
             raise ValueError("Reference and new predictor must share channels and labels.")
@@ -243,6 +244,13 @@ class TSPNFusion(nn.Module):
             self.branches[name] = branch
             self.feature_dims[name] = branch.output_dim
         dimension = sum(self.feature_dims.values())
+        if residual_group_count is not None:
+            if head_type != "operator_residual":
+                raise ValueError("residual_group_count requires head_type=operator_residual")
+            if (isinstance(residual_group_count, bool) or not isinstance(residual_group_count, int)
+                    or residual_group_count < len(self.feature_dims)):
+                raise ValueError("residual_group_count must be an integer at least the active group count")
+        self.residual_group_count = residual_group_count
         # Preserve legacy linear state keys. The MLP is a readout comparator,
         # not another encoder or a new signal-processing branch.
         if head_type == "operator_residual":
@@ -304,7 +312,7 @@ class TSPNFusion(nn.Module):
             feature_dict[name] = branch(x)
         contributions = {}
         if self.head_type == "operator_residual":
-            scale = math.sqrt(len(feature_dict))
+            scale = math.sqrt(self.residual_group_count or len(feature_dict))
             contributions = {name: self.operator_heads[name](z / math.sqrt(self.feature_dims[name]),
                                                             self.head_frobenius_cap) / scale
                              for name, z in feature_dict.items()}
@@ -372,7 +380,8 @@ class Model(TSPNFusion):
                          reference_temperature=float(args.reference_temperature),
                          head_frobenius_cap=float(getattr(args, "head_frobenius_cap", 5.)),
                          head_type=getattr(args, "head_type", "linear"),
-                         head_hidden_dim=getattr(args, "head_hidden_dim", 16))
+                         head_hidden_dim=getattr(args, "head_hidden_dim", 16),
+                         residual_group_count=getattr(args, "residual_group_count", None))
         if args.checkpoint_kind == "fusion":
             load_ckpt(self, args.checkpoint_path, strict=True)
         self.to(args.device)

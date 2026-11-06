@@ -358,7 +358,7 @@ class data_factory:
     def _init_dataloader(self):
         train_sampler = self.get_sampler(mode='train')
         val_sampler = self.get_sampler(mode='val')
-        test_sampler = self.get_sampler(mode='test')
+        test_sampler = self.get_sampler(mode='test') if self.test_dataset is not None else None
 
         self.train_loader = DataLoader(self.train_dataset,
                                 #   batch_size=self.args_data.batch_size,
@@ -375,10 +375,7 @@ class data_factory:
                                 #  batch_size=self.args_data.batch_size,
                                         batch_sampler = test_sampler,
                                         # shuffle=False,
-                                        num_workers=self.args_data.num_workers,)
-
-
-
+                                         num_workers=self.args_data.num_workers,) if self.test_dataset is not None else None
         return self.train_loader, self.val_loader, self.test_loader
 
     def get_dataset(self, mode = "test"):
