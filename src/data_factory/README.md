@@ -63,6 +63,18 @@ preprocessing results match current configuration. Review [explicit_data_factory
 and [cache tests](../../test/test_data_cache_contract.py) for the implemented boundary.
 A documentation edit does not change this behavior or add a cache identity system.
 
+For prepared H5 inputs, explicitly set `use_cache: true` and `source_h5_dir` to the
+read-only directory containing `<Name>.h5`. Set `cache_dir` to a separate writable
+directory. The Factory copies only selected IDs and fails on missing source files
+or IDs; it does not fall back to raw readers. Original H5 files are opened read-only.
+
+`load_test` is a boolean, defaulting to `true`. With `load_test: false`, the maintained
+default Factory resolves the declared split before cache construction, materializes
+only train/validation records, and returns `None` for the test dataset/loader. Keep
+the actual target domain declaration. Static metadata may be inspected to validate
+the split; target waveforms are not read. Also set `trainer.test_after_fit: false`;
+the classification runtime rejects a conflicting automatic test before building data.
+
 ## Extend a reader or adapter
 
 A dataset reader lives at `src/data_factory/reader/<Name>.py` and exports

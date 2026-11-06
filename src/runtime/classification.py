@@ -330,6 +330,11 @@ def run_classification_pipeline(
     test_after_fit = args_trainer.test_after_fit
     if not isinstance(test_after_fit, bool):
         raise TypeError("trainer.test_after_fit must be a boolean")
+    load_test = getattr(args_data, "load_test", True)
+    if not isinstance(load_test, bool):
+        raise TypeError("data.load_test must be a boolean")
+    if test_after_fit and not load_test:
+        raise ValueError("data.load_test=false conflicts with trainer.test_after_fit=true")
     _set_environment(args_environment)
 
     run_root, name = _create_invocation_root(configs)
@@ -421,7 +426,7 @@ def run_classification_pipeline(
                 context.data_factory.get_dataloader("val"),
             )
 
-            print("[INFO] 加载最佳模型并测试...")
+            print("[INFO] 加载最佳模型...")
             context.task = load_best_model_checkpoint(context.task, context.trainer)
             best_checkpoints.append(_best_checkpoint_path(context.trainer))
             if not test_after_fit:
