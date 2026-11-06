@@ -893,11 +893,13 @@ def test_source_only_never_reads_or_copies_target(tmp_path, monkeypatch, prepare
 
     if warm_cache:
         cache.mkdir()
+        source_record = (np.arange(64, dtype=np.float32)[:, None] if prepared_h5 else
+                         read_dummy_signal(str(tmp_path / 'raw/Dummy_Data/source_c0.csv'), args))
         for name in ('Dummy_Data.h5', 'cache.h5'):
             _write_h5(cache / name, {str(i): float(i) for i in (1, 3, 4)})
             with h5py.File(cache / name, 'a') as h:
                 del h['1']
-                h.create_dataset('1', data=np.arange(64, dtype=np.float32)[:, None])
+                h.create_dataset('1', data=source_record)
         # Whole-file copying would read sealed records without invoking h5py.
         monkeypatch.setattr('src.data_factory.explicit_data_factory.shutil.copy2',
                             lambda *a, **kw: pytest.fail('unfiltered cache file copy'))
