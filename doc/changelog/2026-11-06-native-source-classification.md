@@ -4,6 +4,8 @@
   `trainer.test_after_fit=true` is rejected with that setting. Default loading is unchanged.
 - `data.source_h5_dir` explicitly reuses prepared immutable H5 inputs; selected records
   are copied into a separate writable cache, with no raw-reader fallback.
+- Source-only raw-cache refresh and partial reuse copy only selected source IDs from
+  an existing cache; sealed target records are never copied as part of the whole file.
 - DG classification trains and evaluates TSPN_fusion candidate logits, including after
   checkpoint restoration, while keeping its reference frozen.
 - Operator-residual heads accept an optional `residual_group_count` for fixed full-model
