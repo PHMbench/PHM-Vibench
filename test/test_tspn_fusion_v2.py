@@ -301,3 +301,68 @@ def test_pairing_requires_sample_ids_not_just_labels():
     a=output(torch.randn(4,2));labels=torch.zeros(4,dtype=torch.long);ids=torch.arange(4);domains=ids//2
     with pytest.raises(ValueError,match='sample identities'):
         TSPNFusionLoss()(a,labels,ids,domains,paired=a,paired_target=labels)
+
+
+def learnable_branches():
+    branches = config(True)['model']['branches']
+    for spec in branches[1:]:
+        tf = spec['transform']
+        tf.update(learnable=True, trainable=True)
+        if spec['type'] == 'stft':
+            tf.update(window_exponent=1., window_exponent_bounds=[.75, 1.25])
+        elif spec['type'] == 'cwt':
+            tf['scale_bounds'] = [[.9*s, 1.1*s] for s in tf['scales']]
+        else:
+            tf['frequency_bounds'] = [[.9*f, 1.1*f] for f in tf['frequencies']]
+            if spec['type'] == 'chirplet':
+                tf['chirp_rate_bounds'] = [.0001, .0003]
+    return branches
+
+
+def test_native_dg_candidate_training_restore_and_30_analysis_parameters(tmp_path):
+    import pandas as pd
+    from src.data_factory.data_utils import MetadataAccessor
+    from src.task_factory.task.DG.classification import task as DGTask
+    metadata = MetadataAccessor(pd.DataFrame([
+        dict(Id=i, Name='fixture', Dataset_id=0, Domain_id=0, Label=i)
+        for i in range(3)]))
+    net = TSPNFusion(ReferenceFixture(), in_channels=1, num_classes=3,
+                    branches=learnable_branches(), head_type='operator_residual')
+    assert sum(p.numel() for p in net.branches.parameters() if p.requires_grad) == 30
+    task = DGTask(net, SimpleNamespace(), SimpleNamespace(name='TSPN_fusion'),
+                  SimpleNamespace(name='classification', loss='CE', metrics=['acc'],
+                                  optimizer='adam', lr=.001, weight_decay=0.),
+                  SimpleNamespace(), SimpleNamespace(), metadata)
+    batch = {'x': torch.randn(6, 512, 1), 'y': torch.tensor([0, 1, 2, 0, 1, 2]),
+             'file_id': torch.tensor([0, 1, 2, 0, 1, 2])}
+    reference_before = {k: v.clone() for k, v in net.reference.state_dict().items()}
+    analysis_before = {k: p.clone() for k, p in net.branches.named_parameters()}
+    optimizer = task.configure_optimizers()
+    task.train()
+    for _ in range(3):
+        optimizer.zero_grad()
+        logits = task.forward(batch)
+        loss = task._shared_step(batch, 'train')['train_total_loss']
+        torch.testing.assert_close(loss, F.cross_entropy(logits, batch['y']))
+        loss.backward()
+        assert all(p.grad is not None and torch.isfinite(p.grad).all()
+                   for p in net.branches.parameters())
+        optimizer.step()
+    assert any(not torch.equal(analysis_before[k], p) for k, p in net.branches.named_parameters())
+    assert all(p.grad is None for p in net.reference.parameters())
+    for k, v in net.reference.state_dict().items():
+        torch.testing.assert_close(v, reference_before[k], rtol=0, atol=0)
+    task.eval()
+    candidate = task.forward(batch)
+    details = net.forward_details(batch['x'])
+    torch.testing.assert_close(candidate, details['candidate_logits'])
+    assert not torch.allclose(candidate.softmax(-1), net(batch['x']).exp())
+    for stage in ('val', 'test'):
+        torch.testing.assert_close(task._shared_step(batch, stage)[f'{stage}_loss'],
+                                   F.cross_entropy(candidate, batch['y']))
+    checkpoint = tmp_path / 'native-task.pt'
+    torch.save(task.state_dict(), checkpoint)
+    import copy
+    restored = copy.deepcopy(task)
+    restored.load_state_dict(torch.load(checkpoint, weights_only=True), strict=True)
+    torch.testing.assert_close(restored.forward(batch), candidate)

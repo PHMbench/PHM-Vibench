@@ -57,6 +57,12 @@ Aliases and logged estimator names belong to the existing metric helpers. Do not
 missing values, average batch-level F1, or use argmax labels as AUROC scores. Code and tests
 must determine whether every declared estimator and expected population was evaluated.
 
+`DG.classification` with `TSPN_fusion` uses
+`network.forward_details(batch["x"])["candidate_logits"]` for training, validation,
+and test. The model's separate deployment mixture (including its `alpha=0` reference
+default) is not the classifier evaluated by this task. A restored task uses the same
+candidate path, while the reference parameters and running statistics stay frozen.
+
 ## Verification and support
 
 Inspect and run the same complete configuration:

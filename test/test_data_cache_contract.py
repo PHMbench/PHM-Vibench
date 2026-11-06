@@ -861,3 +861,75 @@ def test_tiny_local_dummy_builds_loaders_without_provider_imports(
     assert remote_calls == []
     assert "huggingface_hub" not in imported
     assert not any(name == "modelscope" or name.startswith("modelscope.") for name in imported)
+
+
+@pytest.mark.parametrize('prepared_h5,use_cache', [(False, False), (False, True), (True, True)],
+                         ids=['raw-refresh', 'raw-reuse', 'prepared-h5'])
+@pytest.mark.parametrize('warm_cache', [False, True])
+def test_source_only_never_reads_or_copies_target(tmp_path, monkeypatch, prepared_h5, use_cache, warm_cache):
+    _write_tiny_local_dummy_fixture(tmp_path)
+    cache = tmp_path / 'derived'
+    args = SimpleNamespace(
+        factory_name='default', data_dir=str(tmp_path), metadata_file='metadata.csv',
+        cache_dir=str(cache), use_cache=use_cache, load_test=False,
+        batch_size=3, num_workers=0, train_ratio=.8, val_ratio=.2,
+        test_ratio=0., unused_ratio=0., normalization='per_window_standardization',
+        window_size=8, window_sampling_strategy='evenly_spaced', num_window=5,
+        dtype='float32', pin_memory=False,
+    )
+    task = SimpleNamespace(type='DG', name='classification', target_system_id=[0],
+                           source_domain_id=[0], target_domain_id=[1])
+    if prepared_h5:
+        args.source_h5_dir = str(tmp_path)
+        _write_h5(tmp_path / 'Dummy_Data.h5', {str(i): float(i) for i in range(1, 5)})
+        # Use sufficiently long source records; the forbidden target remains present.
+        with h5py.File(tmp_path / 'Dummy_Data.h5', 'a') as h:
+            for key in ('1', '2'):
+                del h[key]
+                h.create_dataset(key, data=np.arange(64, dtype=np.float32)[:, None])
+    else:
+        for name in ('target_c0.csv', 'target_c1.csv'):
+            (tmp_path / 'raw' / 'Dummy_Data' / name).unlink()
+
+    if warm_cache:
+        cache.mkdir()
+        source_record = (np.arange(64, dtype=np.float32)[:, None] if prepared_h5 else
+                         read_dummy_signal(str(tmp_path / 'raw/Dummy_Data/source_c0.csv'), args))
+        for name in ('Dummy_Data.h5', 'cache.h5'):
+            _write_h5(cache / name, {str(i): float(i) for i in (1, 3, 4)})
+            with h5py.File(cache / name, 'a') as h:
+                del h['1']
+                h.create_dataset('1', data=source_record)
+        # Whole-file copying would read sealed records without invoking h5py.
+        monkeypatch.setattr('src.data_factory.explicit_data_factory.shutil.copy2',
+                            lambda *a, **kw: pytest.fail('unfiltered cache file copy'))
+
+    original_copy, original_read = h5py.Group.copy, h5py.Dataset.__getitem__
+    def guarded_copy(self, source, *a, **kw):
+        assert str(source).strip('/') not in {'3', '4'}, 'target cache copy'
+        return original_copy(self, source, *a, **kw)
+    def guarded_read(self, *a, **kw):
+        assert self.name.strip('/') not in {'3', '4'}, 'target waveform read'
+        return original_read(self, *a, **kw)
+    monkeypatch.setattr(h5py.Group, 'copy', guarded_copy)
+    monkeypatch.setattr(h5py.Dataset, '__getitem__', guarded_read)
+    factory = build_data(args, task)
+    try:
+        assert factory.test_loader is None and factory.test_dataset is None
+        assert set(factory.split_result.test_ids) == {3, 4}
+        assert factory.split_summary['test_loaded'] is False
+        assert _keys(cache / 'cache.h5') == {'1', '2'}
+        # Every native epoch includes all windows exactly once, including the tail.
+        batches = list(factory.train_loader.batch_sampler)
+        indices = [i for b in batches for i in b]
+        assert sorted(indices) == list(range(len(factory.train_dataset)))
+        assert sorted(map(len, batches)) == [2, 3, 3]
+        assert sum(len(b['y']) for b in factory.val_loader) == 2
+    finally:
+        factory.data.close()
+
+
+def test_load_test_must_be_boolean(tmp_path):
+    with pytest.raises(TypeError, match='data.load_test must be a boolean'):
+        build_data(SimpleNamespace(factory_name='default', load_test='false'),
+                   SimpleNamespace(type='DG', name='classification'))

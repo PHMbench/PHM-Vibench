@@ -16,6 +16,7 @@ from tqdm import tqdm
 from .contracts import format_loader_summary, require_nonempty_dataloaders
 from .data_factory import _cache_directory, data_factory
 from .data_utils import MetadataAccessor, read_metadata_table
+from .H5DataDict import H5DataDict
 from .dataset_task.Dataset_cluster import IdIncludedDataset
 from .dataset_task.adapters import resolve_dataset_adapter
 from .splitting import resolve_data_splits
@@ -219,6 +220,9 @@ class ExplicitDataFactory(data_factory):
     """
 
     def __init__(self, args_data, args_task):
+        load_test = getattr(args_data, "load_test", True)
+        if not isinstance(load_test, bool):
+            raise TypeError("data.load_test must be a boolean")
         if (args_task.type, args_task.name) == ('DG', 'tii_joint'):
             from .tii_data import initialize_tii_data
             self.args_data, self.args_task = args_data, args_task
@@ -231,6 +235,7 @@ class ExplicitDataFactory(data_factory):
             self,
             args_task,
             args_data,
+            splits=("train", "val", "test") if load_test else ("train", "val"),
         )
         print(f"[SUCCESS] 数据加载器可用: {format_loader_summary(counts)}")
 
@@ -294,15 +299,63 @@ class ExplicitDataFactory(data_factory):
                 "re-read current raw inputs, or set true to reuse complete "
                 "derived HDF5 caches explicitly"
             )
-        return super()._init_data(
-            args_data,
-            use_cache=use_cache,
-            max_workers=max_workers,
+        source_h5_dir = getattr(args_data, "source_h5_dir", None)
+        if source_h5_dir is not None:
+            if not use_cache:
+                raise ValueError("data.source_h5_dir requires data.use_cache=true")
+            if Path(source_h5_dir).resolve() == Path(_cache_directory(args_data)).resolve():
+                raise ValueError("data.source_h5_dir must differ from writable data.cache_dir")
+
+        # Resolve the declared split before any cache or waveform access. Merely
+        # disabling Trainer.test would still materialize the held-out population.
+        task_meta = self.search_dataset_id()
+        train_val_ids, task_test_ids = self.search_id()
+        self.split_result = resolve_data_splits(
+            self.target_metadata, args_data, self.args_task,
+            train_val_ids, task_test_ids,
         )
+        if not getattr(args_data, "load_test", True):
+            source_ids = set(self.split_result.train_ids) | set(self.split_result.val_ids)
+            task_meta = MetadataAccessor(task_meta.df.loc[sorted(source_ids)])
+        ids_to_fetch = self._determine_missing_ids(task_meta, args_data, use_cache)
+        for name, ids in ids_to_fetch.items():
+            self._update_name_cache(name, ids, args_data, max_workers)
+        return H5DataDict(self._build_final_cache(task_meta, args_data, use_cache))
 
     def _update_name_cache(self, name, ids, args_data, max_workers):
         """Read all requested IDs and atomically update one dataset cache."""
         if not ids:
+            return
+
+        # An explicit prepared-H5 source is immutable. Copy only selected IDs to
+        # the writable cache; never fall back to raw files or open the source r+.
+        source_h5_dir = getattr(args_data, "source_h5_dir", None)
+        if source_h5_dir is not None:
+            source_path = Path(source_h5_dir) / f"{name}.h5"
+            cache_path = Path(_cache_directory(args_data)) / f"{name}.h5"
+            if source_path.resolve() == cache_path.resolve():
+                raise ValueError("Prepared H5 source and writable cache must differ")
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            temp_path = cache_path.with_name(f".{cache_path.name}.tmp")
+            try:
+                with h5py.File(source_path, "r") as source, h5py.File(temp_path, "w") as target:
+                    for file_id in ids:
+                        key = str(file_id)
+                        if key not in source:
+                            raise KeyError(f"Selected ID {key} is absent from {source_path}")
+                        source.copy(key, target, name=key)
+                    if cache_path.is_file():
+                        with h5py.File(cache_path, "r") as previous:
+                            for key in previous.keys():
+                                if not getattr(args_data, "load_test", True):
+                                    allowed = set(map(str, self.split_result.train_ids + self.split_result.val_ids))
+                                    if key not in allowed:
+                                        continue
+                                if key not in target:
+                                    previous.copy(key, target, name=key)
+                os.replace(temp_path, cache_path)
+            finally:
+                temp_path.unlink(missing_ok=True)
             return
 
         id_meta_pairs = []
@@ -363,7 +416,15 @@ class ExplicitDataFactory(data_factory):
 
         try:
             if cache_path.is_file():
-                shutil.copy2(cache_path, temp_path)
+                if getattr(args_data, "load_test", True):
+                    shutil.copy2(cache_path, temp_path)
+                else:
+                    # Old caches may include sealed targets. A whole-file copy
+                    # would read those records even though no dataset opens them.
+                    allowed = set(map(str, self.split_result.train_ids + self.split_result.val_ids))
+                    with h5py.File(cache_path, "r") as previous, h5py.File(temp_path, "w") as target:
+                        for key in sorted(allowed.intersection(previous.keys())):
+                            previous.copy(key, target, name=key)
             with h5py.File(temp_path, "a") as h5_file:
                 for file_id, data, _ in results:
                     key = str(file_id)
@@ -405,7 +466,10 @@ class ExplicitDataFactory(data_factory):
         if use_cache and cache_path.is_file():
             try:
                 with h5py.File(cache_path, "r") as published_cache:
-                    if expected_keys.issubset(published_cache.keys()):
+                    actual_keys = set(published_cache.keys())
+                    complete = (expected_keys.issubset(actual_keys) if getattr(args_data, "load_test", True)
+                                else expected_keys == actual_keys)
+                    if complete:
                         return str(cache_path)
             except OSError as exc:
                 raise RuntimeError(
@@ -474,14 +538,7 @@ class ExplicitDataFactory(data_factory):
         train_dataset = {}
         val_dataset = {}
         test_dataset = {}
-        train_val_ids, task_test_ids = self.search_id()
-        self.split_result = resolve_data_splits(
-            self.target_metadata,
-            self.args_data,
-            self.args_task,
-            train_val_ids,
-            task_test_ids,
-        )
+        load_test = getattr(self.args_data, "load_test", True)
 
         print(
             "Initializing datasets with explicit adapter "
@@ -513,7 +570,7 @@ class ExplicitDataFactory(data_factory):
             )
 
         for file_id in tqdm(
-            self.split_result.test_ids,
+            self.split_result.test_ids if load_test else (),
             desc="Creating test datasets",
         ):
             test_dataset[file_id] = dataset_cls(
@@ -532,12 +589,15 @@ class ExplicitDataFactory(data_factory):
             },
             self.target_metadata,
         )
+        self.split_summary["test_loaded"] = load_test
+        if not load_test:
+            self.split_summary["test_classes_seen_in_train"] = None
         print(f"[DATA SPLIT] {_format_split_summary(self.split_summary)}")
 
         return (
             IdIncludedDataset(train_dataset, self.target_metadata),
             IdIncludedDataset(val_dataset, self.target_metadata),
-            IdIncludedDataset(test_dataset, self.target_metadata),
+            IdIncludedDataset(test_dataset, self.target_metadata) if load_test else None,
         )
 
 
