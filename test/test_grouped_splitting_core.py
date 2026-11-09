@@ -7,11 +7,27 @@ import pandas as pd
 import pytest
 
 from src.data_factory.data_utils import MetadataAccessor
+from src.data_factory.ID.Id_searcher import search_ids_for_task
 from src.data_factory.data_factory import data_factory
 from src.data_factory.dataset_task.Default_dataset import Default_dataset
 from src.data_factory.explicit_data_factory import ExplicitDataFactory
 from src.data_factory.id_data_factory import id_data_factory
 from src.data_factory.splitting import resolve_data_splits
+
+
+def test_vibration_channel_is_selected_before_normalization():
+    args = SimpleNamespace(window_size=8, num_window=2, window_sampling_strategy="evenly_spaced",
+        normalization="none", dtype="float32", train_ratio=.8, val_ratio=.1, test_ratio=.1,
+        unused_ratio=0., selected_channels=[2], split=SimpleNamespace(strategy="grouped_metadata"))
+    signal = np.column_stack([np.arange(16), 100 + np.arange(16), 200 + np.arange(16)])
+    metadata = MetadataAccessor(pd.DataFrame([dict(Id=1, Label=0, Sample_rate=64000, Channel=3,
+                                                  Dataset_id=20, Name="Synthetic", File="fixture")]))
+    dataset = Default_dataset({1: signal}, metadata, args, SimpleNamespace(), "test")
+    assert dataset[0]["x"].shape == (8, 1)
+    np.testing.assert_array_equal(dataset[0]["x"][:, 0], np.arange(200, 208))
+    args.selected_channels = [3]
+    with pytest.raises(ValueError, match="reader channel count"):
+        Default_dataset({1: signal}, metadata, args, SimpleNamespace(), "test")
 
 
 def _metadata(group_count: int = 30, ids_per_group: int = 2) -> MetadataAccessor:
@@ -175,6 +191,28 @@ def test_legacy_split_preserves_id_contract():
     assert result.train_ids == tuple(train_ids)
     assert result.val_ids == tuple(train_ids)
     assert result.test_ids == tuple(test_ids)
+
+
+@pytest.mark.parametrize("strategy", ["legacy_windows", None])
+@pytest.mark.parametrize("frozen_controls", [
+    {"manifest_mode": "read_only"},
+    {"partition_map": {"train": "fit", "val": "tune", "test": "target"}},
+    {"manifest_mode": "read_only", "partition_map": {"train": "fit", "val": "tune", "test": "target"}},
+    {"partition_map": {}},
+])
+def test_legacy_or_default_strategy_rejects_frozen_controls_before_manifest_access(
+    tmp_path, strategy, frozen_controls,
+):
+    manifest = tmp_path / "must-not-be-written.json"
+    split = dict(frozen_controls, manifest_path=str(manifest))
+    if strategy is not None:
+        split["strategy"] = strategy
+    with pytest.raises(ValueError, match="require data.split.strategy=grouped_metadata"):
+        resolve_data_splits(
+            object(), SimpleNamespace(split=SimpleNamespace(**split)),
+            SimpleNamespace(type="Default_task"), ["source-id"], ["target-id"],
+        )
+    assert not manifest.exists()
 
 
 def _factory_args(manifest_path):
@@ -409,3 +447,119 @@ def test_read_only_manifest_rejects_hash_mismatch(tmp_path):
             metadata.keys(),
             metadata.keys(),
         )
+
+
+def _write_frozen_dg_fixture(tmp_path, *, shared_group_index=None):
+    metadata, args, manifest_path = _write_frozen_manifest_fixture(tmp_path)
+    frame = metadata.df.copy()
+    frame["Domain_id"] = [0, 0, 1, 1, 0, 1, 2, 2]
+    if shared_group_index is not None:
+        frame.loc[f"id-{shared_group_index}", "Split_group"] = frame.loc["id-0", "Split_group"]
+    metadata = MetadataAccessor(frame, key_column="Id")
+    metadata_path = tmp_path / "metadata.csv"
+    frame.to_csv(metadata_path, index=False)
+    payload = json.loads(manifest_path.read_text())
+    payload["metadata_file_sha256"] = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
+    for entry in payload["partitions"].values():
+        entry["groups"] = sorted({metadata[sample_id]["Split_group"] for sample_id in entry["ids"]})
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    args.split.test_policy = "task_defined"
+    args.split.manifest_sha256 = None
+    return metadata, args, manifest_path
+
+
+def _dg_task(task_type="DG"):
+    return SimpleNamespace(
+        type=task_type,
+        name="classification",
+        target_system_id=[904],
+        source_domain_id=[0, 1],
+        target_domain_id=[2],
+        target_domain_num=1 if task_type == "CDDG" else 0,
+    )
+
+
+@pytest.mark.parametrize("task_type", ["DG", "CDDG"])
+def test_read_only_manifest_preserves_native_domain_ids_and_unused_source_roles(tmp_path, task_type):
+    metadata, args, manifest_path = _write_frozen_dg_fixture(tmp_path)
+    task = _dg_task(task_type)
+    source_ids, target_ids = search_ids_for_task(metadata, task)
+    before = manifest_path.read_bytes()
+
+    result = resolve_data_splits(metadata, args, task, source_ids, target_ids)
+
+    assert result.train_ids == ("id-0", "id-1", "id-2", "id-3")
+    assert result.val_ids == ("id-4",)
+    assert result.test_ids == tuple(target_ids) == ("id-6", "id-7")
+    assert "id-5" not in result.train_ids + result.val_ids + result.test_ids
+    assert set(result.train_ids + result.val_ids) <= set(source_ids)
+    assert set(result.train_groups).isdisjoint(result.val_groups + result.test_groups)
+    assert set(result.val_groups).isdisjoint(result.test_groups)
+    assert manifest_path.read_bytes() == before
+
+
+@pytest.mark.parametrize("source_role", ["train", "optimization_validation", "identification"])
+def test_read_only_dg_rejects_target_in_fitting_or_unmapped_source_role(tmp_path, source_role):
+    metadata, args, manifest_path = _write_frozen_dg_fixture(tmp_path)
+    payload = json.loads(manifest_path.read_text())
+    source_entry = payload["partitions"][source_role]
+    target_entry = payload["partitions"]["intervention"]
+    source_entry["ids"][0], target_entry["ids"][0] = target_entry["ids"][0], source_entry["ids"][0]
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    task = _dg_task()
+    source_ids, target_ids = search_ids_for_task(metadata, task)
+    before = manifest_path.read_bytes()
+
+    with pytest.raises(ValueError, match="exactly the task-defined target IDs"):
+        resolve_data_splits(metadata, args, task, source_ids, target_ids)
+
+    assert manifest_path.read_bytes() == before
+
+
+@pytest.mark.parametrize("shared_group_index", [4, 6])
+def test_read_only_dg_rejects_entity_crossing_source_roles_or_source_target(tmp_path, shared_group_index):
+    metadata, args, _ = _write_frozen_dg_fixture(tmp_path, shared_group_index=shared_group_index)
+    task = _dg_task()
+    source_ids, target_ids = search_ids_for_task(metadata, task)
+
+    with pytest.raises(ValueError, match="frozen split group .* occurs in both"):
+        resolve_data_splits(metadata, args, task, source_ids, target_ids)
+
+
+def test_read_only_dg_rejects_overlapping_candidate_populations(tmp_path):
+    metadata, args, _ = _write_frozen_dg_fixture(tmp_path)
+    task = _dg_task()
+    source_ids, target_ids = search_ids_for_task(metadata, task)
+
+    with pytest.raises(ValueError, match="source and target candidate IDs overlap"):
+        resolve_data_splits(metadata, args, task, source_ids + target_ids[:1], target_ids)
+
+
+def test_native_dg_factory_uses_frozen_roles_before_windowing(tmp_path):
+    metadata, args, manifest_path = _write_frozen_dg_fixture(tmp_path)
+    for key, value in vars(_factory_args(manifest_path)).items():
+        if key != "split":
+            setattr(args, key, value)
+    task = _dg_task()
+    factory = ExplicitDataFactory.__new__(ExplicitDataFactory)
+    factory.args_data = args
+    factory.args_task = task
+    factory.target_metadata = metadata
+    factory.data = {
+        sample_id: np.arange(20, dtype=np.float32).reshape(20, 1)
+        for sample_id in metadata.keys()
+    }
+    factory.search_id = lambda: search_ids_for_task(metadata, task)
+
+    train, val, test = factory._init_dataset()
+
+    assert _dataset_ids(train) == ("id-0", "id-1", "id-2", "id-3")
+    assert _dataset_ids(val) == ("id-4",)
+    assert _dataset_ids(test) == ("id-6", "id-7")
+    assert all(
+        len(per_id_dataset) == args.num_window
+        for dataset in (train, val, test)
+        for per_id_dataset in dataset.dataset_dict.values()
+    )
+    assert factory.split_summary["domain_overlap"]["train_test"] == []
+    assert factory.split_summary["domain_overlap"]["val_test"] == []

@@ -91,6 +91,11 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
     if spec.strategy not in {"legacy_windows", "grouped_metadata"}:
         raise ValueError(f"unknown data.split.strategy {spec.strategy!r}")
     if spec.strategy == "legacy_windows":
+        if spec.manifest_mode == "read_only" or spec.partition_map is not None:
+            raise ValueError(
+                "frozen manifest controls require data.split.strategy=grouped_metadata; "
+                "legacy_windows cannot consume manifest_mode=read_only or partition_map"
+            )
         return {}
     if spec.manifest_mode not in {"generate", "read_only"}:
         raise ValueError(
@@ -120,10 +125,6 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
         )
 
     if spec.manifest_mode == "read_only":
-        if spec.test_policy != "partition" or task_type not in SUPPORTED_PARTITION_TASKS:
-            raise ValueError(
-                "read_only split manifests currently require a partition task"
-            )
         mapping = dict(spec.partition_map or {})
         if set(mapping) != {"train", "val", "test"} or any(
             not value for value in mapping.values()
@@ -194,7 +195,8 @@ def _read_only_manifest_result(
     metadata: MetadataAccessor,
     args_data: Any,
     spec: SplitSpec,
-    candidate_ids: Sequence[Any],
+    train_val_ids: Sequence[Any],
+    task_test_ids: Sequence[Any],
 ) -> SplitResult:
     assert spec.manifest_path is not None
     assert spec.group_key is not None
@@ -224,7 +226,7 @@ def _read_only_manifest_result(
     if not metadata_path.is_file() or _sha256_file(metadata_path) != expected_metadata_sha256:
         raise ValueError("frozen split manifest metadata SHA-256 does not match input")
 
-    ordered_candidates = tuple(dict.fromkeys(candidate_ids))
+    ordered_candidates = tuple(dict.fromkeys(tuple(train_val_ids) + tuple(task_test_ids)))
     candidate_by_text: dict[str, Any] = {}
     for candidate in ordered_candidates:
         text_id = str(candidate)
@@ -255,6 +257,26 @@ def _read_only_manifest_result(
         missing = sorted(set(candidate_by_text) - set(ownership))
         raise ValueError(f"frozen split manifest does not cover candidate IDs: {missing[:5]}")
 
+    mapping = dict(spec.partition_map or {})
+    for mode, name in mapping.items():
+        if name not in resolved_partitions:
+            raise ValueError(f"frozen split manifest is missing {mode} partition {name!r}")
+    if spec.test_policy == "task_defined":
+        source_ids = {str(value) for value in train_val_ids}
+        target_ids = {str(value) for value in task_test_ids}
+        if not target_ids:
+            raise ValueError("task_defined grouped split requires non-empty task test IDs")
+        if source_ids & target_ids:
+            raise ValueError("task_defined source and target candidate IDs overlap")
+        test_partition = mapping["test"]
+        if {str(value) for value in resolved_partitions[test_partition]} != target_ids:
+            raise ValueError("frozen test partition must contain exactly the task-defined target IDs")
+        # Unmapped grow/select roles remain source-only too; their labels must not
+        # become a back door for target-domain model selection.
+        for name, ids in resolved_partitions.items():
+            if name != test_partition and not {str(value) for value in ids} <= source_ids:
+                raise ValueError(f"frozen source partition {name!r} contains non-source IDs")
+
     frame = _selected_frame(metadata, ordered_candidates, spec.group_key)
     id_key = metadata.key_column
     group_by_id = {
@@ -284,7 +306,6 @@ def _read_only_manifest_result(
                 )
             group_owner[text_group] = name
 
-    mapping = dict(spec.partition_map or {})
     result = SplitResult(
         train_ids=resolved_partitions[mapping["train"]],
         val_ids=resolved_partitions[mapping["val"]],
@@ -476,8 +497,7 @@ def resolve_data_splits(
         )
 
     if spec.manifest_mode == "read_only":
-        candidates = tuple(dict.fromkeys(tuple(train_val_ids) + tuple(task_test_ids)))
-        return _read_only_manifest_result(metadata, args_data, spec, candidates)
+        return _read_only_manifest_result(metadata, args_data, spec, train_val_ids, task_test_ids)
 
     assert spec.group_key is not None
     source_frame = _selected_frame(metadata, train_val_ids, spec.group_key)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 
 class EnvironmentConfig(BaseModel):
@@ -33,15 +33,31 @@ class DataSplitConfig(BaseModel):
     test_policy: Literal["partition", "task_defined"] = "partition"
     fractions: Optional[Dict[Literal["train", "val", "test"], float]] = None
     manifest_path: Optional[str] = None
+    manifest_mode: Literal["generate", "read_only"] = "generate"
+    partition_map: Optional[Dict[Literal["train", "val", "test"], str]] = None
 
     @model_validator(mode="after")
     def _check_grouped_protocol(self) -> "DataSplitConfig":
         if self.strategy == "legacy_windows":
+            if self.manifest_mode == "read_only" or self.partition_map is not None:
+                raise ValueError(
+                    "frozen manifest controls require data.split.strategy=grouped_metadata; "
+                    "legacy_windows cannot consume manifest_mode=read_only or partition_map"
+                )
             return self
         if not self.group_key:
             raise ValueError("data.split.group_key is required for grouped_metadata")
         if not self.manifest_path:
             raise ValueError("data.split.manifest_path is required for grouped_metadata")
+        if self.manifest_mode == "read_only":
+            mapping = self.partition_map or {}
+            if set(mapping) != {"train", "val", "test"} or any(
+                not value for value in mapping.values()
+            ):
+                raise ValueError(
+                    "read_only data.split.partition_map must contain exactly train, val, and test"
+                )
+            return self
         expected = (
             {"train", "val", "test"}
             if self.test_policy == "partition"
@@ -69,6 +85,17 @@ class DataConfig(BaseModel):
     batch_size: Optional[int] = Field(None, ge=1)
     num_workers: Optional[int] = Field(None, ge=0)
     split: Optional[DataSplitConfig] = None
+    selected_channels: Optional[List[StrictInt]] = None
+
+    @model_validator(mode="after")
+    def _check_selected_channels(self) -> "DataConfig":
+        channels = self.selected_channels
+        if channels is not None and (
+            not channels or any(value < 0 for value in channels)
+            or len(set(channels)) != len(channels)
+        ):
+            raise ValueError("data.selected_channels must be nonempty, unique, nonnegative indices")
+        return self
 
 
 OperatorName = Literal[
