@@ -220,6 +220,12 @@ def validate_complete_experiment(config: Mapping[str, Any]) -> None:
             value = config["task"].get(key)
             if not isinstance(value, str) or not value.isidentifier():
                 raise ValueError(f"Research task.{key} must be an explicit Python identifier")
+        if "phase" in task:
+            phase = task["phase"]
+            if not isinstance(phase, str) or not phase or phase != phase.strip():
+                raise ValueError("Research task.phase must be a nonempty string without surrounding whitespace")
+        if "options" in task and not isinstance(task["options"], Mapping):
+            raise TypeError("Research task.options must be a mapping")
         output = config["environment"].get("output_dir")
         if not isinstance(output, str) or not output.strip():
             raise ValueError("Research environment.output_dir must be a nonempty string")

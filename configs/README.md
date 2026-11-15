@@ -31,6 +31,42 @@ trainer: {}      # device, epochs, precision, logging, checkpoint behavior
 A top-level `pipeline` selects orchestration. New datasets, models, tasks, and trainers
 should normally extend their factory rather than add a special branch to `main.py`.
 
+## Scientific task phases through the same command
+
+Scientific tasks with `task.execution: research` also run with
+`phmfactory --config <yaml>`. Set `task.phase` explicitly to a phase exposed by
+that task's `PHASES`. There is no implicit training stage.
+
+```bash
+phmfactory --config configs/experiments/p06/symbolic_fixture.yaml
+```
+
+This existing CPU fixture tests software behavior, not measured PHM performance.
+Its configuration declares `task.phase: synthetic`. The older command
+`phmfactory research synthetic --config <yaml>` remains supported; an explicitly
+configured phase must agree with the command phase. Preflight never executes it.
+
+Task-specific keyword inputs formerly supplied by `research --data`,
+`--checkpoint`, or other task options can be declared in `task.options`. For
+example, the following is an illustrative fragment, not a complete experiment:
+
+```yaml
+task:
+  execution: research
+  phase: evaluate
+  options:
+    data: /explicit/target.npz
+    checkpoint: /explicit/source_state
+```
+
+Only options accepted by the selected task's `execute` signature are valid.
+`config`, `phase`, and `output` cannot be replaced through `task.options`.
+The task still owns its input and state semantics: a checkpoint path does not
+imply training or resume. Normal output uses `environment.output_dir/<phase>`.
+Explicit legacy command options override the corresponding `task.options` values;
+configuration composition and execution each occur once. Experimental Pipeline
+opt-in remains required even when it selects a scientific task.
+
 ## One configuration truth
 
 Every maintained public consumer uses `phmfactory.config.analyze_config`:

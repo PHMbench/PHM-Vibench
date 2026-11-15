@@ -12,6 +12,7 @@ task:
   type: classification
   name: symbolic_diagnosis
   execution: research
+  phase: synthetic
   symbolic_diagnosis:
     counts: [1, 1, 1]
     orders: [3.2, 4.8, 6.4]
