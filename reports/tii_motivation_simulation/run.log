@@ -1,0 +1,12 @@
+RUN common_informative data=101 optimizer=0 arm=support
+RUN common_informative data=101 optimizer=0 arm=ordinary
+RUN common_informative data=202 optimizer=1 arm=support
+RUN common_informative data=202 optimizer=1 arm=ordinary
+RUN common_informative data=303 optimizer=2 arm=support
+RUN common_informative data=303 optimizer=2 arm=ordinary
+RUN increment_informative data=101 optimizer=0 arm=support
+RUN increment_informative data=101 optimizer=0 arm=ordinary
+RUN increment_informative data=202 optimizer=1 arm=support
+RUN increment_informative data=202 optimizer=1 arm=ordinary
+RUN increment_informative data=303 optimizer=2 arm=support
+RUN increment_informative data=303 optimizer=2 arm=ordinary
