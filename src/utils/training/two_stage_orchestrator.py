@@ -14,6 +14,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Dict, Optional
 from types import SimpleNamespace
+from pathlib import Path
+from tempfile import mkdtemp
 import logging
 import re
 
@@ -276,15 +278,30 @@ def _require_test_metrics(result: Any, stage_name: str) -> Dict[str, Any]:
 
     if (
         not isinstance(result, (list, tuple))
-        or not result
+        or len(result) != 1
         or not isinstance(result[0], Mapping)
         or not result[0]
     ):
         raise RuntimeError(
             f"Pipeline 02 {stage_name} evaluation must return a non-empty "
-            "metrics mapping from trainer.test."
+            "metrics mapping from exactly one trainer.test population."
         )
-    return deepcopy(dict(result[0]))
+    from src.runtime.classification import _result_row
+
+    return _result_row(result)
+
+
+def _test_after_fit(trainer: Any, data: Any) -> bool:
+    """Omission preserves the historical evaluated-stage behavior."""
+    evaluate = getattr(trainer, "test_after_fit", True)
+    if not isinstance(evaluate, bool):
+        raise TypeError("trainer.test_after_fit must be a boolean for each stage")
+    load_test = getattr(data, "load_test", True)
+    if not isinstance(load_test, bool):
+        raise TypeError("data.load_test must be a boolean for each stage")
+    if evaluate and not load_test:
+        raise ValueError("data.load_test=false conflicts with trainer.test_after_fit=true")
+    return evaluate
 
 
 class MultiStageOrchestrator:
@@ -311,8 +328,9 @@ class MultiStageOrchestrator:
         else:
             self.cfg = self._load_single_stage_config(unified_config)
 
-        # 验证每个阶段的 data/model/task 必需字段
+        # Validate every stage before any stage creates outputs or fits a model.
         self._validate_stages()
+        self.stage_requirements()
 
     def _is_unified_yaml_format(self, config: dict) -> bool:
         """检查是否为单YAML + stages.overrides格式"""
@@ -337,7 +355,7 @@ class MultiStageOrchestrator:
         # 处理stages
         processed_stages = []
         for stage_idx, stage_dict in enumerate(config['stages']):
-            stage_name = stage_dict.get('name', f"stage_{stage_idx}")
+            stage_name = stage_dict.get('name', f"stage_{stage_idx+1}")
 
             # 合并配置：全局配置 + stage overrides + CLI overrides
             stage_overrides = stage_dict.get('overrides', {})
@@ -447,82 +465,25 @@ class MultiStageOrchestrator:
         trainer = transfer_namespace(obj.get('trainer', {}))
         return env, data, model, task, trainer
 
+    def stage_requirements(self) -> Dict[str, bool]:
+        """Read ordered names and evaluation requirements from resolved stages."""
+        stages = getattr(self.cfg, 'stages', []) or []
+        if not stages:
+            raise ValueError("MultiStageOrchestrator requires at least one stage")
+        requirements = {}
+        for index, stage in enumerate(stages):
+            env, data, _, _, trainer = self._stage_to_namespaces(stage)
+            name = getattr(env, 'stage_name', f"stage_{index+1}")
+            if not isinstance(name, str) or not name or name != name.strip() or name.startswith('_'):
+                raise ValueError(f"Invalid stage name {name!r}; use a nonempty, non-reserved name")
+            if name in requirements:
+                raise ValueError(f"Duplicate stage name {name!r} would overwrite a result")
+            requirements[name] = _test_after_fit(trainer, data)
+        return requirements
+
     # ------------------------ stage runs ------------------------
     def run_pretrain(self, stage_cfg: Any, iteration: int = 0) -> Dict[str, Any]:
-        env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
-
-        seed = getattr(env, 'seed', 42) + int(iteration)
-        seed_everything(seed)
-
-        cfg_for_path = ConfigWrapper(
-            environment=env,
-            data=data,
-            model=model,
-            task=task,
-            trainer=trainer,
-        )
-        path, name = path_name(cfg_for_path)
-        trainer.logger_name = name
-
-        data_factory = None
-        lab_started = False
-        try:
-            init_lab(env, self.cfg, name)
-            lab_started = True
-
-            if self.dry_run:
-                return {
-                    'checkpoint_path': None,
-                    'metrics': {'dry_run': True},
-                    'path': path,
-                }
-
-            data_factory = build_data(data, task)
-            metadata = data_factory.get_metadata()
-            net = build_model(model, metadata=metadata)
-            lightning_task = build_task(
-                args_task=task,
-                network=net,
-                args_data=data,
-                args_model=model,
-                args_trainer=trainer,
-                args_environment=env,
-                metadata=metadata,
-            )
-            pl_trainer = build_trainer(env, trainer, data, path)
-
-            pl_trainer.fit(
-                lightning_task,
-                data_factory.get_dataloader('train'),
-                data_factory.get_dataloader('val'),
-            )
-
-            lightning_task = load_best_model_checkpoint(lightning_task, pl_trainer)
-            ckpt_path = next(
-                (
-                    cb.best_model_path
-                    for cb in pl_trainer.callbacks
-                    if isinstance(cb, ModelCheckpoint)
-                ),
-                None,
-            )
-            test_metrics = _require_test_metrics(
-                pl_trainer.test(
-                    lightning_task,
-                    data_factory.get_dataloader('test'),
-                ),
-                "pretrain",
-            )
-            return {
-                'checkpoint_path': ckpt_path,
-                'metrics': test_metrics,
-                'path': path,
-            }
-        finally:
-            if data_factory is not None:
-                _close_data_factory(data_factory)
-            if lab_started:
-                close_lab()
+        return self._run_stage(stage_cfg, checkpoint_path=None, iteration=iteration)
 
     def run_adapt(
         self,
@@ -530,19 +491,27 @@ class MultiStageOrchestrator:
         checkpoint_path: Optional[str] = None,
         iteration: int = 0,
     ) -> Dict[str, Any]:
-        env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
+        return self._run_stage(stage_cfg, checkpoint_path=checkpoint_path, iteration=iteration)
 
+    def _run_stage(self, stage_cfg: Any, *, checkpoint_path: Optional[str],
+                   iteration: int) -> Dict[str, Any]:
+        """Fit one stage, restore its selected state, and evaluate only if requested."""
+        env, data, model, task, trainer = self._stage_to_namespaces(stage_cfg)
+        evaluate = _test_after_fit(trainer, data)
+        if checkpoint_path and getattr(model, 'weights_path', None):
+            raise ValueError("Stage transfer checkpoint conflicts with model.weights_path; select one source")
         seed = getattr(env, 'seed', 42) + int(iteration)
         seed_everything(seed)
 
         cfg_for_path = ConfigWrapper(
-            environment=env,
-            data=data,
-            model=model,
-            task=task,
-            trainer=trainer,
+            environment=env, data=data, model=model, task=task, trainer=trainer,
         )
+        if self.dry_run:
+            return {'status': 'not_executed', 'checkpoint_path': None}
         path, name = path_name(cfg_for_path)
+        # The legacy name has second precision; short consecutive stages can
+        # otherwise write the same checkpoint filename into the same directory.
+        path = mkdtemp(prefix="stage-", dir=path)
         trainer.logger_name = name
 
         data_factory = None
@@ -550,27 +519,15 @@ class MultiStageOrchestrator:
         try:
             init_lab(env, self.cfg, name)
             lab_started = True
-
-            if self.dry_run:
-                return {
-                    'checkpoint_path': checkpoint_path,
-                    'metrics': {'dry_run': True},
-                    'path': path,
-                }
-
             data_factory = build_data(data, task)
             metadata = data_factory.get_metadata()
             net = build_model(model, metadata=metadata)
             if checkpoint_path:
+                # Weight transfer is not Trainer resume: optimizer/scheduler are new.
                 load_pretrained_weights(net, checkpoint_path, strict=False)
             lightning_task = build_task(
-                args_task=task,
-                network=net,
-                args_data=data,
-                args_model=model,
-                args_trainer=trainer,
-                args_environment=env,
-                metadata=metadata,
+                args_task=task, network=net, args_data=data, args_model=model,
+                args_trainer=trainer, args_environment=env, metadata=metadata,
             )
             pl_trainer = build_trainer(env, trainer, data, path)
             pl_trainer.fit(
@@ -578,28 +535,24 @@ class MultiStageOrchestrator:
                 data_factory.get_dataloader('train'),
                 data_factory.get_dataloader('val'),
             )
-
+            # The current lifecycle selects by the declared checkpoint policy even
+            # for train-only stages. Never substitute an arbitrary last state.
             lightning_task = load_best_model_checkpoint(lightning_task, pl_trainer)
             ckpt_path = next(
-                (
-                    cb.best_model_path
-                    for cb in pl_trainer.callbacks
-                    if isinstance(cb, ModelCheckpoint)
-                ),
-                None,
+                cb.best_model_path for cb in pl_trainer.callbacks
+                if isinstance(cb, ModelCheckpoint)
             )
-            test_metrics = _require_test_metrics(
-                pl_trainer.test(
-                    lightning_task,
-                    data_factory.get_dataloader('test'),
-                ),
-                "adapt",
-            )
-            return {
+            result = {
+                'status': 'evaluated' if evaluate else 'trained_not_evaluated',
                 'checkpoint_path': ckpt_path,
-                'metrics': test_metrics,
                 'path': path,
             }
+            if evaluate:
+                result['metrics'] = _require_test_metrics(
+                    pl_trainer.test(lightning_task, data_factory.get_dataloader('test')),
+                    getattr(env, 'stage_name', 'stage'),
+                )
+            return result
         finally:
             if data_factory is not None:
                 _close_data_factory(data_factory)
@@ -608,65 +561,48 @@ class MultiStageOrchestrator:
 
     # ------------------------ orchestrator APIs ------------------------
     def run_all_stages(self) -> Dict[str, Any]:
-        """按顺序运行所有阶段，并返回每个阶段的结果与 checkpoint 路径。"""
-        stages = getattr(self.cfg, 'stages', []) or []
-        if not stages:
-            raise ValueError("MultiStageOrchestrator 需要至少一个 stage 配置")
-
+        """Execute every declared stage in order, without stale checkpoint fallback."""
+        requirements = self.stage_requirements()
+        stages = self.cfg.stages
         ckpt_path: Optional[str] = None
         results: Dict[str, Any] = {}
         ckpt_registry: Dict[str, Optional[str]] = {}
-
-        for idx, stage_cfg in enumerate(stages):
-            env = getattr(stage_cfg, 'environment', None)
-            stage_name = getattr(env, 'stage_name', f"stage_{idx+1}") if env is not None else f"stage_{idx+1}"
-
-            if idx == 0:
-                out = self.run_pretrain(stage_cfg, iteration=idx)
+        for index, (stage_name, stage_cfg) in enumerate(zip(requirements, stages)):
+            # Stage index is not a random-seed offset. Preserve the prior public
+            # two-stage seed policy; a different stage seed is an explicit override.
+            if index == 0:
+                out = self.run_pretrain(stage_cfg, iteration=0)
             else:
-                out = self.run_adapt(stage_cfg, checkpoint_path=ckpt_path, iteration=idx)
-
-            # 更新当前累计 checkpoint（如果本阶段训练出了新的 best ckpt）
-            stage_ckpt = out.get('checkpoint_path', ckpt_path)
-            ckpt_path = stage_ckpt or ckpt_path
-            ckpt_registry[stage_name] = ckpt_path
-
-            # 确保返回结果中带有 checkpoint_path 字段
-            out['checkpoint_path'] = stage_ckpt
+                out = self.run_adapt(stage_cfg, checkpoint_path=ckpt_path, iteration=0)
+            if not isinstance(out, Mapping):
+                raise RuntimeError(f"Stage {stage_name!r} must return a result mapping")
+            stage_ckpt = out.get('checkpoint_path')
+            if not self.dry_run:
+                if not stage_ckpt or not Path(stage_ckpt).is_file():
+                    raise RuntimeError(f"Stage {stage_name!r} did not produce its selected checkpoint: {stage_ckpt!r}")
+                expected_status = 'evaluated' if requirements[stage_name] else 'trained_not_evaluated'
+                if out.get('status') != expected_status:
+                    raise RuntimeError(f"Stage {stage_name!r} expected status {expected_status!r}, got {out.get('status')!r}")
+            ckpt_path = stage_ckpt
+            ckpt_registry[stage_name] = stage_ckpt
             results[stage_name] = out
-
         results['_ckpt_registry'] = ckpt_registry
         return results
 
     def run_complete(self) -> Dict[str, Any]:
-        """兼容旧接口的两阶段视图：返回 {'stage_1': ..., 'stage_2': ...}。"""
-        # 如果有显式的 stage_1/2，优先使用；否则退化为 run_all_stages 的前两阶段
-        stage1 = getattr(self.cfg, 'stage_1', None)
-        stage2 = getattr(self.cfg, 'stage_2', None)
-
-        if stage1 is None:
-            stages = getattr(self.cfg, 'stages', []) or []
-            if not stages:
-                raise ValueError("Two-stage view requires at least one stage")
-            stage1 = stages[0]
-            if len(stages) > 1:
-                stage2 = stages[1]
-
-        pre = self.run_pretrain(stage1, iteration=0)
-        ckpt = pre.get('checkpoint_path')
-
-        if stage2 is None:
-            return {'stage_1': pre}
-
-        ada = self.run_adapt(stage2, checkpoint_path=ckpt, iteration=0)
-        return {'stage_1': pre, 'stage_2': ada}
+        """Compatibility view for at most two stages, retaining stage_1/2 keys."""
+        if len(self.cfg.stages) > 2:
+            raise ValueError("run_complete is a two-stage view; use run_all_stages for more stages")
+        results = self.run_all_stages()
+        return {f"stage_{index+1}": results[name]
+                for index, name in enumerate(self.stage_requirements())}
 
 
 class TwoStageOrchestrator(MultiStageOrchestrator):
     """
     兼容旧接口的两阶段 Orchestrator，实际逻辑全部继承自 MultiStageOrchestrator。
 
-    - 接受 {'stage_1': ..., 'stage_2': ...} 或包含 stages 列表的配置；
+    - 接受 {'stage_1': ..., 'stage_2': {...}} 或包含 stages 列表的配置；
     - pipeline 仍然可以调用 `run_complete()` 获取两阶段结果。
     """
 

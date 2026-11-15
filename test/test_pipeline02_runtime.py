@@ -92,10 +92,8 @@ def test_compiled_stages_select_one_unified_orchestrator(
 ) -> None:
     observed: dict[str, object] = {}
     expected = {
-        "stage_1": {
-            "checkpoint_path": "stage1.ckpt",
-            "metrics": {"test_loss": 1.0},
-        }
+        "pretrain": {"checkpoint_path": "stage1.ckpt", "metrics": {"test_loss": 1.0}},
+        "finetune": {"checkpoint_path": "stage2.ckpt", "metrics": {"test_loss": 0.5}},
     }
 
     class Orchestrator:
@@ -103,7 +101,10 @@ def test_compiled_stages_select_one_unified_orchestrator(
             observed["config"] = config
             observed["overrides"] = cli_overrides
 
-        def run_complete(self):
+        def stage_requirements(self):
+            return {"pretrain": True, "finetune": True}
+
+        def run_all_stages(self):
             return expected
 
     monkeypatch.setattr(pipeline02, "TwoStageOrchestrator", Orchestrator)
@@ -133,7 +134,10 @@ def test_multistage_rejects_stage_without_evaluation_metrics(
         def __init__(self, config, cli_overrides):
             pass
 
-        def run_complete(self):
+        def stage_requirements(self):
+            return {"stage_1": True}
+
+        def run_all_stages(self):
             return {"stage_1": {"checkpoint_path": "stage1.ckpt", "metrics": {}}}
 
     monkeypatch.setattr(pipeline02, "TwoStageOrchestrator", Orchestrator)
@@ -150,7 +154,10 @@ def test_orchestrator_error_is_not_converted_to_single_stage(
         def __init__(self, config, cli_overrides):
             pass
 
-        def run_complete(self):
+        def stage_requirements(self):
+            return {"stage_1": True}
+
+        def run_all_stages(self):
             raise RuntimeError("stage failed")
 
     monkeypatch.setattr(pipeline02, "TwoStageOrchestrator", Orchestrator)
@@ -185,15 +192,16 @@ def test_explicit_legacy_dual_yaml_uses_only_adapter_and_orchestrator(
         or unified,
     )
     expected = {
-        "stage_1": {
-            "checkpoint_path": "stage1.ckpt",
-            "metrics": {"test_loss": 1.0},
-        }
+        "stage_1": {"checkpoint_path": "stage1.ckpt", "metrics": {"test_loss": 1.0}},
+        "stage_2": {"checkpoint_path": "stage2.ckpt", "metrics": {"test_loss": 0.5}},
     }
 
     class Orchestrator:
         def __init__(self, config):
             assert config is unified
+
+        def stage_requirements(self):
+            return {"pretrain": True, "finetune": True}
 
         def run_complete(self):
             return expected
@@ -546,3 +554,151 @@ def test_pretrained_loader_rejects_checkpoint_without_backbone_weights(
             str(checkpoint),
             strict=False,
         )
+
+
+@pytest.mark.parametrize('method_name', ['run_pretrain', 'run_adapt'])
+def test_train_only_stage_never_tests_or_fabricates_metrics(tmp_path, monkeypatch, method_name):
+    orchestrator, closed = _stage_orchestrator(
+        tmp_path, monkeypatch, test_error=AssertionError('Test must not be called'))
+    *_, trainer = orchestrator._stage_to_namespaces(object())
+    trainer.test_after_fit = False
+    result = getattr(orchestrator, method_name)(stage_cfg=object())
+    assert result['status'] == 'trained_not_evaluated'
+    assert result['checkpoint_path']
+    assert 'metrics' not in result
+    assert closed == ['data', 'lab']
+
+
+def _three_stage_config(tmp_path):
+    from phmfactory.config import analyze_config
+    config = analyze_config('smoke').runtime_config()
+    config['environment']['output_dir'] = str(tmp_path / 'outputs')
+    config['environment']['seed'] = 17
+    config['stages'] = [
+        {'name': 'first', 'overrides': {'trainer': {'test_after_fit': False}}},
+        {'name': 'second', 'overrides': {}},
+        {'name': 'third', 'overrides': {'environment': {'seed': 19}}},
+    ]
+    return config
+
+
+def test_all_requested_stages_handoff_selected_states_without_seed_offset(tmp_path, monkeypatch):
+    orchestrator = orchestrator_module.TwoStageOrchestrator(_three_stage_config(tmp_path))
+    calls = []
+
+    def run(stage, checkpoint_path=None, iteration=0):
+        name = stage.environment.stage_name
+        if calls:
+            assert checkpoint_path == calls[-1][3]
+        else:
+            assert checkpoint_path is None
+        checkpoint = tmp_path / f'{name}.ckpt'
+        torch.save({'state_dict': {'network.linear.weight': torch.full((2, 2), len(calls))}}, checkpoint)
+        calls.append((name, stage.environment.seed, iteration, str(checkpoint)))
+        result = {'status': 'evaluated' if stage.trainer.test_after_fit else 'trained_not_evaluated',
+                  'checkpoint_path': str(checkpoint)}
+        if stage.trainer.test_after_fit:
+            result['metrics'] = {'loss': 0.25}
+        return result
+
+    monkeypatch.setattr(orchestrator, 'run_pretrain', run)
+    monkeypatch.setattr(orchestrator, 'run_adapt', run)
+    result = orchestrator.run_all_stages()
+    assert list(result) == ['first', 'second', 'third', '_ckpt_registry']
+    assert [(n, s, i) for n, s, i, _ in calls] == [
+        ('first', 17, 0), ('second', 17, 0), ('third', 19, 0)]
+    assert result['_ckpt_registry'] == {n: p for n, _, _, p in calls}
+    assert pipeline02._require_completed_stage_evaluation(
+        result, 'unified_multistage', orchestrator.stage_requirements()) is result
+
+
+def test_missing_new_checkpoint_does_not_reuse_old_state_or_run_next_stage(tmp_path, monkeypatch):
+    orchestrator = orchestrator_module.TwoStageOrchestrator(_three_stage_config(tmp_path))
+    first = tmp_path / 'first.ckpt'
+    first.write_bytes(b'only used as an existence fixture')
+    calls = []
+    monkeypatch.setattr(orchestrator, 'run_pretrain', lambda *a, **k: {
+        'status': 'trained_not_evaluated', 'checkpoint_path': str(first)})
+
+    def adapt(stage, checkpoint_path=None, iteration=0):
+        calls.append((stage.environment.stage_name, checkpoint_path))
+        return {'status': 'evaluated', 'metrics': {'loss': 0.1}, 'checkpoint_path': None}
+
+    monkeypatch.setattr(orchestrator, 'run_adapt', adapt)
+    with pytest.raises(RuntimeError, match='second.*selected checkpoint'):
+        orchestrator.run_all_stages()
+    assert calls == [('second', str(first))]
+    assert first.exists()
+
+
+def test_intermediate_exception_stops_later_stages(tmp_path, monkeypatch):
+    orchestrator = orchestrator_module.TwoStageOrchestrator(_three_stage_config(tmp_path))
+    checkpoint = tmp_path / 'first.ckpt'
+    checkpoint.write_bytes(b'kept')
+    monkeypatch.setattr(orchestrator, 'run_pretrain', lambda *a, **k: {
+        'status': 'trained_not_evaluated', 'checkpoint_path': str(checkpoint)})
+    calls = []
+    failure = RuntimeError('actual fit failure')
+
+    def adapt(stage, **kwargs):
+        calls.append(stage.environment.stage_name)
+        raise failure
+
+    monkeypatch.setattr(orchestrator, 'run_adapt', adapt)
+    with pytest.raises(RuntimeError) as caught:
+        orchestrator.run_all_stages()
+    assert caught.value is failure
+    assert calls == ['second'] and checkpoint.exists()
+
+
+@pytest.mark.parametrize('name', ['', ' first ', '_ckpt_registry', 'first'])
+def test_stage_names_cannot_disappear_or_overwrite_results(tmp_path, name):
+    config = _three_stage_config(tmp_path)
+    config['stages'][1]['name'] = name
+    with pytest.raises(ValueError, match='stage name'):
+        orchestrator_module.TwoStageOrchestrator(config)
+    assert not (tmp_path / 'outputs').exists()
+
+
+@pytest.mark.parametrize('flag', ['false', 0, None])
+def test_stage_evaluation_permission_is_not_truthiness(tmp_path, flag):
+    config = _three_stage_config(tmp_path)
+    config['stages'][0]['overrides']['trainer']['test_after_fit'] = flag
+    with pytest.raises(TypeError, match='test_after_fit'):
+        orchestrator_module.TwoStageOrchestrator(config)
+
+
+def test_explicit_two_stage_view_does_not_silently_truncate(tmp_path):
+    orchestrator = orchestrator_module.TwoStageOrchestrator(_three_stage_config(tmp_path))
+    with pytest.raises(ValueError, match='run_all_stages'):
+        orchestrator.run_complete()
+    assert not (tmp_path / 'outputs').exists()
+
+
+def test_dry_run_returns_no_fake_metric_or_checkpoint(tmp_path):
+    orchestrator = orchestrator_module.TwoStageOrchestrator(_three_stage_config(tmp_path), dry_run=True)
+    result = orchestrator.run_all_stages()
+    for name in ('first', 'second', 'third'):
+        assert result[name] == {'status': 'not_executed', 'checkpoint_path': None}
+    assert not (tmp_path / 'outputs').exists()
+
+
+def test_conflicting_transfer_sources_fail_before_construction(tmp_path, monkeypatch):
+    orchestrator, _ = _stage_orchestrator(tmp_path, monkeypatch)
+    _, _, model, _, _ = orchestrator._stage_to_namespaces(object())
+    model.weights_path = 'different.ckpt'
+    with pytest.raises(ValueError, match='conflicts with model.weights_path'):
+        orchestrator.run_adapt(stage_cfg=object(), checkpoint_path='previous.ckpt')
+
+
+def test_stage_does_not_truncate_multiple_test_populations():
+    with pytest.raises(RuntimeError, match='exactly one'):
+        orchestrator_module._require_test_metrics([{'loss': 0.1}, {'loss': 0.2}], 'evaluate')
+
+
+def test_fast_consecutive_stages_keep_separate_output_directories(tmp_path, monkeypatch):
+    orchestrator, _ = _stage_orchestrator(tmp_path, monkeypatch, test_result=[{'loss': 0.5}])
+    first = orchestrator.run_pretrain(stage_cfg=object())
+    second = orchestrator.run_adapt(stage_cfg=object())
+    assert first['path'] != second['path']
+    assert Path(first['path']).parent == Path(second['path']).parent == tmp_path
