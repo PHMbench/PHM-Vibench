@@ -1,0 +1,26 @@
+name: Temporary fixed source export
+on:
+  push:
+    branches: [fix/config-research-dispatch-20261115]
+    paths: [.github/workflows/temporary-source-export.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 67dfd0fc318b560c21476d1264d8936cdea761eb
+          persist-credentials: false
+      - name: Archive requested baseline
+        run: |
+          git archive --format=tar.gz HEAD -o /tmp/phmfactory-source.tar.gz
+          git log -1 --format=raw > /tmp/baseline-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fixed-dev-source
+          path: |
+            /tmp/phmfactory-source.tar.gz
+            /tmp/baseline-commit.txt
+          retention-days: 1
