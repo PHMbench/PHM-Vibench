@@ -1,0 +1,93 @@
+{
+  "all_state_tensors_exactly_equal": true,
+  "parameter_count": 756,
+  "parameter_shapes": {
+    "embedding.source_rms": [],
+    "embedding.common_branch.0.weight": [
+      16,
+      16
+    ],
+    "embedding.common_branch.0.bias": [
+      16
+    ],
+    "embedding.common_branch.2.weight": [
+      4,
+      16
+    ],
+    "embedding.common_branch.2.bias": [
+      4
+    ],
+    "embedding.increment_branch.0.weight": [
+      16,
+      16
+    ],
+    "embedding.increment_branch.0.bias": [
+      16
+    ],
+    "embedding.increment_branch.2.weight": [
+      4,
+      16
+    ],
+    "embedding.increment_branch.2.bias": [
+      4
+    ],
+    "backbone.Linear_Seasonal.weight": [
+      4,
+      4
+    ],
+    "backbone.Linear_Seasonal.bias": [
+      4
+    ],
+    "backbone.Linear_Trend.weight": [
+      4,
+      4
+    ],
+    "backbone.Linear_Trend.bias": [
+      4
+    ],
+    "task_head.mutiple_fc.1.weight": [
+      2,
+      8
+    ],
+    "task_head.mutiple_fc.1.bias": [
+      2
+    ],
+    "task_head.mutiple_fc.2.weight": [
+      2,
+      8
+    ],
+    "task_head.mutiple_fc.2.bias": [
+      2
+    ]
+  },
+  "ordinary_first_affine": {
+    "rows": 32,
+    "columns": 16,
+    "operator": "unprojected vertical branch-weight stack; actual first affine input map only for U",
+    "rank": 16,
+    "sigma_min": 0.286575441093041,
+    "rank_dtype": "float64",
+    "rank_tolerance": 9.668949562543636e-15,
+    "singular_values": [
+      1.3607836764667387,
+      1.195558366159825,
+      1.114973763929782,
+      1.0529063814192756,
+      0.9594851212875891,
+      0.9028030595157969,
+      0.8566407023329574,
+      0.7960697222473135,
+      0.7178395289452336,
+      0.6975362677086698,
+      0.6374718471327999,
+      0.5542855993215858,
+      0.524661099410936,
+      0.3889936057744981,
+      0.3525112713706568,
+      0.286575441093041
+    ]
+  },
+  "optimizer_seed": 0,
+  "sampling_seed": 0,
+  "sampling": "same deterministic native SourceRounds per arm"
+}

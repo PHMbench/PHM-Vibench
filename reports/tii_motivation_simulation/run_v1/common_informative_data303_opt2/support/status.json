@@ -1,0 +1,126 @@
+{
+  "status": "completed",
+  "selected_step": 300,
+  "source_val_nll": 0.0038191809064706816,
+  "source_train_nll": 0.0042328006133184855,
+  "initial_first_affine": {
+    "rows": 32,
+    "columns": 16,
+    "operator": "unprojected vertical branch-weight stack; actual first affine input map only for U",
+    "rank": 16,
+    "sigma_min": 0.2754524937231047,
+    "rank_dtype": "float64",
+    "rank_tolerance": 1.0030337902271433e-14,
+    "singular_values": [
+      1.411644563720931,
+      1.1626314174946863,
+      1.1230266343254744,
+      1.0333754030753406,
+      0.9708082775241551,
+      0.8973784763538593,
+      0.7818439763560854,
+      0.7230352450370136,
+      0.7221420753327584,
+      0.6612211393785643,
+      0.5425638919004293,
+      0.5018838653988758,
+      0.4544016332116745,
+      0.4321156376165903,
+      0.3348285597030658,
+      0.2754524937231047
+    ]
+  },
+  "selected_first_affine": {
+    "rows": 32,
+    "columns": 16,
+    "operator": "unprojected vertical branch-weight stack; actual first affine input map only for U",
+    "rank": 16,
+    "sigma_min": 0.2988633922370199,
+    "rank_dtype": "float64",
+    "rank_tolerance": 1.8613349022723197e-14,
+    "singular_values": [
+      2.6195959913391618,
+      2.3754338048125216,
+      1.6078310637250541,
+      1.5550591279904176,
+      1.2999302810936995,
+      1.167830296614415,
+      0.9868888247921109,
+      0.9360110157922374,
+      0.805975577050087,
+      0.7683101657788654,
+      0.6234095124873293,
+      0.6119589062854927,
+      0.49674413968340186,
+      0.42989088661051855,
+      0.3577290695873218,
+      0.2988633922370199
+    ]
+  },
+  "terminal_first_affine": {
+    "rows": 32,
+    "columns": 16,
+    "operator": "unprojected vertical branch-weight stack; actual first affine input map only for U",
+    "rank": 16,
+    "sigma_min": 0.2988633922370199,
+    "rank_dtype": "float64",
+    "rank_tolerance": 1.8613349022723197e-14,
+    "singular_values": [
+      2.6195959913391618,
+      2.3754338048125216,
+      1.6078310637250541,
+      1.5550591279904176,
+      1.2999302810936995,
+      1.167830296614415,
+      0.9868888247921109,
+      0.9360110157922374,
+      0.805975577050087,
+      0.7683101657788654,
+      0.6234095124873293,
+      0.6119589062854927,
+      0.49674413968340186,
+      0.42989088661051855,
+      0.3577290695873218,
+      0.2988633922370199
+    ]
+  },
+  "readout": {
+    "alpha": 0.01,
+    "scale": 2,
+    "logits_max_absolute_difference": 0.0,
+    "inverse_weight_decisions_equal": true,
+    "scaled_refit_decision_changes": 0,
+    "original": {
+      "l2": 0.01,
+      "iterations": 19,
+      "gradient_inf": 8.544718006070484e-10,
+      "objective": 0.008275721856203648
+    },
+    "scaled_refit": {
+      "l2": 0.01,
+      "iterations": 16,
+      "gradient_inf": 3.7960048481291975e-09,
+      "objective": 0.0028888307190035618
+    },
+    "metrics": {
+      "original": {
+        "nll": 0.001512836743698927,
+        "accuracy": 1.0
+      },
+      "inverse_weight": {
+        "nll": 0.001512836743698927,
+        "accuracy": 1.0
+      },
+      "scaled_refit": {
+        "nll": 0.0004335432461604437,
+        "accuracy": 1.0
+      }
+    }
+  },
+  "resources": {
+    "wall_seconds": 4.477025663014501,
+    "cpu_user_seconds": 4.473582999999998,
+    "cpu_system_seconds": 0.0,
+    "process_peak_rss_kib": 713876
+  }
+}

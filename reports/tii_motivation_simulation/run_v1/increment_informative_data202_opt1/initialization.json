@@ -1,0 +1,93 @@
+{
+  "all_state_tensors_exactly_equal": true,
+  "parameter_count": 756,
+  "parameter_shapes": {
+    "embedding.source_rms": [],
+    "embedding.common_branch.0.weight": [
+      16,
+      16
+    ],
+    "embedding.common_branch.0.bias": [
+      16
+    ],
+    "embedding.common_branch.2.weight": [
+      4,
+      16
+    ],
+    "embedding.common_branch.2.bias": [
+      4
+    ],
+    "embedding.increment_branch.0.weight": [
+      16,
+      16
+    ],
+    "embedding.increment_branch.0.bias": [
+      16
+    ],
+    "embedding.increment_branch.2.weight": [
+      4,
+      16
+    ],
+    "embedding.increment_branch.2.bias": [
+      4
+    ],
+    "backbone.Linear_Seasonal.weight": [
+      4,
+      4
+    ],
+    "backbone.Linear_Seasonal.bias": [
+      4
+    ],
+    "backbone.Linear_Trend.weight": [
+      4,
+      4
+    ],
+    "backbone.Linear_Trend.bias": [
+      4
+    ],
+    "task_head.mutiple_fc.1.weight": [
+      2,
+      8
+    ],
+    "task_head.mutiple_fc.1.bias": [
+      2
+    ],
+    "task_head.mutiple_fc.2.weight": [
+      2,
+      8
+    ],
+    "task_head.mutiple_fc.2.bias": [
+      2
+    ]
+  },
+  "ordinary_first_affine": {
+    "rows": 32,
+    "columns": 16,
+    "operator": "unprojected vertical branch-weight stack; actual first affine input map only for U",
+    "rank": 16,
+    "sigma_min": 0.27336931053038094,
+    "rank_dtype": "float64",
+    "rank_tolerance": 9.250073804791638e-15,
+    "singular_values": [
+      1.3018321543877878,
+      1.1781135312917448,
+      1.1145762567757527,
+      1.0581347119954478,
+      0.9757748772072674,
+      0.9583769068306524,
+      0.8889782869759694,
+      0.7751178016369283,
+      0.6585071794946015,
+      0.6344943153336918,
+      0.5485514922594616,
+      0.5087206372611958,
+      0.4447291731771988,
+      0.4280751103722352,
+      0.3339744597499099,
+      0.27336931053038094
+    ]
+  },
+  "optimizer_seed": 1,
+  "sampling_seed": 1,
+  "sampling": "same deterministic native SourceRounds per arm"
+}

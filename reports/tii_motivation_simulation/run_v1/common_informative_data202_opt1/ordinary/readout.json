@@ -1,0 +1,33 @@
+{
+  "alpha": 0.01,
+  "scale": 2,
+  "logits_max_absolute_difference": 0.0,
+  "inverse_weight_decisions_equal": true,
+  "scaled_refit_decision_changes": 0,
+  "original": {
+    "l2": 0.01,
+    "iterations": 17,
+    "gradient_inf": 1.8712142495214135e-09,
+    "objective": 0.009739615218752226
+  },
+  "scaled_refit": {
+    "l2": 0.01,
+    "iterations": 14,
+    "gradient_inf": 2.7706957516065306e-09,
+    "objective": 0.0034778027070464326
+  },
+  "metrics": {
+    "original": {
+      "nll": 0.006456686393624716,
+      "accuracy": 1.0
+    },
+    "inverse_weight": {
+      "nll": 0.006456686393624716,
+      "accuracy": 1.0
+    },
+    "scaled_refit": {
+      "nll": 0.003210292329025897,
+      "accuracy": 1.0
+    }
+  }
+}
