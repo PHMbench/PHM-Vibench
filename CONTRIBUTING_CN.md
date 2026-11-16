@@ -35,7 +35,9 @@ phmfactory --config <yaml> [--local-config <yaml>] [--override key=value ...]
 ```
 
 不能仅以“未来可能支持更多数据集、后端、模型、分布式系统或工作流”为理由扩建主架构。
-尚无稳定维护需求的研究变体应先放在 `configs/experiments/` 或独立研究仓库。
+论文专属方法、配置、搜索和出版材料属于下游研究仓库，不能先放进 `configs/experiments/`
+作为暂存区。公共组件须有真实、独立于某篇论文的维护合同；归属与提交前检查见
+[AGENTS.md](AGENTS.md#repository-ownership-and-one-way-dependency)。本规则不授权迁移或删除现有研究材料。
 
 ## 2. 永久约束
 
@@ -159,8 +161,9 @@ Reader 不得生成替代数据、猜测不兼容格式、静默重排通道或�
 
 兼容组件不得通过修改 `main.py` 接入。源码能 import 不等于受到支持。
 
-新实验配置放入 `configs/experiments/`。晋级为 maintained demo 或 baseline 必须有当前精确
-执行证据和对应 registry 变更。
+`configs/experiments/` 可维护公共能力的实验性示例，不接收某篇论文的实验矩阵、调优种子列表
+或消融队列。晋级为 maintained demo 或 baseline 必须有当前精确执行证据和对应 registry 变更；
+论文调用方将自己的研究配置保留在下游。
 
 ## 8. 文档
 
