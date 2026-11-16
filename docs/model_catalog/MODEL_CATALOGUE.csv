@@ -7,7 +7,7 @@ source:M005,Model_Candidates!6,FDDG,,,https://github.com/CHAOZHAO-1/FDDG,,,,DISC
 source:M006,Model_Candidates!7,HSE,,,https://github.com/PHMbench/PHM-Vibench,,,,DISCOVERED,,NONE,,,,
 source:M007,Model_Candidates!8,ISFM,,,https://github.com/PHMbench/PHM-Vibench,,,,DISCOVERED,,NONE,,,,
 source:M008,Model_Candidates!9,RoleConstrainedMoE,,,https://github.com/PHMbench/PHM-Vibench,,,,DISCOVERED,,NONE,,,,
-source:M009,Model_Candidates!10,XOANOperatorPath,,,https://github.com/PHMbench/PHM-Vibench,,,,DISCOVERED,,NONE,,,,
+source:M009,Model_Candidates!10,XOANOperatorPath,,,https://github.com/AI4Engineering-L/P07-XOAN-Operator-Attention,,,,DISCOVERED,,NONE,,,,Historical paper-owned implementation; not shipped by PHMFactory
 source:M010,Model_Candidates!11,ConvTimeNet,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
 source:M011,Model_Candidates!12,MLP4TSC,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,
 source:M012,Model_Candidates!13,MambaSL,,,https://github.com/thuml/Time-Series-Library,,,,DISCOVERED,,NONE,,,,

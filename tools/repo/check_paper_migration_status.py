@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -216,12 +217,50 @@ def collect_findings() -> tuple[Finding, ...]:
     return tuple(sorted(findings, key=lambda item: (item.release_only, item.code, item.detail)))
 
 
+
+def collect_source_findings(base_ref: str | None = None) -> tuple[Finding, ...]:
+    """Reject returned paper code and identifiable new study-owned materials."""
+    tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT, text=True).split("\0")
+    retired = (
+        "phmfactory/p06.py", "src/utils/p07_protocol/", "src/research/p07_protocol/",
+        "src/model_factory/X_model/P07OperatorPath.py", "src/model_factory/X_model/XOANOperatorPath.py",
+        "src/model_factory/X_model/UXFD/operator_attention/executable_operator_path_1d.py",
+        "src/task_factory/task/classification/symbolic_diagnosis/",
+        "src/task_factory/task/DG/operator_path/", "src/data_factory/operator_path_export.py",
+        "configs/experiments/p06/", "configs/experiments/p07/",
+        "configs/experiments/p07_xoan_operator_attention/", "configs/base/model/xoan_operator_path.yaml",
+        "scripts/p07_", "test/test_p07_", "test/test_p06_certificate.py",
+        "test/test_symbolic_diagnosis_", "test/test_operator_path_", "test/test_executable_operator_path.py",
+    )
+    findings = [Finding("PAPER_IMPLEMENTATION_RETURNED", path) for path in tracked
+                if path and any(path.startswith(prefix) for prefix in retired)]
+    if base_ref:
+        base = subprocess.check_output(["git", "rev-parse", "--verify", base_ref + "^{commit}"], cwd=ROOT, text=True).strip()
+        added = subprocess.check_output(["git", "diff", "--name-only", "-z", "--no-renames", "--diff-filter=A", base + "...HEAD"], cwd=ROOT, text=True).split("\0")
+        paper_path = re.compile(r"(?:^|[/_.-])[Pp][0-9]{2}(?=[/_.-]|[A-Z]|$)")
+        for path in added:
+            if path and (paper_path.search(path) or path.startswith(("paper/", "papers/", "research/", "studies/", "src/research/"))):
+                if not (path.endswith(".md") and path.startswith(("doc/changelog/", "docs/archive/audits/"))):
+                    findings.append(Finding("NEW_PAPER_MATERIAL", path))
+        diff = subprocess.check_output(["git", "diff", "--unified=0", base + "...HEAD", "--", "phmfactory", "src", "configs", "scripts"], cwd=ROOT, text=True)
+        paper_import = re.compile(r"^\+\s*(?:from|import)\s+(?:paper(?:[.\s])|P4(?:[.\s])|[Pp][0-9]{2}(?:[.\s]))")
+        paper_binding = re.compile(r"phmfactory\.p06|p07_protocol|P07OperatorPath|XOANOperatorPath|(?:module\s*[:=]\s*[\"\']?)(?:paper\.|P4\.|[Pp][0-9]{2}\.)")
+        path = ""
+        for line in diff.splitlines():
+            if line.startswith("+++ b/"):
+                path = line[6:]
+            elif line.startswith("+") and (paper_import.search(line) or paper_binding.search(line)):
+                findings.append(Finding("PAPER_REVERSE_DEPENDENCY", path + ": " + line[1:].strip()))
+    return tuple(findings)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=("policy", "release"), default="policy")
+    parser.add_argument("--base-ref", help="PR base commit for new paper material checks")
     args = parser.parse_args()
     try:
-        findings = collect_findings()
+        findings = collect_findings() + collect_source_findings(args.base_ref)
     except (OSError, ValueError, yaml.YAMLError) as exc:
         print(f"Paper migration tracker ERROR: {exc}", file=sys.stderr)
         return 1

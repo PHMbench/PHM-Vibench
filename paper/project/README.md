@@ -2,13 +2,15 @@
 
 This directory records how historical P07 and P09 paper overlays were
 accounted for. It is not imported by either runtime, and none of its contents
-is experimental or positive-claim evidence. `SOURCE_MAP.yaml` is the audited
-mapping authority.
+is experimental or positive-claim evidence. `SOURCE_MAP.yaml` preserves the historical migration mapping, not current
+implementation ownership or permission to add paper material.
 
 ## P07 XOAN
 
-The executable P07 runtime is maintained in
-`configs/experiments/p07_xoan_operator_attention/`. The legacy payload from
+P07 code, study configurations and tests are maintained in
+`AI4Engineering-L/P07-XOAN-Operator-Attention`: active bounded DAG code in
+`P4/`, retired XOAN protocol in `legacy/p07_protocol/` and `legacy/p07_runtime/`.
+No P07 implementation remains in the shared runtime. The legacy payload from
 `paper/p07-xoan-operator-attention` is already preserved in the P07 paper
 repository under `legacy/source_snapshot/`, so it is not duplicated here.
 

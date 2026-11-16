@@ -5,36 +5,11 @@ import pytest
 import torch
 
 from phmfactory.explanation import (
-    build_llm_packet, export_xoan_state, state_from_tspn_uxfd_fuzzy_trace,
+    build_llm_packet, state_from_tspn_uxfd_fuzzy_trace,
 )
-from test.test_p07_xoan_method import _model
 from test.test_tspn_uxfd_assembly import TSPNUXFD, _make_args
 
 
-@pytest.mark.parametrize("mode", ["relaxed", "discrete"])
-def test_xoan_explains_the_selected_inference_route(mode, monkeypatch):
-    torch.manual_seed(7)
-    model = _model().eval()
-    model.inference_mode = mode
-    x = torch.randn(2, 64, 2)
-    calls = []
-    native_forward = model.forward_evidence
-    def counted_forward(*args, **kwargs):
-        calls.append(1)
-        return native_forward(*args, **kwargs)
-    monkeypatch.setattr(model, "forward_evidence", counted_forward)
-    with torch.no_grad():
-        expected = model(x)[1]
-        state = export_xoan_state(model, x, sample_id="route-check", sample_index=1)
-    assert len(calls) == 1
-    assert state.prediction.logits == pytest.approx(expected.tolist(), abs=1e-6)
-    assert dict(state.metadata)["inference_mode"] == mode
-    probabilities = expected.softmax(dim=0)
-    expected_entropy = -(probabilities * probabilities.log()).sum() / torch.log(torch.tensor(float(len(expected))))
-    assert dict(state.uncertainty.metrics)["predictive_entropy"] == pytest.approx(expected_entropy.item(), abs=1e-6)
-    assert state.evidence_atoms[0].value["expression"]
-    assert state.evidence_atoms[0].value["edges"]
-    assert "sha256" not in json.dumps(build_llm_packet(state))
 
 
 @pytest.mark.parametrize("max_rules", [None, 1])

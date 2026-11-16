@@ -16,7 +16,6 @@ from phmfactory.explanation import (
     freeze_mapping,
     parse_llm_explanation,
     state_from_tspn_uxfd_fuzzy_trace,
-    state_from_xoan_report,
 )
 
 
@@ -70,37 +69,6 @@ def test_state_rejects_unknown_path_atom() -> None:
         )
 
 
-def test_xoan_report_adapter_preserves_path_and_uncertainty() -> None:
-    report = {
-        "relaxed_logits": [[0.2, 1.7, -0.1]],
-        "serialized_paths": [json.dumps({
-            "canonical_expression": "D1(MA3(x))",
-            "edges": [],
-            "dictionary_intervention": None,
-        })],
-        "logit_relative_rmse": [0.02],
-        "predictive_entropy": [0.21],
-        "dictionary_insufficiency_score": [0.14],
-        "relative_rmse": [0.03],
-        "dictionary_manifest": {"operators": ["D1", "MA3"]},
-        "score_calibration_state": "uncalibrated",
-        "insufficiency_score_id": "p07_dictionary_insufficiency_v2",
-    }
-
-    state = state_from_xoan_report(
-        report,
-        inference_mode="relaxed",
-        sample_id="xoan-1",
-        class_names=("normal", "inner", "outer"),
-        operating_conditions={"speed_rpm": 1200},
-    )
-
-    assert state.prediction.label == "inner"
-    assert state.evidence_paths[0].id == "path:selected"
-    assert state.evidence_atoms[0].value["expression"] == "D1(MA3(x))"
-    assert "structural_path" in state.capabilities
-    assert "additive_contribution" not in state.capabilities
-    assert dict(state.uncertainty.metrics)["relaxed_predictive_entropy"] == pytest.approx(0.21)
 
 
 @dataclass

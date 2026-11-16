@@ -25,7 +25,6 @@ A model operator, fuzzy rule, attention weight, or selected feature is not calle
 
 ```python
 from phmfactory.explanation import (
-    export_xoan_state,
     export_tspn_uxfd_fuzzy_state,
     explain_with_llm,
 )
@@ -48,21 +47,13 @@ The common state contains:
 
 The capability list bounds what the LLM may say. For example, a structural operator path does not license a per-operator causal-contribution claim.
 
-## XOAN operator-path model
+## Paper-specific adapters
 
-`XOANOperatorPath.forward_evidence` already exposes a typed executable path, relaxed/discrete agreement, predictive entropy, and dictionary insufficiency. Export one batch element:
-
-```python
-state = export_xoan_state(
-    model,
-    x,
-    sample_id="bearing-run-017",
-    class_names=("normal", "inner", "outer", "ball"),
-    operating_conditions={"speed_rpm": 1772, "load_nm": 3.1},
-)
-```
-
-The adapter reports the selected path as model-native structure. It does not invent a bearing mechanism relation.
+Paper-owned models export the shared `PHMExplanationState` from their own
+repository. PHMFactory does not import a paper model or ship its adapter.
+The former XOAN-specific exports have moved with the historical P07 source;
+there is no compatibility forwarding import. This does not remove the generic
+state, provider callback, reference validation or fuzzy-model interface below.
 
 ## TSPN-UXFD fuzzy model
 
@@ -105,7 +96,6 @@ Every substantive explanation claim must cite supplied evidence or path IDs. Unk
 
 | Model path | Native evidence | Current PHM-EIR capability |
 |---|---|---|
-| `XOANOperatorPath` | typed executable operator path, relaxed/discrete fidelity, uncertainty | structural path, reconstruction audit, interventions |
 | `TSPN_UXFD` fuzzy branch | rule firing, consequents, additive logit contributions | rule path, contribution reconstruction, rule intervention |
 | plain `TSPN` | operator architecture and final logits only | not certified for case-level evidence verbalization |
 

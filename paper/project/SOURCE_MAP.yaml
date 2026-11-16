@@ -1,3 +1,5 @@
+# Historical source mapping. active_runtime fields below describe the recorded
+# migration, not current ownership. See README.md and CORE.md section 3.
 schema_version: 2
 paper_id: P07
 integration_mode: adapted_contract_only

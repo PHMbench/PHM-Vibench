@@ -10,7 +10,6 @@ model:
 ```
 
 This is a fragment; use the corresponding complete configuration for operator and shape
-settings. Catalogue entries include `MWA_CNN`, `TSPN`, `TSPN_UXFD`, `XOANOperatorPath` and
 `BASE_ExplainableCNN`. Consult [model_registry.csv](../model_registry.csv) and the selected
 source, rather than assuming `Feature_extract.py` or every helper exposes `Model`.
 
