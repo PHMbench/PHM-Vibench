@@ -31,3 +31,5 @@ The frozen episode exporter can optionally save the matched tokenizer's common
 branch before the backbone, without modifying its forward computation. A paired
 class-stratified group bootstrap utility operates on already-aggregated physical
 groups; its interval is conditional on the supplied fits and support episode.
+The paired-results plotting command reads saved tables and exports editable SVG
+and vector PDF without loading any encoder or industrial data.
