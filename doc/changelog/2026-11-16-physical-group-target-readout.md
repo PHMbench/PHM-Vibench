@@ -15,3 +15,9 @@ output paths; result directories must be outside this repository.
 The caller remains responsible for truthful checkpoint, source and episode
 provenance and for a scientifically admissible support declaration. These
 changes do not qualify industrial datasets or establish model convergence.
+
+The float64 L-BFGS-B head uses an invertible coordinate change and a constant
+objective shift/scale to improve numerical precision on large features. The
+original regularized objective, output logits, success requirement and
+original-coordinate gradient threshold are unchanged; failed prior fits remain
+failed historical results.

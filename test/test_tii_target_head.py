@@ -80,6 +80,22 @@ class TargetHeadTests(unittest.TestCase):
         self.assertLess(a.gradient_inf,1e-6)
         np.testing.assert_array_equal(a.logits(self.x).argmax(1),self.y)
 
+    def test_large_uneven_feature_scales_preserve_original_regularized_objective(self):
+        rng = np.random.Generator(np.random.PCG64(482))
+        x = rng.normal(size=(18, 4)) * np.array([.001, 1., 30., 120.])
+        y = np.repeat(np.arange(3), 6)
+        head = fit_head(x, y, np.arange(len(y)), .1)
+        logits = head.logits(x)
+        probabilities = np.exp(logits - np.logaddexp.reduce(logits, axis=1, keepdims=True))
+        residual = probabilities.copy()
+        residual[np.arange(len(y)), y] -= 1
+        design = np.column_stack((x, np.ones(len(x))))
+        theta = np.column_stack((head.weight, head.bias))
+        gradient = residual.T @ design / len(y) + .1*theta
+        value = np.mean(np.logaddexp.reduce(logits, axis=1) - logits[np.arange(len(y)), y]) + .05*np.sum(theta**2)
+        self.assertLess(np.max(np.abs(gradient)), 1e-6)
+        self.assertAlmostEqual(value, head.objective, places=11)
+
     def test_repeat_all_windows_of_one_group_preserves_estimator(self):
         idx = [0,1,0,1,2,3]
         a = fit_head(self.x,self.y,self.groups,.01)

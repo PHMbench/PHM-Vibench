@@ -68,26 +68,43 @@ convex. A failed optimizer is reported, never replaced by another solver.
     weights = group_weights(groups)
     design = np.column_stack((x, np.ones(len(x))))
     shape = (len(classes), design.shape[1])
+    # Change optimizer coordinates only: z = theta * coordinate_scale. The
+    # returned theta, regularization and logits remain in the original feature
+    # coordinates. No query values or fitted feature normalization are used.
+    coordinate_scale = np.maximum(np.sqrt(np.sum(weights[:, None] * design**2, axis=0)), 1.)
+    if not np.isfinite(coordinate_scale).all():
+        raise ValueError('support feature magnitudes cannot be represented in float64')
+    conditioned = design / coordinate_scale
+    objective_scale = 1e6
 
     def objective(flat):
-        theta = flat.reshape(shape)
-        logits = design @ theta.T
+        z = flat.reshape(shape)
+        theta = z / coordinate_scale
+        logits = conditioned @ z.T
+        centered = logits - logits.mean(axis=1, keepdims=True)
+        # Subtract the constant log(C) before optimization. Near a uniform
+        # classifier, expm1/log1p retain improvements lost by subtracting two
+        # nearly equal O(1) cross-entropies; the large-logit form avoids overflow.
+        if np.max(np.abs(centered)) < 30:
+            log_mean = np.log1p(np.mean(np.expm1(centered), axis=1))
+        else:
+            log_mean = logsumexp(centered, axis=1) - np.log(len(classes))
         logp = logits - logsumexp(logits, axis=1, keepdims=True)
-        value = -np.dot(weights, logp[np.arange(len(y)), y]) + .5*l2*np.sum(theta**2)
+        value = np.dot(weights, log_mean - centered[np.arange(len(y)), y]) + .5*l2*np.sum(theta**2)
         residual = np.exp(logp)
         residual[np.arange(len(y)), y] -= 1
-        gradient = (residual * weights[:, None]).T @ design + l2*theta
-        return float(value), gradient.ravel()
+        gradient = (residual * weights[:, None]).T @ conditioned + l2*z/coordinate_scale**2
+        return float(value)*objective_scale, gradient.ravel()*objective_scale
 
     result = minimize(objective, np.zeros(np.prod(shape)), jac=True, method='L-BFGS-B',
-        options={'maxiter':2000, 'maxls':40, 'maxcor':20, 'ftol':1e-14, 'gtol':1e-8})
+        options={'maxiter':5000, 'maxls':100, 'maxcor':20, 'ftol':0., 'gtol':1e-4})
     value, gradient = objective(result.x)
-    residual = float(np.max(np.abs(gradient)))
+    residual = float(np.max(np.abs(gradient.reshape(shape) * coordinate_scale)) / objective_scale)
     if not result.success or not np.isfinite(value) or residual > 1e-6:
         raise RuntimeError(f'head fit failed: {result.message}; gradient_inf={residual}')
-    theta = result.x.reshape(shape)
+    theta = result.x.reshape(shape) / coordinate_scale
     return LinearHead(theta[:, :-1].copy(), theta[:, -1].copy(), float(l2),
-                      int(result.nit), residual, value)
+                      int(result.nit), residual, value/objective_scale + float(np.log(len(classes))))
 
 
 def select_l2(rows, source_tasks, seeds, arms=('ordinary', 'support')):
