@@ -111,7 +111,7 @@ Routine PRs may be squash-merged. Rollback is the revert of that squash commit.
 Data Factory    reader, metadata, selected IDs, datasets, samplers, loaders
 Model Factory   model identity, construction, explicit weights
 Task Factory    task identity, objective, metric lifecycle
-Trainer Factory device, callbacks, checkpoint, fit/test lifecycle
+Trainer Factory device, callbacks, checkpoints, fit/test lifecycle
 Pipeline        orchestration, success gating, direct result locations
 ```
 
