@@ -398,7 +398,7 @@ def frozen_features_with_common_tokens(task, windows, *, effective_rate_hz):
 
 
 def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file, data_dir,
-                          feature_spec, selection_file, output):
+                          feature_spec, selection_file, output, *, fisher=False):
     """Export an explicitly isolated frozen or deterministic-feature episode."""
     from types import SimpleNamespace
     import numpy as np
@@ -420,6 +420,8 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
         raise ValueError('save_common_tokens must be a boolean')
     if save_common and checkpoint is None:
         raise ValueError('common-token export requires a frozen checkpoint')
+    if fisher and (spec.get('representation') != 'official_fisher' or save_common):
+        raise ValueError('FISHER export requires its declared representation and cannot export S/U branches')
     config = analyze_config(config_path).runtime_config()
     args = {k: SimpleNamespace(**v) for k, v in config.items() if isinstance(v, dict)}
     sources = list(args['task'].source_system_ids)
@@ -439,7 +441,50 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
             source_pool=spec['source_pool'])
     factory = build_data(args['data'], args['task'])
     saved = None
-    if checkpoint is not None:
+    fisher_geometry = None
+    if fisher:
+        from src.model_factory.ISFM.third_party.fisher.fisher import FISHER
+        from src.model_factory.ISFM.third_party.fisher.preprocessing import log_spectrogram
+
+        checkpoint_kind = spec.get('fisher_checkpoint_kind')
+        if checkpoint_kind not in ('random_fixture', 'external_pretrained'):
+            raise ValueError('FISHER checkpoint kind must be random_fixture or external_pretrained')
+        if spec['kind'] == 'target' and any(
+            row.get('fisher_checkpoint') != str(checkpoint)
+            or row.get('fisher_checkpoint_kind') != checkpoint_kind
+            for mode in ('raw', 'source_rms') for row in selection[mode]
+        ):
+            raise ValueError('FISHER source selection must use the same declared frozen checkpoint path')
+        exclusions = spec.get('pretraining_excluded_dataset_ids', [])
+        if checkpoint_kind == 'external_pretrained':
+            if not spec.get('pretraining_provenance') or not {episode_id, outer_target} <= set(exclusions):
+                raise ValueError('external FISHER requires documented pretraining provenance and excluded episode/target IDs')
+            if spec['kind'] == 'target' and any(
+                row.get('fisher_pretraining_provenance') != spec['pretraining_provenance']
+                or not {row['task'], outer_target} <= set(row.get('fisher_pretraining_excluded_dataset_ids', []))
+                for mode in ('raw', 'source_rms') for row in selection[mode]
+            ):
+                raise ValueError('FISHER source selection lacks matching pretraining provenance and exclusions')
+        model = FISHER.from_pretrained(str(checkpoint)).cpu().eval()
+
+        def encode(windows, rate, *, capture_common=False):
+            nonlocal fisher_geometry
+            result = []
+            with torch.inference_mode():
+                for start in range(0, len(windows['x']), args['data'].source_batch_size):
+                    stop = start + args['data'].source_batch_size
+                    spec_input, geometry = log_spectrogram(
+                        windows['x'][start:stop], windows['incremental'][start:stop],
+                        windows['availability'][start:stop], source_rms=factory.source_rms,
+                        sample_rate_hz=args['data'].grid_rate_hz, band_width=model.band_width,
+                        patch_size=model.patch_size, allow_time_frame_drop=spec['allow_time_frame_drop'],
+                        allow_frequency_bin_drop=spec['allow_frequency_bin_drop'])
+                    if fisher_geometry is not None and geometry != fisher_geometry:
+                        raise ValueError('FISHER source and episode preprocessing geometries differ')
+                    fisher_geometry = geometry
+                    result.append(model.extract_features(spec_input).cpu().numpy())
+            return np.concatenate(result), None
+    elif checkpoint is not None:
         saved = torch.load(checkpoint, map_location='cpu', weights_only=False)
         for section in ('data', 'task', 'model'):
             for key, value in config[section].items():
@@ -501,18 +546,31 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
         recording_ids.extend(windows['recording_id'])
         roles.extend(windows['role'])
     output.mkdir(parents=True, exist_ok=False)
+    extra = {'target_common_tokens': np.concatenate(target_common)} if save_common else {}
+    if fisher:
+        extra.update(fisher_checkpoint=np.asarray(str(checkpoint)),
+                     fisher_checkpoint_kind=np.asarray(checkpoint_kind),
+                     fisher_pretraining_provenance=np.asarray(spec.get('pretraining_provenance') or ''),
+                     fisher_pretraining_excluded_dataset_ids=np.asarray(spec.get('pretraining_excluded_dataset_ids', [])))
     np.savez_compressed(output/'features.npz', source_features=np.concatenate(source_features),
         source_roles=source_roles, source_datasets=source_datasets, source_groups=source_groups,
         target_features=np.concatenate(target_features), target_labels=labels, target_groups=groups,
         target_recording_ids=recording_ids, target_roles=roles, target_datasets=[episode_id]*len(labels),
-        **({'target_common_tokens': np.concatenate(target_common)} if save_common else {}))
+        **extra)
     (output/'episode.json').write_text(json.dumps(episode, indent=2)+'\n', encoding='utf-8')
     report = dict(kind=spec['kind'], checkpoint=str(checkpoint) if checkpoint else None,
                   representation=spec.get('representation', 'restored_encoder'), source_signal_rms=factory.source_rms,
                   source_datasets=sources, episode_dataset=episode_id, source_train_windows=len(source_roles),
-                  episode_windows=len(inventory), checkpoint_global_step=int(saved['global_step']) if saved else 0,
+                  episode_windows=len(inventory), checkpoint_global_step=int(saved['global_step']) if saved else (None if fisher else 0),
                   episode_features_used_for_selection_by_this_export=False,
                   target_common_tokens_before_backbone=save_common)
+    if fisher:
+        report.update(fisher_checkpoint_kind=checkpoint_kind, fisher_preprocessing=fisher_geometry,
+                      pretraining_provenance=spec.get('pretraining_provenance'),
+                      pretraining_excluded_dataset_ids=spec.get('pretraining_excluded_dataset_ids', []),
+                      encoder_fit_during_export=False,
+                      yaml_model_section_used=False,
+                      provenance_note='caller-declared pretraining exclusions are not independently verified')
     (output/'features.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
     print(json.dumps(report, indent=2))
     return 0
@@ -532,6 +590,13 @@ def score_saved_source_episode(feature_file, episode_file, spec_file, output):
             episode_datasets=saved['target_datasets'], encoder_sources=spec['encoder_sources'],
             pseudo_target=spec['pseudo_target'], outer_target=spec['outer_target'],
             seed=spec['seed'], arm=spec['arm'])
+        if 'fisher_checkpoint' in saved.files:
+            for mode in ('raw', 'source_rms'):
+                for row in rows[mode]:
+                    row.update(fisher_checkpoint=str(saved['fisher_checkpoint'].item()),
+                               fisher_checkpoint_kind=str(saved['fisher_checkpoint_kind'].item()),
+                               fisher_pretraining_provenance=str(saved['fisher_pretraining_provenance'].item()),
+                               fisher_pretraining_excluded_dataset_ids=saved['fisher_pretraining_excluded_dataset_ids'].tolist())
     output.mkdir(parents=True, exist_ok=False)
     (output/'source_scores.json').write_text(json.dumps(rows, indent=2, allow_nan=False)+'\n', encoding='utf-8')
     print(json.dumps(rows, indent=2, allow_nan=False))
@@ -547,6 +612,18 @@ def evaluate_saved_target_features(feature_file, episode_file, selection_file, s
     selection = json.loads(selection_file.read_text(encoding='utf-8'))
     spec = json.loads(spec_file.read_text(encoding='utf-8'))
     with np.load(feature_file, allow_pickle=False) as saved:
+        fisher_metadata = None
+        has_fisher_selection = any('fisher_checkpoint' in row
+            for mode in ('raw', 'source_rms') for row in selection[mode])
+        if ('fisher_checkpoint' in saved.files) != has_fisher_selection:
+            raise ValueError('FISHER feature and source-selection provenance must agree')
+        if has_fisher_selection:
+            fisher_metadata = dict(fisher_checkpoint=str(saved['fisher_checkpoint'].item()),
+                                   fisher_checkpoint_kind=str(saved['fisher_checkpoint_kind'].item()),
+                                   fisher_pretraining_provenance=str(saved['fisher_pretraining_provenance'].item()))
+            if any(any(row.get(key) != value for key, value in fisher_metadata.items())
+                   for mode in ('raw', 'source_rms') for row in selection[mode]):
+                raise ValueError('FISHER source selection and target features declare different checkpoint paths')
         result = evaluate_target_readouts(
             episode, saved['target_features'], saved['target_labels'], saved['target_groups'],
             saved['target_recording_ids'], saved['target_roles'], saved['source_features'],
@@ -558,6 +635,11 @@ def evaluate_saved_target_features(feature_file, episode_file, selection_file, s
     output.mkdir(parents=True, exist_ok=False)
     summary = {'source_feature_rms': result['source_feature_rms'],
                'metric_weighting': 'equal physical group, equal window within group', 'modes': {}}
+    if fisher_metadata:
+        summary.update(fisher_metadata)
+        summary['fisher_scope'] = ('random fixture; software integration only, not baseline performance'
+                                   if fisher_metadata['fisher_checkpoint_kind'] == 'random_fixture'
+                                   else 'external pretrained checkpoint; caller provenance not independently verified')
     arrays = {}
     for mode, value in result['modes'].items():
         summary['modes'][mode] = {'alpha': value['alpha'], 'selection_scores': value['selection_scores'],
@@ -597,6 +679,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--output_dir', type=Path, help='New directory for frozen target readout outputs')
     parser.add_argument('--frozen-episode', action='store_true', help='Restore a source fit and export episode features')
     parser.add_argument('--envelope-episode', action='store_true', help='Export fixed envelope-spectrum episode features')
+    parser.add_argument('--fisher-episode', action='store_true', help='Export a frozen official FISHER inference episode')
     parser.add_argument('--checkpoint', type=Path)
     parser.add_argument('--episode-metadata', type=Path)
     parser.add_argument('--episode-inventory', type=Path)
@@ -604,12 +687,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--feature-spec', type=Path)
     parser.add_argument('--score-source-episode', action='store_true', help='Score alpha grid on frozen source-only features')
     args = parser.parse_args(argv)
-    if sum((args.frozen_episode, args.envelope_episode, args.score_source_episode)) > 1:
+    if sum((args.frozen_episode, args.envelope_episode, args.fisher_episode, args.score_source_episode)) > 1:
         parser.error('choose one episode export or source scoring mode')
-    if args.frozen_episode or args.envelope_episode:
+    if args.frozen_episode or args.envelope_episode or args.fisher_episode:
         required = (args.config, args.episode_metadata, args.episode_inventory,
                     args.episode_data_dir, args.feature_spec, args.output_dir)
-        if (not all(required) or bool(args.checkpoint) != args.frozen_episode
+        if (not all(required) or bool(args.checkpoint) != (args.frozen_episode or args.fisher_episode)
                 or args.target_features or args.target_episode or args.readout_spec
                 or args.check_only or args.acceptance or args.fit95 or args.export_only or args.analyze_only
                 or args.output != Path('results/tii_one_model')):
@@ -618,7 +701,7 @@ def main(argv: list[str] | None = None) -> int:
             args.checkpoint.expanduser().resolve() if args.checkpoint else None,
             *(p.expanduser().resolve() for p in required[1:5]),
             args.source_selection.expanduser().resolve() if args.source_selection else None,
-            args.output_dir.expanduser().resolve())
+            args.output_dir.expanduser().resolve(), fisher=args.fisher_episode)
     if args.score_source_episode:
         required = (args.target_features, args.target_episode, args.readout_spec, args.output_dir)
         if (not all(required) or args.source_selection or args.config or args.check_only or args.acceptance

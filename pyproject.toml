@@ -14,6 +14,9 @@ authors = [
 ]
 dynamic = ["dependencies"]
 
+[project.optional-dependencies]
+fisher = ["omegaconf>=2.3,<2.4"]
+
 [project.scripts]
 phmfactory = "phmfactory.cli:entrypoint"
 
@@ -28,6 +31,7 @@ exclude = ["test*", "tests*", "dev*", "paper*", "results*"]
 [tool.setuptools.package-data]
 "phmfactory.data_sources.manifests" = ["*.yaml"]
 "phmfactory.data_sources.modelscope" = ["requirements.txt"]
+"src.model_factory.ISFM.third_party.fisher" = ["LICENSE"]
 "configs" = ["**/*.yaml", "**/*.yml", "**/*.csv", "**/*.md"]
 "data" = ["metadata_dummy.csv", "raw/Dummy_Data/*.csv"]
 

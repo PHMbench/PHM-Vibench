@@ -1,0 +1,2 @@
+# Retain the upstream MIT-licensed inference file byte for byte.
+/src/model_factory/ISFM/third_party/fisher/mae.py whitespace=-trailing-space

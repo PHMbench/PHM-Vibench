@@ -33,3 +33,10 @@ class-stratified group bootstrap utility operates on already-aggregated physical
 groups; its interval is conditional on the supplied fits and support episode.
 The paired-results plotting command reads saved tables and exports editable SVG
 and vector PDF without loading any encoder or industrial data.
+
+The frozen-episode path additionally accepts the official MIT-licensed FISHER
+inference implementation and an explicit caller-supplied checkpoint. The same
+DataFactory, source RMS, episode and target readout remain in use; the report
+discloses the original log-STFT preprocessing and any discarded coordinates.
+The optional `fisher` dependency includes OmegaConf. This is an inference path,
+not an implementation of the original EMA pretraining or a validated baseline.
