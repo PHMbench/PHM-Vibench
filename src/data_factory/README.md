@@ -45,6 +45,17 @@ Missing files or malformed reader output fail at the data boundary.
 
 ## Dataset adapters and partitions
 
+For the physical-support source task, `tii_sampling.assign_physical_groups`
+assigns sorted unique physical group identifiers with a caller-supplied PCG64
+seed and explicit group counts. It returns one role per record and checks group
+disjointness across roles; it does not stratify labels or round fractions.
+`tii_data.load_tii_target_data` reuses the same H5 and physical-projection path
+as source loading. The caller supplies a separate target inventory with role
+`target`, all source dataset IDs and all source train/validation group IDs. The
+fixed five-record-per-class PCG64(1729) episode excludes every other record in
+a support group; an infeasible draw fails without a redraw. Use it after source
+training, source RMS fitting and source-only selection have been fixed.
+
 The default resolves an adapter by `(task.type, task.name)` through
 [dataset_task/adapters.py](dataset_task/adapters.py). Unknown mappings fail rather than
 falling back to a default dataset. Tasks document the dictionary batch they consume.

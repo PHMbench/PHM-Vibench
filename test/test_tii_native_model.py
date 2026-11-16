@@ -5,10 +5,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
+import numpy as np
+from scipy.signal import hilbert
 import torch
 from phmfactory.config import analyze_config
 from src.data_factory.data_utils import MetadataAccessor
 from src.model_factory import build_model
+from src.model_factory.ISFM.physical_features import squared_envelope_spectrum
 
 
 def make_model(arm='support', embedding='SupportConditionedTokenizer'):
@@ -111,6 +114,38 @@ class NativeModelTests(unittest.TestCase):
         with patch.object(m, '_head', side_effect=AssertionError('head accessed')):
             actual = m.encode(x, sample_rates=rates, start_indices_L=starts, start_indices_C=channels)
         torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+    def test_projected_baselines_preserve_union_and_hse_physical_grid(self):
+        t = torch.arange(12, dtype=torch.float32)
+        common = torch.sin(2 * torch.pi * t / 12).reshape(1, 3, 4)
+        zero = torch.zeros_like(common)
+        gate = torch.zeros(1)
+        ordinary = make_model(embedding='E_03_Patch').eval()
+        x, kwargs = ordinary.projected_inputs(common, zero, gate, grid_rate_hz=12, duration_s=1)
+        torch.testing.assert_close(x.flatten(), common.flatten()/2.5)
+        self.assertEqual(kwargs, {})
+        hse = make_model(embedding='E_01_HSE').eval()
+        x, _ = hse.projected_inputs(common, zero, gate, grid_rate_hz=12,
+                                    duration_s=1, effective_rate_hz=6)
+        torch.testing.assert_close(x.flatten(), torch.sin(2 * torch.pi * torch.arange(6)/6)/2.5,
+                                   atol=2e-7, rtol=0)
+        self.assertEqual(hse.encode(x, sample_rates=torch.tensor([6.])).shape, (1, 3, 8))
+        too_high = torch.sin(2 * torch.pi * 4 * t / 12).reshape(1, 3, 4)
+        with self.assertRaisesRegex(ValueError, 'discard admitted'):
+            hse.projected_inputs(too_high, zero, gate, grid_rate_hz=12,
+                                 duration_s=1, effective_rate_hz=6)
+
+    def test_envelope_reference_uses_the_admitted_signal_and_physical_band(self):
+        t = np.arange(128) / 128
+        signals = np.stack(((1 + .4*np.cos(2*np.pi*7*t))*np.sin(2*np.pi*35*t),
+                            (1 + .2*np.cos(2*np.pi*11*t))*np.sin(2*np.pi*40*t)))
+        common = torch.tensor(signals, dtype=torch.float64).reshape(2, 8, 16)
+        increment = torch.full_like(common, 100.)
+        result = squared_envelope_spectrum(common, increment, torch.zeros(2), source_rms=2.,
+                                           sample_rate_hz=128, frequency_band_hz=(1, 20)).numpy()
+        expected = np.abs(np.fft.rfft(np.abs(hilbert(signals/2., axis=1))**2, axis=1))/128
+        np.testing.assert_allclose(result, expected[:, 1:20], atol=1e-14, rtol=0)
+        self.assertEqual(result.shape, (2, 19))
 
     def test_checkpoint_restores_tokens_features_logits_and_rms(self):
         for arm in ('support', 'ordinary'):

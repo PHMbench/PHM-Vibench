@@ -375,6 +375,177 @@ def export_completed_acceptance(output):
     return 0
 
 
+def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file, data_dir,
+                          feature_spec, selection_file, output):
+    """Export an explicitly isolated frozen or deterministic-feature episode."""
+    from types import SimpleNamespace
+    import numpy as np
+    import torch
+    from phmfactory.config import analyze_config
+    from src.data_factory import build_data
+    from src.data_factory.tii_data import load_tii_target_data
+    from src.data_factory.data_utils import read_metadata_table
+    from src.model_factory import build_model
+    from src.model_factory.ISFM.physical_features import squared_envelope_spectrum
+    from src.task_factory import build_task
+    from src.task_factory.Components.tii_target_head import select_source_regularization
+
+    spec = json.loads(feature_spec.read_text(encoding='utf-8'))
+    if spec['kind'] not in ('source_inner', 'target'):
+        raise ValueError('feature spec must identify a source_inner or target episode')
+    config = analyze_config(config_path).runtime_config()
+    args = {k: SimpleNamespace(**v) for k, v in config.items() if isinstance(v, dict)}
+    sources = list(args['task'].source_system_ids)
+    episode_id = spec['episode_dataset']
+    outer_target = spec['outer_target']
+    if episode_id in sources or outer_target in sources:
+        raise ValueError('episode and outer target must be excluded from encoder sources')
+    if spec['kind'] == 'source_inner':
+        if selection_file or episode_id == outer_target:
+            raise ValueError('source-inner episode must not use outer-target selection or records')
+    else:
+        if episode_id != outer_target or selection_file is None:
+            raise ValueError('target episode requires a previously saved source-only selection')
+        selection = json.loads(selection_file.read_text(encoding='utf-8'))
+        select_source_regularization(selection, encoder_sources=sources, target_dataset=outer_target,
+            source_tasks=spec['source_tasks'], seeds=spec['seeds'], selection_arms=spec['selection_arms'],
+            source_pool=spec['source_pool'])
+    factory = build_data(args['data'], args['task'])
+    saved = None
+    if checkpoint is not None:
+        saved = torch.load(checkpoint, map_location='cpu', weights_only=False)
+        for section in ('data', 'task', 'model'):
+            for key, value in config[section].items():
+                if section == 'model' and key == 'source_rms':
+                    continue
+                if saved['hyper_parameters'][section].get(key) != value:
+                    raise ValueError(f'checkpoint {section}.{key} disagrees with the supplied source configuration')
+        if saved['hyper_parameters']['model']['source_rms'] != factory.source_rms:
+            raise ValueError('restored checkpoint and source-only signal RMS disagree')
+        args['model'].source_rms = factory.source_rms
+        network = build_model(args['model'], metadata=factory.get_metadata())
+        task = build_task(args_task=args['task'], network=network, args_data=args['data'],
+                          args_model=args['model'], args_trainer=args['trainer'],
+                          args_environment=args['environment'], metadata=factory.get_metadata())
+        task.load_state_dict(saved['state_dict'], strict=True)
+        task.cpu().eval()
+
+        def encode(windows, rate):
+            return task.frozen_features(windows, effective_rate_hz=rate).numpy()
+    else:
+        if spec.get('representation') != 'squared_envelope_spectrum':
+            raise ValueError('checkpoint-free export requires an explicit fixed envelope spectrum')
+
+        def encode(windows, rate):
+            with torch.inference_mode():
+                return squared_envelope_spectrum(windows['x'], windows['incremental'], windows['availability'],
+                    source_rms=factory.source_rms, sample_rate_hz=args['data'].grid_rate_hz,
+                    frequency_band_hz=spec['envelope_band_hz']).cpu().numpy()
+    source_features, source_roles, source_datasets, source_groups = [], [], [], []
+    for source, windows in sorted(factory.train_dataset.sources.items()):
+        rates = {float(factory.get_metadata()[fid]['Sample_rate']) for fid in windows['file_id']}
+        if len(rates) != 1:
+            raise ValueError('source feature export requires homogeneous physical sample rate')
+        source_features.append(encode(windows, next(iter(rates))))
+        source_roles.extend(windows['role'])
+        source_datasets.extend([source] * len(windows['y']))
+        source_groups.extend(windows['group'])
+    episode_data = SimpleNamespace(**vars(args['data']))
+    episode_data.data_dir = str(data_dir)
+    collections, inventory, episode = load_tii_target_data(
+        episode_data, metadata_file, inventory_file, target_dataset_id=episode_id,
+        source_dataset_ids=sources, source_group_ids=[r['group'] for r in factory.window_inventory])
+    metadata = read_metadata_table(metadata_file).set_index('Id')
+    target_features, labels, groups, recording_ids, roles = [], [], [], [], []
+    for role in ('support', 'query'):
+        windows = collections[role][episode_id]
+        rates = {float(metadata.loc[fid, 'Sample_rate']) for fid in windows['file_id']}
+        if len(rates) != 1:
+            raise ValueError('episode feature export requires homogeneous physical sample rate')
+        target_features.append(encode(windows, next(iter(rates))))
+        labels.extend(windows['y'].tolist())
+        groups.extend(windows['group'])
+        recording_ids.extend(windows['recording_id'])
+        roles.extend(windows['role'])
+    output.mkdir(parents=True, exist_ok=False)
+    np.savez_compressed(output/'features.npz', source_features=np.concatenate(source_features),
+        source_roles=source_roles, source_datasets=source_datasets, source_groups=source_groups,
+        target_features=np.concatenate(target_features), target_labels=labels, target_groups=groups,
+        target_recording_ids=recording_ids, target_roles=roles, target_datasets=[episode_id]*len(labels))
+    (output/'episode.json').write_text(json.dumps(episode, indent=2)+'\n', encoding='utf-8')
+    report = dict(kind=spec['kind'], checkpoint=str(checkpoint) if checkpoint else None,
+                  representation=spec.get('representation', 'restored_encoder'), source_signal_rms=factory.source_rms,
+                  source_datasets=sources, episode_dataset=episode_id, source_train_windows=len(source_roles),
+                  episode_windows=len(inventory), checkpoint_global_step=int(saved['global_step']) if saved else 0,
+                  episode_features_used_for_selection_by_this_export=False)
+    (output/'features.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
+    print(json.dumps(report, indent=2))
+    return 0
+
+
+def score_saved_source_episode(feature_file, episode_file, spec_file, output):
+    """Select candidate alphas from an excluded source, before outer-target access."""
+    import numpy as np
+    from src.task_factory.Components.tii_target_head import score_source_episode
+    episode = json.loads(episode_file.read_text(encoding='utf-8'))
+    spec = json.loads(spec_file.read_text(encoding='utf-8'))
+    with np.load(feature_file, allow_pickle=False) as saved:
+        rows = score_source_episode(
+            episode, saved['target_features'], saved['target_labels'], saved['target_groups'],
+            saved['target_recording_ids'], saved['target_roles'], saved['source_features'],
+            saved['source_roles'], saved['source_datasets'], saved['source_groups'],
+            episode_datasets=saved['target_datasets'], encoder_sources=spec['encoder_sources'],
+            pseudo_target=spec['pseudo_target'], outer_target=spec['outer_target'],
+            seed=spec['seed'], arm=spec['arm'])
+    output.mkdir(parents=True, exist_ok=False)
+    (output/'source_scores.json').write_text(json.dumps(rows, indent=2, allow_nan=False)+'\n', encoding='utf-8')
+    print(json.dumps(rows, indent=2, allow_nan=False))
+    return 0
+
+
+def evaluate_saved_target_features(feature_file, episode_file, selection_file, spec_file, output):
+    """Evaluate saved frozen features; this path never reads H5 or fits an encoder."""
+    import numpy as np
+    from src.task_factory.Components.tii_target_head import evaluate_target_readouts
+
+    episode = json.loads(episode_file.read_text(encoding='utf-8'))
+    selection = json.loads(selection_file.read_text(encoding='utf-8'))
+    spec = json.loads(spec_file.read_text(encoding='utf-8'))
+    with np.load(feature_file, allow_pickle=False) as saved:
+        result = evaluate_target_readouts(
+            episode, saved['target_features'], saved['target_labels'], saved['target_groups'],
+            saved['target_recording_ids'], saved['target_roles'], saved['source_features'],
+            saved['source_roles'], saved['source_datasets'], saved['source_groups'],
+            episode_datasets=saved['target_datasets'], selection_rows=selection,
+            encoder_sources=spec['encoder_sources'], target_dataset=spec['target_dataset'],
+            source_tasks=spec['source_tasks'], seeds=spec['seeds'],
+            selection_arms=spec['selection_arms'], source_pool=spec.get('source_pool'))
+    output.mkdir(parents=True, exist_ok=False)
+    summary = {'source_feature_rms': result['source_feature_rms'],
+               'metric_weighting': 'equal physical group, equal window within group', 'modes': {}}
+    arrays = {}
+    for mode, value in result['modes'].items():
+        summary['modes'][mode] = {'alpha': value['alpha'], 'selection_scores': value['selection_scores'],
+                                  **value['metrics']}
+        for field in ('probabilities', 'labels', 'groups', 'recording_ids'):
+            arrays[f'{mode}_{field}'] = value[field]
+        arrays[f'{mode}_weight'] = value['head'].weight
+        arrays[f'{mode}_bias'] = value['head'].bias
+        path = output / f'{mode}_query_predictions.csv'
+        with path.open('x', encoding='utf-8', newline='') as stream:
+            names = ['recording_id', 'group', 'label', 'prediction'] + [
+                f'probability_{i}' for i in range(value['probabilities'].shape[1])]
+            writer = csv.writer(stream)
+            writer.writerow(names)
+            for rid, group, label, probability in zip(value['recording_ids'], value['groups'],
+                                                       value['labels'], value['probabilities']):
+                writer.writerow([rid, group, int(label), int(np.argmax(probability)), *probability.tolist()])
+    np.savez_compressed(output / 'query_predictions.npz', **arrays)
+    (output / 'metrics.json').write_text(json.dumps(summary, indent=2, allow_nan=False)+'\n', encoding='utf-8')
+    print(json.dumps(summary, indent=2, allow_nan=False))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, help='Reviewed native YAML; default: one_model.local.yaml')
@@ -384,7 +555,48 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--fit95', action='store_true', help='One bounded 10000-update fit; report every-source 95% train target')
     parser.add_argument('--export-only', action='store_true', help='Recover a failed export from one completed acceptance; never fit')
     parser.add_argument('--analyze-only', action='store_true', help='Read saved source artifacts only; no inference or training')
+    parser.add_argument('--target-features', type=Path, help='Saved frozen source/target feature arrays (NPZ)')
+    parser.add_argument('--target-episode', type=Path, help='Complete fixed target-record episode (JSON)')
+    parser.add_argument('--source-selection', type=Path, help='Source-only inner-task alpha scores (JSON)')
+    parser.add_argument('--readout-spec', type=Path, help='Declared source, target, seed and arm identities (JSON)')
+    parser.add_argument('--output_dir', type=Path, help='New directory for frozen target readout outputs')
+    parser.add_argument('--frozen-episode', action='store_true', help='Restore a source fit and export episode features')
+    parser.add_argument('--envelope-episode', action='store_true', help='Export fixed envelope-spectrum episode features')
+    parser.add_argument('--checkpoint', type=Path)
+    parser.add_argument('--episode-metadata', type=Path)
+    parser.add_argument('--episode-inventory', type=Path)
+    parser.add_argument('--episode-data-dir', type=Path)
+    parser.add_argument('--feature-spec', type=Path)
+    parser.add_argument('--score-source-episode', action='store_true', help='Score alpha grid on frozen source-only features')
     args = parser.parse_args(argv)
+    if sum((args.frozen_episode, args.envelope_episode, args.score_source_episode)) > 1:
+        parser.error('choose one episode export or source scoring mode')
+    if args.frozen_episode or args.envelope_episode:
+        required = (args.config, args.episode_metadata, args.episode_inventory,
+                    args.episode_data_dir, args.feature_spec, args.output_dir)
+        if (not all(required) or bool(args.checkpoint) != args.frozen_episode
+                or args.target_features or args.target_episode or args.readout_spec
+                or args.check_only or args.acceptance or args.fit95 or args.export_only or args.analyze_only
+                or args.output != Path('results/tii_one_model')):
+            parser.error('episode export requires its config, episode inputs, spec, --output_dir and applicable checkpoint')
+        return export_frozen_episode(args.config.expanduser().resolve(),
+            args.checkpoint.expanduser().resolve() if args.checkpoint else None,
+            *(p.expanduser().resolve() for p in required[1:5]),
+            args.source_selection.expanduser().resolve() if args.source_selection else None,
+            args.output_dir.expanduser().resolve())
+    if args.score_source_episode:
+        required = (args.target_features, args.target_episode, args.readout_spec, args.output_dir)
+        if (not all(required) or args.source_selection or args.config or args.check_only or args.acceptance
+                or args.fit95 or args.export_only or args.analyze_only or args.output != Path('results/tii_one_model')):
+            parser.error('source episode scoring requires features, episode, spec and --output_dir')
+        return score_saved_source_episode(*(p.expanduser().resolve() for p in required))
+    target_arguments = (args.target_features, args.target_episode, args.source_selection,
+                        args.readout_spec, args.output_dir)
+    if any(target_arguments):
+        if (not all(target_arguments) or args.config or args.check_only or args.acceptance or args.fit95
+                or args.export_only or args.analyze_only or args.output != Path('results/tii_one_model')):
+            parser.error('target feature evaluation requires exactly its four inputs and --output_dir')
+        return evaluate_saved_target_features(*(p.expanduser().resolve() for p in target_arguments))
     if sum((args.acceptance, args.fit95, args.export_only, args.analyze_only)) > 1:
         parser.error('choose one of acceptance, fit95, export-only, analyze-only')
     if (args.export_only or args.analyze_only) and (args.config or args.check_only):

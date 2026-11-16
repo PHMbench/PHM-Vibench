@@ -1,12 +1,73 @@
 """Direct readout checks on generated arrays; no industrial performance claim."""
 import unittest
+import json
+import tempfile
+from pathlib import Path
 import numpy as np
 from src.task_factory.Components.tii_target_head import (
     fit_head, mean_pool, group_weights, select_l2, make_episode, L2_GRID, FixedEpisodeError,
+    score_source_episode, evaluate_target_readouts,
 )
 
 
 class TargetHeadTests(unittest.TestCase):
+    def test_source_selected_readout_keeps_target_query_out_of_fit(self):
+        episode = make_episode([dict(recording_id=i, group=i, label=i//14) for i in range(28)])
+        y = np.array([r['label'] for r in episode])
+        groups = [r['group'] for r in episode]
+        ids = [r['recording_id'] for r in episode]
+        roles = [r['role'] for r in episode]
+        x = np.column_stack((2*y-1, np.linspace(-.3, .3, len(y))))
+        source_x = np.array([[-1., .2], [1., .4], [0.2, -.6]])
+        provenance = dict(source_features=source_x, source_roles=['source_train']*3,
+                          source_datasets=[1]*3, source_groups=[100, 101, 102], encoder_sources=[1])
+        scored = score_source_episode(episode, x, y, groups, ids, roles, **provenance,
+                                      pseudo_target=2, outer_target=3, episode_datasets=[2]*28,
+                                      seed=0, arm='support')
+        args = dict(encoder_sources=[1, 2], target_dataset=3, selection_rows=scored,
+                    episode_datasets=[3]*28, source_tasks=[2], seeds=[0], selection_arms=['support'])
+        target_sources = dict(source_features=np.vstack((source_x, source_x)),
+                              source_roles=['source_train']*6, source_datasets=[1]*3+[2]*3,
+                              source_groups=[100, 101, 102, 200, 201, 202])
+        a = evaluate_target_readouts(episode, x, y, groups, ids, roles, **target_sources, **args)
+        changed = x.copy()
+        changed[np.array(roles) == 'query'] *= 10
+        b = evaluate_target_readouts(episode, changed, y, groups, ids, roles, **target_sources, **args)
+        self.assertEqual(a['source_feature_rms'], b['source_feature_rms'])
+        for mode in ('raw', 'source_rms'):
+            self.assertEqual(a['modes'][mode]['alpha'], b['modes'][mode]['alpha'])
+            np.testing.assert_array_equal(a['modes'][mode]['head'].weight, b['modes'][mode]['head'].weight)
+            np.testing.assert_allclose(a['modes'][mode]['probabilities'].sum(axis=1), 1)
+            self.assertTrue(all(np.isfinite(v) for v in a['modes'][mode]['metrics'].values()))
+        with self.assertRaisesRegex(ValueError, 'source_train'):
+            evaluate_target_readouts(episode, x, y, groups, ids, roles,
+                **dict(target_sources, source_roles=['source_train']*5+['query']), **args)
+        with self.assertRaisesRegex(ValueError, 'held-out target'):
+            invalid = {mode: [dict(row, encoder_sources=[3]) for row in rows] for mode, rows in scored.items()}
+            evaluate_target_readouts(episode, x, y, groups, ids, roles,
+                                     **target_sources, **dict(args, selection_rows=invalid))
+        from scripts.tii_one_model import main
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            np.savez(root/'features.npz', target_features=x, target_labels=y,
+                     target_groups=groups, target_recording_ids=ids, target_roles=roles,
+                     target_datasets=[3]*28,
+                     **target_sources)
+            (root/'episode.json').write_text(json.dumps(episode))
+            (root/'selection.json').write_text(json.dumps(scored))
+            spec = {k: v for k, v in args.items() if k not in ('selection_rows', 'episode_datasets')}
+            (root/'spec.json').write_text(json.dumps(spec))
+            status = main(['--target-features', str(root/'features.npz'),
+                           '--target-episode', str(root/'episode.json'),
+                           '--source-selection', str(root/'selection.json'),
+                           '--readout-spec', str(root/'spec.json'), '--output_dir', str(root/'out')])
+            self.assertEqual(status, 0)
+            with np.load(root/'out/query_predictions.npz') as output:
+                self.assertEqual(output['raw_probabilities'].shape, (18, 2))
+                self.assertEqual(output['source_rms_probabilities'].shape, (18, 2))
+            self.assertTrue((root/'out/raw_query_predictions.csv').is_file())
+            self.assertTrue((root/'out/source_rms_query_predictions.csv').is_file())
+
     def setUp(self):
         self.x = np.array([[-2.,1.],[-1.,0.],[1.,0.],[2.,1.]])
         self.y = np.array([0,0,1,1])

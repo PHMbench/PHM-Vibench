@@ -47,6 +47,19 @@ metric inputs. Do not copy an illustrative fragment as a complete runnable task.
 
 ## Batch and metadata
 
+`DG.tii_joint` accepts the projected common/increment inputs for the matched
+support-conditioned tokenizer. It also accepts `E_03_Patch` and `E_01_HSE` on
+the same source-normalized admitted union. HSE is returned to its effective
+sampling grid only when the admitted signal survives the grid round trip.
+`task.frozen_features` mean-pools the encoder output without invoking a source
+head. The existing `scripts.tii_one_model` exposes frozen-episode export,
+source-only alpha scoring, and target readout on saved features; the latter
+requires an explicit `--output_dir` and emits probabilities alongside NLL,
+macro-F1, accuracy and predictive entropy for raw and source-feature-RMS
+scales. Query metrics weight physical groups equally. Source task and encoder
+identities are checked, but caller-supplied provenance is not independent proof
+that a checkpoint or feature file was produced with those identities.
+
 Document the dictionary fields actually consumed, such as `x`, `y`, `file_id`,
 `domain_id`, and `mask`. Preserve per-sample identity and metadata through the batch;
 `x, y = batch` is not a replacement for that contract. Configure the correct explicit

@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import torch
 
-from src.data_factory.tii_sampling import SourceRounds, fit_source_rms
+from src.data_factory.tii_sampling import SourceRounds, fit_source_rms, assign_physical_groups
 from src.task_factory import build_task
 from test.test_tii_native_model import make_model
 
@@ -31,6 +31,18 @@ def make_task():
 
 
 class JointTests(unittest.TestCase):
+    def test_physical_group_assignment_is_order_invariant_and_disjoint(self):
+        groups = [g for g in range(12) for _ in range(2)]
+        allocations = [('source_train', 7), ('source_val', 3), ('target', 2)]
+        roles = assign_physical_groups(groups, allocations, seed=7)
+        reversed_roles = assign_physical_groups(groups[::-1], allocations, seed=7)
+        self.assertEqual(roles, reversed_roles[::-1])
+        split = [{g for g, r in zip(groups, roles) if r == role} for role, _ in allocations]
+        self.assertEqual([len(s) for s in split], [7, 3, 2])
+        self.assertTrue(all(a.isdisjoint(b) for i, a in enumerate(split) for b in split[i+1:]))
+        with self.assertRaisesRegex(ValueError, 'exact coverage'):
+            assign_physical_groups(groups, [('source_train', 7), ('source_val', 3)], seed=7)
+
     def test_schedule_is_reproducible_and_samples_groups_before_windows(self):
         sources = inventory()
         # A group with 100 windows must not outweigh a group with one window.
