@@ -65,7 +65,7 @@ jobs:
           MKL_NUM_THREADS: '1'
           MPLBACKEND: Agg
         run: python -m pytest test/test_tii_one_model.py test/test_tii_one_model_acceptance.py test/test_tii_fit95.py -q --junitxml=tii-one-model-tests.xml
-      - name: Retained qualification stops all no-config commands
+      - name: Relocated qualification stops all no-config commands
         shell: bash
         run: |
           set +e
@@ -79,7 +79,7 @@ jobs:
           test "$basic" -eq 2
           test "$acceptance" -eq 2
           test "$fitting" -eq 2
-          python -c 'import json; r=json.load(open("tii-acceptance-readiness.json")); assert r["native_invocations"] == 0; assert len(r["candidates"]) <= 5'
+          python -c 'import json; r=json.load(open("tii-acceptance-readiness.json")); assert r["native_invocations"] == 0; assert r["status"] == "qualification_records_relocated"; assert r["candidates"] == []'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
