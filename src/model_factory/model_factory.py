@@ -13,6 +13,9 @@ from ..utils.label_ontology import validate_metadata_label_ontology
 
 def resolve_model_module(args_model: Any) -> str:
     """Return the Python import path for the model module."""
+    module = getattr(args_model, "module", None)
+    if module is not None:
+        return module
     return f"src.model_factory.{args_model.type}.{args_model.name}"
 
 

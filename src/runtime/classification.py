@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import importlib
 import os
 from pathlib import Path
 from typing import Any
@@ -404,6 +405,10 @@ def run_classification_pipeline(
             lab_started = True
             hooks.on_iteration_start(context)
 
+            factory_module = getattr(args_task, "factory_module", None)
+            if factory_module is not None:
+                # Register caller-owned extensions before Data Factory resolves them.
+                importlib.import_module(factory_module)
             print("[INFO] 构建数据工厂...")
             context.data_factory = build_data(args_data, args_task)
             metadata = context.data_factory.get_metadata()

@@ -12,6 +12,23 @@ The existing `phmfactory research` interface accepts an optional `task.module` c
 
 Downstream programs continue to use the existing public configuration resolver and shared model/runtime interfaces. No second configuration system, trainer or evaluator is introduced by module selection.
 
+Pipeline 01 also accepts explicit Factory extensions. The following module names are
+illustrative: the caller must provide importable modules in its environment.
+
+```yaml
+task:
+  factory_module: example_extension.factory
+model:
+  module: example_extension.model
+```
+
+The Task factory module is imported before data construction, so it may use the
+existing `register_task` and `register_dataset_adapter` interfaces. The configured
+`task.type` and `task.name` still select the Task and dataset. The model module exports
+`Model(args_model, metadata)`. Explicit imports fail if unavailable; omitting either
+field retains the ordinary built-in resolution. These fields select trusted executable
+code and are distinct from the scientific `task.module` entry above.
+
 ## Migration acceptance
 
 Validate the receiving repository and its call paths first. Preserve the scientific configuration and comparison semantics. Compare the resulting commands, fixed-model outputs and relevant tests before removing the source implementation. Keep unassigned or unvalidated research artifacts intact and report them explicitly. Historical source references are provenance, not additional active entrypoints.
