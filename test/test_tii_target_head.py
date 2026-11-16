@@ -96,6 +96,20 @@ class TargetHeadTests(unittest.TestCase):
         self.assertLess(np.max(np.abs(gradient)), 1e-6)
         self.assertAlmostEqual(value, head.objective, places=11)
 
+    def test_correlated_large_feature_offsets_still_meet_original_gradient_gate(self):
+        rng = np.random.Generator(np.random.PCG64(1829))
+        common = 300. + 12. * rng.normal(size=(18, 1))
+        x = common * np.array([[.7, 1., 1.4, 2.]]) + rng.normal(scale=.05, size=(18, 4))
+        y = np.repeat(np.arange(3), 6)
+        for alpha in (.0001, .01, 1.):
+            head = fit_head(x, y, np.arange(len(y)), alpha)
+            logits = head.logits(x)
+            p = np.exp(logits - np.logaddexp.reduce(logits, axis=1, keepdims=True))
+            p[np.arange(len(y)), y] -= 1
+            gradient = p.T @ np.column_stack((x, np.ones(len(x)))) / len(y)
+            gradient += alpha * np.column_stack((head.weight, head.bias))
+            self.assertLess(np.max(np.abs(gradient)), 1e-6)
+
     def test_repeat_all_windows_of_one_group_preserves_estimator(self):
         idx = [0,1,0,1,2,3]
         a = fit_head(self.x,self.y,self.groups,.01)

@@ -68,18 +68,21 @@ convex. A failed optimizer is reported, never replaced by another solver.
     weights = group_weights(groups)
     design = np.column_stack((x, np.ones(len(x))))
     shape = (len(classes), design.shape[1])
-    # Change optimizer coordinates only: z = theta * coordinate_scale. The
-    # returned theta, regularization and logits remain in the original feature
-    # coordinates. No query values or fitted feature normalization are used.
-    coordinate_scale = np.maximum(np.sqrt(np.sum(weights[:, None] * design**2, axis=0)), 1.)
-    if not np.isfinite(coordinate_scale).all():
+    # An invertible ridge-regularized change of optimizer coordinates improves
+    # conditioning even when features have large, nearly collinear offsets.
+    # It changes neither the original-coordinate objective nor its logits.
+    _, singular, right = np.linalg.svd(np.sqrt(weights)[:, None] * design, full_matrices=True)
+    eigenvalues = np.full(design.shape[1], l2)
+    eigenvalues[:len(singular)] += singular**2 / len(classes)
+    if not np.isfinite(eigenvalues).all():
         raise ValueError('support feature magnitudes cannot be represented in float64')
-    conditioned = design / coordinate_scale
+    preconditioner = (right.T / np.sqrt(eigenvalues)) @ right
+    conditioned = design @ preconditioner
     objective_scale = 1e6
 
     def objective(flat):
         z = flat.reshape(shape)
-        theta = z / coordinate_scale
+        theta = z @ preconditioner.T
         logits = conditioned @ z.T
         centered = logits - logits.mean(axis=1, keepdims=True)
         # Subtract the constant log(C) before optimization. Near a uniform
@@ -93,16 +96,21 @@ convex. A failed optimizer is reported, never replaced by another solver.
         value = np.dot(weights, log_mean - centered[np.arange(len(y)), y]) + .5*l2*np.sum(theta**2)
         residual = np.exp(logp)
         residual[np.arange(len(y)), y] -= 1
-        gradient = (residual * weights[:, None]).T @ conditioned + l2*z/coordinate_scale**2
+        gradient = (residual * weights[:, None]).T @ conditioned + l2*theta @ preconditioner
         return float(value)*objective_scale, gradient.ravel()*objective_scale
 
     result = minimize(objective, np.zeros(np.prod(shape)), jac=True, method='L-BFGS-B',
         options={'maxiter':5000, 'maxls':100, 'maxcor':20, 'ftol':0., 'gtol':1e-4})
-    value, gradient = objective(result.x)
-    residual = float(np.max(np.abs(gradient.reshape(shape) * coordinate_scale)) / objective_scale)
+    value, _ = objective(result.x)
+    theta = result.x.reshape(shape) @ preconditioner.T
+    logits = design @ theta.T
+    logp = logits - logsumexp(logits, axis=1, keepdims=True)
+    errors = np.exp(logp)
+    errors[np.arange(len(y)), y] -= 1
+    original_gradient = (errors * weights[:, None]).T @ design + l2*theta
+    residual = float(np.max(np.abs(original_gradient)))
     if not result.success or not np.isfinite(value) or residual > 1e-6:
         raise RuntimeError(f'head fit failed: {result.message}; gradient_inf={residual}')
-    theta = result.x.reshape(shape) / coordinate_scale
     return LinearHead(theta[:, :-1].copy(), theta[:, -1].copy(), float(l2),
                       int(result.nit), residual, value/objective_scale + float(np.log(len(classes))))
 
