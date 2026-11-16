@@ -28,6 +28,9 @@ COMMANDS = ("data", "doctor", "demo", "preflight", "research")
 DIRECT_OUTPUT_KEYS = (
     "result_dir",
     "best_checkpoint",
+    "checkpoint_used",
+    "prediction_file",
+    "prediction_population",
     "test_metrics",
     "run_summary",
 )
