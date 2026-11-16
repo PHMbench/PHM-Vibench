@@ -27,7 +27,7 @@ bash scripts/run_tii_experiments.sh \
 
 ## 配置：一次填实，不猜
 
-复用 `reports/tii_local_j1/`，只补最终选定来源缺失的实际依据。不得直接从正弦fixture改名。
+资格/J1 记录已于 2026-11-16 迁至论文仓库 `paper/experiments/records/tii_local_j1/`；复用该目录，只补最终选定来源缺失的实际依据。不得直接从正弦fixture改名。
 
 - `data_dir`、`metadata_file`、`record_inventory`对应同一批原记录；先物理组划分再切窗，角色仅source_train/source_val。
 - `qualification_file`使用现有CSV字段，selected行的eligible必须有新证据，不能手改布尔值绕过No-Go。
