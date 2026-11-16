@@ -219,6 +219,38 @@ SOURCE_KEY = ('dataset', 'recording_id', 'channel', 'window_start', 'window_end'
 SOURCE_COLUMNS = SOURCE_KEY + ('group', 'role', 'file_id', 'true_label')
 
 
+def stratified_paired_mean_ci(differences, strata, *, draws=2000, seed=20261116):
+    """Bootstrap one already-paired difference per physical group within each stratum.
+
+    ``differences`` must be ordered identically to ``strata``.  Any repeated
+    windows and fixed fitted seeds must first be averaged within each group; the
+    resulting interval is conditional on those fits and the support episode.
+    """
+    values = np.asarray(differences, dtype=np.float64)
+    labels = np.asarray(strata)
+    if (values.ndim != 1 or not len(values) or labels.ndim != 1
+            or len(values) != len(labels) or not np.isfinite(values).all()):
+        raise ValueError('finite paired differences and one stratum per group required')
+    if (not isinstance(draws, int) or isinstance(draws, bool) or draws < 1
+            or not isinstance(seed, int) or isinstance(seed, bool) or seed < 0):
+        raise ValueError('positive integer draws and nonnegative integer seed required')
+    checked = validate_identifiers(labels.tolist(), 'bootstrap stratum')
+    try:
+        unique = sorted(set(checked))
+    except TypeError as exc:
+        raise ValueError('bootstrap strata must have mutually sortable identifiers') from exc
+    labels = np.asarray(checked)
+    rng = np.random.Generator(np.random.PCG64(seed))
+    totals = np.zeros(draws, dtype=np.float64)
+    for label in unique:
+        group_values = values[labels == label]
+        indices = rng.integers(0, len(group_values), size=(draws, len(group_values)))
+        totals += group_values[indices].sum(axis=1)
+    bounds = np.quantile(totals / len(values), [0.025, 0.975])
+    return dict(estimate=float(values.mean()), ci95_low=float(bounds[0]),
+                ci95_high=float(bounds[1]), groups=len(values), draws=draws, seed=seed)
+
+
 def evaluate_source_predictions(predictions_file, *, expected_windows_file,
                                 local_class_map, checkpoint, intervention, role='source_val'):
     """Descriptive source-validation risk, not a held-out transfer estimator.

@@ -21,3 +21,8 @@ change and a constant objective shift/scale for large correlated features. The
 original regularized objective, output logits, success requirement and
 original-coordinate gradient threshold are unchanged; failed prior fits remain
 failed historical results.
+
+The frozen episode exporter can optionally save the matched tokenizer's common
+branch before the backbone, without modifying its forward computation. A paired
+class-stratified group bootstrap utility operates on already-aggregated physical
+groups; its interval is conditional on the supplied fits and support episode.

@@ -95,6 +95,39 @@ class TestBudget(unittest.TestCase):
         entry.constraints(c)
         self.assertEqual(c, before)
 
+    def test_frozen_common_tokens_preserve_forward_and_remove_hook(self):
+        import torch
+        from test.test_tii_native_model import make_model
+
+        model = make_model().eval()
+
+        class FrozenTask:
+            network = model
+
+            def frozen_features(self, windows, *, effective_rate_hz):
+                self.rate = effective_rate_hz
+                parts = []
+                for x in windows.split(2):
+                    parts.append(self.network.embedding(x, torch.zeros_like(x),
+                                                        torch.ones(len(x))).mean(dim=1))
+                return torch.cat(parts)
+
+        task = FrozenTask()
+        windows = torch.randn(5, model.embedding.num_patches, model.embedding.patch_size)
+        expected = task.frozen_features(windows, effective_rate_hz=4096)
+        actual, common = entry.frozen_features_with_common_tokens(task, windows, effective_rate_hz=4096)
+        torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+        torch.testing.assert_close(common, model.embedding.common_branch(windows / model.embedding.source_rms))
+        self.assertEqual(task.rate, 4096)
+        self.assertEqual(len(model.embedding.common_branch._forward_hooks), 0)
+
+        def fail(*args, **kwargs):
+            raise RuntimeError('failed frozen forward')
+        task.frozen_features = fail
+        with self.assertRaisesRegex(RuntimeError, 'failed frozen forward'):
+            entry.frozen_features_with_common_tokens(task, windows, effective_rate_hz=4096)
+        self.assertEqual(len(model.embedding.common_branch._forward_hooks), 0)
+
 
 class TestAdmissionAndInvocation(unittest.TestCase):
     def setUp(self):

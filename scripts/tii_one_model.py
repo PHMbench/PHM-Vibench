@@ -375,6 +375,28 @@ def export_completed_acceptance(output):
     return 0
 
 
+def frozen_features_with_common_tokens(task, windows, *, effective_rate_hz):
+    """Observe a frozen tokenizer's first branch without changing its forward path."""
+    import torch
+    if task.network.args_m.embedding != 'SupportConditionedTokenizer':
+        raise ValueError('common-token export requires the matched S/U tokenizer')
+    observed = []
+
+    def capture(_module, _inputs, output):
+        if output.ndim != 3 or not torch.isfinite(output).all():
+            raise ValueError('common branch must return finite [windows,K,D] tokens')
+        observed.append(output.detach().cpu())
+
+    hook = task.network.embedding.common_branch.register_forward_hook(capture)
+    try:
+        pooled = task.frozen_features(windows, effective_rate_hz=effective_rate_hz)
+    finally:
+        hook.remove()
+    if not observed or sum(len(batch) for batch in observed) != len(pooled):
+        raise ValueError('common-token export must cover each frozen feature exactly once')
+    return pooled, torch.cat(observed, dim=0)
+
+
 def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file, data_dir,
                           feature_spec, selection_file, output):
     """Export an explicitly isolated frozen or deterministic-feature episode."""
@@ -393,6 +415,11 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
     spec = json.loads(feature_spec.read_text(encoding='utf-8'))
     if spec['kind'] not in ('source_inner', 'target'):
         raise ValueError('feature spec must identify a source_inner or target episode')
+    save_common = spec.get('save_common_tokens', False)
+    if not isinstance(save_common, bool):
+        raise ValueError('save_common_tokens must be a boolean')
+    if save_common and checkpoint is None:
+        raise ValueError('common-token export requires a frozen checkpoint')
     config = analyze_config(config_path).runtime_config()
     args = {k: SimpleNamespace(**v) for k, v in config.items() if isinstance(v, dict)}
     sources = list(args['task'].source_system_ids)
@@ -430,23 +457,26 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
         task.load_state_dict(saved['state_dict'], strict=True)
         task.cpu().eval()
 
-        def encode(windows, rate):
-            return task.frozen_features(windows, effective_rate_hz=rate).numpy()
+        def encode(windows, rate, *, capture_common=False):
+            if capture_common:
+                pooled, common = frozen_features_with_common_tokens(task, windows, effective_rate_hz=rate)
+                return pooled.numpy(), common.numpy()
+            return task.frozen_features(windows, effective_rate_hz=rate).numpy(), None
     else:
         if spec.get('representation') != 'squared_envelope_spectrum':
             raise ValueError('checkpoint-free export requires an explicit fixed envelope spectrum')
 
-        def encode(windows, rate):
+        def encode(windows, rate, *, capture_common=False):
             with torch.inference_mode():
                 return squared_envelope_spectrum(windows['x'], windows['incremental'], windows['availability'],
                     source_rms=factory.source_rms, sample_rate_hz=args['data'].grid_rate_hz,
-                    frequency_band_hz=spec['envelope_band_hz']).cpu().numpy()
+                    frequency_band_hz=spec['envelope_band_hz']).cpu().numpy(), None
     source_features, source_roles, source_datasets, source_groups = [], [], [], []
     for source, windows in sorted(factory.train_dataset.sources.items()):
         rates = {float(factory.get_metadata()[fid]['Sample_rate']) for fid in windows['file_id']}
         if len(rates) != 1:
             raise ValueError('source feature export requires homogeneous physical sample rate')
-        source_features.append(encode(windows, next(iter(rates))))
+        source_features.append(encode(windows, next(iter(rates)))[0])
         source_roles.extend(windows['role'])
         source_datasets.extend([source] * len(windows['y']))
         source_groups.extend(windows['group'])
@@ -456,13 +486,16 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
         episode_data, metadata_file, inventory_file, target_dataset_id=episode_id,
         source_dataset_ids=sources, source_group_ids=[r['group'] for r in factory.window_inventory])
     metadata = read_metadata_table(metadata_file).set_index('Id')
-    target_features, labels, groups, recording_ids, roles = [], [], [], [], []
+    target_features, target_common, labels, groups, recording_ids, roles = [], [], [], [], [], []
     for role in ('support', 'query'):
         windows = collections[role][episode_id]
         rates = {float(metadata.loc[fid, 'Sample_rate']) for fid in windows['file_id']}
         if len(rates) != 1:
             raise ValueError('episode feature export requires homogeneous physical sample rate')
-        target_features.append(encode(windows, next(iter(rates))))
+        pooled, common = encode(windows, next(iter(rates)), capture_common=save_common)
+        target_features.append(pooled)
+        if save_common:
+            target_common.append(common)
         labels.extend(windows['y'].tolist())
         groups.extend(windows['group'])
         recording_ids.extend(windows['recording_id'])
@@ -471,13 +504,15 @@ def export_frozen_episode(config_path, checkpoint, metadata_file, inventory_file
     np.savez_compressed(output/'features.npz', source_features=np.concatenate(source_features),
         source_roles=source_roles, source_datasets=source_datasets, source_groups=source_groups,
         target_features=np.concatenate(target_features), target_labels=labels, target_groups=groups,
-        target_recording_ids=recording_ids, target_roles=roles, target_datasets=[episode_id]*len(labels))
+        target_recording_ids=recording_ids, target_roles=roles, target_datasets=[episode_id]*len(labels),
+        **({'target_common_tokens': np.concatenate(target_common)} if save_common else {}))
     (output/'episode.json').write_text(json.dumps(episode, indent=2)+'\n', encoding='utf-8')
     report = dict(kind=spec['kind'], checkpoint=str(checkpoint) if checkpoint else None,
                   representation=spec.get('representation', 'restored_encoder'), source_signal_rms=factory.source_rms,
                   source_datasets=sources, episode_dataset=episode_id, source_train_windows=len(source_roles),
                   episode_windows=len(inventory), checkpoint_global_step=int(saved['global_step']) if saved else 0,
-                  episode_features_used_for_selection_by_this_export=False)
+                  episode_features_used_for_selection_by_this_export=False,
+                  target_common_tokens_before_backbone=save_common)
     (output/'features.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
     print(json.dumps(report, indent=2))
     return 0
