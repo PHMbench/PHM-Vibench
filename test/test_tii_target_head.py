@@ -3,7 +3,9 @@ import unittest
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 import numpy as np
+from scipy.optimize import minimize as scipy_minimize
 from src.task_factory.Components.tii_target_head import (
     fit_head, mean_pool, group_weights, select_l2, make_episode, L2_GRID, FixedEpisodeError,
     score_source_episode, evaluate_target_readouts,
@@ -109,6 +111,24 @@ class TargetHeadTests(unittest.TestCase):
             gradient = p.T @ np.column_stack((x, np.ones(len(x)))) / len(y)
             gradient += alpha * np.column_stack((head.weight, head.bias))
             self.assertLess(np.max(np.abs(gradient)), 1e-6)
+
+    def test_newton_polish_corrects_premature_relative_objective_stop(self):
+        rng = np.random.Generator(np.random.PCG64(291))
+        common = 800. + 15. * rng.normal(size=(15, 1))
+        x = common * np.array([[.3, .7, 1., 1.5]]) + rng.normal(scale=.1, size=(15, 4))
+        y = np.repeat(np.arange(3), 5)
+
+        def premature(fun, *args, **kwargs):
+            result = scipy_minimize(fun, *args, **kwargs)
+            result.x[0] += 1e-5
+            # Simulate a successful relative-objective stop whose gradient is
+            # not yet stationary, as observed on large raw support features.
+            self.assertGreater(np.max(np.abs(fun(result.x)[1])), 1e-4)
+            return result
+
+        with patch('src.task_factory.Components.tii_target_head.minimize', side_effect=premature):
+            head = fit_head(x, y, np.arange(len(y)), 1.)
+        self.assertLess(head.gradient_inf, 1e-6)
 
     def test_repeat_all_windows_of_one_group_preserves_estimator(self):
         idx = [0,1,0,1,2,3]

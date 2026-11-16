@@ -101,15 +101,43 @@ convex. A failed optimizer is reported, never replaced by another solver.
 
     result = minimize(objective, np.zeros(np.prod(shape)), jac=True, method='L-BFGS-B',
         options={'maxiter':5000, 'maxls':100, 'maxcor':20, 'ftol':0., 'gtol':1e-4})
-    value, _ = objective(result.x)
-    theta = result.x.reshape(shape) @ preconditioner.T
+    if not result.success:
+        raise RuntimeError(f'head fit failed: {result.message}')
+
+    # One deterministic Newton polish in the same preconditioned coordinates
+    # removes premature relative-objective stopping when raw features have
+    # large offsets. It changes neither the objective nor its gradient gate.
+    z = result.x.reshape(shape)
+    logits = conditioned @ z.T
+    probabilities = np.exp(logits - logsumexp(logits, axis=1, keepdims=True))
+    errors = probabilities.copy()
+    errors[np.arange(len(y)), y] -= 1
+    gradient_z = (errors * weights[:, None]).T @ conditioned + l2 * (z @ preconditioner.T) @ preconditioner
+    class_covariance = probabilities[:, :, None] * (np.eye(len(classes))[None, :, :] - probabilities[:, None, :])
+    hessian = np.einsum('nab,ni,nj,n->aibj', class_covariance, conditioned, conditioned, weights,
+                        optimize=True).reshape(np.prod(shape), np.prod(shape))
+    regularizer = l2 * preconditioner.T @ preconditioner
+    width = design.shape[1]
+    for class_index in range(len(classes)):
+        sl = slice(class_index * width, (class_index + 1) * width)
+        hessian[sl, sl] += regularizer
+    polished = result.x - np.linalg.solve(hessian, gradient_z.ravel())
+    before, _ = objective(result.x)
+    value, _ = objective(polished)
+    # The shifted loss may be close to zero even though softmax/log1p are
+    # evaluated at order-one scale before multiplication by objective_scale.
+    tolerance = 64 * np.finfo(np.float64).eps * max(objective_scale, abs(before))
+    if not np.isfinite(value) or value > before + tolerance:
+        raise RuntimeError(f'head Newton polish increased the regularized objective: '
+                           f'before={before}, after={value}, tolerance={tolerance}')
+    theta = polished.reshape(shape) @ preconditioner.T
     logits = design @ theta.T
     logp = logits - logsumexp(logits, axis=1, keepdims=True)
     errors = np.exp(logp)
     errors[np.arange(len(y)), y] -= 1
     original_gradient = (errors * weights[:, None]).T @ design + l2*theta
     residual = float(np.max(np.abs(original_gradient)))
-    if not result.success or not np.isfinite(value) or residual > 1e-6:
+    if not np.isfinite(value) or residual > 1e-6:
         raise RuntimeError(f'head fit failed: {result.message}; gradient_inf={residual}')
     return LinearHead(theta[:, :-1].copy(), theta[:, -1].copy(), float(l2),
                       int(result.nit), residual, value/objective_scale + float(np.log(len(classes))))

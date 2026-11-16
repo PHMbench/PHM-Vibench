@@ -22,6 +22,11 @@ original regularized objective, output logits, success requirement and
 original-coordinate gradient threshold are unchanged; failed prior fits remain
 failed historical results.
 
+After L-BFGS-B, every head receives one Newton polishing step in the same
+preconditioned coordinates. This addresses observed relative-objective stops
+whose original gradients still exceeded the acceptance threshold. The step is
+checked against the same objective; it does not change the regularizer or gate.
+
 The frozen episode exporter can optionally save the matched tokenizer's common
 branch before the backbone, without modifying its forward computation. A paired
 class-stratified group bootstrap utility operates on already-aggregated physical
