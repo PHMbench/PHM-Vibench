@@ -112,6 +112,31 @@ primary_metrics={...}
 
 Use these paths directly.
 
+### Predict from an existing checkpoint
+
+Pipeline 01 can predict without fitting or selecting another checkpoint. Use the
+same model, Task and data/split configuration as the checkpoint. For the bundled
+demo, replace `selected.ckpt` with the `best_checkpoint` printed by a demo run:
+
+```bash
+phmfactory demo \
+  --override trainer.mode=predict \
+  --override trainer.checkpoint_path=selected.ckpt \
+  --override trainer.prediction_population=val \
+  --override trainer.test_after_fit=false \
+  --override trainer.devices=1
+```
+
+`prediction_population` is `source_train`, `val` or `test`; `test` requires the
+test population to be loaded. Source training uses the existing selected windows in
+the Factory's deterministic evaluation order. The command returns `checkpoint_used`,
+`prediction_population` and `prediction_file`; the file is a PyTorch-saved list of
+the Task's unchanged batch predictions. It reports no test metrics or newly selected
+checkpoint. A Task that needs window identities must include them in its own prediction
+output; it may implement `prepare_prediction(loader, split_result)` to bind the Factory's
+population before prediction. This capability does not itself establish scientific
+validity or authorize access to a particular target.
+
 ## 6. Check the results
 
 The result root normally contains:

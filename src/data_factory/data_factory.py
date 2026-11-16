@@ -400,6 +400,15 @@ class data_factory:
         """
         return self.train_loader if mode == "train" else self.val_loader if mode == "val" else self.test_loader
 
+    def get_source_train_evaluation_loader(self):
+        """Visit the already selected training windows once in evaluation order."""
+        sampler = Get_sampler(self.args_task, self.args_data, self.train_dataset, mode="test")
+        return DataLoader(
+            self.train_dataset,
+            batch_sampler=sampler,
+            num_workers=self.args_data.num_workers,
+        )
+
     def __len__(self):
         """返回数据集数量"""
         return len(self.data)

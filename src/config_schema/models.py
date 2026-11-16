@@ -426,6 +426,9 @@ class TrainerConfig(BaseModel):
     device: Literal["cpu", "cuda", "auto"] = Field(...)
     devices: int = Field(..., ge=1)
     test_after_fit: Optional[bool] = None
+    mode: Literal["fit", "predict"] = "fit"
+    checkpoint_path: Optional[str] = None
+    prediction_population: Optional[Literal["source_train", "val", "test"]] = None
     monitor: Optional[str] = None
     monitor_mode: Optional[Literal["min", "max"]] = None
     # Declare actual Default_trainer inputs; validation never materializes defaults
@@ -474,6 +477,17 @@ class TrainerConfig(BaseModel):
                 f"{sorted(extras)}. Supported fields: {sorted(type(self).model_fields)}. "
                 "Use an exact supported field name; unknown fields are not applied."
             )
+        if self.mode == "predict":
+            if not self.checkpoint_path or not self.checkpoint_path.strip():
+                raise ValueError("trainer.mode=predict requires trainer.checkpoint_path")
+            if self.prediction_population is None:
+                raise ValueError("trainer.mode=predict requires trainer.prediction_population")
+            if self.test_after_fit is not False or self.devices != 1:
+                raise ValueError("trainer.mode=predict requires test_after_fit=false and devices=1")
+        elif self.name == "Default_trainer" and (
+            self.checkpoint_path is not None or self.prediction_population is not None
+        ):
+            raise ValueError("trainer.checkpoint_path and prediction_population require mode=predict")
         return self
 
 
@@ -507,6 +521,11 @@ class ExperimentConfig(BaseModel):
             raise ValueError(
                 f"pipeline={self.pipeline} requires explicit trainer.test_after_fit"
             )
+        if self.trainer.mode == "predict":
+            if self.pipeline != "Pipeline_01_Fault_Diagnosis" or self.environment.iterations != 1:
+                raise ValueError("checkpoint prediction requires Pipeline_01_Fault_Diagnosis and one iteration")
+            if self.trainer.prediction_population == "test" and getattr(self.data, "load_test", True) is False:
+                raise ValueError("test prediction requires data.load_test=true")
         split = self.data.split
         if split and split.strategy == "grouped_metadata":
             if self.task.type in {"FS", "GFS"}:

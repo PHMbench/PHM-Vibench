@@ -12,10 +12,12 @@ from typing import Any
 from uuid import uuid4
 
 import pandas as pd
+import torch
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.configs.config_utils import (
+    ConfigWrapper,
     dict_to_namespace,
     merge_with_local_override,
     path_name,
@@ -330,11 +332,36 @@ def run_classification_pipeline(
     test_after_fit = args_trainer.test_after_fit
     if not isinstance(test_after_fit, bool):
         raise TypeError("trainer.test_after_fit must be a boolean")
+    mode = getattr(args_trainer, "mode", "fit")
+    if mode not in {"fit", "predict"}:
+        raise ValueError("trainer.mode must be 'fit' or 'predict'")
+    checkpoint = None
+    population = None
+    if mode == "predict":
+        population = getattr(args_trainer, "prediction_population", None)
+        if population not in {"source_train", "val", "test"}:
+            raise ValueError("prediction requires source_train, val or test population")
+        devices = getattr(args_trainer, "devices", None)
+        if (getattr(args, "resolved_pipeline", None) != "Pipeline_01_Fault_Diagnosis"
+                or iterations != 1 or test_after_fit or type(devices) is not int or devices != 1):
+            raise ValueError("prediction requires Pipeline_01, one iteration, devices=1 and test_after_fit=false")
+        requested_checkpoint = getattr(args_trainer, "checkpoint_path", None)
+        if not isinstance(requested_checkpoint, str) or not requested_checkpoint.strip():
+            raise ValueError("prediction requires an explicit trainer.checkpoint_path")
+        checkpoint = Path(requested_checkpoint).expanduser().resolve()
+        if not checkpoint.is_file():
+            raise FileNotFoundError(f"Prediction checkpoint does not exist: {checkpoint}")
+    elif (getattr(args_trainer, "name", "Default_trainer") == "Default_trainer"
+          and (getattr(args_trainer, "checkpoint_path", None) is not None
+               or getattr(args_trainer, "prediction_population", None) is not None)):
+        raise ValueError("trainer.checkpoint_path and prediction_population require mode=predict")
     load_test = getattr(args_data, "load_test", True)
     if not isinstance(load_test, bool):
         raise TypeError("data.load_test must be a boolean")
     if test_after_fit and not load_test:
         raise ValueError("data.load_test=false conflicts with trainer.test_after_fit=true")
+    if mode == "predict" and population == "test" and not load_test:
+        raise ValueError("test prediction requires data.load_test=true")
     _set_environment(args_environment)
 
     run_root, name = _create_invocation_root(configs)
@@ -418,6 +445,36 @@ def run_classification_pipeline(
             )
 
             hooks.after_stack_built(context)
+
+            if mode == "predict":
+                if population == "source_train":
+                    prediction_loader = context.data_factory.get_source_train_evaluation_loader()
+                else:
+                    prediction_loader = context.data_factory.get_dataloader(population)
+                if prediction_loader is None:
+                    raise ValueError(f"Prediction population is unavailable: {population}")
+                prepare = getattr(context.task, "prepare_prediction", None)
+                if prepare is not None:
+                    prepare(prediction_loader, context.data_factory.split_result)
+                # Passing the owner's iterator prevents Lightning from replacing the
+                # already selected same-system evaluation batch sampler.
+                with torch.serialization.safe_globals([ConfigWrapper]):
+                    predictions = context.trainer.predict(
+                        context.task, iter(prediction_loader),
+                        return_predictions=True, ckpt_path=str(checkpoint),
+                    )
+                if (not isinstance(predictions, list) or len(predictions) != len(prediction_loader)
+                        or any(value is None for value in predictions)):
+                    raise RuntimeError("Prediction Task did not return every selected batch")
+                prediction_file = path / "predictions.pt"
+                with prediction_file.open("xb") as stream:
+                    torch.save(predictions, stream)
+                return {
+                    "status": "succeeded", "result_dir": str(run_root),
+                    "checkpoint_used": str(checkpoint), "prediction_file": str(prediction_file),
+                    "prediction_population": population, "fit_performed": False,
+                    "checkpoint_selected_in_invocation": False,
+                }
 
             print("[INFO] 开始训练...")
             context.trainer.fit(
