@@ -260,3 +260,7 @@ metrics_reports/*
 !results/
 results/*
 !results/README.md
+
+# TII J1 qualification records were relocated to the paper repository on
+# 2026-11-16; do not recreate them here.
+reports/tii_local_j1/

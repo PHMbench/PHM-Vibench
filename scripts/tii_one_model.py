@@ -17,7 +17,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL_CONFIG = ROOT / 'configs/experiments/tii/one_model.local.yaml'
-QUALIFICATION = ROOT / 'reports/tii_local_j1/DATASET_QUALIFICATION.csv'
+QUALIFICATION = Path(os.environ.get('TII_QUALIFICATION_CSV')
+                     or ROOT / 'reports/tii_local_j1/DATASET_QUALIFICATION.csv')
 CANDIDATES = ('RM_001_CWRU', 'RM_007_MFPT', 'RM_020_DIRG', 'RM_027_PU', 'RM_031_HUST24')
 
 
@@ -112,6 +113,15 @@ def require_sources(config: dict[str, Any], sources: list[int]) -> list[dict[str
 
 def current_blocker() -> dict[str, Any]:
     """Report only the five original candidates, without inspecting raw signals."""
+    if not QUALIFICATION.is_file():
+        return {
+            'status': 'qualification_records_relocated', 'native_invocations': 0,
+            'reason': f'Qualification records are not stored in this repository; {QUALIFICATION} is absent.',
+            'qualification_file': str(QUALIFICATION), 'candidates': [],
+            'next_input': 'Set TII_QUALIFICATION_CSV to the retained DATASET_QUALIFICATION.csv in the paper '
+                          'repository, or pass --config whose data.qualification_file points there. '
+                          'Do not regenerate fixture data.',
+        }
     rows = qualification_rows(QUALIFICATION)
     selected = [r for name in CANDIDATES for r in rows if r['dataset'] == name]
     return {

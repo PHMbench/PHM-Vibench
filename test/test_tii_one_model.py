@@ -1,7 +1,9 @@
 """Launcher contract tests. Stubbed subprocess cases do not train a model."""
 from copy import deepcopy
+import contextlib
 import csv
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -230,12 +232,24 @@ class TestAdmissionAndInvocation(unittest.TestCase):
             self.assertEqual(entry.main([]), 2)
             call.assert_not_called()
 
+    def test_missing_qualification_fails_closed_as_relocation(self):
+        with patch.object(entry, 'QUALIFICATION', self.root/'absent.csv'), \
+             patch.object(entry, 'LOCAL_CONFIG', self.root/'missing.yaml'), \
+             patch.object(entry.subprocess, 'run') as call:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(entry.main([]), 2)
+            report = json.loads(out.getvalue())
+        self.assertEqual(report['status'], 'qualification_records_relocated')
+        self.assertEqual(report['native_invocations'], 0)
+        self.assertEqual(report['candidates'], [])
+        call.assert_not_called()
+
 
 @unittest.skipUnless(importlib.util.find_spec('phmfactory'), 'native compiler unavailable in this isolated local unit-test checkout')
 class TestNativeCompiler(unittest.TestCase):
     def test_public_compiler_accepts_shipped_fixture_but_launcher_refuses_it(self):
         from phmfactory.config import analyze_config
-        cfg = analyze_config(entry.ROOT/'configs/experiments/tii/m0_tensor_fixture.yaml').runtime_config()
+        cfg = analyze_config(entry.ROOT/'test/tii_m0_tensor_fixture.yaml').runtime_config()
         with self.assertRaisesRegex(ValueError, 'tensor_fixture'):
             entry.constraints(cfg)
 

@@ -502,6 +502,7 @@ def run(root: Path, output: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, default=Path("/home/user/data/PHMbenchdata/PHM-Vibench"))
-    parser.add_argument("--output-dir", type=Path, default=Path("reports/tii_local_j1"))
+    parser.add_argument("--output-dir", type=Path, required=True,
+                        help="Qualification records belong to the paper repository; pass an explicit output directory there or in scratch space")
     args = parser.parse_args()
     run(args.data_root, args.output_dir)
