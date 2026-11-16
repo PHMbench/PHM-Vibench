@@ -35,9 +35,12 @@ observable acceptance result
 ```
 
 Do not add a feature because it may be useful for hypothetical future datasets, backends,
-models, distributed systems, or workflows. Research variants without a maintained user
-need belong in `configs/experiments/` or a separate research repository until their
-interface is stable.
+models, distributed systems, or workflows. Manuscript-specific methods, configurations,
+sweeps and publication assets belong in their downstream research repository, not in
+`configs/experiments/` as a staging area. A maintained public component needs a genuine
+paper-independent contract. Follow the ownership and pre-PR checks in
+[AGENTS.md](AGENTS.md#repository-ownership-and-one-way-dependency); this does not authorize
+moving or deleting existing research material.
 
 ## 2. Permanent constraints
 
@@ -170,9 +173,10 @@ A public component normally includes:
 Do not modify `main.py` to add a compatible component. Do not claim support because a
 source file imports.
 
-New experiment configs belong under `configs/experiments/`. Promotion to a maintained
-demo or baseline requires exact current execution evidence and the corresponding registry
-change.
+`configs/experiments/` may contain experimental examples of maintained public capabilities;
+it is not a home for a manuscript's study matrix, tuned seed list or ablation queue.
+Promotion to a maintained demo or baseline requires exact current execution evidence and
+the corresponding registry change. Paper callers keep their study configurations downstream.
 
 ## 8. Documentation changes
 
