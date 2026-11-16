@@ -57,6 +57,93 @@ Use Python for real computation, experiments, file generation or focused tests, 
 fallback layer that repairs invalid inputs. Comments explain reasons; docs use real
 interfaces and separate runnable examples from illustrative fragments.
 
+## Upstream admission and one-way dependency
+
+Paper repositories depend on this framework, never the reverse. Runtime, package
+metadata, build/tests and default configs must not require a particular paper checkout,
+import its modules, discover sibling directories, or inject its path into `sys.path`.
+An explicitly caller-supplied config, output path or supported extension module is an
+input to an existing public contract, not permission to hardcode that caller upstream.
+The framework must install and run its generic checks without downstream repositories.
+
+Do not add manuscript-only seed lists, sweeps, ablation matrices, table/figure runners,
+case-study selection, publication layouts/results, claim-specific prompts, thresholds,
+model branches or metric overrides. Moving or renaming them does not change ownership.
+Do not encode paper IDs, venues or private author/data paths into dispatch or defaults.
+Resolve local resources from explicit caller configuration; never invent dataset folders,
+metadata, labels or readers to satisfy an experiment. An editable installation is not
+permission for a paper Agent to patch this checkout or its installed package in place.
+
+Standard reference methods, reusable operators/readers/metrics, generic analysis, public
+examples and deterministic software fixtures are legitimate framework content. Judge
+purpose and dependencies, not a word blacklist: literature citations, licenses, method
+names, generic tables and documented historical evidence are not paper coupling. A new
+abstraction still needs the real maintained consumers required by CORE; renaming a paper
+protocol or duplicating a toy example does not establish generality. A public dataset
+adapter needs an independent input/output contract, not support for invented datasets.
+
+### Required checks before committing and updating a PR
+
+- [ ] Inspect both the staged diff and the complete branch diff against the actual PR
+  base, including renamed/binary files and dependency declarations. No new paper-owned
+  experiment, publication artifact or unresolved private-path leak enters upstream.
+- [ ] Inspect changed imports, dynamic module loading, config defaults and packaging:
+  no hardcoded reverse dependency on a downstream paper. Caller-provided public extension
+  bindings remain explicit; no automatic paper discovery or fallback is introduced.
+- [ ] Explain the shared contract and actual reuse. For changed executable interfaces,
+  reuse or minimally extend a paper-independent test/example at the existing owner and
+  run the affected standalone path without paper packages. Do not add tests for prose.
+- [ ] Preserve standard splits, labels, budgets, missing-score rules and estimators.
+  A deliberate benchmark protocol change requires its own authorization and comparison,
+  not a hidden adjustment to favor the current paper. Run affected regressions and the
+  existing required CI; do not launch all datasets or model calls for each commit.
+- [ ] Resolve every actual boundary violation before publishing the patch. Record
+  PASS / FAIL / NOT RUN and limitations in the existing PR, not a new audit ledger.
+  Required unexecuted checks prevent acceptance/merge; a clearly marked Draft may retain
+  a reviewed documentation patch when execution is unavailable. Never label it passing.
+
+Use Bash in the existing checkout. Verify `BASE` against the current PR; do not fetch,
+change branches or assume a missing/stale ref proves an empty diff:
+
+```bash
+set -euo pipefail
+BASE=origin/dev
+git rev-parse --verify "$BASE^{commit}"
+git diff --cached --check
+git diff --cached --name-status
+git diff --check "$BASE"...HEAD
+git diff --name-status "$BASE"...HEAD
+
+# Triage added lines only; full diff/ownership review remains mandatory.
+review_added() {
+  local patch rc
+  patch="$(git diff --no-ext-diff --no-textconv --no-color --unified=0 "$@")" || return "$?"
+  if printf '%s\n' "$patch" | sed -n '/^+++ /d;s/^+//p' | rg -n -i -- '(ablation|camera[_-]?ready|table[_-]?[0-9]+|fig(ure)?[_-]?[0-9]+|\bours\b|/home/|/Users/|[A-Za-z]:[\\/])'; then
+    printf '%s\n' 'REVIEW REQUIRED: classify each hit; this is not an automatic failure.'
+  else
+    rc=$?
+    if [[ "$rc" -ne 1 ]]; then return "$rc"; fi
+  fi
+}
+review_added --cached
+review_added "$BASE"...HEAD
+
+# Existing committed-tree ownership check and documentation check.
+python tools/repo/check_paper_migration_status.py --mode release --base-ref "$BASE"
+python -m scripts.validate_docs
+```
+
+Zero search matches do not prove architectural independence. Review hits in context;
+require zero unresolved violations, not zero occurrences of these words. The policy
+and its regex will themselves match. Do not use blanket documentation exclusions or
+`|| true` to hide execution errors. The committed-tree checker does not replace staged
+review. Reuse a valid result for unchanged code/config/environment; do not repeatedly
+run unrelated suites. Missing tools, refs or host access remain explicit NOT RUN.
+
+Historical paper material is not permission to add more. Preserve it and its immutable
+references; this admission policy does not authorize broad migration, deletion, data
+replacement, protocol changes, gitlink upgrades or merging another paper's PR.
+
 ## Validate and report
 
 For documentation, run `python -m scripts.validate_docs` and check changed links/examples.
