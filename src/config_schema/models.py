@@ -3,7 +3,13 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+def _dotted_module(value: Optional[str]) -> Optional[str]:
+    if value is not None and (not value or any(not part.isidentifier() for part in value.split("."))):
+        raise ValueError("must be a dotted Python module name")
+    return value
 
 
 class EnvironmentConfig(BaseModel):
@@ -164,11 +170,14 @@ class ModelConfig(BaseModel):
 
     type: str = Field(..., description="Top-level model family key used by model_factory.")
     name: str = Field(..., description="Concrete model implementation name under model.type.")
+    module: Optional[str] = Field(None, description="Explicit importable Model module.")
 
     embedding: Optional[str] = None
     backbone: Optional[str] = None
     task_head: Optional[str] = None
     operator_path: Optional[XOANOperatorPathConfig] = None
+
+    _validate_module = field_validator("module")(_dotted_module)
 
     @model_validator(mode="after")
     def _check_isfm_components(self) -> "ModelConfig":
@@ -389,12 +398,15 @@ class TaskConfig(BaseModel):
 
     type: TaskType = Field(..., description="Task type key used by task_factory.")
     name: str = Field(..., description="Task name under task.type.")
+    factory_module: Optional[str] = Field(None, description="Explicit module registering Factory extensions.")
 
     target_system_id: Optional[List[int]] = None
     loss: Optional[str] = None
     protocol: Optional[AdaptationProtocolConfig] = None
     gradient_constraint: Optional[GradientConstraintConfig] = None
     population_regularization: Optional[PopulationRegularizationConfig] = None
+
+    _validate_factory_module = field_validator("factory_module")(_dotted_module)
 
     @model_validator(mode="after")
     def _check_target_system_id(self) -> "TaskConfig":
@@ -514,6 +526,11 @@ class ExperimentConfig(BaseModel):
     def _basic_coupling_checks(self) -> "ExperimentConfig":
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
+        if self.task.factory_module is not None and (
+            self.pipeline != "Pipeline_01_Fault_Diagnosis"
+            or getattr(self.task, "execution", None) == "research"
+        ):
+            raise ValueError("task.factory_module requires ordinary Pipeline_01_Fault_Diagnosis execution")
         if (
             self.pipeline in _CLASSIFICATION_LIFECYCLE_PIPELINES
             and self.trainer.test_after_fit is None
