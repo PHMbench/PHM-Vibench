@@ -53,9 +53,9 @@ def config(all_ops=False):
     return {'model':{'branches':branches if all_ops else branches[:3]}}
 
 
-def model(all_ops=False,branches=None):
+def model(all_ops=False,branches=None,**kwargs):
     return TSPNFusion(ReferenceFixture(),in_channels=1,num_classes=3,
-                     branches=config(all_ops)['model']['branches'] if branches is None else branches)
+                     branches=config(all_ops)['model']['branches'] if branches is None else branches,**kwargs)
 
 
 def output(logits,raw=None):
@@ -201,6 +201,73 @@ def test_checkpoint_complete_restore(tmp_path):
     pred=m.predict_proba(x);torch.save(m.state_dict(),tmp_path/'m.pt')
     n=model(True).eval();n.load_state_dict(torch.load(tmp_path/'m.pt',weights_only=True))
     torch.testing.assert_close(n.predict_proba(x),pred,rtol=0,atol=0)
+
+
+def test_explicit_residual_count_preserves_full_model_and_default_state_keys():
+    torch.manual_seed(31)
+    default=model(head_type='operator_residual').double().eval()
+    groups=len(default.feature_dims)
+    explicit=model(head_type='operator_residual',residual_group_count=groups).double().eval()
+    assert set(default.state_dict())==set(explicit.state_dict())
+    explicit.load_state_dict(default.state_dict(),strict=True)
+    x=torch.randn(3,512,1,dtype=torch.double)
+    initial=explicit.forward_details(x)
+    torch.testing.assert_close(initial['candidate_probs'],initial['raw_probs'],rtol=0,atol=0)
+    with torch.no_grad():
+        for head in default.operator_heads.values():head.output.weight.normal_(std=.2)
+    explicit.load_state_dict(default.state_dict(),strict=True)
+    before,after=default.forward_details(x),explicit.forward_details(x)
+    torch.testing.assert_close(before['candidate_logits'],after['candidate_logits'],rtol=0,atol=0)
+    unscaled=[default.operator_heads[name](value/math.sqrt(default.feature_dims[name]),
+                                         default.head_frobenius_cap)
+              for name,value in before['branch_features'].items()]
+    torch.testing.assert_close(before['candidate_logits'],
+                               before['raw_logits']+torch.stack(unscaled).sum(0)/math.sqrt(groups))
+
+
+def test_residual_subset_keeps_declared_scale_and_restores_contributions(tmp_path):
+    torch.manual_seed(32)
+    full=model(head_type='operator_residual',reference_temperature=1.7).double().eval()
+    with torch.no_grad():
+        for head in full.operator_heads.values():head.output.weight.normal_(std=.2)
+    cfg=dict(branches=config()['model']['branches'][:-1],head_type='operator_residual',
+             reference_temperature=1.7,residual_group_count=len(full.feature_dims))
+    subset=model(**cfg).double().eval()
+    keys=set(subset.state_dict())
+    subset.load_state_dict({key:value for key,value in full.state_dict().items() if key in keys},strict=True)
+    active=model(**dict(cfg,residual_group_count=None)).double().eval()
+    active.load_state_dict(subset.state_dict(),strict=True)
+    x=torch.randn(3,512,1,dtype=torch.double)
+    original,out,renormalized=full.forward_details(x),subset.forward_details(x),active.forward_details(x)
+    assert subset.residual_group_count>len(subset.feature_dims)
+    for name,part in out['branch_logit_contributions'].items():
+        torch.testing.assert_close(part,original['branch_logit_contributions'][name],rtol=0,atol=0)
+        torch.testing.assert_close(renormalized['branch_logit_contributions'][name],
+                                   part*math.sqrt(subset.residual_group_count/len(subset.feature_dims)),
+                                   rtol=1e-12,atol=1e-12)
+    correction=torch.stack(list(out['branch_logit_contributions'].values())).sum(0)
+    logq=out['candidate_logits'].log_softmax(-1)
+    logp=(out['raw_logits']/1.7).log_softmax(-1)
+    torch.testing.assert_close((logq[:,0]-logq[:,1])-(logp[:,0]-logp[:,1]),
+                               correction[:,0]-correction[:,1],rtol=1e-12,atol=1e-12)
+    checkpoint=tmp_path/'subset.pt'
+    torch.save(dict(model=cfg,state_dict=subset.state_dict()),checkpoint)
+    saved=torch.load(checkpoint,weights_only=True)
+    restored=model(**saved['model']).double().eval()
+    restored.load_state_dict(saved['state_dict'],strict=True)
+    reloaded=restored.forward_details(x)
+    torch.testing.assert_close(reloaded['candidate_logits'],out['candidate_logits'],rtol=0,atol=0)
+    for name,part in out['branch_logit_contributions'].items():
+        torch.testing.assert_close(reloaded['branch_logit_contributions'][name],part,rtol=0,atol=0)
+
+
+@pytest.mark.parametrize('kind,count',[
+    ('linear',4),('mlp',4),('operator_residual',True),('operator_residual',0),
+    ('operator_residual',2.5),('operator_residual',3),
+])
+def test_explicit_residual_count_requires_compatible_head_and_covers_groups(kind,count):
+    with pytest.raises(ValueError,match='residual_group_count'):
+        model(head_type=kind,residual_group_count=count)
 
 
 def test_training_deployment_forward_rejected():
