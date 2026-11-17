@@ -49,7 +49,10 @@ class task(pl.LightningModule):
         self.validation_groups = {}
 
     def forward(self, batch):
-        if self.network.args_m.embedding == 'SupportConditionedTokenizer':
+        # The original network contract accepts projected coordinates directly;
+        # only models exposing the new adapter need embedding-specific handling.
+        if (not hasattr(self.network, 'projected_inputs')
+                or self.network.args_m.embedding == 'SupportConditionedTokenizer'):
             return self.network(batch['x'], file_id=batch['file_id'], task_id='classification',
                                 incremental=batch['incremental'], availability=batch['availability'])
         rates = {float(self.metadata[fid]['Sample_rate']) for fid in batch['file_id']}

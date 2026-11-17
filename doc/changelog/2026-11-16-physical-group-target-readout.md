@@ -12,6 +12,10 @@ source-training-feature-RMS scales and saved probabilities. The physics impact
 simulator and its bounded constructed-data checks accept explicit input and
 output paths; result directories must be outside this repository.
 
+Networks implementing the existing projected-coordinate forward contract can
+still be used directly. Model-specific projection adapters are used only when
+the network exposes that interface.
+
 The caller remains responsible for truthful checkpoint, source and episode
 provenance and for a scientifically admissible support declaration. These
 changes do not qualify industrial datasets or establish model convergence.
