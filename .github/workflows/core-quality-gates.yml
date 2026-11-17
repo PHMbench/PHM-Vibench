@@ -365,6 +365,115 @@ jobs:
           assert not list(result_dir.rglob("artifacts/manifest.json"))
           PY
 
+      - name: Run explicit simulation training, replay and DG interventions
+        env:
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import numpy as np
+          import pandas as pd
+          import torch
+
+          root = Path("results/simulation").resolve()
+          root.mkdir(parents=True, exist_ok=False)
+          data_root = Path(os.environ["RUNNER_TEMP"]) / "phm-simulation"
+          for variant, arguments in (
+              ("original", []),
+              ("labels", ["--target-label-shift", "1"]),
+              ("inputs", ["--target-scale", "1.7"]),
+          ):
+              subprocess.run([sys.executable, "-m", "scripts.prepare_simulated_phm",
+                              "--output", str(data_root / variant), *arguments], check=True)
+          outputs = {}
+          for model, variant in (("linear", "original"), ("linear", "labels"),
+                                 ("linear", "inputs"), ("timesnet", "original")):
+              case = f"{model}-{variant}"
+              output = root / case
+              output.mkdir()
+              config = f"configs/experiments/phmfactory/simulated_dg_{model}.yaml"
+              overrides = ["--override", f"data.data_dir={data_root / variant}",
+                           "--override", f"environment.output_dir={output / 'fit'}",
+                           "--override", f"data.cache_dir={output / 'cache'}",
+                           "--override", f"data.split.manifest_path={output / 'split.json'}"]
+              with (output / "fit.log").open("w") as log:
+                  subprocess.run(["phmfactory", "--config", config, *overrides],
+                                 stdout=log, stderr=subprocess.STDOUT, check=True)
+              values = {}
+              for line in (output / "fit.log").read_text().splitlines():
+                  key, sep, value = line.partition("=")
+                  if sep and key in {"best_checkpoint", "test_metrics", "result_dir"}:
+                      values[key] = value.strip()
+              with (output / "export.log").open("w") as log:
+                  subprocess.run([sys.executable, "-m", "scripts.paper.export_mfpt_predictions",
+                                  "--profile", "simulation", "--config", config, *overrides,
+                                  "--checkpoint", values["best_checkpoint"],
+                                  "--reported-metrics", values["test_metrics"],
+                                  "--split-manifest", str(output / "split.json"),
+                                  "--seed", "17", "--output", str(output / "export")],
+                                 stdout=log, stderr=subprocess.STDOUT, check=True)
+              outputs[case] = json.loads((output / "export/recomputed_metrics.json").read_text())
+              split = json.loads((output / "split.json").read_text())["splits"]
+              train, val, test = (set(split[k]["ids"]) for k in ("train", "val", "test"))
+              assert not (train & val or train & test or val & test)
+              meta = pd.read_csv(data_root / variant / "metadata_simulated.csv").set_index("Id")
+              assert set(meta.loc[list(train | val), "Domain_id"]) <= {0, 1}
+              assert set(meta.loc[list(test), "Domain_id"]) == {2}
+              print(case, json.dumps({k: outputs[case][k] for k in (
+                  "windows", "records", "accuracy", "macro_f1", "max_abs_logit_error")}))
+          original = torch.load(outputs["linear-original"]["checkpoint"], map_location="cpu", weights_only=False)
+          checks = {}
+          for variant in ("labels", "inputs"):
+              changed = torch.load(outputs[f"linear-{variant}"]["checkpoint"], map_location="cpu", weights_only=False)
+              assert original["epoch"] == changed["epoch"]
+              assert original["global_step"] == changed["global_step"]
+              assert original["state_dict"].keys() == changed["state_dict"].keys()
+              assert all(torch.equal(v, changed["state_dict"][k]) for k, v in original["state_dict"].items())
+              checks[f"target_{variant}_selected_state_equal"] = True
+              # Compare only learning state: paths differ intentionally by run directory.
+              for left, right in zip(original["optimizer_states"], changed["optimizer_states"], strict=True):
+                  assert left["param_groups"] == right["param_groups"]
+                  assert left["state"].keys() == right["state"].keys()
+                  for parameter, values in left["state"].items():
+                      assert values.keys() == right["state"][parameter].keys()
+                      for name, value in values.items():
+                          other = right["state"][parameter][name]
+                          assert torch.equal(value, other) if torch.is_tensor(value) else value == other
+              assert original["lr_schedulers"] == changed["lr_schedulers"]
+              assert original["callbacks"].keys() == changed["callbacks"].keys()
+              for key, callback in original["callbacks"].items():
+                  other = changed["callbacks"][key]
+                  assert callback["monitor"] == other["monitor"] == "val_loss"
+                  assert torch.equal(callback["best_model_score"], other["best_model_score"])
+                  assert torch.equal(callback["current_score"], other["current_score"])
+              checks[f"target_{variant}_optimizer_state_equal"] = True
+              checks[f"target_{variant}_source_selection_score_equal"] = True
+          # These checkpoint files do not retain RNG state; TimesNet has no intervention arm.
+          checks["rng_state_comparison"] = "not_recorded"
+          checks["timesnet_intervention_checks"] = "not_executed"
+          first = pd.read_csv(root / "linear-original/export/predictions.csv")
+          permuted = pd.read_csv(root / "linear-labels/export/predictions.csv")
+          columns = ["file_id", "window_id", "raw_start", "raw_end", "logit_0", "logit_1", "logit_2", "prediction"]
+          assert np.array_equal(first[columns].to_numpy(), permuted[columns].to_numpy())
+          checks["target_label_permutation_predictions_equal"] = True
+          (root / "simulation_results.json").write_text(json.dumps(
+              {"data_origin": "simulation", "seed": 17, "cases": outputs, "checks": checks}, indent=2))
+          print("SIMULATION_CHECKS", json.dumps(checks))
+          PY
+
+      - name: Preserve executable source for simulation reproduction
+        if: always()
+        run: |
+          mkdir -p results/simulation
+          git archive --format=tar.gz -o results/simulation/runtime-source.tar.gz HEAD \
+            phmfactory src configs scripts main.py test AGENTS.md CORE.md CONTRIBUTING.md \
+            .github/workflows/core-quality-gates.yml
+
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -379,5 +488,6 @@ jobs:
             results/demo/dummy_dg_smoke/**/run_summary.json
             results/demo/dummy_dg_smoke/**/all_results.csv
             results/demo/dummy_dg_smoke/**/test_result_*.csv
+            results/simulation/
           if-no-files-found: warn
           retention-days: 7
