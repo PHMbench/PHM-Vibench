@@ -40,6 +40,7 @@ class task(pl.LightningModule):
         self.network = network
         self.args_task = args_task
         self.metadata = metadata
+        self.args_data = args_data
         self.batch_size_per_source = args_data.source_batch_size
         self.save_hyperparameters({
             name: vars(value) for name, value in (
@@ -48,8 +49,50 @@ class task(pl.LightningModule):
         self.validation_groups = {}
 
     def forward(self, batch):
-        return self.network(batch['x'], file_id=batch['file_id'], task_id='classification',
-                            incremental=batch['incremental'], availability=batch['availability'])
+        # The original network contract accepts projected coordinates directly;
+        # only models exposing the new adapter need embedding-specific handling.
+        if (not hasattr(self.network, 'projected_inputs')
+                or self.network.args_m.embedding == 'SupportConditionedTokenizer'):
+            return self.network(batch['x'], file_id=batch['file_id'], task_id='classification',
+                                incremental=batch['incremental'], availability=batch['availability'])
+        rates = {float(self.metadata[fid]['Sample_rate']) for fid in batch['file_id']}
+        if len(rates) != 1:
+            raise ValueError('one source batch must have one effective sampling rate')
+        x, kwargs = self.network.projected_inputs(
+            batch['x'], batch['incremental'], batch['availability'],
+            grid_rate_hz=self.args_data.grid_rate_hz, duration_s=self.args_data.duration_s,
+            effective_rate_hz=next(iter(rates)))
+        return self.network(x, file_id=batch['file_id'], task_id='classification', **kwargs)
+
+    def frozen_features(self, windows, *, effective_rate_hz):
+        """Mean-pool frozen backbone tokens without using any classification head.
+
+        Target windows supply their own declared rate and do not need a source
+        file ID. Caller fixes the checkpoint, source RMS, and access order first.
+        """
+        fields = ('x', 'incremental', 'availability')
+        if any(field not in windows for field in fields):
+            raise ValueError('feature extraction requires projected coordinates and availability')
+        n = len(windows['x'])
+        if n < 1 or any(len(windows[field]) != n for field in fields):
+            raise ValueError('feature extraction requires one projected observation per window')
+        self.eval()
+        result = []
+        with torch.inference_mode():
+            for start in range(0, n, self.batch_size_per_source):
+                batch = {field: windows[field][start:start + self.batch_size_per_source].to(self.device)
+                         for field in fields}
+                x, kwargs = self.network.projected_inputs(
+                    batch['x'], batch['incremental'], batch['availability'],
+                    grid_rate_hz=self.args_data.grid_rate_hz, duration_s=self.args_data.duration_s,
+                    effective_rate_hz=effective_rate_hz)
+                if self.network.args_m.embedding == 'E_01_HSE':
+                    kwargs['sample_rates'] = torch.full((len(x),), float(effective_rate_hz), device=x.device)
+                tokens = self.network.encode(x, **kwargs)
+                if tokens.ndim != 3 or not torch.isfinite(tokens).all():
+                    raise ValueError('encoder must return finite [windows,K,D] backbone features')
+                result.append(tokens.mean(dim=1).cpu())
+        return torch.cat(result, dim=0)
 
     def _validate_source_batch(self, source, batch):
         if source not in self.sources:

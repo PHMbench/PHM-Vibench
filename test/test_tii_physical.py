@@ -2,9 +2,11 @@
 import math
 import unittest
 
+import numpy as np
 import torch
 
 from src.data_factory.tii_physical import project_window
+from src.data_factory.tii_physics_simulation import waveform, bearing_interventions, project
 
 
 def settings(**changes):
@@ -26,6 +28,32 @@ def waves(rate=128., duration=1.):
 
 
 class PhysicalTests(unittest.TestCase):
+    def test_constructed_interventions_preserve_matched_energy_and_explicit_gains(self):
+        contract = dict(
+            geometry=dict(ball_diameter_in=.2656, pitch_diameter_in=1.122, contact_angle_degrees=0.,
+                          shaft_frequency_hz=25., rolling_elements=8),
+            waveform=dict(sample_rate_hz=4096, duration_s=1., output_unit='m/s^2',
+                carrier_resonance_hz=1000., damping_ratio=.03, impulse_truncation_time_constants=10.,
+                impact_amplitude=1., impact_jitter_fraction_of_period=.015,
+                background_harmonic_amplitudes=[.5, .2], background_harmonic_multiples=[1, 2],
+                measurement_noise_std=.05),
+            observation=dict(projection_grid_hz=4096, num_patches=64, samples_per_patch=64,
+                             common_band_hz=[1, 160], increment_band_hz=[650, 1450]),
+            e2_e4=dict(target_interventions=dict(resonance_shift_factor=1.15,
+                out_of_observation_resonance_hz=1650, out_of_observation_band_hz=[1450, 2048],
+                poisson_rate_hz=100., gain_factors=[.5, 2.])))
+        original = waveform(contract, 'outer_race', 1234)
+        variants, counts = bearing_interventions(contract, 'outer_race', 1234, original)
+        self.assertGreater(counts['periodic_arrivals'], 0)
+        np.testing.assert_array_equal(variants['gain_0p5'], original * .5)
+        np.testing.assert_array_equal(variants['gain_2'], original * 2.)
+        def increment(x):
+            return project(x, contract, effective_rate=4096, increment=True)['incremental'].numpy()
+        original_energy = np.linalg.norm(increment(original))
+        matched_energy = np.linalg.norm(increment(variants['aperiodic_equal_energy']))
+        self.assertAlmostEqual(original_energy, matched_energy, places=10)
+        self.assertFalse(np.array_equal(variants['resonance_shift_physical'], original))
+
     def test_disjoint_projection_unit_conversion_and_union_reconstruction(self):
         c, p, excluded = waves()
         raw = torch.stack((c + 2*p + 3*excluded, torch.full_like(c, 99)), dim=-1)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from importlib import import_module
+import math
 from typing import Any
 
 import torch
@@ -138,6 +139,59 @@ class Model(nn.Module):
         if sample_rates is not None or start_indices_L is not None or start_indices_C is not None:
             raise ValueError('sampling metadata requires a physical HSE embedding')
         return self.embedding(x)
+
+    def projected_inputs(self, common, incremental, availability, *, grid_rate_hz,
+                         duration_s, effective_rate_hz=None):
+        """Prepare the same admitted physical union for supported embeddings.
+
+        HSE uses its actual acquisition grid for positional time; its input is
+        converted from the common grid only if the round trip retains the union.
+        The two-branch tokenizer performs its own stored source-RMS division.
+        """
+        if (common.ndim != 3 or incremental.shape != common.shape
+                or availability.shape != (len(common),)
+                or not ((availability == 0) | (availability == 1)).all()):
+            raise ValueError('projected inputs need matching [B,K,P] blocks and binary availability')
+        admitted = torch.where(availability[:, None, None].bool(), incremental,
+                               torch.zeros_like(incremental))
+        if not torch.isfinite(common).all() or not torch.isfinite(admitted).all():
+            raise ValueError('admitted projected coordinates must be finite')
+        if self.args_m.embedding == 'SupportConditionedTokenizer':
+            return common, dict(incremental=incremental, availability=availability)
+        if self.args_m.embedding not in ('E_01_HSE', 'E_03_Patch'):
+            raise ValueError('embedding does not declare projected physical input semantics')
+        rms = float(self.args_m.source_rms)
+        if not math.isfinite(rms) or rms <= 0:
+            raise ValueError('source RMS must be finite and positive')
+        union = (common + admitted).reshape(len(common), -1) / rms
+        grid = float(grid_rate_hz)
+        duration = float(duration_s)
+        if (not math.isfinite(grid) or not math.isfinite(duration) or grid <= 0 or duration <= 0
+                or not math.isclose(union.shape[1], grid * duration, abs_tol=1e-6, rel_tol=0)):
+            raise ValueError('projected grid must match physical rate and duration')
+        if self.args_m.embedding == 'E_01_HSE':
+            rate = float(effective_rate_hz)
+            if not math.isfinite(rate) or rate <= 0 or not math.isclose(rate*duration, round(rate*duration), abs_tol=1e-6):
+                raise ValueError('HSE requires an explicit effective sampling rate and integer window length')
+            count = round(rate * duration)
+            if count < 2:
+                raise ValueError('HSE requires at least two physical samples')
+            if count != union.shape[1]:
+                def resample(values, size):
+                    source_size = values.shape[-1]
+                    spectrum = torch.fft.rfft(values, dim=-1, norm='forward')
+                    keep = min(source_size, size) // 2 + 1
+                    result = spectrum.new_zeros((len(values), size // 2 + 1))
+                    result[:, :keep] = spectrum[:, :keep]
+                    if min(source_size, size) % 2 == 0:
+                        result[:, keep-1] *= .5 if source_size < size else 2.
+                    return torch.fft.irfft(result, n=size, dim=-1, norm='forward')
+                native = resample(union, count)
+                restored = resample(native, union.shape[1])
+                if not torch.allclose(restored, union, rtol=1e-5, atol=1e-6):
+                    raise ValueError('HSE sampling grid would discard admitted signal content')
+                union = native
+        return union.unsqueeze(-1), {}
 
     def encode(self, x: torch.Tensor, *, file_id=None, sample_rates=None,
                incremental=None, availability=None, start_indices_L=None,

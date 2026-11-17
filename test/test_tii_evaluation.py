@@ -8,7 +8,25 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 
-from src.task_factory.Components.tii_evaluation import evaluate_query_predictions
+from src.task_factory.Components.tii_evaluation import evaluate_query_predictions, stratified_paired_mean_ci
+
+
+class PairedBootstrapTests(unittest.TestCase):
+    def test_stratification_pairing_and_reproducibility(self):
+        # Within each class the difference is constant, so class-stratified
+        # resampling has a known zero-width interval even with unequal classes.
+        strata = [0, 0, 1, 1, 1]
+        differences = np.array([1., 1., -2., -2., -2.])
+        result = stratified_paired_mean_ci(differences, strata, draws=100, seed=11)
+        self.assertEqual(result, stratified_paired_mean_ci(differences, strata, draws=100, seed=11))
+        self.assertAlmostEqual(result['estimate'], -0.8)
+        self.assertAlmostEqual(result['ci95_low'], -0.8)
+        self.assertAlmostEqual(result['ci95_high'], -0.8)
+        reversed_result = stratified_paired_mean_ci(-differences, strata, draws=100, seed=11)
+        self.assertAlmostEqual(reversed_result['estimate'], -result['estimate'])
+        self.assertAlmostEqual(reversed_result['ci95_low'], -result['ci95_high'])
+        with self.assertRaisesRegex(ValueError, 'finite paired'):
+            stratified_paired_mean_ci([1., np.nan], [0, 1])
 
 
 class QueryEvaluationTests(unittest.TestCase):
