@@ -287,6 +287,17 @@ def test_runtime_factories_split_groups_before_dataset_construction(tmp_path):
     explicit.target_metadata = metadata
     explicit.data = raw_data
     explicit.search_id = lambda: (candidate_ids, [])
+    # ExplicitDataFactory resolves the declared split in _init_data and
+    # _init_dataset consumes self.split_result; mirror that contract here
+    # because this white-box construction bypasses _init_data.
+    train_val_ids, task_test_ids = explicit.search_id()
+    explicit.split_result = resolve_data_splits(
+        explicit.target_metadata,
+        args_data,
+        args_task,
+        train_val_ids,
+        task_test_ids,
+    )
     explicit_train, explicit_val, explicit_test = explicit._init_dataset()
     assert _dataset_ids(explicit_train) == explicit.split_result.train_ids
     assert _dataset_ids(explicit_val) == explicit.split_result.val_ids
