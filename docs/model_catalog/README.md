@@ -44,3 +44,10 @@ coupling, [diff inventory](PR266_DIFF_INVENTORY.csv) assigns each path one owner
 and [model audit](PR266_MODEL_AUDIT.csv) records preliminary candidate-level blockers.
 
 B00 is deconstruction only: it does not promote candidates, replay code or start B01.
+
+## Generative and adaptive learning
+
+[Mechanism and integration map](LEARNING_METHODS.md) links the shared
+[primary bibliography](references.bib), distinguishes algorithms from backbones, and
+records the bounded Config integration and unqualified candidates. It does not replace
+the 187-row model catalogue or its state policy.

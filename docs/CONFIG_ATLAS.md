@@ -404,6 +404,28 @@ python -m scripts.gen_config_atlas --registry configs/config_registry.csv
 - Related docs: `src/model_factory/CNN/README.md`
 - Status: `sanity_ok`
 
+#### `tta_source_only_prepared_stream`
+- Path: `configs/experiments/tta/source_only.yaml`
+- Description: source_only: prepared target-only stream; validate is configuration-only; evaluation needs explicit archive and source checkpoint
+- Owner code: `src/task_factory/task/TTA/stream.py:execute`
+- Keyspace: `data.*`, `model.*`, `task.protocol.*`, `task.adaptation.*`, `task.metrics`, `environment.seed`, `trainer.*`
+- Minimal run: `phmfactory research validate --config configs/experiments/tta/source_only.yaml`
+- Common overrides: `data.path=/absolute/target_windows.npz`, `model.weights_path=/absolute/source.pt`, `environment.seed=0`
+- Outputs: `evaluate only: <new output>/all_results.csv;run_summary.json;config.yaml;predictions.npz`
+- Related docs: `docs/adaptation/protocol.md`, `docs/model_catalog/LEARNING_METHODS.md`
+- Status: `needs_smoke`
+
+#### `tta_tent_prepared_stream`
+- Path: `configs/experiments/tta/tent.yaml`
+- Description: tent: prepared target-only stream; validate is configuration-only; evaluation needs explicit archive and source checkpoint
+- Owner code: `src/task_factory/task/TTA/stream.py:execute`
+- Keyspace: `data.*`, `model.*`, `task.protocol.*`, `task.adaptation.*`, `task.metrics`, `environment.seed`, `trainer.*`
+- Minimal run: `phmfactory research validate --config configs/experiments/tta/tent.yaml`
+- Common overrides: `data.path=/absolute/target_windows.npz`, `model.weights_path=/absolute/source.pt`, `environment.seed=0`
+- Outputs: `evaluate only: <new output>/all_results.csv;run_summary.json;config.yaml;predictions.npz`
+- Related docs: `docs/adaptation/protocol.md`, `docs/model_catalog/LEARNING_METHODS.md`
+- Status: `needs_smoke`
+
 
 ## Pipeline_02_Pretraining_Few_Shot
 
