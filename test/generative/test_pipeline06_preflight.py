@@ -106,3 +106,40 @@ def test_eval_requires_generated_sample_path() -> None:
 def test_iterations_must_be_positive() -> None:
     with pytest.raises(ValueError, match="must be positive"):
         pipeline06._resolve_iterations(_configs(iterations=0))
+
+
+def test_public_generative_config_accepts_explicit_factory_extension() -> None:
+    from phmfactory.config import analyze_config
+
+    analysis = analyze_config(
+        "configs/demo/10_generative/dummy_generative_cfm.yaml",
+        override_values=["task.factory_module=example_extension.factory"],
+    )
+    assert analysis.effective_config["task"]["factory_module"] == "example_extension.factory"
+    assert analysis.pipeline == "Pipeline_06_Generative_Modeling"
+
+
+def test_factory_extension_keeps_other_pipeline_boundaries() -> None:
+    from phmfactory.config import analyze_config
+
+    with pytest.raises(ValueError, match="task.factory_module requires ordinary"):
+        analyze_config(
+            "configs/demo/10_generative/dummy_generative_cfm.yaml",
+            override_values=[
+                "task.factory_module=example_extension.factory",
+                "pipeline=Pipeline_02_Pretraining_Few_Shot",
+            ],
+        )
+
+
+def test_lightning_schema_rejects_research_factory_extension() -> None:
+    from phmfactory.config import analyze_config
+    from src.config_schema import ExperimentConfig
+
+    config = analyze_config(
+        "configs/demo/10_generative/dummy_generative_cfm.yaml",
+        override_values=["task.factory_module=example_extension.factory"],
+    ).runtime_config()
+    config["task"]["execution"] = "research"
+    with pytest.raises(ValueError, match="task.factory_module requires ordinary"):
+        ExperimentConfig.model_validate(config, strict=True)

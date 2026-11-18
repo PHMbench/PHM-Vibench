@@ -12,7 +12,7 @@ The existing `phmfactory research` interface accepts an optional `task.module` c
 
 Downstream programs continue to use the existing public configuration resolver and shared model/runtime interfaces. No second configuration system, trainer or evaluator is introduced by module selection.
 
-Pipeline 01 also accepts explicit Factory extensions. The following module names are
+Pipelines 01 and 06 also accept explicit Factory extensions. The following module names are
 illustrative: the caller must provide importable modules in its environment.
 
 ```yaml
@@ -28,6 +28,12 @@ existing `register_task` and `register_dataset_adapter` interfaces. The configur
 `Model(args_model, metadata)`. Explicit imports fail if unavailable; omitting either
 field retains the ordinary built-in resolution. These fields select trusted executable
 code and are distinct from the scientific `task.module` entry above.
+
+For Pipeline 06, the same module import runs before Data Factory construction in
+each selected train, sample or eval invocation. A missing module or an exception
+inside its registration code stops that invocation; it does not select a built-in
+Task. See the [generative interface](../configs/demo/10_generative/README.md#factory-interface)
+for the model and Task signatures and the current evaluation limits.
 
 ## Migration acceptance
 
