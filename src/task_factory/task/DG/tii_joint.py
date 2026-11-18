@@ -144,6 +144,7 @@ class task(pl.LightningModule):
 
     def on_validation_epoch_start(self):
         self.validation_groups = {}
+        self._branch_rms = {}
 
     def validation_step(self, batch, batch_idx):
         source = batch['source']
@@ -159,6 +160,30 @@ class task(pl.LightningModule):
             values[0] += nll
             values[1] += acc
             values[2] += 1
+        if getattr(self.args_task, 'branch_audit', False):
+            # Observation only: inference mode, no parameter or RNG interaction.
+            self._observe_branch_rms(batch)
+
+    def _observe_branch_rms(self, batch):
+        """Accumulate per-branch feature RMS on source-validation windows.
+
+        Uses the frozen-feature path (inference mode) so nothing here consumes
+        training randomness or gradients. The common/incremental split is the
+        even-D tokenizer convention; other embeddings record no branch split.
+        """
+        if not hasattr(self.network, 'projected_inputs'):
+            self._branch_rms.setdefault('unsupported', True)
+            return
+        fields = {k: v for k, v in batch.items() if k in ('x', 'incremental', 'availability')}
+        rates = {float(self.metadata[fid]['Sample_rate']) for fid in batch['file_id']}
+        if len(rates) != 1:
+            raise ValueError('branch audit requires one effective sampling rate per batch')
+        features = self.frozen_features(fields, effective_rate_hz=next(iter(rates)))
+        half = features.shape[-1] // 2
+        entry = self._branch_rms.setdefault('val', [0., 0., 0.])
+        entry[0] += float(features[:, :half].double().square().sum())
+        entry[1] += float(features[:, half:].double().square().sum())
+        entry[2] += int(features.numel())
 
     def validation_risk(self):
         observed = {source for source, _ in self.validation_groups}
@@ -176,6 +201,14 @@ class task(pl.LightningModule):
         self.log('val_group_nll', torch.tensor(nll, dtype=torch.float64, device=self.device),
                  on_epoch=True, batch_size=1)
         self.log('val_group_acc', acc, on_epoch=True, batch_size=1)
+        if getattr(self.args_task, 'branch_audit', False) and self._branch_rms:
+            total, increment, elements = self._branch_rms['val']
+            row = dict(step=int(self.global_step),
+                       rms_common=(total / max(elements / 2, 1)) ** 0.5 if elements else float('nan'),
+                       rms_increment=(increment / max(elements / 2, 1)) ** 0.5 if elements else float('nan'))
+            row['rms_common_over_increment'] = (row['rms_common'] / row['rms_increment']
+                                                if row['rms_increment'] else float('nan'))
+            self._append_audit('branch_rms.csv', [row])
 
     @staticmethod
     def _norm(values):
@@ -185,7 +218,10 @@ class task(pl.LightningModule):
     def _append_audit(self, name, rows):
         import csv
         from pathlib import Path
-        directory = Path(self.args_task.acceptance_output)
+        outputs = [getattr(self.args_task, 'branch_audit_output', None),
+                   getattr(self.args_task, 'optimizer_audit_output', None),
+                   getattr(self.args_task, 'acceptance_output', None)]
+        directory = Path(next((value for value in outputs if value), '.'))
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / name
         new = not path.exists()
@@ -221,6 +257,34 @@ class task(pl.LightningModule):
         if (getattr(self.args_task, 'acceptance_audit', False)
                 and self.global_step < getattr(self.args_task, 'acceptance_audit_rounds', float('inf'))):
             self._before_update = {name: p.detach().clone() for name, p in self.network.named_parameters()}
+        if getattr(self.args_task, 'optimizer_audit', False):
+            self._observe_optimizer_state(optimizer)
+
+    def _observe_optimizer_state(self, optimizer):
+        """Append learning-rate and gradient-norm trace rows; observation only.
+
+        Global and, when the network carries the matched tokenizer, per-branch
+        gradient norms are recorded from gradients already computed for this
+        step; no extra backward, masking or RNG use happens here.
+        """
+        tokenizer = getattr(self.network, 'embedding', None)
+        common_ids = increment_ids = None
+        if tokenizer is not None and hasattr(tokenizer, 'common_branch'):
+            common_ids = {id(p) for p in tokenizer.common_branch.parameters()}
+            increment_ids = {id(p) for p in tokenizer.increment_branch.parameters()}
+        row = dict(step=int(self.global_step),
+                   lr=float(optimizer.param_groups[0]['lr']),
+                   grad_norm_global=self._norm([p.grad for p in self.network.parameters()
+                                                if p.grad is not None]))
+        if common_ids and increment_ids:
+            row['grad_norm_common'] = self._norm([p.grad for p in self.network.parameters()
+                                                  if p.grad is not None and id(p) in common_ids])
+            row['grad_norm_increment'] = self._norm([p.grad for p in self.network.parameters()
+                                                     if p.grad is not None and id(p) in increment_ids])
+        else:
+            row['grad_norm_common'] = float('nan')
+            row['grad_norm_increment'] = float('nan')
+        self._append_audit('optimizer_trace.csv', [row])
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
         if not hasattr(self, '_before_update'):
