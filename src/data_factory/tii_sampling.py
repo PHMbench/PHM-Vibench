@@ -7,43 +7,15 @@ from numbers import Integral
 from torch.utils.data import Dataset
 from src.utils.identifiers import validate_identifiers
 
+# Deterministic physical-group isolation moved to the shared splitting module
+# (single implementation, sorted-identifier-then-PCG64 convention). Re-exported
+# here for existing callers.
+from .splitting import assign_physical_groups  # noqa: F401  (re-export)
+
 
 def grouped_indices(groups: list) -> dict:
     values = validate_identifiers(groups, 'group')
     return {g: [i for i, v in enumerate(values) if v == g] for g in sorted(set(values))}
-
-
-def assign_physical_groups(groups, allocations, *, seed):
-    """Assign whole physical groups using explicit group counts and PCG64.
-
-    ``allocations`` is an ordered sequence of ``(role, group_count)`` pairs.
-    Sorting unique identifiers before permutation makes the assignment invariant
-    to record order. No label, signal, digest, or implicit rounding participates.
-    The result has one role per input record, in its original order.
-    """
-    values = validate_identifiers(groups, 'physical_group_id')
-    unique = sorted(set(values))
-    entries = list(allocations)
-    if not unique or not entries or isinstance(seed, bool) or not isinstance(seed, Integral) or seed < 0:
-        raise ValueError('nonempty physical groups, allocations and a nonnegative integer seed required')
-    if any(not isinstance(role, str) or not role.strip() or isinstance(count, bool)
-           or not isinstance(count, Integral) or count < 1 for role, count in entries):
-        raise ValueError('each role requires a nonempty name and a positive integer group count')
-    names = [role for role, _ in entries]
-    if len(set(names)) != len(names) or sum(count for _, count in entries) != len(unique):
-        raise ValueError('unique roles and exact coverage of physical groups are required')
-    permutation = np.random.Generator(np.random.PCG64(int(seed))).permutation(len(unique))
-    assignment = {}
-    start = 0
-    for role, count in entries:
-        for index in permutation[start:start + count]:
-            assignment[unique[int(index)]] = role
-        start += count
-    roles = [assignment[group] for group in values]
-    sets = [{group for group, value in zip(values, roles) if value == role} for role in names]
-    if any(left & right for i, left in enumerate(sets) for right in sets[i + 1:]):
-        raise RuntimeError('physical group overlap across assigned roles')
-    return roles
 
 
 class SourceRounds(Dataset):

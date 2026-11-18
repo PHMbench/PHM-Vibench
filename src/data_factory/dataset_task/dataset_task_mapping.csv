@@ -16,3 +16,4 @@ id,task.type,task.name,path,args,batch_format,test_status
 15,Default_task,ID_task,dataset_task/ID/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","ID-based windows: {'x','y','file_id',...}",
 16,FS,classification,dataset_task/FS/Classification_dataset.py,"(data, metadata, args_data, args_task, mode)","{'x','y','file_id',...}",
 17,GFS,reliability_conditioned,dataset_task/GFS/reliability_conditioned_dataset.py,"(data, metadata, args_data, args_task, mode)","ordered episode {'x','y','file_id'}; support/query order audited by protocol",
+18,DG,tii_joint,dataset_task/DG/tii_joint_dataset.py,"(selected, records, args_data, scratch/root, natural, roles, expected) via from_inventory/from_root","projected windows {'x','incremental','availability','y','group','role','source'}",
