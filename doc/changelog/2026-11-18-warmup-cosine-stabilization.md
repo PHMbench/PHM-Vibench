@@ -17,6 +17,11 @@ must equal the declared round budget. The legacy recipe remains enforced
 unchanged: without the schedule, `lr=.001`/`weight_decay=.0001` is still the
 only accepted optimizer setting and every other scheduler name is rejected.
 
+A follow-up correction wires this schedule into `tii_joint`'s own optimizer;
+previously it accepted the option but trained with a constant learning rate.
+Runs made before this correction therefore did not use the declared schedule.
+The no-scheduler AdamW path retains its previous behavior.
+
 Tests pin the LR trajectory (linear rise to peak at the warmup boundary,
 cosine decay afterwards), the five-percent default, fail-closed option
 validation, trainer wiring, and the tii_joint accept/reject matrix.

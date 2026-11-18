@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from src.task_factory import register_task
+from src.task_factory.Default_task import _warmup_cosine_scheduler
 from src.utils.identifiers import validate_identifiers
 
 
@@ -144,9 +145,13 @@ class task(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.network.parameters(), lr=self.args_task.lr,
-                                 betas=(.9, .999), eps=1e-8,
-                                 weight_decay=self.args_task.weight_decay)
+        optimizer = torch.optim.AdamW(self.network.parameters(), lr=self.args_task.lr,
+                                      betas=(.9, .999), eps=1e-8,
+                                      weight_decay=self.args_task.weight_decay)
+        scheduler_config = getattr(self.args_task, 'scheduler', None)
+        if scheduler_config:
+            return _warmup_cosine_scheduler(optimizer, scheduler_config.get('options') or {})
+        return optimizer
 
     def optimizer_zero_grad(self, epoch, batch_idx, optimizer):
         # Zero tensors would allow AdamW momentum/decay to move an unused head.
