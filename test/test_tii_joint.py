@@ -4,6 +4,8 @@ from types import SimpleNamespace as NS
 import unittest
 import numpy as np
 import torch
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
 
 from src.data_factory.tii_sampling import SourceRounds, fit_source_rms, assign_physical_groups
 from src.task_factory import build_task
@@ -20,17 +22,65 @@ def inventory():
             for d, offset in ((1, 0), (2, 2))}
 
 
-def make_task():
+def make_task(scheduler=None, fixed_rounds=False):
     m = make_model()
+    data = NS(source_batch_size=32, **({'rounds': 6} if fixed_rounds else {}))
+    trainer = NS(device='cpu', num_epochs=1, early_stopping=False, devices=1,
+                 monitor='val_group_nll', monitor_mode='min', checkpoint_min_delta=1e-8,
+                 num_sanity_val_steps=0, val_check_interval=2)
     return build_task(
         args_task=NS(type='DG', name='tii_joint', source_system_ids=[1, 2], loss='CE',
                      metrics=['acc'], optimizer='adamw', lr=.001, weight_decay=.0001,
-                     lambda_common=0, lambda_private=0, scheduler=None),
-        network=m, args_data=NS(source_batch_size=32), args_model=m.args_m,
-        args_trainer=NS(device='cpu'), args_environment=NS(seed=0), metadata=m.metadata)
+                     lambda_common=0, lambda_private=0, scheduler=scheduler),
+        network=m, args_data=data, args_model=m.args_m,
+        args_trainer=trainer, args_environment=NS(seed=0), metadata=m.metadata)
 
 
 class JointTests(unittest.TestCase):
+    def test_lightning_optimizer_steps_follow_declared_schedule_and_legacy_lr(self):
+        class Trace(pl.Callback):
+            def __init__(self):
+                self.lrs = []
+
+            def on_before_optimizer_step(self, trainer, module, optimizer):
+                self.lrs.append(optimizer.param_groups[0]['lr'])
+
+        for scheduled in (False, True):
+            with self.subTest(scheduled=scheduled):
+                scheduler = ({'name': 'warmup_cosine',
+                              'options': {'total_steps': 6, 'warmup_steps': 2}}
+                             if scheduled else None)
+                task = make_task(scheduler=scheduler, fixed_rounds=True)
+                trace = Trace()
+                data = SourceRounds(inventory(), rounds=6, batch_size=32, seed=0)
+                loader = DataLoader(data, batch_size=None, num_workers=0)
+                trainer = pl.Trainer(accelerator='cpu', devices=1, max_epochs=1,
+                                     logger=False, enable_checkpointing=False,
+                                     enable_model_summary=False, enable_progress_bar=False,
+                                     limit_val_batches=0, callbacks=[trace])
+                before = next(task.network.parameters()).detach().clone()
+                trainer.fit(task, train_dataloaders=loader)
+                self.assertEqual(trainer.global_step, 6)
+                self.assertFalse(torch.equal(before, next(task.network.parameters())))
+                self.assertEqual(len(trace.lrs), 6)
+                if scheduled:
+                    self.assertAlmostEqual(trace.lrs[0], 0.001 * 0.001)
+                    self.assertLess(trace.lrs[0], trace.lrs[1])
+                    self.assertAlmostEqual(trace.lrs[2], 0.001)
+                    self.assertGreater(trace.lrs[2], trace.lrs[3])
+                    self.assertGreater(trace.lrs[3], trace.lrs[5])
+                    self.assertEqual(trainer.lr_scheduler_configs[0].interval, 'step')
+                else:
+                    self.assertEqual(trace.lrs, [0.001] * 6)
+                    self.assertEqual(trainer.lr_scheduler_configs, [])
+
+    def test_invalid_warmup_options_fail_at_optimizer_setup(self):
+        task = make_task()
+        task.args_task.scheduler = {'name': 'warmup_cosine',
+                                    'options': {'total_steps': 6, 'warmup_steps': 6}}
+        with self.assertRaisesRegex(ValueError, 'warmup_steps'):
+            task.configure_optimizers()
+
     def test_physical_group_assignment_is_order_invariant_and_disjoint(self):
         groups = [g for g in range(12) for _ in range(2)]
         allocations = [('source_train', 7), ('source_val', 3), ('target', 2)]
