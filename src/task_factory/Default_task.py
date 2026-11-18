@@ -440,6 +440,49 @@ class Default_task(pl.LightningModule):
                     "frequency": 1,
                 },
             }
+        if scheduler_name == "warmup_cosine":
+            # Step-interval linear warmup chained into cosine annealing; for
+            # fixed-round single-epoch protocols the total update budget is
+            # declared explicitly instead of being derived from epochs.
+            total_steps = int(scheduler_options.get("total_steps", 0) or 0)
+            if total_steps < 2:
+                raise ValueError(
+                    "warmup_cosine requires scheduler.options.total_steps >= 2"
+                )
+            warmup_steps = scheduler_options.get("warmup_steps")
+            if warmup_steps is None:
+                warmup_fraction = float(
+                    scheduler_options.get("warmup_fraction", 0.05)
+                )
+                if not 0.0 < warmup_fraction < 1.0:
+                    raise ValueError(
+                        "warmup_fraction must lie strictly inside (0, 1)"
+                    )
+                warmup_steps = max(1, int(round(total_steps * warmup_fraction)))
+            warmup_steps = int(warmup_steps)
+            if not 1 <= warmup_steps < total_steps:
+                raise ValueError(
+                    "warmup_steps must satisfy 1 <= warmup_steps < total_steps"
+                )
+            warmup = torch.optim.lr_scheduler.LinearLR(
+                optimizer,
+                start_factor=float(scheduler_options.get("start_factor", 1e-3)),
+                end_factor=1.0,
+                total_iters=warmup_steps,
+            )
+            cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=total_steps - warmup_steps,
+                eta_min=float(scheduler_options.get("eta_min", 0.0)),
+            )
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer,
+                schedulers=[warmup, cosine],
+                milestones=[warmup_steps],
+            )
+            return [optimizer], [
+                {"scheduler": scheduler, "interval": "step", "frequency": 1}
+            ]
         if scheduler_name == "cosine":
             max_epochs = getattr(self.trainer, "max_epochs", None) or getattr(
                 self.args_task,
