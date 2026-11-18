@@ -458,6 +458,48 @@ def _write_manifest(
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def assign_physical_groups(groups, allocations, *, seed):
+    """Assign whole physical groups to roles using explicit group counts and PCG64.
+
+    ``allocations`` is an ordered sequence of ``(role, group_count)`` pairs.
+    Sorting unique identifiers before permutation makes the assignment invariant
+    to record order. No label, signal, digest, or implicit rounding participates.
+    The result has one role per input record, in its original order. This entry
+    complements :func:`resolve_data_splits`: fraction-based grouped splits stay
+    declarative there, while explicit-count group isolation for predeclared
+    role inventories resolves here. Both share the deterministic
+    sorted-identifier-then-PCG64 convention; there is exactly one
+    implementation of this assignment.
+    """
+    from numbers import Integral
+
+    from src.utils.identifiers import validate_identifiers
+
+    values = validate_identifiers(groups, 'physical_group_id')
+    unique = sorted(set(values))
+    entries = list(allocations)
+    if not unique or not entries or isinstance(seed, bool) or not isinstance(seed, Integral) or seed < 0:
+        raise ValueError('nonempty physical groups, allocations and a nonnegative integer seed required')
+    if any(not isinstance(role, str) or not role.strip() or isinstance(count, bool)
+           or not isinstance(count, Integral) or count < 1 for role, count in entries):
+        raise ValueError('each role requires a nonempty name and a positive integer group count')
+    names = [role for role, _ in entries]
+    if len(set(names)) != len(names) or sum(count for _, count in entries) != len(unique):
+        raise ValueError('unique roles and exact coverage of physical groups are required')
+    permutation = np.random.Generator(np.random.PCG64(int(seed))).permutation(len(unique))
+    assignment = {}
+    start = 0
+    for role, count in entries:
+        for index in permutation[start:start + count]:
+            assignment[unique[int(index)]] = role
+        start += count
+    roles = [assignment[group] for group in values]
+    sets = [{group for group, value in zip(values, roles) if value == role} for role in names]
+    if any(left & right for i, left in enumerate(sets) for right in sets[i + 1:]):
+        raise RuntimeError('physical group overlap across assigned roles')
+    return roles
+
+
 def resolve_data_splits(
     metadata: MetadataAccessor,
     args_data: Any,
