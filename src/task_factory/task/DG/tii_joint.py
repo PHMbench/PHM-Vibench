@@ -17,8 +17,11 @@ class task(pl.LightningModule):
             raise ValueError('TII primary requires CE and AdamW')
         if args_task.lambda_common != 0 or args_task.lambda_private != 0:
             raise ValueError('TII primary requires lambda_common=lambda_private=0')
-        if getattr(args_task, 'scheduler', None):
-            raise ValueError('TII primary has no scheduler')
+        scheduler_config = getattr(args_task, 'scheduler', None)
+        stabilized = (isinstance(scheduler_config, dict)
+                      and scheduler_config.get('name') == 'warmup_cosine')
+        if scheduler_config and not stabilized:
+            raise ValueError('TII primary supports only the declared warmup_cosine schedule')
         if list(args_task.metrics) != ['acc']:
             raise ValueError('tii_joint currently reports NLL and acc; task.metrics must be [acc]')
         if hasattr(args_data, 'rounds'):
@@ -30,7 +33,14 @@ class task(pl.LightningModule):
                 raise ValueError('TII requires 1e-8 checkpoint ties and complete validation passes')
             if args_data.rounds % args_trainer.val_check_interval:
                 raise ValueError('round budget must finish on a source-validation boundary')
-            if args_task.lr != .001 or args_task.weight_decay != .0001:
+            if stabilized:
+                options = scheduler_config.get('options') or {}
+                if options.get('total_steps') != args_data.rounds:
+                    raise ValueError('warmup_cosine total_steps must equal the declared round budget')
+                if not (isinstance(args_task.lr, float) and args_task.lr > 0
+                        and isinstance(args_task.weight_decay, float) and args_task.weight_decay >= 0):
+                    raise ValueError('stabilized recipe requires explicit positive lr and nonnegative weight_decay')
+            elif args_task.lr != .001 or args_task.weight_decay != .0001:
                 raise ValueError('primary optimizer requires lr=.001 and weight_decay=.0001')
         self.sources = tuple(validate_identifiers(args_task.source_system_ids, 'dataset'))
         if len(set(self.sources)) != len(self.sources):

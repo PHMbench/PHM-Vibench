@@ -135,6 +135,7 @@ def trainer(args_e, args_t, args_d, path):
         deterministic=getattr(args_t, "deterministic", None),
         val_check_interval=getattr(args_t, "val_check_interval", 1.0),
         num_sanity_val_steps=getattr(args_t, "num_sanity_val_steps", 2),
+        gradient_clip_val=getattr(args_t, "gradient_clip_val", None),
     )
 
 
