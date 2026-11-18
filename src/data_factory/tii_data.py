@@ -7,81 +7,13 @@ import tempfile
 
 import h5py
 import pandas as pd
-import torch
 from torch.utils.data import DataLoader
 
-from .H5DataDict import H5DataDict
 from .data_utils import MetadataAccessor, read_metadata_table
+from .dataset_task.DG.tii_joint_dataset import TII_projected_dataset
 from .tii_sampling import SourceRounds, fit_source_rms, make_episode
-from .tii_physical import project_window
 from src.utils.identifiers import validate_identifiers
 from src.utils.label_ontology import validate_metadata_label_ontology
-
-
-def _read_projected_windows(selected, records, args_data, scratch, natural, roles, expected_datasets):
-    """Shared H5, physical projection, and identity-preserving window path."""
-    by_id = records.set_index('Id')
-    collections = {role: {} for role in roles}
-    window_inventory = []
-    for name, rows in selected.groupby('Name'):
-        reader = H5DataDict(str(scratch / f'{name}.h5'))
-        try:
-            for row in rows.to_dict('records'):
-                fid = row['Id']
-                spec = by_id.loc[fid].to_dict()
-                source = row['Dataset_id']
-                if spec['dataset_id'] != source:
-                    raise ValueError('inventory dataset_id disagrees with metadata')
-                if spec['effective_rate_hz'] != row['Sample_rate']:
-                    raise ValueError('effective sampling rate disagrees with metadata')
-                required_basis = 'documented_response' if natural else 'tensor_fixture'
-                if spec['support_basis'] != required_basis:
-                    raise ValueError('support basis does not match declared evidence kind')
-                signal = torch.from_numpy(reader[fid])
-                if signal.ndim == 3 and signal.shape[-1] == 1:
-                    signal = signal[..., 0]
-                if signal.ndim != 2:
-                    raise ValueError('H5 must represent one original [samples,channels] record')
-                n_float = spec['effective_rate_hz'] * args_data.duration_s
-                if abs(n_float-round(n_float)) > 1e-8:
-                    raise ValueError('physical duration does not give an integer raw window length')
-                n = int(round(n_float))
-                if n < 1 or len(signal) < n:
-                    raise ValueError('record is too short for the declared physical interval')
-                collection = collections[spec['role']].setdefault(source, {
-                    k: [] for k in ('x', 'incremental', 'availability', 'y', 'file_id',
-                                    'recording_id', 'group', 'role')})
-                for start in range(0, len(signal)-n+1, n):
-                    projected = project_window(signal[start:start+n],
-                        channel=int(spec['channel']), native_rate_hz=spec['native_rate_hz'],
-                        effective_rate_hz=spec['effective_rate_hz'], grid_rate_hz=args_data.grid_rate_hz,
-                        duration_s=args_data.duration_s, num_patches=args_data.num_patches,
-                        patch_size=args_data.patch_size, common_bands_hz=args_data.common_bands_hz,
-                        increment_bands_hz=args_data.increment_bands_hz,
-                        common_support=spec['common_support'], increment_support=spec['increment_support'],
-                        input_unit=spec['input_unit'], output_unit=args_data.output_unit,
-                        unit_scale=spec['unit_scale'], support_basis=spec['support_basis'],
-                        support_evidence=spec['support_evidence'])
-                    collection['x'].append(projected['common'].float())
-                    collection['incremental'].append(projected['incremental'].float())
-                    collection['availability'].append(projected['increment_available'])
-                    for key, value in (('y', int(row['Label'])), ('file_id', fid),
-                                       ('recording_id', spec['recording_id']), ('group', spec['group']),
-                                       ('role', spec['role'])):
-                        collection[key].append(value)
-                    window_inventory.append(dict(dataset=source, recording_id=spec['recording_id'],
-                        group=spec['group'], role=spec['role'], file_id=fid, channel=int(spec['channel']),
-                        window_start=start, window_end=start+n))
-        finally:
-            reader.close()
-    for collection in collections.values():
-        if set(collection) != set(expected_datasets):
-            raise ValueError('every declared dataset needs windows in every requested role')
-        for windows in collection.values():
-            for field in ('x', 'incremental', 'availability'):
-                windows[field] = torch.stack(windows[field])
-            windows['y'] = torch.tensor(windows['y'], dtype=torch.long)
-    return collections, window_inventory
 
 
 def initialize_tii_data(factory, args_data, args_task):
@@ -149,26 +81,19 @@ def initialize_tii_data(factory, args_data, args_task):
                 raise ValueError(f'{name}: selected IDs absent from H5: {missing}')
         (scratch / path.name).symlink_to(path.resolve())
     factory.target_metadata = MetadataAccessor(selected, key_column='Id')
-    collections, window_inventory = _read_projected_windows(
+    dataset = TII_projected_dataset.from_inventory(
         selected, records, args_data, scratch, natural,
         ('source_train', 'source_val'), source_ids)
-    factory.source_rms = fit_source_rms(collections['source_train'])
-    factory.window_inventory = window_inventory
-    factory.train_dataset = SourceRounds(collections['source_train'], rounds=args_data.rounds,
+    factory.source_rms = fit_source_rms(dataset.collections['source_train'])
+    factory.window_inventory = dataset.window_inventory
+    factory.train_dataset = SourceRounds(dataset.collections['source_train'], rounds=args_data.rounds,
         batch_size=args_data.source_batch_size, seed=args_data.seed)
     # Validation visits the complete predeclared window inventory once, with
     # homogeneous local-label batches; Task aggregates group means after all batches.
-    validation = []
-    for source, windows in collections['source_val'].items():
-        for start in range(0, len(windows['y']), args_data.source_batch_size):
-            end = start + args_data.source_batch_size
-            batch = {key: value[start:end] for key, value in windows.items()}
-            batch['source'] = source
-            validation.append(batch)
-    factory.val_dataset = validation
+    factory.val_dataset = dataset.validation_batches(args_data.source_batch_size)
     factory.test_dataset = None
     factory.train_loader = DataLoader(factory.train_dataset, batch_size=None, num_workers=0)
-    factory.val_loader = DataLoader(validation, batch_size=None, num_workers=0)
+    factory.val_loader = DataLoader(factory.val_dataset, batch_size=None, num_workers=0)
     factory.test_loader = None
     factory.data = None
 
@@ -229,6 +154,6 @@ def load_tii_target_data(args_data, metadata_file, record_inventory, *, target_d
             missing = [fid for fid in rows.Id if str(fid) not in h5]
             if missing:
                 raise ValueError(f'{name}: selected target IDs absent from H5: {missing}')
-    collections, inventory = _read_projected_windows(
+    target_dataset = TII_projected_dataset.from_root(
         selected, records, args_data, root, natural, ('support', 'query'), [target_dataset_id])
-    return collections, inventory, episode
+    return target_dataset.collections, target_dataset.window_inventory, episode
