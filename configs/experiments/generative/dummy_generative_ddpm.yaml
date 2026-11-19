@@ -1,0 +1,73 @@
+# CPU software fixture; prepare copied Dummy inputs as described in README.md.
+# This does not define a real-data benchmark budget or claim generation quality.
+pipeline: "Pipeline_06_Generative_Modeling"
+
+base_configs:
+  environment: "configs/base/environment/base.yaml"
+  data: "configs/base/data/base_cross_domain.yaml"
+  trainer: "configs/base/trainer/default_single_gpu.yaml"
+
+environment:
+  project: "experiment_dummy_generative_ddpm"
+  seed: 0
+  iterations: 1
+  output_dir: "../phmfactory-generative-smoke/ddpm"
+  wandb: false
+  swanlab: false
+
+data:
+  data_dir: "../phmfactory-generative-smoke/data"
+  metadata_file: "metadata_dummy.csv"
+  batch_size: 2
+  num_workers: 0
+  train_ratio: 0.8
+  val_ratio: 0.2
+  test_ratio: 0.0
+  normalization: "standardization"
+  window_size: 128
+  num_window: 4
+  dtype: "float32"
+  pin_memory: false
+
+model:
+  type: "generative_model"
+  name: "phm_ddpm_mlp1d"
+  in_channels: 2
+  hidden_dim: 32
+  condition_dim: 16
+  num_fault_classes: 2
+  num_domains: 2
+
+task:
+  type: "generative"
+  name: "conditional_ddpm"
+  target_system_id: null
+  lr: 0.0001
+  weight_decay: 0.0001
+  optimizer: "adamw"
+  # Eight steps exercise the sampler; this schedule is not a quality baseline.
+  diffusion_steps: 8
+  beta_start: 0.0001
+  beta_end: 0.02
+  generative:
+    mode: "train"
+    source_split: "train"
+    eval_split: "train"
+    num_samples: 2
+    length: 128
+    num_steps: 8
+    condition_sampling_policy: "explicit"
+    explicit_conditions:
+      - {fault_label: 0, domain_id: 0, count: 1}
+      - {fault_label: 1, domain_id: 1, count: 1}
+    synthetic_dataset_id: "dummy_generative_ddpm"
+    validity_status: "exploratory"
+
+trainer:
+  monitor: "val_loss"
+  num_epochs: 1
+  devices: 1
+  device: "cpu"
+  early_stopping: false
+  log_every_n_steps: 1
+  save_top_k: 1

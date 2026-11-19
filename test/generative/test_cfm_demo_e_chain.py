@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import torch
 
 
@@ -27,8 +28,12 @@ REQUIRED_METRICS = {
 }
 
 
-def _run(*overrides: str, expected_error: str | None = None) -> None:
-    command = [sys.executable, "main.py", "--config", CONFIG]
+def _run(
+    *overrides: str,
+    config: str = CONFIG,
+    expected_error: str | None = None,
+) -> None:
+    command = [sys.executable, "main.py", "--config", config]
     for override in overrides:
         command.extend(("--override", override))
     environment = dict(os.environ)
@@ -76,11 +81,40 @@ def _copy_dummy_fixture(destination: Path) -> None:
         )
 
 
-def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("config", "method_id", "nfe"),
+    [
+        (CONFIG, "conditional_flow_matching", 8),
+        (
+            "configs/experiments/generative/dummy_generative_cfm.yaml",
+            "conditional_flow_matching",
+            8,
+        ),
+        (
+            "configs/experiments/generative/dummy_generative_gan.yaml",
+            "conditional_gan",
+            1,
+        ),
+        (
+            "configs/experiments/generative/dummy_generative_vae.yaml",
+            "conditional_vae",
+            1,
+        ),
+        (
+            "configs/experiments/generative/dummy_generative_ddpm.yaml",
+            "conditional_ddpm",
+            8,
+        ),
+    ],
+    ids=["cfm-demo", "cfm-experiment", "gan", "vae", "ddpm"],
+)
+def test_generative_config_completes_cpu_stages(
+    tmp_path: Path, config: str, method_id: str, nfe: int
+) -> None:
     repo_h5_before = _repo_h5_cache_paths()
     fixture_data = tmp_path / "data"
     _copy_dummy_fixture(fixture_data)
-    output = tmp_path / "cfm"
+    output = tmp_path / method_id
     ledger_path = output / "stage_ledger.json"
     common = (
         f"environment.output_dir={output}",
@@ -93,7 +127,7 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
         f"task.generative.stage_ledger_path={ledger_path}",
     )
 
-    _run(*common, "task.generative.mode=train")
+    _run(*common, "task.generative.mode=train", config=config)
     train = _ledger(ledger_path)["stages"]["train"]
     assert train["status"] == "completed"
     assert train["checkpoint"]["strict"] is True
@@ -106,17 +140,19 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
         f"task.generative.normalization_sha256={train['normalization']['sha256']}",
         f"task.generative.protocol_path={train['protocol']['path']}",
     )
-    for invalid_steps in ("2.5", "true", '\"2\"'):
+    invalid_step_values = ("2.5", "true", '\"2\"') if config == CONFIG else ()
+    for invalid_steps in invalid_step_values:
         _run(
             *common,
             *sample_inputs,
             f"task.generative.num_steps={invalid_steps}",
+            config=config,
             expected_error="num_steps must be an integer",
         )
         assert _ledger(ledger_path)["stages"]["sample"]["status"] == "failed"
         assert not list(output.rglob("samples.pt"))
 
-    _run(*common, *sample_inputs)
+    _run(*common, *sample_inputs, config=config)
     sample = _ledger(ledger_path)["stages"]["sample"]
     assert sample["status"] == "completed"
     assert sample["checkpoint"]["sha256"] == train["checkpoint"]["sha256"]
@@ -130,6 +166,9 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
     assert sample_payload["samples"].dtype == torch.float32
     assert sample_payload["fault_label"].shape == (2,)
     assert sample_payload["domain_id"].shape == (2,)
+    expected_conditions = [0, 0] if config == CONFIG else [0, 1]
+    assert sample_payload["fault_label"].tolist() == expected_conditions
+    assert sample_payload["domain_id"].tolist() == expected_conditions
     synthetic_manifest = json.loads(
         Path(sample["synthetic_manifest"]["path"]).read_text(encoding="utf-8")
     )
@@ -140,6 +179,8 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
     assert synthetic_manifest["validity"]["scientific_status"] == "exploratory"
     assert synthetic_manifest["validity"]["benchmark_valid"] is False
     assert synthetic_manifest["validity"]["paper_ready"] is False
+    assert synthetic_manifest["method"]["method_id"] == method_id
+    assert synthetic_manifest["sampling"]["sampler_metadata"]["nfe"] == nfe
 
     _run(
         *common,
@@ -150,6 +191,7 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
             f"{sample['synthetic_manifest']['path']}"
         ),
         "task.generative.eval_split=train",
+        config=config,
     )
     evaluation = _ledger(ledger_path)["stages"]["eval"]
     assert evaluation["status"] == "completed"
@@ -175,7 +217,10 @@ def test_candidate_cfm_demo_completes_cpu_e_chain(tmp_path: Path) -> None:
     assert manifest["metric_summary"]["missing"] == 0
     assert manifest["metric_summary"]["failed"] == 0
     assert manifest["promotion"]["runtime_smoke_eligible"] is True
-    assert manifest["promotion"]["paper_smoke_metric_eligible"] is False
+    # This legacy flag records metric computability, not scientific eligibility.
+    # The original single-class demo cannot compute the two-class smoke utility.
+    assert manifest["promotion"]["paper_smoke_metric_eligible"] is (config != CONFIG)
+    assert manifest["promotion"]["paper_smoke_ready"] is False
     assert manifest["promotion"]["benchmark_valid"] is False
     assert (fixture_data / "Dummy_Data.h5").is_file()
     assert (fixture_data / "cache.h5").is_file()

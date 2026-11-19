@@ -1,4 +1,4 @@
-# Exploratory CFM wiring config.
+# CPU CFM software fixture; copy Dummy inputs as described in README.md.
 #
 # This file is intentionally under configs/experiments/. It is not a maintained
 # demo and must not be added to configs/config_registry.csv until the complete
@@ -17,13 +17,13 @@ environment:
   project: "experiment_dummy_generative_cfm"
   seed: 0
   iterations: 1
-  output_dir: "results/experiments/dummy_generative_cfm"
+  output_dir: "../phmfactory-generative-smoke/cfm"
   notes: "Exploratory CFM wiring on repository-shipped Dummy_Data."
   wandb: false
   swanlab: false
 
 data:
-  data_dir: "data"
+  data_dir: "../phmfactory-generative-smoke/data"
   metadata_file: "metadata_dummy.csv"
   batch_size: 2
   num_workers: 0
@@ -44,6 +44,10 @@ task:
   target_system_id: null
   generative:
     mode: "train"
+    condition_sampling_policy: "explicit"
+    explicit_conditions:
+      - {fault_label: 0, domain_id: 0, count: 1}
+      - {fault_label: 1, domain_id: 1, count: 1}
     synthetic_dataset_id: "dummy_generative_cfm"
     validity_status: "exploratory"
 

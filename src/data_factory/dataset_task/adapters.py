@@ -69,6 +69,18 @@ DATASET_ADAPTERS: dict[tuple[str, str], DatasetAdapterSpec] = {
         "src.data_factory.dataset_task.Default_dataset",
         "Default_dataset",
     ),
+    ("generative", "conditional_gan"): DatasetAdapterSpec(
+        "src.data_factory.dataset_task.Default_dataset",
+        "Default_dataset",
+    ),
+    ("generative", "conditional_vae"): DatasetAdapterSpec(
+        "src.data_factory.dataset_task.Default_dataset",
+        "Default_dataset",
+    ),
+    ("generative", "conditional_ddpm"): DatasetAdapterSpec(
+        "src.data_factory.dataset_task.Default_dataset",
+        "Default_dataset",
+    ),
     ("In_distribution", "multi_task_phm"): DatasetAdapterSpec(
         "src.data_factory.dataset_task.Default_dataset",
         "Default_dataset",
