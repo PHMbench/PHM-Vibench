@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+import sys
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -128,3 +129,56 @@ def test_ledger_failure_does_not_replace_stage_failure(monkeypatch) -> None:
 
     assert isinstance(captured.value.__cause__, OSError)
     assert str(captured.value.__cause__) == "ledger unavailable"
+
+
+@pytest.mark.parametrize("extension", [False, True])
+def test_factory_extension_registers_before_data_construction(
+    monkeypatch, tmp_path, extension: bool,
+) -> None:
+    events = []
+    metadata = object()
+    data = SimpleNamespace(get_metadata=lambda: metadata)
+    model, task = object(), object()
+    data_module = ModuleType("src.data_factory")
+    model_module = ModuleType("src.model_factory")
+    task_module = ModuleType("src.task_factory")
+    data_module.events = events
+    data_module.build_data = lambda *args: events.append("data") or data
+    model_module.build_model = lambda *args, **kwargs: events.append("model") or model
+    task_module.build_task = lambda **kwargs: events.append("task") or task
+    for module in (data_module, model_module, task_module):
+        monkeypatch.setitem(sys.modules, module.__name__, module)
+    args_task = SimpleNamespace()
+    module_name = "generative_test_extension"
+    if extension:
+        (tmp_path / f"{module_name}.py").write_text(
+            "from src.data_factory import events\nevents.append('registered')\n",
+            encoding="utf-8",
+        )
+        monkeypatch.syspath_prepend(str(tmp_path))
+        args_task.factory_module = module_name
+    try:
+        result = pipeline06._build_stack(None, None, args_task, None, None)
+    finally:
+        sys.modules.pop(module_name, None)
+    assert result == (data, model, task)
+    assert events == (["registered"] if extension else []) + ["data", "model", "task"]
+
+
+def test_factory_extension_import_failure_prevents_data_construction(monkeypatch) -> None:
+    calls = []
+    for name, function in (
+        ("src.data_factory", "build_data"),
+        ("src.model_factory", "build_model"),
+        ("src.task_factory", "build_task"),
+    ):
+        module = ModuleType(name)
+        setattr(module, function, lambda *args, **kwargs: calls.append("built"))
+        monkeypatch.setitem(sys.modules, name, module)
+    with pytest.raises(ModuleNotFoundError, match="missing_generative_extension"):
+        pipeline06._build_stack(
+            None, None,
+            SimpleNamespace(factory_module="missing_generative_extension"),
+            None, None,
+        )
+    assert calls == []

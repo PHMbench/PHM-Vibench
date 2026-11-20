@@ -77,3 +77,125 @@ single-class Dummy run is not TSTR, TRTS, physical-unit generation, condition fi
 or PHM SOTA evidence. Metrics that cannot be computed retain their reasons.
 
 No arbitrary-dataset, additional model-family, or accelerator support is implied.
+
+## Factory interface
+
+Pipeline 06 reuses the existing Data, Model, Task and Trainer factories. Its public
+entrypoint is `python main.py --config <yaml>`; `task.generative.mode` selects one
+of `train`, `sample` or `eval`. No extra runner or registry is needed.
+
+| Owner | Interface consumed by Pipeline 06 |
+| --- | --- |
+| Data Factory | `build_data(args_data, args_task)`, `get_metadata()` and `get_dataloader(split)`; retain the existing reader and physical-record identities. |
+| Model Factory | `Model(args_model, metadata)` from the configured `model.type`/`model.name`, or explicit `model.module`. The current CFM model maps `(x_t, t, condition)` to a velocity of shape `[N,C,L]`. |
+| Task Factory | A registered Lightning Task selected by `task.type`/`task.name`; it owns the loss, optimizers, validation loss and the model-specific forward call. |
+| Sampling Task | `sample(condition, *, num_samples, length, channels, num_steps, device)` returns finite float32 samples `[N,C,L]`. The Task exposes `method_id`, `loss_id`, `sampler_id` and `sampler_metadata()`. |
+| Trainer Factory | The existing Trainer fits the Task and selects/restores a checkpoint. GAN optimizer scheduling belongs in its Lightning Task. |
+
+`condition` has `fault_label` and `domain_id`, both integer tensors of length `N`.
+The current Task obtains them from batch fields or `Label`/`Domain_id` metadata
+using `file_id`. A domain identifier is not automatically an RPM, load or severity
+measurement. The present encoder does not consume continuous physical conditions.
+Use `explicit` sampling conditions for observed label/domain pairs; a Cartesian
+`grid` can request combinations absent from training metadata.
+
+Model forward signatures can differ between method families. A GAN generator, VAE
+decoder and DDPM denoiser should keep their own Task objectives rather than masquerade
+as CFM velocity models. The common boundary is the Task sampling result and the
+existing Trainer lifecycle. Set `num_steps` according to the selected sampler and
+record its actual network evaluations; one Euler step does not implement MeanFlow.
+
+For a caller-owned method, this is a **configuration fragment**, requiring the two
+named modules to be installed in the caller's environment:
+
+```yaml
+pipeline: Pipeline_06_Generative_Modeling
+model:
+  module: example_extension.model
+task:
+  type: generative
+  name: example_generator
+  factory_module: example_extension.factory
+  generative:
+    mode: train
+```
+
+The Factory module registers the Task with `register_task("generative",
+"example_generator")`. It also maps that name through the existing
+`register_dataset_adapter` interface to a compatible existing dataset adapter.
+Pipeline 06 imports this module before building data in every stage. A failed
+import is an error. `task.module` instead belongs to the separate scientific
+`research` execution form and is not a Lightning Task selector. See
+[runtime ownership](../../../docs/RUNTIME_BOUNDARY.md).
+
+## First comparison candidates
+
+This inventory describes the runtime included in this Factory-extension change,
+not the contents of every historical branch or a scientific comparison. Dataset
+populations, splits, budgets and results belong in the caller's paper repository.
+
+| Candidate | Model / Task selection | Current status | Required before a fair comparison |
+| --- | --- | --- | --- |
+| Conditional GAN | Caller-owned generator/discriminator and adversarial Task | Not integrated by this change | Verify the source implementation and license; count generator and discriminator parameters/updates separately. |
+| Conditional VAE | Caller-owned encoder/decoder and reconstruction-plus-KL Task | Not integrated by this change | Verify the source implementation, observation likelihood and latent sampling; disclose KL weighting. |
+| Conditional DDPM | Caller-owned denoiser and noise-prediction Task | Historical implementation; not integrated by this change | Verify the current-runtime adaptation, diffusion schedule, reverse sampler and actual NFE. |
+| Conditional Flow Matching | `generative_model.phm_cfm_mlp1d` / `generative.conditional_flow_matching` | Existing candidate implementation and Dummy software tests | Qualify the exact real-data split, signal preprocessing, model capacity and held-out metrics. |
+
+The historical [`ddpm_epsilon` Task](https://github.com/PHMbench/PHM-Vibench/blob/ed1bc7d7968cff6a1e0f0cf1c2d1c476054d4cdb/src/task_factory/task/generative/ddpm_epsilon.py)
+already implemented DDPM training and sampling. Its absence from this runtime is
+an integration gap, not evidence that DDPM was never implemented. The separate
+[model-candidate PR #348](https://github.com/PHMbench/PHM-Vibench/pull/348) proposes
+GAN, VAE and a current-runtime DDPM candidate while reusing CFM; those model changes
+are independent of the Factory hook described here.
+
+TimeGAN and TimeVAE are separate adaptations of their published methods, not names
+for an arbitrary GAN or VAE. Rectified Flow, MeanFlow, Drifting and physics-informed
+methods remain outside this first comparison until their source and Task semantics
+are implemented and checked. Forecasting checkpoints do not become unconditional
+generators by changing a configuration label.
+
+The following YAML is a **planning matrix inside this documentation**, not a second
+configuration schema and not input accepted by `main.py`. A null config means that
+no runnable configuration is supplied.
+
+```yaml
+comparison_candidates:
+  - dataset: bundled_Dummy_Data
+    task: generation_software_smoke
+    methods: [conditional_flow_matching]
+    config: configs/demo/10_generative/dummy_generative_cfm.yaml
+    modes: [train, sample, eval]
+    evidence_scope: software_only
+  - dataset: RM_001_CWRU
+    task: conditional_generation
+    methods: [conditional_gan, conditional_vae, conditional_ddpm, conditional_flow_matching]
+    config: null
+    status: TODO_ADAPT_AND_QUALIFY_DATA
+  - dataset: RM_001_CWRU
+    task: augmentation_on_independent_real_test_records
+    methods: [real_only, real_plus_gan, real_plus_vae, real_plus_ddpm, real_plus_cfm]
+    config: null
+    status: TODO_HELD_OUT_UTILITY
+  - dataset: [RM_027_PU, HUST_selected_reader]
+    task: independent_dataset_replication
+    methods: [conditional_gan, conditional_vae, conditional_ddpm, conditional_flow_matching]
+    config: null
+    status: TODO_METADATA_AND_PROTOCOL
+```
+
+For the real-data rows, first identify independent physical records or specimens in
+the supplied metadata, then use the existing `data.split.strategy=grouped_metadata`
+with its explicit group key and split manifest. Do not invent record IDs, bearing
+IDs, RPM labels or severity supervision. Every compared method must see the same
+training records, channels, window length, preprocessing and available conditions.
+Fix the training and tuning budgets, checkpoint criterion, sampling population and
+evaluation seeds before testing; equal epoch counts alone do not establish equal
+compute. Report parameter counts, optimizer updates, wall time, hardware, sampling
+latency and NFE rather than claiming fairness from a method name.
+
+The current eval stage requires `task.generative.eval_split=train`; it cannot yet
+measure held-out fidelity or independent real-test augmentation utility. Its
+condition-frequency score does not test waveform controllability. Real-data rows
+above therefore remain pending even if the CFM train/sample stages run. The Dummy
+normalization and metric choices must not be copied into a scientific protocol
+without examining their effect on physical amplitudes and the evaluation population.
