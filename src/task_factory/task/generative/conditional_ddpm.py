@@ -74,6 +74,29 @@ class ConditionalDDPMTask(GenerativeTask):
             "beta_end": self.beta_end,
         })
 
+    def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
+        # Fixed diffusion buffers are protocol settings, not learned parameters.
+        # Reject a different schedule before loading any network weights.
+        for name in ("betas", "alphas", "alpha_bars", "posterior_variance"):
+            if name not in state_dict:
+                continue  # Preserve PyTorch's normal missing-key handling.
+            saved = state_dict[name]
+            expected = getattr(self, name)
+            if (
+                not isinstance(saved, torch.Tensor)
+                or not torch.is_floating_point(saved)
+                or not torch.equal(
+                    saved.detach().cpu(),
+                    expected.detach().to(device="cpu", dtype=saved.dtype),
+                )
+            ):
+                raise ValueError(
+                    f"DDPM checkpoint schedule {name!r} does not match configured "
+                    f"diffusion_steps={self.diffusion_steps}, beta_start={self.beta_start}, "
+                    f"beta_end={self.beta_end}; restore with the training schedule"
+                )
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
+
     def _forward_diffusion(
         self, clean: torch.Tensor, noise: torch.Tensor, steps: torch.Tensor,
     ) -> torch.Tensor:

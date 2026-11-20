@@ -8,12 +8,13 @@ import torch.nn as nn
 
 from src.model_factory.generative_model.phm_ddpm_mlp1d import Model
 from src.task_factory.task.generative.conditional_ddpm import ConditionalDDPMTask
+from src.utils.generative_evidence import strict_load_lightning_checkpoint
 
 
 METADATA = {1: {"Label": 0, "Domain_id": 0}, 2: {"Label": 1, "Domain_id": 1}}
 
 
-def _task(network=None) -> ConditionalDDPMTask:
+def _task(network=None, *, beta_start=0.1, beta_end=0.4) -> ConditionalDDPMTask:
     model_args = SimpleNamespace(
         in_channels=2, hidden_dim=8, condition_dim=4,
         num_fault_classes=2, num_domains=2,
@@ -22,12 +23,36 @@ def _task(network=None) -> ConditionalDDPMTask:
         network=network if network is not None else Model(model_args, METADATA),
         args_data=SimpleNamespace(normalization="standardization"),
         args_model=model_args,
-        args_task=SimpleNamespace(diffusion_steps=4, beta_start=0.1, beta_end=0.4),
+        args_task=SimpleNamespace(diffusion_steps=4, beta_start=beta_start, beta_end=beta_end),
         args_trainer=SimpleNamespace(), args_environment=SimpleNamespace(),
         metadata=METADATA,
     )
     task.log = lambda *args, **kwargs: None
     return task
+
+
+@pytest.mark.parametrize("changes", [{"beta_start": 0.2}, {"beta_end": 0.5}])
+def test_strict_checkpoint_rejects_a_different_fixed_schedule(tmp_path, changes):
+    source = _task()
+    checkpoint = tmp_path / "ddpm.ckpt"
+    torch.save({"state_dict": source.state_dict(), "hyper_parameters": dict(source.hparams)}, checkpoint)
+    target = _task(**changes)
+    before = {name: value.clone() for name, value in target.state_dict().items()}
+    with pytest.raises(ValueError, match="DDPM checkpoint schedule"):
+        strict_load_lightning_checkpoint(target, checkpoint)
+    for name, value in target.state_dict().items():
+        torch.testing.assert_close(value, before[name], rtol=0.0, atol=0.0)
+
+
+def test_strict_checkpoint_restores_the_same_fixed_schedule(tmp_path):
+    source = _task()
+    checkpoint = tmp_path / "ddpm.ckpt"
+    torch.save({"state_dict": source.state_dict(), "hyper_parameters": dict(source.hparams)}, checkpoint)
+    target = _task()
+    result = strict_load_lightning_checkpoint(target, checkpoint)
+    assert result["strict"] is True
+    for name, value in source.state_dict().items():
+        torch.testing.assert_close(target.state_dict()[name], value, rtol=0.0, atol=0.0)
 
 
 class _PointMassNoise(nn.Module):

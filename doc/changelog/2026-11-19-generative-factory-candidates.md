@@ -1,9 +1,30 @@
 # Conditional GAN, VAE and DDPM Factory candidates
 
-Pipeline 06 previously had an implemented CFM Task, while GAN, VAE and DDPM had
-no executable Model/Task bindings. This change supplies ordinary conditional
-versions through the existing Model import mechanism, Task discovery and explicit
-Default_dataset adapter mappings.
+At `dev@f105bdb`, Pipeline 06 had an implemented CFM Task but no integrated GAN,
+VAE or DDPM Task. Historical branches already contained DDPM training and sampling
+code. This change adds the currently missing conditional GAN/VAE candidates,
+adapts the historical DDPM capability to the current runtime, and reuses CFM
+through the existing Model imports, Task discovery and Default_dataset mappings.
+
+The 2026-11-20 history review corrected the initial assumption that absence on
+current `dev` meant absence from the repository. `Feature_factory-update@ed1bc7d`
+and `cleanup/repo-slim-2026-07-05@7b97deb` contain `ddpm_epsilon`, epsilon loss,
+scheduler, sampler and YAMLs. The old sparse-time sampler used adjacent-step
+updates even when sampling fewer steps than the training schedule; the current
+Task requires the full schedule. Its condition interface also follows current
+CFM. The existing migration contract and source links are recorded in the
+generative guide. No second DDPM path is registered. GAN/VAE were not found in
+the checked major snapshots; this is not a repository-wide historical absence
+claim.
+
+The merge review also reproduced a DDPM restoration defect: a checkpoint with
+the same number of steps but different beta endpoints silently replaced the
+configured schedule. The Task now compares its fixed schedule buffers before
+loading weights and rejects a mismatch. Three focused checkpoint regressions
+cover changed beta endpoints, unchanged destination state on rejection, and
+successful restoration with the original schedule. Cross-configuration GAN/VAE
+checkpoint reuse remains outside the verified path; `strict` key/shape matching
+alone does not validate window or observation-likelihood semantics.
 
 GAN uses separate generator/discriminator optimizers with one update each per
 batch. VAE uses a declared Gaussian likelihood and analytic KL; sampling includes
@@ -37,6 +58,10 @@ Local environment: Python 3.12.14, PyTorch 2.6.0+cpu, Lightning 2.6.6.
 - Existing Agent boundary and case-collision checks: pass.
 - No H5 data cache was added to the checkout; integration artifacts use temporary
   caller-owned directories.
+- Merge-review follow-up: the focused DDPM contract file passed all 9 tests;
+  after the final buffer-type guard, the 3 affected checkpoint tests passed.
+  Documentation validation still passes (96 files). No neural training was
+  repeated for the follow-up.
 
 The legacy `paper_smoke_metric_eligible` field means all smoke metrics were
 computable. Its value becomes true when both classes are sampled, while

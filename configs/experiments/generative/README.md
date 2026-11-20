@@ -5,6 +5,37 @@ Conditional Flow Matching (CFM) through the existing public runtime. They are
 software fixtures; real-data populations, physical groups, tuning budgets and
 paper results remain owned by the downstream study.
 
+## Existing implementations and migration scope
+
+CFM was already implemented on `dev@f105bdb`; this change reuses its model,
+velocity loss and Euler sampler. Its shared batch/condition and Lightning methods
+are factored into `GenerativeTask` for the four current consumers.
+
+DDPM also existed before this change. The historical
+[`Feature_factory-update@ed1bc7d`](https://github.com/PHMbench/PHM-Vibench/tree/ed1bc7d7968cff6a1e0f0cf1c2d1c476054d4cdb/src/task_factory/Components/generative)
+and `cleanup/repo-slim-2026-07-05@7b97deb` snapshots contain `ddpm_epsilon`,
+epsilon loss, a scheduler, a reverse sampler and YAML examples. They were not
+integrated into the current `dev` runtime. The existing
+[migration contract](../../../docs/PIPELINE_06_GENERATIVE_MIGRATION.md)
+requires a file-level audit of those snapshots before migration.
+
+The current DDPM candidate adapts that existing method capability to the current
+Task/condition interface and reuses the current CFM backbone. The historical
+sampler selected sparse timesteps with `linspace` but applied an adjacent-step
+transition at each selected index; its fixture requested 8 steps from a 100-step
+training schedule. The current Task instead requires the complete configured
+ancestral schedule. It also records actual NFE and uses the explicitly declared
+fixed posterior variance. The variance choice alone is not a defect in the older
+implementation. Only `conditional_ddpm` is maintained in this runtime; the old
+`ddpm_epsilon` snapshot is not registered as a second implementation.
+
+GAN/VAE Model and Task implementations were not found in the checked `dev`,
+`main`, `Feature_factory-update` and `cleanup/repo-slim-2026-07-05` snapshots.
+Their entries below add ordinary conditional candidates. This inventory is scoped
+to those snapshots, not a claim that no other branch or local checkout contains
+an implementation. Source presence, current-runtime integration and PHM benchmark
+validity are separate states.
+
 ## Executable software matrix
 
 All four use the same bundled Dummy signals, two channels, length 128, batch size
@@ -77,6 +108,14 @@ uses eight steps to check execution. Its cumulative terminal alpha is about
 schedule is not suitable for judging DDPM quality. The actual cumulative alpha and
 variance choice are recorded with sampling metadata.
 
+Checkpoint restoration is verified with the same training configuration.
+`strict` checks state-dictionary keys and tensor shapes; it does not establish
+that arbitrary configurations are semantically interchangeable. Preserve the
+window channels and length, condition encoding and VAE observation likelihood
+when reusing a checkpoint. Cross-configuration restoration is not validated.
+DDPM additionally rejects checkpoint schedule buffers that disagree with the
+configured diffusion steps or beta schedule, before loading network weights.
+
 ## Run the public stages
 
 Use the existing end-to-end test to execute all four experiment configurations
@@ -116,9 +155,10 @@ preserved; no alternate runner, configuration loader or result manager is added.
 
 ## Source and implementation scope
 
-The new components are direct implementations of the cited equations, written
-under the repository's [Apache-2.0 license](../../../LICENSE); no external model
-code is vendored. [references.bib](references.bib) records these method references.
+The components implement the cited equations under the repository's
+[Apache-2.0 license](../../../LICENSE); no external model code is vendored.
+The repository implementation history is recorded above, including existing CFM
+and historical DDPM. [references.bib](references.bib) records the method references.
 
 | Family | Primary source | Implementation scope |
 | --- | --- | --- |
@@ -127,9 +167,12 @@ code is vendored. [references.bib](references.bib) records these method referenc
 | DDPM | [Ho et al., 2020](https://arxiv.org/abs/2006.11239) | Eq. (4), (7), (14), Algorithm 2; continuous-waveform backbone adaptation |
 | CFM | [Lipman et al.](https://arxiv.org/abs/2210.02747) | Existing independent Gaussian-to-data linear path and velocity regression |
 
-TimeGAN, TimeVAE, Rectified Flow, MeanFlow and Drifting remain separate
-`TODO-ADAPT` entries. One Euler step does not implement a one-step training
-objective. Physics-informed paper methods are supplied by their downstream owner.
+TimeGAN, TimeVAE, Rectified Flow, MeanFlow and Drifting remain `TODO-ADAPT` for this
+current runtime. Historical snapshots contain several flow-family implementations;
+the status means that their current-runtime adaptation and method-specific
+validation are incomplete, not that their source never existed. One Euler step
+does not implement a one-step training objective. Physics-informed paper methods
+are supplied by their downstream owner.
 
 ## What remains before PHM comparison
 

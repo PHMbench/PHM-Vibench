@@ -13,6 +13,7 @@ unrelated-history source snapshot is never merged wholesale.
 from __future__ import annotations
 
 import csv
+import importlib
 import math
 import time
 from collections.abc import Mapping
@@ -218,6 +219,10 @@ def _build_stack(
     from src.model_factory import build_model
     from src.task_factory import build_task
 
+    factory_module = _get_attr(args_task, "factory_module", None)
+    if factory_module is not None:
+        # Register caller-owned tasks and dataset adapters before data resolution.
+        importlib.import_module(factory_module)
     data_factory = build_data(args_data, args_task)
     if data_factory is None:
         raise RuntimeError("data factory returned None")

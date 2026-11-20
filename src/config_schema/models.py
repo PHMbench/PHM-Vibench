@@ -527,10 +527,16 @@ class ExperimentConfig(BaseModel):
         if self.pipeline and not self.pipeline.startswith("Pipeline_"):
             raise ValueError("pipeline should be a src/Pipeline_*.py module name")
         if self.task.factory_module is not None and (
-            self.pipeline != "Pipeline_01_Fault_Diagnosis"
+            self.pipeline not in {
+                "Pipeline_01_Fault_Diagnosis",
+                "Pipeline_06_Generative_Modeling",
+            }
             or getattr(self.task, "execution", None) == "research"
         ):
-            raise ValueError("task.factory_module requires ordinary Pipeline_01_Fault_Diagnosis execution")
+            raise ValueError(
+                "task.factory_module requires ordinary Pipeline_01_Fault_Diagnosis "
+                "or Pipeline_06_Generative_Modeling execution"
+            )
         if (
             self.pipeline in _CLASSIFICATION_LIFECYCLE_PIPELINES
             and self.trainer.test_after_fit is None
