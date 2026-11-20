@@ -130,28 +130,19 @@ import is an error. `task.module` instead belongs to the separate scientific
 
 ## First comparison candidates
 
-This inventory describes the runtime included in this Factory-extension change,
-not the contents of every historical branch or a scientific comparison. Dataset
-populations, splits, budgets and results belong in the caller's paper repository.
-
-| Candidate | Model / Task selection | Current status | Required before a fair comparison |
-| --- | --- | --- | --- |
-| Conditional GAN | Caller-owned generator/discriminator and adversarial Task | Not integrated by this change | Verify the source implementation and license; count generator and discriminator parameters/updates separately. |
-| Conditional VAE | Caller-owned encoder/decoder and reconstruction-plus-KL Task | Not integrated by this change | Verify the source implementation, observation likelihood and latent sampling; disclose KL weighting. |
-| Conditional DDPM | Caller-owned denoiser and noise-prediction Task | Historical implementation; not integrated by this change | Verify the current-runtime adaptation, diffusion schedule, reverse sampler and actual NFE. |
-| Conditional Flow Matching | `generative_model.phm_cfm_mlp1d` / `generative.conditional_flow_matching` | Existing candidate implementation and Dummy software tests | Qualify the exact real-data split, signal preprocessing, model capacity and held-out metrics. |
-
-The historical [`ddpm_epsilon` Task](https://github.com/PHMbench/PHM-Vibench/blob/ed1bc7d7968cff6a1e0f0cf1c2d1c476054d4cdb/src/task_factory/task/generative/ddpm_epsilon.py)
-already implemented DDPM training and sampling. Its absence from this runtime is
-an integration gap, not evidence that DDPM was never implemented. The separate
-[model-candidate PR #348](https://github.com/PHMbench/PHM-Vibench/pull/348) proposes
-GAN, VAE and a current-runtime DDPM candidate while reusing CFM; those model changes
-are independent of the Factory hook described here.
+Conditional GAN, Gaussian VAE, DDPM and the existing CFM now have built-in Model/Task
+candidates. Their exact configuration names, objectives, sampling contracts,
+historical implementation sources and bounded software evidence are maintained
+in the [generative candidate guide](../../experiments/generative/README.md).
+CFM is reused; DDPM adapts an existing historical capability to the current
+runtime. No Factory layer is recreated. The external hook above remains available
+for caller-owned methods. Dataset populations, splits, budgets and results belong
+in the caller's paper repository.
 
 TimeGAN and TimeVAE are separate adaptations of their published methods, not names
 for an arbitrary GAN or VAE. Rectified Flow, MeanFlow, Drifting and physics-informed
-methods remain outside this first comparison until their source and Task semantics
-are implemented and checked. Forecasting checkpoints do not become unconditional
+methods remain outside this first comparison until their current-runtime Task
+semantics are adapted and checked. Forecasting checkpoints do not become unconditional
 generators by changing a configuration label.
 
 The following YAML is a **planning matrix inside this documentation**, not a second
