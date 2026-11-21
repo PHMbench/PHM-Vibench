@@ -105,8 +105,12 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         local_config=requested_local_config(args),
     )
     if analysis.effective_config.get("task", {}).get("execution") == "research":
-        raise ValueError("This configuration requires phmfactory research <phase> --config <yaml>; "
-                         "generic Pipeline training would not execute its scientific objective")
+        from phmfactory.commands.research import execute_analysis
+
+        return execute_analysis(
+            analysis,
+            allow_experimental=bool(getattr(args, "allow_experimental", False)),
+        )
     from phmfactory.commands.research import reject_scientific_factory_task
     reject_scientific_factory_task(analysis.effective_config)
     compiled = CompiledRunSpec.compile(analysis.to_resolved_config())
