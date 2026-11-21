@@ -57,3 +57,29 @@ def test_completed_stage_rejects_non_finite_metrics(value) -> None:
 def test_completed_stage_rejects_non_scalar_or_non_numeric_metrics(value) -> None:
     with pytest.raises(RuntimeError, match="scalar"):
         _require_completed_stage_evaluation(_stage_result(value), "test")
+
+
+@pytest.mark.parametrize('names', [('first',), ('second', 'first'), ('first', 'second', 'extra')])
+def test_request_stage_coverage_and_order_are_checked(names):
+    result = {name: {'metrics': {'loss': 1.0}} for name in names}
+    with pytest.raises(RuntimeError, match='coverage/order mismatch'):
+        _require_completed_stage_evaluation(result, 'test', {'first': True, 'second': True})
+
+
+def test_only_explicit_train_only_contract_allows_no_test_metrics(tmp_path):
+    checkpoint = tmp_path / 'selected.ckpt'
+    checkpoint.write_bytes(b'existence fixture')
+    result = {'train': {'status': 'trained_not_evaluated', 'checkpoint_path': str(checkpoint)}}
+    assert _require_completed_stage_evaluation(result, 'test', {'train': False}) is result
+    with pytest.raises(RuntimeError, match='did not complete evaluation'):
+        _require_completed_stage_evaluation(result, 'test', {'train': True})
+    result['train']['metrics'] = {'dry_run': True}
+    with pytest.raises(RuntimeError, match='without test metrics'):
+        _require_completed_stage_evaluation(result, 'test', {'train': False})
+
+
+def test_train_only_must_supply_actual_selected_state(tmp_path):
+    result = {'train': {'status': 'trained_not_evaluated',
+                        'checkpoint_path': str(tmp_path / 'missing.ckpt')}}
+    with pytest.raises(RuntimeError, match='selected checkpoint'):
+        _require_completed_stage_evaluation(result, 'test', {'train': False})

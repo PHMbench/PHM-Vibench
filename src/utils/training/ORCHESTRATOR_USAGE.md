@@ -86,66 +86,59 @@ orch = TwoStageOrchestrator(unified)
 summary = orch.run_complete()  # 等价两阶段
 ```
 
-### 3.4 单 YAML + `stages.overrides`（推荐）
-1) YAML 示例（单文件）：
+### 3.4 公共入口与训练-only阶段
+
+下面是合并到一个完整实验配置中的局部示例；顶层 `data/model/task/trainer/environment`
+仍需提供实际任务参数。阶段内 `overrides` 使用嵌套映射，不需要手工再次解析 YAML。
+
 ```yaml
-data: {...}
-model: {...}
-task: {...}
-trainer: {...}
+pipeline: Pipeline_02_Pretraining_Few_Shot
+trainer:
+  test_after_fit: true
 stages:
   - name: pretrain
-    environment: {stage_name: "pretrain"}
     overrides:
-      task.type: "CDDG"          # 仅写差异
-      trainer.max_epochs: 30
-  - name: cddg_ft
-    environment: {stage_name: "cddg_ft"}
-    overrides:
-      task.type: "CDDG"
-      trainer.max_epochs: 20
-      data.num_window: 64
-```
-2) 组装：
-```python
-from src.configs.config_utils import load_config
-from src.utils.config_utils import apply_overrides_to_config
-from src.utils.training.two_stage_orchestrator import MultiStageOrchestrator
-
-base = load_config("my_unified.yaml")
-stages_cfg = []
-for stage in base.stages:
-    cfg = base.copy()
-    overrides = getattr(stage, "overrides", {})
-    cfg = apply_overrides_to_config(cfg, overrides)
-    cfg.environment = getattr(stage, "environment", None)
-    stages_cfg.append(cfg)
-
-unified = {"stages": stages_cfg}
-orch = MultiStageOrchestrator(unified)
-results = orch.run_all_stages()
+      trainer:
+        test_after_fit: false
+      data:
+        load_test: false
+  - name: finetune
+    overrides: {}
+  - name: further_adapt
+    overrides: {}
 ```
 
-## 4. 返回结果与 checkpoint
-- `run_all_stages()` 返回字典：每个 `stage_name` 一个子字典，含 `checkpoint_path/metrics/path` 等；并附 `_ckpt_registry` 记录阶段名到 ckpt 路径的映射。
-- `run_complete()` 返回 `{'stage_1': {...}, 'stage_2': {...}}`，适合二阶段视图。
+完整配置统一使用：
 
-## 5. 校验与错误处理
-- Orchestrator 内部使用 `_validate_config_wrapper` 对每个 stage 检查必需字段（data/model/task）。缺关键节会抛错，不再 fallback。
-- dry_run 模式：构造 `MultiStageOrchestrator(..., dry_run=True)`，仅走路径与日志，不实际训练。
+```bash
+phmfactory --config path/to/complete_multistage.yaml
+```
 
-## 6. 何时选用哪种接口
-- 只跑两阶段且保持旧调用习惯：`TwoStageOrchestrator + run_complete()`。
-- 多阶段或希望阶段名自定义：`MultiStageOrchestrator + run_all_stages()`（推荐）。
-- 双 YAML（P02 遗留）：`adapt_p02(...) -> TwoStageOrchestrator`。
-- 单 YAML 多阶段（推荐未来）：使用 `stages` 列表 + overrides 按上述示例组装后交给 `MultiStageOrchestrator`。
+Pipeline 02 执行全部声明阶段。`trainer.test_after_fit` 未填写时保持原有的评价行为；
+显式 `false` 才表示仅训练。`data.load_test: false` 不能与需要评价的阶段并用。
+合法 early stopping 属于正常训练结束，不要求机械跑满最大 epoch。
 
-## 7. 常见问题
-- **为什么需要 `stages` 列表？**  
-  统一多阶段入口，减少为每个实验写专用 orchestrator 的重复。
-- **还能用 `stage_1.task.lr` 覆盖吗？**  
-  可以，`TwoStageOrchestrator` 会保留 `stage_1`/`stage_2` 属性；多阶段时推荐 `stages[i].task.lr`。
-- **能否恢复任意阶段？**  
-  当前 `_ckpt_registry` 已记录阶段 ckpt，恢复逻辑可在 Pipeline 层根据需要扩展（预留 `resume_stage_name`/`resume_checkpoint` 字段）。
+## 4. 阶段结果与权重交接
 
-> 提醒：优先采用“单 YAML + stages.overrides”减少重复配置；双 YAML 仅作兼容。
+- `run_all_stages()` 按声明顺序返回每个阶段及既有 `_ckpt_registry`。
+- 需评价阶段返回 `status: evaluated`、实际 `checkpoint_path/path` 和来自
+  `trainer.test` 的非空有限 `metrics`。多个人口的未命名结果不会截取第一份后继续。
+- 仅训练阶段返回 `status: trained_not_evaluated` 和选中的状态，**不含测试 metrics**。
+- 每阶段使用独立输出目录，避免短阶段在同一秒生成同名 checkpoint 而相互覆盖。
+- 下游继承上一阶段实际选中的状态；必须产出状态的阶段失败时，不沿用更早的状态。
+- 这是权重迁移，不是恢复训练：下游重新构建 Task/Trainer 及优化器。原有显式
+  模型头匹配规则保持不变，不新增自动重建不兼容 head 的兜底。
+- 自动阶段交接与同一阶段的 `model.weights_path` 不能同时指定两个不同来源。
+- 公共阶段序列不以阶段下标偏移随机种子；每阶段继承或显式覆盖自己的
+  `environment.seed`。这保持原两阶段公共入口的 seed 语义。
+
+## 5. 校验与兼容边界
+
+阶段名必须非空、无首尾空白、唯一且不以下划线开头。配置覆盖、顺序、阶段完成数量
+以及必需 checkpoint 会被核对；中间阶段失败不会继续执行依赖它的后继阶段。
+
+`run_complete()` 仅提供一到两阶段的 `stage_1/stage_2` 兼容视图，超过两个阶段请使用
+`run_all_stages()`；普通 Pipeline 02 已使用后者。双 YAML 仍需显式选择原有 legacy 模式。
+
+`dry_run=True` 不训练、不创建输出、不返回伪指标，状态是 `not_executed`；它不是
+已完成运行。完整训练恢复、数据游标恢复、采样或在线阶段编排不由本功能自动提供。
