@@ -39,6 +39,9 @@ class DataSplitConfig(BaseModel):
     test_policy: Literal["partition", "task_defined"] = "partition"
     fractions: Optional[Dict[Literal["train", "val", "test"], float]] = None
     manifest_path: Optional[str] = None
+    manifest_mode: Literal["generate", "read_only"] = "generate"
+    partition_map: Optional[Dict[Literal["train", "val", "test"], str]] = None
+    manifest_sha256: Optional[str] = None
 
     @model_validator(mode="after")
     def _check_grouped_protocol(self) -> "DataSplitConfig":
@@ -48,6 +51,13 @@ class DataSplitConfig(BaseModel):
             raise ValueError("data.split.group_key is required for grouped_metadata")
         if not self.manifest_path:
             raise ValueError("data.split.manifest_path is required for grouped_metadata")
+        if self.manifest_mode == "read_only":
+            mapping = self.partition_map or {}
+            if self.test_policy != "partition" or set(mapping) != {"train", "val", "test"}:
+                raise ValueError("read_only manifests require a train/val/test partition map")
+            if not all(mapping.values()) or len(set(mapping.values())) != 3:
+                raise ValueError("read_only partition names must be distinct and nonempty")
+            return self
         expected = (
             {"train", "val", "test"}
             if self.test_policy == "partition"

@@ -270,6 +270,13 @@ class Default_dataset(Dataset):  # THU_006or018_basic
 
         if sample_data.ndim == 3:
             sample_data = sample_data.reshape(sample_data.shape[0], -1)
+        selected = getattr(self.args_data, "channel_indices", None)
+        if selected is not None:
+            if (sample_data.ndim != 2 or not isinstance(selected, (tuple, list))
+                    or not selected or any(type(i) is not int or i < 0 or i >= sample_data.shape[1]
+                                           for i in selected) or len(set(selected)) != len(selected)):
+                raise ValueError(f"Invalid channel_indices {selected!r} for {sample_data.shape}")
+            sample_data = sample_data[:, selected]
         if sample_data.ndim not in {1, 2}:
             raise ValueError(
                 f"data ID {self.key!r} must be rank 1 or 2 after reader output; "
@@ -341,7 +348,7 @@ class Default_dataset(Dataset):  # THU_006or018_basic
             mean_vals = np.mean(window, axis=0)
             std_vals = np.std(window, axis=0)
             result = (window - mean_vals) / (std_vals + 1e-8)
-        elif normalization == "none":
+        elif normalization in {"none", "train_global_standardization"}:
             result = window
         else:
             raise ValueError(
@@ -426,8 +433,14 @@ class Default_dataset(Dataset):  # THU_006or018_basic
         if idx < 0 or idx >= self.total_samples:
             raise IndexError(f"索引 {idx} 超出范围")
 
+        x = self.processed_data[idx]
+        if getattr(self.args_data, "normalization", None) == "train_global_standardization":
+            mean, scale = self.global_affine
+            if x.reshape(len(x), -1).shape[1] != len(mean):
+                raise ValueError("Window channels differ from saved transform")
+            x = ((x-mean)/scale).astype(getattr(self.args_data, "dtype", "float32"))
         return {
-            "x": self.processed_data[idx],
+            "x": x,
             "y": self.label,
         }
 

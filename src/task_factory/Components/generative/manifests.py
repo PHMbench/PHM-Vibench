@@ -177,10 +177,8 @@ def build_evaluation_manifest(
     sampling_wall_clock_seconds: float | None,
 ) -> dict[str, Any]:
     split = str(reference_split).strip().lower()
-    if split in {"test", "target_test"}:
-        raise ValueError(
-            "test-reference evaluation is not eligible in the maintained smoke contract"
-        )
+    if split not in {"train", "val", "test"}:
+        raise ValueError(f"Unsupported evaluation split: {reference_split}")
 
     statuses = {
         name: str(metrics.get(name, {}).get("status", "missing"))
@@ -232,6 +230,7 @@ def build_evaluation_manifest(
             "sha256": metrics_sha256,
         },
         "reference_split": split,
+        "memorization_reference_split": "train",
         "metric_statuses": statuses,
         "metric_summary": {
             "ok": sum(status == "ok" for status in statuses.values()),

@@ -581,6 +581,7 @@ class ExplicitDataFactory(data_factory):
                 "test",
             )
 
+        self._apply_global_affine(train_dataset, val_dataset, test_dataset)
         self.split_summary = _summarize_split_assignments(
             {
                 "train": train_dataset,

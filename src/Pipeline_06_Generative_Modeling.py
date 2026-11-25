@@ -223,6 +223,14 @@ def _build_stack(
     if factory_module is not None:
         # Register caller-owned tasks and dataset adapters before data resolution.
         importlib.import_module(factory_module)
+    if getattr(args_data, "normalization", None) == "train_global_standardization":
+        gen = _get_attr(args_task, "generative", {})
+        if _get_attr(gen, "mode", "train") in {"sample", "eval"}:
+            from src.task_factory.Components.generative.normalization import load_normalization_evidence
+            args_data.saved_global_affine = load_normalization_evidence(
+                str(_get_attr(gen, "normalization_path", "")),
+                expected_hash=_get_attr(gen, "normalization_sha256", ""),
+            )
     data_factory = build_data(args_data, args_task)
     if data_factory is None:
         raise RuntimeError("data factory returned None")
@@ -321,11 +329,12 @@ def _batch_conditions(batch: Mapping[str, Any], metadata: Any) -> tuple[Any, Any
     return label_tensor, domain_tensor
 
 
-def _train_reference(
+def _split_reference(
     data_factory: Any,
     channels: int,
     *,
-    max_batches: int = 32,
+    split: str = "train",
+    max_batches: int | None = 32,
     max_samples: int | None = None,
 ) -> tuple[Any, Any, Any]:
     import torch
@@ -334,7 +343,12 @@ def _train_reference(
     labels = []
     domains = []
     metadata = data_factory.get_metadata()
-    for index, batch in enumerate(data_factory.get_dataloader("train")):
+    if split not in {"train", "val", "test"}:
+        raise ValueError(f"Unknown reference split: {split}")
+    loader = data_factory.get_dataloader(split)
+    if max_batches is None:
+        loader = torch.utils.data.DataLoader(data_factory.get_dataset(split), batch_size=32, shuffle=False)
+    for index, batch in enumerate(loader):
         if "x" not in batch:
             raise ValueError("train batch is missing x")
         current = _to_ncl(batch["x"], channels)
@@ -344,12 +358,12 @@ def _train_reference(
             labels.append(current_labels)
         if current_domains is not None:
             domains.append(current_domains)
-        if index + 1 >= max_batches:
+        if max_batches is not None and index + 1 >= max_batches:
             break
         if max_samples is not None and sum(item.shape[0] for item in windows) >= max_samples:
             break
     if not windows:
-        raise ValueError("train dataloader produced no windows")
+        raise ValueError(f"{split} dataloader produced no windows")
     real = torch.cat(windows, dim=0)
     real_labels = torch.cat(labels) if labels else None
     real_domains = torch.cat(domains) if domains else None
@@ -382,7 +396,10 @@ def _write_run_contracts(
         },
         "conditions": ["fault_label", "domain_id"],
         "stages": ["train", "sample", "eval"],
-        "reference_split": "train",
+        "reference_split": str(_get_attr(_get_attr(args_task, "generative", {}), "eval_split", "train")),
+        "normalization_split": "train",
+        "checkpoint_selection_split": "val",
+        "memorization_reference_split": "train",
     }
     protocol_path, protocol_hash, _ = write_hashed_json(
         run_path / "generative_protocol.json",
@@ -558,11 +575,12 @@ def _run_train_stage(args: Any, configs: Any, iteration: int) -> Any:
             args_data, args_model, args_task, args_trainer, args_environment
         )
         channels = int(getattr(args_model, "in_channels", 1))
-        train_windows, _, _ = _train_reference(data_factory, channels)
-        normalization = build_normalization_evidence(
-            train_windows,
-            method=str(getattr(args_data, "normalization", "standardization")),
-        )
+        if getattr(args_data, "normalization", None) == "train_global_standardization":
+            normalization = data_factory.global_affine
+        else:
+            train_windows, _, _ = _split_reference(data_factory, channels)
+            normalization = build_normalization_evidence(
+                train_windows, method=str(getattr(args_data, "normalization", "standardization")))
         normalization_path, normalization_hash, normalization_hash_path = (
             write_normalization_evidence(
                 str(run_path / "normalization_params.json"),
@@ -605,6 +623,16 @@ def _run_train_stage(args: Any, configs: Any, iteration: int) -> Any:
             "config": config_evidence,
             "protocol": protocol_evidence,
         }
+        if hasattr(trainer, "global_step"):
+            result["global_optimizer_steps"] = int(trainer.global_step)
+            result["epochs_completed"] = int(trainer.current_epoch)
+            # Adam/AdamW retain the update count for each parameter with a gradient.
+            # Keep the range so partial or conditional updates remain visible.
+            optimizer_counts = []
+            for optimizer in trainer.optimizers:
+                counts = [int(state["step"]) for state in optimizer.state.values() if "step" in state]
+                optimizer_counts.append({"min": min(counts), "max": max(counts)} if counts else None)
+            result["optimizer_parameter_steps"] = optimizer_counts
         _record_stage(
             configs,
             "train",
@@ -670,15 +698,18 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
         num_steps = _get_attr(gen_cfg, "num_steps", 8)
         length = int(_get_attr(gen_cfg, "length", getattr(args_data, "window_size", 128)))
         channels = int(getattr(args_model, "in_channels", 1))
+        batch_size = int(_get_attr(gen_cfg, "sample_batch_size", num_samples))
+        if batch_size < 1:
+            raise ValueError("sample_batch_size must be positive")
         started = time.perf_counter()
-        samples = task.sample(
-            condition,
-            num_samples=num_samples,
-            length=length,
-            channels=channels,
-            num_steps=num_steps,
-            device=device,
-        ).detach().cpu()
+        batches = []
+        for offset in range(0, num_samples, batch_size):
+            end = min(offset + batch_size, num_samples)
+            chunk = {key: value[offset:end] for key, value in condition.items()}
+            batch = task.sample(chunk, num_samples=end-offset, length=length,
+                                channels=channels, num_steps=num_steps, device=device)
+            batches.append(batch.detach().cpu())
+        samples = torch.cat(batches)
         wall_clock = time.perf_counter() - started
         if not torch.isfinite(samples).all() or not math.isfinite(wall_clock):
             raise ValueError("sampling produced non-finite samples or timing")
@@ -688,6 +719,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
         torch.save(
             {
                 "samples": samples,
+                "generation_seconds": wall_clock,
                 "fault_label": condition["fault_label"].detach().cpu(),
                 "domain_id": condition["domain_id"].detach().cpu(),
                 "condition_sampling_policy": str(
@@ -697,7 +729,7 @@ def _run_sample_stage(args: Any, configs: Any, iteration: int) -> Any:
             samples_path,
         )
         samples_hash = sha256_file(samples_path)
-        real, real_labels, real_domains = _train_reference(
+        real, real_labels, real_domains = _split_reference(
             data_factory,
             channels,
             max_samples=num_samples,
@@ -853,16 +885,16 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
             expected_hash=normalization_hash,
         )
         reference_split = str(_get_attr(gen_cfg, "eval_split", "train")).lower()
-        if reference_split != "train":
-            raise ValueError(
-                "G3 deterministic evaluation requires task.generative.eval_split=train"
-            )
+        if reference_split != "train" and _get_attr(_get_attr(args_data, "split", {}), "strategy", "") != "grouped_metadata":
+            raise ValueError("Held-out generative evaluation requires a grouped_metadata split")
         channels = int(getattr(args_model, "in_channels", samples.shape[1]))
         samples = _to_ncl(samples, channels)
-        real, real_labels, real_domains = _train_reference(
+        real, real_labels, real_domains = _split_reference(
             data_factory,
             channels,
-            max_samples=samples.shape[0],
+            split=reference_split,
+            max_samples=samples.shape[0] if reference_split == "train" else None,
+            max_batches=32 if reference_split == "train" else None,
         )
         ledger, _ = load_hashed_json(_stage_ledger_path(configs))
         train_stage = _get_attr(_get_attr(ledger, "stages", {}), "train", {})
@@ -880,6 +912,8 @@ def _run_eval_stage(args: Any, configs: Any, iteration: int) -> Any:
         metrics = evaluate_smoke_metrics(
             real,
             samples,
+            leakage_reference=(real if reference_split == "train" else
+                               _split_reference(data_factory, channels, max_batches=None)[0]),
             real_labels=real_labels,
             fake_labels=fake_labels,
             real_domains=real_domains,

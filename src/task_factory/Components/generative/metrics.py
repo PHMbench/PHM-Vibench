@@ -218,6 +218,7 @@ def evaluate_smoke_metrics(
     real: torch.Tensor,
     fake: torch.Tensor,
     *,
+    leakage_reference: torch.Tensor | None = None,
     real_labels: torch.Tensor | None = None,
     fake_labels: torch.Tensor | None = None,
     real_domains: torch.Tensor | None = None,
@@ -270,16 +271,18 @@ def evaluate_smoke_metrics(
             )
         )
 
+    train_reference = (real_tensor if leakage_reference is None else
+                       _validate_windows(leakage_reference, fake_tensor)[0])
     leakage = _safe_metric(
         lambda: _leakage_values(
-            real_tensor,
+            train_reference,
             fake_tensor,
             duplicate_threshold,
         )[0]
     )
     duplicates = _safe_metric(
         lambda: _leakage_values(
-            real_tensor,
+            train_reference,
             fake_tensor,
             duplicate_threshold,
         )[1]

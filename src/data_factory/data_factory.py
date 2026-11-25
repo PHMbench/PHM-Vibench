@@ -329,11 +329,26 @@ class data_factory:
         for id in tqdm(self.split_result.test_ids, desc="Creating test datasets"):
             test_dataset[id] = dataset_cls({id: self.data[id]},
                             self.target_metadata, self.args_data, self.args_task, 'test')
+        self._apply_global_affine(train_dataset, val_dataset, test_dataset)
         train_dataset = IdIncludedDataset(train_dataset,self.target_metadata)
         val_dataset = IdIncludedDataset(val_dataset,self.target_metadata)
         test_dataset = IdIncludedDataset(test_dataset,self.target_metadata)
         return train_dataset, val_dataset, test_dataset
 
+
+    def _apply_global_affine(self, train_dataset, val_dataset, test_dataset):
+        if getattr(self.args_data, "normalization", None) == "train_global_standardization":
+            from .global_affine import affine_parameters, fit_window_affine
+            if any(getattr(self.args_data, key, None) is not None
+                   for key in ("train_noise_snr", "evaluation_noise_snr")):
+                raise ValueError("Global affine requires uncorrupted source windows")
+            self.global_affine = getattr(self.args_data, "saved_global_affine", None)
+            if self.global_affine is None:
+                self.global_affine = fit_window_affine(train_dataset.values())
+            params = affine_parameters(self.global_affine)
+            for datasets in (train_dataset, val_dataset, test_dataset):
+                for dataset in datasets.values():
+                    dataset.global_affine = params
 
     def search_dataset_id(self):
         self.target_metadata = search_target_dataset_metadata(self.metadata, self.args_task)

@@ -7,7 +7,7 @@ import torch
 from src.utils.generative_evidence import load_hashed_json, write_hashed_json
 
 
-SUPPORTED_NORMALIZATION = frozenset({"standardization", "robust_scaler"})
+SUPPORTED_NORMALIZATION = frozenset({"none", "standardization", "robust_scaler"})
 
 
 def build_normalization_evidence(
@@ -41,7 +41,9 @@ def build_normalization_evidence(
 
     flattened = tensor.permute(1, 0, 2).reshape(tensor.shape[1], -1)
     channels: dict[str, dict[str, float]] = {}
-    if normalized_method == "standardization":
+    if normalized_method == "none":
+        channels = {str(i): {"mean": 0., "std": 1.} for i in range(flattened.shape[0])}
+    elif normalized_method == "standardization":
         means = flattened.mean(dim=1)
         standard_deviations = flattened.std(dim=1, unbiased=False)
         for index in range(flattened.shape[0]):
