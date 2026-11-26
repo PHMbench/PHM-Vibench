@@ -200,11 +200,14 @@ class TSPNFusion(nn.Module):
     Each named branch produces its own vector; no TF maps are resized to another
     branch's coordinate grid. Empty branches are allowed only for the refit-head
     control. They are not presented as an operator-enhanced model.
+    Residual scaling uses the active feature-group count by default; an explicit
+    residual_group_count retains a declared scale for a smaller branch family.
     """
     def __init__(self, reference: nn.Module, *, in_channels: int, num_classes: int,
                  branches, use_reference_features: bool = True,
                  reference_temperature: float = 1., head_frobenius_cap: float = 5.,
-                 head_type: str = "linear", head_hidden_dim: int = 16):
+                 head_type: str = "linear", head_hidden_dim: int = 16,
+                 residual_group_count: int | None = None):
         super().__init__()
         if int(reference.args.num_classes) != num_classes or int(reference.args.in_channels) != in_channels:
             raise ValueError("Reference and new predictor must share channels and labels.")
@@ -221,6 +224,10 @@ class TSPNFusion(nn.Module):
         if head_type in {"mlp", "operator_residual"} and (isinstance(head_hidden_dim, bool) or
                 not isinstance(head_hidden_dim, int) or head_hidden_dim < 1):
             raise ValueError("An MLP needs an explicit positive integer hidden width.")
+        if residual_group_count is not None and (
+                head_type != "operator_residual" or isinstance(residual_group_count, bool) or
+                not isinstance(residual_group_count, int) or residual_group_count < 1):
+            raise ValueError("residual_group_count requires a positive integer and an operator_residual head.")
         self.head_type = head_type
         self.reference = reference.requires_grad_(False).eval()
         self.in_channels, self.num_classes = int(in_channels), int(num_classes)
@@ -242,6 +249,9 @@ class TSPNFusion(nn.Module):
                 branch = TimeFrequencyBranch(kind, in_channels, **spec)
             self.branches[name] = branch
             self.feature_dims[name] = branch.output_dim
+        if residual_group_count is not None and residual_group_count < len(self.feature_dims):
+            raise ValueError("residual_group_count must cover all active feature groups, including the reference.")
+        self.residual_group_count = len(self.feature_dims) if residual_group_count is None else residual_group_count
         dimension = sum(self.feature_dims.values())
         # Preserve legacy linear state keys. The MLP is a readout comparator,
         # not another encoder or a new signal-processing branch.
@@ -304,7 +314,7 @@ class TSPNFusion(nn.Module):
             feature_dict[name] = branch(x)
         contributions = {}
         if self.head_type == "operator_residual":
-            scale = math.sqrt(len(feature_dict))
+            scale = math.sqrt(self.residual_group_count)
             contributions = {name: self.operator_heads[name](z / math.sqrt(self.feature_dims[name]),
                                                             self.head_frobenius_cap) / scale
                              for name, z in feature_dict.items()}
@@ -372,7 +382,8 @@ class Model(TSPNFusion):
                          reference_temperature=float(args.reference_temperature),
                          head_frobenius_cap=float(getattr(args, "head_frobenius_cap", 5.)),
                          head_type=getattr(args, "head_type", "linear"),
-                         head_hidden_dim=getattr(args, "head_hidden_dim", 16))
+                         head_hidden_dim=getattr(args, "head_hidden_dim", 16),
+                         residual_group_count=getattr(args, "residual_group_count", None))
         if args.checkpoint_kind == "fusion":
             load_ckpt(self, args.checkpoint_path, strict=True)
         self.to(args.device)
