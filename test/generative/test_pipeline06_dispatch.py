@@ -136,17 +136,45 @@ def test_factory_extension_registers_before_data_construction(
     monkeypatch, tmp_path, extension: bool,
 ) -> None:
     events = []
-    metadata = object()
-    data = SimpleNamespace(get_metadata=lambda: metadata)
+    rows = {
+        1: {"Id": 1, "Label": 0, "Domain_id": 0},
+        2: {"Id": 2, "Label": 1, "Domain_id": 1},
+        3: {"Id": 3, "Label": 9, "Domain_id": 9},
+    }
+
+    class RowSelection:
+        def __getitem__(self, ids):
+            return {key: rows[key] for key in ids}
+
+    metadata = SimpleNamespace(
+        df=SimpleNamespace(loc=RowSelection()), key_column="Id",
+    )
+    data = SimpleNamespace(
+        get_metadata=lambda: metadata,
+        train_dataset=SimpleNamespace(dataset_dict={1: object(), 2: object()}),
+    )
     model, task = object(), object()
     data_module = ModuleType("src.data_factory")
+    metadata_module = ModuleType("src.data_factory.data_utils")
     model_module = ModuleType("src.model_factory")
     task_module = ModuleType("src.task_factory")
     data_module.events = events
     data_module.build_data = lambda *args: events.append("data") or data
-    model_module.build_model = lambda *args, **kwargs: events.append("model") or model
+    # The shell gate verifies selection and dispatch without numerical packages.
+    def metadata_accessor(selected, *, key_column):
+        assert key_column == "Id"
+        return selected
+
+    metadata_module.MetadataAccessor = metadata_accessor
+
+    def build_model(*args, **kwargs):
+        assert kwargs["metadata"] == {1: rows[1], 2: rows[2]}
+        events.append("model")
+        return model
+
+    model_module.build_model = build_model
     task_module.build_task = lambda **kwargs: events.append("task") or task
-    for module in (data_module, model_module, task_module):
+    for module in (data_module, metadata_module, model_module, task_module):
         monkeypatch.setitem(sys.modules, module.__name__, module)
     args_task = SimpleNamespace()
     module_name = "generative_test_extension"

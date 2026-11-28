@@ -225,3 +225,33 @@ def test_generative_config_completes_cpu_stages(
     assert (fixture_data / "Dummy_Data.h5").is_file()
     assert (fixture_data / "cache.h5").is_file()
     assert _repo_h5_cache_paths() == repo_h5_before
+
+    if config == CONFIG:
+        # Reuse the trained checkpoint: one generated sample must not truncate
+        # the two-window validation reference to one sample.
+        _run(*common, *sample_inputs, "task.generative.num_samples=1", config=config)
+        single_sample = _ledger(ledger_path)["stages"]["sample"]
+        evaluation_inputs = (
+            "task.generative.mode=eval",
+            f"task.generative.generated_path={single_sample['samples']['path']}",
+            "task.generative.synthetic_manifest_path="
+            f"{single_sample['synthetic_manifest']['path']}",
+        )
+        _run(
+            *common, *evaluation_inputs, "task.generative.eval_split=test",
+            config=config, expected_error="requires grouped_metadata",
+        )
+        _run(
+            *common, *evaluation_inputs, "task.generative.eval_split=val",
+            "data.batch_size=1", config=config,
+        )
+        validation = _ledger(ledger_path)["stages"]["eval"]
+        assert validation["reference_split"] == "val"
+        assert validation["generated_samples"] == 1
+        assert validation["reference_samples"] == 2
+        assert validation["metric_summary"]["failed"] == 0
+        manifest = json.loads(
+            Path(validation["evaluation_manifest"]["path"]).read_text(encoding="utf-8")
+        )
+        assert manifest["reference_split"] == "val"
+        assert manifest["promotion"]["benchmark_valid"] is False

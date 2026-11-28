@@ -157,6 +157,18 @@ class Tent:
         self._pending = None
         return self.last_loss
 
+    def discard(self) -> None:
+        """Complete a BN-only control batch without an optimizer step.
+
+        Prediction uses exactly Tent's modes, current-batch statistics and dropout.
+        The graph is discarded instead of backpropagated; affine parameters stay fixed.
+        """
+        if self._pending is None:
+            raise RuntimeError("BN-only completion requires a pending prediction")
+        self._check_state()
+        self.num_samples += self._pending.shape[0]
+        self._pending = None
+
     def state_dict(self) -> dict:
         """Ordinary checkpoint payload at a completed batch boundary, not a writer.
 

@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from .data_utils import MetadataAccessor
 
 
-SUPPORTED_PARTITION_TASKS = {"Default_task", "pretrain"}
+SUPPORTED_PARTITION_TASKS = {"Default_task", "pretrain", "generative"}
 SUPPORTED_TASK_DEFINED_TASKS = {"DG", "CDDG"}
 UNSUPPORTED_EPISODIC_TASKS = {"FS", "GFS"}
 
@@ -112,7 +112,7 @@ def _validate_spec(spec: SplitSpec, task_type: str) -> dict[str, float]:
         )
     if spec.test_policy == "partition" and task_type not in SUPPORTED_PARTITION_TASKS:
         raise ValueError(
-            "data.split.test_policy=partition is only supported for Default_task and pretrain"
+            "data.split.test_policy=partition is supported for Default_task, pretrain and generative"
         )
     if spec.test_policy == "task_defined" and task_type not in SUPPORTED_TASK_DEFINED_TASKS:
         raise ValueError(

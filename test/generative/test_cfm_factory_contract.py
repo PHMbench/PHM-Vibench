@@ -3,7 +3,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
+import torch
+from torch.utils.data import DataLoader
 
+from src.Pipeline_06_Generative_Modeling import _sample_conditions, _train_reference
 from src.model_factory import build_model
 from src.model_factory.generative_model.phm_cfm_mlp1d import Model
 from src.task_factory import build_task
@@ -72,3 +76,46 @@ def test_cfm_model_and_task_build_through_public_factories() -> None:
     assert isinstance(model, Model)
     assert isinstance(task, ConditionalFlowMatchingTask)
     assert args_model.num_classes == 2
+
+
+@pytest.mark.parametrize("policy", ["grid", "explicit"])
+def test_sampling_conditions_preserve_requested_population(policy: str) -> None:
+    config = {
+        "condition_sampling_policy": policy,
+        "condition_grid": {
+            "fault_label": [0, 1, 2], "domain_id": [0, 1, 2],
+            "samples_per_condition": 1,
+        },
+        "explicit_conditions": [
+            {"fault_label": label, "domain_id": domain}
+            for label in range(3) for domain in range(3)
+        ],
+    }
+    with pytest.raises(ValueError, match="num_samples=54 conflicts.*count=9"):
+        _sample_conditions(config, None, 54, "cpu")
+    conditions = _sample_conditions(config, None, 9, "cpu")
+    assert conditions["fault_label"].numel() == 9
+    assert conditions["domain_id"].tolist() == [0, 1, 2] * 3
+
+
+@pytest.mark.parametrize("split", ["val", "test"])
+def test_holdout_reference_keeps_all_windows_beyond_32_batches(split: str) -> None:
+    windows = torch.arange(54 * 8, dtype=torch.float32).reshape(54, 8, 1)
+    loader = DataLoader([
+        {"x": window, "y": index % 3, "domain_id": index // 18}
+        for index, window in enumerate(windows)
+    ], batch_size=1)
+    requested = []
+
+    def get_loader(name):
+        requested.append(name)
+        return loader
+
+    factory = SimpleNamespace(get_metadata=lambda: None, get_dataloader=get_loader)
+    real, labels, domains = _train_reference(
+        factory, 1, split=split, max_batches=None, max_samples=None,
+    )
+    assert requested == [split]
+    torch.testing.assert_close(real, windows.transpose(1, 2))
+    assert labels.tolist() == list(range(3)) * 18
+    assert domains.tolist() == [0] * 18 + [1] * 18 + [2] * 18

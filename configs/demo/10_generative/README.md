@@ -52,6 +52,12 @@ of being converted to integers. Truncating a fractional count would integrate th
 interval. Positive integer calls keep the existing Euler computation and
 shape/device/dtype checks.
 
+For `condition_sampling_policy=grid` or `explicit`, the expanded condition count
+must equal `task.generative.num_samples`. A conflicting request fails before
+sampling; the Pipeline never replaces the requested population with the grid size.
+Model construction and metadata-derived sampling conditions use training records
+only, so held-out labels do not determine the model's class or domain embeddings.
+
 ## Method alignment
 
 | Path | Current implementation and reference boundary |
@@ -184,9 +190,18 @@ evaluation seeds before testing; equal epoch counts alone do not establish equal
 compute. Report parameter counts, optimizer updates, wall time, hardware, sampling
 latency and NFE rather than claiming fairness from a method name.
 
-The current eval stage requires `task.generative.eval_split=train`; it cannot yet
-measure held-out fidelity or independent real-test augmentation utility. Its
-condition-frequency score does not test waveform controllability. Real-data rows
-above therefore remain pending even if the CFM train/sample stages run. The Dummy
-normalization and metric choices must not be copied into a scientific protocol
-without examining their effect on physical amplitudes and the evaluation population.
+The eval stage accepts `task.generative.eval_split=train`, `val`, or `test`.
+Training-reference smoke remains bounded by 32 batches and the generated sample
+count. Validation and test evaluation consume their complete reference loaders,
+independently of the generated sample count, and record both population sizes.
+Test-reference evaluation requires `data.split.strategy=grouped_metadata`; select
+the grouping key and freeze the legal partitions before training. Validation used
+to select a checkpoint is a development reference, not an untouched final test.
+
+These shared evaluation stages support CFM, GAN, VAE and DDPM. They do not implement
+independent real-test augmentation utility. The condition-frequency score does not
+test waveform controllability; nearest-neighbor distances to a held-out reference
+do not measure training-data memorization. Real-data rows above remain pending until
+their declared experiments run. The Dummy normalization and metric choices must
+not be copied into a scientific protocol without examining their effect on
+physical amplitudes and the evaluation population.

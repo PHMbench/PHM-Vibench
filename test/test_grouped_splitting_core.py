@@ -12,6 +12,7 @@ from src.data_factory.dataset_task.Default_dataset import Default_dataset
 from src.data_factory.explicit_data_factory import ExplicitDataFactory
 from src.data_factory.id_data_factory import id_data_factory
 from src.data_factory.splitting import resolve_data_splits
+from src.config_schema.models import DataSplitConfig
 
 
 def _metadata(group_count: int = 30, ids_per_group: int = 2) -> MetadataAccessor:
@@ -389,14 +390,16 @@ def _write_frozen_manifest_fixture(tmp_path):
     return MetadataAccessor(frame, key_column="Id"), args, manifest_path
 
 
-def test_read_only_manifest_consumes_four_frozen_partitions_without_rewrite(tmp_path):
+@pytest.mark.parametrize("task_type", ["Default_task", "generative"])
+def test_read_only_manifest_consumes_four_frozen_partitions_without_rewrite(tmp_path, task_type):
     metadata, args, manifest_path = _write_frozen_manifest_fixture(tmp_path)
+    args.split = DataSplitConfig.model_validate(vars(args.split))
     before = manifest_path.read_bytes()
 
     result = resolve_data_splits(
         metadata,
         args,
-        SimpleNamespace(type="Default_task"),
+        SimpleNamespace(type=task_type),
         metadata.keys(),
         metadata.keys(),
     )

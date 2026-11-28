@@ -223,6 +223,10 @@ class ExplicitDataFactory(data_factory):
         load_test = getattr(args_data, "load_test", True)
         if not isinstance(load_test, bool):
             raise TypeError("data.load_test must be a boolean")
+        if (args_task.type, args_task.name) == ("TTA", "stream"):
+            from .target_stream import initialize_target_stream
+            initialize_target_stream(self, args_data, args_task)
+            return
         if (args_task.type, args_task.name) == ('DG', 'tii_joint'):
             from .tii_data import initialize_tii_data
             self.args_data, self.args_task = args_data, args_task
@@ -309,14 +313,21 @@ class ExplicitDataFactory(data_factory):
         # Resolve the declared split before any cache or waveform access. Merely
         # disabling Trainer.test would still materialize the held-out population.
         task_meta = self.search_dataset_id()
-        train_val_ids, task_test_ids = self.search_id()
-        self.split_result = resolve_data_splits(
-            self.target_metadata, args_data, self.args_task,
-            train_val_ids, task_test_ids,
-        )
-        if not getattr(args_data, "load_test", True):
-            source_ids = set(self.split_result.train_ids) | set(self.split_result.val_ids)
-            task_meta = MetadataAccessor(task_meta.df.loc[sorted(source_ids)])
+        target_stream = (self.args_task.type, self.args_task.name) == ("TTA", "stream")
+        if not target_stream:
+            train_val_ids, task_test_ids = self.search_id()
+            self.split_result = resolve_data_splits(
+                self.target_metadata, args_data, self.args_task,
+                train_val_ids, task_test_ids,
+            )
+            if not getattr(args_data, "load_test", True):
+                source_ids = set(self.split_result.train_ids) | set(self.split_result.val_ids)
+                task_meta = MetadataAccessor(task_meta.df.loc[sorted(source_ids)])
+        # Source training without test access and target-only adaptation must not
+        # copy unrelated waveforms from a previously populated writable cache.
+        self._cache_ids = (set(map(str, task_meta.keys()))
+                           if target_stream or not getattr(args_data, "load_test", True)
+                           else None)
         ids_to_fetch = self._determine_missing_ids(task_meta, args_data, use_cache)
         for name, ids in ids_to_fetch.items():
             self._update_name_cache(name, ids, args_data, max_workers)
@@ -347,10 +358,9 @@ class ExplicitDataFactory(data_factory):
                     if cache_path.is_file():
                         with h5py.File(cache_path, "r") as previous:
                             for key in previous.keys():
-                                if not getattr(args_data, "load_test", True):
-                                    allowed = set(map(str, self.split_result.train_ids + self.split_result.val_ids))
-                                    if key not in allowed:
-                                        continue
+                                allowed = getattr(self, "_cache_ids", None)
+                                if allowed is not None and key not in allowed:
+                                    continue
                                 if key not in target:
                                     previous.copy(key, target, name=key)
                 os.replace(temp_path, cache_path)
@@ -416,12 +426,12 @@ class ExplicitDataFactory(data_factory):
 
         try:
             if cache_path.is_file():
-                if getattr(args_data, "load_test", True):
+                allowed = getattr(self, "_cache_ids", None)
+                if allowed is None:
                     shutil.copy2(cache_path, temp_path)
                 else:
-                    # Old caches may include sealed targets. A whole-file copy
+                    # Old caches may include excluded data. A whole-file copy
                     # would read those records even though no dataset opens them.
-                    allowed = set(map(str, self.split_result.train_ids + self.split_result.val_ids))
                     with h5py.File(cache_path, "r") as previous, h5py.File(temp_path, "w") as target:
                         for key in sorted(allowed.intersection(previous.keys())):
                             previous.copy(key, target, name=key)
@@ -467,7 +477,7 @@ class ExplicitDataFactory(data_factory):
             try:
                 with h5py.File(cache_path, "r") as published_cache:
                     actual_keys = set(published_cache.keys())
-                    complete = (expected_keys.issubset(actual_keys) if getattr(args_data, "load_test", True)
+                    complete = (expected_keys.issubset(actual_keys) if getattr(self, "_cache_ids", None) is None
                                 else expected_keys == actual_keys)
                     if complete:
                         return str(cache_path)
