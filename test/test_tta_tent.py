@@ -4,6 +4,7 @@ from importlib.resources import files
 import importlib.util
 import json
 from pathlib import Path
+import random
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -229,7 +230,6 @@ def test_invalid_model_fails_before_algorithm_setup(kind):
 
 @pytest.mark.parametrize("change", [dict(regime="source_only"), dict(timing="update_then_predict"),
     dict(regime="episodic_tta", state_persistence="episodic_reset"),
-    dict(state_persistence="domain_reset", domain_boundary="known"),
     dict(regime="offline_sfda", adapt_population="adapt", evaluation_population="eval"),
     dict(regime="continual_sfda", adapt_population="adapt", evaluation_population="eval"),
     dict(regime="delayed_label_adaptation", target_label_access="delayed"),
@@ -475,3 +475,124 @@ def test_invalid_resume_fails_closed(kind):
     else: state["last_loss"] = float("inf")
     with pytest.raises(ValueError):
         Tent(TinyBN().eval(), learning_rate=1e-3).load_state_dict(state)
+
+
+def test_bn_control_keeps_affine_weights_and_matches_tent_first_prediction(tmp_path):
+    torch.manual_seed(91)
+    source = TinyBN().eval()
+    path = checkpoint(tmp_path, source)
+    predictions = []
+    for update in (False, True):
+        model = deepcopy(source)
+        outputs = []
+        torch.manual_seed(23)
+        adapter = run_tent_stream(model, DataLoader(Rows(), batch_size=3), protocol(),
+                                  checkpoint_path=path, learning_rate=1e-3,
+                                  evaluate=lambda logits, _: outputs.append(logits), update=update)
+        assert adapter.stream_num_samples == adapter.num_samples == 7
+        assert adapter.stream_num_updates == adapter.num_updates == (3 if update else 0)
+        assert adapter.num_resets == 0
+        predictions.append(outputs)
+        if not update:
+            assert adapter.optimizer.state_dict()["state"] == {}
+            assert_tree(dict(model.named_parameters()), dict(source.named_parameters()))
+    assert_tree(predictions[0][0], predictions[1][0])
+
+
+@pytest.mark.parametrize("update", [False, True])
+def test_known_domain_reset_matches_fresh_final_episode_and_full_budget(tmp_path, update):
+    class DomainRows(Rows):
+        def __getitem__(self, index):
+            result = super().__getitem__(index)
+            result["domain_id"] = 1 if index < 3 else 2
+            return result
+
+    class StochasticBN(TinyBN):
+        def forward(self, x):
+            return super().forward(x + random.random() + np.random.random())
+
+    torch.manual_seed(91)
+    source = StochasticBN().eval()
+    path = checkpoint(tmp_path, source)
+    rows = DomainRows()
+    outputs, states, rngs, budgets = [], [], [], []
+    for data in (rows, torch.utils.data.Subset(rows, range(3, 7))):
+        model = deepcopy(source)
+        predictions = []
+        random.seed(23)
+        np.random.seed(23)
+        torch.manual_seed(23)
+        adapter = run_tent_stream(
+            model, DataLoader(data, batch_size=3),
+            protocol(regime="episodic_tta", state_persistence="episodic_reset", domain_boundary="known"),
+            checkpoint_path=path, learning_rate=1e-3,
+            evaluate=lambda logits, _: predictions.append(logits), update=update,
+        )
+        outputs.append(predictions)
+        states.append(adapter.state_dict())
+        rngs.append((random.getstate(), np.random.get_state()))
+        budgets.append((adapter.stream_num_samples, adapter.stream_num_updates, adapter.num_resets))
+    assert_tree(outputs[0][1:], outputs[1])
+    assert_tree(states[0], states[1])
+    assert rngs[0][0] == rngs[1][0]
+    np.testing.assert_equal(rngs[0][1], rngs[1][1])
+    assert budgets == [(7, 3 if update else 0, 1), (4, 2 if update else 0, 0)]
+
+
+def test_factory_target_stream_filters_domains_assets_and_cache_before_waveforms(tmp_path):
+    import h5py
+    from src.data_factory import build_data
+
+    raw = tmp_path / "raw" / "CSV_Signal"
+    raw.mkdir(parents=True)
+    rows = [dict(Id=11, Domain_id=0, asset_id="source", File="missing_source.csv"),
+            dict(Id=21, Domain_id=2, asset_id="target", File="21.csv"),
+            dict(Id=22, Domain_id=2, asset_id="excluded", File="missing_asset.csv"),
+            dict(Id=31, Domain_id=1, asset_id="target", File="31.csv")]
+    for row in rows:
+        row.update(Dataset_id=900, Name="CSV_Signal", Label=row["Id"] % 3)
+        if row["asset_id"] == "target":
+            pd.DataFrame({"x": np.arange(64, dtype=np.float32),
+                          "z": np.linspace(0, 1, 64, dtype=np.float32)}).to_csv(raw / row["File"], index=False)
+    pd.DataFrame(rows).to_csv(tmp_path / "metadata.csv", index=False)
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    for name in ("CSV_Signal.h5", "cache.h5"):
+        with h5py.File(cache / name, "w") as handle:
+            handle.create_dataset("11", data=np.full((64, 2), np.nan))
+    args_data = SimpleNamespace(factory_name="default", data_dir=str(tmp_path), metadata_file="metadata.csv",
+                               cache_dir=str(cache), use_cache=False, num_workers=0, batch_size=2,
+                               window_size=16, num_window=3, normalization="none", dtype="float32",
+                               csv_signal_columns=["x", "z"])
+    args_task = SimpleNamespace(type="TTA", name="stream", target_system_id=[900],
+                               target_domain_id=[2, 1], target_asset_ids=["target"])
+    factory = build_data(args_data, args_task)
+    try:
+        assert list(factory.get_metadata().keys()) == [21, 31]
+        assert factory.get_dataloader("train") is factory.get_dataloader("val") is None
+        loader = factory.get_dataloader("test")
+        assert [len(batch["x"]) for batch in loader] == [2, 1, 2, 1]
+        torch.manual_seed(91)
+        model = TinyBN().eval()
+        path = checkpoint(tmp_path, model)
+        seen = []
+        count = run_source_only_stream(model, loader, protocol(regime="source_only"),
+                                      checkpoint_path=path,
+                                      evaluate=lambda _, view: seen.extend(view["file_id"].tolist()))
+        assert count == 6 and seen == [21, 21, 21, 31, 31, 31]
+        for name in ("CSV_Signal.h5", "cache.h5"):
+            with h5py.File(cache / name, "r") as handle:
+                assert set(handle.keys()) == {"21", "31"}
+    finally:
+        factory.data.close()
+
+
+def test_grouped_window_metrics_use_fixed_classes_and_equal_group_weights():
+    from src.task_factory.Components.metrics import grouped_classification_metrics
+
+    truth = torch.tensor([0, 0, 0, 1])
+    logits = torch.tensor([[3., 0., 0.]] * 4)
+    result = grouped_classification_metrics(logits, truth, ["a", "a", "a", "b"], 3)
+    assert result["acc"] == pytest.approx(0.5)
+    assert result["f1"] == pytest.approx(1 / 6)
+    assert result["acc"] != float((logits.argmax(1) == truth).float().mean())

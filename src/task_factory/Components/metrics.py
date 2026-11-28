@@ -185,3 +185,25 @@ def get_metrics(
 
 
 __all__ = ["get_metrics", "prepare_metric_inputs"]
+
+
+def grouped_classification_metrics(logits, target, group_ids, num_classes):
+    """Equal-weight within-group window metrics over a fixed class vocabulary.
+
+    Each group's F1 includes absent classes with F1=0. This is not a majority-vote
+    record prediction; changing group weights changes the reported estimand.
+    """
+    if len(group_ids) != target.numel() or not group_ids:
+        raise ValueError("Every evaluated prediction requires one declared group ID")
+    decisions = logits.argmax(dim=1)
+    values = []
+    for group in dict.fromkeys(group_ids):
+        mask = torch.tensor([value == group for value in group_ids], device=target.device)
+        confusion = torch.bincount(num_classes * target[mask] + decisions[mask],
+                                   minlength=num_classes ** 2).reshape(num_classes, num_classes)
+        true_positive = confusion.diag().double()
+        denominator = confusion.sum(0) + confusion.sum(1)
+        class_f1 = 2 * true_positive / denominator.clamp_min(1)
+        values.append((float(true_positive.sum() / confusion.sum()), float(class_f1.mean())))
+    return {"acc": sum(value[0] for value in values) / len(values),
+            "f1": sum(value[1] for value in values) / len(values)}

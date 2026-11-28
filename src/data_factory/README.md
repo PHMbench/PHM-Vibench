@@ -114,3 +114,39 @@ experiments or claim their removal is complete. Use `default` for maintained wor
 A source file or registry entry is discoverable, not benchmark support. Validate the
 exact complete configuration and its relevant data/Task tests. Record execution and
 protocol status separately in the existing [supported combinations](../../SUPPORTED_COMBINATIONS.md).
+
+## Configured target-only streams
+
+`TTA/stream` uses `build_data` with the existing metadata, strict readers, window
+construction and native sampler. `task.target_domain_id` declares replay order;
+optional `task.target_asset_ids` narrows the population. Each batch stays within one
+domain and retains its short tail. Selection precedes waveform/cache access, and
+source or excluded-asset records are not copied from an older cache. Train/validation
+loaders are absent; the selected source checkpoint and its explicit class count supply
+the model without reading source waveforms.
+
+The caller supplies a target configuration with `task.execution: research`,
+`task.type: TTA`, `task.name: stream`, an explicit `task.protocol`, and a new output:
+
+```bash
+phmfactory research evaluate --config /absolute/path/to/target-stream.yaml \
+  --checkpoint /absolute/path/to/source-selected.ckpt --output /new/result/directory
+```
+
+`task.method` selects `source_only`, `bn_only` or `tent`. The frozen control requires
+`protocol.regime: source_only`; BN-only and Tent use an allowed TTA regime. Known-domain
+reset uses `regime: episodic_tta`, `state_persistence: episodic_reset` and
+`domain_boundary: known`. Persistent streams retain state across declared domains.
+This configured path requires one CPU device, one pass and `data.num_workers: 0`.
+
+Predictions precede updates. Only input signals enter the predictor and entropy
+objective; labels and identities remain evaluator fields. BN-only uses Tent's batch
+normalization/dropout modes without changing affine weights. Reset restores the source
+adaptation state, optimizer and Python/NumPy/Torch RNG after loader initialization.
+Full-stream sample/update/reset counts remain distinct from per-episode counters.
+
+`task.evaluation_units` chooses `window`, `record` and/or `asset`. Record/asset metrics
+are equal-weight means of within-group window accuracy and macro-F1 over the fixed
+source vocabulary (absent classes contribute zero). They are not aggregate record or
+asset diagnoses. Exports preserve window coordinates, logits, final algorithm state
+and the actual source checkpoint path. Execution does not establish industrial benefit.

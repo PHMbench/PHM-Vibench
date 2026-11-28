@@ -33,7 +33,7 @@ def _check_loader(loader: DataLoader) -> int:
         if type(sampler) is not Same_system_Sampler:
             raise ValueError("B01 does not support this batch sampler")
         if (sampler.dataset is not loader.dataset or sampler.shuffle
-                or sampler.drop_last or sampler.system_metadata_key != "Dataset_id"):
+                or sampler.drop_last or sampler.system_metadata_key not in {"Dataset_id", "Domain_id"}):
             raise ValueError("B01 requires the unshuffled complete native evaluation sampler")
         indices = [index for batch in sampler for index in batch]
         if sorted(indices) != list(range(len(loader.dataset))):
