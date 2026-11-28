@@ -100,3 +100,6 @@ def test_sampler_represents_every_selected_system() -> None:
 
     assert represented_file_ids == {1, 2}
     assert sum(len(batch) for batch in batches) == len(dataset)
+    assert {(dataset[i]["file_id"], dataset[i]["window_id"]) for i in range(len(dataset))} == {
+        (1, 0), (2, 0), (2, 1)
+    }
